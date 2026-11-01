@@ -13,6 +13,9 @@
 # powered_by names the profile's switch an entity draws power through: its cases need that switch on, and a case
 # that switches it puts the entity back once power returns.
 # members lists a group's (or group_color's) lights, for a group light with no entity_id attribute (a Z2M group).
+#
+# roam: bulbs the run moves round Hue -> ZHA -> Z2M -> Hue (docs/contributing/testing.md, Roaming). A roaming bulb
+# is listed here only, never under an integration: each network's suites use it while it is there.
 
 pause: [automation.study_motion, switch.adaptive_lighting_study]
 
@@ -41,3 +44,10 @@ zigbee2mqtt:
   - entity_id: light.color_group  # a Z2M group of color bulbs only
     roles: [group_color]
     members: [light.bulb_c]
+
+roam:
+  bulbs:
+    - ieee: "0x0017880100000001"  # the bulb's IEEE address, in any spelling
+      entity_id: light.lab_color  # renamed to this after every join
+      roles: [light_dimmable, light_ct, light_color]
+      z2m_options: {hue_native_control: true}  # set again after each Z2M join: Z2M's remove drops them

@@ -1,7 +1,8 @@
 """The rig's profiles and connection settings. Shared by scripts/rig.py, the rig engine and the household check.
 
 A profile (`profiles/<name>.yaml`, gitignored) is one test setup on the HA instance .env.rig connects to: the entities
-the rig may move, by integration and role, and the automations and switches it pauses while it runs.
+the rig may move, by integration and role, the automations and switches it pauses while it runs, and the bulbs it
+roams between Zigbee networks (tests/rig/roam.py).
 
 Pure file reading, no HA or pytest imports, so the runner's preflight can load it before anything mutates.
 """
@@ -54,6 +55,26 @@ TOLERANCE_S = {"shelly": 2.0, "hue": 2.0, "zigbee2mqtt": 3.0, "zha": 3.0, "matte
 # it starts from what HA shows.
 SETTLE_S = {"hue": 15.0, "zigbee2mqtt": 2.0}
 
+# The networks a roaming bulb visits, in the order it visits them: the only route the A60 move probe proved
+# (docs/plans/2026-10-31-a60-move-probe.md). Hue is home, where a run starts and ends.
+CYCLE = ("hue", "zha", "zigbee2mqtt")
+
+
+def normalize_ieee(ieee: str) -> str:
+    """An IEEE address as bare lowercase hex: Hue writes `00:17:88:...`, Z2M `0x0017...`, ZHA `00:17:...`."""
+    return ieee.lower().removeprefix("0x").replace(":", "")
+
+
+def colon_ieee(ieee: str) -> str:
+    """ZHA's and the Hue bridge's spelling: `00:17:88:...`."""
+    bare = normalize_ieee(ieee)
+    return ":".join(bare[i : i + 2] for i in range(0, 16, 2))
+
+
+def hex_ieee(ieee: str) -> str:
+    """Zigbee2MQTT's spelling: `0x0017...`."""
+    return f"0x{normalize_ieee(ieee)}"
+
 
 @dataclass(frozen=True, slots=True)
 class RigEntity:
@@ -63,17 +84,29 @@ class RigEntity:
     members: tuple[str, ...] = ()  # a group's member lights, for a group light without an entity_id attribute
 
 
+@dataclass(frozen=True, slots=True)
+class RoamBulb:
+    """A bulb the rig moves round CYCLE, renamed to `entity_id` on every network it joins."""
+
+    ieee: str  # as bare lowercase hex (normalize_ieee); finds the bulb on every network
+    entity_id: str
+    roles: frozenset[str]
+    z2m_options: dict = field(default_factory=dict)  # set again after each Z2M join: Z2M's remove drops them
+
+
 @dataclass(slots=True)
 class Profile:
     integrations: dict[str, list[RigEntity]] = field(default_factory=dict)
     # Automations and switches turned off while the rig runs: whatever would fight the tests on these entities.
     pause: tuple[str, ...] = ()
     name: str = ""
+    roam: tuple[RoamBulb, ...] = ()
 
     @classmethod
     def load(cls, path: Path) -> Profile:
         raw = read_mapping(path)
         profile = cls(pause=pause_list(path, raw.pop("pause", None) or []), name=path.stem)
+        profile.roam = roam_bulbs(path, raw.pop("roam", None) or {})
         for integration, entities in raw.items():
             if integration not in TOLERANCE_S:
                 raise ValueError(f"{path.name}: unknown integration {integration!r}; use {', '.join(TOLERANCE_S)}")
@@ -92,10 +125,18 @@ class Profile:
                     RigEntity(item["entity_id"], roles, item.get("powered_by"), members)
                 )
         listed = {entity.entity_id for entities in profile.integrations.values() for entity in entities}
+        profile.add_roaming(path, listed)
         for entity_id, supply in profile.power().items():
             if supply not in listed:
                 raise ValueError(f"{path.name}: {entity_id} is powered_by {supply}, which the profile doesn't list")
         return profile
+
+    def add_roaming(self, path: Path, listed: set[str]) -> None:
+        """List each roaming bulb under every network it visits: while it is there, it is that network's entity."""
+        if both := sorted(listed & {bulb.entity_id for bulb in self.roam}):
+            raise ValueError(f"{path.name}: {', '.join(both)} roams, so it can't also be listed under an integration")
+        for network in CYCLE if self.roam else ():
+            self.integrations.setdefault(network, []).extend(RigEntity(b.entity_id, b.roles) for b in self.roam)
 
     def entity(self, integration: str, role: str) -> str | None:
         return next((e.entity_id for e in self.integrations.get(integration, ()) if role in e.roles), None)
@@ -106,6 +147,39 @@ class Profile:
     def power(self) -> dict[str, str]:
         """Each entity that draws power through another, mapped to its supply, across every integration."""
         return {e.entity_id: e.powered_by for entities in self.integrations.values() for e in entities if e.powered_by}
+
+
+def roam_bulbs(path: Path, raw: object) -> tuple[RoamBulb, ...]:
+    """A profile's `roam: {bulbs: [...]}`, each IEEE and entity ID used once."""
+    if not isinstance(raw, dict) or set(raw) - {"bulbs"}:
+        raise ValueError(f"{path.name}: roam must be a mapping with a bulbs list")
+    bulbs = tuple(roam_bulb(path, item) for item in raw.get("bulbs") or [])
+    for name, key in (("IEEE", "ieee"), ("entity ID", "entity_id")):
+        values = [getattr(bulb, key) for bulb in bulbs]
+        if len(set(values)) != len(values):
+            raise ValueError(f"{path.name}: two roam bulbs share an {name}")
+    return bulbs
+
+
+def roam_bulb(path: Path, item: object) -> RoamBulb:
+    """One roam bulb: its IEEE, fixed light entity ID, roles and Z2M options."""
+    if not isinstance(item, dict) or not {"ieee", "entity_id"} <= set(item):
+        raise ValueError(f"{path.name}: each roam bulb needs an ieee and an entity_id")
+    entity_id, ieee = str(item["entity_id"]), normalize_ieee(str(item["ieee"]))
+    if unknown := set(item) - {"ieee", "entity_id", "roles", "z2m_options"}:
+        raise ValueError(f"{path.name}: roam bulb {entity_id} has unknown keys {sorted(unknown)}")
+    if not entity_id.startswith("light."):
+        raise ValueError(f"{path.name}: roam bulb {entity_id} must be a light")
+    if len(ieee) != 16 or set(ieee) - set("0123456789abcdef"):
+        raise ValueError(f"{path.name}: roam bulb {entity_id} has an IEEE that isn't 16 hex digits")
+    roles = frozenset(item.get("roles", ()))
+    if unknown := roles - ROLES:
+        raise ValueError(f"{path.name}: {entity_id} has unknown roles {sorted(unknown)}")
+    if roles & GROUP_ROLES:
+        raise ValueError(f"{path.name}: roam bulb {entity_id} is a bulb, not a group")
+    if not isinstance(options := item.get("z2m_options") or {}, dict):
+        raise ValueError(f"{path.name}: roam bulb {entity_id} z2m_options must be a mapping")
+    return RoamBulb(ieee, entity_id, roles, options)
 
 
 def pause_list(path: Path, entity_ids: object) -> tuple[str, ...]:

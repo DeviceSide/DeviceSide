@@ -200,6 +200,7 @@ async def test_fake_bridge_runs_the_real_verbs_over_memory():
     bridge = FakeBridge(
         {
             "device": {"d1": {"id": "d1"}},
+            "zigbee_device_discovery": {"disc": {"id": "disc", "status": "ready"}},
             "light": {"l1": {"id": "l1", "owner": {"rid": "d1"}}},
             "zigbee_connectivity": {
                 "c1": {"id": "c1", "mac_address": "00:17:88:01:0a:bc:de:f0", "owner": {"rid": "d1"}}
@@ -211,7 +212,8 @@ async def test_fake_bridge_runs_the_real_verbs_over_memory():
     await bridge.delete("device", "d1")
     assert await bridge.device_id_by_ieee(IEEE) is None
     assert bridge.resources["light"] == {}
-    await bridge.post("zigbee_device_discovery", {"action": {"action_type": "search"}})
+    assert await bridge.post("zone", {"metadata": {"name": "z"}}) == [{"rid": "zone-0", "rtype": "zone"}]
+    await bridge.put("zigbee_device_discovery", "disc", {"action": {"action_type": "search"}})
     assert [d["id"] for d in await bridge.get("device")] == ["d2"]
     await bridge.put("device", "d2", {"metadata": {"name": "x"}})
     assert (await bridge.get("device", "d2"))[0]["metadata"] == {"name": "x"}

@@ -6,11 +6,13 @@ import contextlib
 import copy
 import json
 from collections.abc import AsyncIterator, Callable
+from pathlib import Path
 from types import SimpleNamespace
 
 from tests.rig.bridge import BridgeError, HueBridge, normalize_ieee
 from tests.rig.client import HAClient, HAError, device_ieee
-from tests.rig.profile import Profile, RigEntity
+from tests.rig.profile import Profile, RigEntity, colon_ieee, hex_ieee
+from tests.rig.roam import Bulb
 
 PENDING: list[asyncio.TimerHandle | asyncio.Task] = []
 
@@ -38,6 +40,9 @@ class FakeHA(HAClient):
         self.z2m_devices: list[str] = []
         self.z2m_groups: dict[str, list[str]] = {}
         self.z2m_ignores: set[str] = set()  # request topics Z2M never acts on
+        self.z2m_options: dict[str, dict] = {}  # device options by IEEE, as bridge/info's config.devices
+        self.on_open: Callable[[str], None] | None = None  # ZHA or Z2M joining opened (Lab joins its bulbs)
+        self.on_leave: Callable[[str, str], None] | None = None  # (integration, IEEE) after a remove
 
     def join(self, integration: str, ieee: str, entity_id: str | None = None) -> str:
         """A bulb joins `integration` ("zha" or "zigbee2mqtt"), with a registry entity if `entity_id` is given."""
@@ -67,11 +72,12 @@ class FakeHA(HAClient):
             return
         if topic == "permit_join":
             self.z2m_open = payload["time"] > 0
+            if self.z2m_open and self.on_open is not None:
+                self.on_open("zigbee2mqtt")
+        elif topic == "device/options":
+            self.z2m_options.setdefault(payload["id"], {}).update(payload["options"])
         elif topic == "device/remove":
-            self.z2m_devices = [i for i in self.z2m_devices if normalize_ieee(i) != normalize_ieee(payload["id"])]
-            self._leave("zigbee2mqtt", payload["id"])
-            for members in self.z2m_groups.values():
-                members[:] = [i for i in members if normalize_ieee(i) != normalize_ieee(payload["id"])]
+            self._z2m_remove(payload["id"])
         elif topic == "group/add":
             self.z2m_groups.setdefault(payload["friendly_name"], [])
         elif topic == "group/remove":
@@ -79,11 +85,20 @@ class FakeHA(HAClient):
         elif topic == "group/members/add":
             self.z2m_groups[payload["group"]].append(payload["device"])
 
+    def _z2m_remove(self, ieee: str) -> None:
+        self.z2m_devices = [i for i in self.z2m_devices if normalize_ieee(i) != normalize_ieee(ieee)]
+        self.z2m_options.pop(ieee, None)  # as Z2M: a removed device's options go with it
+        self._leave("zigbee2mqtt", ieee)
+        for members in self.z2m_groups.values():
+            members[:] = [i for i in members if normalize_ieee(i) != normalize_ieee(ieee)]
+        if self.on_leave is not None:
+            self.on_leave("zigbee2mqtt", ieee)
+
     @contextlib.asynccontextmanager
     async def _mqtt_messages(self, topic: str) -> AsyncIterator[asyncio.Queue[str]]:
         retained = {
-            "info": {"permit_join": self.z2m_open, "config": {"devices": {}}},
-            "devices": [{"ieee_address": ieee} for ieee in self.z2m_devices],
+            "info": {"permit_join": self.z2m_open, "config": {"devices": self.z2m_options}},
+            "devices": [{"ieee_address": ieee, "interview_completed": True} for ieee in self.z2m_devices],
             "groups": [
                 {"friendly_name": name, "members": [{"ieee_address": i} for i in members]}
                 for name, members in self.z2m_groups.items()
@@ -109,8 +124,12 @@ class FakeHA(HAClient):
         if domain == "zha":
             if service == "permit":
                 self.zha_open = data["duration"] > 0
+                if self.zha_open and self.on_open is not None:
+                    self.on_open("zha")
             else:
                 self._leave("zha", data["ieee"])
+                if self.on_leave is not None:
+                    self.on_leave("zha", data["ieee"])
             return None
         if domain == "mqtt":
             self._z2m_handle(data["topic"].removeprefix("zigbee2mqtt/bridge/request/"), json.loads(data["payload"]))
@@ -139,6 +158,8 @@ class FakeHA(HAClient):
         kind, entity_id = payload["type"], payload.get("entity_id")
         if kind == "config/entity_registry/get":
             return {"entity_id": entity_id, "device_id": self.entity_devices.get(entity_id)}
+        if kind == "config/entity_registry/list":
+            return [{"entity_id": e, "device_id": d, "platform": "fake"} for e, d in self.entity_devices.items()]
         if kind == "config/entity_registry/update":
             new = payload["new_entity_id"]
             if new in self.entity_devices or new in self.states:
@@ -169,14 +190,16 @@ class FakeHA(HAClient):
 class FakeBridge(HueBridge):
     """HueBridge over an in-memory CLIP v2: the real get, post, put, delete and IEEE lookup, with a faked transport.
 
-    `resources` holds each type's items by id. A POST to `zigbee_device_discovery` runs `on_search`, which a test
-    uses to make a bulb join. A DELETE of a device removes it, its connectivity and its lights.
+    `resources` holds each type's items by id. A search (a PUT of `action_type: search` to `zigbee_device_discovery`)
+    runs `on_search`, which a test uses to make a bulb join. A DELETE of a device runs `on_delete` first, then removes
+    it, its connectivity and its lights.
     """
 
     def __init__(self, resources: dict[str, dict[str, dict]] | None = None, on_search: Callable | None = None):
         super().__init__("bridge.invalid", "key")
         self.resources = resources or {}
         self.on_search = on_search
+        self.on_delete: Callable[[str], None] | None = None
         self.requests: list[tuple[str, str, str | None, dict | None]] = []
         self.fail: dict[tuple[str, str], str] = {}  # (method, resource type) -> an error the bridge returns
 
@@ -193,6 +216,9 @@ class FakeBridge(HueBridge):
             raise BridgeError(f"{method} {resource_type}/{resource_id} got 404: not found")
         if method == "PUT":
             items[resource_id].update(body)
+            searching = body.get("action", {}).get("action_type") == "search"
+            if resource_type == "zigbee_device_discovery" and searching and self.on_search is not None:
+                self.on_search(self)
         elif method == "DELETE":
             self._delete(resource_type, items, resource_id)
         else:
@@ -200,19 +226,126 @@ class FakeBridge(HueBridge):
         return [{"rid": resource_id, "rtype": resource_type}]
 
     def _post(self, resource_type: str, items: dict, body: dict) -> list[dict]:
-        if resource_type == "zigbee_device_discovery" and self.on_search is not None:
-            self.on_search(self)
         new_id = f"{resource_type}-{len(items)}"
         items[new_id] = {"id": new_id, **body}
         return [{"rid": new_id, "rtype": resource_type}]
 
     def _delete(self, resource_type: str, items: dict, resource_id: str) -> None:
+        if resource_type == "device" and self.on_delete is not None:
+            self.on_delete(resource_id)
         del items[resource_id]
         if resource_type == "device":
             for owned in self.resources.values():
                 for key, item in list(owned.items()):
                     if item.get("owner", {}).get("rid") == resource_id:
                         del owned[key]
+
+
+# The lab's two roaming bulbs, as a Roamer and as a profile file.
+LAB_A, LAB_B = "0x001788010abcdef0", "0x001788010abcdef1"
+LAB_OPTIONS = {"hue_native_control": True}
+LAB_BULBS = [Bulb(LAB_A[2:], "light.lab_a", LAB_OPTIONS), Bulb(LAB_B[2:], "light.lab_b")]
+
+
+def lab_profile(directory: Path, extra: str = "") -> Path:
+    path = directory / "lab.yaml"
+    path.write_text(
+        "shelly:\n  - entity_id: switch.plug\n    roles: [switch_plug]\n"
+        "roam:\n  bulbs:\n"
+        f'    - ieee: "{LAB_A}"\n      entity_id: light.lab_a\n      roles: [light_ct, light_color]\n'
+        "      z2m_options: {hue_native_control: true}\n"
+        f'    - ieee: "00:17:88:01:0A:BC:DE:F1"\n      entity_id: light.lab_b\n      roles: [light_dimmable]\n' + extra
+    )
+    return path
+
+
+class Lab:
+    """Bulbs that roam between a FakeHA's ZHA and Z2M and a FakeBridge, as the real networks do: a released bulb
+    searches, and joins the next network that opens (unless it is `stuck`), under a new device and a generated
+    entity ID. Leaving Hue drops the bulb from its rooms, zones and scene actions; each leave orphans its HA entity.
+    The bulbs start on Hue under their fixed entity IDs, in room `r1`, zone `z1` and scene `s1`."""
+
+    def __init__(self, ha: FakeHA, bridge: FakeBridge, bulbs: dict[str, str]):
+        self.ha, self.bridge = ha, bridge
+        self.searching: set[str] = set()
+        self.stuck: set[str] = set()
+        self.joins = 0
+        self.searches = 0
+        ha.on_open = self.opened
+        ha.on_leave = lambda _integration, ieee: self.searching.add(normalize_ieee(ieee))
+        bridge.on_search = self.searched
+        bridge.on_delete = self.deleted
+        bridge.resources |= {
+            "zigbee_device_discovery": {"disc": {"id": "disc", "status": "ready"}},
+            "room": {"r1": {"id": "r1", "children": [{"rid": "other-device", "rtype": "device"}]}},
+            "zone": {"z1": {"id": "z1", "children": [{"rid": "other-light", "rtype": "light"}]}},
+            "scene": {"s1": {"id": "s1", "actions": [self.action("other-light", 10)]}},
+        }
+        for ieee, entity_id in bulbs.items():
+            device_id, light_id = self.add("hue", normalize_ieee(ieee), entity_id)
+            bridge.resources["device"][device_id]["metadata"]["name"] = f"Lamp {entity_id}"
+            bridge.resources["room"]["r1"]["children"].append({"rid": device_id, "rtype": "device"})
+            bridge.resources["zone"]["z1"]["children"].append({"rid": light_id, "rtype": "light"})
+            bridge.resources["scene"]["s1"]["actions"].append(self.action(light_id, 50))
+
+    @staticmethod
+    def action(light_id: str, brightness: int) -> dict:
+        return {"target": {"rid": light_id, "rtype": "light"}, "action": {"dimming": {"brightness": brightness}}}
+
+    def searched(self, _bridge: FakeBridge) -> None:
+        self.searches += 1
+        self.opened("hue")
+
+    def opened(self, network: str) -> None:
+        for ieee in sorted(self.searching - self.stuck):
+            self.add(network, ieee)
+
+    def add(self, network: str, ieee: str, entity_id: str | None = None) -> tuple[str, str]:
+        self.searching.discard(ieee)
+        self.joins += 1
+        n = self.joins
+        entity_id = entity_id or f"light.{network}_bulb_{n}"
+        if network != "hue":
+            spelled = colon_ieee(ieee) if network == "zha" else hex_ieee(ieee)
+            return self.ha.join(network, spelled, entity_id), ""
+        device_id, light_id, link = f"hue-device-{n}", f"hue-light-{n}", f"hue-link-{n}"
+        resources = self.bridge.resources
+        resources.setdefault("device", {})[device_id] = {
+            "id": device_id,
+            "metadata": {"name": "Hue color lamp", "archetype": "sultan_bulb"},
+            "services": [{"rid": light_id, "rtype": "light"}, {"rid": link, "rtype": "zigbee_connectivity"}],
+        }
+        resources.setdefault("light", {})[light_id] = {"id": light_id, "owner": {"rid": device_id}}
+        mac = colon_ieee(ieee)
+        resources.setdefault("zigbee_connectivity", {})[link] = {
+            "id": link,
+            "mac_address": mac,
+            "owner": {"rid": device_id},
+        }
+        self.ha.devices.append({"id": f"ha-{device_id}", "identifiers": [["hue", device_id]]})
+        self.ha.entity_devices[entity_id] = f"ha-{device_id}"
+        self.ha.states.setdefault(entity_id, {"entity_id": entity_id, "state": "off", "attributes": {}})
+        return device_id, light_id
+
+    def deleted(self, device_id: str) -> None:
+        """The bridge drops the device everywhere, and HA's hue integration drops its device."""
+        resources = self.bridge.resources
+        link = next(c for c in resources["zigbee_connectivity"].values() if c["owner"]["rid"] == device_id)
+        self.searching.add(normalize_ieee(link["mac_address"]))
+        lights = {s["rid"] for s in resources["device"][device_id]["services"] if s["rtype"] == "light"}
+        for group in [*resources["room"].values(), *resources["zone"].values()]:
+            group["children"] = [c for c in group["children"] if c["rid"] not in lights | {device_id}]
+        for scene in resources["scene"].values():
+            scene["actions"] = [a for a in scene["actions"] if a["target"]["rid"] not in lights]
+        self.ha.devices = [d for d in self.ha.devices if d["id"] != f"ha-{device_id}"]
+        for entity_id, owner in self.ha.entity_devices.items():
+            if owner == f"ha-{device_id}":
+                self.ha.entity_devices[entity_id] = None
+
+    def device_of(self, entity_id: str) -> dict | None:
+        """HA's device behind an entity, or None for an orphan."""
+        owner = self.ha.entity_devices.get(entity_id)
+        return next((d for d in self.ha.devices if d["id"] == owner), None)
 
 
 def profile(integration: str = "shelly", pause: tuple[str, ...] = (), **roles: str) -> Profile:

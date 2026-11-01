@@ -49,7 +49,19 @@ each other; the commit diff shows which one ran last. A record is public, so nam
 `house`), never for a person or place.
 
 The household check (`scripts/check_private.py`) reads every profile's entity IDs, members, supplies and pause
-list, so none of them reach a commit.
+list, and each roaming bulb's IEEE, so none of them reach a commit.
+
+### Roaming
+
+A profile's `roam:` lists bulbs the run moves between Zigbee networks, all together, round the fixed cycle Hue →
+ZHA → Z2M → Hue (`tests/rig/roam.py`), so one set of bulbs serves every Zigbee suite. Each bulb has its IEEE, the
+fixed entity ID it is renamed to after every join, its roles, and the Z2M options set again after each Z2M join.
+The suites then run in phases: Hue's with the fixed integrations', then ZHA's, then Z2M's, each after a move and
+each with its automated cases before its observed ones. The bulbs move only when a ZHA or Z2M suite runs, and end
+home on Hue, with their rooms, zones, scene actions and names put back on their new Hue IDs. A run that stops
+part way still moves them home; `--recover`, or the next run before its gate, does it after a crash. A bulb on no
+network stops recovery: reset it over Bluetooth in the Hue app, then `--recover` again. `--roam-check` runs the
+cycle with no suites. Roaming needs `HA_ADMIN_TOKEN` and the Hue bridge's `HUE_BRIDGE_HOST` and `HUE_APP_KEY`.
 
 Ctrl-C, SIGTERM or SIGHUP puts the devices back before the run exits; a second one leaves them. If a run dies before it can, the next run
 puts back what it left before its gate; `--recover` does only that.
