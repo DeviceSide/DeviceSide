@@ -1,4 +1,4 @@
-"""Runs the rig's YAML step files against the live HA and renders bench records from the results.
+"""Runs the rig's YAML step files against the live HA and renders test records from the results.
 
 One file per action (`steps/<action>.yaml`) runs on every inventory integration that has that action's adapter; a
 file with `options` (`steps/<action>-<option>.yaml`) runs it again with those device_side options on. The registry
@@ -1429,7 +1429,7 @@ def _not_run(case: Case, outcome: Outcome, detail: str = "") -> CaseResult:
     return CaseResult(case.id, case.role, domain, outcome, detail, twin=case.twin)
 
 
-# --- Bench records -------------------------------------------------------------------------------------------
+# --- Test records --------------------------------------------------------------------------------------------
 
 
 def table(suite_result: SuiteResult, details: bool = False) -> list[str]:
@@ -1469,7 +1469,7 @@ async def rig_facts(ha: HAClient, entity_ids: Iterable[str]) -> tuple[str, list[
 def render_record(
     suite_result: SuiteResult, title: str, ha_version: str, devices: list[Device], date: str, source: str
 ) -> str:
-    """The bench record: a key/value table, then the per-test table. It is evidence for people; no script reads it."""
+    """The test record: a key/value table, then the per-test table. It is evidence for people; no script reads it."""
     suite = suite_result.suite
     rows = [
         ("Result", "pass"),
@@ -1499,7 +1499,7 @@ def write_report(result: RunResult, directory: Path, title: str) -> Path:
 
 
 async def write_records(
-    result: RunResult, ha: HAClient, registry: Any, bench_dir: Path, date: str, source: str
+    result: RunResult, ha: HAClient, registry: Any, records_dir: Path, date: str, source: str
 ) -> list[Path]:
     """One record per suite that fully passed; a partial or failed suite writes nothing."""
     written = []
@@ -1510,7 +1510,7 @@ async def write_records(
         entity_ids = [entity_id for case in suite_result.cases for entity_id in case.entity_ids]
         ha_version, devices = await rig_facts(ha, entity_ids)
         title = registry.integrations[suite.integration].title
-        path = bench_dir / suite.integration / f"{suite.name}.md"
+        path = records_dir / suite.integration / f"{suite.name}.md"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(render_record(suite_result, title, ha_version, devices, date, source))
         written.append(path)
