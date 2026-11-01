@@ -798,7 +798,7 @@ async def test_records_cite_the_commit_ha_loaded_not_head_at_the_end(tmp_path, m
 
     written = []
 
-    async def write_records(result, ha, registry, bench_dir, date, source):
+    async def write_records(result, ha, registry, records_dir, date, source):
         written.append(source)
         return []
 
@@ -808,7 +808,7 @@ async def test_records_cite_the_commit_ha_loaded_not_head_at_the_end(tmp_path, m
 
     assert await rig.run_rig({}, [], fakes.inventory("shelly"), fakes.OPTION_REGISTRY, None, True, commit) == 0
     assert written == sources
-    assert ("No bench records" in capsys.readouterr().out) is (commit is None)
+    assert ("No test records" in capsys.readouterr().out) is (commit is None)
 
 
 def aborted_journal(path: Path) -> Journal:

@@ -17,7 +17,7 @@ Facts this builds on:
 - `read.py`'s `Reader` reads live through Z2M's generic `read`, and Z2M updates its state from the reply as it
   would from a report. A failed read raises.
 - Z2M groupcast is rig-proved on `turn_on_for` (#59/#62), `move`, `stop` and `get_attributes`, with every group
-  case passing in their bench records.
+  case passing in their test records.
 - ZHA's `set_attributes` (13g, #120) already turns fields into `MoveTo…` commands.
 
 Decided in the 2026-10-28 interview:
@@ -106,7 +106,7 @@ Decided in the 2026-10-28 interview:
 5. **Rig.** `tests/rig/steps/set_attributes.yaml` already reaches Z2M through `light_ct`, `group` and
    `light_color` (the A60 is on Z2M). Check that the ranges hold for Z2M: 40 % → level 102 → HA 102, and 2700 K →
    370 mireds. Run `scripts/rig.py --action set_attributes` in the background, unattended. The observed
-   `sets_color_while_off` case goes to the Z2M A60 run. Write `docs/bench/zigbee2mqtt/set_attributes.md`.
+   `sets_color_while_off` case goes to the Z2M A60 run. Write `docs/test-records/zigbee2mqtt/set_attributes.md`.
    `experimental` stays until 13k step 1.
 
 6. **Docs.**
@@ -127,7 +127,7 @@ Decided in the 2026-10-28 interview:
 ## Critical files
 
 - **New:** `core/zcl_write.py`, `integrations/zigbee2mqtt/set_attributes.py`, their tests,
-  `docs/bench/zigbee2mqtt/set_attributes.md`.
+  `docs/test-records/zigbee2mqtt/set_attributes.md`.
 - **Edited:** `integrations/zha/set_attributes.py` (uses core), `integrations/zigbee2mqtt/{__init__,read}.py`,
   `tests/integrations/zha/test_set_attributes.py`, `docs/integrations.md`, `README.md`, the slice 13 plan,
   `TODO.md`.
@@ -206,7 +206,7 @@ Branch `wt/z2m-set-attributes` (worktree `.worktrees/z2m-set-attributes`), not p
 **Left:**
 - **Step 5, the rig run.** Ask Jason first: rig runs are not pre-authorized after 2026-10-28. Then run
   `scripts/rig.py --action set_attributes` in the background. If `sets_after_a_soft_off` fails on Hue or ZHA,
-  that is a new finding for Jason, not this slice's to fix. Write `docs/bench/zigbee2mqtt/set_attributes.md`.
+  that is a new finding for Jason, not this slice's to fix. Write `docs/test-records/zigbee2mqtt/set_attributes.md`.
 - **Step 6, the docs.** In `docs/integrations.md`'s Z2M `set_attributes` section, add the kept-level payload and
   why (finding b/e). A soft off is no longer a sharp edge for Z2M.
 - **Step 7, landing it.** Run `/audit-code` on the diff, then open the PR into `release/v0.0.2` and merge with

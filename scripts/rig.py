@@ -8,7 +8,7 @@ DEVICE_SIDE_RIG_APPROVED=1 answers the gate for a non-interactive caller that al
 One run at a time: a lock in the git common dir, shared by every worktree; a second run waits for it. Each run deploys
 and restarts HA onto its own checkout's tree when HA hasn't loaded it, so a run queued behind another tests its own
 code. Ctrl-C mid-deploy waits for the deploy and HA's restart to finish before releasing the lock. The tests are the
-step files in tests/rig/steps, run by tests/rig/engine.py; a full pass of an adapter rewrites its bench record.
+step files in tests/rig/steps, run by tests/rig/engine.py; a full pass of an adapter rewrites its test record.
 
 Ctrl-C, SIGTERM and SIGHUP stop a run, putting the devices back; a second one leaves them. What a run changes is
 journaled first (next to the lock), so whatever a killed run leaves changed, the next run puts back before its gate, or
@@ -65,7 +65,7 @@ from tests.rig.inventory import INVENTORY, Inventory, load_env  # noqa: E402
 from tests.rig.journal import Journal  # noqa: E402
 
 COMPONENT = "custom_components/device_side"
-BENCH_DIR = REPO / "docs" / "bench"
+TEST_RECORDS_DIR = REPO / "docs" / "test-records"
 SERVICE = ("device_side", "turn_on_for")
 # HA's bootstrap stage-1 (120 s) and stage-2 (300 s) timeouts, after which a stuck dependency is let go, plus the
 # container's start. A restart behind a hung ZHA took about 350 s.
@@ -642,7 +642,7 @@ async def run_rig(
     commit: str | None,
     journal: Journal | None = None,
 ) -> int:
-    """Run the step files, then write a bench record for each adapter whose every test passed, citing `commit`; with
+    """Run the step files, then write a test record for each adapter whose every test passed, citing `commit`; with
     no commit, none: a record nobody can trace to a commit proves nothing."""
     cancel_on_signals()
     ha, admin = await connect(env)
@@ -667,11 +667,11 @@ async def run_rig(
         stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         print(f"\nReport: {write_report(result, REPORT_DIR, f'rig run {stamp}')}")
         if commit is None:
-            print("No bench records: no commit names the tree HA ran (--no-deploy, or origin moved before the deploy).")
+            print("No test records: no commit names the tree HA ran (--no-deploy, or origin moved before the deploy).")
         else:
             source = f"rig run (`scripts/rig.py`), commit `{git('rev-parse', '--short', commit)}`"
             today = datetime.date.today().isoformat()
-            for path in await write_records(result, ha, registry, BENCH_DIR, today, source):
+            for path in await write_records(result, ha, registry, TEST_RECORDS_DIR, today, source):
                 print(f"Wrote {path.relative_to(REPO)}; review the diff before committing it.")
     finally:
         await resume(ha, paused, journal)

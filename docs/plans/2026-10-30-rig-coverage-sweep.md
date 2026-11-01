@@ -11,7 +11,7 @@ covering its whole scope, or a narrower scope.
 
 The audit (this session, from the code, step files, records and inventory) found:
 
-- **Fingerprints are gone** (release-flag plan). The 9d row's "current-fingerprint bench record" now means a record
+- **Fingerprints are gone** (release-flag plan). The 9d row's "current-fingerprint bench record" now means a test record
   from a rig run on the code that ships.
 - **Most records are stale**: every Hue and Z2M raise/lower/stop record predates #128 (`move*.md`, old test names);
   the rest predate later commits. The closing full-suite run rewrites them all.
@@ -87,7 +87,7 @@ Worktree `wt/rig-coverage-sweep` (this one), into `release/v0.0.2`. It must merg
 ### PR 2: observed-test ledger and pruning (no rig)
 
 8. **Ledger**:
-   - For every test with an `observe` block, find in the bench records' git history (`git log -p -- docs/bench`) if
+   - For every test with an `observe` block, find in the test records' git history (`git log -p -- docs/test-records docs/bench`) if
      its observed twin ever passed, and in which record and commit.
    - Note which behavior each one watches (`watch`/`ask`), and whether the unattended checks (`sample`,
      `expect_state`) already measure it.
@@ -186,7 +186,7 @@ declares `native_groups`, in the same way, and remove it before the next move.
 - Phase A: the 13k step 1 record shows `light_raised_mid_room_lower[group]` and the `group_color` cases passed,
   with no skips.
 - Phase B:
-  - Every `docs/bench/**` record comes from the closing run, with no `move*.md` left.
+  - Every `docs/test-records/**` record comes from the closing run, with no `move*.md` left.
   - No skips beyond the accepted 9b list.
   - No `not observed` outside the pruned set.
   - `scripts/check_release.py --release` passes.

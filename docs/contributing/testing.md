@@ -140,7 +140,7 @@ Such a test runs twice, so you are asked only what a machine can't check:
 integrations; the rest run automated only.
 
 `--unattended` skips the observed runs and reports them `not observed`. They don't fail, but a test counts toward
-a bench record only when both of its runs pass.
+a test record only when both of its runs pass.
 
 ### Run reports
 
@@ -148,9 +148,9 @@ Every run, failed, partial or unattended, ends by writing a report to `device_si
 folder and printing its path: each suite's results with the reason for every failure and skip. The OS clears it
 out in time.
 
-### Bench records
+### Test records
 
-When every test of an adapter passes, the run writes `docs/bench/<integration>/<action>.md`: the date, the Home
+When every test of an adapter passes, the run writes `docs/test-records/<integration>/<action>.md`: the date, the Home
 Assistant version, the devices' model and firmware, and each test's result. A failed or partial (`-k`) run writes
 nothing. Records are evidence for people, not read by any script: the PR that clears an adapter's `experimental`
 flag cites one.
@@ -158,6 +158,6 @@ flag cites one.
 ### Tester reports
 
 A passing [Test report](../../.github/ISSUE_TEMPLATE/test-report.yml) issue becomes its own record,
-`docs/bench/<integration>/<action>-issue-<N>.md`, next to the rig's, so a rig run never overwrites it. It uses the
+`docs/test-records/<integration>/<action>-issue-<N>.md`, next to the rig's, so a rig run never overwrites it. It uses the
 rig record's key/value table: `Source` cites the issue and the RC the tester ran (`tester report, #<N>, <rc>`).
 Note the capabilities, fields and device_side options the report shows working. The tests table is optional.

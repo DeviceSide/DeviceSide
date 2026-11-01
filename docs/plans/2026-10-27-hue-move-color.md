@@ -112,7 +112,7 @@ of `light.color.gamut` (reuse the `colors.py` gamut helpers). `saturation_limit`
 ## Every PR
 
 `.venv/bin/pytest`, `pre-commit run --all-files`, `uv run scripts/check_tiers.py` (Hue stays `experimental`),
-`/audit-code` on the diff by a fresh subagent, rig run with records written to `docs/bench/hue/`. Then PR into
+`/audit-code` on the diff by a fresh subagent, rig run with records written to `docs/test-records/hue/`. Then PR into
 `release/v0.0.2`, `ci-green`, squash-merge, remove the worktree.
 
 ## Verification
@@ -120,7 +120,7 @@ of `light.color.gamut` (reuse the `colors.py` gamut helpers). `saturation_limit`
 - Unit tests above green. `check_tiers.py` shows the new fingerprints and the `color_temp` and
   `color_temp_limit` fields covered by current records.
 - Rig: `uv run scripts/rig.py` passes for the `move` and `stop` steps on `light_ct` and `group`, both
-  `predicted_state` modes. Bench records `move.md`, `move-predicted_state.md`, `stop.md` and
+  `predicted_state` modes. Test records `move.md`, `move-predicted_state.md`, `stop.md` and
   `stop-predicted_state.md` list `color_temp` and `color_temp_limit`.
 - Observed: a hold-to-warm then release halts with no snap, and a following warmer continues from the halt.
 

@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for testing. A passing report becomes a bench record, which is what lets a capability or field
+        Thanks for testing. A passing report becomes a test record, which is what lets a capability or field
         ship in a release.
 
         **Already tested by someone else? Still worth sending:** a different model or firmware is new evidence.

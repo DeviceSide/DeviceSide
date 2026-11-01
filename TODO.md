@@ -37,11 +37,11 @@ v0.1.0 is the next release.
 | 14 | Z2M color modes fixed for HA, on by default | #126 |
 | — | Color temperature moves dropped on every integration: no halt of a Hue bulb's fade is clean | #125 |
 | — | Six raise and lower actions replace `move` | #128 |
-| 13j | Z2M `set_attributes` (experimental; rig run and bench record still to do) | #130 |
+| 13j | Z2M `set_attributes` (experimental; rig run and test record still to do) | #130 |
 | 9d (PR 1 of 3) | Rig coverage sweep: `group_color` role, `observe: roles`, color step cases for 13k | #132 |
 | 9d (PR 2 of 3) | Observed-test ledger: observe only the four never-seen cases, `observe: only` | #134 |
 | 9d (rig fix) | Rig waits up to 60 s for unavailable targets, then stops before changing anything | #136 |
-| 13k (step 1, part) | Z2M hue and saturation bench records on the A60 (`light_color`; `group_color` still to do) | #138 |
+| 13k (step 1, part) | Z2M hue and saturation test records on the A60 (`light_color`; `group_color` still to do) | #138 |
 | 9d (A0) | A60 move probe: join windows self-close on Z2M and Hue; all three moves scripted (Hue by CLIP v2 only) | #142, #144 |
 
 ## To go, in order
@@ -59,12 +59,12 @@ and Hue (from the A60 move on). The rig lock and the bulb moves are shared.
   ([`2026-10-30-raise-lower.md`](docs/plans/2026-10-30-raise-lower.md)). Lands before 13j's freeze and the Z2M A60
   run.
 - [ ] **Raise/lower rig run**: unattended, the six actions and `stop` on Hue and Z2M. Its records replace
-  `docs/bench/{hue,zigbee2mqtt}/move*.md` and rewrite `stop*.md`; it measures the new hue, saturation and two-call
+  `docs/test-records/{hue,zigbee2mqtt}/move*.md` and rewrite `stop*.md`; it measures the new hue, saturation and two-call
   stop ranges for the first time.
 - [ ] **13j** Z2M `set_attributes` while off. Z2M code freezes.
   Code, tests and docs merged in #130, experimental. Still to do: its rig run
   (`scripts/rig.py --action set_attributes`, with the new `sets_after_a_soft_off` case, which also runs on Hue and
-  ZHA) and `docs/bench/zigbee2mqtt/set_attributes.md`, both in the pre-release full rig run. Tick when the
+  ZHA) and `docs/test-records/zigbee2mqtt/set_attributes.md`, both in the pre-release full rig run. Tick when the
   record is in.
 - [x] **14** Z2M color modes fixed for HA, on by default, and 13i's xy write-back backed out
   ([`2026-10-28-z2m-color-modes.md`](docs/plans/2026-10-28-z2m-color-modes.md)). Counts toward the Z2M freeze.
@@ -95,9 +95,9 @@ and Hue (from the A60 move on). The rig lock and the bulb moves are shared.
 
 ## Candidates
 
-- **15** Test bench, if the 9d A0 probe shows scripted A60 moves and self-closing join windows are reliable
+- **15** Lab, if the 9d A0 probe shows scripted A60 moves and self-closing join windows are reliable
   ([plan](docs/plans/2026-10-30-rig-coverage-sweep.md)). [Probe](docs/plans/2026-10-31-a60-move-probe.md): all
-  three moves scripted and join windows bounded. The bench is three lamps in the maintainer's own room,
+  three moves scripted and join windows bounded. The lab is three lamps in the maintainer's own room,
   which no one else uses, near the bridge and the coordinators. They hold a Hue white ambiance bulb, a Hue color
   bulb and a Hue White bulb. The rig moves them between Z2M, ZHA and Hue. Rig-made groups, zones and scenes are
   named `ds-rig-*` and removed after each suite, and `--recover` removes them after a crash. Tests can then run
@@ -109,7 +109,7 @@ and Hue (from the A60 move on). The rig lock and the bulb moves are shared.
   - **No plugs on the lamps.** The lamps' inline switches stay on, and the rig's availability check stops a run on
     a lamp that's switched off. Power-loss cases are out of scope. Switch tests stay on the Shelly relays and the
     Matter plug.
-  - The house run before each release adds the mesh, a second brand (the Sengleds) and mixed groups. Records say
-    bench or house.
+  - The house run before each release adds the mesh, a second brand (the Sengleds) and mixed groups. Test records say
+    lab or house.
   - Hue `set_scene` §5.4-5.8 scene kinds come within reach.
   - Plan in /plan first.

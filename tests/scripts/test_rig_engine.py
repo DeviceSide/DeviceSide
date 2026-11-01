@@ -1033,10 +1033,10 @@ async def test_a_full_pass_writes_a_record_and_a_failure_writes_none(tmp_path):
     steps = suite(tmp_path, ON_THEN_OFF)
     passed = await run_one(ha, steps, inventory(switch_plug="switch.plug"))
     failed = RunResult([SuiteResult(steps, [], complete=True)])
-    assert await write_records(failed, ha, REGISTRY, tmp_path / "bench", "2026-10-25", "test") == []
+    assert await write_records(failed, ha, REGISTRY, tmp_path / "test-records", "2026-10-25", "test") == []
 
-    [path] = await write_records(passed, ha, REGISTRY, tmp_path / "bench", "2026-10-25", "rig run")
-    assert path == tmp_path / "bench" / "shelly" / "turn_on_for.md"
+    [path] = await write_records(passed, ha, REGISTRY, tmp_path / "test-records", "2026-10-25", "rig run")
+    assert path == tmp_path / "test-records" / "shelly" / "turn_on_for.md"
     record = path.read_text()
     assert record.startswith("# Shelly · turn_on_for\n")
     assert "| Device | Mini (`S3`), firmware `2.0` |" in record
@@ -1482,9 +1482,9 @@ async def test_a_record_with_options_on_is_named_for_them(tmp_path):
     case = CaseResult("t[light_ct]", "light_ct", "light", Outcome.PASS)
     result = RunResult([SuiteResult(steps, [case], complete=True)])
 
-    [path] = await write_records(result, FakeHA({}), REGISTRY, tmp_path / "bench", "2026-10-27", "rig run")
+    [path] = await write_records(result, FakeHA({}), REGISTRY, tmp_path / "test-records", "2026-10-27", "rig run")
 
-    assert path == tmp_path / "bench" / "hue" / "raise_brightness-predicted_state.md"
+    assert path == tmp_path / "test-records" / "hue" / "raise_brightness-predicted_state.md"
     assert path.read_text().startswith("# Hue · raise_brightness-predicted_state\n")
 
 
