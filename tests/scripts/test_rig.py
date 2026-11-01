@@ -14,7 +14,7 @@ from custom_components.device_side.core.registry import AdapterRegistry
 from tests.rig import engine
 from tests.rig.engine import load_step_file, load_step_files
 from tests.rig.journal import Journal
-from tests.rig.profile import Profile, RigEntity, load_env, main_checkout, profile_paths
+from tests.rig.profile import EXAMPLE, Profile, RigEntity, load_env, main_checkout, profile_paths
 from tests.scripts import rig_fakes as fakes
 
 REPO = Path(__file__).parents[2]
@@ -714,7 +714,7 @@ def profiles(tmp_path: Path, *names: str) -> Path:
 
 
 def test_choose_profile_takes_the_named_one_or_the_only_one(tmp_path):
-    directory = profiles(tmp_path, "example", "house", "lab")
+    directory = profiles(tmp_path, "house", "lab")
     legacy = tmp_path / "inventory.yaml"
     assert rig.choose_profile("lab", {}, directory, legacy) == directory / "lab.yaml"
     (directory / "lab.yaml").unlink()
@@ -724,9 +724,9 @@ def test_choose_profile_takes_the_named_one_or_the_only_one(tmp_path):
 @pytest.mark.parametrize(
     ("names", "name", "env", "message"),
     [
-        (("example", "house", "lab"), None, {}, "Choose a profile with --profile: house, lab"),
-        (("example", "house"), "lab", {}, "No profile 'lab' in .*; there are: house"),
-        (("example",), None, {}, "No profile in .*; copy .*example.yaml"),
+        (("house", "lab"), None, {}, "Choose a profile with --profile: house, lab"),
+        (("house",), "lab", {}, "No profile 'lab' in .*; there are: house"),
+        ((), None, {}, "No profile in .*; copy .*profile.example.yaml"),
         (("house",), None, {"RIG_PAUSE": "switch.al"}, "RIG_PAUSE has moved from .env.rig into the profile"),
     ],
 )
@@ -1055,9 +1055,13 @@ async def test_an_unavailable_group_member_stops_the_run(tmp_path):
         )
 
 
-def test_profile_paths_leave_out_the_example(tmp_path):
-    directory = profiles(tmp_path, "example", "lab", "house")
+def test_profile_paths_are_every_profile_by_name(tmp_path):
+    directory = profiles(tmp_path, "lab", "house")
     assert profile_paths(directory) == [directory / "house.yaml", directory / "lab.yaml"]
+
+
+def test_the_example_is_a_valid_profile():
+    assert Profile.load(EXAMPLE).pause
 
 
 def test_load_env_still_reads_rig_pause_so_a_run_can_refuse_it(tmp_path, monkeypatch):

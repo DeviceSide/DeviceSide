@@ -37,7 +37,7 @@ nothing moves until you say yes. `--dry-run` prints the plan and stops.
 ### Profiles
 
 A profile is one test setup on the Home Assistant `.env.rig` connects to: `tests/rig/profiles/<name>.yaml`,
-gitignored, copied from `tests/rig/profiles/example.yaml`. It lists the entities the rig may move, by integration
+gitignored, copied from `tests/rig/profile.example.yaml`. It lists the entities the rig may move, by integration
 and role, and under `pause:` the automations and switches turned off for the run and back on after it, for whatever
 would fight the tests on those entities (motion lighting, an Adaptive Lighting instance's switch). Only those that
 were on are turned back on. `.env.rig` keeps what belongs to the Home Assistant instance: its address, tokens,
@@ -111,7 +111,7 @@ is skipped where the profile lists the group's `members` and that light isn't on
 (the last call's), `tol` (the integration's timing tolerance) and `+ - *`. `only: [<integration>]` limits a
 test to some integrations; when those pile up, split the file.
 
-The roles are listed in `tests/rig/profiles/example.yaml`. `group_color` is a native group whose members all take
+The roles are listed in `tests/rig/profile.example.yaml`. `group_color` is a native group whose members all take
 color: color moves groupcast only to a group like that, so it runs the color cases a `group` can't. Everything this
 page says of a `group` holds for it too.
 

@@ -479,11 +479,14 @@ def run_held(args: argparse.Namespace, journal: Journal) -> int:
 
 
 def choose_profile(
-    name: str | None, env: dict, directory: Path = PROFILES_DIR, legacy: Path = LEGACY_INVENTORY
+    name: str | None,
+    env: dict,
+    directory: Path = PROFILES_DIR,
+    legacy: Path = LEGACY_INVENTORY,
+    example: Path = EXAMPLE,
 ) -> Path:
     """The profile --profile names, else the only one. Refuses while the setup still has the single inventory.yaml or
     RIG_PAUSE that profiles replaced, so nothing runs against half a migration."""
-    example = directory / f"{EXAMPLE}.yaml"
     if legacy.exists():
         raise SystemExit(
             f"{legacy} is now a profile: move it to {directory}/<name>.yaml (see {example}), and its RIG_PAUSE with it"

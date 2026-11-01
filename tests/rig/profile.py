@@ -33,7 +33,7 @@ def main_checkout(repo: Path = REPO) -> Path:
 
 MAIN_CHECKOUT = main_checkout()
 PROFILES_DIR = MAIN_CHECKOUT / RIG_DIR.relative_to(REPO) / "profiles"
-EXAMPLE = "example"  # profiles/example.yaml, the tracked template; never a profile itself
+EXAMPLE = RIG_DIR / "profile.example.yaml"  # the tracked template a profile is copied from
 # The single file profiles replaced; a run refuses while it is there, and the household check still reads it.
 LEGACY_INVENTORY = MAIN_CHECKOUT / RIG_DIR.relative_to(REPO) / "inventory.yaml"
 ENV_FILE = MAIN_CHECKOUT / ".env.rig"
@@ -129,8 +129,8 @@ def read_mapping(path: Path) -> dict:
 
 
 def profile_paths(directory: Path = PROFILES_DIR) -> list[Path]:
-    """Every profile in `directory`, by name; the tracked example is not one."""
-    return sorted(path for path in directory.glob("*.yaml") if path.stem != EXAMPLE)
+    """Every profile in `directory`, by name."""
+    return sorted(directory.glob("*.yaml"))
 
 
 def load_env(path: Path = ENV_FILE) -> dict[str, str]:
