@@ -7,12 +7,9 @@ did not make and Home Assistant did not send.
 
 import aiohttp
 
+from .profile import normalize_ieee
+
 REQUEST_TIMEOUT_S = 10
-
-
-def normalize_ieee(ieee: str) -> str:
-    """An IEEE address as bare lowercase hex: Hue writes `00:17:88:...`, Z2M `0x0017...`, ZHA `00:17:...`."""
-    return ieee.lower().removeprefix("0x").replace(":", "")
 
 
 class BridgeError(Exception):

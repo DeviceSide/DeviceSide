@@ -225,10 +225,16 @@ class HAClient:
 
         await self._z2m_request("permit_join", {"time": seconds}, done, f"{'open' if seconds else 'close'} joining")
 
+    async def z2m_device(self, ieee: str) -> dict | None:
+        """Zigbee2MQTT's entry for `ieee` in its retained bridge/devices (`interview_completed` says it is in), or
+        None."""
+        wanted = normalize_ieee(ieee)
+        devices = await self._z2m_retained("devices")
+        return next((d for d in devices if normalize_ieee(d.get("ieee_address", "")) == wanted), None)
+
     async def z2m_has_device(self, ieee: str) -> bool:
         """Whether Zigbee2MQTT's retained bridge/devices lists `ieee`."""
-        wanted = normalize_ieee(ieee)
-        return any(normalize_ieee(d.get("ieee_address", "")) == wanted for d in await self._z2m_retained("devices"))
+        return await self.z2m_device(ieee) is not None
 
     async def z2m_remove_device(self, ieee: str) -> None:
         """Remove a device from Zigbee2MQTT (it sends the bulb a Leave), then wait until bridge/devices drops it."""
@@ -318,6 +324,10 @@ class HAClient:
             if found is not None and normalize_ieee(found) == wanted:
                 return device
         return None
+
+    async def entity_registry(self) -> list[dict]:
+        """Every entity-registry entry, with its entity_id, device_id and platform."""
+        return await self.command({"type": "config/entity_registry/list"})
 
     async def rename_entity(self, entity_id: str, new_entity_id: str) -> None:
         """Change an entity's ID in the entity registry. HA refuses when `new_entity_id` is taken."""

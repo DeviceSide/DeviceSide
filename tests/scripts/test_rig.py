@@ -868,7 +868,8 @@ async def test_records_cite_the_commit_ha_loaded_not_head_at_the_end(tmp_path, m
     monkeypatch.setattr(rig, "write_report", lambda result, directory, title: tmp_path / "report.md")
     monkeypatch.setattr(rig, "write_records", write_records)
 
-    assert await rig.run_rig({}, [], fakes.profile("shelly"), fakes.OPTION_REGISTRY, None, True, commit) == 0
+    suites = target_suite(tmp_path)
+    assert await rig.run_rig({}, suites, fakes.profile("shelly"), fakes.OPTION_REGISTRY, None, True, commit) == 0
     assert written == sources
     assert ("No test records" in capsys.readouterr().out) is (commit is None)
 

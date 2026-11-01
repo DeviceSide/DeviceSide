@@ -2,8 +2,9 @@
 """Refuse a commit whose files or message name the household's private details.
 
 The repo is public, so the blocklist cannot live in it. Terms come from the gitignored files that already hold them:
-every rig profile's entity IDs, .env.rig's HA host and token, and .private-terms (one term per line, for names,
-hostnames and anything else), all read from the main checkout so a linked worktree is checked too.
+every rig profile's entity IDs and roaming bulbs' IEEEs, .env.rig's HA host and token, and .private-terms (one term
+per line, for names, hostnames and anything else), all read from the main checkout so a linked worktree is checked
+too.
 Where none of those exist (CI, a contributor's clone) the check passes.
 
 Usage: scripts/check_private.py FILE ...   (pre-commit passes staged files, or the message file at commit-msg)
@@ -49,11 +50,14 @@ def private_terms(
 
 
 def profile_entities(profile: Profile) -> set[str]:
-    """Every entity ID a profile names: its entities, their groups' members and supplies, and its pause list."""
+    """Every entity ID a profile names (its entities, their groups' members and supplies, its pause list), and each
+    roaming bulb's IEEE: as bare hex, which `0x`-prefixed spellings contain, and with colons."""
     named = set(profile.pause)
     for entities in profile.integrations.values():
         for entity in entities:
             named |= {entity.entity_id, *entity.members, *filter(None, [entity.powered_by])}
+    for bulb in profile.roam:
+        named |= {bulb.entity_id, bulb.ieee, ":".join(bulb.ieee[i : i + 2] for i in range(0, 16, 2))}
     return named
 
 
