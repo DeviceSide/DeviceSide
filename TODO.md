@@ -43,6 +43,7 @@ v0.1.0 is the next release.
 | 9d (rig fix) | Rig waits up to 60 s for unavailable targets, then stops before changing anything | #136 |
 | 13k (step 1, part) | Z2M hue and saturation test records on the A60 (`light_color`; `group_color` still to do) | #138 |
 | 9d (A0) | A60 move probe: join windows self-close on Z2M and Hue; all three moves scripted (Hue by CLIP v2 only) | #142, #144 |
+| — | Bench records renamed test records (`docs/test-records/`) | #146 |
 
 ## To go, in order
 
