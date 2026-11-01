@@ -45,6 +45,7 @@ v0.1.0 is the next release.
 | 9d (A0) | A60 move probe: join windows self-close on Z2M and Hue; all three moves scripted (Hue by CLIP v2 only) | #142, #144 |
 | — | Bench records renamed test records (`docs/test-records/`) | #146 |
 | 15 (PR 1 of 5) | Rig profiles: `tests/rig/profiles/<name>.yaml`, `--profile`, `pause:` replaces `RIG_PAUSE` | #147 |
+| 15 (PR 2 of 5) | Rig network clients: CLIP v2 verbs, ZHA and Z2M permit/remove/groups, registry rename, `device_by_ieee`; fakes | #149 |
 
 ## To go, in order
 
