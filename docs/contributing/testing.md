@@ -60,7 +60,8 @@ The suites then run in phases: Hue's with the fixed integrations', then ZHA's, t
 each with its automated cases before its observed ones. The bulbs move only when a ZHA or Z2M suite runs, and end
 home on Hue, with their rooms, zones, scene actions and names put back on their new Hue IDs. A run that stops
 part way still moves them home; `--recover`, or the next run before its gate, does it after a crash. A bulb on no
-network stops recovery: reset it over Bluetooth in the Hue app, then `--recover` again. `--roam-check` runs the
+network stops recovery: reset it over Bluetooth in the Hue app, then `--recover` again. A bulb still missing when
+the Hue search ends gets one more, and any other device that joins the bridge meanwhile is named, not removed. `--roam-check` runs the
 cycle with no suites. Roaming needs `HA_ADMIN_TOKEN` and the Hue bridge's `HUE_BRIDGE_HOST` and `HUE_APP_KEY`.
 
 Ctrl-C, SIGTERM or SIGHUP puts the devices back before the run exits; a second one leaves them. If a run dies before it can, the next run

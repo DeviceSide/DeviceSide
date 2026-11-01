@@ -335,3 +335,65 @@ async def test_a_release_the_network_never_takes_stops_the_move(lab, monkeypatch
     lab.ha._leave = lambda integration, ieee: None  # ZHA keeps the device
     with pytest.raises(RoamError, match="light.lab_a is still on ZHA 0.02 s after its removal"):
         await roamer(lab).go("zigbee2mqtt")
+
+
+async def test_a_bulb_still_missing_after_the_hue_search_gets_one_more(lab):
+    printed = []
+    moving = roamer(lab, out=printed.append)
+    await moving.go("zigbee2mqtt")
+    lab.late.add(B[2:])
+    await moving.go("hue")
+    assert await where(lab) == ["hue", "hue"]
+    assert lab.searches == 2
+    assert "light.lab_b not on Hue after the search; searching once more." in printed
+
+
+async def test_a_bulb_missing_after_both_hue_searches_stops_the_move(lab):
+    moving = roamer(lab)
+    await moving.go("zigbee2mqtt")
+    lab.stuck.add(B[2:])
+    with pytest.raises(RoamError, match=r"light.lab_b did not join Hue within 2 searches\. Reset it over Bluetooth"):
+        await moving.go("hue")
+    assert lab.searches == 2
+
+
+async def test_a_device_that_joins_the_hue_search_and_isnt_ours_is_named_and_left(lab):
+    printed = []
+    moving = roamer(lab, out=printed.append)
+    await moving.go("zigbee2mqtt")
+    lab.strangers = 1
+    await moving.go("hue")
+    named = [line for line in printed if "isn't a roaming bulb" in line]
+    assert named == [
+        "A device that isn't a roaming bulb joined the Hue bridge during the search: Hue motion sensor (SML001, "
+        "device stranger-2). Check it in the Hue app; the rig leaves it there."
+    ]
+    assert "stranger-2" in lab.bridge.resources["device"]
+
+
+async def test_the_run_waits_out_the_hue_search_before_it_ends(lab):
+    moving = roamer(lab)
+    await moving.go("zigbee2mqtt")
+    lab.search_s = 0.05
+    await moving.go("hue")
+    assert lab.bridge.resources["zigbee_device_discovery"]["disc"]["status"] == "ready"
+
+
+async def test_recovery_names_a_device_that_joined_the_search_a_crash_cut_short(lab, tmp_path, monkeypatch):
+    journal = Journal(tmp_path / "journal.json")
+    await roamer(lab, journal).go("zigbee2mqtt")
+    lab.strangers = 1
+    lab.search_s = 0.05
+
+    async def killed(self, network, bulb):
+        raise KeyboardInterrupt  # killed after the join, while the search is still open
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Roamer, "adopt", killed)
+        with pytest.raises(KeyboardInterrupt):
+            await roamer(lab, Journal(journal.path)).go("hue")
+
+    printed = []
+    await Roamer.from_journal(lab.ha, lab.bridge, Journal(journal.path), printed.append).go("hue")
+    assert sum("isn't a roaming bulb" in line for line in printed) == 1
+    assert not journal.path.exists()
