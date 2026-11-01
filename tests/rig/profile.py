@@ -65,6 +65,17 @@ def normalize_ieee(ieee: str) -> str:
     return ieee.lower().removeprefix("0x").replace(":", "")
 
 
+def colon_ieee(ieee: str) -> str:
+    """ZHA's and the Hue bridge's spelling: `00:17:88:...`."""
+    bare = normalize_ieee(ieee)
+    return ":".join(bare[i : i + 2] for i in range(0, 16, 2))
+
+
+def hex_ieee(ieee: str) -> str:
+    """Zigbee2MQTT's spelling: `0x0017...`."""
+    return f"0x{normalize_ieee(ieee)}"
+
+
 @dataclass(frozen=True, slots=True)
 class RigEntity:
     entity_id: str

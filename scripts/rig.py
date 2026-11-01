@@ -750,6 +750,8 @@ async def run_rig(
     """Run the step files phase by phase, moving the roaming bulbs before each and home after the last, then write a
     test record for each adapter whose every test passed, citing `commit`; with no commit, none: a record nobody can
     trace to a commit proves nothing. Roaming needs the admin connection and the bridge (check_tokens)."""
+    if roaming and not (env.get("HA_ADMIN_TOKEN") and env.get("HUE_BRIDGE_HOST") and env.get("HUE_APP_KEY")):
+        raise SystemExit("Roaming needs HA_ADMIN_TOKEN, HUE_BRIDGE_HOST and HUE_APP_KEY in .env.rig")
     cancel_on_signals()
     ha, admin = await connect(env)
     bridge = None

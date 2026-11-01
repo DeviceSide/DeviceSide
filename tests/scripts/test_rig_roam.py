@@ -2,7 +2,6 @@
 saved and restored, a bulb that never joins, and recovery from wherever a crash leaves the bulbs."""
 
 import json
-from pathlib import Path
 
 import pytest
 
@@ -10,12 +9,10 @@ from scripts import check_private
 from tests.rig import roam
 from tests.rig.journal import Journal
 from tests.rig.profile import Profile
-from tests.rig.roam import Bulb, Roamer, RoamError
-from tests.scripts.rig_fakes import FakeBridge, FakeHA, Lab
+from tests.rig.roam import Roamer, RoamError
+from tests.scripts.rig_fakes import LAB_A, LAB_B, LAB_BULBS, LAB_OPTIONS, FakeBridge, FakeHA, Lab, lab_profile
 
-A, B = "0x001788010abcdef0", "0x001788010abcdef1"
-OPTIONS = {"hue_native_control": True}
-BULBS = [Bulb(A[2:], "light.lab_a", OPTIONS), Bulb(B[2:], "light.lab_b")]
+A, B, OPTIONS, BULBS = LAB_A, LAB_B, LAB_OPTIONS, LAB_BULBS
 
 
 @pytest.fixture(autouse=True)
@@ -217,18 +214,6 @@ def test_the_route_starts_and_ends_at_home():
     assert roam.route() == ["hue", "zha", "zigbee2mqtt", "hue"]
 
 
-def lab_profile(directory: Path, extra: str = "") -> Path:
-    path = directory / "lab.yaml"
-    path.write_text(
-        "shelly:\n  - entity_id: switch.plug\n    roles: [switch_plug]\n"
-        "roam:\n  bulbs:\n"
-        f'    - ieee: "{A}"\n      entity_id: light.lab_a\n      roles: [light_ct, light_color]\n'
-        "      z2m_options: {hue_native_control: true}\n"
-        f'    - ieee: "00:17:88:01:0A:BC:DE:F1"\n      entity_id: light.lab_b\n      roles: [light_dimmable]\n' + extra
-    )
-    return path
-
-
 def test_a_profile_lists_each_roaming_bulb_under_every_network(tmp_path):
     profile = Profile.load(lab_profile(tmp_path))
     assert [bulb.ieee for bulb in profile.roam] == [A[2:], B[2:]]
@@ -275,20 +260,19 @@ def test_the_household_check_flags_a_roaming_bulbs_entity_id_and_ieee_in_any_spe
     assert [hit.split(": ", 1)[1] for hit in hits] == ["light.lab_b", A[2:], "00:17:88:01:0a:bc:de:f1"]
 
 
-async def test_recovery_on_the_target_network_finishes_the_rename_and_options_a_crash_cut_short(lab, tmp_path):
+async def test_recovery_on_the_target_network_finishes_the_rename_and_options_a_crash_cut_short(
+    lab, tmp_path, monkeypatch
+):
     journal = Journal(tmp_path / "journal.json")
     await roamer(lab, journal).go("zha")
-    adopt = Roamer.adopt
 
     async def killed(self, network, bulb):
         raise KeyboardInterrupt  # killed between the join and the rename
 
-    Roamer.adopt = killed
-    try:
+    with monkeypatch.context() as patch:
+        patch.setattr(Roamer, "adopt", killed)
         with pytest.raises(KeyboardInterrupt):
             await roamer(lab, Journal(journal.path)).go("zigbee2mqtt")
-    finally:
-        Roamer.adopt = adopt
     assert lab.device_of("light.lab_a") is None and lab.ha.z2m_options == {}
 
     await Roamer.from_journal(lab.ha, lab.bridge, Journal(journal.path), lambda _: None).go("zigbee2mqtt")

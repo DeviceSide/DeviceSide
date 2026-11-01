@@ -14,14 +14,13 @@ from tests.rig.journal import Journal
 from tests.rig.profile import Profile
 from tests.rig.roam import Roamer
 from tests.scripts import rig_fakes as fakes
-from tests.scripts.test_rig_roam import BULBS, lab_profile
 
 REPO = Path(__file__).parents[2]
 _spec = importlib.util.spec_from_file_location("rig_for_roaming", REPO / "scripts" / "rig.py")
 rig = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(rig)
 
-A, B = "0x001788010abcdef0", "0x001788010abcdef1"
+A, B, BULBS, lab_profile = fakes.LAB_A, fakes.LAB_B, fakes.LAB_BULBS, fakes.lab_profile
 ENV = {"HA_URL": "http://ha", "HA_TOKEN": "t", "HA_ADMIN_TOKEN": "a", "HUE_BRIDGE_HOST": "h", "HUE_APP_KEY": "k"}
 
 
@@ -159,10 +158,12 @@ async def test_a_move_home_that_fails_after_the_last_phase_stops_the_run(tmp_pat
     lab.ha.on_open = opened
     monkeypatch.setattr(roam, "JOIN_S", 0.02)
 
+    journal = Journal(tmp_path / "journal.json")
     with pytest.raises(SystemExit, match="did not join Hue"):
         await rig.run_rig(
-            ENV, suites(tmp_path, "zha"), lab_with_pause(tmp_path), None, None, True, None, None, roaming=True
+            ENV, suites(tmp_path, "zha"), lab_with_pause(tmp_path), None, None, True, None, journal, roaming=True
         )
+    assert "light.lab_a" in Journal(journal.path).get("roam")["home"]
 
 
 async def test_roam_check_runs_the_cycle_with_no_suites(monkeypatch, lab, tmp_path):

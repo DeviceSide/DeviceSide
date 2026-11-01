@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from .bridge import BridgeError, HueBridge
 from .client import HAClient, device_ieee
 from .journal import Journal
-from .profile import CYCLE, RoamBulb, normalize_ieee
+from .profile import CYCLE, RoamBulb, colon_ieee, hex_ieee, normalize_ieee
 
 HOME = CYCLE[0]
 NAMES = {"hue": "Hue", "zha": "ZHA", "zigbee2mqtt": "Z2M"}
@@ -39,17 +39,6 @@ BLUETOOTH_RESET = (
 
 class RoamError(Exception):
     """A move that couldn't finish. The journal keeps what --recover needs."""
-
-
-def colon_ieee(ieee: str) -> str:
-    """ZHA's spelling: `00:17:88:...`."""
-    bare = normalize_ieee(ieee)
-    return ":".join(bare[i : i + 2] for i in range(0, 16, 2))
-
-
-def hex_ieee(ieee: str) -> str:
-    """Zigbee2MQTT's spelling: `0x0017...`."""
-    return f"0x{normalize_ieee(ieee)}"
 
 
 def hops(network: str, to: str) -> int:

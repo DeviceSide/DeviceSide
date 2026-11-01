@@ -6,11 +6,13 @@ import contextlib
 import copy
 import json
 from collections.abc import AsyncIterator, Callable
+from pathlib import Path
 from types import SimpleNamespace
 
 from tests.rig.bridge import BridgeError, HueBridge, normalize_ieee
 from tests.rig.client import HAClient, HAError, device_ieee
-from tests.rig.profile import Profile, RigEntity
+from tests.rig.profile import Profile, RigEntity, colon_ieee, hex_ieee
+from tests.rig.roam import Bulb
 
 PENDING: list[asyncio.TimerHandle | asyncio.Task] = []
 
@@ -239,6 +241,24 @@ class FakeBridge(HueBridge):
                         del owned[key]
 
 
+# The lab's two roaming bulbs, as a Roamer and as a profile file.
+LAB_A, LAB_B = "0x001788010abcdef0", "0x001788010abcdef1"
+LAB_OPTIONS = {"hue_native_control": True}
+LAB_BULBS = [Bulb(LAB_A[2:], "light.lab_a", LAB_OPTIONS), Bulb(LAB_B[2:], "light.lab_b")]
+
+
+def lab_profile(directory: Path, extra: str = "") -> Path:
+    path = directory / "lab.yaml"
+    path.write_text(
+        "shelly:\n  - entity_id: switch.plug\n    roles: [switch_plug]\n"
+        "roam:\n  bulbs:\n"
+        f'    - ieee: "{LAB_A}"\n      entity_id: light.lab_a\n      roles: [light_ct, light_color]\n'
+        "      z2m_options: {hue_native_control: true}\n"
+        f'    - ieee: "00:17:88:01:0A:BC:DE:F1"\n      entity_id: light.lab_b\n      roles: [light_dimmable]\n' + extra
+    )
+    return path
+
+
 class Lab:
     """Bulbs that roam between a FakeHA's ZHA and Z2M and a FakeBridge, as the real networks do: a released bulb
     searches, and joins the next network that opens (unless it is `stuck`), under a new device and a generated
@@ -286,7 +306,7 @@ class Lab:
         n = self.joins
         entity_id = entity_id or f"light.{network}_bulb_{n}"
         if network != "hue":
-            spelled = ":".join(ieee[i : i + 2] for i in range(0, 16, 2)) if network == "zha" else f"0x{ieee}"
+            spelled = colon_ieee(ieee) if network == "zha" else hex_ieee(ieee)
             return self.ha.join(network, spelled, entity_id), ""
         device_id, light_id, link = f"hue-device-{n}", f"hue-light-{n}", f"hue-link-{n}"
         resources = self.bridge.resources
@@ -296,7 +316,7 @@ class Lab:
             "services": [{"rid": light_id, "rtype": "light"}, {"rid": link, "rtype": "zigbee_connectivity"}],
         }
         resources.setdefault("light", {})[light_id] = {"id": light_id, "owner": {"rid": device_id}}
-        mac = ":".join(ieee[i : i + 2] for i in range(0, 16, 2))
+        mac = colon_ieee(ieee)
         resources.setdefault("zigbee_connectivity", {})[link] = {
             "id": link,
             "mac_address": mac,

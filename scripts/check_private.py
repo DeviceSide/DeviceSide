@@ -18,7 +18,15 @@ from urllib.parse import urlparse
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
-from tests.rig.profile import ENV_FILE, LEGACY_INVENTORY, MAIN_CHECKOUT, Profile, load_env, profile_paths  # noqa: E402
+from tests.rig.profile import (  # noqa: E402
+    ENV_FILE,
+    LEGACY_INVENTORY,
+    MAIN_CHECKOUT,
+    Profile,
+    colon_ieee,
+    load_env,
+    profile_paths,
+)
 
 PRIVATE_TERMS = MAIN_CHECKOUT / ".private-terms"
 # Hosts the docs and examples name on purpose.
@@ -57,7 +65,7 @@ def profile_entities(profile: Profile) -> set[str]:
         for entity in entities:
             named |= {entity.entity_id, *entity.members, *filter(None, [entity.powered_by])}
     for bulb in profile.roam:
-        named |= {bulb.entity_id, bulb.ieee, ":".join(bulb.ieee[i : i + 2] for i in range(0, 16, 2))}
+        named |= {bulb.entity_id, bulb.ieee, colon_ieee(bulb.ieee)}
     return named
 
 
