@@ -94,6 +94,27 @@ class RoamBulb:
     z2m_options: dict = field(default_factory=dict)  # set again after each Z2M join: Z2M's remove drops them
 
 
+# What a rig-made group, zone or scene is called on its network, before HA's entity is renamed to its fixed ID.
+RIG_PREFIX = "ds-rig-"
+HUE_NAME_MAX = 32  # the longest name the Hue bridge takes for a zone or scene
+
+
+@dataclass(frozen=True, slots=True)
+class RoamGroup:
+    """A native group of roam bulbs the rig makes on every network it visits: a Z2M group, a ZHA group or a Hue
+    zone, renamed to `entity_id`; on Hue, with a scene in the zone renamed to `scene`, which takes the scene role."""
+
+    entity_id: str
+    roles: frozenset[str]
+    members: tuple[str, ...]  # bulb entity IDs
+    scene: str | None = None
+
+
+def rig_name(entity_id: str) -> str:
+    """The native name of a rig-made group or scene with this fixed entity ID: `ds-rig-` and its object ID."""
+    return RIG_PREFIX + entity_id.partition(".")[2].replace("_", "-")
+
+
 @dataclass(slots=True)
 class Profile:
     integrations: dict[str, list[RigEntity]] = field(default_factory=dict)
@@ -101,12 +122,13 @@ class Profile:
     pause: tuple[str, ...] = ()
     name: str = ""
     roam: tuple[RoamBulb, ...] = ()
+    roam_groups: tuple[RoamGroup, ...] = ()
 
     @classmethod
     def load(cls, path: Path) -> Profile:
         raw = read_mapping(path)
         profile = cls(pause=pause_list(path, raw.pop("pause", None) or []), name=path.stem)
-        profile.roam = roam_bulbs(path, raw.pop("roam", None) or {})
+        profile.roam, profile.roam_groups = roam_section(path, raw.pop("roam", None) or {})
         for integration, entities in raw.items():
             if integration not in TOLERANCE_S:
                 raise ValueError(f"{path.name}: unknown integration {integration!r}; use {', '.join(TOLERANCE_S)}")
@@ -132,11 +154,18 @@ class Profile:
         return profile
 
     def add_roaming(self, path: Path, listed: set[str]) -> None:
-        """List each roaming bulb under every network it visits: while it is there, it is that network's entity."""
-        if both := sorted(listed & {bulb.entity_id for bulb in self.roam}):
+        """List each roaming bulb and rig-made group under every network it visits, and each rig-made scene under
+        Hue: while the bulbs are there, they are that network's entities."""
+        roaming = {bulb.entity_id for bulb in self.roam}
+        roaming |= {entity for group in self.roam_groups for entity in (group.entity_id, group.scene) if entity}
+        if both := sorted(listed & roaming):
             raise ValueError(f"{path.name}: {', '.join(both)} roams, so it can't also be listed under an integration")
         for network in CYCLE if self.roam else ():
-            self.integrations.setdefault(network, []).extend(RigEntity(b.entity_id, b.roles) for b in self.roam)
+            entities = self.integrations.setdefault(network, [])
+            entities.extend(RigEntity(b.entity_id, b.roles) for b in self.roam)
+            entities.extend(RigEntity(g.entity_id, g.roles, members=g.members) for g in self.roam_groups)
+            if network == "hue":
+                entities.extend(RigEntity(g.scene, frozenset({"scene"})) for g in self.roam_groups if g.scene)
 
     def entity(self, integration: str, role: str) -> str | None:
         return next((e.entity_id for e in self.integrations.get(integration, ()) if role in e.roles), None)
@@ -149,16 +178,23 @@ class Profile:
         return {e.entity_id: e.powered_by for entities in self.integrations.values() for e in entities if e.powered_by}
 
 
-def roam_bulbs(path: Path, raw: object) -> tuple[RoamBulb, ...]:
-    """A profile's `roam: {bulbs: [...]}`, each IEEE and entity ID used once."""
-    if not isinstance(raw, dict) or set(raw) - {"bulbs"}:
-        raise ValueError(f"{path.name}: roam must be a mapping with a bulbs list")
+def roam_section(path: Path, raw: object) -> tuple[tuple[RoamBulb, ...], tuple[RoamGroup, ...]]:
+    """A profile's `roam: {bulbs: [...], groups: [...]}`: each IEEE and entity ID used once, and each group role on
+    one group, since a run uses only the first."""
+    if not isinstance(raw, dict) or set(raw) - {"bulbs", "groups"}:
+        raise ValueError(f"{path.name}: roam must be a mapping with a bulbs list and an optional groups list")
     bulbs = tuple(roam_bulb(path, item) for item in raw.get("bulbs") or [])
-    for name, key in (("IEEE", "ieee"), ("entity ID", "entity_id")):
-        values = [getattr(bulb, key) for bulb in bulbs]
-        if len(set(values)) != len(values):
-            raise ValueError(f"{path.name}: two roam bulbs share an {name}")
-    return bulbs
+    if len({bulb.ieee for bulb in bulbs}) != len(bulbs):
+        raise ValueError(f"{path.name}: two roam bulbs share an IEEE")
+    groups = tuple(roam_group(path, item, bulbs) for item in raw.get("groups") or [])
+    ids = [bulb.entity_id for bulb in bulbs]
+    ids += [entity for group in groups for entity in (group.entity_id, group.scene) if entity]
+    if len(set(ids)) != len(ids):
+        raise ValueError(f"{path.name}: two roam bulbs, groups or scenes share an entity ID")
+    for role in sorted(GROUP_ROLES):
+        if len([group for group in groups if role in group.roles]) > 1:
+            raise ValueError(f"{path.name}: two roam groups have the {role} role; a run uses only the first")
+    return bulbs, groups
 
 
 def roam_bulb(path: Path, item: object) -> RoamBulb:
@@ -180,6 +216,47 @@ def roam_bulb(path: Path, item: object) -> RoamBulb:
     if not isinstance(options := item.get("z2m_options") or {}, dict):
         raise ValueError(f"{path.name}: roam bulb {entity_id} z2m_options must be a mapping")
     return RoamBulb(ieee, entity_id, roles, options)
+
+
+def roam_group(path: Path, item: object, bulbs: tuple[RoamBulb, ...]) -> RoamGroup:
+    """One rig-made group: its fixed light entity ID, group roles, members (`all` or bulb entity IDs) and an optional
+    scene's fixed entity ID."""
+    if not isinstance(item, dict) or not {"entity_id", "members"} <= set(item):
+        raise ValueError(f"{path.name}: each roam group needs an entity_id and members")
+    entity_id = str(item["entity_id"])
+    if unknown := set(item) - {"entity_id", "roles", "members", "scene"}:
+        raise ValueError(f"{path.name}: roam group {entity_id} has unknown keys {sorted(unknown)}")
+    if not entity_id.startswith("light."):
+        raise ValueError(f"{path.name}: roam group {entity_id} must be a light")
+    roles = frozenset(item.get("roles", ()))
+    if not roles or roles - GROUP_ROLES:
+        only = ", ".join(sorted(GROUP_ROLES))
+        raise ValueError(f"{path.name}: roam group {entity_id} takes group roles only: {only}")
+    members = group_members(path, entity_id, roles, item["members"], bulbs)
+    scene = item.get("scene")
+    if scene is not None and (not isinstance(scene, str) or not scene.startswith("scene.")):
+        raise ValueError(f"{path.name}: roam group {entity_id} scene must be a scene entity ID")
+    if scene is not None and "group" not in roles:
+        raise ValueError(f"{path.name}: roam group {entity_id} has a scene, so it needs the group role")
+    for fixed in filter(None, (entity_id, scene)):
+        if len(rig_name(fixed)) > HUE_NAME_MAX:
+            raise ValueError(f"{path.name}: {fixed} is too long: Hue would name it {rig_name(fixed)}")
+    return RoamGroup(entity_id, roles, members, scene)
+
+
+def group_members(
+    path: Path, entity_id: str, roles: frozenset[str], raw: object, bulbs: tuple[RoamBulb, ...]
+) -> tuple[str, ...]:
+    """A roam group's members: `all`, or a list of roam bulbs; for group_color, each one takes color."""
+    by_id = {bulb.entity_id: bulb for bulb in bulbs}
+    members = list(by_id) if raw == "all" else raw
+    if not isinstance(members, list) or not members or not all(isinstance(member, str) for member in members):
+        raise ValueError(f"{path.name}: roam group {entity_id} members must be all or a list of roam bulbs")
+    if strangers := [member for member in members if member not in by_id]:
+        raise ValueError(f"{path.name}: roam group {entity_id} lists {', '.join(strangers)}, not a roam bulb")
+    if "group_color" in roles and (white := [m for m in members if "light_color" not in by_id[m].roles]):
+        raise ValueError(f"{path.name}: {entity_id} is a group_color, but {', '.join(white)} has no light_color role")
+    return tuple(dict.fromkeys(members))
 
 
 def pause_list(path: Path, entity_ids: object) -> tuple[str, ...]:

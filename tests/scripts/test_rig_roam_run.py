@@ -269,3 +269,140 @@ async def test_recover_without_the_bridge_keeps_the_bulbs_in_the_journal(tmp_pat
         await rig.recover(lab.ha, lab.ha, Journal(journal.path), lambda _: None)
     assert await where(lab) == ["zha", "zha"]
     assert "roam" in Journal(journal.path).sections
+
+
+GROUPS_YAML = (
+    "  groups:\n"
+    "    - entity_id: light.test_group\n      roles: [group]\n      members: all\n      scene: scene.test_relax\n"
+)
+
+
+def lab_with_groups(tmp_path: Path) -> Profile:
+    path = lab_profile(tmp_path, GROUPS_YAML)
+    path.write_text("pause: [automation.lab]\n" + path.read_text())
+    return Profile.load(path)
+
+
+def record_groups(monkeypatch, lab: fakes.Lab, fail_on: str | None = None) -> list[tuple[list[str], list, list]]:
+    """fake_phases, also noting which rig-made entities HA had during each phase."""
+    ran = fake_phases(monkeypatch, lab, fail_on)
+    recorded: list[tuple[list[str], list, list]] = []
+    run = rig.run
+
+    async def run_noting(phase_suites, *args, **kwargs):
+        made = sorted(e for e in lab.ha.entity_meta if e in ("light.test_group", "scene.test_relax"))
+        try:
+            return await run(phase_suites, *args, **kwargs)
+        finally:
+            recorded.append((*ran[-1], made))
+
+    monkeypatch.setattr(rig, "run", run_noting)
+    return recorded
+
+
+def test_groups_are_made_when_the_run_roams_or_runs_a_hue_suite(tmp_path):
+    profile = lab_with_groups(tmp_path)
+    assert rig.makes_groups(profile, suites(tmp_path, "hue"))
+    assert rig.makes_groups(profile, suites(tmp_path, "zha"))
+    assert rig.makes_groups(profile, [], roam_check=True)
+    assert not rig.makes_groups(profile, suites(tmp_path, "shelly"))
+    assert not rig.makes_groups(lab_with_pause(tmp_path), suites(tmp_path, "hue"))
+
+
+async def test_a_roaming_run_makes_the_groups_in_each_phase_and_removes_them(tmp_path, monkeypatch, lab):
+    monkeypatch.setattr(roam, "GONE_S", 0)
+    recorded = record_groups(monkeypatch, lab)
+    journal = Journal(tmp_path / "journal.json")
+    run = suites(tmp_path, "hue", "zha", "zigbee2mqtt")
+
+    code = await rig.run_rig(
+        ENV, run, lab_with_groups(tmp_path), None, None, True, None, journal, roaming=True, grouping=True
+    )
+
+    assert code == 0
+    assert [(phase[0], phase[2]) for phase in recorded] == [
+        (["hue"], ["light.test_group", "scene.test_relax"]),
+        (["zha"], ["light.test_group"]),
+        (["zigbee2mqtt"], ["light.test_group"]),
+    ]
+    assert "light.test_group" not in lab.ha.entity_meta
+    assert lab.ha.zha_group_names == {} and lab.ha.z2m_groups == {}
+    assert not journal.path.exists()
+
+
+async def test_a_hue_run_makes_the_groups_on_hue_without_moving_the_bulbs(tmp_path, monkeypatch, lab):
+    monkeypatch.setattr(roam, "GONE_S", 0)
+    recorded = record_groups(monkeypatch, lab)
+    joins = lab.joins
+
+    code = await rig.run_rig(
+        ENV, suites(tmp_path, "hue"), lab_with_groups(tmp_path), None, None, True, None, None, grouping=True
+    )
+
+    assert code == 0
+    assert recorded == [(["hue"], ["hue", "hue"], ["light.test_group", "scene.test_relax"])]
+    assert lab.joins == joins
+    assert "light.test_group" not in lab.ha.entity_meta
+
+
+async def test_roam_check_makes_and_removes_the_groups_on_every_visit(tmp_path, monkeypatch, lab):
+    monkeypatch.setattr(roam, "GONE_S", 0)
+    made = []
+    make = Roamer.make_groups
+
+    async def noting(self, network):
+        await make(self, network)
+        made.append((network, sorted(e for e in lab.ha.entity_meta if e.startswith(("light.test_group", "scene.")))))
+
+    monkeypatch.setattr(Roamer, "make_groups", noting)
+    code = await rig.run_rig(ENV, [], lab_with_groups(tmp_path), None, None, True, None, None, True, True)
+    assert code == 0
+    assert made == [
+        ("hue", ["light.test_group", "scene.test_relax"]),
+        ("zha", ["light.test_group"]),
+        ("zigbee2mqtt", ["light.test_group"]),
+    ]
+    assert "light.test_group" not in lab.ha.entity_meta
+
+
+async def test_a_group_that_cant_be_made_stops_the_run_and_removes_the_ones_made(tmp_path, monkeypatch, lab):
+    monkeypatch.setattr(roam, "GONE_S", 0)
+    fake_phases(monkeypatch, lab)
+    lab.ha.register("scene.test_relax", None, "template", "someone-elses")
+    journal = Journal(tmp_path / "journal.json")
+
+    with pytest.raises(SystemExit, match="Roaming stopped: scene.test_relax is already in HA's entity registry"):
+        await rig.run_rig(
+            ENV, suites(tmp_path, "hue"), lab_with_groups(tmp_path), None, None, True, None, journal, grouping=True
+        )
+
+    assert "light.test_group" not in lab.ha.entity_meta
+    assert {item["metadata"]["name"] for item in lab.bridge.resources["zone"].values() if "metadata" in item} == set()
+    assert lab.ha.states["automation.lab"]["state"] == "on"
+
+
+async def test_recover_removes_the_groups_a_crash_left_on_z2m_and_brings_the_bulbs_home(tmp_path, monkeypatch, lab):
+    monkeypatch.setattr(roam, "GONE_S", 0)
+    journal = Journal(tmp_path / "journal.json")
+    groups = lab_with_groups(tmp_path).roam_groups
+    moving = Roamer(lab.ha, lab.bridge, BULBS, journal, out=lambda _: None, groups=groups)
+    await moving.go("zigbee2mqtt")
+    await moving.make_groups("zigbee2mqtt")
+
+    await rig.recover(lab.ha, lab.ha, Journal(journal.path), lambda _: None, bridge=lab.bridge)
+
+    assert lab.ha.z2m_groups == {} and "light.test_group" not in lab.ha.entity_meta
+    assert await where(lab) == ["hue", "hue"]
+    assert not journal.path.exists()
+
+
+def test_the_plan_lists_the_groups_and_whether_the_bulbs_move(tmp_path, capsys):
+    profile = lab_with_groups(tmp_path)
+    run = rig.select(rig.load_step_files(), profile, ["hue"], ["set_scene"])
+    rig.print_phases(profile, run, AdapterRegistry.discover(), None, False, True)
+    out = capsys.readouterr().out
+    assert "Roaming: none, as no ZHA or Z2M suite runs; the bulbs stay on Hue." in out
+    assert "Makes ds-rig-test-group on Hue as light.test_group (light.lab_a, light.lab_b), with scene" in out
+    assert "hue / set_scene -> scene.test_relax" in out
+    rig.print_profile(profile)
+    assert "  ds-rig   scene.test_relax" in capsys.readouterr().out
