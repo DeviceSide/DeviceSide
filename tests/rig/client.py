@@ -4,10 +4,33 @@ import asyncio
 import contextlib
 import itertools
 import json
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
 from typing import Any
 
 import aiohttp
+
+from .bridge import normalize_ieee
+
+Z2M = "zigbee2mqtt"
+IEEE_INTEGRATIONS = ("zha", Z2M)
+Z2M_TOPIC = "zigbee2mqtt/bridge"
+RETAINED_TIMEOUT_S = 5
+Z2M_REQUEST_TIMEOUT_S = 30
+Z2M_POLL_S = 0.5
+
+
+def device_ieee(device: dict, integration: str) -> str | None:
+    """The IEEE address of a device-registry entry on `integration` ("zha" or "zigbee2mqtt"), or None.
+
+    ZHA identifies a device by its IEEE with colons; Z2M by `zigbee2mqtt_0x...` under the mqtt domain. A Hue device
+    carries none, so the bridge finds it (`HueBridge.device_id_by_ieee`).
+    """
+    for domain, ident in device.get("identifiers", []):
+        if integration == "zha" and domain == "zha":
+            return ident
+        if integration == Z2M and domain == "mqtt" and ident.startswith("zigbee2mqtt_0x"):
+            return ident.removeprefix("zigbee2mqtt_")
+    return None
 
 
 class HAError(Exception):
@@ -142,11 +165,7 @@ class HAClient:
 
     async def z2m_device_options(self, ieee: str) -> dict:
         """A Zigbee2MQTT device's options, from Z2M's retained bridge/info."""
-        async with self._mqtt_messages("zigbee2mqtt/bridge/info") as messages:
-            try:
-                info = json.loads(await asyncio.wait_for(messages.get(), timeout=5))
-            except TimeoutError:
-                raise TimeoutError("no retained zigbee2mqtt/bridge/info within 5 s") from None
+        info = await self._z2m_retained("info")
         return info["config"]["devices"].get(ieee, {})
 
     async def set_z2m_device_options(self, ieee: str, options: dict) -> None:
@@ -168,3 +187,143 @@ class HAClient:
             if asyncio.get_running_loop().time() > deadline:
                 raise TimeoutError(f"Zigbee2MQTT still shows {current} for {ieee}, not {options}")
             await asyncio.sleep(0.5)
+
+    async def _z2m_retained(self, topic: str) -> Any:
+        """Zigbee2MQTT's retained `bridge/<topic>` message, decoded."""
+        async with self._mqtt_messages(f"{Z2M_TOPIC}/{topic}") as messages:
+            try:
+                return json.loads(await asyncio.wait_for(messages.get(), timeout=RETAINED_TIMEOUT_S))
+            except TimeoutError:
+                raise TimeoutError(f"no retained {Z2M_TOPIC}/{topic} within {RETAINED_TIMEOUT_S} s") from None
+
+    async def _z2m_request(self, topic: str, payload: dict, done: Callable[[], Awaitable[bool]], what: str) -> None:
+        """Publish a `bridge/request/<topic>`, then poll until `done()` (a coroutine function) says it took effect.
+
+        Like set_z2m_device_options, it reads retained topics rather than waiting for Z2M's reply, which can arrive
+        before HA's subscription is live.
+        """
+        await self.call_service(
+            "mqtt", "publish", {"topic": f"{Z2M_TOPIC}/request/{topic}", "payload": json.dumps(payload)}
+        )
+        deadline = asyncio.get_running_loop().time() + Z2M_REQUEST_TIMEOUT_S
+        while not await done():
+            if asyncio.get_running_loop().time() > deadline:
+                raise TimeoutError(f"Zigbee2MQTT did not {what} within {Z2M_REQUEST_TIMEOUT_S} s")
+            await asyncio.sleep(Z2M_POLL_S)
+
+    # --- Zigbee2MQTT: joining, removing, groups -------------------------------------------------------------------
+
+    async def z2m_permit_join_open(self) -> bool:
+        """Whether Zigbee2MQTT is accepting new devices, from its retained bridge/info."""
+        return bool((await self._z2m_retained("info")).get("permit_join"))
+
+    async def z2m_permit_join(self, seconds: int) -> None:
+        """Open joining for `seconds` (0 closes it), and wait until bridge/info shows the change."""
+
+        async def done() -> bool:
+            return await self.z2m_permit_join_open() == (seconds > 0)
+
+        await self._z2m_request("permit_join", {"time": seconds}, done, f"{'open' if seconds else 'close'} joining")
+
+    async def z2m_has_device(self, ieee: str) -> bool:
+        """Whether Zigbee2MQTT's retained bridge/devices lists `ieee`."""
+        wanted = normalize_ieee(ieee)
+        return any(normalize_ieee(d.get("ieee_address", "")) == wanted for d in await self._z2m_retained("devices"))
+
+    async def z2m_remove_device(self, ieee: str) -> None:
+        """Remove a device from Zigbee2MQTT (it sends the bulb a Leave), then wait until bridge/devices drops it."""
+
+        async def done() -> bool:
+            return not await self.z2m_has_device(ieee)
+
+        await self._z2m_request("device/remove", {"id": ieee}, done, f"remove {ieee}")
+
+    async def z2m_group_members(self, name: str) -> list[str] | None:
+        """The IEEE addresses in the Zigbee2MQTT group `name`, or None if there is no such group."""
+        for group in await self._z2m_retained("groups"):
+            if group.get("friendly_name") == name:
+                return [member["ieee_address"] for member in group.get("members", [])]
+        return None
+
+    async def z2m_group_add(self, name: str, members: tuple[str, ...] = ()) -> None:
+        """Make a Zigbee2MQTT group and add `members` (IEEE addresses) to it. Raises if the name is already taken,
+        since a group left by a crash would otherwise be reused with its old members."""
+        if await self.z2m_group_members(name) is not None:
+            raise ValueError(f"Zigbee2MQTT already has a group named {name}")
+
+        async def made() -> bool:
+            return await self.z2m_group_members(name) is not None
+
+        await self._z2m_request("group/add", {"friendly_name": name}, made, f"add group {name}")
+        for ieee in members:
+
+            async def joined(ieee=ieee) -> bool:
+                return normalize_ieee(ieee) in map(normalize_ieee, await self.z2m_group_members(name) or [])
+
+            payload = {"group": name, "device": ieee}
+            await self._z2m_request("group/members/add", payload, joined, f"add {ieee} to {name}")
+
+    async def z2m_group_remove(self, name: str) -> None:
+        """Remove a Zigbee2MQTT group; its members stay on the network."""
+
+        async def gone() -> bool:
+            return await self.z2m_group_members(name) is None
+
+        await self._z2m_request("group/remove", {"id": name}, gone, f"remove group {name}")
+
+    # --- ZHA: joining, removing, groups ---------------------------------------------------------------------------
+
+    async def zha_permit(self, duration: int) -> None:
+        """Open ZHA joining for `duration` seconds. Its state can't be read anywhere, so close it with `zha_close`."""
+        await self.call_service("zha", "permit", {"duration": duration})
+
+    async def zha_close(self) -> None:
+        """Close ZHA joining: an explicit `duration: 0`, since a window is otherwise left to run out unseen."""
+        await self.call_service("zha", "permit", {"duration": 0})
+
+    @contextlib.asynccontextmanager
+    async def zha_joining(self, duration: int) -> AsyncIterator[None]:
+        """ZHA joining open for the block, always closed after it, even on an error."""
+        await self.zha_permit(duration)
+        try:
+            yield
+        finally:
+            await self.zha_close()
+
+    async def zha_remove(self, ieee: str) -> None:
+        """Remove a device from ZHA (it sends the bulb a Leave)."""
+        await self.call_service("zha", "remove", {"ieee": ieee})
+
+    async def zha_group_add(self, name: str, members: tuple[tuple[str, int], ...] = ()) -> int:
+        """Make a ZHA group of (IEEE, endpoint) members; returns its group id."""
+        payload = {
+            "type": "zha/group/add",
+            "group_name": name,
+            "members": [{"ieee": ieee, "endpoint_id": endpoint} for ieee, endpoint in members],
+        }
+        return (await self.command(payload))["group_id"]
+
+    async def zha_group_remove(self, group_id: int) -> None:
+        await self.command({"type": "zha/group/remove", "group_ids": [group_id]})
+
+    # --- Registries -----------------------------------------------------------------------------------------------
+
+    async def device_by_ieee(self, integration: str, ieee: str) -> dict | None:
+        """The device-registry entry on `integration` ("zha" or "zigbee2mqtt") with this IEEE, or None."""
+        if integration not in IEEE_INTEGRATIONS:
+            raise ValueError(f"no IEEE in the device registry for {integration}; a Hue device is found on the bridge")
+        wanted = normalize_ieee(ieee)
+        for device in await self.command({"type": "config/device_registry/list"}):
+            found = device_ieee(device, integration)
+            if found is not None and normalize_ieee(found) == wanted:
+                return device
+        return None
+
+    async def rename_entity(self, entity_id: str, new_entity_id: str) -> None:
+        """Change an entity's ID in the entity registry. HA refuses when `new_entity_id` is taken."""
+        await self.command(
+            {"type": "config/entity_registry/update", "entity_id": entity_id, "new_entity_id": new_entity_id}
+        )
+
+    async def remove_entity(self, entity_id: str) -> None:
+        await self.command({"type": "config/entity_registry/remove", "entity_id": entity_id})

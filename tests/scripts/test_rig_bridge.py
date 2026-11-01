@@ -65,3 +65,66 @@ async def test_put_raises_when_the_bridge_cannot_be_reached(socket_enabled):
             await bridge.put("light", "abc", {})
     finally:
         await bridge.close()
+
+
+async def serve_any(received: list, reply: dict | None = None) -> TestServer:
+    async def handle(request: web.Request) -> web.Response:
+        body = await request.json() if request.can_read_body else None
+        received.append((request.method, request.path, body))
+        return web.json_response(reply if reply is not None else {"data": [{"id": "x"}], "errors": []})
+
+    app = web.Application()
+    app.router.add_route("*", "/clip/v2/resource/{tail:.*}", handle)
+    server = TestServer(app, host="127.0.0.1")
+    await server.start_server()
+    return server
+
+
+async def test_get_post_and_delete_use_the_resource_path_and_return_the_data(socket_enabled):
+    received: list = []
+    server = await serve_any(received)
+    bridge = bridge_for(server)
+    try:
+        assert await bridge.get("device") == [{"id": "x"}]
+        assert await bridge.get("device", "abc") == [{"id": "x"}]
+        assert await bridge.post("zigbee_device_discovery", {"action": {"action_type": "search"}}) == [{"id": "x"}]
+        await bridge.delete("device", "abc")
+    finally:
+        await bridge.close()
+        await server.close()
+    assert received == [
+        ("GET", "/clip/v2/resource/device", None),
+        ("GET", "/clip/v2/resource/device/abc", None),
+        ("POST", "/clip/v2/resource/zigbee_device_discovery", {"action": {"action_type": "search"}}),
+        ("DELETE", "/clip/v2/resource/device/abc", None),
+    ]
+
+
+async def test_delete_raises_on_a_listed_error(socket_enabled):
+    server = await serve_any([], {"errors": [{"description": "not found"}]})
+    bridge = bridge_for(server)
+    try:
+        with pytest.raises(BridgeError, match="DELETE device/abc got 200: not found"):
+            await bridge.delete("device", "abc")
+    finally:
+        await bridge.close()
+        await server.close()
+
+
+@pytest.mark.parametrize(
+    ("spelling", "found"),
+    [
+        ("0x001788010abcdef0", "dev-1"),
+        ("00:17:88:01:0A:BC:DE:F0", "dev-1"),
+        ("0x0000000000000000", None),
+    ],
+)
+async def test_device_id_by_ieee_reads_zigbee_connectivity_in_any_spelling(socket_enabled, spelling, found):
+    reply = {"data": [{"mac_address": "00:17:88:01:0a:bc:de:f0", "owner": {"rid": "dev-1", "rtype": "device"}}]}
+    server = await serve_any([], reply)
+    bridge = bridge_for(server)
+    try:
+        assert await bridge.device_id_by_ieee(spelling) == found
+    finally:
+        await bridge.close()
+        await server.close()

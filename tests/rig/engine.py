@@ -21,7 +21,7 @@ from typing import Any
 import yaml
 
 from .bridge import BridgeError, HueBridge
-from .client import HAClient, HAError
+from .client import HAClient, HAError, device_ieee
 from .journal import Journal
 from .profile import GROUP_ROLES, RIG_DIR, ROLES, SETTLE_S, TOLERANCE_S, Profile
 
@@ -1016,10 +1016,8 @@ class _CaseRun:
     async def z2m_ieee(self, entity_id: str) -> str:
         entry = await self.ha.command({"type": "config/entity_registry/get", "entity_id": entity_id})
         for device in await self.ha.command({"type": "config/device_registry/list"}):
-            if device["id"] == entry.get("device_id"):
-                for domain, ident in device["identifiers"]:
-                    if domain == "mqtt" and ident.startswith("zigbee2mqtt_0x"):
-                        return ident.removeprefix("zigbee2mqtt_")
+            if device["id"] == entry.get("device_id") and (ieee := device_ieee(device, "zigbee2mqtt")):
+                return ieee
         raise StepFailure(f"{entity_id} has no Zigbee2MQTT device")
 
     async def _z2m_option(self, args: dict, _following: str | None) -> None:
