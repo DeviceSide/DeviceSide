@@ -71,7 +71,7 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. The rig lock
   ([`2026-10-28-z2m-color-modes.md`](docs/plans/2026-10-28-z2m-color-modes.md)). Counts toward the Z2M freeze.
 - [ ] **15** The lab ([`2026-11-01-lab.md`](docs/plans/2026-11-01-lab.md)): three Hue bulbs in the maintainer's room,
   the A60 among them, that a run moves Hue → ZHA → Z2M → Hue, with Hue as their home network.
-  - [x] PR 1: profiles (`tests/rig/profiles/<name>.yaml`, `--profile`, `pause:` replacing `RIG_PAUSE`).
+  - [x] PR 1: profiles (`tests/rig/profiles/<name>.yaml`, `--profile`, `pause:` replacing `RIG_PAUSE`), #147.
   - [ ] PR 2: network clients (Hue CLIP v2 reads and deletes, ZHA and Z2M join and remove, registry renames).
   - [ ] PR 3: roaming (moves, fixed entity IDs, Hue home saved and restored, `--recover` moves the bulbs home).
   - [ ] PR 4: rig-made `ds-rig-*` groups, zones and scenes on each visit.
