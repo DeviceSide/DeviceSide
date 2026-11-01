@@ -48,6 +48,7 @@ v0.1.0 is the next release.
 | 15 (PR 2 of 5) | Rig network clients: CLIP v2 verbs, ZHA and Z2M permit/remove/groups, registry rename, `device_by_ieee`; fakes | #149 |
 | 15 (PR 3 of 5) | Rig roaming: lab bulbs move Hue → ZHA → Z2M → Hue within a run, suites in phases, fixed entity IDs, Hue home restored, `--recover` and `--roam-check` | #151 |
 | 15 (PR 4 of 5) | Rig-made `ds-rig-*` groups, zones and scenes: made on each visit from `roam.groups`, renamed to fixed entity IDs, removed before each move and by `--recover`; Hue group and scene cases are lab-only | #154 |
+| 15 (follow-up) | Roaming: a second Hue search only for a bulb still missing; a stranger that joins a search is named and left | #153 |
 
 ## To go, in order
 
