@@ -1,4 +1,7 @@
-"""The rig's household entities and connection settings. Shared by scripts/rig.py and the rig engine.
+"""The rig's profiles and connection settings. Shared by scripts/rig.py, the rig engine and the household check.
+
+A profile (`profiles/<name>.yaml`, gitignored) is one test setup on the HA instance .env.rig connects to: the entities
+the rig may move, by integration and role, and the automations and switches it pauses while it runs.
 
 Pure file reading, no HA or pytest imports, so the runner's preflight can load it before anything mutates.
 """
@@ -29,8 +32,13 @@ def main_checkout(repo: Path = REPO) -> Path:
 
 
 MAIN_CHECKOUT = main_checkout()
-INVENTORY = MAIN_CHECKOUT / RIG_DIR.relative_to(REPO) / "inventory.yaml"
+PROFILES_DIR = MAIN_CHECKOUT / RIG_DIR.relative_to(REPO) / "profiles"
+EXAMPLE = RIG_DIR / "profile.example.yaml"  # the tracked template a profile is copied from
+# The single file profiles replaced; a run refuses while it is there, and the household check still reads it.
+LEGACY_INVENTORY = MAIN_CHECKOUT / RIG_DIR.relative_to(REPO) / "inventory.yaml"
 ENV_FILE = MAIN_CHECKOUT / ".env.rig"
+
+PAUSABLE = ("automation", "switch")
 
 # A native group's roles: `group_color` is one whose members all take color.
 GROUP_ROLES = frozenset({"group", "group_color"})
@@ -51,22 +59,25 @@ SETTLE_S = {"hue": 15.0, "zigbee2mqtt": 2.0}
 class RigEntity:
     entity_id: str
     roles: frozenset[str]
-    powered_by: str | None = None  # the inventory switch this entity draws power through
+    powered_by: str | None = None  # the profile's switch this entity draws power through
     members: tuple[str, ...] = ()  # a group's member lights, for a group light without an entity_id attribute
 
 
 @dataclass(slots=True)
-class Inventory:
+class Profile:
     integrations: dict[str, list[RigEntity]] = field(default_factory=dict)
+    # Automations and switches turned off while the rig runs: whatever would fight the tests on these entities.
+    pause: tuple[str, ...] = ()
+    name: str = ""
 
     @classmethod
-    def load(cls, path: Path = INVENTORY) -> Inventory:
-        raw = yaml.safe_load(path.read_text()) or {}
-        inventory = cls()
+    def load(cls, path: Path) -> Profile:
+        raw = read_mapping(path)
+        profile = cls(pause=pause_list(path, raw.pop("pause", None) or []), name=path.stem)
         for integration, entities in raw.items():
             if integration not in TOLERANCE_S:
                 raise ValueError(f"{path.name}: unknown integration {integration!r}; use {', '.join(TOLERANCE_S)}")
-            inventory.integrations[integration] = []
+            profile.integrations[integration] = []
             for item in entities or []:
                 roles = frozenset(item.get("roles", ()))
                 if unknown := roles - ROLES:
@@ -77,14 +88,14 @@ class Inventory:
                 members = tuple(members)
                 if members and not roles & GROUP_ROLES:
                     raise ValueError(f"{path.name}: {item['entity_id']} lists members but has no group role")
-                inventory.integrations[integration].append(
+                profile.integrations[integration].append(
                     RigEntity(item["entity_id"], roles, item.get("powered_by"), members)
                 )
-        listed = {entity.entity_id for entities in inventory.integrations.values() for entity in entities}
-        for entity_id, supply in inventory.power().items():
+        listed = {entity.entity_id for entities in profile.integrations.values() for entity in entities}
+        for entity_id, supply in profile.power().items():
             if supply not in listed:
-                raise ValueError(f"{path.name}: {entity_id} is powered_by {supply}, which the inventory doesn't list")
-        return inventory
+                raise ValueError(f"{path.name}: {entity_id} is powered_by {supply}, which the profile doesn't list")
+        return profile
 
     def entity(self, integration: str, role: str) -> str | None:
         return next((e.entity_id for e in self.integrations.get(integration, ()) if role in e.roles), None)
@@ -95,6 +106,31 @@ class Inventory:
     def power(self) -> dict[str, str]:
         """Each entity that draws power through another, mapped to its supply, across every integration."""
         return {e.entity_id: e.powered_by for entities in self.integrations.values() for e in entities if e.powered_by}
+
+
+def pause_list(path: Path, entity_ids: object) -> tuple[str, ...]:
+    """A profile's `pause:`, a list of automations and switches."""
+    if not isinstance(entity_ids, list) or not all(isinstance(entity_id, str) for entity_id in entity_ids):
+        raise ValueError(f"{path.name}: pause must be a list of entity IDs")
+    if other := [entity_id for entity_id in entity_ids if entity_id.partition(".")[0] not in PAUSABLE]:
+        raise ValueError(f"{path.name}: pause takes automations and switches only, got {', '.join(other)}")
+    return tuple(entity_ids)
+
+
+def read_mapping(path: Path) -> dict:
+    """A profile file's top-level mapping; an error names the file, so a typo in one doesn't read as a traceback."""
+    try:
+        raw = yaml.safe_load(path.read_text()) or {}
+    except yaml.YAMLError as err:
+        raise ValueError(f"{path.name}: not valid YAML: {err}") from err
+    if not isinstance(raw, dict):
+        raise ValueError(f"{path.name}: must be a mapping of pause and integration keys")
+    return raw
+
+
+def profile_paths(directory: Path = PROFILES_DIR) -> list[Path]:
+    """Every profile in `directory`, by name."""
+    return sorted(directory.glob("*.yaml"))
 
 
 def load_env(path: Path = ENV_FILE) -> dict[str, str]:
@@ -112,7 +148,7 @@ def load_env(path: Path = ENV_FILE) -> dict[str, str]:
         "RIG_SYNC_CMD",
         "RIG_STATUS_CMD",
         "RIG_RESTART_CMD",
-        "RIG_PAUSE",
+        "RIG_PAUSE",  # moved into the profile; still read, so a run set it in refuses rather than ignores it
         "HUE_BRIDGE_HOST",
         "HUE_APP_KEY",
     ):

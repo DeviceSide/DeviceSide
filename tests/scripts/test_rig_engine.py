@@ -29,8 +29,8 @@ from tests.rig.engine import (
     write_records,
     write_report,
 )
-from tests.rig.inventory import Inventory, RigEntity
 from tests.rig.journal import Journal
+from tests.rig.profile import Profile, RigEntity
 from tests.scripts.rig_fakes import (
     OPTION_REGISTRY,
     PENDING,
@@ -38,7 +38,7 @@ from tests.scripts.rig_fakes import (
     WAITING_MIDWAY,
     FakeAdmin,
     FakeHA,
-    inventory,
+    profile,
 )
 
 TOL = 0.2
@@ -91,7 +91,7 @@ def suite(tmp_path: Path, text: str, integration: str = "shelly") -> Suite:
     return Suite(load_step_file(path), integration)
 
 
-async def run_one(ha, steps: Suite, inv: Inventory, registry=REGISTRY, **kwargs) -> RunResult:
+async def run_one(ha, steps: Suite, inv: Profile, registry=REGISTRY, **kwargs) -> RunResult:
     return await run([steps], inv, registry, ha, tolerance=TOLERANCE, out=lambda _: None, **kwargs)
 
 
@@ -101,7 +101,7 @@ def outcomes(result: RunResult) -> dict[str, tuple[Outcome, str]]:
 
 async def test_a_timed_on_off_passes_and_restores(tmp_path):
     ha = FakeHA({"switch.plug": {"state": "on"}}, timer_on)
-    result = await run_one(ha, suite(tmp_path, ON_THEN_OFF), inventory(switch_plug="switch.plug"))
+    result = await run_one(ha, suite(tmp_path, ON_THEN_OFF), profile(switch_plug="switch.plug"))
     assert outcomes(result) == {"on_then_off[switch_plug]": (Outcome.PASS, "")}
     assert ("device_side", "turn_on_for", {"entity_id": "switch.plug", "duration": {"seconds": 0.6}}) in ha.calls
     assert ha.calls[-1] == ("switch", "turn_on", {"entity_id": "switch.plug"})
@@ -116,7 +116,7 @@ def stuck(ha, action, data):
 
 async def test_a_device_that_never_turns_off_fails_on_the_timeout(tmp_path):
     ha = FakeHA({"switch.plug": {}}, stuck)
-    result = await run_one(ha, suite(tmp_path, ON_THEN_OFF), inventory(switch_plug="switch.plug"))
+    result = await run_one(ha, suite(tmp_path, ON_THEN_OFF), profile(switch_plug="switch.plug"))
     outcome, detail = outcomes(result)["on_then_off[switch_plug]"]
     assert outcome is Outcome.FAIL
     assert detail.startswith("step 7 (expect_state): switch.plug: expected {'state': 'off'} within 0.4 s")
@@ -128,7 +128,7 @@ async def test_a_sent_status_fails_where_the_adapter_can_confirm(tmp_path):
         return {data["entity_id"]: {"status": "sent", "integration": "shelly"}}
 
     ha = FakeHA({"switch.plug": {}}, sent)
-    result = await run_one(ha, suite(tmp_path, ON_THEN_OFF), inventory(switch_plug="switch.plug"))
+    result = await run_one(ha, suite(tmp_path, ON_THEN_OFF), profile(switch_plug="switch.plug"))
     assert "status is 'sent', expected 'confirmed'" in outcomes(result)["on_then_off[switch_plug]"][1]
 
 
@@ -155,13 +155,13 @@ def refuse(detail: str) -> Callable:
 
 async def test_a_refusal_passes_when_key_summary_and_state_match(tmp_path):
     ha = FakeHA({"light.lamp": {"state": "on"}}, refuse("timeout"))
-    result = await run_one(ha, suite(tmp_path, REFUSAL), inventory(light_wrapped="light.lamp"))
+    result = await run_one(ha, suite(tmp_path, REFUSAL), profile(light_wrapped="light.lamp"))
     assert outcomes(result) == {"refuses[light_wrapped]": (Outcome.PASS, "")}
 
 
 async def test_an_expect_error_mismatch_fails_naming_both_summaries(tmp_path):
     ha = FakeHA({"light.lamp": {}}, refuse("error"))
-    result = await run_one(ha, suite(tmp_path, REFUSAL), inventory(light_wrapped="light.lamp"))
+    result = await run_one(ha, suite(tmp_path, REFUSAL), profile(light_wrapped="light.lamp"))
     outcome, detail = outcomes(result)["refuses[light_wrapped]"]
     assert outcome is Outcome.FAIL
     assert detail == ("step 2 (expect_error): error summary is 'light.lamp: error', expected 'light.lamp: timeout'")
@@ -169,13 +169,13 @@ async def test_an_expect_error_mismatch_fails_naming_both_summaries(tmp_path):
 
 async def test_a_call_that_succeeds_where_an_error_is_expected_fails(tmp_path):
     ha = FakeHA({"light.lamp": {}}, timer_on)
-    result = await run_one(ha, suite(tmp_path, REFUSAL), inventory(light_wrapped="light.lamp"))
+    result = await run_one(ha, suite(tmp_path, REFUSAL), profile(light_wrapped="light.lamp"))
     assert "succeeded where an error was expected" in outcomes(result)["refuses[light_wrapped]"][1]
 
 
 async def test_an_unexpected_error_fails_the_call_step(tmp_path):
     ha = FakeHA({"switch.plug": {}}, refuse("capability_not_tested"))
-    result = await run_one(ha, suite(tmp_path, ON_THEN_OFF), inventory(switch_plug="switch.plug"))
+    result = await run_one(ha, suite(tmp_path, ON_THEN_OFF), profile(switch_plug="switch.plug"))
     assert outcomes(result)["on_then_off[switch_plug]"][1].startswith("step 2 (call): device_side.turn_on_for raised")
 
 
@@ -191,7 +191,7 @@ tests:
       - set: {state: off}
       - expect_state: {state: on}
 """
-    result = await run_one(ha, suite(tmp_path, text), inventory(light_dimmable="light.lamp"))
+    result = await run_one(ha, suite(tmp_path, text), profile(light_dimmable="light.lamp"))
     assert outcomes(result)["fails[light_dimmable]"][0] is Outcome.FAIL
     assert ha.calls[-1] == ("light", "turn_on", {"entity_id": "light.lamp", "brightness": 50, "hs_color": [30, 50]})
     assert ha.states["light.lamp"]["state"] == "on"
@@ -213,7 +213,7 @@ tests:
       - call: {}
       - expect_response: {attributes: {brightness: {min: 39, max: 41}}}
 """
-    result = await run_one(ha, suite(tmp_path, text, "hue"), inventory("hue", light_ct="light.lamp"))
+    result = await run_one(ha, suite(tmp_path, text, "hue"), profile("hue", light_ct="light.lamp"))
 
     assert outcomes(result)["reads[light_ct]"][0] is outcome
 
@@ -239,7 +239,7 @@ tests:
       - call: {}
       - expect_response: {attributes: {timer.turns: "off", timer.remaining_s: {min: 15, max: 20}}}
 """
-    result = await run_one(ha, suite(tmp_path, text, "shelly"), inventory("shelly", switch_plug="switch.plug"))
+    result = await run_one(ha, suite(tmp_path, text, "shelly"), profile("shelly", switch_plug="switch.plug"))
 
     assert outcomes(result)["reads[switch_plug]"][0] is outcome
 
@@ -265,7 +265,7 @@ tests:
       - call: {}
       - expect_response: {attributes: {hs_color.0: {min: 25, max: 35}, hs_color.1: {min: 70, max: 90}}}
 """
-    result = await run_one(ha, suite(tmp_path, text, "hue"), inventory("hue", light_color="light.lamp"))
+    result = await run_one(ha, suite(tmp_path, text, "hue"), profile("hue", light_color="light.lamp"))
 
     assert outcomes(result)["reads[light_color]"][0] is outcome
 
@@ -283,7 +283,7 @@ tests:
       - call: {}
       - expect_response: {attributes: {timer: null}}
 """
-    result = await run_one(ha, suite(tmp_path, text, "shelly"), inventory("shelly", switch_plug="switch.plug"))
+    result = await run_one(ha, suite(tmp_path, text, "shelly"), profile("shelly", switch_plug="switch.plug"))
 
     assert outcomes(result)["reads[switch_plug]"][0] is outcome
 
@@ -306,7 +306,7 @@ tests:
     steps:
       - call: {brightness: 80}
 """
-    result = await run_one(ha, suite(tmp_path, text, "hue"), inventory("hue", group="light.room"))
+    result = await run_one(ha, suite(tmp_path, text, "hue"), profile("hue", group="light.room"))
 
     assert outcomes(result) == {"brightens_while_off[group]": (Outcome.PASS, "")}
     # Read for the member only: the room's own row averages its lights, and the member is restored itself.
@@ -359,7 +359,7 @@ def in_turn(*responders: Callable) -> Callable:
 
 async def test_unattended_reports_observed_cases_not_observed_and_proves_nothing(tmp_path):
     ha, printed = FakeHA({"switch.plug": {}}, timer_on), []
-    inv = inventory(switch_plug="switch.plug")
+    inv = profile(switch_plug="switch.plug")
     result = await run(
         [suite(tmp_path, OBSERVED)], inv, REGISTRY, ha, tolerance=TOLERANCE, out=printed.append, ask=None
     )
@@ -368,7 +368,7 @@ async def test_unattended_reports_observed_cases_not_observed_and_proves_nothing
     assert not [line for line in printed if line.startswith(("---", "You'll")) or "need" in line]
     assert result.suites[0].proven == []
     assert not result.suites[0].recordable
-    record = render_record(result.suites[0], "Shelly", "2026.10.1", [], "2026-10-25", "test")
+    record = render_record(result.suites[0], "Shelly", "2026.10.1", [], "2026-10-25", "test", "lab")
     assert "| `on_then_off[switch_plug] observed` | `switch` (switch_plug) | not observed |" in record
 
 
@@ -376,7 +376,7 @@ async def test_unattended_reports_observed_cases_not_observed_and_proves_nothing
 async def test_observed_asks_and_proves_only_when_both_cases_pass(tmp_path, answer, outcome):
     asked, ask = answers("", answer)
     ha = FakeHA({"switch.plug": {}}, timer_on)
-    result = await run_one(ha, suite(tmp_path, OBSERVED), inventory(switch_plug="switch.plug"), ask=ask)
+    result = await run_one(ha, suite(tmp_path, OBSERVED), profile(switch_plug="switch.plug"), ask=ask)
     assert asked[:2] == ["Press Enter to start... ", "    Did it click twice? [Y/n] "]
     assert outcomes(result)[WATCHED][0] is outcome
     assert [case.id for case in result.suites[0].proven] == ([AUTOMATED, WATCHED] if outcome is Outcome.PASS else [])
@@ -386,7 +386,7 @@ async def test_observed_asks_and_proves_only_when_both_cases_pass(tmp_path, answ
 async def test_a_no_records_what_the_person_saw(tmp_path, saw, detail):
     asked, ask = answers("", "n", saw)
     ha = FakeHA({"switch.plug": {}}, timer_on)
-    result = await run_one(ha, suite(tmp_path, OBSERVED), inventory(switch_plug="switch.plug"), ask=ask)
+    result = await run_one(ha, suite(tmp_path, OBSERVED), profile(switch_plug="switch.plug"), ask=ask)
     assert asked[-1] == "    What did you see? (Enter to skip) "
     assert outcomes(result)[WATCHED] == (Outcome.FAIL, "not seen: Did it click twice?" + detail)
 
@@ -394,14 +394,14 @@ async def test_a_no_records_what_the_person_saw(tmp_path, saw, detail):
 async def test_eof_at_what_was_seen_still_fails_the_case(tmp_path):
     _, ask = answers("", "n")
     result = await run_one(
-        FakeHA({"switch.plug": {}}, timer_on), suite(tmp_path, OBSERVED), inventory(switch_plug="switch.plug"), ask=ask
+        FakeHA({"switch.plug": {}}, timer_on), suite(tmp_path, OBSERVED), profile(switch_plug="switch.plug"), ask=ask
     )
     assert outcomes(result)[WATCHED] == (Outcome.FAIL, "not seen: Did it click twice?")
 
 
 async def test_a_report_lists_every_suite_with_its_reasons(tmp_path):
     ha = FakeHA({"switch.plug": {}}, stuck)
-    result = await run_one(ha, suite(tmp_path, OBSERVED), inventory(switch_plug="switch.plug"), ask=answers()[1])
+    result = await run_one(ha, suite(tmp_path, OBSERVED), profile(switch_plug="switch.plug"), ask=answers()[1])
     path = write_report(result, tmp_path / "reports", "rig run 2026-10-26 14:03:05")
     assert path == tmp_path / "reports" / "rig-run-2026-10-26-140305.md"
     text = path.read_text()
@@ -413,7 +413,7 @@ async def test_a_report_lists_every_suite_with_its_reasons(tmp_path):
 async def test_an_answer_other_than_yes_or_no_is_asked_again(tmp_path):
     asked, ask = answers("", "maybe", "n")
     ha, printed = FakeHA({"switch.plug": {}}, timer_on), []
-    inv = inventory(switch_plug="switch.plug")
+    inv = profile(switch_plug="switch.plug")
     result = await run([suite(tmp_path, OBSERVED)], inv, REGISTRY, ha, tolerance=TOLERANCE, out=printed.append, ask=ask)
     assert asked[1:3] == ["    Did it click twice? [Y/n] "] * 2
     assert "    Answer y or n." in printed
@@ -427,7 +427,7 @@ async def test_setup_runs_before_the_brief_and_the_steps_after_enter(tmp_path):
         calls_at_enter.append(len(ha.calls))
         return "y"
 
-    inv = inventory(switch_plug="switch.plug")
+    inv = profile(switch_plug="switch.plug")
     await run([suite(tmp_path, OBSERVED)], inv, REGISTRY, ha, tolerance=TOLERANCE, out=printed.append, ask=ask)
     start = printed.index("1 test needs you")
     assert printed[start + 1 : start + 5] == [
@@ -472,7 +472,7 @@ tests:
         prompted.append(loop.time())
         return ask(prompt)
 
-    result = await run_one(ha, suite(tmp_path, text), inventory(light_dimmable="light.lamp"), ask=timed)
+    result = await run_one(ha, suite(tmp_path, text), profile(light_dimmable="light.lamp"), ask=timed)
     assert outcomes(result) == {
         "ramps[light_dimmable]": (Outcome.PASS, ""),
         "ramps[light_dimmable] observed": (Outcome.PASS, ""),
@@ -485,7 +485,7 @@ tests:
 async def test_a_failed_automated_case_skips_its_observed_twin(tmp_path):
     ha, printed = FakeHA({"switch.plug": {}}, stuck), []
     asked, ask = answers()
-    inv = inventory(switch_plug="switch.plug")
+    inv = profile(switch_plug="switch.plug")
     result = await run([suite(tmp_path, OBSERVED)], inv, REGISTRY, ha, tolerance=TOLERANCE, out=printed.append, ask=ask)
     assert outcomes(result)[WATCHED] == (Outcome.SKIPPED, "automated case failed")
     assert asked == []
@@ -496,7 +496,7 @@ async def test_a_failed_automated_case_skips_its_observed_twin(tmp_path):
 async def test_a_call_that_raises_after_enter_says_there_is_nothing_to_observe(tmp_path):
     ha, printed = FakeHA({"switch.plug": {}}, in_turn(timer_on, refuse("device_offline"))), []
     asked, ask = answers("", "")
-    inv = inventory(switch_plug="switch.plug")
+    inv = profile(switch_plug="switch.plug")
     result = await run([suite(tmp_path, OBSERVED)], inv, REGISTRY, ha, tolerance=TOLERANCE, out=printed.append, ask=ask)
     assert asked == ["Press Enter to start... ", "Press Enter to go on... "]
     outcome, detail = outcomes(result)[WATCHED]
@@ -510,7 +510,7 @@ TWO_SUITES = OBSERVED.replace("integration: self", "integration: shelly")
 
 async def test_every_automated_case_runs_before_the_first_brief(tmp_path):
     ha, printed = FakeHA({"switch.plug": {}, "switch.other": {}}, timer_on), []
-    inv = Inventory(
+    inv = Profile(
         {
             "shelly": [RigEntity("switch.plug", frozenset({"switch_plug"}))],
             "zha": [RigEntity("switch.other", frozenset({"switch_plug"}))],
@@ -556,7 +556,7 @@ async def test_eof_at_a_brief_leaves_it_and_every_later_one_not_observed(tmp_pat
     asked, ask = answers()
     text = ONLY.replace("needs_a_dimmer", "again").replace("light_dimmable", "switch_plug")
     result = await run_one(
-        FakeHA({"switch.plug": {}}), suite(tmp_path, text), inventory(switch_plug="switch.plug"), ask=ask
+        FakeHA({"switch.plug": {}}), suite(tmp_path, text), profile(switch_plug="switch.plug"), ask=ask
     )
     assert asked == ["Press Enter to start... "]
     assert outcomes(result) == {
@@ -569,7 +569,7 @@ async def test_a_setup_failure_fails_before_the_brief(tmp_path):
     asked, ask = answers()
     text = ONLY.split("  - name: elsewhere")[0].replace("setup: [{wait: 0}]", "setup: [{expect_state: {state: on}}]")
     result = await run_one(
-        FakeHA({"switch.plug": {}}), suite(tmp_path, text), inventory(switch_plug="switch.plug"), ask=ask
+        FakeHA({"switch.plug": {}}), suite(tmp_path, text), profile(switch_plug="switch.plug"), ask=ask
     )
     outcome, detail = outcomes(result)["everywhere[switch_plug] observed"]
     assert (outcome, detail.split(":")[0]) == (Outcome.FAIL, "setup step 1 (expect_state)")
@@ -580,7 +580,7 @@ async def test_do_waits_for_enter_before_the_brief(tmp_path):
     asked, ask = answers("", "", "y")
     text = ONLY.split("  - name: elsewhere")[0].replace("setup: [{wait: 0}]", "setup: [{do: Flip it.}]")
     result = await run_one(
-        FakeHA({"switch.plug": {}}), suite(tmp_path, text), inventory(switch_plug="switch.plug"), ask=ask
+        FakeHA({"switch.plug": {}}), suite(tmp_path, text), profile(switch_plug="switch.plug"), ask=ask
     )
     assert asked == ["    Flip it. Press Enter when done... ", "Press Enter to start... ", "    ok? [Y/n] "]
     assert outcomes(result) == {"everywhere[switch_plug] observed": (Outcome.PASS, "")}
@@ -590,7 +590,7 @@ async def test_eof_at_do_leaves_the_case_not_observed(tmp_path):
     asked, ask = answers()
     text = ONLY.split("  - name: elsewhere")[0].replace("setup: [{wait: 0}]", "setup: [{do: Flip it.}]")
     result = await run_one(
-        FakeHA({"switch.plug": {}}), suite(tmp_path, text), inventory(switch_plug="switch.plug"), ask=ask
+        FakeHA({"switch.plug": {}}), suite(tmp_path, text), profile(switch_plug="switch.plug"), ask=ask
     )
     assert asked == ["    Flip it. Press Enter when done... "]
     assert outcomes(result) == {"everywhere[switch_plug] observed": (Outcome.NOT_OBSERVED, "")}
@@ -600,7 +600,7 @@ async def test_eof_at_the_question_leaves_the_case_not_observed(tmp_path):
     asked, ask = answers("")
     text = ONLY.split("  - name: elsewhere")[0]
     result = await run_one(
-        FakeHA({"switch.plug": {}}), suite(tmp_path, text), inventory(switch_plug="switch.plug"), ask=ask
+        FakeHA({"switch.plug": {}}), suite(tmp_path, text), profile(switch_plug="switch.plug"), ask=ask
     )
     assert asked == ["Press Enter to start... ", "    ok? [Y/n] "]
     assert outcomes(result) == {"everywhere[switch_plug] observed": (Outcome.NOT_OBSERVED, "")}
@@ -621,7 +621,7 @@ tests:
 """
     # The observed run's refusal names another summary: the automated check would fail it.
     ha = FakeHA({"light.lamp": {}}, in_turn(refuse("timeout"), refuse("error")))
-    result = await run_one(ha, suite(tmp_path, text), inventory(light_wrapped="light.lamp"), ask=answers("", "y")[1])
+    result = await run_one(ha, suite(tmp_path, text), profile(light_wrapped="light.lamp"), ask=answers("", "y")[1])
     assert outcomes(result) == {
         "refuses[light_wrapped]": (Outcome.PASS, ""),
         "refuses[light_wrapped] observed": (Outcome.PASS, ""),
@@ -630,16 +630,16 @@ tests:
 
 async def test_only_and_missing_roles_narrow_the_cases(tmp_path):
     ha = FakeHA({"switch.plug": {}})
-    result = await run_one(ha, suite(tmp_path, ONLY), inventory(switch_plug="switch.plug"), ask=lambda _: "y")
+    result = await run_one(ha, suite(tmp_path, ONLY), profile(switch_plug="switch.plug"), ask=lambda _: "y")
     assert outcomes(result) == {
         "everywhere[switch_plug] observed": (Outcome.PASS, ""),
-        "needs_a_dimmer[light_dimmable] observed": (Outcome.SKIPPED, "no light_dimmable entity in inventory"),
+        "needs_a_dimmer[light_dimmable] observed": (Outcome.SKIPPED, "no light_dimmable entity in the profile"),
     }
 
 
 def test_observe_only_watches_in_those_integrations_and_runs_automated_elsewhere(tmp_path):
     text = OBSERVED.replace("ask: 'Did it click twice?'}", "ask: 'Did it click twice?', only: [zha]}")
-    inv = Inventory({key: [RigEntity("switch.plug", frozenset({"switch_plug"}))] for key in ("shelly", "zha")})
+    inv = Profile({key: [RigEntity("switch.plug", frozenset({"switch_plug"}))] for key in ("shelly", "zha")})
     shelly, zha = (cases(suite(tmp_path, text, key), inv) for key in ("shelly", "zha"))
     assert [case.id for case in shelly] == [AUTOMATED]
     assert [case.id for case in zha] == [AUTOMATED, WATCHED]
@@ -649,7 +649,7 @@ def test_observe_only_watches_in_those_integrations_and_runs_automated_elsewhere
 
 async def test_a_keyword_runs_a_subset_and_marks_the_suite_partial(tmp_path):
     ha = FakeHA({"switch.plug": {}})
-    inv = inventory(switch_plug="switch.plug")
+    inv = profile(switch_plug="switch.plug")
     result = await run_one(ha, suite(tmp_path, ONLY), inv, ask=lambda _: "y", keyword="everywhere")
     assert list(outcomes(result)) == ["everywhere[switch_plug] observed"]
     assert not result.suites[0].recordable
@@ -658,7 +658,7 @@ async def test_a_keyword_runs_a_subset_and_marks_the_suite_partial(tmp_path):
 async def test_the_brief_counts_only_the_observed_cases_that_run(tmp_path):
     ha, printed = FakeHA({"switch.plug": {}}), []
     steps = suite(tmp_path, ONLY + ON_THEN_OFF.split("tests:\n")[1])
-    inv = inventory(switch_plug="switch.plug")
+    inv = profile(switch_plug="switch.plug")
     await run([steps], inv, REGISTRY, ha, tolerance=TOLERANCE, out=printed.append, ask=lambda _: "y")
     assert [line for line in printed if line.startswith("---")] == [
         "--- turn_on_for / everywhere on switch_plug (1 of 1) ---"
@@ -666,7 +666,7 @@ async def test_the_brief_counts_only_the_observed_cases_that_run(tmp_path):
 
 
 async def test_a_suite_without_an_adapter_is_skipped(tmp_path):
-    result = await run_one(FakeHA({}), suite(tmp_path, ONLY, "hue"), Inventory({"hue": []}))
+    result = await run_one(FakeHA({}), suite(tmp_path, ONLY, "hue"), Profile({"hue": []}))
     assert result.suites == []
 
 
@@ -714,17 +714,17 @@ NO_ATTRIBUTES_REGISTRY = SimpleNamespace(
 async def test_a_group_checks_every_member(tmp_path):
     ha = group_ha(members_on("light.a", "light.b"))
     steps = suite(tmp_path, GROUP, "fake")
-    result = await run_one(ha, steps, inventory("fake", group="light.room"), registry=GROUP_REGISTRY)
+    result = await run_one(ha, steps, profile("fake", group="light.room"), registry=GROUP_REGISTRY)
     assert outcomes(result) == {"every_member[group]": (Outcome.PASS, "")}
 
 
 async def test_a_group_without_the_attribute_uses_inventory_members(tmp_path):
     ha = FakeHA({"light.room": {}, "light.a": {}, "light.b": {}}, members_on("light.a", "light.b"))
     steps = suite(tmp_path, GROUP, "fake")
-    inv = Inventory({"fake": [RigEntity("light.room", frozenset({"group"}), members=("light.a", "light.b"))]})
+    inv = Profile({"fake": [RigEntity("light.room", frozenset({"group"}), members=("light.a", "light.b"))]})
     result = await run_one(ha, steps, inv, registry=NO_ATTRIBUTES_REGISTRY)
     assert outcomes(result) == {"every_member[group]": (Outcome.PASS, "")}
-    assert ha.states["light.a"]["state"] == "off"  # restored: the inventory's members were snapshotted too
+    assert ha.states["light.a"]["state"] == "off"  # restored: the profile's members were snapshotted too
 
 
 async def test_an_observed_group_brief_names_the_group_and_its_members(tmp_path):
@@ -736,7 +736,7 @@ async def test_an_observed_group_brief_names_the_group_and_its_members(tmp_path)
     setup_first = "    setup:\n      - set: {state: off}\n    steps:\n"
     text = GROUP.replace("    steps:\n      - set: {state: off}\n", setup_first)
     text += "    observe: {see: Both turn on., watch: Both., ask: 'Both?'}\n"
-    inv = Inventory({"fake": [RigEntity("light.room", frozenset({"group"}), members=("light.a", "light.b"))]})
+    inv = Profile({"fake": [RigEntity("light.room", frozenset({"group"}), members=("light.a", "light.b"))]})
     printed, (_, ask) = [], answers("", "y")
     steps = [suite(tmp_path, text, "fake")]
     await run(steps, inv, NO_ATTRIBUTES_REGISTRY, ha, tolerance=TOLERANCE, out=printed.append, ask=ask)
@@ -747,7 +747,7 @@ async def test_a_group_without_the_attribute_is_not_read_as_one_light(tmp_path):
     """With get_attributes, the group's members are read one by one, never the group as if it were a bulb."""
     ha = FakeHA({"light.room": {}, "light.a": {}, "light.b": {}}, lambda ha, action, data: {})
     steps = suite(tmp_path, GROUP.replace("      - expect_response: {status: sent, integration: self}\n", ""), "fake")
-    inv = Inventory({"fake": [RigEntity("light.room", frozenset({"group"}), members=("light.a", "light.b"))]})
+    inv = Profile({"fake": [RigEntity("light.room", frozenset({"group"}), members=("light.a", "light.b"))]})
     await run_one(ha, steps, inv, registry=GROUP_REGISTRY)
     reads = [data["entity_id"] for domain, service, data in ha.calls if service == "get_attributes"]
     assert reads == ["light.a", "light.b"]
@@ -756,16 +756,16 @@ async def test_a_group_without_the_attribute_is_not_read_as_one_light(tmp_path):
 async def test_a_group_case_targeting_a_light_outside_the_group_is_skipped(tmp_path):
     text = GROUP + "      - set: {target: light_ct, state: on}\n"
     room = RigEntity("light.room", frozenset({"group"}), members=("light.a", "light.b"))
-    inv = Inventory({"fake": [room, RigEntity("light.lamp", frozenset({"light_ct"}))]})
+    inv = Profile({"fake": [room, RigEntity("light.lamp", frozenset({"light_ct"}))]})
     result = await run_one(FakeHA({}, members_on()), suite(tmp_path, text, "fake"), inv, registry=GROUP_REGISTRY)
     assert outcomes(result) == {"every_member[group]": (Outcome.SKIPPED, "light_ct is not one of the group's members")}
 
 
 async def test_a_group_color_is_a_group(tmp_path):
-    """A group_color case checks the inventory's members and is never read as one light."""
+    """A group_color case checks the profile's members and is never read as one light."""
     ha = FakeHA({"light.colors": {}, "light.a": {}, "light.b": {}}, members_on("light.a", "light.b"))
     text = GROUP.replace("roles: [group]", "roles: [group_color]")
-    inv = Inventory({"fake": [RigEntity("light.colors", frozenset({"group_color"}), members=("light.a", "light.b"))]})
+    inv = Profile({"fake": [RigEntity("light.colors", frozenset({"group_color"}), members=("light.a", "light.b"))]})
     result = await run_one(ha, suite(tmp_path, text, "fake"), inv, registry=NO_ATTRIBUTES_REGISTRY)
     assert outcomes(result) == {"every_member[group_color]": (Outcome.PASS, "")}
     assert ha.states["light.a"]["state"] == "off"  # restored: its members were snapshotted too
@@ -775,7 +775,7 @@ async def test_observe_roles_leave_the_other_roles_automated_only(tmp_path):
     text = OBSERVED.replace("roles: [switch_plug]", "roles: [switch_plug, light_onoff]").replace(
         "observe: {", "observe: {roles: [switch_plug], "
     )
-    inv = inventory(switch_plug="switch.plug", light_onoff="light.relay")
+    inv = profile(switch_plug="switch.plug", light_onoff="light.relay")
     result = await run_one(
         FakeHA({"switch.plug": {}, "light.relay": {}}, timer_on), suite(tmp_path, text), inv, ask=None
     )
@@ -787,16 +787,16 @@ async def test_observe_roles_leave_the_other_roles_automated_only(tmp_path):
 async def test_a_group_with_no_members_anywhere_fails(tmp_path):
     ha = FakeHA({"light.room": {}}, members_on())
     steps = suite(tmp_path, GROUP, "fake")
-    result = await run_one(ha, steps, inventory("fake", group="light.room"), registry=GROUP_REGISTRY)
+    result = await run_one(ha, steps, profile("fake", group="light.room"), registry=GROUP_REGISTRY)
     outcome, detail = outcomes(result)["every_member[group]"]
     assert outcome is Outcome.FAIL
-    assert "the inventory gives none" in detail
+    assert "the profile gives none" in detail
 
 
 async def test_a_group_fails_on_a_lagging_member(tmp_path):
     ha = group_ha(members_on("light.a"))
     steps = suite(tmp_path, GROUP, "fake")
-    result = await run_one(ha, steps, inventory("fake", group="light.room"), registry=GROUP_REGISTRY)
+    result = await run_one(ha, steps, profile("fake", group="light.room"), registry=GROUP_REGISTRY)
     outcome, detail = outcomes(result)["every_member[group]"]
     assert outcome is Outcome.FAIL
     assert detail.startswith("step 4 (expect_state): light.b: expected {'state': 'on'}")
@@ -847,7 +847,7 @@ def ramp(step: int) -> Callable:
 async def test_sample(tmp_path, expect, step, failure):
     ha = FakeHA({"light.lamp": {}}, ramp(step))
     steps = suite(tmp_path, SAMPLE.replace("EXPECT", expect))
-    result = await run_one(ha, steps, inventory(light_dimmable="light.lamp"))
+    result = await run_one(ha, steps, profile(light_dimmable="light.lamp"))
     outcome, detail = outcomes(result)["ramps[light_dimmable]"]
     assert outcome is (Outcome.FAIL if failure else Outcome.PASS)
     assert failure in detail
@@ -866,7 +866,7 @@ async def test_a_steady_brightness_may_settle_one_step(tmp_path, settled, failur
         return {data["entity_id"]: {"status": "confirmed"}}
 
     steps = suite(tmp_path, SAMPLE.replace("EXPECT", "steady"))
-    result = await run_one(FakeHA({"light.lamp": {}}, respond), steps, inventory(light_dimmable="light.lamp"))
+    result = await run_one(FakeHA({"light.lamp": {}}, respond), steps, profile(light_dimmable="light.lamp"))
     outcome, detail = outcomes(result)["ramps[light_dimmable]"]
     assert outcome is (Outcome.FAIL if failure else Outcome.PASS)
     assert failure in detail
@@ -884,7 +884,7 @@ async def test_a_steady_device_side_brightness_may_settle_one_rounded_step(tmp_p
         return {data["entity_id"]: {"status": "confirmed"}}
 
     ha = FakeHA({"light.lamp": {}}, respond)
-    result = await run_one(ha, suite(tmp_path, text), inventory(light_dimmable="light.lamp"))
+    result = await run_one(ha, suite(tmp_path, text), profile(light_dimmable="light.lamp"))
     outcome, detail = outcomes(result)["ramps[light_dimmable]"]
     assert outcome is (Outcome.FAIL if failure else Outcome.PASS)
     assert failure in detail
@@ -901,7 +901,7 @@ async def test_a_device_side_sample_reads_get_attributes_not_ha(tmp_path):
         return {data["entity_id"]: {"status": "confirmed"}}
 
     ha = FakeHA({"light.lamp": {}}, respond)
-    result = await run_one(ha, suite(tmp_path, text), inventory(light_dimmable="light.lamp"))
+    result = await run_one(ha, suite(tmp_path, text), profile(light_dimmable="light.lamp"))
     assert outcomes(result) == {"ramps[light_dimmable]": (Outcome.PASS, "")}
 
 
@@ -916,7 +916,7 @@ async def test_a_sample_reads_a_dotted_attribute(tmp_path):
         return {data["entity_id"]: {"status": "confirmed"}}
 
     ha = FakeHA({"light.lamp": {}}, respond)
-    result = await run_one(ha, suite(tmp_path, text), inventory(light_dimmable="light.lamp"))
+    result = await run_one(ha, suite(tmp_path, text), profile(light_dimmable="light.lamp"))
     assert outcomes(result) == {"ramps[light_dimmable]": (Outcome.PASS, "")}
 
 
@@ -951,7 +951,7 @@ async def test_expect_matches_read_compares_ha_with_a_live_read(tmp_path, read_x
     reads: list = []
     ha = FakeHA({"light.lamp": {}}, respond)
     steps = suite(tmp_path, MATCHES_READ.replace("WITHIN", str(within)))
-    result = await run_one(ha, steps, inventory(light_dimmable="light.lamp"))
+    result = await run_one(ha, steps, profile(light_dimmable="light.lamp"))
     outcome, detail = outcomes(result)["matches[light_dimmable]"]
     assert outcome is (Outcome.FAIL if failure else Outcome.PASS)
     assert failure in detail
@@ -989,7 +989,7 @@ async def test_a_case_waits_out_the_predictions_a_raise_left_on_its_lights(tmp_p
 
     result = await run(
         [suite(tmp_path, RAISES, "fake")],
-        inventory("fake", group="light.room", light_ct="light.a"),
+        profile("fake", group="light.room", light_ct="light.a"),
         GROUP_REGISTRY,
         group_ha(respond),
         tolerance=TOLERANCE,
@@ -1017,7 +1017,7 @@ def test_the_engine_knows_every_raise_and_lower_action():
 async def test_duration_before_any_call_fails_the_step(tmp_path):
     text = "action: turn_on_for\nrig_seconds: 5\ntests:\n  - name: early\n    roles: [switch_plug]\n    steps:\n"
     text += "      - wait: duration\n"
-    result = await run_one(FakeHA({"switch.plug": {}}), suite(tmp_path, text), inventory(switch_plug="switch.plug"))
+    result = await run_one(FakeHA({"switch.plug": {}}), suite(tmp_path, text), profile(switch_plug="switch.plug"))
     detail = outcomes(result)["early[switch_plug]"][1]
     assert detail == "step 1 (wait): duration is unset: no call has set a duration yet"
 
@@ -1031,15 +1031,16 @@ async def test_rig_facts_maps_entities_to_their_devices():
 async def test_a_full_pass_writes_a_record_and_a_failure_writes_none(tmp_path):
     ha = FakeHA({"switch.plug": {}}, timer_on)
     steps = suite(tmp_path, ON_THEN_OFF)
-    passed = await run_one(ha, steps, inventory(switch_plug="switch.plug"))
+    passed = await run_one(ha, steps, profile(switch_plug="switch.plug"))
     failed = RunResult([SuiteResult(steps, [], complete=True)])
-    assert await write_records(failed, ha, REGISTRY, tmp_path / "test-records", "2026-10-25", "test") == []
+    assert await write_records(failed, ha, REGISTRY, tmp_path / "test-records", "2026-10-25", "test", "lab") == []
 
-    [path] = await write_records(passed, ha, REGISTRY, tmp_path / "test-records", "2026-10-25", "rig run")
+    [path] = await write_records(passed, ha, REGISTRY, tmp_path / "test-records", "2026-10-25", "rig run", "lab")
     assert path == tmp_path / "test-records" / "shelly" / "turn_on_for.md"
     record = path.read_text()
     assert record.startswith("# Shelly · turn_on_for\n")
     assert "| Device | Mini (`S3`), firmware `2.0` |" in record
+    assert "| Profile | lab |" in record
     assert "| `on_then_off[switch_plug]` | `switch` (switch_plug) | pass |" in record
     assert "switch.plug" not in record
 
@@ -1058,7 +1059,7 @@ async def test_a_failed_restore_is_logged_and_keeps_the_result(tmp_path, caplog)
 
     ha = Unreachable({"light.lamp": {"state": "on"}})
     text = header("light_dimmable") + "      - set: {state: off}\n      - expect_state: {state: on}\n"
-    result = await run_one(ha, suite(tmp_path, text), inventory(light_dimmable="light.lamp"))
+    result = await run_one(ha, suite(tmp_path, text), profile(light_dimmable="light.lamp"))
     assert outcomes(result)["t[light_dimmable]"][0] is Outcome.FAIL
     assert "Could not restore light.lamp to on: device gone" in caplog.text
 
@@ -1067,14 +1068,14 @@ async def test_a_failed_restore_is_logged_and_keeps_the_result(tmp_path, caplog)
 async def test_a_range_bounds_a_drifting_attribute(tmp_path, brightness, outcome):
     ha = FakeHA({"light.lamp": {"state": "on", "attributes": {"brightness": brightness}}})
     text = header("light_dimmable") + "      - expect_state: {brightness: {min: 40, max: 60}}\n"
-    result = await run_one(ha, suite(tmp_path, text), inventory(light_dimmable="light.lamp"))
+    result = await run_one(ha, suite(tmp_path, text), profile(light_dimmable="light.lamp"))
     assert outcomes(result)["t[light_dimmable]"][0] is outcome
 
 
 async def test_set_activates_a_scene_without_waiting_on_its_state(tmp_path):
     ha = FakeHA({"scene.evening": {"state": "2026-10-25T10:00:00+00:00"}})
     text = header("scene") + "      - set: {state: on}\n"
-    result = await run_one(ha, suite(tmp_path, text), inventory(scene="scene.evening"))
+    result = await run_one(ha, suite(tmp_path, text), profile(scene="scene.evening"))
     assert outcomes(result)["t[scene]"] == (Outcome.PASS, "")
     assert ("scene", "turn_on", {"entity_id": "scene.evening"}) in ha.calls
 
@@ -1095,27 +1096,27 @@ async def test_set_waits_for_every_member_to_reach_the_brightness(tmp_path):
 
     ha.call_service = slow_member
     text = header("group") + "      - set: {state: on, brightness_pct: 20}\n      - expect_state: {brightness: 51}\n"
-    result = await run_one(ha, suite(tmp_path, text), inventory(group="light.room"))
+    result = await run_one(ha, suite(tmp_path, text), profile(group="light.room"))
     assert outcomes(result)["t[group]"] == (Outcome.PASS, "")
 
 
 async def test_admin_integrations_run_on_the_admin_connection(tmp_path):
     ha, admin = FakeHA({"switch.plug": {}}), FakeHA({"switch.plug": {}}, timer_on)
-    await run_one(ha, suite(tmp_path, ON_THEN_OFF, "zha"), inventory("zha", switch_plug="switch.plug"), admin=admin)
+    await run_one(ha, suite(tmp_path, ON_THEN_OFF, "zha"), profile("zha", switch_plug="switch.plug"), admin=admin)
     assert not ha.calls
     assert any(domain == "device_side" for domain, _, _ in admin.calls)
 
 
 async def test_admin_integrations_skip_without_an_admin_connection(tmp_path):
     ha = FakeHA({"switch.plug": {}}, timer_on)
-    result = await run_one(ha, suite(tmp_path, ON_THEN_OFF, "zha"), inventory("zha", switch_plug="switch.plug"))
+    result = await run_one(ha, suite(tmp_path, ON_THEN_OFF, "zha"), profile("zha", switch_plug="switch.plug"))
     assert result.suites == []
     assert not ha.calls
 
 
-def powered_inventory() -> Inventory:
+def powered_inventory() -> Profile:
     """A bulb that draws power through a plug, both on ZHA."""
-    return Inventory(
+    return Profile(
         {
             "zha": [
                 RigEntity("light.bulb", frozenset({"light_dimmable"}), "switch.plug"),
@@ -1236,7 +1237,7 @@ def native_control(turns_it_on: bool) -> Callable:
 async def test_z2m_option_steps_set_and_check_a_device_option(tmp_path):
     ha = Z2MHA(native_control(turns_it_on=True))
     steps = suite(tmp_path, Z2M_COLOR, "zigbee2mqtt")
-    result = await run_one(ha, steps, inventory("zigbee2mqtt", light_color="light.bulb"), admin=ha)
+    result = await run_one(ha, steps, profile("zigbee2mqtt", light_color="light.bulb"), admin=ha)
     assert outcomes(result) == {"color_then_off[light_color]": (Outcome.PASS, "")}
     assert ("z2m", "options", {"id": "0x0017880100000001", "hue_native_control": False}) in ha.calls
 
@@ -1244,7 +1245,7 @@ async def test_z2m_option_steps_set_and_check_a_device_option(tmp_path):
 async def test_expect_z2m_option_fails_when_the_option_stays_off(tmp_path):
     ha = Z2MHA(native_control(turns_it_on=False))
     steps = suite(tmp_path, Z2M_COLOR, "zigbee2mqtt")
-    result = await run_one(ha, steps, inventory("zigbee2mqtt", light_color="light.bulb"), admin=ha)
+    result = await run_one(ha, steps, profile("zigbee2mqtt", light_color="light.bulb"), admin=ha)
     outcome, detail = outcomes(result)["color_then_off[light_color]"]
     assert outcome is Outcome.FAIL
     assert "Zigbee2MQTT option hue_native_control is False, expected True" in detail
@@ -1256,7 +1257,7 @@ async def test_z2m_option_steps_do_nothing_in_another_integrations_suite(tmp_pat
         return {} if action == "get_attributes" else timer_on(ha, action, data)
 
     ha = FakeHA({"light.bulb": {}}, respond)
-    result = await run_one(ha, suite(tmp_path, Z2M_COLOR, "zha"), inventory("zha", light_color="light.bulb"), admin=ha)
+    result = await run_one(ha, suite(tmp_path, Z2M_COLOR, "zha"), profile("zha", light_color="light.bulb"), admin=ha)
     assert outcomes(result) == {"color_then_off[light_color]": (Outcome.PASS, "")}
 
 
@@ -1268,7 +1269,7 @@ async def test_a_light_without_a_z2m_device_fails_the_step(tmp_path):
 
     ha.command = no_device
     steps = suite(tmp_path, Z2M_COLOR, "zigbee2mqtt")
-    result = await run_one(ha, steps, inventory("zigbee2mqtt", light_color="light.bulb"), admin=ha)
+    result = await run_one(ha, steps, profile("zigbee2mqtt", light_color="light.bulb"), admin=ha)
     assert "light.bulb has no Zigbee2MQTT device" in outcomes(result)["color_then_off[light_color]"][1]
 
 
@@ -1306,7 +1307,7 @@ async def test_each_suite_runs_with_its_options_and_the_rig_gets_its_own_back(tm
 
     result = await run(
         [plain, on],
-        inventory("fake", light_ct="light.a"),
+        profile("fake", light_ct="light.a"),
         OPTION_REGISTRY,
         admin,
         admin=admin,
@@ -1329,7 +1330,7 @@ async def test_options_already_in_force_are_not_saved(tmp_path, monkeypatch):
 
     result = await run(
         [suite(tmp_path, option_file("opt"), "fake")],
-        inventory("fake", light_ct="light.a"),
+        profile("fake", light_ct="light.a"),
         OPTION_REGISTRY,
         admin,
         admin=admin,
@@ -1363,7 +1364,7 @@ async def test_the_journal_holds_each_change_before_it_is_made_and_is_gone_after
     admin.rest, admin.call_service = save, light
     result = await run(
         [suite(tmp_path, RESTORED_MIDWAY, "fake")],
-        inventory("fake", light_ct="light.a"),
+        profile("fake", light_ct="light.a"),
         OPTION_REGISTRY,
         admin,
         admin=admin,
@@ -1394,7 +1395,7 @@ async def test_a_run_cancelled_mid_case_puts_back_and_clears_its_journal(tmp_pat
     task = asyncio.create_task(
         run(
             [suite(tmp_path, WAITING_MIDWAY, "fake")],
-            inventory("fake", light_ct="light.a"),
+            profile("fake", light_ct="light.a"),
             OPTION_REGISTRY,
             admin,
             admin=admin,
@@ -1434,7 +1435,7 @@ async def test_a_suite_whose_adapter_has_options_needs_the_admin_token(tmp_path)
     out: list[str] = []
     result = await run(
         [suite(tmp_path, option_file(), "fake")],
-        inventory("fake", light_ct="light.a"),
+        profile("fake", light_ct="light.a"),
         OPTION_REGISTRY,
         FakeHA({"light.a": {}}),
         tolerance=TOLERANCE,
@@ -1449,7 +1450,7 @@ async def test_an_option_outside_the_adapters_scope_is_a_schema_error(tmp_path):
         await run_one(
             FakeAdmin({"light.a": {}}),
             suite(tmp_path, option_file("nope"), "fake"),
-            inventory("fake", light_ct="light.a"),
+            profile("fake", light_ct="light.a"),
             registry=OPTION_REGISTRY,
             admin=None,
         )
@@ -1460,7 +1461,7 @@ async def test_an_option_file_skips_an_adapter_without_the_option(tmp_path):
     out: list[str] = []
     result = await run(
         [suite(tmp_path, option_file("predicted_state"), "zigbee2mqtt")],
-        inventory("zigbee2mqtt", light_ct="light.a"),
+        profile("zigbee2mqtt", light_ct="light.a"),
         REGISTRY,
         FakeAdmin({"light.a": {}}),
         tolerance=TOLERANCE,
@@ -1482,7 +1483,9 @@ async def test_a_record_with_options_on_is_named_for_them(tmp_path):
     case = CaseResult("t[light_ct]", "light_ct", "light", Outcome.PASS)
     result = RunResult([SuiteResult(steps, [case], complete=True)])
 
-    [path] = await write_records(result, FakeHA({}), REGISTRY, tmp_path / "test-records", "2026-10-27", "rig run")
+    [path] = await write_records(
+        result, FakeHA({}), REGISTRY, tmp_path / "test-records", "2026-10-27", "rig run", "lab"
+    )
 
     assert path == tmp_path / "test-records" / "hue" / "raise_brightness-predicted_state.md"
     assert path.read_text().startswith("# Hue · raise_brightness-predicted_state\n")
@@ -1532,8 +1535,8 @@ class BridgeHA(FakeHA):
         return {"platform": self.platform, "unique_id": self.unique_id or UNIQUE_IDS[entity_id]}
 
 
-def bridge_inventory() -> Inventory:
-    return inventory("hue", light_dimmable="light.bulb", group="light.room", scene="scene.dusk")
+def bridge_inventory() -> Profile:
+    return profile("hue", light_dimmable="light.bulb", group="light.room", scene="scene.dusk")
 
 
 async def run_bridge(tmp_path, bridge, ha=None, text=BRIDGE_STEPS, integration="hue") -> dict:
@@ -1544,7 +1547,7 @@ async def run_bridge(tmp_path, bridge, ha=None, text=BRIDGE_STEPS, integration="
         steps,
         bridge_inventory()
         if integration == "hue"
-        else inventory(integration, light_dimmable="light.bulb", group="light.room", scene="scene.dusk"),
+        else profile(integration, light_dimmable="light.bulb", group="light.room", scene="scene.dusk"),
         bridge=bridge,
     )
     return outcomes(result)
@@ -1654,7 +1657,7 @@ def test_a_bridge_step_makes_its_target_role_needed(tmp_path):
         ("{put: on}", "put takes the body"),
         ("{recall: false}", "recall takes true"),
         ("{recall: true, state: on}", "unknown key"),
-        ("{target: nowhere, recall: true}", "not an inventory role"),
+        ("{target: nowhere, recall: true}", "not a profile role"),
     ],
 )
 def test_a_bad_bridge_step_does_not_parse(tmp_path, args, message):

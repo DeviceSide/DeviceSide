@@ -135,7 +135,9 @@ calls are CLIP v2 only: Device Side's Hue integration doesn't support v1.
     in.
   - Abort with a clear message if the bulb hasn't joined in 120 s. A person can then reset it with the Hue app's
     Bluetooth reset.
-- **Command**, if every move works: `scripts/rig.py --move light_color --to <integration>`.
+- **Command**: superseded by slice 15, the lab ([plan](2026-11-01-lab.md)): one run moves the lab's bulbs round
+  the cycle itself, so there is no `--move`, and no hand-edited inventory or hand-made temporary group.
+  As first planned, if every move works: `scripts/rig.py --move light_color --to <integration>`.
   - It finds the bulb by IEEE, which is kept in the gitignored `inventory.yaml` or `.env.rig`, and the Hue serial
     goes there too.
   - It waits for the device in HA's registry and gives the entity a stable entity ID.

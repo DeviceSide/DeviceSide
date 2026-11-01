@@ -6,7 +6,7 @@ import copy
 from collections.abc import Callable
 from types import SimpleNamespace
 
-from tests.rig.inventory import Inventory, RigEntity
+from tests.rig.profile import Profile, RigEntity
 
 PENDING: list[asyncio.TimerHandle | asyncio.Task] = []
 
@@ -63,9 +63,9 @@ class FakeHA:
         }[payload["type"]]
 
 
-def inventory(integration: str = "shelly", **roles: str) -> Inventory:
+def profile(integration: str = "shelly", pause: tuple[str, ...] = (), **roles: str) -> Profile:
     entities = [RigEntity(entity_id, frozenset({role})) for role, entity_id in roles.items()]
-    return Inventory({integration: entities})
+    return Profile({integration: entities}, pause, name="house")
 
 
 OPTION_REGISTRY = SimpleNamespace(

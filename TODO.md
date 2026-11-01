@@ -48,11 +48,11 @@ v0.1.0 is the next release.
 ## To go, in order
 
 Slice 13 detail lives in [`2026-10-27-zigbee-parity-timer-state.md`](docs/plans/2026-10-27-zigbee-parity-timer-state.md).
-The A60 (the rig's only color bulb) starts on Z2M and moves twice: to the Hue bridge, then to ZHA. Each
-integration's code freezes before its A60 run.
+The A60 (the rig's only color bulb) moves into the lab (15), whose runs move it Hue → ZHA → Z2M and home, so the
+A60 runs are lab runs (`--profile lab`). Each integration's code freezes before its A60 run.
 
 Three lanes run in parallel, each in order: Z2M (`Transition` PR, 13i, 13j, 14, its A60 run), ZHA (13f),
-and Hue (from the A60 move on). The rig lock and the bulb moves are shared.
+and Hue (7c2, its A60 run). The lab lands before the first A60 run. The rig lock is shared.
 
 - [x] **`Transition` to core**: refactor PR moving `hue/transition_cache.py` into `core/`. Unblocks 13i and 13f.
 - [x] **13i** Z2M `move`/`stop`, with the hue/saturation stop probe on the A60.
@@ -69,20 +69,26 @@ and Hue (from the A60 move on). The rig lock and the bulb moves are shared.
   record is in.
 - [x] **14** Z2M color modes fixed for HA, on by default, and 13i's xy write-back backed out
   ([`2026-10-28-z2m-color-modes.md`](docs/plans/2026-10-28-z2m-color-modes.md)). Counts toward the Z2M freeze.
-- [ ] **Z2M A60 run** (13k step 1): full Z2M suite, bulb in place, with the `group_color` cases on a temporary Z2M
-  group holding only the A60, created before the run and removed before the bulb moves. Attended for its four
+- [ ] **15** The lab ([`2026-11-01-lab.md`](docs/plans/2026-11-01-lab.md)): three Hue bulbs in the maintainer's room,
+  the A60 among them, that a run moves Hue → ZHA → Z2M → Hue, with Hue as their home network.
+  - [x] PR 1: profiles (`tests/rig/profiles/<name>.yaml`, `--profile`, `pause:` replacing `RIG_PAUSE`), #147.
+  - [ ] PR 2: network clients (Hue CLIP v2 reads and deletes, ZHA and Z2M join and remove, registry renames).
+  - [ ] PR 3: roaming (moves, fixed entity IDs, Hue home saved and restored, `--recover` moves the bulbs home).
+  - [ ] PR 4: rig-made `ds-rig-*` groups, zones and scenes on each visit.
+  - [ ] PR 5: lab bring-up (attended): the A60 moves into the lab, `profiles/lab.yaml`, a `--roam-check` round trip
+    that probes the two new bulbs.
+- [ ] **Z2M A60 run** (13k step 1): full Z2M suite on the lab, with the `group_color` cases on its rig-made group
+  holding only the A60. Attended for its four
   observed cases (9d ledger in the [plan](docs/plans/2026-10-30-rig-coverage-sweep.md)). Clears `experimental` on the
   Z2M adapters it proves.
-- [ ] **Move the A60 to the Hue bridge.**
 - [ ] **7c2** Hue `raise_saturation`/`lower_saturation`, built against the A60
   ([`2026-10-27-hue-move-color.md`](docs/plans/2026-10-27-hue-move-color.md)).
-- [ ] **Hue A60 run** (13k step 2): `set_attributes` color (rgb, hs and xy) and gamut clamp, the `get_attributes`
+- [ ] **Hue A60 run** (13k step 2), on the lab: `set_attributes` color (rgb, hs and xy) and gamut clamp, the `get_attributes`
   color read, 7c saturation, with no `light_color` skips. Attended for `sets_color_while_off`. Hue code freezes. Clears `experimental` on the Hue adapters it proves.
 - [ ] **13f** ZHA raise, lower and `stop`, after the `Transition` PR. ZHA code freezes. Paused on
   `wt/zha-move-stop`: its move adapter splits into the raise and lower actions when it resumes, and its edit to
   `_CaseRun.reading` (group means) is kept alongside this branch's when it merges.
-- [ ] **Move the A60 to ZHA.**
-- [ ] **ZHA A60 run** (13k step 3): ZHA color suites, `set_attributes` hs and xy included. Attended for
+- [ ] **ZHA A60 run** (13k step 3), on the lab: ZHA color suites, `set_attributes` hs and xy included. Attended for
   `sets_color_while_off`. Clears `experimental` on the ZHA adapters it proves.
 - [ ] **9d** Rig coverage sweep for the non-color scope
   ([`2026-10-30-rig-coverage-sweep.md`](docs/plans/2026-10-30-rig-coverage-sweep.md)). 13k covers the color part.
@@ -93,24 +99,3 @@ and Hue (from the A60 move on). The rig lock and the bulb moves are shared.
 ## After v0.1.0
 
 - **9b** Remote tester flow, once an adapter needs hardware the rig lacks.
-
-## Candidates
-
-- **15** Lab, if the 9d A0 probe shows scripted A60 moves and self-closing join windows are reliable
-  ([plan](docs/plans/2026-10-30-rig-coverage-sweep.md)). [Probe](docs/plans/2026-10-31-a60-move-probe.md): all
-  three moves scripted and join windows bounded. The lab is three lamps in the maintainer's own room,
-  which no one else uses, near the bridge and the coordinators. They hold a Hue white ambiance bulb, a Hue color
-  bulb and a Hue White bulb. The rig moves them between Z2M, ZHA and Hue. Rig-made groups, zones and scenes are
-  named `ds-rig-*` and removed after each suite, and `--recover` removes them after a crash. Tests can then run
-  while the rest of the house is in use, with no test fixtures left in it.
-  - **Home network is Hue.** Before a bulb's first move, save its room membership and its scene actions. After the
-    suite, move it back and restore both against the bulb's new light ID.
-  - **Fixed HA entity IDs**: rename after every join, so automations and dashboards survive.
-  - **The room's automations** go in `RIG_PAUSE`. Optionally, an empty-room check runs before an unattended run.
-  - **No plugs on the lamps.** The lamps' inline switches stay on, and the rig's availability check stops a run on
-    a lamp that's switched off. Power-loss cases are out of scope. Switch tests stay on the Shelly relays and the
-    Matter plug.
-  - The house run before each release adds the mesh, a second brand (the Sengleds) and mixed groups. Test records say
-    lab or house.
-  - Hue `set_scene` §5.4-5.8 scene kinds come within reach.
-  - Plan in /plan first.

@@ -43,6 +43,9 @@ requires it.
 - **Test record**: the evidence that an adapter works on real hardware, one per adapter in
   `docs/test-records/<integration>/<action>*.md`, from a rig run or a tester report. Clearing `experimental`
   cites one. Formerly "bench record" (`docs/bench/`).
+- **Profile**: one test setup on the rig's HA, `tests/rig/profiles/<name>.yaml` (gitignored): the entities a run may
+  move, by integration and role, and what it pauses. `.env.rig` holds the HA instance's settings. Profiles: `lab`
+  (the maintainer's room) and `house`. Replaced the single `inventory.yaml`.
 
 ## Decisions from the interview (2026-10-23)
 
@@ -230,12 +233,12 @@ requires it.
      scale verification across many adapters. Tests are YAML step files run by a small async
      engine (no pytest), and talk to HA over its WebSocket/REST API with a
      long-lived token: call `device_side.*` actions, assert on service responses and on
-     state changes (e.g. the light is off N seconds after `turn_on_for`). A rig inventory file
-     (gitignored, `tests/rig/inventory.yaml`) maps each integration to the household entities to
+     state changes (e.g. the light is off N seconds after `turn_on_for`). A rig profile
+     (gitignored, `tests/rig/profiles/<name>.yaml`) maps each integration to the household entities to
      use; tests restore prior state afterwards. A deploy script installs the pushed branch's
      `custom_components/device_side` through the maintainer's deploy tooling's `the maintainer's deploy tooling` (`the deploy sync command`; the agent key
      cannot rsync) and restarts HA (`the deploy restart command`) before the run.
-     **Human approval gate:** the rig runner (`scripts/rig.py`) prints the inventory, the
+     **Human approval gate:** the rig runner (`scripts/rig.py`) prints the profile, the
      adapters to be exercised, the estimated duration and whether a restart is needed, then
      requires an interactive y/N (and a `DEVICE_SIDE_RIG_APPROVED=1` env var for CI-style
      invocation). Both the deploy+restart and the test run sit behind that gate. The devices
@@ -335,7 +338,7 @@ custom_components/device_side/
 scripts/
   check_release.py       coverage bar for CI, and no experimental adapter in a release
   deploy.sh              the deploy sync command <branch>, then the deploy restart command (rig only)
-  rig.py                 approval gate (inventory, adapters, duration, restart?) -> y/N -> deploy -> step files
+  rig.py                 approval gate (profile, adapters, duration, restart?) -> y/N -> deploy -> step files
 docs/
   device_side_handoff-2026-10-23.md          existing
   plans/2026-10-23-device-side-repo-plan.md  this plan, saved in slice 0
@@ -347,8 +350,8 @@ tests/
   fakes/fake_integration/ INTEGRATION "fake" + scripted adapters for dispatcher tests
   fixtures/{z2m,zha,matter,shelly,hue,groups}.py   fabricate registry entries + boundary mocks
   core/   actions/   integrations/<i>/               one module per adapter; see Testing
-  rig/    client.py (HA WS/REST client), inventory.py, engine.py (step runner, snapshot/restore, test record writer),
-          inventory.yaml (gitignored), inventory.example.yaml, steps/<action>.yaml
+  rig/    client.py (HA WS/REST client), profile.py, engine.py (step runner, snapshot/restore, test record writer),
+          profiles/<name>.yaml (gitignored), profile.example.yaml, steps/<action>.yaml
 ```
 
 Repo root: README.md (hand-written feature table), hacs.json, pyproject.toml,
@@ -549,13 +552,13 @@ actions_setup) use only `tests/fakes/fake_integration`.
 
 ### Rig (approval-gated, real HA)
 
-`scripts/rig.py` loads `tests/rig/inventory.yaml` (gitignored; `inventory.example.yaml` committed)
-mapping each integration to household entities, prints inventory, the adapters about to run, estimated
+`scripts/rig.py` loads the `--profile` (`tests/rig/profiles/<name>.yaml`, gitignored; `tests/rig/profile.example.yaml` committed)
+mapping each integration to household entities, prints the profile, the adapters about to run, estimated
 duration and whether a restart is needed, then requires interactive y/N (or
 `DEVICE_SIDE_RIG_APPROVED=1`). `scripts/rig.py` flow:
 
-1. Read-only preflight: load inventory and `.env.rig` (`HA_URL`, `HA_TOKEN` for a non-admin user,
-   `RIG_SYNC_CMD`, `RIG_STATUS_CMD`, `RIG_RESTART_CMD`); `AdapterRegistry.discover()` (no hass) intersected with inventory
+1. Read-only preflight: load the profile and `.env.rig` (`HA_URL`, `HA_TOKEN` for a non-admin user,
+   `RIG_SYNC_CMD`, `RIG_STATUS_CMD`, `RIG_RESTART_CMD`); `AdapterRegistry.discover()` (no hass) intersected with the profile's
    integrations -> one line per adapter (`shelly / turn_on_for -> light.office_strip (beta)`) then one per
    test case with its entity; sum each step file's `rig_seconds` for the estimate; compare `HEAD:custom_components/device_side` with
    `the deploy status command` to decide whether a deploy+restart is needed, and refuse a deploy unless
@@ -569,7 +572,7 @@ duration and whether a restart is needed, then requires interactive y/N (or
    `--integration <key>`, `--action <action>` (its step files, whole, so they still write records),
    `-k <test name substring>`, `--unattended` (skips `observe` steps).
 
-Step files (`tests/rig/steps/<action>.yaml`, one per action) run against every inventory integration
+Step files (`tests/rig/steps/<action>.yaml`, one per action) run against every integration in the profile
 that has the adapter; the registry supplies the expected status (`confirmable` -> `confirmed`, else
 `sent`), the timing tolerance (`TOLERANCE_S`: Zigbee/Matter 3 s, Shelly/Hue 2 s) and the fields in scope.
 `only: [<integration>]` is the one per-test escape hatch. Steps: `set`, `call`, `expect_response`,
@@ -588,12 +591,12 @@ hue_dimmer's release checklist (§2-5) became the Hue step files.
 When every test of an adapter passes (no `-k`, nothing failed), the engine writes its test record;
 Jason reviews and commits the diff. A test with an unobserved `observe` step proves no capability or field.
 
-`.gitignore`: `tests/rig/inventory.yaml`, `.env.rig` (example at `tests/rig/env.example`).
+`.gitignore`: `tests/rig/profiles/`, `.env.rig` (example at `tests/rig/env.example`).
 The maintainer's rig has private setup docs. `docs/contributing/testing.md` covers manual testing
 on any Home Assistant: install, first-load check, and how to file a test report.
-Inventory format (per integration -> entities with role tags `light_dimmable`, `light_ct`,
-`light_color`, `switch_plug`, `group`, `scene`) is in `tests/rig/env.example` and
-`tests/rig/inventory.example.yaml`. **Claude asks before every rig run; the devices are
+Profile format (per integration -> entities with role tags `light_dimmable`, `light_ct`,
+`light_color`, `switch_plug`, `group`, `scene`, plus `pause:`) is in `tests/rig/profile.example.yaml`, and the
+HA instance's settings in `tests/rig/env.example`. **Claude asks before every rig run; the devices are
 in-use household lights.** Rig passes are recorded in `docs/test-records/<integration>/<action>.md`
 (date, HA version, device model and firmware from `config/device_registry/list`, per-test table,
 source: rig run or test-report issue).
@@ -621,6 +624,7 @@ What is done and what is left: [`TODO.md`](../../TODO.md).
 | 9f | Core-aligned failure behavior | Plan: `docs/plans/2026-10-27-core-failure-behavior.md`. move the dispatcher's raise rule from "raise when every target failed" to core's, per `docs/action-behavior.md`: unavailable or missing targets skipped with core's warning; a field a target can't take dropped; a target the caller named that the action can never support raises (as `ServiceNotSupported`); a device or bridge error raises; a query that reads nothing raises. Decide whether command actions keep their optional status response, which core's commands don't have, and whether `nothing_to_set` becomes a warning (a hue_dimmer call passing only zeros did nothing). Every action's tests and the rig's `expect_error` steps follow. |
 | 13 | Zigbee parity and timer state | Plan: `docs/plans/2026-10-27-zigbee-parity-timer-state.md` (13a to 13k). `get_attributes` takes switches and reports a running timer (Shelly, Matter, ZHA, Z2M where readable); ZHA and Z2M gain `get_attributes`, `move`/`stop` (hue cycling included) and `set_attributes` while off; after a probe spike, by integration, with one Hue A60 rig run per network after that integration's code freezes: Z2M first, where the bulb already is, then the Hue bridge, then ZHA. Needs 7c and 9f first. |
 | 14 | Z2M color modes fixed for HA | Plan: `docs/plans/2026-10-28-z2m-color-modes.md`. Z2M announces a full-color light to HA with one color mode, and HA drops every state in the other. device_side sets each qualifying light's and group's `homeassistant.light.supported_color_modes` override in Z2M (on by default, opt-out in options), so HA accepts both. Lands before the Z2M A60 run, which proves it, and backs out 13i's xy write-back. |
+| 15 | The lab | Plan: `docs/plans/2026-11-01-lab.md` (five PRs). Rig profiles (`--profile`, `pause:` in the profile); three Hue bulbs in the maintainer's room, the A60 among them, roam Hue → ZHA → Z2M → Hue within one run, with fixed entity IDs, Hue home restored after, rig-made `ds-rig-*` groups, and `--recover` moving them home. Lands before the A60 runs, which become lab runs. |
 | 12 | `v0.1.0` ("v1" names the scope, not the version) | feature complete for this plan; scope limited to what rig runs (and any tester reports) cover; README feature table current; release checklist adapted from hue_dimmer; the `predicted_state` default reviewed (flip it to off if flaky), on the regression issues and rig runs since it landed. |
 | 9b | Remote tester flow (after `v0.1.0`) | **plan in /plan first**; starts when an adapter needs hardware the rig lacks (a reported bug on someone else's device, a community integration such as Z-Wave JS). Standalone tester runner: one file (`uv run`, PEP 723 inline metadata, aiohttp WebSocket + PyYAML), talks to HA_URL + long-lived token, assumes integration installed via HACS or by hand (no deploy), runs 9a's YAML step files with a confirmation gate on every run; `tests/rig/client.py` moved to a location both the runner and `scripts/rig.py` import; runner prints a prefilled `test-report.yml` issue body; RC-only umbrella Repairs issue with multi-select flow and prefilled per-test links; test records filled from tester reports. |
 

@@ -31,8 +31,25 @@ planned for a future release.
 ## Rig tests
 
 Rig tests are YAML step files in `tests/rig/steps/`, one per action. `scripts/rig.py` runs each file against
-every integration in your `tests/rig/inventory.yaml` that has an adapter for the action, after a y/N gate:
-the devices change state, so nothing moves until you say yes. `--dry-run` prints the plan and stops.
+every integration in the profile that has an adapter for the action, after a y/N gate: the devices change state, so
+nothing moves until you say yes. `--dry-run` prints the plan and stops.
+
+### Profiles
+
+A profile is one test setup on the Home Assistant `.env.rig` connects to: `tests/rig/profiles/<name>.yaml`,
+gitignored, copied from `tests/rig/profile.example.yaml`. It lists the entities the rig may move, by integration
+and role, and under `pause:` the automations and switches turned off for the run and back on after it, for whatever
+would fight the tests on those entities (motion lighting, an Adaptive Lighting instance's switch). Only those that
+were on are turned back on. `.env.rig` keeps what belongs to the Home Assistant instance: its address, tokens,
+deploy commands and Hue bridge.
+
+`--profile <name>` picks one, and can be left out while there is only one. The plan names the profile, and so do
+the journal and every test record (a `Profile` row). Records from different profiles of the same suite overwrite
+each other; the commit diff shows which one ran last. A record is public, so name a profile for its setup (`lab`,
+`house`), never for a person or place.
+
+The household check (`scripts/check_private.py`) reads every profile's entity IDs, members, supplies and pause
+list, so none of them reach a commit.
 
 Ctrl-C, SIGTERM or SIGHUP puts the devices back before the run exits; a second one leaves them. If a run dies before it can, the next run
 puts back what it left before its gate; `--recover` does only that.
@@ -63,7 +80,7 @@ action: turn_on_for        # the device_side action every test in the file calls
 rig_seconds: 25            # the gate's duration estimate
 tests:
   - name: on_then_off
-    roles: [switch_plug, light_onoff]   # one run per role the inventory names
+    roles: [switch_plug, light_onoff]   # one run per role the profile names
     steps:
       - set: {state: off}
       - call: {duration: 6}
@@ -90,11 +107,11 @@ tests:
 | `expect_z2m_option` | Expects the target's Zigbee2MQTT device options to hold the given values. Does nothing in another integration's suite. |
 
 Any step takes `target: <role>` to act on another role the test lists; a `group` case that targets a light role
-is skipped where the inventory lists the group's `members` and that light isn't one. Durations accept numbers, `duration`
+is skipped where the profile lists the group's `members` and that light isn't one. Durations accept numbers, `duration`
 (the last call's), `tol` (the integration's timing tolerance) and `+ - *`. `only: [<integration>]` limits a
 test to some integrations; when those pile up, split the file.
 
-The roles are listed in `tests/rig/inventory.example.yaml`. `group_color` is a native group whose members all take
+The roles are listed in `tests/rig/profile.example.yaml`. `group_color` is a native group whose members all take
 color: color moves groupcast only to a group like that, so it runs the color cases a `group` can't. Everything this
 page says of a `group` holds for it too.
 
@@ -102,7 +119,7 @@ An adapter with options runs each file for its action with them pinned through D
 `options: [<name>]` at the top of a file turns those on, and every other option in the adapter's scope runs off.
 Its record is `<action>-<name>.md`, with an `Options` row. The rig's own options are put back when the run ends.
 
-An integration in `SETTLE_S` (`tests/rig/inventory.py`) predicts a light's brightness for a while after a
+An integration in `SETTLE_S` (`tests/rig/profile.py`) predicts a light's brightness for a while after a
 raise, lower or `stop`, so a later test on that light waits until it reads the device again.
 
 ### Observed tests

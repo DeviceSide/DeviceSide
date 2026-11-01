@@ -1,6 +1,6 @@
 """Runs the rig's YAML step files against the live HA and renders test records from the results.
 
-One file per action (`steps/<action>.yaml`) runs on every inventory integration that has that action's adapter; a
+One file per action (`steps/<action>.yaml`) runs on every integration in the profile that has that action's adapter; a
 file with `options` (`steps/<action>-<option>.yaml`) runs it again with those device_side options on. The registry
 supplies what differs per integration: the expected status, the tolerance, and the options in scope.
 No pytest here: scripts/rig.py calls run(), and a tester's one-file runner can import this module unchanged.
@@ -22,8 +22,8 @@ import yaml
 
 from .bridge import BridgeError, HueBridge
 from .client import HAClient, HAError
-from .inventory import GROUP_ROLES, RIG_DIR, ROLES, SETTLE_S, TOLERANCE_S, Inventory
 from .journal import Journal
+from .profile import GROUP_ROLES, RIG_DIR, ROLES, SETTLE_S, TOLERANCE_S, Profile
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -215,7 +215,7 @@ def _mapping(args: Any, required: Iterable[str] = (), allowed: Iterable[str] | N
     if allowed is not None and (unknown := sorted(set(args) - set(allowed) - set(required))):
         raise ValueError(f"unknown key(s) {', '.join(unknown)}")
     if (target := args.get("target")) is not None and target not in ROLES:
-        raise ValueError(f"target {target!r} is not an inventory role")
+        raise ValueError(f"target {target!r} is not a profile role")
     return dict(args)
 
 
@@ -504,7 +504,7 @@ class Case:
     entities: dict[str, str]
     skip: str | None = None
     observed: bool = False
-    members: tuple[str, ...] = ()  # the inventory's members for the group role, if it lists them
+    members: tuple[str, ...] = ()  # the profile's members for the group role, if it lists them
 
     @property
     def id(self) -> str:
@@ -518,7 +518,7 @@ class Case:
         return replace(self, observed=not self.observed).id
 
 
-def cases(suite: Suite, inventory: Inventory, keyword: str | None = None) -> list[Case]:
+def cases(suite: Suite, profile: Profile, keyword: str | None = None) -> list[Case]:
     """The suite's cases in file order, a test's automated case before its observed one; `keyword` keeps only case
     ids containing it."""
     result = []
@@ -531,13 +531,13 @@ def cases(suite: Suite, inventory: Inventory, keyword: str | None = None) -> lis
                 if keyword and keyword not in case.id:
                     continue
                 needed = test.roles_needed(role)
-                entities = {name: inventory.entity(suite.integration, name) for name in needed}
+                entities = {name: profile.entity(suite.integration, name) for name in needed}
                 if missing := [name for name, entity_id in entities.items() if entity_id is None]:
-                    case = Case(suite, test, role, {}, f"no {missing[0]} entity in inventory", observed)
+                    case = Case(suite, test, role, {}, f"no {missing[0]} entity in the profile", observed)
                 else:
                     group = next((name for name in entities if name in GROUP_ROLES), None)
-                    members = inventory.members(suite.integration, entities[group]) if group else ()
-                    # A group case that also targets a light means one of the group's: where the inventory lists them.
+                    members = profile.members(suite.integration, entities[group]) if group else ()
+                    # A group case that also targets a light means one of the group's: where the profile lists them.
                     lights = [name for name in entities if name.startswith("light_")]
                     outside = [name for name in lights if members and entities[name] not in members]
                     skip = f"{outside[0]} is not one of the group's members" if outside else None
@@ -667,7 +667,7 @@ class Snapshot:
     """
 
     ha: HAClient
-    power: dict[str, str] = field(default_factory=dict)  # Inventory.power(): entity -> its supply
+    power: dict[str, str] = field(default_factory=dict)  # Profile.power(): entity -> its supply
     device_side: bool = False
     taken: dict[str, dict | None] = field(default_factory=dict)
     stored: dict[str, dict] = field(default_factory=dict)
@@ -871,7 +871,7 @@ class _CaseRun:
         return any(self.case.entities.get(role) == entity_id for role in GROUP_ROLES)
 
     async def members(self, entity_id: str) -> list[str]:
-        """A group's member lights, from its `entity_id` attribute, else the inventory's `members:` (a Z2M group light
+        """A group's member lights, from its `entity_id` attribute, else the profile's `members:` (a Z2M group light
         has no such attribute); any other entity is its own one member."""
         if not self.is_group(entity_id):
             return [entity_id]
@@ -881,7 +881,7 @@ class _CaseRun:
             return members
         if self.case.members:
             return list(self.case.members)
-        raise StepFailure(f"{entity_id} lists no members in its entity_id attribute, and the inventory gives none")
+        raise StepFailure(f"{entity_id} lists no members in its entity_id attribute, and the profile gives none")
 
     async def touch(self, entity_id: str) -> None:
         """Snapshot the entity, and a group's members after it, so a restore puts each member back last."""
@@ -1269,7 +1269,7 @@ class _CaseRun:
 
 async def run(
     suites: list[Suite],
-    inventory: Inventory,
+    profile: Profile,
     registry: Any,
     ha: HAClient,
     *,
@@ -1303,7 +1303,7 @@ async def run(
         if client is None or (adapter.scope.options and admin is None):
             out(f"{suite.integration} / {suite.action}: needs HA_ADMIN_TOKEN, skipped")
             continue
-        planned.append((suite, adapter, client, cases(suite, inventory, keyword)))
+        planned.append((suite, adapter, client, cases(suite, profile, keyword)))
     options = {
         id(suite): {name: name in suite.file.options for name in adapter.scope.options}
         for suite, adapter, *_ in planned
@@ -1312,7 +1312,7 @@ async def run(
         registry,
         tolerance,
         settle,
-        inventory.power(),
+        profile.power(),
         ask,
         out,
         options,
@@ -1436,7 +1436,7 @@ def table(suite_result: SuiteResult, details: bool = False) -> list[str]:
     """The pass/fail table, by role and domain: a record is public, so it never names a household entity."""
     lines = ["| Test | Target | Result |", "|---|---|---|"]
     for case in suite_result.cases:
-        target = f"`{case.domain}` ({case.role})" if case.domain else f"{case.role}: none in inventory"
+        target = f"`{case.domain}` ({case.role})" if case.domain else f"{case.role}: none in the profile"
         outcome = str(case.outcome) + (f": {case.detail}" if details and case.detail else "")
         lines.append(f"| `{case.id}` | {target} | {outcome} |")
     return lines
@@ -1467,7 +1467,7 @@ async def rig_facts(ha: HAClient, entity_ids: Iterable[str]) -> tuple[str, list[
 
 
 def render_record(
-    suite_result: SuiteResult, title: str, ha_version: str, devices: list[Device], date: str, source: str
+    suite_result: SuiteResult, title: str, ha_version: str, devices: list[Device], date: str, source: str, profile: str
 ) -> str:
     """The test record: a key/value table, then the per-test table. It is evidence for people; no script reads it."""
     suite = suite_result.suite
@@ -1475,6 +1475,7 @@ def render_record(
         ("Result", "pass"),
         ("Date", date),
         ("Source", source),
+        ("Profile", profile),
         ("Home Assistant", ha_version),
         ("Device", "; ".join(map(str, devices)) or "none"),
     ]
@@ -1499,7 +1500,7 @@ def write_report(result: RunResult, directory: Path, title: str) -> Path:
 
 
 async def write_records(
-    result: RunResult, ha: HAClient, registry: Any, records_dir: Path, date: str, source: str
+    result: RunResult, ha: HAClient, registry: Any, records_dir: Path, date: str, source: str, profile: str
 ) -> list[Path]:
     """One record per suite that fully passed; a partial or failed suite writes nothing."""
     written = []
@@ -1512,6 +1513,6 @@ async def write_records(
         title = registry.integrations[suite.integration].title
         path = records_dir / suite.integration / f"{suite.name}.md"
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(render_record(suite_result, title, ha_version, devices, date, source))
+        path.write_text(render_record(suite_result, title, ha_version, devices, date, source, profile))
         written.append(path)
     return written
