@@ -300,6 +300,13 @@ def test_a_roam_group_cant_also_be_a_fixed_entity(tmp_path):
         Profile.load(path)
 
 
+@pytest.mark.parametrize(("network", "role"), [("hue", "scene"), ("zigbee2mqtt", "group_color")])
+def test_a_role_roam_groups_make_cant_also_be_on_a_fixed_entity(tmp_path, network, role):
+    path = lab_profile(tmp_path, GROUPS_YAML + f"{network}:\n  - entity_id: light.fixed\n    roles: [{role}]\n")
+    with pytest.raises(ValueError, match=f"{network} lists a fixed {role}, which roam.groups makes"):
+        Profile.load(path)
+
+
 def test_the_household_check_flags_a_roam_groups_and_scenes_entity_ids(tmp_path):
     terms = check_private.private_terms([lab_profile(tmp_path, GROUPS_YAML)], tmp_path / "none", tmp_path / "none")
     assert {"light.test_group", "light.test_color_group", "scene.test_relax"} <= set(terms)

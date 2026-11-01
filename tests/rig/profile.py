@@ -160,6 +160,12 @@ class Profile:
         roaming |= {entity for group in self.roam_groups for entity in (group.entity_id, group.scene) if entity}
         if both := sorted(listed & roaming):
             raise ValueError(f"{path.name}: {', '.join(both)} roams, so it can't also be listed under an integration")
+        made = {role for group in self.roam_groups for role in group.roles}
+        made |= {"scene"} if any(group.scene for group in self.roam_groups) else set()
+        for network in CYCLE:
+            # The fixed entity would win (entity() takes the first), leaving the rig-made one unused.
+            if taken := sorted(made & {role for e in self.integrations.get(network, ()) for role in e.roles}):
+                raise ValueError(f"{path.name}: {network} lists a fixed {', '.join(taken)}, which roam.groups makes")
         for network in CYCLE if self.roam else ():
             entities = self.integrations.setdefault(network, [])
             entities.extend(RigEntity(b.entity_id, b.roles) for b in self.roam)
