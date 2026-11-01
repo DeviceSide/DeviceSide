@@ -72,7 +72,7 @@ class Profile:
 
     @classmethod
     def load(cls, path: Path) -> Profile:
-        raw = yaml.safe_load(path.read_text()) or {}
+        raw = read_mapping(path)
         profile = cls(pause=pause_list(path, raw.pop("pause", None) or []), name=path.stem)
         for integration, entities in raw.items():
             if integration not in TOLERANCE_S:
@@ -115,6 +115,17 @@ def pause_list(path: Path, entity_ids: object) -> tuple[str, ...]:
     if other := [entity_id for entity_id in entity_ids if entity_id.partition(".")[0] not in PAUSABLE]:
         raise ValueError(f"{path.name}: pause takes automations and switches only, got {', '.join(other)}")
     return tuple(entity_ids)
+
+
+def read_mapping(path: Path) -> dict:
+    """A profile file's top-level mapping; an error names the file, so a typo in one doesn't read as a traceback."""
+    try:
+        raw = yaml.safe_load(path.read_text()) or {}
+    except yaml.YAMLError as err:
+        raise ValueError(f"{path.name}: not valid YAML: {err}") from err
+    if not isinstance(raw, dict):
+        raise ValueError(f"{path.name}: must be a mapping of pause and integration keys")
+    return raw
 
 
 def profile_paths(directory: Path = PROFILES_DIR) -> list[Path]:

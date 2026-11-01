@@ -62,6 +62,15 @@ def test_profile_rejects_unknown_integration(tmp_path):
         Profile.load(path)
 
 
+@pytest.mark.parametrize(
+    ("text", "message"),
+    [("pause: [switch.a]1\n", "house.yaml: not valid YAML"), ("- switch.a\n", "house.yaml: must be a mapping")],
+)
+def test_profile_names_its_file_when_it_cannot_be_read(tmp_path, text, message):
+    with pytest.raises(ValueError, match=message):
+        Profile.load(write(tmp_path, "house.yaml", text))
+
+
 def test_profile_maps_each_powered_entity_to_its_supply(tmp_path):
     path = write(
         tmp_path,

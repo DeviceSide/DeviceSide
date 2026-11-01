@@ -75,6 +75,12 @@ def test_main_passes_without_terms(tmp_path, monkeypatch):
     assert check_private.main([str(write(tmp_path, "doc.md", "anything"))]) == 0
 
 
+def test_main_fails_when_a_profile_cannot_be_read(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(check_private, "profile_paths", lambda: [write(tmp_path, "house.yaml", "pause: [a]1\n")])
+    assert check_private.main([str(write(tmp_path, "msg", "anything"))]) == 1
+    assert "house.yaml: not valid YAML" in capsys.readouterr().out
+
+
 def test_main_fails_on_a_hit(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(check_private, "private_terms", lambda: {"acme street": "Acme Street"})
     assert check_private.main([str(write(tmp_path, "msg", "Fix lamp on acme street"))]) == 1

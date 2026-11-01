@@ -71,7 +71,12 @@ def find(paths: list[Path], terms: dict[str, str]) -> list[str]:
 
 
 def main(argv: list[str]) -> int:
-    if not (terms := private_terms()):
+    try:
+        terms = private_terms()
+    except ValueError as err:
+        print(f"Can't read the household's terms, so nothing is checked: {err}")
+        return 1
+    if not terms:
         return 0
     if hits := find([Path(arg) for arg in argv], terms):
         print("Private details in a public repo:", *hits, sep="\n  ")

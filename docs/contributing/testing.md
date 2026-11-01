@@ -45,7 +45,8 @@ deploy commands and Hue bridge.
 
 `--profile <name>` picks one, and can be left out while there is only one. The plan names the profile, and so do
 the journal and every test record (a `Profile` row). Records from different profiles of the same suite overwrite
-each other; the commit diff shows which one ran last.
+each other; the commit diff shows which one ran last. A record is public, so name a profile for its setup (`lab`,
+`house`), never for a person or place.
 
 The household check (`scripts/check_private.py`) reads every profile's entity IDs, members, supplies and pause
 list, so none of them reach a commit.

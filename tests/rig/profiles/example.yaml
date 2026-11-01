@@ -10,7 +10,7 @@
 # that switches it puts the entity back once power returns.
 # members lists a group's (or group_color's) lights, for a group light that has no entity_id attribute (a Zigbee2MQTT group).
 
-pause: [automation.office_motion, switch.adaptive_lighting_office]
+pause: [automation.study_motion, switch.adaptive_lighting_study]
 
 shelly:
   - entity_id: switch.office_plug

@@ -451,7 +451,10 @@ def run_held(args: argparse.Namespace, journal: Journal) -> int:
     replay(env, journal, args.dry_run, args.recover)
     if args.recover:
         return 1 if journal else 0
-    profile = Profile.load(choose_profile(args.profile, env))
+    try:
+        profile = Profile.load(choose_profile(args.profile, env))
+    except ValueError as err:
+        raise SystemExit(f"Fix the profile: {err}") from err
     registry = AdapterRegistry.discover()
     suites = select(load_step_files(), profile, args.integration, args.action)
     if not args.dry_run:
