@@ -76,7 +76,7 @@ def observed(observe: str = "{see: s, watch: w, ask: a}", setup: str = "[{wait: 
         (HEADER + "      - set: {state: on}\n        wait: 1\n", "step 1: expected one `kind: args` mapping"),
         (HEADER + "      - set: {state: dim}\n", "step 1 (set): state must be on or off"),
         (HEADER + "      - set: {}\n", "step 1 (set): missing state"),
-        (HEADER + "      - call: {target: lamp}\n", "target 'lamp' is not an inventory role"),
+        (HEADER + "      - call: {target: lamp}\n", "target 'lamp' is not a profile role"),
         (HEADER + "      - call: {duration: forever}\n", "unknown name 'forever'"),
         (HEADER + "      - wait: duration / 2\n", "something other than numbers, names and + - *"),
         (HEADER + "      - wait: '1 +'\n", "cannot parse"),

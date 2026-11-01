@@ -41,7 +41,8 @@ record. A capability or field nobody has tested is left out of scope and refused
 - `custom_components/device_side/core/`: registry, resolver, dispatcher, action registration
 - `custom_components/device_side/actions/`: one module per action
 - `custom_components/device_side/integrations/<integration>/`: one adapter module per action
-- `tests/{core,actions,integrations,rig}`: mirror the above; `rig/` drives the live HA, only via `scripts/rig.py`
+- `tests/{core,actions,integrations,rig}`: mirror the above; `rig/` drives the live HA, only via `scripts/rig.py`,
+  on a profile (`tests/rig/profiles/<name>.yaml`, gitignored)
 - `scripts/`: rig runner, household check, deploy, release checks (coverage and the release flag, tags, RC audits)
 - `docs/test-records/<integration>/`: test records. Design detail lives in the repo plan.
 

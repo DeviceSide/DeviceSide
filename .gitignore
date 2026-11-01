@@ -9,6 +9,8 @@ __pycache__/
 
 # Household details (also check-private's blocklist)
 tests/rig/inventory.yaml
+tests/rig/profiles/*
+!tests/rig/profiles/example.yaml
 .private-terms
 
 # Virtual environments

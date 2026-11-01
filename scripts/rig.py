@@ -2,7 +2,7 @@
 """Run the rig tests against the live HA, behind a human approval gate.
 
 The rig is the household's own Home Assistant and its in-use lights. Nothing changes state before the gate:
-preflight reads the inventory, the adapter registry and the deployed tree hash, prints what will run, then asks.
+preflight reads the profile, the adapter registry and the deployed tree hash, prints what will run, then asks.
 DEVICE_SIDE_RIG_APPROVED=1 answers the gate for a non-interactive caller that already has a human's yes.
 
 One run at a time: a lock in the git common dir, shared by every worktree; a second run waits for it. Each run deploys
@@ -16,7 +16,10 @@ journaled first (next to the lock), so whatever a killed run leaves changed, the
 
 Under cmux the run colors its workspace: green holding the lock, amber waiting for it.
 
-Usage: scripts/rig.py [--dry-run] [--no-deploy] [--unattended] [--integration KEY ...]
+A profile (tests/rig/profiles/<name>.yaml) names the entities a run may move and what it pauses; --profile picks
+one, and may be left out when there is only one.
+
+Usage: scripts/rig.py [--profile NAME] [--dry-run] [--no-deploy] [--unattended] [--integration KEY ...]
                       [--action NAME ...] [-k TEXT]
        scripts/rig.py --recover
        scripts/rig.py --wait-free
@@ -61,8 +64,8 @@ from tests.rig.engine import (  # noqa: E402
     write_records,
     write_report,
 )
-from tests.rig.inventory import INVENTORY, Inventory, load_env  # noqa: E402
 from tests.rig.journal import Journal  # noqa: E402
+from tests.rig.profile import EXAMPLE, LEGACY_INVENTORY, PROFILES_DIR, Profile, load_env, profile_paths  # noqa: E402
 
 COMPONENT = "custom_components/device_side"
 TEST_RECORDS_DIR = REPO / "docs" / "test-records"
@@ -108,22 +111,23 @@ def git(*args: str, check: bool = True) -> str:
 
 
 def select(
-    step_files: list[StepFile], inventory: Inventory, integrations: list[str] | None, actions: list[str] | None = None
+    step_files: list[StepFile], profile: Profile, integrations: list[str] | None, actions: list[str] | None = None
 ) -> list[Suite]:
-    """Every step file on every inventory integration, narrowed to --integration and --action. An action takes every
-    step file for it (lower_brightness and lower_brightness-predicted_state), whole, so each still writes its record."""
+    """Every step file on every integration in the profile, narrowed to --integration and --action. An action takes
+    every step file for it (lower_brightness and lower_brightness-predicted_state), whole, so each still writes its
+    record."""
     return [
         Suite(step_file, integration)
         for step_file in step_files
         if not actions or step_file.action in actions
-        for integration in inventory.integrations
+        for integration in profile.integrations
         if not integrations or integration in integrations
     ]
 
 
 def plan_lines(
     suites: list[Suite],
-    inventory: Inventory,
+    profile: Profile,
     registry: AdapterRegistry,
     keyword: str | None = None,
 ) -> list[str]:
@@ -134,10 +138,10 @@ def plan_lines(
             lines.append(f"{suite.integration} / {suite.action} (no adapter, will skip)")
             continue
         roles = suite.file.roles
-        entities = [entity for role in roles if (entity := inventory.entity(suite.integration, role))]
+        entities = [entity for role in roles if (entity := profile.entity(suite.integration, role))]
         targets = ", ".join(dict.fromkeys(entities)) or "no entity, will skip"
         lines.append(f"{suite.integration} / {suite.name} -> {targets}")
-        for case in cases(suite, inventory, keyword):
+        for case in cases(suite, profile, keyword):
             lines.append(f"    {case.id}: {case.skip or ', '.join(dict.fromkeys(case.entities.values()))}")
     return lines
 
@@ -399,6 +403,7 @@ def explain(entries: list[dict], waits_for: list[str]) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--profile", help="the profile to run (tests/rig/profiles/NAME.yaml); needed if there are two")
     parser.add_argument("--dry-run", action="store_true", help="print the plan and stop before the gate")
     parser.add_argument("--no-deploy", action="store_true", help="test whatever HA already runs")
     parser.add_argument("--integration", action="append", help="limit to an integration key (repeatable)")
@@ -446,18 +451,16 @@ def run_held(args: argparse.Namespace, journal: Journal) -> int:
     replay(env, journal, args.dry_run, args.recover)
     if args.recover:
         return 1 if journal else 0
-    if not INVENTORY.exists():
-        raise SystemExit(f"{INVENTORY} is absent; copy inventory.example.yaml and fill it in")
-    inventory = Inventory.load()
+    profile = Profile.load(choose_profile(args.profile, env))
     registry = AdapterRegistry.discover()
-    suites = select(load_step_files(), inventory, args.integration, args.action)
+    suites = select(load_step_files(), profile, args.integration, args.action)
     if not args.dry_run:
         check_tokens(env, suites, registry)
     if not any(registry.adapter(suite.action, suite.integration) for suite in suites):
-        raise SystemExit("No rig test matches the inventory's integrations.")
+        raise SystemExit("No rig test matches the profile's integrations.")
     deploy = deploy_state(env.get("RIG_STATUS_CMD", ""))
     deploying = deploy.needed and not args.no_deploy
-    print_plan(inventory, suites, registry, args.keyword, deploy, deploying)
+    print_plan(profile, suites, registry, args.keyword, deploy, deploying)
 
     if deploying:
         check_deploy(env, deploy)
@@ -469,7 +472,31 @@ def run_held(args: argparse.Namespace, journal: Journal) -> int:
 
     deploy_and_wait(env, deploy.branch if deploying else None)
     commit = tested_commit(env.get("RIG_STATUS_CMD", ""), deploy, deploying)
-    return run_tests(run_rig(env, suites, inventory, registry, args.keyword, args.unattended, commit, journal))
+    return run_tests(run_rig(env, suites, profile, registry, args.keyword, args.unattended, commit, journal))
+
+
+def choose_profile(
+    name: str | None, env: dict, directory: Path = PROFILES_DIR, legacy: Path = LEGACY_INVENTORY
+) -> Path:
+    """The profile --profile names, else the only one. Refuses while the setup still has the single inventory.yaml or
+    RIG_PAUSE that profiles replaced, so nothing runs against half a migration."""
+    example = directory / f"{EXAMPLE}.yaml"
+    if legacy.exists():
+        raise SystemExit(
+            f"{legacy} is now a profile: move it to {directory}/<name>.yaml (see {example}), and its RIG_PAUSE with it"
+        )
+    if env.get("RIG_PAUSE"):
+        raise SystemExit("RIG_PAUSE has moved from .env.rig into the profile, as `pause:` (see tests/rig/profiles)")
+    paths = {path.stem: path for path in profile_paths(directory)}
+    if name is not None:
+        if name not in paths:
+            raise SystemExit(f"No profile {name!r} in {directory}; there are: {', '.join(paths) or 'none'}")
+        return paths[name]
+    if not paths:
+        raise SystemExit(f"No profile in {directory}; copy {example} to <name>.yaml there and fill it in")
+    if len(paths) > 1:
+        raise SystemExit(f"Choose a profile with --profile: {', '.join(paths)}")
+    return next(iter(paths.values()))
 
 
 def tested_commit(status_cmd: str, deploy: Deploy, deploying: bool) -> str | None:
@@ -604,19 +631,21 @@ def check_tokens(env: dict, suites: list[Suite], registry: AdapterRegistry) -> N
 
 
 def print_plan(
-    inventory: Inventory,
+    profile: Profile,
     suites: list[Suite],
     registry: AdapterRegistry,
     keyword: str | None,
     deploy: Deploy,
     deploying: bool,
 ) -> None:
-    print(f"Inventory ({INVENTORY}):")
-    for integration, entities in inventory.integrations.items():
+    print(f"Profile {profile.name}:")
+    for integration, entities in profile.integrations.items():
         for entity in entities:
             print(f"  {integration:8} {entity.entity_id:40} {', '.join(sorted(entity.roles))}")
+    if profile.pause:
+        print(f"Paused while it runs: {', '.join(profile.pause)}")
     print("Adapters:")
-    for line in plan_lines(suites, inventory, registry, keyword):
+    for line in plan_lines(suites, profile, registry, keyword):
         print(f"  {line}")
     print(
         f"Integration: local {deploy.local_tree[:12]}, synced {(deploy.synced_tree or 'unknown')[:12]}, "
@@ -635,7 +664,7 @@ def print_plan(
 async def run_rig(
     env: dict,
     suites: list[Suite],
-    inventory: Inventory,
+    profile: Profile,
     registry: AdapterRegistry,
     keyword: str | None,
     unattended: bool,
@@ -650,12 +679,14 @@ async def run_rig(
     if env.get("HUE_BRIDGE_HOST") and env.get("HUE_APP_KEY"):
         bridge = HueBridge(env["HUE_BRIDGE_HOST"], env["HUE_APP_KEY"])
     paused: list[str] = []
+    if journal is not None:
+        journal.update(profile=profile.name)
     try:
-        await wait_for_targets(ha, suites, inventory, registry, keyword)
-        await pause(ha, pause_list(env), paused, journal)
+        await wait_for_targets(ha, suites, profile, registry, keyword)
+        await pause(ha, list(profile.pause), paused, journal)
         result = await run(
             suites,
-            inventory,
+            profile,
             registry,
             ha,
             admin=admin,
@@ -671,10 +702,12 @@ async def run_rig(
         else:
             source = f"rig run (`scripts/rig.py`), commit `{git('rev-parse', '--short', commit)}`"
             today = datetime.date.today().isoformat()
-            for path in await write_records(result, ha, registry, TEST_RECORDS_DIR, today, source):
+            records = await write_records(result, ha, registry, TEST_RECORDS_DIR, today, source, profile.name)
+            for path in records:
                 print(f"Wrote {path.relative_to(REPO)}; review the diff before committing it.")
     finally:
         await resume(ha, paused, journal)
+        drop_profile(journal)
         if bridge:
             await bridge.close()
         await ha.close()
@@ -686,7 +719,7 @@ async def run_rig(
 async def wait_for_targets(
     ha: HAClient,
     suites: list[Suite],
-    inventory: Inventory,
+    profile: Profile,
     registry: AdapterRegistry,
     keyword: str | None,
     timeout: float = TARGETS_TIMEOUT_S,
@@ -702,14 +735,14 @@ async def wait_for_targets(
             entity
             for suite in suites
             if registry.adapter(suite.action, suite.integration)
-            for case in cases(suite, inventory, keyword)
+            for case in cases(suite, profile, keyword)
             if not case.skip
             for entity in (*case.entities.values(), *case.members)
         }
     )
     states = dict(zip(entities, await asyncio.gather(*map(ha.get_state, entities)), strict=True))
     if missing := [entity for entity, state in states.items() if state is None]:
-        raise SystemExit(f"Not in HA: {', '.join(missing)}. Check inventory.yaml; nothing was changed.")
+        raise SystemExit(f"Not in HA: {', '.join(missing)}. Check profile {profile.name}; nothing was changed.")
     waiting = [entity for entity, state in states.items() if not available(state)]
     if not waiting:
         return
@@ -768,7 +801,8 @@ async def recover(ha: HAClient, admin: HAClient | None, journal: Journal, out: C
     """Put back what an aborted run left changed, in the order its finally blocks would have: the case's entities,
     device_side's options, the paused automations. A step that fails is printed and dropped from the journal;
     options stay in it while there is no admin connection to set them."""
-    out(f"An aborted rig run left changes in {journal.path}; putting them back.")
+    run_of = f" (profile {name})" if (name := journal.get("profile")) else ""
+    out(f"An aborted rig run{run_of} left changes in {journal.path}; putting them back.")
     if taken := journal.get("taken"):
         for entity_id, state in taken.items():
             if state is not None and state["state"] in ("on", "off"):
@@ -787,17 +821,14 @@ async def recover(ha: HAClient, admin: HAClient | None, journal: Journal, out: C
             journal.clear("options")
     if paused := journal.get("paused"):
         await resume(ha, paused, journal)
+    drop_profile(journal)
 
 
-PAUSABLE = ("automation", "switch")
-
-
-def pause_list(env: dict) -> list[str]:
-    """RIG_PAUSE: comma-separated automations and switches that must be off while the rig runs."""
-    entity_ids = [entity_id.strip() for entity_id in env.get("RIG_PAUSE", "").split(",") if entity_id.strip()]
-    if other := [entity_id for entity_id in entity_ids if entity_id.partition(".")[0] not in PAUSABLE]:
-        raise SystemExit(f"RIG_PAUSE takes automations and switches only, got {', '.join(other)}")
-    return entity_ids
+def drop_profile(journal: Journal | None) -> None:
+    """Clear the journal's `profile` once nothing it names a run for is left, so an empty journal is deleted; while a
+    change is left, it stays, saying which profile's run left it."""
+    if journal is not None and set(journal.sections) == {"profile"}:
+        journal.clear("profile")
 
 
 async def pause(ha: HAClient, entity_ids: list[str], paused: list[str], journal: Journal | None = None) -> None:
@@ -810,7 +841,7 @@ async def pause(ha: HAClient, entity_ids: list[str], paused: list[str], journal:
     """
     for entity_id in entity_ids:
         if (state := await ha.get_state(entity_id)) is None:
-            raise SystemExit(f"{entity_id} in RIG_PAUSE has no state in Home Assistant")
+            raise SystemExit(f"{entity_id} in the profile's pause list has no state in Home Assistant")
         if state["state"] == "on":
             if journal is not None:
                 journal.update(paused=[*paused, entity_id])

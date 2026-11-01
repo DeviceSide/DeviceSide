@@ -13,8 +13,8 @@ import pytest
 from custom_components.device_side.core.registry import AdapterRegistry
 from tests.rig import engine
 from tests.rig.engine import load_step_file, load_step_files
-from tests.rig.inventory import Inventory, RigEntity, load_env, main_checkout
 from tests.rig.journal import Journal
+from tests.rig.profile import Profile, RigEntity, load_env, main_checkout, profile_paths
 from tests.scripts import rig_fakes as fakes
 
 REPO = Path(__file__).parents[2]
@@ -39,85 +39,85 @@ def write(tmp_path: Path, name: str, text: str) -> Path:
 
 
 @pytest.fixture
-def inventory(tmp_path) -> Inventory:
-    return Inventory.load(
+def profile(tmp_path) -> Profile:
+    return Profile.load(
         write(
             tmp_path,
-            "inventory.yaml",
+            "house.yaml",
             "shelly:\n  - entity_id: switch.plug\n    roles: [switch_plug]\nhue:\n  - entity_id: light.lamp\n"
             "    roles: [light_color]\n",
         )
     )
 
 
-def test_inventory_rejects_unknown_role(tmp_path):
-    path = write(tmp_path, "inventory.yaml", "shelly:\n  - entity_id: switch.plug\n    roles: [plug]\n")
+def test_profile_rejects_unknown_role(tmp_path):
+    path = write(tmp_path, "house.yaml", "shelly:\n  - entity_id: switch.plug\n    roles: [plug]\n")
     with pytest.raises(ValueError, match="unknown roles"):
-        Inventory.load(path)
+        Profile.load(path)
 
 
-def test_inventory_rejects_unknown_integration(tmp_path):
-    path = write(tmp_path, "inventory.yaml", "z2m:\n  - entity_id: switch.plug\n    roles: [switch_plug]\n")
+def test_profile_rejects_unknown_integration(tmp_path):
+    path = write(tmp_path, "house.yaml", "z2m:\n  - entity_id: switch.plug\n    roles: [switch_plug]\n")
     with pytest.raises(ValueError, match="unknown integration 'z2m'"):
-        Inventory.load(path)
+        Profile.load(path)
 
 
-def test_inventory_maps_each_powered_entity_to_its_supply(tmp_path):
+def test_profile_maps_each_powered_entity_to_its_supply(tmp_path):
     path = write(
         tmp_path,
-        "inventory.yaml",
+        "house.yaml",
         "zha:\n  - entity_id: light.bulb\n    roles: [light_ct]\n    powered_by: switch.plug\n"
         "  - entity_id: switch.plug\n    roles: [switch_plug]\n",
     )
-    assert Inventory.load(path).power() == {"light.bulb": "switch.plug"}
+    assert Profile.load(path).power() == {"light.bulb": "switch.plug"}
 
 
-def test_inventory_rejects_an_unlisted_supply(tmp_path):
+def test_profile_rejects_an_unlisted_supply(tmp_path):
     path = write(
-        tmp_path, "inventory.yaml", "zha:\n  - entity_id: light.bulb\n    roles: [light_ct]\n    powered_by: switch.x\n"
+        tmp_path, "house.yaml", "zha:\n  - entity_id: light.bulb\n    roles: [light_ct]\n    powered_by: switch.x\n"
     )
-    with pytest.raises(ValueError, match="powered_by switch.x, which the inventory doesn't list"):
-        Inventory.load(path)
+    with pytest.raises(ValueError, match="powered_by switch.x, which the profile doesn't list"):
+        Profile.load(path)
 
 
-def test_inventory_reads_a_groups_members(tmp_path):
+def test_profile_reads_a_groups_members(tmp_path):
     path = write(
         tmp_path,
-        "inventory.yaml",
+        "house.yaml",
         "zigbee2mqtt:\n  - entity_id: light.g\n    roles: [group]\n    members: [light.a, light.b]\n",
     )
-    inventory = Inventory.load(path)
-    assert inventory.members("zigbee2mqtt", "light.g") == ("light.a", "light.b")
-    assert inventory.members("zigbee2mqtt", "light.other") == ()
+    profile = Profile.load(path)
+    assert profile.members("zigbee2mqtt", "light.g") == ("light.a", "light.b")
+    assert profile.members("zigbee2mqtt", "light.other") == ()
 
 
-def test_inventory_reads_a_group_colors_members(tmp_path):
+def test_profile_reads_a_group_colors_members(tmp_path):
     path = write(
         tmp_path,
-        "inventory.yaml",
+        "house.yaml",
         "zigbee2mqtt:\n  - entity_id: light.g\n    roles: [group_color]\n    members: [light.a]\n",
     )
-    assert Inventory.load(path).members("zigbee2mqtt", "light.g") == ("light.a",)
+    assert Profile.load(path).members("zigbee2mqtt", "light.g") == ("light.a",)
 
 
-def test_inventory_rejects_members_without_the_group_role(tmp_path):
+def test_profile_rejects_members_without_the_group_role(tmp_path):
     path = write(
-        tmp_path, "inventory.yaml", "zha:\n  - entity_id: light.a\n    roles: [light_ct]\n    members: [light.b]\n"
+        tmp_path, "house.yaml", "zha:\n  - entity_id: light.a\n    roles: [light_ct]\n    members: [light.b]\n"
     )
     with pytest.raises(ValueError, match="lists members but has no group role"):
-        Inventory.load(path)
+        Profile.load(path)
 
 
-def test_inventory_rejects_members_given_as_one_string(tmp_path):
-    path = write(tmp_path, "inventory.yaml", "zha:\n  - entity_id: light.g\n    roles: [group]\n    members: light.a\n")
+def test_profile_rejects_members_given_as_one_string(tmp_path):
+    path = write(tmp_path, "house.yaml", "zha:\n  - entity_id: light.g\n    roles: [group]\n    members: light.a\n")
     with pytest.raises(ValueError, match="members must be a list of entity IDs"):
-        Inventory.load(path)
+        Profile.load(path)
 
 
-def test_inventory_entity_by_role(inventory):
-    assert inventory.entity("shelly", "switch_plug") == "switch.plug"
-    assert inventory.entity("shelly", "light_dimmable") is None
-    assert inventory.entity("zha", "switch_plug") is None
+def test_profile_entity_by_role(profile):
+    assert profile.entity("shelly", "switch_plug") == "switch.plug"
+    assert profile.entity("shelly", "light_dimmable") is None
+    assert profile.entity("zha", "switch_plug") is None
 
 
 def test_load_env_reads_file_and_env_overrides(tmp_path, monkeypatch):
@@ -145,42 +145,42 @@ def test_load_env_reads_command_vars(tmp_path, monkeypatch):
     assert "RIG_RESTART_CMD" not in env
 
 
-def test_select_plan_lines_and_estimate(inventory):
+def test_select_plan_lines_and_estimate(profile):
     step_files = [step_file for step_file in load_step_files() if step_file.action in ("turn_off_for", "turn_on_for")]
-    suites = rig.select(step_files, inventory, None)
+    suites = rig.select(step_files, profile, None)
     assert [(suite.integration, suite.action) for suite in suites] == [
         ("shelly", "turn_off_for"),
         ("hue", "turn_off_for"),
         ("shelly", "turn_on_for"),
         ("hue", "turn_on_for"),
     ]
-    assert [suite.integration for suite in rig.select(step_files, inventory, ["hue"])] == ["hue", "hue"]
-    narrowed = rig.select(step_files, inventory, ["hue"], ["turn_on_for"])
+    assert [suite.integration for suite in rig.select(step_files, profile, ["hue"])] == ["hue", "hue"]
+    narrowed = rig.select(step_files, profile, ["hue"], ["turn_on_for"])
     assert [(suite.integration, suite.action) for suite in narrowed] == [("hue", "turn_on_for")]
 
     registry = AdapterRegistry.discover()
     shelly_on = [suite for suite in suites if suite.integration == "shelly" and suite.action == "turn_on_for"]
-    assert rig.plan_lines(shelly_on + suites[1:2], inventory, registry) == [
+    assert rig.plan_lines(shelly_on + suites[1:2], profile, registry) == [
         "shelly / turn_on_for -> switch.plug",
         "    on_then_off[switch_plug]: switch.plug",
-        "    on_then_off[light_onoff]: no light_onoff entity in inventory",
-        "    on_then_off[light_wrapped]: no light_wrapped entity in inventory",
-        "    drops_brightness_on_a_wrapper[light_wrapped]: no light_wrapped entity in inventory",
-        "    drops_brightness_on_a_relay_light[light_onoff]: no light_onoff entity in inventory",
-        "    bulb_on_then_off[light_dimmable]: no light_dimmable entity in inventory",
-        "    bulb_brightness_then_off[light_dimmable]: no light_dimmable entity in inventory",
-        "    bulb_color_temp_then_off[light_ct]: no light_ct entity in inventory",
-        "    bulb_transition_then_off[light_dimmable]: no light_dimmable entity in inventory",
-        "    rgbcct_bulb_rgb_then_off[light_color]: no light_color entity in inventory",
+        "    on_then_off[light_onoff]: no light_onoff entity in the profile",
+        "    on_then_off[light_wrapped]: no light_wrapped entity in the profile",
+        "    drops_brightness_on_a_wrapper[light_wrapped]: no light_wrapped entity in the profile",
+        "    drops_brightness_on_a_relay_light[light_onoff]: no light_onoff entity in the profile",
+        "    bulb_on_then_off[light_dimmable]: no light_dimmable entity in the profile",
+        "    bulb_brightness_then_off[light_dimmable]: no light_dimmable entity in the profile",
+        "    bulb_color_temp_then_off[light_ct]: no light_ct entity in the profile",
+        "    bulb_transition_then_off[light_dimmable]: no light_dimmable entity in the profile",
+        "    rgbcct_bulb_rgb_then_off[light_color]: no light_color entity in the profile",
         "hue / turn_off_for (no adapter, will skip)",
     ]
-    assert rig.plan_lines(shelly_on, inventory, registry, "on_then") == [
+    assert rig.plan_lines(shelly_on, profile, registry, "on_then") == [
         "shelly / turn_on_for -> switch.plug",
         "    on_then_off[switch_plug]: switch.plug",
-        "    on_then_off[light_onoff]: no light_onoff entity in inventory",
-        "    on_then_off[light_wrapped]: no light_wrapped entity in inventory",
-        "    bulb_on_then_off[light_dimmable]: no light_dimmable entity in inventory",
-        "    bulb_transition_then_off[light_dimmable]: no light_dimmable entity in inventory",
+        "    on_then_off[light_onoff]: no light_onoff entity in the profile",
+        "    on_then_off[light_wrapped]: no light_wrapped entity in the profile",
+        "    bulb_on_then_off[light_dimmable]: no light_dimmable entity in the profile",
+        "    bulb_transition_then_off[light_dimmable]: no light_dimmable entity in the profile",
     ]
 
     shelly_seconds = sum(step_file.rig_seconds for step_file in step_files)
@@ -649,10 +649,9 @@ class PauseHA:
 async def test_pause_turns_off_only_what_is_on_and_resumes_it(capsys):
     states = {"switch.al_office": "on", "automation.motion_hall": "off", "automation.motion_den": "on"}
     ha = PauseHA(states, failing="automation.motion_den")
-    env = {"RIG_PAUSE": " switch.al_office, automation.motion_hall ,automation.motion_den,"}
     paused: list[str] = []
 
-    await rig.pause(ha, rig.pause_list(env), paused)
+    await rig.pause(ha, ["switch.al_office", "automation.motion_hall", "automation.motion_den"], paused)
     await rig.resume(ha, paused)
 
     assert paused == ["switch.al_office", "automation.motion_den"]
@@ -669,15 +668,68 @@ async def test_pause_stops_on_an_unknown_entity():
     ha = PauseHA({"switch.al_office": "on"})
     paused: list[str] = []
 
-    with pytest.raises(SystemExit, match="switch.typo in RIG_PAUSE"):
+    with pytest.raises(SystemExit, match="switch.typo in the profile's pause list"):
         await rig.pause(ha, ["switch.al_office", "switch.typo"], paused)
 
     assert paused == ["switch.al_office"]
 
 
-def test_pause_list_refuses_other_domains():
-    with pytest.raises(SystemExit, match="automations and switches only, got light.hall"):
-        rig.pause_list({"RIG_PAUSE": "switch.al_office, light.hall"})
+def test_profile_reads_its_pause_list_and_is_named_for_its_file(tmp_path):
+    path = write(tmp_path, "lab.yaml", "pause: [switch.al, automation.motion]\nshelly:\n")
+    profile = Profile.load(path)
+    assert (profile.name, profile.pause, profile.integrations) == (
+        "lab",
+        ("switch.al", "automation.motion"),
+        {"shelly": []},
+    )
+
+
+@pytest.mark.parametrize(
+    ("pause", "message"),
+    [
+        ("[switch.al, light.hall]", "automations and switches only, got light.hall"),
+        ("switch.al", "pause must be a list of entity IDs"),
+    ],
+)
+def test_profile_refuses_a_bad_pause_list(tmp_path, pause, message):
+    with pytest.raises(ValueError, match=message):
+        Profile.load(write(tmp_path, "lab.yaml", f"pause: {pause}\n"))
+
+
+def profiles(tmp_path: Path, *names: str) -> Path:
+    directory = tmp_path / "profiles"
+    directory.mkdir()
+    for name in names:
+        write(directory, f"{name}.yaml", "shelly:\n")
+    return directory
+
+
+def test_choose_profile_takes_the_named_one_or_the_only_one(tmp_path):
+    directory = profiles(tmp_path, "example", "house", "lab")
+    legacy = tmp_path / "inventory.yaml"
+    assert rig.choose_profile("lab", {}, directory, legacy) == directory / "lab.yaml"
+    (directory / "lab.yaml").unlink()
+    assert rig.choose_profile(None, {"RIG_PAUSE": ""}, directory, legacy) == directory / "house.yaml"
+
+
+@pytest.mark.parametrize(
+    ("names", "name", "env", "message"),
+    [
+        (("example", "house", "lab"), None, {}, "Choose a profile with --profile: house, lab"),
+        (("example", "house"), "lab", {}, "No profile 'lab' in .*; there are: house"),
+        (("example",), None, {}, "No profile in .*; copy .*example.yaml"),
+        (("house",), None, {"RIG_PAUSE": "switch.al"}, "RIG_PAUSE has moved from .env.rig into the profile"),
+    ],
+)
+def test_choose_profile_refuses(tmp_path, names, name, env, message):
+    with pytest.raises(SystemExit, match=message):
+        rig.choose_profile(name, env, profiles(tmp_path, *names), tmp_path / "inventory.yaml")
+
+
+def test_choose_profile_refuses_while_the_old_inventory_is_there(tmp_path):
+    legacy = write(tmp_path, "inventory.yaml", "shelly:\n")
+    with pytest.raises(SystemExit, match="inventory.yaml is now a profile"):
+        rig.choose_profile("house", {}, profiles(tmp_path, "house"), legacy)
 
 
 def test_check_tokens_stops_a_hue_bridge_step_without_the_bridge_settings(tmp_path):
@@ -734,7 +786,7 @@ class RigHA(fakes.FakeAdmin):
 
 
 def rig_ha(monkeypatch, light: str, opt: bool, automation: str) -> RigHA:
-    """One fake for both connections, with a light, device_side's options and a RIG_PAUSE automation."""
+    """One fake for both connections, with a light, device_side's options and an automation to pause."""
     monkeypatch.setattr(engine, "OPTIONS_RELOAD_S", 0)
     ha = RigHA(
         {"light.a": {"state": light, "attributes": {"brightness": 200}}, "automation.motion": {"state": automation}},
@@ -763,9 +815,9 @@ async def test_a_signal_mid_case_puts_everything_back_and_leaves_no_journal(tmp_
     journal = Journal(tmp_path / rig.JOURNAL_NAME)
     steps = write(tmp_path, "steps.yaml", fakes.WAITING_MIDWAY)
     run_rig = rig.run_rig(
-        {"RIG_PAUSE": "automation.motion"},
+        {},
         [rig.Suite(load_step_file(steps), "shelly")],
-        fakes.inventory("shelly", light_ct="light.a"),
+        fakes.profile("shelly", ("automation.motion",), light_ct="light.a"),
         fakes.OPTION_REGISTRY,
         None,
         True,
@@ -775,7 +827,7 @@ async def test_a_signal_mid_case_puts_everything_back_and_leaves_no_journal(tmp_
     task = asyncio.create_task(run_rig)
     while ha.states["light.a"]["state"] != "off":
         await asyncio.sleep(0.005)
-    assert set(journal.sections) == {"paused", "options", "taken", "stored", "power"}
+    assert set(journal.sections) == {"profile", "paused", "options", "taken", "stored", "power"}
 
     os.kill(os.getpid(), signum)
     with pytest.raises(asyncio.CancelledError):
@@ -798,15 +850,16 @@ async def test_records_cite_the_commit_ha_loaded_not_head_at_the_end(tmp_path, m
 
     written = []
 
-    async def write_records(result, ha, registry, records_dir, date, source):
+    async def write_records(result, ha, registry, records_dir, date, source, profile):
         written.append(source)
+        assert profile == "house"
         return []
 
     monkeypatch.setattr(rig, "run", run)
     monkeypatch.setattr(rig, "write_report", lambda result, directory, title: tmp_path / "report.md")
     monkeypatch.setattr(rig, "write_records", write_records)
 
-    assert await rig.run_rig({}, [], fakes.inventory("shelly"), fakes.OPTION_REGISTRY, None, True, commit) == 0
+    assert await rig.run_rig({}, [], fakes.profile("shelly"), fakes.OPTION_REGISTRY, None, True, commit) == 0
     assert written == sources
     assert ("No test records" in capsys.readouterr().out) is (commit is None)
 
@@ -815,6 +868,7 @@ def aborted_journal(path: Path) -> Journal:
     """What a run killed mid-case leaves: the light it turned off, the option it saved and the automation it paused."""
     journal = Journal(path)
     journal.update(
+        profile="lab",
         paused=["automation.motion"],
         options={"opt": True, "other": False},
         taken={"light.a": {"entity_id": "light.a", "state": "on", "attributes": {"brightness": 200}}},
@@ -833,6 +887,7 @@ async def test_recover_puts_back_what_an_aborted_run_left(tmp_path, monkeypatch)
     assert put_back(ha)
     assert [call[:2] for call in ha.calls] == [("light", "turn_on"), ("automation", "turn_on")]
     assert "Putting light.a back on." in printed
+    assert printed[0].startswith("An aborted rig run (profile lab) left changes")
     assert not (tmp_path / rig.JOURNAL_NAME).exists()
 
 
@@ -843,7 +898,7 @@ async def test_recover_without_an_admin_token_leaves_the_options_in_the_journal(
     await rig.recover(ha, None, journal, out=lambda _: None)
 
     assert ha.options == {"opt": False, "other": False}
-    assert Journal(journal.path).sections == {"options": {"opt": True, "other": False}}
+    assert Journal(journal.path).sections == {"profile": "lab", "options": {"opt": True, "other": False}}
 
 
 def test_main_recovers_before_the_plan_and_recover_alone_stops_there(tmp_path, monkeypatch, capsys):
@@ -946,9 +1001,9 @@ def target_suite(tmp_path: Path) -> list[rig.Suite]:
 async def test_a_target_coming_back_within_the_grace_lets_the_run_start(tmp_path, capsys):
     ha = fakes.FakeHA({"light.a": {"state": "unavailable"}})
     ha.later(0.02, "light.a", "off")
-    inventory = fakes.inventory("shelly", light_ct="light.a")
+    profile = fakes.profile("shelly", light_ct="light.a")
 
-    await rig.wait_for_targets(ha, target_suite(tmp_path), inventory, fakes.OPTION_REGISTRY, None, timeout=5)
+    await rig.wait_for_targets(ha, target_suite(tmp_path), profile, fakes.OPTION_REGISTRY, None, timeout=5)
 
     assert "Waiting up to 5 s for light.a" in capsys.readouterr().out
     assert ha.calls == []
@@ -956,36 +1011,46 @@ async def test_a_target_coming_back_within_the_grace_lets_the_run_start(tmp_path
 
 async def test_a_target_still_unavailable_stops_the_run_before_it_changes_anything(tmp_path):
     ha = fakes.FakeHA({"light.a": {"state": "unavailable"}})
-    inventory = fakes.inventory("shelly", light_ct="light.a")
+    profile = fakes.profile("shelly", light_ct="light.a")
 
     with pytest.raises(SystemExit, match=r"Still unavailable after 0 s: light.a\. Check it is powered"):
-        await rig.wait_for_targets(ha, target_suite(tmp_path), inventory, fakes.OPTION_REGISTRY, None, timeout=0.05)
+        await rig.wait_for_targets(ha, target_suite(tmp_path), profile, fakes.OPTION_REGISTRY, None, timeout=0.05)
     assert ha.calls == []
 
 
 async def test_targets_already_available_need_no_wait(tmp_path, capsys):
     ha = fakes.FakeHA({"light.a": {"state": "on"}})
-    inventory = fakes.inventory("shelly", light_ct="light.a")
+    profile = fakes.profile("shelly", light_ct="light.a")
 
-    await rig.wait_for_targets(ha, target_suite(tmp_path), inventory, fakes.OPTION_REGISTRY, None, timeout=5)
+    await rig.wait_for_targets(ha, target_suite(tmp_path), profile, fakes.OPTION_REGISTRY, None, timeout=5)
 
     assert capsys.readouterr().out == ""
 
 
 async def test_a_target_missing_from_ha_stops_the_run_at_once(tmp_path):
     ha = fakes.FakeHA({})
-    inventory = fakes.inventory("shelly", light_ct="light.a")
+    profile = fakes.profile("shelly", light_ct="light.a")
 
-    with pytest.raises(SystemExit, match=r"Not in HA: light.a\. Check inventory.yaml"):
-        await rig.wait_for_targets(ha, target_suite(tmp_path), inventory, fakes.OPTION_REGISTRY, None, timeout=5)
+    with pytest.raises(SystemExit, match=r"Not in HA: light.a\. Check profile house"):
+        await rig.wait_for_targets(ha, target_suite(tmp_path), profile, fakes.OPTION_REGISTRY, None, timeout=5)
 
 
 async def test_an_unavailable_group_member_stops_the_run(tmp_path):
     steps = write(tmp_path, "steps.yaml", fakes.WAITING_MIDWAY.replace("[light_ct]", "[group]"))
     ha = fakes.FakeHA({"light.g": {"state": "on"}, "light.a": {"state": "on"}, "light.b": {"state": "unavailable"}})
-    inventory = Inventory({"shelly": [RigEntity("light.g", frozenset({"group"}), members=("light.a", "light.b"))]})
+    profile = Profile({"shelly": [RigEntity("light.g", frozenset({"group"}), members=("light.a", "light.b"))]})
 
     with pytest.raises(SystemExit, match=r"Still unavailable after 0 s: light.b\."):
         await rig.wait_for_targets(
-            ha, [rig.Suite(load_step_file(steps), "shelly")], inventory, fakes.OPTION_REGISTRY, None, timeout=0.05
+            ha, [rig.Suite(load_step_file(steps), "shelly")], profile, fakes.OPTION_REGISTRY, None, timeout=0.05
         )
+
+
+def test_profile_paths_leave_out_the_example(tmp_path):
+    directory = profiles(tmp_path, "example", "lab", "house")
+    assert profile_paths(directory) == [directory / "house.yaml", directory / "lab.yaml"]
+
+
+def test_load_env_still_reads_rig_pause_so_a_run_can_refuse_it(tmp_path, monkeypatch):
+    monkeypatch.setenv("RIG_PAUSE", "switch.al")
+    assert load_env(tmp_path / "missing.env.rig")["RIG_PAUSE"] == "switch.al"
