@@ -81,7 +81,7 @@ from tests.rig.profile import (  # noqa: E402
     load_env,
     profile_paths,
 )
-from tests.rig.roam import HOME, NAMES, Bulb, Roamer, RoamError  # noqa: E402
+from tests.rig.roam import HOME, NAMES, Bulb, GroupError, Roamer, RoamError  # noqa: E402
 from tests.rig.roam import plan_lines as roam_plan_lines  # noqa: E402
 
 COMPONENT = "custom_components/device_side"
@@ -805,8 +805,9 @@ async def run_rig(
             await report(result, ha, registry, commit, profile)
     except RoamError as err:
         # A move that failed isn't retried here; the journal keeps where the bulbs are, for --recover. The groups made
-        # so far still go.
-        stopped, roamer = roamer, None
+        # so far still go, and after a group that couldn't be made, the bulbs still go home.
+        if not isinstance(err, GroupError):
+            stopped, roamer = roamer, None
         raise SystemExit(f"Roaming stopped: {err}") from None
     finally:
         home = await leave_lab(roamer, stopped)

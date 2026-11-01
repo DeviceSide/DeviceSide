@@ -165,7 +165,7 @@ async def test_a_group_left_on_the_network_stops_with_recover(lab):
     await lab.ha.z2m_group_add("ds-rig-test-group")
     moving = roamer(lab)
     await moving.go("zigbee2mqtt")
-    with pytest.raises(RoamError, match="Z2M already has a group named ds-rig-test-group; scripts/rig.py --recover"):
+    with pytest.raises(RoamError, match="Z2M already has a group named ds-rig-test-group, which no run journaled"):
         await moving.make_groups("zigbee2mqtt")
 
 

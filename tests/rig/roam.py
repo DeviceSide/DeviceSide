@@ -26,7 +26,7 @@ from dataclasses import dataclass, field
 from .bridge import BridgeError, HueBridge
 from .client import HAClient, HAError, device_ieee
 from .journal import Journal
-from .profile import CYCLE, RoamBulb, RoamGroup, colon_ieee, hex_ieee, normalize_ieee, rig_name
+from .profile import CYCLE, RIG_PREFIX, RoamBulb, RoamGroup, colon_ieee, hex_ieee, normalize_ieee, rig_name
 
 HOME = CYCLE[0]
 NAMES = {"hue": "Hue", "zha": "ZHA", "zigbee2mqtt": "Z2M"}
@@ -59,6 +59,10 @@ Finder = Callable[[], Awaitable[dict | None]]  # finds a rig-made group's HA ent
 
 class RoamError(Exception):
     """A move that couldn't finish. The journal keeps what --recover needs."""
+
+
+class GroupError(RoamError):
+    """A rig-made group, zone or scene that couldn't be made. The bulbs are fine, so they can still move home."""
 
 
 def hops(network: str, to: str) -> int:
@@ -396,12 +400,13 @@ class Roamer:
         entity's registry entry), and rename that entity to `entity_id`. Returns the native ID."""
         name = rig_name(entity_id)
         if any(entry["entity_id"] == entity_id for entry in await self.ha.entity_registry()):
-            raise RoamError(
+            raise GroupError(
                 f"{entity_id} is already in HA's entity registry, so the rig's {NAMES[network]} {kind} can't take it; "
                 "rename or remove that entity"
             )
         if await self.native_id(network, kind, name) is not None:
-            raise RoamError(f"{NAMES[network]} already has a {kind} named {name}; scripts/rig.py --recover removes it")
+            where = NAMES[network]
+            raise GroupError(f"{where} already has a {kind} named {name}, which no run journaled; remove it there")
         made = {"network": network, "kind": kind, "name": name, "entity_id": entity_id, "renamed": False}
         self.made.append(made)
         self.save()
@@ -414,7 +419,7 @@ class Roamer:
             return found is not None
 
         if not await _until(shown, ENTITY_S):
-            raise RoamError(f"HA showed no entity for the rig's {NAMES[network]} {kind} {name} in {ENTITY_S} s")
+            raise GroupError(f"HA showed no entity for the rig's {NAMES[network]} {kind} {name} in {ENTITY_S} s")
         assert found is not None
         if found["entity_id"] != entity_id or found.get("disabled_by"):
             await self.ha.rename_entity(found["entity_id"], entity_id, enable=bool(found.get("disabled_by")))
@@ -431,7 +436,9 @@ class Roamer:
         }
         zone_id = (await self.bridge.post("zone", body))[0]["rid"]
         zone = (await self.bridge.get("zone", zone_id))[0]
-        grouped = next(s["rid"] for s in zone.get("services", []) if s.get("rtype") == "grouped_light")
+        grouped = next((s["rid"] for s in zone.get("services", []) if s.get("rtype") == "grouped_light"), None)
+        if grouped is None:
+            raise GroupError(f"the Hue bridge made zone {zone_id} with no grouped_light")
         return zone_id, self.entity("hue", "light", grouped)
 
     async def make_scene(self, group: RoamGroup, zone_id: str) -> tuple[str, Finder]:
@@ -458,7 +465,7 @@ class Roamer:
         for member in group.members:
             parts = (registry.get(member, {}).get("unique_id") or "").split("-")
             if len(parts) < 2 or not parts[1].isdigit():
-                raise RoamError(f"{member} has no ZHA light endpoint in its unique_id, so it can't join a ZHA group")
+                raise GroupError(f"{member} has no ZHA light endpoint in its unique_id, so it can't join a ZHA group")
             members.append((colon_ieee(parts[0]), int(parts[1])))
         group_id = await self.ha.zha_group_add(rig_name(group.entity_id), tuple(members))
         return str(group_id), self.entity("zha", "light", ZHA_GROUP_UNIQUE_ID.format(group_id))
@@ -469,10 +476,10 @@ class Roamer:
         try:
             await self.ha.z2m_group_add(name, tuple(hex_ieee(by_id[member].ieee) for member in group.members))
         except ValueError as err:
-            raise RoamError(str(err)) from None
+            raise GroupError(str(err)) from None
         made = await self.ha.z2m_group(name)
         if made is None:
-            raise RoamError(f"Z2M lists no group {name} after making it")
+            raise GroupError(f"Z2M lists no group {name} after making it")
         identifier = ["mqtt", Z2M_GROUP_IDENTIFIER.format(made["id"])]
 
         async def find() -> dict | None:
@@ -504,7 +511,7 @@ class Roamer:
     async def hue_light(self, entity_id: str) -> str:
         bulb = next(bulb for bulb in self.bulbs if bulb.entity_id == entity_id)
         if (device_id := await self.bridge.device_id_by_ieee(bulb.ieee)) is None:
-            raise RoamError(f"{entity_id} is not on the Hue bridge, so it can't join a zone")
+            raise GroupError(f"{entity_id} is not on the Hue bridge, so it can't join a zone")
         return _light_of((await self.bridge.get("device", device_id))[0])
 
     async def native_id(self, network: str, kind: str, name: str) -> str | None:
@@ -572,7 +579,7 @@ class Roamer:
                 "light": light_id,
                 "metadata": {key: device.get("metadata", {}).get(key) for key in ("name", "archetype")},
                 "rooms": [room["id"] for room in rooms if _has_child(room, device_id)],
-                "zones": [zone["id"] for zone in zones if _has_child(zone, light_id)],
+                "zones": [zone["id"] for zone in zones if _has_child(zone, light_id) and not _rig_made(zone)],
                 "scenes": {
                     scene["id"]: actions
                     for scene in scenes
@@ -633,6 +640,10 @@ def _light_of(device: dict) -> str:
     if len(lights) != 1:
         raise RoamError(f"Hue device {device.get('id')} has {len(lights)} lights, not one")
     return lights[0]
+
+
+def _rig_made(resource: dict) -> bool:
+    return resource.get("metadata", {}).get("name", "").startswith(RIG_PREFIX)
 
 
 def _has_child(group: dict, rid: str) -> bool:

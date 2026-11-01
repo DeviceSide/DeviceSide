@@ -406,3 +406,29 @@ def test_the_plan_lists_the_groups_and_whether_the_bulbs_move(tmp_path, capsys):
     assert "hue / set_scene -> scene.test_relax" in out
     rig.print_profile(profile)
     assert "  ds-rig   scene.test_relax" in capsys.readouterr().out
+
+
+async def test_a_group_that_cant_be_made_away_from_home_still_brings_the_bulbs_home(tmp_path, monkeypatch, lab):
+    monkeypatch.setattr(roam, "GONE_S", 0)
+    fake_phases(monkeypatch, lab)
+    journal = Journal(tmp_path / "journal.json")
+    await lab.ha.zha_group_add("ds-rig-test-group")  # a leftover no run journaled
+
+    with pytest.raises(SystemExit, match="Roaming stopped: ZHA already has a group named ds-rig-test-group"):
+        await rig.run_rig(
+            ENV, suites(tmp_path, "zha"), lab_with_groups(tmp_path), None, None, True, None, journal, True, True
+        )
+
+    assert await where(lab) == ["hue", "hue"]
+    assert not journal.path.exists()
+
+
+async def test_a_leftover_rig_zone_isnt_saved_as_a_bulbs_home(lab):
+    lab.bridge.resources["zone"]["z9"] = {
+        "id": "z9",
+        "metadata": {"name": "ds-rig-test-group"},
+        "children": [{"rid": lab.ha.entity_meta["light.lab_a"]["unique_id"], "rtype": "light"}],
+    }
+    moving = Roamer(lab.ha, lab.bridge, BULBS, out=lambda _: None)
+    await moving.go("zha")
+    assert moving.home["light.lab_a"]["zones"] == ["z1"]
