@@ -351,7 +351,7 @@ tests/
   fixtures/{z2m,zha,matter,shelly,hue,groups}.py   fabricate registry entries + boundary mocks
   core/   actions/   integrations/<i>/               one module per adapter; see Testing
   rig/    client.py (HA WS/REST client), profile.py, engine.py (step runner, snapshot/restore, test record writer),
-          profiles/<name>.yaml (gitignored), profiles/example.yaml, steps/<action>.yaml
+          profiles/<name>.yaml (gitignored), profile.example.yaml, steps/<action>.yaml
 ```
 
 Repo root: README.md (hand-written feature table), hacs.json, pyproject.toml,
@@ -552,7 +552,7 @@ actions_setup) use only `tests/fakes/fake_integration`.
 
 ### Rig (approval-gated, real HA)
 
-`scripts/rig.py` loads the `--profile` (`tests/rig/profiles/<name>.yaml`, gitignored; `example.yaml` committed)
+`scripts/rig.py` loads the `--profile` (`tests/rig/profiles/<name>.yaml`, gitignored; `tests/rig/profile.example.yaml` committed)
 mapping each integration to household entities, prints the profile, the adapters about to run, estimated
 duration and whether a restart is needed, then requires interactive y/N (or
 `DEVICE_SIDE_RIG_APPROVED=1`). `scripts/rig.py` flow:
@@ -591,11 +591,11 @@ hue_dimmer's release checklist (§2-5) became the Hue step files.
 When every test of an adapter passes (no `-k`, nothing failed), the engine writes its test record;
 Jason reviews and commits the diff. A test with an unobserved `observe` step proves no capability or field.
 
-`.gitignore`: `tests/rig/profiles/*` (but `example.yaml`), `.env.rig` (example at `tests/rig/env.example`).
+`.gitignore`: `tests/rig/profiles/`, `.env.rig` (example at `tests/rig/env.example`).
 The maintainer's rig has private setup docs. `docs/contributing/testing.md` covers manual testing
 on any Home Assistant: install, first-load check, and how to file a test report.
 Profile format (per integration -> entities with role tags `light_dimmable`, `light_ct`,
-`light_color`, `switch_plug`, `group`, `scene`, plus `pause:`) is in `tests/rig/profiles/example.yaml`, and the
+`light_color`, `switch_plug`, `group`, `scene`, plus `pause:`) is in `tests/rig/profile.example.yaml`, and the
 HA instance's settings in `tests/rig/env.example`. **Claude asks before every rig run; the devices are
 in-use household lights.** Rig passes are recorded in `docs/test-records/<integration>/<action>.md`
 (date, HA version, device model and firmware from `config/device_registry/list`, per-test table,
