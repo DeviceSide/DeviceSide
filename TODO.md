@@ -73,7 +73,7 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. The rig lock
 - [ ] **15** The lab ([`2026-11-01-lab.md`](docs/plans/2026-11-01-lab.md)): three Hue bulbs in the maintainer's room,
   the A60 among them, that a run moves Hue → ZHA → Z2M → Hue, with Hue as their home network.
   - [x] PR 1: profiles (`tests/rig/profiles/<name>.yaml`, `--profile`, `pause:` replacing `RIG_PAUSE`), #147.
-  - [ ] PR 2: network clients (Hue CLIP v2 reads and deletes, ZHA and Z2M join and remove, registry renames).
+  - [x] PR 2: network clients (Hue CLIP v2 reads and deletes, ZHA and Z2M join and remove, registry renames), #149.
   - [ ] PR 3: roaming (moves, fixed entity IDs, Hue home saved and restored, `--recover` moves the bulbs home).
   - [ ] PR 4: rig-made `ds-rig-*` groups, zones and scenes on each visit.
   - [ ] PR 5: lab bring-up (attended): the A60 moves into the lab, `profiles/lab.yaml`, a `--roam-check` round trip
