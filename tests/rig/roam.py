@@ -34,6 +34,9 @@ JOIN_S = 120  # how long a join window stays open, and how long a bulb has to jo
 RELEASE_S = 30  # for a released bulb to drop off its network
 ENTITY_S = 90  # for HA to show a joined bulb's device and light entity (ZHA's interview took about 60 s)
 HUE_SEARCH_S = 56  # how long a Hue search stays open; it can't be ended early
+# Searches per return to Hue: a second only when a bulb is still missing once the first has ended, so a normal run
+# opens one window, and a failing one two, for whatever device is resetting nearby to join.
+HUE_SEARCHES = 2
 POLL_S = 2.0
 GONE_S = 15  # for HA to drop a rig-made group's entity once the group is removed; after that the rig removes it
 # The rig-made Hue scene: every member on at 40 %, and 366 mirek (2732 K) where it takes a color temperature. Below
@@ -88,7 +91,8 @@ def plan_lines(bulbs: Iterable[RoamBulb], groups: Iterable[RoamGroup] = (), movi
             f"Roams {names} together: {' -> '.join(NAMES[network] for network in route())}.",
             f"  Hue -> ZHA: delete on the bridge, then ZHA joining for up to {JOIN_S} s, closed once all are in.",
             f"  ZHA -> Z2M: zha.remove, then Z2M joining for up to {JOIN_S} s, closed once all are in.",
-            f"  Z2M -> Hue: Z2M remove, then one Hue search: open about {HUE_SEARCH_S} s, and it can't be ended early.",
+            f"  Z2M -> Hue: Z2M remove, then a Hue search: open about {HUE_SEARCH_S} s, and it can't be ended early;",
+            "    one more only if a bulb is still missing. Any other device that joins meanwhile is named.",
             "  After each join the bulbs are renamed to their entity IDs; back on Hue their rooms and scenes are "
             "restored.",
         ]
@@ -149,6 +153,9 @@ class Roamer:
         self.moving: dict | None = saved.get("move")
         # Each rig-made group or scene, journaled before it is made: {network, kind, name, entity_id, renamed}.
         self.made: list[dict] = [dict(made) for made in saved.get("made", [])]
+        # The bridge's devices before a search, until search_over has named any newcomer; journaled, so recovery can.
+        before = saved.get("bridge_before")
+        self.bridge_before: set[str] | None = set(before) if before is not None else None
 
     @classmethod
     def from_journal(cls, ha: HAClient, bridge: HueBridge, journal: Journal, out: Callable[[str], None] = print):
@@ -166,6 +173,7 @@ class Roamer:
                     "move": self.moving,
                     "home": self.home,
                     "made": self.made,
+                    "bridge_before": sorted(self.bridge_before) if self.bridge_before is not None else None,
                 }
             )
 
@@ -223,6 +231,8 @@ class Roamer:
             await self.move([bulb for bulb in away if self.at[bulb.entity_id] == start], start, following(start))
         if to == HOME:
             await self.restore_home()
+            if not await self.search_over():
+                self.out("The Hue search is still open; anything resetting nearby may yet join the bridge.")
             self.finish()
 
     async def move(self, bulbs: list[Bulb], source: str, target: str) -> None:
@@ -253,12 +263,31 @@ class Roamer:
         await self.ha.zha_close()
         if await self.ha.z2m_permit_join_open():
             await self.ha.z2m_permit_join(0)
-
-        async def hue_idle() -> bool:
-            return (await self.discovery()).get("status") != "active"
-
-        if not await _until(hue_idle, HUE_SEARCH_S + 15):
+        if not await self.search_over():
             raise RoamError("the Hue bridge is still searching for lights; nothing was released")
+
+    async def hue_idle(self) -> bool:
+        return (await self.discovery()).get("status") != "active"
+
+    async def search_over(self) -> bool:
+        """Wait out a Hue search, then name any device that joined the bridge during it and isn't a roaming bulb:
+        an open search admits whatever is resetting nearby. It is left on the bridge, as it may be wanted. Whether
+        the search ended in time."""
+        if not await _until(self.hue_idle, HUE_SEARCH_S + 15):
+            return False
+        if self.bridge_before is not None:
+            ours = {await self.bridge.device_id_by_ieee(bulb.ieee) for bulb in self.bulbs}
+            for device in await self.bridge.get("device"):
+                if device["id"] not in self.bridge_before | ours:
+                    name = device.get("metadata", {}).get("name", "unnamed")
+                    model = device.get("product_data", {}).get("model_id", "unknown model")
+                    self.out(
+                        f"A device that isn't a roaming bulb joined the Hue bridge during the search: {name} "
+                        f"({model}, device {device['id']}). Check it in the Hue app; the rig leaves it there."
+                    )
+            self.bridge_before = None
+            self.save()
+        return True
 
     async def discovery(self) -> dict:
         """The bridge's one zigbee_device_discovery resource."""
@@ -299,15 +328,43 @@ class Roamer:
             finally:
                 await self.ha.z2m_permit_join(0)
         else:
-            discovery = await self.discovery()
-            await self.bridge.put("zigbee_device_discovery", discovery["id"], {"action": {"action_type": "search"}})
-            arrived = await _until(all_in, JOIN_S)
+            arrived = await self.hue_join(bulbs, all_in)
         if not arrived:
             missing = [bulb.entity_id for bulb in bulbs if not await self.joined(network, bulb)]
+            window = f"{HUE_SEARCHES} searches" if network == "hue" else f"{JOIN_S} s"
             raise RoamError(
-                f"Not on any Zigbee network: {', '.join(missing)} did not join {NAMES[network]} within "
-                f"{JOIN_S} s. {BLUETOOTH_RESET}"
+                f"Not on any Zigbee network: {', '.join(missing)} did not join {NAMES[network]} within {window}. "
+                f"{BLUETOOTH_RESET}"
             )
+
+    async def hue_join(self, bulbs: list[Bulb], all_in: Callable[[], Awaitable[bool]]) -> bool:
+        """Search until every bulb is in: one search, and one more if a bulb is still missing when it ends. Returns
+        once all are in, so a search may still be open; the next move's close_all, or go(HOME), waits it out."""
+        self.bridge_before = {device["id"] for device in await self.bridge.get("device")}
+        self.save()
+        discovery = await self.discovery()
+        for search in range(HUE_SEARCHES):
+            if search:
+                missing = [bulb.entity_id for bulb in bulbs if not await self.joined("hue", bulb)]
+                self.out(f"{', '.join(missing)} not on Hue after the search; searching once more.")
+            await self.bridge.put("zigbee_device_discovery", discovery["id"], {"action": {"action_type": "search"}})
+            started = False
+
+            async def in_or_ended() -> bool:
+                nonlocal started
+                if await all_in():
+                    return True
+                # The bridge reports a search active at once (the probe saw it), so it has ended only once it was
+                # seen active and no longer is. A bridge that never showed it would cost the timeout, not a result.
+                idle = await self.hue_idle()
+                started = started or not idle
+                return started and idle
+
+            await _until(in_or_ended, HUE_SEARCH_S + 15)
+            if await all_in():
+                return True
+        await self.search_over()  # already over: name whatever joined
+        return False
 
     # --- HA's view of a joined bulb -------------------------------------------------------------------------------
 

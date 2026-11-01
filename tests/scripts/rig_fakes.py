@@ -327,13 +327,18 @@ class Lab:
     """Bulbs that roam between a FakeHA's ZHA and Z2M and a FakeBridge, as the real networks do: a released bulb
     searches, and joins the next network that opens (unless it is `stuck`), under a new device and a generated
     entity ID. Leaving Hue drops the bulb from its rooms, zones and scene actions; each leave orphans its HA entity.
-    A zone or scene made on the bridge gets its HA entity, which goes with it. The bulbs start on Hue under their
-    fixed entity IDs, in room `r1`, zone `z1` and scene `s1`."""
+    A Hue search reads active for `search_s`; a `late` bulb sits out the first search it could join, and each of
+    `strangers` is a device that isn't ours joining the next search. A zone or scene made on the bridge gets its HA
+    entity, which goes with it. The bulbs start on Hue under their fixed entity IDs, in room `r1`, zone `z1` and
+    scene `s1`."""
 
     def __init__(self, ha: FakeHA, bridge: FakeBridge, bulbs: dict[str, str]):
         self.ha, self.bridge = ha, bridge
         self.searching: set[str] = set()
         self.stuck: set[str] = set()
+        self.late: set[str] = set()
+        self.strangers = 0
+        self.search_s = 0.01
         self.zones_disabled_by: str | None = None  # HA adds a zone's light disabled
         self.joins = 0
         self.searches = 0
@@ -359,9 +364,25 @@ class Lab:
     def action(light_id: str, brightness: int) -> dict:
         return {"target": {"rid": light_id, "rtype": "light"}, "action": {"dimming": {"brightness": brightness}}}
 
-    def searched(self, _bridge: FakeBridge) -> None:
+    def searched(self, bridge: FakeBridge) -> None:
         self.searches += 1
+        discovery = bridge.resources["zigbee_device_discovery"]["disc"]
+        discovery["status"] = "active"
+        asyncio.get_running_loop().call_later(self.search_s, discovery.update, {"status": "ready"})
+        sitting_out = self.searching & self.late
+        self.late -= sitting_out
+        self.searching -= sitting_out
         self.opened("hue")
+        self.searching |= sitting_out
+        for _ in range(self.strangers):
+            stranger = f"stranger-{len(bridge.resources['device'])}"
+            bridge.resources["device"][stranger] = {
+                "id": stranger,
+                "metadata": {"name": "Hue motion sensor"},
+                "product_data": {"model_id": "SML001"},
+                "services": [],
+            }
+        self.strangers = 0
 
     def opened(self, network: str) -> None:
         for ieee in sorted(self.searching - self.stuck):
