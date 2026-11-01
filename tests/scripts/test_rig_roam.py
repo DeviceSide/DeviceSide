@@ -103,9 +103,9 @@ async def test_the_journal_names_the_move_in_flight_before_the_release(lab, tmp_
     seen = []
     deleted = lab.bridge.on_delete
 
-    def on_delete(device_id):
+    def on_delete(resource_type, resource_id):
         seen.append(json.loads(journal.path.read_text())["roam"])
-        deleted(device_id)
+        deleted(resource_type, resource_id)
 
     lab.bridge.on_delete = on_delete
     await roamer(lab, journal).go("zha")
@@ -238,7 +238,7 @@ def test_a_profile_lists_each_roaming_bulb_under_every_network(tmp_path):
         ('    - ieee: "0x0017880100000003"\n      entity_id: light.c\n      zigbee: 1\n', "unknown keys"),
         ('    - ieee: "0x0017880100000003"\n      entity_id: light.c\n      z2m_options: [a]\n', "must be a mapping"),
         ("    - entity_id: light.c\n", "needs an ieee and an entity_id"),
-        ("  groups: []\n", "roam must be a mapping with a bulbs list"),
+        ("  zones: []\n", "roam must be a mapping with a bulbs list"),
     ],
 )
 def test_a_profile_refuses_a_bad_roam_bulb(tmp_path, extra, error):

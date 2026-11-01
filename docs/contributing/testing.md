@@ -64,6 +64,12 @@ network stops recovery: reset it over Bluetooth in the Hue app, then `--recover`
 the Hue search ends gets one more, and any other device that joins the bridge meanwhile is named, not removed. `--roam-check` runs the
 cycle with no suites. Roaming needs `HA_ADMIN_TOKEN` and the Hue bridge's `HUE_BRIDGE_HOST` and `HUE_APP_KEY`.
 
+`roam:` can also list `groups:`, native groups of those bulbs that the run makes on each network they visit: a Z2M
+group, a ZHA group, or a Hue zone with, if the group names a `scene:`, a Hue scene in it. Each is called
+`ds-rig-<object ID>` and renamed to its fixed entity ID, takes the group's roles (`group` or `group_color`, each on
+one group; the scene takes `scene`), and is removed before the bulbs move on, or by `--recover` after a crash. A
+run of Hue suites alone makes them on Hue without moving the bulbs; that, too, needs the tokens above.
+
 Ctrl-C, SIGTERM or SIGHUP puts the devices back before the run exits; a second one leaves them. If a run dies before it can, the next run
 puts back what it left before its gate; `--recover` does only that.
 

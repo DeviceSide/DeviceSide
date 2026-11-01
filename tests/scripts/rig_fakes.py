@@ -12,7 +12,7 @@ from types import SimpleNamespace
 from tests.rig.bridge import BridgeError, HueBridge, normalize_ieee
 from tests.rig.client import HAClient, HAError, device_ieee
 from tests.rig.profile import Profile, RigEntity, colon_ieee, hex_ieee
-from tests.rig.roam import Bulb
+from tests.rig.roam import Z2M_GROUP_IDENTIFIER, ZHA_GROUP_UNIQUE_ID, Bulb
 
 PENDING: list[asyncio.TimerHandle | asyncio.Task] = []
 
@@ -21,8 +21,9 @@ class FakeHA(HAClient):
     """Entity states HA would hold, plain on/off services, and device_side actions answered by `respond`.
 
     It inherits HAClient's network helpers (ZHA, Z2M, registries) and fakes the three things they sit on: `command`,
-    `call_service` and the MQTT subscription. A bulb joins with `join`; a leave, a permit window and a Z2M group act
-    as the real networks would. Nothing here is the network's timing: a join is instant.
+    `call_service` and the MQTT subscription. A bulb joins with `join`; a leave, a permit window and a ZHA or Z2M group
+    act as the real networks would, a group with its HA light (dropped with it, unless `keeps_group_entities`).
+    Nothing here is the network's timing: a join is instant.
     """
 
     def __init__(self, states: dict[str, dict], respond: Callable | None = None):
@@ -34,11 +35,15 @@ class FakeHA(HAClient):
         self.calls: list[tuple[str, str, dict]] = []
         self.devices: list[dict] = [{"id": "d1", "model": "Mini", "model_id": "S3", "sw_version": "2.0"}]
         self.entity_devices: dict[str, str] = {}  # the entity registry: entity ID -> device ID
+        self.entity_meta: dict[str, dict] = {}  # the registry's platform, unique_id and disabled_by, by entity ID
+        self.keeps_group_entities = False  # HA keeps a removed group's entity in its registry
         self.zha_open = False
-        self.zha_groups: dict[int, str] = {}
+        self.zha_group_names: dict[int, str] = {}
+        self.zha_group_members: dict[int, list[dict]] = {}
         self.z2m_open = False
         self.z2m_devices: list[str] = []
         self.z2m_groups: dict[str, list[str]] = {}
+        self.z2m_group_ids: dict[str, int] = {}
         self.z2m_ignores: set[str] = set()  # request topics Z2M never acts on
         self.z2m_options: dict[str, dict] = {}  # device options by IEEE, as bridge/info's config.devices
         self.on_open: Callable[[str], None] | None = None  # ZHA or Z2M joining opened (Lab joins its bulbs)
@@ -52,9 +57,26 @@ class FakeHA(HAClient):
         if integration == "zigbee2mqtt":
             self.z2m_devices.append(ieee)
         if entity_id is not None:
-            self.entity_devices[entity_id] = device_id
-            self.states.setdefault(entity_id, {"entity_id": entity_id, "state": "off", "attributes": {}})
+            unique_id = f"{ieee}-11" if integration == "zha" else f"{ieee}_light_zigbee2mqtt"
+            self.register(entity_id, device_id, "zha" if integration == "zha" else "mqtt", unique_id)
         return device_id
+
+    def register(
+        self, entity_id: str, device_id: str | None, platform: str, unique_id: str, disabled_by: str | None = None
+    ) -> None:
+        """An entity in the registry, with a state."""
+        self.entity_devices[entity_id] = device_id
+        self.entity_meta[entity_id] = {"platform": platform, "unique_id": unique_id, "disabled_by": disabled_by}
+        self.states.setdefault(entity_id, {"entity_id": entity_id, "state": "off", "attributes": {}})
+
+    def unregister(self, unique_id: str) -> None:
+        """HA drops the entity with this unique_id, unless it keeps removed groups' entities."""
+        if self.keeps_group_entities:
+            return
+        for entity_id in [e for e, meta in self.entity_meta.items() if meta["unique_id"] == unique_id]:
+            self.entity_devices.pop(entity_id, None)
+            self.entity_meta.pop(entity_id)
+            self.states.pop(entity_id, None)
 
     def _leave(self, integration: str, ieee: str) -> None:
         """The device goes from the network and the device registry; its entities stay as orphans, as HA leaves them."""
@@ -79,9 +101,17 @@ class FakeHA(HAClient):
         elif topic == "device/remove":
             self._z2m_remove(payload["id"])
         elif topic == "group/add":
-            self.z2m_groups.setdefault(payload["friendly_name"], [])
+            name = payload["friendly_name"]
+            self.z2m_groups.setdefault(name, [])
+            group_id = self.z2m_group_ids.setdefault(name, len(self.z2m_group_ids) + 1)
+            device_id = f"z2m-group-{group_id}"
+            self.devices.append({"id": device_id, "identifiers": [["mqtt", Z2M_GROUP_IDENTIFIER.format(group_id)]]})
+            self.register(f"light.{name.replace('-', '_')}", device_id, "mqtt", f"{group_id}_light_zigbee2mqtt")
         elif topic == "group/remove":
             self.z2m_groups.pop(payload["id"], None)
+            if (group_id := self.z2m_group_ids.pop(payload["id"], None)) is not None:
+                self.devices = [d for d in self.devices if d["id"] != f"z2m-group-{group_id}"]
+                self.unregister(f"{group_id}_light_zigbee2mqtt")
         elif topic == "group/members/add":
             self.z2m_groups[payload["group"]].append(payload["device"])
 
@@ -100,7 +130,11 @@ class FakeHA(HAClient):
             "info": {"permit_join": self.z2m_open, "config": {"devices": self.z2m_options}},
             "devices": [{"ieee_address": ieee, "interview_completed": True} for ieee in self.z2m_devices],
             "groups": [
-                {"friendly_name": name, "members": [{"ieee_address": i} for i in members]}
+                {
+                    "id": self.z2m_group_ids.get(name),
+                    "friendly_name": name,
+                    "members": [{"ieee_address": i} for i in members],
+                }
                 for name, members in self.z2m_groups.items()
             ],
         }[topic.removeprefix("zigbee2mqtt/bridge/")]
@@ -159,47 +193,73 @@ class FakeHA(HAClient):
         if kind == "config/entity_registry/get":
             return {"entity_id": entity_id, "device_id": self.entity_devices.get(entity_id)}
         if kind == "config/entity_registry/list":
-            return [{"entity_id": e, "device_id": d, "platform": "fake"} for e, d in self.entity_devices.items()]
+            return [
+                {"entity_id": e, "device_id": d, "platform": "fake", "unique_id": None} | self.entity_meta.get(e, {})
+                for e, d in self.entity_devices.items()
+            ]
         if kind == "config/entity_registry/update":
-            new = payload["new_entity_id"]
-            if new in self.entity_devices or new in self.states:
-                raise HAError({"code": "invalid_info", "message": f"Entity with this ID is already registered: {new}"})
-            self.entity_devices[new] = self.entity_devices.pop(entity_id)
-            if entity_id in self.states:
-                self.states[new] = {**self.states.pop(entity_id), "entity_id": new}
-            return {"entity_entry": {"entity_id": new}}
+            return self._update_entity(entity_id, payload)
         if kind == "config/entity_registry/remove":
             self.entity_devices.pop(entity_id)
+            self.entity_meta.pop(entity_id, None)
             self.states.pop(entity_id, None)
             return None
-        if kind == "zha/group/add":
-            group_id = 0x1000 + len(self.zha_groups)
-            self.zha_groups[group_id] = payload["group_name"]
-            return {"group_id": group_id}
-        if kind == "zha/group/remove":
-            for group_id in payload["group_ids"]:
-                self.zha_groups.pop(group_id)
-            return None
+        if kind.startswith("zha/group"):
+            return self._zha_group(kind, payload)
         return {
             "get_config": {"version": "2026.10.1"},
             "config/entity_registry/list_for_display": {"entities": [{"ei": "switch.plug", "di": "d1"}]},
             "config/device_registry/list": copy.deepcopy(self.devices),
         }[kind]
 
+    def _update_entity(self, entity_id: str, payload: dict) -> dict:
+        new = payload["new_entity_id"]
+        if new != entity_id and (new in self.entity_devices or new in self.states):
+            raise HAError({"code": "invalid_info", "message": f"Entity with this ID is already registered: {new}"})
+        self.entity_devices[new] = self.entity_devices.pop(entity_id)
+        if entity_id in self.entity_meta:
+            self.entity_meta[new] = self.entity_meta.pop(entity_id)
+            if "disabled_by" in payload:
+                self.entity_meta[new]["disabled_by"] = payload["disabled_by"]
+        if entity_id in self.states:
+            self.states[new] = {**self.states.pop(entity_id), "entity_id": new}
+        return {"entity_entry": {"entity_id": new}}
+
+    def _zha_group(self, kind: str, payload: dict) -> dict | list | None:
+        if kind == "zha/groups":
+            return [
+                {"group_id": group_id, "name": name, "members": self.zha_group_members[group_id]}
+                for group_id, name in self.zha_group_names.items()
+            ]
+        if kind == "zha/group/add":
+            group_id = 0x1000 + len(self.zha_group_names)
+            self.zha_group_names[group_id] = payload["group_name"]
+            self.zha_group_members[group_id] = payload["members"]
+            entity_id = f"light.{payload['group_name'].replace('-', '_')}_zha_group_0x{group_id:04x}"
+            self.register(entity_id, None, "zha", ZHA_GROUP_UNIQUE_ID.format(group_id))
+            return {"group_id": group_id}
+        for group_id in payload["group_ids"]:  # zha/group/remove
+            self.zha_group_names.pop(group_id)
+            self.zha_group_members.pop(group_id)
+            self.unregister(ZHA_GROUP_UNIQUE_ID.format(group_id))
+        return None
+
 
 class FakeBridge(HueBridge):
     """HueBridge over an in-memory CLIP v2: the real get, post, put, delete and IEEE lookup, with a faked transport.
 
     `resources` holds each type's items by id. A search (a PUT of `action_type: search` to `zigbee_device_discovery`)
-    runs `on_search`, which a test uses to make a bulb join. A DELETE of a device runs `on_delete` first, then removes
-    it, its connectivity and its lights.
+    runs `on_search`, which a test uses to make a bulb join. A DELETE runs `on_delete` (type, id) first; a device's
+    removes its connectivity and lights too. A POST runs `on_post` (type, the new item) after; a new zone gets a
+    grouped_light.
     """
 
     def __init__(self, resources: dict[str, dict[str, dict]] | None = None, on_search: Callable | None = None):
         super().__init__("bridge.invalid", "key")
         self.resources = resources or {}
         self.on_search = on_search
-        self.on_delete: Callable[[str], None] | None = None
+        self.on_delete: Callable[[str, str], None] | None = None
+        self.on_post: Callable[[str, dict], None] | None = None
         self.requests: list[tuple[str, str, str | None, dict | None]] = []
         self.fail: dict[tuple[str, str], str] = {}  # (method, resource type) -> an error the bridge returns
 
@@ -228,11 +288,15 @@ class FakeBridge(HueBridge):
     def _post(self, resource_type: str, items: dict, body: dict) -> list[dict]:
         new_id = f"{resource_type}-{len(items)}"
         items[new_id] = {"id": new_id, **body}
+        if resource_type == "zone":
+            items[new_id]["services"] = [{"rid": f"grouped-{new_id}", "rtype": "grouped_light"}]
+        if self.on_post is not None:
+            self.on_post(resource_type, items[new_id])
         return [{"rid": new_id, "rtype": resource_type}]
 
     def _delete(self, resource_type: str, items: dict, resource_id: str) -> None:
-        if resource_type == "device" and self.on_delete is not None:
-            self.on_delete(resource_id)
+        if self.on_delete is not None:
+            self.on_delete(resource_type, resource_id)
         del items[resource_id]
         if resource_type == "device":
             for owned in self.resources.values():
@@ -264,8 +328,9 @@ class Lab:
     searches, and joins the next network that opens (unless it is `stuck`), under a new device and a generated
     entity ID. Leaving Hue drops the bulb from its rooms, zones and scene actions; each leave orphans its HA entity.
     A Hue search reads active for `search_s`; a `late` bulb sits out the first search it could join, and each of
-    `strangers` is a device that isn't ours joining the next search.
-    The bulbs start on Hue under their fixed entity IDs, in room `r1`, zone `z1` and scene `s1`."""
+    `strangers` is a device that isn't ours joining the next search. A zone or scene made on the bridge gets its HA
+    entity, which goes with it. The bulbs start on Hue under their fixed entity IDs, in room `r1`, zone `z1` and
+    scene `s1`."""
 
     def __init__(self, ha: FakeHA, bridge: FakeBridge, bulbs: dict[str, str]):
         self.ha, self.bridge = ha, bridge
@@ -274,12 +339,14 @@ class Lab:
         self.late: set[str] = set()
         self.strangers = 0
         self.search_s = 0.01
+        self.zones_disabled_by: str | None = None  # HA adds a zone's light disabled
         self.joins = 0
         self.searches = 0
         ha.on_open = self.opened
         ha.on_leave = lambda _integration, ieee: self.searching.add(normalize_ieee(ieee))
         bridge.on_search = self.searched
         bridge.on_delete = self.deleted
+        bridge.on_post = self.posted
         bridge.resources |= {
             "zigbee_device_discovery": {"disc": {"id": "disc", "status": "ready"}},
             "room": {"r1": {"id": "r1", "children": [{"rid": "other-device", "rtype": "device"}]}},
@@ -336,7 +403,8 @@ class Lab:
             "metadata": {"name": "Hue color lamp", "archetype": "sultan_bulb"},
             "services": [{"rid": light_id, "rtype": "light"}, {"rid": link, "rtype": "zigbee_connectivity"}],
         }
-        resources.setdefault("light", {})[light_id] = {"id": light_id, "owner": {"rid": device_id}}
+        light = {"id": light_id, "owner": {"rid": device_id}, "color_temperature": {"mirek": 366}}
+        resources.setdefault("light", {})[light_id] = light
         mac = colon_ieee(ieee)
         resources.setdefault("zigbee_connectivity", {})[link] = {
             "id": link,
@@ -344,12 +412,29 @@ class Lab:
             "owner": {"rid": device_id},
         }
         self.ha.devices.append({"id": f"ha-{device_id}", "identifiers": [["hue", device_id]]})
-        self.ha.entity_devices[entity_id] = f"ha-{device_id}"
-        self.ha.states.setdefault(entity_id, {"entity_id": entity_id, "state": "off", "attributes": {}})
+        self.ha.register(entity_id, f"ha-{device_id}", "hue", light_id)
         return device_id, light_id
 
-    def deleted(self, device_id: str) -> None:
-        """The bridge drops the device everywhere, and HA's hue integration drops its device."""
+    def posted(self, resource_type: str, item: dict) -> None:
+        """HA's hue integration adds a zone's grouped light, or a scene, under a name of its own."""
+        name = item["metadata"]["name"].replace("-", "_")
+        if resource_type == "zone":
+            grouped = item["services"][0]["rid"]
+            self.ha.register(f"light.{name}", None, "hue", grouped, disabled_by=self.zones_disabled_by)
+        elif resource_type == "scene":
+            self.ha.register(f"scene.{name}", None, "hue", item["id"])
+
+    def deleted(self, resource_type: str, resource_id: str) -> None:
+        """The bridge drops a device everywhere, and HA's hue integration drops its device; a zone or scene takes its
+        HA entity with it."""
+        if resource_type == "zone":
+            self.ha.unregister(f"grouped-{resource_id}")
+        elif resource_type == "scene":
+            self.ha.unregister(resource_id)
+        if resource_type == "device":
+            self.drop_device(resource_id)
+
+    def drop_device(self, device_id: str) -> None:
         resources = self.bridge.resources
         link = next(c for c in resources["zigbee_connectivity"].values() if c["owner"]["rid"] == device_id)
         self.searching.add(normalize_ieee(link["mac_address"]))
