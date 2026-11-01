@@ -81,7 +81,7 @@ from tests.rig.profile import (  # noqa: E402
     load_env,
     profile_paths,
 )
-from tests.rig.roam import HOME, NAMES, Bulb, Roamer, RoamError  # noqa: E402
+from tests.rig.roam import HOME, NAMES, Bulb, GroupError, Roamer, RoamError  # noqa: E402
 from tests.rig.roam import plan_lines as roam_plan_lines  # noqa: E402
 
 COMPONENT = "custom_components/device_side"
@@ -147,6 +147,13 @@ def roams(profile: Profile, suites: list[Suite], roam_check: bool = False) -> bo
     """Whether the run moves the profile's bulbs: for --roam-check, or a ZHA or Z2M suite. Hue's suites and the fixed
     integrations' run with the bulbs at home, so a run of only those stays there."""
     return bool(profile.roam) and (roam_check or any(suite.integration in CYCLE[1:] for suite in suites))
+
+
+def makes_groups(profile: Profile, suites: list[Suite], roam_check: bool = False) -> bool:
+    """Whether the run makes the profile's ds-rig-* groups: on each visit when it roams, or on Hue for a Hue suite."""
+    if not profile.roam_groups:
+        return False
+    return roams(profile, suites, roam_check) or any(suite.integration == HOME for suite in suites)
 
 
 def phases(suites: list[Suite], roaming: bool) -> list[tuple[str | None, list[Suite]]]:
@@ -503,11 +510,12 @@ def run_held(args: argparse.Namespace, journal: Journal) -> int:
         if not any(registry.adapter(suite.action, suite.integration) for suite in suites):
             raise SystemExit("No rig test matches the profile's integrations.")
     roaming = roams(profile, suites, args.roam_check)
+    grouping = makes_groups(profile, suites, args.roam_check)
     if not args.dry_run:
-        check_tokens(env, suites, registry, roaming)
+        check_tokens(env, suites, registry, roaming or grouping)
     deploy = deploy_state(env.get("RIG_STATUS_CMD", ""))
     deploying = deploy.needed and not args.no_deploy and not args.roam_check  # the check runs none of our code
-    print_plan(profile, suites, registry, args.keyword, deploy, deploying, roaming)
+    print_plan(profile, suites, registry, args.keyword, deploy, deploying, roaming, grouping)
 
     if deploying:
         check_deploy(env, deploy)
@@ -520,7 +528,18 @@ def run_held(args: argparse.Namespace, journal: Journal) -> int:
     deploy_and_wait(env, deploy.branch if deploying else None)
     commit = tested_commit(env.get("RIG_STATUS_CMD", ""), deploy, deploying)
     return run_tests(
-        run_rig(env, suites, profile, registry, args.keyword, args.unattended, commit, journal, roaming=roaming)
+        run_rig(
+            env,
+            suites,
+            profile,
+            registry,
+            args.keyword,
+            args.unattended,
+            commit,
+            journal,
+            roaming=roaming,
+            grouping=grouping,
+        )
     )
 
 
@@ -661,7 +680,8 @@ def replay(env: dict, journal: Journal, dry_run: bool, asked: bool) -> None:
 def check_tokens(env: dict, suites: list[Suite], registry: AdapterRegistry, roaming: bool = False) -> None:
     """Stop before the gate when .env.rig lacks a token the run needs: ADMIN_INTEGRATIONS and any adapter with
     options (they are set through device_side's options flow) need HA_ADMIN_TOKEN; a Hue file with a bridge step
-    needs the bridge's host and key; roaming needs both, for the registries, MQTT and the bridge."""
+    needs the bridge's host and key; roaming, or making the lab's groups, needs both, for the registries, MQTT and
+    the bridge."""
     if not (env.get("HA_URL") and env.get("HA_TOKEN")):
         raise SystemExit("HA_URL and HA_TOKEN must be set in .env.rig (see tests/rig/env.example)")
     bridge = env.get("HUE_BRIDGE_HOST") and env.get("HUE_APP_KEY")
@@ -691,9 +711,10 @@ def print_plan(
     deploy: Deploy,
     deploying: bool,
     roaming: bool = False,
+    grouping: bool = False,
 ) -> None:
     print_profile(profile)
-    print_phases(profile, suites, registry, keyword, roaming)
+    print_phases(profile, suites, registry, keyword, roaming, grouping)
     print(
         f"Integration: local {deploy.local_tree[:12]}, synced {(deploy.synced_tree or 'unknown')[:12]}, "
         f"loaded {(deploy.loaded_tree or 'unknown')[:12]}"
@@ -718,18 +739,27 @@ def print_profile(profile: Profile) -> None:
                 print(f"  {integration:8} {entity.entity_id:40} {', '.join(sorted(entity.roles))}")
     for bulb in profile.roam:
         print(f"  {'roams':8} {bulb.entity_id:40} {', '.join(sorted(bulb.roles))}")
+    for group in profile.roam_groups:
+        print(f"  {'ds-rig':8} {group.entity_id:40} {', '.join(sorted(group.roles))}")
+        if group.scene:
+            print(f"  {'ds-rig':8} {group.scene:40} scene")
     if profile.pause:
         print(f"Paused while it runs: {', '.join(profile.pause)}")
 
 
 def print_phases(
-    profile: Profile, suites: list[Suite], registry: AdapterRegistry, keyword: str | None, roaming: bool
+    profile: Profile,
+    suites: list[Suite],
+    registry: AdapterRegistry,
+    keyword: str | None,
+    roaming: bool,
+    grouping: bool = False,
 ) -> None:
-    """The moves, if the run roams, then each phase's adapters and cases."""
-    if roaming:
-        print("\n".join(roam_plan_lines(profile.roam)))
-    elif profile.roam:
+    """The moves, if the run roams, and the groups it makes, then each phase's adapters and cases."""
+    if not roaming and profile.roam:
         print("Roaming: none, as no ZHA or Z2M suite runs; the bulbs stay on Hue.")
+    if roaming or grouping:
+        print("\n".join(roam_plan_lines(profile.roam, profile.roam_groups if grouping else (), roaming)))
     for network, phase_suites in phases(suites, roaming):
         print(f"Adapters on {NAMES[network]}:" if network else "Adapters:")
         for line in plan_lines(phase_suites, profile, registry, keyword) or ["none"]:
@@ -746,34 +776,41 @@ async def run_rig(
     commit: str | None,
     journal: Journal | None = None,
     roaming: bool = False,
+    grouping: bool = False,
 ) -> int:
-    """Run the step files phase by phase, moving the roaming bulbs before each and home after the last, then write a
-    test record for each adapter whose every test passed, citing `commit`; with no commit, none: a record nobody can
-    trace to a commit proves nothing. Roaming needs the admin connection and the bridge (check_tokens)."""
-    if roaming and not (env.get("HA_ADMIN_TOKEN") and env.get("HUE_BRIDGE_HOST") and env.get("HUE_APP_KEY")):
+    """Run the step files phase by phase, moving the roaming bulbs before each and home after the last, and making the
+    ds-rig-* groups in each phase when `grouping`, then write a test record for each adapter whose every test passed,
+    citing `commit`; with no commit, none: a record nobody can trace to a commit proves nothing. Roaming and groups
+    need the admin connection and the bridge (check_tokens)."""
+    lab = roaming or grouping
+    if lab and not (env.get("HA_ADMIN_TOKEN") and env.get("HUE_BRIDGE_HOST") and env.get("HUE_APP_KEY")):
         raise SystemExit("Roaming needs HA_ADMIN_TOKEN, HUE_BRIDGE_HOST and HUE_APP_KEY in .env.rig")
     cancel_on_signals()
     ha, admin = await connect(env)
     bridge = None
     if env.get("HUE_BRIDGE_HOST") and env.get("HUE_APP_KEY"):
         bridge = HueBridge(env["HUE_BRIDGE_HOST"], env["HUE_APP_KEY"])
-    roamer = Roamer(admin, bridge, map(Bulb.of, profile.roam), journal) if roaming else None
+    groups = profile.roam_groups if grouping else ()
+    roamer = Roamer(admin, bridge, map(Bulb.of, profile.roam), journal, groups=groups) if lab else None
     paused: list[str] = []
-    home = True  # whether the roaming bulbs ended at home
+    stopped: Roamer | None = None  # the roamer, once a RoamError stopped the run
+    home = True  # whether the roaming bulbs ended at home, with no rig-made group left
     if journal is not None:
         journal.update(profile=profile.name)
     try:
         result = await run_phases(
-            ha, admin, bridge, roamer, suites, profile, registry, keyword, unattended, paused, journal
+            ha, admin, bridge, roamer, roaming, suites, profile, registry, keyword, unattended, paused, journal
         )
         if suites:
             await report(result, ha, registry, commit, profile)
     except RoamError as err:
-        roamer = None  # a move that failed isn't retried here; the journal keeps where the bulbs are, for --recover
+        # A move that failed isn't retried here; the journal keeps where the bulbs are, for --recover. The groups made
+        # so far still go, and after a group that couldn't be made, the bulbs still go home.
+        if not isinstance(err, GroupError):
+            stopped, roamer = roamer, None
         raise SystemExit(f"Roaming stopped: {err}") from None
     finally:
-        if roamer is not None:
-            home = await go_home(roamer)
+        home = await leave_lab(roamer, stopped)
         await resume(ha, paused, journal)
         drop_profile(journal)
         if bridge:
@@ -789,6 +826,7 @@ async def run_phases(
     admin: HAClient | None,
     bridge: HueBridge | None,
     roamer: Roamer | None,
+    roaming: bool,
     suites: list[Suite],
     profile: Profile,
     registry: AdapterRegistry,
@@ -797,12 +835,15 @@ async def run_phases(
     paused: list[str],
     journal: Journal | None,
 ) -> RunResult:
-    """Each phase: move the bulbs there, wait for its targets, then run its cases, automated then observed. The
-    automations are paused once, after the first phase's targets are all there."""
+    """Each phase: move the bulbs there and make its groups, wait for its targets, then run its cases, automated then
+    observed. The automations are paused once, after the first phase's targets are all there. A run with no suites
+    is --roam-check, which makes and removes the groups on every visit as a probe."""
     results: list[SuiteResult] = []
-    for number, (network, phase_suites) in enumerate(phases(suites, roamer is not None)):
+    for number, (network, phase_suites) in enumerate(phases(suites, roaming)):
         if roamer is not None:
-            await roamer.go(network)
+            await roamer.go(network or HOME)  # removes the last phase's groups first
+            if phase_suites or not suites:
+                await roamer.make_groups(network or HOME)
         if phase_suites:
             await wait_for_targets(ha, phase_suites, profile, registry, keyword)
         if number == 0:
@@ -839,15 +880,26 @@ async def report(result: RunResult, ha: HAClient, registry: AdapterRegistry, com
         print(f"Wrote {path.relative_to(REPO)}; review the diff before committing it.")
 
 
+async def leave_lab(roamer: Roamer | None, stopped: Roamer | None) -> bool:
+    """After the run: the bulbs home and the groups removed (go_home), or, after a RoamError, only the groups removed:
+    a move that failed isn't retried here. Whether the bulbs are home with no group left."""
+    if roamer is not None:
+        return await go_home(roamer)
+    if stopped is not None:
+        await stopped.remove_groups()
+    return True
+
+
 async def go_home(roamer: Roamer) -> bool:
-    """Move the roaming bulbs home after a run that stopped part way (a no-op after one that finished). A failure is
-    printed: the journal keeps where they are, and --recover tries again."""
+    """Remove the rig-made groups and move the roaming bulbs home after a run that stopped part way (a no-op after
+    one that finished); whether both are done. A failure is printed: the journal keeps where they are, and --recover
+    tries again."""
     try:
         await roamer.go(HOME)
     except Exception as err:  # noqa: BLE001 - as resume: say so, and go on putting the rest back
         print(f"Could not move the roaming bulbs home: {err}. scripts/rig.py --recover tries again.")
         return False
-    return True
+    return not roamer.made
 
 
 async def wait_for_targets(
@@ -944,7 +996,8 @@ async def recover(
     bridge: HueBridge | None = None,
 ) -> None:
     """Put back what an aborted run left changed, in the order its finally blocks would have: the case's entities,
-    device_side's options, the roaming bulbs (moved home, their Hue rooms and scenes put back), the paused automations.
+    device_side's options, the roaming bulbs (the ds-rig-* groups removed, the bulbs moved home, their Hue rooms and
+    scenes put back), the paused automations.
     A step that fails is printed and dropped from the journal; options stay in it while there is no admin connection
     to set them. The bulbs can't be left half done, so a failure there stops recovery, keeping the rest journaled."""
     run_of = f" (profile {name})" if (name := journal.get("profile")) else ""
@@ -975,7 +1028,8 @@ async def recover(
 async def recover_roam(
     admin: HAClient | None, bridge: HueBridge | None, journal: Journal, out: Callable[[str], None]
 ) -> None:
-    """Move the journal's roaming bulbs forward round the cycle to Hue and put back their home; stop on a failure."""
+    """Remove the journal's ds-rig-* groups, move its roaming bulbs forward round the cycle to Hue and put back their
+    home; stop on a failure."""
     if admin is None or bridge is None:
         raise SystemExit(
             "Moving the roaming bulbs home needs HA_ADMIN_TOKEN, HUE_BRIDGE_HOST and HUE_APP_KEY in .env.rig; "
@@ -983,6 +1037,7 @@ async def recover_roam(
         )
     out("Moving the roaming bulbs home to Hue.")
     try:
+        # A group that can't be removed is printed and stays journaled; the rest of recovery goes on.
         await Roamer.from_journal(admin, bridge, journal, out).go(HOME)
     except RoamError as err:
         raise SystemExit(f"Recovery stopped: {err}") from None

@@ -150,6 +150,12 @@ calls are CLIP v2 only: Device Side's Hue integration doesn't support v1.
 
 ### Rig phase A: setup for the Z2M A60 run (when the rig is back)
 
+Superseded by slice 15 PR 4 ([lab plan](2026-11-01-lab.md)): a lab run makes the `group_color` group (the A60
+alone) and the `group` group as `ds-rig-*` groups on each visit, from the lab profile's `roam.groups`, and removes
+them before the bulbs move on, so there is nothing to create or remove by hand. Hue's group and scene cases run only
+in lab runs, on the rig-made zone and scene; the house profile no longer has a Hue group or scene (Jason,
+2026-11-01). The E27-in-the-Z2M-group step below still applies to the house. As first planned:
+
 13. Queue behind the rig lock (`scripts/rig.py --wait-free`).
     - Add the E27 to the Z2M group (Z2M `bridge/request/group/members/add`).
     - Create a temporary Z2M group holding only the A60.

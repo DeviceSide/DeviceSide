@@ -244,12 +244,15 @@ class HAClient:
 
         await self._z2m_request("device/remove", {"id": ieee}, done, f"remove {ieee}")
 
+    async def z2m_group(self, name: str) -> dict | None:
+        """Zigbee2MQTT's entry for the group `name` in its retained bridge/groups (its `id` and `members`), or None."""
+        return next((g for g in await self._z2m_retained("groups") if g.get("friendly_name") == name), None)
+
     async def z2m_group_members(self, name: str) -> list[str] | None:
         """The IEEE addresses in the Zigbee2MQTT group `name`, or None if there is no such group."""
-        for group in await self._z2m_retained("groups"):
-            if group.get("friendly_name") == name:
-                return [member["ieee_address"] for member in group.get("members", [])]
-        return None
+        if (group := await self.z2m_group(name)) is None:
+            return None
+        return [member["ieee_address"] for member in group.get("members", [])]
 
     async def z2m_group_add(self, name: str, members: tuple[str, ...] = ()) -> None:
         """Make a Zigbee2MQTT group and add `members` (IEEE addresses) to it. Raises if the name is already taken,
@@ -309,6 +312,10 @@ class HAClient:
         }
         return (await self.command(payload))["group_id"]
 
+    async def zha_groups(self) -> list[dict]:
+        """ZHA's groups, each with its `group_id`, `name` and `members`."""
+        return await self.command({"type": "zha/groups"})
+
     async def zha_group_remove(self, group_id: int) -> None:
         await self.command({"type": "zha/group/remove", "group_ids": [group_id]})
 
@@ -329,11 +336,11 @@ class HAClient:
         """Every entity-registry entry, with its entity_id, device_id and platform."""
         return await self.command({"type": "config/entity_registry/list"})
 
-    async def rename_entity(self, entity_id: str, new_entity_id: str) -> None:
-        """Change an entity's ID in the entity registry. HA refuses when `new_entity_id` is taken."""
-        await self.command(
-            {"type": "config/entity_registry/update", "entity_id": entity_id, "new_entity_id": new_entity_id}
-        )
+    async def rename_entity(self, entity_id: str, new_entity_id: str, enable: bool = False) -> None:
+        """Change an entity's ID in the entity registry, and enable it too if asked. HA refuses when `new_entity_id`
+        is taken."""
+        payload = {"type": "config/entity_registry/update", "entity_id": entity_id, "new_entity_id": new_entity_id}
+        await self.command(payload | ({"disabled_by": None} if enable else {}))
 
     async def remove_entity(self, entity_id: str) -> None:
         await self.command({"type": "config/entity_registry/remove", "entity_id": entity_id})

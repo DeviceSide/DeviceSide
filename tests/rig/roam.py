@@ -9,9 +9,14 @@ light entity is renamed to its fixed profile entity ID, and on Z2M its options a
 Hue is home. Before a bulb first leaves, its room and zone membership, the scene actions that target it and its
 name are saved; when it returns they are rewritten against its new device and light IDs.
 
-The journal's `roam` section is written before every change: where each bulb is, the move in flight and the saved
-home, with each bulb's IEEE, entity ID and Z2M options, so --recover can bring the bulbs home with no profile loaded.
-Where a bulb is, though, is always read from the networks themselves; the journal's copy is for a person reading it.
+On each visit the run makes the profile's `ds-rig-*` groups on the bulbs' network: a Z2M group, a ZHA group or a Hue
+zone (whose grouped_light is the group), plus a Hue scene in the zone where the profile names one, each renamed to
+its fixed entity ID. They are removed before the bulbs move on, and by --recover after a crash.
+
+The journal's `roam` section is written before every change: where each bulb is, the move in flight, the saved
+home and each rig-made group, with each bulb's IEEE, entity ID and Z2M options, so --recover can bring the bulbs home
+and remove the groups with no profile loaded. Where a bulb is, though, is always read from the networks themselves;
+the journal's copy is for a person reading it.
 """
 
 import asyncio
@@ -19,9 +24,9 @@ from collections.abc import Awaitable, Callable, Iterable
 from dataclasses import dataclass, field
 
 from .bridge import BridgeError, HueBridge
-from .client import HAClient, device_ieee
+from .client import HAClient, HAError, device_ieee
 from .journal import Journal
-from .profile import CYCLE, RoamBulb, colon_ieee, hex_ieee, normalize_ieee
+from .profile import CYCLE, RIG_PREFIX, RoamBulb, RoamGroup, colon_ieee, hex_ieee, normalize_ieee, rig_name
 
 HOME = CYCLE[0]
 NAMES = {"hue": "Hue", "zha": "ZHA", "zigbee2mqtt": "Z2M"}
@@ -30,6 +35,18 @@ RELEASE_S = 30  # for a released bulb to drop off its network
 ENTITY_S = 90  # for HA to show a joined bulb's device and light entity (ZHA's interview took about 60 s)
 HUE_SEARCH_S = 56  # how long a Hue search stays open; it can't be ended early
 POLL_S = 2.0
+GONE_S = 15  # for HA to drop a rig-made group's entity once the group is removed; after that the rig removes it
+# The rig-made Hue scene: every member on at 40 %, and 366 mirek (2732 K) where it takes a color temperature. Below
+# full, so a recall mid-fade shows (raise_brightness-predicted_state's bridge_scene_recall_mid_fade_shows_at_once).
+SCENE_BRIGHTNESS = 40.0
+SCENE_MIREK = 366
+# HA's platform for each network's entities, so the rig removes only a leftover entity of its own kind.
+PLATFORMS = {"hue": "hue", "zha": "zha", "zigbee2mqtt": "mqtt"}
+# Z2M registers a group's HA device as ("mqtt", "zigbee2mqtt_<base topic as character codes>_<group ID>")
+# (getEncodedBaseTopic in Z2M's lib/extension/homeassistant.ts; device_side's zigbee2mqtt/addressing.py reads it).
+Z2M_GROUP_IDENTIFIER = "zigbee2mqtt_" + "".join(str(ord(c)) for c in "zigbee2mqtt") + "_{}"
+# The zha library gives a group's entity the unique_id "{platform}_zha_group_0x{group_id:04x}" (zha/addressing.py).
+ZHA_GROUP_UNIQUE_ID = "light_zha_group_0x{:04x}"
 # A bulb on no network is found with the Hue app, which can reset a bulb over Bluetooth and add it to the bridge.
 BLUETOOTH_RESET = (
     "Reset it over Bluetooth in the Hue app and add it to the bridge, then run scripts/rig.py --recover, which puts "
@@ -37,8 +54,15 @@ BLUETOOTH_RESET = (
 )
 
 
+Finder = Callable[[], Awaitable[dict | None]]  # finds a rig-made group's HA entity: its registry entry, or None
+
+
 class RoamError(Exception):
     """A move that couldn't finish. The journal keeps what --recover needs."""
+
+
+class GroupError(RoamError):
+    """A rig-made group, zone or scene that couldn't be made. The bulbs are fine, so they can still move home."""
 
 
 def hops(network: str, to: str) -> int:
@@ -55,16 +79,27 @@ def route(start: str = HOME) -> list[str]:
     return [*CYCLE[CYCLE.index(start) :], *CYCLE[: CYCLE.index(start)], start]
 
 
-def plan_lines(bulbs: Iterable[RoamBulb]) -> list[str]:
-    """What a roaming run does between its phases, for the plan before the gate."""
+def plan_lines(bulbs: Iterable[RoamBulb], groups: Iterable[RoamGroup] = (), moving: bool = True) -> list[str]:
+    """What a lab run does between its phases, for the plan before the gate: the moves, and the groups it makes."""
     names = ", ".join(bulb.entity_id for bulb in bulbs)
-    return [
-        f"Roams {names} together: {' -> '.join(NAMES[network] for network in route())}.",
-        f"  Hue -> ZHA: delete on the bridge, then ZHA joining for up to {JOIN_S} s, closed once all are in.",
-        f"  ZHA -> Z2M: zha.remove, then Z2M joining for up to {JOIN_S} s, closed once all are in.",
-        f"  Z2M -> Hue: Z2M remove, then one Hue search: open about {HUE_SEARCH_S} s, and it can't be ended early.",
-        "  After each join the bulbs are renamed to their entity IDs; back on Hue their rooms and scenes are restored.",
-    ]
+    lines = []
+    if moving:
+        lines = [
+            f"Roams {names} together: {' -> '.join(NAMES[network] for network in route())}.",
+            f"  Hue -> ZHA: delete on the bridge, then ZHA joining for up to {JOIN_S} s, closed once all are in.",
+            f"  ZHA -> Z2M: zha.remove, then Z2M joining for up to {JOIN_S} s, closed once all are in.",
+            f"  Z2M -> Hue: Z2M remove, then one Hue search: open about {HUE_SEARCH_S} s, and it can't be ended early.",
+            "  After each join the bulbs are renamed to their entity IDs; back on Hue their rooms and scenes are "
+            "restored.",
+        ]
+    for group in groups:
+        where = "on each visit" if moving else "on Hue"
+        scene = f", with scene {group.scene} (Hue)" if group.scene else ""
+        lines.append(
+            f"Makes {rig_name(group.entity_id)} {where} as {group.entity_id} ({', '.join(group.members)}){scene}; "
+            "removed after it."
+        )
+    return lines
 
 
 @dataclass(slots=True)
@@ -103,13 +138,17 @@ class Roamer:
         bulbs: Iterable[Bulb],
         journal: Journal | None = None,
         out: Callable[[str], None] = print,
+        groups: Iterable[RoamGroup] = (),
     ):
         self.ha, self.bridge, self.journal, self.out = ha, bridge, journal, out
         self.bulbs = list(bulbs)
+        self.groups = list(groups)
         saved = (journal.get("roam") if journal is not None else None) or {}
         self.at: dict[str, str | None] = dict(saved.get("at", {}))
         self.home: dict[str, dict] = dict(saved.get("home", {}))
         self.moving: dict | None = saved.get("move")
+        # Each rig-made group or scene, journaled before it is made: {network, kind, name, entity_id, renamed}.
+        self.made: list[dict] = [dict(made) for made in saved.get("made", [])]
 
     @classmethod
     def from_journal(cls, ha: HAClient, bridge: HueBridge, journal: Journal, out: Callable[[str], None] = print):
@@ -126,12 +165,14 @@ class Roamer:
                     "at": self.at,
                     "move": self.moving,
                     "home": self.home,
+                    "made": self.made,
                 }
             )
 
     def finish(self) -> None:
-        """Clear the journal's roam section once every bulb is home with its home put back."""
-        if self.journal is not None and not self.home and self.moving is None:
+        """Clear the journal's roam section once every bulb is home with its home put back, and no rig-made group is
+        left."""
+        if self.journal is not None and not self.home and self.moving is None and not self.made:
             if all(self.at.get(bulb.entity_id) == HOME for bulb in self.bulbs):
                 self.journal.clear("roam")
 
@@ -160,8 +201,10 @@ class Roamer:
     # --- moving ---------------------------------------------------------------------------------------------------
 
     async def go(self, to: str) -> None:
-        """Move every bulb forward round the cycle until all are on `to`. Bulbs on different networks (after a crash)
-        move in turn, furthest first, so they meet on the way. On a bulb found on no network it raises RoamError."""
+        """Remove the rig-made groups, then move every bulb forward round the cycle until all are on `to`. Bulbs on
+        different networks (after a crash) move in turn, furthest first, so they meet on the way. On a bulb found on
+        no network it raises RoamError."""
+        await self.remove_groups()
         for bulb in self.bulbs:
             self.at[bulb.entity_id] = await self.locate(bulb)
         if lost := [bulb.entity_id for bulb in self.bulbs if self.at[bulb.entity_id] is None]:
@@ -335,6 +378,190 @@ class Roamer:
             return all(ident not in on_bridge or ident == mine for ident in hue_ids)
         return False
 
+    # --- rig-made groups, zones and scenes -------------------------------------------------------------------------
+
+    async def make_groups(self, network: str) -> None:
+        """Make each profile group on `network`, where every bulb now is, and rename it to its fixed entity ID; on Hue
+        a zone, and the scene in it where the group names one."""
+        for group in self.groups:
+            if network == "hue":
+                zone_id = await self.make(network, "zone", group.entity_id, lambda g=group: self.make_zone(g))
+                if group.scene:
+                    await self.make(network, "scene", group.scene, lambda g=group, z=zone_id: self.make_scene(g, z))
+            elif network == "zha":
+                await self.make(network, "group", group.entity_id, lambda g=group: self.make_zha_group(g))
+            else:
+                await self.make(network, "group", group.entity_id, lambda g=group: self.make_z2m_group(g))
+
+    async def make(
+        self, network: str, kind: str, entity_id: str, create: Callable[[], Awaitable[tuple[str, Finder]]]
+    ) -> str:
+        """Journal a group or scene, make it with `create` (which returns its native ID and a finder for its HA
+        entity's registry entry), and rename that entity to `entity_id`. Returns the native ID."""
+        name = rig_name(entity_id)
+        if any(entry["entity_id"] == entity_id for entry in await self.ha.entity_registry()):
+            raise GroupError(
+                f"{entity_id} is already in HA's entity registry, so the rig's {NAMES[network]} {kind} can't take it; "
+                "rename or remove that entity"
+            )
+        if await self.native_id(network, kind, name) is not None:
+            where = NAMES[network]
+            raise GroupError(f"{where} already has a {kind} named {name}, which no run journaled; remove it there")
+        made = {"network": network, "kind": kind, "name": name, "entity_id": entity_id, "renamed": False}
+        self.made.append(made)
+        self.save()
+        native, find = await create()
+        found: dict | None = None
+
+        async def shown() -> bool:
+            nonlocal found
+            found = await find()
+            return found is not None
+
+        if not await _until(shown, ENTITY_S):
+            raise GroupError(f"HA showed no entity for the rig's {NAMES[network]} {kind} {name} in {ENTITY_S} s")
+        assert found is not None
+        if found["entity_id"] != entity_id or found.get("disabled_by"):
+            await self.ha.rename_entity(found["entity_id"], entity_id, enable=bool(found.get("disabled_by")))
+        made["renamed"] = True
+        self.save()
+        self.out(f"Made {NAMES[network]} {kind} {name} as {entity_id}.")
+        return native
+
+    async def make_zone(self, group: RoamGroup) -> tuple[str, Finder]:
+        lights = [await self.hue_light(member) for member in group.members]
+        body = {
+            "metadata": {"name": rig_name(group.entity_id), "archetype": "other"},
+            "children": [{"rid": light, "rtype": "light"} for light in lights],
+        }
+        zone_id = (await self.bridge.post("zone", body))[0]["rid"]
+        zone = (await self.bridge.get("zone", zone_id))[0]
+        grouped = next((s["rid"] for s in zone.get("services", []) if s.get("rtype") == "grouped_light"), None)
+        if grouped is None:
+            raise GroupError(f"the Hue bridge made zone {zone_id} with no grouped_light")
+        return zone_id, self.entity("hue", "light", grouped)
+
+    async def make_scene(self, group: RoamGroup, zone_id: str) -> tuple[str, Finder]:
+        actions = []
+        for member in group.members:
+            light_id = await self.hue_light(member)
+            light = (await self.bridge.get("light", light_id))[0]
+            action: dict = {"on": {"on": True}, "dimming": {"brightness": SCENE_BRIGHTNESS}}
+            if "color_temperature" in light:
+                action["color_temperature"] = {"mirek": SCENE_MIREK}
+            actions.append({"target": {"rid": light_id, "rtype": "light"}, "action": action})
+        body = {
+            "metadata": {"name": rig_name(group.scene)},
+            "group": {"rid": zone_id, "rtype": "zone"},
+            "actions": actions,
+        }
+        scene_id = (await self.bridge.post("scene", body))[0]["rid"]
+        return scene_id, self.entity("hue", "scene", scene_id)
+
+    async def make_zha_group(self, group: RoamGroup) -> tuple[str, Finder]:
+        """A ZHA group of each member's light endpoint, read from its light's unique_id ("{ieee}-{endpoint}")."""
+        registry = {entry["entity_id"]: entry for entry in await self.ha.entity_registry()}
+        members = []
+        for member in group.members:
+            parts = (registry.get(member, {}).get("unique_id") or "").split("-")
+            if len(parts) < 2 or not parts[1].isdigit():
+                raise GroupError(f"{member} has no ZHA light endpoint in its unique_id, so it can't join a ZHA group")
+            members.append((colon_ieee(parts[0]), int(parts[1])))
+        group_id = await self.ha.zha_group_add(rig_name(group.entity_id), tuple(members))
+        return str(group_id), self.entity("zha", "light", ZHA_GROUP_UNIQUE_ID.format(group_id))
+
+    async def make_z2m_group(self, group: RoamGroup) -> tuple[str, Finder]:
+        name = rig_name(group.entity_id)
+        by_id = {bulb.entity_id: bulb for bulb in self.bulbs}
+        try:
+            await self.ha.z2m_group_add(name, tuple(hex_ieee(by_id[member].ieee) for member in group.members))
+        except ValueError as err:
+            raise GroupError(str(err)) from None
+        made = await self.ha.z2m_group(name)
+        if made is None:
+            raise GroupError(f"Z2M lists no group {name} after making it")
+        identifier = ["mqtt", Z2M_GROUP_IDENTIFIER.format(made["id"])]
+
+        async def find() -> dict | None:
+            """The light on the group's HA device, which appears with it."""
+            devices = await self.ha.command({"type": "config/device_registry/list"})
+            ids = {d["id"] for d in devices if identifier in map(list, d.get("identifiers", []))}
+            lights = [e for e in await self.ha.entity_registry() if e["entity_id"].startswith("light.")]
+            return next((e for e in lights if e.get("device_id") in ids), None)
+
+        return str(made["id"]), find
+
+    def entity(self, platform: str, domain: str, unique_id: str) -> Finder:
+        """A finder for the registry entry with this platform, domain and unique_id."""
+
+        async def find() -> dict | None:
+            return next(
+                (
+                    entry
+                    for entry in await self.ha.entity_registry()
+                    if entry.get("platform") == platform
+                    and entry["entity_id"].startswith(f"{domain}.")
+                    and entry.get("unique_id") == unique_id
+                ),
+                None,
+            )
+
+        return find
+
+    async def hue_light(self, entity_id: str) -> str:
+        bulb = next(bulb for bulb in self.bulbs if bulb.entity_id == entity_id)
+        if (device_id := await self.bridge.device_id_by_ieee(bulb.ieee)) is None:
+            raise GroupError(f"{entity_id} is not on the Hue bridge, so it can't join a zone")
+        return _light_of((await self.bridge.get("device", device_id))[0])
+
+    async def native_id(self, network: str, kind: str, name: str) -> str | None:
+        """The ID of the rig-made group, zone or scene called `name` on `network`, or None."""
+        if network == "hue":
+            found = await self.bridge.get(kind)
+            return next((item["id"] for item in found if item.get("metadata", {}).get("name") == name), None)
+        if network == "zha":
+            return next((str(g["group_id"]) for g in await self.ha.zha_groups() if g.get("name") == name), None)
+        group = await self.ha.z2m_group(name)
+        return None if group is None else str(group["id"])
+
+    async def remove_groups(self) -> None:
+        """Remove every rig-made group and scene, newest first (a scene before its zone). One that can't be removed
+        is printed and stays in the journal, for --recover to try again."""
+        for made in reversed(list(self.made)):
+            try:
+                await self.unmake(made)
+            except (BridgeError, HAError, RoamError, TimeoutError) as err:
+                network = NAMES[made["network"]]
+                self.out(f"Could not remove {network} {made['kind']} {made['name']}: {err}. --recover tries again.")
+                continue
+            self.made.remove(made)
+            self.save()
+
+    async def unmake(self, made: dict) -> None:
+        network, kind, name = made["network"], made["kind"], made["name"]
+        if (native := await self.native_id(network, kind, name)) is not None:
+            if network == "hue":
+                await self.bridge.delete(kind, native)
+            elif network == "zha":
+                await self.ha.zha_group_remove(int(native))
+            else:
+                await self.ha.z2m_group_remove(name)
+            self.out(f"Removed {NAMES[network]} {kind} {name}.")
+        if made["renamed"]:
+            await self.drop_entity(made["entity_id"], PLATFORMS[network])
+
+    async def drop_entity(self, entity_id: str, platform: str) -> None:
+        """Wait for HA to drop a removed group's entity; if it keeps it, remove it, so the next visit can take its
+        ID. An entity of another platform under that ID isn't the rig's, and is left alone."""
+
+        async def gone() -> bool:
+            entry = next((e for e in await self.ha.entity_registry() if e["entity_id"] == entity_id), None)
+            return entry is None or entry.get("platform") != platform
+
+        if not await _until(gone, GONE_S):
+            await self.ha.remove_entity(entity_id)
+            self.out(f"Removed {entity_id}, which HA kept after its group went.")
+
     # --- home -----------------------------------------------------------------------------------------------------
 
     async def save_home(self, bulbs: list[Bulb]) -> None:
@@ -352,7 +579,7 @@ class Roamer:
                 "light": light_id,
                 "metadata": {key: device.get("metadata", {}).get(key) for key in ("name", "archetype")},
                 "rooms": [room["id"] for room in rooms if _has_child(room, device_id)],
-                "zones": [zone["id"] for zone in zones if _has_child(zone, light_id)],
+                "zones": [zone["id"] for zone in zones if _has_child(zone, light_id) and not _rig_made(zone)],
                 "scenes": {
                     scene["id"]: actions
                     for scene in scenes
@@ -413,6 +640,10 @@ def _light_of(device: dict) -> str:
     if len(lights) != 1:
         raise RoamError(f"Hue device {device.get('id')} has {len(lights)} lights, not one")
     return lights[0]
+
+
+def _rig_made(resource: dict) -> bool:
+    return resource.get("metadata", {}).get("name", "").startswith(RIG_PREFIX)
 
 
 def _has_child(group: dict, rid: str) -> bool:

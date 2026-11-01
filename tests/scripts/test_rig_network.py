@@ -191,9 +191,9 @@ async def test_rename_entity_into_a_taken_id_raises_until_the_stale_entry_is_rem
 async def test_zha_group_add_and_remove_track_ids():
     ha = FakeHA({})
     group_id = await ha.zha_group_add("ds-rig-g", ((ZHA_IEEE, 11),))
-    assert ha.zha_groups == {group_id: "ds-rig-g"}
+    assert ha.zha_group_names == {group_id: "ds-rig-g"}
     await ha.zha_group_remove(group_id)
-    assert ha.zha_groups == {}
+    assert ha.zha_group_names == {}
 
 
 async def test_fake_bridge_runs_the_real_verbs_over_memory():
