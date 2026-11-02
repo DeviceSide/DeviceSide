@@ -43,6 +43,7 @@ PAUSABLE = ("automation", "switch")
 
 # A native group's roles: `group_color` is one whose members all take color.
 GROUP_ROLES = frozenset({"group", "group_color"})
+ZHA_GROUP_MIN = 2  # ZHA makes no light entity for a group with fewer members
 ROLES = frozenset(
     {"light_onoff", "light_wrapped", "light_dimmable", "light_ct", "light_color", "switch_plug", "scene"} | GROUP_ROLES
 )
@@ -109,6 +110,11 @@ class RoamGroup:
     members: tuple[str, ...]  # bulb entity IDs
     scene: str | None = None
 
+    def made_on(self, network: str) -> bool:
+        """Whether the rig makes this group on `network`: not a one-member group on ZHA, which gives a group a light
+        entity only from two members, so the role has no entity there and its cases skip."""
+        return network != "zha" or len(self.members) >= ZHA_GROUP_MIN
+
 
 def rig_name(entity_id: str) -> str:
     """The native name of a rig-made group or scene with this fixed entity ID: `ds-rig-` and its object ID."""
@@ -169,7 +175,9 @@ class Profile:
         for network in CYCLE if self.roam else ():
             entities = self.integrations.setdefault(network, [])
             entities.extend(RigEntity(b.entity_id, b.roles) for b in self.roam)
-            entities.extend(RigEntity(g.entity_id, g.roles, members=g.members) for g in self.roam_groups)
+            entities.extend(
+                RigEntity(g.entity_id, g.roles, members=g.members) for g in self.roam_groups if g.made_on(network)
+            )
             if network == "hue":
                 entities.extend(RigEntity(g.scene, frozenset({"scene"})) for g in self.roam_groups if g.scene)
 

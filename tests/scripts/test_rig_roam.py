@@ -132,7 +132,7 @@ async def test_z2m_joining_is_closed_even_when_a_bulb_never_joins(lab, monkeypat
     await roamer(lab).go("zha")
     monkeypatch.setattr(roam, "JOIN_S", 0.05)
     lab.stuck.add(B[2:])
-    with pytest.raises(RoamError, match="light.lab_b did not join Z2M"):
+    with pytest.raises(RoamError, match=r"light.lab_b did not join Z2M within 0.05 s\. It may have missed ZHA.s Leave"):
         await roamer(lab).go("zigbee2mqtt")
     assert not lab.ha.z2m_open
     assert await where(lab) == ["zigbee2mqtt", None]
@@ -179,6 +179,26 @@ async def test_recovery_moves_the_bulbs_home_from_wherever_a_crash_left_them(lab
 
     await Roamer.from_journal(lab.ha, lab.bridge, Journal(journal.path), lambda _: None).go(roam.HOME)
 
+    assert await where(lab) == ["hue", "hue"]
+    assert lab.device_of("light.lab_a")["identifiers"][0][0] == "hue"
+    assert len(lab.bridge.resources["room"]["r1"]["children"]) == 3
+    assert not journal.path.exists()
+
+
+async def test_recovery_joins_bulbs_released_mid_move_and_on_no_network_straight_home(lab, tmp_path, monkeypatch):
+    journal = Journal(tmp_path / "journal.json")
+    lab.stuck |= {A[2:], B[2:]}
+    with monkeypatch.context() as patch:
+        patch.setattr(roam, "JOIN_S", 0)
+        with pytest.raises(RoamError):
+            await roamer(lab, journal).go("zha")
+    lab.stuck.clear()  # still searching: they join whatever opens next
+    assert await where(lab) == [None, None]
+
+    printed = []
+    await Roamer.from_journal(lab.ha, lab.bridge, Journal(journal.path), printed.append).go(roam.HOME)
+
+    assert "light.lab_a, light.lab_b on no network after a move cut short; joining Hue." in printed
     assert await where(lab) == ["hue", "hue"]
     assert lab.device_of("light.lab_a")["identifiers"][0][0] == "hue"
     assert len(lab.bridge.resources["room"]["r1"]["children"]) == 3

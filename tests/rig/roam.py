@@ -26,7 +26,17 @@ from dataclasses import dataclass, field
 from .bridge import BridgeError, HueBridge
 from .client import HAClient, HAError, device_ieee
 from .journal import Journal
-from .profile import CYCLE, RIG_PREFIX, RoamBulb, RoamGroup, colon_ieee, hex_ieee, normalize_ieee, rig_name
+from .profile import (
+    CYCLE,
+    RIG_PREFIX,
+    ZHA_GROUP_MIN,
+    RoamBulb,
+    RoamGroup,
+    colon_ieee,
+    hex_ieee,
+    normalize_ieee,
+    rig_name,
+)
 
 HOME = CYCLE[0]
 NAMES = {"hue": "Hue", "zha": "ZHA", "zigbee2mqtt": "Z2M"}
@@ -54,6 +64,12 @@ ZHA_GROUP_UNIQUE_ID = "light_zha_group_0x{:04x}"
 BLUETOOTH_RESET = (
     "Reset it over Bluetooth in the Hue app and add it to the bridge, then run scripts/rig.py --recover, which puts "
     "back its Hue rooms and scenes; the journal keeps them until then."
+)
+# zha.remove drops a bulb from HA whether or not it acts on the Leave; the lab saw two of three stay on ZHA's network
+# until power-up, when they announced themselves and ZHA added them back.
+MISSED_ZHA_LEAVE = (
+    "It may have missed ZHA's Leave: switch its lamp off and on, and once ZHA shows it again run scripts/rig.py "
+    "--recover. If ZHA doesn't show it, reset it over Bluetooth in the Hue app and add it to the bridge first."
 )
 
 
@@ -98,6 +114,8 @@ def plan_lines(bulbs: Iterable[RoamBulb], groups: Iterable[RoamGroup] = (), movi
         ]
     for group in groups:
         where = "on each visit" if moving else "on Hue"
+        if moving and not group.made_on("zha"):
+            where = f"on each visit but ZHA's (one member; ZHA needs {ZHA_GROUP_MIN})"
         scene = f", with scene {group.scene} (Hue)" if group.scene else ""
         lines.append(
             f"Makes {rig_name(group.entity_id)} {where} as {group.entity_id} ({', '.join(group.members)}){scene}; "
@@ -213,9 +231,25 @@ class Roamer:
         different networks (after a crash) move in turn, furthest first, so they meet on the way. On a bulb found on
         no network it raises RoamError."""
         await self.remove_groups()
+        await self.settle(to)
+        while away := [bulb for bulb in self.bulbs if self.at[bulb.entity_id] != to]:
+            start = max({self.at[bulb.entity_id] for bulb in away}, key=lambda network: hops(network, to))
+            await self.move([bulb for bulb in away if self.at[bulb.entity_id] == start], start, following(start))
+        if to == HOME:
+            await self.restore_home()
+            if not await self.search_over():
+                self.out("The Hue search is still open; anything resetting nearby may yet join the bridge.")
+            self.finish()
+
+    async def settle(self, to: str) -> None:
+        """Find every bulb, and finish a move a crash cut short: rename whoever reached `to`, and join `to` with any
+        bulb released and on no network. A bulb on no network that no move released raises RoamError."""
         for bulb in self.bulbs:
             self.at[bulb.entity_id] = await self.locate(bulb)
-        if lost := [bulb.entity_id for bulb in self.bulbs if self.at[bulb.entity_id] is None]:
+        # A bulb a crash caught between its release and its join is on no network, but joins whichever one opens.
+        released = set(self.moving["bulbs"]) if self.moving is not None else set()
+        nowhere = [bulb for bulb in self.bulbs if self.at[bulb.entity_id] is None]
+        if lost := [bulb.entity_id for bulb in nowhere if bulb.entity_id not in released]:
             self.save()
             raise RoamError(f"Not on any Zigbee network: {', '.join(lost)}. {BLUETOOTH_RESET}")
         if self.moving is not None:
@@ -226,14 +260,8 @@ class Roamer:
                         await self.adopt(to, bulb)
             self.moving = None
             self.save()
-        while away := [bulb for bulb in self.bulbs if self.at[bulb.entity_id] != to]:
-            start = max({self.at[bulb.entity_id] for bulb in away}, key=lambda network: hops(network, to))
-            await self.move([bulb for bulb in away if self.at[bulb.entity_id] == start], start, following(start))
-        if to == HOME:
-            await self.restore_home()
-            if not await self.search_over():
-                self.out("The Hue search is still open; anything resetting nearby may yet join the bridge.")
-            self.finish()
+        if nowhere:
+            await self.rejoin(nowhere, to)
 
     async def move(self, bulbs: list[Bulb], source: str, target: str) -> None:
         names = ", ".join(bulb.entity_id for bulb in bulbs)
@@ -248,7 +276,7 @@ class Roamer:
             await self.release(source, bulb)
             self.at[bulb.entity_id] = None
             self.save()
-        await self.join(target, bulbs)
+        await self.join(target, bulbs, source)
         for bulb in bulbs:
             self.at[bulb.entity_id] = target
             self.save()
@@ -256,6 +284,22 @@ class Roamer:
         self.moving = None
         self.save()
         self.out(f"{names} on {NAMES[target]}.")
+
+    async def rejoin(self, bulbs: list[Bulb], to: str) -> None:
+        """Join bulbs already released, and on no network, straight to `to`: a move with nothing to release."""
+        names = ", ".join(bulb.entity_id for bulb in bulbs)
+        self.out(f"{names} on no network after a move cut short; joining {NAMES[to]}.")
+        self.moving = {"from": None, "to": to, "bulbs": [bulb.entity_id for bulb in bulbs]}
+        self.save()
+        await self.close_all()
+        await self.join(to, bulbs)
+        for bulb in bulbs:
+            self.at[bulb.entity_id] = to
+            self.save()
+            await self.adopt(to, bulb)
+        self.moving = None
+        self.save()
+        self.out(f"{names} on {NAMES[to]}.")
 
     async def close_all(self) -> None:
         """Close joining on every network. ZHA's state can't be read, so it is always closed explicitly; a Hue
@@ -312,7 +356,7 @@ class Roamer:
         if not await _until(gone, RELEASE_S):
             raise RoamError(f"{bulb.entity_id} is still on {NAMES[network]} {RELEASE_S} s after its removal")
 
-    async def join(self, network: str, bulbs: list[Bulb]) -> None:
+    async def join(self, network: str, bulbs: list[Bulb], source: str | None = None) -> None:
         """Open `network` for the bulbs and wait until all are in; ZHA and Z2M close once they are, or on a timeout."""
 
         async def all_in() -> bool:
@@ -334,7 +378,7 @@ class Roamer:
             window = f"{HUE_SEARCHES} searches" if network == "hue" else f"{JOIN_S} s"
             raise RoamError(
                 f"Not on any Zigbee network: {', '.join(missing)} did not join {NAMES[network]} within {window}. "
-                f"{BLUETOOTH_RESET}"
+                f"{MISSED_ZHA_LEAVE if source == 'zha' else BLUETOOTH_RESET}"
             )
 
     async def hue_join(self, bulbs: list[Bulb], all_in: Callable[[], Awaitable[bool]]) -> bool:
@@ -426,7 +470,7 @@ class Roamer:
         for integration in ("zha", "zigbee2mqtt"):
             if (ieee := device_ieee(device, integration)) is not None:
                 return normalize_ieee(ieee) == bulb.ieee
-        hue_ids = [ident for domain, ident in device.get("identifiers", []) if domain == "hue"]
+        hue_ids = [ident for domain, ident, *_ in device.get("identifiers", []) if domain == "hue"]
         if hue_ids:
             # The bridge may still have the device under another name; it is stale once the bridge has dropped it,
             # or holds it as this bulb.
@@ -441,6 +485,8 @@ class Roamer:
         """Make each profile group on `network`, where every bulb now is, and rename it to its fixed entity ID; on Hue
         a zone, and the scene in it where the group names one."""
         for group in self.groups:
+            if not group.made_on(network):
+                continue
             if network == "hue":
                 zone_id = await self.make(network, "zone", group.entity_id, lambda g=group: self.make_zone(g))
                 if group.scene:

@@ -121,7 +121,9 @@ async def test_the_groups_go_before_the_bulbs_move_on(lab, tmp_path, network, fo
     await moving.go(network)
     await moving.make_groups(network)
     made = [made["entity_id"] for made in journal.get("roam")["made"]]
-    assert made == ["light.test_group", *(["scene.test_relax"] if network == "hue" else []), "light.test_color_group"]
+    expected = ["light.test_group", *(["scene.test_relax"] if network == "hue" else [])]
+    expected += [] if network == "zha" else ["light.test_color_group"]  # one member: ZHA gives it no entity
+    assert made == expected
 
     await moving.go(following)
 
@@ -209,10 +211,10 @@ async def test_a_group_that_cant_be_removed_stays_journaled_and_is_retried(lab, 
 async def test_a_group_ha_never_shows_is_still_removed_by_name(lab, tmp_path, monkeypatch):
     monkeypatch.setattr(roam, "ENTITY_S", 0.02)
     journal = Journal(tmp_path / "journal.json")
-    moving = roamer(lab, journal, groups=(COLOR,))
+    moving = roamer(lab, journal, groups=(GROUP,))
     await moving.go("zha")
     register, lab.ha.register = lab.ha.register, lambda *args, **kwargs: None  # HA never adds the group's light
-    with pytest.raises(RoamError, match="HA showed no entity for the rig's ZHA group ds-rig-test-color-group"):
+    with pytest.raises(RoamError, match="HA showed no entity for the rig's ZHA group ds-rig-test-group"):
         await moving.make_groups("zha")
     lab.ha.register = register
     assert journal.get("roam")["made"][0]["renamed"] is False
@@ -239,7 +241,7 @@ async def test_recovery_removes_the_groups_a_crash_left_then_brings_the_bulbs_ho
 
 
 async def test_a_zha_bulb_with_no_endpoint_in_its_unique_id_cant_join_a_group(lab):
-    moving = roamer(lab, groups=(COLOR,))
+    moving = roamer(lab, groups=(GROUP,))
     await moving.go("zha")
     lab.ha.entity_meta["light.lab_a"]["unique_id"] = "odd"
     with pytest.raises(RoamError, match="light.lab_a has no ZHA light endpoint"):
@@ -252,13 +254,19 @@ def test_a_profile_lists_each_group_under_every_network_and_the_scene_under_hue(
     for network in ("hue", "zha", "zigbee2mqtt"):
         assert profile.entity(network, "group") == "light.test_group"
         assert profile.members(network, "light.test_group") == ("light.lab_a", "light.lab_b")
-        assert profile.entity(network, "group_color") == "light.test_color_group"
+        # A one-member group has no ZHA entity, so ZHA's group_color cases skip.
+        expected = None if network == "zha" else "light.test_color_group"
+        assert profile.entity(network, "group_color") == expected
     assert profile.entity("hue", "scene") == "scene.test_relax"
     assert profile.entity("zha", "scene") is None
     lines = roam.plan_lines(profile.roam, profile.roam_groups)
     assert (
         "Makes ds-rig-test-group on each visit as light.test_group (light.lab_a, light.lab_b), with scene "
         "scene.test_relax (Hue); removed after it."
+    ) in lines
+    assert (
+        "Makes ds-rig-test-color-group on each visit but ZHA's (one member; ZHA needs 2) as light.test_color_group "
+        "(light.lab_a); removed after it."
     ) in lines
     assert roam.plan_lines(profile.roam, profile.roam_groups[1:], moving=False) == [
         "Makes ds-rig-test-color-group on Hue as light.test_color_group (light.lab_a); removed after it."

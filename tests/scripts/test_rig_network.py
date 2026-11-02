@@ -96,6 +96,10 @@ def test_device_ieee_reads_each_integrations_identifier():
     assert device_ieee({"identifiers": [["mqtt", f"zigbee2mqtt_{IEEE}"]]}, "zigbee2mqtt") == IEEE
     assert device_ieee({"identifiers": [["mqtt", "zigbee2mqtt_bridge"]]}, "zigbee2mqtt") is None
     assert device_ieee({"identifiers": [["hue", "abc"]]}, "zha") is None
+    # HomeKit Bridge registers a three-part identifier; the lab's first roam check crashed on one.
+    homekit = ["homekit", "entry", "serial"]
+    assert device_ieee({"identifiers": [homekit]}, "zha") is None
+    assert device_ieee({"identifiers": [homekit, ["zha", ZHA_IEEE]]}, "zha") == ZHA_IEEE
 
 
 async def test_device_by_ieee_finds_the_device_on_its_own_integration_only():
