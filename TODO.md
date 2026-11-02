@@ -98,6 +98,12 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. The rig lock
 - [ ] **13f** ZHA raise, lower and `stop`, after the `Transition` PR. ZHA code freezes. Built on `wt/zha-move-stop`
   over the six raise and lower actions; a lab probe, the rig run, test records and PR are open. Pick up at the
   [handoff note](docs/plans/2026-10-28-zha-move-stop.md#status-and-handoff-2026-11-02).
+- [ ] **13f follow-up** One core watch for light calls from HA, which drop the predictions of the lights a call names:
+  a listener in `core/` with a resolver per integration (call entities to cache entries, plus a hook after the
+  forget). Hue's (`hue/report_filter.py`, which also hands back its `predicted_state` ends) and ZHA's
+  (`watch_ha_changes` in `zha/fade.py`) move onto it, and Z2M, which has none, gets one: a fix for a prediction left
+  stale by a change from HA mid-fade, as 13f's lab probe found on ZHA. Rig run on Hue's predicted-state cases and Z2M's
+  raise, lower and `stop` before it lands. `opus`: it changes released Hue behavior.
 - [ ] **ZHA A60 run** (13k step 3), on the lab: ZHA color suites, `set_attributes` hs and xy included. Attended for
   `sets_color_while_off`. Clears `experimental` on the ZHA adapters it proves.
 - [ ] **9d** Rig coverage sweep for the non-color scope
