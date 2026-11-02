@@ -62,59 +62,62 @@ point the ramp had reached (timed at the middle of the read's round trip), and r
 says has nothing to do is planned again from HA's state. A live read before every move (about 0.2 s) was rejected
 for its latency.
 
-## Status and handoff (2026-10-30)
+## Status and handoff (2026-11-02)
 
-**Since 2026-10-29:** `release/v0.0.2` merged in (#128: six raise and lower actions replace `move`). `zha/move.py`
-became the shared `zha/fade.py` (`ZHARamp`, `ramp_scope`) with one adapter per action, as on Hue and Z2M; the
-steps below still say `move` and stay as written. End refreshes and the soft off's restore are keyed per light and
-attribute (`end_key`), so a saturation or hue call keeps a brightness fade's restore; `stop` cancels both. The rig
-cases moved into the per-action step files (`soft_off_keeps_level` is in `lower_brightness.yaml`), and the
-saturation, hue and two-call stop cases run on ZHA too (they skip until the A60 is on ZHA). `_CaseRun.reading`
-keeps both the group mean and #128's dotted `_lookup`. A fresh `/audit-code` of the fit, the group sample and the
-split found one defect, fixed in `7f56d4d`: the re-plan from HA's state forgot every attribute, so a saturation fade
-lost its prediction and a stop sent it no `StopMoveStep`. 1119 tests pass, ZHA modules at 100 %. Pushed, no PR:
-the PR waits for a passing rig run. Watched probes (b) and (c) were never run.
+**Built:** `release/v0.0.2` merged in through slice 15 (the lab, rig profiles, test records). `zha/move.py` became
+the shared `zha/fade.py` (`ZHARamp`, `ramp_scope`) with one adapter per raise and lower action, as on Hue and Z2M;
+the steps below still say `move` and stay as written. End refreshes and the soft off's restore are keyed per light
+and attribute (`end_key`), so a saturation or hue call keeps a brightness fade's restore; `stop` cancels both. ZHA
+cases sit in the per-action step files (`soft_off_keeps_level` in `lower_brightness.yaml`), and the saturation, hue
+and two-call stop cases run on ZHA with the `light_color` and `group_color` roles. `_CaseRun.reading` keeps the group
+mean beside the dotted `_lookup`. A fresh `/audit-code` of the fit, the group sample and the split fixed one defect
+(`7f56d4d`: the re-plan from HA's state forgot every attribute, so a stop sent a running saturation fade no
+`StopMoveStep`). 1323 tests pass, ZHA modules at 100 %. Pushed, no PR: it waits for a passing rig run.
 
-**From the audit, decided 2026-10-31: no guard until the probe.** `sync_to_bulb` solves for the start by dividing by
-`1 − f`, and times the read at its round trip's middle. A request held in a busy coordinator's queue (the second
-run's `BUSY` sends) reads later than the middle, so `f` is underestimated and, on a raise, the start comes out
-high: that matches both unexplained `light_ct` failures (cause 1 below). A guard, such as skipping the fit when the
-round trip exceeds a bound or when `f` is past one half, would trade a stale-start fix for robustness. Jason chose
-to wait for the probe in step 2 to say which cause it is, then fix that cause.
+**The second rig run's two `light_ct` failures (house, 2026-10-29, `655693f`) were not the fit.** Their samples read
+`device_side` on ZHA, which is a live CurrentLevel read of the bulb, never the prediction, and in both cases every
+command went out before the fit ran. So the bulb itself read high: `raise_from_off` about 75 % within its first
+second (`max: 50`), `halts_a_move` (now `halts_a_raise`) held at 85 % (`max: 78`). Candidates, in order of likelihood:
 
-**Second rig run (2026-10-29, `move` and `stop` on ZHA, `655693f`):** every `light_ct` case that failed on
-2026-10-28 passed. 12 cases failed:
+1. **The radio jam.** The house group's E11-G13 stopped answering, and the coordinator refused sends with
+   `Failed to enqueue message: <sl_Status.BUSY: 4>`. A stop held in the queue lets the raise run on (10 % to 85 % on
+   a 10 s sweep is about 7.5 s, not 3), and a read answered late reports a later level.
+2. **The setup's own HA fade** was still running when the raise started, so the bulb began higher.
+3. **CurrentLevel during `MoveToLevelWithOnOff` isn't on the ramp** (the bulb reports its target, or a stale level).
 
-- **All 10 `group` failures: the E11-G13 member stopped answering.** It stays "available", but a live OnOff read
-  timed out (15 s; HA logged `get_attributes on zha timed out after 30s` five times), and the coordinator at times
-  refused sends with `Failed to enqueue message: <sl_Status.BUSY: 4>`. Not a code fault. Jason to power-cycle or
-  re-pair it; confirm it answers reads before the next run.
-- **Two `light_ct` cases, not yet explained:** `raise_from_off` (now in `raise_brightness.yaml`) predicted about
-  75 % at its first sample, where it should start near 0 (`max: 50`); `halts_a_move` (now `halts_a_raise` in
-  `stop.yaml`) held at 85 % (`max: 78`). Both mean the fit set the start well above where the setup left the bulb.
-  Candidate causes:
-  1. The radio jam delayed the read's request, so its midpoint timing was wrong and `1 − f` amplified it (see the
-     audit item above). Then a rerun with a healthy group fixes it.
-  2. The fit is right: the setup's own HA fade (to off, or to 10 %) was still running when the raise started. Then
-     the cases need a settle wait after setup, or the fit must not trust a read while a fade from elsewhere runs.
-  3. The bulb's CurrentLevel right after a `MoveToLevelWithOnOff` isn't on the ramp (it reads the target, or a
-     stale level). The probe's 0.2 s log shows it.
+**The fit (decided 2026-10-31): no guard until the probe.** `sync_to_bulb` divides by `1 − f` and times the read at
+its round trip's middle, so a read held in a busy queue fits a raise's start too high. That is a latent risk to the
+next call's start and the soft off's restore. No run has shown it; revisit only if the probe does.
 
-**Next, in order:**
+**The lab changes the plan.** On `--profile lab` the bulbs roam Hue → ZHA → Z2M → Hue within the run, and ZHA's
+suites run while they are on ZHA: `light_ct` is the white ambiance bulb, `light_color` the A60, and `group` and
+`group_color` are rig-made `ds-rig-*` ZHA groups of Hue bulbs only. No E11-G13, so no jam from it, and the color
+cases run instead of skipping. The house profile keeps the Sengleds and mixed groups for the pre-release run.
 
-1. The rig is down: no rig run or probe until Jason says it's back, and ask him before each (pre-authorization
-   covered 2026-10-27/28 only).
-2. With his OK, a short single-bulb probe on `light_ct` (about 2 min, unattended): replay the two setups, then the
-   raise, logging the live CurrentLevel every 0.2 s against the prediction, with each read's round trip. It tells
-   the causes apart. Fix accordingly; ask Jason before any change to the fit's design, the guard above included.
-3. Once the E11-G13 answers reads: `scripts/rig.py --integration zha --action raise_brightness --action
-   lower_brightness --action stop` in the background (add the saturation and hue actions once the A60 is on ZHA).
-   Investigate `stop_when_idle[group]` if it fails again (2026-10-28: brightness moved 128 → 84; 2026-10-29: 128 →
-   191 → 149), which suggests the group's refresh on a stop with nothing moving changes its reading.
-4. On a pass: write `docs/bench/zha/raise_brightness.md`, `lower_brightness.md` and `stop.md` (non-color scope,
-   citing the commit HA loaded), tick 13f in `TODO.md`, pytest and pre-commit, PR into `release/v0.0.2`,
-   `merge-green <n> --squash --delete-branch` in the background, then remove the worktree and fast-forward the main
-   checkout.
+**Next, in order** (every rig run needs Jason's go; start each in the background, one at a time behind the lock):
+
+1. **Wait for the lab's bring-up** (slice 15 PR 5, attended): the A60 in the lab, `profiles/lab.yaml`, and a
+   passing `--roam-check`. Until then, nothing here runs.
+2. **The probe: a filtered lab run** (about 15 min, most of it the moves; unattended):
+   `scripts/rig.py --profile lab --integration zha --action raise_brightness --action stop -k raise --unattended`.
+   `-k raise` picks `raise`, `raise_from_off`, `raise_after_soft_off` and `raise_stop_raise`, and `stop`'s
+   `halts_a_raise`, on `light_ct` and `group`. The run ends with the bulbs home on Hue.
+   - If `raise_from_off` and `halts_a_raise` pass, cause 1 it was: go to step 3.
+   - If either fails, tell causes 2 and 3 apart before changing code. Rerun only that case with each read timed:
+     a `sample` that prints each reading's offset from the call and its round trip, and a debug line in
+     `sync_to_bulb` (the read, its round trip, `f`, the fitted start) with `logger.set_level` on
+     `custom_components.device_side.integrations.zha.fade`. Neither is built yet. Fix accordingly, and ask Jason
+     before any change to the fit's design.
+3. **The full ZHA run on the lab**, unattended: `scripts/rig.py --profile lab --integration zha` with `--action`
+   for each of the six raise and lower actions and `stop`. Investigate `stop_when_idle[group]` if it fails again
+   (house, 2026-10-28: 128 → 84; 2026-10-29: 128 → 191 → 149), which suggests a group's refresh on a stop with
+   nothing moving changes its reading.
+4. **On a pass:** write `docs/test-records/zha/<action>.md` for each action that passed (`Profile | lab`, citing
+   the commit HA loaded), tick 13f in `TODO.md`, pytest and pre-commit, PR into `release/v0.0.2`, `merge-green <n>
+   --squash --delete-branch` in the background, then remove the worktree and fast-forward the main checkout. The
+   records cover color too now that the A60 runs, but its observed cases wait for the ZHA A60 run (13k step 3).
+   The E11-G13 cases (no bottom level, no restore) and mixed groups are proved on the house profile's pre-release
+   run.
 5. Optional, at Jason's go: watched (b) and (c).
 
 ## 1. `zha/zcl.py` helpers
