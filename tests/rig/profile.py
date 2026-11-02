@@ -56,8 +56,8 @@ TOLERANCE_S = {"shelly": 2.0, "hue": 2.0, "zigbee2mqtt": 3.0, "zha": 3.0, "matte
 # it starts from what HA shows.
 SETTLE_S = {"hue": 15.0, "zigbee2mqtt": 2.0}
 
-# The networks a roaming bulb visits, in the order it visits them: the only route the A60 move probe proved
-# (docs/plans/2026-10-31-a60-move-probe.md). Hue is home, where a run starts and ends.
+# The order in which roaming bulbs visit the networks a run needs, moving directly from one to the next. Hue is
+# home, where a run starts and ends.
 CYCLE = ("hue", "zha", "zigbee2mqtt")
 
 

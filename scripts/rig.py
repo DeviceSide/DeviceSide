@@ -22,7 +22,7 @@ one, and may be left out when there is only one.
 A profile with `roam:` has bulbs the run moves between Hue, ZHA and Z2M (tests/rig/roam.py): the suites run in
 phases, Hue's with the fixed integrations', then ZHA's, then Z2M's, each network only if it has suites, with a direct
 move before each and one straight home at the end.
---recover, and the replay before the next run's gate, move them home. --roam-check runs the cycle with no suites.
+--recover, and the replay before the next run's gate, move them home. --roam-check visits every network with no suites.
 
 Usage: scripts/rig.py [--profile NAME] [--dry-run] [--no-deploy] [--unattended] [--integration KEY ...]
                       [--action NAME ...] [-k TEXT]
@@ -457,7 +457,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--unattended", action="store_true", help="skip observed tests, reporting them not observed")
     parser.add_argument("--recover", action="store_true", help="put back what an aborted run left changed, then stop")
     parser.add_argument(
-        "--roam-check", action="store_true", help="move the profile's roam bulbs round the cycle and home, no suites"
+        "--roam-check", action="store_true", help="move the profile's roam bulbs to every network and home, no suites"
     )
     parser.add_argument(
         "--wait-free",
@@ -1040,7 +1040,7 @@ async def recover(
 async def recover_roam(
     admin: HAClient | None, bridge: HueBridge | None, journal: Journal, out: Callable[[str], None]
 ) -> None:
-    """Remove the journal's ds-rig-* groups, move its roaming bulbs forward round the cycle to Hue and put back their
+    """Remove the journal's ds-rig-* groups, move its roaming bulbs straight home to Hue and put back their
     home; stop on a failure."""
     if admin is None or bridge is None:
         raise SystemExit(
