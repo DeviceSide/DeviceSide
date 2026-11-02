@@ -37,6 +37,9 @@ tests:
     roles: [light_ct, group]
     steps:
       - set: {state: on, brightness_pct: 50}
+      # ZHA holds a light's reports for 0.5 s after a turn_on, then applies the last: the bulb's report of the
+      # previous case's restore can land there, and HA shows that level until the next report.
+      - wait: 2
       - call: {}
       - expect_response: {status: expected}
       - sample: {attribute: brightness, for: 2, expect: steady}
