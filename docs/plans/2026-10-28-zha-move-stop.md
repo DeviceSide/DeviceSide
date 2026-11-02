@@ -116,6 +116,20 @@ mean beside the dotted `_lookup`. A fresh `/audit-code` of the fit, the group sa
    of SerializableBytes, payload, manufacturer=0x100B)`) is from zigpy's source, and zigpy isn't a dev dependency.
    Probe `-k raise_from_off`. If the bulb still fades from its stored level, send the whole fade as `multiColor`
    (on, the limit, the fade time) for an off Hue light, which is what Z2M sends.
+   **Deep dive brief (code only, no rig runs):** two failures from the 17:11 full ZHA lab run (HA on `b880e6c`):
+   - **A60 xy after a hue stop.** `cycles_up_the_wheel`, `cycles_down_the_wheel`, `hue_cycle_stop` and
+     `halts_brightness_and_hue` on `light_color` fail `expect_matches_read`. HA shows xy (0.3364, 0.5750) against a
+     live read of (0.297, 0.641); (0.2382, 0.6488) against (0.171, 0.717); (0.3375, 0.5742) against (0.299, 0.640);
+     (0.4148, 0.5161) against (0.403, 0.552). HA's point is always nearer white than the bulb's. Trace what refreshes HA's
+     xy after the stop (`stop.py`, the `update_entity` refresh and its timing, ZHA's own color read and conversion,
+     the bulb's color mode after `StopMoveStep`) and whether the gap is the rig's comparison (its tolerance, hs
+     against xy, gamut) or a stale or wrongly converted state in HA.
+   - **`stop_when_idle[group]` spike.** HA's own ZHA group state read 128, 170, 128, 128, 128 over the sample after
+     a stop on an idle group; the house runs show one-reading spikes too. Find where a ZHA group light's brightness
+     comes from (zha's group entity averaging its members, a member's report, our `update_entity` after a stop) and
+     whether the rig should sample the members, as `_CaseRun.reading` does for the group mean, or the adapter sends
+     something that moves a member.
+   Report the cause and a proposed fix for each; fixes and any rig run wait for Jason's go.
 3. **The fit stays unguarded** (Jason, 2026-10-31) unless a run shows its risk. Ask him if `soft_off_keeps_level`
    fails again, but log `sync_to_bulb` (the read, its round trip, `f`, the fitted start) first, so the decision
    rests on numbers.
