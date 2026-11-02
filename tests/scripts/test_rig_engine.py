@@ -844,6 +844,60 @@ async def test_a_member_that_takes_an_attribute_is_still_checked_for_it(tmp_path
     assert detail.startswith("step 2 (expect_response): light.a: attributes ['color_temp_kelvin']")
 
 
+async def test_a_member_that_cant_take_an_attribute_must_show_it_absent(tmp_path):
+    """The White member showing a color temperature is a fault, not something to skip."""
+    steps = suite(tmp_path, MIXED, "fake")
+    ha = mixed_ha(CT, WHITE | {"color_temp_kelvin": 2700})
+    result = await run_one(ha, steps, profile("fake", group="light.room"), registry=GROUP_REGISTRY)
+    outcome, detail = outcomes(result)["mixed[group]"]
+    assert outcome is Outcome.FAIL
+    assert detail.startswith("step 2 (expect_response): light.b: attributes ['color_temp_kelvin']")
+
+
+DROPS = """
+action: set_attributes
+rig_seconds: 5
+tests:
+  - name: drops
+    roles: [group]
+    steps:
+      - call: {brightness: 40, color_temp_kelvin: 2700}
+      - expect_response: {status: sent}
+"""
+
+
+def dropping_ha(white_detail: str | None) -> FakeHA:
+    """A group of a CT bulb (light.a) and a White one (light.b); the call answers sent, the White with this detail."""
+
+    def respond(ha, action, data):
+        white = {"status": "sent"} | ({"detail": white_detail} if white_detail else {})
+        return {"light.a": {"status": "sent"}, "light.b": white}
+
+    states = {"light.a": {"attributes": CT}, "light.b": {"attributes": WHITE}}
+    return FakeHA({"light.room": {"attributes": {"entity_id": ["light.a", "light.b"]}}} | states, respond)
+
+
+@pytest.mark.parametrize(
+    ("white_detail", "outcome"),
+    [pytest.param("fields_dropped", Outcome.PASS, id="says_it"), pytest.param(None, Outcome.FAIL, id="silent")],
+)
+async def test_a_member_sent_a_field_it_cant_take_must_say_it_dropped_it(tmp_path, white_detail, outcome):
+    steps = suite(tmp_path, DROPS, "fake")
+    ha = dropping_ha(white_detail)
+    result = await run_one(ha, steps, profile("fake", group="light.room"), registry=GROUP_REGISTRY)
+    assert outcomes(result)["drops[group]"][0] is outcome
+    if outcome is Outcome.FAIL:
+        assert "light.b: detail is None, expected 'fields_dropped'" in outcomes(result)["drops[group]"][1]
+
+
+async def test_a_step_that_names_the_detail_keeps_it(tmp_path):
+    text = DROPS.replace("{status: sent}", "{status: sent, detail: null}")
+    result = await run_one(
+        dropping_ha(None), suite(tmp_path, text, "fake"), profile("fake", group="light.room"), registry=GROUP_REGISTRY
+    )
+    assert outcomes(result) == {"drops[group]": (Outcome.PASS, "")}
+
+
 async def test_an_attribute_no_member_takes_fails(tmp_path):
     steps = suite(tmp_path, MIXED, "fake")
     result = await run_one(mixed_ha(WHITE, WHITE), steps, profile("fake", group="light.room"), registry=GROUP_REGISTRY)
@@ -1623,9 +1677,14 @@ UNIQUE_IDS = {"light.bulb": "light-id", "light.room": "grouped-id", "scene.dusk"
 
 
 class FakeBridge:
-    def __init__(self, error: str | None = None):
+    def __init__(self, error: str | None = None, lights: dict[str, dict] | None = None):
         self.error = error
         self.puts: list[tuple[str, str, dict]] = []
+        self.lights = lights or {}  # light resources by id, for get
+
+    async def get(self, resource_type: str, resource_id: str | None = None) -> list[dict]:
+        assert resource_type == "light"
+        return [self.lights[resource_id]]
 
     async def put(self, resource_type: str, resource_id: str, body: dict) -> None:
         self.puts.append((resource_type, resource_id, body))
@@ -1798,3 +1857,54 @@ def test_a_run_cancelled_at_a_prompt_exits_without_waiting_for_an_answer():
     asyncio.run(cancelled_at_the_prompt())
     assert time.monotonic() - started < 2
     answered.set()
+
+
+DIMMEST = """
+action: set_scene
+rig_seconds: 5
+tests:
+  - name: dimmest
+    roles: [light_dimmable]
+    steps:
+      - expect_state: {brightness: {max: dimmest + 7}}
+"""
+
+
+@pytest.mark.parametrize(
+    ("min_dim_level", "brightness", "outcome"),
+    [
+        pytest.param(5.0, 20, Outcome.PASS, id="white_at_its_floor"),  # 5 % shows as 13
+        pytest.param(5.0, 21, Outcome.FAIL, id="white_above_it"),
+        pytest.param(0.2, 13, Outcome.FAIL, id="ambiance_at_the_whites_floor"),  # 0.2 % shows as 1
+        pytest.param(0.2, 8, Outcome.PASS, id="ambiance_at_its_floor"),
+    ],
+)
+async def test_dimmest_is_each_lights_own_floor(tmp_path, min_dim_level, brightness, outcome):
+    ha = BridgeHA()
+    ha.states["light.bulb"] |= {"state": "on", "attributes": {"brightness": brightness}}
+    bridge = FakeBridge(lights={"light-id": {"dimming": {"min_dim_level": min_dim_level}}})
+    steps = suite(tmp_path, DIMMEST, "hue")
+    result = await run_one(ha, steps, bridge_inventory(), registry=GROUP_REGISTRY, bridge=bridge)
+    assert outcomes(result)["dimmest[light_dimmable]"][0] is outcome
+
+
+async def test_dimmest_without_a_bridge_says_what_to_set(tmp_path):
+    steps = suite(tmp_path, DIMMEST, "hue")
+    result = await run_one(BridgeHA(), steps, bridge_inventory(), registry=GROUP_REGISTRY, bridge=None)
+    outcome, detail = outcomes(result)["dimmest[light_dimmable]"]
+    assert outcome is Outcome.FAIL
+    assert "dimmest needs a Hue suite and its bridge" in detail
+
+
+async def test_a_sample_bound_can_be_the_dimmest(tmp_path):
+    text = DIMMEST.replace(
+        "expect_state: {brightness: {max: dimmest + 7}}",
+        "sample: {attribute: brightness, for: 0.1, every: 0.05, expect: steady, max: dimmest + 7}",
+    )
+    ha = BridgeHA()
+    ha.states["light.bulb"] |= {"state": "on", "attributes": {"brightness": 21}}
+    bridge = FakeBridge(lights={"light-id": {"dimming": {"min_dim_level": 5.0}}})
+    result = await run_one(ha, suite(tmp_path, text, "hue"), bridge_inventory(), registry=GROUP_REGISTRY, bridge=bridge)
+    outcome, detail = outcomes(result)["dimmest[light_dimmable]"]
+    assert outcome is Outcome.FAIL
+    assert "brightness rose above 20" in detail
