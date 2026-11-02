@@ -456,3 +456,15 @@ async def test_a_bulb_that_missed_its_leave_is_recorded_where_it_stayed_and_reco
 
     await Roamer.from_journal(lab.ha, lab.bridge, Journal(journal.path), lambda _: None).go(roam.HOME)
     assert await where(lab) == ["hue", "hue"]
+
+
+async def test_a_z2m_remove_that_cant_be_delivered_stops_with_the_power_cycle_instruction(lab, monkeypatch):
+    await roamer(lab).go("zigbee2mqtt")
+
+    async def undeliverable(ieee):
+        raise TimeoutError(f"Zigbee2MQTT did not remove {ieee} within 30 s")
+
+    monkeypatch.setattr(lab.ha, "z2m_remove_device", undeliverable)
+    with pytest.raises(RoamError, match=r"Z2M couldn't remove light.lab_a: it didn't take the Leave\. Switch its lamp"):
+        await roamer(lab).go(roam.HOME)
+    assert await where(lab) == ["zigbee2mqtt", "zigbee2mqtt"]

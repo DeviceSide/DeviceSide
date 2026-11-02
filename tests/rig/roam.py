@@ -327,7 +327,14 @@ class Roamer:
         elif network == "zha":
             await self.ha.zha_remove(colon_ieee(bulb.ieee))
         else:
-            await self.ha.z2m_remove_device(hex_ieee(bulb.ieee))
+            try:
+                await self.ha.z2m_remove_device(hex_ieee(bulb.ieee))
+            except TimeoutError:
+                # Z2M keeps a device it couldn't send the Leave to: one that rejoined but can't be reached.
+                raise RoamError(
+                    f"Z2M couldn't remove {bulb.entity_id}: it didn't take the Leave. Switch its lamp off and on, and "
+                    "once Z2M has interviewed it again run scripts/rig.py --recover."
+                ) from None
 
         async def gone() -> bool:
             return not await self.joined(network, bulb)
