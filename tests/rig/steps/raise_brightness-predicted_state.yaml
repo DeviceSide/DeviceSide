@@ -20,8 +20,9 @@ tests:
       - set: {state: off}
     steps:
       - call: {sweep_time: 10}
-      - expect_state: {state: on, brightness: {max: 8}, within: tol}
-      - sample: {attribute: brightness, for: 3, expect: steady, max: 8}
+      # The dimmest a light shows, not 1: the Hue White's lowest level reads 13 (5 %).
+      - expect_state: {state: on, brightness: {max: 14}, within: tol}
+      - sample: {attribute: brightness, for: 3, expect: steady, max: 14}
 
   - name: ha_change_mid_fade_shows_at_once  # set waits for HA to show 80 %; the fade's end never replaces it
     roles: [light_ct, group]

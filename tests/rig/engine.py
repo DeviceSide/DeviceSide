@@ -175,6 +175,13 @@ class RigTest:
             self.observe.only is None or integration in self.observe.only
         )
 
+    @property
+    def calls(self) -> tuple[str, ...]:
+        """The other actions its `call` steps name (`call: {action: turn_on_for}`), in first-use order."""
+        steps = (*self.setup, *self.steps)
+        named = (step.args.get("action") for step in steps if step.kind == "call" and isinstance(step.args, dict))
+        return tuple(dict.fromkeys(filter(None, named)))
+
     def roles_needed(self, role: str) -> list[str]:
         """The case's own role and every role a step targets, in first-use order."""
         steps = (*self.setup, *self.steps)
@@ -518,17 +525,29 @@ class Case:
         return replace(self, observed=not self.observed).id
 
 
-def cases(suite: Suite, profile: Profile, keyword: str | None = None) -> list[Case]:
+def adapters_for(suite: Suite, registry: Any) -> frozenset[str]:
+    """The actions the suite's tests call that have an adapter on its integration, for `cases`."""
+    called = {action for test in suite.file.tests for action in test.calls}
+    return frozenset(action for action in called if registry.adapter(action, suite.integration) is not None)
+
+
+def cases(
+    suite: Suite, profile: Profile, keyword: str | None = None, adapters: frozenset[str] | None = None
+) -> list[Case]:
     """The suite's cases in file order, a test's automated case before its observed one; `keyword` keeps only case
-    ids containing it."""
+    ids containing it. With `adapters` (from adapters_for), a test calling another action without one is skipped."""
     result = []
     for test in suite.file.tests:
         if test.only is not None and suite.integration not in test.only:
             continue
+        lacking = next((a for a in test.calls if adapters is not None and a not in adapters), None)
         for role in test.roles:
             for observed in [False] * test.automated + [True] * test.observed_on(role, suite.integration):
                 case = Case(suite, test, role, {}, observed=observed)
                 if keyword and keyword not in case.id:
+                    continue
+                if lacking:
+                    result.append(replace(case, skip=f"no {lacking} adapter on {suite.integration}"))
                     continue
                 needed = test.roles_needed(role)
                 entities = {name: profile.entity(suite.integration, name) for name in needed}
@@ -795,6 +814,39 @@ def _lookup(row: dict, name: str) -> Any:
         else:
             return None
     return value
+
+
+_COLOR_MODES = frozenset({"hs", "xy", "rgb", "rgbw", "rgbww"})
+
+
+def _carries(state: dict | None, name: str) -> bool:
+    """Whether a light's `supported_color_modes` (present while it is off) can carry an attribute (dotted, as
+    _lookup reads one): a mixed group's White member takes no color temperature. Anything else, or an entity that
+    lists no modes, carries everything."""
+    modes = (state or {}).get("attributes", {}).get("supported_color_modes")
+    if not isinstance(modes, list):
+        return True
+    root = name.partition(".")[0]
+    if root == "color_temp_kelvin":
+        return "color_temp" in modes
+    if root in ("hs_color", "xy_color", "rgb_color"):
+        return not _COLOR_MODES.isdisjoint(modes)
+    if root == "brightness":
+        return any(mode != "onoff" for mode in modes)
+    return True
+
+
+def _carried(wants: dict[str, dict], states: dict[str, dict | None], target: str) -> dict[str, dict]:
+    """Each member's wanted attributes, less those its color modes can't carry (a wanted absence, None, holds on any);
+    one no member carries fails the step, so a step can't pass by checking nothing."""
+    kept = {
+        member: {name: value for name, value in want.items() if value is None or _carries(states.get(member), name)}
+        for member, want in wants.items()
+    }
+    for name in {name for want in wants.values() for name in want}:
+        if not any(name in want for want in kept.values()):
+            raise StepFailure(f"no member of {target} takes {name}")
+    return kept
 
 
 def _matches(actual: Any, want: Any) -> bool:
@@ -1115,6 +1167,10 @@ class _CaseRun:
             raise StepFailure("no response to check: no call has returned one")
         entity_id = self.entity(args)
         keys = [entity_id] if entity_id in self.response else await self.members(entity_id)
+        attributes = {key: args.get("attributes", {}) for key in keys}
+        # A group's own row (Z2M) is the mean over its members that report: it takes everything.
+        if "attributes" in args and not self.is_group(keys[0]):
+            attributes = _carried(attributes, {key: await self.ha.get_state(key) for key in keys}, entity_id)
         for key in keys:
             if not isinstance(entry := self.response.get(key), dict):
                 raise StepFailure(f"the response has no entry for {key}: {self.response}")
@@ -1122,6 +1178,7 @@ class _CaseRun:
                 if name == "target":
                     continue
                 if name == "attributes":
+                    want = attributes[key]
                     got = entry if self.query else entry.get("attributes") or {}
                     if bad := [attr for attr, value in want.items() if not _matches(_lookup(got, attr), value)]:
                         raise StepFailure(f"{key}: attributes {bad} are {got}, expected {want}")
@@ -1145,10 +1202,14 @@ class _CaseRun:
         await self.await_state(self.entity(args), want, within)
 
     async def await_state(self, entity_id: str, want: dict, within: float | None) -> None:
-        """Every member of the target matches `want` now, or within `within` seconds shared between them."""
+        """Every member of the target matches `want`, in what its color modes carry, now or within `within` seconds
+        shared between them."""
         deadline = asyncio.get_running_loop().time() + (within or 0)
-        for member in await self.members(entity_id):
-            member_want = dict(want)
+        members = await self.members(entity_id)
+        states = {member: await self.ha.get_state(member) for member in members}
+        wants = _carried(dict.fromkeys(members, want), states, entity_id)
+        for member in members:
+            member_want = dict(wants[member])
             if member_want.get("state") == "unchanged":
                 before = self.snapshot.taken.get(member)
                 member_want["state"] = before["state"] if before else None
@@ -1301,7 +1362,7 @@ async def run(
         if client is None or (adapter.scope.options and admin is None):
             out(f"{suite.integration} / {suite.action}: needs HA_ADMIN_TOKEN, skipped")
             continue
-        planned.append((suite, adapter, client, cases(suite, profile, keyword)))
+        planned.append((suite, adapter, client, cases(suite, profile, keyword, adapters_for(suite, registry))))
     options = {
         id(suite): {name: name in suite.file.options for name in adapter.scope.options}
         for suite, adapter, *_ in planned
