@@ -3,6 +3,7 @@
 from typing import TYPE_CHECKING, ClassVar
 
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 
 from . import colors
 from .bridge import bridge_api, resource_id, write_light
@@ -10,6 +11,7 @@ from .report_filter import write_forgetting
 from ...actions.set_attributes import SetAttributesRequest
 from ...core.adapter import Adapter
 from ...core.color import color_xy
+from ...core.ha_entity import ha_entity, replace_if_set
 from ...core.models import EntityResult, Status, Target
 from ...core.scope import AdapterScope
 
@@ -55,13 +57,28 @@ def _write_for(light: Light, request: SetAttributesRequest) -> tuple[dict, bool]
     return write, dropped
 
 
+def _keep_level(hass: HomeAssistant, target: Target, written: float, absolute: float | None) -> None:
+    """Make the level HA's hue light keeps for its next plain on the one just written.
+
+    After an off with a transition, HA keeps the light's level (`_last_brightness`) and a room's
+    (`_restore_brightness`, on its grouped light), and sends it on the next turn_on without a brightness, which would
+    undo this write. Each is replaced only when set. A room reached as the target's group takes only an explicit
+    brightness: a clamp leaves its lights at different levels, so its kept one stays.
+    """
+    replace_if_set(ha_entity(hass, target.entity_id), "_last_brightness", written)
+    if absolute is None or target.via_group is None:
+        return
+    if (entry := er.async_get(hass).async_get(target.via_group)) is not None and entry.platform == "hue":
+        replace_if_set(ha_entity(hass, target.via_group), "_restore_brightness", absolute)
+
+
 class HueSetAttributes(Adapter[SetAttributesRequest]):
     """Write the requested attributes to each light; the dispatcher expands a room or zone into its lights.
 
     A grouped_light write does not reach the lights that are off, so a room is written light by light. A field the
     light cannot take (color on a white bulb) is dropped and the result says so; a light that can take none of the
     fields is unchanged. min/max_brightness clamp the brightness the bridge last stored, so they work while off.
-    A write ends any move's prediction for the light.
+    A write ends any move's prediction for the light, and replaces the level HA keeps after a soft off (_keep_level).
     """
 
     action: ClassVar[str] = "set_attributes"
@@ -91,6 +108,8 @@ class HueSetAttributes(Adapter[SetAttributesRequest]):
             if not write:
                 return self.result(target, Status.UNCHANGED, detail="fields_dropped" if dropped else "within_limits")
             await write_forgetting(hass, light.id, write_light(api, light.id, **write))
+            if "brightness" in write:
+                _keep_level(hass, target, write["brightness"], request.brightness)
             return self.result(target, Status.SENT, detail="fields_dropped" if dropped else None)
 
         return await self.gather(hass, targets, send)
