@@ -101,6 +101,19 @@ async def test_dimmable_light_reads_brightness_on_or_off(hass, bulb, requests, o
             },
             hs_row(90.001, 50.0),
         ),
+        # In a hue mode the bulb's own x and y win over its hue and saturation.
+        (
+            {
+                zcl.COLOR_MODE: 0,
+                zcl.ENHANCED_COLOR_MODE: 3,
+                zcl.ENHANCED_CURRENT_HUE: 0x3C00,
+                zcl.CURRENT_SATURATION: 254,
+                zcl.CURRENT_X: 22046,
+                zcl.CURRENT_Y: 37683,
+            },
+            xy_row(0.3364, 0.575),
+        ),
+        ({zcl.COLOR_MODE: 0, zcl.CURRENT_HUE: 127, zcl.CURRENT_X: 22046, zcl.CURRENT_Y: 37683}, xy_row(0.3364, 0.575)),
         # A mode whose values the light didn't return reports no color.
         ({zcl.COLOR_MODE: 1}, {}),
         ({zcl.COLOR_MODE: 0, zcl.CURRENT_HUE: 127}, {}),

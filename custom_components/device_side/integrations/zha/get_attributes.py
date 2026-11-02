@@ -46,10 +46,14 @@ def light_row(on_off: dict[int, int], level: dict[int, int] | None, color: dict[
 
 
 def _color(color: dict[int, int]) -> dict:
+    """In a hue mode the bulb's own x and y win, as ZHA shows them in every mode but color temperature: HA's hs to xy
+    conversion isn't the bulb's, and puts a fully saturated hue outside its gamut. Hue and saturation are read only
+    from a light that returns no x and y."""
     mode = color.get(zcl.ENHANCED_COLOR_MODE, color[zcl.COLOR_MODE])
-    if mode == _CT and (mireds := color.get(zcl.COLOR_TEMPERATURE)):
-        return {"color_temp_kelvin": color_temperature_mired_to_kelvin(mireds)}
-    if mode == _XY and zcl.CURRENT_X in color and zcl.CURRENT_Y in color:
+    if mode == _CT:
+        mireds = color.get(zcl.COLOR_TEMPERATURE)
+        return {"color_temp_kelvin": color_temperature_mired_to_kelvin(mireds)} if mireds else {}
+    if mode in (_HS, _XY, _ENHANCED_HS) and zcl.CURRENT_X in color and zcl.CURRENT_Y in color:
         return xy_row(round(color[zcl.CURRENT_X] / 65535, 4), round(color[zcl.CURRENT_Y] / 65535, 4))
     if mode == _ENHANCED_HS and zcl.ENHANCED_CURRENT_HUE in color:
         hue = color[zcl.ENHANCED_CURRENT_HUE] * 360 / 65535
