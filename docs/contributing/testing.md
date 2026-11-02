@@ -31,8 +31,44 @@ planned for a future release.
 ## Rig tests
 
 Rig tests are YAML step files in `tests/rig/steps/`, one per action. `scripts/rig.py` runs each file against
-every integration in your `tests/rig/inventory.yaml` that has an adapter for the action, after a y/N gate:
-the devices change state, so nothing moves until you say yes. `--dry-run` prints the plan and stops.
+every integration in the profile that has an adapter for the action, after a y/N gate: the devices change state, so
+nothing moves until you say yes. `--dry-run` prints the plan and stops.
+
+### Profiles
+
+A profile is one test setup on the Home Assistant `.env.rig` connects to: `tests/rig/profiles/<name>.yaml`,
+gitignored, copied from `tests/rig/profile.example.yaml`. It lists the entities the rig may move, by integration
+and role, and under `pause:` the automations and switches turned off for the run and back on after it, for whatever
+would fight the tests on those entities (motion lighting, an Adaptive Lighting instance's switch). Only those that
+were on are turned back on. `.env.rig` keeps what belongs to the Home Assistant instance: its address, tokens,
+deploy commands and Hue bridge.
+
+`--profile <name>` picks one, and can be left out while there is only one. The plan names the profile, and so do
+the journal and every test record (a `Profile` row). Records from different profiles of the same suite overwrite
+each other; the commit diff shows which one ran last. A record is public, so name a profile for its setup (`lab`,
+`house`), never for a person or place.
+
+The household check (`scripts/check_private.py`) reads every profile's entity IDs, members, supplies and pause
+list, and each roaming bulb's IEEE, so none of them reach a commit.
+
+### Roaming
+
+A profile's `roam:` lists bulbs the run moves between Zigbee networks, all together, round the fixed cycle Hue →
+ZHA → Z2M → Hue (`tests/rig/roam.py`), so one set of bulbs serves every Zigbee suite. Each bulb has its IEEE, the
+fixed entity ID it is renamed to after every join, its roles, and the Z2M options set again after each Z2M join.
+The suites then run in phases: Hue's with the fixed integrations', then ZHA's, then Z2M's, each after a move and
+each with its automated cases before its observed ones. The bulbs move only when a ZHA or Z2M suite runs, and end
+home on Hue, with their rooms, zones, scene actions and names put back on their new Hue IDs. A run that stops
+part way still moves them home; `--recover`, or the next run before its gate, does it after a crash. A bulb on no
+network stops recovery: reset it over Bluetooth in the Hue app, then `--recover` again. A bulb still missing when
+the Hue search ends gets one more, and any other device that joins the bridge meanwhile is named, not removed. `--roam-check` runs the
+cycle with no suites. Roaming needs `HA_ADMIN_TOKEN` and the Hue bridge's `HUE_BRIDGE_HOST` and `HUE_APP_KEY`.
+
+`roam:` can also list `groups:`, native groups of those bulbs that the run makes on each network they visit: a Z2M
+group, a ZHA group, or a Hue zone with, if the group names a `scene:`, a Hue scene in it. Each is called
+`ds-rig-<object ID>` and renamed to its fixed entity ID, takes the group's roles (`group` or `group_color`, each on
+one group; the scene takes `scene`), and is removed before the bulbs move on, or by `--recover` after a crash. A
+run of Hue suites alone makes them on Hue without moving the bulbs; that, too, needs the tokens above.
 
 Ctrl-C, SIGTERM or SIGHUP puts the devices back before the run exits; a second one leaves them. If a run dies before it can, the next run
 puts back what it left before its gate; `--recover` does only that.
@@ -63,7 +99,7 @@ action: turn_on_for        # the device_side action every test in the file calls
 rig_seconds: 25            # the gate's duration estimate
 tests:
   - name: on_then_off
-    roles: [switch_plug, light_onoff]   # one run per role the inventory names
+    roles: [switch_plug, light_onoff]   # one run per role the profile names
     steps:
       - set: {state: off}
       - call: {duration: 6}
@@ -90,23 +126,27 @@ tests:
 | `expect_z2m_option` | Expects the target's Zigbee2MQTT device options to hold the given values. Does nothing in another integration's suite. |
 
 Any step takes `target: <role>` to act on another role the test lists; a `group` case that targets a light role
-is skipped where the inventory lists the group's `members` and that light isn't one. Durations accept numbers, `duration`
+is skipped where the profile lists the group's `members` and that light isn't one. Durations accept numbers, `duration`
 (the last call's), `tol` (the integration's timing tolerance) and `+ - *`. `only: [<integration>]` limits a
 test to some integrations; when those pile up, split the file.
+
+The roles are listed in `tests/rig/profile.example.yaml`. `group_color` is a native group whose members all take
+color: color moves groupcast only to a group like that, so it runs the color cases a `group` can't. Everything this
+page says of a `group` holds for it too.
 
 An adapter with options runs each file for its action with them pinned through Device Side's options flow:
 `options: [<name>]` at the top of a file turns those on, and every other option in the adapter's scope runs off.
 Its record is `<action>-<name>.md`, with an `Options` row. The rig's own options are put back when the run ends.
 
-An integration in `SETTLE_S` (`tests/rig/inventory.py`) predicts a light's brightness for a while after a
+An integration in `SETTLE_S` (`tests/rig/profile.py`) predicts a light's brightness for a while after a
 raise, lower or `stop`, so a later test on that light waits until it reads the device again.
 
 ### Observed tests
 
 Some things need eyes, such as a light climbing smoothly without flashing. A test asks for them with an
-`observe:` block and puts its start state in `setup:`. Each question costs the person at the rig, so ask as
-few as cover everything a check can't measure: watch a behavior once, in the test that shows it best, and
-leave its other tests automated.
+`observe:` block and puts its start state in `setup:`. Each question costs the person at the rig, so observe
+only what hardware has never shown and a check can't measure: once watched on an integration, a behavior stays
+automated there.
 
 ```yaml
   - name: raise
@@ -132,8 +172,11 @@ Such a test runs twice, so you are asked only what a machine can't check:
    the test and asks what you saw instead. It is skipped if its automated run failed, and if a step fails after Enter it prints
    `nothing to observe` and the reason.
 
+`roles: [<role>]` in `observe:` limits the observed run to those roles, and `only: [<integration>]` to those
+integrations; the rest run automated only.
+
 `--unattended` skips the observed runs and reports them `not observed`. They don't fail, but a test counts toward
-a bench record only when both of its runs pass.
+a test record only when both of its runs pass.
 
 ### Run reports
 
@@ -141,9 +184,9 @@ Every run, failed, partial or unattended, ends by writing a report to `device_si
 folder and printing its path: each suite's results with the reason for every failure and skip. The OS clears it
 out in time.
 
-### Bench records
+### Test records
 
-When every test of an adapter passes, the run writes `docs/bench/<integration>/<action>.md`: the date, the Home
+When every test of an adapter passes, the run writes `docs/test-records/<integration>/<action>.md`: the date, the Home
 Assistant version, the devices' model and firmware, and each test's result. A failed or partial (`-k`) run writes
 nothing. Records are evidence for people, not read by any script: the PR that clears an adapter's `experimental`
 flag cites one.
@@ -151,6 +194,6 @@ flag cites one.
 ### Tester reports
 
 A passing [Test report](../../.github/ISSUE_TEMPLATE/test-report.yml) issue becomes its own record,
-`docs/bench/<integration>/<action>-issue-<N>.md`, next to the rig's, so a rig run never overwrites it. It uses the
+`docs/test-records/<integration>/<action>-issue-<N>.md`, next to the rig's, so a rig run never overwrites it. It uses the
 rig record's key/value table: `Source` cites the issue and the RC the tester ran (`tester report, #<N>, <rc>`).
 Note the capabilities, fields and device_side options the report shows working. The tests table is optional.

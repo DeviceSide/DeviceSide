@@ -40,6 +40,12 @@ requires it.
 - **Entity domain**: light, switch. "Domain" alone is fine where unambiguous.
 - **Scope**: the entity domains, capabilities and fields an adapter is known to work with, on hardware someone has
   tested. Outside it, calls are refused as not yet tested.
+- **Test record**: the evidence that an adapter works on real hardware, one per adapter in
+  `docs/test-records/<integration>/<action>*.md`, from a rig run or a tester report. Clearing `experimental`
+  cites one. Formerly "bench record" (`docs/bench/`).
+- **Profile**: one test setup on the rig's HA, `tests/rig/profiles/<name>.yaml` (gitignored): the entities a run may
+  move, by integration and role, and what it pauses. `.env.rig` holds the HA instance's settings. Profiles: `lab`
+  (the maintainer's room) and `house`. Replaced the single `inventory.yaml`.
 
 ## Decisions from the interview (2026-10-23)
 
@@ -227,18 +233,18 @@ requires it.
      scale verification across many adapters. Tests are YAML step files run by a small async
      engine (no pytest), and talk to HA over its WebSocket/REST API with a
      long-lived token: call `device_side.*` actions, assert on service responses and on
-     state changes (e.g. the light is off N seconds after `turn_on_for`). A rig inventory file
-     (gitignored, `tests/rig/inventory.yaml`) maps each integration to the household entities to
+     state changes (e.g. the light is off N seconds after `turn_on_for`). A rig profile
+     (gitignored, `tests/rig/profiles/<name>.yaml`) maps each integration to the household entities to
      use; tests restore prior state afterwards. A deploy script installs the pushed branch's
      `custom_components/device_side` through the maintainer's deploy tooling's `the maintainer's deploy tooling` (`the deploy sync command`; the agent key
      cannot rsync) and restarts HA (`the deploy restart command`) before the run.
-     **Human approval gate:** the rig runner (`scripts/rig.py`) prints the inventory, the
+     **Human approval gate:** the rig runner (`scripts/rig.py`) prints the profile, the
      adapters to be exercised, the estimated duration and whether a restart is needed, then
      requires an interactive y/N (and a `DEVICE_SIDE_RIG_APPROVED=1` env var for CI-style
      invocation). Both the deploy+restart and the test run sit behind that gate. The devices
      are in-use household lights, so **Claude must ask before invoking the rig, every time**;
      the gate exists so occupants are not startled by devices changing state.
-  3. Bench: a per-adapter record (`docs/bench/<integration>/<action>.md`) of the rig pass that
+  3. Test record: a per-adapter record (`docs/test-records/<integration>/<action>.md`) of the rig pass that
      promoted an adapter, with date, HA version, device model and firmware. Rig test results feed
      this record. **There is no dev HA; the live rig is the only HA.** The first time the
      integration loads in a real HA is the first approved rig deploy (slice 3); until then
@@ -332,20 +338,20 @@ custom_components/device_side/
 scripts/
   check_release.py       coverage bar for CI, and no experimental adapter in a release
   deploy.sh              the deploy sync command <branch>, then the deploy restart command (rig only)
-  rig.py                 approval gate (inventory, adapters, duration, restart?) -> y/N -> deploy -> step files
+  rig.py                 approval gate (profile, adapters, duration, restart?) -> y/N -> deploy -> step files
 docs/
   device_side_handoff-2026-10-23.md          existing
   plans/2026-10-23-device-side-repo-plan.md  this plan, saved in slice 0
   integrations.md                            one section per integration, fixed template
   contributing/testing.md
-  bench/<integration>/<action>*.md           bench records (rig run, or -issue-<N> per tester report)
+  test-records/<integration>/<action>*.md    test records (rig run, or -issue-<N> per tester report)
 tests/
   conftest.py            enable_custom_integrations autouse; setup_integration; fake_registry; call()
   fakes/fake_integration/ INTEGRATION "fake" + scripted adapters for dispatcher tests
   fixtures/{z2m,zha,matter,shelly,hue,groups}.py   fabricate registry entries + boundary mocks
   core/   actions/   integrations/<i>/               one module per adapter; see Testing
-  rig/    client.py (HA WS/REST client), inventory.py, engine.py (step runner, snapshot/restore, bench writer),
-          inventory.yaml (gitignored), inventory.example.yaml, steps/<action>.yaml
+  rig/    client.py (HA WS/REST client), profile.py, engine.py (step runner, snapshot/restore, test record writer),
+          profiles/<name>.yaml (gitignored), profile.example.yaml, steps/<action>.yaml
 ```
 
 Repo root: README.md (hand-written feature table), hacs.json, pyproject.toml,
@@ -499,7 +505,7 @@ of an adapter's targets at once so native group commands stay possible. Hue rais
 without `hass`. CI runs it with `--coverage coverage.json`, failing any adapter module under 95% line coverage, and
 prints which adapters are experimental; `--release`, run only by `cut-release`, fails on any experimental adapter. It
 generates no docs: the README feature table and `docs/integrations.md` are hand-written. A PR clears an adapter's flag
-by citing a passing bench record or tester issue covering its scope. Proof follows the call: a record proves the
+by citing a passing test record or tester issue covering its scope. Proof follows the call: a record proves the
 device-side call, whatever HA domain the target shows, so a relay exposed as a `switch` or as an on/off `light` rides
 one record. Untested capabilities are left out of `AdapterScope.capabilities` and refused, not taken into scope on a
 sibling's proof. Tags come only from the `cut-release-candidate` and `cut-release`
@@ -515,7 +521,7 @@ RC, HA version, action, capability, device model, firmware (`sw_version`) and a 
 checklist. The form says: "Already tested by someone else? Still worth sending: a different model
 or firmware is new evidence." The requested tests are fixed per RC (no runtime
 fetch); duplicate reports are welcome. New RCs clear and recompute these issues. Passing
-reports become bench records citing the issue.
+reports become test records citing the issue.
 
 ## Testing
 
@@ -546,13 +552,13 @@ actions_setup) use only `tests/fakes/fake_integration`.
 
 ### Rig (approval-gated, real HA)
 
-`scripts/rig.py` loads `tests/rig/inventory.yaml` (gitignored; `inventory.example.yaml` committed)
-mapping each integration to household entities, prints inventory, the adapters about to run, estimated
+`scripts/rig.py` loads the `--profile` (`tests/rig/profiles/<name>.yaml`, gitignored; `tests/rig/profile.example.yaml` committed)
+mapping each integration to household entities, prints the profile, the adapters about to run, estimated
 duration and whether a restart is needed, then requires interactive y/N (or
 `DEVICE_SIDE_RIG_APPROVED=1`). `scripts/rig.py` flow:
 
-1. Read-only preflight: load inventory and `.env.rig` (`HA_URL`, `HA_TOKEN` for a non-admin user,
-   `RIG_SYNC_CMD`, `RIG_STATUS_CMD`, `RIG_RESTART_CMD`); `AdapterRegistry.discover()` (no hass) intersected with inventory
+1. Read-only preflight: load the profile and `.env.rig` (`HA_URL`, `HA_TOKEN` for a non-admin user,
+   `RIG_SYNC_CMD`, `RIG_STATUS_CMD`, `RIG_RESTART_CMD`); `AdapterRegistry.discover()` (no hass) intersected with the profile's
    integrations -> one line per adapter (`shelly / turn_on_for -> light.office_strip (beta)`) then one per
    test case with its entity; sum each step file's `rig_seconds` for the estimate; compare `HEAD:custom_components/device_side` with
    `the deploy status command` to decide whether a deploy+restart is needed, and refuse a deploy unless
@@ -566,7 +572,7 @@ duration and whether a restart is needed, then requires interactive y/N (or
    `--integration <key>`, `--action <action>` (its step files, whole, so they still write records),
    `-k <test name substring>`, `--unattended` (skips `observe` steps).
 
-Step files (`tests/rig/steps/<action>.yaml`, one per action) run against every inventory integration
+Step files (`tests/rig/steps/<action>.yaml`, one per action) run against every integration in the profile
 that has the adapter; the registry supplies the expected status (`confirmable` -> `confirmed`, else
 `sent`), the timing tolerance (`TOLERANCE_S`: Zigbee/Matter 3 s, Shelly/Hue 2 s) and the fields in scope.
 `only: [<integration>]` is the one per-test escape hatch. Steps: `set`, `call`, `expect_response`,
@@ -582,16 +588,16 @@ still on at `duration - tol`, off by `duration + tol`. Rig durations are 5 to 8 
 happy path and one refusal path per adapter; branches stay in unit tests, which never touch the rig.
 hue_dimmer's release checklist (§2-5) became the Hue step files.
 
-When every test of an adapter passes (no `-k`, nothing failed), the engine writes its bench record;
+When every test of an adapter passes (no `-k`, nothing failed), the engine writes its test record;
 Jason reviews and commits the diff. A test with an unobserved `observe` step proves no capability or field.
 
-`.gitignore`: `tests/rig/inventory.yaml`, `.env.rig` (example at `tests/rig/env.example`).
+`.gitignore`: `tests/rig/profiles/`, `.env.rig` (example at `tests/rig/env.example`).
 The maintainer's rig has private setup docs. `docs/contributing/testing.md` covers manual testing
 on any Home Assistant: install, first-load check, and how to file a test report.
-Inventory format (per integration -> entities with role tags `light_dimmable`, `light_ct`,
-`light_color`, `switch_plug`, `group`, `scene`) is in `tests/rig/env.example` and
-`tests/rig/inventory.example.yaml`. **Claude asks before every rig run; the devices are
-in-use household lights.** Rig passes are recorded in `docs/bench/<integration>/<action>.md`
+Profile format (per integration -> entities with role tags `light_dimmable`, `light_ct`,
+`light_color`, `switch_plug`, `group`, `scene`, plus `pause:`) is in `tests/rig/profile.example.yaml`, and the
+HA instance's settings in `tests/rig/env.example`. **Claude asks before every rig run; the devices are
+in-use household lights.** Rig passes are recorded in `docs/test-records/<integration>/<action>.md`
 (date, HA version, device model and firmware from `config/device_registry/list`, per-test table,
 source: rig run or test-report issue).
 
@@ -604,27 +610,31 @@ What is done and what is left: [`TODO.md`](../../TODO.md).
 | 0 | Scaffold + CI | Plan saved to `docs/plans/`; `git init`, private GitHub repo `jasonmx/device-side`; manifest, config_flow, const, strings, icons, empty services.yaml; pyproject, pre-commit, workflows from hue_dimmer; `test_actions_setup.py` green with zero actions; hassfest + HACS validate green; README skeleton with matrix markers. |
 | 1 | Core + fake integration | `core/*`; `actions/turn_on_for.py`, `turn_off_for.py`; fake integration (with a fake native group and `expand_group` hook); dispatcher/resolver/groups tests green (HA-group expansion for light and switch, native-group pass-through vs expansion, clamp, total-failure raise, response shape, semaphore bound, guarded-import skip). No live load yet: there is no dev HA. |
 | 2 | Shelly `turn_on_for` + `turn_off_for` | one RPC with fields; Gen1 -> unsupported; read-back -> confirmed under mock; Shelly section of `docs/integrations.md` on the template; adapter `experimental=True`. |
-| 3 | Rig harness | `scripts/rig.py`, `deploy.sh`, `tests/rig/conftest.py`, inventory example, `docs/contributing/testing.md`; **first approved deploy is the integration's first load in any HA**: confirm entry adds, actions appear with translated names, the brightness fields hide for a switch-only selection; then Shelly `turn_on_for` passes against the house; bench record written; Shelly `switch` and on/off `light` -> beta (shared on/off: a relay shown as a light sends the same `Switch.Set`); Shelly light fields and the `Light`/`CCT`/`RGB*` components out of scope until a tester reports. |
-| 4 | `turn_off_for` rig pass | rig test for `turn_off_for`; bench records written, so both Shelly adapters reach beta. (`toggle_for` was dropped.) |
-| 5 | First release (`v0.0.1`) + HACS submission | Detail in `2026-10-23-hacs-early-release.md`. Scope: Shelly `switch` and on/off `light` (shared on/off) for `turn_on_for` and `turn_off_for`. MIT `LICENSE`; `custom_components/device_side/brand/icon.png` (+ `@2x`); hand-written bench records and README feature table (no matrix markers); README install via HACS custom repository; short `CONTRIBUTING.md`; full-history `gitleaks detect` clean; topics added; repo flipped public; `gh workflow enable validate.yml`, nightly schedule restored and private-repo guard removed; PR `release/v0.0.1` -> `main`, `ci-green` on `main` with hassfest + HACS validate green; tag `v0.0.1` and a full (not pre-) GitHub release; PR to `hacs/default` adding `jasonmx/device-side` to `integration`, from a personal fork; `release/v0.0.2` cut from `main`. **v0.0.1 ships without an RC soak to start the HACS review clock; from v0.0.2 the Releases rules apply in full.** |
-| 9a | Rig step files | **plan in /plan first** (interview the maintainer before any code); rig tests converted to declarative YAML step files (set state → call action → expect → restore), keyed by inventory roles so a tester can later map roles to their own entities; the format is designed against every planned action (timed on/off, `move`/`stop` ramps from hue_dimmer's `RELEASE_CHECKLIST.md`, `set_attributes`/`get_attributes` while off), not just Shelly's; `scripts/rig.py` runs the step files, `--dry-run` prints the steps with entities filled in; adapter fingerprinting; each rig run prints the bench record fields (pass/fail per step, HA version, device model, firmware, adapter fingerprint). `testing.md` updated: dedicated non-admin HA user for the token; ZHA needs an admin token for its adapter only. Lands before slice 6, so every later rig test is written as step files. Plan: `docs/plans/2026-10-25-rig-step-files.md`. |
+| 3 | Rig harness | `scripts/rig.py`, `deploy.sh`, `tests/rig/conftest.py`, inventory example, `docs/contributing/testing.md`; **first approved deploy is the integration's first load in any HA**: confirm entry adds, actions appear with translated names, the brightness fields hide for a switch-only selection; then Shelly `turn_on_for` passes against the house; test record written; Shelly `switch` and on/off `light` -> beta (shared on/off: a relay shown as a light sends the same `Switch.Set`); Shelly light fields and the `Light`/`CCT`/`RGB*` components out of scope until a tester reports. |
+| 4 | `turn_off_for` rig pass | rig test for `turn_off_for`; test records written, so both Shelly adapters reach beta. (`toggle_for` was dropped.) |
+| 5 | First release (`v0.0.1`) + HACS submission | Detail in `2026-10-23-hacs-early-release.md`. Scope: Shelly `switch` and on/off `light` (shared on/off) for `turn_on_for` and `turn_off_for`. MIT `LICENSE`; `custom_components/device_side/brand/icon.png` (+ `@2x`); hand-written test records and README feature table (no matrix markers); README install via HACS custom repository; short `CONTRIBUTING.md`; full-history `gitleaks detect` clean; topics added; repo flipped public; `gh workflow enable validate.yml`, nightly schedule restored and private-repo guard removed; PR `release/v0.0.1` -> `main`, `ci-green` on `main` with hassfest + HACS validate green; tag `v0.0.1` and a full (not pre-) GitHub release; PR to `hacs/default` adding `jasonmx/device-side` to `integration`, from a personal fork; `release/v0.0.2` cut from `main`. **v0.0.1 ships without an RC soak to start the HACS review clock; from v0.0.2 the Releases rules apply in full.** |
+| 9a | Rig step files | **plan in /plan first** (interview the maintainer before any code); rig tests converted to declarative YAML step files (set state → call action → expect → restore), keyed by inventory roles so a tester can later map roles to their own entities; the format is designed against every planned action (timed on/off, `move`/`stop` ramps from hue_dimmer's `RELEASE_CHECKLIST.md`, `set_attributes`/`get_attributes` while off), not just Shelly's; `scripts/rig.py` runs the step files, `--dry-run` prints the steps with entities filled in; adapter fingerprinting; each rig run prints the test record fields (pass/fail per step, HA version, device model, firmware, adapter fingerprint). `testing.md` updated: dedicated non-admin HA user for the token; ZHA needs an admin token for its adapter only. Lands before slice 6, so every later rig test is written as step files. Plan: `docs/plans/2026-10-25-rig-step-files.md`. |
 | 6 | Z2M `turn_on_for` | detect, addressing, publish; `light.turn_on` precedes when fields present; group topic when `native_groups`; rig test. |
 | 11 | Matter `turn_on_for` | LT check; `OnWithTimedOff`; optional read-back; rig test on bulb and plug. |
 | 10 | ZHA `turn_on_for` | ZHA set up on the maintainer's rig first: a second Zigbee coordinator on its own channel, apart from Z2M's network; devices paired to it for the rig roles; steps in the private rig notes; addressing; admin context passthrough; ValueError -> rejected; rig test, run with an admin token (`.env.rig`) for ZHA suites only. |
 | 7 | Hue port | Plan: `docs/plans/2026-10-25-hue-port.md` (three PRs, 7a to 7c). five adapters + bridge/transition_cache/colors; `move` across brightness, color_temp, saturation (`hue` unsupported on Hue); `grouped_light` native for move/stop and get_attributes, expanded for set_attributes; hue_dimmer tests ported to real-hass fixtures; rig parity with hue_dimmer `tests/RELEASE_CHECKLIST.md`. Hue `turn_on_for`/`turn_off_for` dropped after the open item 10 bench (2026-10-26): `unsupported`. |
 | 9c | Release gates | Plan: `docs/plans/2026-10-25-release-gates.md`. Computed tiers and the scope-coverage check in `scripts/check_tiers.py`, run in CI; per-adapter coverage check; `test-report.yml` issue form (bug reports need it whenever 9b lands); every `v*` tag from a workflow (`cut-release-candidate` with the RC audit gate of `2026-10-23-rc-audit-gate.md`, `cut-release` with `check_tiers --require-beta`) behind a tag ruleset. |
-| 9d | Rig coverage sweep | **plan in /plan first**; audit every adapter's scope (domains, capabilities, fields, native groups) against the maintainer's rig hardware; add inventory roles and step files for everything the rig can reach; rig runs leave a current-fingerprint bench record for each, so v0.1.0 launches with the widest scope the rig can prove. What the rig can't reach is listed for 9b and stays out of scope. |
+| 9d | Rig coverage sweep | **plan in /plan first**; audit every adapter's scope (domains, capabilities, fields, native groups) against the maintainer's rig hardware; add inventory roles and step files for everything the rig can reach; rig runs leave a test record from the closing run for each, so v0.1.0 launches with the widest scope the rig can prove. What the rig can't reach is listed for 9b and stays out of scope. |
 | 9e | Native groups survey | Research `docs/plans/2026-10-26-native-groups-research.md`, probe `docs/plans/2026-10-27-zha-groups-probe.md`. Decision per integration for v0.1.0: **Z2M** `turn_on_for` `native_groups` on (#59, rig-proved). **ZHA** groups expand (`expand_group`), and `turn_on_for` sends the expanded members of one group a single groupcast, then reads each back, so results stay per member; move/stop (13f) groupcast the same way; get/set_attributes expand. **Matter, Shelly:** n/a, HA exposes no native group. |
 | 9f | Core-aligned failure behavior | Plan: `docs/plans/2026-10-27-core-failure-behavior.md`. move the dispatcher's raise rule from "raise when every target failed" to core's, per `docs/action-behavior.md`: unavailable or missing targets skipped with core's warning; a field a target can't take dropped; a target the caller named that the action can never support raises (as `ServiceNotSupported`); a device or bridge error raises; a query that reads nothing raises. Decide whether command actions keep their optional status response, which core's commands don't have, and whether `nothing_to_set` becomes a warning (a hue_dimmer call passing only zeros did nothing). Every action's tests and the rig's `expect_error` steps follow. |
 | 13 | Zigbee parity and timer state | Plan: `docs/plans/2026-10-27-zigbee-parity-timer-state.md` (13a to 13k). `get_attributes` takes switches and reports a running timer (Shelly, Matter, ZHA, Z2M where readable); ZHA and Z2M gain `get_attributes`, `move`/`stop` (hue cycling included) and `set_attributes` while off; after a probe spike, by integration, with one Hue A60 rig run per network after that integration's code freezes: Z2M first, where the bulb already is, then the Hue bridge, then ZHA. Needs 7c and 9f first. |
 | 14 | Z2M color modes fixed for HA | Plan: `docs/plans/2026-10-28-z2m-color-modes.md`. Z2M announces a full-color light to HA with one color mode, and HA drops every state in the other. device_side sets each qualifying light's and group's `homeassistant.light.supported_color_modes` override in Z2M (on by default, opt-out in options), so HA accepts both. Lands before the Z2M A60 run, which proves it, and backs out 13i's xy write-back. |
+| 15 | The lab | Plan: `docs/plans/2026-11-01-lab.md` (five PRs). Rig profiles (`--profile`, `pause:` in the profile); three Hue bulbs in the maintainer's room, the A60 among them, roam Hue → ZHA → Z2M → Hue within one run, with fixed entity IDs, Hue home restored after, rig-made `ds-rig-*` groups, and `--recover` moving them home. Lands before the A60 runs, which become lab runs. |
 | 12 | `v0.1.0` ("v1" names the scope, not the version) | feature complete for this plan; scope limited to what rig runs (and any tester reports) cover; README feature table current; release checklist adapted from hue_dimmer; the `predicted_state` default reviewed (flip it to off if flaky), on the regression issues and rig runs since it landed. |
-| 9b | Remote tester flow (after `v0.1.0`) | **plan in /plan first**; starts when an adapter needs hardware the rig lacks (a reported bug on someone else's device, a community integration such as Z-Wave JS). Standalone tester runner: one file (`uv run`, PEP 723 inline metadata, aiohttp WebSocket + PyYAML), talks to HA_URL + long-lived token, assumes integration installed via HACS or by hand (no deploy), runs 9a's YAML step files with a confirmation gate on every run; `tests/rig/client.py` moved to a location both the runner and `scripts/rig.py` import; runner prints a prefilled `test-report.yml` issue body; RC-only umbrella Repairs issue with multi-select flow and prefilled per-test links; bench files filled from tester reports. |
+| 9b | Remote tester flow (after `v0.1.0`) | **plan in /plan first**; starts when an adapter needs hardware the rig lacks (a reported bug on someone else's device, a community integration such as Z-Wave JS). Standalone tester runner: one file (`uv run`, PEP 723 inline metadata, aiohttp WebSocket + PyYAML), talks to HA_URL + long-lived token, assumes integration installed via HACS or by hand (no deploy), runs 9a's YAML step files with a confirmation gate on every run; `tests/rig/client.py` moved to a location both the runner and `scripts/rig.py` import; runner prints a prefilled `test-report.yml` issue body; RC-only umbrella Repairs issue with multi-select flow and prefilled per-test links; test records filled from tester reports. |
 
 Slice 9 was split on 2026-10-25. Color bulbs from Shelly and Hue let the maintainer's rig cover the v1
-integrations, so v0.1.0 needs no remote testers and the tester tooling moves to 9b. Hardware the rig still
-lacks (plugs on ZHA, Z2M and Matter; a Thread-native Matter bulb; Shelly components beyond the bulb's) stays
-out of scope until someone tests it.
+integrations, so v0.1.0 needs no remote testers and the tester tooling moves to 9b. What the rig can't
+reach stays out of scope, refused, until someone tests it, and is 9b's list: Zigbee plugs and switches on ZHA
+and Z2M; Matter lights; Shelly's `Light`, `CCT`, `RGB` and `RGBW` components; Hue `set_scene` beyond
+hue_dimmer's §5.1-5.3 (scene kinds, a large room, a second bridge). Shelly's `light_onoff` role stays skipped, as
+`switch_plug` and `light_wrapped` prove the same `Switch.Set`; the `z2m_color_modes` opt-out is unit-tested only
+(`docs/plans/2026-10-30-rig-coverage-sweep.md`).
 
 Re-planned later on 2026-10-25. Slice numbers are IDs; rows are in delivery order. Set Turn-On Levels was
 dropped (see Not planned). Slice 8 (docs generator) was dropped because the maintainer's rig now tests most

@@ -1,6 +1,6 @@
-"""Runs the rig's YAML step files against the live HA and renders bench records from the results.
+"""Runs the rig's YAML step files against the live HA and renders test records from the results.
 
-One file per action (`steps/<action>.yaml`) runs on every inventory integration that has that action's adapter; a
+One file per action (`steps/<action>.yaml`) runs on every integration in the profile that has that action's adapter; a
 file with `options` (`steps/<action>-<option>.yaml`) runs it again with those device_side options on. The registry
 supplies what differs per integration: the expected status, the tolerance, and the options in scope.
 No pytest here: scripts/rig.py calls run(), and a tester's one-file runner can import this module unchanged.
@@ -21,9 +21,9 @@ from typing import Any
 import yaml
 
 from .bridge import BridgeError, HueBridge
-from .client import HAClient, HAError
-from .inventory import RIG_DIR, ROLES, SETTLE_S, TOLERANCE_S, Inventory
+from .client import HAClient, HAError, device_ieee
 from .journal import Journal
+from .profile import GROUP_ROLES, RIG_DIR, ROLES, SETTLE_S, TOLERANCE_S, Profile
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -138,6 +138,8 @@ class Observe:
     see: str
     watch: str
     ask: str
+    roles: frozenset[str] | None = None  # the roles watched; None for every role the test lists
+    only: frozenset[str] | None = None  # the integrations watched; None for every one the test runs on
 
 
 # How far a steady sample may spread, in its source's units: a Zigbee bulb can settle one level step (1/254) after a
@@ -164,6 +166,14 @@ class RigTest:
         if self.observe is None:
             return True
         return any(step.kind in CHECKS for step in self.steps) and not any(step.kind == "do" for step in self.setup)
+
+    def observed_on(self, role: str, integration: str) -> bool:
+        """Whether the test has an observed case on `role` in `integration`'s suite."""
+        if self.observe is None:
+            return False
+        return (self.observe.roles is None or role in self.observe.roles) and (
+            self.observe.only is None or integration in self.observe.only
+        )
 
     def roles_needed(self, role: str) -> list[str]:
         """The case's own role and every role a step targets, in first-use order."""
@@ -205,7 +215,7 @@ def _mapping(args: Any, required: Iterable[str] = (), allowed: Iterable[str] | N
     if allowed is not None and (unknown := sorted(set(args) - set(allowed) - set(required))):
         raise ValueError(f"unknown key(s) {', '.join(unknown)}")
     if (target := args.get("target")) is not None and target not in ROLES:
-        raise ValueError(f"target {target!r} is not an inventory role")
+        raise ValueError(f"target {target!r} is not a profile role")
     return dict(args)
 
 
@@ -362,12 +372,26 @@ def _parse_steps(raw: Any, key: str) -> tuple[Step, ...]:
 
 def _parse_observe(raw: Any) -> Observe:
     try:
-        args = _mapping(raw, required=("see", "watch", "ask"), allowed=())
+        args = _mapping(raw, required=("see", "watch", "ask"), allowed=("roles", "only"))
+        roles = args.pop("roles", None)
+        only = args.pop("only", None)
         if not all(isinstance(value, str) and value.strip() for value in args.values()):
             raise ValueError("see, watch and ask must be non-empty strings")
+        if roles is not None and (
+            not isinstance(roles, list) or not roles or not all(isinstance(r, str) for r in roles)
+        ):
+            raise ValueError("roles must be a non-empty list of roles")
+        if only is not None and (not isinstance(only, list) or not only or not all(isinstance(i, str) for i in only)):
+            raise ValueError("only must be a non-empty list of integration keys")
     except ValueError as err:
         raise ValueError(f"observe: {err}") from None
-    return Observe(args["see"].strip(), args["watch"].strip(), args["ask"].strip())
+    return Observe(
+        args["see"].strip(),
+        args["watch"].strip(),
+        args["ask"].strip(),
+        frozenset(roles) if roles else None,
+        frozenset(only) if only else None,
+    )
 
 
 def _parse_test(raw: Any) -> RigTest:
@@ -387,9 +411,24 @@ def _parse_test(raw: Any) -> RigTest:
         if only is not None and (not isinstance(only, list) or not only):
             raise ValueError("only must be a non-empty list of integration keys")
         steps, setup, observe = _parse_phases(raw)
+        test = RigTest(name, tuple(roles), frozenset(only) if only else None, steps, setup, observe)
+        _check_observe_scope(test)
     except ValueError as err:
         raise ValueError(f"test {name}, {err}") from None
-    return RigTest(name, tuple(roles), frozenset(only) if only else None, steps, setup, observe)
+    return test
+
+
+def _check_observe_scope(test: RigTest) -> None:
+    """`observe: roles` and `only` name some of the test's roles and integrations, and the ones they leave out still
+    get an automated run."""
+    if test.observe is None or (test.observe.roles is None and test.observe.only is None):
+        return
+    if outside := sorted((test.observe.roles or frozenset()) - set(test.roles)):
+        raise ValueError(f"observe roles {', '.join(outside)} are not the test's roles")
+    if test.only is not None and (outside := sorted((test.observe.only or frozenset()) - test.only)):
+        raise ValueError(f"observe only {', '.join(outside)} are not in the test's only")
+    if not test.automated:
+        raise ValueError("observe roles or only needs an automated run for what it leaves out")
 
 
 def _parse_phases(raw: dict) -> tuple[tuple[Step, ...], tuple[Step, ...], Observe | None]:
@@ -465,7 +504,7 @@ class Case:
     entities: dict[str, str]
     skip: str | None = None
     observed: bool = False
-    members: tuple[str, ...] = ()  # the inventory's members for the group role, if it lists them
+    members: tuple[str, ...] = ()  # the profile's members for the group role, if it lists them
 
     @property
     def id(self) -> str:
@@ -474,12 +513,12 @@ class Case:
     @property
     def twin(self) -> str | None:
         """The id of the test's other case on this role, when it has both: either proves nothing alone."""
-        if self.test.observe is None or not self.test.automated:
+        if not self.test.observed_on(self.role, self.suite.integration) or not self.test.automated:
             return None
         return replace(self, observed=not self.observed).id
 
 
-def cases(suite: Suite, inventory: Inventory, keyword: str | None = None) -> list[Case]:
+def cases(suite: Suite, profile: Profile, keyword: str | None = None) -> list[Case]:
     """The suite's cases in file order, a test's automated case before its observed one; `keyword` keeps only case
     ids containing it."""
     result = []
@@ -487,17 +526,18 @@ def cases(suite: Suite, inventory: Inventory, keyword: str | None = None) -> lis
         if test.only is not None and suite.integration not in test.only:
             continue
         for role in test.roles:
-            for observed in [False] * test.automated + [True] * (test.observe is not None):
+            for observed in [False] * test.automated + [True] * test.observed_on(role, suite.integration):
                 case = Case(suite, test, role, {}, observed=observed)
                 if keyword and keyword not in case.id:
                     continue
                 needed = test.roles_needed(role)
-                entities = {name: inventory.entity(suite.integration, name) for name in needed}
+                entities = {name: profile.entity(suite.integration, name) for name in needed}
                 if missing := [name for name, entity_id in entities.items() if entity_id is None]:
-                    case = Case(suite, test, role, {}, f"no {missing[0]} entity in inventory", observed)
+                    case = Case(suite, test, role, {}, f"no {missing[0]} entity in the profile", observed)
                 else:
-                    members = inventory.members(suite.integration, entities["group"]) if "group" in entities else ()
-                    # A group case that also targets a light means one of the group's: where the inventory lists them.
+                    group = next((name for name in entities if name in GROUP_ROLES), None)
+                    members = profile.members(suite.integration, entities[group]) if group else ()
+                    # A group case that also targets a light means one of the group's: where the profile lists them.
                     lights = [name for name in entities if name.startswith("light_")]
                     outside = [name for name in lights if members and entities[name] not in members]
                     skip = f"{outside[0]} is not one of the group's members" if outside else None
@@ -627,7 +667,7 @@ class Snapshot:
     """
 
     ha: HAClient
-    power: dict[str, str] = field(default_factory=dict)  # Inventory.power(): entity -> its supply
+    power: dict[str, str] = field(default_factory=dict)  # Profile.power(): entity -> its supply
     device_side: bool = False
     taken: dict[str, dict | None] = field(default_factory=dict)
     stored: dict[str, dict] = field(default_factory=dict)
@@ -828,10 +868,10 @@ class _CaseRun:
         return self.case.entities[role or self.case.role]
 
     def is_group(self, entity_id: str) -> bool:
-        return self.case.entities.get("group") == entity_id
+        return any(self.case.entities.get(role) == entity_id for role in GROUP_ROLES)
 
     async def members(self, entity_id: str) -> list[str]:
-        """A group's member lights, from its `entity_id` attribute, else the inventory's `members:` (a Z2M group light
+        """A group's member lights, from its `entity_id` attribute, else the profile's `members:` (a Z2M group light
         has no such attribute); any other entity is its own one member."""
         if not self.is_group(entity_id):
             return [entity_id]
@@ -841,7 +881,7 @@ class _CaseRun:
             return members
         if self.case.members:
             return list(self.case.members)
-        raise StepFailure(f"{entity_id} lists no members in its entity_id attribute, and the inventory gives none")
+        raise StepFailure(f"{entity_id} lists no members in its entity_id attribute, and the profile gives none")
 
     async def touch(self, entity_id: str) -> None:
         """Snapshot the entity, and a group's members after it, so a restore puts each member back last."""
@@ -976,10 +1016,8 @@ class _CaseRun:
     async def z2m_ieee(self, entity_id: str) -> str:
         entry = await self.ha.command({"type": "config/entity_registry/get", "entity_id": entity_id})
         for device in await self.ha.command({"type": "config/device_registry/list"}):
-            if device["id"] == entry.get("device_id"):
-                for domain, ident in device["identifiers"]:
-                    if domain == "mqtt" and ident.startswith("zigbee2mqtt_0x"):
-                        return ident.removeprefix("zigbee2mqtt_")
+            if device["id"] == entry.get("device_id") and (ieee := device_ieee(device, "zigbee2mqtt")):
+                return ieee
         raise StepFailure(f"{entity_id} has no Zigbee2MQTT device")
 
     async def _z2m_option(self, args: dict, _following: str | None) -> None:
@@ -1237,7 +1275,7 @@ class _CaseRun:
 
 async def run(
     suites: list[Suite],
-    inventory: Inventory,
+    profile: Profile,
     registry: Any,
     ha: HAClient,
     *,
@@ -1271,7 +1309,7 @@ async def run(
         if client is None or (adapter.scope.options and admin is None):
             out(f"{suite.integration} / {suite.action}: needs HA_ADMIN_TOKEN, skipped")
             continue
-        planned.append((suite, adapter, client, cases(suite, inventory, keyword)))
+        planned.append((suite, adapter, client, cases(suite, profile, keyword)))
     options = {
         id(suite): {name: name in suite.file.options for name in adapter.scope.options}
         for suite, adapter, *_ in planned
@@ -1280,7 +1318,7 @@ async def run(
         registry,
         tolerance,
         settle,
-        inventory.power(),
+        profile.power(),
         ask,
         out,
         options,
@@ -1397,14 +1435,14 @@ def _not_run(case: Case, outcome: Outcome, detail: str = "") -> CaseResult:
     return CaseResult(case.id, case.role, domain, outcome, detail, twin=case.twin)
 
 
-# --- Bench records -------------------------------------------------------------------------------------------
+# --- Test records --------------------------------------------------------------------------------------------
 
 
 def table(suite_result: SuiteResult, details: bool = False) -> list[str]:
     """The pass/fail table, by role and domain: a record is public, so it never names a household entity."""
     lines = ["| Test | Target | Result |", "|---|---|---|"]
     for case in suite_result.cases:
-        target = f"`{case.domain}` ({case.role})" if case.domain else f"{case.role}: none in inventory"
+        target = f"`{case.domain}` ({case.role})" if case.domain else f"{case.role}: none in the profile"
         outcome = str(case.outcome) + (f": {case.detail}" if details and case.detail else "")
         lines.append(f"| `{case.id}` | {target} | {outcome} |")
     return lines
@@ -1435,14 +1473,15 @@ async def rig_facts(ha: HAClient, entity_ids: Iterable[str]) -> tuple[str, list[
 
 
 def render_record(
-    suite_result: SuiteResult, title: str, ha_version: str, devices: list[Device], date: str, source: str
+    suite_result: SuiteResult, title: str, ha_version: str, devices: list[Device], date: str, source: str, profile: str
 ) -> str:
-    """The bench record: a key/value table, then the per-test table. It is evidence for people; no script reads it."""
+    """The test record: a key/value table, then the per-test table. It is evidence for people; no script reads it."""
     suite = suite_result.suite
     rows = [
         ("Result", "pass"),
         ("Date", date),
         ("Source", source),
+        ("Profile", profile),
         ("Home Assistant", ha_version),
         ("Device", "; ".join(map(str, devices)) or "none"),
     ]
@@ -1467,7 +1506,7 @@ def write_report(result: RunResult, directory: Path, title: str) -> Path:
 
 
 async def write_records(
-    result: RunResult, ha: HAClient, registry: Any, bench_dir: Path, date: str, source: str
+    result: RunResult, ha: HAClient, registry: Any, records_dir: Path, date: str, source: str, profile: str
 ) -> list[Path]:
     """One record per suite that fully passed; a partial or failed suite writes nothing."""
     written = []
@@ -1478,8 +1517,8 @@ async def write_records(
         entity_ids = [entity_id for case in suite_result.cases for entity_id in case.entity_ids]
         ha_version, devices = await rig_facts(ha, entity_ids)
         title = registry.integrations[suite.integration].title
-        path = bench_dir / suite.integration / f"{suite.name}.md"
+        path = records_dir / suite.integration / f"{suite.name}.md"
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(render_record(suite_result, title, ha_version, devices, date, source))
+        path.write_text(render_record(suite_result, title, ha_version, devices, date, source, profile))
         written.append(path)
     return written

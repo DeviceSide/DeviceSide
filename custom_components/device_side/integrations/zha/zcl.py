@@ -7,6 +7,7 @@ from typing import Any
 from homeassistant.core import Context, HomeAssistant
 
 from .addressing import Address
+from ...core.zcl_write import level as level
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -40,11 +41,6 @@ STOP_MOVE_STEP = 0x47
 # Models that don't store a MoveToLevel while off: the Sengled E11-G13 jumps CurrentLevel to 255 with or without the
 # override and comes on at full (docs/integrations.md, ZHA tested behavior).
 DROPS_WHILE_OFF = frozenset({"E11-G13"})
-
-
-def level(percent: float) -> int:
-    """CurrentLevel for a brightness percent; 0 is the lowest level, 1, as Hue sets its lowest."""
-    return max(1, round(percent * 254 / 100))
 
 
 def execute_if_off(transition_tenths: int) -> dict[str, int]:

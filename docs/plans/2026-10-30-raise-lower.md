@@ -61,7 +61,7 @@ Branch `wt/raise-lower`, worktree `.worktrees/raise-lower`, off `release/v0.0.2`
    - `docs/integrations.md`, `docs/action-behavior.md`, `docs/contributing/testing.md` (examples), README.
    - Repo plan: the `move` bullet becomes the table above, and the drop-in rule's "move/stop replace raise/lower"
      exception becomes the hue_dimmer name mapping.
-   - Bench records: delete `docs/bench/{hue,zigbee2mqtt}/move*.md` once the rig run below has written the new
+   - Test records: delete `docs/test-records/{hue,zigbee2mqtt}/move*.md` once the rig run below has written the new
      ones; `stop*.md` are rewritten by the same run.
    - `TODO.md`: a slice row for this, which must land before 13j's Z2M freeze and the Z2M A60 run. On 13f's line
      (ZHA, `wt/zha-move-stop`, paused): its move adapter splits into these actions when it resumes. That branch also

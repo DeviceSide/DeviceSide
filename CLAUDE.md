@@ -19,8 +19,9 @@ not; CI checks it.
 a released adapter that the rig can't exercise. Leave it off for refactors, performance work and fixes the rig run
 before each RC covers. When unsure, ask.
 
-**Clearing it:** a PR citing a passing bench record (`docs/bench/<integration>/<action>*.md`) or tester issue that
-covers the adapter's whole scope: `AdapterScope.domains`, `.capabilities`, `.fields`, and each of `.options` on and off.
+**Clearing it:** a PR citing a passing test record (`docs/test-records/<integration>/<action>*.md`) or tester issue
+that covers the adapter's whole scope: `AdapterScope.domains`, `.capabilities`, `.fields`, and each of `.options` on
+and off.
 
 **Proof follows the call.** A record proves the call an adapter sends and the capability it reaches (Shelly: the RPC
 component), whatever entity domain the target shows: a relay exposed as a `switch` or an on/off `light` rides one
@@ -40,9 +41,10 @@ record. A capability or field nobody has tested is left out of scope and refused
 - `custom_components/device_side/core/`: registry, resolver, dispatcher, action registration
 - `custom_components/device_side/actions/`: one module per action
 - `custom_components/device_side/integrations/<integration>/`: one adapter module per action
-- `tests/{core,actions,integrations,rig}`: mirror the above; `rig/` drives the live HA, only via `scripts/rig.py`
+- `tests/{core,actions,integrations,rig}`: mirror the above; `rig/` drives the live HA, only via `scripts/rig.py`,
+  on a profile (`tests/rig/profiles/<name>.yaml`, gitignored)
 - `scripts/`: rig runner, household check, deploy, release checks (coverage and the release flag, tags, RC audits)
-- `docs/bench/<integration>/`: bench records. Design detail lives in the repo plan.
+- `docs/test-records/<integration>/`: test records. Design detail lives in the repo plan.
 
 ## Conventions
 

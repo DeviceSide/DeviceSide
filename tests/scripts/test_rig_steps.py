@@ -32,6 +32,15 @@ def test_every_step_file_has_an_action():
     assert actions <= set(AdapterRegistry.discover().actions)
 
 
+def test_every_only_names_an_integration():
+    """A misspelled key would silently drop the test, or its observed run, from every suite."""
+    known = set(AdapterRegistry.discover().integrations)
+    for step_file in load_step_files():
+        for test in step_file.tests:
+            named = (test.only or frozenset()) | ((test.observe and test.observe.only) or frozenset())
+            assert named <= known, f"{step_file.action} {test.name}: {sorted(named - known)}"
+
+
 def test_the_step_files_keep_their_roles():
     by_action = {step_file.action: step_file for step_file in load_step_files()}
     assert by_action["turn_on_for"].roles == (
@@ -67,7 +76,7 @@ def observed(observe: str = "{see: s, watch: w, ask: a}", setup: str = "[{wait: 
         (HEADER + "      - set: {state: on}\n        wait: 1\n", "step 1: expected one `kind: args` mapping"),
         (HEADER + "      - set: {state: dim}\n", "step 1 (set): state must be on or off"),
         (HEADER + "      - set: {}\n", "step 1 (set): missing state"),
-        (HEADER + "      - call: {target: lamp}\n", "target 'lamp' is not an inventory role"),
+        (HEADER + "      - call: {target: lamp}\n", "target 'lamp' is not a profile role"),
         (HEADER + "      - call: {duration: forever}\n", "unknown name 'forever'"),
         (HEADER + "      - wait: duration / 2\n", "something other than numbers, names and + - *"),
         (HEADER + "      - wait: '1 +'\n", "cannot parse"),
@@ -92,6 +101,29 @@ def observed(observe: str = "{see: s, watch: w, ask: a}", setup: str = "[{wait: 
         ),
         (observed("[a]") + "      - wait: 0\n", "observe: expected a mapping"),
         (observed(setup="[]") + "      - wait: 0\n", "setup must be a non-empty list"),
+        (observed("{see: s, watch: w, ask: a, roles: []}") + "      - wait: 0\n", "observe: roles must be a non-empty"),
+        (
+            observed("{see: s, watch: w, ask: a, roles: [[a]]}") + "      - wait: 0\n",
+            "observe: roles must be a non-empty",
+        ),
+        (
+            observed("{see: s, watch: w, ask: a, roles: [group]}") + "      - expect_state: {state: on}\n",
+            "observe roles group are not the test's roles",
+        ),
+        (
+            observed("{see: s, watch: w, ask: a, roles: [switch_plug]}") + "      - wait: 0\n",
+            "observe roles or only needs an automated run",
+        ),
+        (observed("{see: s, watch: w, ask: a, only: []}") + "      - wait: 0\n", "observe: only must be a non-empty"),
+        (
+            observed("{see: s, watch: w, ask: a, only: [hue]}") + "      - wait: 0\n",
+            "observe roles or only needs an automated run",
+        ),
+        (
+            observed("{see: s, watch: w, ask: a, only: [hue]}").replace("    steps:\n", "    only: [zha]\n    steps:\n")
+            + "      - expect_state: {state: on}\n",
+            "observe only hue are not in the test's only",
+        ),
         (
             HEADER.replace("    steps:\n", "    observe: {see: s, watch: w, ask: a}\n    steps:\n")
             + "      - wait: 0\n",
@@ -139,6 +171,28 @@ def test_an_observed_test_is_parsed_with_its_setup(tmp_path: Path):
     assert test.observe == Observe("It clicks.", "Twice.", "Two?")
     assert [step.label for step in test.setup] == ["setup step 1 (do)", "setup step 2 (set)"]
     assert not test.automated  # its setup needs the person
+
+
+def test_observe_roles_limit_the_observed_cases_to_those_roles(tmp_path: Path):
+    path = tmp_path / "observed.yaml"
+    text = observed("{see: s, watch: w, ask: a, roles: [light_color]}").replace(
+        "[switch_plug]", "[light_color, group_color]"
+    )
+    path.write_text(text + "      - expect_state: {state: on}\n")
+    (test,) = load_step_file(path).tests
+    assert test.observe.roles == {"light_color"}
+    assert test.observed_on("light_color", "zha")
+    assert not test.observed_on("group_color", "zha")
+
+
+def test_observe_only_limits_the_observed_cases_to_those_integrations(tmp_path: Path):
+    path = tmp_path / "observed.yaml"
+    path.write_text(observed("{see: s, watch: w, ask: a, only: [zigbee2mqtt]}") + "      - expect_state: {state: on}\n")
+    (test,) = load_step_file(path).tests
+    assert test.observe.only == {"zigbee2mqtt"}
+    assert test.observed_on("switch_plug", "zigbee2mqtt")
+    assert not test.observed_on("switch_plug", "hue")
+    assert test.automated
 
 
 @pytest.mark.parametrize(
