@@ -3,10 +3,11 @@
 | | |
 |---|---|
 | Result | pass |
-| Date | 2026-10-28 |
-| Source | rig run (`scripts/rig.py`), commit `33932a6` |
+| Date | 2026-11-02 |
+| Source | rig run (`scripts/rig.py`), commit `f5db697` |
+| Profile | lab |
 | Home Assistant | 2026.10.2 |
-| Device | Hue ambiance lamp (`LTA009`), firmware `1.163.1`; Zone, firmware `unknown` |
+| Device | Hue ambiance lamp (`LTA009`), firmware `1.163.1` |
 
 ## Tests
 
@@ -14,5 +15,5 @@
 |---|---|---|
 | `shows_the_halt[light_ct]` | `light` (light_ct) | pass |
 | `shows_the_halt[group]` | `light` (group) | pass |
-| `shows_the_halt_of_a_move_to_off[light_ct]` | `light` (light_ct) | pass |
-| `shows_the_halt_of_a_move_to_off[group]` | `light` (group) | pass |
+| `shows_the_halt_of_a_lower_to_off[light_ct]` | `light` (light_ct) | pass |
+| `shows_the_halt_of_a_lower_to_off[group]` | `light` (group) | pass |
