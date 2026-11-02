@@ -2,6 +2,7 @@
 
 import asyncio
 import contextlib
+import re
 import threading
 import time
 from collections.abc import Callable
@@ -851,6 +852,15 @@ async def test_sample(tmp_path, expect, step, failure):
     outcome, detail = outcomes(result)["ramps[light_dimmable]"]
     assert outcome is (Outcome.FAIL if failure else Outcome.PASS)
     assert failure in detail
+
+
+async def test_a_failed_sample_times_each_reading_from_the_call(tmp_path):
+    """Whether a light started high or was read late: each reading's offset from the call, and how long it took."""
+    ha = FakeHA({"light.lamp": {}}, ramp(50))
+    steps = suite(tmp_path, SAMPLE.replace("EXPECT", "rising"))
+    result = await run_one(ha, steps, profile(light_dimmable="light.lamp"))
+    _, detail = outcomes(result)["ramps[light_dimmable]"]
+    assert re.search(r"\[100\.0 at \d+\.\d\d s, .*\] after the call, which took \d+\.\d\d s", detail)
 
 
 @pytest.mark.parametrize(("settled", "failure"), [(101, ""), (102, "moved")])

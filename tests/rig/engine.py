@@ -819,6 +819,16 @@ class _NoOneThere(Exception):
     """EOF at a prompt: nobody is at the rig, so the observed case ends not observed."""
 
 
+def _timed(readings: list[float], offsets: list[float], call_times: tuple[float, float] | None) -> str:
+    """A sample's readings, each with when it was read: after the last call was sent, which tells a light that started
+    high from one read late, else after the sample began."""
+    timed = ", ".join(f"{reading:.1f} at {offset:.2f} s" for reading, offset in zip(readings, offsets, strict=True))
+    if call_times is None:
+        return f"[{timed}] into the sample"
+    sent_at, returned_at = call_times
+    return f"[{timed}] after the call, which took {returned_at - sent_at:.2f} s"
+
+
 class _CaseRun:
     """The steps of one case, against one HA connection, with what earlier steps left behind.
 
@@ -862,6 +872,8 @@ class _CaseRun:
         self.error: HAError | None = None
         self.last_action = case.suite.action
         self.query = False
+        # The loop times the last call was sent and returned, which a sample's readings are timed from.
+        self.call_times: tuple[float, float] | None = None
 
     def entity(self, args: Any) -> str:
         role = args.get("target") if isinstance(args, dict) else None
@@ -1081,8 +1093,10 @@ class _CaseRun:
         self.last_action, self.response, self.error = action, None, None
         # ActionKind is a StrEnum: compared by value so the engine needs no integration import.
         self.query = getattr(getattr(self.registry, "actions", {}).get(action), "kind", None) == "query"
+        sent_at = asyncio.get_running_loop().time()
         try:
             self.response = await self.ha.call_service("device_side", action, data, return_response=True)
+            self.call_times = (sent_at, asyncio.get_running_loop().time())
         except HAError as err:
             if following != "expect_error":
                 raise StepFailure(f"device_side.{action} raised {err.translation_key}: {err}") from None
@@ -1208,15 +1222,19 @@ class _CaseRun:
         deadline = loop.time() + args["for"].eval(self.names)
         every = max(args["every"].eval(self.names), 0.05)
         readings: list[float] = []
+        offsets: list[float] = []  # each reading's round-trip middle, after the last call was sent (else the start)
+        since = self.call_times[0] if self.call_times else loop.time()
         while True:
+            before = loop.time()
             value = await self.reading(entity_id, attribute, source)
+            offsets.append((before + loop.time()) / 2 - since)
             if value is not None and (isinstance(value, bool) or not isinstance(value, int | float)):
                 raise StepFailure(f"{entity_id}: {attribute} is {value!r}, not a number")
             readings.append(float(value or 0))
             if loop.time() >= deadline:
                 break
             await asyncio.sleep(min(every, max(deadline - loop.time(), 0)))
-        shown = [round(reading, 1) for reading in readings]
+        shown = _timed(readings, offsets, self.call_times)
         if "min" in args and min(readings) < args["min"]:
             raise StepFailure(f"{entity_id}: {attribute} fell below {args['min']}: {shown}")
         if "max" in args and max(readings) > args["max"]:
