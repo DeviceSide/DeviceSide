@@ -106,13 +106,15 @@ mean beside the dotted `_lookup`. A fresh `/audit-code` of the fit, the group sa
 
 **Next, in order** (every rig run needs Jason's go; start each in the background, one at a time behind the lock):
 
-1. **Recover the light_ct bulb** (Jason, at the lamp): switch it off and on; once ZHA shows it, run
-   `scripts/rig.py --recover`. If ZHA doesn't show it, reset it over Bluetooth in the Hue app and add it to the
-   bridge first.
-2. **Jason decides how a raise from off reaches the bottom on Hue bulbs:** (a) a pause after the preset, if a probe
-   shows the bulb takes it (cheap, adds latency); (b) Hue's manufacturer cluster, as Z2M's `hue_native_control` does
-   (proven on Z2M, the most work); (c) Hue models start a raise at their stored level, as the E11-G13 does, with the
-   case adjusted on ZHA. Probe before building.
+1. ~~Recover the light_ct bulb.~~ Done (2026-11-02): after a power cycle ZHA took it back, and `--recover` moved it
+   home to Hue with its rooms and scenes.
+2. **Rig-probe (b), built in `53a0f88`** (Jason chose it): an off light with Signify's cluster `0xFC03` is turned on
+   at level 1 by `multiColor` (flags `0x0013`: on, brightness 1, fade 0; manufacturer `0x100B`), sent through
+   zigpy (`zcl.hue_turn_on`) behind zha's admin check, then `MoveToLevelWithOnOff` fades it as before; other lights
+   keep `MoveToLevel` with ExecuteIfOff. Untried live: the zigpy call shape (`cluster.request(False, 0x00, Struct
+   of SerializableBytes, payload, manufacturer=0x100B)`) is from zigpy's source, and zigpy isn't a dev dependency.
+   Probe `-k raise_from_off`. If the bulb still fades from its stored level, send the whole fade as `multiColor`
+   (on, the limit, the fade time) for an off Hue light, which is what Z2M sends.
 3. **The fit stays unguarded** (Jason, 2026-10-31) unless a run shows its risk. Ask him if `soft_off_keeps_level`
    fails again, but log `sync_to_bulb` (the read, its round trip, `f`, the fitted start) first, so the decision
    rests on numbers.
