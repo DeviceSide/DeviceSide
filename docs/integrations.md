@@ -532,8 +532,9 @@ commands leave ZHA's own transition guard down, so the read is the bulb's. Devic
 and stop for its duration plus 2 seconds, so the next one after a stop starts from where the light halted. A new
 call for the same attribute, or a stop, replaces the pending refresh.
 
-ZHA can't tell a brightness change made elsewhere (Home Assistant, an app, a remote) from the bulb's own reports
-during a fade, so the remembered value can go stale. To keep hold-to-dim instant, a brightness fade is sent first
+A `light` call from Home Assistant to the light, its ZHA group or `all` drops what is remembered of it at once, as
+on Hue, so the next call starts from Home Assistant's state. ZHA can't tell a change made elsewhere (an app, a
+remote) from the bulb's own reports during a fade, so the remembered value can still go stale. To keep hold-to-dim instant, a brightness fade is sent first
 and each light's CurrentLevel read just after. The read is timed at the middle of its round trip and lies on the
 bulb's ramp to the end point, so Device Side fits the ramp's real start to it and remembers that: the next raise or
 lower, a stop and the soft off's restore start from where the bulb really is. The one fade sent from a stale value

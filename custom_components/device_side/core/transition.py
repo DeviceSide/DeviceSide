@@ -83,6 +83,10 @@ class TransitionCache:
         keys = [key for key in self._transitions if key[0] == resource_id and attribute in (None, key[1])]
         return {key: self._transitions.pop(key) for key in keys}
 
+    def clear(self) -> None:
+        """A real change made elsewhere to every resource: drop every prediction."""
+        self._transitions.clear()
+
     def restore(self, transitions: dict[tuple[str, str], Transition]) -> None:
         """Put back what forget dropped, for a write the integration refused."""
         self._transitions.update(transitions)

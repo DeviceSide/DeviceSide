@@ -4,13 +4,15 @@ import probatio
 import pytest
 from homeassistant.core import Context, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.service import async_register_admin_service
+from pytest_homeassistant_custom_component.common import async_mock_service
 
 from custom_components.device_side.const import DOMAIN
 from custom_components.device_side.core.transition import BRIGHTNESS, SATURATION
 from custom_components.device_side.integrations.zha.fade import transition_cache
 
-from .conftest import RESTORE_60, SENT, A, B, bulb, on_off_reads, sent
+from .conftest import BOTTOM, RESTORE_60, SENT, A, B, bulb, on_off_reads, sent
 from ...conftest import advance, call, wall_clock_now
 from ...fixtures.zha import IEEE
 
@@ -175,3 +177,42 @@ async def test_planning_again_keeps_a_running_saturation_fade(hass, commands, cl
     await call(hass, "stop", {"entity_id": "light.bulb"})
 
     assert sent(commands)[-2:] == [(0x0300, 0x47, {"options_mask": 0, "options_override": 0}), (0x0008, 0x03, {})]
+
+
+@pytest.mark.parametrize(
+    ("service_data", "forgotten"),
+    [
+        pytest.param({"entity_id": "light.a"}, {"light.a"}, id="light"),
+        pytest.param({"entity_id": "light.zha_group"}, {"light.a", "light.b"}, id="group"),
+        pytest.param({"entity_id": "all"}, {"light.a", "light.b"}, id="all"),
+        pytest.param({"entity_id": "light.other"}, set(), id="not_zha"),
+        pytest.param(None, set(), id="no_target"),
+    ],
+)
+async def test_a_light_call_from_ha_forgets_its_zha_lights(hass, commands, two_light_group, service_data, forgotten):
+    """The rig's setup, or a dashboard: a change from HA mid-fade leaves the prediction stale, so it goes."""
+    bulb(hass, "light.a", A)
+    bulb(hass, "light.b", B)
+    er.async_get(hass).async_get_or_create("light", "demo", "other", suggested_object_id="other")
+    async_mock_service(hass, "light", "turn_off")
+    await call(hass, "raise_brightness", {"entity_id": "light.a"})
+    await call(hass, "raise_saturation", {"entity_id": "light.b"})
+
+    await hass.services.async_call("light", "turn_off", service_data, blocking=True)
+
+    cache = transition_cache(hass)
+    assert {light for light in ("light.a", "light.b") if not cache.follows(light)} == forgotten
+
+
+async def test_a_raise_after_ha_turned_the_light_off_mid_fade_starts_from_the_bottom(hass, commands, clock):
+    """raise_from_off on the rig: the previous case's fade was still predicted when the setup turned the light off."""
+    bulb(hass)
+    await call(hass, "raise_brightness", {"entity_id": "light.bulb"})
+    clock.now += 1
+    async_mock_service(hass, "light", "turn_off")
+    await hass.services.async_call("light", "turn_off", {"entity_id": "light.bulb"}, blocking=True)
+    bulb(hass, state="off")
+
+    await call(hass, "raise_brightness", {"entity_id": "light.bulb", "sweep_time": 5})
+
+    assert sent(commands)[-2:] == [BOTTOM, (0x0008, 0x04, {"level": 254, "transition_time": 50})]

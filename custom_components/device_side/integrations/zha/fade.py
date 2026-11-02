@@ -8,12 +8,15 @@ from dataclasses import dataclass, field
 from statistics import mean
 from typing import Any, ClassVar
 
-from homeassistant.core import Context, HomeAssistant
+from homeassistant.const import ATTR_DOMAIN, ATTR_ENTITY_ID, ATTR_SERVICE_DATA, ENTITY_MATCH_ALL, EVENT_CALL_SERVICE
+from homeassistant.core import CALLBACK_TYPE, Context, Event, HomeAssistant, callback
 from homeassistant.exceptions import Unauthorized
+from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.target import TargetSelection, async_extract_referenced_entity_ids
 from homeassistant.util.color import color_hs_to_xy
 
 from . import zcl
-from .addressing import address, unsupported_reason, via_zha_group
+from .addressing import address, group_id, unsupported_reason, via_zha_group
 from .groups import light_members
 from ...actions.ramp import HUE, RampRequest
 from ...core import transition
@@ -48,6 +51,38 @@ def transition_cache(hass: HomeAssistant) -> TransitionCache:
 def hue_moves(hass: HomeAssistant) -> set[str]:
     """The lights a hue move of ours is cycling: it runs until a stop, so it has no transition to predict."""
     return get_runtime(hass).integration_state.setdefault("zha_hue_moves", set())
+
+
+def watch_ha_changes(hass: HomeAssistant) -> None:
+    """Attach, once per HA run, the listener that drops a ZHA light's predictions when a light call from HA targets it,
+    as on Hue: the bulb then goes where the call sends it, and its next move or stop starts from HA's state. Our own
+    commands go through the zha domain, so they pass it by."""
+
+    @callback
+    def changed(event: Event) -> None:
+        service_data = event.data[ATTR_SERVICE_DATA] or {}
+        cache = transition_cache(hass)
+        if service_data.get(ATTR_ENTITY_ID) == ENTITY_MATCH_ALL:
+            cache.clear()
+            return
+        selected = async_extract_referenced_entity_ids(hass, TargetSelection(service_data))
+        registry = er.async_get(hass)
+        for entity_id in selected.referenced | selected.indirectly_referenced:
+            if (entry := registry.async_get(entity_id)) is None or entry.platform != "zha" or entry.domain != "light":
+                continue
+            gid = group_id(entry.unique_id)
+            for light_id in light_members(hass, gid) if gid is not None else (entity_id,):
+                cache.forget(light_id)
+
+    def attach() -> CALLBACK_TYPE:
+        return hass.bus.async_listen(EVENT_CALL_SERVICE, changed, event_filter=_is_light_call)
+
+    get_runtime(hass).listen("zha:ha_changes", hass, attach)
+
+
+@callback
+def _is_light_call(event_data) -> bool:
+    return event_data[ATTR_DOMAIN] == "light"
 
 
 def end_key(light: Target, attribute: str) -> str:
@@ -163,6 +198,7 @@ class ZHARamp(Adapter[RampRequest]):
         return super().supports(hass, request, target) or unsupported_reason(target)
 
     async def execute(self, hass: HomeAssistant, request: RampRequest, targets: list[Target]) -> list[EntityResult]:
+        watch_ha_changes(hass)
         cache = transition_cache(hass)
         runs = [self._unit(hass, request, cache, gid, lights) for gid, lights in units(hass, targets)]
         return [result for batch in await asyncio.gather(*runs) for result in batch]
