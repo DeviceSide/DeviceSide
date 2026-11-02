@@ -27,7 +27,6 @@ FIXED = ("light.test_group", "light.test_color_group")
 @pytest.fixture(autouse=True)
 def fast(monkeypatch):
     monkeypatch.setattr(roam, "POLL_S", 0)
-    monkeypatch.setattr(roam, "ZHA_LEAVE_GAP_S", 0)
     monkeypatch.setattr(roam, "GONE_S", 0)
 
 

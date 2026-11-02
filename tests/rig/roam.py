@@ -49,9 +49,6 @@ HUE_SEARCH_S = 56  # how long a Hue search stays open; it can't be ended early
 # opens one window, and a failing one two, for whatever device is resetting nearby to join.
 HUE_SEARCHES = 2
 POLL_S = 2.0
-# Between ZHA removes: removed back to back, the first bulb took its Leave and a later one mostly didn't (three of
-# four tries in the lab), staying on ZHA's network, unseen by HA and deaf to the next network, until power-up.
-ZHA_LEAVE_GAP_S = 5
 GONE_S = 15  # for HA to drop a rig-made group's entity once the group is removed; after that the rig removes it
 # The rig-made Hue scene: every member on at 40 %, and 366 mirek (2732 K) where it takes a color temperature. Below
 # full, so a recall mid-fade shows (raise_brightness-predicted_state's bridge_scene_recall_mid_fade_shows_at_once).
@@ -168,6 +165,8 @@ class Roamer:
         # The bridge's devices before a search, until search_over has named any newcomer; journaled, so recovery can.
         before = saved.get("bridge_before")
         self.bridge_before: set[str] | None = set(before) if before is not None else None
+        # The bulbs in the order they last joined a network; journaled, so recovery releases them in reverse.
+        self.arrived: list[str] = list(saved.get("arrived", []))
 
     @classmethod
     def from_journal(cls, ha: HAClient, bridge: HueBridge, journal: Journal, out: Callable[[str], None] = print):
@@ -186,6 +185,7 @@ class Roamer:
                     "home": self.home,
                     "made": self.made,
                     "bridge_before": sorted(self.bridge_before) if self.bridge_before is not None else None,
+                    "arrived": self.arrived,
                 }
             )
 
@@ -269,12 +269,8 @@ class Roamer:
         self.save()
         # A released bulb joins whatever network is open, so only the target may be.
         await self.close_all()
-        zha_removed = False
-        for bulb in bulbs:
+        for bulb in self.release_order(bulbs):
             if (source := origins[bulb.entity_id]) is not None:
-                if source == "zha" and zha_removed:
-                    await asyncio.sleep(ZHA_LEAVE_GAP_S)
-                zha_removed |= source == "zha"
                 await self.release(source, bulb)
                 self.at[bulb.entity_id] = None
                 self.save()
@@ -286,6 +282,13 @@ class Roamer:
         self.moving = None
         self.save()
         self.out(f"{names} on {NAMES[target]}.")
+
+    def release_order(self, bulbs: list[Bulb]) -> list[Bulb]:
+        """Last joined first. A bulb often joins through one that joined before it, and a Leave sent after that
+        parent has gone doesn't arrive: the lab saw ZHA's Leave miss the later bulb on most back-to-back removes, with
+        route failures for it. A bulb whose join wasn't seen (it rejoined on power-up) goes first."""
+        rank = {entity_id: index for index, entity_id in enumerate(self.arrived)}
+        return sorted(bulbs, key=lambda bulb: -rank.get(bulb.entity_id, len(self.arrived)))
 
     async def close_all(self) -> None:
         """Close joining on every network. ZHA's state can't be read, so it is always closed explicitly; a Hue
@@ -352,8 +355,14 @@ class Roamer:
     async def join(self, network: str, bulbs: list[Bulb], origins: dict[str, str | None] | None = None) -> None:
         """Open `network` for the bulbs and wait until all are in; ZHA and Z2M close once they are, or on a timeout."""
 
+        self.arrived = []
+
         async def all_in() -> bool:
-            return all([await self.joined(network, bulb) for bulb in bulbs])
+            for bulb in bulbs:
+                if bulb.entity_id not in self.arrived and await self.joined(network, bulb):
+                    self.arrived.append(bulb.entity_id)
+                    self.save()
+            return all(bulb.entity_id in self.arrived for bulb in bulbs)
 
         if network == "zha":
             async with self.ha.zha_joining(JOIN_S):

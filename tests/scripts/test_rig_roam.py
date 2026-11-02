@@ -1,7 +1,6 @@
 """Roaming (tests/rig/roam.py), against the Lab fake: each move, the rename, the stale-entry removal, the Hue home
 saved and restored, a bulb that never joins, and recovery from wherever a crash leaves the bulbs."""
 
-import asyncio
 import json
 
 import pytest
@@ -9,7 +8,7 @@ import pytest
 from scripts import check_private
 from tests.rig import roam
 from tests.rig.journal import Journal
-from tests.rig.profile import Profile
+from tests.rig.profile import Profile, normalize_ieee
 from tests.rig.roam import Roamer, RoamError
 from tests.scripts.rig_fakes import LAB_A, LAB_B, LAB_BULBS, LAB_OPTIONS, FakeBridge, FakeHA, Lab, lab_profile
 
@@ -19,7 +18,6 @@ A, B, OPTIONS, BULBS = LAB_A, LAB_B, LAB_OPTIONS, LAB_BULBS
 @pytest.fixture(autouse=True)
 def fast(monkeypatch):
     monkeypatch.setattr(roam, "POLL_S", 0)
-    monkeypatch.setattr(roam, "ZHA_LEAVE_GAP_S", 0)
 
 
 @pytest.fixture
@@ -438,19 +436,22 @@ async def test_a_bulb_goes_home_from_zha_in_one_direct_move(lab):
     assert lab.searches == 1 and not lab.ha.z2m_open
 
 
-async def test_zha_removes_are_spaced_so_each_bulb_takes_its_leave(lab, monkeypatch):
-    await roamer(lab).go("zha")
-    monkeypatch.setattr(roam, "ZHA_LEAVE_GAP_S", 0.05)
-    removed_at = []
-    remove = lab.ha.zha_remove
+async def test_the_bulbs_leave_last_joined_first_so_no_leave_goes_through_a_bulb_already_gone(lab, tmp_path):
+    # A bulb often joins through one that joined before it; removing that parent first lost the later bulb's Leave.
+    journal = Journal(tmp_path / "journal.json")
+    await roamer(lab, journal).go("zha")
+    assert journal.get("roam")["arrived"] == ["light.lab_a", "light.lab_b"]
+    await Roamer.from_journal(lab.ha, lab.bridge, journal, out=lambda _: None).go("zigbee2mqtt")
+    removed = [c[2]["ieee"] for c in lab.ha.calls if c[1] == "remove"]
+    assert [normalize_ieee(ieee) for ieee in removed] == [normalize_ieee(B), normalize_ieee(A)]
 
-    async def timed(ieee):
-        removed_at.append(asyncio.get_running_loop().time())
-        await remove(ieee)
 
-    monkeypatch.setattr(lab.ha, "zha_remove", timed)
-    await roamer(lab).go(roam.HOME)
-    assert len(removed_at) == 2 and removed_at[1] - removed_at[0] >= 0.05
+def test_a_bulb_whose_join_wasnt_seen_is_released_first(lab):
+    rig = roamer(lab)
+    rig.arrived = ["light.lab_a"]
+    assert [bulb.entity_id for bulb in rig.release_order(rig.bulbs)] == ["light.lab_b", "light.lab_a"]
+    rig.arrived = ["light.lab_b", "light.lab_a"]
+    assert [bulb.entity_id for bulb in rig.release_order(rig.bulbs)] == ["light.lab_a", "light.lab_b"]
 
 
 async def test_a_bulb_that_missed_its_leave_is_recorded_where_it_stayed_and_recovery_moves_it_again(
