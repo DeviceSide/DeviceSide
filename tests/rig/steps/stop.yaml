@@ -112,7 +112,8 @@ tests:
     setup:
       - set: {state: on, brightness_pct: 20, hs_color: [30, 90]}
     steps:
-      # 5 % a second for 3 s and 18° a second for 2 s: about 35 % brightness and hue 66° at the stop
+      - mark_hue: {}
+      # 5 % a second for 3 s and 18° a second for 2 s: about 35 % brightness and 36° round the hue wheel at the stop
       - call: {action: raise_brightness, sweep_time: 20}
       - wait: 1
       - call: {action: raise_hue, sweep_time: 20}
@@ -120,7 +121,7 @@ tests:
       - call: {}
       - expect_response: {status: expected, integration: self}
       - expect_matches_read: {attributes: [xy_color.0, xy_color.1], tolerance: 0.01, within: 3}
-      - expect_state: {state: on, hs_color.0: {min: 54, max: 78}}
+      - expect_hue_travel: {by: 36, tolerance: 12}
       - sample: {attribute: brightness, for: 3, expect: steady, min: 25, max: 50, source: device_side}
       - expect_matches_read: {attributes: [xy_color.0, xy_color.1], tolerance: 0.01}
-      - expect_state: {state: on, hs_color.0: {min: 54, max: 78}}
+      - expect_hue_travel: {by: 36, tolerance: 12}

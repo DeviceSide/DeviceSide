@@ -9,9 +9,10 @@ tests:
     setup:
       - set: {state: on, brightness_pct: 70, hs_color: [30, 90]}
     steps:
-      - call: {sweep_time: 20}  # 18° a second: about 84° after 3 s
+      - mark_hue: {}
+      - call: {sweep_time: 20}  # 18° a second: 54° up the wheel after 3 s
       - expect_response: {status: expected, integration: self}
       - wait: 3
       - call: {action: stop}
       - expect_matches_read: {attributes: [xy_color.0, xy_color.1], tolerance: 0.01, within: 3}
-      - expect_state: {state: on, hs_color.0: {min: 72, max: 96}}
+      - expect_hue_travel: {by: 54, tolerance: 12}

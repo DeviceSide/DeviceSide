@@ -1862,3 +1862,124 @@ def test_a_run_cancelled_at_a_prompt_exits_without_waiting_for_an_answer():
     asyncio.run(cancelled_at_the_prompt())
     assert time.monotonic() - started < 2
     answered.set()
+
+
+HUE_TRAVEL = """
+action: raise_hue
+rig_seconds: 5
+tests:
+  - name: turns
+    roles: [light_color]
+    only: [zigbee2mqtt, zha]
+    steps:
+      - mark_hue: {}
+      - call: {sweep_time: 20}
+      - expect_hue_travel: {by: 54, tolerance: 12}
+"""
+
+
+class ZHAHueHA(FakeHA):
+    """FakeHA with light.bulb on ZHA, whose live hue reads come back from `hue` (EnhancedCurrentHue, or CurrentHue
+    with `enhanced` off); a raise_hue call turns it `turn` degrees."""
+
+    def __init__(self, hue: float, turn: float, enhanced: bool = True, unique_id: str = "00:17:88:01:00:00:00:01-11"):
+        super().__init__({"light.bulb": {"state": "on"}}, self.respond)
+        self.hue, self.turn, self.enhanced, self.unique_id = hue, turn, enhanced, unique_id
+        self.reads: list[dict] = []
+
+    def respond(self, ha, action, data):
+        self.hue = (self.hue + self.turn) % 360
+        return {data["entity_id"]: {"status": "sent"}}
+
+    async def command(self, payload: dict):
+        if payload["type"] == "config/entity_registry/get":
+            return {"entity_id": payload["entity_id"], "unique_id": self.unique_id}
+        if payload["type"] == "zha/devices/clusters/attributes/value":
+            self.reads.append(payload)
+            if payload["attribute"] == 0x4000:
+                return str(round(self.hue * 65535 / 360)) if self.enhanced else "None"
+            return str(round(self.hue * 254 / 360))
+        return await super().command(payload)
+
+
+@pytest.mark.parametrize(
+    ("start", "turn", "enhanced", "failure"),
+    [
+        (30, 54, True, ""),
+        (340, 54, True, ""),  # across 0°: the shorter way round
+        (30, 54, False, ""),  # CurrentHue where the bulb has no enhanced hue
+        (30, 20, True, "light.bulb: hue went 30.0° to 50.0°, +20.0°; expected +54° ± 12°"),
+        (30, -54, True, "-54.0°; expected +54°"),
+    ],
+)
+async def test_expect_hue_travel_reads_the_zha_bulbs_own_hue(tmp_path, start, turn, enhanced, failure):
+    ha = ZHAHueHA(start, turn, enhanced)
+    result = await run_one(ha, suite(tmp_path, HUE_TRAVEL, "zha"), profile("zha", light_color="light.bulb"), admin=ha)
+    outcome, detail = outcomes(result)["turns[light_color]"]
+    assert outcome is (Outcome.FAIL if failure else Outcome.PASS), detail
+    assert failure in detail
+    assert ha.reads[0] | {"attribute": 0} == {
+        "type": "zha/devices/clusters/attributes/value",
+        "ieee": "00:17:88:01:00:00:00:01",
+        "endpoint_id": 11,
+        "cluster_id": 0x0300,
+        "cluster_type": "in",
+        "attribute": 0,
+    }
+
+
+async def test_expect_hue_travel_fails_on_a_zha_light_without_an_address(tmp_path):
+    ha = ZHAHueHA(30, 54, unique_id="light_zha_group_0x0002")
+    result = await run_one(ha, suite(tmp_path, HUE_TRAVEL, "zha"), profile("zha", light_color="light.bulb"), admin=ha)
+    assert "light.bulb has no ZHA address in its unique_id" in outcomes(result)["turns[light_color]"][1]
+
+
+async def test_expect_hue_travel_fails_when_the_zha_bulb_returns_no_hue(tmp_path):
+    ha = ZHAHueHA(30, 54)
+
+    async def silent(*_args):
+        return None
+
+    ha.zha_read_attribute = silent
+    result = await run_one(ha, suite(tmp_path, HUE_TRAVEL, "zha"), profile("zha", light_color="light.bulb"), admin=ha)
+    assert "light.bulb: the bulb returned no hue" in outcomes(result)["turns[light_color]"][1]
+
+
+@pytest.mark.parametrize(("shown", "failure"), [([84, 90], ""), (None, "HA shows no hs_color to take its hue from")])
+async def test_expect_hue_travel_reads_ha_hue_on_other_integrations(tmp_path, shown, failure):
+    def respond(ha, action, data):
+        ha.set("light.bulb", "on", **({"hs_color": shown} if shown else {}))
+        return {data["entity_id"]: {"status": "sent"}}
+
+    ha = FakeHA({"light.bulb": {"state": "on", "attributes": {"hs_color": [30, 90]}}}, respond)
+    steps = suite(tmp_path, HUE_TRAVEL, "zigbee2mqtt")
+    result = await run_one(ha, steps, profile("zigbee2mqtt", light_color="light.bulb"), admin=ha)
+    outcome, detail = outcomes(result)["turns[light_color]"]
+    assert outcome is (Outcome.FAIL if failure else Outcome.PASS), detail
+    assert failure in detail
+
+
+async def test_expect_hue_travel_needs_a_mark_first(tmp_path):
+    ha = ZHAHueHA(30, 54)
+    text = HUE_TRAVEL.replace("      - mark_hue: {}\n", "")
+    result = await run_one(ha, suite(tmp_path, text, "zha"), profile("zha", light_color="light.bulb"), admin=ha)
+    assert "light.bulb: no mark_hue before expect_hue_travel" in outcomes(result)["turns[light_color]"][1]
+
+
+@pytest.mark.parametrize(
+    ("args", "error"),
+    [
+        ("{by: 54}", "tolerance"),
+        ("{by: fast, tolerance: 12}", "by must be a number of degrees"),
+        ("{by: 54, tolerance: true}", "tolerance must be a number of degrees"),
+    ],
+)
+def test_expect_hue_travel_needs_numbers(tmp_path, args, error):
+    text = HUE_TRAVEL.replace("{by: 54, tolerance: 12}", args)
+    with pytest.raises(ValueError, match=error):
+        suite(tmp_path, text, "zha")
+
+
+def test_mark_hue_takes_only_a_target(tmp_path):
+    with pytest.raises(ValueError):
+        suite(tmp_path, HUE_TRAVEL.replace("mark_hue: {}", "mark_hue: {by: 1}"), "zha")

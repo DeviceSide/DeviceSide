@@ -47,6 +47,9 @@ POWER_RETRY_S = 3.0
 # lights have reached the start state it describes.
 SETUP_SETTLE_S = 2.0
 
+# ZCL Color Control's hue attributes, which bulb_hue reads on ZHA.
+_COLOR_CLUSTER, _CURRENT_HUE, _ENHANCED_CURRENT_HUE = 0x0300, 0x0000, 0x4000
+
 # How long after saving options the engine waits before checking the entry has reloaded.
 OPTIONS_RELOAD_S = 1.0
 
@@ -297,6 +300,18 @@ def _parse_sample(args: Any) -> dict:
     return args
 
 
+def _parse_mark_hue(args: Any) -> dict:
+    return _mapping(args, allowed=["target"])
+
+
+def _parse_expect_hue_travel(args: Any) -> dict:
+    args = _mapping(args, required=["by", "tolerance"], allowed=["target"])
+    for name in ("by", "tolerance"):
+        if isinstance(args[name], bool) or not isinstance(args[name], int | float):
+            raise ValueError(f"{name} must be a number of degrees, got {args[name]!r}")
+    return args
+
+
 def _parse_do(args: Any) -> str:
     if not isinstance(args, str) or not args.strip():
         raise ValueError("do takes the instruction for the person, as a string")
@@ -345,6 +360,9 @@ PARSERS: dict[str, Callable[[Any], Any]] = {
     "expect_matches_read": _parse_expect_matches_read,
     "wait": Expr.parse,
     "sample": _parse_sample,
+    # The bulb's own hue now, and how far round its own wheel it has turned since: a hue move's rate is in its units.
+    "mark_hue": _parse_mark_hue,
+    "expect_hue_travel": _parse_expect_hue_travel,
     "do": _parse_do,
     "restore": _parse_restore,
     # A write to the Hue bridge that bypasses HA; fails in any other integration's suite.
@@ -930,6 +948,7 @@ class _CaseRun:
         # The loop times the last call was sent and returned, which a sample's readings are timed from.
         self.call_times: tuple[float, float] | None = None
         self.sent: dict[str, Any] = {}  # the last call's data
+        self.hue_marks: dict[str, float] = {}  # each light's own hue at the last mark_hue
 
     def entity(self, args: Any) -> str:
         role = args.get("target") if isinstance(args, dict) else None
@@ -1286,6 +1305,44 @@ class _CaseRun:
                     raise StepFailure(f"{member}: HA shows {shown}, a live read gives {read}")
                 await asyncio.sleep(0.5)
 
+    async def bulb_hue(self, light: str) -> float:
+        """The light's hue on its own wheel, in degrees. ZHA's comes live off the bulb (EnhancedCurrentHue, else
+        CurrentHue), since HA's is worked out from the bulb's xy and departs from the bulb's wheel by 25° and more in
+        the greens; elsewhere it is HA's hs_color, which Zigbee2MQTT publishes from the bulb's own hue."""
+        if self.integration != "zha":
+            state = await self.ha.get_state(light)
+            hue = _lookup((state or {}).get("attributes", {}), "hs_color.0")
+            if not isinstance(hue, int | float):
+                raise StepFailure(f"{light}: HA shows no hs_color to take its hue from")
+            return float(hue)
+        entry = await self.ha.command({"type": "config/entity_registry/get", "entity_id": light})
+        ieee, _, endpoint = (entry.get("unique_id") or "").partition("-")
+        if not endpoint.isdigit():
+            raise StepFailure(f"{light} has no ZHA address in its unique_id {entry.get('unique_id')!r}")
+        for attribute, steps in ((_ENHANCED_CURRENT_HUE, 65535), (_CURRENT_HUE, 254)):
+            raw = await self.ha.zha_read_attribute(ieee, int(endpoint), _COLOR_CLUSTER, attribute)
+            if raw is not None:
+                return raw * 360 / steps
+        raise StepFailure(f"{light}: the bulb returned no hue")
+
+    async def _mark_hue(self, args: dict, _following: str | None) -> None:
+        for light in await self.members(self.entity(args)):
+            self.hue_marks[light] = await self.bulb_hue(light)
+
+    async def _expect_hue_travel(self, args: dict, _following: str | None) -> None:
+        """Each light has turned `by` degrees (negative: down the wheel) round its own wheel since the last mark_hue,
+        give or take `tolerance`; the shorter way round, so a travel is under 180°."""
+        for light in await self.members(self.entity(args)):
+            if (start := self.hue_marks.get(light)) is None:
+                raise StepFailure(f"{light}: no mark_hue before expect_hue_travel")
+            now = await self.bulb_hue(light)
+            travel = (now - start + 180) % 360 - 180
+            if abs(travel - args["by"]) > args["tolerance"]:
+                raise StepFailure(
+                    f"{light}: hue went {start:.1f}° to {now:.1f}°, {travel:+.1f}°; expected {args['by']:+g}° "
+                    f"± {args['tolerance']:g}°"
+                )
+
     async def _wait(self, seconds: Expr, _following: str | None) -> None:
         await asyncio.sleep(max(seconds.eval(self.names), 0))
 
@@ -1356,6 +1413,7 @@ class _CaseRun:
         pass
 
     _relaxed_expect_error = _relaxed_expect_response
+    _relaxed_expect_hue_travel = _relaxed_expect_response
     _relaxed_expect_z2m_option = _relaxed_expect_response
 
     async def _relaxed_expect_state(self, args: dict, following: str | None) -> None:
