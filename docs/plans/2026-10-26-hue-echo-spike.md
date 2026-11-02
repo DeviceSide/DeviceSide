@@ -96,7 +96,7 @@ design is decided after the results are in.
 
 ## Result
 
-Run 2026-10-26 on the rig's Office Corner bulb and DS Test zone; versions and the public summary are in
+Run 2026-10-26 on a rig Hue bulb and a hand-made Hue zone; versions and the public summary are in
 `docs/integrations.md` (Hue, Tested behavior). Raw logs stayed in the session scratchpad.
 
 | # | Answer |
