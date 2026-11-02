@@ -43,6 +43,7 @@ PAUSABLE = ("automation", "switch")
 
 # A native group's roles: `group_color` is one whose members all take color.
 GROUP_ROLES = frozenset({"group", "group_color"})
+ZHA_GROUP_MIN = 2  # ZHA makes no light entity for a group with fewer members
 ROLES = frozenset(
     {"light_onoff", "light_wrapped", "light_dimmable", "light_ct", "light_color", "switch_plug", "scene"} | GROUP_ROLES
 )
@@ -55,8 +56,8 @@ TOLERANCE_S = {"shelly": 2.0, "hue": 2.0, "zigbee2mqtt": 3.0, "zha": 3.0, "matte
 # it starts from what HA shows.
 SETTLE_S = {"hue": 15.0, "zigbee2mqtt": 2.0}
 
-# The networks a roaming bulb visits, in the order it visits them: the only route the A60 move probe proved
-# (docs/plans/2026-10-31-a60-move-probe.md). Hue is home, where a run starts and ends.
+# The order in which roaming bulbs visit the networks a run needs, moving directly from one to the next. Hue is
+# home, where a run starts and ends.
 CYCLE = ("hue", "zha", "zigbee2mqtt")
 
 
@@ -108,6 +109,11 @@ class RoamGroup:
     roles: frozenset[str]
     members: tuple[str, ...]  # bulb entity IDs
     scene: str | None = None
+
+    def made_on(self, network: str) -> bool:
+        """Whether the rig makes this group on `network`: not a one-member group on ZHA, which gives a group a light
+        entity only from two members, so the role has no entity there and its cases skip."""
+        return network != "zha" or len(self.members) >= ZHA_GROUP_MIN
 
 
 def rig_name(entity_id: str) -> str:
@@ -169,7 +175,9 @@ class Profile:
         for network in CYCLE if self.roam else ():
             entities = self.integrations.setdefault(network, [])
             entities.extend(RigEntity(b.entity_id, b.roles) for b in self.roam)
-            entities.extend(RigEntity(g.entity_id, g.roles, members=g.members) for g in self.roam_groups)
+            entities.extend(
+                RigEntity(g.entity_id, g.roles, members=g.members) for g in self.roam_groups if g.made_on(network)
+            )
             if network == "hue":
                 entities.extend(RigEntity(g.scene, frozenset({"scene"})) for g in self.roam_groups if g.scene)
 

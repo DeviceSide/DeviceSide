@@ -23,9 +23,10 @@ def device_ieee(device: dict, integration: str) -> str | None:
     """The IEEE address of a device-registry entry on `integration` ("zha" or "zigbee2mqtt"), or None.
 
     ZHA identifies a device by its IEEE with colons; Z2M by `zigbee2mqtt_0x...` under the mqtt domain. A Hue device
-    carries none, so the bridge finds it (`HueBridge.device_id_by_ieee`).
+    carries none, so the bridge finds it (`HueBridge.device_id_by_ieee`). An identifier need not be a pair: HomeKit
+    Bridge registers (domain, entry ID, serial).
     """
-    for domain, ident in device.get("identifiers", []):
+    for domain, ident, *_ in device.get("identifiers", []):
         if integration == "zha" and domain == "zha":
             return ident
         if integration == Z2M and domain == "mqtt" and ident.startswith("zigbee2mqtt_0x"):
