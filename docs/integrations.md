@@ -501,8 +501,9 @@ transition of `sweep_time` × the fraction of the range left, which the bulb the
 call and a saturation call can overlap, and the bulb runs both.
 
 - **`raise_brightness`** is `MoveToLevelWithOnOff`, which turns the light on. An off bulb keeps its level and would
-  fade up from there, so a light that is off first gets `MoveToLevel` to level 1 with the `ExecuteIfOff` override
-  and no transition: it stays off, then fades in from the bottom.
+  fade up from there, so a light that is off is first turned on at level 1 with no transition
+  (`MoveToLevelWithOnOff`), as on Zigbee2MQTT, then fades in from the bottom. Hue bulbs ignored a level 1 sent with
+  the `ExecuteIfOff` override just before the raise, and faded up from their old level.
 - **`lower_brightness` to a limit** is `MoveToLevel`, which a light that is off ignores.
 - **`lower_brightness` to 0 %** is `MoveToLevelWithOnOff` to 0, a soft off that leaves the bulb at level 1. 1 s
   after the fade should have ended, Device Side reads OnOff, and if the light is off, sends `MoveToLevel` back to
