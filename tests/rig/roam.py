@@ -1,7 +1,8 @@
-"""Roaming: the rig moves a profile's lab bulbs between Zigbee networks, all together, round the fixed cycle
-Hue → ZHA → Z2M → Hue (profile.CYCLE), so each network's suites run on the same bulbs within one run.
+"""Roaming: the rig moves a profile's lab bulbs between Zigbee networks, all together, to each network whose suites
+the run holds, in the order Hue, ZHA, Z2M (profile.CYCLE), then straight home to Hue. Every move is direct: a bulb
+leaves the network it is on for the target, so recovery takes one move from anywhere.
 
-Each move releases the bulbs from one network and joins them to the next, by the procedure the A60 move probe proved
+Each move releases the bulbs from their network and joins them to the target, by the procedure the A60 move probe proved
 (docs/plans/2026-10-31-a60-move-probe.md): Hue deletes the device (CLIP v2 only), ZHA and Z2M remove it, each sending
 a Leave; then the next network opens a finite join window, closed once every bulb is in. After each join the bulb's
 light entity is renamed to its fixed profile entity ID, and on Z2M its options are set again.
@@ -84,30 +85,20 @@ class GroupError(RoamError):
     """A rig-made group, zone or scene that couldn't be made. The bulbs are fine, so they can still move home."""
 
 
-def hops(network: str, to: str) -> int:
-    """Moves forward round the cycle from `network` to `to`."""
-    return (CYCLE.index(to) - CYCLE.index(network)) % len(CYCLE)
-
-
-def following(network: str) -> str:
-    return CYCLE[(CYCLE.index(network) + 1) % len(CYCLE)]
-
-
-def route(start: str = HOME) -> list[str]:
-    """The networks a run visits, starting and ending at `start`: Hue, ZHA, Z2M, Hue."""
-    return [*CYCLE[CYCLE.index(start) :], *CYCLE[: CYCLE.index(start)], start]
-
-
-def plan_lines(bulbs: Iterable[RoamBulb], groups: Iterable[RoamGroup] = (), moving: bool = True) -> list[str]:
-    """What a lab run does between its phases, for the plan before the gate: the moves, and the groups it makes."""
+def plan_lines(
+    bulbs: Iterable[RoamBulb], groups: Iterable[RoamGroup] = (), moving: bool = True, route: Iterable[str] = CYCLE
+) -> list[str]:
+    """What a lab run does between its phases, for the plan before the gate: the moves, and the groups it makes.
+    `route` is the networks the run visits, in order; it ends home on Hue."""
     names = ", ".join(bulb.entity_id for bulb in bulbs)
     lines = []
     if moving:
+        stops = [network for network in route if network != HOME]
         lines = [
-            f"Roams {names} together: {' -> '.join(NAMES[network] for network in route())}.",
-            f"  Hue -> ZHA: delete on the bridge, then ZHA joining for up to {JOIN_S} s, closed once all are in.",
-            f"  ZHA -> Z2M: zha.remove, then Z2M joining for up to {JOIN_S} s, closed once all are in.",
-            f"  Z2M -> Hue: Z2M remove, then a Hue search: open about {HUE_SEARCH_S} s, and it can't be ended early;",
+            f"Roams {names} together: {' -> '.join(NAMES[network] for network in [HOME, *stops, HOME])}.",
+            "  Leaving: Hue deletes the device on the bridge; ZHA and Z2M remove it.",
+            f"  Joining ZHA or Z2M: open for up to {JOIN_S} s, closed once all are in.",
+            f"  Joining Hue: a search, open about {HUE_SEARCH_S} s, and it can't be ended early;",
             "    one more only if a bulb is still missing. Any other device that joins meanwhile is named.",
             "  After each join the bulbs are renamed to their entity IDs; back on Hue their rooms and scenes are "
             "restored.",
@@ -227,14 +218,12 @@ class Roamer:
     # --- moving ---------------------------------------------------------------------------------------------------
 
     async def go(self, to: str) -> None:
-        """Remove the rig-made groups, then move every bulb forward round the cycle until all are on `to`. Bulbs on
-        different networks (after a crash) move in turn, furthest first, so they meet on the way. On a bulb found on
-        no network it raises RoamError."""
+        """Remove the rig-made groups, then move every bulb not on `to` straight there, in one move, whichever
+        networks they are on (after a crash, they may differ). On a bulb found on no network it raises RoamError."""
         await self.remove_groups()
         await self.settle(to)
-        while away := [bulb for bulb in self.bulbs if self.at[bulb.entity_id] != to]:
-            start = max({self.at[bulb.entity_id] for bulb in away}, key=lambda network: hops(network, to))
-            await self.move([bulb for bulb in away if self.at[bulb.entity_id] == start], start, following(start))
+        if away := [bulb for bulb in self.bulbs if self.at[bulb.entity_id] != to]:
+            await self.move(away, to)
         if to == HOME:
             await self.restore_home()
             if not await self.search_over():
@@ -242,8 +231,9 @@ class Roamer:
             self.finish()
 
     async def settle(self, to: str) -> None:
-        """Find every bulb, and finish a move a crash cut short: rename whoever reached `to`, and join `to` with any
-        bulb released and on no network. A bulb on no network that no move released raises RoamError."""
+        """Find every bulb, and finish a move a crash cut short: rename whoever reached `to`. A bulb that move released
+        and that is on no network stays None, for go to join to `to`; one on no network that no move released raises
+        RoamError."""
         for bulb in self.bulbs:
             self.at[bulb.entity_id] = await self.locate(bulb)
         # A bulb a crash caught between its release and its join is on no network, but joins whichever one opens.
@@ -260,23 +250,28 @@ class Roamer:
                         await self.adopt(to, bulb)
             self.moving = None
             self.save()
-        if nowhere:
-            await self.rejoin(nowhere, to)
 
-    async def move(self, bulbs: list[Bulb], source: str, target: str) -> None:
+    async def move(self, bulbs: list[Bulb], target: str) -> None:
+        """Release each bulb from the network it is on (none, for a bulb a crash left released) and join them all to
+        `target`."""
+        origins = {bulb.entity_id: self.at[bulb.entity_id] for bulb in bulbs}
         names = ", ".join(bulb.entity_id for bulb in bulbs)
-        self.out(f"Moving {names} from {NAMES[source]} to {NAMES[target]}.")
-        if source == HOME:
-            await self.save_home(bulbs)
-        self.moving = {"from": source, "to": target, "bulbs": [bulb.entity_id for bulb in bulbs]}
+        sources = [NAMES[network] for network in CYCLE if network in origins.values()]
+        if None in origins.values():
+            sources.append("no network (a move cut short)")
+        self.out(f"Moving {names} from {' and '.join(sources)} to {NAMES[target]}.")
+        if leaving_home := [bulb for bulb in bulbs if origins[bulb.entity_id] == HOME]:
+            await self.save_home(leaving_home)
+        self.moving = {"from": origins, "to": target, "bulbs": list(origins)}
         self.save()
         # A released bulb joins whatever network is open, so only the target may be.
         await self.close_all()
         for bulb in bulbs:
-            await self.release(source, bulb)
-            self.at[bulb.entity_id] = None
-            self.save()
-        await self.join(target, bulbs, source)
+            if (source := origins[bulb.entity_id]) is not None:
+                await self.release(source, bulb)
+                self.at[bulb.entity_id] = None
+                self.save()
+        await self.join(target, bulbs, origins)
         for bulb in bulbs:
             self.at[bulb.entity_id] = target
             self.save()
@@ -284,22 +279,6 @@ class Roamer:
         self.moving = None
         self.save()
         self.out(f"{names} on {NAMES[target]}.")
-
-    async def rejoin(self, bulbs: list[Bulb], to: str) -> None:
-        """Join bulbs already released, and on no network, straight to `to`: a move with nothing to release."""
-        names = ", ".join(bulb.entity_id for bulb in bulbs)
-        self.out(f"{names} on no network after a move cut short; joining {NAMES[to]}.")
-        self.moving = {"from": None, "to": to, "bulbs": [bulb.entity_id for bulb in bulbs]}
-        self.save()
-        await self.close_all()
-        await self.join(to, bulbs)
-        for bulb in bulbs:
-            self.at[bulb.entity_id] = to
-            self.save()
-            await self.adopt(to, bulb)
-        self.moving = None
-        self.save()
-        self.out(f"{names} on {NAMES[to]}.")
 
     async def close_all(self) -> None:
         """Close joining on every network. ZHA's state can't be read, so it is always closed explicitly; a Hue
@@ -356,7 +335,7 @@ class Roamer:
         if not await _until(gone, RELEASE_S):
             raise RoamError(f"{bulb.entity_id} is still on {NAMES[network]} {RELEASE_S} s after its removal")
 
-    async def join(self, network: str, bulbs: list[Bulb], source: str | None = None) -> None:
+    async def join(self, network: str, bulbs: list[Bulb], origins: dict[str, str | None] | None = None) -> None:
         """Open `network` for the bulbs and wait until all are in; ZHA and Z2M close once they are, or on a timeout."""
 
         async def all_in() -> bool:
@@ -374,12 +353,28 @@ class Roamer:
         else:
             arrived = await self.hue_join(bulbs, all_in)
         if not arrived:
-            missing = [bulb.entity_id for bulb in bulbs if not await self.joined(network, bulb)]
-            window = f"{HUE_SEARCHES} searches" if network == "hue" else f"{JOIN_S} s"
-            raise RoamError(
-                f"Not on any Zigbee network: {', '.join(missing)} did not join {NAMES[network]} within {window}. "
-                f"{MISSED_ZHA_LEAVE if source == 'zha' else BLUETOOTH_RESET}"
+            await self.missed(network, [bulb for bulb in bulbs if not await self.joined(network, bulb)], origins or {})
+
+    async def missed(self, network: str, bulbs: list[Bulb], origins: dict[str, str | None]) -> None:
+        """Raise RoamError for bulbs that didn't join `network`. One back on a network (it missed the Leave, or
+        rejoined the network it knew) is recorded there, so --recover moves it again."""
+        window = f"{HUE_SEARCHES} searches" if network == "hue" else f"{JOIN_S} s"
+        names = ", ".join(bulb.entity_id for bulb in bulbs)
+        found = {bulb.entity_id: await self.locate(bulb) for bulb in bulbs}
+        self.at.update({entity_id: where for entity_id, where in found.items() if where is not None})
+        self.save()
+        back = [f"{entity_id} on {NAMES[where]}" for entity_id, where in found.items() if where is not None]
+        lost = [bulb.entity_id for bulb in bulbs if found[bulb.entity_id] is None]
+        lines = [f"{names} did not join {NAMES[network]} within {window}."]
+        if back:
+            lines.append(
+                f"Still or again on a network: {', '.join(back)} (it missed the Leave, or rejoined the network it "
+                "knew); scripts/rig.py --recover moves it again."
             )
+        if lost:
+            hint = MISSED_ZHA_LEAVE if any(origins.get(entity_id) == "zha" for entity_id in lost) else BLUETOOTH_RESET
+            lines.append(f"Not on any Zigbee network: {', '.join(lost)}. {hint}")
+        raise RoamError(" ".join(lines))
 
     async def hue_join(self, bulbs: list[Bulb], all_in: Callable[[], Awaitable[bool]]) -> bool:
         """Search until every bulb is in: one search, and one more if a bulb is still missing when it ends. Returns

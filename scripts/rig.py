@@ -19,8 +19,9 @@ Under cmux the run colors its workspace: green holding the lock, amber waiting f
 A profile (tests/rig/profiles/<name>.yaml) names the entities a run may move and what it pauses; --profile picks
 one, and may be left out when there is only one.
 
-A profile with `roam:` has bulbs the run moves round Hue -> ZHA -> Z2M -> Hue (tests/rig/roam.py): the suites run in
-phases, Hue's with the fixed integrations', then ZHA's, then Z2M's, with a move before each and one home at the end.
+A profile with `roam:` has bulbs the run moves between Hue, ZHA and Z2M (tests/rig/roam.py): the suites run in
+phases, Hue's with the fixed integrations', then ZHA's, then Z2M's, each network only if it has suites, with a direct
+move before each and one straight home at the end.
 --recover, and the replay before the next run's gate, move them home. --roam-check runs the cycle with no suites.
 
 Usage: scripts/rig.py [--profile NAME] [--dry-run] [--no-deploy] [--unattended] [--integration KEY ...]
@@ -157,14 +158,16 @@ def makes_groups(profile: Profile, suites: list[Suite], roam_check: bool = False
 
 
 def phases(suites: list[Suite], roaming: bool) -> list[tuple[str | None, list[Suite]]]:
-    """The run's phases, each a network to move the bulbs to (None: no move) and the suites run there. Roaming, the
-    cycle's: Hue's suites with the fixed integrations', then ZHA's, then Z2M's, each in select's order."""
+    """The run's phases, each a network to move the bulbs to (None: no move) and the suites run there. Roaming: Hue's
+    suites with the fixed integrations', then ZHA's, then Z2M's, each in select's order, skipping a network with no
+    suites; a run with none (--roam-check) visits every network."""
     if not roaming:
         return [(None, suites)]
-    return [
+    by_network = [
         (network, [suite for suite in suites if (suite.integration if suite.integration in CYCLE else HOME) == network])
         for network in CYCLE
     ]
+    return [(network, held) for network, held in by_network if network == HOME or held or not suites]
 
 
 def plan_lines(
@@ -759,7 +762,16 @@ def print_phases(
     if not roaming and profile.roam:
         print("Roaming: none, as no ZHA or Z2M suite runs; the bulbs stay on Hue.")
     if roaming or grouping:
-        print("\n".join(roam_plan_lines(profile.roam, profile.roam_groups if grouping else (), roaming)))
+        print(
+            "\n".join(
+                roam_plan_lines(
+                    profile.roam,
+                    profile.roam_groups if grouping else (),
+                    roaming,
+                    [network for network, _ in phases(suites, roaming) if network],
+                )
+            )
+        )
     for network, phase_suites in phases(suites, roaming):
         print(f"Adapters on {NAMES[network]}:" if network else "Adapters:")
         for line in plan_lines(phase_suites, profile, registry, keyword) or ["none"]:

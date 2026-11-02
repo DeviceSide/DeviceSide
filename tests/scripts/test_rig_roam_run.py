@@ -102,6 +102,14 @@ def test_phases_follow_the_cycle_with_the_fixed_integrations_on_hue(tmp_path):
     assert rig.phases(run, False) == [(None, run)]
 
 
+def test_phases_skip_a_network_with_no_suites_and_the_check_visits_every_one(tmp_path):
+    run = suites(tmp_path, "zigbee2mqtt", "shelly")
+    assert [network for network, _ in rig.phases(run, True)] == ["hue", "zigbee2mqtt"]  # straight past ZHA
+    assert [network for network, _ in rig.phases([], True)] == ["hue", "zha", "zigbee2mqtt"]
+    lines = roam.plan_lines(lab_with_pause(tmp_path).roam, route=["hue", "zigbee2mqtt"])
+    assert lines[0] == "Roams light.lab_a, light.lab_b together: Hue -> Z2M -> Hue."
+
+
 async def test_a_roaming_run_moves_before_each_phase_and_ends_home(tmp_path, monkeypatch, lab):
     ran = fake_phases(monkeypatch, lab)
     journal = Journal(tmp_path / "journal.json")
@@ -135,7 +143,7 @@ async def test_a_failed_move_stops_the_run_and_leaves_the_bulbs_for_recover(tmp_
     lab.stuck.add(B[2:])
     journal = Journal(tmp_path / "journal.json")
 
-    with pytest.raises(SystemExit, match="Roaming stopped: Not on any Zigbee network: light.lab_b did not join ZHA"):
+    with pytest.raises(SystemExit, match="Roaming stopped: light.lab_b did not join ZHA"):
         await rig.run_rig(
             ENV, suites(tmp_path, "zha"), lab_with_pause(tmp_path), None, None, True, None, journal, roaming=True
         )
