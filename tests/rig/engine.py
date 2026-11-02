@@ -74,19 +74,14 @@ _OPS: dict[type, Callable[[float, float], float]] = {
     ast.Sub: operator.sub,
     ast.Mult: operator.mul,
 }
-NAMES = frozenset({"duration", "tol", "dimmest"})
+NAMES = frozenset({"duration", "tol"})
 
 
 @dataclass(frozen=True, slots=True)
 class Expr:
-    """A number checked when the file loads: a duration in seconds (`6`, `duration - tol`), or a range bound
-    (`dimmest + 7`, where `dimmest` is the light's lowest brightness, from the Hue bridge)."""
+    """A duration in seconds, such as `6`, `tol` or `duration - tol`, checked when the file loads."""
 
     node: ast.expr
-
-    @property
-    def names(self) -> frozenset[str]:
-        return frozenset(child.id for child in ast.walk(self.node) if isinstance(child, ast.Name))
 
     @classmethod
     def parse(cls, value: Any) -> Expr:
@@ -232,19 +227,13 @@ def _mapping(args: Any, required: Iterable[str] = (), allowed: Iterable[str] | N
 
 
 def _expected(value: Any) -> Any:
-    """A literal, or a {min, max} range for a number that drifts (brightness, color temperature), whose bounds are
-    numbers or expressions (`dimmest + 7`)."""
+    """A literal, or a {min, max} range for a number that drifts (brightness, color temperature)."""
     if isinstance(value, dict):
         if not value or set(value) - {"min", "max"}:
             raise ValueError(f"a range takes min and/or max, got {value!r}")
-        return {name: _bound(bound) for name, bound in value.items()}
+        if not all(isinstance(bound, int | float) for bound in value.values()):
+            raise ValueError(f"range bounds must be numbers, got {value!r}")
     return value
-
-
-def _bound(value: Any) -> float | Expr:
-    if isinstance(value, bool) or not isinstance(value, int | float | str):
-        raise ValueError(f"range bounds must be numbers or expressions, got {value!r}")
-    return Expr.parse(value) if isinstance(value, str) else value
 
 
 def _parse_set(args: Any) -> dict:
@@ -305,9 +294,6 @@ def _parse_sample(args: Any) -> dict:
         raise ValueError(f"expect must be rising, falling or steady, got {args['expect']!r}")
     if args.get("source", "ha") not in ("ha", "device_side"):
         raise ValueError(f"source must be ha or device_side, got {args['source']!r}")
-    for name in ("min", "max"):
-        if name in args:
-            args[name] = _bound(args[name])
     return args
 
 
@@ -932,7 +918,6 @@ class _CaseRun:
         self.last_action = case.suite.action
         self.query = False
         self.sent: dict[str, Any] = {}  # the last call's data
-        self.floors: dict[str, float] = {}  # each Hue light's dimmest brightness, read from the bridge once
 
     def entity(self, args: Any) -> str:
         role = args.get("target") if isinstance(args, dict) else None
@@ -1119,37 +1104,6 @@ class _CaseRun:
             return "scene", entry["unique_id"]
         return ("grouped_light" if self.is_group(entity_id) else "light"), entry["unique_id"]
 
-    async def resolved(self, entity_id: str, want: dict) -> dict:
-        """`want` with each range's expression bounds worked out for this light (`dimmest` is its own floor)."""
-        result = {}
-        for name, value in want.items():
-            if isinstance(value, dict) and any(isinstance(bound, Expr) for bound in value.values()):
-                names = self.names
-                if any("dimmest" in bound.names for bound in value.values() if isinstance(bound, Expr)):
-                    names = names | {"dimmest": await self.dimmest(entity_id)}
-                value = {k: bound.eval(names) if isinstance(bound, Expr) else bound for k, bound in value.items()}
-            result[name] = value
-        return result
-
-    async def dimmest(self, entity_id: str) -> float:
-        """The lowest brightness (0-255) HA shows for a Hue light, from the bridge's `min_dim_level` (percent): 13 for
-        a Hue White's 5 %, 1 for an ambiance bulb's 0.2 %. A group's is its members' highest, the most its mean can
-        be at the bottom."""
-        if self.integration != "hue" or self.bridge is None:
-            raise StepFailure("dimmest needs a Hue suite and its bridge (HUE_BRIDGE_HOST and HUE_APP_KEY in .env.rig)")
-        for member in (members := await self.members(entity_id)):
-            if member not in self.floors:
-                _, light_id = await self.bridge_resource(member)
-                try:
-                    (light,) = await self.bridge.get("light", light_id)
-                except BridgeError as err:
-                    raise StepFailure(str(err)) from None
-                if (level := light.get("dimming", {}).get("min_dim_level")) is None:
-                    raise StepFailure(f"{member}: the bridge reports no min_dim_level")
-                # As core's hue integration converts: round(percent / 100 * 255), and a light that is on shows >= 1.
-                self.floors[member] = max(1.0, round(level / 100 * 255))
-        return max(self.floors[member] for member in members)
-
     async def _bridge(self, args: dict, _following: str | None) -> None:
         if self.integration != "hue":
             raise StepFailure(f"bridge steps need a Hue suite, not {self.integration}")
@@ -1225,7 +1179,7 @@ class _CaseRun:
                 if not _matches(entry.get(name), expected := self.expected(name, want)):
                     raise StepFailure(f"{key}: {name} is {entry.get(name)!r}, expected {expected!r}: {entry}")
             if "attributes" in args:
-                want = await self.resolved(key, attributes[key])
+                want = attributes[key]
                 got = entry if self.query else entry.get("attributes") or {}
                 if bad := [attr for attr, value in want.items() if not _matches(_lookup(got, attr), value)]:
                     raise StepFailure(f"{key}: attributes {bad} are {got}, expected {want}")
@@ -1273,7 +1227,7 @@ class _CaseRun:
         states = {member: await self.ha.get_state(member) for member in members}
         wants = _by_modes(dict.fromkeys(members, want), states, entity_id)
         for member in members:
-            member_want = await self.resolved(member, wants[member])
+            member_want = dict(wants[member])
             if member_want.get("state") == "unchanged":
                 before = self.snapshot.taken.get(member)
                 member_want["state"] = before["state"] if before else None
@@ -1329,7 +1283,6 @@ class _CaseRun:
         percent): mid-move it predicts where the light is, where HA shows a Hue fade's end value at once.
         """
         entity_id, attribute, source = self.entity(args), args["attribute"], args.get("source", "ha")
-        bounds = (await self.resolved(entity_id, {"range": {k: args[k] for k in ("min", "max") if k in args}}))["range"]
         loop = asyncio.get_running_loop()
         deadline = loop.time() + args["for"].eval(self.names)
         every = max(args["every"].eval(self.names), 0.05)
@@ -1343,10 +1296,10 @@ class _CaseRun:
                 break
             await asyncio.sleep(min(every, max(deadline - loop.time(), 0)))
         shown = [round(reading, 1) for reading in readings]
-        if "min" in bounds and min(readings) < bounds["min"]:
-            raise StepFailure(f"{entity_id}: {attribute} fell below {bounds['min']:g}: {shown}")
-        if "max" in bounds and max(readings) > bounds["max"]:
-            raise StepFailure(f"{entity_id}: {attribute} rose above {bounds['max']:g}: {shown}")
+        if "min" in args and min(readings) < args["min"]:
+            raise StepFailure(f"{entity_id}: {attribute} fell below {args['min']}: {shown}")
+        if "max" in args and max(readings) > args["max"]:
+            raise StepFailure(f"{entity_id}: {attribute} rose above {args['max']}: {shown}")
         pairs = list(zip(readings, readings[1:], strict=False))
         match args.get("expect", "rising"):
             case "rising" if not (all(b >= a for a, b in pairs) and readings[-1] > readings[0]):

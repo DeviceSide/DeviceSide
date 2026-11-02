@@ -1677,14 +1677,9 @@ UNIQUE_IDS = {"light.bulb": "light-id", "light.room": "grouped-id", "scene.dusk"
 
 
 class FakeBridge:
-    def __init__(self, error: str | None = None, lights: dict[str, dict] | None = None):
+    def __init__(self, error: str | None = None):
         self.error = error
         self.puts: list[tuple[str, str, dict]] = []
-        self.lights = lights or {}  # light resources by id, for get
-
-    async def get(self, resource_type: str, resource_id: str | None = None) -> list[dict]:
-        assert resource_type == "light"
-        return [self.lights[resource_id]]
 
     async def put(self, resource_type: str, resource_id: str, body: dict) -> None:
         self.puts.append((resource_type, resource_id, body))
@@ -1857,54 +1852,3 @@ def test_a_run_cancelled_at_a_prompt_exits_without_waiting_for_an_answer():
     asyncio.run(cancelled_at_the_prompt())
     assert time.monotonic() - started < 2
     answered.set()
-
-
-DIMMEST = """
-action: set_scene
-rig_seconds: 5
-tests:
-  - name: dimmest
-    roles: [light_dimmable]
-    steps:
-      - expect_state: {brightness: {max: dimmest + 7}}
-"""
-
-
-@pytest.mark.parametrize(
-    ("min_dim_level", "brightness", "outcome"),
-    [
-        pytest.param(5.0, 20, Outcome.PASS, id="white_at_its_floor"),  # 5 % shows as 13
-        pytest.param(5.0, 21, Outcome.FAIL, id="white_above_it"),
-        pytest.param(0.2, 13, Outcome.FAIL, id="ambiance_at_the_whites_floor"),  # 0.2 % shows as 1
-        pytest.param(0.2, 8, Outcome.PASS, id="ambiance_at_its_floor"),
-    ],
-)
-async def test_dimmest_is_each_lights_own_floor(tmp_path, min_dim_level, brightness, outcome):
-    ha = BridgeHA()
-    ha.states["light.bulb"] |= {"state": "on", "attributes": {"brightness": brightness}}
-    bridge = FakeBridge(lights={"light-id": {"dimming": {"min_dim_level": min_dim_level}}})
-    steps = suite(tmp_path, DIMMEST, "hue")
-    result = await run_one(ha, steps, bridge_inventory(), registry=GROUP_REGISTRY, bridge=bridge)
-    assert outcomes(result)["dimmest[light_dimmable]"][0] is outcome
-
-
-async def test_dimmest_without_a_bridge_says_what_to_set(tmp_path):
-    steps = suite(tmp_path, DIMMEST, "hue")
-    result = await run_one(BridgeHA(), steps, bridge_inventory(), registry=GROUP_REGISTRY, bridge=None)
-    outcome, detail = outcomes(result)["dimmest[light_dimmable]"]
-    assert outcome is Outcome.FAIL
-    assert "dimmest needs a Hue suite and its bridge" in detail
-
-
-async def test_a_sample_bound_can_be_the_dimmest(tmp_path):
-    text = DIMMEST.replace(
-        "expect_state: {brightness: {max: dimmest + 7}}",
-        "sample: {attribute: brightness, for: 0.1, every: 0.05, expect: steady, max: dimmest + 7}",
-    )
-    ha = BridgeHA()
-    ha.states["light.bulb"] |= {"state": "on", "attributes": {"brightness": 21}}
-    bridge = FakeBridge(lights={"light-id": {"dimming": {"min_dim_level": 5.0}}})
-    result = await run_one(ha, suite(tmp_path, text, "hue"), bridge_inventory(), registry=GROUP_REGISTRY, bridge=bridge)
-    outcome, detail = outcomes(result)["dimmest[light_dimmable]"]
-    assert outcome is Outcome.FAIL
-    assert "brightness rose above 20" in detail
