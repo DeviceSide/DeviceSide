@@ -175,8 +175,9 @@ class ZHARamp(Adapter[RampRequest]):
     get one groupcast, so they fade together, each recorded from its own start, and the group's start is the mean of
     its lit members.
 
-    Raising brightness is MoveToLevelWithOnOff, which turns the light on; a light that is off is first set to level 1
-    with ExecuteIfOff, so it fades in from the bottom rather than its stored level. Lowering to a limit is MoveToLevel,
+    Raising brightness is MoveToLevelWithOnOff, which turns the light on; a light that is off is first set to level 1,
+    so it fades in from the bottom rather than its stored level: a Hue bulb turned on there by Hue's own command
+    (zcl.hue_turn_on), any other light set there with ExecuteIfOff. Lowering to a limit is MoveToLevel,
     which a light that is off ignores. Lowering to 0 is MoveToLevelWithOnOff to 0, which leaves the bulb at level 1;
     once it reads off, its start level goes back with ExecuteIfOff, so it stays off and comes back at its old level, as
     on Hue. Models that drop a level while off (zcl.DROPS_WHILE_OFF) get neither: they start a raise at their stored
@@ -270,10 +271,10 @@ async def start(
         }
         # Unicast: each concerns one light's own stored level.
         for light in outcome.presets:
-            bottom = {"level": 1, **zcl.execute_if_off(0)}
-            await zcl.command(
-                hass, address(light.entry.unique_id), zcl.LEVEL_CLUSTER, zcl.MOVE_TO_LEVEL, bottom, context
-            )
+            addr = address(light.entry.unique_id)
+            if not await zcl.hue_turn_on(hass, addr, 1, context):
+                bottom = {"level": 1, **zcl.execute_if_off(0)}
+                await zcl.command(hass, addr, zcl.LEVEL_CLUSTER, zcl.MOVE_TO_LEVEL, bottom, context)
         await send(hass, gid, outcome.movers, outcome.command, context)
     for light in outcome.movers:
         if outcome.attribute == BRIGHTNESS:

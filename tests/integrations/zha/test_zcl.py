@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from homeassistant.core import Context
+from homeassistant.exceptions import HomeAssistantError, Unauthorized
 from pytest_homeassistant_custom_component.common import async_mock_service
 
 from custom_components.device_side.integrations.zha import zcl
@@ -15,6 +16,8 @@ from custom_components.device_side.integrations.zha.addressing import Address
 from ...fixtures.zha import IEEE
 
 ADDR = Address(IEEE, 11)
+# The real one: conftest fakes zcl.hue_turn_on for every test.
+HUE_TURN_ON = zcl.hue_turn_on
 
 
 @pytest.fixture
@@ -29,7 +32,7 @@ def gateway(hass, monkeypatch, cluster):
     device.async_get_cluster.return_value = cluster
     gw = MagicMock()
     gw.get_device.return_value = device
-    types = SimpleNamespace(EUI64=SimpleNamespace(convert=lambda ieee: ieee))
+    types = SimpleNamespace(EUI64=SimpleNamespace(convert=lambda ieee: ieee), Struct=object, SerializableBytes=bytes)
     monkeypatch.setitem(hass.data, "zha", SimpleNamespace(gateway_proxy=SimpleNamespace(gateway=gw)))
     monkeypatch.setitem(sys.modules, "zigpy.types", types)
     return gw
@@ -143,3 +146,45 @@ async def test_group_command_sends_positional_args(hass):
 @pytest.mark.parametrize(("percent", "level"), [(0, 1), (0.1, 1), (50, 127), (100, 254)])
 def test_level(percent, level):
     assert zcl.level(percent) == level
+
+
+async def test_hue_turn_on_sends_multicolor_on_at_the_level_with_no_fade(hass, gateway, cluster):
+    """Flags 0x0013 (on, brightness, fade time), then on, the level and a fade of 0, as Z2M's hue_native_control."""
+    cluster.request = AsyncMock(return_value=SimpleNamespace(status=0))
+
+    assert await HUE_TURN_ON(hass, ADDR, 1, Context()) is True
+
+    gateway.get_device.return_value.async_get_cluster.assert_called_once_with(11, 0xFC03, cluster_type="in")
+    general, command_id, _schema, payload = cluster.request.await_args.args
+    assert (general, command_id, payload) == (False, 0x00, bytes.fromhex("1300 01 01 0000"))
+    assert cluster.request.await_args.kwargs == {"manufacturer": 0x100B}
+
+
+async def test_hue_turn_on_without_hues_cluster_sends_nothing(hass, gateway, cluster):
+    gateway.get_device.return_value.async_get_cluster.side_effect = KeyError(0xFC03)
+    cluster.request = AsyncMock()
+
+    assert await HUE_TURN_ON(hass, ADDR, 1, Context()) is False
+    cluster.request.assert_not_awaited()
+
+
+async def test_hue_turn_on_failed_status_raises(hass, gateway, cluster):
+    cluster.request = AsyncMock(return_value=SimpleNamespace(status=0x81))
+
+    with pytest.raises(HomeAssistantError, match="answered 129"):
+        await HUE_TURN_ON(hass, ADDR, 1, Context())
+
+
+async def test_hue_turn_on_refuses_a_non_admin_as_zha_does(hass, gateway, cluster, hass_read_only_user):
+    """It goes to zigpy, past zha's admin-only action, so it makes the same check."""
+    cluster.request = AsyncMock()
+
+    with pytest.raises(Unauthorized):
+        await HUE_TURN_ON(hass, ADDR, 1, Context(user_id=hass_read_only_user.id))
+    cluster.request.assert_not_awaited()
+
+
+async def test_hue_turn_on_lets_an_admin_through(hass, gateway, cluster, hass_admin_user):
+    cluster.request = AsyncMock(return_value=SimpleNamespace(status=0))
+
+    assert await HUE_TURN_ON(hass, ADDR, 1, Context(user_id=hass_admin_user.id)) is True

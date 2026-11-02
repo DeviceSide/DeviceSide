@@ -2,9 +2,11 @@
 through the zha integration's gateway."""
 
 import logging
+import struct
 from typing import Any
 
 from homeassistant.core import Context, HomeAssistant
+from homeassistant.exceptions import HomeAssistantError, Unauthorized, UnknownUser
 
 from .addressing import Address
 from ...core.zcl_write import level as level
@@ -37,6 +39,15 @@ MOVE_TO_COLOR = 0x07
 MOVE_TO_COLOR_TEMP = 0x0A
 ENHANCED_MOVE_HUE = 0x41
 STOP_MOVE_STEP = 0x47
+
+# Signify's own cluster on Hue bulbs, whose multiColor command sets on, brightness and fade time in one; Z2M sends it
+# with hue_native_control on (zigbee-herdsman-converters src/lib/philips.ts).
+HUE_CLUSTER = 0xFC03
+HUE_MULTI_COLOR = 0x00
+SIGNIFY = 0x100B
+# multiColor's payload: flags, then each flagged field in Hue's wire order: on (1 byte), brightness (1 byte, 1-254),
+# fade time (2 bytes, tenths).
+_HUE_ON_BRIGHTNESS_FADE = 0x0013
 
 # Models that don't store a MoveToLevel while off: the Sengled E11-G13 jumps CurrentLevel to 255 with or without the
 # override and comes on at full (docs/integrations.md, ZHA tested behavior).
@@ -134,6 +145,46 @@ async def read_attributes(
         if attribute not in success:
             raise LookupError(f"Attribute 0x{attribute:04x} not read: {failure.get(attribute)}")
     return {attribute: success[attribute] for attribute in wanted if attribute in success}
+
+
+async def require_admin(hass: HomeAssistant, context: Context | None) -> None:
+    """The check zha's admin-only actions make, for a command sent straight to zigpy rather than through them: a call
+    with no user is Home Assistant's own."""
+    if context is None or context.user_id is None:
+        return
+    if (user := await hass.auth.async_get_user(context.user_id)) is None:
+        raise UnknownUser(context=context, user_id=context.user_id)
+    if not user.is_admin:
+        raise Unauthorized(context=context)
+
+
+async def hue_turn_on(hass: HomeAssistant, addr: Address, level: int, context: Context | None) -> bool:
+    """Turn a Hue bulb on at `level`, with no fade, in one multiColor command; False, with nothing sent, for a light
+    without Hue's cluster.
+
+    A Hue bulb on ZHA ignores a level sent just before it is turned on, by MoveToLevel with ExecuteIfOff or by
+    MoveToLevelWithOnOff, and fades from its stored one; turned on this way it starts at `level`, as on Z2M with
+    hue_native_control. zha has no action for a command its cluster doesn't define, so it goes to zigpy, behind zha's
+    admin check. Raises on a delivery failure or a non-success status, as command() does.
+    """
+    from zigpy.types import EUI64, SerializableBytes, Struct
+
+    if (device := gateway(hass).get_device(EUI64.convert(addr.ieee))) is None:
+        raise LookupError(f"ZHA device {addr.ieee} not found")
+    try:
+        cluster = device.async_get_cluster(addr.endpoint_id, HUE_CLUSTER, cluster_type="in")
+    except KeyError:
+        return False
+    await require_admin(hass, context)
+
+    class MultiColor(Struct):
+        data: SerializableBytes
+
+    payload = struct.pack("<HBBH", _HUE_ON_BRIGHTNESS_FADE, 1, max(1, min(level, 254)), 0)
+    response = await cluster.request(False, HUE_MULTI_COLOR, MultiColor, payload, manufacturer=SIGNIFY)
+    if (status := getattr(response, "status", 0)) != 0:
+        raise HomeAssistantError(f"multiColor to {addr.ieee} answered {status}")
+    return True
 
 
 async def enhanced_hue(hass: HomeAssistant, addr: Address) -> bool:

@@ -34,6 +34,14 @@ async def unload_mock_zha_entries(hass):
         entry.mock_state(hass, ConfigEntryState.NOT_LOADED)
 
 
+@pytest.fixture(autouse=True)
+def hue_turn_on(monkeypatch) -> AsyncMock:
+    """zcl.hue_turn_on on lights without Hue's cluster, as the fixtures' lights are unless a test says otherwise."""
+    fake = AsyncMock(return_value=False)
+    monkeypatch.setattr(zcl, "hue_turn_on", fake)
+    return fake
+
+
 @pytest.fixture
 def zha_groups(monkeypatch) -> dict:
     """The fake zha gateway's groups by ID; the gateway answers get_group from it."""

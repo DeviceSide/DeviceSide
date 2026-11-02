@@ -1,8 +1,10 @@
-"""ZHA raise_brightness: MoveToLevelWithOnOff to the limit, a light that is off put at the bottom first."""
+"""ZHA raise_brightness: MoveToLevelWithOnOff to the limit, a light that is off put at the bottom first (a Hue bulb by
+Hue's own command)."""
 
 import pytest
 
 from custom_components.device_side.core.transition import BRIGHTNESS
+from custom_components.device_side.integrations.zha.addressing import Address
 from custom_components.device_side.integrations.zha.fade import transition_cache
 
 from .conftest import BOTTOM, SENT, A, B, bulb, sent, to, unchanged
@@ -35,6 +37,26 @@ async def test_from_off_starts_at_the_bottom(hass, commands):
     await call(hass, "raise_brightness", {"entity_id": "light.bulb"})
 
     assert sent(commands) == [BOTTOM, (0x0008, 0x04, {"level": 254, "transition_time": 50})]
+
+
+async def test_from_off_a_hue_bulb_is_turned_on_at_the_bottom_by_hues_command(hass, commands, hue_turn_on):
+    """A Hue bulb ignores the ExecuteIfOff level and fades from its stored one (13f lab run), so it gets multiColor."""
+    hue_turn_on.return_value = True
+    bulb(hass, state="off")
+
+    await call(hass, "raise_brightness", {"entity_id": "light.bulb"})
+
+    assert hue_turn_on.await_args.args[1:3] == (Address(IEEE, 11), 1)
+    assert sent(commands) == [(0x0008, 0x04, {"level": 254, "transition_time": 50})]
+
+
+async def test_a_lit_hue_bulb_gets_no_bottom(hass, commands, hue_turn_on):
+    hue_turn_on.return_value = True
+    bulb(hass)
+
+    await call(hass, "raise_brightness", {"entity_id": "light.bulb"})
+
+    hue_turn_on.assert_not_awaited()
 
 
 async def test_from_off_on_a_model_that_drops_levels_while_off_skips_the_bottom(hass, commands):
