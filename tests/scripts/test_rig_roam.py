@@ -8,7 +8,7 @@ import pytest
 from scripts import check_private
 from tests.rig import roam
 from tests.rig.journal import Journal
-from tests.rig.profile import Profile
+from tests.rig.profile import Profile, normalize_ieee
 from tests.rig.roam import Roamer, RoamError
 from tests.scripts.rig_fakes import LAB_A, LAB_B, LAB_BULBS, LAB_OPTIONS, FakeBridge, FakeHA, Lab, lab_profile
 
@@ -109,7 +109,11 @@ async def test_the_journal_names_the_move_in_flight_before_the_release(lab, tmp_
 
     lab.bridge.on_delete = on_delete
     await roamer(lab, journal).go("zha")
-    assert seen[0]["move"] == {"from": "hue", "to": "zha", "bulbs": ["light.lab_a", "light.lab_b"]}
+    assert seen[0]["move"] == {
+        "from": {"light.lab_a": "hue", "light.lab_b": "hue"},
+        "to": "zha",
+        "bulbs": ["light.lab_a", "light.lab_b"],
+    }
     assert seen[0]["bulbs"][0] == {"ieee": A[2:], "entity_id": "light.lab_a", "z2m_options": OPTIONS}
     assert set(seen[0]["home"]) == {"light.lab_a", "light.lab_b"}
     roamed = journal.get("roam")
@@ -120,7 +124,10 @@ async def test_a_bulb_that_never_joins_aborts_with_the_reset_instruction_and_clo
     monkeypatch.setattr(roam, "JOIN_S", 0.05)
     lab.stuck.add(A[2:])
     journal = Journal(tmp_path / "journal.json")
-    with pytest.raises(RoamError, match=r"light.lab_a did not join ZHA within 0.05 s\. Reset it over Bluetooth"):
+    with pytest.raises(
+        RoamError,
+        match=r"light.lab_a did not join ZHA within 0.05 s\. Not on any Zigbee network: light.lab_a\. Reset it over",
+    ):
         await roamer(lab, journal).go("zha")
     assert not lab.ha.zha_open
     roamed = journal.get("roam")
@@ -132,7 +139,10 @@ async def test_z2m_joining_is_closed_even_when_a_bulb_never_joins(lab, monkeypat
     await roamer(lab).go("zha")
     monkeypatch.setattr(roam, "JOIN_S", 0.05)
     lab.stuck.add(B[2:])
-    with pytest.raises(RoamError, match="light.lab_b did not join Z2M"):
+    with pytest.raises(
+        RoamError,
+        match=r"did not join Z2M within 0.05 s\. Not on any Zigbee network: light.lab_b\. It may have missed ZHA.s",
+    ):
         await roamer(lab).go("zigbee2mqtt")
     assert not lab.ha.z2m_open
     assert await where(lab) == ["zigbee2mqtt", None]
@@ -185,7 +195,27 @@ async def test_recovery_moves_the_bulbs_home_from_wherever_a_crash_left_them(lab
     assert not journal.path.exists()
 
 
-async def test_bulbs_split_across_networks_meet_on_the_way_home(lab):
+async def test_recovery_joins_bulbs_released_mid_move_and_on_no_network_straight_home(lab, tmp_path, monkeypatch):
+    journal = Journal(tmp_path / "journal.json")
+    lab.stuck |= {A[2:], B[2:]}
+    with monkeypatch.context() as patch:
+        patch.setattr(roam, "JOIN_S", 0)
+        with pytest.raises(RoamError):
+            await roamer(lab, journal).go("zha")
+    lab.stuck.clear()  # still searching: they join whatever opens next
+    assert await where(lab) == [None, None]
+
+    printed = []
+    await Roamer.from_journal(lab.ha, lab.bridge, Journal(journal.path), printed.append).go(roam.HOME)
+
+    assert "Moving light.lab_a, light.lab_b from no network (a move cut short) to Hue." in printed
+    assert await where(lab) == ["hue", "hue"]
+    assert lab.device_of("light.lab_a")["identifiers"][0][0] == "hue"
+    assert len(lab.bridge.resources["room"]["r1"]["children"]) == 3
+    assert not journal.path.exists()
+
+
+async def test_bulbs_split_across_networks_go_home_in_one_move(lab):
     await roamer(lab).go("zha")
     await Roamer(lab.ha, lab.bridge, BULBS[1:], None, out=lambda _: None).go("zigbee2mqtt")
     assert await where(lab) == ["zha", "zigbee2mqtt"]
@@ -193,10 +223,7 @@ async def test_bulbs_split_across_networks_meet_on_the_way_home(lab):
     await roamer(lab, out=printed.append).go("hue")
     assert await where(lab) == ["hue", "hue"]
     moves = [line for line in printed if line.startswith("Moving")]
-    assert moves == [
-        "Moving light.lab_a from ZHA to Z2M.",
-        "Moving light.lab_a, light.lab_b from Z2M to Hue.",
-    ]
+    assert moves == ["Moving light.lab_a, light.lab_b from ZHA and Z2M to Hue."]  # one direct move, one search
     assert lab.searches == 1
 
 
@@ -208,10 +235,6 @@ async def test_a_bulb_on_no_network_stops_with_the_reset_instruction(lab, tmp_pa
         await Roamer.from_journal(lab.ha, lab.bridge, journal).go(roam.HOME)
     assert await where(lab) == ["zha", None]
     assert journal.get("roam")["home"]
-
-
-def test_the_route_starts_and_ends_at_home():
-    assert roam.route() == ["hue", "zha", "zigbee2mqtt", "hue"]
 
 
 def test_a_profile_lists_each_roaming_bulb_under_every_network(tmp_path):
@@ -352,7 +375,10 @@ async def test_a_bulb_missing_after_both_hue_searches_stops_the_move(lab):
     moving = roamer(lab)
     await moving.go("zigbee2mqtt")
     lab.stuck.add(B[2:])
-    with pytest.raises(RoamError, match=r"light.lab_b did not join Hue within 2 searches\. Reset it over Bluetooth"):
+    with pytest.raises(
+        RoamError,
+        match=r"light.lab_b did not join Hue within 2 searches\. Not on any Zigbee network: light.lab_b\. Reset it",
+    ):
         await moving.go("hue")
     assert lab.searches == 2
 
@@ -397,3 +423,66 @@ async def test_recovery_names_a_device_that_joined_the_search_a_crash_cut_short(
     await Roamer.from_journal(lab.ha, lab.bridge, Journal(journal.path), printed.append).go("hue")
     assert sum("isn't a roaming bulb" in line for line in printed) == 1
     assert not journal.path.exists()
+
+
+async def test_a_bulb_goes_home_from_zha_in_one_direct_move(lab):
+    await roamer(lab).go("zha")
+    printed = []
+    await roamer(lab, out=printed.append).go(roam.HOME)
+    assert [line for line in printed if line.startswith("Moving")] == [
+        "Moving light.lab_a, light.lab_b from ZHA to Hue."
+    ]
+    assert await where(lab) == ["hue", "hue"]
+    assert lab.searches == 1 and not lab.ha.z2m_open
+
+
+async def test_the_bulbs_leave_last_joined_first_so_no_leave_goes_through_a_bulb_already_gone(lab, tmp_path):
+    # A bulb often joins through one that joined before it; removing that parent first lost the later bulb's Leave.
+    journal = Journal(tmp_path / "journal.json")
+    await roamer(lab, journal).go("zha")
+    assert journal.get("roam")["arrived"] == ["light.lab_a", "light.lab_b"]
+    await Roamer.from_journal(lab.ha, lab.bridge, journal, out=lambda _: None).go("zigbee2mqtt")
+    removed = [c[2]["ieee"] for c in lab.ha.calls if c[1] == "remove"]
+    assert [normalize_ieee(ieee) for ieee in removed] == [normalize_ieee(B), normalize_ieee(A)]
+
+
+def test_a_bulb_whose_join_wasnt_seen_is_released_first(lab):
+    rig = roamer(lab)
+    rig.arrived = ["light.lab_a"]
+    assert [bulb.entity_id for bulb in rig.release_order(rig.bulbs)] == ["light.lab_b", "light.lab_a"]
+    rig.arrived = ["light.lab_b", "light.lab_a"]
+    assert [bulb.entity_id for bulb in rig.release_order(rig.bulbs)] == ["light.lab_a", "light.lab_b"]
+
+
+async def test_a_bulb_that_missed_its_leave_is_recorded_where_it_stayed_and_recovery_moves_it_again(
+    lab, tmp_path, monkeypatch
+):
+    journal = Journal(tmp_path / "journal.json")
+    await roamer(lab, journal).go("zha")
+    released = Roamer.release
+
+    async def deaf_b(self, network, bulb):
+        if bulb.entity_id != "light.lab_b":  # light.lab_b ignores the Leave and stays on ZHA
+            await released(self, network, bulb)
+
+    monkeypatch.setattr(roam, "JOIN_S", 0.05)
+    with monkeypatch.context() as patch:
+        patch.setattr(Roamer, "release", deaf_b)
+        with pytest.raises(RoamError, match=r"Still or again on a network: light.lab_b on ZHA .*--recover moves it"):
+            await roamer(lab, Journal(journal.path)).go("zigbee2mqtt")
+    assert Journal(journal.path).get("roam")["at"]["light.lab_b"] == "zha"
+
+    await Roamer.from_journal(lab.ha, lab.bridge, Journal(journal.path), lambda _: None).go(roam.HOME)
+    assert await where(lab) == ["hue", "hue"]
+
+
+async def test_a_z2m_remove_that_cant_be_delivered_stops_with_the_power_cycle_instruction(lab, monkeypatch):
+    await roamer(lab).go("zigbee2mqtt")
+
+    async def undeliverable(ieee):
+        raise TimeoutError(f"Zigbee2MQTT did not remove {ieee} within 30 s")
+
+    monkeypatch.setattr(lab.ha, "z2m_remove_device", undeliverable)
+    with pytest.raises(RoamError, match=r"Z2M couldn't remove light.lab_a: it didn't take the Leave\. Switch its lamp"):
+        await roamer(lab).go(roam.HOME)
+    assert await where(lab) == ["zigbee2mqtt", "zigbee2mqtt"]
