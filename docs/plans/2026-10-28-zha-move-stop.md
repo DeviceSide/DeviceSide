@@ -108,7 +108,8 @@ mean beside the dotted `_lookup`. A fresh `/audit-code` of the fit, the group sa
 
 1. ~~Recover the light_ct bulb.~~ Done (2026-11-02): after a power cycle ZHA took it back, and `--recover` moved it
    home to Hue with its rooms and scenes.
-2. **Rig-probe (b), built in `53a0f88`** (Jason chose it): an off light with Signify's cluster `0xFC03` is turned on
+2. ~~Rig-probe (b).~~ **Passed** (2026-11-02, 21:09, `-k raise_from_off`, HA on `492ac11`): `raise_from_off`
+   on light_ct and on the group, and all three bulbs went home to Hue. Built in `53a0f88` (Jason chose it): an off light with Signify's cluster `0xFC03` is turned on
    at level 1 by `multiColor` (flags `0x0013`: on, brightness 1, fade 0; manufacturer `0x100B`), sent through
    zigpy (`zcl.hue_turn_on`) behind zha's admin check, then `MoveToLevelWithOnOff` fades it as before; other lights
    keep `MoveToLevel` with ExecuteIfOff. Untried live: the zigpy call shape (`cluster.request(False, 0x00, Struct
