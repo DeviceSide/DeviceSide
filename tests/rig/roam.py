@@ -49,6 +49,9 @@ HUE_SEARCH_S = 56  # how long a Hue search stays open; it can't be ended early
 # opens one window, and a failing one two, for whatever device is resetting nearby to join.
 HUE_SEARCHES = 2
 POLL_S = 2.0
+# Between ZHA removes: removed back to back, the first bulb took its Leave and a later one mostly didn't (three of
+# four tries in the lab), staying on ZHA's network, unseen by HA and deaf to the next network, until power-up.
+ZHA_LEAVE_GAP_S = 5
 GONE_S = 15  # for HA to drop a rig-made group's entity once the group is removed; after that the rig removes it
 # The rig-made Hue scene: every member on at 40 %, and 366 mirek (2732 K) where it takes a color temperature. Below
 # full, so a recall mid-fade shows (raise_brightness-predicted_state's bridge_scene_recall_mid_fade_shows_at_once).
@@ -66,8 +69,8 @@ BLUETOOTH_RESET = (
     "Reset it over Bluetooth in the Hue app and add it to the bridge, then run scripts/rig.py --recover, which puts "
     "back its Hue rooms and scenes; the journal keeps them until then."
 )
-# zha.remove drops a bulb from HA whether or not it acts on the Leave; the lab saw two of three stay on ZHA's network
-# until power-up, when they announced themselves and ZHA added them back.
+# zha.remove drops a bulb from HA whether or not it acts on the Leave; one that misses it stays on ZHA's network until
+# power-up, when it announces itself and ZHA adds it back.
 MISSED_ZHA_LEAVE = (
     "It may have missed ZHA's Leave: switch its lamp off and on, and once ZHA shows it again run scripts/rig.py "
     "--recover. If ZHA doesn't show it, reset it over Bluetooth in the Hue app and add it to the bridge first."
@@ -266,8 +269,12 @@ class Roamer:
         self.save()
         # A released bulb joins whatever network is open, so only the target may be.
         await self.close_all()
+        zha_removed = False
         for bulb in bulbs:
             if (source := origins[bulb.entity_id]) is not None:
+                if source == "zha" and zha_removed:
+                    await asyncio.sleep(ZHA_LEAVE_GAP_S)
+                zha_removed |= source == "zha"
                 await self.release(source, bulb)
                 self.at[bulb.entity_id] = None
                 self.save()
