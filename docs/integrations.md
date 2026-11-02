@@ -475,6 +475,11 @@ A model shown to mishandle a write while off (tested behavior, below) is refused
 `execute_if_off_unsupported`. A ZHA group expands to its members, written one at a time. Lights
 only.
 
+After an off with a transition, ZHA keeps the light's level from before it and sends it on the next
+`light.turn_on` without a brightness, which would undo a level written while off. A level write
+replaces that kept level with the new one, on the light and, for an explicit `brightness` on a group,
+on the group's light too.
+
 ### `get_attributes`
 
 Reads each light live, never from zigpy's attribute cache: ZHA doesn't apply color temperature
@@ -714,6 +719,11 @@ into that range, so they work while off; a light already inside it is `unchanged
 A field a light can't take (color on a white bulb) is dropped and the result is `sent` with
 `fields_dropped`. A light that can take none of them is `unchanged` with `fields_dropped`.
 
+After an off with a transition, Home Assistant keeps a light's or room's level from before it and
+sends it on the next `light.turn_on` without a brightness, which would undo a level written while
+off. A brightness write replaces that kept level with the new one, on the light and, for an explicit
+`brightness` on a room, on the room too.
+
 ### `get_attributes`
 
 Returns `brightness` (percent, to one decimal), `color_temp_kelvin`, `xy_color`, `rgb_color` and
@@ -781,7 +791,8 @@ Hue app within 15 seconds of a fade to off.
 With **Show predicted brightness during Hue fades** on (the default), Home Assistant shows Device
 Side's predictions in place of those reports: the brightness at the start while a fade runs, where a
 stop halted the light, and the end once the fade has run. A fade to off shows the light on until it
-ends, a raise from off shows it on at its dimmest, and a room shows the mean of its lit lights. A
+ends, a raise from off shows it on at its lowest step (0.4 %, where the fade starts; not the bulb's rated
+minimum output, which the bridge reports levels below), and a room shows the mean of its lit lights. A
 change caught as made elsewhere shows at once; one not caught shows once the bridge next reports
 after the raise, lower or stop is no longer remembered. Nothing is sent while a fade runs, so a dashboard slider holds
 still and then jumps to the stop or the end. After Home Assistant restarts, or reconnects to the
@@ -849,6 +860,9 @@ it arrives, so Home Assistant shows what is listed here.
 - **One write per light.** `set_scene` writes a scene's lights one after another; an 8-light scene
   takes under a second. The bridge refuses more than 3 requests at once and aiohue retries, so a
   much larger scene may take longer.
+- **A room soft-offed as a room keeps its level.** A light set on its own while off, in a room that
+  was turned off with a transition, comes on at the room's kept level when the room is turned on
+  without a brightness. Set the room instead.
 - **Lights with no entity in Home Assistant are skipped.** A light in a room whose light entity was
   deleted gets no write from `set_attributes` on the room and no row from `get_attributes`, though
   `set_scene` writes it. A disabled entity still counts: its light is written and reported.

@@ -49,6 +49,7 @@ v0.1.0 is the next release.
 | 15 (PR 3 of 5) | Rig roaming: lab bulbs move Hue → ZHA → Z2M → Hue within a run, suites in phases, fixed entity IDs, Hue home restored, `--recover` and `--roam-check` | #151 |
 | 15 (PR 4 of 5) | Rig-made `ds-rig-*` groups, zones and scenes: made on each visit from `roam.groups`, renamed to fixed entity IDs, removed before each move and by `--recover`; Hue group and scene cases are lab-only | #154 |
 | 15 (follow-up) | Roaming: a second Hue search only for a bulb still missing; a stranger that joins a search is named and left | #153 |
+| 15 (PR 5 of 5) | Lab bring-up: direct moves, bulbs released last joined first, no one-member ZHA groups; first lab run's 12 records (`Profile \| lab`), its 26 failures a follow-up | #157 |
 
 ## To go, in order
 
@@ -82,7 +83,8 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. The rig lock
   - [x] PR 4: rig-made `ds-rig-*` groups, zones and scenes on each visit, #154.
   - [x] PR 5: lab bring-up (attended): the A60 moves into the lab, `profiles/lab.yaml`, a `--roam-check` round trip
     that probes the two new bulbs, #157.
-- [ ] **15 follow-up** The first lab run's 26 failures (#157; findings in the lab plan): group cases that expect every
+- [ ] **15 follow-up** The first lab run's 26 failures (#157; findings in the lab plan; fixes in
+  `docs/plans/2026-11-02-lab-run-failures.md`): group cases that expect every
   member to take color temperature (the lab group holds the White bulb), Z2M `not_stored` on the white ambiance
   bulb (`hue_native_control` since added to its options; to be rerun), a Hue `get_attributes` case that calls `turn_on_for` where Hue has
   no adapter, ZHA not keeping a setting made while off, a full-brightness power-on after a soft off, and single

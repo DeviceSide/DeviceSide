@@ -3,10 +3,14 @@
 Brightness is percent, as on hue_dimmer, so the bridge gets it unchanged.
 """
 
+from types import SimpleNamespace
+
 import probatio
 import pytest
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.util.color import color_hs_to_xy, color_RGB_to_xy
+
+from custom_components.device_side.integrations.hue import set_attributes as adapter
 
 from ...conftest import call, refusal
 from ...fixtures.hue import add_hue_entity, add_hue_group, hue_entry
@@ -297,3 +301,82 @@ async def test_color_is_sent_as_is_when_the_reported_gamut_is_degenerate(hass, b
     await call(hass, "set_attributes", {"entity_id": "light.lamp", "xy_color": [0.1, 0.9]})
 
     assert bridge.puts == [("light/light-1", color((0.1, 0.9)))]
+
+
+@pytest.fixture
+def entities(monkeypatch):
+    """HA's live entity objects by entity_id, as core's hue integration holds them; absent ones aren't loaded."""
+    loaded: dict[str, SimpleNamespace] = {}
+    monkeypatch.setattr(adapter, "ha_entity", lambda hass, entity_id: loaded.get(entity_id))
+    return loaded
+
+
+async def test_a_write_replaces_the_level_ha_kept_after_a_soft_off(hass, bridge, entities):
+    """HA's light kept 100 % from before an off with a transition; the next plain on would send it."""
+    await lamp(hass, bridge, on=False)
+    entities["light.lamp"] = SimpleNamespace(_last_brightness=100.0)
+
+    await call(hass, "set_attributes", {"entity_id": "light.lamp", "brightness": 40})
+
+    assert entities["light.lamp"]._last_brightness == 40.0
+
+
+async def test_a_light_ha_kept_no_level_for_keeps_its_plain_on(hass, bridge, entities):
+    await lamp(hass, bridge, on=False)
+    entities["light.lamp"] = SimpleNamespace(_last_brightness=None)
+
+    await call(hass, "set_attributes", {"entity_id": "light.lamp", "brightness": 40})
+
+    assert entities["light.lamp"]._last_brightness is None
+
+
+async def test_a_color_write_leaves_the_kept_level(hass, bridge, entities):
+    await lamp(hass, bridge, on=False, **CT_LIGHT)
+    entities["light.lamp"] = SimpleNamespace(_last_brightness=100.0)
+
+    await call(hass, "set_attributes", {"entity_id": "light.lamp", "color_temp_kelvin": 3000})
+
+    assert entities["light.lamp"]._last_brightness == 100.0
+
+
+async def test_an_unloaded_entity_still_writes(hass, bridge, entities):
+    await lamp(hass, bridge, on=False)
+
+    assert await call(hass, "set_attributes", {"entity_id": "light.lamp", "brightness": 40}) == {"light.lamp": SENT}
+
+
+def room(hass, bridge):
+    bridge.light("light-1", on=False)
+    bridge.light("light-2", on=False, brightness=80.0)
+    bridge.room("grouped-1", ["light-1", "light-2"])
+    return hue_entry(hass, bridge)
+
+
+async def add_room(hass, bridge):
+    entry = await room(hass, bridge)
+    add_hue_entity(hass, entry, "light.one", "light-1")
+    add_hue_entity(hass, entry, "light.two", "light-2")
+    add_hue_group(hass, entry, "light.room", "grouped-1", ["light.one", "light.two"])
+
+
+async def test_a_room_write_replaces_the_rooms_kept_level_and_its_lights(hass, bridge, entities):
+    await add_room(hass, bridge)
+    entities["light.room"] = SimpleNamespace(_restore_brightness=100.0)
+    entities["light.one"] = SimpleNamespace(_last_brightness=100.0)
+    entities["light.two"] = SimpleNamespace(_last_brightness=None)
+
+    await call(hass, "set_attributes", {"entity_id": "light.room", "brightness": 40})
+
+    assert entities["light.room"]._restore_brightness == 40.0
+    assert entities["light.one"]._last_brightness == 40.0
+    assert entities["light.two"]._last_brightness is None
+
+
+async def test_a_room_clamp_leaves_the_rooms_kept_level(hass, bridge, entities):
+    """A clamp leaves the lights at different levels, so the room has no one level to keep."""
+    await add_room(hass, bridge)
+    entities["light.room"] = SimpleNamespace(_restore_brightness=100.0)
+
+    await call(hass, "set_attributes", {"entity_id": "light.room", "max_brightness": 50})
+
+    assert entities["light.room"]._restore_brightness == 100.0

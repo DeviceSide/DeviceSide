@@ -1,5 +1,6 @@
 """ZHA set_attributes: MoveTo commands with the ExecuteIfOff override, one light at a time, then update_entity."""
 
+from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import probatio
@@ -13,6 +14,7 @@ from homeassistant.util.color import color_xy_to_hs
 from pytest_homeassistant_custom_component.common import async_mock_service
 
 from custom_components.device_side.const import DOMAIN
+from custom_components.device_side.integrations.zha import set_attributes as adapter
 from custom_components.device_side.integrations.zha import zcl
 
 from ...conftest import call, refusal
@@ -242,14 +244,87 @@ A, B = "00:00:00:00:00:00:00:0a", "00:00:00:00:00:00:00:0b"
 
 
 async def test_a_zha_group_writes_each_member(hass, zha_groups, commands, refreshes):
-    entry = zha_entry(hass)
-    add_zha_entity(hass, entry, "light.zha_group", unique_id="light_zha_group_0x0002", attributes=DIMMABLE)
-    add_zha_entity(hass, entry, "light.a", ieee=A, attributes=DIMMABLE)
-    add_zha_entity(hass, entry, "light.b", ieee=B, attributes=DIMMABLE)
-    zha_groups[2] = zha_group((A, 11), (B, 11))
+    zha_light_group(hass, zha_groups)
 
     response = await call(hass, "set_attributes", {"entity_id": "light.zha_group", "brightness": 40})
 
     assert response == {"light.a": SENT, "light.b": SENT}
     assert sorted(command.data["ieee"] for command in commands) == [A, B]
     assert sorted(refresh.data["entity_id"] for refresh in refreshes) == ["light.a", "light.b"]
+
+
+@pytest.fixture
+def zha_lights(monkeypatch):
+    """The zha library's light behind each HA entity, by entity_id, reached as HA's entity_data.entity."""
+    loaded: dict[str, SimpleNamespace] = {}
+
+    def ha_entity(hass, entity_id):
+        return SimpleNamespace(entity_data=SimpleNamespace(entity=loaded[entity_id])) if entity_id in loaded else None
+
+    monkeypatch.setattr(adapter, "ha_entity", ha_entity)
+    return loaded
+
+
+async def test_a_level_write_replaces_the_level_zha_kept_for_the_next_on(hass, commands, refreshes, zha_lights):
+    """The library kept 254 from before an off with a transition; the next plain on would send it."""
+    bulb(hass, DIMMABLE)
+    zha_lights["light.bulb"] = SimpleNamespace(_off_brightness=254)
+
+    await call(hass, "set_attributes", {"entity_id": "light.bulb", "brightness": 40})
+
+    assert zha_lights["light.bulb"]._off_brightness == 102
+
+
+@pytest.mark.parametrize(
+    ("kept", "data", "attributes", "after"),
+    [
+        pytest.param(None, {"brightness": 40}, DIMMABLE, None, id="nothing_kept"),
+        pytest.param(254, {"color_temp_kelvin": 2700}, CT, 254, id="no_level_written"),
+    ],
+)
+async def test_the_kept_level_is_left(hass, commands, refreshes, zha_lights, kept, data, attributes, after):
+    bulb(hass, attributes)
+    zha_lights["light.bulb"] = SimpleNamespace(_off_brightness=kept)
+
+    await call(hass, "set_attributes", {"entity_id": "light.bulb", **data})
+
+    assert zha_lights["light.bulb"]._off_brightness == after
+
+
+async def test_an_unloaded_entity_still_writes(hass, commands, refreshes, zha_lights):
+    bulb(hass, DIMMABLE)
+
+    assert await call(hass, "set_attributes", {"entity_id": "light.bulb", "brightness": 40}) == {"light.bulb": SENT}
+
+
+def zha_light_group(hass, zha_groups):
+    entry = zha_entry(hass)
+    add_zha_entity(hass, entry, "light.zha_group", unique_id="light_zha_group_0x0002", attributes=DIMMABLE)
+    add_zha_entity(hass, entry, "light.a", ieee=A, attributes=DIMMABLE)
+    add_zha_entity(hass, entry, "light.b", ieee=B, attributes=DIMMABLE)
+    zha_groups[2] = zha_group((A, 11), (B, 11))
+
+
+async def test_a_group_write_replaces_the_groups_kept_level_and_its_members(
+    hass, zha_groups, commands, refreshes, zha_lights
+):
+    zha_light_group(hass, zha_groups)
+    for entity_id in ("light.zha_group", "light.a", "light.b"):
+        zha_lights[entity_id] = SimpleNamespace(_off_brightness=254)
+
+    await call(hass, "set_attributes", {"entity_id": "light.zha_group", "brightness": 40})
+
+    assert {entity_id: light._off_brightness for entity_id, light in zha_lights.items()} == dict.fromkeys(
+        ("light.zha_group", "light.a", "light.b"), 102
+    )
+
+
+async def test_a_group_clamp_leaves_the_groups_kept_level(hass, zha_groups, commands, refreshes, zha_lights):
+    zha_light_group(hass, zha_groups)
+    zha_lights["light.zha_group"] = SimpleNamespace(_off_brightness=254)
+    zha_lights["light.a"] = SimpleNamespace(_off_brightness=254)
+
+    await call(hass, "set_attributes", {"entity_id": "light.zha_group", "max_brightness": 40})
+
+    assert zha_lights["light.zha_group"]._off_brightness == 254
+    assert zha_lights["light.a"]._off_brightness == 102  # clamped from the CurrentLevel read of 127

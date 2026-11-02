@@ -175,6 +175,13 @@ class RigTest:
             self.observe.only is None or integration in self.observe.only
         )
 
+    @property
+    def calls(self) -> tuple[str, ...]:
+        """The other actions its `call` steps name (`call: {action: turn_on_for}`), in first-use order."""
+        steps = (*self.setup, *self.steps)
+        named = (step.args.get("action") for step in steps if step.kind == "call" and isinstance(step.args, dict))
+        return tuple(dict.fromkeys(filter(None, named)))
+
     def roles_needed(self, role: str) -> list[str]:
         """The case's own role and every role a step targets, in first-use order."""
         steps = (*self.setup, *self.steps)
@@ -518,17 +525,29 @@ class Case:
         return replace(self, observed=not self.observed).id
 
 
-def cases(suite: Suite, profile: Profile, keyword: str | None = None) -> list[Case]:
+def adapters_for(suite: Suite, registry: Any) -> frozenset[str]:
+    """The actions the suite's tests call that have an adapter on its integration, for `cases`."""
+    called = {action for test in suite.file.tests for action in test.calls}
+    return frozenset(action for action in called if registry.adapter(action, suite.integration) is not None)
+
+
+def cases(
+    suite: Suite, profile: Profile, keyword: str | None = None, adapters: frozenset[str] | None = None
+) -> list[Case]:
     """The suite's cases in file order, a test's automated case before its observed one; `keyword` keeps only case
-    ids containing it."""
+    ids containing it. With `adapters` (from adapters_for), a test calling another action without one is skipped."""
     result = []
     for test in suite.file.tests:
         if test.only is not None and suite.integration not in test.only:
             continue
+        lacking = next((a for a in test.calls if adapters is not None and a not in adapters), None)
         for role in test.roles:
             for observed in [False] * test.automated + [True] * test.observed_on(role, suite.integration):
                 case = Case(suite, test, role, {}, observed=observed)
                 if keyword and keyword not in case.id:
+                    continue
+                if lacking:
+                    result.append(replace(case, skip=f"no {lacking} adapter on {suite.integration}"))
                     continue
                 needed = test.roles_needed(role)
                 entities = {name: profile.entity(suite.integration, name) for name in needed}
@@ -797,6 +816,42 @@ def _lookup(row: dict, name: str) -> Any:
     return value
 
 
+_COLOR_MODES = frozenset({"hs", "xy", "rgb", "rgbw", "rgbww"})
+# The call fields a light's color modes decide; a light that can't take one should report it fields_dropped.
+_LIGHT_FIELDS = frozenset({"brightness", "min_brightness", "max_brightness", "color_temp_kelvin", *_RESTORE_COLOR})
+
+
+def _carries(state: dict | None, name: str) -> bool:
+    """Whether a light's `supported_color_modes` (present while it is off) can carry an attribute or call field
+    (dotted, as _lookup reads one): a mixed group's White member takes no color temperature. Anything else, or an
+    entity that lists no modes, carries everything."""
+    modes = (state or {}).get("attributes", {}).get("supported_color_modes")
+    if not isinstance(modes, list):
+        return True
+    root = name.partition(".")[0]
+    if root == "color_temp_kelvin":
+        return "color_temp" in modes
+    if root in ("hs_color", "xy_color", "rgb_color"):
+        return not _COLOR_MODES.isdisjoint(modes)
+    if root in ("brightness", "min_brightness", "max_brightness"):
+        return any(mode != "onoff" for mode in modes)
+    return True
+
+
+def _by_modes(wants: dict[str, dict], states: dict[str, dict | None], target: str) -> dict[str, dict]:
+    """Each member's wanted attributes, with each its color modes can't carry wanted absent (None) instead: a mixed
+    group's White member must show no color temperature. One no member carries fails the step, so a step can't pass
+    by checking only absences."""
+    shaped = {
+        member: {name: value if _carries(states.get(member), name) else None for name, value in want.items()}
+        for member, want in wants.items()
+    }
+    for name in {name for want in wants.values() for name, value in want.items() if value is not None}:
+        if not any(_carries(states.get(member), name) for member in wants):
+            raise StepFailure(f"no member of {target} takes {name}")
+    return shaped
+
+
 def _matches(actual: Any, want: Any) -> bool:
     if isinstance(want, dict):
         if isinstance(actual, bool) or not isinstance(actual, int | float):
@@ -874,6 +929,7 @@ class _CaseRun:
         self.query = False
         # The loop times the last call was sent and returned, which a sample's readings are timed from.
         self.call_times: tuple[float, float] | None = None
+        self.sent: dict[str, Any] = {}  # the last call's data
 
     def entity(self, args: Any) -> str:
         role = args.get("target") if isinstance(args, dict) else None
@@ -1090,7 +1146,7 @@ class _CaseRun:
                 data["duration"] = {"seconds": int(seconds) if seconds.is_integer() else seconds}
             elif key not in ("action", "target"):
                 data[key] = value
-        self.last_action, self.response, self.error = action, None, None
+        self.last_action, self.response, self.error, self.sent = action, None, None, data
         # ActionKind is a StrEnum: compared by value so the engine needs no integration import.
         self.query = getattr(getattr(self.registry, "actions", {}).get(action), "kind", None) == "query"
         sent_at = asyncio.get_running_loop().time()
@@ -1129,18 +1185,37 @@ class _CaseRun:
             raise StepFailure("no response to check: no call has returned one")
         entity_id = self.entity(args)
         keys = [entity_id] if entity_id in self.response else await self.members(entity_id)
+        expect, attributes = await self.per_light(args, keys, entity_id)
         for key in keys:
             if not isinstance(entry := self.response.get(key), dict):
                 raise StepFailure(f"the response has no entry for {key}: {self.response}")
-            for name, want in args.items():
-                if name == "target":
-                    continue
-                if name == "attributes":
-                    got = entry if self.query else entry.get("attributes") or {}
-                    if bad := [attr for attr, value in want.items() if not _matches(_lookup(got, attr), value)]:
-                        raise StepFailure(f"{key}: attributes {bad} are {got}, expected {want}")
-                elif not _matches(entry.get(name), expected := self.expected(name, want)):
+            for name, want in expect[key].items():
+                if not _matches(entry.get(name), expected := self.expected(name, want)):
                     raise StepFailure(f"{key}: {name} is {entry.get(name)!r}, expected {expected!r}: {entry}")
+            if "attributes" in args:
+                want = attributes[key]
+                got = entry if self.query else entry.get("attributes") or {}
+                if bad := [attr for attr, value in want.items() if not _matches(_lookup(got, attr), value)]:
+                    raise StepFailure(f"{key}: attributes {bad} are {got}, expected {want}")
+
+    async def per_light(self, args: dict, keys: list[str], entity_id: str) -> tuple[dict, dict]:
+        """For each response row, the fields and the attributes expect_response checks, shaped by the light's color
+        modes: an attribute it can't carry wanted absent, and `detail: fields_dropped` after a call that sent it a
+        field it can't take (color temperature to a White bulb), unless the step names a detail. A group's own row
+        (Z2M) is the mean over its members that report: it takes everything."""
+        fields = {name: want for name, want in args.items() if name not in ("target", "attributes")}
+        expect = {key: dict(fields) for key in keys}
+        attributes = {key: args.get("attributes", {}) for key in keys}
+        if self.is_group(keys[0]):
+            return expect, attributes
+        states = {key: await self.ha.get_state(key) for key in keys}
+        if "attributes" in args:
+            attributes = _by_modes(attributes, states, entity_id)
+        sent = _LIGHT_FIELDS & set(self.sent)
+        for key in keys if "detail" not in args and not self.query else ():
+            if any(not _carries(states[key], name) for name in sent):
+                expect[key]["detail"] = "fields_dropped"
+        return expect, attributes
 
     async def _expect_error(self, args: dict, _following: str | None) -> None:
         if self.error is None:
@@ -1159,10 +1234,14 @@ class _CaseRun:
         await self.await_state(self.entity(args), want, within)
 
     async def await_state(self, entity_id: str, want: dict, within: float | None) -> None:
-        """Every member of the target matches `want` now, or within `within` seconds shared between them."""
+        """Every member of the target matches `want`, in what its color modes carry, now or within `within` seconds
+        shared between them."""
         deadline = asyncio.get_running_loop().time() + (within or 0)
-        for member in await self.members(entity_id):
-            member_want = dict(want)
+        members = await self.members(entity_id)
+        states = {member: await self.ha.get_state(member) for member in members}
+        wants = _by_modes(dict.fromkeys(members, want), states, entity_id)
+        for member in members:
+            member_want = dict(wants[member])
             if member_want.get("state") == "unchanged":
                 before = self.snapshot.taken.get(member)
                 member_want["state"] = before["state"] if before else None
@@ -1327,7 +1406,7 @@ async def run(
         if client is None or (adapter.scope.options and admin is None):
             out(f"{suite.integration} / {suite.action}: needs HA_ADMIN_TOKEN, skipped")
             continue
-        planned.append((suite, adapter, client, cases(suite, profile, keyword)))
+        planned.append((suite, adapter, client, cases(suite, profile, keyword, adapters_for(suite, registry))))
     options = {
         id(suite): {name: name in suite.file.options for name in adapter.scope.options}
         for suite, adapter, *_ in planned

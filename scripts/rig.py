@@ -66,6 +66,7 @@ from tests.rig.engine import (  # noqa: E402
     StepFile,
     Suite,
     SuiteResult,
+    adapters_for,
     cases,
     load_step_files,
     run,
@@ -186,7 +187,7 @@ def plan_lines(
         entities = [entity for role in roles if (entity := profile.entity(suite.integration, role))]
         targets = ", ".join(dict.fromkeys(entities)) or "no entity, will skip"
         lines.append(f"{suite.integration} / {suite.name} -> {targets}")
-        for case in cases(suite, profile, keyword):
+        for case in cases(suite, profile, keyword, adapters_for(suite, registry)):
             lines.append(f"    {case.id}: {case.skip or ', '.join(dict.fromkeys(case.entities.values()))}")
     return lines
 
@@ -933,7 +934,7 @@ async def wait_for_targets(
             entity
             for suite in suites
             if registry.adapter(suite.action, suite.integration)
-            for case in cases(suite, profile, keyword)
+            for case in cases(suite, profile, keyword, adapters_for(suite, registry))
             if not case.skip
             for entity in (*case.entities.values(), *case.members)
         }

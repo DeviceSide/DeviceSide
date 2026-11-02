@@ -803,6 +803,173 @@ async def test_a_group_fails_on_a_lagging_member(tmp_path):
     assert detail.startswith("step 4 (expect_state): light.b: expected {'state': 'on'}")
 
 
+MIXED = """
+action: turn_on_for
+rig_seconds: 5
+tests:
+  - name: mixed
+    roles: [group]
+    steps:
+      - call: {duration: 6}
+      - expect_response: {attributes: {brightness: 102, color_temp_kelvin: 2700}}
+      - expect_state: {state: off, brightness: 102, color_temp_kelvin: 2700}
+"""
+
+CT = {"supported_color_modes": ["color_temp"], "brightness": 102, "color_temp_kelvin": 2700}
+WHITE = {"supported_color_modes": ["brightness"], "brightness": 102}
+
+
+def mixed_ha(a: dict, b: dict) -> FakeHA:
+    """A group of light.a and light.b, off, whose call answers each member's attributes as HA shows them."""
+
+    def respond(ha, action, data):
+        return {m: {"attributes": dict(ha.states[m]["attributes"])} for m in ("light.a", "light.b")}
+
+    states = {"light.a": {"attributes": a}, "light.b": {"attributes": b}}
+    return FakeHA({"light.room": {"attributes": {"entity_id": ["light.a", "light.b"]}}} | states, respond)
+
+
+async def test_a_mixed_group_checks_each_member_for_what_it_takes(tmp_path):
+    """The White member has no color temperature: it is checked for brightness alone."""
+    steps = suite(tmp_path, MIXED, "fake")
+    result = await run_one(mixed_ha(CT, WHITE), steps, profile("fake", group="light.room"), registry=GROUP_REGISTRY)
+    assert outcomes(result) == {"mixed[group]": (Outcome.PASS, "")}
+
+
+async def test_a_member_that_takes_an_attribute_is_still_checked_for_it(tmp_path):
+    steps = suite(tmp_path, MIXED, "fake")
+    ha = mixed_ha(CT | {"color_temp_kelvin": 4000}, WHITE)
+    result = await run_one(ha, steps, profile("fake", group="light.room"), registry=GROUP_REGISTRY)
+    outcome, detail = outcomes(result)["mixed[group]"]
+    assert outcome is Outcome.FAIL
+    assert detail.startswith("step 2 (expect_response): light.a: attributes ['color_temp_kelvin']")
+
+
+async def test_a_member_that_cant_take_an_attribute_must_show_it_absent(tmp_path):
+    """The White member showing a color temperature is a fault, not something to skip."""
+    steps = suite(tmp_path, MIXED, "fake")
+    ha = mixed_ha(CT, WHITE | {"color_temp_kelvin": 2700})
+    result = await run_one(ha, steps, profile("fake", group="light.room"), registry=GROUP_REGISTRY)
+    outcome, detail = outcomes(result)["mixed[group]"]
+    assert outcome is Outcome.FAIL
+    assert detail.startswith("step 2 (expect_response): light.b: attributes ['color_temp_kelvin']")
+
+
+DROPS = """
+action: set_attributes
+rig_seconds: 5
+tests:
+  - name: drops
+    roles: [group]
+    steps:
+      - call: {brightness: 40, color_temp_kelvin: 2700}
+      - expect_response: {status: sent}
+"""
+
+
+def dropping_ha(white_detail: str | None) -> FakeHA:
+    """A group of a CT bulb (light.a) and a White one (light.b); the call answers sent, the White with this detail."""
+
+    def respond(ha, action, data):
+        white = {"status": "sent"} | ({"detail": white_detail} if white_detail else {})
+        return {"light.a": {"status": "sent"}, "light.b": white}
+
+    states = {"light.a": {"attributes": CT}, "light.b": {"attributes": WHITE}}
+    return FakeHA({"light.room": {"attributes": {"entity_id": ["light.a", "light.b"]}}} | states, respond)
+
+
+@pytest.mark.parametrize(
+    ("white_detail", "outcome"),
+    [pytest.param("fields_dropped", Outcome.PASS, id="says_it"), pytest.param(None, Outcome.FAIL, id="silent")],
+)
+async def test_a_member_sent_a_field_it_cant_take_must_say_it_dropped_it(tmp_path, white_detail, outcome):
+    steps = suite(tmp_path, DROPS, "fake")
+    ha = dropping_ha(white_detail)
+    result = await run_one(ha, steps, profile("fake", group="light.room"), registry=GROUP_REGISTRY)
+    assert outcomes(result)["drops[group]"][0] is outcome
+    if outcome is Outcome.FAIL:
+        assert "light.b: detail is None, expected 'fields_dropped'" in outcomes(result)["drops[group]"][1]
+
+
+async def test_a_step_that_names_the_detail_keeps_it(tmp_path):
+    text = DROPS.replace("{status: sent}", "{status: sent, detail: null}")
+    result = await run_one(
+        dropping_ha(None), suite(tmp_path, text, "fake"), profile("fake", group="light.room"), registry=GROUP_REGISTRY
+    )
+    assert outcomes(result) == {"drops[group]": (Outcome.PASS, "")}
+
+
+async def test_an_attribute_no_member_takes_fails(tmp_path):
+    steps = suite(tmp_path, MIXED, "fake")
+    result = await run_one(mixed_ha(WHITE, WHITE), steps, profile("fake", group="light.room"), registry=GROUP_REGISTRY)
+    outcome, detail = outcomes(result)["mixed[group]"]
+    assert outcome is Outcome.FAIL
+    assert detail == "step 2 (expect_response): no member of light.room takes color_temp_kelvin"
+
+
+async def test_a_wanted_absence_holds_on_a_light_without_the_mode(tmp_path):
+    """Shelly's RGB light: `color_temp_kelvin: null` is checked, not dropped as a temperature it can't take."""
+    text = MIXED.replace(
+        "{brightness: 102, color_temp_kelvin: 2700}}", "{rgb_color: [255, 0, 0], color_temp_kelvin: null}}"
+    )
+    text = text.replace("      - expect_state: {state: off, brightness: 102, color_temp_kelvin: 2700}\n", "")
+    rgb = {"supported_color_modes": ["rgb"], "rgb_color": [255, 0, 0]}
+    steps = suite(tmp_path, text, "fake")
+    result = await run_one(mixed_ha(rgb, rgb), steps, profile("fake", group="light.room"), registry=GROUP_REGISTRY)
+    assert outcomes(result) == {"mixed[group]": (Outcome.PASS, "")}
+
+
+@pytest.mark.parametrize(
+    ("modes", "name", "carried"),
+    [
+        (["color_temp"], "color_temp_kelvin", True),
+        (["hs", "color_temp"], "hs_color.0", True),
+        (["color_temp"], "xy_color.1", False),
+        (["rgbww"], "rgb_color", True),
+        (["onoff"], "brightness", False),
+        (["onoff"], "state", True),
+        (["onoff"], "timer.turns", True),
+        (None, "color_temp_kelvin", True),  # no modes listed: a switch, or a light whose state lacks them
+    ],
+)
+def test_what_a_light_carries(modes, name, carried):
+    attributes = {} if modes is None else {"supported_color_modes": modes}
+    assert engine._carries({"attributes": attributes}, name) is carried
+
+
+CROSS_ACTION = """
+action: get_attributes
+rig_seconds: 5
+tests:
+  - name: reads_a_timer
+    roles: [switch_plug]
+    steps:
+      - call: {action: turn_on_for, duration: 20}
+      - call: {}
+"""
+
+# Like Hue: a get_attributes adapter, and none for turn_on_for.
+NO_TIMER_REGISTRY = SimpleNamespace(
+    adapter=lambda action, integration: None if action == "turn_on_for" else GROUP_REGISTRY.adapter(action, integration)
+)
+
+
+async def test_a_case_calling_an_action_without_an_adapter_is_skipped(tmp_path):
+    ha = FakeHA({"switch.plug": {}}, lambda ha, action, data: {})
+    steps = suite(tmp_path, CROSS_ACTION, "hue")
+    result = await run_one(ha, steps, profile("hue", switch_plug="switch.plug"), registry=NO_TIMER_REGISTRY)
+    assert outcomes(result) == {"reads_a_timer[switch_plug]": (Outcome.SKIPPED, "no turn_on_for adapter on hue")}
+    assert not ha.calls
+
+
+def test_a_case_calling_an_action_with_an_adapter_runs(tmp_path):
+    steps = suite(tmp_path, CROSS_ACTION, "hue")
+    adapters = engine.adapters_for(steps, GROUP_REGISTRY)
+    assert adapters == {"turn_on_for"}
+    (case,) = cases(steps, profile("hue", switch_plug="switch.plug"), adapters=adapters)
+    assert case.skip is None
+
+
 SAMPLE = """
 action: turn_on_for
 rig_seconds: 5

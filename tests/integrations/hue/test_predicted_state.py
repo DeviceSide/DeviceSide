@@ -181,26 +181,17 @@ async def test_a_soft_off_stays_on_until_its_end(hass, bridge, clock):
     assert shown(bridge, "one") == (False, 20.0)  # the bridge keeps the brightness through a soft off
 
 
-async def test_up_from_off_shows_on_at_the_dimmest(hass, bridge, clock):
+@pytest.mark.parametrize("min_dim_level", [5.0, 0.2, None], ids=["white", "ambiance", "none_reported"])
+async def test_up_from_off_shows_on_at_the_lowest_step(hass, bridge, clock, min_dim_level):
+    """Where the fade starts, whatever the light's min_dim_level: that is light output, not a brightness, and a Hue
+    White on at 0.4 % reports 0.4 (probe, 2026-11-02)."""
     bridge.light("one", on=False, brightness=60.0)
     entry = await hue_entry(hass, bridge)
     add_hue_entity(hass, entry, "light.one", "one")
-    bridge.api.lights["one"].dimming.min_dim_level = 2.0
+    bridge.api.lights["one"].dimming.min_dim_level = min_dim_level
 
     await call(hass, "raise_brightness", {"entity_id": "light.one", "sweep_time": 10})
     report(bridge, light_event("one", on=True, brightness=100.0))
-    await settle(hass)
-
-    assert shown(bridge, "one") == (True, 2.0)
-
-
-async def test_up_from_off_without_a_min_dim_level_shows_the_dimmest_step(hass, bridge, clock):
-    bridge.light("one", on=False, brightness=60.0)
-    entry = await hue_entry(hass, bridge)
-    add_hue_entity(hass, entry, "light.one", "one")
-
-    await call(hass, "raise_brightness", {"entity_id": "light.one", "sweep_time": 10})
-    report(bridge, light_event("one", on=True))
     await settle(hass)
 
     assert shown(bridge, "one") == (True, MIN_BRIGHTNESS_STEP)
