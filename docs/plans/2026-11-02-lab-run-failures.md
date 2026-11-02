@@ -23,7 +23,7 @@ to the plan from the slice 15 follow-up item in TODO.md.
 | # | Bucket | Cases (integration) | Fix |
 |---|---|---|---|
 | A1 | Rig: mixed group | `sets_while_off[group]` (Hue, ZHA), `reads_while_off[group]` (ZHA); the White bulb's half of `sets_after_a_soft_off[group]` (ZHA) | Engine expects a member that can't take an attribute to show it absent, and to report `fields_dropped` when a call sends it one (#160, made strict in PR 1b) |
-| A2 | Rig: bulb floor | `up_from_off_shows_the_dimmest[group]` (Hue): White's dimmest is 13 | `max: dimmest + 7`: each bulb's own floor from the bridge's `min_dim_level` (White 5 % → 13, ambiance 0.2 % → 1), not a blanket 14 (#160, PR 1b) |
+| A2 → F | Bug: predicted start from off | `up_from_off_shows_the_dimmest[group]` (Hue): the White showed 13 | Not a test bug. device_side showed the light's `min_dim_level` (5 % on a White), which is light output, not a brightness. Show the lowest step, 0.4 %, and keep `max: 8` (PR 1c) |
 | A3 | Rig: no adapter | `reads_a_running_timer[light_dimmable]` (Hue) calls `turn_on_for` | Skip a case whose `call: {action: X}` has no adapter on the suite's integration |
 | B | Bug: HA's kept level | `sets_after_a_soft_off[light_ct, group]` (Hue, ZHA): 255 after the plain on | Overwrite HA's kept level after a level write while off |
 | C | Bug?: ZHA color while off | ZHA `sets_while_off[light_ct]` (CT 3984), `sets_hs_while_off`, `sets_xy_while_off` (old color) | Diagnose first; probe 13a said these bulbs store all three |
@@ -61,8 +61,27 @@ should stay strict, since the rig exists to catch device_side's faults:
 
 - **A1:** a member that can't carry an attribute must show it absent (None) in HA's state and in a read. After a call
   that sends it a field it can't take, its row must say `detail: fields_dropped`, unless the step names a detail.
-- **A2:** range bounds and `sample`'s `min`/`max` take expressions, and `dimmest` is the light's floor read from the
-  bridge (a group's: its members' highest). The White's 5 % floor was confirmed on the bridge, 2026-11-02.
+- **A2:** range bounds took expressions, and `dimmest` read each light's `min_dim_level` from the bridge. PR 1c
+  removed it: see F.
+
+## PR 1c: the predicted start from off (F)
+
+The 13 in A2 was device_side's own output. With predicted_state on, a raise from off showed HA the light's
+`min_dim_level` (`report_filter._dimmest`), and #160 and #162 shaped the rig around it. Hue defines `min_dim_level`
+as the "percentage of the maximum lumen the device outputs on minimum brightness": light output, not a brightness.
+
+Probe, 2026-11-02, the lab's Hue White (LWA012, `min_dim_level` 5.0), on, written through the bridge:
+
+| Wrote | Bridge reports | HA shows |
+|---|---|---|
+| 0.4 % | 0.4 | 1 |
+| 0 % | 0.0 | 0 |
+| 5 % | 5.14 | 13 |
+
+The bridge reports levels below `min_dim_level`, and the fade starts from 0 % (`fade.brightness_fade`). So a raise from
+off now shows the lowest step, 0.4 % (HA 1), on every light, and the rig's limit is `max: 8` again. The step is the
+same for every bulb, so the rig has no `dimmest` and no expression bounds. With no brightness floor to report,
+`get_attributes` gets no floor field.
 
 ## PR 2: HA's kept level after a soft off (B)
 

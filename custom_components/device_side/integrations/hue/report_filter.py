@@ -39,7 +39,6 @@ from ...core.transition import BRIGHTNESS, TransitionCache
 
 if TYPE_CHECKING:
     from aiohue.v2 import HueBridgeV2
-    from aiohue.v2.models.light import Light
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -126,8 +125,9 @@ class ReportFilter:
     def fading(self, attribute: str, ends: dict[str, float], duration: float) -> None:
         """Show each light's end value once its fade has run, in place of any end of the attribute still to show.
 
-        A light HA shows off, faded up from off, is shown on at its dimmest at once, so HA doesn't hold it off for the
-        whole fade.
+        A light HA shows off, faded up from off, is shown on at once at the lowest step, where the fade starts, so HA
+        doesn't hold it off for the whole fade. Not at its `min_dim_level`: that is the light output at the lowest
+        step (5 % on a Hue White), not a brightness, and the bridge reports levels below it.
         """
         if not self.hiding or ATTRIBUTES[attribute].shows is None:
             return
@@ -139,7 +139,7 @@ class ReportFilter:
             get_runtime(self.hass).schedule(self.hass, _end_key(light_id, attribute), [(duration, show_end)])
         if attribute == BRIGHTNESS:
             lights = [self.api.lights.get(light_id) for light_id, target in ends.items() if target > 0]
-            self.show(BRIGHTNESS, {light.id: _dimmest(light) for light in lights if light and not light.on.on})
+            self.show(BRIGHTNESS, {light.id: MIN_BRIGHTNESS_STEP for light in lights if light and not light.on.on})
 
     def halted(self, attribute: str, halts: dict[str, float]) -> None:
         """Show each light where a stop halted it, and drop the end its fade would have shown."""
@@ -263,10 +263,6 @@ class ReportFilter:
             return []
         group = scene.group.rid
         return [light.id for light in self.api.groups.room.get_lights(group) or self.api.groups.zone.get_lights(group)]
-
-
-def _dimmest(light: Light) -> float:
-    return (light.dimming.min_dim_level if light.dimming else None) or MIN_BRIGHTNESS_STEP
 
 
 def _running(cache: TransitionCache, light_id: str) -> bool:

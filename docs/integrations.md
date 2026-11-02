@@ -720,7 +720,8 @@ Hue app within 15 seconds of a fade to off.
 With **Show predicted brightness during Hue fades** on (the default), Home Assistant shows Device
 Side's predictions in place of those reports: the brightness at the start while a fade runs, where a
 stop halted the light, and the end once the fade has run. A fade to off shows the light on until it
-ends, a raise from off shows it on at its dimmest, and a room shows the mean of its lit lights. A
+ends, a raise from off shows it on at its lowest step (0.4 %, where the fade starts; not the bulb's rated
+minimum output, which the bridge reports levels below), and a room shows the mean of its lit lights. A
 change caught as made elsewhere shows at once; one not caught shows once the bridge next reports
 after the raise, lower or stop is no longer remembered. Nothing is sent while a fade runs, so a dashboard slider holds
 still and then jumps to the stop or the end. After Home Assistant restarts, or reconnects to the

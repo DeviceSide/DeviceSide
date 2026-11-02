@@ -20,9 +20,10 @@ tests:
       - set: {state: off}
     steps:
       - call: {sweep_time: 10}
-      # dimmest is each light's own floor, from the bridge (Hue White 13, ambiance 1); + 7 is the ramp in tol.
-      - expect_state: {state: on, brightness: {max: dimmest + 7}, within: tol}
-      - sample: {attribute: brightness, for: 3, expect: steady, max: dimmest + 7}
+      # On at the lowest step (0.4 %, HA 1) on every bulb, plus the ramp in tol. Not min_dim_level: that is light
+      # output, and a Hue White reports levels below its 5 % (probe, 2026-11-02).
+      - expect_state: {state: on, brightness: {max: 8}, within: tol}
+      - sample: {attribute: brightness, for: 3, expect: steady, max: 8}
 
   - name: ha_change_mid_fade_shows_at_once  # set waits for HA to show 80 %; the fade's end never replaces it
     roles: [light_ct, group]
