@@ -43,6 +43,11 @@ POWER_SETTLE_S = 5.0
 POWER_REJOIN_S = 60.0
 POWER_RETRY_S = 3.0
 
+# After a case puts lights back, Zigbee2MQTT still publishes what it reads back from them about 0.5 s later, and
+# republishes a group's state onto every member, so a late `on` from one light overwrites another's `off` in the next
+# case. The restore waits this long before the next case starts.
+RESTORE_SETTLE_S = 1.5
+
 # A light reports off as its fade starts: an observed case waits this long after setup, so the brief comes once the
 # lights have reached the start state it describes.
 SETUP_SETTLE_S = 2.0
@@ -761,6 +766,7 @@ class Snapshot:
         """Put back every entity taken; `clear=False` keeps the journal, for a case that goes on moving them."""
         # A powered entity goes back after its supply, whatever order the case touched them in.
         cut = [entity_id for entity_id in self.taken if self.power.get(entity_id) in self.taken]
+        put_back = False
         for entity_id in [entity_id for entity_id in self.taken if entity_id not in cut] + cut:
             state = self.taken[entity_id]
             if state is None or state["state"] not in ("on", "off"):
@@ -768,10 +774,13 @@ class Snapshot:
             if entity_id not in cut:
                 try:
                     await self.put_back(entity_id, state)
+                    put_back = True
                 except Exception as err:  # noqa: BLE001 - a failed restore is logged so it can't mask the test result
                     _LOGGER.warning("Could not restore %s to %s: %s", entity_id, state["state"], err)
             elif (self.taken[self.power[entity_id]] or {}).get("state") == "on":  # unpowered before: nothing to restore
                 await self.put_back_after_power(entity_id, state)
+        if clear and put_back:
+            await asyncio.sleep(RESTORE_SETTLE_S)
         if clear and self.journal is not None:
             self.journal.drop("cases", self.journal_key)
 

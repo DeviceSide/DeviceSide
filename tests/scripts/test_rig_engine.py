@@ -66,6 +66,7 @@ tests:
 @pytest.fixture(autouse=True)
 def _no_settle(monkeypatch):
     monkeypatch.setattr(engine, "SETUP_SETTLE_S", 0)
+    monkeypatch.setattr(engine, "RESTORE_SETTLE_S", 0)
 
 
 @pytest.fixture(autouse=True)
@@ -1239,6 +1240,25 @@ async def test_a_failed_restore_is_logged_and_keeps_the_result(tmp_path, caplog)
     result = await run_one(ha, suite(tmp_path, text), profile(light_dimmable="light.lamp"))
     assert outcomes(result)["t[light_dimmable]"][0] is Outcome.FAIL
     assert "Could not restore light.lamp to on: device gone" in caplog.text
+
+
+@pytest.mark.parametrize(("moves", "waits"), [(True, 1), (False, 0)])
+async def test_a_restore_that_put_lights_back_settles_before_the_next_case(tmp_path, monkeypatch, moves, waits):
+    pauses = []
+    real_sleep = asyncio.sleep
+
+    async def sleep(seconds, *args):
+        pauses.append(seconds)
+        await real_sleep(0)
+
+    monkeypatch.setattr(engine, "RESTORE_SETTLE_S", 1.5)
+    monkeypatch.setattr(engine.asyncio, "sleep", sleep)
+    ha = FakeHA({"light.lamp": {"state": "on"}})
+    text = header("light_dimmable") + (
+        "      - set: {state: off}\n" if moves else "      - expect_state: {state: on}\n"
+    )
+    await run_one(ha, suite(tmp_path, text), profile(light_dimmable="light.lamp"))
+    assert pauses.count(1.5) == waits
 
 
 @pytest.mark.parametrize(("brightness", "outcome"), [(50, Outcome.PASS), (39, Outcome.FAIL), (61, Outcome.FAIL)])
