@@ -35,6 +35,11 @@ _EXECUTE_IF_OFF = {"transtime": 4, "optionsMask": 1, "optionsOverride": 1}
 # target. Wait it out, with a margin for the command's trip, before reading.
 _FADE_WAIT_S = 0.6
 
+# A bulb's color temperature fade can outlast that wait, so a read that doesn't match is repeated before the write
+# counts as ignored: a fade converges, an ignored override doesn't.
+_RETRIES = 2
+_RETRY_S = 0.5
+
 _LEVEL, _COLOR = "genLevelCtrl", "lightingColorCtrl"
 NOT_STORED = "not_stored"
 
@@ -97,12 +102,18 @@ def _expected(light: Target, sent: list[Command]) -> tuple[dict[str, list[str]],
 
 
 async def _stored(reading: Reader, light: Target, sent: list[Command]) -> bool:
-    """Whether the light reads back the level and color temperature written; raises when a read fails."""
+    """Whether the light reads back the level and color temperature written, within a few reads; raises when a read
+    fails."""
     reads, expected = _expected(light, sent)
-    attributes: dict = {}
-    for cluster, names in reads.items():
-        attributes |= await reading.read_cluster(light, cluster, names)
-    return all(attributes[name] == value for name, value in expected.items())
+    for attempt in range(1 + _RETRIES):
+        if attempt:
+            await asyncio.sleep(_RETRY_S)
+        attributes: dict = {}
+        for cluster, names in reads.items():
+            attributes |= await reading.read_cluster(light, cluster, names)
+        if all(attributes[name] == value for name, value in expected.items()):
+            return True
+    return False
 
 
 class Z2MSetAttributes(Adapter[SetAttributesRequest]):

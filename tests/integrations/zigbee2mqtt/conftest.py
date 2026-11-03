@@ -28,6 +28,7 @@ def broker(hass, monkeypatch):
     monkeypatch.setattr(bridge, "_REPLY_TIMEOUT_S", 0.01)
     monkeypatch.setattr(read, "_REPLY_TIMEOUT_S", 0.01)
     monkeypatch.setattr(set_attributes, "_FADE_WAIT_S", 0.0)
+    monkeypatch.setattr(set_attributes, "_RETRY_S", 0.0)
     hass.services.async_register("mqtt", "publish", fake.publish)
     return fake
 
