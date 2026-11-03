@@ -13,7 +13,7 @@ import pytest
 from custom_components.device_side.core.registry import AdapterRegistry
 from tests.rig import engine
 from tests.rig.engine import load_step_file, load_step_files
-from tests.rig.journal import Journal
+from tests.rig.journal import LEGACY_NAME, Journal
 from tests.rig.profile import EXAMPLE, Profile, RigEntity, load_env, main_checkout, profile_paths
 from tests.scripts import rig_fakes as fakes
 
@@ -21,15 +21,6 @@ REPO = Path(__file__).parents[2]
 _spec = importlib.util.spec_from_file_location("rig", REPO / "scripts" / "rig.py")
 rig = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(rig)
-real_workspace_color = rig.workspace_color  # the autouse fixture swaps the module's for a recorder
-
-
-@pytest.fixture(autouse=True)
-def workspace_colors(monkeypatch) -> list[str | None]:
-    """Record the cmux workspace colors a run sets, so no test reaches the real cmux."""
-    colors: list[str | None] = []
-    monkeypatch.setattr(rig, "workspace_color", colors.append)
-    return colors
 
 
 def write(tmp_path: Path, name: str, text: str) -> Path:
@@ -411,222 +402,6 @@ def test_main_checkout_falls_back_outside_a_repo(tmp_path, monkeypatch):
     assert main_checkout(tmp_path) == tmp_path
 
 
-def claude_session(tmp_path, monkeypatch, name):
-    """Run as if under a Claude Code session called `name`, with its registry file under a fake config dir."""
-    (tmp_path / "sessions").mkdir()
-    (tmp_path / "sessions" / "4242.json").write_text(f'{{"pid": 4242, "name": "{name}"}}')
-    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path))
-    monkeypatch.setenv("CLAUDE_PID", "4242")
-    return tmp_path / "sessions" / "4242.json"
-
-
-def test_a_held_rig_lock_makes_a_second_run_wait_naming_the_holder(tmp_path, monkeypatch):
-    claude_session(tmp_path, monkeypatch, "rig-agent-1a")
-    path = tmp_path / rig.LOCK_NAME
-    held = rig.lock_rig(path, "wt/first")
-    printed: list[str] = []
-    polls: list[float] = []
-
-    def release_on_second_poll(seconds):
-        if len(polls) == 1:
-            held.close()
-        polls.append(seconds)
-
-    monkeypatch.setattr(rig.time, "sleep", release_on_second_poll)
-    rig.lock_rig(path, "wt/second", out=printed.append).close()
-
-    assert len(polls) == 2
-    assert printed == [
-        f'Another rig run holds the lock: wt/first (pid {rig.os.getpid()}), Claude Code session "rig-agent-1a" '
-        "(SendMessage reaches it). Waiting for it to finish (Ctrl-C to give up)...",
-        "Rig lock acquired.",
-    ]
-    assert path.read_text().startswith("wt/second ")
-
-
-def test_the_holder_is_named_as_its_session_is_called_now(tmp_path, monkeypatch):
-    session_file = claude_session(tmp_path, monkeypatch, "rig-agent-1a")
-    entry = rig.lock_entry("wt/first")
-    session_file.write_text('{"name": "renamed"}')
-    assert rig.lock_holder(entry).endswith('Claude Code session "renamed" (SendMessage reaches it)')
-
-
-def test_a_holder_whose_session_file_is_gone_or_unreadable_is_named_by_its_line_alone(tmp_path, monkeypatch):
-    session_file = claude_session(tmp_path, monkeypatch, "rig-agent-1a")
-    entry = rig.lock_entry("wt/first")
-    line = f"wt/first (pid {rig.os.getpid()})"
-    for contents in ("not json", '{"pid": 4242}', "[]"):
-        session_file.write_text(contents)
-        assert rig.lock_holder(entry) == line
-    session_file.unlink()
-    assert rig.lock_holder(entry) == line
-    assert rig.lock_holder("") == "an unnamed process"
-
-
-def test_a_terminal_run_is_named_by_user_and_tty(monkeypatch):
-    monkeypatch.delenv("CLAUDE_PID", raising=False)
-    monkeypatch.setattr(rig.getpass, "getuser", lambda: "tester")
-    monkeypatch.setattr(rig.os, "ttyname", lambda _fd: "/dev/ttys003")
-    assert rig.lock_holder(rig.lock_entry("wt/first")) == f"wt/first (pid {rig.os.getpid()}, user tester on ttys003)"
-
-    def no_tty(_fd):
-        raise OSError
-
-    monkeypatch.setattr(rig.os, "ttyname", no_tty)
-    assert rig.lock_entry("wt/first") == f"wt/first (pid {rig.os.getpid()}, user tester)\n"
-
-
-def test_a_waiting_run_names_each_new_holder_once(tmp_path, monkeypatch):
-    path = tmp_path / rig.LOCK_NAME
-    held = [rig.lock_rig(path, "wt/first")]
-    printed: list[str] = []
-
-    def hand_over(_seconds):
-        if len(printed) == 1:  # the first holder finishes and a third run takes the lock before us
-            held[0].close()
-            held[0] = rig.lock_rig(path, "wt/third")
-        elif len(printed) == 2:
-            held[0].close()
-
-    monkeypatch.setattr(rig.time, "sleep", hand_over)
-    rig.lock_rig(path, "wt/second", out=printed.append).close()
-
-    assert [line.split(" (pid")[0] for line in printed[:2]] == [
-        "Another rig run holds the lock: wt/first",
-        "Another rig run holds the lock: wt/third",
-    ]
-    assert printed[2] == "Rig lock acquired."
-
-
-def test_an_uncontested_lock_says_nothing(tmp_path):
-    printed: list[str] = []
-    rig.lock_rig(tmp_path / rig.LOCK_NAME, "wt/first", out=printed.append).close()
-    assert printed == []
-
-
-def test_a_run_colors_its_workspace_amber_while_it_waits_and_green_once_it_holds_the_lock(
-    tmp_path, monkeypatch, workspace_colors
-):
-    path = tmp_path / rig.LOCK_NAME
-    held = rig.lock_rig(path, "wt/first")
-    assert workspace_colors == [rig.WORKSPACE_HELD]
-    workspace_colors.clear()
-
-    def release_on_second_poll(_seconds):
-        assert workspace_colors == [rig.WORKSPACE_QUEUED]
-        held.close()
-
-    monkeypatch.setattr(rig.time, "sleep", release_on_second_poll)
-    rig.lock_rig(path, "wt/second", out=lambda _line: None).close()
-
-    assert workspace_colors == [rig.WORKSPACE_QUEUED, rig.WORKSPACE_HELD]
-
-
-def test_main_clears_the_workspace_color_when_the_run_ends_but_not_after_a_dry_run(monkeypatch, workspace_colors):
-    monkeypatch.setattr(rig, "hold_rig", lambda _dry_run: (None, None))
-    monkeypatch.setattr(rig, "run_held", lambda *_args: 0)
-    rig.main(["--dry-run"])
-    assert workspace_colors == []
-    rig.main([])
-    assert workspace_colors == [None]
-
-
-def test_main_clears_the_workspace_color_when_a_wait_is_given_up(monkeypatch, workspace_colors):
-    def interrupted(_dry_run):
-        raise KeyboardInterrupt
-
-    monkeypatch.setattr(rig, "hold_rig", interrupted)
-    with pytest.raises(KeyboardInterrupt):
-        rig.main([])
-    assert workspace_colors == [None]
-
-
-def test_main_clears_the_workspace_color_after_a_wait_free_dry_run(monkeypatch, workspace_colors):
-    monkeypatch.setattr(rig, "wait_free", lambda _path: None)
-    monkeypatch.setattr(rig, "common_dir", lambda: Path("."))
-    assert rig.main(["--wait-free", "--dry-run"]) == 0
-    assert workspace_colors == [None]
-
-
-def test_a_sigterm_while_queued_for_the_lock_still_clears_the_workspace_color(monkeypatch, workspace_colors):
-    def queued(_dry_run):
-        os.kill(os.getpid(), signal.SIGTERM)
-
-    monkeypatch.setattr(rig, "hold_rig", queued)
-    with pytest.raises(SystemExit) as stopped:
-        rig.main([])
-    assert stopped.value.code == 128 + signal.SIGTERM
-    assert workspace_colors == [None]
-
-
-def test_workspace_color_calls_cmux_only_inside_a_cmux_workspace(monkeypatch):
-    calls: list[list[str]] = []
-    monkeypatch.setattr(rig.subprocess, "run", lambda command, **_kw: calls.append(command))
-    monkeypatch.setattr(rig.shutil, "which", lambda _name: "/bin/cmux")
-    monkeypatch.delenv("CMUX_WORKSPACE_ID", raising=False)
-    real_workspace_color("Green")
-    assert calls == []
-
-    monkeypatch.setenv("CMUX_WORKSPACE_ID", "workspace:7")
-    real_workspace_color("Green")
-    real_workspace_color(None)
-    assert calls == [
-        ["cmux", "workspace-action", "--workspace", "workspace:7", "--action", "set-color", "--color", "Green"],
-        ["cmux", "workspace-action", "--workspace", "workspace:7", "--action", "clear-color"],
-    ]
-
-    monkeypatch.setattr(rig.shutil, "which", lambda _name: None)
-    calls.clear()
-    real_workspace_color("Green")
-    assert calls == []
-
-
-def test_workspace_color_swallows_a_cmux_failure(monkeypatch):
-    def fail(*_args, **_kwargs):
-        raise rig.subprocess.TimeoutExpired("cmux", 5)
-
-    monkeypatch.setattr(rig.subprocess, "run", fail)
-    monkeypatch.setattr(rig.shutil, "which", lambda _name: "/bin/cmux")
-    monkeypatch.setenv("CMUX_WORKSPACE_ID", "workspace:7")
-    real_workspace_color("Amber")
-
-
-def test_wait_free_returns_at_once_when_no_run_holds_the_lock(tmp_path, monkeypatch):
-    def no_sleep(_seconds):
-        raise AssertionError("wait_free polled a free lock")
-
-    monkeypatch.setattr(rig.time, "sleep", no_sleep)
-    printed: list[str] = []
-    rig.wait_free(tmp_path / rig.LOCK_NAME, out=printed.append)
-    assert printed == ["The rig lock is free."]
-
-
-def test_wait_free_names_the_holder_and_returns_once_it_releases_without_taking_the_lock(tmp_path, monkeypatch):
-    path = tmp_path / rig.LOCK_NAME
-    held = rig.lock_rig(path, "wt/first")
-    printed: list[str] = []
-    monkeypatch.setattr(rig.time, "sleep", lambda _seconds: held.close())
-
-    rig.wait_free(path, out=printed.append)
-
-    assert [line.split(" (pid")[0] for line in printed] == [
-        "Another rig run holds the lock: wt/first",
-        "The rig lock is free.",
-    ]
-    rig.lock_rig(path, "wt/second", out=printed.append).close()  # wait_free kept no hold
-    assert printed[-1] == "The rig lock is free."
-
-
-def test_main_wait_free_stops_before_the_journal_and_env(tmp_path, monkeypatch):
-    def untouched(*_args):
-        raise AssertionError("--wait-free went past the lock")
-
-    monkeypatch.setattr(rig, "common_dir", lambda: tmp_path)
-    monkeypatch.setattr(rig, "hold_rig", untouched)
-    monkeypatch.setattr(rig, "load_env", untouched)
-    assert rig.main(["--wait-free"]) == 0
-
-
 def test_check_tokens_stops_a_zha_run_without_an_admin_token():
     registry = AdapterRegistry.discover()
     step_file = next(f for f in load_step_files() if f.action == "turn_on_for")
@@ -770,7 +545,7 @@ def test_check_tokens_stops_a_run_of_an_adapter_with_options_without_an_admin_to
 
 
 async def test_pause_journals_each_entity_before_turning_it_off(tmp_path):
-    journal = Journal(tmp_path / rig.JOURNAL_NAME)
+    journal = Journal(tmp_path / LEGACY_NAME)
     ha = PauseHA({"switch.al_office": "on", "automation.motion_den": "on"})
     seen = []  # what the journal held as each call was sent
     call_service = ha.call_service
@@ -821,7 +596,7 @@ def put_back(ha: RigHA) -> bool:
 @pytest.mark.parametrize("signum", [signal.SIGINT, signal.SIGTERM])
 async def test_a_signal_mid_case_puts_everything_back_and_leaves_no_journal(tmp_path, monkeypatch, capsys, signum):
     ha = rig_ha(monkeypatch, light="on", opt=True, automation="on")
-    journal = Journal(tmp_path / rig.JOURNAL_NAME)
+    journal = Journal(tmp_path / LEGACY_NAME)
     steps = write(tmp_path, "steps.yaml", fakes.WAITING_MIDWAY)
     run_rig = rig.run_rig(
         {},
@@ -893,7 +668,7 @@ def aborted_journal(path: Path) -> Journal:
 async def test_recover_puts_back_every_lanes_case(tmp_path, monkeypatch):
     ha = rig_ha(monkeypatch, light="off", opt=True, automation="on")
     ha.set("light.b", "off")
-    journal = Journal(tmp_path / rig.JOURNAL_NAME)
+    journal = Journal(tmp_path / LEGACY_NAME)
     light_b_on = {"entity_id": "light.b", "state": "on", "attributes": {"brightness": 90}}
     journal.update(
         cases={
@@ -911,7 +686,7 @@ async def test_recover_puts_back_every_lanes_case(tmp_path, monkeypatch):
 
 async def test_recover_puts_back_a_case_a_journal_from_before_lanes_left(tmp_path, monkeypatch):
     ha = rig_ha(monkeypatch, light="off", opt=True, automation="on")
-    journal = Journal(tmp_path / rig.JOURNAL_NAME)
+    journal = Journal(tmp_path / LEGACY_NAME)
     journal.update(taken={"light.a": LIGHT_A_ON}, stored={}, power={})
     printed = []
 
@@ -926,18 +701,18 @@ async def test_recover_puts_back_what_an_aborted_run_left(tmp_path, monkeypatch)
     ha = rig_ha(monkeypatch, light="off", opt=False, automation="off")
     printed = []
 
-    await rig.recover(ha, ha, aborted_journal(tmp_path / rig.JOURNAL_NAME), out=printed.append)
+    await rig.recover(ha, ha, aborted_journal(tmp_path / LEGACY_NAME), out=printed.append)
 
     assert put_back(ha)
     assert [call[:2] for call in ha.calls] == [("light", "turn_on"), ("automation", "turn_on")]
     assert "Putting light.a back on." in printed
     assert printed[0].startswith("An aborted rig run (profile lab) left changes")
-    assert not (tmp_path / rig.JOURNAL_NAME).exists()
+    assert not (tmp_path / LEGACY_NAME).exists()
 
 
 async def test_recover_without_an_admin_token_leaves_the_options_in_the_journal(tmp_path, monkeypatch):
     ha = rig_ha(monkeypatch, light="off", opt=False, automation="off")
-    journal = aborted_journal(tmp_path / rig.JOURNAL_NAME)
+    journal = aborted_journal(tmp_path / LEGACY_NAME)
 
     await rig.recover(ha, None, journal, out=lambda _: None)
 
@@ -947,12 +722,12 @@ async def test_recover_without_an_admin_token_leaves_the_options_in_the_journal(
 
 def test_main_recovers_before_the_plan_and_recover_alone_stops_there(tmp_path, monkeypatch, capsys):
     ha = rig_ha(monkeypatch, light="off", opt=False, automation="off")
-    aborted_journal(tmp_path / rig.JOURNAL_NAME)
+    aborted_journal(tmp_path / LEGACY_NAME)
     monkeypatch.setattr(rig, "git", lambda *args, check=True: str(tmp_path) if "--git-common-dir" in args else "wt/x")
     monkeypatch.setattr(rig, "load_env", lambda: {"HA_URL": "http://ha:8123", "HA_TOKEN": "tok"})
 
     assert rig.main(["--dry-run", "--recover"]) == 1
-    assert "the next run puts them back before its gate" in capsys.readouterr().out
+    assert "--recover puts them back." in capsys.readouterr().out
     assert rig.main(["--recover"]) == 0
     assert put_back(ha)
     assert rig.main(["--recover"]) == 0

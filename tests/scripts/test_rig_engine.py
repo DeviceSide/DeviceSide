@@ -1608,6 +1608,18 @@ async def test_a_save_the_flow_refuses_closes_the_flow_and_raises():
     assert admin.aborted == 1
 
 
+async def test_options_that_hold_ha_shared_never_save_but_may_match():
+    """A run holding HA shared may not reload the entry under other runs: options already as wanted pass, a save is
+    refused, and the flow is closed either way."""
+    admin = FakeAdmin({})
+    shared = engine.EntryOptions(admin, reload_s=0, reloads=False)
+    await shared.apply({"opt": True})
+    with pytest.raises(RuntimeError, match="this run holds HA shared"):
+        await shared.apply({"opt": False})
+    assert admin.saved == []
+    assert admin.aborted == 2
+
+
 async def test_a_suite_whose_adapter_has_options_needs_the_admin_token(tmp_path):
     out: list[str] = []
     result = await run(
