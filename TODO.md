@@ -135,7 +135,8 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. Lanes on dif
   brightness. All passed on 2 Nov. First, probe whether the bulb takes the brightness stop mid-fade, and what it
   reports. Not the `set_attributes` read-back cause (bucket D): `stop` doesn't read through `_stored`; it
   sends Z2M's `brightness_move: stop` and takes Z2M's own report, and a bulb that goes on fading to 26 % after the stop
-  isn't a mid-fade read. `opus`: hardware triage, where the cause may be the bulb's state after its reset or our stop.
+  isn't a mid-fade read. Rerun it with the rig's 1.5 s settle after a restore (13j) before probing: the late group
+  state that overwrote a light in `set_attributes` could also reach these cases. `opus`: hardware triage, where the cause may be the bulb's state after its reset or our stop.
 - [ ] **ZHA A60 run** (13k step 3), on the lab: ZHA color suites, `set_attributes` hs and xy included. Attended for
   `sets_color_while_off`. Clears `experimental` on the ZHA adapters it proves.
 - [ ] **9d** Rig coverage sweep for the non-color scope
