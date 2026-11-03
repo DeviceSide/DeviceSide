@@ -12,10 +12,15 @@ import fcntl
 import json
 import os
 import secrets
+import time
 from pathlib import Path
 from typing import Any, TextIO
 
 PREFIX = "device_side-rig.journal."
+# A dry run or --check probing a journal's lock holds it for a moment; a run that finds it locked looks again this many
+# times, this far apart, before taking it for a live run's.
+PROBES = 3
+PROBE_GAP_S = 0.05
 # The one journal every run shared before each had its own; only --recover, which holds everything, puts it back.
 LEGACY_NAME = "device_side-rig.journal.json"
 
@@ -93,9 +98,7 @@ def orphans(directory: Path) -> list[Journal]:
     found = []
     for lock_path in sorted(directory.glob(f"{PREFIX}*.lock")):
         handle = lock_path.open("a+")
-        try:
-            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError:
+        if not locked(handle):
             handle.close()  # a live run's
             continue
         journal = Journal(lock_path.with_suffix(".json"), handle)
@@ -104,3 +107,15 @@ def orphans(directory: Path) -> list[Journal]:
         else:
             journal.release()
     return found
+
+
+def locked(handle) -> bool:
+    """Take `handle`'s lock if it comes free within PROBES tries; whether it did."""
+    for probe in range(PROBES):
+        try:
+            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return True
+        except BlockingIOError:
+            if probe < PROBES - 1:
+                time.sleep(PROBE_GAP_S)
+    return False

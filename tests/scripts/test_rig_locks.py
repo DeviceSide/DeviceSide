@@ -38,19 +38,18 @@ def quiet(lines: list[str] | None = None):
 
 
 def blocked(directory: Path, wanted: Claim) -> bool:
-    """Whether `wanted` would wait: a hold that may not poll fails at its first wait."""
-    original = locks.time.sleep
+    """Whether `wanted` would wait: a hold that may not poll fails at its first wait. Patched within, as callers may
+    already have patched the sleep it replaces."""
 
     def refuse(_seconds):
         raise TimeoutError
 
-    locks.time.sleep = refuse
-    try:
-        locks.hold(wanted, "probe", directory, out=quiet()).close()
-    except TimeoutError:
-        return True
-    finally:
-        locks.time.sleep = original
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(locks.time, "sleep", refuse)
+        try:
+            locks.hold(wanted, "probe", directory, out=quiet()).close()
+        except TimeoutError:
+            return True
     return False
 
 
@@ -234,9 +233,9 @@ def test_an_exclusive_wait_leaves_its_own_integrations_out_of_the_holders(tmp_pa
     assert "hue:" not in printed[0]
 
 
-def test_the_fixed_order_never_deadlocks(tmp_path, monkeypatch):
-    """Two claims over the same integrations, listed in either order, take them in one order: the second waits on the
-    first's first lock, holding nothing the first needs."""
+def test_claims_take_their_integrations_in_sorted_order(tmp_path, monkeypatch):
+    """Two claims over the same integrations, listed in either order, take them in one order, which is what keeps two
+    runs from each holding what the other waits for: the second waits on the first's first lock, holding nothing."""
     first = locks.hold(Claim("shared", frozenset(["zha", "hue"])), "wt/first", tmp_path, out=quiet())
     printed: list[str] = []
 
@@ -381,7 +380,7 @@ def test_a_run_upgrades_to_exclusive_when_it_finds_a_deploy_is_needed(tmp_path, 
     monkeypatch.setattr(
         rig.locks,
         "hold",
-        lambda wanted, holder, directory: taken.append(wanted) or real_hold(wanted, holder, directory),
+        lambda wanted, holder, directory, **kw: taken.append(wanted) or real_hold(wanted, holder, directory, **kw),
     )
 
     held = rig.take(run_args(), run, tmp_path)
@@ -639,6 +638,26 @@ def test_wait_free_with_no_filter_waits_for_every_holder_without_taking_anything
     assert printed[0].startswith("Another rig run holds HA: shared by a run on no integration")
     assert printed[-1] == "Every rig lock is free."
     assert not blocked(tmp_path, EXCLUSIVE)  # wait_free kept no hold
+
+
+def test_wait_free_names_an_exclusive_ha_holder(tmp_path, monkeypatch):
+    printed: list[str] = []
+    held = locks.hold(EXCLUSIVE, "wt/deploy", tmp_path, out=quiet())
+    monkeypatch.setattr(locks.time, "sleep", lambda _s: held.close())
+    locks.wait_free(tmp_path, out=printed.append)
+    assert printed[0].startswith("Another rig run holds HA: wt/deploy (pid")
+    assert ", exclusively. Waiting" in printed[0]
+
+
+def test_a_run_waits_out_a_dry_runs_probe_of_an_orphan(tmp_path, monkeypatch):
+    """A dry run holds an orphan's lock only for a moment; a run scanning meanwhile still finds it an orphan."""
+    path = orphan(tmp_path, claim("hue"), cases=CASE)
+    probe = path.with_suffix(".lock").open("a+")
+    fcntl.flock(probe, fcntl.LOCK_EX)
+    monkeypatch.setattr("tests.rig.journal.time.sleep", lambda _s: probe.close())
+    [found] = orphans(tmp_path)
+    assert found.path == path
+    found.release()
 
 
 def test_main_wait_free_stops_before_the_journals_and_env(tmp_path, monkeypatch, workspace_colors):

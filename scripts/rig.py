@@ -415,7 +415,8 @@ def explain(entries: list[dict], waits_for: list[str]) -> str:
 
 @dataclass(slots=True)
 class Setup:
-    """What a run reads before it takes its locks, none of which changes anything."""
+    """What a run reads before it takes its locks, none of which changes anything; take() reads `deploy` again once it
+    holds them."""
 
     env: dict
     profile: Profile
@@ -446,7 +447,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--no-deploy", action="store_true", help="test whatever HA already runs")
     parser.add_argument(
-        "--integration", action="append", help="limit to an integration key (repeatable); with --wait-free, wait for it"
+        "--integration",
+        action="append",
+        choices=sorted(TOLERANCE_S),
+        help="limit to an integration key (repeatable); with --wait-free, wait for it",
     )
     parser.add_argument("--action", action="append", help="limit to an action's step files (repeatable)")
     parser.add_argument("-k", dest="keyword", help="run only test cases whose id contains this text")
@@ -843,6 +847,7 @@ def replay(env: dict, held: Held | None, directory: Path) -> set[str]:
                     f"An aborted run left changes in {orphan.path} that need {needed}, more than this run holds; "
                     "a run holding that, or --recover, puts them back."
                 )
+            # What is left: a recovery that brought the bulbs home cleared its roam section.
             homes |= set((orphan.get("roam") or {}).get("home", {}))
         finally:
             orphan.release()

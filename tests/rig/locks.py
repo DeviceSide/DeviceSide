@@ -174,7 +174,7 @@ def wait_for_lock(
 
 
 def free(path: Path, operation: int = fcntl.LOCK_EX) -> bool:
-    """Whether `operation` on `path` could be taken now; takes nothing."""
+    """Whether `operation` on `path` could be taken now: it is taken and dropped at once, leaving nothing held."""
     with path.open("a+") as handle:
         try:
             fcntl.flock(handle, operation | fcntl.LOCK_NB)
