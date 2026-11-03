@@ -244,4 +244,4 @@ Built as above, with three departures:
   lights' mean xy, as HA shows the room, so hues either side of red don't average to cyan.
 
 A saturation transition's xy path lives in the Hue cache keyed to the transition it was recorded with; a path whose
-transition was forgotten, expired or put back by a refused write is ignored, and the reported xy stands.
+transition was forgotten or expired is ignored, and the reported xy stands; a refused write puts the old path back.

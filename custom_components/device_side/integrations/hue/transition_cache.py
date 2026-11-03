@@ -7,7 +7,8 @@ to hand back to HA once nothing predicts the light.
 """
 
 import time
-from collections.abc import Callable, Iterable
+from collections.abc import AsyncIterator, Callable, Iterable
+from contextlib import asynccontextmanager
 
 from homeassistant.core import HomeAssistant
 
@@ -44,6 +45,22 @@ class HueTransitionCache(transition.TransitionCache):
         """The bridge's values aiohue was not shown, now to be shown, so no longer kept here."""
         return self._hidden.pop(resource_id, {})
 
+    @asynccontextmanager
+    async def recording(self, keys: Iterable[tuple[str, str]]) -> AsyncIterator[None]:
+        """The core recording, with each saturation key's xy path put back too on a refusal."""
+        keys = list(keys)
+        before = {light_id: self._paths.get(light_id) for light_id, attribute in keys if attribute == SATURATION}
+        try:
+            async with super().recording(keys):
+                yield
+        except Exception:
+            for light_id, path in before.items():
+                if path is None:
+                    self._paths.pop(light_id, None)
+                else:
+                    self._paths[light_id] = path
+            raise
+
     def path(self, light_id: str, recorded: transition.Transition, start: XY, end: XY) -> None:
         """The xy line a saturation transition just recorded runs along; a stop's is its halt, start and end."""
         self._paths[light_id] = (recorded, start, end)
@@ -52,7 +69,7 @@ class HueTransitionCache(transition.TransitionCache):
         """The light's predicted xy while its saturation transition is live, else the reported one.
 
         The bridge reports an xy fade's end at once and nothing after. A path belongs to one transition: once that is
-        forgotten, expired or put back by a refused write, the reported xy stands.
+        forgotten or expired, the reported xy stands, and the path is dropped here rather than in forget().
         """
         if (live := self.live(light_id, SATURATION)) is None:
             self._paths.pop(light_id, None)

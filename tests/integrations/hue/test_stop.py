@@ -161,3 +161,16 @@ async def test_stop_cuts_a_soft_off_and_halts_its_saturation_in_one_write(hass, 
     halt = along(hs_xy(200.0, 90.0), color_hs_to_xy(hue, 0), 0.25)
     cut = {"on": {"on": True}, "dimming": {"brightness": pytest.approx(100 - duration / 4 * 10)}}
     assert bridge.puts[2] == ("light/light-1", cut | xy_halt(halt))
+
+
+async def test_stop_halts_brightness_and_saturation_in_one_write(hass, bridge, clock):
+    entity_id = await color_lamp(hass, bridge, (200.0, 90.0), brightness_pct=20.0)
+    await call(hass, "raise_brightness", {"entity_id": entity_id, "sweep_time": 10})
+    await call(hass, "lower_saturation", {"entity_id": entity_id, "sweep_time": 10, "limit": 0})
+    duration = bridge.puts[1][1]["dynamics"]["duration"] / 1000
+    clock.now += duration / 2
+
+    await call(hass, "stop", {"entity_id": entity_id})
+
+    hue = color_xy_to_hs(*hs_xy(200.0, 90.0))[0]
+    assert bridge.puts[2] == ("light/light-1", STOP | xy_halt(along(hs_xy(200.0, 90.0), color_hs_to_xy(hue, 0), 0.5)))

@@ -61,3 +61,18 @@ async def test_a_refused_move_leaves_the_light_where_the_bridge_says(hass, bridg
     read = await call(hass, "get_attributes", {"entity_id": entity_id})
 
     assert read[entity_id]["xy_color"] == pytest.approx(list(hs_xy(200.0, 90.0)), abs=1e-4)
+
+
+async def test_a_refused_move_after_a_stop_keeps_the_halt(hass, bridge, clock):
+    entity_id = await color_lamp(hass, bridge, (200.0, 90.0))
+    await call(hass, "lower_saturation", {"entity_id": entity_id, "sweep_time": 10, "limit": 0})
+    clock.now += SATURATION_PCT / 10 / 2
+    await call(hass, "stop", {"entity_id": entity_id})
+    halt = bridge.puts[1][1]["color"]["xy"]
+    bridge.failing.add("light-1")
+
+    with pytest.raises(HomeAssistantError):
+        await call(hass, "raise_saturation", {"entity_id": entity_id, "sweep_time": 10})
+    read = await call(hass, "get_attributes", {"entity_id": entity_id})
+
+    assert read[entity_id]["xy_color"] == pytest.approx([halt["x"], halt["y"]], abs=1e-4)
