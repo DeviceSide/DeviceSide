@@ -88,6 +88,12 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. Lanes on dif
   (`scripts/rig.py --action set_attributes`, with the new `sets_after_a_soft_off` case, which also runs on Hue and
   ZHA) and `docs/test-records/zigbee2mqtt/set_attributes.md`, both in the pre-release full rig run. Tick when the
   record is in.
+  Lab reruns 3 Nov after the fade-wait fix: `not_stored` gone (`light_ct` and group, two runs), but no run passed whole.
+  Repeats: `min_brightness_raises[group]` fails in its own setup (`set` on the desk bulb reads 102, not ~51 within
+  3 s). Single: a group member's `genLevelCtrl` read got no reply (`sets_while_off[group]`); `sets_color_while_off`
+  and `sets_after_a_soft_off[light_ct]` read the bulb on after the call (the sideboard's Z2M published `ON` 0.1 s
+  after the raw command, 0.2 s after the setup's off: a race in the case, which `sets_hs_while_off` avoids with a
+  `wait: 2`).
 - [x] **14** Z2M color modes fixed for HA, on by default, and 13i's xy write-back backed out
   ([`2026-10-28-z2m-color-modes.md`](docs/plans/2026-10-28-z2m-color-modes.md)). Counts toward the Z2M freeze.
 - [x] **15** The lab ([`2026-11-01-lab.md`](docs/plans/2026-11-01-lab.md)): three Hue bulbs in the maintainer's room,
@@ -130,7 +136,9 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. Lanes on dif
   before it (an A/B run): `lower_stop_lower[light_ct]` reads 90 % after the stop, then holds at 26 %, and
   `halts_a_lower_to_off[light_ct]` ends off. The setup of `lower_to_off[group]` also finds the color bulb reporting no
   brightness. All passed on 2 Nov. First, probe whether the bulb takes the brightness stop mid-fade, and what it
-  reports. `opus`: hardware triage, where the cause may be the bulb's state after its reset or our stop.
+  reports. Not the `set_attributes` read-back cause (bucket D): `stop` doesn't read through `_stored`; it
+  sends Z2M's `brightness_move: stop` and takes Z2M's own report, and a bulb that goes on fading to 26 % after the stop
+  isn't a mid-fade read. `opus`: hardware triage, where the cause may be the bulb's state after its reset or our stop.
 - [ ] **ZHA A60 run** (13k step 3), on the lab: ZHA color suites, `set_attributes` hs and xy included. Attended for
   `sets_color_while_off`. Clears `experimental` on the ZHA adapters it proves.
 - [ ] **9d** Rig coverage sweep for the non-color scope

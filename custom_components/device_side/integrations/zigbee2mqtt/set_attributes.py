@@ -112,8 +112,8 @@ class Z2MSetAttributes(Adapter[SetAttributesRequest]):
     state after a raw command, so each written cluster is read live from each light after the write's fade has
     ended (a read inside it answers a level between the old and the target; probe 13j, rerun 3 Nov): Z2M takes the
     values from the reply, as from a report, and HA follows. A light whose level or color temperature doesn't read
-    back as written ignored the override, and is rejected with not_stored. A
-    read that fails raises, so the call raises targets_failed.
+    back as written ignored the override, and is rejected with not_stored. A read that fails raises, so the call
+    raises targets_failed.
 
     A group is one groupcast per command, and is confirmed only when every member is. min/max_brightness alone clamps
     each member from its own level, so each member gets its own commands, as Hue writes a room light by light. A
@@ -146,42 +146,43 @@ class Z2MSetAttributes(Adapter[SetAttributesRequest]):
             lights = await member_lights(hass, target) if target.is_group else [target]
             if not lights:
                 return self.result(target, Status.UNSUPPORTED, detail=EMPTY_GROUP)
+            if target.is_group and wants_level(request, _modes(target)):
+                plan = [(light, [light]) for light in lights]
+            else:
+                plan = [(target, lights)]
             async with reader(hass, lights) as reading:
-                if target.is_group and wants_level(request, _modes(target)):
-                    # One after another inside the group's own task: gathering them would nest the concurrency limits.
-                    writes = [await self._write(hass, reading, request, light, [light]) for light in lights]
-                else:
-                    writes = [await self._write(hass, reading, request, target, lights)]
-            sent = any(was_sent for was_sent, _stored, _dropped in writes)
-            dropped = any(was_dropped for _sent, _stored, was_dropped in writes)
+                # One after another inside the group's own task: gathering them would nest the concurrency limits.
+                writes = [(await self._send(hass, reading, request, to), read_from) for to, read_from in plan]
+                if any(sent for (sent, _dropped), _lights in writes):
+                    await asyncio.sleep(_FADE_WAIT_S)
+                stored = [
+                    await _stored(reading, light, sent)
+                    for (sent, _dropped), read_from in writes
+                    if sent
+                    for light in read_from
+                ]
+            dropped = any(was_dropped for (_sent, was_dropped), _lights in writes)
             detail = "fields_dropped" if dropped else None
-            if not sent:
+            if not stored:
                 return self.result(target, Status.UNCHANGED, detail=detail or "within_limits")
-            if not all(stored for _sent, stored, _dropped in writes):
+            if not all(stored):
                 return self.result(target, Status.REJECTED, detail=NOT_STORED)
             return self.result(target, Status.CONFIRMED, detail=detail)
 
         return await self.gather(hass, targets, write)
 
-    async def _write(
-        self, hass: HomeAssistant, reading: Reader, request: SetAttributesRequest, to: Target, lights: list[Target]
-    ) -> tuple[bool, bool, bool]:
-        """Publish to `to` the commands for its own state, then read them back from `lights`.
-
-        Returns whether anything was sent, whether every light stored it, and whether a field was dropped.
-        """
+    async def _send(
+        self, hass: HomeAssistant, reading: Reader, request: SetAttributesRequest, to: Target
+    ) -> tuple[list[Command], bool]:
+        """Publish to `to` the commands for its own state; returns what was sent and whether a field was dropped."""
         modes = _modes(to)
         current_level = None
         if wants_level(request, modes) and (current_level := await reading.level(to)) is None:
             # Off, and Z2M has never seen its brightness: there is no level to clamp.
             raise LookupError(f"Zigbee2MQTT has no brightness for {to.entity_id}")
         sent, dropped = commands(request, modes, _attrs(to), current_level)
-        if not sent:
-            return False, True, dropped
         for command in sent:
             await publish(hass, topic(to, "set"), _wire(command))
         if (level := next((c.level for c in sent if isinstance(c, MoveToLevel)), None)) is not None:
             await publish(hass, topic(to, "set"), _kept_level(level))
-        await asyncio.sleep(_FADE_WAIT_S)
-        stored = [await _stored(reading, light, sent) for light in lights]
-        return True, all(stored), dropped
+        return sent, dropped
