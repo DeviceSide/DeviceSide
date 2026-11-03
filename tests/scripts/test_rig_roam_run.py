@@ -153,6 +153,40 @@ async def test_a_failed_move_stops_the_run_and_leaves_the_bulbs_for_recover(tmp_
     assert set(Journal(journal.path).sections) == {"profile", "roam"}
 
 
+async def test_a_failed_move_still_reports_the_phases_before_it(tmp_path, monkeypatch, lab):
+    fake_phases(monkeypatch, lab)
+    passed = object()  # the Hue phase's suite result, as the 3 Nov run's Hue suites passed before the move to Z2M
+
+    async def run(phase_suites, *args, **kwargs):
+        return engine.RunResult([passed] if phase_suites[0].integration == "shelly" else [])
+
+    reported = []
+
+    async def report(result, *args):
+        reported.append(result.suites)
+
+    monkeypatch.setattr(rig, "run", run)
+    monkeypatch.setattr(rig, "report", report)
+    monkeypatch.setattr(roam, "JOIN_S", 0.02)
+    lab.stuck.add(B[2:])
+    journal = Journal(tmp_path / "journal.json")
+
+    with pytest.raises(SystemExit, match="Roaming stopped: light.lab_b did not join ZHA"):
+        await rig.run_rig(
+            ENV,
+            suites(tmp_path, "shelly", "zha"),
+            lab_with_pause(tmp_path),
+            None,
+            None,
+            True,
+            None,
+            journal,
+            roaming=True,
+        )
+
+    assert reported == [[passed]]
+
+
 async def test_a_move_home_that_fails_after_the_last_phase_stops_the_run(tmp_path, monkeypatch, lab):
     fake_phases(monkeypatch, lab)
     joins = lab.opened
