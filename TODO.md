@@ -85,7 +85,7 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. Lanes on dif
   stop ranges for the first time.
 - [x] **13j** Z2M `set_attributes` while off. Z2M code freezes.
   Code, tests and docs merged in #130, experimental. Lab record `docs/test-records/zigbee2mqtt/set_attributes.md`
-  (3 Nov, all 15 unattended cases pass; `sets_color_while_off` observed is still to watch before the adapter leaves
+  (3 Nov, all 15 unattended cases pass, and again on two later full runs; `sets_color_while_off` observed is still to watch before the adapter leaves
   `experimental`). Two causes cleared on the way: the read-back compared mid-fade (the adapter now waits out the
   0.4 s write fade once, #192), and Z2M, which publishes the read-backs of a restore's commands about 0.5 s later and
   republishes a group's state onto every member (Z2M's `extension/groups.ts`: a member's `ON` always goes to its groups, a group's state is written onto every member, and an `OFF` reaches the group only when every member is off), overwrote a light's `off` in the next case with a late `on` (the rig
@@ -133,7 +133,7 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. Lanes on dif
   write. zha skips `update_entity` for 1.5 s after an HA `turn_off`, and ZHA applies no color reports, so HA showed the
   old color after the next on. Fixed (#172): the refresh waits out zha's transition flag. Rig proof rides the
   pre-release run.
-- [x] **Z2M lab: stop on the lab bulbs since 3 Nov's resets.** All 15 unattended cases pass (3 Nov, record
+- [x] **Z2M lab: stop on the lab bulbs since 3 Nov's resets.** All unattended cases pass (3 Nov, and again on two later full runs; record
   `docs/test-records/zigbee2mqtt/stop.md`). Causes: with Hue native control on, Z2M sends a soft off as Philips'
   own command, which `brightness_move: stop` doesn't end, so `stop` now also cuts a soft off of ours with
   `state: ON` at its predicted brightness (as on Hue); the cases' setup `set` fade was still running when a raise
