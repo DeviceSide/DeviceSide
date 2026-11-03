@@ -1236,6 +1236,15 @@ async def test_facts_are_taken_when_the_suite_ends_and_the_record_keeps_them(tmp
     assert "| Device | Mini (`S3`), firmware `2.0` |" in path.read_text()
 
 
+async def test_an_incomplete_part_takes_its_facts_too(tmp_path):
+    # A lanes part is incomplete until merge joins it to its phases part, which carries its facts into the record.
+    ha = FakeHA({"switch.plug": {}}, timer_on)
+    result = await run_one(ha, suite(tmp_path, ON_THEN_OFF), profile(switch_plug="switch.plug"), keyword="on_then")
+    (suite_result,) = result.suites
+    assert not suite_result.complete
+    assert [str(device) for device in suite_result.devices] == ["Mini (`S3`), firmware `2.0`"]
+
+
 async def test_a_failed_facts_lookup_keeps_the_run_and_names_no_device(tmp_path):
     class NoRegistry(FakeHA):
         async def command(self, payload):

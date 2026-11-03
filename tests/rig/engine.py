@@ -703,7 +703,7 @@ class SuiteResult:
     # False when -k left tests out: a partial run writes no record.
     complete: bool
     # Taken when the suite ends, while its bulbs are on the integration under test: a roaming profile moves them
-    # home before the records are written. None when never taken (a partial run) or the registry lookup failed.
+    # home before the records are written. None when the registry lookup failed.
     ha_version: str | None = None
     devices: list[Device] = field(default_factory=list)
 
@@ -1537,8 +1537,8 @@ async def run(
         for suite, _, _, suite_cases in planned
     ]
     for suite_result in suite_results:
-        if suite_result.recordable:
-            await _capture_facts(suite_result, ha, out)
+        # Every part, recordable or not: a lanes part is incomplete until merge joins it to the phases part.
+        await _capture_facts(suite_result, ha, out)
         out("")
         out(f"{suite_result.suite.integration} / {suite_result.suite.name}")
         out("\n".join(table(suite_result, details=True)))
