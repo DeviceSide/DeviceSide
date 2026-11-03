@@ -39,6 +39,12 @@ def level_read(monkeypatch):
     return read
 
 
+@pytest.fixture(autouse=True)
+def no_fade_wait(monkeypatch):
+    """The refresh's wait for the commands' fade, off so tests don't sleep; the tests of it set their own."""
+    monkeypatch.setattr(adapter, "FADE_WAIT_S", 0.0)
+
+
 @pytest.fixture
 def commands(hass):
     return async_mock_service(hass, "zha", "issue_zigbee_cluster_command")
@@ -409,3 +415,60 @@ async def test_the_kept_level_is_replaced_before_the_refresh_waits(hass, command
     await call(hass, "set_attributes", {"entity_id": "light.bulb", "brightness": 40})
 
     assert kept_at_refresh == [102]
+
+
+@pytest.fixture
+def timed_refreshes(hass):
+    """update_entity calls, each as the loop time it ran at."""
+    times: list[float] = []
+
+    async def handler(service: ServiceCall) -> None:
+        times.append(hass.loop.time())
+
+    hass.services.async_register("homeassistant", "update_entity", handler)
+    return times
+
+
+async def test_the_refresh_waits_out_the_fade_when_the_flag_is_clear(hass, monkeypatch, commands, timed_refreshes):
+    """A read inside the commands' fade keeps a mid-fade color temperature, as zha applies no color reports."""
+    monkeypatch.setattr(adapter, "FADE_WAIT_S", 0.05)
+    bulb(hass, CT)
+    start = hass.loop.time()
+
+    await call(hass, "set_attributes", {"entity_id": "light.bulb", "color_temp_kelvin": 2700})
+
+    assert timed_refreshes[0] - start >= 0.05
+
+
+async def test_the_flag_wait_counts_toward_the_fade_wait(
+    hass, monkeypatch, commands, zha_lights, flagged_refreshes, timed_refreshes
+):
+    """A flag that already held the refresh longer than the fade wait adds nothing to it."""
+    monkeypatch.setattr(adapter, "FADE_WAIT_S", 0.05)
+    monkeypatch.setattr(adapter, "TRANSITION_POLL_S", 0.01)
+    light, _seen = flagged_refreshes
+    bulb(hass, CT)
+    zha_lights["light.bulb"] = light
+    hass.loop.call_later(0.08, setattr, light, "is_transitioning", False)
+    start = hass.loop.time()
+
+    await call(hass, "set_attributes", {"entity_id": "light.bulb", "color_temp_kelvin": 2700})
+
+    assert 0.08 <= timed_refreshes[0] - start < 0.13
+
+
+async def test_a_second_refresh_follows_and_a_later_call_replaces_it(hass, commands, refreshes):
+    bulb(hass, CT)
+    start = wall_clock_now()
+    data = {"entity_id": "light.bulb", "color_temp_kelvin": 2700}
+
+    await call(hass, "set_attributes", data)
+    assert len(refreshes) == 1
+    await advance(hass, start, 2)
+    assert len(refreshes) == 2
+
+    await call(hass, "set_attributes", data)  # refresh 3, and a second one scheduled
+    await call(hass, "set_attributes", data)  # refresh 4, replacing that one
+    await advance(hass, start, 4)
+
+    assert len(refreshes) == 5  # only one second refresh ran for the two calls
