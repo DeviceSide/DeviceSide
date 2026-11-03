@@ -46,6 +46,9 @@ class FakeHA(HAClient):
         self.z2m_group_ids: dict[str, int] = {}
         self.z2m_ignores: set[str] = set()  # request topics Z2M never acts on
         self.z2m_options: dict[str, dict] = {}  # device options by IEEE, as bridge/info's config.devices
+        self.z2m_level = "warning"  # Z2M's log level
+        self.z2m_failing: dict[str, int] = {}  # IEEE -> interviews still to fail, its first (on joining) included
+        self.z2m_interviews: list[str] = []  # each device/interview request's id
         self.on_open: Callable[[str], None] | None = None  # ZHA or Z2M joining opened (Lab joins its bulbs)
         self.on_leave: Callable[[str, str], None] | None = None  # (integration, IEEE) after a remove
 
@@ -56,6 +59,7 @@ class FakeHA(HAClient):
         self.devices.append({"id": device_id, "identifiers": [ident]})
         if integration == "zigbee2mqtt":
             self.z2m_devices.append(ieee)
+            self._z2m_interviewed(ieee)
         if entity_id is not None:
             unique_id = f"{ieee}-11" if integration == "zha" else f"{ieee}_light_zigbee2mqtt"
             self.register(entity_id, device_id, "zha" if integration == "zha" else "mqtt", unique_id)
@@ -96,11 +100,20 @@ class FakeHA(HAClient):
             self.z2m_open = payload["time"] > 0
             if self.z2m_open and self.on_open is not None:
                 self.on_open("zigbee2mqtt")
+        elif topic == "options":
+            self.z2m_level = payload["options"]["advanced"]["log_level"]
+        elif topic == "device/interview":
+            self.z2m_interviews.append(payload["id"])
+            self._z2m_interviewed(payload["id"])
         elif topic == "device/options":
             self.z2m_options.setdefault(payload["id"], {}).update(payload["options"])
         elif topic == "device/remove":
             self._z2m_remove(payload["id"])
-        elif topic == "group/add":
+        else:
+            self._z2m_group_handle(topic, payload)
+
+    def _z2m_group_handle(self, topic: str, payload: dict) -> None:
+        if topic == "group/add":
             name = payload["friendly_name"]
             self.z2m_groups.setdefault(name, [])
             group_id = self.z2m_group_ids.setdefault(name, len(self.z2m_group_ids) + 1)
@@ -115,6 +128,22 @@ class FakeHA(HAClient):
         elif topic == "group/members/add":
             self.z2m_groups[payload["group"]].append(payload["device"])
 
+    def _z2m_interviewed(self, ieee: str) -> None:
+        """One interview of `ieee`: it fails while z2m_failing still counts one for it."""
+        key = normalize_ieee(ieee)
+        if key in self.z2m_failing:
+            self.z2m_failing[key] -= 1
+            if self.z2m_failing[key] < 0:
+                del self.z2m_failing[key]
+
+    def _z2m_entry(self, ieee: str) -> dict:
+        failed = normalize_ieee(ieee) in self.z2m_failing
+        return {
+            "ieee_address": ieee,
+            "interview_completed": not failed,
+            "interview_state": "FAILED" if failed else "SUCCESSFUL",
+        }
+
     def _z2m_remove(self, ieee: str) -> None:
         self.z2m_devices = [i for i in self.z2m_devices if normalize_ieee(i) != normalize_ieee(ieee)]
         self.z2m_options.pop(ieee, None)  # as Z2M: a removed device's options go with it
@@ -127,8 +156,12 @@ class FakeHA(HAClient):
     @contextlib.asynccontextmanager
     async def _mqtt_messages(self, topic: str) -> AsyncIterator[asyncio.Queue[str]]:
         retained = {
-            "info": {"permit_join": self.z2m_open, "config": {"devices": self.z2m_options}},
-            "devices": [{"ieee_address": ieee, "interview_completed": True} for ieee in self.z2m_devices],
+            "info": {
+                "permit_join": self.z2m_open,
+                "log_level": self.z2m_level,
+                "config": {"devices": self.z2m_options},
+            },
+            "devices": [self._z2m_entry(ieee) for ieee in self.z2m_devices],
             "groups": [
                 {
                     "id": self.z2m_group_ids.get(name),
