@@ -47,8 +47,8 @@ def lab(monkeypatch) -> fakes.Lab:
     return lab
 
 
-def lab_with_pause(tmp_path: Path) -> Profile:
-    path = lab_profile(tmp_path)
+def lab_with_pause(tmp_path: Path, networks: str = "hue, zha, zigbee2mqtt") -> Profile:
+    path = lab_profile(tmp_path, networks=networks)
     path.write_text("pause: [automation.lab]\n" + path.read_text())
     return Profile.load(path)
 
@@ -92,20 +92,33 @@ def test_a_profile_roams_only_for_a_zha_or_z2m_suite_or_the_check(tmp_path):
 
 
 def test_phases_follow_the_cycle_with_the_fixed_integrations_on_hue(tmp_path):
+    profile = lab_with_pause(tmp_path)
     run = suites(tmp_path, "zigbee2mqtt", "shelly", "zha", "hue", "matter")
-    assert [(network, [s.integration for s in group]) for network, group in rig.phases(run, True)] == [
+    assert [(network, [s.integration for s in group]) for network, group in rig.phases(run, profile, True)] == [
         ("hue", ["shelly", "hue", "matter"]),
         ("zha", ["zha"]),
         ("zigbee2mqtt", ["zigbee2mqtt"]),
     ]
-    assert rig.phases(run, False) == [(None, run)]
+    assert rig.phases(run, profile, False) == [(None, run)]
+
+
+def test_a_suite_on_an_undeclared_network_runs_at_home_and_never_moves_the_bulbs(tmp_path):
+    profile = lab_with_pause(tmp_path, networks="hue, zha")
+    run = suites(tmp_path, "zigbee2mqtt", "zha")
+    assert [(network, [s.integration for s in group]) for network, group in rig.phases(run, profile, True)] == [
+        ("hue", ["zigbee2mqtt"]),
+        ("zha", ["zha"]),
+    ]
+    assert not rig.roams(profile, suites(tmp_path, "zigbee2mqtt"))
+    assert [network for network, _ in rig.phases([], profile, True)] == ["hue", "zha"]  # the check: declared only
 
 
 def test_phases_skip_a_network_with_no_suites_and_the_check_visits_every_one(tmp_path):
+    profile = lab_with_pause(tmp_path)
     run = suites(tmp_path, "zigbee2mqtt", "shelly")
-    assert [network for network, _ in rig.phases(run, True)] == ["hue", "zigbee2mqtt"]  # straight past ZHA
-    assert [network for network, _ in rig.phases([], True)] == ["hue", "zha", "zigbee2mqtt"]
-    lines = roam.plan_lines(lab_with_pause(tmp_path).roam, route=["hue", "zigbee2mqtt"])
+    assert [network for network, _ in rig.phases(run, profile, True)] == ["hue", "zigbee2mqtt"]  # straight past ZHA
+    assert [network for network, _ in rig.phases([], profile, True)] == ["hue", "zha", "zigbee2mqtt"]
+    lines = roam.plan_lines(profile.roam, route=["hue", "zigbee2mqtt"])
     assert lines[0] == "Roams light.lab_a, light.lab_b together: Hue -> Z2M -> Hue."
 
 

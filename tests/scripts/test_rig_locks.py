@@ -12,7 +12,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from tests.rig import locks
+from tests.rig import ledger, locks
 from tests.rig.engine import load_step_file
 from tests.rig.journal import LEGACY_NAME, Journal, orphans
 from tests.rig.locks import Claim
@@ -345,15 +345,25 @@ def test_a_suite_with_no_adapter_claims_nothing(tmp_path):
 
 
 def test_a_zha_only_roam_claims_hue_and_zha_not_z2m(tmp_path):
-    profile = Profile.load(fakes.lab_profile(tmp_path))
+    profile = Profile.load(fakes.lab_profile(tmp_path, networks="hue, zha"))
     run = setup(tmp_path, profile, step_suites(tmp_path, fakes.RESTORED_MIDWAY, "zha"), roaming=True)
     assert rig.claim(run_args(), run) == claim("hue", "zha")
 
 
-def test_roam_check_claims_every_network(tmp_path):
+def test_a_run_on_an_undeclared_network_claims_it_but_not_the_bulbs_networks(tmp_path):
+    profile = Profile.load(fakes.lab_profile(tmp_path, networks="hue, zha"))
+    run_suites = step_suites(tmp_path, fakes.RESTORED_MIDWAY, "zigbee2mqtt")
+    assert not rig.roams(profile, run_suites)
+    assert rig.claim(run_args(), setup(tmp_path, profile, run_suites)) == claim("zigbee2mqtt")
+
+
+def test_roam_check_claims_every_declared_network(tmp_path):
     profile = Profile.load(fakes.lab_profile(tmp_path))
     run = setup(tmp_path, profile, [], deploy_needed=True, roaming=True, grouping=True)
     assert rig.claim(run_args("--roam-check"), run) == claim("hue", "zha", "zigbee2mqtt")
+    profile = Profile.load(fakes.lab_profile(tmp_path, networks="hue, zigbee2mqtt"))
+    run = setup(tmp_path, profile, [], deploy_needed=True, roaming=True, grouping=True)
+    assert rig.claim(run_args("--roam-check"), run) == claim("hue", "zigbee2mqtt")
 
 
 def test_a_run_claims_the_integration_that_powers_its_entities(tmp_path):
@@ -681,7 +691,61 @@ def test_main_wait_free_stops_before_the_journals_and_env(tmp_path, monkeypatch,
 def probe(tmp_path, monkeypatch):
     monkeypatch.setattr(rig, "common_dir", lambda: tmp_path)
     monkeypatch.setattr(rig, "git", lambda *args, check=True: "wt/probe")
+    monkeypatch.setattr(rig, "load_env", lambda: {"HA_URL": "http://ha:8123", "HA_TOKEN": "tok"})
+    profile = tmp_path / "lab.yaml"
+    profile.write_text("pause:\n  all: [automation.motion]\n  hue: [switch.al]\nshelly:\n")
+    monkeypatch.setattr(rig, "choose_profile", lambda name, env: profile)
+    monkeypatch.setattr(ProbeHA, "states", {"automation.motion": "on", "switch.al": "on"})
+    monkeypatch.setattr(ProbeHA, "calls", [])
+    monkeypatch.setattr(rig, "HAClient", ProbeHA)
     return tmp_path
+
+
+class ProbeHA:
+    """The HA a probe's pauses go to: one state per entity, and the calls, shared by every connection."""
+
+    states = {"automation.motion": "on", "switch.al": "on"}
+    calls: list = []
+
+    def __init__(self, url, token):
+        pass
+
+    async def connect(self):
+        pass
+
+    async def close(self):
+        pass
+
+    async def get_state(self, entity_id):
+        return {"state": self.states[entity_id]}
+
+    async def call_service(self, domain, service, data):
+        self.calls.append((service, data["entity_id"]))
+        self.states[data["entity_id"]] = "on" if service == "turn_on" else "off"
+
+
+def test_hold_pauses_its_integrations_entries_while_the_command_runs(probe, monkeypatch):
+    seen = []
+    monkeypatch.setattr(rig, "run_command", lambda command: seen.append(dict(ProbeHA.states)) or 3)
+
+    assert rig.main(["--hold", "zha", "--", "true"]) == 3  # zha pauses only the `all` list
+
+    assert seen == [{"automation.motion": "off", "switch.al": "on"}]
+    assert ProbeHA.calls == [("turn_off", "automation.motion"), ("turn_on", "automation.motion")]
+    assert not list(probe.glob("device_side-rig.journal.*"))  # its liveness token is gone with it
+    assert not (probe / ledger.NAME).exists()
+
+
+def test_hold_pausing_nothing_needs_no_ha(probe, monkeypatch):
+    (probe / "lab.yaml").write_text("shelly:\n")
+    monkeypatch.setattr(rig, "load_env", dict)
+    assert rig.main(["--hold", "hue", "--", "true"]) == 0
+
+
+def test_hold_pausing_needs_ha_settings(probe, monkeypatch):
+    monkeypatch.setattr(rig, "load_env", dict)
+    with pytest.raises(SystemExit, match="HA_URL and HA_TOKEN must be set"):
+        rig.main(["--hold", "hue", "--", "true"])
 
 
 def test_hold_runs_the_command_holding_its_claim_and_returns_its_exit_code(probe):

@@ -42,6 +42,11 @@ class Journal:
         return cls(directory / f"{name}.json", lock)
 
     @property
+    def name(self) -> str:
+        """The run's name, which its lock file and the pause ledger know it by."""
+        return self.path.stem
+
+    @property
     def lock_path(self) -> Path:
         return self.path.with_suffix(".lock")
 
