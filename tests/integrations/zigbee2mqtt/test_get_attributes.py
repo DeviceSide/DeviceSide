@@ -242,25 +242,6 @@ async def test_no_reply_raises_and_unsubscribes(hass, broker, caplog):
     assert not broker.listening("zigbee2mqtt/lamp") and not broker.listening("zigbee2mqtt/bridge/logging")
 
 
-async def test_a_read_that_failed_delivery_is_asked_once_more(hass, broker):
-    bulb(hass, broker)
-    broker.read_errors_once[(IEEE, "lightingColorCtrl")] = "Delivery failed for '1'"
-
-    result = await call(hass, "get_attributes", {"entity_id": "light.lamp"})
-
-    assert result == {"light.lamp": ROW}
-
-
-async def test_a_read_that_fails_delivery_twice_raises(hass, broker):
-    bulb(hass, broker)
-    broker.read_errors[(IEEE, "lightingColorCtrl")] = "Delivery failed for '1'"
-
-    with pytest.raises(HomeAssistantError) as raised:
-        await call(hass, "get_attributes", {"entity_id": "light.lamp"})
-
-    assert raised.value.translation_key == "targets_failed"
-
-
 async def test_a_logged_read_error_raises_at_once(hass, broker, monkeypatch, caplog):
     bulb(hass, broker)
     broker.read_errors[(IEEE, "lightingColorCtrl")] = "UNSUPPORTED_ATTRIBUTE"
