@@ -217,6 +217,19 @@ Every run, failed, partial or unattended, ends by writing a report to `device_si
 folder and printing its path: each suite's results with the reason for every failure and skip. The OS clears it
 out in time.
 
+### Run logs
+
+Z2M's frontend keeps only its last 1000 lines and HA's log restarts with HA, so a run captures both for you. Z2M's
+lines (for a run that touches Z2M, or roams) are written to `<report>.z2m.log` as they arrive, and HA's log, from the
+run's start, to `<report>.ha.log` when the run ends, both beside the report. A clean run deletes them; after a failure,
+a stopped move or a crash they stay and their paths are printed.
+
+`--debug-logs` keeps them whatever the outcome and runs HA's `device_side`, each integration the run touches (`hue`,
+`zha`, `mqtt` for Z2M, `shelly`, `matter`; Hue, ZHA and MQTT when it roams) and Z2M at debug until the run ends. It costs
+CPU, so timing cases may read differently. The levels are journaled first, so `--recover` puts them back. Z2M's debug
+lines reach the capture only with `advanced.log_debug_to_mqtt_frontend: true` in its configuration, which needs a
+Z2M restart; the brief warns when it is off, and the rig never sets it.
+
 ### Test records
 
 When every test of an adapter passes, the run writes `docs/test-records/<integration>/<action>.md`: the date, the Home

@@ -49,10 +49,15 @@ Before the gate, and alone with --check, the run checks every phase's devices at
 use is in HA and available, and each roaming bulb is on a network. Without that, a device left unpowered stops the run
 only when its phase comes, after the bulbs have moved.
 
-Usage: scripts/rig.py [--profile NAME] [--dry-run] [--no-deploy] [--unattended] [--serial] [--integration KEY ...]
-                      [--action NAME ...] [-k TEXT]
+Every run captures Z2M's log (when it touches Z2M) and HA's next to its report, as <report>.z2m.log and .ha.log
+(tests/rig/runlogs.py): deleted after a clean run, kept and printed after any other. --debug-logs also raises HA's
+device_side and the run's integrations, and Z2M, to debug for the run, keeps the logs, and puts the levels back (the
+journal, so --recover too).
+
+Usage: scripts/rig.py [--profile NAME] [--dry-run] [--no-deploy] [--unattended] [--serial] [--debug-logs]
+                      [--integration KEY ...] [--action NAME ...] [-k TEXT]
        scripts/rig.py [--profile NAME] --check [--integration KEY ...] [--action NAME ...] [-k TEXT]
-       scripts/rig.py [--profile NAME] --roam-check
+       scripts/rig.py [--profile NAME] --roam-check [--debug-logs]
        scripts/rig.py --recover
        scripts/rig.py --wait-free [--integration KEY ...]
        scripts/rig.py [--profile NAME] --hold KEY [--hold KEY ...] [--exclusive] -- COMMAND [ARGS ...]
@@ -121,6 +126,7 @@ from tests.rig.profile import (  # noqa: E402
 )
 from tests.rig.roam import BLUETOOTH_RESET, NAMES, Bulb, GroupError, Roamer, RoamError  # noqa: E402
 from tests.rig.roam import plan_lines as roam_plan_lines  # noqa: E402
+from tests.rig.runlogs import DebugLevels, RunLogs, ha_domains  # noqa: E402
 
 COMPONENT = "custom_components/device_side"
 TEST_RECORDS_DIR = REPO / "docs" / "test-records"
@@ -551,6 +557,12 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="run every case one at a time, with no lanes: to tell a case that fails in a lane from one that fails",
     )
+    parser.add_argument(
+        "--debug-logs",
+        action="store_true",
+        help="run HA's device_side and the run's integrations, and Z2M, at debug, and keep the run's captured logs "
+        "(they are kept after a failure whatever this says)",
+    )
     parser.add_argument("--recover", action="store_true", help="put back what an aborted run left changed, then stop")
     parser.add_argument(
         "--roam-check", action="store_true", help="move the profile's roam bulbs to every network and home, no suites"
@@ -577,6 +589,8 @@ def main(argv: list[str] | None = None) -> int:
     args.command = command
     if args.check and (args.recover or args.roam_check or args.wait_free):
         parser.error("--check can't be combined with --recover, --roam-check or --wait-free")
+    if args.debug_logs and (args.check or args.recover or args.wait_free or command):
+        parser.error("--debug-logs is for a run or --roam-check")
     if bool(args.hold or args.exclusive) != bool(command):
         parser.error("--hold and --exclusive need a command after --, and a command after -- needs one of them")
     if command and (args.dry_run or args.check or args.recover or args.roam_check or args.wait_free):
@@ -695,6 +709,8 @@ def run_held(args: argparse.Namespace, setup: Setup, held: Held | None, director
     lanes = not args.serial
     print_plan(profile, suites, registry, args.keyword, deploy, deploying, setup.roaming, setup.grouping, lanes)
     print(f"Locks: {held.claim if held else claim(args, setup)}")
+    if args.debug_logs:
+        print_debug_logs(env, suites, setup.roaming)
 
     if deploying:
         check_deploy(env, deploy)
@@ -720,6 +736,46 @@ def run_held(args: argparse.Namespace, setup: Setup, held: Held | None, director
         journal.release()
 
 
+def print_debug_logs(env: dict, suites: list[Suite], roaming: bool) -> None:
+    """The brief's note that --debug-logs raises the run's logs to debug, which may shift timing cases, and, for a
+    run that touches Z2M, a warning when Z2M won't send its debug lines to MQTT."""
+    z2m = touches_z2m(suites, roaming)
+    print(
+        f"Debug logs: {', '.join(ha_domains({s.integration for s in suites}, roaming))} in HA"
+        f"{' and Z2M' if z2m else ''} at debug for the run. Debug logging costs CPU, so timing cases may read "
+        "differently."
+    )
+    if z2m and env.get("HA_ADMIN_TOKEN"):
+        try:
+            asyncio.run(with_admin(env, warn_z2m_debug))
+        except Exception as err:  # noqa: BLE001 - the warning is a courtesy: the run goes on without it
+            print(f"Couldn't read Z2M's settings to check its debug lines reach MQTT: {err}")
+
+
+def touches_z2m(suites: list[Suite], roaming: bool) -> bool:
+    """Whether the run's logs include Z2M's: a Z2M suite, or roaming."""
+    return roaming or any(suite.integration == "zigbee2mqtt" for suite in suites)
+
+
+async def warn_z2m_debug(admin: HAClient) -> None:
+    config = (await admin.z2m_info()).get("config") or {}
+    if not (config.get("advanced") or {}).get("log_debug_to_mqtt_frontend"):
+        print(
+            "Warning: Z2M's advanced.log_debug_to_mqtt_frontend is off, so its debug lines won't reach the captured "
+            "log. Turn it on and restart Z2M; the rig never sets it."
+        )
+
+
+async def with_admin(env: dict, call: Callable[[HAClient], Awaitable[None]]) -> None:
+    """`call` on an admin connection to HA, closed after."""
+    admin = HAClient(env["HA_URL"], env["HA_ADMIN_TOKEN"])
+    await admin.connect()
+    try:
+        await call(admin)
+    finally:
+        await admin.close()
+
+
 def run_approved(
     args: argparse.Namespace, setup: Setup, held: Held, journal: Journal, deploying: bool, lanes: bool
 ) -> int:
@@ -741,6 +797,7 @@ def run_approved(
             grouping=setup.grouping,
             lanes=lanes,
             claim=held.claim,
+            debug_logs=args.debug_logs,
         )
     )
 
@@ -1136,11 +1193,17 @@ async def run_rig(
     grouping: bool = False,
     lanes: bool = False,
     claim: Claim | None = None,
+    debug_logs: bool = False,
+    logs_dir: Path | None = None,
 ) -> int:
     """Run the step files, in lanes first when `lanes` (run_phases), then phase by phase, moving the roaming bulbs
     before each and home after the last, and making the ds-rig-* groups in each phase when `grouping`, then write a
     test record for each adapter whose every test passed, citing `commit`; with no commit, none: a record nobody can
-    trace to a commit proves nothing. Roaming and groups need the admin connection and the bridge (check_tokens)."""
+    trace to a commit proves nothing. Roaming and groups need the admin connection and the bridge (check_tokens).
+
+    Z2M's log (for a run that touches it) and HA's go next to the report as `<report>.z2m.log` and `.ha.log`: deleted
+    after a clean run, kept and printed after any other, or with `debug_logs`, which also runs HA's device_side and the
+    run's integrations, and Z2M, at debug until the run ends (RunLogs, DebugLevels)."""
     lab = roaming or grouping
     if lab and not (env.get("HA_ADMIN_TOKEN") and env.get("HUE_BRIDGE_HOST") and env.get("HUE_APP_KEY")):
         raise SystemExit("Roaming needs HA_ADMIN_TOKEN, HUE_BRIDGE_HOST and HUE_APP_KEY in .env.rig")
@@ -1159,45 +1222,76 @@ async def run_rig(
     if journal is not None:  # the claim says what a run must hold to put back what this one leaves
         journal.update(profile=profile.name, **({"claim": claim.as_json()} if claim else {}))
     results: list[SuiteResult] = []  # each phase's, as it finishes: a failed move keeps the phases before it
+    started = datetime.datetime.now()
+    stamp = started.strftime("%Y-%m-%d %H:%M:%S")
+    logs = RunLogs(logs_dir or REPORT_DIR, f"rig run {stamp}", started, keep=debug_logs)
+    levels = DebugLevels(admin or ha, journal) if debug_logs else None
+    code = 1  # only a run that returns 0 is clean; any other end keeps the logs
     try:
-        result = await run_phases(
-            ha,
-            admin,
-            bridge,
-            roamer,
-            roaming,
-            suites,
-            profile,
-            registry,
-            keyword,
-            unattended,
-            (lambda: ledger.pause(ha, pausing)) if ledger and pausing else None,
-            journal,
-            results,
-            lanes,
-            reloads=claim is None or claim.ha == "exclusive",  # holding HA shared, it may not reload the entry
-        )
-        if suites:
-            await report(result, ha, registry, commit, profile, keyword)
-    except RoamError as err:
-        # A move that failed isn't retried here; the journal keeps where the bulbs are, for --recover. The groups made
-        # so far still go, and after a group that couldn't be made, the bulbs still go home. The phases that ran
-        # still get their report and records.
-        if not isinstance(err, GroupError):
-            stopped, roamer = roamer, None
-        await report_ran(results, ha, registry, commit, profile, keyword)
-        raise SystemExit(f"Roaming stopped: {err}") from None
+        try:
+            await begin_logging(logs, levels, admin, suites, roaming)
+            result = await run_phases(
+                ha,
+                admin,
+                bridge,
+                roamer,
+                roaming,
+                suites,
+                profile,
+                registry,
+                keyword,
+                unattended,
+                (lambda: ledger.pause(ha, pausing)) if ledger and pausing else None,
+                journal,
+                results,
+                lanes,
+                reloads=claim is None or claim.ha == "exclusive",  # holding HA shared, it may not reload the entry
+            )
+            if suites:
+                await report(result, ha, registry, commit, profile, keyword, stamp)
+        except RoamError as err:
+            # A move that failed isn't retried here; the journal keeps where the bulbs are, for --recover. The groups
+            # made so far still go, and after a group that couldn't be made, the bulbs still go home. The phases that
+            # ran still get their report and records.
+            if not isinstance(err, GroupError):
+                stopped, roamer = roamer, None
+            await report_ran(results, ha, registry, commit, profile, keyword, stamp)
+            raise SystemExit(f"Roaming stopped: {err}") from None
+        finally:
+            home = await leave_lab(roamer, stopped)
+            await end_logging(logs, levels, admin)
+            if ledger is not None:
+                await ledger.resume(ha)
+            drop_profile(journal)
+            if bridge:
+                await bridge.close()
+            await ha.close()
+            if admin:
+                await admin.close()
+        code = 1 if result.failed or not home else 0
     finally:
-        home = await leave_lab(roamer, stopped)
-        if ledger is not None:
-            await ledger.resume(ha)
-        drop_profile(journal)
-        if bridge:
-            await bridge.close()
-        await ha.close()
-        if admin:
-            await admin.close()
-    return 1 if result.failed or not home else 0
+        logs.settle(code == 0)
+    return code
+
+
+async def begin_logging(
+    logs: RunLogs, levels: DebugLevels | None, admin: HAClient | None, suites: list[Suite], roaming: bool
+) -> None:
+    """Start Z2M's capture, when the run touches Z2M, then raise the debug levels, when asked: the raise's own lines
+    are captured."""
+    z2m = touches_z2m(suites, roaming)
+    if z2m:
+        await logs.start_z2m(admin)
+    if levels is not None:
+        await levels.raise_levels(ha_domains({suite.integration for suite in suites}, roaming), z2m)
+
+
+async def end_logging(logs: RunLogs, levels: DebugLevels | None, admin: HAClient | None) -> None:
+    """Put the levels back, then stop Z2M's capture and save HA's log."""
+    if levels is not None:
+        await levels.restore()
+    await logs.stop_z2m()
+    await logs.save_ha(admin)
 
 
 async def run_phases(
@@ -1265,13 +1359,14 @@ async def report_ran(
     commit: str | None,
     profile: Profile,
     keyword: str | None = None,
+    stamp: str | None = None,
 ) -> None:
     """After a failed move, report the phases that ran before it. A report that fails is printed, never raised: the
     move's error, with its recovery steps, must still show."""
     if not results:
         return
     try:
-        await report(RunResult(results), ha, registry, commit, profile, keyword)
+        await report(RunResult(results), ha, registry, commit, profile, keyword, stamp)
     except Exception as err:  # noqa: BLE001
         print(f"The phases that ran couldn't be reported: {err}")
 
@@ -1283,11 +1378,12 @@ async def report(
     commit: str | None,
     profile: Profile,
     keyword: str | None = None,
+    stamp: str | None = None,
 ):
     """The run's report, and a test record per fully passed suite when a commit names the tree HA ran. A suite whose
     cases ran in parts (lanes, then phases) is joined first; one missing a part writes no record."""
     result = merge(result.suites, profile, registry, keyword)
-    stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    stamp = stamp or datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"\nReport: {write_report(result, REPORT_DIR, f'rig run {stamp}')}")
     if commit is None:
         print("No test records: no commit names the tree HA ran (--no-deploy, or origin moved before the deploy).")
@@ -1533,12 +1629,23 @@ async def recover(
             journal.clear("options")
     if journal.get("roam") is not None:
         await recover_roam(admin, bridge, journal, out)
+    await recover_levels(admin, journal, out)
     await Ledger(journal.path.parent, journal.name, out).resume(ha)
     if paused := journal.get("paused"):  # a run from before the ledger kept its pauses here
         for entity_id in paused:
             await turn_on(ha, entity_id, out)
         journal.clear("paused")
     drop_profile(journal)
+
+
+async def recover_levels(admin: HAClient | None, journal: Journal, out: Callable[[str], None]) -> None:
+    """Put back the log levels a --debug-logs run raised; they stay journaled while there is no admin connection."""
+    if not journal.get("log_levels"):
+        return
+    if admin is None:
+        out("Putting the log levels back needs HA_ADMIN_TOKEN in .env.rig; they stay in the journal.")
+    else:
+        await DebugLevels(admin, journal, out).restore()
 
 
 def recover_case(ha: HAClient, entry: dict, out: Callable[[str], None], **journaled: Any) -> Snapshot:

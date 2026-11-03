@@ -5,6 +5,7 @@ import asyncio
 import contextlib
 import copy
 import json
+import logging
 from collections.abc import AsyncIterator, Callable
 from pathlib import Path
 from types import SimpleNamespace
@@ -47,6 +48,11 @@ class FakeHA(HAClient):
         self.z2m_ignores: set[str] = set()  # request topics Z2M never acts on
         self.z2m_options: dict[str, dict] = {}  # device options by IEEE, as bridge/info's config.devices
         self.z2m_level = "warning"  # Z2M's log level
+        self.z2m_debug_to_mqtt = False  # bridge/info's config.advanced.log_debug_to_mqtt_frontend
+        self.z2m_logging: asyncio.Queue[str] = asyncio.Queue()  # what Z2M publishes to bridge/logging
+        self.ha_log = ""  # what /api/error_log returns; an Exception instance is raised instead
+        self.ha_levels: dict[str, int] = {"device_side": 30, "hue": 20, "zha": 30, "mqtt": 30}  # logger/log_info
+        self.log_level_calls: list[tuple[str, str]] = []  # each integration_log_level (domain, level)
         self.z2m_failing: dict[str, int] = {}  # IEEE -> interviews still to fail, its first (on joining) included
         self.z2m_interviews: list[str] = []  # each device/interview request's id
         self.on_open: Callable[[str], None] | None = None  # ZHA or Z2M joining opened (Lab joins its bulbs)
@@ -153,13 +159,24 @@ class FakeHA(HAClient):
         if self.on_leave is not None:
             self.on_leave("zigbee2mqtt", ieee)
 
+    async def error_log(self) -> str:
+        if isinstance(self.ha_log, Exception):
+            raise self.ha_log
+        return self.ha_log
+
     @contextlib.asynccontextmanager
     async def _mqtt_messages(self, topic: str) -> AsyncIterator[asyncio.Queue[str]]:
+        if topic.endswith("/logging"):
+            yield self.z2m_logging
+            return
         retained = {
             "info": {
                 "permit_join": self.z2m_open,
                 "log_level": self.z2m_level,
-                "config": {"devices": self.z2m_options},
+                "config": {
+                    "devices": self.z2m_options,
+                    "advanced": {"log_debug_to_mqtt_frontend": self.z2m_debug_to_mqtt},
+                },
             },
             "devices": [self._z2m_entry(ieee) for ieee in self.z2m_devices],
             "groups": [
@@ -236,6 +253,12 @@ class FakeHA(HAClient):
             self.entity_devices.pop(entity_id)
             self.entity_meta.pop(entity_id, None)
             self.states.pop(entity_id, None)
+            return None
+        if kind == "logger/log_info":
+            return [{"domain": domain, "level": level} for domain, level in self.ha_levels.items()]
+        if kind == "logger/integration_log_level":
+            self.log_level_calls.append((payload["integration"], payload["level"]))
+            self.ha_levels[payload["integration"]] = logging.getLevelName(payload["level"])
             return None
         if kind.startswith("zha/group"):
             return self._zha_group(kind, payload)

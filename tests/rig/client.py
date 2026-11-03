@@ -129,6 +129,22 @@ class HAClient:
             response.raise_for_status()
             return await response.json()
 
+    async def error_log(self) -> str:
+        """HA's current session log as text (`/api/error_log`, admin only)."""
+        async with self._session.get(f"{self.url}/api/error_log") as response:
+            response.raise_for_status()
+            return await response.text()
+
+    async def log_levels(self) -> dict[str, int]:
+        """The effective log level (a `logging` number) of each integration HA reports, by domain."""
+        return {entry["domain"]: entry["level"] for entry in await self.command({"type": "logger/log_info"})}
+
+    async def set_log_level(self, domain: str, level: str) -> None:
+        """An integration's log level (a name such as DEBUG) until HA restarts: nothing is saved."""
+        await self.command(
+            {"type": "logger/integration_log_level", "integration": domain, "level": level, "persistence": "none"}
+        )
+
     async def get_state(self, entity_id: str) -> dict | None:
         async with self._session.get(f"{self.url}/api/states/{entity_id}") as response:
             if response.status == 404:
@@ -235,6 +251,10 @@ class HAClient:
     async def z2m_log_level(self) -> str | None:
         """Zigbee2MQTT's log level, from its retained bridge/info."""
         return (await self._z2m_retained("info")).get("log_level")
+
+    async def z2m_info(self) -> dict:
+        """Zigbee2MQTT's retained bridge/info: its version, log level and configuration."""
+        return await self._z2m_retained("info")
 
     async def z2m_set_log_level(self, level: str) -> None:
         """Set Zigbee2MQTT's log level (it persists in its configuration), and wait until bridge/info shows it."""
