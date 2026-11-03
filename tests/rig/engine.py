@@ -1465,12 +1465,14 @@ async def run(
     journal: Journal | None = None,
     only: Callable[[Case], bool] | None = None,
     lanes: bool = False,
+    busy: dict[str, float] | None = None,
 ) -> RunResult:
     """Run every case and print the table; ADMIN_INTEGRATIONS run on `admin`. `ask=None` is --unattended.
 
     Every automated case runs first, with nobody needed. Then each observed case runs, unless its automated twin
     failed; unattended, they are reported not observed instead. `only` keeps the cases it accepts, leaving each suite
     incomplete (see merge). With `lanes`, each integration's automated cases run as one lane, the lanes side by side.
+    `busy` (_CaseRun.busy) carries the predictions an earlier run's cases left, for a run that follows straight on.
     """
     planned = _plan(suites, profile, registry, ha, admin, keyword, only, out)
     options = {
@@ -1490,6 +1492,8 @@ async def run(
         journal=journal,
         lanes=lanes,
     )
+    if busy is not None:
+        rig_run.busy = busy
     try:
         waiting = await rig_run.all_automated([(suite, client, cases_) for suite, _, client, cases_ in planned])
         await rig_run.observed(waiting)

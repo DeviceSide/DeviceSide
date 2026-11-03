@@ -206,7 +206,10 @@ async def test_a_roaming_run_starts_with_the_lanes_at_home_then_runs_the_rest_by
     finder = roam.Roamer(ha, lab.bridge, fakes.LAB_BULBS, out=lambda _: None)
     ran = []
 
-    async def recorded(run_suites, run_profile, *args, only=None, lanes=False, **kwargs):
+    busy_maps = set()
+
+    async def recorded(run_suites, run_profile, *args, only=None, lanes=False, busy=None, **kwargs):
+        busy_maps.add(id(busy))
         where = [await finder.locate(bulb) for bulb in fakes.LAB_BULBS]
         accepted = [
             f"{suite.integration} {case.id}"
@@ -237,6 +240,18 @@ async def test_a_roaming_run_starts_with_the_lanes_at_home_then_runs_the_rest_by
         (False, ["zha", "zha"], ["zha t[light_ct]"]),
         (False, ["zigbee2mqtt"] * 2, ["zigbee2mqtt t[light_ct]"]),
     ]
+    assert len(busy_maps) == 1 and id(None) not in busy_maps  # the phases wait out the lanes' predictions
+
+
+async def test_a_run_waits_out_the_predictions_an_earlier_run_left(tmp_path):
+    ha = Overlapping({"light.a": ON, "light.b": ON}, call_s=0)
+    suites, profile = two_lanes(tmp_path)
+    loop = asyncio.get_running_loop()
+    started = loop.time()
+
+    await run_two(ha, suites[:1], profile, busy={"light.a": started + 0.2})
+
+    assert loop.time() - started >= 0.2
 
 
 def test_the_plan_shows_the_lanes_then_the_phases_and_estimates_the_longest_lane(tmp_path, capsys):

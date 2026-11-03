@@ -59,7 +59,6 @@ import urllib.error
 import urllib.request
 from collections.abc import Callable, Coroutine, Iterator
 from dataclasses import dataclass
-from functools import partial
 from pathlib import Path
 from typing import Any, TextIO
 
@@ -218,7 +217,7 @@ def plan_lines(
 
 def head(profile: Profile) -> Callable[[Case], bool]:
     """The cases the lanes run: in_head's."""
-    return partial(in_head, profile=profile)
+    return lambda case: in_head(case, profile)
 
 
 def tail(profile: Profile) -> Callable[[Case], bool]:
@@ -1005,7 +1004,8 @@ async def run_phases(
     results = [] if results is None else results
     lanes = lanes and bool(suites)
     ask = None if unattended else input
-    common = {"admin": admin, "keyword": keyword, "ask": ask, "bridge": bridge, "journal": journal}
+    # One busy map for every run: the phases go on from the lanes, on some of the same lights.
+    common = {"admin": admin, "keyword": keyword, "ask": ask, "bridge": bridge, "journal": journal, "busy": {}}
     only = tail(profile) if lanes else None
     for number, (network, phase_suites) in enumerate(phases(suites, roaming)):
         if roamer is not None:
@@ -1284,10 +1284,10 @@ async def recover(
     run_of = f" (profile {name})" if (name := journal.get("profile")) else ""
     out(f"An aborted rig run{run_of} left changes in {journal.path}; putting them back.")
     for key, entry in dict(journal.get("cases") or {}).items():
-        await recover_case(ha, journal, entry, key, out)
+        await recover_case(ha, entry, out, journal=journal, journal_key=key).restore()
     if taken := journal.get("taken"):  # a journal from before lanes, with one case at the top level
         entry = {"taken": taken, "stored": journal.get("stored", {}), "power": journal.get("power", {})}
-        await recover_case(ha, None, entry, None, out)
+        await recover_case(ha, entry, out).restore()
         journal.clear("taken", "stored", "power")
     if (options := journal.get("options")) is not None:
         if admin is None:
@@ -1306,15 +1306,13 @@ async def recover(
     drop_profile(journal)
 
 
-async def recover_case(ha: HAClient, journal: Journal | None, entry: dict, key: str | None, out: Callable[[str], None]):
-    """Put back one case's entities from its journal entry, dropping the entry (`key`) once done."""
+def recover_case(ha: HAClient, entry: dict, out: Callable[[str], None], **journaled: Any) -> Snapshot:
+    """The snapshot that puts back one case's entities from its journal entry, saying which go back how; `journaled`
+    (journal, journal_key) has its restore drop the entry."""
     for entity_id, state in entry["taken"].items():
         if state is not None and state["state"] in ("on", "off"):
             out(f"Putting {entity_id} back {state['state']}.")
-    snapshot = Snapshot(ha, entry.get("power", {}), taken=entry["taken"], stored=entry.get("stored", {}))
-    if journal is not None and key is not None:
-        snapshot.journal, snapshot.journal_key = journal, key
-    await snapshot.restore()
+    return Snapshot(ha, entry.get("power", {}), taken=entry["taken"], stored=entry.get("stored", {}), **journaled)
 
 
 async def recover_roam(
