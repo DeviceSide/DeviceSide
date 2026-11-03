@@ -83,19 +83,14 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. Lanes on dif
 - [ ] **Raise/lower rig run**: unattended, the six actions and `stop` on Hue and Z2M. Its records replace
   `docs/test-records/{hue,zigbee2mqtt}/move*.md` and rewrite `stop*.md`; it measures the new hue, saturation and two-call
   stop ranges for the first time.
-- [ ] **13j** Z2M `set_attributes` while off. Z2M code freezes.
-  Code, tests and docs merged in #130, experimental. Still to do: its rig run
-  (`scripts/rig.py --action set_attributes`, with the new `sets_after_a_soft_off` case, which also runs on Hue and
-  ZHA) and `docs/test-records/zigbee2mqtt/set_attributes.md`, both in the pre-release full rig run. Tick when the
-  record is in.
-  Lab reruns 3 Nov after the fade-wait fix (three runs, `not_stored` gone in all): none passed whole. Run 3 (with the
-  single group wait) fails two cases, both on Z2M's cached state, not on a read-back: `sets_after_a_soft_off[light_ct]`
-  and `sets_color_while_off` find HA `on` after the call, and both passed in run 1. In the corner's log Z2M published
-  `ON` 0.3 s after the case's soft off (a report from the bulb mid-fade) and never `OFF`; our reads republish that
-  cache. The sideboard's case is a race with its setup's `off`, 0.2 s before the write (`sets_hs_while_off` avoids it
-  with `wait: 2`). Next: give both cases a settle wait after the off, and look at whether Z2M's state after a soft off
-  needs the same wait. Singles in runs 1 and 2: `min_brightness_raises[group]` setup (desk read 102, not ~51), and a
-  group member's read getting no reply.
+- [x] **13j** Z2M `set_attributes` while off. Z2M code freezes.
+  Code, tests and docs merged in #130, experimental. Lab record `docs/test-records/zigbee2mqtt/set_attributes.md`
+  (3 Nov, all 15 unattended cases pass; `sets_color_while_off` observed is still to watch before the adapter leaves
+  `experimental`). Two causes cleared on the way: the read-back compared mid-fade (the adapter now waits out the
+  0.4 s write fade once, #192), and Z2M, which publishes the read-backs of a restore's commands about 0.5 s later and
+  republishes a group's state onto every member, overwrote a light's `off` in the next case with a late `on` (the rig
+  now settles 1.5 s after a restore). Each is only seen on the cases that failed before and passed after; a real
+  group's members still show Z2M's aggregate state, which the adapter can't correct.
 - [x] **14** Z2M color modes fixed for HA, on by default, and 13i's xy write-back backed out
   ([`2026-10-28-z2m-color-modes.md`](docs/plans/2026-10-28-z2m-color-modes.md)). Counts toward the Z2M freeze.
 - [x] **15** The lab ([`2026-11-01-lab.md`](docs/plans/2026-11-01-lab.md)): three Hue bulbs in the maintainer's room,
