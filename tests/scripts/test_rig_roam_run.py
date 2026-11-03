@@ -510,6 +510,35 @@ async def test_the_check_says_a_bulb_away_from_hue_will_be_moved_and_finds_one_u
     assert await check(tmp_path) == ["light.lab_a: on Hue, unavailable; check it is powered"]
 
 
+async def test_the_check_says_a_run_puts_back_a_home_the_journal_holds(tmp_path, lab, capsys):
+    lab.ha.states["switch.plug"] = {"entity_id": "switch.plug", "state": "on", "attributes": {}}
+    leave_hue(lab, "hue-device-2")
+    lab.opened("zha")
+    profile = Profile.load(lab_profile(tmp_path))
+
+    assert (
+        await rig.check_devices(
+            ENV, check_suites(tmp_path), profile, AdapterRegistry.discover(), None, True, {"light.lab_b"}
+        )
+        == []
+    )
+    assert "light.lab_b: on ZHA; the journal holds its Hue home, which a run puts back" in capsys.readouterr().out
+
+
+async def test_the_check_reports_a_network_it_cannot_ask(tmp_path, lab):
+    lab.ha.states["switch.plug"] = {"entity_id": "switch.plug", "state": "on", "attributes": {}}
+
+    async def unreachable(ieee):
+        raise fakes.BridgeError("bridge unreachable")
+
+    lab.bridge.device_id_by_ieee = unreachable
+    problems = await check(tmp_path)
+    assert problems == [
+        "light.lab_a: can't tell which network it is on: bridge unreachable",
+        "light.lab_b: can't tell which network it is on: bridge unreachable",
+    ]
+
+
 async def test_the_check_looks_for_no_bulb_when_the_run_does_not_roam(tmp_path, lab, capsys):
     lab.ha.states["switch.plug"] = {"entity_id": "switch.plug", "state": "on", "attributes": {}}
     leave_hue(lab, "hue-device-2")
@@ -542,7 +571,7 @@ def main_with(tmp_path: Path, monkeypatch, problems: list[str]) -> list:
     path = lab_profile(tmp_path)
     asked = []
 
-    async def check_devices(env, suites, profile, registry, keyword, roaming):
+    async def check_devices(env, suites, profile, registry, keyword, roaming, homes=frozenset()):
         asked.append(([suite.integration for suite in suites], roaming))
         return problems
 
@@ -575,9 +604,10 @@ def test_check_names_a_run_holding_the_lock(tmp_path, monkeypatch, capsys):
     assert rig.held_by(tmp_path / rig.LOCK_NAME) is None
 
 
-def test_check_refuses_another_mode(monkeypatch):
+def test_check_refuses_another_mode(capsys):
     with pytest.raises(SystemExit):
         rig.main(["--check", "--recover"])
+    assert "--check can't be combined with --recover" in capsys.readouterr().err
 
 
 def test_a_run_stops_before_the_gate_on_a_device_problem(tmp_path, monkeypatch):
@@ -599,3 +629,23 @@ def test_roam_check_skips_the_device_check(tmp_path, monkeypatch):
     asked = main_with(tmp_path, monkeypatch, [])
     assert rig.main(["--roam-check", "--dry-run"]) == 0
     assert asked == []
+
+
+async def test_connect_closes_the_first_session_when_the_admin_one_fails(monkeypatch):
+    closed = []
+
+    class Client:
+        def __init__(self, url, token):
+            self.token = token
+
+        async def connect(self):
+            if self.token == "a":
+                raise RuntimeError("WebSocket auth failed")
+
+        async def close(self):
+            closed.append(self.token)
+
+    monkeypatch.setattr(rig, "HAClient", Client)
+    with pytest.raises(RuntimeError, match="auth failed"):
+        await rig.connect(ENV)
+    assert closed == ["t"]

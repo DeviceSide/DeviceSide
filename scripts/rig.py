@@ -63,8 +63,8 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
 from custom_components.device_side.core.registry import AdapterRegistry  # noqa: E402
-from tests.rig.bridge import HueBridge  # noqa: E402
-from tests.rig.client import HAClient  # noqa: E402
+from tests.rig.bridge import BridgeError, HueBridge  # noqa: E402
+from tests.rig.client import HAClient, HAError  # noqa: E402
 from tests.rig.engine import (  # noqa: E402
     ADMIN_INTEGRATIONS,
     EntryOptions,
@@ -537,8 +537,9 @@ def run_held(args: argparse.Namespace, journal: Journal) -> int:
     suites = run_suites(args, profile, registry)
     roaming = roams(profile, suites, args.roam_check)
     grouping = makes_groups(profile, suites, args.roam_check)
+    homes = set((journal.get("roam") or {}).get("home", {}))
     if args.check:
-        return check_only(env, suites, profile, registry, args.keyword, roaming)
+        return check_only(env, suites, profile, registry, args.keyword, roaming, homes)
     if not args.dry_run:
         check_tokens(env, suites, registry, roaming or grouping)
     deploy = deploy_state(env.get("RIG_STATUS_CMD", ""))
@@ -549,7 +550,7 @@ def run_held(args: argparse.Namespace, journal: Journal) -> int:
         check_deploy(env, deploy)
     if not args.roam_check:
         print()
-        ready = not asyncio.run(check_devices(env, suites, profile, registry, args.keyword, roaming))
+        ready = not asyncio.run(check_devices(env, suites, profile, registry, args.keyword, roaming, homes))
         if not (ready or args.dry_run):
             raise SystemExit("Power or fix the devices above, then run again.")
     if args.dry_run:
@@ -577,12 +578,18 @@ def run_held(args: argparse.Namespace, journal: Journal) -> int:
 
 
 def check_only(
-    env: dict, suites: list[Suite], profile: Profile, registry: AdapterRegistry, keyword: str | None, roaming: bool
+    env: dict,
+    suites: list[Suite],
+    profile: Profile,
+    registry: AdapterRegistry,
+    keyword: str | None,
+    roaming: bool,
+    homes: set[str],
 ) -> int:
     """--check: the device check alone, naming a run that holds the lock, whose moves and pauses it would see."""
     if holder := held_by(common_dir() / LOCK_NAME):
         print(f"A rig run holds the lock: {holder}. What it has moved or paused shows below as it is now.")
-    return 1 if asyncio.run(check_devices(env, suites, profile, registry, keyword, roaming)) else 0
+    return 1 if asyncio.run(check_devices(env, suites, profile, registry, keyword, roaming, homes)) else 0
 
 
 def run_suites(args: argparse.Namespace, profile: Profile, registry: AdapterRegistry) -> list[Suite]:
@@ -786,7 +793,7 @@ def print_plan(
 def print_profile(profile: Profile) -> None:
     """The profile's entities by integration, its roaming bulbs once each, and its pause list."""
     print(f"Profile {profile.name}:")
-    roaming_ids = {bulb.entity_id for bulb in profile.roam}
+    roaming_ids = {bulb.entity_id for bulb in profile.roam}  # the groups print below, and the bulbs once
     for integration, entities in profile.integrations.items():
         for entity in entities:
             if entity.entity_id not in roaming_ids:
@@ -1014,15 +1021,20 @@ def targets(suites: list[Suite], profile: Profile, registry: AdapterRegistry, ke
 
 
 async def check_devices(
-    env: dict, suites: list[Suite], profile: Profile, registry: AdapterRegistry, keyword: str | None, roaming: bool
+    env: dict,
+    suites: list[Suite],
+    profile: Profile,
+    registry: AdapterRegistry,
+    keyword: str | None,
+    roaming: bool,
+    homes: set[str] = frozenset(),
 ) -> list[str]:
     """Before anything changes, for every phase at once: each fixed entity the selected cases use is in HA and
     available, and, when the run roams, each roaming bulb is on a network with its light available. Prints what it
     found; returns the problems, which would otherwise stop the run part way, after moves. Rig-made groups and scenes
-    don't exist yet, and a roaming bulb's light may still be under another ID, so neither is looked up as an entity."""
-    made = {bulb.entity_id for bulb in profile.roam}
-    made |= {entity for group in profile.roam_groups for entity in (group.entity_id, group.scene) if entity}
-    fixed = [entity for entity in targets(suites, profile, registry, keyword) if entity not in made]
+    don't exist yet, and a roaming bulb's light may still be under another ID, so neither is looked up as an entity.
+    `homes` are the bulbs whose Hue home the journal holds, which a run puts back."""
+    fixed = [entity for entity in targets(suites, profile, registry, keyword) if entity not in profile.made_entities]
     bulbs = list(profile.roam) if roaming else []
     print(f"Checking profile {profile.name}: {len(fixed)} entities" + (f", {len(bulbs)} roaming." if bulbs else "."))
     if not (env.get("HA_URL") and env.get("HA_TOKEN")):
@@ -1039,7 +1051,7 @@ async def check_devices(
             elif not available(state):
                 problems.append(f"{entity}: unavailable; check it is powered")
         if bulbs:
-            problems += await check_roaming(env, admin, bulbs, ha)
+            problems += await check_roaming(env, admin, bulbs, ha, homes)
     finally:
         await ha.close()
         if admin:
@@ -1050,8 +1062,11 @@ async def check_devices(
     return problems
 
 
-async def check_roaming(env: dict, admin: HAClient | None, bulbs: list[RoamBulb], ha: HAClient) -> list[str]:
-    """Where each roaming bulb is, printed, and the problems: one on no network, or whose light is unavailable."""
+async def check_roaming(
+    env: dict, admin: HAClient | None, bulbs: list[RoamBulb], ha: HAClient, homes: set[str] = frozenset()
+) -> list[str]:
+    """Where each roaming bulb is, printed, and the problems: one on no network, or whose light is unavailable, or
+    one the networks couldn't be asked about."""
     if admin is None or not (env.get("HUE_BRIDGE_HOST") and env.get("HUE_APP_KEY")):
         return ["Can't find the roaming bulbs: that needs HA_ADMIN_TOKEN, HUE_BRIDGE_HOST and HUE_APP_KEY in .env.rig"]
     bridge = HueBridge(env["HUE_BRIDGE_HOST"], env["HUE_APP_KEY"])
@@ -1059,12 +1074,18 @@ async def check_roaming(env: dict, admin: HAClient | None, bulbs: list[RoamBulb]
     try:
         finder = Roamer(admin, bridge, map(Bulb.of, bulbs), out=lambda _: None)
         for bulb in finder.bulbs:
-            network = await finder.locate(bulb)
+            try:
+                network = await finder.locate(bulb)
+            except (BridgeError, HAError, OSError, aiohttp.ClientError, TimeoutError) as err:
+                problems.append(f"{bulb.entity_id}: can't tell which network it is on: {err or type(err).__name__}")
+                continue
             state = await ha.get_state(bulb.entity_id)
             if network is None:
                 problems.append(f"{bulb.entity_id}: not on any Zigbee network. {BLUETOOTH_RESET}")
             elif state is not None and not available(state):
                 problems.append(f"{bulb.entity_id}: on {NAMES[network]}, unavailable; check it is powered")
+            elif network != HOME and bulb.entity_id in homes:
+                print(f"  {bulb.entity_id}: on {NAMES[network]}; the journal holds its Hue home, which a run puts back")
             elif network != HOME:
                 print(
                     f"  {bulb.entity_id}: on {NAMES[network]}. The run moves it from there; it has no saved Hue home, "
@@ -1099,7 +1120,11 @@ async def connect(env: dict) -> tuple[HAClient, HAClient | None]:
     admin = HAClient(env["HA_URL"], env["HA_ADMIN_TOKEN"]) if env.get("HA_ADMIN_TOKEN") else None
     await ha.connect()
     if admin:
-        await admin.connect()
+        try:
+            await admin.connect()
+        except BaseException:
+            await ha.close()
+            raise
     return ha, admin
 
 
