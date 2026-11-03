@@ -1,7 +1,7 @@
 import pytest
 from homeassistant.config_entries import ConfigEntryState
 
-from custom_components.device_side.integrations.zigbee2mqtt import bridge, read
+from custom_components.device_side.integrations.zigbee2mqtt import bridge, read, set_attributes
 from custom_components.device_side.integrations.zigbee2mqtt.fade import transition_cache
 
 from ...fixtures.z2m import GROUPS, IEEE, INFO, Broker, add_z2m_entity, add_z2m_group, z2m_entry
@@ -27,6 +27,7 @@ def broker(hass, monkeypatch):
     monkeypatch.setattr(bridge, "_RETAINED_TIMEOUT_S", 0.01)
     monkeypatch.setattr(bridge, "_REPLY_TIMEOUT_S", 0.01)
     monkeypatch.setattr(read, "_REPLY_TIMEOUT_S", 0.01)
+    monkeypatch.setattr(set_attributes, "_FADE_WAIT_S", 0.0)
     hass.services.async_register("mqtt", "publish", fake.publish)
     return fake
 

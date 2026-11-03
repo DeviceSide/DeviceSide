@@ -2,6 +2,7 @@
 so a light that is off stores the values and stays off; then a live read of what was written, which also puts the
 values into Z2M's state, and so HA's."""
 
+import asyncio
 from typing import ClassVar
 
 from homeassistant.core import HomeAssistant
@@ -29,6 +30,10 @@ from ...core.zcl_write import (
 # 0.4 s, the Hue bridge's default write fade, as on ZHA; a light that is off doesn't fade. The override sets
 # ExecuteIfOff for this command only, so the light takes it while off; Options stays untouched.
 _EXECUTE_IF_OFF = {"transtime": 4, "optionsMask": 1, "optionsOverride": 1}
+
+# The fade is 0.4 s from when the bulb gets the command; a read inside it answers a level between the old and the
+# target. Wait it out, with a margin for the command's trip, before reading.
+_FADE_WAIT_S = 0.6
 
 _LEVEL, _COLOR = "genLevelCtrl", "lightingColorCtrl"
 NOT_STORED = "not_stored"
@@ -104,9 +109,10 @@ class Z2MSetAttributes(Adapter[SetAttributesRequest]):
     """Publish each MoveTo command to the light or group, never the WithOnOff variants, then read the lights back.
 
     The ExecuteIfOff override makes a light that is off store the values and stay off (probe 13a). Z2M publishes no
-    state after a raw command, so each written cluster is read live from each light, which answers with the target
-    even mid-fade (probe 13j): Z2M takes the values from the reply, as from a report, and HA follows. A light whose
-    level or color temperature doesn't read back as written ignored the override, and is rejected with not_stored. A
+    state after a raw command, so each written cluster is read live from each light after the write's fade has
+    ended (a read inside it answers a level between the old and the target; probe 13j, rerun 3 Nov): Z2M takes the
+    values from the reply, as from a report, and HA follows. A light whose level or color temperature doesn't read
+    back as written ignored the override, and is rejected with not_stored. A
     read that fails raises, so the call raises targets_failed.
 
     A group is one groupcast per command, and is confirmed only when every member is. min/max_brightness alone clamps
@@ -176,5 +182,6 @@ class Z2MSetAttributes(Adapter[SetAttributesRequest]):
             await publish(hass, topic(to, "set"), _wire(command))
         if (level := next((c.level for c in sent if isinstance(c, MoveToLevel)), None)) is not None:
             await publish(hass, topic(to, "set"), _kept_level(level))
+        await asyncio.sleep(_FADE_WAIT_S)
         stored = [await _stored(reading, light, sent) for light in lights]
         return True, all(stored), dropped
