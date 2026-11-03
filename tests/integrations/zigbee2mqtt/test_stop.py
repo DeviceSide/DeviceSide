@@ -49,7 +49,8 @@ async def test_a_soft_off_of_ours_is_halted_where_it_is(hass, broker, clock):
     response = await call(hass, "stop", {"entity_id": entity_id})
 
     assert response == {entity_id: SENT}
-    assert commands(broker)[1:] == [(SET, BRIGHTNESS_STOP)]
+    # Hue native control sends a soft off as Philips' own command, which the stop alone doesn't end: it is cut at 30 %.
+    assert commands(broker)[1:] == [(SET, BRIGHTNESS_STOP), (SET, {"state": "ON", "brightness": 76, "transition": 0})]
     clock.now += 1
     assert transition_cache(hass).value(entity_id, BRIGHTNESS, 0) == pytest.approx(30.0)
 
@@ -124,7 +125,11 @@ async def test_a_group_is_stopped_with_one_publish_and_a_halt_per_member(hass, b
     response = await call(hass, "stop", {"entity_id": room})
 
     assert response == {room: SENT}
-    assert commands(broker)[1:] == [("zigbee2mqtt/7/set", BRIGHTNESS_STOP)]
+    assert commands(broker)[1:] == [
+        ("zigbee2mqtt/7/set", BRIGHTNESS_STOP),
+        ("zigbee2mqtt/0x01/set", {"state": "ON", "brightness": 169, "transition": 0}),
+        ("zigbee2mqtt/0x02/set", {"state": "ON", "brightness": 34, "transition": 0}),
+    ]
     cache = transition_cache(hass)
     assert cache.halted("light.one", BRIGHTNESS)
     assert cache.value("light.one", BRIGHTNESS, 0) == pytest.approx(100 - 100 / 3)

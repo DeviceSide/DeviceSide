@@ -97,6 +97,8 @@ class Broker:
         self.logs_before_reply: list[str] = []  # bridge/logging payloads published ahead of each read's reply
         self.states: dict[str, dict] = {}  # the state Z2M keeps for each device, keyed by IEEE, in every publish
         self.ignores_override: set[str] = set()  # IEEEs whose bulbs drop a MoveTo command, as without the override
+        self.fade_s = 0.0  # seconds a lit bulb takes to reach a stored level, answering the old one until then
+        self.fading: dict[str, tuple[int, float]] = {}  # IEEE -> (level before the write, when the fade ends)
 
     async def subscribe(self, hass, topic, msg_callback):
         self.topics.append(topic)
@@ -167,6 +169,12 @@ class Broker:
         for payload in self.before_reply:
             self.deliver(f"zigbee2mqtt/{name}", json.dumps(payload))
         reply = {attribute: clusters[cluster][attribute] for attribute in read["attributes"]}
+        if (
+            (fade := self.fading.get(ieee))
+            and cluster == "genLevelCtrl"
+            and asyncio.get_running_loop().time() < fade[1]
+        ):
+            reply["currentLevel"] = fade[0]
         state = self.states.setdefault(ieee, {"state": "ON"})
         if "currentLevel" in reply:
             state["brightness"] = reply["currentLevel"]
@@ -197,6 +205,10 @@ class Broker:
         cluster, values = stored
         for ieee in ieees:
             if ieee in self.devices and ieee not in self.ignores_override:
+                clusters = self.devices[ieee][1]
+                if cluster == "genLevelCtrl" and clusters.get("genOnOff", {}).get("onOff") and self.fade_s:
+                    before = clusters[cluster]["currentLevel"]
+                    self.fading[ieee] = (before, asyncio.get_running_loop().time() + self.fade_s)
                 self.devices[ieee][1].setdefault(cluster, {}).update(values)
 
     def reads(self) -> list[tuple[str, dict]]:

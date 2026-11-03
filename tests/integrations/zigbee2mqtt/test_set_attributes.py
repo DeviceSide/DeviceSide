@@ -4,6 +4,8 @@ import pytest
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util.color import color_RGB_to_xy, color_xy_to_hs
 
+from custom_components.device_side.integrations.zigbee2mqtt import set_attributes
+
 from ...conftest import call, refusal
 from ...fixtures.z2m import GROUPS, IEEE, INFO, add_z2m_entity, add_z2m_group, z2m_entry
 
@@ -250,6 +252,36 @@ async def test_a_bulb_that_ignores_the_override_is_rejected(hass, broker):
 
     assert raised.value.translation_key == "targets_failed"
     assert raised.value.translation_placeholders["summary"] == "light.lamp: not_stored"
+
+
+async def test_the_read_waits_out_the_write_fade(hass, broker, monkeypatch):
+    # A lit bulb answers the old level until the fade ends; read inside it, the write looks ignored.
+    bulb(hass, broker, modes=DIMMABLE)
+    broker.fade_s = 0.05
+    monkeypatch.setattr(set_attributes, "_RETRIES", 0)
+
+    with pytest.raises(HomeAssistantError) as raised:
+        await call(hass, "set_attributes", {"entity_id": "light.lamp", "brightness": 40})
+    assert raised.value.translation_placeholders["summary"] == "light.lamp: not_stored"
+
+    monkeypatch.setattr(set_attributes, "_FADE_WAIT_S", 0.1)
+    broker.fading.clear()
+    broker.devices[IEEE][1]["genLevelCtrl"]["currentLevel"] = 127
+
+    response = await call(hass, "set_attributes", {"entity_id": "light.lamp", "brightness": 40})
+
+    assert response == {"light.lamp": CONFIRMED}
+
+
+async def test_a_read_still_mid_fade_is_repeated_before_the_write_counts_as_ignored(hass, broker, monkeypatch):
+    bulb(hass, broker, modes=DIMMABLE)
+    broker.fade_s = 0.05
+    monkeypatch.setattr(set_attributes, "_RETRY_S", 0.06)
+
+    response = await call(hass, "set_attributes", {"entity_id": "light.lamp", "brightness": 40})
+
+    assert response == {"light.lamp": CONFIRMED}
+    assert len([r for r in reads(broker) if r[1] == "genLevelCtrl"]) == 2
 
 
 async def test_color_is_not_compared(hass, broker):

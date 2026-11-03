@@ -83,11 +83,19 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. Lanes on dif
 - [ ] **Raise/lower rig run**: unattended, the six actions and `stop` on Hue and Z2M. Its records replace
   `docs/test-records/{hue,zigbee2mqtt}/move*.md` and rewrite `stop*.md`; it measures the new hue, saturation and two-call
   stop ranges for the first time.
-- [ ] **13j** Z2M `set_attributes` while off. Z2M code freezes.
-  Code, tests and docs merged in #130, experimental. Still to do: its rig run
-  (`scripts/rig.py --action set_attributes`, with the new `sets_after_a_soft_off` case, which also runs on Hue and
-  ZHA) and `docs/test-records/zigbee2mqtt/set_attributes.md`, both in the pre-release full rig run. Tick when the
-  record is in.
+- [x] **13j** Z2M `set_attributes` while off. Z2M code freezes.
+  Code, tests and docs merged in #130, experimental. Lab record `docs/test-records/zigbee2mqtt/set_attributes.md`
+  (3 Nov, all 15 unattended cases pass, and again on two later full runs; `sets_color_while_off` observed is still to watch before the adapter leaves
+  `experimental`). Two causes cleared on the way: the read-back compared mid-fade (the adapter now waits out the
+  0.4 s write fade once, #192), and Z2M, which publishes the read-backs of a restore's commands about 0.5 s later and
+  republishes a group's state onto every member (Z2M's `extension/groups.ts`: a member's `ON` always goes to its groups, a group's state is written onto every member, and an `OFF` reaches the group only when every member is off), overwrote a light's `off` in the next case with a late `on` (the rig
+  now settles 1.5 s after a restore). A/B on the lab (settle 0 vs 1.5 s, same tree): with 0, both cases failed again in two
+  of the next three runs (with a setup failure and a bulb dropping off the network in the third); with 1.5, 15/15 in
+  the one run that got through. A real group's members still show Z2M's aggregate state, which the adapter can't
+  correct.
+  One settle-0 run also failed `sets_while_off[light_ct]` with `not_stored`: a color temperature read 0.7 s after
+  the write returned 317 (written 370) and the next read 370, a slow bulb fade past the 0.6 s wait. `_stored` now
+  reads again (twice, 0.5 s apart) before it calls a write ignored.
 - [x] **14** Z2M color modes fixed for HA, on by default, and 13i's xy write-back backed out
   ([`2026-10-28-z2m-color-modes.md`](docs/plans/2026-10-28-z2m-color-modes.md)). Counts toward the Z2M freeze.
 - [x] **15** The lab ([`2026-11-01-lab.md`](docs/plans/2026-11-01-lab.md)): three Hue bulbs in the maintainer's room,
@@ -125,12 +133,20 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. Lanes on dif
   write. zha skips `update_entity` for 1.5 s after an HA `turn_off`, and ZHA applies no color reports, so HA showed the
   old color after the next on. Fixed (#172): the refresh waits out zha's transition flag. Rig proof rides the
   pre-release run.
-- [ ] **Z2M lab: the `light_ct` bulb's stops since 3 Nov's resets.** Since the lab bulbs were reset and re-added (and
-  Z2M joins went through the coordinator, #174), two Z2M cases fail on every tree, the core HA watch's (#181) and the one
-  before it (an A/B run): `lower_stop_lower[light_ct]` reads 90 % after the stop, then holds at 26 %, and
-  `halts_a_lower_to_off[light_ct]` ends off. The setup of `lower_to_off[group]` also finds the color bulb reporting no
-  brightness. All passed on 2 Nov. First, probe whether the bulb takes the brightness stop mid-fade, and what it
-  reports. `opus`: hardware triage, where the cause may be the bulb's state after its reset or our stop.
+- [x] **Z2M lab: stop on the lab bulbs since 3 Nov's resets.** All unattended cases pass (3 Nov, and again on two later full runs; record
+  `docs/test-records/zigbee2mqtt/stop.md`). Causes: with Hue native control on, Z2M sends a soft off as Philips'
+  own command, which `brightness_move: stop` doesn't end, so `stop` now also cuts a soft off of ours with
+  `state: ON` at its predicted brightness (as on Hue); the cases' setup `set` fade was still running when a raise
+  started, so they wait 1.5 s; and a bulb newly joined to Z2M has no `color_mode` in its state (HA's MQTT light
+  then shows no `brightness`, which failed every group setup and, through it, two group color checks), so the
+  rig reads each bulb once after it joins. A lost read on the sideboard's radio path was seen once (one color read
+  unanswered for Z2M's 10 s timeout); the lab join-parent plan covers it. A 180 s probe of live reads on it (3 Nov, 19:5x) failed on its first sample with
+  a read error, and the bulb then left the network on the move home (the fourth move that has dropped a lab
+  bulb): the sideboard's link is the weak point, not the adapters. Repeated after it was re-added (3 Nov, 20:28):
+  Z2M's log shows the coordinator's source route to it failing (`ZIGBEE_SOURCE_ROUTE_FAILURE`, all 7 in the run target
+  it) after its relay hop flipped from the corner bulb to other routers (one a household device, LQI 108 to 120),
+  then `ZIGBEE_DELIVERY_FAILED` on the read. The cause is the mesh path, not the adapter; fixing it needs the
+  join-route plan or a better-placed relay, not a code change here.
 - [ ] **ZHA A60 run** (13k step 3), on the lab: ZHA color suites, `set_attributes` hs and xy included. Attended for
   `sets_color_while_off`. Clears `experimental` on the ZHA adapters it proves.
 - [ ] **9d** Rig coverage sweep for the non-color scope

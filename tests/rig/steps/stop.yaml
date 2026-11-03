@@ -8,6 +8,7 @@ tests:
     roles: [light_ct, group]
     setup:
       - set: {state: on, brightness_pct: 10}
+      - wait: 1.5  # the set's own fade is still running when the raise starts, and the raise reads its start
     steps:
       - call: {action: raise_brightness, sweep_time: 10}
       - wait: 3
@@ -19,6 +20,7 @@ tests:
     roles: [light_ct, group]
     setup:
       - set: {state: on, brightness_pct: 100}
+      - wait: 1.5
     steps:
       - call: {action: lower_brightness, sweep_time: 10}
       - wait: 3
@@ -90,6 +92,7 @@ tests:
     roles: [light_color, group_color]
     setup:
       - set: {state: on, brightness_pct: 20, hs_color: [200, 90]}
+      - wait: 1.5  # the set's fade is still running when the raise starts
     steps:
       # 10 % a second for 3 s and 2 s: about 50 % brightness and 70 % saturation at the stop
       - call: {action: raise_brightness, sweep_time: 10}
@@ -115,7 +118,7 @@ tests:
     only: [zigbee2mqtt, zha]
     setup:
       - set: {state: on, brightness_pct: 20, hs_color: [30, 90]}
-      - wait: 1  # the bulb fades into the color (0.4 s on Z2M); a move started mid-fade starts short of the mark
+      - wait: 1.5  # the bulb fades into the color (0.4 s on Z2M); a move started mid-fade starts short of the mark
     steps:
       - mark_hue: {}
       # 5 % a second for 3 s and 18° a second for 2 s: about 35 % brightness and 36° round the hue wheel at the stop

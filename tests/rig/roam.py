@@ -618,6 +618,18 @@ class Roamer:
             self.out(f"Renamed {light['entity_id']} to {bulb.entity_id}.")
         if network == "zigbee2mqtt" and bulb.z2m_options:
             await self.ha.set_z2m_device_options(hex_ieee(bulb.ieee), bulb.z2m_options)
+        if network == "zigbee2mqtt":
+            await self.prime_z2m(bulb)
+
+    async def prime_z2m(self, bulb: Bulb) -> None:
+        """Read the bulb once through device_side: a bulb newly joined to Z2M has no color_mode in its state, and HA's
+        MQTT light then shows no brightness (a group case's setup would fail on it); a read fills it."""
+        try:
+            await self.ha.call_service(
+                "device_side", "get_attributes", {"entity_id": bulb.entity_id}, return_response=True
+            )
+        except Exception as err:  # noqa: BLE001 - the case's own steps report what this would have prevented
+            self.out(f"Could not read {bulb.entity_id} from Zigbee2MQTT ({err}); it may show no brightness until read.")
 
     async def free(self, bulb: Bulb, network: str) -> None:
         """Remove a registry entry that holds the bulb's fixed ID from an earlier visit. Only a stale one goes: its
