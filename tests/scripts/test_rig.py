@@ -6,7 +6,9 @@ import itertools
 import json
 import os
 import signal
+import threading
 import types
+import urllib.error
 from pathlib import Path
 
 import pytest
@@ -198,7 +200,7 @@ def test_select_plan_lines_and_estimate(profile):
 @pytest.mark.parametrize(("answer", "approved"), [("y", True), ("YES", True), ("", False), ("n", False)])
 def test_gate_needs_an_explicit_yes(monkeypatch, answer, approved):
     monkeypatch.delenv("DEVICE_SIDE_RIG_APPROVED", raising=False)
-    assert rig.gate(lambda _: answer) is approved
+    assert rig.gate(prompt=lambda _: answer) is approved
 
 
 def test_gate_refuses_without_a_terminal(monkeypatch):
@@ -207,12 +209,12 @@ def test_gate_refuses_without_a_terminal(monkeypatch):
     def no_tty(_):
         raise EOFError
 
-    assert rig.gate(no_tty) is False
+    assert rig.gate(prompt=no_tty) is False
 
 
 def test_gate_env_approval_skips_the_prompt(monkeypatch):
     monkeypatch.setenv("DEVICE_SIDE_RIG_APPROVED", "1")
-    assert rig.gate(lambda _: pytest.fail("prompted")) is True
+    assert rig.gate(prompt=lambda _: pytest.fail("prompted")) is True
 
 
 def fake_ha(monkeypatch, replies):
@@ -225,6 +227,128 @@ def fake_ha(monkeypatch, replies):
         return reply
 
     monkeypatch.setattr(rig, "_get", _get)
+
+
+CLEAR_ENV = {"HA_URL": "http://ha", "HA_TOKEN": "t", "RIG_BLOCKER_ENTITY": "binary_sensor.rig_blocker"}
+
+
+def not_found():
+    return urllib.error.HTTPError("http://ha", 404, "Not Found", {}, None)
+
+
+@pytest.mark.parametrize(
+    ("reply", "clear", "reason"),
+    [
+        ({"state": "off"}, True, "binary_sensor.rig_blocker is off"),
+        ({"state": "on"}, False, "binary_sensor.rig_blocker is on"),
+        ({"state": "unknown"}, False, "binary_sensor.rig_blocker is unknown"),
+        ({"state": "unavailable"}, False, "binary_sensor.rig_blocker is unavailable"),
+        ({"state": "off", "attributes": {"restored": True}}, False, "still being restored"),
+        (urllib.error.URLError("refused"), False, "can't read binary_sensor.rig_blocker"),
+        (None, False, "binary_sensor.rig_blocker is not in HA"),
+    ],
+)
+def test_rig_clear_only_on_on(monkeypatch, reply, clear, reason):
+    fake_ha(monkeypatch, [not_found() if reply is None else reply])
+    answer = rig.rig_clear(CLEAR_ENV)
+    assert answer[0] is clear
+    assert reason in answer[1]
+
+
+def test_rig_clear_reads_the_named_entity(monkeypatch):
+    urls = []
+    monkeypatch.setattr(rig, "_get", lambda url, token: urls.append((url, token)) or {"state": "off"})
+    rig.rig_clear(CLEAR_ENV)
+    assert urls == [("http://ha/api/states/binary_sensor.rig_blocker", "t")]
+
+
+def test_without_the_key_nothing_is_read(monkeypatch):
+    monkeypatch.setattr(rig, "_get", lambda url, token: pytest.fail("read"))
+    assert rig.clearance({"HA_URL": "http://ha", "RIG_BLOCKER_ENTITY": ""}) is None
+
+
+def test_env_approval_needs_the_rig_clear(monkeypatch, capsys):
+    monkeypatch.setenv("DEVICE_SIDE_RIG_APPROVED", "1")
+    assert rig.gate((False, "binary_sensor.rig_blocker is on"), lambda _: pytest.fail("prompted")) is False
+    assert "Rig not clear (binary_sensor.rig_blocker is on)" in capsys.readouterr().out
+    assert rig.gate((True, "binary_sensor.rig_blocker is off"), lambda _: pytest.fail("prompted")) is True
+
+
+@pytest.mark.parametrize(("answer", "approved"), [("y", True), ("", False)])
+def test_the_prompt_says_why_the_rig_is_not_clear_and_a_yes_overrides_it(monkeypatch, answer, approved):
+    monkeypatch.delenv("DEVICE_SIDE_RIG_APPROVED", raising=False)
+    asked = []
+    assert rig.gate((False, "binary_sensor.rig_blocker is on"), lambda q: asked.append(q) or answer) is approved
+    assert asked == ["Rig not clear (binary_sensor.rig_blocker is on). Proceed anyway? [y/N] "]
+
+
+def test_a_clear_rig_still_asks_a_human(monkeypatch):
+    monkeypatch.delenv("DEVICE_SIDE_RIG_APPROVED", raising=False)
+    asked = []
+    assert rig.gate((True, "off"), lambda q: asked.append(q) or "y") is True
+    assert asked == ["Proceed? [y/N] "]
+
+
+def test_a_probe_goes_while_clear_and_asks_a_human_otherwise(capsys):
+    assert rig.probe_approved(None, lambda _: pytest.fail("prompted"))
+    assert rig.probe_approved((True, "off"), lambda _: pytest.fail("prompted"))
+    assert rig.probe_approved((False, "on"), lambda _: "y")
+
+    def no_tty(_):
+        raise EOFError
+
+    assert not rig.probe_approved((False, "on"), no_tty)
+    assert "Not approved; nothing changed." in capsys.readouterr().out
+
+
+def watch(monkeypatch, replies, armed=True):
+    """Run the watcher over `replies`, one per poll, until it signals or they run out; the signals it sent."""
+    sent = []
+    done = threading.Event()
+    replies = list(replies)
+
+    def _get(url, token):
+        if not replies:
+            done.set()
+            return {"state": "off"}
+        reply = replies.pop(0)
+        if isinstance(reply, Exception):
+            raise reply
+        return reply
+
+    def kill(pid, signum):
+        sent.append((pid, signum))
+        done.set()
+
+    monkeypatch.setattr(rig, "_get", _get)
+    monkeypatch.setattr(rig.os, "kill", kill)
+    with rig.watching(CLEAR_ENV, armed, interval=0.001):
+        done.wait(0 if not armed else 5)
+    return sent
+
+
+def test_two_reads_not_clear_in_a_row_abort_the_run(monkeypatch, capsys):
+    assert watch(monkeypatch, [{"state": "off"}, {"state": "on"}, {"state": "unknown"}]) == [
+        (os.getpid(), signal.SIGTERM)
+    ]
+    assert "Rig authorization revoked (binary_sensor.rig_blocker is unknown); aborting." in capsys.readouterr().out
+
+
+def test_one_read_not_clear_does_not(monkeypatch):
+    assert watch(monkeypatch, [{"state": "on"}, {"state": "off"}, {"state": "on"}, {"state": "off"}]) == []
+
+
+def test_failed_reads_neither_count_nor_reset(monkeypatch):
+    down = urllib.error.URLError("refused")
+    assert watch(monkeypatch, [down, down, down, {"state": "on"}, down, {"state": "on"}]) == [
+        (os.getpid(), signal.SIGTERM)
+    ]
+    restored = {"state": "unavailable", "attributes": {"restored": True}}
+    assert watch(monkeypatch, [restored, restored, not_found(), not_found()]) == []
+
+
+def test_an_unarmed_watcher_reads_nothing(monkeypatch):
+    assert watch(monkeypatch, [{"state": "on"}, {"state": "on"}], armed=False) == []
 
 
 def fake_clock(monkeypatch):
