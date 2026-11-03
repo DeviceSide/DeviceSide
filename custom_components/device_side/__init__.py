@@ -10,6 +10,7 @@ from .const import (
     PREDICTED_STATE_DEFAULT,
     Z2M_COLOR_MODES_DEFAULT,
 )
+from .core import ha_watch
 from .core.actions import async_setup_services
 from .core.dispatcher import Dispatcher
 from .core.registry import AdapterRegistry
@@ -30,7 +31,10 @@ async def async_setup(hass: HomeAssistant, config: ConfigType):
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     # An entry saved before the option existed has no options: it gets the default.
-    get_runtime(hass).predicted_state = entry.options.get(CONF_PREDICTED_STATE, PREDICTED_STATE_DEFAULT)
+    runtime = get_runtime(hass)
+    runtime.predicted_state = entry.options.get(CONF_PREDICTED_STATE, PREDICTED_STATE_DEFAULT)
+    # Per entry, not in async_setup: unloading detaches every listener, and a reload runs only this again.
+    runtime.listen("ha_watch", hass, lambda: ha_watch.attach(hass, runtime.registry.call_resolvers()))
     enabled = entry.options.get(CONF_Z2M_COLOR_MODES, Z2M_COLOR_MODES_DEFAULT)
     entry.async_create_background_task(hass, color_modes.async_setup(hass, entry, enabled), "z2m color modes")
     return True

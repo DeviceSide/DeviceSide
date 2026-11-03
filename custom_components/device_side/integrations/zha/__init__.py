@@ -1,6 +1,7 @@
 """ZHA, through the core zha integration's cluster command action and its gateway's attribute reads."""
 
 from .addressing import is_zha_group
+from .fade import ZHACallResolver
 from .get_attributes import ZHAGetAttributes
 from .groups import expand_group
 from .lower_brightness import ZHALowerBrightness
@@ -20,6 +21,7 @@ INTEGRATION = IntegrationInfo(
     ha_domain="zha",
     is_group=is_zha_group,
     expand_group=expand_group,
+    call_resolver=ZHACallResolver(),
     max_concurrency=2,
 )
 

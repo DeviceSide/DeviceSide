@@ -8,11 +8,8 @@ from dataclasses import dataclass, field
 from statistics import mean
 from typing import Any, ClassVar
 
-from homeassistant.const import ATTR_DOMAIN, ATTR_ENTITY_ID, ATTR_SERVICE_DATA, ENTITY_MATCH_ALL, EVENT_CALL_SERVICE
-from homeassistant.core import CALLBACK_TYPE, Context, Event, HomeAssistant, callback
+from homeassistant.core import Context, HomeAssistant
 from homeassistant.exceptions import Unauthorized
-from homeassistant.helpers import entity_registry as er
-from homeassistant.helpers.target import TargetSelection, async_extract_referenced_entity_ids
 from homeassistant.util.color import color_hs_to_xy
 
 from . import zcl
@@ -21,6 +18,7 @@ from .groups import light_members
 from ...actions.ramp import HUE, RampRequest
 from ...core import transition
 from ...core.adapter import Adapter
+from ...core.ha_watch import ALL, Call, Entries
 from ...core.models import EntityResult, Status, Target
 from ...core.runtime import Job, get_runtime
 from ...core.scope import AdapterScope
@@ -57,36 +55,38 @@ def hue_moves(hass: HomeAssistant) -> set[str]:
     return get_runtime(hass).integration_state.setdefault("zha_hue_moves", set())
 
 
-def watch_ha_changes(hass: HomeAssistant) -> None:
-    """Attach, once per HA run, the listener that drops a ZHA light's predictions when a light call from HA targets it,
-    as on Hue: the bulb then goes where the call sends it, and its next move or stop starts from HA's state. Our own
-    commands go through the zha domain, so they pass it by."""
+def soft_off_restores(hass: HomeAssistant) -> set[str]:
+    """The lights a soft off of ours will put back at their start level once it has run. A light call from HA drops a
+    light from it: the call replaces our fade."""
+    return get_runtime(hass).integration_state.setdefault("zha_restores", set())
 
-    @callback
-    def changed(event: Event) -> None:
-        service_data = event.data[ATTR_SERVICE_DATA] or {}
-        cache = transition_cache(hass)
-        if service_data.get(ATTR_ENTITY_ID) == ENTITY_MATCH_ALL:
+
+class ZHACallResolver:
+    """Forget the ZHA lights a light call from HA targets, as on Hue: the bulb then goes where the call sends it, and
+    its next move or stop starts from HA's state. A pending soft-off restore is dropped too, and a call that sets a
+    color or turns the light off ends the bulb's hue cycle. The end refresh still runs. Our own commands go through
+    the zha domain, so they pass the watch by."""
+
+    def busy(self, hass: HomeAssistant) -> bool:
+        return bool(transition_cache(hass).resource_ids() or soft_off_restores(hass) or hue_moves(hass))
+
+    def forget(self, hass: HomeAssistant, call: Call, entries: Entries) -> None:
+        cache, pending, cycling = transition_cache(hass), soft_off_restores(hass), hue_moves(hass)
+        if entries is ALL:
             cache.clear()
+            pending.clear()
+            if call.ends_hue_cycle:
+                cycling.clear()
             return
-        selected = async_extract_referenced_entity_ids(hass, TargetSelection(service_data))
-        registry = er.async_get(hass)
-        for entity_id in selected.referenced | selected.indirectly_referenced:
-            if (entry := registry.async_get(entity_id)) is None or entry.platform != "zha" or entry.domain != "light":
+        for entry in entries:
+            if entry.domain != "light":
                 continue
             gid = group_id(entry.unique_id)
-            for light_id in light_members(hass, gid) if gid is not None else (entity_id,):
+            for light_id in light_members(hass, gid) if gid is not None else (entry.entity_id,):
                 cache.forget(light_id)
-
-    def attach() -> CALLBACK_TYPE:
-        return hass.bus.async_listen(EVENT_CALL_SERVICE, changed, event_filter=_is_light_call)
-
-    get_runtime(hass).listen("zha:ha_changes", hass, attach)
-
-
-@callback
-def _is_light_call(event_data) -> bool:
-    return event_data[ATTR_DOMAIN] == "light"
+                pending.discard(light_id)
+                if call.ends_hue_cycle:
+                    cycling.discard(light_id)
 
 
 def end_key(light: Target, attribute: str) -> str:
@@ -203,7 +203,6 @@ class ZHARamp(Adapter[RampRequest]):
         return super().supports(hass, request, target) or unsupported_reason(target)
 
     async def execute(self, hass: HomeAssistant, request: RampRequest, targets: list[Target]) -> list[EntityResult]:
-        watch_ha_changes(hass)
         cache = transition_cache(hass)
         runs = [self._unit(hass, request, cache, gid, lights) for gid, lights in units(hass, targets)]
         return [result for batch in await asyncio.gather(*runs) for result in batch]
@@ -279,6 +278,12 @@ async def start(
             if not await zcl.hue_turn_on(hass, addr, 1, context):
                 bottom = {"level": 1, **zcl.execute_if_off(0)}
                 await zcl.command(hass, addr, zcl.LEVEL_CLUSTER, zcl.MOVE_TO_LEVEL, bottom, context)
+        if outcome.attribute == BRIGHTNESS:
+            # Before the send, so a light call from HA during it cancels the restore. This fade's end jobs replace
+            # the movers' earlier ones, restores included; a refused send schedules none, so its marks restore nothing.
+            pending = soft_off_restores(hass)
+            pending.difference_update(outcome.starts)
+            pending.update(outcome.restores)
         await send(hass, gid, outcome.movers, outcome.command, context)
     for light in outcome.movers:
         if outcome.attribute == BRIGHTNESS:
@@ -428,10 +433,12 @@ async def sync_to_bulb(
 
 def end_job(hass: HomeAssistant, light: Target, restore: dict[str, float] | None, context: Context | None) -> Job:
     """Once a fade has run: a soft off's restore of the light's start level (in restore, as last fitted), if the light
-    reads off, then a refresh."""
+    reads off and a light call from HA hasn't since replaced the fade, then a refresh."""
 
     async def run() -> None:
-        if restore is not None:
+        pending = soft_off_restores(hass)
+        if restore is not None and light.entity_id in pending:
+            pending.discard(light.entity_id)
             try:
                 addr = address(light.entry.unique_id)
                 read = await zcl.read_attributes(hass, addr, zcl.ON_OFF_CLUSTER, (zcl.ON_OFF,))

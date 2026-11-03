@@ -10,7 +10,7 @@ from homeassistant.exceptions import Unauthorized
 
 from . import zcl
 from .addressing import unsupported_reason
-from .fade import end_key, has_color, hue_moves, refresh, send, transition_cache, units
+from .fade import end_key, has_color, hue_moves, refresh, send, soft_off_restores, transition_cache, units
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Request, Status, Target
 from ...core.runtime import get_runtime
@@ -92,6 +92,7 @@ class ZHAStop(Adapter[Request]):
             _LOGGER.warning("stop on zha failed for %s: %r", ", ".join(sorted(halting_ids)), err)
             return [*off, *(self.result(light, Status.REJECTED, detail="error") for light in halting)]
         cycling.difference_update(halting_ids)
+        soft_off_restores(hass).difference_update(halting_ids)
         runtime = get_runtime(hass)
         for light in halting:
             for attribute in (BRIGHTNESS, SATURATION):

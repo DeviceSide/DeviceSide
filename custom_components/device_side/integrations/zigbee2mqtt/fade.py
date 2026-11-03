@@ -2,11 +2,13 @@
 move. Each action's adapter is a Z2MRamp."""
 
 import logging
+from collections.abc import Coroutine
 from dataclasses import dataclass
 from statistics import mean
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 
 from .addressing import topic, z2m_address
 from .bridge import has_feature, publish
@@ -16,7 +18,9 @@ from ...actions.ramp import RampRequest
 from ...core import transition
 from ...core.adapter import Adapter
 from ...core.dispatcher import EMPTY_GROUP
+from ...core.ha_watch import ALL, Call, Entries
 from ...core.models import EntityResult, Status, Target
+from ...core.resolver import resolve
 from ...core.runtime import Job, get_runtime
 from ...core.scope import AdapterScope
 from ...core.transition import BRIGHTNESS, SATURATION, TransitionCache, hs_color, light_brightness, lit
@@ -43,6 +47,51 @@ def transition_cache(hass: HomeAssistant) -> TransitionCache:
 def hue_moves(hass: HomeAssistant) -> set[str]:
     """The lights a hue move of ours is cycling: it runs until a stop, so it has no transition to predict."""
     return get_runtime(hass).integration_state.setdefault("zigbee2mqtt_hue_moves", set())
+
+
+class Z2MCallResolver:
+    """Forget the Z2M lights a light call from HA targets: the bulb then goes where the call sends it, and its next move
+    or stop starts from HA's state. A call that sets a color or turns the light off ends the bulb's hue cycle. The end
+    read-back stays: it reads the bulb.
+
+    A group's members come only from Z2M's retained bridge/groups message, so a call to a group resolves in a task;
+    the dispatcher waits for it (ha_watch.settled) before a move plans.
+    """
+
+    def busy(self, hass: HomeAssistant) -> bool:
+        return bool(transition_cache(hass).resource_ids() or hue_moves(hass))
+
+    def forget(self, hass: HomeAssistant, call: Call, entries: Entries) -> Coroutine[Any, Any, None] | None:
+        if entries is ALL:
+            transition_cache(hass).clear()
+            if call.ends_hue_cycle:
+                hue_moves(hass).clear()
+            return None
+        targets = _z2m_lights(hass, entries)
+        _drop(hass, call, [target.entity_id for target in targets])
+        if not (groups := [target for target in targets if target.is_group]):
+            return None
+
+        async def members() -> None:
+            for group in groups:
+                _drop(hass, call, [light.entity_id for light in await member_lights(hass, group)])
+
+        return members()
+
+
+def _drop(hass: HomeAssistant, call: Call, light_ids: list[str]) -> None:
+    cache, cycling = transition_cache(hass), hue_moves(hass)
+    for light_id in light_ids:
+        cache.forget(light_id)
+        if call.ends_hue_cycle:
+            cycling.discard(light_id)
+
+
+def _z2m_lights(hass: HomeAssistant, entries: list[er.RegistryEntry]) -> list[Target]:
+    """The Z2M light and group targets among the entries, which may hold any MQTT entity."""
+    registry = get_runtime(hass).registry
+    targets = [resolve(hass, registry, entry.entity_id) for entry in entries if entry.domain == "light"]
+    return [t for t in targets if not isinstance(t, str) and t.integration == "zigbee2mqtt"]
 
 
 def read_back_key(target: Target, attribute: str) -> str:
