@@ -145,8 +145,12 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. Lanes on dif
   native control. The group setups: the sideboard's Z2M state has no `color_mode` (its brightness publishes carry
   `brightness` and `state` only), and HA's MQTT light shows no `brightness` without one; a `get_attributes` on
   the group first (it reads each member's color cluster, which fills `color_mode`) moves the failure past the setup.
-  Then `get_attributes` on the lab group fails with `no lightingColorCtrl reply from Zigbee2MQTT` for one member
-  (not yet identified). Next: have the rig prime a bulb's color state when it joins Z2M, and find that member.
+  Then `get_attributes` on the lab group fails with `no lightingColorCtrl reply from Zigbee2MQTT`: the sideboard
+  never answered one color read (Z2M logged its own 10 s ZCL timeout; the reads 1.6 s before and after were
+  answered in 0.14 s), so a lost read on that bulb, not the group code (the desk, which has no color cluster, is
+  never asked). Next: have the rig prime a bulb's color state when it joins Z2M; judge the remaining group and
+  color cases (`hue_cycle_stop[group_color]`, `halts_brightness_and_hue`) once the sideboard's radio path is sound
+  (the lab join-parent plan).
 - [ ] **ZHA A60 run** (13k step 3), on the lab: ZHA color suites, `set_attributes` hs and xy included. Attended for
   `sets_color_while_off`. Clears `experimental` on the ZHA adapters it proves.
 - [ ] **9d** Rig coverage sweep for the non-color scope
