@@ -25,6 +25,19 @@ class Journal:
         self.sections |= sections
         self.save()
 
+    def put(self, section: str, key: str, value: Any) -> None:
+        """Set one entry of a section that holds several, such as one per lane, leaving the others."""
+        self.sections.setdefault(section, {})[key] = value
+        self.save()
+
+    def drop(self, section: str, key: str) -> None:
+        """Remove one entry of a section, and the section once it is empty."""
+        if (entries := self.sections.get(section)) is not None:
+            entries.pop(key, None)
+            if not entries:
+                del self.sections[section]
+        self.save()
+
     def clear(self, *sections: str) -> None:
         for section in sections:
             self.sections.pop(section, None)

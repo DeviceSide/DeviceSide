@@ -39,6 +39,12 @@ available, and each roaming bulb must be on a network. A device left unpowered s
 moves, rather than part way through. `--check` runs only this check, taking no lock and deploying nothing, so you can
 power devices up until it passes.
 
+The run starts with one lane per integration, the lanes side by side, each holding that integration's cases on fixed
+entities. A case stays out of the lanes when its step file sets device_side options (saving them reloads the
+integration, cutting off every lane's fades), or when it uses a roaming bulb, a rig-made group or scene, or a powered
+entity or its supply. Those run afterwards, one at a time, in the phases below. `--serial` runs every case one at a
+time: a case that passes with it and fails in a lane points at radio or HA contention.
+
 ### Profiles
 
 A profile is one test setup on the Home Assistant `.env.rig` connects to: `tests/rig/profiles/<name>.yaml`,
