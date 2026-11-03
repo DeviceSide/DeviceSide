@@ -133,21 +133,16 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. Lanes on dif
   write. zha skips `update_entity` for 1.5 s after an HA `turn_off`, and ZHA applies no color reports, so HA showed the
   old color after the next on. Fixed (#172): the refresh waits out zha's transition flag. Rig proof rides the
   pre-release run.
-- [ ] **Z2M lab: the `light_ct` bulb's stops since 3 Nov's resets.** Since the lab bulbs were reset and re-added (and
-  Z2M joins went through the coordinator, #174), two Z2M cases fail on every tree, the core HA watch's (#181) and the one
-  before it (an A/B run): `lower_stop_lower[light_ct]` reads 90 % after the stop, then holds at 26 %, and
-  `halts_a_lower_to_off[light_ct]` ends off. The setup of `lower_to_off[group]` also finds the color bulb reporting no
-  brightness. All passed on 2 Nov. First, probe whether the bulb takes the brightness stop mid-fade, and what it
-  reports. Not the `set_attributes` read-back cause (bucket D): `stop` doesn't read through `_stored`; it
-  sends Z2M's `brightness_move: stop` and takes Z2M's own report, and a bulb that goes on fading to 26 % after the stop
-  isn't a mid-fade read. Not the group state that overwrote a light in 13j either: in the 3 Nov stop run's Z2M log (11 stops on the
-  corner or its group) the corner's brightness never returns to its pre-stop value after the stop. Z2M's first
-  publish after a stop is its cached pre-move level, then the bulb's own `currentLevel`; in 3 of 11 stops no level
-  read-back follows, so the cached level stays published. Look there first (`stop` reads only the on/off cluster
-  after its halt, as far as that log shows), The rerun on the 1.5 s settle (3 Nov, 18:30) still fails 10 of 20: `halts_a_raise[light_ct]` holds
-  at 79.5 % above its 78 % limit from 0.26 s on, `halts_a_lower_to_off[light_ct]` ends off, five group cases fail in setup
-  with the sideboard `on` and brightness `None`, and two `group_color` cases' HA color differs from a live read. So
-  not the restore race. `opus`: hardware triage, where the cause may be the bulb's state after its reset or our stop.
+- [ ] **Z2M lab: stop on the lab bulbs since 3 Nov's resets.** The `light_ct` cases are fixed (3 Nov, lab run on
+  `wt/z2m-set-attrs-fade`): with Hue native control on, Z2M sends a soft off as Philips' own command, which
+  `brightness_move: stop` doesn't end (the bulb read 162 at +3.6 s and faded on to off; with the option off it
+  passes), so `stop` now also cuts a soft off of ours with `state: ON` at its predicted brightness, as on Hue; and
+  `halts_a_raise` waits 1.5 s after its setup `set`, whose fade was still running when the raise read its start.
+  Still failing in the same run: every `group` case (`halts_a_raise`, `halts_a_lower_to_off`, `stop_when_idle`) fails
+  in its setup, the sideboard `on` with brightness `None`; `hue_cycle_stop[group_color]` and
+  `saturation_down_stop[group_color]` show an HA color that differs from a live read; and
+  `halts_brightness_and_hue[light_color]` rises above its 50 % limit (holds 55.1 %). Not the restore race or
+  native control. Probe the sideboard's state in Z2M after a brightness set (no `brightness` while on) first.
 - [ ] **ZHA A60 run** (13k step 3), on the lab: ZHA color suites, `set_attributes` hs and xy included. Attended for
   `sets_color_while_off`. Clears `experimental` on the ZHA adapters it proves.
 - [ ] **9d** Rig coverage sweep for the non-color scope

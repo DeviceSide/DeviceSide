@@ -8,6 +8,7 @@ tests:
     roles: [light_ct, group]
     setup:
       - set: {state: on, brightness_pct: 10}
+      - wait: 1.5  # the set's own fade is still running when the raise starts, and the raise reads its start
     steps:
       - call: {action: raise_brightness, sweep_time: 10}
       - wait: 3
@@ -19,6 +20,7 @@ tests:
     roles: [light_ct, group]
     setup:
       - set: {state: on, brightness_pct: 100}
+      - wait: 1.5
     steps:
       - call: {action: lower_brightness, sweep_time: 10}
       - wait: 3
