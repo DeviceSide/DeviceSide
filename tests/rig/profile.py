@@ -162,9 +162,7 @@ class Profile:
     def add_roaming(self, path: Path, listed: set[str]) -> None:
         """List each roaming bulb and rig-made group under every network it visits, and each rig-made scene under
         Hue: while the bulbs are there, they are that network's entities."""
-        roaming = {bulb.entity_id for bulb in self.roam}
-        roaming |= {entity for group in self.roam_groups for entity in (group.entity_id, group.scene) if entity}
-        if both := sorted(listed & roaming):
+        if both := sorted(listed & self.made_entities):
             raise ValueError(f"{path.name}: {', '.join(both)} roams, so it can't also be listed under an integration")
         made = {role for group in self.roam_groups for role in group.roles}
         made |= {"scene"} if any(group.scene for group in self.roam_groups) else set()
@@ -180,6 +178,13 @@ class Profile:
             )
             if network == "hue":
                 entities.extend(RigEntity(g.scene, frozenset({"scene"})) for g in self.roam_groups if g.scene)
+
+    @property
+    def made_entities(self) -> frozenset[str]:
+        """The roaming bulbs' lights and the rig-made groups and scenes: entities HA has under these IDs only once the
+        run has moved or made them."""
+        bulbs = {bulb.entity_id for bulb in self.roam}
+        return frozenset(bulbs | {e for group in self.roam_groups for e in (group.entity_id, group.scene) if e})
 
     def entity(self, integration: str, role: str) -> str | None:
         return next((e.entity_id for e in self.integrations.get(integration, ()) if role in e.roles), None)
