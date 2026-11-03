@@ -3,8 +3,8 @@
 | | |
 |---|---|
 | Result | pass |
-| Date | 2026-11-02 |
-| Source | rig run (`scripts/rig.py`), commit `f5db697` |
+| Date | 2026-11-03 |
+| Source | rig run (`scripts/rig.py`), commit `5d39db8` |
 | Profile | lab |
 | Home Assistant | 2026.10.2 |
 | Device | none |

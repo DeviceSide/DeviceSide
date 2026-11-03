@@ -165,6 +165,16 @@ Leave out `--integration`, so the Hue, ZHA and Z2M phases all run. Its ZHA `rais
   left to 13f's lane.
 - **D.** If `not_stored` persists with `hue_native_control` on, compare the read-back with the written value in
   the Z2M adapter's debug log before changing the comparison.
+
+  **Rerun findings (2026-11-03, `--debug-logs`, Z2M `set_attributes` only).** `not_stored` repeats on the same four
+  cases (`min_brightness_raises`, `max_brightness_lowers`; `light_ct` and `group`). The LTA009 stores the level; it's
+  the adapter's read straight after the write that sees the old one. On air, in order: `moveToLevel` 102 and
+  `moveToColorTemp` 370 (both with the override), then `_kept_level`'s publish, which `hue_native_control` turns into
+  `manuSpecificPhilips2.multiColor` (brightness 102, no override), then the `currentLevel` read: 28, the old level,
+  about 0.5 s after the write. Color temperature read back 370 at once. A level read 2 s later returned 102. Probe
+  13j's "answers with the target even mid-fade" no longer holds for this bulb since its reset on 3 Nov, the same bulb
+  and date as the TODO's Z2M stop item. Next: a probe (ask first) of the read's delay with and without the
+  `multiColor`, before any change to `_stored` or `_kept_level`.
 - **E.** Fix only a case that fails again:
   - Hue `lower_to_off`: the predicted_state suite's options reload finishes just before it. Check
     `OptionsSwitch.reloaded` waits long enough for Hue's entities.
