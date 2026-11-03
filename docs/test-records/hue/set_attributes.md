@@ -3,13 +3,11 @@
 | | |
 |---|---|
 | Result | pass |
-| Date | 2026-10-27 |
-| Source | rig run (`scripts/rig.py`), commit `b3bf589` |
-| Fingerprint | `5431e0ff2cf4b57c` (`integrations/hue/set_attributes.py`) |
+| Date | 2026-11-03 |
+| Source | rig run (`scripts/rig.py`), commit `5d39db8` |
+| Profile | lab |
 | Home Assistant | 2026.10.2 |
-| Device | Hue ambiance lamp (`LTA009`), firmware `1.163.1`; Zone, firmware `unknown` |
-| Capabilities | every capability the adapter addresses |
-| Fields | `brightness`, `color_temp_kelvin`, `max_brightness`, `min_brightness` |
+| Device | Hue ambiance lamp (`LTA009`), firmware `1.163.1`; Hue Essential lamp (`LCA016`), firmware `1.164.2` |
 
 ## Tests
 
@@ -17,11 +15,20 @@
 |---|---|---|
 | `sets_while_off[light_ct]` | `light` (light_ct) | pass |
 | `sets_while_off[group]` | `light` (group) | pass |
-| `sets_color_while_off[light_color]` | light_color: none in inventory | skipped |
-| `sets_color_while_off[light_color] observed` | light_color: none in inventory | skipped |
+| `sets_after_a_soft_off[light_ct]` | `light` (light_ct) | pass |
+| `sets_after_a_soft_off[group]` | `light` (group) | pass |
+| `sets_color_while_off[light_color]` | `light` (light_color) | pass |
+| `sets_color_while_off[light_color] observed` | `light` (light_color) | not observed |
+| `sets_hs_while_off[light_color]` | `light` (light_color) | pass |
+| `sets_hs_while_off[group_color]` | `light` (group_color) | pass |
+| `sets_xy_while_off[light_color]` | `light` (light_color) | pass |
+| `sets_xy_while_off[group_color]` | `light` (group_color) | pass |
+| `clamps_xy_to_the_gamut[light_color]` | `light` (light_color) | pass |
 | `min_brightness_raises[light_ct]` | `light` (light_ct) | pass |
 | `min_brightness_raises[group]` | `light` (group) | pass |
 | `min_brightness_leaves_brighter[light_ct]` | `light` (light_ct) | pass |
 | `min_brightness_leaves_brighter[group]` | `light` (group) | pass |
 | `max_brightness_lowers[light_ct]` | `light` (light_ct) | pass |
 | `max_brightness_lowers[group]` | `light` (group) | pass |
+
+Tests marked `not observed` had nobody watching.

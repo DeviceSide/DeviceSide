@@ -4,7 +4,7 @@
 |---|---|
 | Result | pass |
 | Date | 2026-11-03 |
-| Source | rig run (`scripts/rig.py`), commit `2d70127` |
+| Source | rig run (`scripts/rig.py`), commit `5d39db8` |
 | Profile | lab |
 | Home Assistant | 2026.10.2 |
 | Device | Hue white lamp (`LWA012`), firmware `1.104.2`; Hue ambiance lamp (`LTA009`), firmware `1.163.1` |

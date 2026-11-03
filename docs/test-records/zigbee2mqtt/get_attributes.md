@@ -3,10 +3,11 @@
 | | |
 |---|---|
 | Result | pass |
-| Date | 2026-10-28 |
-| Source | rig run (`scripts/rig.py`), commit `7711910` |
+| Date | 2026-11-03 |
+| Source | rig run (`scripts/rig.py`), commit `5d39db8` |
+| Profile | lab |
 | Home Assistant | 2026.10.2 |
-| Device | Hue white ambiance E27 800lm with Bluetooth (`8719514328242`), firmware `1.76.11`; Group, firmware `Zigbee2MQTT 2.14.2`; Hue Essential White and Color Ambiance A60 (`8720169392182`), firmware `1.126.9` |
+| Device | Hue ambiance lamp (`LTA009`), firmware `1.163.1`; Hue Essential lamp (`LCA016`), firmware `1.164.2`; Hue white lamp (`LWA012`), firmware `1.104.2` |
 
 ## Tests
 
@@ -18,8 +19,8 @@
 | `reads_a_group_timer[group]` | `light` (group) | pass |
 | `announced_with_both_color_modes[light_color]` | `light` (light_color) | pass |
 | `keeps_and_reads_hs_while_off[light_color]` | `light` (light_color) | pass |
-| `reads_a_running_timer[switch_plug]` | switch_plug: none in inventory | skipped |
-| `reads_a_running_timer[light_onoff]` | light_onoff: none in inventory | skipped |
-| `reads_a_running_timer[light_wrapped]` | light_wrapped: none in inventory | skipped |
+| `reads_a_running_timer[switch_plug]` | switch_plug: none in the profile | skipped |
+| `reads_a_running_timer[light_onoff]` | light_onoff: none in the profile | skipped |
+| `reads_a_running_timer[light_wrapped]` | light_wrapped: none in the profile | skipped |
 | `reads_a_running_timer[light_dimmable]` | `light` (light_dimmable) | pass |
-| `reads_no_timer_after_a_turn_off[switch_plug]` | switch_plug: none in inventory | skipped |
+| `reads_no_timer_after_a_turn_off[switch_plug]` | switch_plug: none in the profile | skipped |
