@@ -251,15 +251,14 @@ def test_claims_take_their_integrations_in_sorted_order(tmp_path, monkeypatch):
     second.close()
 
 
-def test_a_failed_wait_lets_go_of_what_it_took(tmp_path, monkeypatch):
+def test_a_failed_wait_lets_go_of_what_it_took(tmp_path):
     def give_up(_seconds):
         raise KeyboardInterrupt
 
-    with locks.hold(claim("zha"), "wt/zha", tmp_path, out=quiet()):
-        monkeypatch.setattr(locks.time, "sleep", give_up)
+    with locks.hold(claim("zha"), "wt/zha", tmp_path, out=quiet()), pytest.MonkeyPatch.context() as patch:
+        patch.setattr(locks.time, "sleep", give_up)
         with pytest.raises(KeyboardInterrupt):
             locks.hold(claim("hue", "zha"), "wt/both", tmp_path, out=quiet())
-    monkeypatch.undo()
     assert not blocked(tmp_path, claim("hue"))
 
 
