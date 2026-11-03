@@ -24,6 +24,12 @@ rig = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(rig)
 
 
+@pytest.fixture(autouse=True)
+def reports_in_tmp(tmp_path, monkeypatch):
+    """A run's report and captured logs go to the test's folder, not the system temp one."""
+    monkeypatch.setattr(rig, "REPORT_DIR", tmp_path / "reports")
+
+
 def write(tmp_path: Path, name: str, text: str) -> Path:
     path = tmp_path / name
     path.write_text(text)

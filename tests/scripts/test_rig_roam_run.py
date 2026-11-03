@@ -25,6 +25,12 @@ ENV = {"HA_URL": "http://ha", "HA_TOKEN": "t", "HA_ADMIN_TOKEN": "a", "HUE_BRIDG
 
 
 @pytest.fixture(autouse=True)
+def reports_in_tmp(tmp_path, monkeypatch):
+    """A run's report and captured logs go to the test's folder, not the system temp one."""
+    monkeypatch.setattr(rig, "REPORT_DIR", tmp_path / "reports")
+
+
+@pytest.fixture(autouse=True)
 def fast(monkeypatch):
     monkeypatch.setattr(roam, "POLL_S", 0)
 

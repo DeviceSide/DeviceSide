@@ -1764,6 +1764,11 @@ def render_record(
     return "\n".join(lines) + "\n"
 
 
+def report_path(directory: Path, title: str) -> Path:
+    """Where the report titled `title` goes; the run's logs share its stem."""
+    return directory / f"{title.replace(' ', '-').replace(':', '')}.md"
+
+
 def write_report(result: RunResult, directory: Path, title: str) -> Path:
     """Every suite's table with each failure's and skip's reason, for any run: failed, partial or unattended."""
     lines = [f"# {title}"]
@@ -1771,7 +1776,7 @@ def write_report(result: RunResult, directory: Path, title: str) -> Path:
         suite = suite_result.suite
         lines += ["", f"## {suite.integration} / {suite.name}", "", *table(suite_result, details=True)]
     directory.mkdir(parents=True, exist_ok=True)
-    path = directory / f"{title.replace(' ', '-').replace(':', '')}.md"
+    path = report_path(directory, title)
     path.write_text("\n".join(lines) + "\n")
     return path
 
