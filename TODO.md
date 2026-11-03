@@ -140,7 +140,9 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. Lanes on dif
   started, so they wait 1.5 s; and a bulb newly joined to Z2M has no `color_mode` in its state (HA's MQTT light
   then shows no `brightness`, which failed every group setup and, through it, two group color checks), so the
   rig reads each bulb once after it joins. A lost read on the sideboard's radio path was seen once (one color read
-  unanswered for Z2M's 10 s timeout); the lab join-parent plan covers it.
+  unanswered for Z2M's 10 s timeout); the lab join-parent plan covers it. A 180 s probe of live reads on it (3 Nov, 19:5x) failed on its first sample with
+  a read error, and the bulb then left the network on the move home (the fourth move that has dropped a lab
+  bulb): the sideboard's link is the weak point, not the adapters. Unresolved there.
 - [ ] **ZHA A60 run** (13k step 3), on the lab: ZHA color suites, `set_attributes` hs and xy included. Attended for
   `sets_color_while_off`. Clears `experimental` on the ZHA adapters it proves.
 - [ ] **9d** Rig coverage sweep for the non-color scope
