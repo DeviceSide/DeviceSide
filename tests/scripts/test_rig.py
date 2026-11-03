@@ -741,7 +741,7 @@ async def test_records_cite_the_commit_ha_loaded_not_head_at_the_end(tmp_path, m
 
     written = []
 
-    async def write_records(result, ha, registry, records_dir, date, source, profile):
+    async def write_records(result, registry, records_dir, date, source, profile):
         written.append(source)
         assert profile == "house"
         return []

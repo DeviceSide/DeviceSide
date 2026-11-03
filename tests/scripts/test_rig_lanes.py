@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from tests.rig import engine, roam
-from tests.rig.engine import CaseResult, Outcome, Suite, SuiteResult, cases, in_head, load_step_file, merge, run
+from tests.rig.engine import CaseResult, Device, Outcome, Suite, SuiteResult, cases, in_head, load_step_file, merge, run
 from tests.rig.journal import Journal
 from tests.rig.profile import Profile, RigEntity, RoamBulb, RoamGroup
 from tests.scripts import rig_fakes as fakes
@@ -190,6 +190,22 @@ def test_merge_joins_a_suite_split_between_lanes_and_phases_in_file_order(tmp_pa
     assert not alone.complete and not alone.recordable
     (keyed,) = merge([lanes, phases], profile, fakes.OPTION_REGISTRY, keyword="t").suites
     assert not keyed.complete
+
+
+def test_merge_unions_the_devices_of_a_suites_parts_in_order(tmp_path):
+    path = tmp_path / "steps.yaml"
+    path.write_text(STEPS)
+    suite = Suite(load_step_file(path), "zha")
+    profile = Profile({"zha": [RigEntity("light.a", frozenset({"light_ct"}))]})
+    one, two, three = Device("A", None, "1"), Device("B", None, "1"), Device("C", None, "1")
+    lanes, phases = result(suite, "t[light_ct]"), result(suite, "t[light_ct]")
+    lanes.ha_version, lanes.devices = "2026.10.1", [one, two]
+    phases.ha_version, phases.devices = "2026.10.2", [two, three]
+
+    (joined,) = merge([lanes, phases], profile, fakes.OPTION_REGISTRY).suites
+    assert joined.devices == [one, two, three]
+    assert joined.ha_version == "2026.10.1"
+    assert lanes.devices == [one, two]  # the part itself is left alone
 
 
 LAB_STEPS = STEPS.replace("[light_ct]", "[switch_plug, light_ct]")
