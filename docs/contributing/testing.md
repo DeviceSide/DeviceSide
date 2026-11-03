@@ -34,6 +34,11 @@ Rig tests are YAML step files in `tests/rig/steps/`, one per action. `scripts/ri
 every integration in the profile that has an adapter for the action, after a y/N gate: the devices change state, so
 nothing moves until you say yes. `--dry-run` prints the plan and stops.
 
+Before the gate, the run checks every device it will use, across all its phases: each fixed entity must be in HA and
+available, and each roaming bulb must be on a network. A device left unpowered stops the run there, before anything
+moves, rather than part way through. `--check` runs only this check, taking no lock and deploying nothing, so you can
+power devices up until it passes.
+
 ### Profiles
 
 A profile is one test setup on the Home Assistant `.env.rig` connects to: `tests/rig/profiles/<name>.yaml`,

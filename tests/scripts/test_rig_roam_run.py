@@ -440,3 +440,212 @@ async def test_a_leftover_rig_zone_isnt_saved_as_a_bulbs_home(lab):
     moving = Roamer(lab.ha, lab.bridge, BULBS, out=lambda _: None)
     await moving.go("zha")
     assert moving.home["light.lab_a"]["zones"] == ["z1"]
+
+
+# --- the device check: every phase's devices before the gate, and --check -------------------------------------------
+
+PLUG_AND_BULB = """
+action: turn_on_for
+rig_seconds: 5
+tests:
+  - name: t
+    roles: [switch_plug, light_ct]
+    steps:
+      - set: {state: off}
+"""
+
+
+def leave_hue(lab: fakes.Lab, device_id: str) -> None:
+    """The bridge deletes the bulb, which then searches for a network."""
+    lab.bridge._delete("device", lab.bridge.resources["device"], device_id)
+
+
+def check_suites(tmp_path: Path) -> list[rig.Suite]:
+    path = tmp_path / "check.yaml"
+    path.write_text(PLUG_AND_BULB)
+    return [rig.Suite(load_step_file(path), integration) for integration in ("shelly", "zigbee2mqtt")]
+
+
+async def check(tmp_path: Path, roaming: bool = True) -> list[str]:
+    return await rig.check_devices(
+        ENV, check_suites(tmp_path), Profile.load(lab_profile(tmp_path)), AdapterRegistry.discover(), None, roaming
+    )
+
+
+async def test_the_check_passes_with_every_fixed_entity_up_and_the_bulbs_home(tmp_path, lab, capsys):
+    lab.ha.states["switch.plug"] = {"entity_id": "switch.plug", "state": "on", "attributes": {}}
+
+    assert await check(tmp_path) == []
+
+    out = capsys.readouterr().out
+    assert "Checking profile lab: 1 entities, 2 roaming." in out  # a roaming bulb is no fixed entity
+    assert "  light.lab_a: on Hue\n" in out
+    assert "Every device is ready." in out
+
+
+async def test_the_check_names_an_unavailable_or_missing_entity_and_a_bulb_on_no_network(tmp_path, lab, capsys):
+    lab.ha.states["switch.plug"] = {"entity_id": "switch.plug", "state": "unavailable", "attributes": {}}
+    leave_hue(lab, "hue-device-2")  # lab_b leaves Hue and joins nothing
+
+    problems = await check(tmp_path)
+
+    assert problems[0] == "switch.plug: unavailable; check it is powered"
+    assert problems[1].startswith("light.lab_b: not on any Zigbee network.")
+    assert "2 problem(s): nothing was changed." in capsys.readouterr().out
+    assert lab.ha.calls == []
+
+    del lab.ha.states["switch.plug"]
+    assert (await check(tmp_path))[0] == "switch.plug: not in HA; check profile lab"
+
+
+async def test_the_check_says_a_bulb_away_from_hue_will_be_moved_and_finds_one_unpowered(tmp_path, lab, capsys):
+    lab.ha.states["switch.plug"] = {"entity_id": "switch.plug", "state": "on", "attributes": {}}
+    leave_hue(lab, "hue-device-2")
+    lab.opened("zha")  # lab_b joins ZHA, under an entity ID of ZHA's own
+
+    assert await check(tmp_path) == []
+    assert "light.lab_b: on ZHA. The run moves it from there" in capsys.readouterr().out
+
+    lab.ha.states["light.lab_a"] = {"entity_id": "light.lab_a", "state": "unavailable", "attributes": {}}
+    assert await check(tmp_path) == ["light.lab_a: on Hue, unavailable; check it is powered"]
+
+
+async def test_the_check_says_a_run_puts_back_a_home_the_journal_holds(tmp_path, lab, capsys):
+    lab.ha.states["switch.plug"] = {"entity_id": "switch.plug", "state": "on", "attributes": {}}
+    leave_hue(lab, "hue-device-2")
+    lab.opened("zha")
+    profile = Profile.load(lab_profile(tmp_path))
+
+    assert (
+        await rig.check_devices(
+            ENV, check_suites(tmp_path), profile, AdapterRegistry.discover(), None, True, {"light.lab_b"}
+        )
+        == []
+    )
+    assert "light.lab_b: on ZHA; the journal holds its Hue home, which a run puts back" in capsys.readouterr().out
+
+
+async def test_the_check_reports_a_network_it_cannot_ask(tmp_path, lab):
+    lab.ha.states["switch.plug"] = {"entity_id": "switch.plug", "state": "on", "attributes": {}}
+
+    async def unreachable(ieee):
+        raise fakes.BridgeError("bridge unreachable")
+
+    lab.bridge.device_id_by_ieee = unreachable
+    problems = await check(tmp_path)
+    assert problems == [
+        "light.lab_a: can't tell which network it is on: bridge unreachable",
+        "light.lab_b: can't tell which network it is on: bridge unreachable",
+    ]
+
+
+async def test_the_check_looks_for_no_bulb_when_the_run_does_not_roam(tmp_path, lab, capsys):
+    lab.ha.states["switch.plug"] = {"entity_id": "switch.plug", "state": "on", "attributes": {}}
+    leave_hue(lab, "hue-device-2")
+    assert await check(tmp_path, roaming=False) == []
+    assert "Checking profile lab: 1 entities." in capsys.readouterr().out
+
+
+async def test_the_check_needs_the_admin_token_and_bridge_to_find_the_bulbs():
+    problems = await rig.check_roaming({}, None, [], fakes.FakeHA({}))
+    assert problems == [
+        "Can't find the roaming bulbs: that needs HA_ADMIN_TOKEN, HUE_BRIDGE_HOST and HUE_APP_KEY in .env.rig"
+    ]
+
+
+async def test_the_check_needs_ha_in_the_env(tmp_path):
+    problems = await rig.check_devices({}, [], Profile(name="house"), AdapterRegistry.discover(), None, False)
+    assert problems == ["Can't check the devices: HA_URL and HA_TOKEN must be set in .env.rig"]
+
+
+async def test_the_check_reports_an_unreachable_ha(tmp_path, monkeypatch):
+    async def refused(env):
+        raise OSError("connection refused")
+
+    monkeypatch.setattr(rig, "connect", refused)
+    assert await check(tmp_path) == ["Can't reach HA at http://ha: connection refused"]
+
+
+def main_with(tmp_path: Path, monkeypatch, problems: list[str]) -> list:
+    """main's preflight against lab_profile, with check_devices answering `problems`; returns what it was asked."""
+    path = lab_profile(tmp_path)
+    asked = []
+
+    async def check_devices(env, suites, profile, registry, keyword, roaming, homes=frozenset()):
+        asked.append(([suite.integration for suite in suites], roaming))
+        return problems
+
+    monkeypatch.setattr(rig, "choose_profile", lambda name, env: path)
+    monkeypatch.setattr(rig, "load_env", lambda: dict(ENV))
+    monkeypatch.setattr(rig, "git", lambda *args, check=True: str(tmp_path) if "--git-common-dir" in args else "wt")
+    monkeypatch.setattr(rig, "check_devices", check_devices)
+    monkeypatch.setattr(rig, "deploy_state", lambda status_cmd: rig.Deploy("c1", "tree", "tree", "tree", "wt"))
+    return asked
+
+
+def test_check_alone_takes_no_lock_and_deploys_nothing(tmp_path, monkeypatch, capsys):
+    asked = main_with(tmp_path, monkeypatch, ["switch.plug: unavailable; check it is powered"])
+    monkeypatch.setattr(rig, "deploy_state", lambda status_cmd: pytest.fail("--check read the deploy"))
+    monkeypatch.setattr(rig, "lock_rig", lambda *args, **kwargs: pytest.fail("--check took the lock"))
+
+    assert rig.main(["--check", "--integration", "zigbee2mqtt"]) == 1
+    assert [(set(integrations), roaming) for integrations, roaming in asked] == [({"zigbee2mqtt"}, True)]
+    assert "Proceed?" not in capsys.readouterr().out
+
+
+def test_check_names_a_run_holding_the_lock(tmp_path, monkeypatch, capsys):
+    main_with(tmp_path, monkeypatch, [])
+    with (tmp_path / rig.LOCK_NAME).open("a+") as held:
+        rig.fcntl.flock(held, rig.fcntl.LOCK_EX)
+        held.write("wt/other (pid 1)\n")
+        held.flush()
+        assert rig.main(["--check"]) == 0
+    assert "A rig run holds the lock: wt/other (pid 1)." in capsys.readouterr().out
+    assert rig.held_by(tmp_path / rig.LOCK_NAME) is None
+
+
+def test_check_refuses_another_mode(capsys):
+    with pytest.raises(SystemExit):
+        rig.main(["--check", "--recover"])
+    assert "--check can't be combined with --recover" in capsys.readouterr().err
+
+
+def test_a_run_stops_before_the_gate_on_a_device_problem(tmp_path, monkeypatch):
+    main_with(tmp_path, monkeypatch, ["switch.plug: unavailable; check it is powered"])
+    monkeypatch.setattr(rig, "gate", lambda: pytest.fail("asked to proceed"))
+    monkeypatch.setattr(rig, "lock_rig", lambda *args, **kwargs: None)
+
+    with pytest.raises(SystemExit, match="Power or fix the devices above, then run again."):
+        rig.main([])
+
+
+def test_a_dry_run_shows_the_check_and_still_passes(tmp_path, monkeypatch, capsys):
+    asked = main_with(tmp_path, monkeypatch, ["switch.plug: unavailable; check it is powered"])
+    assert rig.main(["--dry-run"]) == 0
+    assert asked and asked[0][1] is True  # the lab's bulbs roam for its ZHA and Z2M suites
+
+
+def test_roam_check_skips_the_device_check(tmp_path, monkeypatch):
+    asked = main_with(tmp_path, monkeypatch, [])
+    assert rig.main(["--roam-check", "--dry-run"]) == 0
+    assert asked == []
+
+
+async def test_connect_closes_the_first_session_when_the_admin_one_fails(monkeypatch):
+    closed = []
+
+    class Client:
+        def __init__(self, url, token):
+            self.token = token
+
+        async def connect(self):
+            if self.token == "a":
+                raise RuntimeError("WebSocket auth failed")
+
+        async def close(self):
+            closed.append(self.token)
+
+    monkeypatch.setattr(rig, "HAClient", Client)
+    with pytest.raises(RuntimeError, match="auth failed"):
+        await rig.connect(ENV)
+    assert closed == ["t"]
