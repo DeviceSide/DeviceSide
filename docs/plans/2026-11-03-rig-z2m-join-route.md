@@ -44,6 +44,11 @@ Options to put to Jason:
   Leave then goes out while the others are still routing. Slower: one window per bulb.
 - **c. Reverse the Hue join order plus a:** keep the current order and add a's retry.
 
+**Decided (3 Nov): a, detected early, Hue releases only.** A ZHA or Z2M window closes once only bulbs from Hue
+are out, seen on no network, 30 s after it opened or the last bulb joined (the slowest join seen took 10.6 s;
+bulbs can join one after another). The Hue search that follows
+has one try; a bulb it doesn't bring back stops the move as before.
+
 Recommendation going in: **a**, as it handles what actually happened with no new assumption about the mesh.
 Whichever is chosen: tests in `tests/scripts/test_rig_roam.py` with the Lab fake taught a "missed Leave"
 bulb that the next Hue search adopts; journaled, so `--recover` handles a crash mid-retry.

@@ -1,6 +1,7 @@
 """Roaming (tests/rig/roam.py), against the Lab fake: each move, the rename, the stale-entry removal, the Hue home
 saved and restored, a bulb that never joins, and recovery from wherever a crash leaves the bulbs."""
 
+import asyncio
 import json
 
 import pytest
@@ -160,11 +161,26 @@ async def test_a_bulb_that_missed_the_hue_leave_is_searched_back_released_alone_
     assert await where(lab) == [network, network]
     assert lab.device_of("light.lab_a")["identifiers"][0][0] == identifier
     assert f"light.lab_a not on {roam.NAMES[network]}; searching Hue in case the bridge's Leave missed it." in printed
-    assert "Back on Hue: light.lab_a. Releasing it alone." in printed
+    assert "Back on Hue: light.lab_a. Releasing each alone." in printed
     assert lab.searches == 1
     assert moving.arrived == ["light.lab_b", "light.lab_a"]  # so the next move releases light.lab_a first
     assert [e for e in lab.ha.entity_devices if e.startswith("light.hue_")] == []  # no generated ID left behind
     assert not lab.ha.zha_open and not lab.ha.z2m_open
+
+
+async def test_the_wait_for_a_straggler_runs_from_the_last_join_not_the_window_opening(lab, monkeypatch):
+    monkeypatch.setattr(roam, "MISSED_HUE_LEAVE_S", 0.3)
+    lab.stuck |= {A[2:], B[2:]}
+
+    def serially(network):  # light.lab_a joins at 0.2 s, light.lab_b at 0.45 s: past 0.3 s from the opening
+        loop = asyncio.get_running_loop()
+        for ieee, delay in ((A[2:], 0.2), (B[2:], 0.45)):
+            loop.call_later(delay, lambda ieee=ieee: (lab.stuck.discard(ieee), lab.opened(network)))
+
+    lab.ha.on_open = serially
+    await roamer(lab).go("zha")
+    assert await where(lab) == ["zha", "zha"]
+    assert lab.searches == 0
 
 
 async def test_a_bulb_that_misses_the_hue_leave_again_gets_no_second_retry(lab, monkeypatch):

@@ -48,8 +48,9 @@ REINTERVIEW_GAP_S = 20  # between asks for one bulb: the retained device list ma
 JOIN_LOG_LEVEL = "info"  # Z2M's log level during a join: its default, warning, logs no join or interview
 VERBOSE_LOG_LEVELS = ("info", "debug")
 RELEASE_S = 30  # for a released bulb to drop off its network
-# A bulb from Hue that no ZHA or Z2M window shows this long after it opened, once every other bulb is in, may have
-# missed the bridge's Leave (on 3 Nov the other two joined in 2 s and 10 s). The window closes early to check.
+# A bulb from Hue that a ZHA or Z2M window still doesn't show this long after it opened or the last bulb joined,
+# whichever is later, once every other bulb is in, may have missed the bridge's Leave: the slowest join seen took
+# 10.6 s (Hue -> ZHA, 31 Oct), and bulbs can join one after another. The window closes early to check.
 MISSED_HUE_LEAVE_S = 30
 ENTITY_S = 90  # for HA to show a joined bulb's device and light entity (ZHA's interview took about 60 s)
 HUE_SEARCH_S = 56  # how long a Hue search stays open; it can't be ended early
@@ -106,8 +107,8 @@ def plan_lines(
             f"Roams {names} together: {' -> '.join(NAMES[network] for network in [HOME, *stops, HOME])}.",
             "  Leaving: Hue deletes the device on the bridge; ZHA and Z2M remove it.",
             f"  Joining ZHA or Z2M: open for up to {JOIN_S} s, closed once all are in. A bulb from Hue still",
-            f"    missing {MISSED_HUE_LEAVE_S} s in, once the rest are, is searched back to Hue (it missed the Leave),",
-            "    released alone, and given one more window.",
+            f"    missing {MISSED_HUE_LEAVE_S} s after the last join, once the rest are in, is searched back to Hue",
+            "    (it missed the Leave), released alone, and given one more window.",
             f"  Joining Hue: a search, open about {HUE_SEARCH_S} s, and it can't be ended early;",
             "    one more only if a bulb is still missing. Any other device that joins meanwhile is named.",
             "  After each join the bulbs are renamed to their entity IDs; back on Hue their rooms and scenes are "
@@ -399,11 +400,16 @@ class Roamer:
         self, network: str, bulbs: list[Bulb], all_in: Callable[[], Awaitable[bool]], from_hue: list[Bulb]
     ) -> bool:
         """Open ZHA or Z2M joining until every bulb is in, then close it; whether they all are. It closes early once
-        only bulbs of `from_hue` are out, MISSED_HUE_LEAVE_S after it opened, with none of them seen on any network."""
-        opened = asyncio.get_running_loop().time()
+        only bulbs of `from_hue` are out, with none of them seen on any network, MISSED_HUE_LEAVE_S after it opened or
+        the last bulb joined."""
+        loop = asyncio.get_running_loop()
+        quiet_since, joined = loop.time(), len(self.arrived)
 
         async def hue_kept_them() -> bool:
-            if asyncio.get_running_loop().time() - opened < MISSED_HUE_LEAVE_S:
+            nonlocal quiet_since, joined
+            if len(self.arrived) != joined:
+                quiet_since, joined = loop.time(), len(self.arrived)
+            if loop.time() - quiet_since < MISSED_HUE_LEAVE_S:
                 return False
             out = [bulb for bulb in bulbs if bulb.entity_id not in self.arrived]
             return all([bulb in from_hue and await self.locate(bulb) is None for bulb in out])
@@ -452,7 +458,7 @@ class Roamer:
             await self.adopt("hue", bulb)  # its light takes the fixed ID, so no generated one is left behind
         if not back:
             return False  # hue_join waited out the search
-        self.out(f"Back on Hue: {', '.join(bulb.entity_id for bulb in back)}. Releasing it alone.")
+        self.out(f"Back on Hue: {', '.join(bulb.entity_id for bulb in back)}. Releasing each alone.")
         await self.close_all()
         for bulb in back:
             await self.release("hue", bulb)
