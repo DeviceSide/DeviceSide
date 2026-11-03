@@ -6,7 +6,7 @@ inside its guard window, every report of the keys its attribute owns (attributes
 another actor's (the Hue app, a dimmer, a Hue automation): a switch to off while the light's brightness heads somewhere
 lit, and a key no live transition owns, which our writes never make the bridge report. Either drops the light's
 prediction, as does a scene recalled on the bridge, and the next move starts from what the bridge reports. A change made
-from Home Assistant drops it at once, whatever its value, by watching light and scene service calls.
+from Home Assistant drops it at once, whatever its value: HueCallResolver, on core's watch of light and scene calls.
 
 With the predicted_state option on, the reports of brightness and on that are ours are hidden from aiohue, and so from
 HA, which instead is sent what device_side predicts: the start value while a fade runs, the halt at a stop, the end once
@@ -25,14 +25,13 @@ from typing import TYPE_CHECKING
 from aiohue.v2.controllers.events import EventType
 from aiohue.v2.models.resource import ResourceTypes
 from aiohue.v2.models.scene import SceneActiveStatus
-from homeassistant.const import ATTR_DOMAIN, ATTR_ENTITY_ID, ATTR_SERVICE_DATA, ENTITY_MATCH_ALL, EVENT_CALL_SERVICE
-from homeassistant.core import CALLBACK_TYPE, Event, HomeAssistant, callback
+from homeassistant.core import CALLBACK_TYPE, HomeAssistant
 from homeassistant.helpers import entity_registry as er
-from homeassistant.helpers.target import TargetSelection, async_extract_referenced_entity_ids
 
 from .attributes import ATTRIBUTES, event_fields, reported_values, strip
 from .bridge import bridge_api
 from .transition_cache import MIN_BRIGHTNESS_STEP, transition_cache
+from ...core.ha_watch import ALL, Call, Entries
 from ...core.models import Target
 from ...core.runtime import get_runtime
 from ...core.transition import BRIGHTNESS, TransitionCache
@@ -42,8 +41,6 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
-# The services whose calls can change a Hue light's brightness or on.
-SERVICE_DOMAINS = frozenset({"light", "scene"})
 # Marks an event device_side sends in the bridge's place. aiohue reads only its models' fields, so ignores it.
 MARKER = "device_side"
 # Where each bridge's ReportFilter lives in integration_state, by hue config entry.
@@ -91,7 +88,7 @@ def classify(cache: TransitionCache, api: HueBridgeV2, event: dict) -> Report | 
 
 
 class ReportFilter:
-    """One bridge's subscriber to its event stream and Home Assistant's listener for light and scene calls.
+    """One bridge's subscriber to its event stream.
 
     hiding is the predicted_state option, as attached: off, the filter only observes.
     """
@@ -110,11 +107,9 @@ class ReportFilter:
             event_filter=EventType.RESOURCE_UPDATED,
             resource_filter=(ResourceTypes.LIGHT, ResourceTypes.GROUPED_LIGHT, ResourceTypes.SCENE),
         )
-        unlisten = self.hass.bus.async_listen(EVENT_CALL_SERVICE, self._on_service_call, event_filter=_is_light_call)
 
         def detach() -> None:
             unsubscribe()
-            unlisten()
             # Nothing will show a running fade's end now: hand HA back to the bridge.
             for light in self.api.lights:
                 if _running(self.cache, light.id):
@@ -233,23 +228,8 @@ class ReportFilter:
         except Exception:
             _LOGGER.exception("Hue report filter failed showing rooms %s", grouped_light_ids)
 
-    @callback
-    def _on_service_call(self, event: Event) -> None:
-        service_data = event.data[ATTR_SERVICE_DATA] or {}
-        if service_data.get(ATTR_ENTITY_ID) == ENTITY_MATCH_ALL:
-            for light in self.api.lights:
-                forget(self.hass, light.id)
-            return
-        selected = async_extract_referenced_entity_ids(self.hass, TargetSelection(service_data))
-        for entity_id in selected.referenced | selected.indirectly_referenced:
-            for light_id in self._lights(entity_id):
-                forget(self.hass, light_id)
-
-    def _lights(self, entity_id: str) -> list[str]:
+    def lights(self, entry: er.RegistryEntry) -> list[str]:
         """The bridge's lights behind a Hue light, room, zone or scene entity of this bridge."""
-        entry = er.async_get(self.hass).async_get(entity_id)
-        if entry is None or entry.platform != "hue" or entry.config_entry_id != self.entry_id:
-            return []
         resource_id = entry.unique_id
         if entry.domain == "scene":
             return self._scene_lights(resource_id)
@@ -270,8 +250,11 @@ def _running(cache: TransitionCache, light_id: str) -> bool:
     return any(cache.running(light_id, attribute) is not None for attribute in ATTRIBUTES)
 
 
+_END_PREFIX = "hue-end:"
+
+
 def _end_key(light_id: str, attribute: str) -> str:
-    return f"hue-end:{light_id}:{attribute}"
+    return f"{_END_PREFIX}{light_id}:{attribute}"
 
 
 def forget(hass: HomeAssistant, light_id: str) -> None:
@@ -314,9 +297,25 @@ def applies_later(api: HueBridgeV2) -> bool:
     return all(iscoroutinefunction(getattr(c, "_handle_event", None)) for c in (api.lights, api.groups.grouped_light))
 
 
-@callback
-def _is_light_call(event_data) -> bool:
-    return event_data[ATTR_DOMAIN] in SERVICE_DOMAINS
+class HueCallResolver:
+    """Forget the Hue lights a light or scene call from HA targets, through each one's bridge's filter."""
+
+    def busy(self, hass: HomeAssistant) -> bool:
+        if transition_cache(hass).resource_ids():
+            return True
+        return any(key.startswith(_END_PREFIX) for key in get_runtime(hass).pending)
+
+    def forget(self, hass: HomeAssistant, call: Call, entries: Entries) -> None:
+        filters: dict[str, ReportFilter] = get_runtime(hass).integration_state.get(FILTERS, {})
+        if entries is ALL:
+            for reports in list(filters.values()):
+                for light in reports.api.lights:
+                    forget(hass, light.id)
+            return
+        for entry in entries:
+            if (reports := filters.get(entry.config_entry_id)) is not None:
+                for light_id in reports.lights(entry):
+                    forget(hass, light_id)
 
 
 def report_filter(hass: HomeAssistant, target: Target) -> ReportFilter:

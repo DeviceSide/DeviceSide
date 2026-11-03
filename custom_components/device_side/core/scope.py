@@ -1,11 +1,15 @@
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
 from .models import Target
+
+if TYPE_CHECKING:
+    from .ha_watch import CallResolver
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,6 +52,8 @@ class IntegrationInfo:
     is_group: Callable[[HomeAssistant, Target], bool] | None = None
     # Members of a native group, for adapters without native_groups; None means membership is unknowable here.
     expand_group: Callable[[HomeAssistant, Target], list[Target]] | None = None
+    # Drops what a light or scene call from HA leaves stale (core/ha_watch.py); None holds nothing it could.
+    call_resolver: CallResolver | None = None
     max_concurrency: int = 4
     available: bool = True
     unavailable_reason: str | None = None
