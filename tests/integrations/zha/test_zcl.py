@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from homeassistant.core import Context
-from homeassistant.exceptions import HomeAssistantError, Unauthorized
+from homeassistant.exceptions import HomeAssistantError, Unauthorized, UnknownUser
 from pytest_homeassistant_custom_component.common import async_mock_service
 
 from custom_components.device_side.integrations.zha import zcl
@@ -182,6 +182,21 @@ async def test_hue_turn_on_refuses_a_non_admin_as_zha_does(hass, gateway, cluste
     with pytest.raises(Unauthorized):
         await HUE_TURN_ON(hass, ADDR, 1, Context(user_id=hass_read_only_user.id))
     cluster.request.assert_not_awaited()
+
+
+async def test_hue_turn_on_refuses_an_unknown_user(hass, gateway, cluster):
+    cluster.request = AsyncMock()
+
+    with pytest.raises(UnknownUser):
+        await HUE_TURN_ON(hass, ADDR, 1, Context(user_id="no-such-user"))
+    cluster.request.assert_not_awaited()
+
+
+async def test_hue_turn_on_without_the_device_raises(hass, gateway):
+    gateway.get_device.return_value = None
+
+    with pytest.raises(LookupError, match="not found"):
+        await HUE_TURN_ON(hass, ADDR, 1, None)
 
 
 async def test_hue_turn_on_lets_an_admin_through(hass, gateway, cluster, hass_admin_user):

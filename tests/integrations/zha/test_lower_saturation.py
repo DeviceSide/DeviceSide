@@ -22,3 +22,10 @@ async def test_at_white_is_unchanged(hass, commands):
 
     assert await call(hass, "lower_saturation", {"entity_id": "light.bulb"}) == {"light.bulb": unchanged("at_limit")}
     assert not commands
+
+
+async def test_an_off_light_is_unchanged(hass, commands):
+    bulb(hass, state="off")
+
+    assert await call(hass, "lower_saturation", {"entity_id": "light.bulb"}) == {"light.bulb": unchanged("off")}
+    assert not commands

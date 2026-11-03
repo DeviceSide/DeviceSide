@@ -50,7 +50,9 @@ class ZHAStop(Adapter[Request]):
     ) -> list[EntityResult]:
         halting = lit(cache, lights)
         halting_ids = {light.entity_id for light in halting}
-        off = [self.result(light, Status.UNCHANGED, detail="off") for light in lights if light not in halting]
+        off = [
+            self.result(light, Status.UNCHANGED, detail="off") for light in lights if light.entity_id not in halting_ids
+        ]
         if not halting:
             return off
         # A halt is predicted only where a move of ours ran: elsewhere the refresh is right at once.
@@ -87,7 +89,7 @@ class ZHAStop(Adapter[Request]):
         except Unauthorized:
             return [*off, *(self.result(light, Status.REJECTED, detail="admin_required") for light in halting)]
         except Exception as err:  # noqa: BLE001 - as in gather(): one group's failure must not abort the room
-            _LOGGER.warning("stop on zha failed for %s: %s", ", ".join(sorted(halting_ids)), err)
+            _LOGGER.warning("stop on zha failed for %s: %r", ", ".join(sorted(halting_ids)), err)
             return [*off, *(self.result(light, Status.REJECTED, detail="error") for light in halting)]
         cycling.difference_update(halting_ids)
         runtime = get_runtime(hass)

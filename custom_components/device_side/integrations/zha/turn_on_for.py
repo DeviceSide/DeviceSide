@@ -122,7 +122,7 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
         except Unauthorized:
             return [self.result(target, Status.REJECTED, detail="admin_required") for target in members]
         except Exception as err:  # noqa: BLE001 - as in gather(): one group's failure must not abort the room
-            _LOGGER.warning("%s on %s failed for %s: %s", self.action, self.integration, group_entity, err)
+            _LOGGER.warning("%s on %s failed for %s: %r", self.action, self.integration, group_entity, err)
             return [self.result(target, Status.REJECTED, detail="error") for target in members]
 
         async def read_back(target: Target) -> EntityResult:

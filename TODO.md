@@ -97,8 +97,8 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. The rig lock
   ([`2026-10-27-hue-move-color.md`](docs/plans/2026-10-27-hue-move-color.md)).
 - [ ] **Hue A60 run** (13k step 2), on the lab: `set_attributes` color (rgb, hs and xy) and gamut clamp, the `get_attributes`
   color read, 7c saturation, with no `light_color` skips. Attended for `sets_color_while_off`. Hue code freezes. Clears `experimental` on the Hue adapters it proves.
-- [ ] **13f** ZHA raise, lower and `stop`, after the `Transition` PR. ZHA code freezes. Built on `wt/zha-move-stop`
-  over the six raise and lower actions; a lab probe, the rig run, test records and PR are open. Pick up at the
+- [x] **13f** ZHA raise, lower and `stop`, after the `Transition` PR. ZHA code freezes. Built on `wt/zha-move-stop`
+  over the six raise and lower actions; lab runs and records in its
   [handoff note](docs/plans/2026-10-28-zha-move-stop.md#status-and-handoff-2026-11-02).
 - [ ] **13f follow-up** One core watch for light calls from HA, which drop the predictions of the lights a call names:
   a listener in `core/` with a resolver per integration (call entities to cache entries, plus a hook after the

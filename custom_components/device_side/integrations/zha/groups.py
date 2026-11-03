@@ -1,5 +1,7 @@
 """A ZHA group's members, for the dispatcher to expand a group entity into."""
 
+from collections.abc import Iterator
+
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
@@ -20,8 +22,7 @@ def expand_group(hass: HomeAssistant, target: Target) -> list[Target]:
     """
     if (gid := group_id(target.entry.unique_id)) is None or (group := zcl.gateway(hass).get_group(gid)) is None:
         return []
-    unique_ids = (f"{member.device.ieee}-{member.endpoint_id}" for member in group.members)
-    return resolve_members(hass, get_runtime(hass).registry, target, "zha", unique_ids)
+    return resolve_members(hass, get_runtime(hass).registry, target, "zha", _member_unique_ids(group))
 
 
 def light_members(hass: HomeAssistant, gid: int) -> frozenset[str]:
@@ -29,7 +30,13 @@ def light_members(hass: HomeAssistant, gid: int) -> frozenset[str]:
     if (group := zcl.gateway(hass).get_group(gid)) is None:
         return frozenset()
     registry = er.async_get(hass)
-    unique_ids = (f"{member.device.ieee}-{member.endpoint_id}" for member in group.members)
     return frozenset(
-        entity_id for uid in unique_ids if (entity_id := registry.async_get_entity_id("light", "zha", uid)) is not None
+        entity_id
+        for uid in _member_unique_ids(group)
+        if (entity_id := registry.async_get_entity_id("light", "zha", uid)) is not None
     )
+
+
+def _member_unique_ids(group) -> Iterator[str]:
+    """The unique_id the zha library gives each member's entity."""
+    return (f"{member.device.ieee}-{member.endpoint_id}" for member in group.members)

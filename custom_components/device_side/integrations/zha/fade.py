@@ -139,7 +139,7 @@ async def refresh(hass: HomeAssistant, light: Target, context: Context | None) -
             "homeassistant", "update_entity", {"entity_id": light.entity_id}, blocking=True, context=context
         )
     except Exception as err:  # noqa: BLE001 - a failed refresh leaves HA's state stale, nothing more
-        _LOGGER.debug("update_entity for %s failed: %s", light.entity_id, err)
+        _LOGGER.debug("update_entity for %s failed: %r", light.entity_id, err)
 
 
 @dataclass(frozen=True, slots=True)
@@ -237,7 +237,7 @@ class ZHARamp(Adapter[RampRequest]):
             return each(Status.REJECTED, detail="admin_required")
         except Exception as err:  # noqa: BLE001 - as in gather(): one group's failure must not abort the room
             names = ", ".join(light.entity_id for light in lights)
-            _LOGGER.warning("%s on zha failed for %s: %s", self.action, names, err)
+            _LOGGER.warning("%s on zha failed for %s: %r", self.action, names, err)
             return each(Status.REJECTED, detail="error")
         moved = {light.entity_id for light in outcome.movers}
         return [
@@ -393,7 +393,7 @@ async def sync_to_bulb(
         at = (before + after) / 2
         level = read[zcl.CURRENT_LEVEL] * 100 / 254
     except Exception as err:  # noqa: BLE001 - the prediction stands, as on the other integrations
-        _LOGGER.debug("Level read after a fade was sent failed for %s: %s", light.entity_id, err)
+        _LOGGER.debug("Level read after a fade was sent failed for %s: %r", light.entity_id, err)
         return
     elapsed = (at - recorded.started_at) / recorded.duration if recorded.duration > 0 else 1.0
     if elapsed >= 1 or cache.live(light.entity_id, BRIGHTNESS) is not recorded:
@@ -440,7 +440,7 @@ def end_job(hass: HomeAssistant, light: Target, restore: dict[str, float] | None
                     params = {"level": zcl.level(restore[light.entity_id]), **zcl.execute_if_off(0)}
                     await zcl.command(hass, addr, zcl.LEVEL_CLUSTER, zcl.MOVE_TO_LEVEL, params, context)
             except Exception as err:  # noqa: BLE001 - the light stays off, and comes back on dim
-                _LOGGER.warning("Restoring %s's level after a soft off failed: %s", light.entity_id, err)
+                _LOGGER.warning("Restoring %s's level after a soft off failed: %r", light.entity_id, err)
         await refresh(hass, light, context)
 
     return run

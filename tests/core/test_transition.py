@@ -124,3 +124,11 @@ async def test_each_integration_keeps_its_own_cache(hass, setup_integration):
     assert transition_cache(hass, "hue", lambda: TransitionCache(0)) is hue
     assert z2m is not hue
     assert (hue.settle_seconds, z2m.settle_seconds) == (15, 1)
+
+
+def test_a_finished_move_is_not_running_but_still_tracked(cache, clock):
+    cache.moving("light-1", "brightness", 20.0, 80.0, 5.0)
+    clock.now += 5.1
+
+    assert cache.running("light-1", "brightness") is None
+    assert cache.tracks("light-1", "brightness")

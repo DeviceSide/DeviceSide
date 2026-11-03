@@ -51,7 +51,7 @@ async def test_a_failed_refresh_is_only_logged(hass, commands, caplog):
     assert await call(hass, "raise_saturation", {"entity_id": "light.bulb"}) == {"light.bulb": SENT}
     await advance(hass, start, 3.5)
 
-    assert "update_entity for light.bulb failed: unavailable" in caplog.text
+    assert "update_entity for light.bulb failed: HomeAssistantError('unavailable')" in caplog.text
 
 
 async def test_ends_a_hue_cycle(hass, commands):
