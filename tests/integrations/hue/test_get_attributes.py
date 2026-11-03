@@ -7,6 +7,7 @@ import pytest
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util.color import color_xy_to_hs, color_xy_to_RGB
 
+from .conftest import color_room, hs_xy
 from ...conftest import call, refusal
 from ...fixtures.hue import add_hue_entity, add_hue_group, hue_entry
 
@@ -142,3 +143,21 @@ async def test_v1_bridge_is_refused(hass, bridge):
     add_hue_entity(hass, entry, "light.lamp", "light-1")
 
     assert await refusal(hass, "get_attributes", {"entity_id": "light.lamp"}) == "bridge_v1"
+
+
+@pytest.mark.parametrize("target", ["light.one", "light.room"])
+async def test_color_mid_saturation_fade_reads_the_predicted_xy(hass, bridge, clock, target):
+    # The bridge reports the fade's end xy at once; the read is on the straight line to it.
+    entity_id = await color_room(hass, bridge, {"one": (200.0, 90.0), "two": (200.0, 90.0)})
+    await call(hass, "lower_saturation", {"entity_id": entity_id, "sweep_time": 10, "limit": 0})
+    put = bridge.puts[0][1]
+    end = (put["color"]["xy"]["x"], put["color"]["xy"]["y"])
+    for light_id in ("one", "two"):
+        bridge.api.lights[light_id].color.xy.x, bridge.api.lights[light_id].color.xy.y = end
+    clock.now += put["dynamics"]["duration"] / 1000 / 2
+
+    response = await call(hass, "get_attributes", {"entity_id": target})
+
+    start = hs_xy(200.0, 90.0)
+    midway = [round((a + b) / 2, 4) for a, b in zip(start, end, strict=True)]
+    assert response[target]["xy_color"] == pytest.approx(midway, abs=1e-4)

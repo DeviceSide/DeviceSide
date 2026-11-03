@@ -228,3 +228,20 @@ each trial: 70 %, xy at hs (200°, 90 %); the fades head to hs (200°, 10 %).
   whether a brightness write leaves a running xy fade alone. Both become observed cases in the Hue A60 run (13k
   step 2, already attended): `saturation_down_stop` and `halts_brightness_and_saturation` on Hue, watched. If the
   stop jumps, revisit before clearing `experimental`.
+
+### Result (7c2 build, 2026-11-03)
+
+Built as above, with three departures:
+
+- **`SATURATION` owns `mirek` too**, beside `xy`. An xy write to a light in color temperature mode may report its
+  mirek going; owned by no live transition, that would read as a change from elsewhere and drop the prediction, so a
+  stop would jump to the end. The cost: a color temperature change from outside HA mid saturation fade isn't caught.
+  The rig run's saturation cases start from color; a stop from a color temperature white is unchecked on the bulb.
+- **A room's saturation stop is one PUT per light**, each with its dimming stop and its own predicted xy: the lights
+  converge on one end from different starts, so one `grouped_light` xy would jump all but one.
+- **The hue is read from aiohue's xy** (through the prediction), not HA's state: it is the same number for a light
+  (HA derives `hs_color` from that xy), and a room's members are aiohue lights. A room's hue is that of its lit color
+  lights' mean xy, as HA shows the room, so hues either side of red don't average to cyan.
+
+A saturation transition's xy path lives in the Hue cache keyed to the transition it was recorded with; a path whose
+transition was forgotten, expired or put back by a refused write is ignored, and the reported xy stands.

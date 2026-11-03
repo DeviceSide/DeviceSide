@@ -751,8 +751,8 @@ a scene the bridge no longer has is `rejected` with `scene_not_found`.
 
 ### Raise, lower and `stop`
 
-Hue takes `raise_brightness` and `lower_brightness`. The saturation actions have no Hue adapter until they are
-tested, and the hue actions none because a hue rotation isn't a straight line the bridge can fade along. No
+Hue takes `raise_brightness`, `lower_brightness`, `raise_saturation` and `lower_saturation`. The hue actions
+have no Hue adapter, as a hue rotation isn't a straight line the bridge can fade along. No
 integration moves color temperature, as every stop of its fade on a Hue bulb makes a visible jump
 (Zigbee2MQTT's raise, lower and `stop`, above). Each call is one write: the end point (the limit, or the end of
 the range) with a duration of `sweep_time` × the fraction of the range left, which the bridge then
@@ -764,22 +764,32 @@ next plain on comes back at it. On a light that can't dim (an on/off light) the 
 with `fields_dropped`. A light already at or past the limit is `unchanged` with `at_limit` and
 nothing is sent.
 
+Saturation is Home Assistant's `hs_color` saturation, as on Zigbee2MQTT and ZHA, so one automation behaves alike
+on each. The write is an xy: the light's current hue at the end saturation, clamped to the light's gamut. A color
+temperature white has a hue too, its own tint, so it deepens or pales from there (a warm white toward amber).
+The write has no `on`, so only a light that is on moves: a light that is off is `unchanged` with `off`, and one
+without color `unchanged` with `fields_dropped`.
+
 A room takes one write to its `grouped_light`, so its lights converge on the end point
-together. `stop` sends the bridge's dimming stop to the light or room. The bridge refuses a dimming stop during a soft off, so a soft off Device Side
+together. For saturation the hue is the room's (that of the mean xy of its lit color lights, as Home Assistant
+shows the room), each light is clamped to its own gamut by the bridge, and lights without color are passed by.
+Lights at different hues end at one color. `stop` sends the bridge's dimming stop to the light or room. The
+bridge has no stop for an xy fade, so a light whose saturation fade is running is also sent its predicted xy
+with no duration, in the same write; a room's lights then get one write each, at their own prediction. The bridge refuses a dimming stop during a soft off, so a soft off Device Side
 started is cut by writing `on: true` with the predicted brightness and no duration, light by light
 for a room. A light that is off, or fading off from elsewhere, has nothing Device Side can stop: it
 is `unchanged` with `off` and nothing is sent.
 
 While a fade runs the bridge reports its end value, and after a stop it reports where the light
 halted late or not at all (Tested behavior, below). Device Side remembers each raise, lower and stop for
-its duration plus 15 seconds and predicts the brightness of each light meanwhile,
+its duration plus 15 seconds and predicts the brightness and color of each light meanwhile,
 so the next one after a stop continues from where the light halted, and `get_attributes` returns the
 predicted values.
 
 A change made elsewhere ends the prediction, so the next raise or lower starts from the brightness the bridge
 reports. A bulb reports late, stale, and off any straight line (Tested behavior, below), so Device
 Side doesn't judge a report by its value. While it remembers a raise, lower or stop, it takes every report
-of what it moved (brightness and on/off) from that light as its own, with two
+of what it moved (brightness and on/off, or color) from that light as its own, with two
 exceptions, both a change from elsewhere (the Hue app, a dimmer switch, a Hue automation): a switch
 to off while the light is fading to, or halted at, a lit level, and a report of anything the fade
 didn't change, such as a color temperature report during a brightness fade. A scene recalled on the bridge ends the prediction of its room's or zone's lights, and a light
@@ -797,7 +807,8 @@ change caught as made elsewhere shows at once; one not caught shows once the bri
 after the raise, lower or stop is no longer remembered. Nothing is sent while a fade runs, so a dashboard slider holds
 still and then jumps to the stop or the end. After Home Assistant restarts, or reconnects to the
 bridge, mid-fade, it shows what the bridge reports. To always show what the bridge reports, turn the
-option off: Settings › Devices & services › Device Side › Configure.
+option off: Settings › Devices & services › Device Side › Configure. Color is always shown as the bridge reports
+it: the end color at once.
 
 ### `turn_on_for`, `turn_off_for`
 
@@ -848,6 +859,10 @@ it arrives, so Home Assistant shows what is listed here.
   reports of both lay on their own straight lines (2026-10-27). One write holding both reports two
   events, one per attribute. The bridge takes a dimming stop and a color temperature stop in one
   write, on a light and on a zone.
+- **An xy fade behaves as brightness does** (a gamut C bulb, 2026-11-03): the bridge reports the end xy at once
+  and nothing after it. An xy written with no duration mid-fade halts it there, reported at once, with no late
+  report after. One write takes a dimming stop and an xy together. An xy fade and a brightness fade written 0.5 s
+  apart each run. A `grouped_light` xy write to a zone holding a bulb without color changes only the color bulb.
 - **A brightness write never reports a color.** Across the full Hue rig suite on 2026-10-27, every
   report of a light during or after Device Side's brightness raises, lowers and stops held only `on` and
   `dimming`; `color_temperature` came only from color writes, and `color` never.
@@ -857,6 +872,8 @@ it arrives, so Home Assistant shows what is listed here.
 
 ### Sharp edges
 
+- **100 % saturation is Home Assistant's, not the bulb's.** It is the edge of Home Assistant's color space, a
+  little inside a gamut C bulb's deepest colors, so `raise_saturation` stops short of what the Hue app can reach.
 - **One write per light.** `set_scene` writes a scene's lights one after another; an 8-light scene
   takes under a second. The bridge refuses more than 3 requests at once and aiohue retries, so a
   much larger scene may take longer.

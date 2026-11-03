@@ -95,10 +95,11 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. The rig lock
   holding only the A60. Attended for its four
   observed cases (9d ledger in the [plan](docs/plans/2026-10-30-rig-coverage-sweep.md)). Clears `experimental` on the
   Z2M adapters it proves.
-- [ ] **7c2** Hue `raise_saturation`/`lower_saturation`, built against the A60
-  ([`2026-10-27-hue-move-color.md`](docs/plans/2026-10-27-hue-move-color.md)).
+- [x] **7c2** Hue `raise_saturation`/`lower_saturation`, built against the A60
+  ([`2026-10-27-hue-move-color.md`](docs/plans/2026-10-27-hue-move-color.md)). Experimental until the Hue A60 run.
 - [ ] **Hue A60 run** (13k step 2), on the lab: `set_attributes` color (rgb, hs and xy) and gamut clamp, the `get_attributes`
-  color read, 7c saturation, with no `light_color` skips. Attended for `sets_color_while_off`. Hue code freezes. Clears `experimental` on the Hue adapters it proves.
+  color read, 7c saturation, with no `light_color` skips. Attended for `sets_color_while_off`, and on Hue for `saturation_down_stop` and `halts_brightness_and_saturation`
+  (does the predicted-xy halt jump?). Hue code freezes. Clears `experimental` on the Hue adapters it proves.
 - [x] **13f** ZHA raise, lower and `stop`, after the `Transition` PR. ZHA code freezes. Built on `wt/zha-move-stop`
   over the six raise and lower actions; lab runs and records in its
   [handoff note](docs/plans/2026-10-28-zha-move-stop.md#status-and-handoff-2026-11-02).

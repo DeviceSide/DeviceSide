@@ -191,12 +191,7 @@ lower_brightness:
           unit_of_measurement: "%"
 
 raise_saturation:
-  target: &mqtt_zha
-    entity:
-      - domain: light
-        integration: mqtt
-      - domain: light
-        integration: zha
+  target: *hue_mqtt_zha
   fields:
     sweep_time: *sweep_time
     limit:
@@ -209,7 +204,7 @@ raise_saturation:
           unit_of_measurement: "%"
 
 lower_saturation:
-  target: *mqtt_zha
+  target: *hue_mqtt_zha
   fields:
     sweep_time: *sweep_time
     limit:
@@ -218,7 +213,12 @@ lower_saturation:
       selector: *saturation
 
 raise_hue:
-  target: *mqtt_zha
+  target: &mqtt_zha
+    entity:
+      - domain: light
+        integration: mqtt
+      - domain: light
+        integration: zha
   fields:
     sweep_time: *sweep_time
 

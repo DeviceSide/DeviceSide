@@ -3,7 +3,9 @@
 from .bridge import expand_group, is_hue_group
 from .get_attributes import HueGetAttributes
 from .lower_brightness import HueLowerBrightness
+from .lower_saturation import HueLowerSaturation
 from .raise_brightness import HueRaiseBrightness
+from .raise_saturation import HueRaiseSaturation
 from .set_attributes import HueSetAttributes
 from .set_scene import HueSetScene
 from .stop import HueStop
@@ -22,7 +24,9 @@ INTEGRATION = IntegrationInfo(
 ADAPTERS = [
     HueGetAttributes,
     HueLowerBrightness,
+    HueLowerSaturation,
     HueRaiseBrightness,
+    HueRaiseSaturation,
     HueSetAttributes,
     HueSetScene,
     HueStop,
