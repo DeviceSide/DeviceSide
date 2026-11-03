@@ -104,6 +104,28 @@ mean beside the dotted `_lookup`. A fresh `/audit-code` of the fit, the group sa
    A probe run of a 0.5 s pause after the preset stopped at the replay before its gate, with nothing deployed. HA
    still runs `b880e6c`'s preset until the next deploy.
 
+**Deep dive and full ZHA lab run (2026-11-03, HA on `2d70127`).** The deep dive's two fixes passed on the rig:
+`569196e` (`get_attributes` reads the bulb's own x and y in a hue mode, as ZHA shows them; HA's hs to xy isn't the
+bulb's) and `6956d00` (`stop_when_idle` waits 2 s after its set, past ZHA's report hold: a turn_on with brightness
+buffers level reports for its duration + 0.5 s, then applies the last). `2d70127` replaced the hue cases' HA hs
+ranges with `mark_hue`/`expect_hue_travel`, which read the bulb's own EnhancedCurrentHue: Signify's hue to xy is
+nonlinear, so HA's hue (from xy) can't be ranged. The A60 now sits on ZHA between runs (`a60_zha` profile); the
+full run took it home to Hue first and back to Hue at the end. All three bulbs reached Hue, rooms and scenes put
+back. Records written and committed: `get_attributes`, `lower_hue`, `lower_saturation`, `raise_hue`,
+`raise_saturation`, `stop`, `turn_on_for`. Failures:
+
+- `soft_off_keeps_level[group]`: the desk came back on at 160 (`max: 158`); `[light_ct]` passed. Second time over
+  by 1 to 2 (see step 3): the fit's decision for Jason, with `sync_to_bulb` logged first.
+- `raise_after_soft_off[light_ct]`: one `get_attributes` read in the sample failed with an empty error (HA log
+  08:06:19, `get_attributes on zha failed for <the light_ct bulb>: `); a one-off radio miss, `[group]` passed. The
+  adapter's warning drops the exception's type, so the cause isn't in the log.
+- `set_attributes` while off, on the lab's Hue bulbs: `sets_while_off[light_ct]` (LTA009 came on at 3984 K, not
+  2700), `[group]` (the desk at 254, not 102), `sets_hs_while_off` and `sets_xy_while_off` (the A60 came on at the
+  setup's blue). The ExecuteIfOff writes are ignored, as the bulbs ignore the level preset before `raise_from_off`;
+  `sets_after_a_soft_off` passes on both roles. Not this branch's change (set_attributes only moved to the shared
+  helpers); never run on the lab before, and the 28 Oct record passed on the house LTA004. Z2M passes through
+  `hue_native_control`. A design call for Jason: likely Hue's own `0xFC03` write, as `raise_from_off` does.
+
 **Next, in order** (every rig run needs Jason's go; start each in the background, one at a time behind the lock):
 
 1. ~~Recover the light_ct bulb.~~ Done (2026-11-02): after a power cycle ZHA took it back, and `--recover` moved it
