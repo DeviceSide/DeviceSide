@@ -1,6 +1,6 @@
 # hue_dimmer tests/RELEASE_CHECKLIST.md §2.5 and §2.6 from the stop side; raise_brightness.yaml and
 # lower_brightness.yaml check the move that follows. Samples after a raise or lower read device_side (Hue's
-# prediction, Zigbee2MQTT's live read), in percent: HA shows a fade's end value at once.
+# prediction, Zigbee2MQTT's and ZHA's live reads), in percent: HA shows a fade's end value at once.
 action: stop
 rig_seconds: 420
 tests:
@@ -37,14 +37,18 @@ tests:
     roles: [light_ct, group]
     steps:
       - set: {state: on, brightness_pct: 50}
+      # ZHA holds a light's reports for 0.5 s after a turn_on, then applies the last: the bulb's report of the
+      # previous case's restore can land there, and HA shows that level until the next report.
+      - wait: 2
       - call: {}
       - expect_response: {status: expected}
       - sample: {attribute: brightness, for: 2, expect: steady}
 
-  # Zigbee2MQTT publishes a hue stop's color as hs, which HA takes only with z2m_color_modes on (the default).
+  # Zigbee2MQTT publishes a hue stop's color as hs, which HA takes only with z2m_color_modes on (the default). ZHA
+  # reads x/y in any color mode, so its refresh after the stop should match a live read.
   - name: hue_cycle_stop
     roles: [light_color, group_color]
-    only: [zigbee2mqtt]
+    only: [zigbee2mqtt, zha]
     setup:
       - set: {state: on, brightness_pct: 70, hs_color: [30, 90]}
     steps:
@@ -63,7 +67,7 @@ tests:
 
   - name: saturation_down_stop
     roles: [light_color, group_color]
-    only: [zigbee2mqtt]
+    only: [zigbee2mqtt, zha]
     setup:
       - set: {state: on, brightness_pct: 70, hs_color: [200, 90]}
     steps:
@@ -85,7 +89,7 @@ tests:
   # 1 s after the brightness one, as a second button would.
   - name: halts_brightness_and_saturation
     roles: [light_color, group_color]
-    only: [zigbee2mqtt]
+    only: [zigbee2mqtt, zha]
     setup:
       - set: {state: on, brightness_pct: 20, hs_color: [200, 90]}
     steps:
@@ -104,11 +108,12 @@ tests:
 
   - name: halts_brightness_and_hue
     roles: [light_color, group_color]
-    only: [zigbee2mqtt]
+    only: [zigbee2mqtt, zha]
     setup:
       - set: {state: on, brightness_pct: 20, hs_color: [30, 90]}
     steps:
-      # 5 % a second for 3 s and 18° a second for 2 s: about 35 % brightness and hue 66° at the stop
+      - mark_hue: {}
+      # 5 % a second for 3 s and 18° a second for 2 s: about 35 % brightness and 36° round the hue wheel at the stop
       - call: {action: raise_brightness, sweep_time: 20}
       - wait: 1
       - call: {action: raise_hue, sweep_time: 20}
@@ -116,7 +121,7 @@ tests:
       - call: {}
       - expect_response: {status: expected, integration: self}
       - expect_matches_read: {attributes: [xy_color.0, xy_color.1], tolerance: 0.01, within: 3}
-      - expect_state: {state: on, hs_color.0: {min: 54, max: 78}}
+      - expect_hue_travel: {by: 36, tolerance: 12}
       - sample: {attribute: brightness, for: 3, expect: steady, min: 25, max: 50, source: device_side}
       - expect_matches_read: {attributes: [xy_color.0, xy_color.1], tolerance: 0.01}
-      - expect_state: {state: on, hs_color.0: {min: 54, max: 78}}
+      - expect_hue_travel: {by: 36, tolerance: 12}

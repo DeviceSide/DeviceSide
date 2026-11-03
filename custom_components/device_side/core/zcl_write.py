@@ -51,7 +51,7 @@ class MoveToHueAndSaturation:
 Command = MoveToLevel | MoveToColorTemp | MoveToColor | MoveToHueAndSaturation
 
 
-def _level(percent: float) -> int:
+def level(percent: float) -> int:
     """CurrentLevel for a brightness percent; 0 is the lowest level, 1, as Hue sets its lowest."""
     return max(1, round(percent * 254 / 100))
 
@@ -59,15 +59,15 @@ def _level(percent: float) -> int:
 def _brightness(request: SetAttributesRequest, current_level: int | None) -> MoveToLevel | None:
     """The MoveToLevel for the request: its brightness, or the current level clamped to min/max; None if unchanged."""
     if request.brightness is not None:
-        return MoveToLevel(_level(request.brightness))
+        return MoveToLevel(level(request.brightness))
     percent = current_level * 100 / 254
     if request.min_brightness is not None:
         percent = max(request.min_brightness, percent)
     if request.max_brightness is not None:
         percent = min(request.max_brightness, percent)
-    if (level := _level(percent)) == current_level:
+    if (clamped := level(percent)) == current_level:
         return None
-    return MoveToLevel(level)
+    return MoveToLevel(clamped)
 
 
 def clamp_mireds(mireds: int, attrs: dict) -> int:

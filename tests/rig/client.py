@@ -320,6 +320,22 @@ class HAClient:
     async def zha_group_remove(self, group_id: int) -> None:
         await self.command({"type": "zha/group/remove", "group_ids": [group_id]})
 
+    async def zha_read_attribute(self, ieee: str, endpoint: int, cluster: int, attribute: int) -> int | None:
+        """One server-cluster attribute read live off a ZHA device (never zigpy's cache); None if it didn't answer."""
+        payload = {
+            "type": "zha/devices/clusters/attributes/value",
+            "ieee": ieee,
+            "endpoint_id": endpoint,
+            "cluster_id": cluster,
+            "cluster_type": "in",
+            "attribute": attribute,
+        }
+        value = await self.command(payload)  # HA answers with str() of the value: "None" for no answer
+        try:
+            return int(value)
+        except TypeError, ValueError:
+            return None
+
     # --- Registries -----------------------------------------------------------------------------------------------
 
     async def device_by_ieee(self, integration: str, ieee: str) -> dict | None:

@@ -26,12 +26,7 @@ from ...core.zcl_write import (
 )
 
 # 0.4 s, the Hue bridge's default write fade, so a call looks alike on both; a light that is off doesn't fade.
-# The override sets ExecuteIfOff for this command only, so the light takes it while off; Options stays untouched.
-_EXECUTE_IF_OFF = {"transition_time": 4, "options_mask": 1, "options_override": 1}
-
-# Models that don't store a MoveToLevel while off: the Sengled E11-G13 jumps CurrentLevel to 255 with or without the
-# override and comes on at full (docs/integrations.md, ZHA tested behavior).
-_DROPS_WHILE_OFF = frozenset({"E11-G13"})
+_EXECUTE_IF_OFF = zcl.execute_if_off(4)
 
 Wire = tuple[int, int, dict[str, Any]]
 
@@ -99,7 +94,7 @@ class ZHASetAttributes(Adapter[SetAttributesRequest]):
     def supports(self, hass: HomeAssistant, request: SetAttributesRequest, target: Target) -> str | None:
         if reason := super().supports(hass, request, target) or unsupported_reason(target):
             return reason
-        if target.device is not None and target.device.model in _DROPS_WHILE_OFF:
+        if target.device is not None and target.device.model in zcl.DROPS_WHILE_OFF:
             return "execute_if_off_unsupported"
         return None
 

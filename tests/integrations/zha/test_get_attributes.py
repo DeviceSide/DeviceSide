@@ -101,6 +101,19 @@ async def test_dimmable_light_reads_brightness_on_or_off(hass, bulb, requests, o
             },
             hs_row(90.001, 50.0),
         ),
+        # In a hue mode the bulb's own x and y win over its hue and saturation.
+        (
+            {
+                zcl.COLOR_MODE: 0,
+                zcl.ENHANCED_COLOR_MODE: 3,
+                zcl.ENHANCED_CURRENT_HUE: 0x3C00,
+                zcl.CURRENT_SATURATION: 254,
+                zcl.CURRENT_X: 22046,
+                zcl.CURRENT_Y: 37683,
+            },
+            xy_row(0.3364, 0.575),
+        ),
+        ({zcl.COLOR_MODE: 0, zcl.CURRENT_HUE: 127, zcl.CURRENT_X: 22046, zcl.CURRENT_Y: 37683}, xy_row(0.3364, 0.575)),
         # A mode whose values the light didn't return reports no color.
         ({zcl.COLOR_MODE: 1}, {}),
         ({zcl.COLOR_MODE: 0, zcl.CURRENT_HUE: 127}, {}),
@@ -151,6 +164,21 @@ async def test_read_error_raises(hass, bulb):
 
     assert raised.value.translation_key == "targets_failed"
     assert raised.value.translation_placeholders == {"summary": "light.bulb: error"}
+
+
+async def test_a_failed_read_logs_the_error_type(hass, monkeypatch, caplog):
+    """A timeout has an empty message, so the log names its type."""
+
+    async def read_attributes(*args, **kwargs):
+        raise TimeoutError
+
+    monkeypatch.setattr(zcl, "read_attributes", read_attributes)
+    add_zha_entity(hass, zha_entry(hass), "light.bulb", attributes=DIMMABLE)
+
+    with pytest.raises(HomeAssistantError):
+        await call(hass, "get_attributes", {"entity_id": "light.bulb"})
+
+    assert "get_attributes on zha failed for light.bulb: TimeoutError()" in caplog.text
 
 
 async def test_group_reads_each_member(hass, bulb, requests, zha_groups):

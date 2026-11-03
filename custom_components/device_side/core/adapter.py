@@ -63,7 +63,8 @@ class Adapter[RequestT: Request](ABC):
                 try:
                     return await send(target)
                 except Exception as err:  # noqa: BLE001 - one device's failure must not abort the room
-                    _LOGGER.warning("%s on %s failed for %s: %s", self.action, self.integration, target.entity_id, err)
+                    # repr, not str: a timeout's message is empty, and only its type says what went wrong
+                    _LOGGER.warning("%s on %s failed for %s: %r", self.action, self.integration, target.entity_id, err)
                     return self.result(target, Status.REJECTED, detail="error")
 
         return list(await asyncio.gather(*(_one(target) for target in targets)))

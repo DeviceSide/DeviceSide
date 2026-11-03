@@ -7,13 +7,13 @@ from homeassistant.core import HomeAssistant
 from .addressing import topic
 from .bridge import publish
 from .color_refresh import DELAY_S, refresh_color
-from .fade import hs_color, hue_moves, light_brightness, lights_of, lit, read_back_key, transition_cache
+from .fade import hue_moves, lights_of, read_back_key, transition_cache
 from ...core.adapter import Adapter
 from ...core.dispatcher import EMPTY_GROUP
 from ...core.models import EntityResult, Request, Status, Target
 from ...core.runtime import get_runtime
 from ...core.scope import AdapterScope
-from ...core.transition import BRIGHTNESS, SATURATION
+from ...core.transition import BRIGHTNESS, SATURATION, hs_color, light_brightness, lit
 
 # Z2M's saturation_move: stop halts only the saturation attribute, and the xy fade our saturation move runs carries on.
 _STOP_MOVE_STEP = {

@@ -1,11 +1,11 @@
-# Saturation on Zigbee2MQTT: written as a color at the current hue, which the bulb fades in xy. HA's hs is derived
-# from the bulb's xy, so it lands near the limit, not on it.
+# Saturation on Zigbee2MQTT and ZHA: written as a color at the current hue, which the bulb fades in xy. HA's hs is
+# derived from the bulb's xy, so it lands near the limit, not on it.
 action: lower_saturation
 rig_seconds: 75
 tests:
   - name: saturation_to_a_limit
     roles: [light_color, group_color]
-    only: [zigbee2mqtt]
+    only: [zigbee2mqtt, zha]
     setup:
       - set: {state: on, brightness_pct: 70, hs_color: [200, 90]}
     steps:

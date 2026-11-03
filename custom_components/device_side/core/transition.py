@@ -16,6 +16,7 @@ from dataclasses import dataclass
 
 from homeassistant.core import HomeAssistant
 
+from .models import Target
 from .runtime import get_runtime
 
 BRIGHTNESS = "brightness"  # in percent
@@ -76,9 +77,15 @@ class TransitionCache:
         """Whether a move or stop on the resource is still inside its guard window."""
         return bool(self.attributes(resource_id))
 
-    def forget(self, resource_id: str) -> dict[tuple[str, str], Transition]:
-        """A real change made elsewhere: drop every prediction for the resource, returned for restore."""
-        return {key: self._transitions.pop(key) for key in [key for key in self._transitions if key[0] == resource_id]}
+    def forget(self, resource_id: str, attribute: str | None = None) -> dict[tuple[str, str], Transition]:
+        """A real change made elsewhere: drop the resource's predictions (only the attribute's, if given), returned for
+        restore."""
+        keys = [key for key in self._transitions if key[0] == resource_id and attribute in (None, key[1])]
+        return {key: self._transitions.pop(key) for key in keys}
+
+    def clear(self) -> None:
+        """A real change made elsewhere to every resource: drop every prediction."""
+        self._transitions.clear()
 
     def restore(self, transitions: dict[tuple[str, str], Transition]) -> None:
         """Put back what forget dropped, for a write the integration refused."""
@@ -116,9 +123,13 @@ class TransitionCache:
         start: float,
         target: float,
         duration: float,
-    ) -> None:
-        """Record before the write is sent, as the device starts the fade once it has it."""
-        self._transitions[(resource_id, attribute)] = Transition(start, target, duration, self.clock())
+        started_at: float | None = None,
+    ) -> Transition:
+        """Record before the write is sent, as the device starts the fade once it has it; started_at re-records one
+        already running."""
+        transition = Transition(start, target, duration, self.clock() if started_at is None else started_at)
+        self._transitions[(resource_id, attribute)] = transition
+        return transition
 
     def stopped(self, resource_id: str, attribute: str, value: float) -> None:
         self.moving(resource_id, attribute, value, value, 0.0)
@@ -131,3 +142,26 @@ def transition_cache[C: TransitionCache](hass: HomeAssistant, integration: str, 
     if (cache := state.get(key)) is None:
         cache = state[key] = make()
     return cache
+
+
+def reported_brightness(light: Target) -> float:
+    """HA's brightness in percent, 0 while off: a move from off starts at the bottom."""
+    brightness = light.state.attributes.get("brightness") if light.state and light.state.state == "on" else None
+    return brightness / 255 * 100 if brightness is not None else 0.0
+
+
+def light_brightness(cache: TransitionCache, light: Target) -> float:
+    return cache.value(light.entity_id, BRIGHTNESS, reported_brightness(light))
+
+
+def lit(cache: TransitionCache, lights: list[Target]) -> list[Target]:
+    """The lights that are on, or predicted above 0 %: a soft off may report off before its fade has run."""
+    return [
+        light
+        for light in lights
+        if (light.state and light.state.state == "on") or cache.value(light.entity_id, BRIGHTNESS, 0.0) > 0
+    ]
+
+
+def hs_color(light: Target) -> tuple[float, float] | None:
+    return light.state.attributes.get("hs_color") if light.state else None
