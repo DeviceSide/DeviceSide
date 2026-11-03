@@ -486,3 +486,81 @@ async def test_a_z2m_remove_that_cant_be_delivered_stops_with_the_power_cycle_in
     with pytest.raises(RoamError, match=r"Z2M couldn't remove light.lab_a: it didn't take the Leave\. Switch its lamp"):
         await roamer(lab).go(roam.HOME)
     assert await where(lab) == ["zigbee2mqtt", "zigbee2mqtt"]
+
+
+async def test_a_bulb_whose_z2m_interview_failed_is_interviewed_again_and_joins(lab):
+    lab.ha.z2m_failing[normalize_ieee(A)] = 1  # the interview on joining fails, as the desk bulb's did on 3 Nov
+    printed = []
+    await roamer(lab, out=printed.append).go("zigbee2mqtt")
+    assert await where(lab) == ["zigbee2mqtt", "zigbee2mqtt"]
+    assert [normalize_ieee(ieee) for ieee in lab.ha.z2m_interviews] == [normalize_ieee(A)]
+    assert "Z2M's interview of light.lab_a failed; asking for another (1)." in printed
+
+
+async def test_a_bulb_whose_z2m_interviews_keep_failing_is_asked_a_bounded_number_of_times(lab, monkeypatch):
+    monkeypatch.setattr(roam, "JOIN_S", 0.05)
+    monkeypatch.setattr(roam, "REINTERVIEW_GAP_S", 0)
+    lab.ha.z2m_failing[normalize_ieee(A)] = roam.REINTERVIEWS + 1
+    with pytest.raises(RoamError, match=r"light.lab_a did not join Z2M within 0.05 s\. Still or again on a network"):
+        await roamer(lab).go("zigbee2mqtt")
+    assert len(lab.ha.z2m_interviews) == roam.REINTERVIEWS
+    assert not lab.ha.z2m_open
+
+
+async def test_z2m_logs_at_info_during_a_join_and_goes_back_to_its_own_level(lab):
+    levels = []
+    lab.ha.on_open = lambda network: (levels.append(lab.ha.z2m_level), lab.opened(network))
+    await roamer(lab).go("zigbee2mqtt")
+    assert levels == ["info"]
+    assert lab.ha.z2m_level == "warning"
+
+
+async def test_a_z2m_already_at_debug_is_left_there(lab):
+    lab.ha.z2m_level = "debug"
+    await roamer(lab).go("zigbee2mqtt")
+    assert lab.ha.z2m_level == "debug"
+    assert not [call for call in lab.ha.calls if "request/options" in str(call)]
+
+
+async def test_a_crash_mid_join_leaves_the_level_journaled_and_recovery_puts_it_back(lab, tmp_path, monkeypatch):
+    journal = Journal(tmp_path / "journal.json")
+    moving = roamer(lab, journal)
+
+    restore, calls = moving.restore_z2m_log_level, []
+
+    async def killed_mid_join():  # the first call is go()'s own; the second, the join's, never happens
+        calls.append(1)
+        if len(calls) > 1:
+            raise KeyboardInterrupt
+        await restore()
+
+    monkeypatch.setattr(moving, "restore_z2m_log_level", killed_mid_join)
+    with pytest.raises(KeyboardInterrupt):
+        await moving.go("zigbee2mqtt")
+    assert lab.ha.z2m_level == "info"
+    assert journal.get("roam")["z2m_log_level"] == "warning"
+    await roamer(lab, journal).go("hue")
+    assert lab.ha.z2m_level == "warning"
+    assert journal.get("roam") is None
+
+
+async def test_a_z2m_that_wont_set_its_level_doesnt_stop_the_move(lab):
+    lab.ha.z2m_ignores.add("options")
+    printed = []
+    moving = roamer(lab, out=printed.append)
+
+    async def fast_timeout(level):
+        raise TimeoutError(f"Zigbee2MQTT did not set its log level to {level} within 0 s")
+
+    moving.ha.z2m_set_log_level = fast_timeout
+    await moving.go("zigbee2mqtt")
+    assert await where(lab) == ["zigbee2mqtt", "zigbee2mqtt"]
+    assert any(line.startswith("Z2M's log level stays as it is for the join") for line in printed)
+
+
+async def test_asks_for_one_bulb_wait_out_the_gap(lab, monkeypatch):
+    monkeypatch.setattr(roam, "JOIN_S", 0.05)
+    lab.ha.z2m_failing[normalize_ieee(A)] = roam.REINTERVIEWS + 1
+    with pytest.raises(RoamError):
+        await roamer(lab).go("zigbee2mqtt")
+    assert len(lab.ha.z2m_interviews) == 1  # the 20 s gap outlasts the window

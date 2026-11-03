@@ -867,17 +867,20 @@ async def run_rig(
     home = True  # whether the roaming bulbs ended at home, with no rig-made group left
     if journal is not None:
         journal.update(profile=profile.name)
+    results: list[SuiteResult] = []  # each phase's, as it finishes: a failed move keeps the phases before it
     try:
         result = await run_phases(
-            ha, admin, bridge, roamer, roaming, suites, profile, registry, keyword, unattended, paused, journal
+            ha, admin, bridge, roamer, roaming, suites, profile, registry, keyword, unattended, paused, journal, results
         )
         if suites:
             await report(result, ha, registry, commit, profile)
     except RoamError as err:
         # A move that failed isn't retried here; the journal keeps where the bulbs are, for --recover. The groups made
-        # so far still go, and after a group that couldn't be made, the bulbs still go home.
+        # so far still go, and after a group that couldn't be made, the bulbs still go home. The phases that ran
+        # still get their report and records.
         if not isinstance(err, GroupError):
             stopped, roamer = roamer, None
+        await report_ran(results, ha, registry, commit, profile)
         raise SystemExit(f"Roaming stopped: {err}") from None
     finally:
         home = await leave_lab(roamer, stopped)
@@ -904,11 +907,13 @@ async def run_phases(
     unattended: bool,
     paused: list[str],
     journal: Journal | None,
+    results: list[SuiteResult] | None = None,
 ) -> RunResult:
     """Each phase: move the bulbs there and make its groups, wait for its targets, then run its cases, automated then
     observed. The automations are paused once, after the first phase's targets are all there. A run with no suites
-    is --roam-check, which makes and removes the groups on every visit as a probe."""
-    results: list[SuiteResult] = []
+    is --roam-check, which makes and removes the groups on every visit as a probe. Each phase's results go into
+    `results` as it finishes, so a caller keeps them when a later move raises."""
+    results = [] if results is None else results
     for number, (network, phase_suites) in enumerate(phases(suites, roaming)):
         if roamer is not None:
             await roamer.go(network or HOME)  # removes the last phase's groups first
@@ -935,6 +940,19 @@ async def run_phases(
     if roamer is not None:
         await roamer.go(HOME)
     return RunResult(results)
+
+
+async def report_ran(
+    results: list[SuiteResult], ha: HAClient, registry: AdapterRegistry, commit: str | None, profile: Profile
+) -> None:
+    """After a failed move, report the phases that ran before it. A report that fails is printed, never raised: the
+    move's error, with its recovery steps, must still show."""
+    if not results:
+        return
+    try:
+        await report(RunResult(results), ha, registry, commit, profile)
+    except Exception as err:  # noqa: BLE001
+        print(f"The phases that ran couldn't be reported: {err}")
 
 
 async def report(result: RunResult, ha: HAClient, registry: AdapterRegistry, commit: str | None, profile: Profile):
