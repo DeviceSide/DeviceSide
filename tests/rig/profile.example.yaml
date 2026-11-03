@@ -4,7 +4,9 @@
 # The name goes into every test record, which is public: name it for the setup (lab, house), never a person or place.
 #
 # pause: the automations and switches turned off while the rig runs, for whatever would fight the tests on these
-# entities (motion lighting, an Adaptive Lighting switch). Only those that were on are turned back on.
+# entities (motion lighting, an Adaptive Lighting switch). Only those that were on are turned back on, once no run
+# still needs them off. A list is paused by every run; a mapping pauses its `all` list for every run and each
+# integration key's list for a run on that integration.
 #
 # Then one list per integration key (shelly, zigbee2mqtt, zha, matter, hue). Roles pick which test uses an entity:
 #   switch_plug, light_onoff (a relay shown as a light), light_wrapped (a switch_as_x light over a switch),
@@ -14,11 +16,16 @@
 # that switches it puts the entity back once power returns.
 # members lists a group's (or group_color's) lights, for a group light with no entity_id attribute (a Z2M group).
 #
-# roam: bulbs the run moves round Hue -> ZHA -> Z2M -> Hue (docs/contributing/testing.md, Roaming). A roaming bulb
-# is listed here only, never under an integration: each network's suites use it while it is there. Its groups are
-# native groups of those bulbs the run makes on each network (ds-rig-<object ID>, renamed to entity_id) and removes.
+# roam: bulbs the run moves from their home round the networks it declares, of Hue -> ZHA -> Z2M, and home again
+# (docs/contributing/testing.md, Roaming). networks lists where they may go, home included; a run locks only those
+# it visits, and on any other network their roles find no entity, so those cases skip. Each bulb's home is hue, the
+# only home supported so far. A roaming bulb is listed here only, never under an integration: each network's suites
+# use it while it is there. Its groups are native groups of those bulbs the run makes on each network
+# (ds-rig-<object ID>, renamed to entity_id) and removes.
 
-pause: [automation.study_motion, switch.adaptive_lighting_study]
+pause:
+  all: [automation.study_motion]
+  hue: [switch.adaptive_lighting_study]
 
 shelly:
   - entity_id: switch.office_plug
@@ -47,9 +54,11 @@ zigbee2mqtt:
     members: [light.bulb_c]
 
 roam:
+  networks: [hue, zha, zigbee2mqtt]
   bulbs:
     - ieee: "0x0017880100000001"  # the bulb's IEEE address, in any spelling
       entity_id: light.lab_color  # renamed to this after every join
+      home: hue
       roles: [light_dimmable, light_ct, light_color]
       z2m_options: {hue_native_control: true}  # set again after each Z2M join: Z2M's remove drops them
   # groups: in place of fixed Hue, ZHA and Z2M groups and a Hue scene, as in the lab profile; a role here can't

@@ -42,6 +42,11 @@ class Journal:
         return cls(directory / f"{name}.json", lock)
 
     @property
+    def name(self) -> str:
+        """The run's name, which its lock file and the pause ledger know it by."""
+        return self.path.stem
+
+    @property
     def lock_path(self) -> Path:
         return self.path.with_suffix(".lock")
 
@@ -83,13 +88,18 @@ class Journal:
         self.save()
 
     def save(self) -> None:
-        """Write the file whole and move it into place, so a process killed mid-write leaves the previous one."""
-        if not self.sections:
-            self.path.unlink(missing_ok=True)
-            return
-        temp = self.path.with_name(f"{self.path.name}.tmp")
-        temp.write_text(json.dumps(self.sections, indent=2))
-        os.replace(temp, self.path)
+        write_whole(self.path, self.sections)
+
+
+def write_whole(path: Path, data: dict) -> None:
+    """Write `data` to `path` whole and move it into place, so a process killed mid-write leaves the previous file;
+    empty, the file is deleted."""
+    if not data:
+        path.unlink(missing_ok=True)
+        return
+    temp = path.with_name(f"{path.name}.tmp")
+    temp.write_text(json.dumps(data, indent=2))
+    os.replace(temp, path)
 
 
 def orphans(directory: Path) -> list[Journal]:

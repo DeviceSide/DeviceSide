@@ -18,23 +18,25 @@ Ctrl-C, SIGTERM and SIGHUP stop a run, putting the devices back; a second one le
 journaled first, in a journal of its own next to the locks (tests/rig/journal.py), so whatever a killed run leaves
 changed, the next run whose locks cover it puts back before its gate, or --recover, holding every lock, does.
 
---hold runs a probe's command holding the named integrations and HA (--exclusive: exclusively), passing signals on
-to it and returning its exit code; no gate and no journal.
+--hold runs a probe's command holding the named integrations and HA (--exclusive: exclusively), with the profile's
+automations for them paused, passing signals on to it and returning its exit code; no gate and no case journal.
 
 Under cmux the run colors its workspace: green holding its locks, amber waiting for them.
 
 A profile (tests/rig/profiles/<name>.yaml) names the entities a run may move and what it pauses; --profile picks
-one, and may be left out when there is only one.
+one, and may be left out when there is only one. A run pauses the profile's `all` list and those of the integrations it
+holds, through a ledger runs side by side share (tests/rig/ledger.py): the last run out turns each back on.
 
 The run starts with lanes: one per integration, side by side, each running that integration's cases on fixed entities
 (engine.in_head). The rest run after, one at a time: cases with device_side options, whose save reloads the entry, and
 those on roaming bulbs, rig-made groups and scenes, or powered entities and their supplies. --serial runs every case
 one at a time, as before lanes.
 
-A profile with `roam:` has bulbs the run moves between Hue, ZHA and Z2M (tests/rig/roam.py): the lanes run with the
-bulbs at home, then the rest run in phases, Hue's with the fixed integrations', then ZHA's, then Z2M's, each network
-only if it has suites, with a direct move before each and one straight home at the end.
---recover, and the replay before the next run's gate, move them home. --roam-check visits every network with no suites.
+A profile with `roam:` has bulbs the run moves between the networks it declares, of Hue, ZHA and Z2M
+(tests/rig/roam.py): the lanes run with the bulbs at home, then the rest run in phases, the home's with the other
+integrations', then each other declared network's in that order, each only if it has suites, with a direct move before
+each and one straight home at the end. The run holds only the networks it visits. --recover, and the replay before the
+next run's gate, move them home. --roam-check visits every declared network with no suites.
 
 Before the gate, and alone with --check, the run checks every phase's devices at once: each fixed entity its cases
 use is in HA and available, and each roaming bulb is on a network. Without that, a device left unpowered stops the run
@@ -46,7 +48,7 @@ Usage: scripts/rig.py [--profile NAME] [--dry-run] [--no-deploy] [--unattended] 
        scripts/rig.py [--profile NAME] --roam-check
        scripts/rig.py --recover
        scripts/rig.py --wait-free [--integration KEY ...]
-       scripts/rig.py --hold KEY [--hold KEY ...] [--exclusive] -- COMMAND [ARGS ...]
+       scripts/rig.py [--profile NAME] --hold KEY [--hold KEY ...] [--exclusive] -- COMMAND [ARGS ...]
 """
 
 import argparse
@@ -63,7 +65,7 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
-from collections.abc import Callable, Coroutine, Iterator
+from collections.abc import Awaitable, Callable, Coroutine, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -96,11 +98,12 @@ from tests.rig.engine import (  # noqa: E402
     write_report,
 )
 from tests.rig.journal import LEGACY_NAME, Journal, orphans  # noqa: E402
+from tests.rig.ledger import Ledger, turn_on  # noqa: E402
 from tests.rig.locks import Claim, Held  # noqa: E402
 from tests.rig.profile import (  # noqa: E402
-    CYCLE,
     EXAMPLE,
     LEGACY_INVENTORY,
+    PAUSE_ALL,
     PROFILES_DIR,
     TOLERANCE_S,
     Profile,
@@ -108,7 +111,7 @@ from tests.rig.profile import (  # noqa: E402
     load_env,
     profile_paths,
 )
-from tests.rig.roam import BLUETOOTH_RESET, HOME, NAMES, Bulb, GroupError, Roamer, RoamError  # noqa: E402
+from tests.rig.roam import BLUETOOTH_RESET, NAMES, Bulb, GroupError, Roamer, RoamError  # noqa: E402
 from tests.rig.roam import plan_lines as roam_plan_lines  # noqa: E402
 
 COMPONENT = "custom_components/device_side"
@@ -166,29 +169,38 @@ def select(
 
 
 def roams(profile: Profile, suites: list[Suite], roam_check: bool = False) -> bool:
-    """Whether the run moves the profile's bulbs: for --roam-check, or a ZHA or Z2M suite. Hue's suites and the fixed
-    integrations' run with the bulbs at home, so a run of only those stays there."""
-    return bool(profile.roam) and (roam_check or any(suite.integration in CYCLE[1:] for suite in suites))
+    """Whether the run moves the profile's bulbs: for --roam-check, or a suite on a network the profile lets them
+    visit other than their home. The home's suites and the rest run with the bulbs at home, so a run of only those
+    stays there."""
+    return bool(profile.roam) and (roam_check or any(suite.integration in away(profile) for suite in suites))
+
+
+def away(profile: Profile) -> list[str]:
+    """The networks the profile's bulbs may visit other than their home, in CYCLE order."""
+    return [network for network in profile.roam_networks if network != profile.roam_home]
 
 
 def makes_groups(profile: Profile, suites: list[Suite], roam_check: bool = False) -> bool:
-    """Whether the run makes the profile's ds-rig-* groups: on each visit when it roams, or on Hue for a Hue suite."""
+    """Whether the run makes the profile's ds-rig-* groups: on each visit when it roams, or at home for a suite
+    there."""
     if not profile.roam_groups:
         return False
-    return roams(profile, suites, roam_check) or any(suite.integration == HOME for suite in suites)
+    return roams(profile, suites, roam_check) or any(suite.integration == profile.roam_home for suite in suites)
 
 
-def phases(suites: list[Suite], roaming: bool) -> list[tuple[str | None, list[Suite]]]:
-    """The run's phases, each a network to move the bulbs to (None: no move) and the suites run there. Roaming: Hue's
-    suites with the fixed integrations', then ZHA's, then Z2M's, each in select's order, skipping a network with no
-    suites; a run with none (--roam-check) visits every network."""
+def phases(suites: list[Suite], profile: Profile, roaming: bool) -> list[tuple[str | None, list[Suite]]]:
+    """The run's phases, each a network to move the bulbs to (None: no move) and the suites run there. Roaming: the
+    home's suites with every other integration's, then those of each network the profile lets the bulbs visit, in
+    CYCLE order, each in select's order, skipping a network with no suites; a run with none (--roam-check) visits
+    every one."""
     if not roaming:
         return [(None, suites)]
+    home, stops = profile.roam_home, away(profile)
     by_network = [
-        (network, [suite for suite in suites if (suite.integration if suite.integration in CYCLE else HOME) == network])
-        for network in CYCLE
+        (network, [suite for suite in suites if (suite.integration if suite.integration in stops else home) == network])
+        for network in [home, *stops]
     ]
-    return [(network, held) for network, held in by_network if network == HOME or held or not suites]
+    return [(network, held) for network, held in by_network if network == home or held or not suites]
 
 
 def plan_lines(
@@ -560,9 +572,9 @@ def claim(args: argparse.Namespace, setup: Setup) -> Claim:
     integrations = {suite.integration for suite in runnable}
     integrations |= supplies(setup.profile, integrations)
     if setup.roaming:
-        integrations |= {HOME, *(network for network, _ in phases(setup.suites, roaming=True) if network)}
+        integrations |= {network for network, _ in phases(setup.suites, setup.profile, roaming=True) if network}
     if setup.grouping:
-        integrations.add(HOME)
+        integrations.add(setup.profile.roam_home)
     exclusive = setup.deploying(args) or any(suite.file.options for suite in runnable)
     return Claim("exclusive" if exclusive else "shared", frozenset(integrations))
 
@@ -657,11 +669,39 @@ def check_only(setup: Setup, keyword: str | None, homes: set[str], wanted: Claim
 
 def hold_command(args: argparse.Namespace, directory: Path) -> int:
     """A command after --: run a probe holding the integrations --hold names and HA, shared or with --exclusive
-    exclusively, and return its exit code. No gate and no journal: the probe puts back what it changes."""
+    exclusively, with the profile's automations for them paused, and return its exit code. No gate and no case
+    journal: the probe puts back what it changes. A journal is started all the same, never written, as the name the
+    pause ledger knows the probe by, alive while it runs."""
     wanted = Claim("exclusive" if args.exclusive else "shared", frozenset(args.hold or ()))
+    env = load_env()
+    try:
+        pausing = Profile.load(choose_profile(args.profile, env)).paused_by(wanted.integrations)
+    except ValueError as err:
+        raise SystemExit(f"Fix the profile: {err}") from err
+    if pausing and not (env.get("HA_URL") and env.get("HA_TOKEN")):
+        raise SystemExit("HA_URL and HA_TOKEN must be set in .env.rig to pause the profile's automations")
     holder = f"{git('rev-parse', '--abbrev-ref', 'HEAD')} (probe: {shlex.join(args.command)})"
     with locks.hold(wanted, holder, directory):
-        return run_command(args.command)
+        journal = Journal.start(directory)
+        ledger = Ledger(directory, journal.name)
+        try:
+            if pausing:
+                asyncio.run(with_ha(env, lambda ha: ledger.pause(ha, pausing)))
+            return run_command(args.command)
+        finally:
+            if pausing:
+                asyncio.run(with_ha(env, ledger.resume))
+            journal.release()
+
+
+async def with_ha(env: dict, call: Callable[[HAClient], Awaitable[None]]) -> None:
+    """`call` on a connection to HA, closed after."""
+    ha = HAClient(env["HA_URL"], env["HA_TOKEN"])
+    await ha.connect()
+    try:
+        await call(ha)
+    finally:
+        await ha.close()
 
 
 def run_command(command: list[str]) -> int:
@@ -931,8 +971,10 @@ def print_profile(profile: Profile) -> None:
         print(f"  {'ds-rig':8} {group.entity_id:40} {', '.join(sorted(group.roles))}")
         if group.scene:
             print(f"  {'ds-rig':8} {group.scene:40} scene")
-    if profile.pause:
-        print(f"Paused while it runs: {', '.join(profile.pause)}")
+    for key, entity_ids in profile.pause.items():
+        if entity_ids:
+            whose = "every run" if key == PAUSE_ALL else f"a run on {key}"
+            print(f"Paused while {whose} runs: {', '.join(entity_ids)}")
 
 
 def print_phases(
@@ -947,7 +989,8 @@ def print_phases(
     """The moves, if the run roams, and the groups it makes, then the lanes' cases, then each phase's adapters and
     the cases left for it."""
     if not roaming and profile.roam:
-        print("Roaming: none, as no ZHA or Z2M suite runs; the bulbs stay on Hue.")
+        where = " or ".join(NAMES[network] for network in away(profile)) or "another network"
+        print(f"Roaming: none, as no {where} suite runs; the bulbs stay on {NAMES[profile.roam_home]}.")
     if roaming or grouping:
         print(
             "\n".join(
@@ -955,7 +998,7 @@ def print_phases(
                     profile.roam,
                     profile.roam_groups if grouping else (),
                     roaming,
-                    [network for network, _ in phases(suites, roaming) if network],
+                    [network for network, _ in phases(suites, profile, roaming) if network],
                 )
             )
         )
@@ -967,7 +1010,7 @@ def print_phases(
             for line in lines:
                 print(f"    {line}")
     only = tail(profile) if lanes else None
-    for network, phase_suites in phases(suites, roaming):
+    for network, phase_suites in phases(suites, profile, roaming):
         print(f"Adapters on {NAMES[network]}:" if network else "Adapters:")
         for line in plan_lines(phase_suites, profile, registry, keyword, only) or ["none"]:
             print(f"  {line}")
@@ -1001,7 +1044,9 @@ async def run_rig(
         bridge = HueBridge(env["HUE_BRIDGE_HOST"], env["HUE_APP_KEY"])
     groups = profile.roam_groups if grouping else ()
     roamer = Roamer(admin, bridge, map(Bulb.of, profile.roam), journal, groups=groups) if lab else None
-    paused: list[str] = []
+    # The pauses are the run's, by its journal's name: a run with no journal (a test's) pauses nothing.
+    ledger = Ledger(journal.path.parent, journal.name) if journal is not None else None
+    pausing = profile.paused_by(claim.integrations if claim else None)
     stopped: Roamer | None = None  # the roamer, once a RoamError stopped the run
     home = True  # whether the roaming bulbs ended at home, with no rig-made group left
     if journal is not None:  # the claim says what a run must hold to put back what this one leaves
@@ -1019,7 +1064,7 @@ async def run_rig(
             registry,
             keyword,
             unattended,
-            paused,
+            (lambda: ledger.pause(ha, pausing)) if ledger and pausing else None,
             journal,
             results,
             lanes,
@@ -1037,7 +1082,8 @@ async def run_rig(
         raise SystemExit(f"Roaming stopped: {err}") from None
     finally:
         home = await leave_lab(roamer, stopped)
-        await resume(ha, paused, journal)
+        if ledger is not None:
+            await ledger.resume(ha)
         drop_profile(journal)
         if bridge:
             await bridge.close()
@@ -1058,14 +1104,14 @@ async def run_phases(
     registry: AdapterRegistry,
     keyword: str | None,
     unattended: bool,
-    paused: list[str],
+    pause: Callable[[], Awaitable[None]] | None,
     journal: Journal | None,
     results: list[SuiteResult] | None = None,
     lanes: bool = False,
     reloads: bool = True,
 ) -> RunResult:
     """Each phase: move the bulbs there and make its groups, wait for its targets, then run its cases, automated then
-    observed. The automations are paused once, after the first phase's targets are all there. A run with no suites
+    observed. `pause` pauses the automations, once, after the first phase's targets are all there. A run with no suites
     is --roam-check, which makes and removes the groups on every visit as a probe. Each phase's results go into
     `results` as it finishes, so a caller keeps them when a later move raises.
 
@@ -1085,23 +1131,23 @@ async def run_phases(
         "reloads": reloads,
     }
     only = tail(profile) if lanes else None
-    for number, (network, phase_suites) in enumerate(phases(suites, roaming)):
+    for number, (network, phase_suites) in enumerate(phases(suites, profile, roaming)):
         if roamer is not None:
-            await roamer.go(network or HOME)  # removes the last phase's groups first
+            await roamer.go(network or roamer.home_network)  # removes the last phase's groups first
             if phase_suites or not suites:
-                await roamer.make_groups(network or HOME)
+                await roamer.make_groups(network or roamer.home_network)
         if number == 0 and lanes:
             await wait_for_targets(ha, suites, profile, registry, keyword, only=head(profile))
         if phase_suites:
             await wait_for_targets(ha, phase_suites, profile, registry, keyword, only=only)
-        if number == 0:
-            await pause(ha, list(profile.pause), paused, journal)
+        if number == 0 and pause is not None:
+            await pause()
         if number == 0 and lanes:
             results += (await run(suites, profile, registry, ha, only=head(profile), lanes=True, **common)).suites
         if phase_suites:
             results += (await run(phase_suites, profile, registry, ha, only=only, **common)).suites
     if roamer is not None:
-        await roamer.go(HOME)
+        await roamer.go(roamer.home_network)
     return RunResult(results)
 
 
@@ -1160,7 +1206,7 @@ async def go_home(roamer: Roamer) -> bool:
     one that finished); whether both are done. A failure is printed: the journal keeps where they are, and --recover
     tries again."""
     try:
-        await roamer.go(HOME)
+        await roamer.go(roamer.home_network)
     except Exception as err:  # noqa: BLE001 - as resume: say so, and go on putting the rest back
         print(f"Could not move the roaming bulbs home: {err}. scripts/rig.py --recover tries again.")
         return False
@@ -1275,6 +1321,7 @@ async def check_roaming(
     problems = []
     try:
         finder = Roamer(admin, bridge, map(Bulb.of, bulbs), out=lambda _: None)
+        home = finder.home_network
         for bulb in finder.bulbs:
             try:
                 network = await finder.locate(bulb)
@@ -1286,9 +1333,9 @@ async def check_roaming(
                 problems.append(f"{bulb.entity_id}: not on any Zigbee network. {BLUETOOTH_RESET}")
             elif state is not None and not available(state):
                 problems.append(f"{bulb.entity_id}: on {NAMES[network]}, unavailable; check it is powered")
-            elif network != HOME and bulb.entity_id in homes:
+            elif network != home and bulb.entity_id in homes:
                 print(f"  {bulb.entity_id}: on {NAMES[network]}; the journal holds its Hue home, which a run puts back")
-            elif network != HOME:
+            elif network != home:
                 print(
                     f"  {bulb.entity_id}: on {NAMES[network]}. The run moves it from there; it has no saved Hue home, "
                     "so put its rooms and scenes back by hand after its first visit."
@@ -1356,7 +1403,7 @@ async def recover(
 ) -> None:
     """Put back what an aborted run left changed, in the order its finally blocks would have: the case's entities,
     device_side's options, the roaming bulbs (the ds-rig-* groups removed, the bulbs moved home, their Hue rooms and
-    scenes put back), the paused automations.
+    scenes put back), the automations it paused (the ledger's, and those of a journal from before it).
     A step that fails is printed and dropped from the journal; options stay in it while there is no admin connection
     to set them. The bulbs can't be left half done, so a failure there stops recovery, keeping the rest journaled."""
     run_of = f" (profile {name})" if (name := journal.get("profile")) else ""
@@ -1379,8 +1426,11 @@ async def recover(
             journal.clear("options")
     if journal.get("roam") is not None:
         await recover_roam(admin, bridge, journal, out)
-    if paused := journal.get("paused"):
-        await resume(ha, paused, journal)
+    await Ledger(journal.path.parent, journal.name, out).resume(ha)
+    if paused := journal.get("paused"):  # a run from before the ledger kept its pauses here
+        for entity_id in paused:
+            await turn_on(ha, entity_id, out)
+        journal.clear("paused")
     drop_profile(journal)
 
 
@@ -1396,17 +1446,18 @@ def recover_case(ha: HAClient, entry: dict, out: Callable[[str], None], **journa
 async def recover_roam(
     admin: HAClient | None, bridge: HueBridge | None, journal: Journal, out: Callable[[str], None]
 ) -> None:
-    """Remove the journal's ds-rig-* groups, move its roaming bulbs straight home to Hue and put back their
-    home; stop on a failure."""
+    """Remove the journal's ds-rig-* groups, move its roaming bulbs straight home and put back their Hue rooms and
+    scenes; stop on a failure."""
     if admin is None or bridge is None:
         raise SystemExit(
             "Moving the roaming bulbs home needs HA_ADMIN_TOKEN, HUE_BRIDGE_HOST and HUE_APP_KEY in .env.rig; "
             f"the journal ({journal.path}) keeps where they are."
         )
-    out("Moving the roaming bulbs home to Hue.")
+    roamer = Roamer.from_journal(admin, bridge, journal, out)
+    out(f"Moving the roaming bulbs home to {NAMES[roamer.home_network]}.")
     try:
         # A group that can't be removed is printed and stays journaled; the rest of recovery goes on.
-        await Roamer.from_journal(admin, bridge, journal, out).go(HOME)
+        await roamer.go(roamer.home_network)
     except RoamError as err:
         raise SystemExit(f"Recovery stopped: {err}") from None
 
@@ -1416,37 +1467,6 @@ def drop_profile(journal: Journal | None) -> None:
     deleted; while a change is left, they stay, saying which profile's run left it and what putting it back needs."""
     if journal is not None and set(journal.sections) <= {"profile", "claim"}:
         journal.clear("profile", "claim")
-
-
-async def pause(ha: HAClient, entity_ids: list[str], paused: list[str], journal: Journal | None = None) -> None:
-    """Turn off each listed automation or switch that is on, appending it to `paused` (and the journal, first) as it
-    goes.
-
-    For automations that would fight the tests: motion lighting turning a light on as someone walks past, or an
-    Adaptive Lighting instance resetting a light's color temperature whenever it turns on. One that is already off
-    stays off and is left alone after the run. One HA doesn't know stops the run before any test.
-    """
-    for entity_id in entity_ids:
-        if (state := await ha.get_state(entity_id)) is None:
-            raise SystemExit(f"{entity_id} in the profile's pause list has no state in Home Assistant")
-        if state["state"] == "on":
-            if journal is not None:
-                journal.update(paused=[*paused, entity_id])
-            await ha.call_service(entity_id.partition(".")[0], "turn_off", {"entity_id": entity_id})
-            paused.append(entity_id)
-            print(f"Paused {entity_id} for the run.")
-
-
-async def resume(ha: HAClient, paused: list[str], journal: Journal | None = None) -> None:
-    """Turn back on what pause turned off; a failure is printed, so it can be turned on by hand."""
-    for entity_id in paused:
-        try:
-            await ha.call_service(entity_id.partition(".")[0], "turn_on", {"entity_id": entity_id})
-            print(f"Resumed {entity_id}.")
-        except Exception as err:  # noqa: BLE001 - try every one, and say which stayed off
-            print(f"Could not turn {entity_id} back on: {err}. Turn it on by hand.")
-    if journal is not None:
-        journal.clear("paused")
 
 
 if __name__ == "__main__":

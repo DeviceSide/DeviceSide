@@ -3,6 +3,7 @@
 import asyncio
 import importlib.util
 import itertools
+import json
 import os
 import signal
 import types
@@ -11,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from custom_components.device_side.core.registry import AdapterRegistry
-from tests.rig import engine
+from tests.rig import engine, ledger
 from tests.rig.engine import load_step_file, load_step_files
 from tests.rig.journal import LEGACY_NAME, Journal
 from tests.rig.profile import EXAMPLE, Profile, RigEntity, load_env, main_checkout, profile_paths
@@ -415,57 +416,27 @@ def test_check_tokens_stops_a_zha_run_without_an_admin_token():
     rig.check_tokens({**env, "HA_ADMIN_TOKEN": "admin"}, [zha], registry)
 
 
-class PauseHA:
-    """States and turn_on/turn_off calls, for pause and resume."""
-
-    def __init__(self, states: dict[str, str], failing: str | None = None):
-        self.states, self.failing, self.calls = states, failing, []
-
-    async def get_state(self, entity_id):
-        return {"state": self.states[entity_id]} if entity_id in self.states else None
-
-    async def call_service(self, domain, service, data):
-        self.calls.append((domain, service, data["entity_id"]))
-        if service == "turn_on" and data["entity_id"] == self.failing:
-            raise RuntimeError("refused")
-
-
-async def test_pause_turns_off_only_what_is_on_and_resumes_it(capsys):
-    states = {"switch.al_office": "on", "automation.motion_hall": "off", "automation.motion_den": "on"}
-    ha = PauseHA(states, failing="automation.motion_den")
-    paused: list[str] = []
-
-    await rig.pause(ha, ["switch.al_office", "automation.motion_hall", "automation.motion_den"], paused)
-    await rig.resume(ha, paused)
-
-    assert paused == ["switch.al_office", "automation.motion_den"]
-    assert ha.calls == [
-        ("switch", "turn_off", "switch.al_office"),
-        ("automation", "turn_off", "automation.motion_den"),
-        ("switch", "turn_on", "switch.al_office"),
-        ("automation", "turn_on", "automation.motion_den"),
-    ]
-    assert "Could not turn automation.motion_den back on" in capsys.readouterr().out
-
-
-async def test_pause_stops_on_an_unknown_entity():
-    ha = PauseHA({"switch.al_office": "on"})
-    paused: list[str] = []
-
-    with pytest.raises(SystemExit, match="switch.typo in the profile's pause list"):
-        await rig.pause(ha, ["switch.al_office", "switch.typo"], paused)
-
-    assert paused == ["switch.al_office"]
-
-
 def test_profile_reads_its_pause_list_and_is_named_for_its_file(tmp_path):
     path = write(tmp_path, "lab.yaml", "pause: [switch.al, automation.motion]\nshelly:\n")
     profile = Profile.load(path)
     assert (profile.name, profile.pause, profile.integrations) == (
         "lab",
-        ("switch.al", "automation.motion"),
+        {"all": ("switch.al", "automation.motion")},
         {"shelly": []},
     )
+    assert profile.paused_by({"shelly"}) == profile.paused_by() == ("switch.al", "automation.motion")
+
+
+def test_a_pause_mapping_pauses_all_and_the_held_integrations_lists(tmp_path):
+    path = write(
+        tmp_path,
+        "lab.yaml",
+        "pause:\n  all: [automation.motion]\n  hue: [switch.al, automation.motion]\n  zha: [switch.zha]\n",
+    )
+    profile = Profile.load(path)
+    assert profile.paused_by({"shelly"}) == ("automation.motion",)
+    assert profile.paused_by({"hue"}) == ("automation.motion", "switch.al")
+    assert profile.paused_by() == ("automation.motion", "switch.al", "switch.zha")
 
 
 @pytest.mark.parametrize(
@@ -473,6 +444,8 @@ def test_profile_reads_its_pause_list_and_is_named_for_its_file(tmp_path):
     [
         ("[switch.al, light.hall]", "automations and switches only, got light.hall"),
         ("switch.al", "pause must be a list of entity IDs"),
+        ("{hue: switch.al}", "pause must be a list of entity IDs"),
+        ("{hues: [switch.al]}", "pause has unknown keys \\['hues'\\]"),
     ],
 )
 def test_profile_refuses_a_bad_pause_list(tmp_path, pause, message):
@@ -544,26 +517,6 @@ def test_check_tokens_stops_a_run_of_an_adapter_with_options_without_an_admin_to
     rig.check_tokens({**env, "HA_ADMIN_TOKEN": "admin"}, [rig.Suite(step_file, "hue")], registry)
 
 
-async def test_pause_journals_each_entity_before_turning_it_off(tmp_path):
-    journal = Journal(tmp_path / LEGACY_NAME)
-    ha = PauseHA({"switch.al_office": "on", "automation.motion_den": "on"})
-    seen = []  # what the journal held as each call was sent
-    call_service = ha.call_service
-
-    async def journaled(domain, service, data):
-        seen.append((service, journal.get("paused")))
-        await call_service(domain, service, data)
-
-    ha.call_service = journaled
-    paused: list[str] = []
-    await rig.pause(ha, list(ha.states), paused, journal)
-    await rig.resume(ha, paused, journal)
-
-    both = ["switch.al_office", "automation.motion_den"]
-    assert seen == [("turn_off", both[:1]), ("turn_off", both), ("turn_on", both), ("turn_on", both)]
-    assert not journal.path.exists()
-
-
 class RigHA(fakes.FakeAdmin):
     async def close(self):
         pass
@@ -611,7 +564,10 @@ async def test_a_signal_mid_case_puts_everything_back_and_leaves_no_journal(tmp_
     task = asyncio.create_task(run_rig)
     while ha.states["light.a"]["state"] != "off":
         await asyncio.sleep(0.005)
-    assert set(journal.sections) == {"profile", "paused", "options", "cases"}
+    assert set(journal.sections) == {"profile", "options", "cases"}
+    assert json.loads((tmp_path / ledger.NAME).read_text()) == {
+        "automation.motion": {"was_on": True, "holders": [journal.name]}
+    }
     assert set(journal.get("cases")) == {"serial"}
 
     os.kill(os.getpid(), signum)
@@ -621,6 +577,7 @@ async def test_a_signal_mid_case_puts_everything_back_and_leaves_no_journal(tmp_
     assert "Aborting: putting devices back" in capsys.readouterr().out
     assert put_back(ha)
     assert not journal.path.exists()
+    assert not (tmp_path / ledger.NAME).exists()
 
 
 @pytest.mark.parametrize(("commit", "sources"), [("c1", ["rig run (`scripts/rig.py`), commit `c1short`"]), (None, [])])
@@ -695,6 +652,20 @@ async def test_recover_puts_back_a_case_a_journal_from_before_lanes_left(tmp_pat
     assert ha.states["light.a"] == LIGHT_A_ON
     assert "Putting light.a back on." in printed
     assert not journal.path.exists()
+
+
+async def test_recover_resumes_what_the_orphan_holds_paused_in_the_ledger(tmp_path, monkeypatch):
+    ha = rig_ha(monkeypatch, light="on", opt=True, automation="on")
+    orphan = Journal.start(tmp_path)
+    orphan.update(profile="lab")
+    await ledger.Ledger(tmp_path, orphan.name, lambda _: None).pause(ha, ["automation.motion"])
+    assert ha.states["automation.motion"]["state"] == "off"
+
+    await rig.recover(ha, ha, orphan, out=lambda _: None)  # it holds the orphan's lock meanwhile
+
+    assert ha.states["automation.motion"]["state"] == "on"
+    assert not (tmp_path / ledger.NAME).exists()
+    assert not orphan.path.exists()
 
 
 async def test_recover_puts_back_what_an_aborted_run_left(tmp_path, monkeypatch):

@@ -60,7 +60,7 @@ def private_terms(
 def profile_entities(profile: Profile) -> set[str]:
     """Every entity ID a profile names (its entities, their groups' members and supplies, its pause list), and each
     roaming bulb's IEEE: as bare hex, which `0x`-prefixed spellings contain, and with colons."""
-    named = set(profile.pause)
+    named = set(profile.paused_by())
     for entities in profile.integrations.values():
         for entity in entities:
             named |= {entity.entity_id, *entity.members, *filter(None, [entity.powered_by])}
