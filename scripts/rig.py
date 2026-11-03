@@ -23,10 +23,11 @@ automations for them paused, passing signals on to it and returning its exit cod
 the clear one below.
 
 RIG_BLOCKER_ENTITY in .env.rig names an HA binary_sensor that is on while someone is near enough to see the lights;
-the rig is clear only while it is off. DEVICE_SIDE_RIG_APPROVED=1 is refused otherwise, and so is a probe, though a
-human at the prompt may still say yes. A run or probe that started clear reads it every 15 s and, on two reads in a
-row of on, unknown or unavailable, aborts as on a SIGTERM, putting the devices back. Reads that fail, as during the
-deploy's restart, don't count. Without the key, nothing changes.
+unless the profile has `pre_authorized: true`, the rig is clear only while it is off. DEVICE_SIDE_RIG_APPROVED=1 is
+refused otherwise, and so is a probe, though a human at the prompt may still say yes. A run or probe that started clear
+reads it every 15 s and, on two reads in a row of on, unknown or unavailable, aborts as on a SIGTERM, putting the
+devices back. Reads that fail, as during the deploy's restart, don't count. Without the key, or on a pre-authorized
+profile, nothing gates on it.
 
 Under cmux the run colors its workspace: green holding its locks, amber waiting for them.
 
@@ -141,7 +142,7 @@ RESTART_ESTIMATE_S = 90
 ROAM_ESTIMATE_S = 180  # the three moves: the probe's joins took about 10 s each, plus releases, renames and HA
 ABORT_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
 CLEAR_POLL_S = 15
-BLOCKED = ("on", "unknown", "unavailable")  # RIG_BLOCKER_ENTITY states that revoke a run; an unread one doesn't
+BLOCKED = ("on", "unknown", "unavailable")  # blocker states that revoke a run; an unread one doesn't
 # Run reports go where the OS clears old files: they are for reviewing a run, not for keeping.
 REPORT_DIR = Path(tempfile.gettempdir()) / "device_side-rig"
 
@@ -347,8 +348,8 @@ def check_deploy(env: dict, deploy: Deploy) -> None:
 
 
 def gate(clear: tuple[bool, str] | None = None, prompt: Callable[[str], str] = input) -> bool:
-    """A human's yes, or DEVICE_SIDE_RIG_APPROVED=1 while the rig is clear (`clear`: rig_clear's answer, None without
-    RIG_BLOCKER_ENTITY). A rig not clear refuses the env var; at the prompt, a yes overrides it."""
+    """A human's yes, or DEVICE_SIDE_RIG_APPROVED=1 while the rig is clear (`clear`: rig_clear's answer, None when the
+    profile isn't gated). A rig not clear refuses the env var; at the prompt, a yes overrides it."""
     if os.environ.get("DEVICE_SIDE_RIG_APPROVED") == "1":
         if clear is not None and not clear[0]:
             print(f"Rig not clear ({clear[1]}); DEVICE_SIDE_RIG_APPROVED=1 doesn't override that.")
@@ -372,22 +373,27 @@ def _get(url: str, token: str) -> Any:
         return json.load(response)
 
 
-def clearance(env: dict) -> tuple[bool, str] | None:
-    """rig_clear's answer, or None when .env.rig names no RIG_BLOCKER_ENTITY and nothing gates on it."""
-    return rig_clear(env) if env.get("RIG_BLOCKER_ENTITY") else None
+def gate_sensor(env: dict, profile: Profile) -> str | None:
+    """The sensor that gates the profile's runs: RIG_BLOCKER_ENTITY, or None when it is unset or the profile is
+    pre-authorized."""
+    return None if profile.pre_authorized else env.get("RIG_BLOCKER_ENTITY") or None
 
 
-def rig_clear(env: dict) -> tuple[bool, str]:
-    """Whether the rig may run unattended: RIG_BLOCKER_ENTITY, an HA binary_sensor the household defines, is off. Any
-    other state, the entity missing or HA unreachable is not clear. The reason says which."""
-    state, reason = read_blocker(env)
+def clearance(env: dict, blocker: str | None) -> tuple[bool, str] | None:
+    """rig_clear's answer on `blocker`, or None when nothing gates the run."""
+    return rig_clear(env, blocker) if blocker else None
+
+
+def rig_clear(env: dict, blocker: str) -> tuple[bool, str]:
+    """Whether the rig may run unattended: `blocker`, an HA binary_sensor the household defines, is off. Any other
+    state, the entity missing or HA unreachable is not clear. The reason says which."""
+    state, reason = read_blocker(env, blocker)
     return state == "off", reason
 
 
-def read_blocker(env: dict) -> tuple[str | None, str]:
-    """RIG_BLOCKER_ENTITY's state, None when it can't be read, and a reason naming it. A state HA restored at startup,
-    before the template has evaluated, counts as unread."""
-    entity = env["RIG_BLOCKER_ENTITY"]
+def read_blocker(env: dict, entity: str) -> tuple[str | None, str]:
+    """The blocker's state, None when it can't be read, and a reason naming it. A state HA restored at startup, before
+    the template has evaluated, counts as unread."""
     try:
         reply = _get(f"{env.get('HA_URL', '')}/api/states/{entity}", env.get("HA_TOKEN", ""))
         state, restored = reply["state"], reply.get("attributes", {}).get("restored")
@@ -401,17 +407,17 @@ def read_blocker(env: dict) -> tuple[str | None, str]:
 
 
 @contextlib.contextmanager
-def watching(env: dict, armed: bool, interval: float = CLEAR_POLL_S) -> Iterator[None]:
-    """While armed, read RIG_BLOCKER_ENTITY every `interval` seconds and, on two reads in a row of a state in BLOCKED,
-    stop the run with one SIGTERM, which the run's own handlers take from there: the deploy finishes, the tests put
-    the devices back, a probe's command gets it. A read that fails neither counts nor breaks the run of two: HA is
-    unreachable during a deploy's restart."""
+def watching(env: dict, blocker: str | None, interval: float = CLEAR_POLL_S) -> Iterator[None]:
+    """Read `blocker` (None: nothing to watch) every `interval` seconds and, on two reads in a row of a state in
+    BLOCKED, stop the run with one SIGTERM, which the run's own handlers take from there: the deploy finishes, the
+    tests put the devices back, a probe's command gets it. A read that fails neither counts nor breaks the run of
+    two: HA is unreachable during a deploy's restart."""
     stop = threading.Event()
 
     def watch() -> None:
         misses = 0
         while not stop.wait(interval):
-            state, reason = read_blocker(env)
+            state, reason = read_blocker(env, blocker)
             if state is None:
                 continue
             misses = misses + 1 if state in BLOCKED else 0
@@ -421,13 +427,13 @@ def watching(env: dict, armed: bool, interval: float = CLEAR_POLL_S) -> Iterator
                 return
 
     thread = threading.Thread(target=watch, name="rig-clear", daemon=True)
-    if armed:
+    if blocker:
         thread.start()
     try:
         yield
     finally:
         stop.set()
-        if armed:
+        if blocker:
             thread.join()
 
 
@@ -522,6 +528,7 @@ class Setup:
     roaming: bool
     grouping: bool
     deploy: Deploy | None = None  # None for --check, which deploys nothing
+    gated: str | None = None  # gate_sensor's answer: the sensor that gates the run, if the profile is gated
 
     def deploying(self, args: argparse.Namespace) -> bool:
         """--roam-check deploys nothing, as it runs none of our code."""
@@ -651,6 +658,7 @@ def prepare(args: argparse.Namespace) -> Setup:
     )
     if args.check:
         return setup
+    setup.gated = gate_sensor(env, profile)
     if not args.dry_run:
         check_tokens(env, suites, registry, setup.roaming or setup.grouping)
     setup.deploy = deploy_state(env.get("RIG_STATUS_CMD", ""))
@@ -701,6 +709,7 @@ def take(args: argparse.Namespace, setup: Setup, directory: Path) -> Held:
 def run_held(args: argparse.Namespace, setup: Setup, held: Held | None, directory: Path) -> int:
     """The run, once its locks are held (none for a dry run or --check)."""
     env, profile, registry, suites = setup.env, setup.profile, setup.registry, setup.suites
+    gated = setup.gated
     homes = replay(env, held, directory)
     if args.check:
         return check_only(setup, args.keyword, homes, claim(args, setup), directory)
@@ -719,7 +728,7 @@ def run_held(args: argparse.Namespace, setup: Setup, held: Held | None, director
         ready = not asyncio.run(check_devices(env, suites, profile, registry, args.keyword, setup.roaming, homes))
         if not (ready or args.dry_run):
             raise SystemExit("Power or fix the devices above, then run again.")
-    clear = clearance(env)
+    clear = clearance(env, gated)
     if clear is not None:
         print(f"Rig {'clear' if clear[0] else 'not clear'}: {clear[1]}.")
     if args.dry_run:
@@ -730,7 +739,7 @@ def run_held(args: argparse.Namespace, setup: Setup, held: Held | None, director
 
     journal = Journal.start(directory)
     try:
-        with watching(env, armed=bool(clear and clear[0])):
+        with watching(env, gated if clear and clear[0] else None):
             return run_approved(args, setup, held, journal, deploying, lanes)
     finally:
         journal.release()
@@ -824,22 +833,23 @@ def hold_command(args: argparse.Namespace, directory: Path) -> int:
     wanted = Claim("exclusive" if args.exclusive else "shared", frozenset(args.hold or ()))
     env = load_env()
     try:
-        pausing = Profile.load(choose_profile(args.profile, env)).paused_by(wanted.integrations)
+        profile = Profile.load(choose_profile(args.profile, env))
     except ValueError as err:
         raise SystemExit(f"Fix the profile: {err}") from err
+    pausing, gated = profile.paused_by(wanted.integrations), gate_sensor(env, profile)
     if pausing and not (env.get("HA_URL") and env.get("HA_TOKEN")):
         raise SystemExit("HA_URL and HA_TOKEN must be set in .env.rig to pause the profile's automations")
     holder = f"{git('rev-parse', '--abbrev-ref', 'HEAD')} (probe: {shlex.join(args.command)})"
-    if not probe_approved(clear := clearance(env)):
+    if not probe_approved(clear := clearance(env, gated)):
         return 1
     with locks.hold(wanted, holder, directory):
         # a probe may wait long for its locks; a human who let it past a rig not clear isn't asked again
-        if clear and clear[0] and not probe_approved(clear := clearance(env)):
+        if clear and clear[0] and not probe_approved(clear := clearance(env, gated)):
             return 1
         journal = Journal.start(directory)
         ledger = Ledger(directory, journal.name)
         try:
-            with watching(env, armed=bool(clear and clear[0])):
+            with watching(env, gated if clear and clear[0] else None):
                 if pausing:
                     asyncio.run(with_ha(env, lambda ha: ledger.pause(ha, pausing)))
                 return run_command(args.command)

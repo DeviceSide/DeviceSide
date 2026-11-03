@@ -3,6 +3,9 @@
 # the setup's own entities. scripts/rig.py --profile <name> picks one; it can be left out while there is only one.
 # The name goes into every test record, which is public: name it for the setup (lab, house), never a person or place.
 #
+# pre_authorized: true lets this profile's unattended runs and probes go whatever .env.rig's RIG_BLOCKER_ENTITY reads,
+# for a setup whose lights nobody minds seeing move (a lab). Left out or false, they go only while it is off.
+#
 # pause: the automations and switches turned off while the rig runs, for whatever would fight the tests on these
 # entities (motion lighting, an Adaptive Lighting switch). Only those that were on are turned back on, once no run
 # still needs them off. A list is paused by every run; a mapping pauses its `all` list for every run and each
@@ -22,6 +25,8 @@
 # only home supported so far. A roaming bulb is listed here only, never under an integration: each network's suites
 # use it while it is there. Its groups are native groups of those bulbs the run makes on each network
 # (ds-rig-<object ID>, renamed to entity_id) and removes.
+
+pre_authorized: false
 
 pause:
   all: [automation.study_motion]
