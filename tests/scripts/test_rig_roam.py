@@ -141,7 +141,7 @@ async def test_z2m_joining_is_closed_even_when_a_bulb_never_joins(lab, monkeypat
     lab.stuck.add(B[2:])
     with pytest.raises(
         RoamError,
-        match=r"did not join Z2M within 0.05 s\. Not on any Zigbee network: light.lab_b\. It may have missed ZHA.s",
+        match=r"coordinator only\. Not on any Zigbee network: light.lab_b\. It may have missed ZHA.s",
     ):
         await roamer(lab).go("zigbee2mqtt")
     assert not lab.ha.z2m_open
@@ -501,7 +501,10 @@ async def test_a_bulb_whose_z2m_interviews_keep_failing_is_asked_a_bounded_numbe
     monkeypatch.setattr(roam, "JOIN_S", 0.05)
     monkeypatch.setattr(roam, "REINTERVIEW_GAP_S", 0)
     lab.ha.z2m_failing[normalize_ieee(A)] = roam.REINTERVIEWS + 1
-    with pytest.raises(RoamError, match=r"light.lab_a did not join Z2M within 0.05 s\. Still or again on a network"):
+    with pytest.raises(
+        RoamError,
+        match=r"light.lab_a did not join Z2M within 0.05 s, open on the coordinator only\. Still or again on",
+    ):
         await roamer(lab).go("zigbee2mqtt")
     assert len(lab.ha.z2m_interviews) == roam.REINTERVIEWS
     assert not lab.ha.z2m_open

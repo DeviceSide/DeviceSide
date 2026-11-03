@@ -452,7 +452,8 @@ class Roamer:
     async def missed(self, network: str, bulbs: list[Bulb], origins: dict[str, str | None]) -> None:
         """Raise RoamError for bulbs that didn't join `network`. One back on a network (it missed the Leave, or
         rejoined the network it knew) is recorded there, so --recover moves it again."""
-        window = f"{HUE_SEARCHES} searches" if network == "hue" else f"{JOIN_S} s"
+        window = {"hue": f"{HUE_SEARCHES} searches", "zigbee2mqtt": f"{JOIN_S} s, open on the coordinator only"}
+        window = window.get(network, f"{JOIN_S} s")
         names = ", ".join(bulb.entity_id for bulb in bulbs)
         found = {bulb.entity_id: await self.locate(bulb) for bulb in bulbs}
         self.at.update({entity_id: where for entity_id, where in found.items() if where is not None})
