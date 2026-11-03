@@ -91,7 +91,8 @@ tests:
   - name: halts_brightness_and_saturation
     roles: [light_color, group_color]
     setup:
-      - set: {state: on, brightness_pct: 20, hs_color: [200, 90]}
+      # Green: hue 200° at 90 % is outside a gamut C bulb's reach, which the bridge clamps to about 76 %
+      - set: {state: on, brightness_pct: 20, hs_color: [135, 90]}
       - wait: 1.5  # the set's fade is still running when the raise starts
     steps:
       # 10 % a second for 3 s and 2 s: about 50 % brightness and 70 % saturation at the stop
@@ -109,7 +110,7 @@ tests:
     observe:
       roles: [light_color]  # Hue's halt writes the predicted xy, so whether it jumps is seen, not read
       only: [hue]
-      see: 'The light at 20 % brightness, hue 200° (sky blue), 90 % saturation. Brightness rises 10 % a second; from 1 s, saturation pales 10 % a second. Both stop at 3 s, near 50 % brightness and 70 % saturation.'
+      see: 'The light at 20 % brightness, hue 135° (green), 90 % saturation. Brightness rises 10 % a second; from 1 s, saturation pales 10 % a second. Both stop at 3 s, near 50 % brightness and 70 % saturation.'
       watch: 'The stop: brightness and color both hold, with no jump in either and no drift after.'
       ask: Did brightness and color both stop where they were and hold, with no jump or drift?
 
