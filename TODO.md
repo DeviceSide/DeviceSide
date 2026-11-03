@@ -60,6 +60,7 @@ v0.1.0 is the next release.
 | 15 (follow-up) | Rig: runs side by side share their pauses through a ledger (last one out resumes), `pause:` by integration, and roaming bulbs visit only the networks a profile declares, from each bulb's `home` | #177, #178 |
 | 15 (follow-up) | Rig step fixes from the lab rerun: hue moves wait for the setup color; `halts_brightness_and_saturation` starts inside gamut C | #191, #193 |
 | 15 (follow-up) | Rig: a test record names the devices seen when its suite ended, not after the bulbs moved home | #194 |
+| — | ZHA `set_attributes` reads back once the write's 0.4 s fade has ended, then once more, so HA shows the color temperature written after a soft off | #197 |
 | 15 (follow-up) | Rig: Z2M joins open on the coordinator only; a bulb that missed the Hue bridge's Leave is searched back, released alone and given one more window | #174 |
 | 7c2 | Hue `raise_saturation` and `lower_saturation`, and `stop` halting them (experimental until the Hue A60 run) | #179 |
 | 13f (follow-up) | One core watch for light calls from HA drops the predictions of the lights a call names; Hue and ZHA move onto it, Z2M gains one | #181 |
