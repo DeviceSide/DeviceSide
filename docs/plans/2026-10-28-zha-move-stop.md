@@ -142,7 +142,8 @@ every 60 % soft off kept (reads 1 to 3 % behind, within ± 5.4) and restored to 
 (the bulb reads 1 % where the ramp predicts 4 to 8 %), to the clamped start of 0, which is right. `raise_brightness`
 and `stop` passed whole; their records are committed. One failure, in a setup step before any device_side call:
 `light_raised_mid_room_lower[group]`'s `set` to 100 % left the desk at 200 after 3 s; it passed on every earlier run,
-so rerun it with the full suite and act only if it repeats. `lower_brightness` has no record until then.
+so rerun it with the full suite and act only if it repeats. Rerun (HA on `7d5836f`): `lower_brightness` passed
+whole, `light_raised_mid_room_lower[group]` included; its record is committed.
 
 **Next, in order** (every rig run needs Jason's go; start each in the background, one at a time behind the lock):
 
