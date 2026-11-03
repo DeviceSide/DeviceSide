@@ -50,6 +50,7 @@ v0.1.0 is the next release.
 | 15 (PR 4 of 5) | Rig-made `ds-rig-*` groups, zones and scenes: made on each visit from `roam.groups`, renamed to fixed entity IDs, removed before each move and by `--recover`; Hue group and scene cases are lab-only | #154 |
 | 15 (follow-up) | Roaming: a second Hue search only for a bulb still missing; a stranger that joins a search is named and left | #153 |
 | 15 (PR 5 of 5) | Lab bring-up: direct moves, bulbs released last joined first, no one-member ZHA groups; first lab run's 12 records (`Profile \| lab`), its 26 failures a follow-up | #157 |
+| 15 (follow-up) | Rig checks every phase's devices before the gate, so an unpowered one stops a roaming run before any move; `--check` runs that check alone | #165 |
 
 ## To go, in order
 
