@@ -226,6 +226,26 @@ class HAClient:
 
         await self._z2m_request("permit_join", {"time": seconds}, done, f"{'open' if seconds else 'close'} joining")
 
+    async def z2m_log_level(self) -> str | None:
+        """Zigbee2MQTT's log level, from its retained bridge/info."""
+        return (await self._z2m_retained("info")).get("log_level")
+
+    async def z2m_set_log_level(self, level: str) -> None:
+        """Set Zigbee2MQTT's log level (it persists in its configuration), and wait until bridge/info shows it."""
+
+        async def done() -> bool:
+            return await self.z2m_log_level() == level
+
+        payload = {"options": {"advanced": {"log_level": level}}}
+        await self._z2m_request("options", payload, done, f"set its log level to {level}")
+
+    async def z2m_interview(self, ieee: str) -> None:
+        """Ask Zigbee2MQTT to interview `ieee` again. Not awaited: the device's interview_state shows the outcome."""
+        payload = json.dumps({"id": ieee})
+        await self.call_service(
+            "mqtt", "publish", {"topic": f"{Z2M_TOPIC}/request/device/interview", "payload": payload}
+        )
+
     async def z2m_device(self, ieee: str) -> dict | None:
         """Zigbee2MQTT's entry for `ieee` in its retained bridge/devices (`interview_completed` says it is in), or
         None."""

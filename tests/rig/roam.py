@@ -21,7 +21,8 @@ the journal's copy is for a person reading it.
 """
 
 import asyncio
-from collections.abc import Awaitable, Callable, Iterable
+import contextlib
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterable
 from dataclasses import dataclass, field
 
 from .bridge import BridgeError, HueBridge
@@ -42,6 +43,10 @@ from .profile import (
 HOME = CYCLE[0]
 NAMES = {"hue": "Hue", "zha": "ZHA", "zigbee2mqtt": "Z2M"}
 JOIN_S = 120  # how long a join window stays open, and how long a bulb has to join it
+REINTERVIEWS = 3  # how many times a join asks Z2M to interview a bulb again after a failed interview
+REINTERVIEW_GAP_S = 20  # between asks for one bulb: the retained device list may still say FAILED just after one
+JOIN_LOG_LEVEL = "info"  # Z2M's log level during a join: its default, warning, logs no join or interview
+VERBOSE_LOG_LEVELS = ("info", "debug")
 RELEASE_S = 30  # for a released bulb to drop off its network
 ENTITY_S = 90  # for HA to show a joined bulb's device and light entity (ZHA's interview took about 60 s)
 HUE_SEARCH_S = 56  # how long a Hue search stays open; it can't be ended early
@@ -167,6 +172,8 @@ class Roamer:
         self.bridge_before: set[str] | None = set(before) if before is not None else None
         # The bulbs in the order they last joined a network; journaled, so recovery releases them in reverse.
         self.arrived: list[str] = list(saved.get("arrived", []))
+        # Z2M's own log level while a join holds it at JOIN_LOG_LEVEL; journaled, so a crash mid-join still restores it.
+        self.z2m_log_level: str | None = saved.get("z2m_log_level")
 
     @classmethod
     def from_journal(cls, ha: HAClient, bridge: HueBridge, journal: Journal, out: Callable[[str], None] = print):
@@ -186,13 +193,20 @@ class Roamer:
                     "made": self.made,
                     "bridge_before": sorted(self.bridge_before) if self.bridge_before is not None else None,
                     "arrived": self.arrived,
+                    "z2m_log_level": self.z2m_log_level,
                 }
             )
 
     def finish(self) -> None:
         """Clear the journal's roam section once every bulb is home with its home put back, and no rig-made group is
         left."""
-        if self.journal is not None and not self.home and self.moving is None and not self.made:
+        if (
+            self.journal is not None
+            and not self.home
+            and self.moving is None
+            and not self.made
+            and not self.z2m_log_level
+        ):
             if all(self.at.get(bulb.entity_id) == HOME for bulb in self.bulbs):
                 self.journal.clear("roam")
 
@@ -224,6 +238,7 @@ class Roamer:
         """Remove the rig-made groups, then move every bulb not on `to` straight there, in one move, whichever
         networks they are on (after a crash, they may differ). On a bulb found on no network it raises RoamError."""
         await self.remove_groups()
+        await self.restore_z2m_log_level()  # a crash mid-join left it raised
         await self.settle(to)
         if away := [bulb for bulb in self.bulbs if self.at[bulb.entity_id] != to]:
             await self.move(away, to)
@@ -368,15 +383,71 @@ class Roamer:
             async with self.ha.zha_joining(JOIN_S):
                 arrived = await _until(all_in, JOIN_S)
         elif network == "zigbee2mqtt":
-            await self.ha.z2m_permit_join(JOIN_S)
-            try:
-                arrived = await _until(all_in, JOIN_S)
-            finally:
-                await self.ha.z2m_permit_join(0)
+            interviews: dict[str, list[float]] = {}
+
+            async def all_in_z2m() -> bool:
+                await self.reinterview(bulbs, interviews)
+                return await all_in()
+
+            async with self.z2m_logging():
+                await self.ha.z2m_permit_join(JOIN_S)
+                try:
+                    arrived = await _until(all_in_z2m, JOIN_S)
+                finally:
+                    await self.ha.z2m_permit_join(0)
         else:
             arrived = await self.hue_join(bulbs, all_in)
         if not arrived:
             await self.missed(network, [bulb for bulb in bulbs if not await self.joined(network, bulb)], origins or {})
+
+    async def reinterview(self, bulbs: list[Bulb], interviews: dict[str, list[float]]) -> None:
+        """Ask Z2M to interview again a bulb whose interview failed: it joined, but Z2M couldn't reach it (on 3 Nov,
+        `Delivery failed`), and Z2M only tries again when the bulb next announces itself, which may be after the
+        window. At most REINTERVIEWS per bulb per join, REINTERVIEW_GAP_S apart; `interviews` holds each bulb's asks'
+        times."""
+        now = asyncio.get_running_loop().time()
+        for bulb in bulbs:
+            asked = interviews.setdefault(bulb.entity_id, [])
+            if bulb.entity_id in self.arrived or len(asked) >= REINTERVIEWS:
+                continue
+            if asked and now - asked[-1] < REINTERVIEW_GAP_S:
+                continue
+            device = await self.ha.z2m_device(hex_ieee(bulb.ieee))
+            if device is None or device.get("interview_state") != "FAILED":
+                continue
+            asked.append(now)
+            self.out(f"Z2M's interview of {bulb.entity_id} failed; asking for another ({len(asked)}).")
+            await self.ha.z2m_interview(hex_ieee(bulb.ieee))
+
+    @contextlib.asynccontextmanager
+    async def z2m_logging(self) -> AsyncIterator[None]:
+        """Z2M at JOIN_LOG_LEVEL for a join, so its log shows each bulb's join and interview, then back to its own
+        level, which is journaled first. A level that can't be read or set leaves the log as it is: it never stops
+        the move."""
+        try:
+            before = await self.ha.z2m_log_level()
+            if before is not None and before not in VERBOSE_LOG_LEVELS:
+                self.z2m_log_level = before
+                self.save()
+                await self.ha.z2m_set_log_level(JOIN_LOG_LEVEL)
+        except (TimeoutError, HAError) as err:
+            self.out(f"Z2M's log level stays as it is for the join: {err}")
+        try:
+            yield
+        finally:
+            await self.restore_z2m_log_level()
+
+    async def restore_z2m_log_level(self) -> None:
+        """Put back the log level a join raised, if one is journaled. A failure is printed and stays journaled."""
+        if self.z2m_log_level is None:
+            return
+        try:
+            await self.ha.z2m_set_log_level(self.z2m_log_level)
+        except (TimeoutError, HAError) as err:
+            self.out(f"Z2M's log level is still raised, not {self.z2m_log_level}: {err}. --recover tries again.")
+            return
+        self.z2m_log_level = None
+        self.save()
 
     async def missed(self, network: str, bulbs: list[Bulb], origins: dict[str, str | None]) -> None:
         """Raise RoamError for bulbs that didn't join `network`. One back on a network (it missed the Leave, or
