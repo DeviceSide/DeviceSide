@@ -17,12 +17,11 @@ import asyncio
 import contextlib
 import fcntl
 import json
-import os
 from collections.abc import AsyncIterator, Callable, Iterable
 from pathlib import Path
 
 from .client import HAClient
-from .journal import locked
+from .journal import locked, write_whole
 
 NAME = "device_side-rig.paused.json"
 LOCK_NAME = "device_side-rig.paused.lock"
@@ -96,11 +95,7 @@ class Ledger:
         """Turn each back on if it was on, then drop it; a failure is printed, so it can be turned on by hand."""
         for entity_id in sorted(entity_ids):
             if self.entries[entity_id]["was_on"]:
-                try:
-                    await ha.call_service(entity_id.partition(".")[0], "turn_on", {"entity_id": entity_id})
-                    self.out(f"Resumed {entity_id}.")
-                except Exception as err:  # noqa: BLE001 - try every one, and say which stayed off
-                    self.out(f"Could not turn {entity_id} back on: {err}. Turn it on by hand.")
+                await turn_on(ha, entity_id, self.out)
             del self.entries[entity_id]
             self.save()
 
@@ -122,10 +117,13 @@ class Ledger:
                 self.entries = {}
 
     def save(self) -> None:
-        """Write the ledger whole and move it into place, as the journal is; an empty one is deleted."""
-        if not self.entries:
-            self.path.unlink(missing_ok=True)
-            return
-        temp = self.path.with_name(f"{self.path.name}.tmp")
-        temp.write_text(json.dumps(self.entries, indent=2, sort_keys=True))
-        os.replace(temp, self.path)
+        write_whole(self.path, self.entries)
+
+
+async def turn_on(ha: HAClient, entity_id: str, out: Callable[[str], None]) -> None:
+    """Turn a paused entity back on; a failure is printed, so it can be turned on by hand."""
+    try:
+        await ha.call_service(entity_id.partition(".")[0], "turn_on", {"entity_id": entity_id})
+        out(f"Resumed {entity_id}.")
+    except Exception as err:  # noqa: BLE001 - try every one, and say which stayed off
+        out(f"Could not turn {entity_id} back on: {err}. Turn it on by hand.")

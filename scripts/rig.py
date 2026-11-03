@@ -98,7 +98,7 @@ from tests.rig.engine import (  # noqa: E402
     write_report,
 )
 from tests.rig.journal import LEGACY_NAME, Journal, orphans  # noqa: E402
-from tests.rig.ledger import Ledger  # noqa: E402
+from tests.rig.ledger import Ledger, turn_on  # noqa: E402
 from tests.rig.locks import Claim, Held  # noqa: E402
 from tests.rig.profile import (  # noqa: E402
     EXAMPLE,
@@ -1428,7 +1428,8 @@ async def recover(
         await recover_roam(admin, bridge, journal, out)
     await Ledger(journal.path.parent, journal.name, out).resume(ha)
     if paused := journal.get("paused"):  # a run from before the ledger kept its pauses here
-        await turn_on(ha, paused, out)
+        for entity_id in paused:
+            await turn_on(ha, entity_id, out)
         journal.clear("paused")
     drop_profile(journal)
 
@@ -1466,17 +1467,6 @@ def drop_profile(journal: Journal | None) -> None:
     deleted; while a change is left, they stay, saying which profile's run left it and what putting it back needs."""
     if journal is not None and set(journal.sections) <= {"profile", "claim"}:
         journal.clear("profile", "claim")
-
-
-async def turn_on(ha: HAClient, entity_ids: list[str], out: Callable[[str], None] = print) -> None:
-    """Turn back on what a run from before the pause ledger paused; a failure is printed, so it can be turned on by
-    hand."""
-    for entity_id in entity_ids:
-        try:
-            await ha.call_service(entity_id.partition(".")[0], "turn_on", {"entity_id": entity_id})
-            out(f"Resumed {entity_id}.")
-        except Exception as err:  # noqa: BLE001 - try every one, and say which stayed off
-            out(f"Could not turn {entity_id} back on: {err}. Turn it on by hand.")
 
 
 if __name__ == "__main__":

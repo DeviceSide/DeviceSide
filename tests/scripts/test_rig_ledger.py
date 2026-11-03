@@ -7,8 +7,14 @@ import json
 
 import pytest
 
+from tests.rig import journal
 from tests.rig.journal import Journal
 from tests.rig.ledger import NAME, Ledger
+
+
+@pytest.fixture(autouse=True)
+def quick_probes(monkeypatch):
+    monkeypatch.setattr(journal, "PROBE_GAP_S", 0)
 
 
 class PauseHA:
