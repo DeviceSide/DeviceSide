@@ -2,6 +2,7 @@
 
 from .addressing import is_z2m_group
 from .detect import detect
+from .fade import Z2MCallResolver
 from .get_attributes import Z2MGetAttributes
 from .lower_brightness import Z2MLowerBrightness
 from .lower_hue import Z2MLowerHue
@@ -20,6 +21,7 @@ INTEGRATION = IntegrationInfo(
     ha_domain="mqtt",
     detect=detect,
     is_group=is_z2m_group,
+    call_resolver=Z2MCallResolver(),
     max_concurrency=4,
 )
 

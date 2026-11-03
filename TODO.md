@@ -107,7 +107,7 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. Lanes on dif
 - [x] **13f** ZHA raise, lower and `stop`, after the `Transition` PR. ZHA code freezes. Built on `wt/zha-move-stop`
   over the six raise and lower actions; lab runs and records in its
   [handoff note](docs/plans/2026-10-28-zha-move-stop.md#status-and-handoff-2026-11-02).
-- [ ] **13f follow-up** One core watch for light calls from HA, which drop the predictions of the lights a call names:
+- [x] **13f follow-up** One core watch for light calls from HA, which drop the predictions of the lights a call names:
   a listener in `core/` with a resolver per integration (call entities to cache entries, plus a hook after the
   forget). Hue's (`hue/report_filter.py`, which also hands back its `predicted_state` ends) and ZHA's
   (`watch_ha_changes` in `zha/fade.py`) move onto it, and Z2M, which has none, gets one: a fix for a prediction left
