@@ -122,6 +122,12 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. Lanes on dif
   write. zha skips `update_entity` for 1.5 s after an HA `turn_off`, and ZHA applies no color reports, so HA showed the
   old color after the next on. Fixed (#172): the refresh waits out zha's transition flag. Rig proof rides the
   pre-release run.
+- [ ] **Z2M lab: the `light_ct` bulb's stops since 3 Nov's resets.** Since the lab bulbs were reset and re-added (and
+  Z2M joins went through the coordinator, #174), two Z2M cases fail on every tree, the core HA watch's (#181) and the one
+  before it (an A/B run): `lower_stop_lower[light_ct]` reads 90 % after the stop, then holds at 26 %, and
+  `halts_a_lower_to_off[light_ct]` ends off. The setup of `lower_to_off[group]` also finds the color bulb reporting no
+  brightness. All passed on 2 Nov. First, probe whether the bulb takes the brightness stop mid-fade, and what it
+  reports. `opus`: hardware triage, where the cause may be the bulb's state after its reset or our stop.
 - [ ] **ZHA A60 run** (13k step 3), on the lab: ZHA color suites, `set_attributes` hs and xy included. Attended for
   `sets_color_while_off`. Clears `experimental` on the ZHA adapters it proves.
 - [ ] **9d** Rig coverage sweep for the non-color scope
