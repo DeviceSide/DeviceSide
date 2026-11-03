@@ -88,12 +88,14 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. Lanes on dif
   (`scripts/rig.py --action set_attributes`, with the new `sets_after_a_soft_off` case, which also runs on Hue and
   ZHA) and `docs/test-records/zigbee2mqtt/set_attributes.md`, both in the pre-release full rig run. Tick when the
   record is in.
-  Lab reruns 3 Nov after the fade-wait fix: `not_stored` gone (`light_ct` and group, two runs), but no run passed whole.
-  Repeats: `min_brightness_raises[group]` fails in its own setup (`set` on the desk bulb reads 102, not ~51 within
-  3 s). Single: a group member's `genLevelCtrl` read got no reply (`sets_while_off[group]`); `sets_color_while_off`
-  and `sets_after_a_soft_off[light_ct]` read the bulb on after the call (the sideboard's Z2M published `ON` 0.1 s
-  after the raw command, 0.2 s after the setup's off: a race in the case, which `sets_hs_while_off` avoids with a
-  `wait: 2`).
+  Lab reruns 3 Nov after the fade-wait fix (three runs, `not_stored` gone in all): none passed whole. Run 3 (with the
+  single group wait) fails two cases, both on Z2M's cached state, not on a read-back: `sets_after_a_soft_off[light_ct]`
+  and `sets_color_while_off` find HA `on` after the call, and both passed in run 1. In the corner's log Z2M published
+  `ON` 0.3 s after the case's soft off (a report from the bulb mid-fade) and never `OFF`; our reads republish that
+  cache. The sideboard's case is a race with its setup's `off`, 0.2 s before the write (`sets_hs_while_off` avoids it
+  with `wait: 2`). Next: give both cases a settle wait after the off, and look at whether Z2M's state after a soft off
+  needs the same wait. Singles in runs 1 and 2: `min_brightness_raises[group]` setup (desk read 102, not ~51), and a
+  group member's read getting no reply.
 - [x] **14** Z2M color modes fixed for HA, on by default, and 13i's xy write-back backed out
   ([`2026-10-28-z2m-color-modes.md`](docs/plans/2026-10-28-z2m-color-modes.md)). Counts toward the Z2M freeze.
 - [x] **15** The lab ([`2026-11-01-lab.md`](docs/plans/2026-11-01-lab.md)): three Hue bulbs in the maintainer's room,
