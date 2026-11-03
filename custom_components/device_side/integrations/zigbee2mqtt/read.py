@@ -29,6 +29,10 @@ READ_KEY = "device_side_read"
 _FILTERED_CACHE = "filtered_cache"
 # Z2M publishes a reply within a quarter second when the bulb answers; the same wait as turn_on_for's state.
 _REPLY_TIMEOUT_S = 5.0
+# Z2M logs a read the coordinator couldn't route as "Delivery failed". The route is often rebuilt within a second
+# (a lab bulb's relay hop flipped mid-run and its next read was answered), so such a read is asked once more.
+_DELIVERY_FAILED = "Delivery failed"
+_DELIVERY_RETRIES = 1
 
 
 def clusters(target: Target) -> dict[str, list[str]]:
@@ -142,12 +146,19 @@ class Reader:
 
     async def _read(self, target: Target, cluster: str, names: list[str]) -> tuple[dict, dict]:
         """The cluster's reply and the state Z2M published it in, over a subscription to the state topic."""
-        self._reply, self._expected = self.hass.loop.create_future(), set(names)
+        self._expected = set(names)
         self._failure = (f"{z2m_address(target.device)}/", f"{cluster}.read(")
         payload = {"read": {"cluster": cluster, "attributes": names, "state_property": READ_KEY}}
         try:
-            await publish(self.hass, topic(target, "set"), payload)
-            return await wait(self._reply, _REPLY_TIMEOUT_S, f"no {cluster} reply from Zigbee2MQTT")
+            for attempt in range(1 + _DELIVERY_RETRIES):
+                self._reply = self.hass.loop.create_future()
+                try:
+                    await publish(self.hass, topic(target, "set"), payload)
+                    return await wait(self._reply, _REPLY_TIMEOUT_S, f"no {cluster} reply from Zigbee2MQTT")
+                except RuntimeError as err:
+                    if _DELIVERY_FAILED not in str(err) or attempt == _DELIVERY_RETRIES:
+                        raise
+                    _LOGGER.debug("Retrying %s's %s read after: %s", target.entity_id, cluster, err)
         finally:
             self._reply = None
 

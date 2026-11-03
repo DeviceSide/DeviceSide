@@ -92,6 +92,7 @@ class Broker:
         self.refused: set[str] = set()  # IDs whose options requests Z2M answers with an error
         # Each device's attributes by cluster, keyed by IEEE, with the friendly name its state is published under.
         self.devices: dict[str, tuple[str, dict[str, dict]]] = {}
+        self.read_errors_once: dict[tuple[str, str], str] = {}  # as read_errors, for the next read only
         self.read_errors: dict[tuple[str, str], str] = {}  # (IEEE, cluster) -> the status Z2M logs for a failed read
         self.before_reply: list[dict] = []  # state payloads published ahead of each read's reply
         self.logs_before_reply: list[str] = []  # bridge/logging payloads published ahead of each read's reply
@@ -159,7 +160,7 @@ class Broker:
             return
         name, clusters = self.devices[ieee]
         cluster = read["cluster"]
-        if status := self.read_errors.get((ieee, cluster)):
+        if status := self.read_errors_once.pop((ieee, cluster), None) or self.read_errors.get((ieee, cluster)):
             message = f"Publish 'set' 'read' to '{name}' failed: ZCL command {ieee}/11 {cluster}.read() failed"
             message += f" ({status})"
             self.deliver("zigbee2mqtt/bridge/logging", json.dumps({"level": "error", "message": message}))
