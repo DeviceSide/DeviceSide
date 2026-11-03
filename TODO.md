@@ -53,6 +53,7 @@ v0.1.0 is the next release.
 | 15 (follow-up) | Rig checks every phase's devices before the gate, so an unpowered one stops a roaming run before any move; `--check` runs that check alone | #165 |
 | 13f | ZHA raise, lower and `stop`: the six actions on ZHA (experimental until the ZHA A60 run), a Hue bulb raised from off turned on at the bottom by Hue's own command, the fit's deadband; lab records for each | #167 |
 | 15 (follow-up) | Rig: a failed Z2M interview is asked again, Z2M logs joins at `info`, and a run stopped by a move keeps the phases before it | #169 |
+| 15 (follow-up) | Rig runs each integration's fixed-bulb cases in parallel lanes, then the rest in turn; `--serial` keeps the old order | #171 |
 
 ## To go, in order
 
