@@ -67,7 +67,6 @@ tests:
 
   - name: saturation_down_stop
     roles: [light_color, group_color]
-    only: [zigbee2mqtt, zha]
     setup:
       - set: {state: on, brightness_pct: 70, hs_color: [200, 90]}
     steps:
@@ -89,7 +88,6 @@ tests:
   # 1 s after the brightness one, as a second button would.
   - name: halts_brightness_and_saturation
     roles: [light_color, group_color]
-    only: [zigbee2mqtt, zha]
     setup:
       - set: {state: on, brightness_pct: 20, hs_color: [200, 90]}
     steps:
@@ -105,6 +103,12 @@ tests:
       - sample: {attribute: brightness, for: 3, expect: steady, min: 38, max: 70, source: device_side}
       - expect_matches_read: {attributes: [xy_color.0, xy_color.1], tolerance: 0.01}
       - expect_state: {state: on, hs_color.1: {min: 60, max: 82}}
+    observe:
+      roles: [light_color]  # Hue's halt writes the predicted xy, so whether it jumps is seen, not read
+      only: [hue]
+      see: 'The light at 20 % brightness, hue 200° (sky blue), 90 % saturation. Brightness rises 10 % a second; from 1 s, saturation pales 10 % a second. Both stop at 3 s, near 50 % brightness and 70 % saturation.'
+      watch: 'The stop: brightness and color both hold, with no jump in either and no drift after.'
+      ask: Did brightness and color both stop where they were and hold, with no jump or drift?
 
   - name: halts_brightness_and_hue
     roles: [light_color, group_color]

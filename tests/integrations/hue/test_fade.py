@@ -55,9 +55,9 @@ async def test_light_without_dimming_drops_brightness_fields(hass, bridge):
     assert bridge.puts == []
 
 
-@pytest.mark.parametrize("action", ["raise_saturation", "lower_saturation", "raise_hue", "lower_hue"])
-async def test_color_actions_have_no_hue_adapter(hass, bridge, action):
-    # Saturation waits for 7c2; hue has no fade the bridge runs alone.
+@pytest.mark.parametrize("action", ["raise_hue", "lower_hue"])
+async def test_hue_actions_have_no_hue_adapter(hass, bridge, action):
+    # A hue cycle is no straight line in xy, so the bridge can't run it as one fade.
     entity_id = await lamp(hass, bridge)
 
     assert await refusal(hass, action, {"entity_id": entity_id}) == "no_adapter"

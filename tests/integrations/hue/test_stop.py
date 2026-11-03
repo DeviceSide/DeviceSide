@@ -1,8 +1,9 @@
 """Hue stop: a dimming stop to the light or room, or a cut where our soft off runs, recorded where it halted."""
 
 import pytest
+from homeassistant.util.color import color_hs_to_xy, color_xy_to_hs
 
-from .conftest import SENT, STOP, lamp, mixed_room, report_off, room
+from .conftest import SENT, STOP, color_lamp, color_room, hs_xy, lamp, mixed_room, report_off, room, xy_halt
 from ...conftest import call, refusal
 
 pytestmark = pytest.mark.usefixtures("setup_production")
@@ -111,3 +112,65 @@ async def test_stop_after_our_soft_off_ends_sends_nothing(hass, bridge, clock):
 
     assert response[entity_id]["detail"] == "off"
     assert bridge.puts == [("light/light-1", {"on": {"on": False}, "dynamics": {"duration": 2000}})]
+
+
+def along(start: tuple[float, float], end: tuple[float, float], fraction: float) -> tuple[float, float]:
+    return tuple(a + (b - a) * fraction for a, b in zip(start, end, strict=True))
+
+
+async def test_stop_halts_each_room_light_at_its_own_predicted_xy(hass, bridge, clock):
+    # The lights converge on one end xy from different starts, so one grouped write would jump one of them.
+    entity_id = await color_room(hass, bridge, {"one": (200.0, 50.0), "two": (200.0, 10.0), "white": None})
+    await call(hass, "raise_saturation", {"entity_id": entity_id, "sweep_time": 10})
+    end = (bridge.puts[0][1]["color"]["xy"]["x"], bridge.puts[0][1]["color"]["xy"]["y"])
+    duration = bridge.puts[0][1]["dynamics"]["duration"] / 1000
+    clock.now += duration / 2
+
+    response = await call(hass, "stop", {"entity_id": entity_id})
+
+    assert response == {entity_id: SENT}
+    assert sorted(bridge.puts[1:]) == [
+        ("light/one", STOP | xy_halt(along(hs_xy(200.0, 50.0), end, 0.5))),
+        ("light/two", STOP | xy_halt(along(hs_xy(200.0, 10.0), end, 0.5))),
+        ("light/white", STOP),
+    ]
+
+
+async def test_stop_after_a_saturation_fade_has_run_is_a_plain_stop(hass, bridge, clock):
+    entity_id = await color_lamp(hass, bridge)
+    await call(hass, "raise_saturation", {"entity_id": entity_id, "sweep_time": 2})
+    clock.now += 3
+
+    await call(hass, "stop", {"entity_id": entity_id})
+
+    assert bridge.puts[1] == ("light/light-1", STOP)
+
+
+async def test_stop_cuts_a_soft_off_and_halts_its_saturation_in_one_write(hass, bridge, clock):
+    entity_id = await color_lamp(hass, bridge, (200.0, 90.0), brightness_pct=100.0)
+    await call(hass, "lower_brightness", {"entity_id": entity_id, "sweep_time": 10})
+    await call(hass, "lower_saturation", {"entity_id": entity_id, "sweep_time": 10, "limit": 0})
+    report_off(bridge, "light-1")
+    hass.states.async_set(entity_id, "off", {})
+    duration = bridge.puts[1][1]["dynamics"]["duration"] / 1000
+    clock.now += duration / 4
+
+    await call(hass, "stop", {"entity_id": entity_id})
+
+    hue = color_xy_to_hs(*hs_xy(200.0, 90.0))[0]
+    halt = along(hs_xy(200.0, 90.0), color_hs_to_xy(hue, 0), 0.25)
+    cut = {"on": {"on": True}, "dimming": {"brightness": pytest.approx(100 - duration / 4 * 10)}}
+    assert bridge.puts[2] == ("light/light-1", cut | xy_halt(halt))
+
+
+async def test_stop_halts_brightness_and_saturation_in_one_write(hass, bridge, clock):
+    entity_id = await color_lamp(hass, bridge, (200.0, 90.0), brightness_pct=20.0)
+    await call(hass, "raise_brightness", {"entity_id": entity_id, "sweep_time": 10})
+    await call(hass, "lower_saturation", {"entity_id": entity_id, "sweep_time": 10, "limit": 0})
+    duration = bridge.puts[1][1]["dynamics"]["duration"] / 1000
+    clock.now += duration / 2
+
+    await call(hass, "stop", {"entity_id": entity_id})
+
+    hue = color_xy_to_hs(*hs_xy(200.0, 90.0))[0]
+    assert bridge.puts[2] == ("light/light-1", STOP | xy_halt(along(hs_xy(200.0, 90.0), color_hs_to_xy(hue, 0), 0.5)))

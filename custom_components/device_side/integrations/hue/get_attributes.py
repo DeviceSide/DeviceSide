@@ -8,21 +8,22 @@ from homeassistant.core import HomeAssistant
 from homeassistant.util.color import color_temperature_mired_to_kelvin
 
 from .bridge import bridge_api, resource_id
-from .fade import lit
-from .transition_cache import transition_cache
+from .fade import light_xy, lit
+from .transition_cache import HueTransitionCache, transition_cache
 from ...core.adapter import Adapter
 from ...core.color import xy_row
 from ...core.models import EntityResult, Request, Status, Target
 from ...core.scope import AdapterScope
-from ...core.transition import BRIGHTNESS, TransitionCache
+from ...core.transition import BRIGHTNESS
 
 if TYPE_CHECKING:
     from aiohue.v2.models.light import Light
 
 
-def light_row(cache: TransitionCache, light: Light) -> dict:
-    """One light's attributes, its brightness predicted while a move runs (the bridge reports the end value)."""
-    row = attributes([light])
+def light_row(cache: HueTransitionCache, light: Light) -> dict:
+    """One light's attributes, its brightness and color predicted while a move runs (the bridge reports the end
+    value)."""
+    row = attributes(cache, [light])
     if light.dimming:
         row["brightness"] = round(cache.value(light.id, BRIGHTNESS, light.dimming.brightness), 1)
     return row
@@ -32,11 +33,12 @@ def in_color_temp_mode(light: Light) -> bool:
     return bool((feature := light.color_temperature) and feature.mirek is not None and feature.mirek_valid)
 
 
-def attributes(lights: Iterable[Light]) -> dict:
+def attributes(cache: HueTransitionCache, lights: Iterable[Light]) -> dict:
     """The lights' attributes under HA's names, each averaged over the lights that have it.
 
     Brightness is Hue's percent, as hue_dimmer returned it, so a read can be written back with set_attributes.
-    Color temperature counts only lights in color temperature mode (mirek_valid), as core's hue integration does.
+    Color temperature counts only lights in color temperature mode (mirek_valid), as core's hue integration does. Color
+    is each light's predicted xy, so a light mid saturation fade reads where it is.
     """
     lights = list(lights)
     row: dict = {}
@@ -49,7 +51,7 @@ def attributes(lights: Iterable[Light]) -> dict:
     ]
     if kelvins:
         row["color_temp_kelvin"] = round(mean(kelvins))
-    if xys := [(light.color.xy.x, light.color.xy.y) for light in lights if light.color]:
+    if xys := [light_xy(cache, light) for light in lights if light.color]:
         row.update(xy_row(round(mean(x for x, _ in xys), 4), round(mean(y for _, y in xys), 4)))
     return row
 
@@ -59,9 +61,9 @@ class HueGetAttributes(Adapter[Request]):
 
     A room or zone row follows the bridge and core's hue integration: brightness is the grouped_light's (the
     average of the lights that are on), color temperature and color average the lights that are on. With every
-    light off the bridge reports nothing useful, so the row averages all the room's lights. Brightness reads through
-    the transition cache, so a light or room mid-move reports where it is, not the end value the bridge reports; a
-    room then averages its lit lights' predictions.
+    light off the bridge reports nothing useful, so the row averages all the room's lights. Brightness and color read
+    through the transition cache, so a light or room mid-move reports where it is, not the end value the bridge
+    reports; a room then averages its lit lights' predictions.
     """
 
     action: ClassVar[str] = "get_attributes"
@@ -92,7 +94,7 @@ class HueGetAttributes(Adapter[Request]):
             grouped = api.groups.grouped_light
             lights = grouped.get_lights(resource_id(target))
             on = [light for light in lights if light.on.on]
-            row = attributes(on or lights)
+            row = attributes(cache, on or lights)
             dimmable = [light for light in lights if light.dimming]
             if any(cache.tracks(light.id, BRIGHTNESS) for light in dimmable):
                 # Mid-move the bridge reports end values; average the lit lights' predictions instead. A light
