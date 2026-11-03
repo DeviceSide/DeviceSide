@@ -7,7 +7,7 @@ from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, Stat
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import target as target_helpers
 
-from . import duration
+from . import duration, ha_watch
 from .action import Action
 from .adapter import Adapter
 from .errors import TargetNotSupported
@@ -60,6 +60,8 @@ class Dispatcher:
 
         results, targets = self._resolve(action, selected, members)
         if targets:
+            # A light call from HA just before this one may still be dropping predictions this one would plan from.
+            await ha_watch.settled(self.hass)
             results += await action.run(self.hass, request, targets, self)
         order = {entity_id: index for index, entity_id in enumerate(members)}
         results.sort(key=lambda result: order.get(result.entity_id, len(order)))

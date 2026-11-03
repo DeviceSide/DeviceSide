@@ -11,7 +11,7 @@ from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import async_mock_service
 
 from custom_components.device_side.core.runtime import get_runtime
-from custom_components.device_side.core.transition import BRIGHTNESS
+from custom_components.device_side.core.transition import BRIGHTNESS, SATURATION
 from custom_components.device_side.integrations.hue.report_filter import Report, applies_later, classify
 from custom_components.device_side.integrations.hue.transition_cache import API_SETTLE_SECONDS, transition_cache
 
@@ -56,6 +56,24 @@ def moving_up(cache, clock) -> None:
 async def test_classify_a_light_mid_move(hass, bridge, cache, clock, event, report):
     await setup_room(hass, bridge)
     moving_up(cache, clock)
+
+    assert classify(cache, bridge.api, event) is report
+
+
+@pytest.mark.parametrize(
+    ("event", "report"),
+    [
+        pytest.param(light_event("one", color={"xy": {"x": 0.2, "y": 0.2}}), Report.OURS, id="end_xy"),
+        pytest.param(
+            light_event("one", color_temperature={"mirek": None, "mirek_valid": False}), Report.OURS, id="leaves_ct"
+        ),
+        pytest.param(light_event("one", brightness=35.0), Report.REAL, id="brightness_from_elsewhere"),
+    ],
+)
+async def test_classify_a_light_mid_saturation_fade(hass, bridge, cache, clock, event, report):
+    await setup_room(hass, bridge)
+    cache.moving("one", SATURATION, 20.0, 80.0, 10.0)
+    clock.now += 5.0
 
     assert classify(cache, bridge.api, event) is report
 

@@ -2,8 +2,11 @@
 
 from typing import ClassVar
 
-from .fade import HueBrightnessFade
+from .fade import HueFade, fade_scope
+from ...core.scope import AdapterScope
+from ...core.transition import BRIGHTNESS
 
 
-class HueRaiseBrightness(HueBrightnessFade):
+class HueRaiseBrightness(HueFade):
     action: ClassVar[str] = "raise_brightness"
+    scope: ClassVar[AdapterScope] = fade_scope(BRIGHTNESS)

@@ -14,6 +14,7 @@ from .bridge import normalize_ieee
 Z2M = "zigbee2mqtt"
 IEEE_INTEGRATIONS = ("zha", Z2M)
 Z2M_TOPIC = "zigbee2mqtt/bridge"
+Z2M_COORDINATOR = "Coordinator"  # the coordinator's friendly name, which permit_join's `device` takes
 RETAINED_TIMEOUT_S = 5
 Z2M_REQUEST_TIMEOUT_S = 30
 Z2M_POLL_S = 0.5
@@ -235,12 +236,17 @@ class HAClient:
         return bool((await self._z2m_retained("info")).get("permit_join"))
 
     async def z2m_permit_join(self, seconds: int) -> None:
-        """Open joining for `seconds` (0 closes it), and wait until bridge/info shows the change."""
+        """Open joining for `seconds` (0 closes it), and wait until bridge/info shows the change.
+
+        It opens on the coordinator only, so a bulb can't join through a router with a full child table. bridge/info's
+        `permit_join` is true for any open window, whichever device opened it.
+        """
 
         async def done() -> bool:
             return await self.z2m_permit_join_open() == (seconds > 0)
 
-        await self._z2m_request("permit_join", {"time": seconds}, done, f"{'open' if seconds else 'close'} joining")
+        payload = {"time": seconds, "device": Z2M_COORDINATOR} if seconds else {"time": 0}
+        await self._z2m_request("permit_join", payload, done, f"{'open' if seconds else 'close'} joining")
 
     async def z2m_log_level(self) -> str | None:
         """Zigbee2MQTT's log level, from its retained bridge/info."""

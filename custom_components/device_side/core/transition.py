@@ -77,6 +77,10 @@ class TransitionCache:
         """Whether a move or stop on the resource is still inside its guard window."""
         return bool(self.attributes(resource_id))
 
+    def resource_ids(self) -> set[str]:
+        """The resources a move or stop is still inside its guard window for."""
+        return {rid for rid, attribute in list(self._transitions) if self.live(rid, attribute)}
+
     def forget(self, resource_id: str, attribute: str | None = None) -> dict[tuple[str, str], Transition]:
         """A real change made elsewhere: drop the resource's predictions (only the attribute's, if given), returned for
         restore."""
@@ -131,8 +135,8 @@ class TransitionCache:
         self._transitions[(resource_id, attribute)] = transition
         return transition
 
-    def stopped(self, resource_id: str, attribute: str, value: float) -> None:
-        self.moving(resource_id, attribute, value, value, 0.0)
+    def stopped(self, resource_id: str, attribute: str, value: float) -> Transition:
+        return self.moving(resource_id, attribute, value, value, 0.0)
 
 
 def transition_cache[C: TransitionCache](hass: HomeAssistant, integration: str, make: Callable[[], C]) -> C:

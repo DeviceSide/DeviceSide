@@ -1,5 +1,6 @@
 import pytest
 from homeassistant.config_entries import ConfigEntryState
+from homeassistant.util.color import color_hs_to_xy
 
 from custom_components.device_side.integrations.hue.transition_cache import transition_cache
 
@@ -118,3 +119,41 @@ def report_off(bridge, *light_ids: str) -> None:
     """What the bridge reports at the start of a soft off: each light off, at once."""
     for light_id in light_ids:
         bridge.api.lights[light_id].on.on = False
+
+
+def hs_xy(hue: float, saturation: float) -> tuple[float, float]:
+    return color_hs_to_xy(hue, saturation)
+
+
+def xy_put(xy: tuple[float, float], duration_ms: int) -> dict:
+    """A saturation fade's write: an xy and a duration, no on."""
+    return {
+        "color": {"xy": {"x": pytest.approx(xy[0], abs=1e-4), "y": pytest.approx(xy[1], abs=1e-4)}},
+        "dynamics": {"duration": duration_ms},
+    }
+
+
+def xy_halt(xy: tuple[float, float]) -> dict:
+    """A saturation stop's fields: the predicted xy at once."""
+    return {
+        "color": {"xy": {"x": pytest.approx(xy[0], abs=1e-4), "y": pytest.approx(xy[1], abs=1e-4)}},
+        "dynamics": {"duration": 0},
+    }
+
+
+async def color_lamp(hass, bridge, hs: tuple[float, float] = (200.0, 50.0), *, state: str = "on", **light) -> str:
+    """light.lamp, a color bulb at 60 % showing the hs color."""
+    return await lamp(hass, bridge, state=state, xy=hs_xy(*hs), **light)
+
+
+async def color_room(hass, bridge, colors: dict[str, tuple[float, float] | None], *, on: bool = True) -> str:
+    """light.room over one light per entry, all at 60 %: a color bulb at the hs color, or an ambiance bulb for None."""
+    for light_id, hs in colors.items():
+        bridge.light(light_id, on=on, brightness=60.0, xy=hs_xy(*hs) if hs else None)
+    bridge.room("grouped-1", list(colors), brightness=60.0)
+    entry = await hue_entry(hass, bridge)
+    members = [
+        add_hue_entity(hass, entry, f"light.{light_id}", light_id, state="on" if on else "off") for light_id in colors
+    ]
+    add_hue_group(hass, entry, "light.room", "grouped-1", members)
+    return "light.room"

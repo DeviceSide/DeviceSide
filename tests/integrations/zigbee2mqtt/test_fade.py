@@ -1,6 +1,13 @@
 """Zigbee2MQTT raise and lower share their fade: color_hs, addressing, predictions and the end read-backs."""
 
+import asyncio
+
 import pytest
+from pytest_homeassistant_custom_component.common import async_mock_service
+
+from custom_components.device_side.core import ha_watch
+from custom_components.device_side.integrations.zigbee2mqtt import bridge, members
+from custom_components.device_side.integrations.zigbee2mqtt.fade import hue_moves, transition_cache
 
 from .conftest import GET, SENT, SET, commands, group, light, unchanged
 from ...conftest import advance, call, refusal, wall_clock_now
@@ -124,3 +131,100 @@ async def test_a_move_of_another_attribute_keeps_the_pending_read_back(hass, bro
         (GET, {"color": ""}),
         (GET, {"state": "", "brightness": ""}),
     ]
+
+
+async def test_a_light_call_from_ha_mid_fade_drops_the_prediction(hass, broker, clock):
+    """The next move plans from HA's state, not from where our fade would have the light."""
+    entity_id = light(hass, broker)  # 60 %
+    await call(hass, "raise_brightness", {"entity_id": entity_id, "sweep_time": 10})
+    clock.now += 2  # predicted at 80 %
+    async_mock_service(hass, "light", "turn_on")
+
+    await hass.services.async_call("light", "turn_on", {"entity_id": entity_id, "brightness_pct": 30}, blocking=True)
+    light(hass, broker, brightness=round(0.3 * 255))
+    await call(hass, "lower_brightness", {"entity_id": entity_id, "sweep_time": 10})
+
+    assert commands(broker)[-1] == (SET, {"state": "OFF", "transition": 3.0})
+
+
+async def test_a_stop_after_a_light_call_from_ha_halts_from_has_state(hass, broker, clock):
+    entity_id = light(hass, broker)
+    await call(hass, "raise_brightness", {"entity_id": entity_id})
+    clock.now += 1
+    async_mock_service(hass, "light", "turn_on")
+
+    await hass.services.async_call("light", "turn_on", {"entity_id": entity_id}, blocking=True)
+    await call(hass, "stop", {"entity_id": entity_id})
+
+    assert not transition_cache(hass).follows(entity_id)  # no halt predicted: Z2M's read-back is right
+
+
+async def test_a_group_call_from_ha_drops_its_members_once_settled(hass, broker):
+    room = group(hass, broker, one={}, two={})
+    await call(hass, "raise_brightness", {"entity_id": room})
+    cache = transition_cache(hass)
+    assert cache.follows("light.one") and cache.follows("light.two")
+    async_mock_service(hass, "light", "turn_off")
+
+    await hass.services.async_call("light", "turn_off", {"entity_id": room}, blocking=True)
+    await ha_watch.settled(hass)
+
+    assert not cache.follows("light.one")
+    assert not cache.follows("light.two")
+
+
+async def test_a_move_after_a_group_call_from_ha_plans_after_its_forget(hass, broker, clock, monkeypatch):
+    """The members come from a retained message, so the forget is async: the dispatcher waits for it."""
+    room = group(hass, broker, one={}, two={})
+    await call(hass, "raise_brightness", {"entity_id": room, "sweep_time": 10})  # 60 to 100 % in 4 s
+    clock.now += 2
+    released = asyncio.Event()
+    group_members = bridge.group_members
+
+    async def slow_members(hass, group_id):
+        await released.wait()
+        return await group_members(hass, group_id)
+
+    monkeypatch.setattr(members, "group_members", slow_members)
+    async_mock_service(hass, "light", "turn_on")
+    await hass.services.async_call("light", "turn_on", {"entity_id": room}, blocking=True)
+    assert transition_cache(hass).follows("light.one")  # still resolving
+
+    lowering = hass.async_create_task(call(hass, "lower_brightness", {"entity_id": room, "sweep_time": 10}))
+    await asyncio.sleep(0)
+    released.set()
+    await lowering
+
+    # From HA's 60 %, not the predicted 80 %.
+    assert commands(broker)[-1] == ("zigbee2mqtt/7/set", {"state": "OFF", "transition": 6.0})
+
+
+@pytest.mark.parametrize(
+    ("service", "data", "cycling"),
+    [
+        pytest.param("turn_on", {"brightness_pct": 40}, {"light.lamp"}, id="brightness_only"),
+        pytest.param("turn_on", {"xy_color": [0.3, 0.3]}, set(), id="color"),
+        pytest.param("turn_off", {}, set(), id="off"),
+    ],
+)
+async def test_a_light_call_from_ha_that_sets_a_color_ends_the_hue_cycle(hass, broker, service, data, cycling):
+    entity_id = light(hass, broker)
+    await call(hass, "raise_hue", {"entity_id": entity_id})
+    async_mock_service(hass, "light", service)
+
+    await hass.services.async_call("light", service, {"entity_id": entity_id, **data}, blocking=True)
+
+    assert hue_moves(hass) == cycling
+
+
+@pytest.mark.parametrize(("data", "cycling"), [({}, {"light.lamp"}), ({"hs_color": [30, 80]}, set())])
+async def test_a_call_to_all_lights_drops_every_z2m_prediction(hass, broker, data, cycling):
+    entity_id = light(hass, broker)
+    await call(hass, "raise_hue", {"entity_id": entity_id})
+    await call(hass, "raise_brightness", {"entity_id": entity_id})
+    async_mock_service(hass, "light", "turn_on")
+
+    await hass.services.async_call("light", "turn_on", {"entity_id": "all", **data}, blocking=True)
+
+    assert not transition_cache(hass).follows(entity_id)
+    assert hue_moves(hass) == cycling

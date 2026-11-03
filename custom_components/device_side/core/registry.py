@@ -5,6 +5,7 @@ from types import ModuleType
 
 from .action import Action
 from .adapter import Adapter
+from .ha_watch import CallResolver
 from .scope import IntegrationInfo
 from .. import actions as actions_pkg
 from .. import integrations as integrations_pkg
@@ -57,6 +58,16 @@ class AdapterRegistry:
 
     def available_integrations(self) -> list[IntegrationInfo]:
         return [info for info in self.integrations.values() if info.available]
+
+    def call_resolvers(self) -> dict[str, CallResolver]:
+        """Each available integration's call resolver, by the registry platform of the entities it owns."""
+        resolvers: dict[str, CallResolver] = {}
+        for info in self.available_integrations():
+            if info.call_resolver is not None:
+                if info.ha_domain in resolvers:
+                    raise ValueError(f"Two call resolvers for platform {info.ha_domain}")
+                resolvers[info.ha_domain] = info.call_resolver
+        return resolvers
 
     def matrix(self) -> Iterator[tuple[str, str, Adapter | None]]:
         """Every action x integration pair, sorted, with its adapter or None."""

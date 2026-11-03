@@ -1030,8 +1030,8 @@ def print_profile(profile: Profile) -> None:
             print(f"  {'ds-rig':8} {group.scene:40} scene")
     for key, entity_ids in profile.pause.items():
         if entity_ids:
-            whose = "every run" if key == PAUSE_ALL else f"a run on {key}"
-            print(f"Paused while {whose} runs: {', '.join(entity_ids)}")
+            whose = "every run" if key == PAUSE_ALL else f"a run holding {key}"
+            print(f"Paused for {whose}: {', '.join(entity_ids)}")
 
 
 def print_phases(

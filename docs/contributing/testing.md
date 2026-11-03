@@ -50,10 +50,8 @@ time: a case that passes with it and fails in a lane points at radio or HA conte
 A profile is one test setup on the Home Assistant `.env.rig` connects to: `tests/rig/profiles/<name>.yaml`,
 gitignored, copied from `tests/rig/profile.example.yaml`. It lists the entities the rig may move, by integration
 and role, and under `pause:` the automations and switches turned off for the run and back on after it, for whatever
-would fight the tests on those entities (motion lighting, an Adaptive Lighting instance's switch). `pause:` is a list,
-which every run pauses, or a mapping of lists: `all` for every run, and one per integration key for the runs holding
-that integration. Runs side by side share what they pause through a ledger in the git common dir, so an automation
-two runs pause comes back on only when the last of them ends, and only if it was on. `.env.rig` keeps what belongs to the Home Assistant instance: its address, tokens,
+would fight the tests on those entities (motion lighting, an Adaptive Lighting instance's switch). Only those that
+were on are turned back on. `.env.rig` keeps what belongs to the Home Assistant instance: its address, tokens,
 deploy commands and Hue bridge.
 
 `--profile <name>` picks one, and can be left out while there is only one. The plan names the profile, and so do
@@ -62,24 +60,22 @@ each other; the commit diff shows which one ran last. A record is public, so nam
 `house`), never for a person or place.
 
 The household check (`scripts/check_private.py`) reads every profile's entity IDs, members, supplies and pause
-lists, and each roaming bulb's IEEE, so none of them reach a commit.
+list, and each roaming bulb's IEEE, so none of them reach a commit.
 
 ### Roaming
 
-A profile's `roam:` lists bulbs the run moves between Zigbee networks, all together, from their home round the
-cycle Hue → ZHA → Z2M and home again (`tests/rig/roam.py`), so one set of bulbs serves several Zigbee suites.
-`networks:` declares where they may go, their home included; a run visits only those, and holds only the ones it
-visits, so a run on an undeclared network never waits for the bulbs. Each bulb has its IEEE, the fixed entity ID it
-is renamed to after every join, its `home` (only `hue` so far), its roles, and the Z2M options set again after each
-Z2M join. The suites then run in phases: the home's with every other integration's, then each other declared
-network's in cycle order, each after a move and each with its automated cases before its observed ones. On a network
-the profile doesn't declare, the bulbs' roles find no entity and those cases skip. The bulbs move only when a suite
-on another declared network runs, and end home on Hue, with their rooms, zones, scene actions and names put back on
-their new Hue IDs. A run that stops
+A profile's `roam:` lists bulbs the run moves between Zigbee networks, all together, round the fixed cycle Hue →
+ZHA → Z2M → Hue (`tests/rig/roam.py`), so one set of bulbs serves every Zigbee suite. Each bulb has its IEEE, the
+fixed entity ID it is renamed to after every join, its roles, and the Z2M options set again after each Z2M join.
+The suites then run in phases: Hue's with the fixed integrations', then ZHA's, then Z2M's, each after a move and
+each with its automated cases before its observed ones. The bulbs move only when a ZHA or Z2M suite runs, and end
+home on Hue, with their rooms, zones, scene actions and names put back on their new Hue IDs. A run that stops
 part way still moves them home; `--recover`, or the next run before its gate, does it after a crash. A bulb on no
 network stops recovery: reset it over Bluetooth in the Hue app, then `--recover` again. A bulb still missing when
-the Hue search ends gets one more, and any other device that joins the bridge meanwhile is named, not removed. `--roam-check` visits
-every declared network with no suites. Roaming needs `HA_ADMIN_TOKEN` and the Hue bridge's `HUE_BRIDGE_HOST` and `HUE_APP_KEY`.
+the Hue search ends gets one more, and any other device that joins the bridge meanwhile is named, not removed. Z2M
+opens joining on its coordinator only. A bulb from Hue that a ZHA or Z2M window still lacks 30 s after the last join,
+seen on no network, may have missed the bridge's Leave: the window closes, a Hue search takes it back, and it is
+released alone for one more window. `--roam-check` runs the cycle with no suites. Roaming needs `HA_ADMIN_TOKEN` and the Hue bridge's `HUE_BRIDGE_HOST` and `HUE_APP_KEY`.
 
 `roam:` can also list `groups:`, native groups of those bulbs that the run makes on each network they visit: a Z2M
 group, a ZHA group, or a Hue zone with, if the group names a `scene:`, a Hue scene in it. Each is called
@@ -107,7 +103,6 @@ mid-restart.
 
 A probe takes the same locks through `--hold`, which runs a command while holding them and returns its exit code:
 `scripts/rig.py --hold zha -- <command>`, with `--exclusive` for one that restarts HA or reloads device_side. It
-pauses the profile's `all` list and those of the integrations it holds, as a run does, and resumes them after. It
 passes signals on to the command, writes no journal and asks nothing: the probe puts back what it changes.
 
 ### Token
