@@ -88,7 +88,7 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. Lanes on dif
   (3 Nov, all 15 unattended cases pass; `sets_color_while_off` observed is still to watch before the adapter leaves
   `experimental`). Two causes cleared on the way: the read-back compared mid-fade (the adapter now waits out the
   0.4 s write fade once, #192), and Z2M, which publishes the read-backs of a restore's commands about 0.5 s later and
-  republishes a group's state onto every member, overwrote a light's `off` in the next case with a late `on` (the rig
+  republishes a group's state onto every member (Z2M's `extension/groups.ts`: a member's `ON` always goes to its groups, a group's state is written onto every member, and an `OFF` reaches the group only when every member is off), overwrote a light's `off` in the next case with a late `on` (the rig
   now settles 1.5 s after a restore). A/B on the lab (settle 0 vs 1.5 s, same tree): with 0, both cases failed again in two
   of the next three runs (with a setup failure and a bulb dropping off the network in the third); with 1.5, 15/15 in
   the one run that got through. A real group's members still show Z2M's aggregate state, which the adapter can't
