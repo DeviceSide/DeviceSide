@@ -142,7 +142,11 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. Lanes on dif
   rig reads each bulb once after it joins. A lost read on the sideboard's radio path was seen once (one color read
   unanswered for Z2M's 10 s timeout); the lab join-parent plan covers it. A 180 s probe of live reads on it (3 Nov, 19:5x) failed on its first sample with
   a read error, and the bulb then left the network on the move home (the fourth move that has dropped a lab
-  bulb): the sideboard's link is the weak point, not the adapters. Unresolved there.
+  bulb): the sideboard's link is the weak point, not the adapters. Repeated after it was re-added (3 Nov, 20:28):
+  Z2M's log shows the coordinator's source route to it failing (`ZIGBEE_SOURCE_ROUTE_FAILURE`, all 7 in the run target
+  it) after its relay hop flipped from the corner bulb to other routers (one a household device, LQI 108 to 120),
+  then `ZIGBEE_DELIVERY_FAILED` on the read. The cause is the mesh path, not the adapter; fixing it needs the
+  join-route plan or a better-placed relay, not a code change here.
 - [ ] **ZHA A60 run** (13k step 3), on the lab: ZHA color suites, `set_attributes` hs and xy included. Attended for
   `sets_color_while_off`. Clears `experimental` on the ZHA adapters it proves.
 - [ ] **9d** Rig coverage sweep for the non-color scope
