@@ -1551,7 +1551,7 @@ async def _capture_facts(suite_result: SuiteResult, ha: HAClient, out: Callable[
     try:
         suite_result.ha_version, suite_result.devices = await rig_facts(ha, entity_ids)
     except Exception as err:  # noqa: BLE001
-        out(f"Could not read the devices behind {suite_result.suite.name}; its record will name none: {err}")
+        out(f"Could not read the devices behind {suite_result.suite.name}, so it writes no record: {err}")
 
 
 def _plan(
@@ -1812,19 +1812,18 @@ def write_report(result: RunResult, directory: Path, title: str) -> Path:
 async def write_records(
     result: RunResult, registry: Any, records_dir: Path, date: str, source: str, profile: str
 ) -> list[Path]:
-    """One record per suite that fully passed; a partial or failed suite writes nothing."""
+    """One record per suite that fully passed with its facts taken; a partial or failed suite, or one whose facts
+    lookup failed, writes nothing: a record naming no device would replace one that did."""
     written = []
     for suite_result in result.suites:
-        if not suite_result.recordable:
+        if not suite_result.recordable or suite_result.ha_version is None:
             continue
         suite = suite_result.suite
         title = registry.integrations[suite.integration].title
         path = records_dir / suite.integration / f"{suite.name}.md"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
-            render_record(
-                suite_result, title, suite_result.ha_version or "unknown", suite_result.devices, date, source, profile
-            )
+            render_record(suite_result, title, suite_result.ha_version, suite_result.devices, date, source, profile)
         )
         written.append(path)
     return written

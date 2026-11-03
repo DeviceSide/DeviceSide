@@ -1245,7 +1245,7 @@ async def test_an_incomplete_part_takes_its_facts_too(tmp_path):
     assert [str(device) for device in suite_result.devices] == ["Mini (`S3`), firmware `2.0`"]
 
 
-async def test_a_failed_facts_lookup_keeps_the_run_and_names_no_device(tmp_path):
+async def test_a_failed_facts_lookup_keeps_the_run_and_writes_no_record(tmp_path):
     class NoRegistry(FakeHA):
         async def command(self, payload):
             if payload["type"] == "config/device_registry/list":
@@ -1255,8 +1255,7 @@ async def test_a_failed_facts_lookup_keeps_the_run_and_names_no_device(tmp_path)
     ha = NoRegistry({"switch.plug": {}}, timer_on)
     result = await run_one(ha, suite(tmp_path, ON_THEN_OFF), profile(switch_plug="switch.plug"))
     assert outcomes(result) == {"on_then_off[switch_plug]": (Outcome.PASS, "")}
-    [path] = await write_records(result, REGISTRY, tmp_path / "test-records", "2026-10-25", "rig run", "lab")
-    assert "| Device | none |" in path.read_text()
+    assert await write_records(result, REGISTRY, tmp_path / "test-records", "2026-10-25", "rig run", "lab") == []
 
 
 def header(role: str) -> str:
@@ -1726,7 +1725,7 @@ def test_a_step_file_lists_options_by_name(tmp_path):
 async def test_a_record_with_options_on_is_named_for_them(tmp_path):
     steps = suite(tmp_path, option_file("predicted_state"), "hue")
     case = CaseResult("t[light_ct]", "light_ct", "light", Outcome.PASS)
-    result = RunResult([SuiteResult(steps, [case], complete=True)])
+    result = RunResult([SuiteResult(steps, [case], complete=True, ha_version="2026.10.1")])
 
     [path] = await write_records(result, REGISTRY, tmp_path / "test-records", "2026-10-27", "rig run", "lab")
 
