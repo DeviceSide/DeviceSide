@@ -1,5 +1,7 @@
 """ZHA raise and lower share their fade: separate fades per attribute, failures, and the ramp fitted to a Level read."""
 
+import logging
+
 import probatio
 import pytest
 from homeassistant.core import Context, ServiceCall
@@ -114,9 +116,10 @@ def read_takes(bulbs, clock, seconds: float) -> None:
     bulbs.read.side_effect = slow
 
 
-async def test_the_ramp_is_fitted_to_a_read_at_the_point_it_had_reached(hass, commands, bulbs, clock):
+async def test_the_ramp_is_fitted_to_a_read_at_the_point_it_had_reached(hass, commands, bulbs, clock, caplog):
     """HA shows 60 %, but the bulb was set to 80 % elsewhere. The read 0.1 s into a 3 s soft off sees 77.2 %, which is
-    on the ramp from 79.8 % to 0, not its start: the restore puts back 79.8 %."""
+    on the ramp from 79.8 % to 0, not its start: the restore puts back 79.8 %. Every term of the fit is logged."""
+    caplog.set_level(logging.DEBUG, logger="custom_components.device_side.integrations.zha.fade")
     bulb(hass)
     bulbs.levels[IEEE] = 196  # 77.2 %
     read_takes(bulbs, clock, 0.2)  # timed at its middle: 0.1 s in
@@ -130,6 +133,9 @@ async def test_the_ramp_is_fitted_to_a_read_at_the_point_it_had_reached(hass, co
 
     restore = (0x0008, 0x00, {"level": 203, "transition_time": 0, "options_mask": 1, "options_override": 1})
     assert sent(commands)[-1] == restore
+    assert "Fit for light.bulb: read 77.2 % in a 0.200 s round trip at f=0.033 of 3.0 s; ramp 60.0" in caplog.text
+    assert "fitted start 79.8" in caplog.text
+    assert "Restoring light.bulb to 79.8 % after a soft off" in caplog.text
 
 
 @pytest.mark.parametrize("stopped", [False, True], ids=["read_after_the_fade_ended", "read_after_a_stop"])

@@ -384,15 +384,32 @@ async def sync_to_bulb(
     try:
         before = cache.clock()
         read = await zcl.read_attributes(hass, address(light.entry.unique_id), zcl.LEVEL_CLUSTER, (zcl.CURRENT_LEVEL,))
-        at = (before + cache.clock()) / 2
+        after = cache.clock()
+        at = (before + after) / 2
         level = read[zcl.CURRENT_LEVEL] * 100 / 254
     except Exception as err:  # noqa: BLE001 - the prediction stands, as on the other integrations
         _LOGGER.debug("Level read after a fade was sent failed for %s: %s", light.entity_id, err)
         return
     elapsed = (at - recorded.started_at) / recorded.duration if recorded.duration > 0 else 1.0
     if elapsed >= 1 or cache.live(light.entity_id, BRIGHTNESS) is not recorded:
+        _LOGGER.debug(
+            "Fit skipped for %s: read %.1f %% at f=%.3f, or a newer move or stop", light.entity_id, level, elapsed
+        )
         return
     start = min(max((level - recorded.target * elapsed) / (1 - elapsed), 0.0), 100.0)
+    # Every term of the fit, so a restore that lands off can be traced to the read's timing (the 13f decision on
+    # guarding the fit waits on these numbers).
+    _LOGGER.debug(
+        "Fit for %s: read %.1f %% in a %.3f s round trip at f=%.3f of %.1f s; ramp %.1f -> %.1f %%, fitted start %.1f",
+        light.entity_id,
+        level,
+        after - before,
+        elapsed,
+        recorded.duration,
+        recorded.start,
+        recorded.target,
+        start,
+    )
     fade.starts[light.entity_id] = start
     cache.moving(light.entity_id, BRIGHTNESS, start, recorded.target, recorded.duration, started_at=recorded.started_at)
 
@@ -407,6 +424,7 @@ def end_job(hass: HomeAssistant, light: Target, restore: dict[str, float] | None
                 addr = address(light.entry.unique_id)
                 read = await zcl.read_attributes(hass, addr, zcl.ON_OFF_CLUSTER, (zcl.ON_OFF,))
                 if not read[zcl.ON_OFF]:
+                    _LOGGER.debug("Restoring %s to %.1f %% after a soft off", light.entity_id, restore[light.entity_id])
                     params = {"level": zcl.level(restore[light.entity_id]), **zcl.execute_if_off(0)}
                     await zcl.command(hass, addr, zcl.LEVEL_CLUSTER, zcl.MOVE_TO_LEVEL, params, context)
             except Exception as err:  # noqa: BLE001 - the light stays off, and comes back on dim
