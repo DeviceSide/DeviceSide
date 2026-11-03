@@ -48,6 +48,9 @@ REINTERVIEW_GAP_S = 20  # between asks for one bulb: the retained device list ma
 JOIN_LOG_LEVEL = "info"  # Z2M's log level during a join: its default, warning, logs no join or interview
 VERBOSE_LOG_LEVELS = ("info", "debug")
 RELEASE_S = 30  # for a released bulb to drop off its network
+# A bulb from Hue that no ZHA or Z2M window shows this long after it opened, once every other bulb is in, may have
+# missed the bridge's Leave (on 3 Nov the other two joined in 2 s and 10 s). The window closes early to check.
+MISSED_HUE_LEAVE_S = 30
 ENTITY_S = 90  # for HA to show a joined bulb's device and light entity (ZHA's interview took about 60 s)
 HUE_SEARCH_S = 56  # how long a Hue search stays open; it can't be ended early
 # Searches per return to Hue: a second only when a bulb is still missing once the first has ended, so a normal run
@@ -102,7 +105,9 @@ def plan_lines(
         lines = [
             f"Roams {names} together: {' -> '.join(NAMES[network] for network in [HOME, *stops, HOME])}.",
             "  Leaving: Hue deletes the device on the bridge; ZHA and Z2M remove it.",
-            f"  Joining ZHA or Z2M: open for up to {JOIN_S} s, closed once all are in.",
+            f"  Joining ZHA or Z2M: open for up to {JOIN_S} s, closed once all are in. A bulb from Hue still",
+            f"    missing {MISSED_HUE_LEAVE_S} s in, once the rest are, is searched back to Hue (it missed the Leave),",
+            "    released alone, and given one more window.",
             f"  Joining Hue: a search, open about {HUE_SEARCH_S} s, and it can't be ended early;",
             "    one more only if a bulb is still missing. Any other device that joins meanwhile is named.",
             "  After each join the bulbs are renamed to their entity IDs; back on Hue their rooms and scenes are "
@@ -368,8 +373,9 @@ class Roamer:
             raise RoamError(f"{bulb.entity_id} is still on {NAMES[network]} {RELEASE_S} s after its removal")
 
     async def join(self, network: str, bulbs: list[Bulb], origins: dict[str, str | None] | None = None) -> None:
-        """Open `network` for the bulbs and wait until all are in; ZHA and Z2M close once they are, or on a timeout."""
-
+        """Open `network` for the bulbs and wait until all are in; ZHA and Z2M close once they are, or on a timeout.
+        A bulb from Hue that missed the bridge's Leave gets one more try (retry_missed_hue_leave)."""
+        origins = origins or {}
         self.arrived = []
 
         async def all_in() -> bool:
@@ -379,26 +385,83 @@ class Roamer:
                     self.save()
             return all(bulb.entity_id in self.arrived for bulb in bulbs)
 
+        if network == "hue":
+            arrived = await self.hue_join(bulbs, all_in)
+        else:
+            from_hue = [bulb for bulb in bulbs if origins.get(bulb.entity_id) == "hue"]
+            arrived = await self.open_window(network, bulbs, all_in, from_hue)
+            if not arrived and await self.retry_missed_hue_leave(network, from_hue):
+                arrived = await self.open_window(network, bulbs, all_in, [])
+        if not arrived:
+            await self.missed(network, [bulb for bulb in bulbs if not await self.joined(network, bulb)], origins)
+
+    async def open_window(
+        self, network: str, bulbs: list[Bulb], all_in: Callable[[], Awaitable[bool]], from_hue: list[Bulb]
+    ) -> bool:
+        """Open ZHA or Z2M joining until every bulb is in, then close it; whether they all are. It closes early once
+        only bulbs of `from_hue` are out, MISSED_HUE_LEAVE_S after it opened, with none of them seen on any network."""
+        opened = asyncio.get_running_loop().time()
+
+        async def hue_kept_them() -> bool:
+            if asyncio.get_running_loop().time() - opened < MISSED_HUE_LEAVE_S:
+                return False
+            out = [bulb for bulb in bulbs if bulb.entity_id not in self.arrived]
+            return all([bulb in from_hue and await self.locate(bulb) is None for bulb in out])
+
+        async def done() -> bool:
+            return await all_in() or (bool(from_hue) and await hue_kept_them())
+
         if network == "zha":
             async with self.ha.zha_joining(JOIN_S):
-                arrived = await _until(all_in, JOIN_S)
-        elif network == "zigbee2mqtt":
-            interviews: dict[str, list[float]] = {}
+                await _until(done, JOIN_S)
+            return await all_in()
+        interviews: dict[str, list[float]] = {}
 
-            async def all_in_z2m() -> bool:
-                await self.reinterview(bulbs, interviews)
-                return await all_in()
+        async def done_z2m() -> bool:
+            await self.reinterview(bulbs, interviews)
+            return await done()
 
-            async with self.z2m_logging():
-                await self.ha.z2m_permit_join(JOIN_S)
-                try:
-                    arrived = await _until(all_in_z2m, JOIN_S)
-                finally:
-                    await self.ha.z2m_permit_join(0)
-        else:
-            arrived = await self.hue_join(bulbs, all_in)
-        if not arrived:
-            await self.missed(network, [bulb for bulb in bulbs if not await self.joined(network, bulb)], origins or {})
+        async with self.z2m_logging():
+            await self.ha.z2m_permit_join(JOIN_S)
+            try:
+                await _until(done_z2m, JOIN_S)
+            finally:
+                await self.ha.z2m_permit_join(0)
+        return await all_in()
+
+    async def retry_missed_hue_leave(self, network: str, from_hue: list[Bulb]) -> bool:
+        """Find the bulbs of `from_hue` that missed the bridge's Leave, and release each again, alone. Returns whether
+        any was, for one more window.
+
+        CLIP v2 shows no routes, so no release order is sure to reach every bulb: on 3 Nov the bridge's Leave missed
+        the third bulb four times in five, and it stayed on Hue's network, where a search adopted it at once. A bulb
+        out of the window and seen on no network is searched for (the window is closed, so only Hue is open), and
+        one that comes back is released while it is the only one going."""
+        candidates = [
+            bulb for bulb in from_hue if not await self.joined(network, bulb) and await self.locate(bulb) is None
+        ]
+        if not candidates:
+            return False
+        names = ", ".join(bulb.entity_id for bulb in candidates)
+        self.out(f"{names} not on {NAMES[network]}; searching Hue in case the bridge's Leave missed it.")
+        await self.hue_join(candidates, lambda: self.all_joined("hue", candidates), searches=1)
+        back = [bulb for bulb in candidates if await self.joined("hue", bulb)]
+        for bulb in back:
+            self.at[bulb.entity_id] = "hue"
+            self.save()
+            await self.adopt("hue", bulb)  # its light takes the fixed ID, so no generated one is left behind
+        if not back:
+            return False  # hue_join waited out the search
+        self.out(f"Back on Hue: {', '.join(bulb.entity_id for bulb in back)}. Releasing it alone.")
+        await self.close_all()
+        for bulb in back:
+            await self.release("hue", bulb)
+            self.at[bulb.entity_id] = None
+            self.save()
+        return True
+
+    async def all_joined(self, network: str, bulbs: list[Bulb]) -> bool:
+        return all([await self.joined(network, bulb) for bulb in bulbs])
 
     async def reinterview(self, bulbs: list[Bulb], interviews: dict[str, list[float]]) -> None:
         """Ask Z2M to interview again a bulb whose interview failed: it joined, but Z2M couldn't reach it (on 3 Nov,
@@ -471,13 +534,16 @@ class Roamer:
             lines.append(f"Not on any Zigbee network: {', '.join(lost)}. {hint}")
         raise RoamError(" ".join(lines))
 
-    async def hue_join(self, bulbs: list[Bulb], all_in: Callable[[], Awaitable[bool]]) -> bool:
-        """Search until every bulb is in: one search, and one more if a bulb is still missing when it ends. Returns
-        once all are in, so a search may still be open; the next move's close_all, or go(HOME), waits it out."""
+    async def hue_join(
+        self, bulbs: list[Bulb], all_in: Callable[[], Awaitable[bool]], searches: int = HUE_SEARCHES
+    ) -> bool:
+        """Search until every bulb is in: one search, and one more (up to `searches`) if a bulb is still missing when
+        it ends. Returns once all are in, so a search may still be open; the next move's close_all, or go(HOME),
+        waits it out."""
         self.bridge_before = {device["id"] for device in await self.bridge.get("device")}
         self.save()
         discovery = await self.discovery()
-        for search in range(HUE_SEARCHES):
+        for search in range(searches):
             if search:
                 missing = [bulb.entity_id for bulb in bulbs if not await self.joined("hue", bulb)]
                 self.out(f"{', '.join(missing)} not on Hue after the search; searching once more.")
