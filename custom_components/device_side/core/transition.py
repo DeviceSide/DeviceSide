@@ -131,8 +131,8 @@ class TransitionCache:
         self._transitions[(resource_id, attribute)] = transition
         return transition
 
-    def stopped(self, resource_id: str, attribute: str, value: float) -> None:
-        self.moving(resource_id, attribute, value, value, 0.0)
+    def stopped(self, resource_id: str, attribute: str, value: float) -> Transition:
+        return self.moving(resource_id, attribute, value, value, 0.0)
 
 
 def transition_cache[C: TransitionCache](hass: HomeAssistant, integration: str, make: Callable[[], C]) -> C:

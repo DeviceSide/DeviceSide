@@ -75,6 +75,13 @@ def stops(attributes: Iterable[str]) -> dict:
     return {DELTAS[attribute]: {"action": "stop"} for attribute in attributes}
 
 
+def xy_halt(xy: tuple[float, float]) -> dict:
+    """The PUT body fields that halt an xy fade at this xy, its predicted one: the bridge has no color delta stop, and
+    reports the written xy at once (A60 probe, docs/plans/2026-10-27-hue-move-color.md). The duration of 0 holds for
+    every field in the PUT."""
+    return {"color": {"xy": {"x": xy[0], "y": xy[1]}}, "dynamics": {"duration": 0}}
+
+
 async def put(api: HueBridgeV2, writer: LightsController | GroupedLightController, rid: str, body: dict) -> None:
     """One raw CLIP v2 PUT to the light or grouped_light, its body as given. Raises on failure."""
     await api.request("put", f"clip/v2/resource/{writer.item_type.value}/{rid}", json=body)

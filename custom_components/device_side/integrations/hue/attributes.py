@@ -8,7 +8,7 @@ color temperature (Tested behavior in docs/integrations.md).
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 
-from ...core.transition import BRIGHTNESS
+from ...core.transition import BRIGHTNESS, SATURATION
 
 # Where each report key sits in an event, as (object, field): every key an attribute owns or could own.
 REPORT_KEYS: dict[str, tuple[str, str]] = {
@@ -34,6 +34,9 @@ def _brightness(value: float) -> dict[str, float | bool]:
 
 ATTRIBUTES: dict[str, Attribute] = {
     BRIGHTNESS: Attribute(frozenset({"on", BRIGHTNESS}), _brightness),
+    # An xy write; on a light in color temperature mode the bridge may report its mirek going too. HA is shown the
+    # bridge's xy, the end color at once.
+    SATURATION: Attribute(frozenset({"xy", "mirek"}), None),
 }
 
 

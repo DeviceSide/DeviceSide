@@ -101,13 +101,71 @@ plan's 7c bullet.
 - File the follow-up issue: "Hue predicted_state: show predicted color temp and color during fades", with fix
   shape (extend the display branches in `report_filter.py` to `color_temperature`/`color`) and agent model.
 
-## 7c2: saturation (after the color bulb is paired)
+## 7c2: saturation (updated 2026-11-03)
 
-Outline only; it gets its own short plan pass once 7c1 has merged. Per-member xy writes (`expand_group` for a
-zone, splitting a combined call). End point on the line from the white point through the current xy to the edge
-of `light.color.gamut` (reuse the `colors.py` gamut helpers). `saturation_limit` = the fraction along that line;
-`no_hue` at the white point. Stop writes the interpolated xy with duration 0. The report filter classifies `xy`
-(path = the xy segment). Color temp from xy mode lands here too.
+Replaces the 2026-10-27 outline, which predates the six raise/lower actions (#128) and the predicted_state changes
+(#163). Branch `wt/hue-saturation` off `release/v0.0.2`; PR into it. Adapters `experimental=True`.
+
+### Decisions (interview 2026-11-03)
+
+- **Saturation is HA's hs saturation, as on Z2M and ZHA.** End xy = `color_hs_to_xy(hue, limit)` at the light's
+  current hue (HA's `hs_color`), clamped to the bulb's gamut (`colors.clamp_to_gamut`). Same numbers as
+  `hs_color` and the other integrations, so one automation behaves alike everywhere. 100 % is HA's sRGB edge, a
+  little inside gamut C. The gamut-fraction scale and `no_hue` are dropped: a color temperature white has an
+  `hs_color` too, so it pales or deepens from its own tint, as on ZHA.
+- **A room or zone is one `grouped_light` xy write**, as brightness is, so its color lights converge together;
+  the bridge clamps each light to its own gamut. The hue is the room's (mean `hs_color` of its lit color lights,
+  as Z2M takes the group's). Lights at different hues end at one color. A lit light without color (White,
+  ambiance) is passed by.
+- **predicted_state: classify only.** `ATTRIBUTES[SATURATION]` owns the `xy` report key with `shows=None`: the
+  filter takes xy reports inside the guard window as ours and a report of a key no live transition owns as real,
+  but HA is shown the bridge's xy (the end color at once). Showing predicted color stays a follow-up issue.
+- **Off light:** `unchanged`, `off`, nothing sent, as on Z2M and ZHA. Already at the limit: `at_limit`.
+- **Hue actions stay unsupported on Hue** (not a straight line in xy).
+
+### Adapters: `integrations/hue/raise_saturation.py`, `lower_saturation.py` over `hue/fade.py`
+
+- Generalize `HueBrightnessFade` into one Hue fade adapter with a fade per attribute (`brightness_fade`,
+  `saturation_fade`), as `zha/fade.py` does. Brightness behavior stays byte-for-byte.
+- Scope: `fields={SATURATION}`, `options={"predicted_state"}` (filtering applies; display doesn't), native groups.
+  A light or room with no color light: `unchanged`, `fields_dropped`.
+- Start = `cache.value(light, SATURATION, hs_color[1])` per moving light, the room's start their mean. Duration =
+  `sweep_time` × |end − start| / 100. Step: `MIN_BRIGHTNESS_STEP`'s 0.4 % reused as the at_limit threshold.
+- The write is `color.xy` with `dynamics.duration`, no `on` (a lit light only). The cache records the SATURATION
+  transition in percent, plus each light's start and end xy (Hue cache, beside `_hidden`), so a stop can write the
+  xy on the straight line at the elapsed fraction.
+
+### `stop`
+
+- Halt per attribute tracked: `dimming_delta` stop as today; for SATURATION, the predicted xy with duration 0 (the
+  bridge has no color delta stop). Both in one PUT when both run, unless the probe says otherwise. A soft off's
+  `cut` carries the predicted xy too. `cache.stopped` for each; `reports.halted` is a no-op for SATURATION.
+- `bridge.py`: `stops()` takes the predicted xy for SATURATION, or a new body helper beside it.
+
+### Report filter, get_attributes
+
+- `attributes.py`: `SATURATION: Attribute(frozenset({"xy"}), None)`. Nothing else in `report_filter.py`
+  should need editing; ping the core-ha-watch session (`wt/core-ha-watch`) first if `classify`/`owned` must change.
+- `get_attributes`: a light's and room's xy (and the hs/rgb derived from it) read through the prediction while
+  a saturation transition is tracked, as brightness does.
+
+### Tests, docs, rig
+
+- Unit tests per module (`test_raise_saturation.py`, `test_lower_saturation.py`, the shared fade in `test_fade.py`,
+  `test_stop.py`, `test_report_filter.py`, `test_get_attributes.py`): end xy and gamut clamp, at_limit, off,
+  fields_dropped, room hue and passed-by white lights, stop xy at a fraction, combined stop body. ≥95 % per module.
+- `services.yaml`: saturation actions target `hue` too (`*hue_mqtt_zha`).
+- Rig: drop `only: [zigbee2mqtt, zha]` from the saturation cases in `raise_saturation.yaml`,
+  `lower_saturation.yaml` and `stop.yaml` where the Hue behavior matches; add Hue-only expectations where it
+  doesn't. Runs in the Hue A60 run (13k step 2), which writes the records and clears `experimental`.
+- `docs/integrations.md` Hue raise/lower section: saturation as above, its stop and its sharp edges.
+
+### A60 probe (before the adapter)
+
+Scratch script, rig lock held, direct CLIP v2, results recorded below: (1) the bridge's xy reports during and
+after a fade; (2) an xy fade's bulb reports against the straight line in time, which is what a predicted-xy stop
+relies on to not jump; (3) whether an xy write and a brightness write run independently; (4) one PUT with a
+dimming stop and an xy write; (5) a zone `grouped_light` xy fade and stop with a color and an ambiance member.
 
 ## Every PR
 
@@ -147,3 +205,43 @@ Not checked: a zone member with a narrower mirek range than the others. The rig'
 **Built against the report filter as PR #89 left it** (keyed by attribute, every report of an owned key ours
 inside the guard window), not the path and tolerance this plan names: color temperature owns the `mirek` report
 key, and the filter strips only the keys of attributes HA is shown predictions of.
+
+### Result (A60 probe, 2026-11-03)
+
+The A60 (gamut C) on the bridge, direct CLIP v2 writes, every light and grouped_light event logged. Setup before
+each trial: 70 %, xy at hs (200°, 90 %); the fades head to hs (200°, 10 %).
+
+| Trial | What came back |
+|---|---|
+| xy fade 20 s | the end xy within 0.2 s, then nothing for 35 s |
+| xy fade 20 s, predicted xy written at 8 s, duration 0 | the end at once; one bulb report at 4.2 s, 10 % of the way where a straight line in time says 21 % (a bulb report is late, so this doesn't settle the path); the written xy at once, then nothing for 27 s |
+| brightness 10 s, xy 3 s 0.5 s later; and the other way round | each write's end at once, no mid-fade reports |
+| brightness and xy over 10 s; at 4 s one PUT with `dimming_delta` stop, the predicted xy and duration 0 | accepted; the xy at once; brightness 48.6 % 17 s later (straight line: 48 %) |
+| zone of the A60 and an ambiance bulb, `grouped_light` xy fade 10 s, predicted xy written to it at 4 s | both writes accepted; the A60 took each, the ambiance bulb was left as it was |
+
+- **Like brightness:** the bridge reports an xy fade's end at once, and a stop's xy write at once. No late report
+  follows, so a halt's xy stands.
+- **One PUT** carries a dimming stop and an xy write; the brightness halted where the straight line put it, so an
+  xy write 0.05 s after a brightness write didn't cancel the brightness fade.
+- **Zone:** an xy write to a `grouped_light` with a member that has no color works, and leaves that member alone.
+- **Not settled unattended:** whether the predicted-xy stop jumps visibly (the bulb's own path in time), and
+  whether a brightness write leaves a running xy fade alone. Both become observed cases in the Hue A60 run (13k
+  step 2, already attended): `saturation_down_stop` and `halts_brightness_and_saturation` on Hue, watched. If the
+  stop jumps, revisit before clearing `experimental`.
+
+### Result (7c2 build, 2026-11-03)
+
+Built as above, with three departures:
+
+- **`SATURATION` owns `mirek` too**, beside `xy`. An xy write to a light in color temperature mode may report its
+  mirek going; owned by no live transition, that would read as a change from elsewhere and drop the prediction, so a
+  stop would jump to the end. The cost: a color temperature change from outside HA mid saturation fade isn't caught.
+  The rig run's saturation cases start from color; a stop from a color temperature white is unchecked on the bulb.
+- **A room's saturation stop is one PUT per light**, each with its dimming stop and its own predicted xy: the lights
+  converge on one end from different starts, so one `grouped_light` xy would jump all but one.
+- **The hue is read from aiohue's xy** (through the prediction), not HA's state: it is the same number for a light
+  (HA derives `hs_color` from that xy), and a room's members are aiohue lights. A room's hue is that of its lit color
+  lights' mean xy, as HA shows the room, so hues either side of red don't average to cyan.
+
+A saturation transition's xy path lives in the Hue cache keyed to the transition it was recorded with; a path whose
+transition was forgotten or expired is ignored, and the reported xy stands; a refused write puts the old path back.
