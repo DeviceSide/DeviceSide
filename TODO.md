@@ -55,6 +55,7 @@ v0.1.0 is the next release.
 | 15 (follow-up) | Rig: a failed Z2M interview is asked again, Z2M logs joins at `info`, and a run stopped by a move keeps the phases before it | #169 |
 | 15 (follow-up) | Rig shared between sessions: a lock per integration and HA shared or exclusive (deploys, option suites), a journal per run, `--hold` for probes; the pause ledger and roam `networks`/`home` follow | #175 |
 | 15 (follow-up) | Rig: runs side by side share their pauses through a ledger (last one out resumes), `pause:` by integration, and roaming bulbs visit only the networks a profile declares, from each bulb's `home` | #177, #178 |
+| 15 (follow-up) | Rig: Z2M joins open on the coordinator only; a bulb that missed the Hue bridge's Leave is searched back, released alone and given one more window | #174 |
 
 ## To go, in order
 

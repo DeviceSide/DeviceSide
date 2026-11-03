@@ -129,7 +129,7 @@ async def test_zha_remove_drops_the_device_and_orphans_its_entity():
     assert (await ha.command({"type": "config/entity_registry/get", "entity_id": "light.bulb"}))["device_id"] is None
 
 
-async def test_z2m_permit_join_opens_closes_and_reads_back():
+async def test_z2m_permit_join_opens_on_the_coordinator_closes_and_reads_back():
     ha = FakeHA({})
     assert not await ha.z2m_permit_join_open()
     await ha.z2m_permit_join(120)
@@ -138,7 +138,7 @@ async def test_z2m_permit_join_opens_closes_and_reads_back():
     assert not await ha.z2m_permit_join_open()
     topic = "zigbee2mqtt/bridge/request/permit_join"
     assert [(c[2]["topic"], json.loads(c[2]["payload"])) for c in ha.calls] == [
-        (topic, {"time": 120}),
+        (topic, {"time": 120, "device": "Coordinator"}),
         (topic, {"time": 0}),
     ]
 

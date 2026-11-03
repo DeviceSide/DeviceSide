@@ -359,18 +359,21 @@ def lab_profile(directory: Path, extra: str = "", networks: str = "hue, zha, zig
 
 class Lab:
     """Bulbs that roam between a FakeHA's ZHA and Z2M and a FakeBridge, as the real networks do: a released bulb
-    searches, and joins the next network that opens (unless it is `stuck`), under a new device and a generated
-    entity ID. Leaving Hue drops the bulb from its rooms, zones and scene actions; each leave orphans its HA entity.
-    A Hue search reads active for `search_s`; a `late` bulb sits out the first search it could join, and each of
-    `strangers` is a device that isn't ours joining the next search. A zone or scene made on the bridge gets its HA
-    entity, which goes with it. The bulbs start on Hue under their fixed entity IDs, in room `r1`, zone `z1` and
-    scene `s1`."""
+    searches, and joins the next network that opens (unless it is `stuck`), under a new device and a generated entity
+    ID. Leaving Hue drops the bulb from its rooms, zones and scene actions; each leave orphans its HA entity. A Hue
+    search reads active for `search_s`; a `late` bulb sits out the first search it could join, and each of
+    `strangers` is a device that isn't ours joining the next search. Each count in `deaf` is a Hue Leave the bulb
+    misses: the bridge drops it, but it stays on Hue's network, joins nothing else, and the next search adopts it. A
+    zone or scene made on the bridge gets its HA entity, which goes with it. The bulbs start on Hue under their fixed
+    entity IDs, in room `r1`, zone `z1` and scene `s1`."""
 
     def __init__(self, ha: FakeHA, bridge: FakeBridge, bulbs: dict[str, str]):
         self.ha, self.bridge = ha, bridge
         self.searching: set[str] = set()
         self.stuck: set[str] = set()
         self.late: set[str] = set()
+        self.deaf: dict[str, int] = {}  # Hue Leaves each bulb will miss, by IEEE
+        self.kept_by_hue: set[str] = set()  # bulbs that missed one and are still on Hue's network
         self.strangers = 0
         self.search_s = 0.01
         self.zones_disabled_by: str | None = None  # HA adds a zone's light disabled
@@ -406,6 +409,9 @@ class Lab:
         sitting_out = self.searching & self.late
         self.late -= sitting_out
         self.searching -= sitting_out
+        for ieee in sorted(self.kept_by_hue):
+            self.add("hue", ieee)
+        self.kept_by_hue.clear()
         self.opened("hue")
         self.searching |= sitting_out
         for _ in range(self.strangers):
@@ -471,7 +477,12 @@ class Lab:
     def drop_device(self, device_id: str) -> None:
         resources = self.bridge.resources
         link = next(c for c in resources["zigbee_connectivity"].values() if c["owner"]["rid"] == device_id)
-        self.searching.add(normalize_ieee(link["mac_address"]))
+        ieee = normalize_ieee(link["mac_address"])
+        if self.deaf.get(ieee):
+            self.deaf[ieee] -= 1
+            self.kept_by_hue.add(ieee)
+        else:
+            self.searching.add(ieee)
         lights = {s["rid"] for s in resources["device"][device_id]["services"] if s["rtype"] == "light"}
         for group in [*resources["room"].values(), *resources["zone"].values()]:
             group["children"] = [c for c in group["children"] if c["rid"] not in lights | {device_id}]
