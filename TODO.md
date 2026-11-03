@@ -50,12 +50,17 @@ v0.1.0 is the next release.
 | 15 (PR 4 of 5) | Rig-made `ds-rig-*` groups, zones and scenes: made on each visit from `roam.groups`, renamed to fixed entity IDs, removed before each move and by `--recover`; Hue group and scene cases are lab-only | #154 |
 | 15 (follow-up) | Roaming: a second Hue search only for a bulb still missing; a stranger that joins a search is named and left | #153 |
 | 15 (PR 5 of 5) | Lab bring-up: direct moves, bulbs released last joined first, no one-member ZHA groups; first lab run's 12 records (`Profile \| lab`), its 26 failures a follow-up | #157 |
+| 15 (follow-up) | Lab run failures, fixes before the rerun: the rig checks what each group member can take and shows it absent (A1), skips a case with no adapter (A3); Hue and ZHA `set_attributes` replace the level HA keeps after a soft off (B); Hue `predicted_state` starts a raise from off at the lowest step, not `min_dim_level` (F) | #160, #161, #162, #163 |
 | 15 (follow-up) | Rig checks every phase's devices before the gate, so an unpowered one stops a roaming run before any move; `--check` runs that check alone | #165 |
 | 13f | ZHA raise, lower and `stop`: the six actions on ZHA (experimental until the ZHA A60 run), a Hue bulb raised from off turned on at the bottom by Hue's own command, the fit's deadband; lab records for each | #167 |
 | 15 (follow-up) | Rig: a failed Z2M interview is asked again, Z2M logs joins at `info`, and a run stopped by a move keeps the phases before it | #169 |
+| 15 (follow-up) | Rig runs each integration's fixed-bulb cases in parallel lanes, then the rest in turn; `--serial` keeps the old order | #171 |
+| — | ZHA `set_attributes` waits out zha's transition flag before its refresh, so HA shows a setting made right after an off (bucket C) | #172 |
 | 15 (follow-up) | Rig shared between sessions: a lock per integration and HA shared or exclusive (deploys, option suites), a journal per run, `--hold` for probes; the pause ledger and roam `networks`/`home` follow | #175 |
 | 15 (follow-up) | Rig: runs side by side share their pauses through a ledger (last one out resumes), `pause:` by integration, and roaming bulbs visit only the networks a profile declares, from each bulb's `home` | #177, #178 |
 | 15 (follow-up) | Rig: Z2M joins open on the coordinator only; a bulb that missed the Hue bridge's Leave is searched back, released alone and given one more window | #174 |
+| 7c2 | Hue `raise_saturation` and `lower_saturation`, and `stop` halting them (experimental until the Hue A60 run) | #179 |
+| 13f (follow-up) | One core watch for light calls from HA drops the predictions of the lights a call names; Hue and ZHA move onto it, Z2M gains one | #181 |
 | 15 (follow-up) | Rig clear gate: with `RIG_BLOCKER_ENTITY` set, env-approved runs and `--hold` probes go only while the household's blocker sensor is off, and abort, putting devices back, once it reads on twice | #180 |
 | 15 (follow-up) | Rig captures Z2M's and HA's logs for every run (kept after a failure), and `--debug-logs` raises both to debug | #183 |
 | 15 (follow-up) | Tests no longer color the cmux workspace running them green (a locks test's `monkeypatch.undo()` reached the real cmux) | #184 |
@@ -94,11 +99,8 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. Lanes on dif
   - [x] PR 5: lab bring-up (attended): the A60 moves into the lab, `profiles/lab.yaml`, a `--roam-check` round trip
     that probes the two new bulbs, #157.
 - [ ] **15 follow-up** The first lab run's 26 failures (#157; findings in the lab plan; fixes in
-  `docs/plans/2026-11-02-lab-run-failures.md`): group cases that expect every
-  member to take color temperature (the lab group holds the White bulb), Z2M `not_stored` on the white ambiance
-  bulb (`hue_native_control` since added to its options; to be rerun), a Hue `get_attributes` case that calls `turn_on_for` where Hue has
-  no adapter, ZHA not keeping a setting made while off, a full-brightness power-on after a soft off, and single
-  readings on the A60 and the White bulb.
+  `docs/plans/2026-11-02-lab-run-failures.md`). Fixes merged (#160–#163, #172); left: the lab rerun, which also
+  retries Z2M `not_stored` with `hue_native_control` on (D) and the single readings (E), then fixes for what repeats.
 - [ ] **Z2M A60 run** (13k step 1): full Z2M suite on the lab, with the `group_color` cases on its rig-made group
   holding only the A60. Attended for its four
   observed cases (9d ledger in the [plan](docs/plans/2026-10-30-rig-coverage-sweep.md)). Clears `experimental` on the
