@@ -41,16 +41,18 @@ Decisions taken (interview, 2026-11-03):
    As built (3 Nov): the phones are presence binary_sensors (on = home), not trackers. The car's ETA is a navigation
    arrival-time sensor, `unavailable` when not navigating, so the template counts it only while the car's route
    destination is home. Jason made the sensor in the HA UI; its entity ID stays in `.env.rig`.
+   The sensor is inverted from the shape above: a blocker, on while someone might see the lights, so the rig is clear
+   only while it is off, and `on`, `unknown` and `unavailable` revoke. Steps 2–6 read with on and off swapped.
 
-2. **`.env.rig` key** `RIG_CLEAR_ENTITY`. Add it to `tests/rig/env.example` with a generic example
-   (`binary_sensor.rig_clear`), and give `docs/contributing/testing.md` one line on what it gates. It's optional:
+2. **`.env.rig` key** `RIG_BLOCKER_ENTITY`. Add it to `tests/rig/env.example` with a generic example
+   (`binary_sensor.rig_blocker`), and give `docs/contributing/testing.md` one line on what it gates. It's optional:
    unset means today's behavior, so contributors without it are unaffected.
 
 3. **`scripts/rig.py`: reading it.** Add `rig_clear(env) -> tuple[bool, str]` using the existing `_get`
    (`scripts/rig.py:343`) on `/api/states/<entity>`. It's clear only on state `on`. `off`, `unknown`,
    `unavailable`, a missing entity or an unreachable HA all mean not clear, with the state as the reason.
 
-4. **Gate** (`gate()`, `scripts/rig.py:333`). With `RIG_CLEAR_ENTITY` set and `DEVICE_SIDE_RIG_APPROVED=1`, refuse
+4. **Gate** (`gate()`, `scripts/rig.py:333`). With `RIG_BLOCKER_ENTITY` set and `DEVICE_SIDE_RIG_APPROVED=1`, refuse
    unless clear: "Rig not clear (<reason>); nothing changed." An interactive prompt still asks. If not clear, it says
    so in the prompt ("Rig not clear (<reason>). Proceed anyway? [y/N]"), so Jason's yes overrides it.
 

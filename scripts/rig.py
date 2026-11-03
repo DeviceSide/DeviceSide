@@ -22,11 +22,11 @@ changed, the next run whose locks cover it puts back before its gate, or --recov
 automations for them paused, passing signals on to it and returning its exit code; no case journal, and no gate but
 the clear one below.
 
-With RIG_CLEAR_ENTITY in .env.rig, an HA binary_sensor that is on only while no one is near enough to see the lights,
-DEVICE_SIDE_RIG_APPROVED=1 is refused unless it is on, and a probe needs it on; when it isn't, a human at the prompt may
-still say yes. A run or probe that started with it on reads it every 15 s and, on two reads in a row of off, unknown or
-unavailable, aborts as on a SIGTERM, putting the devices back. Reads that fail, as during the deploy's restart, don't
-count. Without the key, nothing changes.
+RIG_BLOCKER_ENTITY in .env.rig names an HA binary_sensor that is on while someone is near enough to see the lights;
+the rig is clear only while it is off. DEVICE_SIDE_RIG_APPROVED=1 is refused otherwise, and so is a probe, though a
+human at the prompt may still say yes. A run or probe that started clear reads it every 15 s and, on two reads in a
+row of on, unknown or unavailable, aborts as on a SIGTERM, putting the devices back. Reads that fail, as during the
+deploy's restart, don't count. Without the key, nothing changes.
 
 Under cmux the run colors its workspace: green holding its locks, amber waiting for them.
 
@@ -135,7 +135,7 @@ RESTART_ESTIMATE_S = 90
 ROAM_ESTIMATE_S = 180  # the three moves: the probe's joins took about 10 s each, plus releases, renames and HA
 ABORT_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
 CLEAR_POLL_S = 15
-NOT_CLEAR = ("off", "unknown", "unavailable")  # the states that revoke a run; an unread one doesn't
+BLOCKED = ("on", "unknown", "unavailable")  # RIG_BLOCKER_ENTITY states that revoke a run; an unread one doesn't
 # Run reports go where the OS clears old files: they are for reviewing a run, not for keeping.
 REPORT_DIR = Path(tempfile.gettempdir()) / "device_side-rig"
 
@@ -342,7 +342,7 @@ def check_deploy(env: dict, deploy: Deploy) -> None:
 
 def gate(clear: tuple[bool, str] | None = None, prompt: Callable[[str], str] = input) -> bool:
     """A human's yes, or DEVICE_SIDE_RIG_APPROVED=1 while the rig is clear (`clear`: rig_clear's answer, None without
-    RIG_CLEAR_ENTITY). A rig not clear refuses the env var; at the prompt, a yes overrides it."""
+    RIG_BLOCKER_ENTITY). A rig not clear refuses the env var; at the prompt, a yes overrides it."""
     if os.environ.get("DEVICE_SIDE_RIG_APPROVED") == "1":
         if clear is not None and not clear[0]:
             print(f"Rig not clear ({clear[1]}); DEVICE_SIDE_RIG_APPROVED=1 doesn't override that.")
@@ -367,21 +367,21 @@ def _get(url: str, token: str) -> Any:
 
 
 def clearance(env: dict) -> tuple[bool, str] | None:
-    """rig_clear's answer, or None when .env.rig names no RIG_CLEAR_ENTITY and nothing gates on it."""
-    return rig_clear(env) if env.get("RIG_CLEAR_ENTITY") else None
+    """rig_clear's answer, or None when .env.rig names no RIG_BLOCKER_ENTITY and nothing gates on it."""
+    return rig_clear(env) if env.get("RIG_BLOCKER_ENTITY") else None
 
 
 def rig_clear(env: dict) -> tuple[bool, str]:
-    """Whether the rig may run unattended: RIG_CLEAR_ENTITY, an HA binary_sensor the household defines, is on. Any
+    """Whether the rig may run unattended: RIG_BLOCKER_ENTITY, an HA binary_sensor the household defines, is off. Any
     other state, the entity missing or HA unreachable is not clear. The reason says which."""
-    state, reason = read_clear(env)
-    return state == "on", reason
+    state, reason = read_blocker(env)
+    return state == "off", reason
 
 
-def read_clear(env: dict) -> tuple[str | None, str]:
-    """RIG_CLEAR_ENTITY's state, None when it can't be read, and a reason naming it. A state HA restored at startup,
+def read_blocker(env: dict) -> tuple[str | None, str]:
+    """RIG_BLOCKER_ENTITY's state, None when it can't be read, and a reason naming it. A state HA restored at startup,
     before the template has evaluated, counts as unread."""
-    entity = env["RIG_CLEAR_ENTITY"]
+    entity = env["RIG_BLOCKER_ENTITY"]
     try:
         reply = _get(f"{env.get('HA_URL', '')}/api/states/{entity}", env.get("HA_TOKEN", ""))
         state, restored = reply["state"], reply.get("attributes", {}).get("restored")
@@ -396,7 +396,7 @@ def read_clear(env: dict) -> tuple[str | None, str]:
 
 @contextlib.contextmanager
 def watching(env: dict, armed: bool, interval: float = CLEAR_POLL_S) -> Iterator[None]:
-    """While armed, read RIG_CLEAR_ENTITY every `interval` seconds and, on two reads in a row of a state in NOT_CLEAR,
+    """While armed, read RIG_BLOCKER_ENTITY every `interval` seconds and, on two reads in a row of a state in BLOCKED,
     stop the run with one SIGTERM, which the run's own handlers take from there: the deploy finishes, the tests put
     the devices back, a probe's command gets it. A read that fails neither counts nor breaks the run of two: HA is
     unreachable during a deploy's restart."""
@@ -405,10 +405,10 @@ def watching(env: dict, armed: bool, interval: float = CLEAR_POLL_S) -> Iterator
     def watch() -> None:
         misses = 0
         while not stop.wait(interval):
-            state, reason = read_clear(env)
+            state, reason = read_blocker(env)
             if state is None:
                 continue
-            misses = misses + 1 if state in NOT_CLEAR else 0
+            misses = misses + 1 if state in BLOCKED else 0
             if misses == 2:
                 print(f"\nRig authorization revoked ({reason}); aborting.", flush=True)
                 os.kill(os.getpid(), signal.SIGTERM)

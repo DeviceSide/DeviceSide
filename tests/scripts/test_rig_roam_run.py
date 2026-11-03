@@ -671,9 +671,9 @@ def test_a_dry_run_shows_the_check_and_still_passes(tmp_path, monkeypatch, capsy
 
 
 def clear_run(tmp_path, monkeypatch, state: str) -> list:
-    """main_with, with RIG_CLEAR_ENTITY reading `state` and the approved run stubbed; returns the watcher's arming."""
+    """main_with, with RIG_BLOCKER_ENTITY reading `state` and the approved run stubbed; returns the watcher's arming."""
     main_with(tmp_path, monkeypatch, [])
-    monkeypatch.setattr(rig, "load_env", lambda: {**ENV, "RIG_CLEAR_ENTITY": "binary_sensor.rig_clear"})
+    monkeypatch.setattr(rig, "load_env", lambda: {**ENV, "RIG_BLOCKER_ENTITY": "binary_sensor.rig_blocker"})
     monkeypatch.setattr(rig, "_get", lambda url, token: {"state": state})
     seen = []
     monkeypatch.setattr(rig, "watching", lambda env, armed: seen.append(armed) or contextlib.nullcontext())
@@ -682,9 +682,9 @@ def clear_run(tmp_path, monkeypatch, state: str) -> list:
 
 
 def test_a_dry_run_says_whether_the_rig_is_clear(tmp_path, monkeypatch, capsys):
-    clear_run(tmp_path, monkeypatch, "off")
+    clear_run(tmp_path, monkeypatch, "on")
     assert rig.main(["--dry-run"]) == 0
-    assert "Rig not clear: binary_sensor.rig_clear is off." in capsys.readouterr().out
+    assert "Rig not clear: binary_sensor.rig_blocker is on." in capsys.readouterr().out
 
 
 def test_an_env_approved_run_is_refused_while_the_rig_is_not_clear(tmp_path, monkeypatch, capsys):
@@ -696,14 +696,14 @@ def test_an_env_approved_run_is_refused_while_the_rig_is_not_clear(tmp_path, mon
 
 
 def test_an_env_approved_run_while_clear_is_watched(tmp_path, monkeypatch):
-    armed = clear_run(tmp_path, monkeypatch, "on")
+    armed = clear_run(tmp_path, monkeypatch, "off")
     monkeypatch.setenv("DEVICE_SIDE_RIG_APPROVED", "1")
     assert rig.main([]) == 0
     assert armed == [True]
 
 
 def test_a_run_a_human_let_past_a_rig_not_clear_is_not_watched(tmp_path, monkeypatch):
-    armed = clear_run(tmp_path, monkeypatch, "off")
+    armed = clear_run(tmp_path, monkeypatch, "on")
     monkeypatch.delenv("DEVICE_SIDE_RIG_APPROVED", raising=False)
     monkeypatch.setattr(sys, "stdin", io.StringIO("y\n"))
     assert rig.main([]) == 0
