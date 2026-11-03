@@ -2,8 +2,10 @@
 one process conflict as two runs would; no rig is touched."""
 
 import argparse
+import contextlib
 import fcntl
 import importlib.util
+import io
 import os
 import signal
 import sys
@@ -770,6 +772,76 @@ def test_hold_passes_a_signal_on_and_lets_go(probe):
     script = "import os, signal, time\nos.kill(os.getppid(), signal.SIGTERM)\ntime.sleep(30)\n"
     assert rig.main(["--hold", "zha", "--", sys.executable, "-c", script]) == 128 + signal.SIGTERM
     assert not blocked(probe, claim("zha", ha="exclusive"))
+
+
+def clear_states(monkeypatch, *states):
+    """The rig's clear sensor reads each state in turn; the probe's env names it."""
+    env = {"HA_URL": "http://ha:8123", "HA_TOKEN": "tok", "RIG_CLEAR_ENTITY": "binary_sensor.rig_clear"}
+    monkeypatch.setattr(rig, "load_env", lambda: env)
+    replies = [{"state": state} for state in states]
+    monkeypatch.setattr(rig, "_get", lambda url, token: replies.pop(0))
+    seen = []
+    monkeypatch.setattr(rig, "watching", lambda env, armed: seen.append(armed) or contextlib.nullcontext())
+    return seen
+
+
+def test_an_agents_probe_is_refused_while_the_rig_is_not_clear(probe, monkeypatch, capsys):
+    clear_states(monkeypatch, "off")
+    monkeypatch.setattr(sys, "stdin", io.StringIO(""))  # an agent's call: no terminal
+    monkeypatch.setattr(rig, "run_command", lambda command: pytest.fail("ran"))
+    assert rig.main(["--hold", "hue", "--", "true"]) == 1
+    assert "Rig not clear (binary_sensor.rig_clear is off). Proceed anyway?" in capsys.readouterr().out
+    assert ProbeHA.calls == []
+    assert not blocked(probe, claim("hue", ha="exclusive"))
+
+
+def test_a_probe_is_checked_again_once_it_holds_its_locks(probe, monkeypatch):
+    clear_states(monkeypatch, "on", "off")
+    monkeypatch.setattr(sys, "stdin", io.StringIO(""))
+    monkeypatch.setattr(rig, "run_command", lambda command: pytest.fail("ran"))
+    assert rig.main(["--hold", "hue", "--", "true"]) == 1
+    assert ProbeHA.calls == []
+
+
+def test_a_clear_probe_runs_watched(probe, monkeypatch):
+    armed = clear_states(monkeypatch, "on", "on")
+    monkeypatch.setattr(rig, "run_command", lambda command: 0)
+    assert rig.main(["--hold", "hue", "--", "true"]) == 0
+    assert armed == [True]
+
+
+def test_a_probe_a_human_let_past_is_not_watched_or_asked_again(probe, monkeypatch):
+    armed = clear_states(monkeypatch, "off")
+    monkeypatch.setattr(sys, "stdin", io.StringIO("y\n"))
+    monkeypatch.setattr(rig, "run_command", lambda command: 0)
+    assert rig.main(["--hold", "hue", "--", "true"]) == 0
+    assert armed == [False]
+
+
+def test_a_probe_without_the_key_is_not_watched(probe, monkeypatch):
+    seen = []
+    monkeypatch.setattr(rig, "watching", lambda env, armed: seen.append(armed) or contextlib.nullcontext())
+    monkeypatch.setattr(rig, "run_command", lambda command: 0)
+    assert rig.main(["--hold", "hue", "--", "true"]) == 0
+    assert seen == [False]
+
+
+def test_a_probe_aborts_when_the_rig_stops_being_clear(probe, monkeypatch, capsys):
+    states = ["on", "on", "off", "off"]  # the gate's two reads, then the watcher's
+    env = {"HA_URL": "http://ha:8123", "HA_TOKEN": "tok", "RIG_CLEAR_ENTITY": "binary_sensor.rig_clear"}
+    monkeypatch.setattr(rig, "load_env", lambda: env)
+    monkeypatch.setattr(rig, "_get", lambda url, token: {"state": states.pop(0) if states else "off"})
+    watching = rig.watching
+    monkeypatch.setattr(
+        rig, "watching", lambda env, armed: watching(env, armed, interval=0.2)
+    )  # time to start the command
+
+    assert (
+        rig.main(["--hold", "hue", "--", sys.executable, "-c", "import time; time.sleep(30)"]) == 128 + signal.SIGTERM
+    )
+    assert "Rig authorization revoked (binary_sensor.rig_clear is off); aborting." in capsys.readouterr().out
+    assert ProbeHA.states == {"automation.motion": "on", "switch.al": "on"}  # resumed
+    assert not blocked(probe, claim("hue", ha="exclusive"))
 
 
 def test_hold_reports_a_command_it_cannot_run(probe):

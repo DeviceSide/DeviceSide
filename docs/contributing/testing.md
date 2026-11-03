@@ -103,7 +103,12 @@ mid-restart.
 
 A probe takes the same locks through `--hold`, which runs a command while holding them and returns its exit code:
 `scripts/rig.py --hold zha -- <command>`, with `--exclusive` for one that restarts HA or reloads device_side. It
-passes signals on to the command, writes no journal and asks nothing: the probe puts back what it changes.
+passes signals on to the command, writes no journal and asks nothing unless the rig isn't clear (below): the probe
+puts back what it changes.
+
+`RIG_CLEAR_ENTITY` in `.env.rig` names an HA binary_sensor that is on while no one would see the lights move. With it
+set, a run approved by `DEVICE_SIDE_RIG_APPROVED=1` and any probe start only while it is on, and abort, putting the
+devices back, once it reads off twice in a row; a yes typed at the prompt overrides it. Leave it unset to gate nothing.
 
 ### Token
 

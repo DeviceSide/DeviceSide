@@ -2,7 +2,10 @@
 each phase, --roam-check, and --recover bringing the bulbs home. Against the Lab fake; no rig is touched."""
 
 import asyncio
+import contextlib
 import importlib.util
+import io
+import sys
 from pathlib import Path
 
 import pytest
@@ -665,6 +668,46 @@ def test_a_dry_run_shows_the_check_and_still_passes(tmp_path, monkeypatch, capsy
     asked = main_with(tmp_path, monkeypatch, ["switch.plug: unavailable; check it is powered"])
     assert rig.main(["--dry-run"]) == 0
     assert asked and asked[0][1] is True  # the lab's bulbs roam for its ZHA and Z2M suites
+
+
+def clear_run(tmp_path, monkeypatch, state: str) -> list:
+    """main_with, with RIG_CLEAR_ENTITY reading `state` and the approved run stubbed; returns the watcher's arming."""
+    main_with(tmp_path, monkeypatch, [])
+    monkeypatch.setattr(rig, "load_env", lambda: {**ENV, "RIG_CLEAR_ENTITY": "binary_sensor.rig_clear"})
+    monkeypatch.setattr(rig, "_get", lambda url, token: {"state": state})
+    seen = []
+    monkeypatch.setattr(rig, "watching", lambda env, armed: seen.append(armed) or contextlib.nullcontext())
+    monkeypatch.setattr(rig, "run_approved", lambda *args: 0)
+    return seen
+
+
+def test_a_dry_run_says_whether_the_rig_is_clear(tmp_path, monkeypatch, capsys):
+    clear_run(tmp_path, monkeypatch, "off")
+    assert rig.main(["--dry-run"]) == 0
+    assert "Rig not clear: binary_sensor.rig_clear is off." in capsys.readouterr().out
+
+
+def test_an_env_approved_run_is_refused_while_the_rig_is_not_clear(tmp_path, monkeypatch, capsys):
+    armed = clear_run(tmp_path, monkeypatch, "unavailable")
+    monkeypatch.setenv("DEVICE_SIDE_RIG_APPROVED", "1")
+    assert rig.main([]) == 1
+    assert "Not approved; nothing changed." in capsys.readouterr().out
+    assert armed == []
+
+
+def test_an_env_approved_run_while_clear_is_watched(tmp_path, monkeypatch):
+    armed = clear_run(tmp_path, monkeypatch, "on")
+    monkeypatch.setenv("DEVICE_SIDE_RIG_APPROVED", "1")
+    assert rig.main([]) == 0
+    assert armed == [True]
+
+
+def test_a_run_a_human_let_past_a_rig_not_clear_is_not_watched(tmp_path, monkeypatch):
+    armed = clear_run(tmp_path, monkeypatch, "off")
+    monkeypatch.delenv("DEVICE_SIDE_RIG_APPROVED", raising=False)
+    monkeypatch.setattr(sys, "stdin", io.StringIO("y\n"))
+    assert rig.main([]) == 0
+    assert armed == [False]
 
 
 def test_a_run_plans_lanes_unless_serial(tmp_path, monkeypatch, capsys):
