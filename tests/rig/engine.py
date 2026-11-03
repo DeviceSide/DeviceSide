@@ -702,6 +702,10 @@ class SuiteResult:
     cases: list[CaseResult]
     # False when -k left tests out: a partial run writes no record.
     complete: bool
+    # Taken when the suite ends, while its bulbs are on the integration under test: a roaming profile moves them
+    # home before the records are written. None when never taken (a partial run) or the registry lookup failed.
+    ha_version: str | None = None
+    devices: list[Device] = field(default_factory=list)
 
     @property
     def recordable(self) -> bool:
@@ -1533,10 +1537,21 @@ async def run(
         for suite, _, _, suite_cases in planned
     ]
     for suite_result in suite_results:
+        if suite_result.recordable:
+            await _capture_facts(suite_result, ha, out)
         out("")
         out(f"{suite_result.suite.integration} / {suite_result.suite.name}")
         out("\n".join(table(suite_result, details=True)))
     return RunResult(suite_results)
+
+
+async def _capture_facts(suite_result: SuiteResult, ha: HAClient, out: Callable[[str], None]) -> None:
+    """Store HA's version and the suite's devices on its result; a failed lookup costs the record, not the run."""
+    entity_ids = [entity_id for case in suite_result.cases for entity_id in case.entity_ids]
+    try:
+        suite_result.ha_version, suite_result.devices = await rig_facts(ha, entity_ids)
+    except Exception as err:  # noqa: BLE001
+        out(f"Could not read the devices behind {suite_result.suite.name}; its record will name none: {err}")
 
 
 def _plan(
@@ -1705,8 +1720,12 @@ def merge(parts: Iterable[SuiteResult], profile: Profile, registry: Any, keyword
         key = (part.suite.integration, part.suite.name)
         if key in joined:
             joined[key].cases += part.cases
+            joined[key].devices += [device for device in part.devices if device not in joined[key].devices]
+            joined[key].ha_version = joined[key].ha_version or part.ha_version
         else:
-            joined[key] = SuiteResult(part.suite, list(part.cases), complete=False)
+            joined[key] = SuiteResult(
+                part.suite, list(part.cases), complete=False, ha_version=part.ha_version, devices=list(part.devices)
+            )
     for result in joined.values():
         planned = [case.id for case in cases(result.suite, profile, None, adapters_for(result.suite, registry))]
         position = {case_id: index for index, case_id in enumerate(planned)}
@@ -1791,7 +1810,7 @@ def write_report(result: RunResult, directory: Path, title: str) -> Path:
 
 
 async def write_records(
-    result: RunResult, ha: HAClient, registry: Any, records_dir: Path, date: str, source: str, profile: str
+    result: RunResult, registry: Any, records_dir: Path, date: str, source: str, profile: str
 ) -> list[Path]:
     """One record per suite that fully passed; a partial or failed suite writes nothing."""
     written = []
@@ -1799,11 +1818,13 @@ async def write_records(
         if not suite_result.recordable:
             continue
         suite = suite_result.suite
-        entity_ids = [entity_id for case in suite_result.cases for entity_id in case.entity_ids]
-        ha_version, devices = await rig_facts(ha, entity_ids)
         title = registry.integrations[suite.integration].title
         path = records_dir / suite.integration / f"{suite.name}.md"
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(render_record(suite_result, title, ha_version, devices, date, source, profile))
+        path.write_text(
+            render_record(
+                suite_result, title, suite_result.ha_version or "unknown", suite_result.devices, date, source, profile
+            )
+        )
         written.append(path)
     return written

@@ -1400,7 +1400,7 @@ async def report(
         return
     source = f"rig run (`scripts/rig.py`), commit `{git('rev-parse', '--short', commit)}`"
     today = datetime.date.today().isoformat()
-    for path in await write_records(result, ha, registry, TEST_RECORDS_DIR, today, source, profile.name):
+    for path in await write_records(result, registry, TEST_RECORDS_DIR, today, source, profile.name):
         print(f"Wrote {path.relative_to(REPO)}; review the diff before committing it.")
 
 

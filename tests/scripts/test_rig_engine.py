@@ -1211,9 +1211,9 @@ async def test_a_full_pass_writes_a_record_and_a_failure_writes_none(tmp_path):
     steps = suite(tmp_path, ON_THEN_OFF)
     passed = await run_one(ha, steps, profile(switch_plug="switch.plug"))
     failed = RunResult([SuiteResult(steps, [], complete=True)])
-    assert await write_records(failed, ha, REGISTRY, tmp_path / "test-records", "2026-10-25", "test", "lab") == []
+    assert await write_records(failed, REGISTRY, tmp_path / "test-records", "2026-10-25", "test", "lab") == []
 
-    [path] = await write_records(passed, ha, REGISTRY, tmp_path / "test-records", "2026-10-25", "rig run", "lab")
+    [path] = await write_records(passed, REGISTRY, tmp_path / "test-records", "2026-10-25", "rig run", "lab")
     assert path == tmp_path / "test-records" / "shelly" / "turn_on_for.md"
     record = path.read_text()
     assert record.startswith("# Shelly · turn_on_for\n")
@@ -1221,6 +1221,33 @@ async def test_a_full_pass_writes_a_record_and_a_failure_writes_none(tmp_path):
     assert "| Profile | lab |" in record
     assert "| `on_then_off[switch_plug]` | `switch` (switch_plug) | pass |" in record
     assert "switch.plug" not in record
+
+
+async def test_facts_are_taken_when_the_suite_ends_and_the_record_keeps_them(tmp_path):
+    ha = FakeHA({"switch.plug": {}}, timer_on)
+    result = await run_one(ha, suite(tmp_path, ON_THEN_OFF), profile(switch_plug="switch.plug"))
+    (suite_result,) = result.suites
+    assert suite_result.ha_version == "2026.10.1"
+    assert [str(device) for device in suite_result.devices] == ["Mini (`S3`), firmware `2.0`"]
+
+    # The bulbs move home, so the registry no longer names the device; the record must not ask again.
+    ha.devices = []
+    [path] = await write_records(result, REGISTRY, tmp_path / "test-records", "2026-10-25", "rig run", "lab")
+    assert "| Device | Mini (`S3`), firmware `2.0` |" in path.read_text()
+
+
+async def test_a_failed_facts_lookup_keeps_the_run_and_names_no_device(tmp_path):
+    class NoRegistry(FakeHA):
+        async def command(self, payload):
+            if payload["type"] == "config/device_registry/list":
+                raise OSError("registry unavailable")
+            return await super().command(payload)
+
+    ha = NoRegistry({"switch.plug": {}}, timer_on)
+    result = await run_one(ha, suite(tmp_path, ON_THEN_OFF), profile(switch_plug="switch.plug"))
+    assert outcomes(result) == {"on_then_off[switch_plug]": (Outcome.PASS, "")}
+    [path] = await write_records(result, REGISTRY, tmp_path / "test-records", "2026-10-25", "rig run", "lab")
+    assert "| Device | none |" in path.read_text()
 
 
 def header(role: str) -> str:
@@ -1692,9 +1719,7 @@ async def test_a_record_with_options_on_is_named_for_them(tmp_path):
     case = CaseResult("t[light_ct]", "light_ct", "light", Outcome.PASS)
     result = RunResult([SuiteResult(steps, [case], complete=True)])
 
-    [path] = await write_records(
-        result, FakeHA({}), REGISTRY, tmp_path / "test-records", "2026-10-27", "rig run", "lab"
-    )
+    [path] = await write_records(result, REGISTRY, tmp_path / "test-records", "2026-10-27", "rig run", "lab")
 
     assert path == tmp_path / "test-records" / "hue" / "raise_brightness-predicted_state.md"
     assert path.read_text().startswith("# Hue · raise_brightness-predicted_state\n")
