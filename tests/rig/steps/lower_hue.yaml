@@ -8,6 +8,7 @@ tests:
     only: [zigbee2mqtt, zha]
     setup:
       - set: {state: on, brightness_pct: 70, hs_color: [200, 90]}
+      - wait: 1  # the bulb fades into the color (0.4 s on Z2M); a move started mid-fade starts short of the mark
     steps:
       - mark_hue: {}
       - call: {sweep_time: 20}  # 18° a second: 54° down the wheel after 3 s
