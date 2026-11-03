@@ -167,14 +167,15 @@ Leave out `--integration`, so the Hue, ZHA and Z2M phases all run. Its ZHA `rais
   the Z2M adapter's debug log before changing the comparison.
 
   **Rerun findings (2026-11-03, `--debug-logs`, Z2M `set_attributes` only).** `not_stored` repeats on the same four
-  cases (`min_brightness_raises`, `max_brightness_lowers`; `light_ct` and `group`). The LTA009 stores the level; it's
-  the adapter's read straight after the write that sees the old one. On air, in order: `moveToLevel` 102 and
-  `moveToColorTemp` 370 (both with the override), then `_kept_level`'s publish, which `hue_native_control` turns into
-  `manuSpecificPhilips2.multiColor` (brightness 102, no override), then the `currentLevel` read: 28, the old level,
-  about 0.5 s after the write. Color temperature read back 370 at once. A level read 2 s later returned 102. Probe
-  13j's "answers with the target even mid-fade" no longer holds for this bulb since its reset on 3 Nov, the same bulb
-  and date as the TODO's Z2M stop item. Next: a probe (ask first) of the read's delay with and without the
-  `multiColor`, before any change to `_stored` or `_kept_level`.
+  cases (`min_brightness_raises`, `max_brightness_lowers`; `light_ct` and `group`). The bulbs store the level; the
+  adapter reads it back mid-fade. Pairing every `set_attributes` `moveToLevel` (transtime 4) with its `currentLevel`
+  read in both of the day's Z2M logs: each mismatch is a light that was on, read 0.12–0.3 s into the 0.4 s
+  transition, and answering a level between the old one and the target (127 from 51 read 72–88; 76 from 203 read
+  145–168). Writes to a light that's off, or that don't change the level, read back as written. The White bulb, with
+  `hue_native_control` off and so no `multiColor` from `_kept_level`, mismatches the same way, so the `multiColor`
+  isn't the cause. Probe 13j's "answers with the target even mid-fade" no longer holds for any lab bulb since the
+  resets on 3 Nov. No probe needed. Fix in `_stored`: read the level once the write's transition has ended. The TODO's
+  Z2M stop item (also since the resets) may be the same change in what the bulbs report; check it against this first.
 - **E.** Fix only a case that fails again:
   - Hue `lower_to_off`: the predicted_state suite's options reload finishes just before it. Check
     `OptionsSwitch.reloaded` waits long enough for Hue's entities.
