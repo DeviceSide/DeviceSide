@@ -22,7 +22,8 @@ a resolver for each integration.
 ## Design
 
 **`core/ha_watch.py`.** One `EVENT_CALL_SERVICE` listener for the `light` and `scene` domains. It attaches in
-`async_setup` and detaches with the entry, through `runtime.listen`. For each call it:
+`async_setup_entry` (as built: unloading detaches every listener, and a reload runs only that) and detaches with the
+entry, through `runtime.listen`. For each call it:
 
 1. Returns at once if no resolver is busy (`busy(hass)`: has predictions, ends still to show, or hue marks). Most
    light calls cost nothing.
@@ -31,8 +32,8 @@ a resolver for each integration.
 3. Hands each integration's resolver the entries whose platform it owns, together with a `Call` (domain, service,
    service data, `ends_hue_cycle`).
 
-A resolver is registered once for each integration (`register(integration, resolver)`, from the integration package),
-and has this shape:
+A resolver is declared once for each integration, from the integration package (as built: `IntegrationInfo.call_resolver`,
+not a `register()` call, so the registry stays free of side effects), and has this shape:
 
 ```python
 class CallResolver(Protocol):
@@ -91,8 +92,8 @@ already experimental.
 6. `.venv/bin/pytest`, `pre-commit run --all-files`, and check that each touched adapter module still has ≥95%
    coverage.
 7. `/audit-code` on the diff, then fix what it finds.
-8. **Rig run, with Jason's go** (the morning pre-authorization ends at 11:30). Queue behind the lock with
-   `scripts/rig.py --wait-free` in the background. On `--profile lab --unattended`:
+8. **Rig run, with Jason's go** (the morning pre-authorization ends at 11:30). Run each in the background with
+   `DEVICE_SIDE_RIG_APPROVED=1` once approved; it queues behind the lock (`--wait-free` only waits, and runs nothing). On `--profile lab --unattended`:
    - Hue predicted-state: `--integration hue --action raise_brightness --action lower_brightness --action stop`
      (this selects the `-predicted_state` step files)
    - Z2M: `--integration zigbee2mqtt --action raise_brightness --action lower_brightness --action stop`
