@@ -53,6 +53,12 @@ async def test_a_z2m_join_sets_the_bulbs_options_again(lab):
     assert lab.ha.z2m_options == {A: OPTIONS}
 
 
+async def test_a_z2m_join_reads_the_bulb_once_so_its_state_has_a_color_mode(lab):
+    await roamer(lab).go("zigbee2mqtt")
+    reads = [call[2] for call in lab.ha.calls if call[:2] == ("device_side", "get_attributes")]
+    assert reads == [{"entity_id": "light.lab_a"}, {"entity_id": "light.lab_b"}]
+
+
 async def test_the_stale_entry_holding_the_fixed_id_is_removed_then_the_new_light_renamed(lab):
     printed = []
     await roamer(lab, out=printed.append).go("zha")
