@@ -133,24 +133,14 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. Lanes on dif
   write. zha skips `update_entity` for 1.5 s after an HA `turn_off`, and ZHA applies no color reports, so HA showed the
   old color after the next on. Fixed (#172): the refresh waits out zha's transition flag. Rig proof rides the
   pre-release run.
-- [ ] **Z2M lab: stop on the lab bulbs since 3 Nov's resets.** The `light_ct` cases are fixed (3 Nov, lab run on
-  `wt/z2m-set-attrs-fade`): with Hue native control on, Z2M sends a soft off as Philips' own command, which
-  `brightness_move: stop` doesn't end (the bulb read 162 at +3.6 s and faded on to off; with the option off it
-  passes), so `stop` now also cuts a soft off of ours with `state: ON` at its predicted brightness, as on Hue; and
-  `halts_a_raise` waits 1.5 s after its setup `set`, whose fade was still running when the raise read its start.
-  Still failing in the same run: every `group` case (`halts_a_raise`, `halts_a_lower_to_off`, `stop_when_idle`) fails
-  in its setup, the sideboard `on` with brightness `None`; `hue_cycle_stop[group_color]` and
-  `saturation_down_stop[group_color]` show an HA color that differs from a live read; and
-  `halts_brightness_and_hue[light_color]` rises above its 50 % limit (holds 55.1 %). Not the restore race or
-  native control. The group setups: the sideboard's Z2M state has no `color_mode` (its brightness publishes carry
-  `brightness` and `state` only), and HA's MQTT light shows no `brightness` without one; a `get_attributes` on
-  the group first (it reads each member's color cluster, which fills `color_mode`) moves the failure past the setup.
-  Then `get_attributes` on the lab group fails with `no lightingColorCtrl reply from Zigbee2MQTT`: the sideboard
-  never answered one color read (Z2M logged its own 10 s ZCL timeout; the reads 1.6 s before and after were
-  answered in 0.14 s), so a lost read on that bulb, not the group code (the desk, which has no color cluster, is
-  never asked). Next: have the rig prime a bulb's color state when it joins Z2M; judge the remaining group and
-  color cases (`hue_cycle_stop[group_color]`, `halts_brightness_and_hue`) once the sideboard's radio path is sound
-  (the lab join-parent plan).
+- [x] **Z2M lab: stop on the lab bulbs since 3 Nov's resets.** All 15 unattended cases pass (3 Nov, record
+  `docs/test-records/zigbee2mqtt/stop.md`). Causes: with Hue native control on, Z2M sends a soft off as Philips'
+  own command, which `brightness_move: stop` doesn't end, so `stop` now also cuts a soft off of ours with
+  `state: ON` at its predicted brightness (as on Hue); the cases' setup `set` fade was still running when a raise
+  started, so they wait 1.5 s; and a bulb newly joined to Z2M has no `color_mode` in its state (HA's MQTT light
+  then shows no `brightness`, which failed every group setup and, through it, two group color checks), so the
+  rig reads each bulb once after it joins. A lost read on the sideboard's radio path was seen once (one color read
+  unanswered for Z2M's 10 s timeout); the lab join-parent plan covers it.
 - [ ] **ZHA A60 run** (13k step 3), on the lab: ZHA color suites, `set_attributes` hs and xy included. Attended for
   `sets_color_while_off`. Clears `experimental` on the ZHA adapters it proves.
 - [ ] **9d** Rig coverage sweep for the non-color scope
