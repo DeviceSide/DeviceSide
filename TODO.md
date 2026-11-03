@@ -59,6 +59,7 @@ v0.1.0 is the next release.
 | 15 (follow-up) | Rig clear gate: with `RIG_BLOCKER_ENTITY` set, env-approved runs and `--hold` probes go only while the household's blocker sensor is off, and abort, putting devices back, once it reads on twice | #180 |
 | 15 (follow-up) | Rig captures Z2M's and HA's logs for every run (kept after a failure), and `--debug-logs` raises both to debug | #183 |
 | 15 (follow-up) | Tests no longer color the cmux workspace running them green (a locks test's `monkeypatch.undo()` reached the real cmux) | #184 |
+| 15 (follow-up) | Rig clear gate per profile: `pre_authorized: true` profiles (the lab's) skip `RIG_BLOCKER_ENTITY`; others stay gated | #187 |
 
 ## To go, in order
 
