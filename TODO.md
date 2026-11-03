@@ -151,6 +151,11 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. Lanes on dif
   it first fired (3 Nov, 22:48) the second read got no reply for over 20 s, so the bulb was unreachable for longer than a
   route rebuild takes, and the adapter's error was right. The other lab failure seen, a newly joined bulb's first read
   unanswered (no `color_mode`, no brightness in the case's setup), the rig now tries up to three times.
+  A 20-minute probe at one read every 4 s (3 Nov, 23:04) still lost one: the bulb was on a direct link (no relay, LQI
+  148 to 156), the coordinator's frame was acknowledged (`status=OK`), and the bulb never answered the `genOnOff` read
+  (Z2M's own 10 s timeout fired), yet it answered another command five seconds later. So at least some drops are the
+  Hue Essential not answering a read over a healthy link, not the mesh. Open: whether a second read a moment later is
+  answered (it was not in the 22:48 case, which waited over 20 s).
 - [ ] **ZHA A60 run** (13k step 3), on the lab: ZHA color suites, `set_attributes` hs and xy included. Attended for
   `sets_color_while_off`. Clears `experimental` on the ZHA adapters it proves.
 - [ ] **9d** Rig coverage sweep for the non-color scope
