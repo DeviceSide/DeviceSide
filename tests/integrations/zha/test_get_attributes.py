@@ -166,6 +166,21 @@ async def test_read_error_raises(hass, bulb):
     assert raised.value.translation_placeholders == {"summary": "light.bulb: error"}
 
 
+async def test_a_failed_read_logs_the_error_type(hass, monkeypatch, caplog):
+    """A timeout has an empty message, so the log names its type."""
+
+    async def read_attributes(*args, **kwargs):
+        raise TimeoutError
+
+    monkeypatch.setattr(zcl, "read_attributes", read_attributes)
+    add_zha_entity(hass, zha_entry(hass), "light.bulb", attributes=DIMMABLE)
+
+    with pytest.raises(HomeAssistantError):
+        await call(hass, "get_attributes", {"entity_id": "light.bulb"})
+
+    assert "get_attributes on zha failed for light.bulb: TimeoutError()" in caplog.text
+
+
 async def test_group_reads_each_member(hass, bulb, requests, zha_groups):
     a, b = "00:00:00:00:00:00:00:0a", "00:00:00:00:00:00:00:0b"
     entry = zha_entry(hass)
