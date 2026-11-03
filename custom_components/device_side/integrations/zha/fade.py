@@ -36,6 +36,10 @@ MIN_STEP = 100 / 254
 MIN_CYCLE_S, MAX_CYCLE_S = 1.0, 65535.0
 # The end refresh and the soft off's restore, after the fade has run: the bulb reads its end within it (probe 13f).
 END_REFRESH_S = 1.0
+# The fit's deadband: how late a bulb may start its ramp, plus one level step. The lab's Hue bulbs start 0.05 to
+# 0.08 s after the send, so every read lands behind schedule and fits a start a few percent off (3 Nov lab rerun);
+# a read within this much of the ramp's own speed of the prediction leaves the prediction alone.
+FIT_LAG_S = 0.15
 # A ZCL transition is a uint16 in tenths of a second; 0xFFFF means the bulb's default.
 _MAX_TENTHS = 0xFFFE
 _MOVE_UP, _MOVE_DOWN = 0x01, 0x03
@@ -379,7 +383,8 @@ async def sync_to_bulb(
     ends at the sent end point at the sent end time, so the ramp's real start is solved for and the fade re-recorded
     from it: the next move, a stop and the soft off's restore then start from where the bulb really is. Sent first and
     read after, so a move starts with no added latency; a read after the fade's end, or after a newer move or a stop
-    took over, changes nothing.
+    took over, changes nothing. Nor does a read within the deadband of the prediction (FIT_LAG_S of the ramp, plus a
+    level step): the bulb starts a little after the send, and fitting that lag would move a right start.
     """
     try:
         before = cache.clock()
@@ -396,11 +401,14 @@ async def sync_to_bulb(
             "Fit skipped for %s: read %.1f %% at f=%.3f, or a newer move or stop", light.entity_id, level, elapsed
         )
         return
+    predicted = recorded.value(at)
+    deadband = abs(recorded.target - recorded.start) / recorded.duration * FIT_LAG_S + MIN_STEP
     start = min(max((level - recorded.target * elapsed) / (1 - elapsed), 0.0), 100.0)
-    # Every term of the fit, so a restore that lands off can be traced to the read's timing (the 13f decision on
-    # guarding the fit waits on these numbers).
+    kept = abs(level - predicted) <= deadband
+    # Every term of the fit, so a restore that lands off can be traced to the read's timing.
     _LOGGER.debug(
-        "Fit for %s: read %.1f %% in a %.3f s round trip at f=%.3f of %.1f s; ramp %.1f -> %.1f %%, fitted start %.1f",
+        "Fit for %s: read %.1f %% in a %.3f s round trip at f=%.3f of %.1f s; ramp %.1f -> %.1f %%, predicted "
+        "%.1f ± %.1f; %s",
         light.entity_id,
         level,
         after - before,
@@ -408,8 +416,12 @@ async def sync_to_bulb(
         recorded.duration,
         recorded.start,
         recorded.target,
-        start,
+        predicted,
+        deadband,
+        "kept" if kept else f"fitted start {start:.1f}",
     )
+    if kept:
+        return
     fade.starts[light.entity_id] = start
     cache.moving(light.entity_id, BRIGHTNESS, start, recorded.target, recorded.duration, started_at=recorded.started_at)
 

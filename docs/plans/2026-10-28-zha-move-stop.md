@@ -124,7 +124,18 @@ back. Records written and committed: `get_attributes`, `lower_hue`, `lower_satur
   setup's blue). The ExecuteIfOff writes are ignored, as the bulbs ignore the level preset before `raise_from_off`;
   `sets_after_a_soft_off` passes on both roles. Not this branch's change (set_attributes only moved to the shared
   helpers); never run on the lab before, and the 28 Oct record passed on the house LTA004. Z2M passes through
-  `hue_native_control`. A design call for Jason: likely Hue's own `0xFC03` write, as `raise_from_off` does.
+  `hue_native_control`. Jason: its own session, after this PR; the TODO item before the ZHA A60 run holds the probe
+  and the likely fix (Hue's own `0xFC03` write, as `raise_from_off` does).
+
+**Fit logged, then guarded (2026-11-03).** `ef646cf` logs every term of `sync_to_bulb` at debug, and names the error
+type of a target's failure (the empty `raise_after_soft_off` line was a message-less exception). Rerun on the lab
+(`lower_brightness`, `raise_brightness`, `stop`, HA on `ef646cf`): `soft_off_keeps_level[light_ct]` on at 159,
+`[group]` passed. The log showed the fit's risk, not a change made elsewhere: every 60 % soft off (1.8 s) fitted a
+start of 60.6 to 62.5 %, and raises fit a shade low. The bulbs start 0.05 to 0.08 s after the send, so every read
+lands behind schedule. Jason chose a deadband: a read within 0.15 s of the ramp's speed plus one level step of the
+prediction keeps it (about 5.4 % on that soft off); a real change elsewhere (the unit test's 80 against 60) still
+refits. Also one `raise[group]` failure, first seen: the fits show the bulbs at 100, 100 and 79.5 % when the raise was
+sent, so the setup's set to 20 % hadn't landed; rerun, act only if it repeats.
 
 **Next, in order** (every rig run needs Jason's go; start each in the background, one at a time behind the lock):
 
@@ -152,9 +163,8 @@ back. Records written and committed: `get_attributes`, `lower_hue`, `lower_satur
      whether the rig should sample the members, as `_CaseRun.reading` does for the group mean, or the adapter sends
      something that moves a member.
    Report the cause and a proposed fix for each; fixes and any rig run wait for Jason's go.
-3. **The fit stays unguarded** (Jason, 2026-10-31) unless a run shows its risk. Ask him if `soft_off_keeps_level`
-   fails again, but log `sync_to_bulb` (the read, its round trip, `f`, the fitted start) first, so the decision
-   rests on numbers.
+3. ~~Decide on guarding the fit.~~ Done (2026-11-03): logged, then the deadband above. Rerun the brightness actions
+   and `stop` on the lab to prove it.
 4. **Investigate** the A60 hue stops' xy refresh and `stop_when_idle[group]`.
 5. **Then the full ZHA lab run, and on a pass:** write `docs/test-records/zha/<action>.md` for each action that
    passed (`Profile | lab`, citing the commit HA loaded), tick 13f in `TODO.md`, pytest and pre-commit, PR into

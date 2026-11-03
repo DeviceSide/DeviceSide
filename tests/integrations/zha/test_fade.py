@@ -138,6 +138,24 @@ async def test_the_ramp_is_fitted_to_a_read_at_the_point_it_had_reached(hass, co
     assert "Restoring light.bulb to 79.8 % after a soft off" in caplog.text
 
 
+async def test_a_read_within_the_deadband_keeps_the_prediction(hass, commands, bulbs, clock, caplog):
+    """The bulb starts a little after the send, so a 60 % soft off reads a shade behind schedule: 57.1 % where the
+    ramp predicts 58.0 %. That's within the deadband (0.15 s of the ramp, plus a level step), so the restore puts back
+    60 %, not the 61.4 % a fit of the lag would (3 Nov lab rerun: a fitted 62.5 % came back on at 159)."""
+    caplog.set_level(logging.DEBUG, logger="custom_components.device_side.integrations.zha.fade")
+    bulb(hass)
+    bulbs.levels[IEEE] = 145  # 57.1 %
+    read_takes(bulbs, clock, 0.2)
+    start = wall_clock_now()
+
+    await call(hass, "lower_brightness", {"entity_id": "light.bulb"})
+    await hass.async_block_till_done()
+    await advance(hass, start, 4.5)
+
+    assert sent(commands)[-1] == RESTORE_60
+    assert "predicted 58.0 ± 3.4; kept" in caplog.text
+
+
 @pytest.mark.parametrize("stopped", [False, True], ids=["read_after_the_fade_ended", "read_after_a_stop"])
 async def test_a_read_too_late_to_fit_changes_nothing(hass, commands, bulbs, clock, stopped):
     bulb(hass)
