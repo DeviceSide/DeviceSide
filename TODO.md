@@ -93,6 +93,9 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. Lanes on dif
   of the next three runs (with a setup failure and a bulb dropping off the network in the third); with 1.5, 15/15 in
   the one run that got through. A real group's members still show Z2M's aggregate state, which the adapter can't
   correct.
+  One settle-0 run also failed `sets_while_off[light_ct]` with `not_stored`: a color temperature read 0.7 s after
+  the write returned 317 (written 370) and the next read 370, a slow bulb fade past the 0.6 s wait. `_stored` now
+  reads again (twice, 0.5 s apart) before it calls a write ignored.
 - [x] **14** Z2M color modes fixed for HA, on by default, and 13i's xy write-back backed out
   ([`2026-10-28-z2m-color-modes.md`](docs/plans/2026-10-28-z2m-color-modes.md)). Counts toward the Z2M freeze.
 - [x] **15** The lab ([`2026-11-01-lab.md`](docs/plans/2026-11-01-lab.md)): three Hue bulbs in the maintainer's room,
