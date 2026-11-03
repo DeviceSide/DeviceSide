@@ -89,8 +89,10 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. Lanes on dif
   `experimental`). Two causes cleared on the way: the read-back compared mid-fade (the adapter now waits out the
   0.4 s write fade once, #192), and Z2M, which publishes the read-backs of a restore's commands about 0.5 s later and
   republishes a group's state onto every member, overwrote a light's `off` in the next case with a late `on` (the rig
-  now settles 1.5 s after a restore). Each is only seen on the cases that failed before and passed after; a real
-  group's members still show Z2M's aggregate state, which the adapter can't correct.
+  now settles 1.5 s after a restore). A/B on the lab (settle 0 vs 1.5 s, same tree): with 0, both cases failed again in two
+  of the next three runs (with a setup failure and a bulb dropping off the network in the third); with 1.5, 15/15 in
+  the one run that got through. A real group's members still show Z2M's aggregate state, which the adapter can't
+  correct.
 - [x] **14** Z2M color modes fixed for HA, on by default, and 13i's xy write-back backed out
   ([`2026-10-28-z2m-color-modes.md`](docs/plans/2026-10-28-z2m-color-modes.md)). Counts toward the Z2M freeze.
 - [x] **15** The lab ([`2026-11-01-lab.md`](docs/plans/2026-11-01-lab.md)): three Hue bulbs in the maintainer's room,
