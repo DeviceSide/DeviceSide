@@ -92,6 +92,7 @@ tests:
     roles: [light_color, group_color]
     setup:
       - set: {state: on, brightness_pct: 20, hs_color: [200, 90]}
+      - wait: 1.5  # the set's fade is still running when the raise starts
     steps:
       # 10 % a second for 3 s and 2 s: about 50 % brightness and 70 % saturation at the stop
       - call: {action: raise_brightness, sweep_time: 10}
@@ -117,6 +118,7 @@ tests:
     only: [zigbee2mqtt, zha]
     setup:
       - set: {state: on, brightness_pct: 20, hs_color: [30, 90]}
+      - wait: 1.5  # the set's fade is still running when the raise starts
     steps:
       - mark_hue: {}
       # 5 % a second for 3 s and 18° a second for 2 s: about 35 % brightness and 36° round the hue wheel at the stop
