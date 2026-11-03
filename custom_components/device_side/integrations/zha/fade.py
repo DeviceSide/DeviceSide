@@ -55,7 +55,7 @@ def hue_moves(hass: HomeAssistant) -> set[str]:
     return get_runtime(hass).integration_state.setdefault("zha_hue_moves", set())
 
 
-def restores(hass: HomeAssistant) -> set[str]:
+def soft_off_restores(hass: HomeAssistant) -> set[str]:
     """The lights a soft off of ours will put back at their start level once it has run. A light call from HA drops a
     light from it: the call replaces our fade."""
     return get_runtime(hass).integration_state.setdefault("zha_restores", set())
@@ -68,10 +68,10 @@ class ZHACallResolver:
     the zha domain, so they pass the watch by."""
 
     def busy(self, hass: HomeAssistant) -> bool:
-        return bool(transition_cache(hass).resource_ids() or restores(hass) or hue_moves(hass))
+        return bool(transition_cache(hass).resource_ids() or soft_off_restores(hass) or hue_moves(hass))
 
     def forget(self, hass: HomeAssistant, call: Call, entries: Entries) -> None:
-        cache, pending, cycling = transition_cache(hass), restores(hass), hue_moves(hass)
+        cache, pending, cycling = transition_cache(hass), soft_off_restores(hass), hue_moves(hass)
         if entries is ALL:
             cache.clear()
             pending.clear()
@@ -278,12 +278,13 @@ async def start(
             if not await zcl.hue_turn_on(hass, addr, 1, context):
                 bottom = {"level": 1, **zcl.execute_if_off(0)}
                 await zcl.command(hass, addr, zcl.LEVEL_CLUSTER, zcl.MOVE_TO_LEVEL, bottom, context)
+        if outcome.attribute == BRIGHTNESS:
+            # Before the send, so a light call from HA during it cancels the restore. This fade's end jobs replace
+            # the movers' earlier ones, restores included; a refused send schedules none, so its marks restore nothing.
+            pending = soft_off_restores(hass)
+            pending.difference_update(outcome.starts)
+            pending.update(outcome.restores)
         await send(hass, gid, outcome.movers, outcome.command, context)
-    if outcome.attribute == BRIGHTNESS:
-        # This fade's end jobs replace the movers' earlier ones, restores included.
-        pending = restores(hass)
-        pending.difference_update(outcome.starts)
-        pending.update(outcome.restores)
     for light in outcome.movers:
         if outcome.attribute == BRIGHTNESS:
             hass.async_create_task(sync_to_bulb(hass, cache, light, outcome, recorded[light.entity_id]))
@@ -435,7 +436,7 @@ def end_job(hass: HomeAssistant, light: Target, restore: dict[str, float] | None
     reads off and a light call from HA hasn't since replaced the fade, then a refresh."""
 
     async def run() -> None:
-        pending = restores(hass)
+        pending = soft_off_restores(hass)
         if restore is not None and light.entity_id in pending:
             pending.discard(light.entity_id)
             try:

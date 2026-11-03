@@ -93,3 +93,18 @@ def test_production_discovery_imports_cleanly():
     assert registry.integrations["hue"].available
     assert registry.adapter("turn_on_for", "shelly") is not None
     assert registry.adapter("turn_off_for", "shelly") is not None
+
+
+def test_call_resolvers_are_keyed_by_the_platform_each_owns():
+    registry = AdapterRegistry.discover()
+
+    assert set(registry.call_resolvers()) == {"hue", "zha", "mqtt"}
+
+
+def test_two_call_resolvers_for_one_platform_are_refused():
+    registry = AdapterRegistry(actions.discover(), FAKE_INTEGRATIONS)
+    for info in registry.available_integrations():
+        info.ha_domain, info.call_resolver = "shared", object()
+
+    with pytest.raises(ValueError, match="platform shared"):
+        registry.call_resolvers()

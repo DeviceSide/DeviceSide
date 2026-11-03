@@ -12,7 +12,7 @@ from pytest_homeassistant_custom_component.common import async_mock_service
 
 from custom_components.device_side.const import DOMAIN
 from custom_components.device_side.core.transition import BRIGHTNESS, SATURATION
-from custom_components.device_side.integrations.zha.fade import hue_moves, restores, transition_cache
+from custom_components.device_side.integrations.zha.fade import hue_moves, soft_off_restores, transition_cache
 
 from .conftest import BOTTOM, RESTORE_60, SENT, A, B, bulb, on_off_reads, sent
 from ...conftest import advance, call, wall_clock_now
@@ -245,7 +245,27 @@ async def test_an_off_from_ha_during_a_soft_off_leaves_no_restore_and_still_refr
     assert len(commands) == 1  # the soft off, and no restore
     assert not on_off_reads(on_off_read)
     assert [refresh.data for refresh in refreshes] == [{"entity_id": "light.bulb"}]
-    assert restores(hass) == set()
+    assert soft_off_restores(hass) == set()
+
+
+async def test_an_off_from_ha_while_the_soft_off_is_sent_still_cancels_its_restore(hass, refreshes, on_off_read):
+    bulb(hass)
+    start = wall_clock_now()
+    async_mock_service(hass, "light", "turn_off")
+    sent_commands = []
+
+    async def command(service_call) -> None:
+        sent_commands.append(service_call)
+        if len(sent_commands) == 1:  # the soft off, still in flight
+            await hass.services.async_call("light", "turn_off", {"entity_id": "light.bulb"}, blocking=True)
+
+    hass.services.async_register("zha", "issue_zigbee_cluster_command", command)
+
+    await call(hass, "lower_brightness", {"entity_id": "light.bulb"})
+    await advance(hass, start, 4.5)
+
+    assert len(sent_commands) == 1
+    assert not on_off_reads(on_off_read)
 
 
 async def test_a_stop_drops_the_soft_offs_restore(hass, commands):
@@ -254,7 +274,7 @@ async def test_a_stop_drops_the_soft_offs_restore(hass, commands):
 
     await call(hass, "stop", {"entity_id": "light.bulb"})
 
-    assert restores(hass) == set()
+    assert soft_off_restores(hass) == set()
 
 
 @pytest.mark.parametrize(
@@ -288,7 +308,7 @@ async def test_a_call_to_all_lights_clears_every_zha_mark(hass, commands, servic
     await hass.services.async_call("light", "turn_on", {"entity_id": "all", **service_data}, blocking=True)
 
     assert not transition_cache(hass).follows("light.bulb")
-    assert restores(hass) == set()
+    assert soft_off_restores(hass) == set()
     assert hue_moves(hass) == cycling
 
 

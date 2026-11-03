@@ -61,11 +61,13 @@ class AdapterRegistry:
 
     def call_resolvers(self) -> dict[str, CallResolver]:
         """Each available integration's call resolver, by the registry platform of the entities it owns."""
-        return {
-            info.ha_domain: info.call_resolver
-            for info in self.available_integrations()
-            if info.call_resolver is not None
-        }
+        resolvers: dict[str, CallResolver] = {}
+        for info in self.available_integrations():
+            if info.call_resolver is not None:
+                if info.ha_domain in resolvers:
+                    raise ValueError(f"Two call resolvers for platform {info.ha_domain}")
+                resolvers[info.ha_domain] = info.call_resolver
+        return resolvers
 
     def matrix(self) -> Iterator[tuple[str, str, Adapter | None]]:
         """Every action x integration pair, sorted, with its adapter or None."""
