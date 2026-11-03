@@ -63,6 +63,7 @@ v0.1.0 is the next release.
 | 13f (follow-up) | One core watch for light calls from HA drops the predictions of the lights a call names; Hue and ZHA move onto it, Z2M gains one | #181 |
 | 15 (follow-up) | Rig clear gate: with `RIG_BLOCKER_ENTITY` set, env-approved runs and `--hold` probes go only while the household's blocker sensor is off, and abort, putting devices back, once it reads on twice | #180 |
 | 15 (follow-up) | Rig captures Z2M's and HA's logs for every run (kept after a failure), and `--debug-logs` raises both to debug | #183 |
+| 15 (follow-up) | Tests no longer color the cmux workspace running them green (a locks test's `monkeypatch.undo()` reached the real cmux) | #184 |
 
 ## To go, in order
 
@@ -123,6 +124,12 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. Lanes on dif
   write. zha skips `update_entity` for 1.5 s after an HA `turn_off`, and ZHA applies no color reports, so HA showed the
   old color after the next on. Fixed (#172): the refresh waits out zha's transition flag. Rig proof rides the
   pre-release run.
+- [ ] **Z2M lab: the `light_ct` bulb's stops since 3 Nov's resets.** Since the lab bulbs were reset and re-added (and
+  Z2M joins went through the coordinator, #174), two Z2M cases fail on every tree, the core HA watch's (#181) and the one
+  before it (an A/B run): `lower_stop_lower[light_ct]` reads 90 % after the stop, then holds at 26 %, and
+  `halts_a_lower_to_off[light_ct]` ends off. The setup of `lower_to_off[group]` also finds the color bulb reporting no
+  brightness. All passed on 2 Nov. First, probe whether the bulb takes the brightness stop mid-fade, and what it
+  reports. `opus`: hardware triage, where the cause may be the bulb's state after its reset or our stop.
 - [ ] **ZHA A60 run** (13k step 3), on the lab: ZHA color suites, `set_attributes` hs and xy included. Attended for
   `sets_color_while_off`. Clears `experimental` on the ZHA adapters it proves.
 - [ ] **9d** Rig coverage sweep for the non-color scope

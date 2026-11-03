@@ -106,9 +106,10 @@ A probe takes the same locks through `--hold`, which runs a command while holdin
 passes signals on to the command, writes no journal and asks nothing unless the rig isn't clear (below): the probe
 puts back what it changes.
 
-`RIG_BLOCKER_ENTITY` in `.env.rig` names an HA binary_sensor that is on while someone might see the lights move. With
-it set, a run approved by `DEVICE_SIDE_RIG_APPROVED=1` and any probe start only while it is off, and abort, putting the
-devices back, once it reads on twice in a row; a yes typed at the prompt overrides it. Leave it unset to gate nothing.
+`RIG_BLOCKER_ENTITY` in `.env.rig` names an HA binary_sensor that is on while someone might see the lights move. A run
+approved by `DEVICE_SIDE_RIG_APPROVED=1` and any probe start only while it is off, and abort, putting the devices
+back, once it reads on twice in a row; a yes typed at the prompt overrides it. A profile with `pre_authorized: true`,
+for a setup whose lights nobody minds seeing move, skips it. Leave the key unset to gate nothing.
 
 ### Token
 

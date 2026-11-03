@@ -229,7 +229,8 @@ def fake_ha(monkeypatch, replies):
     monkeypatch.setattr(rig, "_get", _get)
 
 
-CLEAR_ENV = {"HA_URL": "http://ha", "HA_TOKEN": "t", "RIG_BLOCKER_ENTITY": "binary_sensor.rig_blocker"}
+BLOCKER = "binary_sensor.rig_blocker"
+CLEAR_ENV = {"HA_URL": "http://ha", "HA_TOKEN": "t", "RIG_BLOCKER_ENTITY": BLOCKER}
 
 
 def not_found():
@@ -250,7 +251,7 @@ def not_found():
 )
 def test_rig_clear_only_on_on(monkeypatch, reply, clear, reason):
     fake_ha(monkeypatch, [not_found() if reply is None else reply])
-    answer = rig.rig_clear(CLEAR_ENV)
+    answer = rig.rig_clear(CLEAR_ENV, BLOCKER)
     assert answer[0] is clear
     assert reason in answer[1]
 
@@ -258,13 +259,31 @@ def test_rig_clear_only_on_on(monkeypatch, reply, clear, reason):
 def test_rig_clear_reads_the_named_entity(monkeypatch):
     urls = []
     monkeypatch.setattr(rig, "_get", lambda url, token: urls.append((url, token)) or {"state": "off"})
-    rig.rig_clear(CLEAR_ENV)
+    rig.rig_clear(CLEAR_ENV, BLOCKER)
     assert urls == [("http://ha/api/states/binary_sensor.rig_blocker", "t")]
 
 
-def test_without_the_key_nothing_is_read(monkeypatch):
+def test_an_ungated_run_reads_nothing(monkeypatch):
     monkeypatch.setattr(rig, "_get", lambda url, token: pytest.fail("read"))
-    assert rig.clearance({"HA_URL": "http://ha", "RIG_BLOCKER_ENTITY": ""}) is None
+    assert rig.clearance(CLEAR_ENV, None) is None
+
+
+@pytest.mark.parametrize(
+    ("text", "env", "sensor"),
+    [
+        ("", CLEAR_ENV, BLOCKER),
+        ("pre_authorized: false\n", CLEAR_ENV, BLOCKER),
+        ("pre_authorized: true\n", CLEAR_ENV, None),
+        ("", {**CLEAR_ENV, "RIG_BLOCKER_ENTITY": ""}, None),
+    ],
+)
+def test_the_sensor_gates_a_profile_unless_it_is_pre_authorized(tmp_path, text, env, sensor):
+    assert rig.gate_sensor(env, Profile.load(write(tmp_path, "house.yaml", text + "shelly:\n"))) == sensor
+
+
+def test_profile_pre_authorized_must_be_a_bool(tmp_path):
+    with pytest.raises(ValueError, match="pre_authorized must be true or false, got 'yes please'"):
+        Profile.load(write(tmp_path, "house.yaml", "pre_authorized: yes please\nshelly:\n"))
 
 
 def test_env_approval_needs_the_rig_clear(monkeypatch, capsys):
@@ -322,7 +341,7 @@ def watch(monkeypatch, replies, armed=True):
 
     monkeypatch.setattr(rig, "_get", _get)
     monkeypatch.setattr(rig.os, "kill", kill)
-    with rig.watching(CLEAR_ENV, armed, interval=0.001):
+    with rig.watching(CLEAR_ENV, BLOCKER if armed else None, interval=0.001):
         done.wait(0 if not armed else 5)
     return sent
 

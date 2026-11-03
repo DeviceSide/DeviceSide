@@ -251,15 +251,14 @@ def test_claims_take_their_integrations_in_sorted_order(tmp_path, monkeypatch):
     second.close()
 
 
-def test_a_failed_wait_lets_go_of_what_it_took(tmp_path, monkeypatch):
+def test_a_failed_wait_lets_go_of_what_it_took(tmp_path):
     def give_up(_seconds):
         raise KeyboardInterrupt
 
-    with locks.hold(claim("zha"), "wt/zha", tmp_path, out=quiet()):
-        monkeypatch.setattr(locks.time, "sleep", give_up)
+    with locks.hold(claim("zha"), "wt/zha", tmp_path, out=quiet()), pytest.MonkeyPatch.context() as patch:
+        patch.setattr(locks.time, "sleep", give_up)
         with pytest.raises(KeyboardInterrupt):
             locks.hold(claim("hue", "zha"), "wt/both", tmp_path, out=quiet())
-    monkeypatch.undo()
     assert not blocked(tmp_path, claim("hue"))
 
 
@@ -781,7 +780,9 @@ def clear_states(monkeypatch, *states):
     replies = [{"state": state} for state in states]
     monkeypatch.setattr(rig, "_get", lambda url, token: replies.pop(0))
     seen = []
-    monkeypatch.setattr(rig, "watching", lambda env, armed: seen.append(armed) or contextlib.nullcontext())
+    monkeypatch.setattr(
+        rig, "watching", lambda env, blocker: seen.append(blocker is not None) or contextlib.nullcontext()
+    )
     return seen
 
 
@@ -820,7 +821,19 @@ def test_a_probe_a_human_let_past_is_not_watched_or_asked_again(probe, monkeypat
 
 def test_a_probe_without_the_key_is_not_watched(probe, monkeypatch):
     seen = []
-    monkeypatch.setattr(rig, "watching", lambda env, armed: seen.append(armed) or contextlib.nullcontext())
+    monkeypatch.setattr(
+        rig, "watching", lambda env, blocker: seen.append(blocker is not None) or contextlib.nullcontext()
+    )
+    monkeypatch.setattr(rig, "run_command", lambda command: 0)
+    assert rig.main(["--hold", "hue", "--", "true"]) == 0
+    assert seen == [False]
+
+
+def test_a_pre_authorized_probe_is_not_watched_or_asked(probe, monkeypatch):
+    seen = clear_states(monkeypatch)  # no reply: reading the sensor would fail
+    with (probe / "lab.yaml").open("a") as profile:
+        profile.write("pre_authorized: true\n")
+    monkeypatch.setattr(sys, "stdin", io.StringIO(""))
     monkeypatch.setattr(rig, "run_command", lambda command: 0)
     assert rig.main(["--hold", "hue", "--", "true"]) == 0
     assert seen == [False]
@@ -833,7 +846,7 @@ def test_a_probe_aborts_when_the_rig_stops_being_clear(probe, monkeypatch, capsy
     monkeypatch.setattr(rig, "_get", lambda url, token: {"state": states.pop(0) if states else "on"})
     watching = rig.watching
     monkeypatch.setattr(
-        rig, "watching", lambda env, armed: watching(env, armed, interval=0.2)
+        rig, "watching", lambda env, blocker: watching(env, blocker, interval=0.2)
     )  # time to start the command
 
     assert (

@@ -682,7 +682,9 @@ def clear_run(tmp_path, monkeypatch, state: str) -> list:
     monkeypatch.setattr(rig, "load_env", lambda: {**ENV, "RIG_BLOCKER_ENTITY": "binary_sensor.rig_blocker"})
     monkeypatch.setattr(rig, "_get", lambda url, token: {"state": state})
     seen = []
-    monkeypatch.setattr(rig, "watching", lambda env, armed: seen.append(armed) or contextlib.nullcontext())
+    monkeypatch.setattr(
+        rig, "watching", lambda env, blocker: seen.append(blocker is not None) or contextlib.nullcontext()
+    )
     monkeypatch.setattr(rig, "run_approved", lambda *args: 0)
     return seen
 
@@ -714,6 +716,17 @@ def test_a_run_a_human_let_past_a_rig_not_clear_is_not_watched(tmp_path, monkeyp
     monkeypatch.setattr(sys, "stdin", io.StringIO("y\n"))
     assert rig.main([]) == 0
     assert armed == [False]
+
+
+def test_a_pre_authorized_run_reads_no_sensor_and_is_not_watched(tmp_path, monkeypatch, capsys):
+    armed = clear_run(tmp_path, monkeypatch, "on")
+    with (tmp_path / "lab.yaml").open("a") as profile:
+        profile.write("pre_authorized: true\n")
+    monkeypatch.setattr(rig, "_get", lambda url, token: pytest.fail("read the sensor"))
+    monkeypatch.setenv("DEVICE_SIDE_RIG_APPROVED", "1")
+    assert rig.main([]) == 0
+    assert armed == [False]
+    assert "Rig not clear" not in capsys.readouterr().out
 
 
 def test_a_run_plans_lanes_unless_serial(tmp_path, monkeypatch, capsys):

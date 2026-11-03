@@ -1,8 +1,8 @@
 """The rig's profiles and connection settings. Shared by scripts/rig.py, the rig engine and the household check.
 
 A profile (`profiles/<name>.yaml`, gitignored) is one test setup on the HA instance .env.rig connects to: the entities
-the rig may move, by integration and role, the automations and switches it pauses while it runs, and the bulbs it
-roams between Zigbee networks (tests/rig/roam.py).
+the rig may move, by integration and role, the automations and switches it pauses while it runs, the bulbs it roams
+between Zigbee networks (tests/rig/roam.py), and whether its unattended runs skip .env.rig's blocker sensor.
 
 Pure file reading, no HA or pytest imports, so the runner's preflight can load it before anything mutates.
 """
@@ -137,11 +137,15 @@ class Profile:
     roam: tuple[RoamBulb, ...] = ()
     roam_groups: tuple[RoamGroup, ...] = ()
     roam_networks: tuple[str, ...] = ()  # where the roaming bulbs may go, in CYCLE order, their home included
+    # Whether this profile's unattended runs and probes go whatever RIG_BLOCKER_ENTITY reads: a setup whose lights
+    # nobody minds seeing move. Off, they go only while it is off (scripts/rig.py).
+    pre_authorized: bool = False
 
     @classmethod
     def load(cls, path: Path) -> Profile:
         raw = read_mapping(path)
         profile = cls(pause=pause_section(path, raw.pop("pause", None) or []), name=path.stem)
+        profile.pre_authorized = pre_authorized_key(path, raw.pop("pre_authorized", False))
         profile.roam, profile.roam_groups, profile.roam_networks = roam_section(path, raw.pop("roam", None) or {})
         for integration, entities in raw.items():
             if integration not in TOLERANCE_S:
@@ -339,6 +343,13 @@ def pause_list(path: Path, entity_ids: object) -> tuple[str, ...]:
     if other := [entity_id for entity_id in entity_ids if entity_id.partition(".")[0] not in PAUSABLE]:
         raise ValueError(f"{path.name}: pause takes automations and switches only, got {', '.join(other)}")
     return tuple(entity_ids)
+
+
+def pre_authorized_key(path: Path, value: object) -> bool:
+    """The profile's `pre_authorized:`, true or false."""
+    if not isinstance(value, bool):
+        raise ValueError(f"{path.name}: pre_authorized must be true or false, got {value!r}")
+    return value
 
 
 def read_mapping(path: Path) -> dict:
