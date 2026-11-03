@@ -19,16 +19,21 @@ Under cmux the run colors its workspace: green holding the lock, amber waiting f
 A profile (tests/rig/profiles/<name>.yaml) names the entities a run may move and what it pauses; --profile picks
 one, and may be left out when there is only one.
 
-A profile with `roam:` has bulbs the run moves between Hue, ZHA and Z2M (tests/rig/roam.py): the suites run in
-phases, Hue's with the fixed integrations', then ZHA's, then Z2M's, each network only if it has suites, with a direct
-move before each and one straight home at the end.
+The run starts with lanes: one per integration, side by side, each running that integration's cases on fixed entities
+(engine.in_head). The rest run after, one at a time: cases with device_side options, whose save reloads the entry, and
+those on roaming bulbs, rig-made groups and scenes, or powered entities and their supplies. --serial runs every case
+one at a time, as before lanes.
+
+A profile with `roam:` has bulbs the run moves between Hue, ZHA and Z2M (tests/rig/roam.py): the lanes run with the
+bulbs at home, then the rest run in phases, Hue's with the fixed integrations', then ZHA's, then Z2M's, each network
+only if it has suites, with a direct move before each and one straight home at the end.
 --recover, and the replay before the next run's gate, move them home. --roam-check visits every network with no suites.
 
 Before the gate, and alone with --check, the run checks every phase's devices at once: each fixed entity its cases
 use is in HA and available, and each roaming bulb is on a network. Without that, a device left unpowered stops the run
 only when its phase comes, after the bulbs have moved.
 
-Usage: scripts/rig.py [--profile NAME] [--dry-run] [--no-deploy] [--unattended] [--integration KEY ...]
+Usage: scripts/rig.py [--profile NAME] [--dry-run] [--no-deploy] [--unattended] [--serial] [--integration KEY ...]
                       [--action NAME ...] [-k TEXT]
        scripts/rig.py [--profile NAME] --check [--integration KEY ...] [--action NAME ...] [-k TEXT]
        scripts/rig.py [--profile NAME] --roam-check
@@ -54,6 +59,7 @@ import urllib.error
 import urllib.request
 from collections.abc import Callable, Coroutine, Iterator
 from dataclasses import dataclass
+from functools import partial
 from pathlib import Path
 from typing import Any, TextIO
 
@@ -67,6 +73,7 @@ from tests.rig.bridge import BridgeError, HueBridge  # noqa: E402
 from tests.rig.client import HAClient, HAError  # noqa: E402
 from tests.rig.engine import (  # noqa: E402
     ADMIN_INTEGRATIONS,
+    Case,
     EntryOptions,
     RunResult,
     Snapshot,
@@ -75,7 +82,9 @@ from tests.rig.engine import (  # noqa: E402
     SuiteResult,
     adapters_for,
     cases,
+    in_head,
     load_step_files,
+    merge,
     run,
     write_records,
     write_report,
@@ -184,25 +193,69 @@ def plan_lines(
     profile: Profile,
     registry: AdapterRegistry,
     keyword: str | None = None,
+    only: Callable[[Case], bool] | None = None,
 ) -> list[str]:
-    """Per adapter about to run: the household entities it will move, then each test case."""
+    """Per adapter about to run: the household entities it will move, then each test case `only` accepts. A suite
+    with none is left out: another part of the run has its cases."""
     lines = []
     for suite in suites:
+        suite_cases = cases(suite, profile, keyword, adapters_for(suite, registry))
+        if only is not None and not (suite_cases := [case for case in suite_cases if only(case)]):
+            continue
         if registry.adapter(suite.action, suite.integration) is None:
             lines.append(f"{suite.integration} / {suite.action} (no adapter, will skip)")
             continue
-        roles = suite.file.roles
-        entities = [entity for role in roles if (entity := profile.entity(suite.integration, role))]
+        if only is None:
+            entities = [entity for role in suite.file.roles if (entity := profile.entity(suite.integration, role))]
+        else:
+            entities = [entity for case in suite_cases for entity in case.entities.values()]
         targets = ", ".join(dict.fromkeys(entities)) or "no entity, will skip"
         lines.append(f"{suite.integration} / {suite.name} -> {targets}")
-        for case in cases(suite, profile, keyword, adapters_for(suite, registry)):
+        for case in suite_cases:
             lines.append(f"    {case.id}: {case.skip or ', '.join(dict.fromkeys(case.entities.values()))}")
     return lines
 
 
-def estimate(suites: list[Suite], registry: AdapterRegistry, restarting: bool, roaming: bool = False) -> int:
-    seconds = sum(suite.file.rig_seconds for suite in suites if registry.adapter(suite.action, suite.integration))
-    return seconds + (RESTART_ESTIMATE_S if restarting else 0) + (ROAM_ESTIMATE_S if roaming else 0)
+def head(profile: Profile) -> Callable[[Case], bool]:
+    """The cases the lanes run: in_head's."""
+    return partial(in_head, profile=profile)
+
+
+def tail(profile: Profile) -> Callable[[Case], bool]:
+    """The cases the phases run after the lanes."""
+    return lambda case: not in_head(case, profile)
+
+
+def lane_order(suites: list[Suite]) -> dict[str, list[Suite]]:
+    """The suites by integration, one lane each, in the order select gives them."""
+    lanes: dict[str, list[Suite]] = {}
+    for suite in suites:
+        lanes.setdefault(suite.integration, []).append(suite)
+    return lanes
+
+
+def estimate(
+    suites: list[Suite],
+    registry: AdapterRegistry,
+    restarting: bool,
+    roaming: bool = False,
+    profile: Profile | None = None,
+) -> int:
+    """Each suite's rig_seconds, summed; with `profile`, the run is in lanes, so each suite's seconds are split by its
+    share of cases in the lanes, which count as the longest lane, and the phases, which add up."""
+    runnable = [suite for suite in suites if registry.adapter(suite.action, suite.integration)]
+    if profile is None:
+        seconds = float(sum(suite.file.rig_seconds for suite in runnable))
+    else:
+        lanes: dict[str, float] = {}
+        seconds = 0.0
+        for suite in runnable:
+            suite_cases = cases(suite, profile, None, adapters_for(suite, registry))
+            share = sum(in_head(case, profile) for case in suite_cases) / len(suite_cases) if suite_cases else 0.0
+            lanes[suite.integration] = lanes.get(suite.integration, 0.0) + suite.file.rig_seconds * share
+            seconds += suite.file.rig_seconds * (1 - share)
+        seconds += max(lanes.values(), default=0.0)
+    return round(seconds) + (RESTART_ESTIMATE_S if restarting else 0) + (ROAM_ESTIMATE_S if roaming else 0)
 
 
 def deployed_trees(status_cmd: str) -> tuple[str | None, str | None]:
@@ -482,6 +535,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--action", action="append", help="limit to an action's step files (repeatable)")
     parser.add_argument("-k", dest="keyword", help="run only test cases whose id contains this text")
     parser.add_argument("--unattended", action="store_true", help="skip observed tests, reporting them not observed")
+    parser.add_argument(
+        "--serial",
+        action="store_true",
+        help="run every case one at a time, with no lanes: to tell a case that fails in a lane from one that fails",
+    )
     parser.add_argument("--recover", action="store_true", help="put back what an aborted run left changed, then stop")
     parser.add_argument(
         "--roam-check", action="store_true", help="move the profile's roam bulbs to every network and home, no suites"
@@ -544,7 +602,8 @@ def run_held(args: argparse.Namespace, journal: Journal) -> int:
         check_tokens(env, suites, registry, roaming or grouping)
     deploy = deploy_state(env.get("RIG_STATUS_CMD", ""))
     deploying = deploy.needed and not args.no_deploy and not args.roam_check  # the check runs none of our code
-    print_plan(profile, suites, registry, args.keyword, deploy, deploying, roaming, grouping)
+    lanes = not args.serial
+    print_plan(profile, suites, registry, args.keyword, deploy, deploying, roaming, grouping, lanes)
 
     if deploying:
         check_deploy(env, deploy)
@@ -573,6 +632,7 @@ def run_held(args: argparse.Namespace, journal: Journal) -> int:
             journal,
             roaming=roaming,
             grouping=grouping,
+            lanes=lanes,
         )
     )
 
@@ -773,9 +833,10 @@ def print_plan(
     deploying: bool,
     roaming: bool = False,
     grouping: bool = False,
+    lanes: bool = False,
 ) -> None:
     print_profile(profile)
-    print_phases(profile, suites, registry, keyword, roaming, grouping)
+    print_phases(profile, suites, registry, keyword, roaming, grouping, lanes)
     print(
         f"Integration: local {deploy.local_tree[:12]}, synced {(deploy.synced_tree or 'unknown')[:12]}, "
         f"loaded {(deploy.loaded_tree or 'unknown')[:12]}"
@@ -786,7 +847,7 @@ def print_plan(
         print("Deploy: skipped (--no-deploy); tests run the deployed tree, not this checkout, and write no record")
     else:
         print("Deploy: not needed, no restart")
-    seconds = estimate(suites, registry, deploying, roaming)
+    seconds = estimate(suites, registry, deploying, roaming, profile if lanes else None)
     print(f"Estimated duration: {seconds} s. These are in-use household devices; they will visibly change state.")
 
 
@@ -815,8 +876,10 @@ def print_phases(
     keyword: str | None,
     roaming: bool,
     grouping: bool = False,
+    lanes: bool = False,
 ) -> None:
-    """The moves, if the run roams, and the groups it makes, then each phase's adapters and cases."""
+    """The moves, if the run roams, and the groups it makes, then the lanes' cases, then each phase's adapters and
+    the cases left for it."""
     if not roaming and profile.roam:
         print("Roaming: none, as no ZHA or Z2M suite runs; the bulbs stay on Hue.")
     if roaming or grouping:
@@ -830,9 +893,17 @@ def print_phases(
                 )
             )
         )
+    if lanes and suites:
+        print("In parallel, one lane per integration:")
+        for integration, lane in lane_order(suites).items():
+            lines = plan_lines(lane, profile, registry, keyword, head(profile))
+            print(f"  {integration}:" + ("" if lines else " none"))
+            for line in lines:
+                print(f"    {line}")
+    only = tail(profile) if lanes else None
     for network, phase_suites in phases(suites, roaming):
         print(f"Adapters on {NAMES[network]}:" if network else "Adapters:")
-        for line in plan_lines(phase_suites, profile, registry, keyword) or ["none"]:
+        for line in plan_lines(phase_suites, profile, registry, keyword, only) or ["none"]:
             print(f"  {line}")
 
 
@@ -847,11 +918,12 @@ async def run_rig(
     journal: Journal | None = None,
     roaming: bool = False,
     grouping: bool = False,
+    lanes: bool = False,
 ) -> int:
-    """Run the step files phase by phase, moving the roaming bulbs before each and home after the last, and making the
-    ds-rig-* groups in each phase when `grouping`, then write a test record for each adapter whose every test passed,
-    citing `commit`; with no commit, none: a record nobody can trace to a commit proves nothing. Roaming and groups
-    need the admin connection and the bridge (check_tokens)."""
+    """Run the step files, in lanes first when `lanes` (run_phases), then phase by phase, moving the roaming bulbs
+    before each and home after the last, and making the ds-rig-* groups in each phase when `grouping`, then write a
+    test record for each adapter whose every test passed, citing `commit`; with no commit, none: a record nobody can
+    trace to a commit proves nothing. Roaming and groups need the admin connection and the bridge (check_tokens)."""
     lab = roaming or grouping
     if lab and not (env.get("HA_ADMIN_TOKEN") and env.get("HUE_BRIDGE_HOST") and env.get("HUE_APP_KEY")):
         raise SystemExit("Roaming needs HA_ADMIN_TOKEN, HUE_BRIDGE_HOST and HUE_APP_KEY in .env.rig")
@@ -870,17 +942,30 @@ async def run_rig(
     results: list[SuiteResult] = []  # each phase's, as it finishes: a failed move keeps the phases before it
     try:
         result = await run_phases(
-            ha, admin, bridge, roamer, roaming, suites, profile, registry, keyword, unattended, paused, journal, results
+            ha,
+            admin,
+            bridge,
+            roamer,
+            roaming,
+            suites,
+            profile,
+            registry,
+            keyword,
+            unattended,
+            paused,
+            journal,
+            results,
+            lanes,
         )
         if suites:
-            await report(result, ha, registry, commit, profile)
+            await report(result, ha, registry, commit, profile, keyword)
     except RoamError as err:
         # A move that failed isn't retried here; the journal keeps where the bulbs are, for --recover. The groups made
         # so far still go, and after a group that couldn't be made, the bulbs still go home. The phases that ran
         # still get their report and records.
         if not isinstance(err, GroupError):
             stopped, roamer = roamer, None
-        await report_ran(results, ha, registry, commit, profile)
+        await report_ran(results, ha, registry, commit, profile, keyword)
         raise SystemExit(f"Roaming stopped: {err}") from None
     finally:
         home = await leave_lab(roamer, stopped)
@@ -908,55 +993,69 @@ async def run_phases(
     paused: list[str],
     journal: Journal | None,
     results: list[SuiteResult] | None = None,
+    lanes: bool = False,
 ) -> RunResult:
     """Each phase: move the bulbs there and make its groups, wait for its targets, then run its cases, automated then
     observed. The automations are paused once, after the first phase's targets are all there. A run with no suites
     is --roam-check, which makes and removes the groups on every visit as a probe. Each phase's results go into
-    `results` as it finishes, so a caller keeps them when a later move raises."""
+    `results` as it finishes, so a caller keeps them when a later move raises.
+
+    With `lanes`, the first phase starts with every suite's in_head cases, one lane per integration side by side,
+    with the bulbs at home; the phases then run only the rest (see merge)."""
     results = [] if results is None else results
+    lanes = lanes and bool(suites)
+    ask = None if unattended else input
+    common = {"admin": admin, "keyword": keyword, "ask": ask, "bridge": bridge, "journal": journal}
+    only = tail(profile) if lanes else None
     for number, (network, phase_suites) in enumerate(phases(suites, roaming)):
         if roamer is not None:
             await roamer.go(network or HOME)  # removes the last phase's groups first
             if phase_suites or not suites:
                 await roamer.make_groups(network or HOME)
+        if number == 0 and lanes:
+            await wait_for_targets(ha, suites, profile, registry, keyword, only=head(profile))
         if phase_suites:
-            await wait_for_targets(ha, phase_suites, profile, registry, keyword)
+            await wait_for_targets(ha, phase_suites, profile, registry, keyword, only=only)
         if number == 0:
             await pause(ha, list(profile.pause), paused, journal)
+        if number == 0 and lanes:
+            results += (await run(suites, profile, registry, ha, only=head(profile), lanes=True, **common)).suites
         if phase_suites:
-            ask = None if unattended else input
-            phase = await run(
-                phase_suites,
-                profile,
-                registry,
-                ha,
-                admin=admin,
-                keyword=keyword,
-                ask=ask,
-                bridge=bridge,
-                journal=journal,
-            )
-            results += phase.suites
+            results += (await run(phase_suites, profile, registry, ha, only=only, **common)).suites
     if roamer is not None:
         await roamer.go(HOME)
     return RunResult(results)
 
 
 async def report_ran(
-    results: list[SuiteResult], ha: HAClient, registry: AdapterRegistry, commit: str | None, profile: Profile
+    results: list[SuiteResult],
+    ha: HAClient,
+    registry: AdapterRegistry,
+    commit: str | None,
+    profile: Profile,
+    keyword: str | None = None,
 ) -> None:
     """After a failed move, report the phases that ran before it. A report that fails is printed, never raised: the
     move's error, with its recovery steps, must still show."""
     if not results:
         return
     try:
-        await report(RunResult(results), ha, registry, commit, profile)
+        await report(RunResult(results), ha, registry, commit, profile, keyword)
     except Exception as err:  # noqa: BLE001
         print(f"The phases that ran couldn't be reported: {err}")
 
 
-async def report(result: RunResult, ha: HAClient, registry: AdapterRegistry, commit: str | None, profile: Profile):
-    """The run's report, and a test record per fully passed suite when a commit names the tree HA ran."""
+async def report(
+    result: RunResult,
+    ha: HAClient,
+    registry: AdapterRegistry,
+    commit: str | None,
+    profile: Profile,
+    keyword: str | None = None,
+):
+    """The run's report, and a test record per fully passed suite when a commit names the tree HA ran. A suite whose
+    cases ran in parts (lanes, then phases) is joined first; one missing a part writes no record."""
+    result = merge(result.suites, profile, registry, keyword)
     stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"\nReport: {write_report(result, REPORT_DIR, f'rig run {stamp}')}")
     if commit is None:
@@ -997,10 +1096,11 @@ async def wait_for_targets(
     registry: AdapterRegistry,
     keyword: str | None,
     timeout: float = TARGETS_TIMEOUT_S,
+    only: Callable[[Case], bool] | None = None,
 ) -> None:
-    """Until every entity a case will move, a group's listed members included, is available; exits the runner, naming
-    the rest, after `timeout`, or at once for one HA doesn't have."""
-    entities = targets(suites, profile, registry, keyword)
+    """Until every entity a case `only` accepts will move, a group's listed members included, is available; exits the
+    runner, naming the rest, after `timeout`, or at once for one HA doesn't have."""
+    entities = targets(suites, profile, registry, keyword, only)
     states = dict(zip(entities, await asyncio.gather(*map(ha.get_state, entities)), strict=True))
     if missing := [entity for entity, state in states.items() if state is None]:
         raise SystemExit(f"Not in HA: {', '.join(missing)}. Check profile {profile.name}; nothing was changed.")
@@ -1024,15 +1124,21 @@ def available(state: dict | None) -> bool:
     return state is not None and state["state"] != "unavailable"
 
 
-def targets(suites: list[Suite], profile: Profile, registry: AdapterRegistry, keyword: str | None) -> list[str]:
-    """Every entity a case will move, a group's listed members included."""
+def targets(
+    suites: list[Suite],
+    profile: Profile,
+    registry: AdapterRegistry,
+    keyword: str | None,
+    only: Callable[[Case], bool] | None = None,
+) -> list[str]:
+    """Every entity a case `only` accepts will move, a group's listed members included."""
     return sorted(
         {
             entity
             for suite in suites
             if registry.adapter(suite.action, suite.integration)
             for case in cases(suite, profile, keyword, adapters_for(suite, registry))
-            if not case.skip
+            if not case.skip and (only is None or only(case))
             for entity in (*case.entities.values(), *case.members)
         }
     )
@@ -1177,12 +1283,12 @@ async def recover(
     to set them. The bulbs can't be left half done, so a failure there stops recovery, keeping the rest journaled."""
     run_of = f" (profile {name})" if (name := journal.get("profile")) else ""
     out(f"An aborted rig run{run_of} left changes in {journal.path}; putting them back.")
-    if taken := journal.get("taken"):
-        for entity_id, state in taken.items():
-            if state is not None and state["state"] in ("on", "off"):
-                out(f"Putting {entity_id} back {state['state']}.")
-        power, stored = journal.get("power", {}), journal.get("stored", {})
-        await Snapshot(ha, power, taken=taken, stored=stored, journal=journal).restore()
+    for key, entry in dict(journal.get("cases") or {}).items():
+        await recover_case(ha, journal, entry, key, out)
+    if taken := journal.get("taken"):  # a journal from before lanes, with one case at the top level
+        entry = {"taken": taken, "stored": journal.get("stored", {}), "power": journal.get("power", {})}
+        await recover_case(ha, None, entry, None, out)
+        journal.clear("taken", "stored", "power")
     if (options := journal.get("options")) is not None:
         if admin is None:
             out("Putting device_side's options back needs HA_ADMIN_TOKEN in .env.rig; they stay in the journal.")
@@ -1198,6 +1304,17 @@ async def recover(
     if paused := journal.get("paused"):
         await resume(ha, paused, journal)
     drop_profile(journal)
+
+
+async def recover_case(ha: HAClient, journal: Journal | None, entry: dict, key: str | None, out: Callable[[str], None]):
+    """Put back one case's entities from its journal entry, dropping the entry (`key`) once done."""
+    for entity_id, state in entry["taken"].items():
+        if state is not None and state["state"] in ("on", "off"):
+            out(f"Putting {entity_id} back {state['state']}.")
+    snapshot = Snapshot(ha, entry.get("power", {}), taken=entry["taken"], stored=entry.get("stored", {}))
+    if journal is not None and key is not None:
+        snapshot.journal, snapshot.journal_key = journal, key
+    await snapshot.restore()
 
 
 async def recover_roam(

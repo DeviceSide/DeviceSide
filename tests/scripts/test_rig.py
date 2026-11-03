@@ -836,7 +836,8 @@ async def test_a_signal_mid_case_puts_everything_back_and_leaves_no_journal(tmp_
     task = asyncio.create_task(run_rig)
     while ha.states["light.a"]["state"] != "off":
         await asyncio.sleep(0.005)
-    assert set(journal.sections) == {"profile", "paused", "options", "taken", "stored", "power"}
+    assert set(journal.sections) == {"profile", "paused", "options", "cases"}
+    assert set(journal.get("cases")) == {"serial"}
 
     os.kill(os.getpid(), signum)
     with pytest.raises(asyncio.CancelledError):
@@ -874,6 +875,9 @@ async def test_records_cite_the_commit_ha_loaded_not_head_at_the_end(tmp_path, m
     assert ("No test records" in capsys.readouterr().out) is (commit is None)
 
 
+LIGHT_A_ON = {"entity_id": "light.a", "state": "on", "attributes": {"brightness": 200}}
+
+
 def aborted_journal(path: Path) -> Journal:
     """What a run killed mid-case leaves: the light it turned off, the option it saved and the automation it paused."""
     journal = Journal(path)
@@ -881,11 +885,41 @@ def aborted_journal(path: Path) -> Journal:
         profile="lab",
         paused=["automation.motion"],
         options={"opt": True, "other": False},
-        taken={"light.a": {"entity_id": "light.a", "state": "on", "attributes": {"brightness": 200}}},
-        stored={},
-        power={},
+        cases={"serial": {"taken": {"light.a": LIGHT_A_ON}, "stored": {}, "power": {}}},
     )
     return journal
+
+
+async def test_recover_puts_back_every_lanes_case(tmp_path, monkeypatch):
+    ha = rig_ha(monkeypatch, light="off", opt=True, automation="on")
+    ha.set("light.b", "off")
+    journal = Journal(tmp_path / rig.JOURNAL_NAME)
+    light_b_on = {"entity_id": "light.b", "state": "on", "attributes": {"brightness": 90}}
+    journal.update(
+        cases={
+            "hue": {"taken": {"light.a": LIGHT_A_ON}, "stored": {}, "power": {}},
+            "zha": {"taken": {"light.b": light_b_on}, "stored": {}, "power": {}},
+        }
+    )
+
+    await rig.recover(ha, ha, journal, out=lambda _: None)
+
+    assert ha.states["light.a"] == LIGHT_A_ON
+    assert ha.states["light.b"] == light_b_on
+    assert not journal.path.exists()
+
+
+async def test_recover_puts_back_a_case_a_journal_from_before_lanes_left(tmp_path, monkeypatch):
+    ha = rig_ha(monkeypatch, light="off", opt=True, automation="on")
+    journal = Journal(tmp_path / rig.JOURNAL_NAME)
+    journal.update(taken={"light.a": LIGHT_A_ON}, stored={}, power={})
+    printed = []
+
+    await rig.recover(ha, ha, journal, out=printed.append)
+
+    assert ha.states["light.a"] == LIGHT_A_ON
+    assert "Putting light.a back on." in printed
+    assert not journal.path.exists()
 
 
 async def test_recover_puts_back_what_an_aborted_run_left(tmp_path, monkeypatch):

@@ -659,6 +659,14 @@ def test_a_dry_run_shows_the_check_and_still_passes(tmp_path, monkeypatch, capsy
     assert asked and asked[0][1] is True  # the lab's bulbs roam for its ZHA and Z2M suites
 
 
+def test_a_run_plans_lanes_unless_serial(tmp_path, monkeypatch, capsys):
+    main_with(tmp_path, monkeypatch, [])
+    assert rig.main(["--dry-run"]) == 0
+    assert "In parallel, one lane per integration:" in capsys.readouterr().out
+    assert rig.main(["--dry-run", "--serial"]) == 0
+    assert "In parallel" not in capsys.readouterr().out
+
+
 def test_roam_check_skips_the_device_check(tmp_path, monkeypatch):
     asked = main_with(tmp_path, monkeypatch, [])
     assert rig.main(["--roam-check", "--dry-run"]) == 0

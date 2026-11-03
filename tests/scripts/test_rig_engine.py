@@ -1535,7 +1535,7 @@ async def test_the_journal_holds_each_change_before_it_is_made_and_is_gone_after
 
     async def light(domain, service, data=None, return_response=False):
         if domain == "light":
-            seen.append((service, list(journal.get("taken", {}))))
+            seen.append((service, list(journal.get("cases", {}).get("serial", {}).get("taken", {}))))
         return await call_service(domain, service, data, return_response)
 
     admin.rest, admin.call_service = save, light
