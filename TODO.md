@@ -108,12 +108,12 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. The rig lock
   (`watch_ha_changes` in `zha/fade.py`) move onto it, and Z2M, which has none, gets one: a fix for a prediction left
   stale by a change from HA mid-fade, as 13f's lab probe found on ZHA. Rig run on Hue's predicted-state cases and Z2M's
   raise, lower and `stop` before it lands. `opus`: it changes released Hue behavior.
-- [ ] **ZHA `set_attributes` right after an off** (bucket C of
+- [x] **ZHA `set_attributes` right after an off** (bucket C of
   [`2026-11-02-lab-run-failures.md`](docs/plans/2026-11-02-lab-run-failures.md)): `sets_while_off[light_ct]`,
   `[group]`, `sets_hs_while_off` and `sets_xy_while_off` failed on two lab runs. Probed 3 Nov: the bulbs store every
   write. zha skips `update_entity` for 1.5 s after an HA `turn_off`, and ZHA applies no color reports, so HA showed the
-  old color after the next on. Fixed: the refresh waits out zha's transition flag. Left: the rig run,
-  `--profile lab --integration zha --action set_attributes`. Lands before the ZHA A60 run.
+  old color after the next on. Fixed (#172): the refresh waits out zha's transition flag. Rig proof rides the
+  pre-release run.
 - [ ] **ZHA A60 run** (13k step 3), on the lab: ZHA color suites, `set_attributes` hs and xy included. Attended for
   `sets_color_while_off`. Clears `experimental` on the ZHA adapters it proves.
 - [ ] **9d** Rig coverage sweep for the non-color scope
