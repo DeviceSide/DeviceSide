@@ -146,7 +146,9 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. Lanes on dif
   Z2M's log shows the coordinator's source route to it failing (`ZIGBEE_SOURCE_ROUTE_FAILURE`, all 7 in the run target
   it) after its relay hop flipped from the corner bulb to other routers (one a household device, LQI 108 to 120),
   then `ZIGBEE_DELIVERY_FAILED` on the read. The cause is the mesh path, not the adapter; fixing it needs the
-  join-route plan or a better-placed relay, not a code change here.
+  join-route plan or a better-placed relay. The route is rebuilt within a second, so a read that Z2M logs as
+  `Delivery failed` is now asked once more (read.py): the 180 s probe of live reads on the sideboard, which failed on its
+  first sample before, passed in 3 of 3 runs (3 Nov, 21:10 to 21:50).
 - [ ] **ZHA A60 run** (13k step 3), on the lab: ZHA color suites, `set_attributes` hs and xy included. Attended for
   `sets_color_while_off`. Clears `experimental` on the ZHA adapters it proves.
 - [ ] **9d** Rig coverage sweep for the non-color scope
