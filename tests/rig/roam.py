@@ -1,14 +1,15 @@
-"""Roaming: the rig moves a profile's lab bulbs between Zigbee networks, all together, to each network whose suites
-the run holds, in the order Hue, ZHA, Z2M (profile.CYCLE), then straight home to Hue. Every move is direct: a bulb
-leaves the network it is on for the target, so recovery takes one move from anywhere.
+"""Roaming: the rig moves a profile's lab bulbs between Zigbee networks, all together, to each network the profile
+declares whose suites the run holds, in the order Hue, ZHA, Z2M (profile.CYCLE), then straight home. Every move is
+direct: a bulb leaves the network it is on for the target, so recovery takes one move from anywhere.
 
 Each move releases the bulbs from their network and joins them to the target, by the procedure the A60 move probe proved
 (docs/plans/2026-10-31-a60-move-probe.md): Hue deletes the device (CLIP v2 only), ZHA and Z2M remove it, each sending
 a Leave; then the next network opens a finite join window, closed once every bulb is in. After each join the bulb's
 light entity is renamed to its fixed profile entity ID, and on Z2M its options are set again.
 
-Hue is home. Before a bulb first leaves, its room and zone membership, the scene actions that target it and its
-name are saved; when it returns they are rewritten against its new device and light IDs.
+A bulb's home is Hue, the only home supported so far (profile.HOMES). Before a bulb first leaves Hue, its room and
+zone membership, the scene actions that target it and its name are saved; when it returns they are rewritten against
+its new device and light IDs.
 
 On each visit the run makes the profile's `ds-rig-*` groups on the bulbs' network: a Z2M group, a ZHA group or a Hue
 zone (whose grouped_light is the group), plus a Hue scene in the zone where the profile names one, each renamed to
@@ -40,7 +41,6 @@ from .profile import (
     rig_name,
 )
 
-HOME = CYCLE[0]
 NAMES = {"hue": "Hue", "zha": "ZHA", "zigbee2mqtt": "Z2M"}
 JOIN_S = 120  # how long a join window stays open, and how long a bulb has to join it
 REINTERVIEWS = 3  # how many times a join asks Z2M to interview a bulb again after a failed interview
@@ -98,13 +98,15 @@ def plan_lines(
     bulbs: Iterable[RoamBulb], groups: Iterable[RoamGroup] = (), moving: bool = True, route: Iterable[str] = CYCLE
 ) -> list[str]:
     """What a lab run does between its phases, for the plan before the gate: the moves, and the groups it makes.
-    `route` is the networks the run visits, in order; it ends home on Hue."""
+    `route` is the networks the run visits, in order; it ends at the bulbs' home."""
+    bulbs = list(bulbs)
     names = ", ".join(bulb.entity_id for bulb in bulbs)
     lines = []
     if moving:
-        stops = [network for network in route if network != HOME]
+        home = bulbs[0].home
+        stops = [network for network in route if network != home]
         lines = [
-            f"Roams {names} together: {' -> '.join(NAMES[network] for network in [HOME, *stops, HOME])}.",
+            f"Roams {names} together: {' -> '.join(NAMES[network] for network in [home, *stops, home])}.",
             "  Leaving: Hue deletes the device on the bridge; ZHA and Z2M remove it.",
             f"  Joining ZHA or Z2M: open for up to {JOIN_S} s, closed once all are in. A bulb from Hue still",
             f"    missing {MISSED_HUE_LEAVE_S} s after the last join, once the rest are in, is searched back to Hue",
@@ -133,13 +135,14 @@ class Bulb:
     ieee: str
     entity_id: str
     z2m_options: dict = field(default_factory=dict)
+    home: str = "hue"  # a journal from before homes were declared has none: every bulb's was Hue
 
     @classmethod
     def of(cls, bulb: RoamBulb) -> Bulb:
-        return cls(bulb.ieee, bulb.entity_id, dict(bulb.z2m_options))
+        return cls(bulb.ieee, bulb.entity_id, dict(bulb.z2m_options), bulb.home)
 
     def saved(self) -> dict:
-        return {"ieee": self.ieee, "entity_id": self.entity_id, "z2m_options": self.z2m_options}
+        return {"ieee": self.ieee, "entity_id": self.entity_id, "z2m_options": self.z2m_options, "home": self.home}
 
 
 async def _until(check: Callable[[], Awaitable[bool]], timeout: float) -> bool:
@@ -186,6 +189,11 @@ class Roamer:
         bulbs = [Bulb(**bulb) for bulb in journal.get("roam", {}).get("bulbs", [])]
         return cls(ha, bridge, bulbs, journal, out)
 
+    @property
+    def home_network(self) -> str:
+        """Where the bulbs live, and a run ends: their shared home (profile.roam_section)."""
+        return self.bulbs[0].home if self.bulbs else "hue"
+
     # --- the journal ----------------------------------------------------------------------------------------------
 
     def save(self) -> None:
@@ -213,7 +221,7 @@ class Roamer:
             and not self.made
             and not self.z2m_log_level
         ):
-            if all(self.at.get(bulb.entity_id) == HOME for bulb in self.bulbs):
+            if all(self.at.get(bulb.entity_id) == bulb.home for bulb in self.bulbs):
                 self.journal.clear("roam")
 
     # --- where a bulb is ------------------------------------------------------------------------------------------
@@ -248,11 +256,11 @@ class Roamer:
         await self.settle(to)
         if away := [bulb for bulb in self.bulbs if self.at[bulb.entity_id] != to]:
             await self.move(away, to)
-        if to == HOME:
+        if to == "hue":  # a bulb back on Hue gets its rooms and scenes back
             await self.restore_home()
             if not await self.search_over():
                 self.out("The Hue search is still open; anything resetting nearby may yet join the bridge.")
-            self.finish()
+        self.finish()
 
     async def settle(self, to: str) -> None:
         """Find every bulb, and finish a move a crash cut short: rename whoever reached `to`. A bulb that move released
@@ -284,7 +292,7 @@ class Roamer:
         if None in origins.values():
             sources.append("no network (a move cut short)")
         self.out(f"Moving {names} from {' and '.join(sources)} to {NAMES[target]}.")
-        if leaving_home := [bulb for bulb in bulbs if origins[bulb.entity_id] == HOME]:
+        if leaving_home := [bulb for bulb in bulbs if origins[bulb.entity_id] == "hue"]:
             await self.save_home(leaving_home)
         self.moving = {"from": origins, "to": target, "bulbs": list(origins)}
         self.save()
@@ -544,7 +552,7 @@ class Roamer:
         self, bulbs: list[Bulb], all_in: Callable[[], Awaitable[bool]], searches: int = HUE_SEARCHES
     ) -> bool:
         """Search until every bulb is in: one search, and one more (up to `searches`) if a bulb is still missing when
-        it ends. Returns once all are in, so a search may still be open; the next move's close_all, or go(HOME),
+        it ends. Returns once all are in, so a search may still be open; the next move's close_all, or go("hue"),
         waits it out."""
         self.bridge_before = {device["id"] for device in await self.bridge.get("device")}
         self.save()

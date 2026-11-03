@@ -344,14 +344,15 @@ LAB_OPTIONS = {"hue_native_control": True}
 LAB_BULBS = [Bulb(LAB_A[2:], "light.lab_a", LAB_OPTIONS), Bulb(LAB_B[2:], "light.lab_b")]
 
 
-def lab_profile(directory: Path, extra: str = "") -> Path:
+def lab_profile(directory: Path, extra: str = "", networks: str = "hue, zha, zigbee2mqtt") -> Path:
     path = directory / "lab.yaml"
     path.write_text(
         "shelly:\n  - entity_id: switch.plug\n    roles: [switch_plug]\n"
-        "roam:\n  bulbs:\n"
-        f'    - ieee: "{LAB_A}"\n      entity_id: light.lab_a\n      roles: [light_ct, light_color]\n'
+        f"roam:\n  networks: [{networks}]\n  bulbs:\n"
+        f'    - ieee: "{LAB_A}"\n      entity_id: light.lab_a\n      home: hue\n      roles: [light_ct, light_color]\n'
         "      z2m_options: {hue_native_control: true}\n"
-        f'    - ieee: "00:17:88:01:0A:BC:DE:F1"\n      entity_id: light.lab_b\n      roles: [light_dimmable]\n' + extra
+        f'    - ieee: "00:17:88:01:0A:BC:DE:F1"\n      entity_id: light.lab_b\n      home: hue\n'
+        "      roles: [light_dimmable]\n" + extra
     )
     return path
 
@@ -500,7 +501,7 @@ class Lab:
 
 def profile(integration: str = "shelly", pause: tuple[str, ...] = (), **roles: str) -> Profile:
     entities = [RigEntity(entity_id, frozenset({role})) for role, entity_id in roles.items()]
-    return Profile({integration: entities}, pause, name="house")
+    return Profile({integration: entities}, {"all": pause} if pause else {}, name="house")
 
 
 OPTION_REGISTRY = SimpleNamespace(

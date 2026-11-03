@@ -3,6 +3,10 @@ from pathlib import Path
 
 import pytest
 
+from tests.rig import locks
+
+REAL_WORKSPACE_COLOR = locks.workspace_color  # the autouse fixture swaps the module's for a recorder
+
 
 class GitRepo:
     """A throwaway repository for the tag and audit checks: commits, tags and audit records."""
@@ -28,3 +32,11 @@ class GitRepo:
 @pytest.fixture
 def repo(tmp_path: Path) -> GitRepo:
     return GitRepo(tmp_path)
+
+
+@pytest.fixture(autouse=True)
+def workspace_colors(monkeypatch) -> list[str | None]:
+    """Record the cmux workspace colors a run sets, so no test reaches the real cmux."""
+    colors: list[str | None] = []
+    monkeypatch.setattr(locks, "workspace_color", colors.append)
+    return colors

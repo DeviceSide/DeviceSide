@@ -115,7 +115,7 @@ async def test_the_journal_names_the_move_in_flight_before_the_release(lab, tmp_
         "to": "zha",
         "bulbs": ["light.lab_a", "light.lab_b"],
     }
-    assert seen[0]["bulbs"][0] == {"ieee": A[2:], "entity_id": "light.lab_a", "z2m_options": OPTIONS}
+    assert seen[0]["bulbs"][0] == {"ieee": A[2:], "entity_id": "light.lab_a", "z2m_options": OPTIONS, "home": "hue"}
     assert set(seen[0]["home"]) == {"light.lab_a", "light.lab_b"}
     roamed = journal.get("roam")
     assert roamed["move"] is None and roamed["at"] == {"light.lab_a": "zha", "light.lab_b": "zha"}
@@ -287,7 +287,7 @@ async def test_recovery_moves_the_bulbs_home_from_wherever_a_crash_left_them(lab
     journal = Journal(tmp_path / "journal.json")
     await crash(lab, journal, place, monkeypatch)
 
-    await Roamer.from_journal(lab.ha, lab.bridge, Journal(journal.path), lambda _: None).go(roam.HOME)
+    await Roamer.from_journal(lab.ha, lab.bridge, Journal(journal.path), lambda _: None).go("hue")
 
     assert await where(lab) == ["hue", "hue"]
     assert lab.device_of("light.lab_a")["identifiers"][0][0] == "hue"
@@ -306,7 +306,7 @@ async def test_recovery_joins_bulbs_released_mid_move_and_on_no_network_straight
     assert await where(lab) == [None, None]
 
     printed = []
-    await Roamer.from_journal(lab.ha, lab.bridge, Journal(journal.path), printed.append).go(roam.HOME)
+    await Roamer.from_journal(lab.ha, lab.bridge, Journal(journal.path), printed.append).go("hue")
 
     assert "Moving light.lab_a, light.lab_b from no network (a move cut short) to Hue." in printed
     assert await where(lab) == ["hue", "hue"]
@@ -332,7 +332,7 @@ async def test_a_bulb_on_no_network_stops_with_the_reset_instruction(lab, tmp_pa
     await roamer(lab, journal).go("zha")
     await lab.ha.zha_remove("00:17:88:01:0a:bc:de:f1")  # light.lab_b leaves, and nothing is open
     with pytest.raises(RoamError, match=r"Not on any Zigbee network: light.lab_b\. Reset it over Bluetooth"):
-        await Roamer.from_journal(lab.ha, lab.bridge, journal).go(roam.HOME)
+        await Roamer.from_journal(lab.ha, lab.bridge, journal).go("hue")
     assert await where(lab) == ["zha", None]
     assert journal.get("roam")["home"]
 
@@ -352,21 +352,55 @@ def test_a_profile_lists_each_roaming_bulb_under_every_network(tmp_path):
 @pytest.mark.parametrize(
     ("extra", "error"),
     [
-        (f'    - ieee: "{A.upper()}"\n      entity_id: light.lab_c\n', "two roam bulbs share an IEEE"),
-        ('    - ieee: "0x0017"\n      entity_id: light.lab_c\n', "isn't 16 hex digits"),
-        ('    - ieee: "0x0017880100000003"\n      entity_id: light.lab_a\n', "share an entity ID"),
-        ('    - ieee: "0x0017880100000003"\n      entity_id: switch.x\n', "must be a light"),
-        ('    - ieee: "0x0017880100000003"\n      entity_id: light.c\n      roles: [group]\n', "not a group"),
-        ('    - ieee: "0x0017880100000003"\n      entity_id: light.c\n      roles: [bulb]\n', "unknown roles"),
-        ('    - ieee: "0x0017880100000003"\n      entity_id: light.c\n      zigbee: 1\n', "unknown keys"),
-        ('    - ieee: "0x0017880100000003"\n      entity_id: light.c\n      z2m_options: [a]\n', "must be a mapping"),
-        ("    - entity_id: light.c\n", "needs an ieee and an entity_id"),
-        ("  zones: []\n", "roam must be a mapping with a bulbs list"),
+        (f'    - ieee: "{A.upper()}"\n      entity_id: light.lab_c\n      home: hue\n', "two roam bulbs share an IEEE"),
+        ('    - ieee: "0x0017"\n      entity_id: light.lab_c\n      home: hue\n', "isn't 16 hex digits"),
+        ('    - ieee: "0x0017880100000003"\n      entity_id: light.lab_a\n      home: hue\n', "share an entity ID"),
+        ('    - ieee: "0x0017880100000003"\n      entity_id: switch.x\n      home: hue\n', "must be a light"),
+        (
+            '    - ieee: "0x0017880100000003"\n      entity_id: light.c\n      home: hue\n      roles: [group]\n',
+            "not a group",
+        ),
+        (
+            '    - ieee: "0x0017880100000003"\n      entity_id: light.c\n      home: hue\n      roles: [bulb]\n',
+            "unknown roles",
+        ),
+        (
+            '    - ieee: "0x0017880100000003"\n      entity_id: light.c\n      home: hue\n      zigbee: 1\n',
+            "unknown keys",
+        ),
+        (
+            '    - ieee: "0x0017880100000003"\n      entity_id: light.c\n      home: hue\n      z2m_options: [a]\n',
+            "must be a mapping",
+        ),
+        ("    - entity_id: light.c\n      home: hue\n", "needs an ieee, an entity_id and a home"),
+        ('    - ieee: "0x0017880100000003"\n      entity_id: light.c\n', "needs an ieee, an entity_id and a home"),
+        ('    - ieee: "0x0017880100000003"\n      entity_id: light.c\n      home: zha\n', "only hue homes are"),
+        ("  zones: []\n", "roam must be a mapping with a networks list"),
     ],
 )
 def test_a_profile_refuses_a_bad_roam_bulb(tmp_path, extra, error):
     with pytest.raises(ValueError, match=error):
         Profile.load(lab_profile(tmp_path, extra))
+
+
+@pytest.mark.parametrize(
+    ("networks", "error"),
+    [
+        ("zha, zigbee2mqtt", "light.lab_a's home, hue, isn't in roam networks"),
+        ("hue, thread", "roam needs networks"),
+        ("", "roam needs networks"),
+    ],
+)
+def test_a_profile_refuses_bad_roam_networks(tmp_path, networks, error):
+    with pytest.raises(ValueError, match=error):
+        Profile.load(lab_profile(tmp_path, networks=networks))
+
+
+def test_a_profile_lists_roaming_bulbs_only_under_its_declared_networks(tmp_path):
+    profile = Profile.load(lab_profile(tmp_path, networks="zigbee2mqtt, hue"))
+    assert profile.roam_networks == ("hue", "zigbee2mqtt")
+    assert profile.entity("zigbee2mqtt", "light_color") == "light.lab_a"
+    assert profile.entity("zha", "light_color") is None
 
 
 def test_a_roaming_bulb_cant_also_be_a_fixed_entity(tmp_path):
@@ -528,7 +562,7 @@ async def test_recovery_names_a_device_that_joined_the_search_a_crash_cut_short(
 async def test_a_bulb_goes_home_from_zha_in_one_direct_move(lab):
     await roamer(lab).go("zha")
     printed = []
-    await roamer(lab, out=printed.append).go(roam.HOME)
+    await roamer(lab, out=printed.append).go("hue")
     assert [line for line in printed if line.startswith("Moving")] == [
         "Moving light.lab_a, light.lab_b from ZHA to Hue."
     ]
@@ -572,7 +606,7 @@ async def test_a_bulb_that_missed_its_leave_is_recorded_where_it_stayed_and_reco
             await roamer(lab, Journal(journal.path)).go("zigbee2mqtt")
     assert Journal(journal.path).get("roam")["at"]["light.lab_b"] == "zha"
 
-    await Roamer.from_journal(lab.ha, lab.bridge, Journal(journal.path), lambda _: None).go(roam.HOME)
+    await Roamer.from_journal(lab.ha, lab.bridge, Journal(journal.path), lambda _: None).go("hue")
     assert await where(lab) == ["hue", "hue"]
 
 
@@ -584,7 +618,7 @@ async def test_a_z2m_remove_that_cant_be_delivered_stops_with_the_power_cycle_in
 
     monkeypatch.setattr(lab.ha, "z2m_remove_device", undeliverable)
     with pytest.raises(RoamError, match=r"Z2M couldn't remove light.lab_a: it didn't take the Leave\. Switch its lamp"):
-        await roamer(lab).go(roam.HOME)
+        await roamer(lab).go("hue")
     assert await where(lab) == ["zigbee2mqtt", "zigbee2mqtt"]
 
 

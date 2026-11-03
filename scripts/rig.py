@@ -5,29 +5,38 @@ The rig is the household's own Home Assistant and its in-use lights. Nothing cha
 preflight reads the profile, the adapter registry and the deployed tree hash, prints what will run, then asks.
 DEVICE_SIDE_RIG_APPROVED=1 answers the gate for a non-interactive caller that already has a human's yes.
 
-One run at a time: a lock in the git common dir, shared by every worktree; a second run waits for it. Each run deploys
-and restarts HA onto its own checkout's tree when HA hasn't loaded it, so a run queued behind another tests its own
-code. Ctrl-C mid-deploy waits for the deploy and HA's restart to finish before releasing the lock. The tests are the
-step files in tests/rig/steps, run by tests/rig/engine.py; a full pass of an adapter rewrites its test record.
+Runs share the rig through locks in the git common dir, shared by every worktree (tests/rig/locks.py): each holds the
+integrations it moves, so runs on different ones go side by side, and HA, shared, or exclusively for a deploy or a
+suite with device_side options, which restart or reload device_side under every other run. The plan prints the run's
+locks. Each run deploys and restarts HA onto its own checkout's tree when HA hasn't loaded it, so a run queued behind
+another tests its own code; it reads the deploy state again once it holds its locks, and takes HA exclusively if it
+must deploy after all. Ctrl-C mid-deploy waits for the deploy and HA's restart to finish before releasing the locks.
+The tests are the step files in tests/rig/steps, run by tests/rig/engine.py; a full pass of an adapter rewrites its
+test record.
 
 Ctrl-C, SIGTERM and SIGHUP stop a run, putting the devices back; a second one leaves them. What a run changes is
-journaled first (next to the lock), so whatever a killed run leaves changed, the next run puts back before its gate, or
---recover alone does.
+journaled first, in a journal of its own next to the locks (tests/rig/journal.py), so whatever a killed run leaves
+changed, the next run whose locks cover it puts back before its gate, or --recover, holding every lock, does.
 
-Under cmux the run colors its workspace: green holding the lock, amber waiting for it.
+--hold runs a probe's command holding the named integrations and HA (--exclusive: exclusively), with the profile's
+automations for them paused, passing signals on to it and returning its exit code; no gate and no case journal.
+
+Under cmux the run colors its workspace: green holding its locks, amber waiting for them.
 
 A profile (tests/rig/profiles/<name>.yaml) names the entities a run may move and what it pauses; --profile picks
-one, and may be left out when there is only one.
+one, and may be left out when there is only one. A run pauses the profile's `all` list and those of the integrations it
+holds, through a ledger runs side by side share (tests/rig/ledger.py): the last run out turns each back on.
 
 The run starts with lanes: one per integration, side by side, each running that integration's cases on fixed entities
 (engine.in_head). The rest run after, one at a time: cases with device_side options, whose save reloads the entry, and
 those on roaming bulbs, rig-made groups and scenes, or powered entities and their supplies. --serial runs every case
 one at a time, as before lanes.
 
-A profile with `roam:` has bulbs the run moves between Hue, ZHA and Z2M (tests/rig/roam.py): the lanes run with the
-bulbs at home, then the rest run in phases, Hue's with the fixed integrations', then ZHA's, then Z2M's, each network
-only if it has suites, with a direct move before each and one straight home at the end.
---recover, and the replay before the next run's gate, move them home. --roam-check visits every network with no suites.
+A profile with `roam:` has bulbs the run moves between the networks it declares, of Hue, ZHA and Z2M
+(tests/rig/roam.py): the lanes run with the bulbs at home, then the rest run in phases, the home's with the other
+integrations', then each other declared network's in that order, each only if it has suites, with a direct move before
+each and one straight home at the end. The run holds only the networks it visits. --recover, and the replay before the
+next run's gate, move them home. --roam-check visits every declared network with no suites.
 
 Before the gate, and alone with --check, the run checks every phase's devices at once: each fixed entity its cases
 use is in HA and available, and each roaming bulb is on a network. Without that, a device left unpowered stops the run
@@ -38,18 +47,17 @@ Usage: scripts/rig.py [--profile NAME] [--dry-run] [--no-deploy] [--unattended] 
        scripts/rig.py [--profile NAME] --check [--integration KEY ...] [--action NAME ...] [-k TEXT]
        scripts/rig.py [--profile NAME] --roam-check
        scripts/rig.py --recover
-       scripts/rig.py --wait-free
+       scripts/rig.py --wait-free [--integration KEY ...]
+       scripts/rig.py [--profile NAME] --hold KEY [--hold KEY ...] [--exclusive] -- COMMAND [ARGS ...]
 """
 
 import argparse
 import asyncio
 import contextlib
 import datetime
-import fcntl
-import getpass
 import json
 import os
-import shutil
+import shlex
 import signal
 import subprocess
 import sys
@@ -57,10 +65,10 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
-from collections.abc import Callable, Coroutine, Iterator
+from collections.abc import Awaitable, Callable, Coroutine, Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, TextIO
+from typing import Any
 
 import aiohttp
 
@@ -68,6 +76,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
 from custom_components.device_side.core.registry import AdapterRegistry  # noqa: E402
+from tests.rig import locks  # noqa: E402
 from tests.rig.bridge import BridgeError, HueBridge  # noqa: E402
 from tests.rig.client import HAClient, HAError  # noqa: E402
 from tests.rig.engine import (  # noqa: E402
@@ -88,18 +97,21 @@ from tests.rig.engine import (  # noqa: E402
     write_records,
     write_report,
 )
-from tests.rig.journal import Journal  # noqa: E402
+from tests.rig.journal import LEGACY_NAME, Journal, orphans  # noqa: E402
+from tests.rig.ledger import Ledger, turn_on  # noqa: E402
+from tests.rig.locks import Claim, Held  # noqa: E402
 from tests.rig.profile import (  # noqa: E402
-    CYCLE,
     EXAMPLE,
     LEGACY_INVENTORY,
+    PAUSE_ALL,
     PROFILES_DIR,
+    TOLERANCE_S,
     Profile,
     RoamBulb,
     load_env,
     profile_paths,
 )
-from tests.rig.roam import BLUETOOTH_RESET, HOME, NAMES, Bulb, GroupError, Roamer, RoamError  # noqa: E402
+from tests.rig.roam import BLUETOOTH_RESET, NAMES, Bulb, GroupError, Roamer, RoamError  # noqa: E402
 from tests.rig.roam import plan_lines as roam_plan_lines  # noqa: E402
 
 COMPONENT = "custom_components/device_side"
@@ -113,11 +125,6 @@ READY_TIMEOUT_S = 450
 TARGETS_TIMEOUT_S = 60
 RESTART_ESTIMATE_S = 90
 ROAM_ESTIMATE_S = 180  # the three moves: the probe's joins took about 10 s each, plus releases, renames and HA
-LOCK_NAME = "device_side-rig.lock"
-LOCK_POLL_S = 2.0  # how often a waiting run retries the lock
-WORKSPACE_HELD = "Green"  # a cmux workspace's color while its run holds the lock
-WORKSPACE_QUEUED = "Amber"  # ...while its run waits for the lock
-JOURNAL_NAME = "device_side-rig.journal.json"
 ABORT_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
 # Run reports go where the OS clears old files: they are for reviewing a run, not for keeping.
 REPORT_DIR = Path(tempfile.gettempdir()) / "device_side-rig"
@@ -162,29 +169,38 @@ def select(
 
 
 def roams(profile: Profile, suites: list[Suite], roam_check: bool = False) -> bool:
-    """Whether the run moves the profile's bulbs: for --roam-check, or a ZHA or Z2M suite. Hue's suites and the fixed
-    integrations' run with the bulbs at home, so a run of only those stays there."""
-    return bool(profile.roam) and (roam_check or any(suite.integration in CYCLE[1:] for suite in suites))
+    """Whether the run moves the profile's bulbs: for --roam-check, or a suite on a network the profile lets them
+    visit other than their home. The home's suites and the rest run with the bulbs at home, so a run of only those
+    stays there."""
+    return bool(profile.roam) and (roam_check or any(suite.integration in away(profile) for suite in suites))
+
+
+def away(profile: Profile) -> list[str]:
+    """The networks the profile's bulbs may visit other than their home, in CYCLE order."""
+    return [network for network in profile.roam_networks if network != profile.roam_home]
 
 
 def makes_groups(profile: Profile, suites: list[Suite], roam_check: bool = False) -> bool:
-    """Whether the run makes the profile's ds-rig-* groups: on each visit when it roams, or on Hue for a Hue suite."""
+    """Whether the run makes the profile's ds-rig-* groups: on each visit when it roams, or at home for a suite
+    there."""
     if not profile.roam_groups:
         return False
-    return roams(profile, suites, roam_check) or any(suite.integration == HOME for suite in suites)
+    return roams(profile, suites, roam_check) or any(suite.integration == profile.roam_home for suite in suites)
 
 
-def phases(suites: list[Suite], roaming: bool) -> list[tuple[str | None, list[Suite]]]:
-    """The run's phases, each a network to move the bulbs to (None: no move) and the suites run there. Roaming: Hue's
-    suites with the fixed integrations', then ZHA's, then Z2M's, each in select's order, skipping a network with no
-    suites; a run with none (--roam-check) visits every network."""
+def phases(suites: list[Suite], profile: Profile, roaming: bool) -> list[tuple[str | None, list[Suite]]]:
+    """The run's phases, each a network to move the bulbs to (None: no move) and the suites run there. Roaming: the
+    home's suites with every other integration's, then those of each network the profile lets the bulbs visit, in
+    CYCLE order, each in select's order, skipping a network with no suites; a run with none (--roam-check) visits
+    every one."""
     if not roaming:
         return [(None, suites)]
+    home, stops = profile.roam_home, away(profile)
     by_network = [
-        (network, [suite for suite in suites if (suite.integration if suite.integration in CYCLE else HOME) == network])
-        for network in CYCLE
+        (network, [suite for suite in suites if (suite.integration if suite.integration in stops else home) == network])
+        for network in [home, *stops]
     ]
-    return [(network, held) for network, held in by_network if network == HOME or held or not suites]
+    return [(network, held) for network, held in by_network if network == home or held or not suites]
 
 
 def plan_lines(
@@ -314,116 +330,6 @@ def check_deploy(env: dict, deploy: Deploy) -> None:
         raise SystemExit(f"Cannot deploy: {deploy.blocker}.")
 
 
-def workspace_color(color: str | None) -> None:
-    """Color the cmux workspace this run belongs to (`color` None clears it), so the sidebar shows who holds the lock
-    and who queues. Best effort: it does nothing outside cmux, and a failure never stops a run."""
-    workspace = os.environ.get("CMUX_WORKSPACE_ID")
-    if not workspace or not shutil.which("cmux"):
-        return
-    action = ["--action", "set-color", "--color", color] if color else ["--action", "clear-color"]
-    with contextlib.suppress(OSError, subprocess.SubprocessError):
-        subprocess.run(
-            ["cmux", "workspace-action", "--workspace", workspace, *action],
-            capture_output=True,
-            timeout=5,
-            check=False,
-        )
-
-
-def lock_entry(holder: str) -> str:
-    """What a run writes into the lock: `holder` and its pid, then how to reach whoever started it.
-
-    Under Claude Code that is the path of the session's registry file, which the reader resolves to the session's
-    current name (sessions can be renamed mid-run). Run from a terminal, it is the user and tty instead.
-    """
-    claude_pid = os.environ.get("CLAUDE_PID")
-    if claude_pid:
-        config = Path(os.environ.get("CLAUDE_CONFIG_DIR") or "~/.claude").expanduser()
-        return f"{holder} (pid {os.getpid()})\n{config / 'sessions' / f'{claude_pid}.json'}\n"
-    who = f"user {getpass.getuser()}"
-    try:
-        who += f" on {os.ttyname(0).removeprefix('/dev/')}"
-    except OSError:  # stdin is not a tty
-        pass
-    return f"{holder} (pid {os.getpid()}, {who})\n"
-
-
-def lock_holder(entry: str) -> str:
-    """Describe the lock's holder from its `lock_entry`, naming the Claude Code session that holds it, if any.
-
-    The registry file is Claude Code's own, undocumented: when it is gone or unreadable, the holder line stands alone.
-    """
-    line, _, session_file = entry.strip().partition("\n")
-    held_by = line or "an unnamed process"
-    if not session_file:
-        return held_by
-    try:
-        name = json.loads(Path(session_file).read_text())["name"]
-    except OSError, ValueError, KeyError, TypeError:
-        return held_by
-    return f'{held_by}, Claude Code session "{name}" (SendMessage reaches it)'
-
-
-def wait_for_lock(handle: TextIO, operation: int, out: Callable[[str], None]) -> bool:
-    """Take `operation` (LOCK_EX or LOCK_SH) on `handle`, polling while a run holds the lock and saying who holds it,
-    and again whenever that changes. Returns whether it had to wait."""
-    waiting_on = None
-    while True:
-        try:
-            fcntl.flock(handle, operation | fcntl.LOCK_NB)
-            return waiting_on is not None
-        except BlockingIOError:
-            handle.seek(0)
-            held_by = lock_holder(handle.read())
-            if held_by != waiting_on:
-                if waiting_on is None:
-                    workspace_color(WORKSPACE_QUEUED)
-                out(f"Another rig run holds the lock: {held_by}. Waiting for it to finish (Ctrl-C to give up)...")
-                waiting_on = held_by
-            time.sleep(LOCK_POLL_S)
-
-
-def lock_rig(path: Path, holder: str, out: Callable[[str], None] = print) -> TextIO:
-    """Hold an exclusive lock on `path` for the process's life, waiting while another run has it.
-
-    One lock in the git common dir covers every worktree. flock drops when the process dies, so nothing goes stale.
-    A waiting run says who holds the lock (with its Claude Code session, so a waiting agent can message it), and again
-    whenever that changes. Waiting runs poll rather than queue, so when several wait, whichever polls first after a
-    release goes next.
-    """
-    handle = path.open("a+")
-    if wait_for_lock(handle, fcntl.LOCK_EX, out):
-        out("Rig lock acquired.")
-    handle.truncate(0)
-    handle.write(lock_entry(holder))
-    handle.flush()
-    workspace_color(WORKSPACE_HELD)
-    return handle
-
-
-def wait_free(path: Path, out: Callable[[str], None] = print) -> None:
-    """Return once no run holds the lock on `path`, without taking it: a shared lock, dropped at once.
-
-    It says only that the rig was free at that moment; another run may take the lock before the caller's own run does.
-    """
-    with path.open("a+") as handle:
-        wait_for_lock(handle, fcntl.LOCK_SH, out)
-        fcntl.flock(handle, fcntl.LOCK_UN)
-    out("The rig lock is free.")
-
-
-def held_by(path: Path) -> str | None:
-    """Who holds the lock on `path` now, or None when it is free; takes nothing."""
-    with path.open("a+") as handle:
-        try:
-            fcntl.flock(handle, fcntl.LOCK_SH | fcntl.LOCK_NB)
-        except BlockingIOError:
-            handle.seek(0)
-            return lock_holder(handle.read())
-        fcntl.flock(handle, fcntl.LOCK_UN)
-    return None
-
-
 def gate(prompt: Callable[[str], str] = input) -> bool:
     if os.environ.get("DEVICE_SIDE_RIG_APPROVED") == "1":
         print("Approved by DEVICE_SIDE_RIG_APPROVED=1.")
@@ -519,7 +425,29 @@ def explain(entries: list[dict], waits_for: list[str]) -> str:
     )
 
 
+@dataclass(slots=True)
+class Setup:
+    """What a run reads before it takes its locks, none of which changes anything; take() reads `deploy` again once it
+    holds them."""
+
+    env: dict
+    profile: Profile
+    registry: AdapterRegistry
+    suites: list[Suite]
+    roaming: bool
+    grouping: bool
+    deploy: Deploy | None = None  # None for --check, which deploys nothing
+
+    def deploying(self, args: argparse.Namespace) -> bool:
+        """--roam-check deploys nothing, as it runs none of our code."""
+        return self.deploy is not None and self.deploy.needed and not args.no_deploy and not args.roam_check
+
+
 def main(argv: list[str] | None = None) -> int:
+    argv = sys.argv[1:] if argv is None else list(argv)
+    command: list[str] = []
+    if "--" in argv:
+        argv, command = argv[: argv.index("--")], argv[argv.index("--") + 1 :]
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--profile", help="the profile to run (tests/rig/profiles/NAME.yaml); needed if there are two")
     parser.add_argument("--dry-run", action="store_true", help="print the plan and stop before the gate")
@@ -530,7 +458,12 @@ def main(argv: list[str] | None = None) -> int:
         "no deploy, nothing changed",
     )
     parser.add_argument("--no-deploy", action="store_true", help="test whatever HA already runs")
-    parser.add_argument("--integration", action="append", help="limit to an integration key (repeatable)")
+    parser.add_argument(
+        "--integration",
+        action="append",
+        choices=sorted(TOLERANCE_S),
+        help="limit to an integration key (repeatable); with --wait-free, wait for it",
+    )
     parser.add_argument("--action", action="append", help="limit to an action's step files (repeatable)")
     parser.add_argument("-k", dest="keyword", help="run only test cases whose id contains this text")
     parser.add_argument("--unattended", action="store_true", help="skip observed tests, reporting them not observed")
@@ -546,11 +479,29 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--wait-free",
         action="store_true",
-        help="wait until no rig run holds the lock, without taking it; another run may take it first",
+        help="wait until no rig run holds the locks (with --integration, those integrations' and HA exclusively), "
+        "without taking them; another run may take them first",
+    )
+    parser.add_argument(
+        "--hold",
+        action="append",
+        metavar="INTEGRATION",
+        choices=sorted(TOLERANCE_S),
+        help="hold this integration's lock (repeatable) and HA shared while running the command after --, for a probe",
+    )
+    parser.add_argument(
+        "--exclusive",
+        action="store_true",
+        help="with a command after --: hold HA exclusively, for a probe that restarts HA or reloads device_side",
     )
     args = parser.parse_args(argv)
+    args.command = command
     if args.check and (args.recover or args.roam_check or args.wait_free):
         parser.error("--check can't be combined with --recover, --roam-check or --wait-free")
+    if bool(args.hold or args.exclusive) != bool(command):
+        parser.error("--hold and --exclusive need a command after --, and a command after -- needs one of them")
+    if command and (args.dry_run or args.check or args.recover or args.roam_check or args.wait_free):
+        parser.error("a command after -- can't be combined with a run's modes")
     args.dry_run |= args.check  # like a dry run, it holds no lock and changes nothing
     colors = args.wait_free or not args.dry_run  # a dry run holds no lock and sets no color, so it clears none
     try:
@@ -558,7 +509,7 @@ def main(argv: list[str] | None = None) -> int:
             return wait_or_run(args)
     finally:
         if colors:
-            workspace_color(None)
+            locks.workspace_color(None)
 
 
 def leave(signum: int, _frame: object) -> None:
@@ -567,48 +518,110 @@ def leave(signum: int, _frame: object) -> None:
 
 
 def wait_or_run(args: argparse.Namespace) -> int:
+    directory = common_dir()
     if args.wait_free:
-        wait_free(common_dir() / LOCK_NAME)
+        locks.wait_free(directory, args.integration)
         return 0
-
-    _held, journal = hold_rig(args.dry_run)  # the lock is held until exit
+    if args.command:
+        return hold_command(args, directory)
+    if args.recover:
+        return recover_all(args, directory)
+    setup = prepare(args)
+    held = None if args.dry_run else take(args, setup, directory)  # waits for the locks, then holds them until exit
     try:
         with end_on_signals():
-            return run_held(args, journal)
+            return run_held(args, setup, held, directory)
     except Aborted as err:
         print(err)
         return 1
+    finally:
+        if held is not None:
+            held.close()
 
 
-def run_held(args: argparse.Namespace, journal: Journal) -> int:
-    """The run, once the lock is held."""
+def prepare(args: argparse.Namespace) -> Setup:
+    """The profile, the suites, and, but for --check, the deploy state; a run also checks .env.rig has its tokens."""
     env = load_env()
-    replay(env, journal, args.dry_run, args.recover)
-    if args.recover:
-        return 1 if journal else 0
     try:
         profile = Profile.load(choose_profile(args.profile, env))
     except ValueError as err:
         raise SystemExit(f"Fix the profile: {err}") from err
     registry = AdapterRegistry.discover()
     suites = run_suites(args, profile, registry)
-    roaming = roams(profile, suites, args.roam_check)
-    grouping = makes_groups(profile, suites, args.roam_check)
-    homes = set((journal.get("roam") or {}).get("home", {}))
+    setup = Setup(
+        env,
+        profile,
+        registry,
+        suites,
+        roams(profile, suites, args.roam_check),
+        makes_groups(profile, suites, args.roam_check),
+    )
     if args.check:
-        return check_only(env, suites, profile, registry, args.keyword, roaming, homes)
+        return setup
     if not args.dry_run:
-        check_tokens(env, suites, registry, roaming or grouping)
-    deploy = deploy_state(env.get("RIG_STATUS_CMD", ""))
-    deploying = deploy.needed and not args.no_deploy and not args.roam_check  # the check runs none of our code
+        check_tokens(env, suites, registry, setup.roaming or setup.grouping)
+    setup.deploy = deploy_state(env.get("RIG_STATUS_CMD", ""))
+    return setup
+
+
+def claim(args: argparse.Namespace, setup: Setup) -> Claim:
+    """What the run must hold: each integration with a suite that has an adapter, the integrations their entities draw
+    power through, and the networks its roaming bulbs visit, home included; HA exclusively when it deploys, which
+    restarts HA, or runs a suite with device_side options, whose save reloads the entry; HA shared otherwise."""
+    runnable = [suite for suite in setup.suites if setup.registry.adapter(suite.action, suite.integration)]
+    integrations = {suite.integration for suite in runnable}
+    integrations |= supplies(setup.profile, integrations)
+    if setup.roaming:
+        integrations |= {network for network, _ in phases(setup.suites, setup.profile, roaming=True) if network}
+    if setup.grouping:
+        integrations.add(setup.profile.roam_home)
+    exclusive = setup.deploying(args) or any(suite.file.options for suite in runnable)
+    return Claim("exclusive" if exclusive else "shared", frozenset(integrations))
+
+
+def supplies(profile: Profile, integrations: set[str]) -> set[str]:
+    """The integrations whose switches power an entity of `integrations`: a case cuts or needs that power."""
+    where = {entity.entity_id: key for key, entities in profile.integrations.items() for entity in entities}
+    return {
+        where[entity.powered_by]
+        for integration in integrations
+        for entity in profile.integrations.get(integration, ())
+        if entity.powered_by in where
+    }
+
+
+def take(args: argparse.Namespace, setup: Setup, directory: Path) -> Held:
+    """Wait for the run's claim and hold it. Another run may have deployed meanwhile, so the deploy state is read again;
+    if the run now needs more (it must deploy after all), it lets go and waits for that, once: HA held exclusively,
+    nothing can change it again."""
+    holder = git("rev-parse", "--abbrev-ref", "HEAD")
+    held = locks.hold(claim(args, setup), holder, directory)
+    setup.deploy = deploy_state(setup.env.get("RIG_STATUS_CMD", ""))
+    if not held.claim.covers(needed := claim(args, setup)):
+        held.close()
+        print(f"HA changed while this run waited; it now needs {needed}.")
+        held = locks.hold(held.claim | needed, holder, directory)
+        setup.deploy = deploy_state(setup.env.get("RIG_STATUS_CMD", ""))
+    return held
+
+
+def run_held(args: argparse.Namespace, setup: Setup, held: Held | None, directory: Path) -> int:
+    """The run, once its locks are held (none for a dry run or --check)."""
+    env, profile, registry, suites = setup.env, setup.profile, setup.registry, setup.suites
+    homes = replay(env, held, directory)
+    if args.check:
+        return check_only(setup, args.keyword, homes, claim(args, setup), directory)
+    deploy = setup.deploy
+    deploying = setup.deploying(args)
     lanes = not args.serial
-    print_plan(profile, suites, registry, args.keyword, deploy, deploying, roaming, grouping, lanes)
+    print_plan(profile, suites, registry, args.keyword, deploy, deploying, setup.roaming, setup.grouping, lanes)
+    print(f"Locks: {held.claim if held else claim(args, setup)}")
 
     if deploying:
         check_deploy(env, deploy)
     if not args.roam_check:
         print()
-        ready = not asyncio.run(check_devices(env, suites, profile, registry, args.keyword, roaming, homes))
+        ready = not asyncio.run(check_devices(env, suites, profile, registry, args.keyword, setup.roaming, homes))
         if not (ready or args.dry_run):
             raise SystemExit("Power or fix the devices above, then run again.")
     if args.dry_run:
@@ -617,38 +630,118 @@ def run_held(args: argparse.Namespace, journal: Journal) -> int:
         print("Not approved; nothing changed.")
         return 1
 
-    deploy_and_wait(env, deploy.branch if deploying else None)
-    commit = tested_commit(env.get("RIG_STATUS_CMD", ""), deploy, deploying)
-    return run_tests(
-        run_rig(
-            env,
-            suites,
-            profile,
-            registry,
-            args.keyword,
-            args.unattended,
-            commit,
-            journal,
-            roaming=roaming,
-            grouping=grouping,
-            lanes=lanes,
+    journal = Journal.start(directory)
+    try:
+        deploy_and_wait(env, deploy.branch if deploying else None)
+        commit = tested_commit(env.get("RIG_STATUS_CMD", ""), deploy, deploying)
+        return run_tests(
+            run_rig(
+                env,
+                suites,
+                profile,
+                registry,
+                args.keyword,
+                args.unattended,
+                commit,
+                journal,
+                roaming=setup.roaming,
+                grouping=setup.grouping,
+                lanes=lanes,
+                claim=held.claim,
+            )
         )
+    finally:
+        journal.release()
+
+
+def check_only(setup: Setup, keyword: str | None, homes: set[str], wanted: Claim, directory: Path) -> int:
+    """--check: the device check alone, naming the runs that hold locks this run would claim, whose moves and pauses
+    it would see."""
+    if held := locks.holders(directory, wanted):
+        print("Runs hold locks this run needs; what they have moved or paused shows below as it is now:")
+        for line in held:
+            print(f"  {line}")
+    problems = asyncio.run(
+        check_devices(setup.env, setup.suites, setup.profile, setup.registry, keyword, setup.roaming, homes)
     )
+    return 1 if problems else 0
 
 
-def check_only(
-    env: dict,
-    suites: list[Suite],
-    profile: Profile,
-    registry: AdapterRegistry,
-    keyword: str | None,
-    roaming: bool,
-    homes: set[str],
-) -> int:
-    """--check: the device check alone, naming a run that holds the lock, whose moves and pauses it would see."""
-    if holder := held_by(common_dir() / LOCK_NAME):
-        print(f"A rig run holds the lock: {holder}. What it has moved or paused shows below as it is now.")
-    return 1 if asyncio.run(check_devices(env, suites, profile, registry, keyword, roaming, homes)) else 0
+def hold_command(args: argparse.Namespace, directory: Path) -> int:
+    """A command after --: run a probe holding the integrations --hold names and HA, shared or with --exclusive
+    exclusively, with the profile's automations for them paused, and return its exit code. No gate and no case
+    journal: the probe puts back what it changes. A journal is started all the same, never written, as the name the
+    pause ledger knows the probe by, alive while it runs."""
+    wanted = Claim("exclusive" if args.exclusive else "shared", frozenset(args.hold or ()))
+    env = load_env()
+    try:
+        pausing = Profile.load(choose_profile(args.profile, env)).paused_by(wanted.integrations)
+    except ValueError as err:
+        raise SystemExit(f"Fix the profile: {err}") from err
+    if pausing and not (env.get("HA_URL") and env.get("HA_TOKEN")):
+        raise SystemExit("HA_URL and HA_TOKEN must be set in .env.rig to pause the profile's automations")
+    holder = f"{git('rev-parse', '--abbrev-ref', 'HEAD')} (probe: {shlex.join(args.command)})"
+    with locks.hold(wanted, holder, directory):
+        journal = Journal.start(directory)
+        ledger = Ledger(directory, journal.name)
+        try:
+            if pausing:
+                asyncio.run(with_ha(env, lambda ha: ledger.pause(ha, pausing)))
+            return run_command(args.command)
+        finally:
+            if pausing:
+                asyncio.run(with_ha(env, ledger.resume))
+            journal.release()
+
+
+async def with_ha(env: dict, call: Callable[[HAClient], Awaitable[None]]) -> None:
+    """`call` on a connection to HA, closed after."""
+    ha = HAClient(env["HA_URL"], env["HA_TOKEN"])
+    await ha.connect()
+    try:
+        await call(ha)
+    finally:
+        await ha.close()
+
+
+def run_command(command: list[str]) -> int:
+    """Run `command` in its own session, passing on Ctrl-C, SIGTERM and SIGHUP, so it gets each once, through here;
+    its exit code, or 128 plus the number of the signal that ended it."""
+    try:
+        process = subprocess.Popen(command, start_new_session=True)
+    except OSError as err:
+        raise SystemExit(f"Can't run {command[0]}: {err}") from None
+    with handling_signals(lambda signum, _frame: process.send_signal(signum)):
+        code = process.wait()
+    return 128 - code if code < 0 else code
+
+
+def recover_all(args: argparse.Namespace, directory: Path) -> int:
+    """--recover: hold everything, so no run is going, and put back what every aborted run left, the journal from
+    before per-run journals included. Nonzero while something is left."""
+    env = load_env()
+    held = None if args.dry_run else locks.hold(Claim.everything(), git("rev-parse", "--abbrev-ref", "HEAD"), directory)
+    try:
+        with end_on_signals():
+            journals = [*orphans(directory), *filter(None, [Journal(directory / LEGACY_NAME)])]
+            if not journals:
+                print("No aborted run left anything to put back.")
+                return 0
+            for journal in journals:
+                try:
+                    if args.dry_run:
+                        print(f"An aborted run left changes in {journal.path}; --recover puts them back.")
+                    else:
+                        asyncio.run(recover_rig(env, journal))
+                finally:
+                    journal.release()
+            return 1 if any(journals) else 0
+    except Aborted as err:
+        print(err)
+        return 1
+    finally:
+        if held is not None:
+            held.close()
 
 
 def run_suites(args: argparse.Namespace, profile: Profile, registry: AdapterRegistry) -> list[Suite]:
@@ -761,16 +854,8 @@ def handling_signals(handler: Callable[[int, object], None]) -> Iterator[None]:
             signal.signal(signum, before)
 
 
-def hold_rig(dry_run: bool) -> tuple[TextIO | None, Journal]:
-    """The rig lock, unless it is a dry run, and the journal, read once the lock is held: whoever last held it has
-    exited, so the journal is what it left."""
-    shared = common_dir()
-    lock = None if dry_run else lock_rig(shared / LOCK_NAME, git("rev-parse", "--abbrev-ref", "HEAD"))
-    return lock, Journal(shared / JOURNAL_NAME)
-
-
 def common_dir() -> Path:
-    """The git common dir, shared by every worktree, where the lock and the journal live."""
+    """The git common dir, shared by every worktree, where the locks and the journals live."""
     return Path(git("rev-parse", "--path-format=absolute", "--git-common-dir"))
 
 
@@ -785,16 +870,38 @@ def run_tests(rig_run: Coroutine[Any, Any, int]) -> int:
     return 1
 
 
-def replay(env: dict, journal: Journal, dry_run: bool, asked: bool) -> None:
-    """Put back what an aborted run left changed. A dry run holds no lock, so the run may still be going: it only says
-    the journal is there."""
-    if not journal:
-        if asked:
-            print("No aborted run left anything to put back.")
-    elif dry_run:
-        print(f"An aborted run left changes in {journal.path}; the next run puts them back before its gate.")
-    else:
-        asyncio.run(recover_rig(env, journal))
+def replay(env: dict, held: Held | None, directory: Path) -> set[str]:
+    """Put back what aborted runs left changed, each whose claim the run holds (needs); say how to put back the rest.
+    A dry run holds nothing, so it only says what is there. Returns the roaming bulbs whose Hue home a journal still
+    holds, which a run puts back."""
+    homes: set[str] = set()
+    for orphan in orphans(directory):
+        try:
+            needed = needs(orphan)
+            if held is not None and held.claim.covers(needed):
+                asyncio.run(recover_rig(env, orphan))
+            elif held is None:
+                print(f"An aborted run left changes in {orphan.path}; a run holding {needed} puts them back first.")
+            else:
+                print(
+                    f"An aborted run left changes in {orphan.path} that need {needed}, more than this run holds; "
+                    "a run holding that, or --recover, puts them back."
+                )
+            # What is left: a recovery that brought the bulbs home cleared its roam section.
+            homes |= set((orphan.get("roam") or {}).get("home", {}))
+        finally:
+            orphan.release()
+    if legacy := Journal(directory / LEGACY_NAME):
+        print(f"A run from before per-run journals left changes in {legacy.path}; --recover puts them back.")
+        homes |= set((legacy.get("roam") or {}).get("home", {}))
+    return homes
+
+
+def needs(journal: Journal) -> Claim:
+    """What a run must hold to put back an orphan: the integrations its run held, and HA exclusively when it left
+    device_side's options changed, as setting them reloads the entry."""
+    held = Claim.of(journal.get("claim"))
+    return Claim("exclusive" if journal.get("options") is not None else "shared", held.integrations)
 
 
 def check_tokens(env: dict, suites: list[Suite], registry: AdapterRegistry, roaming: bool = False) -> None:
@@ -864,8 +971,10 @@ def print_profile(profile: Profile) -> None:
         print(f"  {'ds-rig':8} {group.entity_id:40} {', '.join(sorted(group.roles))}")
         if group.scene:
             print(f"  {'ds-rig':8} {group.scene:40} scene")
-    if profile.pause:
-        print(f"Paused while it runs: {', '.join(profile.pause)}")
+    for key, entity_ids in profile.pause.items():
+        if entity_ids:
+            whose = "every run" if key == PAUSE_ALL else f"a run on {key}"
+            print(f"Paused while {whose} runs: {', '.join(entity_ids)}")
 
 
 def print_phases(
@@ -880,7 +989,8 @@ def print_phases(
     """The moves, if the run roams, and the groups it makes, then the lanes' cases, then each phase's adapters and
     the cases left for it."""
     if not roaming and profile.roam:
-        print("Roaming: none, as no ZHA or Z2M suite runs; the bulbs stay on Hue.")
+        where = " or ".join(NAMES[network] for network in away(profile)) or "another network"
+        print(f"Roaming: none, as no {where} suite runs; the bulbs stay on {NAMES[profile.roam_home]}.")
     if roaming or grouping:
         print(
             "\n".join(
@@ -888,7 +998,7 @@ def print_phases(
                     profile.roam,
                     profile.roam_groups if grouping else (),
                     roaming,
-                    [network for network, _ in phases(suites, roaming) if network],
+                    [network for network, _ in phases(suites, profile, roaming) if network],
                 )
             )
         )
@@ -900,7 +1010,7 @@ def print_phases(
             for line in lines:
                 print(f"    {line}")
     only = tail(profile) if lanes else None
-    for network, phase_suites in phases(suites, roaming):
+    for network, phase_suites in phases(suites, profile, roaming):
         print(f"Adapters on {NAMES[network]}:" if network else "Adapters:")
         for line in plan_lines(phase_suites, profile, registry, keyword, only) or ["none"]:
             print(f"  {line}")
@@ -918,6 +1028,7 @@ async def run_rig(
     roaming: bool = False,
     grouping: bool = False,
     lanes: bool = False,
+    claim: Claim | None = None,
 ) -> int:
     """Run the step files, in lanes first when `lanes` (run_phases), then phase by phase, moving the roaming bulbs
     before each and home after the last, and making the ds-rig-* groups in each phase when `grouping`, then write a
@@ -933,11 +1044,13 @@ async def run_rig(
         bridge = HueBridge(env["HUE_BRIDGE_HOST"], env["HUE_APP_KEY"])
     groups = profile.roam_groups if grouping else ()
     roamer = Roamer(admin, bridge, map(Bulb.of, profile.roam), journal, groups=groups) if lab else None
-    paused: list[str] = []
+    # The pauses are the run's, by its journal's name: a run with no journal (a test's) pauses nothing.
+    ledger = Ledger(journal.path.parent, journal.name) if journal is not None else None
+    pausing = profile.paused_by(claim.integrations if claim else None)
     stopped: Roamer | None = None  # the roamer, once a RoamError stopped the run
     home = True  # whether the roaming bulbs ended at home, with no rig-made group left
-    if journal is not None:
-        journal.update(profile=profile.name)
+    if journal is not None:  # the claim says what a run must hold to put back what this one leaves
+        journal.update(profile=profile.name, **({"claim": claim.as_json()} if claim else {}))
     results: list[SuiteResult] = []  # each phase's, as it finishes: a failed move keeps the phases before it
     try:
         result = await run_phases(
@@ -951,10 +1064,11 @@ async def run_rig(
             registry,
             keyword,
             unattended,
-            paused,
+            (lambda: ledger.pause(ha, pausing)) if ledger and pausing else None,
             journal,
             results,
             lanes,
+            reloads=claim is None or claim.ha == "exclusive",  # holding HA shared, it may not reload the entry
         )
         if suites:
             await report(result, ha, registry, commit, profile, keyword)
@@ -968,7 +1082,8 @@ async def run_rig(
         raise SystemExit(f"Roaming stopped: {err}") from None
     finally:
         home = await leave_lab(roamer, stopped)
-        await resume(ha, paused, journal)
+        if ledger is not None:
+            await ledger.resume(ha)
         drop_profile(journal)
         if bridge:
             await bridge.close()
@@ -989,13 +1104,14 @@ async def run_phases(
     registry: AdapterRegistry,
     keyword: str | None,
     unattended: bool,
-    paused: list[str],
+    pause: Callable[[], Awaitable[None]] | None,
     journal: Journal | None,
     results: list[SuiteResult] | None = None,
     lanes: bool = False,
+    reloads: bool = True,
 ) -> RunResult:
     """Each phase: move the bulbs there and make its groups, wait for its targets, then run its cases, automated then
-    observed. The automations are paused once, after the first phase's targets are all there. A run with no suites
+    observed. `pause` pauses the automations, once, after the first phase's targets are all there. A run with no suites
     is --roam-check, which makes and removes the groups on every visit as a probe. Each phase's results go into
     `results` as it finishes, so a caller keeps them when a later move raises.
 
@@ -1005,25 +1121,33 @@ async def run_phases(
     lanes = lanes and bool(suites)
     ask = None if unattended else input
     # One busy map for every run: the phases go on from the lanes, on some of the same lights.
-    common = {"admin": admin, "keyword": keyword, "ask": ask, "bridge": bridge, "journal": journal, "busy": {}}
+    common = {
+        "admin": admin,
+        "keyword": keyword,
+        "ask": ask,
+        "bridge": bridge,
+        "journal": journal,
+        "busy": {},
+        "reloads": reloads,
+    }
     only = tail(profile) if lanes else None
-    for number, (network, phase_suites) in enumerate(phases(suites, roaming)):
+    for number, (network, phase_suites) in enumerate(phases(suites, profile, roaming)):
         if roamer is not None:
-            await roamer.go(network or HOME)  # removes the last phase's groups first
+            await roamer.go(network or roamer.home_network)  # removes the last phase's groups first
             if phase_suites or not suites:
-                await roamer.make_groups(network or HOME)
+                await roamer.make_groups(network or roamer.home_network)
         if number == 0 and lanes:
             await wait_for_targets(ha, suites, profile, registry, keyword, only=head(profile))
         if phase_suites:
             await wait_for_targets(ha, phase_suites, profile, registry, keyword, only=only)
-        if number == 0:
-            await pause(ha, list(profile.pause), paused, journal)
+        if number == 0 and pause is not None:
+            await pause()
         if number == 0 and lanes:
             results += (await run(suites, profile, registry, ha, only=head(profile), lanes=True, **common)).suites
         if phase_suites:
             results += (await run(phase_suites, profile, registry, ha, only=only, **common)).suites
     if roamer is not None:
-        await roamer.go(HOME)
+        await roamer.go(roamer.home_network)
     return RunResult(results)
 
 
@@ -1082,7 +1206,7 @@ async def go_home(roamer: Roamer) -> bool:
     one that finished); whether both are done. A failure is printed: the journal keeps where they are, and --recover
     tries again."""
     try:
-        await roamer.go(HOME)
+        await roamer.go(roamer.home_network)
     except Exception as err:  # noqa: BLE001 - as resume: say so, and go on putting the rest back
         print(f"Could not move the roaming bulbs home: {err}. scripts/rig.py --recover tries again.")
         return False
@@ -1197,6 +1321,7 @@ async def check_roaming(
     problems = []
     try:
         finder = Roamer(admin, bridge, map(Bulb.of, bulbs), out=lambda _: None)
+        home = finder.home_network
         for bulb in finder.bulbs:
             try:
                 network = await finder.locate(bulb)
@@ -1208,9 +1333,9 @@ async def check_roaming(
                 problems.append(f"{bulb.entity_id}: not on any Zigbee network. {BLUETOOTH_RESET}")
             elif state is not None and not available(state):
                 problems.append(f"{bulb.entity_id}: on {NAMES[network]}, unavailable; check it is powered")
-            elif network != HOME and bulb.entity_id in homes:
+            elif network != home and bulb.entity_id in homes:
                 print(f"  {bulb.entity_id}: on {NAMES[network]}; the journal holds its Hue home, which a run puts back")
-            elif network != HOME:
+            elif network != home:
                 print(
                     f"  {bulb.entity_id}: on {NAMES[network]}. The run moves it from there; it has no saved Hue home, "
                     "so put its rooms and scenes back by hand after its first visit."
@@ -1278,7 +1403,7 @@ async def recover(
 ) -> None:
     """Put back what an aborted run left changed, in the order its finally blocks would have: the case's entities,
     device_side's options, the roaming bulbs (the ds-rig-* groups removed, the bulbs moved home, their Hue rooms and
-    scenes put back), the paused automations.
+    scenes put back), the automations it paused (the ledger's, and those of a journal from before it).
     A step that fails is printed and dropped from the journal; options stay in it while there is no admin connection
     to set them. The bulbs can't be left half done, so a failure there stops recovery, keeping the rest journaled."""
     run_of = f" (profile {name})" if (name := journal.get("profile")) else ""
@@ -1301,8 +1426,11 @@ async def recover(
             journal.clear("options")
     if journal.get("roam") is not None:
         await recover_roam(admin, bridge, journal, out)
-    if paused := journal.get("paused"):
-        await resume(ha, paused, journal)
+    await Ledger(journal.path.parent, journal.name, out).resume(ha)
+    if paused := journal.get("paused"):  # a run from before the ledger kept its pauses here
+        for entity_id in paused:
+            await turn_on(ha, entity_id, out)
+        journal.clear("paused")
     drop_profile(journal)
 
 
@@ -1318,57 +1446,27 @@ def recover_case(ha: HAClient, entry: dict, out: Callable[[str], None], **journa
 async def recover_roam(
     admin: HAClient | None, bridge: HueBridge | None, journal: Journal, out: Callable[[str], None]
 ) -> None:
-    """Remove the journal's ds-rig-* groups, move its roaming bulbs straight home to Hue and put back their
-    home; stop on a failure."""
+    """Remove the journal's ds-rig-* groups, move its roaming bulbs straight home and put back their Hue rooms and
+    scenes; stop on a failure."""
     if admin is None or bridge is None:
         raise SystemExit(
             "Moving the roaming bulbs home needs HA_ADMIN_TOKEN, HUE_BRIDGE_HOST and HUE_APP_KEY in .env.rig; "
             f"the journal ({journal.path}) keeps where they are."
         )
-    out("Moving the roaming bulbs home to Hue.")
+    roamer = Roamer.from_journal(admin, bridge, journal, out)
+    out(f"Moving the roaming bulbs home to {NAMES[roamer.home_network]}.")
     try:
         # A group that can't be removed is printed and stays journaled; the rest of recovery goes on.
-        await Roamer.from_journal(admin, bridge, journal, out).go(HOME)
+        await roamer.go(roamer.home_network)
     except RoamError as err:
         raise SystemExit(f"Recovery stopped: {err}") from None
 
 
 def drop_profile(journal: Journal | None) -> None:
-    """Clear the journal's `profile` once nothing it names a run for is left, so an empty journal is deleted; while a
-    change is left, it stays, saying which profile's run left it."""
-    if journal is not None and set(journal.sections) == {"profile"}:
-        journal.clear("profile")
-
-
-async def pause(ha: HAClient, entity_ids: list[str], paused: list[str], journal: Journal | None = None) -> None:
-    """Turn off each listed automation or switch that is on, appending it to `paused` (and the journal, first) as it
-    goes.
-
-    For automations that would fight the tests: motion lighting turning a light on as someone walks past, or an
-    Adaptive Lighting instance resetting a light's color temperature whenever it turns on. One that is already off
-    stays off and is left alone after the run. One HA doesn't know stops the run before any test.
-    """
-    for entity_id in entity_ids:
-        if (state := await ha.get_state(entity_id)) is None:
-            raise SystemExit(f"{entity_id} in the profile's pause list has no state in Home Assistant")
-        if state["state"] == "on":
-            if journal is not None:
-                journal.update(paused=[*paused, entity_id])
-            await ha.call_service(entity_id.partition(".")[0], "turn_off", {"entity_id": entity_id})
-            paused.append(entity_id)
-            print(f"Paused {entity_id} for the run.")
-
-
-async def resume(ha: HAClient, paused: list[str], journal: Journal | None = None) -> None:
-    """Turn back on what pause turned off; a failure is printed, so it can be turned on by hand."""
-    for entity_id in paused:
-        try:
-            await ha.call_service(entity_id.partition(".")[0], "turn_on", {"entity_id": entity_id})
-            print(f"Resumed {entity_id}.")
-        except Exception as err:  # noqa: BLE001 - try every one, and say which stayed off
-            print(f"Could not turn {entity_id} back on: {err}. Turn it on by hand.")
-    if journal is not None:
-        journal.clear("paused")
+    """Clear the journal's `profile` and `claim` once nothing they describe a run for is left, so an empty journal is
+    deleted; while a change is left, they stay, saying which profile's run left it and what putting it back needs."""
+    if journal is not None and set(journal.sections) <= {"profile", "claim"}:
+        journal.clear("profile", "claim")
 
 
 if __name__ == "__main__":

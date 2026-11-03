@@ -37,7 +37,7 @@ nothing moves until you say yes. `--dry-run` prints the plan and stops.
 Before the gate, the run checks every device it will use, across all its phases: each fixed entity must be in HA and
 available, and each roaming bulb must be on a network. A device left unpowered stops the run there, before anything
 moves, rather than part way through. `--check` runs only this check, taking no lock and deploying nothing, so you can
-power devices up until it passes.
+power devices up until it passes; it names the runs holding locks it would need.
 
 The run starts with one lane per integration, the lanes side by side, each holding that integration's cases on fixed
 entities. A case stays out of the lanes when its step file sets device_side options (saving them reloads the
@@ -72,8 +72,10 @@ each with its automated cases before its observed ones. The bulbs move only when
 home on Hue, with their rooms, zones, scene actions and names put back on their new Hue IDs. A run that stops
 part way still moves them home; `--recover`, or the next run before its gate, does it after a crash. A bulb on no
 network stops recovery: reset it over Bluetooth in the Hue app, then `--recover` again. A bulb still missing when
-the Hue search ends gets one more, and any other device that joins the bridge meanwhile is named, not removed. `--roam-check` runs the
-cycle with no suites. Roaming needs `HA_ADMIN_TOKEN` and the Hue bridge's `HUE_BRIDGE_HOST` and `HUE_APP_KEY`.
+the Hue search ends gets one more, and any other device that joins the bridge meanwhile is named, not removed. Z2M
+opens joining on its coordinator only. A bulb from Hue that a ZHA or Z2M window still lacks 30 s after the last join,
+seen on no network, may have missed the bridge's Leave: the window closes, a Hue search takes it back, and it is
+released alone for one more window. `--roam-check` runs the cycle with no suites. Roaming needs `HA_ADMIN_TOKEN` and the Hue bridge's `HUE_BRIDGE_HOST` and `HUE_APP_KEY`.
 
 `roam:` can also list `groups:`, native groups of those bulbs that the run makes on each network they visit: a Z2M
 group, a ZHA group, or a Hue zone with, if the group names a `scene:`, a Hue scene in it. Each is called
@@ -81,14 +83,27 @@ group, a ZHA group, or a Hue zone with, if the group names a `scene:`, a Hue sce
 one group; the scene takes `scene`), and is removed before the bulbs move on, or by `--recover` after a crash. A
 run of Hue suites alone makes them on Hue without moving the bulbs; that, too, needs the tokens above.
 
-Ctrl-C, SIGTERM or SIGHUP puts the devices back before the run exits; a second one leaves them. If a run dies before it can, the next run
-puts back what it left before its gate; `--recover` does only that.
+Ctrl-C, SIGTERM or SIGHUP puts the devices back before the run exits; a second one leaves them. Each run journals
+what it changes in a file of its own; if a run dies before it can put them back, the next run whose locks cover them
+puts them back before its gate, and `--recover`, which takes every lock, puts back everything.
 
-Runs take a lock shared by every worktree; a second run waits for it. Each run deploys your committed, pushed
-checkout and restarts Home Assistant whenever HA hasn't loaded that tree, so queue behind the lock: your run
-redeploys. A record cites the commit HA loaded, read before the tests, so committing mid-run is safe.
-`--no-deploy` tests whatever HA runs and, unless that is your checkout's tree, writes no record. A signal during
-the deploy stops the run only once HA's restart finishes, so the next run never meets HA mid-restart.
+Runs share the rig through locks in the git common dir, so every worktree sees them: one per integration, and one on
+HA. A run holds each integration it tests, plus those its entities draw power through and the networks its roaming
+bulbs visit, so runs on different integrations go side by side, and one on the same integration waits. It holds HA
+shared, unless it deploys or runs a suite with device_side options (both restart or reload device_side under every
+other run): then it holds HA exclusively, waiting for every other run to end, and new runs queue behind it. The plan
+prints the run's locks; a waiting run names who holds what it waits for. `--wait-free` waits until the rig is free,
+or with `--integration`, until those integrations are, without taking a lock.
+
+Each run deploys your committed, pushed checkout and restarts Home Assistant whenever HA hasn't loaded that tree, so a
+run queued behind another tests its own code. A record cites the commit HA loaded, read before the tests, so
+committing mid-run is safe. `--no-deploy` tests whatever HA runs and, unless that is your checkout's tree, writes no
+record. A signal during the deploy stops the run only once HA's restart finishes, so the next run never meets HA
+mid-restart.
+
+A probe takes the same locks through `--hold`, which runs a command while holding them and returns its exit code:
+`scripts/rig.py --hold zha -- <command>`, with `--exclusive` for one that restarts HA or reloads device_side. It
+passes signals on to the command, writes no journal and asks nothing: the probe puts back what it changes.
 
 ### Token
 

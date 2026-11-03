@@ -10,7 +10,7 @@ import pytest
 from custom_components.device_side.core.registry import AdapterRegistry
 from tests.rig import engine, roam
 from tests.rig.engine import load_step_file
-from tests.rig.journal import Journal
+from tests.rig.journal import LEGACY_NAME, Journal
 from tests.rig.profile import Profile
 from tests.rig.roam import Roamer
 from tests.scripts import rig_fakes as fakes
@@ -27,7 +27,6 @@ ENV = {"HA_URL": "http://ha", "HA_TOKEN": "t", "HA_ADMIN_TOKEN": "a", "HUE_BRIDG
 @pytest.fixture(autouse=True)
 def fast(monkeypatch):
     monkeypatch.setattr(roam, "POLL_S", 0)
-    monkeypatch.setattr(rig, "workspace_color", lambda color: None)
 
 
 class LabHA(fakes.FakeHA):
@@ -48,8 +47,8 @@ def lab(monkeypatch) -> fakes.Lab:
     return lab
 
 
-def lab_with_pause(tmp_path: Path) -> Profile:
-    path = lab_profile(tmp_path)
+def lab_with_pause(tmp_path: Path, networks: str = "hue, zha, zigbee2mqtt") -> Profile:
+    path = lab_profile(tmp_path, networks=networks)
     path.write_text("pause: [automation.lab]\n" + path.read_text())
     return Profile.load(path)
 
@@ -93,20 +92,33 @@ def test_a_profile_roams_only_for_a_zha_or_z2m_suite_or_the_check(tmp_path):
 
 
 def test_phases_follow_the_cycle_with_the_fixed_integrations_on_hue(tmp_path):
+    profile = lab_with_pause(tmp_path)
     run = suites(tmp_path, "zigbee2mqtt", "shelly", "zha", "hue", "matter")
-    assert [(network, [s.integration for s in group]) for network, group in rig.phases(run, True)] == [
+    assert [(network, [s.integration for s in group]) for network, group in rig.phases(run, profile, True)] == [
         ("hue", ["shelly", "hue", "matter"]),
         ("zha", ["zha"]),
         ("zigbee2mqtt", ["zigbee2mqtt"]),
     ]
-    assert rig.phases(run, False) == [(None, run)]
+    assert rig.phases(run, profile, False) == [(None, run)]
+
+
+def test_a_suite_on_an_undeclared_network_runs_at_home_and_never_moves_the_bulbs(tmp_path):
+    profile = lab_with_pause(tmp_path, networks="hue, zha")
+    run = suites(tmp_path, "zigbee2mqtt", "zha")
+    assert [(network, [s.integration for s in group]) for network, group in rig.phases(run, profile, True)] == [
+        ("hue", ["zigbee2mqtt"]),
+        ("zha", ["zha"]),
+    ]
+    assert not rig.roams(profile, suites(tmp_path, "zigbee2mqtt"))
+    assert [network for network, _ in rig.phases([], profile, True)] == ["hue", "zha"]  # the check: declared only
 
 
 def test_phases_skip_a_network_with_no_suites_and_the_check_visits_every_one(tmp_path):
+    profile = lab_with_pause(tmp_path)
     run = suites(tmp_path, "zigbee2mqtt", "shelly")
-    assert [network for network, _ in rig.phases(run, True)] == ["hue", "zigbee2mqtt"]  # straight past ZHA
-    assert [network for network, _ in rig.phases([], True)] == ["hue", "zha", "zigbee2mqtt"]
-    lines = roam.plan_lines(lab_with_pause(tmp_path).roam, route=["hue", "zigbee2mqtt"])
+    assert [network for network, _ in rig.phases(run, profile, True)] == ["hue", "zigbee2mqtt"]  # straight past ZHA
+    assert [network for network, _ in rig.phases([], profile, True)] == ["hue", "zha", "zigbee2mqtt"]
+    lines = roam.plan_lines(profile.roam, route=["hue", "zigbee2mqtt"])
     assert lines[0] == "Roams light.lab_a, light.lab_b together: Hue -> Z2M -> Hue."
 
 
@@ -286,7 +298,7 @@ async def test_recover_moves_the_bulbs_home_then_resumes_the_automations(tmp_pat
 
 
 def test_main_recover_builds_the_bridge_and_brings_the_bulbs_home(tmp_path, monkeypatch, lab):
-    asyncio.run(aborted_on_zha(lab, tmp_path / rig.JOURNAL_NAME))
+    asyncio.run(aborted_on_zha(lab, tmp_path / LEGACY_NAME))
     monkeypatch.setattr(rig, "git", lambda *args, check=True: str(tmp_path) if "--git-common-dir" in args else "wt")
     monkeypatch.setattr(rig, "load_env", lambda: ENV)
 
@@ -620,22 +632,19 @@ def main_with(tmp_path: Path, monkeypatch, problems: list[str]) -> list:
 def test_check_alone_takes_no_lock_and_deploys_nothing(tmp_path, monkeypatch, capsys):
     asked = main_with(tmp_path, monkeypatch, ["switch.plug: unavailable; check it is powered"])
     monkeypatch.setattr(rig, "deploy_state", lambda status_cmd: pytest.fail("--check read the deploy"))
-    monkeypatch.setattr(rig, "lock_rig", lambda *args, **kwargs: pytest.fail("--check took the lock"))
+    monkeypatch.setattr(rig.locks, "hold", lambda *args, **kwargs: pytest.fail("--check took a lock"))
 
     assert rig.main(["--check", "--integration", "zigbee2mqtt"]) == 1
     assert [(set(integrations), roaming) for integrations, roaming in asked] == [({"zigbee2mqtt"}, True)]
     assert "Proceed?" not in capsys.readouterr().out
 
 
-def test_check_names_a_run_holding_the_lock(tmp_path, monkeypatch, capsys):
+def test_check_names_a_run_holding_a_lock_it_would_claim(tmp_path, monkeypatch, capsys):
     main_with(tmp_path, monkeypatch, [])
-    with (tmp_path / rig.LOCK_NAME).open("a+") as held:
-        rig.fcntl.flock(held, rig.fcntl.LOCK_EX)
-        held.write("wt/other (pid 1)\n")
-        held.flush()
+    with rig.locks.hold(rig.Claim(integrations=frozenset({"zha"})), "wt/other", tmp_path, out=lambda _: None):
         assert rig.main(["--check"]) == 0
-    assert "A rig run holds the lock: wt/other (pid 1)." in capsys.readouterr().out
-    assert rig.held_by(tmp_path / rig.LOCK_NAME) is None
+    assert "  zha: wt/other (pid" in capsys.readouterr().out
+    assert rig.locks.held_by(tmp_path / rig.locks.integration_lock("zha")) is None
 
 
 def test_check_refuses_another_mode(capsys):
@@ -647,7 +656,6 @@ def test_check_refuses_another_mode(capsys):
 def test_a_run_stops_before_the_gate_on_a_device_problem(tmp_path, monkeypatch):
     main_with(tmp_path, monkeypatch, ["switch.plug: unavailable; check it is powered"])
     monkeypatch.setattr(rig, "gate", lambda: pytest.fail("asked to proceed"))
-    monkeypatch.setattr(rig, "lock_rig", lambda *args, **kwargs: None)
 
     with pytest.raises(SystemExit, match="Power or fix the devices above, then run again."):
         rig.main([])

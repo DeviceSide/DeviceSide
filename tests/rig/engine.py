@@ -606,8 +606,11 @@ class EntryOptions:
     back when the run ends. Saving a change reloads the entry. The original options are journaled before the first
     save."""
 
-    def __init__(self, admin: HAClient, reload_s: float | None = None, journal: Journal | None = None):
+    def __init__(
+        self, admin: HAClient, reload_s: float | None = None, journal: Journal | None = None, reloads: bool = True
+    ):
         self.admin = admin
+        self.reloads = reloads  # False: a save would reload the entry under other runs' cases, so it is refused
         self.reload_s = OPTIONS_RELOAD_S if reload_s is None else reload_s
         self.journal = journal
         self.entry_id: str | None = None
@@ -635,6 +638,14 @@ class EntryOptions:
             await self.admin.rest("delete", flow_path)
             self.current = values
             return
+        if not self.reloads:
+            with contextlib.suppress(Exception):
+                await self.admin.rest("delete", flow_path)
+            raise RuntimeError(
+                f"device_side's options in HA differ from this case's ({wanted}), and saving them reloads the entry "
+                "under other runs; this run holds HA shared. Set them back in HA, or run the suite alone with an "
+                "option step file, which takes HA exclusively"
+            )
         values |= wanted
         try:
             result = await self.admin.rest("post", flow_path, values)
@@ -1466,6 +1477,7 @@ async def run(
     only: Callable[[Case], bool] | None = None,
     lanes: bool = False,
     busy: dict[str, float] | None = None,
+    reloads: bool = True,
 ) -> RunResult:
     """Run every case and print the table; ADMIN_INTEGRATIONS run on `admin`. `ask=None` is --unattended.
 
@@ -1473,6 +1485,7 @@ async def run(
     failed; unattended, they are reported not observed instead. `only` keeps the cases it accepts, leaving each suite
     incomplete (see merge). With `lanes`, each integration's automated cases run as one lane, the lanes side by side.
     `busy` (_CaseRun.busy) carries the predictions an earlier run's cases left, for a run that follows straight on.
+    `reloads` False refuses to save device_side's options (EntryOptions): the run holds HA shared, with other runs.
     """
     planned = _plan(suites, profile, registry, ha, admin, keyword, only, out)
     options = {
@@ -1487,7 +1500,7 @@ async def run(
         ask,
         out,
         options,
-        EntryOptions(admin, journal=journal) if admin else None,
+        EntryOptions(admin, journal=journal, reloads=reloads) if admin else None,
         bridge=bridge,
         journal=journal,
         lanes=lanes,

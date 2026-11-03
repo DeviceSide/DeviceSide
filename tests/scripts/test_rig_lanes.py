@@ -227,7 +227,7 @@ async def test_a_roaming_run_starts_with_the_lanes_at_home_then_runs_the_rest_by
     monkeypatch.setattr(rig, "wait_for_targets", no_wait)
     roamer = roam.Roamer(ha, lab.bridge, fakes.LAB_BULBS)
 
-    await rig.run_phases(ha, ha, lab.bridge, roamer, True, suites, profile, None, None, True, [], None, lanes=True)
+    await rig.run_phases(ha, ha, lab.bridge, roamer, True, suites, profile, None, None, True, None, None, lanes=True)
 
     home = ["hue", "hue"]
     assert ran == [
