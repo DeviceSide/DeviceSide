@@ -37,15 +37,23 @@ nothing moves until you say yes. `--dry-run` prints the plan and stops.
 Before the gate, the run checks every device it will use, across all its phases: each fixed entity must be in HA and
 available, and each roaming bulb must be on a network. A device left unpowered stops the run there, before anything
 moves, rather than part way through. `--check` runs only this check, taking no lock and deploying nothing, so you can
-power devices up until it passes.
+power devices up until it passes; it names the runs holding locks it would need.
+
+The run starts with one lane per integration, the lanes side by side, each holding that integration's cases on fixed
+entities. A case stays out of the lanes when its step file sets device_side options (saving them reloads the
+integration, cutting off every lane's fades), or when it uses a roaming bulb, a rig-made group or scene, or a powered
+entity or its supply. Those run afterwards, one at a time, in the phases below. `--serial` runs every case one at a
+time: a case that passes with it and fails in a lane points at radio or HA contention.
 
 ### Profiles
 
 A profile is one test setup on the Home Assistant `.env.rig` connects to: `tests/rig/profiles/<name>.yaml`,
 gitignored, copied from `tests/rig/profile.example.yaml`. It lists the entities the rig may move, by integration
 and role, and under `pause:` the automations and switches turned off for the run and back on after it, for whatever
-would fight the tests on those entities (motion lighting, an Adaptive Lighting instance's switch). Only those that
-were on are turned back on. `.env.rig` keeps what belongs to the Home Assistant instance: its address, tokens,
+would fight the tests on those entities (motion lighting, an Adaptive Lighting instance's switch). `pause:` is a list,
+which every run pauses, or a mapping of lists: `all` for every run, and one per integration key for the runs holding
+that integration. Runs side by side share what they pause through a ledger in the git common dir, so an automation
+two runs pause comes back on only when the last of them ends, and only if it was on. `.env.rig` keeps what belongs to the Home Assistant instance: its address, tokens,
 deploy commands and Hue bridge.
 
 `--profile <name>` picks one, and can be left out while there is only one. The plan names the profile, and so do
@@ -54,20 +62,24 @@ each other; the commit diff shows which one ran last. A record is public, so nam
 `house`), never for a person or place.
 
 The household check (`scripts/check_private.py`) reads every profile's entity IDs, members, supplies and pause
-list, and each roaming bulb's IEEE, so none of them reach a commit.
+lists, and each roaming bulb's IEEE, so none of them reach a commit.
 
 ### Roaming
 
-A profile's `roam:` lists bulbs the run moves between Zigbee networks, all together, round the fixed cycle Hue →
-ZHA → Z2M → Hue (`tests/rig/roam.py`), so one set of bulbs serves every Zigbee suite. Each bulb has its IEEE, the
-fixed entity ID it is renamed to after every join, its roles, and the Z2M options set again after each Z2M join.
-The suites then run in phases: Hue's with the fixed integrations', then ZHA's, then Z2M's, each after a move and
-each with its automated cases before its observed ones. The bulbs move only when a ZHA or Z2M suite runs, and end
-home on Hue, with their rooms, zones, scene actions and names put back on their new Hue IDs. A run that stops
+A profile's `roam:` lists bulbs the run moves between Zigbee networks, all together, from their home round the
+cycle Hue → ZHA → Z2M and home again (`tests/rig/roam.py`), so one set of bulbs serves several Zigbee suites.
+`networks:` declares where they may go, their home included; a run visits only those, and holds only the ones it
+visits, so a run on an undeclared network never waits for the bulbs. Each bulb has its IEEE, the fixed entity ID it
+is renamed to after every join, its `home` (only `hue` so far), its roles, and the Z2M options set again after each
+Z2M join. The suites then run in phases: the home's with every other integration's, then each other declared
+network's in cycle order, each after a move and each with its automated cases before its observed ones. On a network
+the profile doesn't declare, the bulbs' roles find no entity and those cases skip. The bulbs move only when a suite
+on another declared network runs, and end home on Hue, with their rooms, zones, scene actions and names put back on
+their new Hue IDs. A run that stops
 part way still moves them home; `--recover`, or the next run before its gate, does it after a crash. A bulb on no
 network stops recovery: reset it over Bluetooth in the Hue app, then `--recover` again. A bulb still missing when
-the Hue search ends gets one more, and any other device that joins the bridge meanwhile is named, not removed. `--roam-check` runs the
-cycle with no suites. Roaming needs `HA_ADMIN_TOKEN` and the Hue bridge's `HUE_BRIDGE_HOST` and `HUE_APP_KEY`.
+the Hue search ends gets one more, and any other device that joins the bridge meanwhile is named, not removed. `--roam-check` visits
+every declared network with no suites. Roaming needs `HA_ADMIN_TOKEN` and the Hue bridge's `HUE_BRIDGE_HOST` and `HUE_APP_KEY`.
 
 `roam:` can also list `groups:`, native groups of those bulbs that the run makes on each network they visit: a Z2M
 group, a ZHA group, or a Hue zone with, if the group names a `scene:`, a Hue scene in it. Each is called
@@ -75,14 +87,28 @@ group, a ZHA group, or a Hue zone with, if the group names a `scene:`, a Hue sce
 one group; the scene takes `scene`), and is removed before the bulbs move on, or by `--recover` after a crash. A
 run of Hue suites alone makes them on Hue without moving the bulbs; that, too, needs the tokens above.
 
-Ctrl-C, SIGTERM or SIGHUP puts the devices back before the run exits; a second one leaves them. If a run dies before it can, the next run
-puts back what it left before its gate; `--recover` does only that.
+Ctrl-C, SIGTERM or SIGHUP puts the devices back before the run exits; a second one leaves them. Each run journals
+what it changes in a file of its own; if a run dies before it can put them back, the next run whose locks cover them
+puts them back before its gate, and `--recover`, which takes every lock, puts back everything.
 
-Runs take a lock shared by every worktree; a second run waits for it. Each run deploys your committed, pushed
-checkout and restarts Home Assistant whenever HA hasn't loaded that tree, so queue behind the lock: your run
-redeploys. A record cites the commit HA loaded, read before the tests, so committing mid-run is safe.
-`--no-deploy` tests whatever HA runs and, unless that is your checkout's tree, writes no record. A signal during
-the deploy stops the run only once HA's restart finishes, so the next run never meets HA mid-restart.
+Runs share the rig through locks in the git common dir, so every worktree sees them: one per integration, and one on
+HA. A run holds each integration it tests, plus those its entities draw power through and the networks its roaming
+bulbs visit, so runs on different integrations go side by side, and one on the same integration waits. It holds HA
+shared, unless it deploys or runs a suite with device_side options (both restart or reload device_side under every
+other run): then it holds HA exclusively, waiting for every other run to end, and new runs queue behind it. The plan
+prints the run's locks; a waiting run names who holds what it waits for. `--wait-free` waits until the rig is free,
+or with `--integration`, until those integrations are, without taking a lock.
+
+Each run deploys your committed, pushed checkout and restarts Home Assistant whenever HA hasn't loaded that tree, so a
+run queued behind another tests its own code. A record cites the commit HA loaded, read before the tests, so
+committing mid-run is safe. `--no-deploy` tests whatever HA runs and, unless that is your checkout's tree, writes no
+record. A signal during the deploy stops the run only once HA's restart finishes, so the next run never meets HA
+mid-restart.
+
+A probe takes the same locks through `--hold`, which runs a command while holding them and returns its exit code:
+`scripts/rig.py --hold zha -- <command>`, with `--exclusive` for one that restarts HA or reloads device_side. It
+pauses the profile's `all` list and those of the integrations it holds, as a run does, and resumes them after. It
+passes signals on to the command, writes no journal and asks nothing: the probe puts back what it changes.
 
 ### Token
 

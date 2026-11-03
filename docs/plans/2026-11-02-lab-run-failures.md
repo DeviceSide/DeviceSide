@@ -137,6 +137,32 @@ Leave out `--integration`, so the Hue, ZHA and Z2M phases all run. Its ZHA `rais
     contradicts probe 13a, so record why.
 
   Write the findings into this plan. Ask Jason before any change of design.
+
+  **Probe findings (2026-11-03, lab bulbs on ZHA, raw commands as `_wire` builds them, no deploy).** The bulbs
+  store every write, and HA's plain on brings them up at it. It's HA's state that stays stale.
+
+  | Bulb (firmware) | Write while off | ZCL 0.5 s and 3.5 s after | ZCL after HA's plain on |
+  |---|---|---|---|
+  | LWA012 (1.104.2) | `MoveToLevel` 102 | 102 | 102 |
+  | LTA009 (1.163.1) | `MoveToLevel` 102, `MoveToColorTemp` 370 | 102, 370 | 102, 370; HA 2702 K |
+  | LCA016 A60 (1.164.2) | `MoveToColor` (0.3, 0.5) | (0.3, 0.5) | (0.3, 0.5); HA the same |
+
+  The first probe compared a plain off, a 2 s soft off and an on by `MoveToLevelWithOnOff`, and every one stored the
+  writes. The second wrote 0, 0.3, 0.6, 1 and 2 s after HA's plain `turn_off` returned, and stored them at every
+  delay. Probe 13a was right about the bulbs.
+
+  **Cause: zha's transition flag.** zha 2.3.1 sets `is_transitioning` on an HA `turn_off` for its fade plus 0.5 s
+  (1.5 s for a plain off), and `async_update` returns without reading while it is set (`light/__init__.py:1196`).
+  The adapter's `update_entity` runs straight after its writes, and the rig calls `set_attributes` as soon as HA
+  shows off, so the refresh lands inside the flag and reads nothing. ZHA applies the bulb's level reports but no
+  color reports, so after the plain on HA shows the new brightness and the old color: light_ct on at 102 but
+  3984 K, the A60 at the setup's xy. `sets_after_a_soft_off` waits 3 s, past the flag, and passes. The probes'
+  `update_entity` ran 3.5 s after the writes. The group case's desk at 254 is the same stale refresh, seen through
+  the group's assumed member state. It isn't specific to Hue bulbs: any ZHA light set within its off's flag hits it.
+
+  The TODO item's "the bulbs ignore the writes" was wrong, and so is the `multiColor` fix it proposed. 13f's
+  conclusion that a Hue bulb ignores the level preset before `raise_from_off` may need the same second look. It is
+  left to 13f's lane.
 - **D.** If `not_stored` persists with `hue_native_control` on, compare the read-back with the written value in
   the Z2M adapter's debug log before changing the comparison.
 - **E.** Fix only a case that fails again:

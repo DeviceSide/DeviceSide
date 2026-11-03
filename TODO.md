@@ -53,6 +53,8 @@ v0.1.0 is the next release.
 | 15 (follow-up) | Rig checks every phase's devices before the gate, so an unpowered one stops a roaming run before any move; `--check` runs that check alone | #165 |
 | 13f | ZHA raise, lower and `stop`: the six actions on ZHA (experimental until the ZHA A60 run), a Hue bulb raised from off turned on at the bottom by Hue's own command, the fit's deadband; lab records for each | #167 |
 | 15 (follow-up) | Rig: a failed Z2M interview is asked again, Z2M logs joins at `info`, and a run stopped by a move keeps the phases before it | #169 |
+| 15 (follow-up) | Rig shared between sessions: a lock per integration and HA shared or exclusive (deploys, option suites), a journal per run, `--hold` for probes; the pause ledger and roam `networks`/`home` follow | #175 |
+| 15 (follow-up) | Rig: runs side by side share their pauses through a ledger (last one out resumes), `pause:` by integration, and roaming bulbs visit only the networks a profile declares, from each bulb's `home` | #177, #178 |
 
 ## To go, in order
 
@@ -61,7 +63,7 @@ The A60 (the rig's only color bulb) moves into the lab (15), whose runs move it 
 A60 runs are lab runs (`--profile lab`). Each integration's code freezes before its A60 run.
 
 Three lanes run in parallel, each in order: Z2M (`Transition` PR, 13i, 13j, 14, its A60 run), ZHA (13f),
-and Hue (7c2, its A60 run). The lab lands before the first A60 run. The rig lock is shared.
+and Hue (7c2, its A60 run). The lab lands before the first A60 run. Lanes on different integrations run the rig side by side (#175); a deploy waits for them all.
 
 - [x] **`Transition` to core**: refactor PR moving `hue/transition_cache.py` into `core/`. Unblocks 13i and 13f.
 - [x] **13i** Z2M `move`/`stop`, with the hue/saturation stop probe on the A60.
@@ -109,24 +111,12 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. The rig lock
   (`watch_ha_changes` in `zha/fade.py`) move onto it, and Z2M, which has none, gets one: a fix for a prediction left
   stale by a change from HA mid-fade, as 13f's lab probe found on ZHA. Rig run on Hue's predicted-state cases and Z2M's
   raise, lower and `stop` before it lands. `opus`: it changes released Hue behavior.
-- [ ] **ZHA `set_attributes` while off on Hue bulbs** (bucket C of
-  [`2026-11-02-lab-run-failures.md`](docs/plans/2026-11-02-lab-run-failures.md)): the lab's three Hue bulbs on ZHA
-  ignore the `MoveTo*` writes the adapter sends while they're off (ExecuteIfOff), and come back on at their old values.
-  It failed on two lab runs (2 Nov, and 3 Nov with HA on `2d70127`): `sets_while_off[light_ct]` (LTA009 on at 3984 K,
-  not 2700), `[group]` (the White at 254, not 102), `sets_hs_while_off` and `sets_xy_while_off` (the A60 on at the
-  setup's blue). `sets_after_a_soft_off` passes on both roles, and the 28 Oct record passed on the house LTA004, so
-  it isn't every Hue bulb or every off; probe 13a also said these bulbs store all three. They ignore the level preset
-  before `raise_from_off` the same way, which 13f fixed with Hue's own `0xFC03` `multiColor` write (`zcl.hue_turn_on`),
-  and Z2M passes on the same bulbs because `hue_native_control` writes there.
-  1. Probe first (ask Jason): on ZHA, write CT, hs and xy while off as the adapter does, and read the Color cluster
-     (`ColorTemperatureMireds`, `CurrentX`/`CurrentY`, `ColorMode`) and `CurrentLevel` right after, then after HA's
-     plain on. That tells a dropped write from one HA's on overrides.
-  2. If they're dropped: for an off light with cluster `0xFC03`, send the stored values as one `multiColor` write
-     without the on flag (Z2M's encoding: brightness, mireds or xy, no fade), via zigpy as `zcl.hue_turn_on` does;
-     other lights keep ExecuteIfOff. Probe the write on one bulb before building. If the bulbs won't store even that,
-     refuse the fields on those models, as `DROPS_WHILE_OFF` does for the E11-G13, and record why.
-  3. Rig: `--profile lab --integration zha --action set_attributes`. `opus`: a design call on what the adapter sends,
-     and a wrong `multiColor` encoding only shows on the bulb. Lands before the ZHA A60 run.
+- [x] **ZHA `set_attributes` right after an off** (bucket C of
+  [`2026-11-02-lab-run-failures.md`](docs/plans/2026-11-02-lab-run-failures.md)): `sets_while_off[light_ct]`,
+  `[group]`, `sets_hs_while_off` and `sets_xy_while_off` failed on two lab runs. Probed 3 Nov: the bulbs store every
+  write. zha skips `update_entity` for 1.5 s after an HA `turn_off`, and ZHA applies no color reports, so HA showed the
+  old color after the next on. Fixed (#172): the refresh waits out zha's transition flag. Rig proof rides the
+  pre-release run.
 - [ ] **ZHA A60 run** (13k step 3), on the lab: ZHA color suites, `set_attributes` hs and xy included. Attended for
   `sets_color_while_off`. Clears `experimental` on the ZHA adapters it proves.
 - [ ] **9d** Rig coverage sweep for the non-color scope

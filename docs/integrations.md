@@ -458,7 +458,9 @@ Sends each light the Level and Color cluster `MoveTo…` commands, one after ano
 command carries the ZCL `ExecuteIfOff` override (`options_mask: 1, options_override: 1`), which
 makes a light that is off take it, and a 0.4 s transition, the Hue bridge's default, so a light
 that is on fades as it would on Hue. Then Device Side calls `homeassistant.update_entity` on the
-light, since ZHA never applies a color temperature report.
+light, since ZHA never applies a color temperature report. ZHA skips that refresh while the light
+is transitioning, which it is for 1.5 s after a plain `light.turn_off`, so Device Side waits up to
+3 s for that to end, and after a longer off fade refreshes once more when it does.
 
 The fields, units and names are Hue's (below). `brightness` is a percent of level 254, and `0`
 sends level 1, the lowest; `min_brightness` and `max_brightness` read the light's CurrentLevel
@@ -592,7 +594,9 @@ For `set_attributes`, the LTA004 stores `MoveToLevel` and `MoveToColorTemp` with
 `ExecuteIfOff` override while off, stays off and comes on at them; without the override it drops
 them (`docs/plans/2026-10-27-zigbee-probe.md`). A Sengled E11-G13, firmware `0x00000009`, takes
 `MoveToLevel` while on, but while off, with the override or without, its CurrentLevel jumped to 255
-and it came on at full brightness, so `set_attributes` refuses that model.
+and it came on at full brightness, so `set_attributes` refuses that model. The lab's LWA012, LTA009
+and A60 (LCA016) store the writes too, at any delay from 0 to 2 s after a plain off
+(`docs/plans/2026-11-02-lab-run-failures.md`, bucket C).
 
 For raise, lower and `stop`, on the LTA004 (`docs/plans/2026-10-28-zha-move-stop.md`): a Level `Stop` 3 s into a 6 s
 soft off from level 200 halted it at 100 with the bulb on, and it held; Home Assistant showed 100 from the bulb's

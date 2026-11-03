@@ -50,6 +50,9 @@ SETUP_SETTLE_S = 2.0
 # ZCL Color Control's hue attributes, which bulb_hue reads on ZHA.
 _COLOR_CLUSTER, _CURRENT_HUE, _ENHANCED_CURRENT_HUE = 0x0300, 0x0000, 0x4000
 
+# The journal key of a case that runs alone (Snapshot.journal_key); a case in a lane uses its integration.
+SERIAL = "serial"
+
 # How long after saving options the engine waits before checking the entry has reloaded.
 OPTIONS_RELOAD_S = 1.0
 
@@ -583,6 +586,18 @@ def cases(
     return result
 
 
+def in_head(case: Case, profile: Profile) -> bool:
+    """Whether the case can run in its integration's lane, alongside the other lanes: its file sets no device_side
+    options (saving them reloads the entry, cutting off every lane's fades), and it touches no roaming bulb or rig-made
+    group or scene (they are on one network at a time) and no powered entity or supply (a supply cut in one lane would
+    kill another's light). The same for both twins, so an observed case goes with its automated one."""
+    if case.suite.file.options:
+        return False
+    power = profile.power()
+    shared = profile.made_entities | power.keys() | set(power.values())
+    return shared.isdisjoint({*case.entities.values(), *case.members})
+
+
 # --- Running -------------------------------------------------------------------------------------------------
 
 
@@ -591,8 +606,11 @@ class EntryOptions:
     back when the run ends. Saving a change reloads the entry. The original options are journaled before the first
     save."""
 
-    def __init__(self, admin: HAClient, reload_s: float | None = None, journal: Journal | None = None):
+    def __init__(
+        self, admin: HAClient, reload_s: float | None = None, journal: Journal | None = None, reloads: bool = True
+    ):
         self.admin = admin
+        self.reloads = reloads  # False: a save would reload the entry under other runs' cases, so it is refused
         self.reload_s = OPTIONS_RELOAD_S if reload_s is None else reload_s
         self.journal = journal
         self.entry_id: str | None = None
@@ -620,6 +638,14 @@ class EntryOptions:
             await self.admin.rest("delete", flow_path)
             self.current = values
             return
+        if not self.reloads:
+            with contextlib.suppress(Exception):
+                await self.admin.rest("delete", flow_path)
+            raise RuntimeError(
+                f"device_side's options in HA differ from this case's ({wanted}), and saving them reloads the entry "
+                "under other runs; this run holds HA shared. Set them back in HA, or run the suite alone with an "
+                "option step file, which takes HA exclusively"
+            )
         values |= wanted
         try:
             result = await self.admin.rest("post", flow_path, values)
@@ -700,7 +726,8 @@ class Snapshot:
     HA shows no brightness or color for a light that is off, so with `device_side` set (the integration has
     get_attributes and set_attributes adapters) an off light's device-side attributes are read when it is first
     touched and written back after it is turned off again. A group is skipped there: its members are touched too.
-    What it takes is journaled before the case moves the entity, and cleared once restored.
+    What it takes is journaled under `cases[journal_key]` before the case moves the entity, and cleared once
+    restored: cases running at once in lanes each have their own key, the integration.
     """
 
     ha: HAClient
@@ -709,6 +736,7 @@ class Snapshot:
     taken: dict[str, dict | None] = field(default_factory=dict)
     stored: dict[str, dict] = field(default_factory=dict)
     journal: Journal | None = None
+    journal_key: str = SERIAL
 
     async def take(self, entity_id: str, group: bool = False) -> dict | None:
         """The entity's state before the case moved it, and that of every entity it powers."""
@@ -721,7 +749,9 @@ class Snapshot:
                 if attributes := (response or {}).get(entity_id):
                     self.stored[entity_id] = attributes
             if self.journal is not None:
-                self.journal.update(taken=self.taken, stored=self.stored, power=self.power)
+                self.journal.put(
+                    "cases", self.journal_key, {"taken": self.taken, "stored": self.stored, "power": self.power}
+                )
             for powered, supply in self.power.items():
                 if supply == entity_id:
                     await self.take(powered)
@@ -743,7 +773,7 @@ class Snapshot:
             elif (self.taken[self.power[entity_id]] or {}).get("state") == "on":  # unpowered before: nothing to restore
                 await self.put_back_after_power(entity_id, state)
         if clear and self.journal is not None:
-            self.journal.clear("taken", "stored", "power")
+            self.journal.drop("cases", self.journal_key)
 
     async def put_back_after_power(self, entity_id: str, state: dict) -> None:
         loop = asyncio.get_running_loop()
@@ -923,6 +953,7 @@ class _CaseRun:
         settle: float = 0.0,
         bridge: HueBridge | None = None,
         journal: Journal | None = None,
+        journal_key: str = SERIAL,
     ):
         self.bridge = bridge
         self.case, self.ha, self.registry, self.ask, self.out, self.position = case, ha, registry, ask, out, position
@@ -940,6 +971,7 @@ class _CaseRun:
                 for action in ("get_attributes", "set_attributes")
             ),
             journal=journal,
+            journal_key=journal_key,
         )
         self.response: dict | None = None
         self.error: HAError | None = None
@@ -1442,14 +1474,79 @@ async def run(
     out: Callable[[str], None] = print,
     bridge: HueBridge | None = None,
     journal: Journal | None = None,
+    only: Callable[[Case], bool] | None = None,
+    lanes: bool = False,
+    busy: dict[str, float] | None = None,
+    reloads: bool = True,
 ) -> RunResult:
     """Run every case and print the table; ADMIN_INTEGRATIONS run on `admin`. `ask=None` is --unattended.
 
     Every automated case runs first, with nobody needed. Then each observed case runs, unless its automated twin
-    failed; unattended, they are reported not observed instead.
+    failed; unattended, they are reported not observed instead. `only` keeps the cases it accepts, leaving each suite
+    incomplete (see merge). With `lanes`, each integration's automated cases run as one lane, the lanes side by side.
+    `busy` (_CaseRun.busy) carries the predictions an earlier run's cases left, for a run that follows straight on.
+    `reloads` False refuses to save device_side's options (EntryOptions): the run holds HA shared, with other runs.
     """
+    planned = _plan(suites, profile, registry, ha, admin, keyword, only, out)
+    options = {
+        id(suite): {name: name in suite.file.options for name in adapter.scope.options}
+        for suite, adapter, *_ in planned
+    }
+    rig_run = _Run(
+        registry,
+        tolerance,
+        settle,
+        profile.power(),
+        ask,
+        out,
+        options,
+        EntryOptions(admin, journal=journal, reloads=reloads) if admin else None,
+        bridge=bridge,
+        journal=journal,
+        lanes=lanes,
+    )
+    if busy is not None:
+        rig_run.busy = busy
+    try:
+        waiting = await rig_run.all_automated([(suite, client, cases_) for suite, _, client, cases_ in planned])
+        await rig_run.observed(waiting)
+    finally:
+        if rig_run.entry_options is not None:
+            # A failure here must not hide the one that ended the run.
+            try:
+                await rig_run.entry_options.restore()
+            except Exception as err:  # noqa: BLE001
+                out(f"Could not put device_side's options back; the next run tries again: {err}")
+    suite_results = [
+        SuiteResult(
+            suite, [rig_run.results[id(suite), case.id] for case in suite_cases], complete=not keyword and only is None
+        )
+        for suite, _, _, suite_cases in planned
+    ]
+    for suite_result in suite_results:
+        out("")
+        out(f"{suite_result.suite.integration} / {suite_result.suite.name}")
+        out("\n".join(table(suite_result, details=True)))
+    return RunResult(suite_results)
+
+
+def _plan(
+    suites: list[Suite],
+    profile: Profile,
+    registry: Any,
+    ha: HAClient,
+    admin: HAClient | None,
+    keyword: str | None,
+    only: Callable[[Case], bool] | None,
+    out: Callable[[str], None],
+) -> list[tuple[Suite, Any, HAClient, list[Case]]]:
+    """Each suite that can run, with its adapter, its client and its cases; says why each other one is skipped. A
+    suite with no case `only` accepts is left out unsaid: another part of the run has its cases."""
     planned = []
     for suite in suites:
+        suite_cases = cases(suite, profile, keyword, adapters_for(suite, registry))
+        if only is not None and not (suite_cases := [case for case in suite_cases if only(case)]):
+            continue
         adapter = registry.adapter(suite.action, suite.integration)
         if adapter is None:
             out(f"{suite.integration} / {suite.action}: no adapter, skipped")
@@ -1464,46 +1561,8 @@ async def run(
         if client is None or (adapter.scope.options and admin is None):
             out(f"{suite.integration} / {suite.action}: needs HA_ADMIN_TOKEN, skipped")
             continue
-        planned.append((suite, adapter, client, cases(suite, profile, keyword, adapters_for(suite, registry))))
-    options = {
-        id(suite): {name: name in suite.file.options for name in adapter.scope.options}
-        for suite, adapter, *_ in planned
-    }
-    rig_run = _Run(
-        registry,
-        tolerance,
-        settle,
-        profile.power(),
-        ask,
-        out,
-        options,
-        EntryOptions(admin, journal=journal) if admin else None,
-        bridge=bridge,
-        journal=journal,
-    )
-    try:
-        waiting = [
-            case
-            for suite, _, client, suite_cases in planned
-            for case in await rig_run.automated(suite, client, suite_cases)
-        ]
-        await rig_run.observed(waiting)
-    finally:
-        if rig_run.entry_options is not None:
-            # A failure here must not hide the one that ended the run.
-            try:
-                await rig_run.entry_options.restore()
-            except Exception as err:  # noqa: BLE001
-                out(f"Could not put device_side's options back; the next run tries again: {err}")
-    suite_results = [
-        SuiteResult(suite, [rig_run.results[id(suite), case.id] for case in suite_cases], complete=not keyword)
-        for suite, _, _, suite_cases in planned
-    ]
-    for suite_result in suite_results:
-        out("")
-        out(f"{suite_result.suite.integration} / {suite_result.suite.name}")
-        out("\n".join(table(suite_result, details=True)))
-    return RunResult(suite_results)
+        planned.append((suite, adapter, client, suite_cases))
+    return planned
 
 
 @dataclass(slots=True)
@@ -1523,9 +1582,12 @@ class _Run:
     busy: dict[str, float] = field(default_factory=dict)  # _CaseRun.busy
     bridge: HueBridge | None = None
     journal: Journal | None = None
+    lanes: bool = False  # whether automated cases run in lanes: their lines then name their suite
 
     def case_run(self, case: Case, client: HAClient, ask: Callable[[str], str] | None, position: str = "") -> _CaseRun:
         integration = case.suite.integration
+        # An observed case runs alone, after the lanes.
+        journal_key = integration if self.lanes and not case.observed else SERIAL
         return _CaseRun(
             case,
             client,
@@ -1539,6 +1601,7 @@ class _Run:
             self.settle.get(integration, 0.0),
             self.bridge,
             self.journal,
+            journal_key,
         )
 
     async def run_case(
@@ -1550,11 +1613,45 @@ class _Run:
 
     def report(self, case: Case, result: CaseResult) -> None:
         self.results[id(case.suite), case.id] = result
-        self.out(f"  {case.id}: {result.outcome}" + (f" ({result.detail})" if result.detail else ""))
+        # Lanes interleave their lines, so each names its suite.
+        prefix = f"{case.suite.integration} / {case.suite.name}  " if self.lanes else "  "
+        self.out(f"{prefix}{case.id}: {result.outcome}" + (f" ({result.detail})" if result.detail else ""))
+
+    async def all_automated(self, planned: list[tuple[Suite, HAClient, list[Case]]]) -> list[tuple[Case, HAClient]]:
+        """Run the planned suites' automated cases, in lanes or one suite after another; return the observed cases
+        still to run."""
+        if self.lanes:
+            return await self.in_lanes(planned)
+        return [case for suite, client, cases_ in planned for case in await self.automated(suite, client, cases_)]
+
+    async def in_lanes(self, planned: list[tuple[Suite, HAClient, list[Case]]]) -> list[tuple[Case, HAClient]]:
+        """Run each integration's suites' automated cases as one lane, the lanes side by side, after setting the
+        options they share once: a save reloads the entry, which would cut off the other lanes' fades. Returns the
+        observed cases still to run. An error other than a case's failure cancels every lane, each cancelled case
+        putting its entities back, and is raised as itself."""
+        wanted = [options for suite, _, _ in planned if (options := self.options.get(id(suite)))]
+        if any(options != wanted[0] for options in wanted):
+            raise RuntimeError(f"lanes need the same device_side options, not {wanted}")
+        if wanted:
+            await self.entry_options.apply(wanted[0])
+        by_integration: dict[str, list[tuple[Suite, HAClient, list[Case]]]] = {}
+        for entry in planned:
+            by_integration.setdefault(entry[0].integration, []).append(entry)
+
+        async def lane(entries: list[tuple[Suite, HAClient, list[Case]]]) -> list[tuple[Case, HAClient]]:
+            return [case for suite, client, cases_ in entries for case in await self.automated(suite, client, cases_)]
+
+        try:
+            async with asyncio.TaskGroup() as group:
+                tasks = [group.create_task(lane(entries)) for entries in by_integration.values()]
+        except ExceptionGroup as err:
+            raise err.exceptions[0] from None
+        return [case for task in tasks for case in task.result()]
 
     async def automated(self, suite: Suite, client: HAClient, suite_cases: list[Case]) -> list[tuple[Case, HAClient]]:
         """Run the suite's automated cases; return the observed ones still to run, with their client."""
-        self.out(f"{suite.integration} / {suite.name}")
+        if not self.lanes:
+            self.out(f"{suite.integration} / {suite.name}")
         waiting = []
         for case in suite_cases:
             twin = self.results.get((id(suite), case.twin or ""))
@@ -1588,6 +1685,25 @@ class _Run:
 def _not_run(case: Case, outcome: Outcome, detail: str = "") -> CaseResult:
     domain = case.entities[case.role].partition(".")[0] if case.entities else None
     return CaseResult(case.id, case.role, domain, outcome, detail, twin=case.twin)
+
+
+def merge(parts: Iterable[SuiteResult], profile: Profile, registry: Any, keyword: str | None = None) -> RunResult:
+    """One result per suite from its parts, which runs split between them (the lanes, then the phases), in the order
+    the parts first name each suite, its cases in file order. A suite is complete only when every case it plans is
+    there and no keyword left any out: lanes whose phases never ran write no record."""
+    joined: dict[tuple[str, str], SuiteResult] = {}
+    for part in parts:
+        key = (part.suite.integration, part.suite.name)
+        if key in joined:
+            joined[key].cases += part.cases
+        else:
+            joined[key] = SuiteResult(part.suite, list(part.cases), complete=False)
+    for result in joined.values():
+        planned = [case.id for case in cases(result.suite, profile, None, adapters_for(result.suite, registry))]
+        position = {case_id: index for index, case_id in enumerate(planned)}
+        result.cases.sort(key=lambda case: position.get(case.id, len(position)))
+        result.complete = not keyword and set(planned) <= {case.id for case in result.cases}
+    return RunResult(list(joined.values()))
 
 
 # --- Test records --------------------------------------------------------------------------------------------
