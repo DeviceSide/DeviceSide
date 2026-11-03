@@ -1535,7 +1535,7 @@ async def test_the_journal_holds_each_change_before_it_is_made_and_is_gone_after
 
     async def light(domain, service, data=None, return_response=False):
         if domain == "light":
-            seen.append((service, list(journal.get("taken", {}))))
+            seen.append((service, list(journal.get("cases", {}).get("serial", {}).get("taken", {}))))
         return await call_service(domain, service, data, return_response)
 
     admin.rest, admin.call_service = save, light
@@ -1606,6 +1606,18 @@ async def test_a_save_the_flow_refuses_closes_the_flow_and_raises():
     with pytest.raises(RuntimeError, match="did not save"):
         await engine.EntryOptions(admin, reload_s=0).apply({"opt": False})
     assert admin.aborted == 1
+
+
+async def test_options_that_hold_ha_shared_never_save_but_may_match():
+    """A run holding HA shared may not reload the entry under other runs: options already as wanted pass, a save is
+    refused, and the flow is closed either way."""
+    admin = FakeAdmin({})
+    shared = engine.EntryOptions(admin, reload_s=0, reloads=False)
+    await shared.apply({"opt": True})
+    with pytest.raises(RuntimeError, match="this run holds HA shared"):
+        await shared.apply({"opt": False})
+    assert admin.saved == []
+    assert admin.aborted == 2
 
 
 async def test_a_suite_whose_adapter_has_options_needs_the_admin_token(tmp_path):

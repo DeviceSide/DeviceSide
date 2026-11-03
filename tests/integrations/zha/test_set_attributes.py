@@ -17,7 +17,7 @@ from custom_components.device_side.const import DOMAIN
 from custom_components.device_side.integrations.zha import set_attributes as adapter
 from custom_components.device_side.integrations.zha import zcl
 
-from ...conftest import call, refusal
+from ...conftest import advance, call, refusal, wall_clock_now
 from ...fixtures.zha import IEEE, add_zha_entity, zha_entry, zha_group
 
 pytestmark = pytest.mark.usefixtures("setup_production")
@@ -328,3 +328,84 @@ async def test_a_group_clamp_leaves_the_groups_kept_level(hass, zha_groups, comm
 
     assert zha_lights["light.zha_group"]._off_brightness == 254
     assert zha_lights["light.a"]._off_brightness == 102  # clamped from the CurrentLevel read of 127
+
+
+@pytest.fixture
+def flagged_refreshes(hass):
+    """update_entity calls, each recording whether zha's transition flag was up on light.bulb when it ran."""
+    seen: list[bool] = []
+    light = SimpleNamespace(_off_brightness=None, is_transitioning=True)
+
+    async def handler(service: ServiceCall) -> None:
+        seen.append(light.is_transitioning)
+
+    hass.services.async_register("homeassistant", "update_entity", handler)
+    return light, seen
+
+
+async def test_the_refresh_waits_for_zhas_transition_flag(hass, monkeypatch, commands, zha_lights, flagged_refreshes):
+    """After an HA turn_off, zha skips update_entity until its flag clears; refreshing sooner leaves HA's color old."""
+    monkeypatch.setattr(adapter, "TRANSITION_POLL_S", 0.01)
+    light, seen = flagged_refreshes
+    bulb(hass, CT)
+    zha_lights["light.bulb"] = light
+    hass.loop.call_later(0.05, setattr, light, "is_transitioning", False)
+
+    response = await call(hass, "set_attributes", {"entity_id": "light.bulb", "color_temp_kelvin": 2700})
+
+    assert response == {"light.bulb": SENT}
+    assert seen == [False]
+
+
+async def test_a_flag_past_the_wait_refreshes_again_once_it_clears(
+    hass, monkeypatch, commands, zha_lights, flagged_refreshes
+):
+    """A long off fade keeps the flag up past the wait: refresh then anyway, and again once the flag clears."""
+    monkeypatch.setattr(adapter, "TRANSITION_WAIT_S", 0.02)
+    monkeypatch.setattr(adapter, "TRANSITION_POLL_S", 0.01)
+    light, seen = flagged_refreshes
+    bulb(hass, CT)
+    zha_lights["light.bulb"] = light
+    start = wall_clock_now()
+
+    await call(hass, "set_attributes", {"entity_id": "light.bulb", "color_temp_kelvin": 2700})
+    await advance(hass, start, 1)  # still up: checked again later
+    assert seen == [True]
+    light.is_transitioning = False
+    await advance(hass, start, 2)
+
+    assert seen == [True, False]
+
+
+async def test_the_late_refresh_gives_up_waiting_at_its_limit(
+    hass, monkeypatch, commands, zha_lights, flagged_refreshes
+):
+    monkeypatch.setattr(adapter, "TRANSITION_WAIT_S", 0.02)
+    monkeypatch.setattr(adapter, "TRANSITION_POLL_S", 0.01)
+    monkeypatch.setattr(adapter, "LATE_REFRESH_LIMIT_S", 0.0)
+    light, seen = flagged_refreshes
+    bulb(hass, CT)
+    zha_lights["light.bulb"] = light
+    start = wall_clock_now()
+
+    await call(hass, "set_attributes", {"entity_id": "light.bulb", "color_temp_kelvin": 2700})
+    await advance(hass, start, 1)
+    await advance(hass, start, 2)
+
+    assert seen == [True, True]
+
+
+async def test_the_kept_level_is_replaced_before_the_refresh_waits(hass, commands, zha_lights):
+    """A plain on during the refresh's wait must already find the written level."""
+    bulb(hass, DIMMABLE)
+    zha_lights["light.bulb"] = light = SimpleNamespace(_off_brightness=254, is_transitioning=False)
+    kept_at_refresh: list[int] = []
+
+    async def handler(service: ServiceCall) -> None:
+        kept_at_refresh.append(light._off_brightness)
+
+    hass.services.async_register("homeassistant", "update_entity", handler)
+
+    await call(hass, "set_attributes", {"entity_id": "light.bulb", "brightness": 40})
+
+    assert kept_at_refresh == [102]

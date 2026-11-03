@@ -204,7 +204,7 @@ async def test_a_group_that_cant_be_removed_stays_journaled_and_is_retried(lab, 
     assert any(line.startswith("Could not remove Hue zone ds-rig-test-color-group") for line in printed)
     assert [made["name"] for made in journal.get("roam")["made"]] == ["ds-rig-test-color-group"]
     del lab.bridge.fail[("DELETE", "zone")]
-    await Roamer.from_journal(lab.ha, lab.bridge, Journal(journal.path), lambda _: None).go(roam.HOME)
+    await Roamer.from_journal(lab.ha, lab.bridge, Journal(journal.path), lambda _: None).go("hue")
     assert bridge_named(lab, "zone") == {} and not journal.path.exists()
 
 
@@ -219,7 +219,7 @@ async def test_a_group_ha_never_shows_is_still_removed_by_name(lab, tmp_path, mo
     lab.ha.register = register
     assert journal.get("roam")["made"][0]["renamed"] is False
 
-    await Roamer.from_journal(lab.ha, lab.bridge, Journal(journal.path), lambda _: None).go(roam.HOME)
+    await Roamer.from_journal(lab.ha, lab.bridge, Journal(journal.path), lambda _: None).go("hue")
 
     assert lab.ha.zha_group_names == {}
     assert not journal.path.exists()
@@ -232,7 +232,7 @@ async def test_recovery_removes_the_groups_a_crash_left_then_brings_the_bulbs_ho
     await moving.go(network)
     await moving.make_groups(network)
 
-    await Roamer.from_journal(lab.ha, lab.bridge, Journal(journal.path), lambda _: None).go(roam.HOME)
+    await Roamer.from_journal(lab.ha, lab.bridge, Journal(journal.path), lambda _: None).go("hue")
 
     assert not any(entity(lab, fixed) for fixed in (*FIXED, "scene.test_relax"))
     assert bridge_named(lab, "zone") == {} and bridge_named(lab, "scene") == {}
