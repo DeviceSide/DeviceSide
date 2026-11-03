@@ -393,3 +393,19 @@ async def test_the_late_refresh_gives_up_waiting_at_its_limit(
     await advance(hass, start, 2)
 
     assert seen == [True, True]
+
+
+async def test_the_kept_level_is_replaced_before_the_refresh_waits(hass, commands, zha_lights):
+    """A plain on during the refresh's wait must already find the written level."""
+    bulb(hass, DIMMABLE)
+    zha_lights["light.bulb"] = light = SimpleNamespace(_off_brightness=254, is_transitioning=False)
+    kept_at_refresh: list[int] = []
+
+    async def handler(service: ServiceCall) -> None:
+        kept_at_refresh.append(light._off_brightness)
+
+    hass.services.async_register("homeassistant", "update_entity", handler)
+
+    await call(hass, "set_attributes", {"entity_id": "light.bulb", "brightness": 40})
+
+    assert kept_at_refresh == [102]

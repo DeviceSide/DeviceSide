@@ -146,12 +146,13 @@ class ZHASetAttributes(Adapter[SetAttributesRequest]):
             try:
                 for cluster_id, command_id, params in map(_wire, sent):
                     await zcl.command(hass, addr, cluster_id, command_id, params, request.context)
+                # Before the refresh, which can wait seconds: a plain on meanwhile must not send the old level.
+                if (level := next((c.level for c in sent if isinstance(c, MoveToLevel)), None)) is not None:
+                    _keep_level(hass, target, level, request.brightness)
             except Unauthorized:
                 return self.result(target, Status.REJECTED, detail="admin_required")
             finally:  # a later command failing still leaves the earlier ones landed
                 await self._refresh(hass, request, target.entity_id)
-            if (level := next((c.level for c in sent if isinstance(c, MoveToLevel)), None)) is not None:
-                _keep_level(hass, target, level, request.brightness)
             return self.result(target, Status.SENT, detail=detail)
 
         return await self.gather(hass, targets, send)
