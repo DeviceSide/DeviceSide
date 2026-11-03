@@ -156,6 +156,9 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. Lanes on dif
   (Z2M's own 10 s timeout fired), yet it answered another command five seconds later. So at least some drops are the
   Hue Essential not answering a read over a healthy link, not the mesh. Open: whether a second read a moment later is
   answered (it was not in the 22:48 case, which waited over 20 s).
+  Across all 33 kept Z2M logs of 3 Nov, all 7 failed reads are the sideboard's (about 5,600 commands to it); the corner
+  (about 1,200) and desk (about 400) bulbs, on the same mesh, had none. Too few to be conclusive for those two, but it points at
+  the bulb, the Hue Essential.
 - [ ] **ZHA A60 run** (13k step 3), on the lab: ZHA color suites, `set_attributes` hs and xy included. Attended for
   `sets_color_while_off`. Clears `experimental` on the ZHA adapters it proves.
 - [ ] **9d** Rig coverage sweep for the non-color scope
