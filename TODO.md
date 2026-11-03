@@ -141,7 +141,10 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. Lanes on dif
   corner or its group) the corner's brightness never returns to its pre-stop value after the stop. Z2M's first
   publish after a stop is its cached pre-move level, then the bulb's own `currentLevel`; in 3 of 11 stops no level
   read-back follows, so the cached level stays published. Look there first (`stop` reads only the on/off cluster
-  after its halt, as far as that log shows), with a rerun on the 1.5 s settle. `opus`: hardware triage, where the cause may be the bulb's state after its reset or our stop.
+  after its halt, as far as that log shows), The rerun on the 1.5 s settle (3 Nov, 18:30) still fails 10 of 20: `halts_a_raise[light_ct]` holds
+  at 79.5 % above its 78 % limit from 0.26 s on, `halts_a_lower_to_off[light_ct]` ends off, five group cases fail in setup
+  with the sideboard `on` and brightness `None`, and two `group_color` cases' HA color differs from a live read. So
+  not the restore race. `opus`: hardware triage, where the cause may be the bulb's state after its reset or our stop.
 - [ ] **ZHA A60 run** (13k step 3), on the lab: ZHA color suites, `set_attributes` hs and xy included. Attended for
   `sets_color_while_off`. Clears `experimental` on the ZHA adapters it proves.
 - [ ] **9d** Rig coverage sweep for the non-color scope
