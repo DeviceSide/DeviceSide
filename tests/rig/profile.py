@@ -372,6 +372,7 @@ def load_env(path: Path = ENV_FILE) -> dict[str, str]:
         "RIG_SYNC_CMD",
         "RIG_STATUS_CMD",
         "RIG_RESTART_CMD",
+        "RIG_BLOCKER_ENTITY",
         "RIG_PAUSE",  # moved into the profile; still read, so a run set it in refuses rather than ignores it
         "HUE_BRIDGE_HOST",
         "HUE_APP_KEY",

@@ -19,7 +19,14 @@ journaled first, in a journal of its own next to the locks (tests/rig/journal.py
 changed, the next run whose locks cover it puts back before its gate, or --recover, holding every lock, does.
 
 --hold runs a probe's command holding the named integrations and HA (--exclusive: exclusively), with the profile's
-automations for them paused, passing signals on to it and returning its exit code; no gate and no case journal.
+automations for them paused, passing signals on to it and returning its exit code; no case journal, and no gate but
+the clear one below.
+
+RIG_BLOCKER_ENTITY in .env.rig names an HA binary_sensor that is on while someone is near enough to see the lights;
+the rig is clear only while it is off. DEVICE_SIDE_RIG_APPROVED=1 is refused otherwise, and so is a probe, though a
+human at the prompt may still say yes. A run or probe that started clear reads it every 15 s and, on two reads in a
+row of on, unknown or unavailable, aborts as on a SIGTERM, putting the devices back. Reads that fail, as during the
+deploy's restart, don't count. Without the key, nothing changes.
 
 Under cmux the run colors its workspace: green holding its locks, amber waiting for them.
 
@@ -62,6 +69,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -126,6 +134,8 @@ TARGETS_TIMEOUT_S = 60
 RESTART_ESTIMATE_S = 90
 ROAM_ESTIMATE_S = 180  # the three moves: the probe's joins took about 10 s each, plus releases, renames and HA
 ABORT_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
+CLEAR_POLL_S = 15
+BLOCKED = ("on", "unknown", "unavailable")  # RIG_BLOCKER_ENTITY states that revoke a run; an unread one doesn't
 # Run reports go where the OS clears old files: they are for reviewing a run, not for keeping.
 REPORT_DIR = Path(tempfile.gettempdir()) / "device_side-rig"
 
@@ -330,12 +340,22 @@ def check_deploy(env: dict, deploy: Deploy) -> None:
         raise SystemExit(f"Cannot deploy: {deploy.blocker}.")
 
 
-def gate(prompt: Callable[[str], str] = input) -> bool:
+def gate(clear: tuple[bool, str] | None = None, prompt: Callable[[str], str] = input) -> bool:
+    """A human's yes, or DEVICE_SIDE_RIG_APPROVED=1 while the rig is clear (`clear`: rig_clear's answer, None without
+    RIG_BLOCKER_ENTITY). A rig not clear refuses the env var; at the prompt, a yes overrides it."""
     if os.environ.get("DEVICE_SIDE_RIG_APPROVED") == "1":
+        if clear is not None and not clear[0]:
+            print(f"Rig not clear ({clear[1]}); DEVICE_SIDE_RIG_APPROVED=1 doesn't override that.")
+            return False
         print("Approved by DEVICE_SIDE_RIG_APPROVED=1.")
         return True
+    return ask(f"Rig not clear ({clear[1]}). Proceed anyway?" if clear and not clear[0] else "Proceed?", prompt)
+
+
+def ask(question: str, prompt: Callable[[str], str] = input) -> bool:
+    """An explicit yes; no terminal (an agent's call) answers no."""
     try:
-        return prompt("Proceed? [y/N] ").strip().lower() in ("y", "yes")
+        return prompt(f"{question} [y/N] ").strip().lower() in ("y", "yes")
     except EOFError:
         return False
 
@@ -344,6 +364,65 @@ def _get(url: str, token: str) -> Any:
     request = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
     with urllib.request.urlopen(request, timeout=5) as response:
         return json.load(response)
+
+
+def clearance(env: dict) -> tuple[bool, str] | None:
+    """rig_clear's answer, or None when .env.rig names no RIG_BLOCKER_ENTITY and nothing gates on it."""
+    return rig_clear(env) if env.get("RIG_BLOCKER_ENTITY") else None
+
+
+def rig_clear(env: dict) -> tuple[bool, str]:
+    """Whether the rig may run unattended: RIG_BLOCKER_ENTITY, an HA binary_sensor the household defines, is off. Any
+    other state, the entity missing or HA unreachable is not clear. The reason says which."""
+    state, reason = read_blocker(env)
+    return state == "off", reason
+
+
+def read_blocker(env: dict) -> tuple[str | None, str]:
+    """RIG_BLOCKER_ENTITY's state, None when it can't be read, and a reason naming it. A state HA restored at startup,
+    before the template has evaluated, counts as unread."""
+    entity = env["RIG_BLOCKER_ENTITY"]
+    try:
+        reply = _get(f"{env.get('HA_URL', '')}/api/states/{entity}", env.get("HA_TOKEN", ""))
+        state, restored = reply["state"], reply.get("attributes", {}).get("restored")
+    except urllib.error.HTTPError as err:
+        return None, f"{entity} {'is not in HA' if err.code == 404 else f'read failed: HTTP {err.code}'}"
+    except (urllib.error.URLError, OSError, ValueError, TypeError, KeyError, AttributeError) as err:
+        return None, f"can't read {entity}: {err}"
+    if restored:
+        return None, f"{entity} is still being restored by HA"
+    return state, f"{entity} is {state}"
+
+
+@contextlib.contextmanager
+def watching(env: dict, armed: bool, interval: float = CLEAR_POLL_S) -> Iterator[None]:
+    """While armed, read RIG_BLOCKER_ENTITY every `interval` seconds and, on two reads in a row of a state in BLOCKED,
+    stop the run with one SIGTERM, which the run's own handlers take from there: the deploy finishes, the tests put
+    the devices back, a probe's command gets it. A read that fails neither counts nor breaks the run of two: HA is
+    unreachable during a deploy's restart."""
+    stop = threading.Event()
+
+    def watch() -> None:
+        misses = 0
+        while not stop.wait(interval):
+            state, reason = read_blocker(env)
+            if state is None:
+                continue
+            misses = misses + 1 if state in BLOCKED else 0
+            if misses == 2:
+                print(f"\nRig authorization revoked ({reason}); aborting.", flush=True)
+                os.kill(os.getpid(), signal.SIGTERM)
+                return
+
+    thread = threading.Thread(target=watch, name="rig-clear", daemon=True)
+    if armed:
+        thread.start()
+    try:
+        yield
+    finally:
+        stop.set()
+        if armed:
+            thread.join()
 
 
 def wait_until_ready(
@@ -624,34 +703,46 @@ def run_held(args: argparse.Namespace, setup: Setup, held: Held | None, director
         ready = not asyncio.run(check_devices(env, suites, profile, registry, args.keyword, setup.roaming, homes))
         if not (ready or args.dry_run):
             raise SystemExit("Power or fix the devices above, then run again.")
+    clear = clearance(env)
+    if clear is not None:
+        print(f"Rig {'clear' if clear[0] else 'not clear'}: {clear[1]}.")
     if args.dry_run:
         return 0
-    if not gate():
+    if not gate(clear):
         print("Not approved; nothing changed.")
         return 1
 
     journal = Journal.start(directory)
     try:
-        deploy_and_wait(env, deploy.branch if deploying else None)
-        commit = tested_commit(env.get("RIG_STATUS_CMD", ""), deploy, deploying)
-        return run_tests(
-            run_rig(
-                env,
-                suites,
-                profile,
-                registry,
-                args.keyword,
-                args.unattended,
-                commit,
-                journal,
-                roaming=setup.roaming,
-                grouping=setup.grouping,
-                lanes=lanes,
-                claim=held.claim,
-            )
-        )
+        with watching(env, armed=bool(clear and clear[0])):
+            return run_approved(args, setup, held, journal, deploying, lanes)
     finally:
         journal.release()
+
+
+def run_approved(
+    args: argparse.Namespace, setup: Setup, held: Held, journal: Journal, deploying: bool, lanes: bool
+) -> int:
+    """The deploy and the tests, once the run is approved."""
+    env, deploy = setup.env, setup.deploy
+    deploy_and_wait(env, deploy.branch if deploying else None)
+    commit = tested_commit(env.get("RIG_STATUS_CMD", ""), deploy, deploying)
+    return run_tests(
+        run_rig(
+            env,
+            setup.suites,
+            setup.profile,
+            setup.registry,
+            args.keyword,
+            args.unattended,
+            commit,
+            journal,
+            roaming=setup.roaming,
+            grouping=setup.grouping,
+            lanes=lanes,
+            claim=held.claim,
+        )
+    )
 
 
 def check_only(setup: Setup, keyword: str | None, homes: set[str], wanted: Claim, directory: Path) -> int:
@@ -669,9 +760,10 @@ def check_only(setup: Setup, keyword: str | None, homes: set[str], wanted: Claim
 
 def hold_command(args: argparse.Namespace, directory: Path) -> int:
     """A command after --: run a probe holding the integrations --hold names and HA, shared or with --exclusive
-    exclusively, with the profile's automations for them paused, and return its exit code. No gate and no case
-    journal: the probe puts back what it changes. A journal is started all the same, never written, as the name the
-    pause ledger knows the probe by, alive while it runs."""
+    exclusively, with the profile's automations for them paused, and return its exit code. No case journal: the
+    probe puts back what it changes. Its only gate is the clear one (probe_approved), checked before and after the
+    wait for the locks. A journal is started all the same, never written, as the name the pause ledger knows the
+    probe by, alive while it runs."""
     wanted = Claim("exclusive" if args.exclusive else "shared", frozenset(args.hold or ()))
     env = load_env()
     try:
@@ -681,17 +773,32 @@ def hold_command(args: argparse.Namespace, directory: Path) -> int:
     if pausing and not (env.get("HA_URL") and env.get("HA_TOKEN")):
         raise SystemExit("HA_URL and HA_TOKEN must be set in .env.rig to pause the profile's automations")
     holder = f"{git('rev-parse', '--abbrev-ref', 'HEAD')} (probe: {shlex.join(args.command)})"
+    if not probe_approved(clear := clearance(env)):
+        return 1
     with locks.hold(wanted, holder, directory):
+        # a probe may wait long for its locks; a human who let it past a rig not clear isn't asked again
+        if clear and clear[0] and not probe_approved(clear := clearance(env)):
+            return 1
         journal = Journal.start(directory)
         ledger = Ledger(directory, journal.name)
         try:
-            if pausing:
-                asyncio.run(with_ha(env, lambda ha: ledger.pause(ha, pausing)))
-            return run_command(args.command)
+            with watching(env, armed=bool(clear and clear[0])):
+                if pausing:
+                    asyncio.run(with_ha(env, lambda ha: ledger.pause(ha, pausing)))
+                return run_command(args.command)
         finally:
             if pausing:
                 asyncio.run(with_ha(env, ledger.resume))
             journal.release()
+
+
+def probe_approved(clear: tuple[bool, str] | None, prompt: Callable[[str], str] = input) -> bool:
+    """A probe's gate, its only one: through while the rig is clear or nothing gates on it (`clear` None), else only
+    on a human's yes; an agent's call, which has no terminal, is refused."""
+    if clear is None or clear[0] or ask(f"Rig not clear ({clear[1]}). Proceed anyway?", prompt):
+        return True
+    print("Not approved; nothing changed.")
+    return False
 
 
 async def with_ha(env: dict, call: Callable[[HAClient], Awaitable[None]]) -> None:
