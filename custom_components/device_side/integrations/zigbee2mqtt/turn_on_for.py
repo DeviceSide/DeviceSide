@@ -52,7 +52,6 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
     action: ClassVar[str] = "turn_on_for"
     integration: ClassVar[str] = "zigbee2mqtt"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        experimental=True,
         # Zigbee plugs and switches rarely honor OnWithTimedOff, so switch stays out of scope until users ask.
         domains=frozenset({"light"}),
         duration=_TIMER_LIMITS,

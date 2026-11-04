@@ -115,7 +115,8 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. Lanes on dif
 - [ ] **Z2M A60 run** (13k step 1): full Z2M suite on the lab, with the `group_color` cases on its rig-made group
   holding only the A60. Attended for its four
   observed cases (9d ledger in the [plan](docs/plans/2026-10-30-rig-coverage-sweep.md)). Clears `experimental` on the
-  Z2M adapters it proves.
+  Z2M adapters it proves. The lab records cleared seven of the ten; `lower_hue`'s group case and the four observed
+  cases are left ([audit](docs/plans/2026-11-04-flag-audit-z2m.md)).
 - [x] **7c2** Hue `raise_saturation`/`lower_saturation`, built against the A60
   ([`2026-10-27-hue-move-color.md`](docs/plans/2026-10-27-hue-move-color.md)). Experimental until the Hue A60 run.
 - [ ] **Hue A60 run** (13k step 2), on the lab: `set_attributes` color (rgb, hs and xy) and gamut clamp, the `get_attributes`
