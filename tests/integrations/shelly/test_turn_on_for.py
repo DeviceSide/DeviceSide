@@ -56,6 +56,9 @@ async def test_light_fields_ride_in_the_same_set(hass, setup_production, every_l
         ({"color_temp_kelvin": 9000}, {"ct": 6500, "mode": "cct"}),
         ({"color_temp_kelvin": 1500}, {"ct": 2700, "mode": "cct"}),
         ({"rgb_color": [255, 0, 10]}, {"rgb": [255, 0, 10], "mode": "rgb"}),
+        # As core converts them for a light with no hs or xy mode: at full value, whatever mode the bulb is in.
+        ({"hs_color": [120, 100]}, {"rgb": [0, 255, 0], "mode": "rgb"}),
+        ({"xy_color": [0.15, 0.06]}, {"rgb": [57, 53, 255], "mode": "rgb"}),
     ],
 )
 async def test_rgbcct_sets_mode_and_clamps_kelvin_to_the_entity_range(hass, setup_production, data, expected):
@@ -97,6 +100,7 @@ async def test_switch_as_x_light_sends_the_switch_call(hass, setup_production):
         ("light.relay", "switch:0", {"brightness": 10}),  # relay shown as a light is on/off
         ("light.dimmer", "light:0", {"color_temp_kelvin": 3000}),
         ("light.cct", "cct:0", {"rgb_color": [1, 2, 3]}),
+        ("light.cct", "cct:0", {"hs_color": [30, 50]}),
     ],
 )
 async def test_component_fields_not_in_component_are_dropped(
@@ -109,16 +113,6 @@ async def test_component_fields_not_in_component_are_dropped(
     response = await call(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5, **data})
 
     assert response[entity_id] == {**CONFIRMED, "detail": "fields_dropped"}
-
-
-async def test_field_not_in_scope_is_refused(hass, setup_production, every_light_in_scope):
-    # A field not in scope is refused before anything is sent.
-    entry, call_rpc = shelly_device(hass)
-    add_shelly_entity(hass, entry, "light.rgb", "rgb:0")
-
-    data = {"entity_id": "light.rgb", "duration": 5, "hs_color": [30, 50]}
-    assert await refusal(hass, "turn_on_for", data) == "fields_not_tested"
-    assert not call_rpc.await_args_list
 
 
 async def test_relay_drops_brightness_and_dimmer_is_refused_by_capability(hass, setup_production):

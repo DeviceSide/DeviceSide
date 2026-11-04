@@ -30,8 +30,8 @@ lights (Light, CCT, RGB, RGBW) take the same command but are refused (`capabilit
 [tests one](../CONTRIBUTING.md). Gen1 is refused (`gen1_unsupported`).
 
 **Delayed off and on.** The device runs the timer and confirms it. A transition is at least 0.5 s. A color
-temperature outside the bulb's range is clamped. `hs_color` and `xy_color` are refused (`fields_not_tested`), as
-the conversion depends on the bulb's mode: send `rgb_color`.
+temperature outside the bulb's range is clamped. `hs_color` and `xy_color` are sent as the RGB color Home
+Assistant would send for them, whatever mode the bulb is in.
 
 **Cancelling.** Any on or off cancels the timer, whoever sends it: Home Assistant, the Shelly app or another
 integration. A wall switch wired to the device's input is untested and may depend on the input mode.

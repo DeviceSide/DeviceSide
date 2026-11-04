@@ -110,6 +110,36 @@ tests:
       - expect_state: {state: on}
       - expect_state: {state: off, within: 2 * tol}
 
+  # hs and xy go as the rgb core would send (light/helper.py), which doesn't depend on the bulb's mode: hs from color
+  # temperature, xy from a color, each ending on core's rgb for it.
+  - name: rgbcct_bulb_hs_then_off
+    roles: [light_color]
+    only: [shelly]
+    setup:
+      - set: {state: on, color_temp_kelvin: 2700}
+      - set: {state: off}
+    steps:
+      - call: {duration: 6, hs_color: [120, 100]}
+      - expect_response: {status: expected, integration: self}
+      - expect_state: {state: on, color_mode: rgb, rgb_color: [0, 255, 0], within: tol}
+      - wait: duration - tol
+      - expect_state: {state: on}
+      - expect_state: {state: off, within: 2 * tol}
+
+  - name: rgbcct_bulb_xy_then_off
+    roles: [light_color]
+    only: [shelly]
+    setup:
+      - set: {state: on, rgb_color: [255, 0, 0]}
+      - set: {state: off}
+    steps:
+      - call: {duration: 6, xy_color: [0.15, 0.06]}
+      - expect_response: {status: expected, integration: self}
+      - expect_state: {state: on, color_mode: rgb, rgb_color: [57, 53, 255], within: tol}
+      - wait: duration - tol
+      - expect_state: {state: on}
+      - expect_state: {state: off, within: 2 * tol}
+
   # A color rides the same light.turn_on as brightness. Setup leaves the bulb in color temperature, so color_mode
   # xy shows the call moved it to color; Z2M reports every color field in xy. One test per field, as a record
   # covers only the fields its calls sent. The RGB test's red from the start was watched in #80.
