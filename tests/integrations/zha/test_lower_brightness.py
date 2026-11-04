@@ -2,8 +2,12 @@
 reads off."""
 
 import pytest
+from homeassistant.core import ServiceCall
+from homeassistant.exceptions import HomeAssistantError
+from pytest_homeassistant_custom_component.common import async_mock_service
 
 from custom_components.device_side.integrations.zha import zcl
+from custom_components.device_side.integrations.zha.fade import soft_off_restores
 
 from .conftest import RESTORE_60, SENT, A, B, bulb, on_off_reads, sent, to, unchanged
 from ...conftest import advance, call, wall_clock_now
@@ -83,6 +87,39 @@ async def test_a_failed_restore_still_refreshes(hass, commands, refreshes, on_of
 
     assert len(commands) == 1
     assert len(refreshes) == 1
+
+
+async def test_a_failed_lower_keeps_the_earlier_soft_offs_restore(hass, commands, on_off_read, clock):
+    """The failed lower schedules no end job, so the soft off's own still has to find its mark."""
+    bulb(hass)
+    start = wall_clock_now()
+    await call(hass, "lower_brightness", {"entity_id": "light.bulb"})
+    clock.now += 1
+
+    async def fail(call: ServiceCall) -> None:
+        raise HomeAssistantError("no route")
+
+    hass.services.async_register("zha", "issue_zigbee_cluster_command", fail)
+    with pytest.raises(HomeAssistantError):
+        await call(hass, "lower_brightness", {"entity_id": "light.bulb", "limit": 20})
+    after = async_mock_service(hass, "zha", "issue_zigbee_cluster_command")
+    await advance(hass, start, 4.5)
+
+    assert len(commands) == 1
+    assert sent(after) == [RESTORE_60]
+
+
+async def test_a_failed_soft_off_leaves_no_restore(hass, on_off_read):
+    async def fail(call: ServiceCall) -> None:
+        raise HomeAssistantError("no route")
+
+    hass.services.async_register("zha", "issue_zigbee_cluster_command", fail)
+    bulb(hass)
+
+    with pytest.raises(HomeAssistantError):
+        await call(hass, "lower_brightness", {"entity_id": "light.bulb"})
+
+    assert not soft_off_restores(hass)
 
 
 async def test_no_restore_on_a_model_that_drops_levels_while_off(hass, commands, on_off_read):
