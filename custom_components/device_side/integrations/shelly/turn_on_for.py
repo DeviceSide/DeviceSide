@@ -20,7 +20,8 @@ class ShellyTurnOnFor(Adapter[TurnOnForRequest]):
         domains=frozenset({"light", "switch"}),
         duration=TIMER_LIMITS,
         fields=frozenset({"brightness", "color_temp_kelvin", "rgb_color", "transition"}),
-        # A relay shown as a light sends the same Switch.Set; Light, CCT, RGB and RGBW wait for a tester's report.
+        # A relay shown as a light sends the same Switch.Set; Light, CCT, RGB and RGBW stay out of scope until a test
+        # record covers them.
         capabilities=frozenset({"Switch", "RGBCCT"}),
         confirmable=True,
     )

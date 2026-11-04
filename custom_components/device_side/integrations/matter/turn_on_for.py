@@ -30,7 +30,7 @@ class MatterTurnOnFor(Adapter[TurnOnForRequest]):
     action: ClassVar[str] = "turn_on_for"
     integration: ClassVar[str] = "matter"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        # Plugs only: Matter lights take the same command but wait for a tester's report.
+        # Plugs only: Matter lights take the same command but stay out of scope until a test record covers them.
         domains=frozenset({"switch"}),
         duration=_TIMER_LIMITS,
         fields=frozenset(),

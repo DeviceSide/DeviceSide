@@ -124,7 +124,7 @@ async def test_light_target_is_outside_the_action(hass, bridge):
     assert await refusal(hass, "set_scene", {"entity_id": "light.lamp"}) == "domain_not_supported"
 
 
-async def test_one_failing_light_does_not_stop_the_others(hass, bridge, caplog):
+async def test_one_failing_light_does_not_stop_the_others_but_raises(hass, bridge, caplog):
     await scene(
         hass,
         bridge,
@@ -133,9 +133,10 @@ async def test_one_failing_light_does_not_stop_the_others(hass, bridge, caplog):
     )
     bridge.failing.add("light-2")
 
-    response = await call(hass, "set_scene", {"entity_id": "scene.relax"})
+    with pytest.raises(HomeAssistantError) as raised:
+        await call(hass, "set_scene", {"entity_id": "scene.relax"})
 
-    assert response == {"scene.relax": SENT | {"detail": "some_lights_failed"}}
+    assert raised.value.translation_placeholders["summary"] == "scene.relax: some_lights_failed"
     assert [path for path, _ in bridge.puts] == ["light/light-1", "light/light-2", "light/light-3"]
     assert "light-2" in caplog.text
 
@@ -182,7 +183,8 @@ async def test_the_lights_written_forget_their_move_predictions(hass, bridge):
         cache.stopped(light_id, "brightness", 42.0)
     bridge.failing.add("light-2")
 
-    await call(hass, "set_scene", {"entity_id": "scene.relax"})
+    with pytest.raises(HomeAssistantError):
+        await call(hass, "set_scene", {"entity_id": "scene.relax"})
 
     assert not cache.follows("light-1")
     assert cache.follows("light-2")  # its write failed, so the light is still where the move left it

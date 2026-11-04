@@ -1,7 +1,7 @@
 """Tell the bridge's reports of our own fades from real changes, and forget a prediction a real change ends.
 
 The bridge reports a fade's end value at its start, and the bulb reports late, stale values, and off any straight line
-(Tested behavior in docs/contributing/integration-internals.md), so no value tells ours apart. Instead, while a move
+(Tested behavior in docs/integration-internals.md), so no value tells ours apart. Instead, while a move
 or stop on a light is inside its guard window, every report of the keys its attribute owns (attributes.ATTRIBUTES) is
 ours. Two reports are another actor's (the Hue app, a dimmer, a Hue automation): a switch to off while the light's
 brightness heads somewhere lit, and a key no live transition owns, which our writes never make the bridge report. Either
