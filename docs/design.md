@@ -56,7 +56,8 @@ HA requires it.
 ## Scope
 
 Integrations: Zigbee2MQTT (via `mqtt`), ZHA, Matter, Shelly Gen2+ and Hue (CLIP v2). Which adapter exists, and its
-scope, is in each adapter's `AdapterScope`; `scripts/check_release.py` prints the matrix.
+scope, is in each adapter's `AdapterScope`; `scripts/check_release.py` lists every adapter and whether it is
+experimental.
 
 - **`turn_on_for`, `turn_off_for`**: on, then off after `duration` (or the reverse), timed on the device.
   `turn_off_for` is Shelly only: Zigbee and Matter `OnWithTimedOff` is on-then-off only. `turn_on_for` accepts the

@@ -1,7 +1,7 @@
 name: Cut release
 
 # The only way a vX.Y.Z tag is made (a tag ruleset refuses any other): from main, above the latest release, with
-# green CI on the head and no experimental adapter (check_release --release). Soak is the maintainer's call.
+# green CI on the head and no experimental adapter (check_release --release). Soak is the repo owner's call.
 
 on:
   workflow_dispatch:

@@ -10,7 +10,7 @@ only runs the audit and writes the record.
 
 - **Goal:** no `vX.Y.ZrcN` tag unless `audit-code` has covered every commit it ships and no Critical or High finding
   is left open.
-- **Where it runs:** locally, in the maintainer's Claude session. CI only checks the committed record, so it needs
+- **Where it runs:** locally, in the repo owner's Claude session. CI only checks the committed record, so it needs
   no API key and no vendored copy of `audit-code`.
 - **Range:** from the previous RC tag of the same version; for rc1, from the latest release tag that is an ancestor
   of the head (the root commit if none). That is the merge-base with `main` for a release branch, and also right
@@ -56,6 +56,6 @@ only runs the audit and writes the record.
 ## Then
 
 Run `.venv/bin/python scripts/check_audit.py <rc> HEAD` and list every problem it reports, then list each Critical
-and High still `open`. Fixing or waiving is the maintainer's decision: never mark one `waived` yourself. Once the check
-passes, the record is committed, and CI is green, the maintainer dispatches `cut-release-candidate` with `rc: <rc>` from the
-branch.
+and High still `open`. Fixing or waiving is the repo owner's decision: never mark one `waived` yourself. Once the check
+passes, the record is committed, and CI is green, the repo owner dispatches `cut-release-candidate` with `rc: <rc>`
+from the branch.
