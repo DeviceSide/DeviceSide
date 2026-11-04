@@ -27,7 +27,7 @@ _LOGGER = logging.getLogger(__name__)
 
 READ_KEY = "device_side_read"
 _FILTERED_CACHE = "filtered_cache"
-# Z2M publishes a reply within a quarter second when the bulb answers; the same wait as turn_on_with_auto_off's state.
+# Z2M publishes a reply within a quarter second when the bulb answers; the same wait as turn_on_for's state.
 _REPLY_TIMEOUT_S = 5.0
 
 

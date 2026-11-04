@@ -12,7 +12,7 @@ from ..core.models import LIGHT_FIELD_SCHEMA, ActionKind, LightFields, TimedRequ
 
 
 @dataclass(frozen=True, slots=True)
-class TurnOnWithAutoOffRequest(TimedRequest):
+class TurnOnForRequest(TimedRequest):
     light: LightFields = field(default_factory=LightFields)
 
     def fields_present(self) -> frozenset[str]:
@@ -34,17 +34,17 @@ def parse_duration(call: ServiceCall) -> float:
     return round(seconds, RESOLUTION_DIGITS)
 
 
-class TurnOnWithAutoOff(Action[TurnOnWithAutoOffRequest]):
+class TurnOnFor(Action[TurnOnForRequest]):
     """Turn on now; the device turns itself off after the duration."""
 
-    key: ClassVar[str] = "turn_on_with_auto_off"
+    key: ClassVar[str] = "turn_on_for"
     kind: ClassVar[ActionKind] = ActionKind.COMMAND
     domains: ClassVar[frozenset[str]] = frozenset({"light", "switch"})
     fields: ClassVar[dict] = {probatio.Required("duration"): cv.positive_time_period, **LIGHT_FIELD_SCHEMA}
 
     @classmethod
-    def parse(cls, hass: HomeAssistant, call: ServiceCall) -> TurnOnWithAutoOffRequest:
-        return TurnOnWithAutoOffRequest(duration_s=parse_duration(call), light=LightFields.from_data(call.data))
+    def parse(cls, hass: HomeAssistant, call: ServiceCall) -> TurnOnForRequest:
+        return TurnOnForRequest(duration_s=parse_duration(call), light=LightFields.from_data(call.data))
 
 
-ACTION = TurnOnWithAutoOff
+ACTION = TurnOnFor

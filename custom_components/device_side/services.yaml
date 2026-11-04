@@ -5,7 +5,7 @@
 # can use them. They are written out, not shared through top-level .anchor keys as core does: hassfest rejects those
 # in a custom component.
 
-turn_on_with_auto_off:
+turn_on_for:
   target:
     entity:
       - domain: [light, switch]
@@ -99,7 +99,7 @@ turn_on_with_auto_off:
           max: 300
           unit_of_measurement: seconds
 
-turn_off_with_auto_on:
+turn_off_for:
   target:
     entity:
       - domain: [light, switch]

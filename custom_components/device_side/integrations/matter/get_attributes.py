@@ -23,7 +23,7 @@ def on_time_row(on_time: object, now: datetime) -> dict:
     """One target's row from its OnTime, in tenths of a second.
 
     OnTime > 0 alone means a timer runs: the spec counts it down only while the plug is on, and Off zeroes it.
-    Matter has no turn_off_with_auto_on here, so the timer always turns the target off.
+    Matter has no turn_off_for here, so the timer always turns the target off.
     """
     if isinstance(on_time, int) and on_time > 0:
         return {"timer": timer_row("off", on_time / 10, now)}

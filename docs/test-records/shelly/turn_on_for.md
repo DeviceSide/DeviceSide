@@ -1,4 +1,4 @@
-# Shelly · turn_on_with_auto_off
+# Shelly · turn_on_for
 
 | | |
 |---|---|

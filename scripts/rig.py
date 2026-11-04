@@ -136,7 +136,7 @@ from tests.rig.runlogs import DebugLevels, RunLogs, ha_domains  # noqa: E402
 
 COMPONENT = "custom_components/device_side"
 TEST_RECORDS_DIR = REPO / "docs" / "test-records"
-SERVICE = ("device_side", "turn_on_with_auto_off")
+SERVICE = ("device_side", "turn_on_for")
 # HA's bootstrap stage-1 (120 s) and stage-2 (300 s) timeouts, after which a stuck dependency is let go, plus the
 # container's start. A restart behind a hung ZHA took about 350 s.
 READY_TIMEOUT_S = 450
@@ -449,8 +449,8 @@ def wait_until_ready(
     timeout: float = READY_TIMEOUT_S,
     sleep: Callable[[float], None] = time.sleep,
 ) -> None:
-    """Until HA reports RUNNING and lists device_side.turn_on_with_auto_off; exits the runner on timeout, saying why
-    when HA answers without it, still starting or running."""
+    """Until HA reports RUNNING and lists device_side.turn_on_for; exits the runner on timeout, saying why when HA
+    answers without it, still starting or running."""
     deadline = time.monotonic() + timeout
     state = None
     while time.monotonic() < deadline:

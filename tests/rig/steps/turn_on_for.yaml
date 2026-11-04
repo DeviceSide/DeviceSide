@@ -1,6 +1,6 @@
 # The device's own timer turns the target back off. A relay sends the same call whether HA shows it as a switch,
 # a light, or a switch_as_x light over the switch, so a pass on any of the three roles proves on/off for all.
-action: turn_on_with_auto_off
+action: turn_on_for
 rig_seconds: 120
 tests:
   - name: on_then_off

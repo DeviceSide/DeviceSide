@@ -1,6 +1,6 @@
-# The device's own timer turns the target back on. Same relay-call argument as turn_on_with_auto_off: a pass on any
-# of the three on/off roles proves on/off for all.
-action: turn_off_with_auto_on
+# The device's own timer turns the target back on. Same relay-call argument as turn_on_for: a pass on any of the
+# three on/off roles proves on/off for all.
+action: turn_off_for
 rig_seconds: 50
 tests:
   - name: off_then_on

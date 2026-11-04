@@ -1,4 +1,4 @@
-# Matter · turn_on_with_auto_off
+# Matter · turn_on_for
 
 | | |
 |---|---|
