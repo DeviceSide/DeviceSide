@@ -46,7 +46,7 @@ more: #167 (3 Nov) widened `hue_cycle_stop` and `saturation_down_stop` to ZHA an
 `soft_off_keeps_level`, each with an `observe:` block and no `observe: only:`, after the 9d ledger (#134, 31 Oct)
 pruned observed cases.
 
-## Proposals (Jason's call; not made here)
+## Proposals (both decided by Jason on 4 Nov: `2026-11-04-flag-clearing-follow-up.md`)
 
 1. **Ledger the three blocks #167 added.** Keep them watched, or judge them deducible and limit each `observe:` with
    `only:`. The ledger made the Z2M `hue_cycle_stop` and `saturation_down_stop` watched because a Hue bulb's output
