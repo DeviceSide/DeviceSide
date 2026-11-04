@@ -76,7 +76,8 @@ experimental.
 - **`set_scene`**: Hue only. A Zigbee scene recall turns lights on.
 
 Out of scope until users ask: turn-on defaults (`OnLevel`), Zigbee plugs and switches, Shelly Gen1, Hue bridge v1,
-other domains (cover, valve, lock), and other integrations (Z-Wave JS, Tuya, ESPHome, Tasmota, TP-Link Kasa).
+other domains (cover, valve, lock), and other integrations (Z-Wave JS, Tuya, ESPHome, Tasmota, TP-Link Kasa). What v0.1.0 refuses for want of hardware
+the rig lacks, and which entries a tester could prove: [hardware-the-rig-lacks.md](hardware-the-rig-lacks.md).
 
 ## Architecture
 

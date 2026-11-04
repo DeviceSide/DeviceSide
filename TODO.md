@@ -26,3 +26,8 @@ its tests, no soak.
 - [ ] **12** v0.1.0: no adapter left `experimental` (`scripts/check_release.py --release`); README feature table
   current; release checklist adapted from hue_dimmer; `predicted_state` default reviewed against the rig runs and
   regression issues since #77.
+
+## After v0.1.0
+
+- **9b** Remote tester flow, once an adapter needs hardware the rig lacks
+  ([the list](docs/hardware-the-rig-lacks.md)).
