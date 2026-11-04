@@ -121,10 +121,9 @@ class EntityResult:
     data: dict | None = None
 
     def as_response(self) -> dict:
+        """A command's status entry. A query's response is its data alone (dispatcher), so data is never here."""
         response: dict[str, Any] = {"status": self.status.value}
         for name in ("integration", "clamped_to", "detail"):
             if (value := getattr(self, name)) is not None:
                 response[name] = value
-        if self.data is not None:
-            response["attributes"] = self.data
         return response
