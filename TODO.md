@@ -15,6 +15,7 @@ v0.1.0 is the next release.
 
 | Slice | What | PRs |
 |---|---|---|
+| 9b | List of hardware the rig lacks, checked against the adapter scopes; the repo plan's paragraph points at it | #TBD |
 | 12 | `docs/integrations.md` rewritten for users; addressing, wire commands and tested behavior moved to `docs/contributing/integration-internals.md`; README's turn-on cancel claim limited to Shelly | #218 |
 | 12 | Example page: screenshots retaken with Device Side's `set_attributes` | #217 |
 | 12 | README for v0.1.0: Key Features table, one usage section per feature, Hue Smooth Dimming migration, facts checked against the code (item 12's table half; the experimental half stays open) | #214 |
@@ -186,4 +187,5 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. Lanes on dif
 
 ## After v0.1.0
 
-- **9b** Remote tester flow, once an adapter needs hardware the rig lacks.
+- **9b** Remote tester flow, once an adapter needs hardware the rig lacks
+  ([the list](docs/contributing/hardware-the-rig-lacks.md)).
