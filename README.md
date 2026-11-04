@@ -309,6 +309,24 @@ To set brightness for the next turn-on from the visual editor, see [docs/example
 | `target`            | Lights and switches (required)                          |
 | `response_variable` | Name of a variable that receives the records (required) |
 
+A record holds the keys the device reports: `brightness` (%), `color_temp_kelvin`, `rgb_color`, `hs_color`, `xy_color`, and `timer` while one runs. `timer` holds `turns` (`on` or `off`), `ends_at` (UTC) and `remaining_s`.
+
+#### YAML Example: How long until the heater turns off
+
+```yaml
+actions:
+  - action: device_side.get_attributes
+    target:
+      entity_id: switch.heater
+    response_variable: result
+  - action: notify.notify
+    data:
+      message: >
+        {% set timer = result['switch.heater'].get('timer') %}
+        {% if timer %}Heater turns {{ timer.turns }} in {{ (timer.remaining_s / 60) | round }} min.
+        {% else %}No heater timer running.{% endif %}
+```
+
 ***
 
 ## Uninstall
