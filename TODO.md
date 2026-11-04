@@ -15,6 +15,7 @@ v0.1.0 is the next release.
 
 | Slice | What | PRs |
 |---|---|---|
+| 13j | Z2M `set_attributes` and `stop` on the lab: read after the write fade, soft-off cut, rig settles and reads a joined bulb | #192, #196 |
 | 9a | Rig step files | #26, #27 |
 | 6 | Z2M `turn_on_for` | #22, #23, #25 |
 | 11 | Matter `turn_on_for` (plugs out of experimental) | #24, #90, #91 |
@@ -163,8 +164,12 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. Lanes on dif
   Across all 33 kept Z2M logs of 3 Nov, all 7 failed reads are the sideboard's (about 5,600 commands to it); the corner
   (about 1,200) and desk (about 400) bulbs, on the same mesh, had none. Too few to be conclusive for those two, but it points at
   the bulb, the Hue Essential.
+  The sideboard is also the only different model on the mesh: the Hue Essential (firmware 1.164.2); the corner and desk
+  bulbs are the full-range white ambiance (1.163.1) and white A60 (1.104.2) lines. A bulb swap with the corner would settle it.
 - [ ] **ZHA A60 run** (13k step 3), on the lab: ZHA color suites, `set_attributes` hs and xy included. Attended for
-  `sets_color_while_off`. Clears `experimental` on the ZHA adapters it proves.
+  `sets_color_while_off`. Clears `experimental` on the ZHA adapters it proves. Seven cleared on the 3 Nov lab
+  records; the watched cases left for `lower_brightness`, `stop` and `set_attributes` are in the
+  [flag audit](docs/plans/2026-11-04-flag-audit-zha.md).
 - [ ] **9d** Rig coverage sweep for the non-color scope
   ([`2026-10-30-rig-coverage-sweep.md`](docs/plans/2026-10-30-rig-coverage-sweep.md)). 13k covers the color part.
 - [ ] **12** v0.1.0: no adapter left `experimental` (`scripts/check_release.py --release`); README feature table

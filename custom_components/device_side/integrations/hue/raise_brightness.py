@@ -9,4 +9,4 @@ from ...core.transition import BRIGHTNESS
 
 class HueRaiseBrightness(HueFade):
     action: ClassVar[str] = "raise_brightness"
-    scope: ClassVar[AdapterScope] = fade_scope(BRIGHTNESS)
+    scope: ClassVar[AdapterScope] = fade_scope(BRIGHTNESS, experimental=False)
