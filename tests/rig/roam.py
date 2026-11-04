@@ -228,14 +228,19 @@ class Roamer:
                 }
             )
 
+    @property
+    def done(self) -> bool:
+        """Whether every bulb is home with its home put back, and no move or rig-made group is left."""
+        return (
+            self.moving is None
+            and not self.made
+            and all(self.at.get(b.entity_id) == b.home and self.homes.get(b.ieee) is None for b in self.bulbs)
+        )
+
     def finish(self) -> None:
-        """Clear the journal's roam section once every bulb is home with its home put back, and no rig-made group is
-        left."""
-        if self.journal is not None and self.moving is None and not self.made:
-            if all(
-                self.at.get(bulb.entity_id) == bulb.home and self.homes.get(bulb.ieee) is None for bulb in self.bulbs
-            ):
-                self.journal.clear("roam")
+        """Clear the journal's roam section once the roaming is done."""
+        if self.journal is not None and self.done:
+            self.journal.clear("roam")
 
     # --- where a bulb is ------------------------------------------------------------------------------------------
 
@@ -1021,7 +1026,6 @@ class Roamer:
                 self.out(
                     f"{bulb.entity_id}'s home isn't all back; the home record keeps it, and --recover tries again."
                 )
-            self.save()
 
     async def restore_hue(self, bulb: Bulb, home: dict) -> bool:
         device_id = await self.bridge.device_id_by_ieee(bulb.ieee)

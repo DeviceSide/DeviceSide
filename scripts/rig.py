@@ -1423,14 +1423,14 @@ async def leave_lab(roamer: Roamer | None, stopped: Roamer | None) -> bool:
 
 async def go_home(roamer: Roamer) -> bool:
     """Remove the rig-made groups and move the roaming bulbs home after a run that stopped part way (a no-op after
-    one that finished); whether both are done. A failure is printed: the journal keeps where they are, and --recover
-    tries again."""
+    one that finished); whether that is all done, their homes put back included. A failure is printed: the journal
+    keeps where they are, and --recover tries again."""
     try:
         await roamer.go(roamer.home_network)
     except Exception as err:  # noqa: BLE001 - as resume: say so, and go on putting the rest back
         print(f"Could not move the roaming bulbs home: {err}. scripts/rig.py --recover tries again.")
         return False
-    return not roamer.made
+    return roamer.done
 
 
 async def wait_for_targets(

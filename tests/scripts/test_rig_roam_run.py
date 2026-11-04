@@ -230,6 +230,21 @@ async def test_a_move_home_that_fails_after_the_last_phase_stops_the_run(tmp_pat
     assert HomeRecord(tmp_path).get(A[2:])["hue"]
 
 
+async def test_a_run_whose_bulbs_cant_be_put_back_as_they_were_fails(monkeypatch, lab, tmp_path, capsys):
+    fake_phases(monkeypatch, lab)
+    call_service = lab.ha.call_service
+
+    async def refuse_lights(domain, service, data=None, return_response=False):
+        if domain == "light":
+            raise RuntimeError("light call failed")
+        return await call_service(domain, service, data, return_response)
+
+    lab.ha.call_service = refuse_lights
+    assert await rig.run_rig(ENV, [], lab_with_pause(tmp_path), None, None, True, None, None, roaming=True) == 1
+    assert await where(lab) == ["hue", "hue"]
+    assert "light.lab_a's home isn't all back" in capsys.readouterr().out
+
+
 async def test_roam_check_runs_the_cycle_with_no_suites(monkeypatch, lab, tmp_path):
     ran = fake_phases(monkeypatch, lab)
     assert await rig.run_rig(ENV, [], lab_with_pause(tmp_path), None, None, True, None, None, roaming=True) == 0

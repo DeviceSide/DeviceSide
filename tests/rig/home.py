@@ -43,13 +43,10 @@ class HomeRecord:
         path = self.directory / NAME
         return json.loads(path.read_text()) if path.exists() else {}
 
-    def add(self, ieee: str, entry: dict) -> bool:
-        """Write `entry` for `ieee` unless one is there; whether it was written."""
+    def add(self, ieee: str, entry: dict) -> None:
+        """Write `entry` for `ieee` unless one is there."""
         with self.edit() as entries:
-            if ieee in entries:
-                return False
-            entries[ieee] = entry
-            return True
+            entries.setdefault(ieee, entry)
 
     def fill(self, ieee: str, part: str, value: object) -> None:
         """Set one part of `ieee`'s entry where it has none; an entry with that part keeps it."""
