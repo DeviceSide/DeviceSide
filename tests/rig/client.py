@@ -70,6 +70,13 @@ class Z2MRemoveError(Exception):
         self.restarted = restarted
 
 
+def _set(value: Any) -> Any:
+    """A Z2M option as it takes effect: bridge/info keeps a cleared (null) key, which sets nothing."""
+    if isinstance(value, dict):
+        return {key: _set(item) for key, item in value.items() if item is not None}
+    return value
+
+
 def _state_of(raw: str) -> str | None:
     """`state` from a Z2M availability or bridge/state payload: JSON `{"state": ...}`, or the legacy bare word."""
     try:
@@ -234,11 +241,23 @@ class HAClient:
         deadline = asyncio.get_running_loop().time() + 10
         while True:
             current = await self.z2m_device_options(ieee)
-            if all(current.get(name) == value for name, value in options.items()):
+            if all(_set(current.get(name)) == _set(value) for name, value in options.items()):
                 return
             if asyncio.get_running_loop().time() > deadline:
                 raise TimeoutError(f"Zigbee2MQTT still shows {current} for {ieee}, not {options}")
             await asyncio.sleep(0.5)
+
+    async def set_z2m_light_override(self, ieee: str, key: str, value: Any) -> None:
+        """Set one key of a Zigbee2MQTT device's HA override for its light (`homeassistant: {light: {key: value}}`), or
+        clear it with None, and wait until bridge/info shows it. Z2M merges it into its other options and publishes
+        the light's discovery again whenever that changes its payload."""
+
+        async def done() -> bool:
+            options = await self.z2m_device_options(ieee)
+            return ((options.get("homeassistant") or {}).get("light") or {}).get(key) == value
+
+        payload = {"id": ieee, "options": {"homeassistant": {"light": {key: value}}}}
+        await self._z2m_request("device/options", payload, done, f"set {ieee}'s light override {key} to {value}")
 
     async def _z2m_retained(self, topic: str) -> Any:
         """Zigbee2MQTT's retained `bridge/<topic>` message, decoded."""
@@ -309,16 +328,6 @@ class HAClient:
         await self.call_service(
             "mqtt", "publish", {"topic": f"{Z2M_TOPIC}/request/device/interview", "payload": payload}
         )
-
-    async def z2m_rename(self, ieee: str, to: str) -> None:
-        """Rename a Zigbee2MQTT device with homeassistant_rename, and wait until bridge/devices shows the new name. Z2M
-        clears the device's HA discovery and publishes it all again, under the new name."""
-
-        async def done() -> bool:
-            return (await self.z2m_device(ieee) or {}).get("friendly_name") == to
-
-        payload = {"from": ieee, "to": to, "homeassistant_rename": True}
-        await self._z2m_request("device/rename", payload, done, f"rename {ieee} to {to}")
 
     async def z2m_device(self, ieee: str) -> dict | None:
         """Zigbee2MQTT's entry for `ieee` in its retained bridge/devices (`interview_completed` says it is in), or

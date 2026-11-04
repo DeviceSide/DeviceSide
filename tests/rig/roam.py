@@ -6,7 +6,7 @@ Each move releases the bulbs from their network and joins them to the target, by
 (docs/plans/2026-10-31-a60-move-probe.md): Hue deletes the device (CLIP v2 only), ZHA and Z2M remove it, each sending
 a Leave; then the next network opens a finite join window, closed once every bulb is in. After each join the bulb's
 light entity is renamed to its fixed profile entity ID, and on Z2M its options are set again. A Z2M bulb whose light
-HA doesn't show soon gets its discovery published again by a Z2M rename (Roamer.z2m_rediscover).
+HA doesn't show soon gets its discovery published again (Roamer.z2m_rediscover).
 
 A bulb's home is Hue, the only home supported so far (profile.HOMES). Before a bulb's first move, the home record
 (home.py) saves its state, and, leaving Hue, its room and zone membership, the scene actions that target it and its
@@ -63,6 +63,8 @@ ENTITY_S = 90  # for HA to show a joined bulb's device and light entity (ZHA's i
 # For HA to show a Z2M bulb's light before the rig makes Z2M publish its discovery again (Roamer.z2m_rediscover): on
 # the lab it shows within a few seconds of the interview.
 REDISCOVER_S = 30
+# The HA override set on the light, then cleared, to change its discovery payload: an icon, which no rig check reads.
+REDISCOVER_KEY, REDISCOVER_VALUE = "icon", "mdi:lightbulb"
 HUE_SEARCH_S = 56  # how long a Hue search stays open; it can't be ended early
 # Searches per return to Hue: a second only when a bulb is still missing once the first has ended, so a normal run
 # opens one window, and a failing one two, for whatever device is resetting nearby to join.
@@ -751,23 +753,24 @@ class Roamer:
         return light
 
     async def z2m_rediscover(self, bulb: Bulb) -> None:
-        """Make Z2M publish the bulb's HA discovery again, for a light HA lost while Z2M still holds it published.
+        """Make Z2M publish the bulb's light discovery again, for a light HA lost while Z2M still holds it published.
 
         Z2M remembers what it published until it restarts, or until it removes the device itself; a bulb that leaves
         on its own keeps the record. HA clears a removed entity's discovery config (free() removes a stale light),
-        but Z2M ignores an empty config, so a bulb that rejoins gets every entity but that light (#208). A rename with
-        homeassistant_rename is Z2M's one per-device path that forgets the record: it clears the device's discovery
-        and publishes it all again. Removing HA's whole device instead left HA with no device at all (lab, 4 Nov).
-        Z2M won't take the IEEE back as a name (it is the device's own ID), so the bulb keeps the new one until it
-        leaves Z2M; adopt gives its light the fixed ID all the same."""
-        renamed = f"{hex_ieee(bulb.ieee)}_rediscovered"
-        to = renamed if await self.z2m_name(bulb) != renamed else f"{renamed}_again"
-        self.out(f"HA shows no light for {bulb.entity_id} on Z2M; renaming it {to} so Z2M publishes it again.")
+        but Z2M ignores an empty config, and republishes only a payload that changed, so a bulb that rejoins gets
+        every entity but that light (#208). An HA override on the light changes its payload: set, then cleared, it
+        publishes the light twice and leaves it as it was, with the bulb's name, availability and other entities
+        untouched. On the lab (4 Nov) the light was back 0.1 s after the set. The other ways out each did harm there:
+        removing HA's whole device left HA with no device at all, and a rename with homeassistant_rename, which can't
+        go back to the IEEE name, cleared the bulb's availability topic for its next Z2M visit."""
+        ieee = hex_ieee(bulb.ieee)
+        self.out(f"HA shows no light for {bulb.entity_id} on Z2M; changing its discovery so Z2M publishes it again.")
         try:
-            await self.ha.z2m_rename(hex_ieee(bulb.ieee), to)
+            await self.ha.set_z2m_light_override(ieee, REDISCOVER_KEY, REDISCOVER_VALUE)
+            await self.ha.set_z2m_light_override(ieee, REDISCOVER_KEY, None)
         except (TimeoutError, HAError) as err:
             raise RoamError(
-                f"{bulb.entity_id} joined Z2M with no light in HA, and Z2M couldn't rename it: {err}"
+                f"{bulb.entity_id} joined Z2M with no light in HA, and Z2M didn't take its options: {err}"
             ) from None
 
     async def prime_z2m(self, bulb: Bulb) -> None:
