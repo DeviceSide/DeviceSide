@@ -54,7 +54,8 @@ use is in HA and available, and each roaming bulb is on a network. Without that,
 only when its phase comes, after the bulbs have moved.
 
 Every run captures Z2M's log (when it touches Z2M) and HA's next to its report, as <report>.z2m.log and .ha.log
-(tests/rig/runlogs.py): deleted after a clean run, kept and printed after any other. --debug-logs also raises HA's
+(tests/rig/runlogs.py): deleted after a clean run, kept and printed after any other. A device_side warning or error
+in HA's log that no step file expects is listed and fails the run. --debug-logs also raises HA's
 device_side and the run's integrations, and Z2M, to debug for the run, keeps the logs, and puts the levels back (the
 baseline, so --recover too).
 
@@ -1226,7 +1227,9 @@ async def run_rig(
 
     Z2M's log (for a run that touches it) and HA's go next to the report as `<report>.z2m.log` and `.ha.log`: deleted
     after a clean run, kept and printed after any other, or with `debug_logs`, which also runs HA's device_side and the
-    run's integrations, and Z2M, at debug until the run ends (RunLogs, DebugLevels)."""
+    run's integrations, and Z2M, at debug until the run ends (RunLogs, DebugLevels). A device_side warning or error in
+    HA's log that no step file's `expected_log` matches is printed and fails the run; the records already written
+    stand."""
     lab = roaming or grouping
     if lab and not (env.get("HA_ADMIN_TOKEN") and env.get("HUE_BRIDGE_HOST") and env.get("HUE_APP_KEY")):
         raise SystemExit("Roaming needs HA_ADMIN_TOKEN, HUE_BRIDGE_HOST and HUE_APP_KEY in .env.rig")
@@ -1247,7 +1250,8 @@ async def run_rig(
     results: list[SuiteResult] = []  # each phase's, as it finishes: a failed move keeps the phases before it
     started = datetime.datetime.now()
     stamp = started.strftime("%Y-%m-%d %H:%M:%S")
-    logs = RunLogs(logs_dir or REPORT_DIR, f"rig run {stamp}", started, keep=debug_logs)
+    expected = dict.fromkeys(pattern for suite in suites for pattern in suite.file.expected_log)
+    logs = RunLogs(logs_dir or REPORT_DIR, f"rig run {stamp}", started, keep=debug_logs, expected=expected)
     levels = DebugLevels(Baseline.of(admin or ha, journal, "debug")) if debug_logs else None
     code = 1  # only a run that returns 0 is clean; any other end keeps the logs
     try:
@@ -1293,8 +1297,8 @@ async def run_rig(
                 await admin.close()
         code = 1 if result.failed or not home else 0
     finally:
-        logs.settle(code == 0)
-    return code
+        flagged = logs.settle(code == 0)
+    return 1 if flagged else code
 
 
 async def begin_logging(
