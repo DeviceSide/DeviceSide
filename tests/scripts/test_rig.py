@@ -835,6 +835,61 @@ async def test_recover_without_an_admin_token_leaves_the_options_in_the_journal(
     assert Journal(journal.path).sections == {"profile": "lab", "options": {"opt": True, "other": False}}
 
 
+async def test_recover_enables_a_disabled_entry_before_it_puts_the_cases_back(tmp_path, monkeypatch):
+    # The case's restore may write stored attributes back through device_side, which a disabled entry refuses.
+    ha = rig_ha(monkeypatch, light="off", opt=True, automation="on")
+    ha.disabled = True
+    journal = Journal(tmp_path / LEGACY_NAME)
+    journal.update(entry="e1", cases={"serial": {"taken": {"light.a": LIGHT_A_ON}, "stored": {}, "power": {}}})
+    printed = []
+
+    await rig.recover(ha, ha, journal, out=printed.append)
+
+    assert ha.moves == ["enable"]
+    assert printed[1] == "Enabled device_side's entry again."
+    assert ha.states["light.a"] == LIGHT_A_ON
+    assert not journal.path.exists()
+
+
+async def test_recover_says_when_the_entry_will_not_enable(tmp_path, monkeypatch):
+    ha = rig_ha(monkeypatch, light="on", opt=True, automation="on")
+    ha.disabled = ha.stuck = True
+    journal = Journal(tmp_path / LEGACY_NAME)
+    journal.update(entry="e1")
+    printed = []
+
+    await rig.recover(ha, ha, journal, out=printed.append)
+
+    assert printed[1] == "Could not enable device_side's entry again; enable it in HA: setup failed"
+    assert not journal.path.exists()
+
+
+async def test_recover_without_an_admin_token_leaves_the_entry_disabled_in_the_journal(tmp_path, monkeypatch):
+    ha = rig_ha(monkeypatch, light="on", opt=True, automation="on")
+    journal = Journal(tmp_path / LEGACY_NAME)
+    journal.update(entry="e1")
+
+    await rig.recover(ha, None, journal, out=lambda _: None)
+
+    assert Journal(journal.path).sections == {"entry": "e1"}
+
+
+def test_check_tokens_stops_a_run_with_entry_steps_without_an_admin_token():
+    registry = AdapterRegistry.discover()
+    step_file = next(f for f in load_step_files() if f.name == "lifecycle")
+    env = {"HA_URL": "http://ha:8123", "HA_TOKEN": "tok"}
+    with pytest.raises(SystemExit, match="shelly needs HA_ADMIN_TOKEN"):
+        rig.check_tokens(env, [rig.Suite(step_file, "shelly")], registry)
+    rig.check_tokens({**env, "HA_ADMIN_TOKEN": "admin"}, [rig.Suite(step_file, "shelly")], registry)
+
+
+def test_action_picks_a_named_file_by_its_name_not_its_action():
+    step_files = load_step_files()
+    profile = fakes.profile("shelly", switch_plug="switch.plug")
+    assert {suite.name for suite in rig.select(step_files, profile, None, ["lifecycle"])} == {"lifecycle"}
+    assert {suite.name for suite in rig.select(step_files, profile, None, ["get_attributes"])} == {"get_attributes"}
+
+
 def test_main_recovers_before_the_plan_and_recover_alone_stops_there(tmp_path, monkeypatch, capsys):
     ha = rig_ha(monkeypatch, light="off", opt=False, automation="off")
     aborted_journal(tmp_path / LEGACY_NAME)

@@ -386,6 +386,15 @@ def test_an_option_suite_takes_ha_exclusive(tmp_path):
     assert rig.claim(run_args(), run) == claim("shelly", ha="exclusive")
 
 
+def test_a_suite_with_entry_steps_takes_ha_exclusive(tmp_path):
+    profile = fakes.profile("shelly", light_ct="light.a")
+    lifecycle = fakes.RESTORED_MIDWAY.replace("tests:", "name: lifecycle\ntests:", 1).replace(
+        "restore: null", "entry: reload"
+    )
+    run = setup(tmp_path, profile, step_suites(tmp_path, lifecycle, "shelly"))
+    assert rig.claim(run_args(), run) == claim("shelly", ha="exclusive")
+
+
 def test_a_suite_with_no_adapter_claims_nothing(tmp_path):
     profile = fakes.profile("shelly", light_ct="light.a")
     run = setup(
@@ -549,7 +558,9 @@ def test_needs_is_the_orphans_integrations_and_ha_exclusive_for_options(tmp_path
     orphan(tmp_path, claim("hue", ha="exclusive"), cases=CASE)
     orphan(tmp_path, claim("zha"), options={"opt": True})
     orphan(tmp_path, None, cases=CASE)
+    orphan(tmp_path, claim("shelly"), entry="e1")  # enabling a disabled entry reloads it too
     needed = sorted((rig.needs(journal) for journal in orphans(tmp_path)), key=str)
+    assert claim("shelly", ha="exclusive") in needed
     assert claim("zha", ha="exclusive") in needed
     assert claim("hue") in needed  # a deploy's exclusive HA isn't needed to put its cases back
     assert Claim("shared", Claim.everything().integrations) in needed

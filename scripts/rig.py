@@ -180,11 +180,11 @@ def select(
 ) -> list[Suite]:
     """Every step file on every integration in the profile, narrowed to --integration and --action. An action takes
     every step file for it (lower_brightness and lower_brightness-predicted_state), whole, so each still writes its
-    record."""
+    record; a file with a `name` (lifecycle) goes by that instead."""
     return [
         Suite(step_file, integration)
         for step_file in step_files
-        if not actions or step_file.action in actions
+        if not actions or (step_file.name or step_file.action) in actions
         for integration in profile.integrations
         if not integrations or integration in integrations
     ]
@@ -673,7 +673,8 @@ def prepare(args: argparse.Namespace) -> Setup:
 def claim(args: argparse.Namespace, setup: Setup) -> Claim:
     """What the run must hold: each integration with a suite that has an adapter, the integrations their entities draw
     power through, and the networks its roaming bulbs visit, home included; HA exclusively when it deploys, which
-    restarts HA, or runs a suite with device_side options, whose save reloads the entry; HA shared otherwise."""
+    restarts HA, or runs a suite that reloads the entry (device_side options, whose save does, or entry steps); HA
+    shared otherwise."""
     integrations = {suite.integration for suite in runnable(setup)}
     integrations |= supplies(setup.profile, integrations)
     if setup.roaming:
@@ -690,8 +691,9 @@ def runnable(setup: Setup) -> list[Suite]:
 
 
 def reloads(setup: Setup) -> bool:
-    """Whether a suite the run can run has device_side options, whose save reloads the entry under every other run."""
-    return any(suite.file.options for suite in runnable(setup))
+    """Whether a suite the run can run reloads the entry under every other run: it has device_side options, whose
+    save does, or entry steps."""
+    return any(suite.file.reloads for suite in runnable(setup))
 
 
 def supplies(profile: Profile, integrations: set[str]) -> set[str]:
@@ -1087,16 +1089,17 @@ def replay(env: dict, held: Held | None, directory: Path) -> set[str]:
 
 def needs(journal: Journal) -> Claim:
     """What a run must hold to put back an orphan: the integrations its run held, and HA exclusively when it left
-    device_side's options changed, as setting them reloads the entry."""
+    device_side's options changed or its entry disabled, as setting them or enabling it reloads the entry."""
     held = Claim.of(journal.get("claim"))
-    return Claim("exclusive" if journal.get("options") is not None else "shared", held.integrations)
+    reloads = journal.get("options") is not None or journal.get("entry") is not None
+    return Claim("exclusive" if reloads else "shared", held.integrations)
 
 
 def check_tokens(env: dict, suites: list[Suite], registry: AdapterRegistry, roaming: bool = False) -> None:
-    """Stop before the gate when .env.rig lacks a token the run needs: ADMIN_INTEGRATIONS and any adapter with
-    options (they are set through device_side's options flow) need HA_ADMIN_TOKEN; a Hue file with a bridge step
-    needs the bridge's host and key; roaming, or making the lab's groups, needs both, for the registries, MQTT and
-    the bridge."""
+    """Stop before the gate when .env.rig lacks a token the run needs: ADMIN_INTEGRATIONS, any adapter with options
+    (they are set through device_side's options flow) and any file with entry steps need HA_ADMIN_TOKEN; a Hue file
+    with a bridge step needs the bridge's host and key; roaming, or making the lab's groups, needs both, for the
+    registries, MQTT and the bridge."""
     if not (env.get("HA_URL") and env.get("HA_TOKEN")):
         raise SystemExit("HA_URL and HA_TOKEN must be set in .env.rig (see tests/rig/env.example)")
     bridge = env.get("HUE_BRIDGE_HOST") and env.get("HUE_APP_KEY")
@@ -1109,7 +1112,8 @@ def check_tokens(env: dict, suites: list[Suite], registry: AdapterRegistry, roam
     with_options = {
         suite.integration
         for suite in suites
-        if (adapter := registry.adapter(suite.action, suite.integration)) is not None and adapter.scope.options
+        if (adapter := registry.adapter(suite.action, suite.integration)) is not None
+        and (adapter.scope.options or suite.file.moves_entry)
     }
     if admin_only := sorted(({suite.integration for suite in suites} & ADMIN_INTEGRATIONS) | with_options):
         raise SystemExit(
@@ -1631,15 +1635,17 @@ async def recover(
     out: Callable[[str], None] = print,
     bridge: HueBridge | None = None,
 ) -> None:
-    """Put back what an aborted run left changed, in the order its finally blocks would have: the case's entities,
-    device_side's options, the roaming bulbs (the ds-rig-* groups removed, the bulbs moved home, their Hue rooms and
-    scenes put back), what it holds in the baseline (its pauses, log levels and Z2M options) and the automations a
-    journal from before the baseline paused.
+    """Put back what an aborted run left changed, in the order its finally blocks would have: device_side's entry
+    enabled, the case's entities (whose stored attributes go back through it), device_side's options, the roaming
+    bulbs (the ds-rig-* groups removed, the bulbs moved home, their Hue rooms and scenes put back), what it holds in
+    the baseline (its pauses, log levels and Z2M options) and the automations a journal from before the baseline
+    paused.
     A step that fails is printed and dropped from the journal, except an entity that couldn't be put back, which stays
-    for the next try; options stay in it while there is no admin connection to set them. The bulbs can't be left half
-    done, so a failure there stops recovery, keeping the rest journaled."""
+    for the next try; options, and a disabled entry, stay in it while there is no admin connection. The bulbs can't
+    be left half done, so a failure there stops recovery, keeping the rest journaled."""
     run_of = f" (profile {name})" if (name := journal.get("profile")) else ""
     out(f"An aborted rig run{run_of} left changes in {journal.path}; putting them back.")
+    await recover_entry(admin, journal, out)
     for key, entry in dict(journal.get("cases") or {}).items():
         await recover_case(ha, entry, out, journal=journal, journal_key=key).restore()
     if taken := journal.get("taken"):  # a journal from before lanes, with one case at the top level
@@ -1668,6 +1674,21 @@ async def recover(
                 out(f"Could not turn {entity_id} back on: {err}. Turn it on by hand.")
         journal.clear("paused")
     drop_profile(journal)
+
+
+async def recover_entry(admin: HAClient | None, journal: Journal, out: Callable[[str], None]) -> None:
+    """Enable device_side's entry, if an aborted run left it disabled; it stays journaled without an admin."""
+    if journal.get("entry") is None:
+        return
+    if admin is None:
+        out("Enabling device_side's entry again needs HA_ADMIN_TOKEN in .env.rig; it stays in the journal.")
+        return
+    try:
+        await EntryOptions(admin).move("enable")
+        out("Enabled device_side's entry again.")
+    except Exception as err:  # noqa: BLE001 - as the options: say so, and go on
+        out(f"Could not enable device_side's entry again; enable it in HA: {err}")
+    journal.clear("entry")
 
 
 async def prune_baseline(env: dict, directory: Path) -> None:

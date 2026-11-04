@@ -213,6 +213,8 @@ class StepFile:
     options: frozenset[str] = frozenset()
     # Patterns for the device_side warnings and errors in HA's log its tests mean to cause (runlogs.RunLogs).
     expected_log: tuple[re.Pattern[str], ...] = ()
+    # The name its record takes in place of the action's, for a file that tests something else through it (lifecycle).
+    name: str | None = None
 
     @property
     def roles(self) -> tuple[str, ...]:
@@ -221,6 +223,17 @@ class StepFile:
     @property
     def uses_bridge(self) -> bool:
         return any(step.kind == "bridge" for test in self.tests for step in (*test.setup, *test.steps))
+
+    @property
+    def moves_entry(self) -> bool:
+        """Whether a step reloads, disables or enables device_side's entry: like saving options, that cuts off every
+        other run's and lane's calls, so the file runs alone, holding HA exclusively, on the admin token."""
+        return any(step.kind == "entry" for test in self.tests for step in (*test.setup, *test.steps))
+
+    @property
+    def reloads(self) -> bool:
+        """Whether its suites reload device_side's entry: they set options, or move the entry."""
+        return bool(self.options) or self.moves_entry
 
 
 def _state(value: Any) -> Any:
@@ -358,6 +371,15 @@ def _parse_bridge(args: Any) -> dict:
     return args
 
 
+ENTRY_MOVES = ("reload", "disable", "enable")
+
+
+def _parse_entry(args: Any) -> str:
+    if args not in ENTRY_MOVES:
+        raise ValueError(f"entry takes {', '.join(ENTRY_MOVES)}, got {args!r}")
+    return args
+
+
 def _parse_restore(args: Any) -> None:
     if args not in (None, {}):
         raise ValueError("restore takes no arguments")
@@ -378,6 +400,8 @@ PARSERS: dict[str, Callable[[Any], Any]] = {
     "expect_hue_travel": _parse_expect_hue_travel,
     "do": _parse_do,
     "restore": _parse_restore,
+    # device_side's config entry reloaded, disabled or enabled again; a disabled entry is enabled when the case ends.
+    "entry": _parse_entry,
     # A write to the Hue bridge that bypasses HA; fails in any other integration's suite.
     "bridge": _parse_bridge,
     # Zigbee2MQTT device options; both steps do nothing in another integration's suite.
@@ -488,7 +512,7 @@ def load_step_file(path: Path) -> StepFile:
         raw = yaml.safe_load(path.read_text())
         if not isinstance(raw, dict):
             raise ValueError("expected a mapping with action, rig_seconds and tests")
-        if unknown := sorted(set(raw) - {"action", "rig_seconds", "options", "expected_log", "tests"}):
+        if unknown := sorted(set(raw) - {"action", "name", "rig_seconds", "options", "expected_log", "tests"}):
             raise ValueError(f"unknown key(s) {', '.join(unknown)}")
         if not isinstance(action := raw.get("action"), str):
             raise ValueError("action must name the device_side action under test")
@@ -503,9 +527,11 @@ def load_step_file(path: Path) -> StepFile:
         tests = tuple(_parse_test(test) for test in raw_tests)
         if duplicates := sorted({t.name for t in tests if [u.name for u in tests].count(t.name) > 1}):
             raise ValueError(f"duplicate test name(s) {', '.join(duplicates)}")
+        step_file = StepFile(path, action, seconds, tests, frozenset(options), expected_log)
+        step_file = _named(step_file, raw.get("name"))
     except (ValueError, yaml.YAMLError) as err:
         raise SchemaError(f"{path.name}: {err}") from None
-    return StepFile(path, action, seconds, tests, frozenset(options), expected_log)
+    return step_file
 
 
 def _parse_expected_log(raw: Any) -> tuple[re.Pattern[str], ...]:
@@ -519,6 +545,18 @@ def _parse_expected_log(raw: Any) -> tuple[re.Pattern[str], ...]:
         except re.error as err:
             raise ValueError(f"expected_log {pattern!r}: {err}") from None
     return tuple(patterns)
+
+
+def _named(step_file: StepFile, name: Any) -> StepFile:
+    """The file with its record's `name`, which a file with entry steps needs: its record would replace the
+    action's."""
+    if name is None:
+        if step_file.moves_entry:
+            raise ValueError(f"a file with entry steps needs a name, or its record would replace {step_file.action}'s")
+        return step_file
+    if not isinstance(name, str) or not name or name == step_file.action or step_file.options:
+        raise ValueError("name must name the record, other than the action's, of a file without options")
+    return replace(step_file, name=name)
 
 
 def load_step_files(steps_dir: Path = STEPS_DIR) -> list[StepFile]:
@@ -542,8 +580,9 @@ class Suite:
 
     @property
     def name(self) -> str:
-        """The name its record takes: the action, then any options it runs with on (`move-predicted_state`)."""
-        return "-".join([self.action, *sorted(self.file.options)])
+        """The name its record takes: the file's `name`, else the action, then any options it runs with on
+        (`move-predicted_state`)."""
+        return self.file.name or "-".join([self.action, *sorted(self.file.options)])
 
 
 @dataclass(frozen=True, slots=True)
@@ -611,11 +650,12 @@ def cases(
 
 
 def in_head(case: Case, profile: Profile) -> bool:
-    """Whether the case can run in its integration's lane, alongside the other lanes: its file sets no device_side
-    options (saving them reloads the entry, cutting off every lane's fades), and it touches no roaming bulb or rig-made
-    group or scene (they are on one network at a time) and no powered entity or supply (a supply cut in one lane would
-    kill another's light). The same for both twins, so an observed case goes with its automated one."""
-    if case.suite.file.options:
+    """Whether the case can run in its integration's lane, alongside the other lanes: its file neither sets
+    device_side options nor moves the entry (either reloads it, cutting off every lane's fades), and it touches no
+    roaming bulb or rig-made group or scene (they are on one network at a time) and no powered entity or supply (a
+    supply cut in one lane would kill another's light). The same for both twins, so an observed case goes with its
+    automated one."""
+    if case.suite.file.reloads:
         return False
     power = profile.power()
     shared = profile.made_entities | power.keys() | set(power.values())
@@ -626,9 +666,10 @@ def in_head(case: Case, profile: Profile) -> bool:
 
 
 class EntryOptions:
-    """device_side's options on the rig, set for each case through the entry's options flow (admin only) and put
-    back when the run ends. Saving a change reloads the entry. The original options are journaled before the first
-    save."""
+    """device_side's config entry on the rig, on the admin connection: its options, set for each case through the
+    entry's options flow and put back when the run ends, and the reloads, disables and enables of entry steps. Saving
+    a change reloads the entry. The original options are journaled before the first save, and the entry as `entry`
+    before it is disabled, until it is enabled again."""
 
     def __init__(
         self, admin: HAClient, reload_s: float | None = None, journal: Journal | None = None, reloads: bool = True
@@ -640,16 +681,49 @@ class EntryOptions:
         self.entry_id: str | None = None
         self.original: dict[str, Any] | None = None
         self.current: dict[str, Any] = {}
+        self.disabled = False
+
+    async def find(self) -> str:
+        if self.entry_id is None:
+            entries = await self.admin.command({"type": "config_entries/get", "domain": "device_side"})
+            if not entries:
+                raise RuntimeError("no device_side config entry on the rig")
+            self.entry_id = entries[0]["entry_id"]
+        return self.entry_id
+
+    async def move(self, how: str) -> None:
+        """An entry step: reload the entry, disable it or enable it, and wait until it has."""
+        if not self.reloads:
+            raise RuntimeError(f"an entry {how} would cut off other runs' calls; this run holds HA shared")
+        entry_id = await self.find()
+        if how == "reload":
+            await self.admin.rest("post", f"/api/config/config_entries/entry/{entry_id}/reload")
+            await self.reloaded()
+            return
+        if how == "disable":
+            # Before the command, so a disable that fails partway is still enabled again, and put back after a crash.
+            self.disabled = True
+            if self.journal is not None:
+                self.journal.update(entry=entry_id)
+        await self.admin.command(
+            {
+                "type": "config_entries/disable",
+                "entry_id": entry_id,
+                "disabled_by": "user" if how == "disable" else None,
+            }
+        )
+        if how == "disable":
+            await self.reloaded("not_loaded")
+            return
+        self.disabled = False
+        if self.journal is not None:
+            self.journal.clear("entry")
+        await self.reloaded()
 
     async def apply(self, wanted: dict[str, bool]) -> None:
         if self.original is not None and all(self.current.get(name) == on for name, on in wanted.items()):
             return
-        if self.entry_id is None:
-            entries = await self.admin.command({"type": "config_entries/get", "domain": "device_side"})
-            if not entries:
-                raise RuntimeError("no device_side config entry to set options on")
-            self.entry_id = entries[0]["entry_id"]
-        flow = await self.admin.rest("post", "/api/config/config_entries/options/flow", {"handler": self.entry_id})
+        flow = await self.admin.rest("post", "/api/config/config_entries/options/flow", {"handler": await self.find()})
         # The form's defaults are the options in force.
         values = {field["name"]: field.get("default") for field in flow.get("data_schema", [])}
         if self.original is None:
@@ -682,12 +756,13 @@ class EntryOptions:
         self.current = values
         await self.reloaded()
 
-    async def reloaded(self) -> None:
-        """Wait for the reload a saved change schedules: it starts after the save returns."""
+    async def reloaded(self, state: str = "loaded") -> None:
+        """Wait for the reload a saved change schedules, which starts after the save returns, or for a disable or an
+        enable: until the entry is in `state`."""
         await asyncio.sleep(self.reload_s)
         query = {"type": "config_entries/get", "domain": "device_side"}
         async with asyncio.timeout(30):
-            while not (entries := await self.admin.command(query)) or entries[0]["state"] != "loaded":
+            while not (entries := await self.admin.command(query)) or entries[0]["state"] != state:
                 await asyncio.sleep(0.5)
 
     async def restore(self) -> None:
@@ -1015,8 +1090,10 @@ class _CaseRun:
         bridge: HueBridge | None = None,
         journal: Journal | None = None,
         journal_key: str = SERIAL,
+        entry: EntryOptions | None = None,
     ):
         self.bridge = bridge
+        self.entry = entry  # for entry steps; None without an admin connection
         self.case, self.ha, self.registry, self.ask, self.out, self.position = case, ha, registry, ask, out, position
         self.integration = case.suite.integration
         # Each light's loop time once the predictions an earlier move or stop left on it have expired; shared
@@ -1095,10 +1172,24 @@ class _CaseRun:
         except _NoOneThere:
             result.outcome = Outcome.NOT_OBSERVED
         finally:
+            # Before the restore, which may write the entities' stored attributes back through device_side.
+            if detail := await self.enable_entry():
+                result.outcome, result.detail = Outcome.FAIL, result.detail or detail
             await self.snapshot.restore()
             if self.baseline is not None:
                 await self.baseline.release()
         return result
+
+    async def enable_entry(self) -> str | None:
+        """Enable the entry a step left disabled; why it couldn't be, or None. The journal keeps it until it is."""
+        if self.entry is None or not self.entry.disabled:
+            return None
+        try:
+            await self.entry.move("enable")
+        except Exception as err:  # noqa: BLE001 - the case fails, and --recover tries again
+            _LOGGER.warning("Could not enable device_side's entry again: %s; --recover tries again", err)
+            return f"could not enable device_side's entry again: {err}"
+        return None
 
     async def steps(self, steps: tuple[Step, ...], relaxed: bool = False) -> None:
         for index, step in enumerate(steps):
@@ -1512,6 +1603,14 @@ class _CaseRun:
     async def _do(self, instruction: str, _following: str | None) -> None:
         await self.answer(f"    {instruction} Press Enter when done... ")
 
+    async def _entry(self, how: str, _following: str | None) -> None:
+        if self.entry is None:
+            raise StepFailure("entry steps need HA_ADMIN_TOKEN in .env.rig")
+        if how == "disable":
+            # Snapshot the target first: an off light's stored attributes are read through device_side.
+            await self.touch(self.entity({}))
+        await self.entry.move(how)
+
     async def _restore(self, _args: None, _following: str | None) -> None:
         await self.snapshot.restore(clear=False)
 
@@ -1645,7 +1744,7 @@ def _plan(
         if unknown := sorted(suite.file.options - adapter.scope.options):
             raise SchemaError(f"{suite.file.path.name}: {suite.integration} {suite.action} has no option {unknown[0]}")
         client = admin if suite.integration in ADMIN_INTEGRATIONS else ha
-        if client is None or (adapter.scope.options and admin is None):
+        if client is None or ((adapter.scope.options or suite.file.moves_entry) and admin is None):
             out(f"{suite.integration} / {suite.action}: needs HA_ADMIN_TOKEN, skipped")
             continue
         planned.append((suite, adapter, client, suite_cases))
@@ -1689,6 +1788,7 @@ class _Run:
             self.bridge,
             self.journal,
             journal_key,
+            self.entry_options,
         )
 
     async def run_case(

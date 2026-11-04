@@ -24,6 +24,7 @@ when the call is wrong or a device failed, never because some targets didn't app
 | The same target reached indirectly | Skips it silently | Skip it, with one warning per call listing each target and why |
 | A light can't take one field (color on a white bulb) | Drops the field silently and acts on the rest | Drop it, act on the rest, `detail: fields_dropped` |
 | The device or its integration fails | The error propagates | Run every target, then raise `targets_failed` listing the failures |
+| device_side's entry isn't loaded (disabled, or its setup failed) | Raises `service_config_entry_not_loaded` | Raise `not_loaded`, before anything is resolved |
 
 Why: a mixed room must not abort an automation over the lights that can't take part, but a call that names
 the wrong entity, or a device that failed, should stop it, because carrying on would hide the mistake.

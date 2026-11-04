@@ -15,8 +15,8 @@ locks it would need.
 ### Lanes
 
 The run starts with one lane per integration, side by side, each holding that integration's cases on fixed entities.
-A case stays out of the lanes when its step file sets device_side options (saving them reloads the integration,
-cutting off every lane's fades), or when it uses a roaming bulb, a rig-made group or scene, or a powered entity or
+A case stays out of the lanes when its step file sets device_side options or has `entry` steps (either reloads the
+integration, cutting off every lane's fades), or when it uses a roaming bulb, a rig-made group or scene, or a powered entity or
 its supply. Those run afterwards, one at a time. `--serial` runs every case one at a time: a case that passes with it
 and fails in a lane points at radio or HA contention.
 
@@ -40,7 +40,7 @@ actions and reads states and registries, and a non-admin token can't change your
 
 Some suites need an admin token in `HA_ADMIN_TOKEN`: ZHA (its cluster command is admin-only, and the adapter passes
 the caller's context through), Zigbee2MQTT (setting device options over MQTT), suites whose adapter has options
-(to set them), and roaming. Without it, a run that includes them stops before the gate; `--integration` or
+(to set them), `lifecycle` (reloading and disabling device_side's entry), and roaming. Without it, a run that includes them stops before the gate; `--integration` or
 `--action` leaves them out.
 
 ### The blocker gate
@@ -66,7 +66,8 @@ is safe. `--no-deploy` tests whatever HA runs and, unless that is your checkout'
 - **Home record.** What a roaming bulb was before its first move is kept until it is back as it was, across crashes
   (`tests/rig/home.py`).
 - **Journal.** Each run journals what it changes, so Ctrl-C, a signal, or the next run after a crash puts the devices
-  back; `--recover` puts back everything (`tests/rig/journal.py`).
+  back, device_side's options and a disabled entry included; `--recover` puts back everything
+  (`tests/rig/journal.py`).
 - **Baseline.** Changes beyond the devices (paused automations, log levels, Z2M device options) are shared by runs
   side by side, and the last one out puts them back (`tests/rig/baseline.py`).
 - **Locks.** Runs share the rig through one lock per integration and one on HA, so runs on different integrations go
@@ -110,6 +111,7 @@ tests:
 | `expect_hue_travel` | Checks each light has turned `by` degrees round its own wheel since `mark_hue` (negative: down), within `tolerance`, the shorter way round. A hue move's rate is in the bulb's units, so this holds on any gamut. |
 | `do` | Prints an instruction for the person and waits for Enter. Only in the `setup` of an observed test. |
 | `restore` | Puts back the state from before the test. It also runs after every test, pass or fail. |
+| `entry` | `reload`, `disable` or `enable` device_side's config entry, and waits until it has. A test that leaves it disabled has it enabled when it ends, pass or fail, before its restore. |
 | `bridge` | Hue only: writes to the Hue bridge directly, bypassing Home Assistant, as another actor (the Hue app) would. `put: {...}` sends that CLIP v2 body to the target's light (a `group` target's grouped_light); `recall: true` recalls the `scene` target. In an observed run it runs as written. It needs `HUE_BRIDGE_HOST` and `HUE_APP_KEY` in `.env.rig`, and fails in any other integration's suite. |
 | `z2m_option` | Sets Zigbee2MQTT device options on the target (`hue_native_control: false`) and waits for Z2M's ok. Does nothing in another integration's suite. |
 | `expect_z2m_option` | Expects the target's Zigbee2MQTT device options to hold the given values. Does nothing in another integration's suite. |
@@ -122,6 +124,11 @@ some integrations; when those pile up, split the file.
 The roles are listed in `tests/rig/profile.example.yaml`. `group_color` is a native group whose members all take
 color: color moves groupcast only to a group like that, so it runs the color cases a `group` can't. Everything this
 page says of a `group` holds for it too.
+
+A file with `entry` steps (`lifecycle.yaml`) tests device_side's config entry through its action: reloading it, and
+the action refusing with `not_loaded` while it is disabled. It runs alone, holding HA exclusively, like an option
+file, and needs a top-level `name:`, which its record takes (`lifecycle.md`) and `--action` picks it by, so it never
+replaces the action's own.
 
 An adapter with options runs each file for its action with them pinned through Device Side's options flow:
 `options: [<name>]` at the top of a file turns those on, and every other option in the adapter's scope runs off. Its
