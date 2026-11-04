@@ -2,7 +2,7 @@
 
 What the [README](../README.md) features do on each integration, their limits, and what Device Side changes in your
 setup. How the commands work on the wire, and what was measured on real bulbs, is in
-[integration-internals.md](contributing/integration-internals.md).
+[integration-internals.md](integration-internals.md).
 
 ## All integrations
 
@@ -26,8 +26,8 @@ setup. How the commands work on the wire, and what was measured on real bulbs, i
 
 Gen2 and later (Plus, Pro, Gen3, Gen4): relays, whether Home Assistant shows them as a switch or a light, and RGBCCT
 bulbs. Tested on Gen3 and Gen4 relays (firmware 2.0.1) and a Multicolor Bulb Gen3 (firmware 2.0.3). Other Shelly
-lights (Light, CCT, RGB, RGBW) take the same command but are refused (`capability_not_tested`) until someone
-[tests one](../CONTRIBUTING.md). Gen1 is refused (`gen1_unsupported`).
+lights (Light, CCT, RGB, RGBW) take the same command but are refused (`capability_not_tested`) until one passes
+a [rig run](rig.md). Gen1 is refused (`gen1_unsupported`).
 
 **Delayed off and on.** The device runs the timer and confirms it. A transition is at least 0.5 s. A color
 temperature outside the bulb's range is clamped. `hs_color` and `xy_color` are sent as the RGB color Home
@@ -79,6 +79,8 @@ timer.
 
 - **Hue moves** cycle the color wheel until `stop`, with a `sweep_time` of 1 to 254 s. Saturation and hue need a
   light that is on and supports hue and saturation, or a group whose lights all do.
+- **Saturation on a group** publishes one color to the group, at the group's hue in Home Assistant, and every light
+  that is on moves to it. A group whose lights sit at different hues ends at one hue.
 - **`set_attributes`** reads each light back, so the result is `confirmed`. A light that ignored the write fails
   the call (`not_stored`).
 - **`get_attributes`** reads each bulb live, since Hue bulbs on Zigbee2MQTT don't report and its cached state can
@@ -116,6 +118,8 @@ off on time; an automation waiting for the light to be on would never fire.
 ### Smooth moves, set and get
 
 - **Hue moves** cycle the color wheel until `stop`, with a `sweep_time` of 1 to 65535 s.
+- **Saturation on a group** sends every light that is on one color, at the hue of the first of them. A group whose
+  lights sit at different hues ends at one hue.
 - **A soft off** restores the light's level just after the fade ends. A restart during the fade loses that, and
   the light comes back at its lowest level.
 - **`set_attributes`** reads nothing back, so a bulb that ignores the write still reports `sent`. The Sengled
@@ -131,7 +135,7 @@ off on time; an automation waiting for the light to be on would never fire.
 
 Plugs on the core `matter` integration whose endpoint has the On/Off cluster's Lighting feature, which Matter's
 timer needs; one without it is refused (`no_lt_feature`). Matter lights take the same command but are refused
-(`domain_not_tested`) until someone [tests one](../CONTRIBUTING.md).
+(`domain_not_tested`) until one passes a [rig run](rig.md).
 
 The delayed off is read back from the plug, so the result is `confirmed`, or `sent` if the read-back didn't show it.
 `turn_off` cancels the timer; a plain `turn_on` doesn't.

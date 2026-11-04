@@ -614,10 +614,9 @@ def profiles(tmp_path: Path, *names: str) -> Path:
 
 def test_choose_profile_takes_the_named_one_or_the_only_one(tmp_path):
     directory = profiles(tmp_path, "house", "lab")
-    legacy = tmp_path / "inventory.yaml"
-    assert rig.choose_profile("lab", {}, directory, legacy) == directory / "lab.yaml"
+    assert rig.choose_profile("lab", {}, directory) == directory / "lab.yaml"
     (directory / "lab.yaml").unlink()
-    assert rig.choose_profile(None, {"RIG_PAUSE": ""}, directory, legacy) == directory / "house.yaml"
+    assert rig.choose_profile(None, {"RIG_PAUSE": ""}, directory) == directory / "house.yaml"
 
 
 @pytest.mark.parametrize(
@@ -631,13 +630,7 @@ def test_choose_profile_takes_the_named_one_or_the_only_one(tmp_path):
 )
 def test_choose_profile_refuses(tmp_path, names, name, env, message):
     with pytest.raises(SystemExit, match=message):
-        rig.choose_profile(name, env, profiles(tmp_path, *names), tmp_path / "inventory.yaml")
-
-
-def test_choose_profile_refuses_while_the_old_inventory_is_there(tmp_path):
-    legacy = write(tmp_path, "inventory.yaml", "shelly:\n")
-    with pytest.raises(SystemExit, match="inventory.yaml is now a profile"):
-        rig.choose_profile("house", {}, profiles(tmp_path, "house"), legacy)
+        rig.choose_profile(name, env, profiles(tmp_path, *names))
 
 
 def test_check_tokens_stops_a_hue_bridge_step_without_the_bridge_settings(tmp_path):

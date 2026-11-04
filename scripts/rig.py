@@ -120,7 +120,6 @@ from tests.rig.journal import LEGACY_NAME, Journal, orphans  # noqa: E402
 from tests.rig.locks import Claim, Held  # noqa: E402
 from tests.rig.profile import (  # noqa: E402
     EXAMPLE,
-    LEGACY_INVENTORY,
     PAUSE_ALL,
     PROFILES_DIR,
     TOLERANCE_S,
@@ -941,15 +940,10 @@ def choose_profile(
     name: str | None,
     env: dict,
     directory: Path = PROFILES_DIR,
-    legacy: Path = LEGACY_INVENTORY,
     example: Path = EXAMPLE,
 ) -> Path:
-    """The profile --profile names, else the only one. Refuses while the setup still has the single inventory.yaml or
-    RIG_PAUSE that profiles replaced, so nothing runs against half a migration."""
-    if legacy.exists():
-        raise SystemExit(
-            f"{legacy} is now a profile: move it to {directory}/<name>.yaml (see {example}), and its RIG_PAUSE with it"
-        )
+    """The profile --profile names, else the only one. Refuses while .env.rig still has the RIG_PAUSE that profiles
+    replaced, so nothing runs against half a migration."""
     if env.get("RIG_PAUSE"):
         raise SystemExit("RIG_PAUSE has moved from .env.rig into the profile, as `pause:` (see tests/rig/profiles)")
     paths = {path.stem: path for path in profile_paths(directory)}

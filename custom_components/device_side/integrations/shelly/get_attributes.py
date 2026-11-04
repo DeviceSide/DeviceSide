@@ -44,8 +44,8 @@ class ShellyGetAttributes(Adapter[Request]):
     integration: ClassVar[str] = "shelly"
     scope: ClassVar[AdapterScope] = AdapterScope(
         domains=frozenset({"light", "switch"}),
-        # A relay shown as a light sends the same Switch.GetStatus; Light, CCT, RGB and RGBW wait for a tester's
-        # report.
+        # A relay shown as a light sends the same Switch.GetStatus; Light, CCT, RGB and RGBW stay out of scope until a
+        # test record covers them.
         capabilities=frozenset({"Switch", "RGBCCT"}),
         confirmable=True,
     )

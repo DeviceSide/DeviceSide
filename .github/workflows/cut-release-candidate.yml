@@ -1,7 +1,8 @@
 name: Cut release candidate
 
 # The only way a vX.Y.ZrcN tag is made (a tag ruleset refuses any other): from release/vX.Y.Z, or from main as a
-# hotfix RC. Requires green CI on the head and docs/audits/<rc>.md covering every commit since the previous RC.
+# hotfix RC. Requires manifest.json at X.Y.Z, green CI on the head and docs/audits/<rc>.md covering every commit since
+# the previous RC.
 # Tags pushed with GITHUB_TOKEN start no other workflow, so anything an RC needs runs here.
 
 on:

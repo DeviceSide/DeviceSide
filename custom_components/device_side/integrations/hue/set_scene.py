@@ -45,9 +45,9 @@ def scene_light_writes(scene: Scene) -> list[tuple[str, dict]]:
 class HueSetScene(Adapter[Request]):
     """Read the scene from aiohue's live cache on every call, so edits made in the Hue app apply, then write it.
 
-    One failing light does not stop the others: the result is sent with detail some_lights_failed, or rejected if
-    every light failed. All-Day (smart) scenes have no fixed settings to write and are unsupported. A light written
-    ends any move's prediction for it.
+    One failing light does not stop the others, but the scene is then rejected (some_lights_failed, or error if every
+    light failed), so the call raises targets_failed as core's does when a device fails. All-Day (smart) scenes have no
+    fixed settings to write and are unsupported. A light written ends any move's prediction for it.
     """
 
     action: ClassVar[str] = "set_scene"
@@ -78,8 +78,9 @@ class HueSetScene(Adapter[Request]):
                 except Exception as err:  # noqa: BLE001 - one light's failure must not stop the rest of the scene
                     failed += 1
                     _LOGGER.warning("set_scene %s: write to light %s failed: %s", target.entity_id, light_id, err)
-            if failed == len(writes):
-                return self.result(target, Status.REJECTED, detail="error")
-            return self.result(target, Status.SENT, detail="some_lights_failed" if failed else None)
+            if failed:
+                detail = "error" if failed == len(writes) else "some_lights_failed"
+                return self.result(target, Status.REJECTED, detail=detail)
+            return self.result(target, Status.SENT)
 
         return await self.gather(hass, targets, send)
