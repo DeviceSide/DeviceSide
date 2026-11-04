@@ -23,16 +23,16 @@ Device Side also patches some usability quirks in individual integrations.
 
 ## Features
 
-| Feature                                                          | ZHA | Z2M | Shelly | Hue Bridge | Matter |
-|:---------------------------------------------------------------- |:---:|:---:|:------:|:----------:|:------:|
-| [Delayed off](#delayed-off)                                      | ✅  | ✅  | ✅     |            | ✅     |
-| [Delayed on](#delayed-on)                                        |     |     | ✅     |            |        |
-| [Smooth dimming](#smooth-dimming)                                | ✅  | ✅  |        | ✅         |        |
-| [Smooth saturation change](#smooth-color-transitions)            | ✅  | ✅  |        | ✅         |        |
-| [Smooth hue change](#smooth-color-transitions)                   | ✅  | ✅  |        |            |        |
-| [Set brightness, color or color temperature without turning on](#set-lights-without-turning-on) | ✅  | ✅  |        | ✅         |        |
-| [Set scene without turning on](#set-lights-without-turning-on) |     |     |        | ✅         |        |
-| [Get attributes](#get-attributes)                                | ✅  | ✅  | ✅     | ✅         | ✅     |
+| Feature                                                                          | ZHA | Z2M | Shelly | Hue Bridge | Matter |
+|:-------------------------------------------------------------------------------- |:---:|:---:|:------:|:----------:|:------:|
+| [Delayed off](#delayed-off)                                                      | ✅   | ✅   | ✅      |            | ✅      |
+| [Delayed on](#delayed-on)                                                        |     |     | ✅      |            |        |
+| [Smooth dimming](#smooth-dimming)                                                | ✅   | ✅   |        | ✅          |        |
+| [Smooth saturation change](#smooth-color-transitions)                            | ✅   | ✅   |        | ✅          |        |
+| [Smooth hue change](#smooth-color-transitions)                                   | ✅   | ✅   |        |            |        |
+| [Set brightness, color or CT<br>without turning on](#set-lights-without-turning-on) | ✅   | ✅   |        | ✅          |        |
+| [Set scene without turning on](#set-lights-without-turning-on)                   |     |     |        | ✅          |        |
+| [Get attributes](#get-attributes)                                                | ✅   | ✅   | ✅      | ✅          | ✅      |
 
 ### Delayed Off
 
@@ -134,7 +134,7 @@ Device Side's actions take the same fields. Change the domain from `hue_dimmer` 
 | Field               | Actions     | Description                                                                                                           |
 |:------------------- |:----------- |:--------------------------------------------------------------------------------------------------------------------- |
 | `target`            | all         | Lights and switches (required)                                                                                        |
-| `duration`          | all         | How long until the device toggles (required). Up to 7 days on Shelly, 1 h 49 min on Zigbee and Matter                |
+| `duration`          | all         | How long until the device toggles (required). Up to 7 days on Shelly, 1 h 49 min on Zigbee and Matter                 |
 | `brightness`        | turn_on_for | Brightness (1–255). ZHA, Z2M, Shelly                                                                                  |
 | `color_temp_kelvin` | turn_on_for | Color temperature (2000–6500 K). ZHA, Z2M, Shelly                                                                     |
 | `rgb_color`         | turn_on_for | Color as `[red, green, blue]` (0–255 each). Z2M, Shelly                                                               |
@@ -187,11 +187,11 @@ actions:
 | `device_side.lower_brightness` | Start lowering brightness                      |
 | `device_side.stop`             | Freeze every move on the target where it is    |
 
-| Field        | Actions          | Description                                                                             |
-|:------------ |:---------------- |:--------------------------------------------------------------------------------------- |
-| `target`     | all              | Lights and groups (required)                                                            |
-| `sweep_time` | raise, lower     | Seconds a full 0–100% sweep takes (default 5 s)                                         |
-| `limit`      | raise_brightness | Maximum brightness (default 100%)                                                       |
+| Field        | Actions          | Description                                                                            |
+|:------------ |:---------------- |:-------------------------------------------------------------------------------------- |
+| `target`     | all              | Lights and groups (required)                                                           |
+| `sweep_time` | raise, lower     | Seconds a full 0–100% sweep takes (default 5 s)                                        |
+| `limit`      | raise_brightness | Maximum brightness (default 100%)                                                      |
 | `limit`      | lower_brightness | Minimum brightness (default 0%). The light turns off at 0%. Choose 0.4%+ to keep it on |
 
 To move several lights in step, target a Hue room or zone, or a Zigbee2MQTT or ZHA group, instead of separate lights. One group-wide Zigbee message then moves them together.
@@ -221,12 +221,12 @@ buttons_released:
 | `device_side.lower_hue`        | Start cycling hue: red, magenta, blue, green. Runs until `stop` |
 | `device_side.stop`             | Freeze every move on the target where it is                     |
 
-| Field        | Actions          | Description                                                                 |
-|:------------ |:---------------- |:--------------------------------------------------------------------------- |
-| `target`     | all              | Lights and groups (required)                                                |
+| Field        | Actions          | Description                                                                               |
+|:------------ |:---------------- |:----------------------------------------------------------------------------------------- |
+| `target`     | all              | Lights and groups (required)                                                              |
 | `sweep_time` | raise, lower     | Seconds a full 0–100% saturation sweep or one turn of the color wheel takes (default 5 s) |
-| `limit`      | raise_saturation | Maximum saturation (default 100%)                                           |
-| `limit`      | lower_saturation | Minimum saturation (default 0%)                                             |
+| `limit`      | raise_saturation | Maximum saturation (default 100%)                                                         |
+| `limit`      | lower_saturation | Minimum saturation (default 0%)                                                           |
 
 Groups move in step, as for dimming.
 
@@ -249,17 +249,17 @@ button_released:
 | `device_side.set_scene`      | Set a Hue scene without turning its lights on                     |
 | `device_side.set_attributes` | Set brightness, color temp or color without changing on/off state |
 
-| Field               | Actions        | Description                                |
-|:------------------- |:-------------- |:------------------------------------------ |
-| `target`            | set_scene      | Hue scenes (required)                      |
-| `target`            | set_attributes | Lights and groups (required)               |
-| `brightness`        | set_attributes | Brightness level (%)                       |
-| `min_brightness`    | set_attributes | Enforce a minimum brightness (%)           |
-| `max_brightness`    | set_attributes | Enforce a maximum brightness (%)           |
-| `color_temp_kelvin` | set_attributes | Color temperature (K)                      |
-| `rgb_color`         | set_attributes | Color as `[red, green, blue]` (0–255 each) |
+| Field               | Actions        | Description                                 |
+|:------------------- |:-------------- |:------------------------------------------- |
+| `target`            | set_scene      | Hue scenes (required)                       |
+| `target`            | set_attributes | Lights and groups (required)                |
+| `brightness`        | set_attributes | Brightness level (%)                        |
+| `min_brightness`    | set_attributes | Enforce a minimum brightness (%)            |
+| `max_brightness`    | set_attributes | Enforce a maximum brightness (%)            |
+| `color_temp_kelvin` | set_attributes | Color temperature (K)                       |
+| `rgb_color`         | set_attributes | Color as `[red, green, blue]` (0–255 each)  |
 | `hs_color`          | set_attributes | Color as `[hue, saturation]` (0–360, 0–100) |
-| `xy_color`          | set_attributes | Color as `[x, y]`                          |
+| `xy_color`          | set_attributes | Color as `[x, y]`                           |
 
 #### YAML Example: Set scene for next turn-on
 
@@ -282,9 +282,9 @@ To set brightness for the next turn-on from the visual editor, see [docs/example
 
 `device_side.get_attributes` returns one record per target: brightness, color temp and color (RGB, HS, XY), even while the light is off or moving, and any on/off timer running on the device.
 
-| Field               | Description                                         |
-|:------------------- |:--------------------------------------------------- |
-| `target`            | Lights and switches (required)                      |
+| Field               | Description                                             |
+|:------------------- |:------------------------------------------------------- |
+| `target`            | Lights and switches (required)                          |
 | `response_variable` | Name of a variable that receives the records (required) |
 
 ***
