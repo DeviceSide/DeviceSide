@@ -11,6 +11,7 @@ import asyncio
 import contextlib
 import logging
 import operator
+import re
 import threading
 from collections.abc import Awaitable, Callable, Iterable
 from dataclasses import dataclass, field, replace
@@ -210,6 +211,8 @@ class StepFile:
     tests: tuple[RigTest, ...]
     # The device_side options its suites run with on; every other option in the adapter's scope runs off.
     options: frozenset[str] = frozenset()
+    # Patterns for the device_side warnings and errors in HA's log its tests mean to cause (runlogs.RunLogs).
+    expected_log: tuple[re.Pattern[str], ...] = ()
 
     @property
     def roles(self) -> tuple[str, ...]:
@@ -485,13 +488,14 @@ def load_step_file(path: Path) -> StepFile:
         raw = yaml.safe_load(path.read_text())
         if not isinstance(raw, dict):
             raise ValueError("expected a mapping with action, rig_seconds and tests")
-        if unknown := sorted(set(raw) - {"action", "rig_seconds", "options", "tests"}):
+        if unknown := sorted(set(raw) - {"action", "rig_seconds", "options", "expected_log", "tests"}):
             raise ValueError(f"unknown key(s) {', '.join(unknown)}")
         if not isinstance(action := raw.get("action"), str):
             raise ValueError("action must name the device_side action under test")
         options = raw.get("options", [])
         if not isinstance(options, list) or not all(isinstance(name, str) and name for name in options):
             raise ValueError("options must be a list of device_side option names")
+        expected_log = _parse_expected_log(raw.get("expected_log", []))
         if isinstance(seconds := raw.get("rig_seconds"), bool) or not isinstance(seconds, int) or seconds <= 0:
             raise ValueError("rig_seconds must be a positive whole number")
         if not isinstance(raw_tests := raw.get("tests"), list) or not raw_tests:
@@ -501,7 +505,20 @@ def load_step_file(path: Path) -> StepFile:
             raise ValueError(f"duplicate test name(s) {', '.join(duplicates)}")
     except (ValueError, yaml.YAMLError) as err:
         raise SchemaError(f"{path.name}: {err}") from None
-    return StepFile(path, action, seconds, tests, frozenset(options))
+    return StepFile(path, action, seconds, tests, frozenset(options), expected_log)
+
+
+def _parse_expected_log(raw: Any) -> tuple[re.Pattern[str], ...]:
+    """`expected_log`: regular expressions, each searched for in a device_side warning or error line of HA's log."""
+    if not isinstance(raw, list) or not all(isinstance(pattern, str) and pattern for pattern in raw):
+        raise ValueError("expected_log must be a list of regular expressions")
+    patterns = []
+    for pattern in raw:
+        try:
+            patterns.append(re.compile(pattern))
+        except re.error as err:
+            raise ValueError(f"expected_log {pattern!r}: {err}") from None
+    return tuple(patterns)
 
 
 def load_step_files(steps_dir: Path = STEPS_DIR) -> list[StepFile]:

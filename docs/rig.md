@@ -127,6 +127,15 @@ An adapter with options runs each file for its action with them pinned through D
 `options: [<name>]` at the top of a file turns those on, and every other option in the adapter's scope runs off. Its
 record is `<action>-<name>.md`, with an `Options` row. The rig's own options are put back when the run ends.
 
+A test that means to make device_side warn lists the line under `expected_log:` at the top of its file: regular
+expressions, each searched for in the whole log line, logger included. A matched line is counted in the summary and
+fails nothing. Keep a pattern as narrow as the warning it expects.
+
+```yaml
+expected_log:
+  - 'core\.dispatcher\] turn_on_for on zha timed out'
+```
+
 An integration in `SETTLE_S` (`tests/rig/profile.py`) predicts a light's brightness for a while after a raise, lower
 or `stop`, so a later test on that light waits until it reads the device again.
 
@@ -178,6 +187,12 @@ a run that touches Z2M, or roams) to `<report>.z2m.log` as they arrive, and HA's
 `<report>.ha.log` when the run ends. A clean run deletes them; after a failure, a stopped move or a crash they stay
 and their paths are printed. When Z2M's coordinator crashed during the run (`ASH_NCP_FATAL_ERROR` or
 `Adapter disconnected`), the summary says so with each crash's time, and the logs stay even after a clean run.
+
+A run also reads HA's log for `WARNING`, `ERROR` and `CRITICAL` lines from `custom_components.device_side`. Each one
+no step file of the run expects is listed in the summary, keeps the logs and fails the run, so a run that ends clean
+also proves device_side logged nothing amiss; the test records it wrote stand. Another run on the same HA meanwhile
+can put lines in, so read whose they are before chasing one. A log with no line dated from the run's start (HA
+logging in another time zone) is kept whole and not checked, which the summary says.
 
 `--debug-logs` keeps them whatever the outcome and runs HA's `device_side`, each integration the run touches and Z2M
 at debug until the run ends. It costs CPU, so timing cases may read differently. Z2M's debug lines reach the capture
