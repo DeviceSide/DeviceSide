@@ -202,8 +202,8 @@ def test_shared_claims_wait_for_an_exclusive_holder(tmp_path):
         assert blocked(tmp_path, SHARED)
 
 
-def test_a_waiting_exclusive_claim_holds_off_new_shared_ones(tmp_path, monkeypatch):
-    """The turnstile: once a deploy waits for HA, a new shared claim queues behind it rather than starve it."""
+def test_a_waiting_exclusive_claim_holds_off_no_shared_one(tmp_path, monkeypatch):
+    """Throughput now: a shared claim that is ready starts at once, even while a deploy waits for HA."""
     sharing = locks.hold(claim("hue"), "wt/hue", tmp_path, out=quiet())
     seen: list[bool] = []
 
@@ -214,17 +214,7 @@ def test_a_waiting_exclusive_claim_holds_off_new_shared_ones(tmp_path, monkeypat
 
     monkeypatch.setattr(locks.time, "sleep", meanwhile)
     locks.hold(EXCLUSIVE, "wt/deploy", tmp_path, out=quiet()).close()
-    assert seen == [True]
-
-
-def test_the_waits_name_the_turnstile_holder(tmp_path, monkeypatch):
-    with (tmp_path / locks.TURNSTILE_NAME).open("a+") as turnstile:
-        fcntl.flock(turnstile, fcntl.LOCK_EX)
-        locks.write_holder(turnstile, "wt/deploy, waiting for HA")
-        printed: list[str] = []
-        monkeypatch.setattr(locks.time, "sleep", lambda _s: fcntl.flock(turnstile, fcntl.LOCK_UN))
-        locks.hold(claim("hue"), "wt/hue", tmp_path, out=printed.append).close()
-    assert printed[0].startswith("Another rig run holds the turn for HA: wt/deploy, waiting for HA (pid")
+    assert seen == [False]
 
 
 def test_an_exclusive_wait_leaves_its_own_integrations_out_of_the_holders(tmp_path, monkeypatch):

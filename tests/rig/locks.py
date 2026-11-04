@@ -3,7 +3,8 @@
 A run holds HA shared, unless it restarts HA or reloads device_side's entry (a deploy, a suite with device_side
 options, --recover), and then exclusively. A run that deploys but has no option suites steps HA down to shared once
 HA is back (Held.share_ha). It holds each integration it moves exclusively. So runs on different integrations go side
-by side, and a deploy waits for every run and holds off new ones meanwhile.
+by side. A deploy waits until HA is free and holds off no one meanwhile: a shared run that is ready goes ahead of it,
+for throughput now over a deploy's wait.
 
 flock drops a lock when its process dies, so nothing goes stale. Locks are taken in one order (the integrations
 sorted, then HA), so two runs never each hold what the other waits for. A waiting run polls, and says who holds what
@@ -28,8 +29,6 @@ from .profile import TOLERANCE_S
 # HA's lock keeps the path of the single lock it replaced, so a run from an older checkout, which takes it
 # exclusively, still keeps out every new run, and they it.
 LOCK_NAME = "device_side-rig.lock"
-# A deploy waiting for HA holds this, so new shared holders queue behind it rather than starve it.
-TURNSTILE_NAME = "device_side-rig.turnstile.lock"
 LOCK_POLL_S = 2.0  # how often a waiting run retries a lock
 WORKSPACE_HELD = "Green"  # a cmux workspace's color while its run holds its locks
 WORKSPACE_QUEUED = "Amber"  # ...while its run waits for them
@@ -87,8 +86,7 @@ class Held:
         no option suites needs HA shared only. Nothing changes for a claim that holds HA shared.
 
         flock's conversion need not be atomic (it may drop the lock before taking the new one), so a run waiting for HA
-        exclusively may slip in between; this then waits for it, saying who holds HA, as any shared claim does. The
-        turnstile isn't taken: a run waiting for HA exclusively holds it, waiting on this very lock."""
+        exclusively may slip in between; this then waits for it, saying who holds HA, as any shared claim does."""
         if self.claim.ha != "exclusive" or self.ha is None:
             return
         self.ha.truncate(0)  # shared holders leave no entry; cleared while still exclusive, so no one else's is lost
@@ -244,8 +242,7 @@ def hold(claim: Claim, holder: str, directory: Path, out: Out = print) -> Held:
     """Take `claim`'s locks, waiting for each in turn: the integrations sorted, then HA, so no two runs each hold what
     the other waits for. Every lock held alone gets `holder`'s entry, for whoever waits on it.
 
-    HA is taken through the turnstile: a shared claim passes it at once, while an exclusive one keeps it until it has
-    HA, so the shared holders drain and no new one starts meanwhile."""
+    An exclusive claim waiting for HA keeps out no shared one: it waits until HA is free."""
     held = Held(claim)
     waited = False
     try:
@@ -254,17 +251,14 @@ def hold(claim: Claim, holder: str, directory: Path, out: Out = print) -> Held:
             held.handles.append(handle)
             waited |= wait_for_lock(handle, fcntl.LOCK_EX, out, f"the {integration} lock")
             write_holder(handle, holder)
-        with (directory / TURNSTILE_NAME).open("a+") as turnstile:
-            waited |= wait_for_lock(turnstile, fcntl.LOCK_EX, out, "the turn for HA")
-            write_holder(turnstile, f"{holder}, waiting for HA" if claim.ha == "exclusive" else holder)
-            ha = (directory / LOCK_NAME).open("a+")
-            held.handles.append(ha)
-            held.ha = ha
-            if claim.ha == "exclusive":
-                waited |= wait_for_lock(ha, fcntl.LOCK_EX, out, "HA", lambda: ha_holders(directory, claim.integrations))
-                write_holder(ha, holder)
-            else:
-                waited |= wait_for_lock(ha, fcntl.LOCK_SH, out, "HA")
+        ha = (directory / LOCK_NAME).open("a+")
+        held.handles.append(ha)
+        held.ha = ha
+        if claim.ha == "exclusive":
+            waited |= wait_for_lock(ha, fcntl.LOCK_EX, out, "HA", lambda: ha_holders(directory, claim.integrations))
+            write_holder(ha, holder)
+        else:
+            waited |= wait_for_lock(ha, fcntl.LOCK_SH, out, "HA")
     except BaseException:
         held.close()
         raise
