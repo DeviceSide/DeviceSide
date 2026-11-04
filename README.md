@@ -143,7 +143,7 @@ Device Side's actions take the same fields. Change the domain from `hue_dimmer` 
 | `transition`        | turn_on_for | Fade time (0–300 s). Z2M, Shelly                                                                                      |
 | `response_variable` | all         | Name of a variable that receives a result for each entity (optional). In the visual editor it's **Response variable** |
 
-**Cancel:** to cancel a timer, send a new action (e.g. `turn_on`, `turn_off`, `toggle` or a new timed on/off).
+**Cancel:** to cancel a timer, send a new action (e.g. `turn_on`, `turn_off`, `toggle` or a new delayed off/on).
 On ZHA, only `turn_off` or a new `turn_on_for` cancels; to keep the light on, turn it off, then on.
 
 #### Results
