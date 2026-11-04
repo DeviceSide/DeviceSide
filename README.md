@@ -2,19 +2,19 @@
 
 [![HACS Default](https://img.shields.io/badge/HACS-Default-orange.svg)](https://hacs.xyz/) [![Latest Version](https://img.shields.io/github/v/release/jasonmx/device-side?sort=date)](https://github.com/jasonmx/device-side/releases) [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/jasonmx)
 
-Device Side unlocks native features in your lights, switches and plugs on the Zigbee, Shelly, Philips Hue and Matter integrations. It allows you to:
+Device Side unlocks native features in your lights, switches and plugs on the Zigbee, Shelly, Philips Hue and Matter integrations.
 
-* **Delay a turn-off:** Tell a device to turn off automatically, even if HA goes offline or restarts.
+* **Delay a turn-off:** Turn off devices automatically, even if HA goes offline or restarts.
 
 * **Dim smoothly:** Press to dim and release to stop, using third-party buttons. No more jittery steps or overshoots.
 
 * **Change colors smoothly:** Press to change color, release to stop.
 
-* **Set lights without turning on:** Pre-stage brightness, color, CT and scenes, so lights turn on without unsightly color flashes or brightness extremes.
+* **Set lights without turning on:** Pre-stage brightness, color, CT and scenes, so lights come on without unsightly color flashes or brightness extremes.
 
-It connects to your devices automatically via the core integrations, and patches some usability quirks in individual integrations.
+* **Zero setup:** Device Side connects to your devices automatically via the core integrations.
 
-## Features
+## Key Features
 
 | Feature                                                                             | ZHA | Z2M | Shelly | Hue Bridge | Matter |
 |:----------------------------------------------------------------------------------- |:---:|:---:|:------:|:----------:|:------:|
@@ -70,18 +70,16 @@ Device Side's actions are drop-in replacements for Hue Smooth Dimming, apart fro
 
 ## Usage
 
-### Delayed off/on
-
-#### Delayed off
+### Delayed off
 
 Action: `device_side.turn_on_for`
 
 Turn on, then off after a delay. Timer runs on the device. Example use cases:
 
-- Cut power to a heater or ironing station after 4 hours, in case someone leaves it on.
+- Cut power to a heater or ironing station automatically, in case someone leaves it on.
 - Run a fan for 20 minutes after a shower.
 
-##### YAML example: heater off after 4 hours, with a warning
+#### YAML example: heater off after 4 hours, with a warning
 
 ```yaml
 actions:
@@ -109,20 +107,6 @@ actions:
 | `xy_color`          | Color as `[x, y]`. Z2M                                                                                                 |
 | `transition`        | Fade time (0–300 s). Z2M, Shelly                                                                                       |
 | `response_variable` | Variable that receives the response from each entity (optional)                                                        |
-
-#### Delayed on
-
-Action: `device_side.turn_off_for`
-
-Turn off, then on after a delay. Timer runs on the device. Example use case:
-
-- Power-cycle a router.
-
-| Field               | Description                                                     |
-|:------------------- |:--------------------------------------------------------------- |
-| `target`            | Shelly lights and switches (required)                           |
-| `duration`          | Delay until the device turns on (required). Up to 7 days        |
-| `response_variable` | Variable that receives the response from each entity (optional) |
 
 <details>
 <summary>Results</summary>
@@ -152,6 +136,20 @@ The following actions cancel a delayed on/off timer:
 * Turn on a device that's already on (Shelly, and most lights on Z2M)
 
 * Turn off a device that's already off (Shelly only)
+
+### Delayed on
+
+Action: `device_side.turn_off_for`
+
+Turn off, then on after a delay. Timer runs on the device. Example use case:
+
+- Power-cycle a router.
+
+| Field               | Description                                                     |
+|:------------------- |:--------------------------------------------------------------- |
+| `target`            | Shelly lights and switches (required)                           |
+| `duration`          | Delay until the device turns on (required). Up to 7 days        |
+| `response_variable` | Variable that receives the response from each entity (optional) |
 
 ### Smooth dimming
 
