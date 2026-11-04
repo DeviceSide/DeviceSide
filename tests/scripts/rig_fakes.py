@@ -385,14 +385,14 @@ class FakeBridge(HueBridge):
     async def _request(self, method: str, resource_type: str, resource_id: str | None, body: dict | None = None):
         self.requests.append((method, resource_type, resource_id, body))
         if (error := self.fail.get((method, resource_type))) is not None:
-            raise BridgeError(f"{method} {resource_type} got 400: {error}")
+            raise BridgeError(f"{method} {resource_type} got 400: {error}", 400)
         items = self.resources.setdefault(resource_type, {})
         if method == "POST":
             return self._post(resource_type, items, body)
         if resource_id is None:
             return copy.deepcopy(list(items.values()))
         if resource_id not in items:
-            raise BridgeError(f"{method} {resource_type}/{resource_id} got 404: not found")
+            raise BridgeError(f"{method} {resource_type}/{resource_id} got 404: not found", 404)
         if method == "PUT":
             items[resource_id].update(body)
             searching = body.get("action", {}).get("action_type") == "search"

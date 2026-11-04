@@ -7,16 +7,17 @@ Each move releases the bulbs from their network and joins them to the target, by
 a Leave; then the next network opens a finite join window, closed once every bulb is in. After each join the bulb's
 light entity is renamed to its fixed profile entity ID, and on Z2M its options are set again.
 
-A bulb's home is Hue, the only home supported so far (profile.HOMES). Before a bulb first leaves Hue, its room and
-zone membership, the scene actions that target it and its name are saved; when it returns they are rewritten against
-its new device and light IDs.
+A bulb's home is Hue, the only home supported so far (profile.HOMES). Before a bulb's first move, the home record
+(home.py) saves its state, and, leaving Hue, its room and zone membership, the scene actions that target it and its
+name. When it is home again they are rewritten against its new device and light IDs, and its state is put back through
+its fixed entity; only then is the record dropped. It outlives the run, so a second crash keeps the first home.
 
 On each visit the run makes the profile's `ds-rig-*` groups on the bulbs' network: a Z2M group, a ZHA group or a Hue
 zone (whose grouped_light is the group), plus a Hue scene in the zone where the profile names one, each renamed to
 its fixed entity ID. They are removed before the bulbs move on, and by --recover after a crash.
 
-The journal's `roam` section is written before every change: where each bulb is, the move in flight, the saved
-home and each rig-made group, with each bulb's IEEE, entity ID and Z2M options, so --recover can bring the bulbs home
+The journal's `roam` section is written before every change: where each bulb is, the move in flight and each rig-made
+group, with each bulb's IEEE, entity ID and Z2M options, so --recover can bring the bulbs home
 and remove the groups with no profile loaded. Where a bulb is, though, is always read from the networks themselves;
 the journal's copy is for a person reading it.
 
@@ -32,6 +33,7 @@ from dataclasses import dataclass, field
 from .baseline import Baseline, BaselineError
 from .bridge import BridgeError, HueBridge
 from .client import HAClient, HAError, Z2MRemoveError, device_ieee
+from .home import HomeRecord, light_state
 from .journal import Journal
 from .profile import (
     CYCLE,
@@ -182,9 +184,16 @@ class Roamer:
         self.groups = list(groups)
         saved = (journal.get("roam") if journal is not None else None) or {}
         self.at: dict[str, str | None] = dict(saved.get("at", {}))
-        self.home: dict[str, dict] = dict(saved.get("home", {}))
+        # Each bulb's home, until it is back as it was: shared by every run, and kept after this one ends.
+        self.homes = HomeRecord(journal.path.parent if journal is not None else None)
+        for bulb in self.bulbs:  # a journal from before the home record holds the Hue home itself
+            if (hue := saved.get("home", {}).get(bulb.entity_id)) is not None:
+                self.homes.add(
+                    bulb.ieee, {"entity_id": bulb.entity_id, "network": bulb.home, "hue": hue, "state": None}
+                )
         self.moving: dict | None = saved.get("move")
-        # Each rig-made group or scene, journaled before it is made: {network, kind, name, entity_id, renamed}.
+        # Each rig-made group or scene, journaled before it is made: {network, kind, name, entity_id, renamed}, and
+        # `renaming` from just before its entity is renamed.
         self.made: list[dict] = [dict(made) for made in saved.get("made", [])]
         # The bridge's devices before a search, until search_over has named any newcomer; journaled, so recovery can.
         before = saved.get("bridge_before")
@@ -213,19 +222,25 @@ class Roamer:
                     "bulbs": [bulb.saved() for bulb in self.bulbs],
                     "at": self.at,
                     "move": self.moving,
-                    "home": self.home,
                     "made": self.made,
                     "bridge_before": sorted(self.bridge_before) if self.bridge_before is not None else None,
                     "arrived": self.arrived,
                 }
             )
 
+    @property
+    def done(self) -> bool:
+        """Whether every bulb is home with its home put back, and no move or rig-made group is left."""
+        return (
+            self.moving is None
+            and not self.made
+            and all(self.at.get(b.entity_id) == b.home and self.homes.get(b.ieee) is None for b in self.bulbs)
+        )
+
     def finish(self) -> None:
-        """Clear the journal's roam section once every bulb is home with its home put back, and no rig-made group is
-        left."""
-        if self.journal is not None and not self.home and self.moving is None and not self.made:
-            if all(self.at.get(bulb.entity_id) == bulb.home for bulb in self.bulbs):
-                self.journal.clear("roam")
+        """Clear the journal's roam section once the roaming is done."""
+        if self.journal is not None and self.done:
+            self.journal.clear("roam")
 
     # --- where a bulb is ------------------------------------------------------------------------------------------
 
@@ -330,8 +345,9 @@ class Roamer:
         await self.settle(to)
         if away := [bulb for bulb in self.bulbs if self.at[bulb.entity_id] != to]:
             await self.move(away, to)
-        if to == "hue":  # a bulb back on Hue gets its rooms and scenes back
+        if to == self.home_network:  # a bulb back home gets its rooms, scenes and state back
             await self.restore_home()
+        if to == "hue":
             if not await self.search_over():
                 self.out("The Hue search is still open; anything resetting nearby may yet join the bridge.")
         self.finish()
@@ -366,8 +382,7 @@ class Roamer:
         if None in origins.values():
             sources.append("no network (a move cut short)")
         self.out(f"Moving {names} from {' and '.join(sources)} to {NAMES[target]}.")
-        if leaving_home := [bulb for bulb in bulbs if origins[bulb.entity_id] == "hue"]:
-            await self.save_home(leaving_home)
+        await self.save_home(bulbs, origins)
         self.moving = {"from": origins, "to": target, "bulbs": list(origins)}
         self.save()
         # A released bulb joins whatever network is open, so only the target may be.
@@ -482,7 +497,7 @@ class Roamer:
             )
         await self.purge("zigbee2mqtt", bulb)
         if elsewhere[0] == "hue":  # the move took it for on Z2M, so saved no home for it
-            await self.save_home([bulb])
+            await self.save_home([bulb], {bulb.entity_id: "hue"})
         await self.release(elsewhere[0], bulb)
         return False
 
@@ -814,6 +829,8 @@ class Roamer:
             raise GroupError(f"HA showed no entity for the rig's {NAMES[network]} {kind} {name} in {ENTITY_S} s")
         assert found is not None
         if found["entity_id"] != entity_id or found.get("disabled_by"):
+            made["renaming"] = True  # before the rename: a crash between it and `renamed` still drops the entity
+            self.save()
             await self.ha.rename_entity(found["entity_id"], entity_id, enable=bool(found.get("disabled_by")))
         made["renamed"] = True
         self.save()
@@ -939,7 +956,7 @@ class Roamer:
             else:
                 await self.ha.z2m_group_remove(name)
             self.out(f"Removed {NAMES[network]} {kind} {name}.")
-        if made["renamed"]:
+        if made["renamed"] or made.get("renaming"):
             await self.drop_entity(made["entity_id"], PLATFORMS[network])
 
     async def drop_entity(self, entity_id: str, platform: str) -> None:
@@ -956,75 +973,118 @@ class Roamer:
 
     # --- home -----------------------------------------------------------------------------------------------------
 
-    async def save_home(self, bulbs: list[Bulb]) -> None:
-        """Before a bulb leaves Hue: its rooms (by device), zones (by light), the scene actions on its light and its
-        name. A home already saved, by a run that crashed before restoring it, is kept."""
-        rooms, zones, scenes = [await self.bridge.get(kind) for kind in ("room", "zone", "scene")]
+    async def save_home(self, bulbs: list[Bulb], origins: dict[str, str | None]) -> None:
+        """Before a bulb's first move, record its home: its state in HA, and leaving Hue, its rooms (by device), zones
+        (by light), the scene actions on its light and its name. A home already recorded, by a run that hasn't put it
+        back, is kept; one with no Hue home gets it when the bulb is found leaving Hue."""
         for bulb in bulbs:
-            if bulb.entity_id in self.home:
-                continue
-            device_id = await self.bridge.device_id_by_ieee(bulb.ieee)
-            device = (await self.bridge.get("device", device_id))[0]
-            light_id = _light_of(device)
-            self.home[bulb.entity_id] = {
-                "device": device_id,
-                "light": light_id,
-                "metadata": {key: device.get("metadata", {}).get(key) for key in ("name", "archetype")},
-                "rooms": [room["id"] for room in rooms if _has_child(room, device_id)],
-                "zones": [zone["id"] for zone in zones if _has_child(zone, light_id) and not _rig_made(zone)],
-                "scenes": {
-                    scene["id"]: actions
-                    for scene in scenes
-                    if (actions := [a for a in scene.get("actions", []) if a["target"]["rid"] == light_id])
-                },
-            }
-        self.save()
+            leaving_hue = origins[bulb.entity_id] == "hue"
+            if (entry := self.homes.get(bulb.ieee)) is None:
+                state = light_state(await self.ha.get_state(bulb.entity_id))
+                entry = {"entity_id": bulb.entity_id, "network": bulb.home, "state": state}
+                if leaving_hue:
+                    entry["hue"] = await self.hue_home(bulb)
+                self.homes.add(bulb.ieee, entry)
+            elif leaving_hue and entry.get("hue") is None:
+                self.homes.fill(bulb.ieee, "hue", await self.hue_home(bulb))
+
+    async def hue_home(self, bulb: Bulb) -> dict:
+        rooms, zones, scenes = [await self.bridge.get(kind) for kind in ("room", "zone", "scene")]
+        device_id = await self.bridge.device_id_by_ieee(bulb.ieee)
+        device = (await self.bridge.get("device", device_id))[0]
+        light_id = _light_of(device)
+        return {
+            "device": device_id,
+            "light": light_id,
+            "metadata": {key: device.get("metadata", {}).get(key) for key in ("name", "archetype")},
+            "rooms": [room["id"] for room in rooms if _has_child(room, device_id)],
+            "zones": [zone["id"] for zone in zones if _has_child(zone, light_id) and not _rig_made(zone)],
+            "scenes": {
+                scene["id"]: actions
+                for scene in scenes
+                if (actions := [a for a in scene.get("actions", []) if a["target"]["rid"] == light_id])
+            },
+        }
 
     async def restore_home(self) -> None:
-        """Put back each saved home on the bulb's new device and light: name, rooms, zones, then scenes, whose actions
-        need the light in their room or zone. A room or scene gone from the bridge is skipped with a line."""
+        """For each bulb home with a recorded home: put back its Hue home on its new device and light (name, rooms,
+        zones, then scenes, whose actions need the light in their room or zone), then its state. A room or scene gone
+        from the bridge is skipped with a line. The record is dropped once all of it is back; a write that failed
+        keeps it, for the next run or --recover to try again."""
         for bulb in self.bulbs:
-            if (home := self.home.get(bulb.entity_id)) is None:
+            if self.at.get(bulb.entity_id) != bulb.home or (home := self.homes.get(bulb.ieee)) is None:
                 continue
-            device_id = await self.bridge.device_id_by_ieee(bulb.ieee)
-            device = (await self.bridge.get("device", device_id))[0]
-            light_id = _light_of(device)
-            await self._put(f"{bulb.entity_id}'s name", "device", device_id, {"metadata": home["metadata"]})
-            for kind, key, child in (("room", "rooms", (device_id, "device")), ("zone", "zones", (light_id, "light"))):
-                old = home["device"] if kind == "room" else home["light"]
-                for group_id in home[key]:
-                    await self._regroup(bulb, kind, group_id, old, child)
-            for scene_id, actions in home["scenes"].items():
-                await self._rescene(bulb, scene_id, home["light"], light_id, actions)
-            del self.home[bulb.entity_id]
-            self.save()
-            self.out(f"Put back {bulb.entity_id}'s Hue rooms and scenes.")
+            done = True
+            if (hue := home.get("hue")) is not None:
+                done = await self.restore_hue(bulb, hue)
+                if done:
+                    self.out(f"Put back {bulb.entity_id}'s Hue rooms and scenes.")
+            done = await self.restore_state(bulb, home.get("state")) and done
+            if done:
+                self.homes.drop(bulb.ieee)
+            else:
+                self.out(
+                    f"{bulb.entity_id}'s home isn't all back; the home record keeps it, and --recover tries again."
+                )
 
-    async def _regroup(self, bulb: Bulb, kind: str, group_id: str, old: str, child: tuple[str, str]) -> None:
+    async def restore_hue(self, bulb: Bulb, home: dict) -> bool:
+        device_id = await self.bridge.device_id_by_ieee(bulb.ieee)
+        device = (await self.bridge.get("device", device_id))[0]
+        light_id = _light_of(device)
+        done = await self._put(f"{bulb.entity_id}'s name", "device", device_id, {"metadata": home["metadata"]})
+        for kind, key, child in (("room", "rooms", (device_id, "device")), ("zone", "zones", (light_id, "light"))):
+            old = home["device"] if kind == "room" else home["light"]
+            for group_id in home[key]:
+                done = await self._regroup(bulb, kind, group_id, old, child) and done
+        for scene_id, actions in home["scenes"].items():
+            done = await self._rescene(bulb, scene_id, home["light"], light_id, actions) and done
+        return done
+
+    async def restore_state(self, bulb: Bulb, state: dict | None) -> bool:
+        """Turn the bulb back to its recorded state through its fixed entity: on with its brightness and color, or
+        off, as it also goes with no state recorded. Whether HA took it."""
+        state = state or {"state": "off"}
+        data = {key: value for key, value in state.items() if key != "state"}
+        service = "turn_on" if state["state"] == "on" else "turn_off"
+        try:
+            await self.ha.call_service("light", service, {"entity_id": bulb.entity_id, **data})
+        except Exception as err:  # noqa: BLE001 - say so, and keep the record for another try
+            self.out(f"Could not put {bulb.entity_id} back {state['state']}: {err}")
+            return False
+        self.out(f"Put {bulb.entity_id} back {state['state']}" + (f" ({_describe(data)})." if data else "."))
+        return True
+
+    async def _regroup(self, bulb: Bulb, kind: str, group_id: str, old: str, child: tuple[str, str]) -> bool:
         try:
             group = (await self.bridge.get(kind, group_id))[0]
         except BridgeError as err:
             self.out(f"Could not put {bulb.entity_id} back in {kind} {group_id}: {err}")
-            return
+            return err.status == 404  # gone from the bridge: nothing to put it back in
         children = [c for c in group.get("children", []) if c["rid"] not in (old, child[0])]
         children.append({"rid": child[0], "rtype": child[1]})
-        await self._put(f"{bulb.entity_id}'s {kind}", kind, group_id, {"children": children})
+        return await self._put(f"{bulb.entity_id}'s {kind}", kind, group_id, {"children": children})
 
-    async def _rescene(self, bulb: Bulb, scene_id: str, old: str, new: str, saved: list[dict]) -> None:
+    async def _rescene(self, bulb: Bulb, scene_id: str, old: str, new: str, saved: list[dict]) -> bool:
         try:
             scene = (await self.bridge.get("scene", scene_id))[0]
         except BridgeError as err:
             self.out(f"Could not put back {bulb.entity_id}'s action in scene {scene_id}: {err}")
-            return
+            return err.status == 404
         actions = [a for a in scene.get("actions", []) if a["target"]["rid"] not in (old, new)]
         actions += [{**action, "target": {"rid": new, "rtype": "light"}} for action in saved]
-        await self._put(f"{bulb.entity_id}'s scene action", "scene", scene_id, {"actions": actions})
+        return await self._put(f"{bulb.entity_id}'s scene action", "scene", scene_id, {"actions": actions})
 
-    async def _put(self, what: str, kind: str, resource_id: str, body: dict) -> None:
+    async def _put(self, what: str, kind: str, resource_id: str, body: dict) -> bool:
         try:
             await self.bridge.put(kind, resource_id, body)
         except BridgeError as err:
             self.out(f"Could not put back {what} ({kind} {resource_id}): {err}")
+            return False
+        return True
+
+
+def _describe(data: dict) -> str:
+    return ", ".join(f"{key} {value}" for key, value in data.items())
 
 
 def _light_of(device: dict) -> str:

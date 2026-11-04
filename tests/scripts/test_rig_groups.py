@@ -225,6 +225,32 @@ async def test_a_group_ha_never_shows_is_still_removed_by_name(lab, tmp_path, mo
     assert not journal.path.exists()
 
 
+async def test_a_crash_between_the_rename_and_its_flag_still_drops_the_entity(lab, tmp_path):
+    class Killed(BaseException):
+        pass
+
+    journal = Journal(tmp_path / "journal.json")
+    rename = lab.ha.rename_entity
+
+    async def rename_then_die(*args, **kwargs):
+        await rename(*args, **kwargs)
+        raise Killed
+
+    lab.ha.rename_entity = rename_then_die
+    with pytest.raises(Killed):
+        await roamer(lab, journal, groups=(COLOR,)).make_groups("hue")
+    lab.ha.rename_entity = rename
+    made = journal.get("roam")["made"][0]
+    assert made["renaming"] is True and made["renamed"] is False
+    lab.ha.keeps_group_entities = True  # HA keeps the renamed entity once the zone goes
+
+    await Roamer.from_journal(lab.ha, lab.bridge, Journal(journal.path), lambda _: None).go("hue")
+
+    assert entity(lab, "light.test_color_group") is None and not journal.path.exists()
+    await roamer(lab, groups=(COLOR,)).make_groups("hue")  # the next visit can take the ID
+    assert entity(lab, "light.test_color_group") is not None
+
+
 @pytest.mark.parametrize("network", ["hue", "zha", "zigbee2mqtt"])
 async def test_recovery_removes_the_groups_a_crash_left_then_brings_the_bulbs_home(lab, tmp_path, network):
     journal = Journal(tmp_path / "journal.json")

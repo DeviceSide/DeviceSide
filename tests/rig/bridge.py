@@ -13,7 +13,11 @@ REQUEST_TIMEOUT_S = 10
 
 
 class BridgeError(Exception):
-    """A bridge write the bridge refused, or could not be made."""
+    """A bridge write the bridge refused, or could not be made. `status` is the HTTP status, where one came back."""
+
+    def __init__(self, message: str, status: int | None = None):
+        super().__init__(message)
+        self.status = status
 
 
 class HueBridge:
@@ -64,7 +68,7 @@ class HueBridge:
         listed = reply.get("errors", []) if isinstance(reply, dict) else []
         errors = [error.get("description", error) for error in listed]
         if status >= 400 or errors:
-            raise BridgeError(f"{method} {name} got {status}: {'; '.join(map(str, errors))}")
+            raise BridgeError(f"{method} {name} got {status}: {'; '.join(map(str, errors))}", status)
         return reply.get("data", []) if isinstance(reply, dict) else []
 
     async def close(self) -> None:

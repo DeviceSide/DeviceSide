@@ -6,6 +6,9 @@ deleted. scripts/rig.py keeps them in the git common dir, out of the repo: they 
 Each run has its own journal, `device_side-rig.journal.<id>.json`, and holds a lock on `<id>.lock` beside it for its
 whole life. A journal whose lock nobody holds is an orphan: its run died, and another run may put back what it left.
 The lock file is locked before it takes its name, so whoever finds one unlocked knows its run is gone.
+
+Each journal records when it was first saved, `started`, beside its sections, so orphans are put back oldest first: a
+later run's changes were made on top of an earlier one's.
 """
 
 import fcntl
@@ -23,12 +26,17 @@ PROBES = 3
 PROBE_GAP_S = 0.05
 # The one journal every run shared before each had its own; only --recover, which holds everything, puts it back.
 LEGACY_NAME = "device_side-rig.journal.json"
+STARTED = "started"
 
 
 class Journal:
     def __init__(self, path: Path, lock: TextIO | None = None):
         self.path = path
         self.sections: dict[str, Any] = json.loads(path.read_text()) if path.exists() else {}
+        # When it was first saved; one from before `started` goes by its file's age.
+        self.started: float | None = self.sections.pop(STARTED, None)
+        if self.started is None and path.exists():
+            self.started = path.stat().st_mtime
         self.lock = lock  # held while this process owns the journal: its own, or an orphan it is putting back
 
     @classmethod
@@ -88,7 +96,11 @@ class Journal:
         self.save()
 
     def save(self) -> None:
-        write_whole(self.path, self.sections)
+        if not self.sections:
+            self.started = None
+        elif self.started is None:
+            self.started = time.time()
+        write_whole(self.path, {**self.sections, STARTED: self.started} if self.sections else {})
 
 
 def write_whole(path: Path, data: dict) -> None:
@@ -104,7 +116,7 @@ def write_whole(path: Path, data: dict) -> None:
 
 def orphans(directory: Path) -> list[Journal]:
     """The journals in `directory` whose runs have died, each locked by this process until released; sweeps up the
-    lock files dead runs left with no journal."""
+    lock files dead runs left with no journal. Oldest first."""
     found = []
     for lock_path in sorted(directory.glob(f"{PREFIX}*.lock")):
         handle = lock_path.open("a+")
@@ -116,7 +128,7 @@ def orphans(directory: Path) -> list[Journal]:
             found.append(journal)
         else:
             journal.release()
-    return found
+    return sorted(found, key=lambda journal: journal.started or 0.0)
 
 
 def locked(handle) -> bool:
