@@ -20,8 +20,7 @@ from ...core.scope import AdapterScope, DurationLimits
 
 _LOGGER = logging.getLogger(__name__)
 
-# OnWithTimedOff.onTime is uint16 in units of 1/10 s; max = 65535 tenths = 6553.5 s.
-# Use 6553.4 as the ceiling so the value stays well within uint16 after rounding.
+# OnWithTimedOff.onTime is a uint16 in tenths of a second; the spec caps it at 65534 tenths, so 6553.4 s is the most.
 _TIMER_LIMITS = DurationLimits(min_s=0.1, max_s=6553.4)
 
 
