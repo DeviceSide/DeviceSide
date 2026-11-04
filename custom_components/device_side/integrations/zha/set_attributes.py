@@ -37,6 +37,8 @@ Wire = tuple[int, int, dict[str, Any]]
 TRANSITION_WAIT_S = 3.0
 TRANSITION_POLL_S = 0.1
 LATE_REFRESH_POLL_S = 0.5
+FADE_WAIT_S = 0.6  # the commands' 0.4 s fade plus margin: a read sooner sees a mid-fade color temperature
+SETTLE_REFRESH_S = 1.0  # a second read after the first, for a fade that ran slow
 LATE_REFRESH_LIMIT_S = 60.0  # past the longest off fade anyone sets; a flag stuck longer is zha's fault
 
 
@@ -107,6 +109,9 @@ class ZHASetAttributes(Adapter[SetAttributesRequest]):
     zha's update_entity does nothing while its transition flag is up, as it is for 1.5 s after an HA turn_off, and ZHA
     applies no color reports: a refresh then would leave HA showing the old color after the next plain on. So the
     refresh waits for the flag (TRANSITION_WAIT_S), and after a longer off fade refreshes once more when it clears.
+    The read is also held until FADE_WAIT_S after the last command, as the commands fade the light over 0.4 s and a
+    read inside the fade would keep a mid-fade color temperature; a second read follows SETTLE_REFRESH_S later, for a
+    fade that ran slow.
     """
 
     action: ClassVar[str] = "set_attributes"
@@ -158,9 +163,19 @@ class ZHASetAttributes(Adapter[SetAttributesRequest]):
         return await self.gather(hass, targets, send)
 
     async def _refresh(self, hass: HomeAssistant, request: SetAttributesRequest, entity_id: str) -> None:
+        sent_at = hass.loop.time()
         over = await _transition_over(hass, entity_id, TRANSITION_WAIT_S)
+        # The flag wait counts toward the fade wait.
+        if (fade_left := FADE_WAIT_S - (hass.loop.time() - sent_at)) > 0:
+            await asyncio.sleep(fade_left)
         await self._update(hass, request, entity_id)
-        if not over:
+        if over:
+
+            async def settle() -> None:
+                await self._update(hass, request, entity_id)
+
+            get_runtime(hass).schedule(hass, f"zha:{self.action}:{entity_id}", [(SETTLE_REFRESH_S, settle)])
+        else:
             self._refresh_when_over(hass, request, entity_id, hass.loop.time() + LATE_REFRESH_LIMIT_S)
 
     def _refresh_when_over(

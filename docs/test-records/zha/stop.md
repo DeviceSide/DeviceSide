@@ -4,10 +4,10 @@
 |---|---|
 | Result | pass |
 | Date | 2026-11-03 |
-| Source | rig run (`scripts/rig.py`), commit `5d39db8` |
+| Source | rig run (`scripts/rig.py`), commit `0bd4f6d` |
 | Profile | lab |
 | Home Assistant | 2026.10.2 |
-| Device | Hue ambiance lamp (`LTA009`), firmware `1.163.1`; Hue Essential lamp (`LCA016`), firmware `1.164.2` |
+| Device | LTA009, firmware `0x01002a00`; ZBDongle-E, firmware `unknown`; LCA016, firmware `0x01001200` |
 
 ## Tests
 
