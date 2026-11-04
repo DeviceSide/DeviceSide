@@ -133,7 +133,7 @@ The following actions cancel a delayed off timer, on a device that's on:
 
 * Send a new delayed on/off command (restarts the countdown)
 
-* Turn on (i.e. leave on. Works on Shelly and most Z2M lights, but not on ZHA or Hue Bridge)
+* Turn on (i.e. leave on). Tested on Shelly only
 
 ### Delayed on
 

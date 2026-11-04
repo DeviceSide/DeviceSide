@@ -2,7 +2,7 @@
 
 A report key names one value in a light's or grouped_light's event ("on", "brightness"). A write of an attribute makes
 the bridge report the keys that attribute owns, and only those: a brightness move reports on and brightness, never a
-color temperature (Tested behavior in docs/integrations.md).
+color temperature (Tested behavior in docs/contributing/integration-internals.md).
 """
 
 from collections.abc import Callable, Iterable
