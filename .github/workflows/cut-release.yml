@@ -1,8 +1,8 @@
 name: Cut release
 
 # The only way a vX.Y.Z tag is made (a tag ruleset refuses any other): from main, above the latest release, with
-# manifest.json at that version, green CI on the head and no experimental adapter (check_release --release). Soak is
-# the repo owner's call.
+# manifest.json at that version, green CI on the head, no experimental adapter, and every adapter's test records
+# citing a commit with the head's adapter code (check_release --release --records). Soak is the repo owner's call.
 
 on:
   workflow_dispatch:
@@ -59,8 +59,12 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked
 
-      - name: Refuse an experimental adapter
-        run: .venv/bin/python scripts/check_release.py --release
+      # A record cites the commit its rig run deployed, often on a PR branch since squash-merged and deleted.
+      - name: Fetch the commits test records cite
+        run: git fetch --quiet origin '+refs/pull/*/head:refs/remotes/pull/*'
+
+      - name: Refuse an experimental adapter, or a test record older than its adapter's code
+        run: .venv/bin/python scripts/check_release.py --release --records
 
       - name: Tag and publish the release
         run: |

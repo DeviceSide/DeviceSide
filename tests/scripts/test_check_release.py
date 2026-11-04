@@ -1,7 +1,11 @@
 """scripts/check_release.py: the coverage bar on every adapter, and no experimental adapter in a release."""
 
 import json
+import sys
+import types
 from pathlib import Path
+
+import pytest
 
 from custom_components.device_side.core.scope import AdapterScope
 from scripts import check_release as cr
@@ -73,3 +77,142 @@ def test_main_reads_the_real_registry(monkeypatch, capsys):
     monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
     assert cr.main([]) == 0
     assert "shelly / turn_on_for" in capsys.readouterr().out
+
+
+PACKAGE = "custom_components/device_side/integrations/fake"
+ADAPTER = f"{PACKAGE}/turn_on_for.py"
+
+
+class FakeRecordsRegistry:
+    """One adapter, fake / turn_on_for, whose class's module is the repository's adapter module."""
+
+    def __init__(self, repo, monkeypatch, experimental: bool = False):
+        module = types.ModuleType("fake_turn_on_for")
+        module.__file__ = str(repo.path / ADAPTER)
+        monkeypatch.setitem(sys.modules, module.__name__, module)
+        cls = type("FakeTurnOnFor", (FakeAdapter,), {"__module__": module.__name__})
+        self.adapter = cls(AdapterScope(experimental=experimental))
+        self.adapter.action, self.adapter.integration = "turn_on_for", "fake"
+
+    def matrix(self):
+        yield "turn_on_for", "fake", self.adapter
+
+
+def write_record(repo, name: str, commit: str | None) -> str:
+    """Commit docs/test-records/fake/<name> citing the commit (or no commit) and return the new head."""
+    source = f"rig run (`scripts/rig.py`), commit `{commit[:7]}`" if commit else "probe script"
+    text = f"# Fake · turn_on_for\n\n| | |\n|---|---|\n| Result | pass |\n| Source | {source} |\n"
+    return repo.commit(f"docs/test-records/fake/{name}", text)
+
+
+@pytest.fixture
+def tested(repo, monkeypatch):
+    """The fake integration: its adapter, the helpers it imports, an unrelated module and a core one, with a record
+    citing them. Returns (repo, the commit the record cites)."""
+    monkeypatch.setattr(cr, "REPO", repo.path)
+    monkeypatch.setattr(cr, "RECORDS", repo.path / "docs" / "test-records")
+    for path, text in [
+        (f"{PACKAGE}/__init__.py", "from .turn_on_for import FakeTurnOnFor\nfrom .other import Other\n"),
+        (f"{PACKAGE}/shared.py", "from . import nested\n"),
+        (f"{PACKAGE}/nested.py", ""),
+        (f"{PACKAGE}/addressing.py", "from ...core import scope\n"),
+        (f"{PACKAGE}/other.py", ""),
+        ("custom_components/device_side/core/scope.py", ""),
+        (ADAPTER, "from . import shared\nfrom .addressing import address\nfrom ..zha import zcl\n"),
+    ]:
+        tested_at = repo.commit(path, text)
+    write_record(repo, "turn_on_for.md", tested_at)
+    return repo, tested_at
+
+
+def test_adapter_code_is_the_module_and_what_it_imports_from_its_package(tested):
+    repo, _ = tested
+    code = cr.adapter_code(repo.path / ADAPTER)
+    assert [path.name for path in code] == ["__init__.py", "addressing.py", "nested.py", "shared.py", "turn_on_for.py"]
+
+
+def test_records_are_the_action_and_its_options(tested):
+    repo, sha = tested
+    for name in ["turn_on_for-predicted_state.md", "turn_on_for_x.md", "turn_off_for.md", "color_modes.md"]:
+        write_record(repo, name, sha)
+    names = [path.name for path in cr.records("fake", "turn_on_for")]
+    assert names == ["turn_on_for-predicted_state.md", "turn_on_for.md"]
+
+
+def test_a_record_as_new_as_the_code_passes(tested, monkeypatch):
+    repo, _ = tested
+    repo.commit(f"{PACKAGE}/other.py")
+    repo.commit("custom_components/device_side/core/scope.py")
+    assert cr.record_errors(FakeRecordsRegistry(repo, monkeypatch)) == []
+
+
+@pytest.mark.parametrize("changed", [ADAPTER, f"{PACKAGE}/nested.py", f"{PACKAGE}/__init__.py"])
+def test_a_change_to_the_adapters_code_after_its_record_is_an_error(tested, monkeypatch, changed):
+    repo, sha = tested
+    repo.commit(changed)
+    assert cr.record_errors(FakeRecordsRegistry(repo, monkeypatch)) == [
+        f"fake / turn_on_for: docs/test-records/fake/turn_on_for.md cites {sha[:7]}; changed since: {changed}"
+    ]
+
+
+def test_every_record_of_the_adapter_must_be_new(tested, monkeypatch):
+    repo, sha = tested
+    write_record(repo, "turn_on_for-predicted_state.md", sha)
+    repo.commit(ADAPTER)
+    write_record(repo, "turn_on_for.md", repo.git("rev-parse", "HEAD"))
+    [error] = cr.record_errors(FakeRecordsRegistry(repo, monkeypatch))
+    assert error.startswith("fake / turn_on_for: docs/test-records/fake/turn_on_for-predicted_state.md cites")
+
+
+def test_a_record_citing_an_unmerged_branch_compares_trees(tested, monkeypatch):
+    repo, sha = tested
+    repo.git("checkout", "-q", "-b", "rig", sha)
+    branch = repo.commit(f"{PACKAGE}/other.py")
+    repo.git("checkout", "-q", "main")
+    write_record(repo, "turn_on_for.md", branch)
+    assert cr.record_errors(FakeRecordsRegistry(repo, monkeypatch)) == []
+
+
+def test_a_failing_git_diff_stops_the_check(tested, monkeypatch):
+    repo, _ = tested
+    real = cr.git
+    monkeypatch.setattr(cr, "git", lambda *args: real(*args) if args[0] != "diff" else real("diff", "no-such-ref"))
+    with pytest.raises(SystemExit, match="git diff .* failed"):
+        cr.record_errors(FakeRecordsRegistry(repo, monkeypatch))
+
+
+def test_a_missing_unciting_or_unknown_record_is_an_error(tested, monkeypatch):
+    repo, _ = tested
+    registry = FakeRecordsRegistry(repo, monkeypatch)
+    write_record(repo, "turn_on_for.md", None)
+    assert cr.record_errors(registry) == ["fake / turn_on_for: docs/test-records/fake/turn_on_for.md cites no commit"]
+    write_record(repo, "turn_on_for.md", "0" * 40)
+    assert cr.record_errors(registry) == [
+        "fake / turn_on_for: docs/test-records/fake/turn_on_for.md cites commit 0000000, which git can't find"
+    ]
+    repo.git("rm", "-q", "docs/test-records/fake/turn_on_for.md")
+    assert cr.record_errors(registry) == ["fake / turn_on_for: no test record in docs/test-records/fake/"]
+
+
+def test_an_experimental_adapter_is_exempt(tested, monkeypatch):
+    repo, _ = tested
+    repo.commit(ADAPTER)
+    assert cr.record_errors(FakeRecordsRegistry(repo, monkeypatch, experimental=True)) == []
+
+
+def test_main_fails_on_a_stale_record(tested, monkeypatch, capsys):
+    monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
+    repo, _ = tested
+    registry = FakeRecordsRegistry(repo, monkeypatch)
+    assert cr.main(["--records"], registry) == 0
+    repo.commit(ADAPTER)
+    assert cr.main([], registry) == 0
+    assert cr.main(["--records"], registry) == 1
+    assert "changed since" in capsys.readouterr().err
+
+
+def test_every_rig_record_in_the_repo_cites_a_commit_the_check_can_read():
+    """The rig writes the Source row (scripts/rig.py) and --records parses it: a change to either breaks this."""
+    found = [path for path in cr.RECORDS.glob("*/*.md") if path.read_text().count("rig run (`scripts/rig.py")]
+    assert found
+    assert [path.name for path in found if not cr.CITED_COMMIT.search(path.read_text())] == []

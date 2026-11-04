@@ -1820,7 +1820,7 @@ async def rig_facts(ha: HAClient, entity_ids: Iterable[str]) -> tuple[str, list[
 def render_record(
     suite_result: SuiteResult, title: str, ha_version: str, devices: list[Device], date: str, source: str, profile: str
 ) -> str:
-    """The test record: a key/value table, then the per-test table. It is evidence for people; no script reads it."""
+    """The test record: a key/value table, then the per-test table. check_release.py --records reads its commit."""
     suite = suite_result.suite
     rows = [
         ("Result", "pass"),

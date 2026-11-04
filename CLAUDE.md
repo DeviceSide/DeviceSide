@@ -58,7 +58,7 @@ flag; see their headers. The steps they don't check:
 - `custom_components/device_side/integrations/<integration>/`: one adapter module per action
 - `tests/{core,actions,integrations,rig}`: mirror the above; `rig/` drives the live HA, only via `scripts/rig.py`,
   on a profile (`tests/rig/profiles/<name>.yaml`, gitignored)
-- `scripts/`: rig runner, household check, deploy, release checks (coverage and the release flag, tags, RC audits)
+- `scripts/`: rig runner, household check, deploy, release checks (coverage, the release flag, record freshness, tags, RC audits)
 - `docs/test-records/<integration>/`: test records. Design detail lives in `docs/design.md`; running the rig and
   writing step files in `docs/rig.md`.
 
