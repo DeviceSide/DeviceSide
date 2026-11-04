@@ -8,6 +8,7 @@ import pytest
 
 from scripts import check_private
 from tests.rig import roam
+from tests.rig.client import HAError
 from tests.rig.journal import Journal
 from tests.rig.profile import Profile, normalize_ieee
 from tests.rig.roam import Roamer, RoamError
@@ -19,6 +20,7 @@ A, B, OPTIONS, BULBS = LAB_A, LAB_B, LAB_OPTIONS, LAB_BULBS
 @pytest.fixture(autouse=True)
 def fast(monkeypatch):
     monkeypatch.setattr(roam, "POLL_S", 0)
+    monkeypatch.setattr(roam, "PRIME_GAP_S", 0)
 
 
 @pytest.fixture
@@ -54,9 +56,40 @@ async def test_a_z2m_join_sets_the_bulbs_options_again(lab):
 
 
 async def test_a_z2m_join_reads_the_bulb_once_so_its_state_has_a_color_mode(lab):
+    lab.ha.respond = lambda ha, service, data: {}
     await roamer(lab).go("zigbee2mqtt")
     reads = [call[2] for call in lab.ha.calls if call[:2] == ("device_side", "get_attributes")]
     assert reads == [{"entity_id": "light.lab_a"}, {"entity_id": "light.lab_b"}]
+
+
+async def test_a_post_join_read_that_goes_unanswered_is_asked_again(lab, monkeypatch):
+    first = lambda ha, service, data: {}  # noqa: E731
+    failures = []
+
+    def respond(ha, service, data):
+        if service == "get_attributes" and data["entity_id"] == "light.lab_a" and not failures:
+            failures.append(1)
+            raise HAError("no genOnOff reply from Zigbee2MQTT")
+        return first(ha, service, data)
+
+    lab.ha.respond = respond
+    printed = []
+    await roamer(lab, out=printed.append).go("zigbee2mqtt")
+    reads = [call[2]["entity_id"] for call in lab.ha.calls if call[:2] == ("device_side", "get_attributes")]
+    assert reads == ["light.lab_a", "light.lab_a", "light.lab_b"]
+    assert not [line for line in printed if line.startswith("Could not read")]
+
+
+async def test_a_post_join_read_that_never_answers_is_reported_after_three_tries(lab):
+    def respond(ha, service, data):
+        raise HAError("no genOnOff reply from Zigbee2MQTT")
+
+    lab.ha.respond = respond
+    printed = []
+    await roamer(lab, out=printed.append).go("zigbee2mqtt")
+    reads = [call[2]["entity_id"] for call in lab.ha.calls if call[:2] == ("device_side", "get_attributes")]
+    assert reads.count("light.lab_a") == 3
+    assert any(line.startswith("Could not read light.lab_a") for line in printed)
 
 
 async def test_the_stale_entry_holding_the_fixed_id_is_removed_then_the_new_light_renamed(lab):

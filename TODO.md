@@ -15,6 +15,7 @@ v0.1.0 is the next release.
 
 | Slice | What | PRs |
 |---|---|---|
+| 13j | Z2M `set_attributes` and `stop` on the lab: read after the write fade, soft-off cut, rig settles and reads a joined bulb | #192, #196 |
 | 9a | Rig step files | #26, #27 |
 | 6 | Z2M `turn_on_for` | #22, #23, #25 |
 | 11 | Matter `turn_on_for` (plugs out of experimental) | #24, #90, #91 |
@@ -149,7 +150,21 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. Lanes on dif
   Z2M's log shows the coordinator's source route to it failing (`ZIGBEE_SOURCE_ROUTE_FAILURE`, all 7 in the run target
   it) after its relay hop flipped from the corner bulb to other routers (one a household device, LQI 108 to 120),
   then `ZIGBEE_DELIVERY_FAILED` on the read. The cause is the mesh path, not the adapter; fixing it needs the
-  join-route plan or a better-placed relay, not a code change here.
+  join-route plan or a better-placed relay. Source-route failures hit many nodes in nearly every lab run (a household
+  device most), so the mesh drops routed messages in general. A one-retry on `Delivery failed` was tried and dropped: when
+  it first fired (3 Nov, 22:48) the second read got no reply for over 20 s, so the bulb was unreachable for longer than a
+  route rebuild takes, and the adapter's error was right. The other lab failure seen, a newly joined bulb's first read
+  unanswered (no `color_mode`, no brightness in the case's setup), the rig now tries up to three times.
+  A 20-minute probe at one read every 4 s (3 Nov, 23:04) still lost one: the bulb was on a direct link (no relay, LQI
+  148 to 156), the coordinator's frame was acknowledged (`status=OK`), and the bulb never answered the `genOnOff` read
+  (Z2M's own 10 s timeout fired), yet it answered another command five seconds later. So at least some drops are the
+  Hue Essential not answering a read over a healthy link, not the mesh. Open: whether a second read a moment later is
+  answered (it was not in the 22:48 case, which waited over 20 s).
+  Across all 33 kept Z2M logs of 3 Nov, all 7 failed reads are the sideboard's (about 5,600 commands to it); the corner
+  (about 1,200) and desk (about 400) bulbs, on the same mesh, had none. Too few to be conclusive for those two, but it points at
+  the bulb, the Hue Essential.
+  The sideboard is also the only different model on the mesh: the Hue Essential (firmware 1.164.2); the corner and desk
+  bulbs are the full-range white ambiance (1.163.1) and white A60 (1.104.2) lines. A bulb swap with the corner would settle it.
 - [ ] **ZHA A60 run** (13k step 3), on the lab: ZHA color suites, `set_attributes` hs and xy included. Attended for
   `sets_color_while_off`. Clears `experimental` on the ZHA adapters it proves.
 - [ ] **9d** Rig coverage sweep for the non-color scope
