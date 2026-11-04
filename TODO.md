@@ -15,6 +15,7 @@ v0.1.0 is the next release.
 
 | Slice | What | PRs |
 |---|---|---|
+| 12 | `predicted_state` default reviewed against the rig runs and issues since #77: kept on ([findings](docs/plans/2026-11-04-predicted-state-default.md)) | #PR |
 | 12 | `docs/integrations.md` rewritten for users; addressing, wire commands and tested behavior moved to `docs/contributing/integration-internals.md`; README's turn-on cancel claim limited to Shelly | #218 |
 | 12 | Example page: screenshots retaken with Device Side's `set_attributes` | #217 |
 | 12 | README for v0.1.0: Key Features table, one usage section per feature, Hue Smooth Dimming migration, facts checked against the code (item 12's table half; the experimental half stays open) | #214 |
@@ -181,8 +182,7 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. Lanes on dif
 - [ ] **9d** Rig coverage sweep for the non-color scope
   ([`2026-10-30-rig-coverage-sweep.md`](docs/plans/2026-10-30-rig-coverage-sweep.md)). 13k covers the color part.
 - [ ] **12** v0.1.0: no adapter left `experimental` (`scripts/check_release.py --release`); README feature table
-  current; release checklist adapted from hue_dimmer; `predicted_state` default reviewed against the rig runs and
-  regression issues since #77.
+  current; release checklist adapted from hue_dimmer.
 
 ## After v0.1.0
 
