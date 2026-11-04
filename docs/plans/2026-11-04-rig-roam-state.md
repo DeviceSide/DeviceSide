@@ -150,7 +150,14 @@ on a clean run and on `--recover`.
 - Lab plan (`docs/plans/2026-11-01-lab.md`): a findings paragraph on the coordinator crashes and the stale record. It
   replaces the 3 Nov reading that the bulb ignored the Leave, and the matching sentence in `TODO.md`'s sideboard note.
 - `TODO.md`: a Done row per PR.
-- Each PR: `/audit-code`, then fix its findings.
+- Each PR: `/audit-code`, then fix its findings. Each PR body cites `docs/plans/2026-11-04-rig-roam-state.md`.
+- **After PR 3 merges (Jason, 4 Nov):** put every logging level back to its default, under
+  `scripts/rig.py --profile lab --hold zigbee2mqtt --exclusive -- …`:
+  - HA: `device_side`, `hue`, `zha`, `mqtt`, `shelly`, `matter` back to the level they had before any rig run. They were
+    raised with `persistence: "none"`, so an HA restart does it, or `logger.set_level` to the configured default.
+  - Z2M: `warning` (its level before the rig; the lab plan records Z2M logging at `warning`), and
+    `advanced.log_debug_to_mqtt_frontend` back to `false` (set on 3 Nov; takes effect after a Z2M restart).
+  - Then confirm through `logger/log_info` and Z2M's `bridge/info`.
 
 ## Verification
 
