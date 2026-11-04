@@ -86,7 +86,7 @@ tests:
       ask: Did it stop part way pale and hold there, with no drift or jump?
 
   # One stop halting a brightness and a color move. A Hue bulb's brightness and color temperature stop let the color
-  # carry on (docs/plans/2026-10-28-z2m-move-stop.md), so each attribute is held to its own halt. The color move starts
+  # carry on (docs/integration-internals.md, Zigbee2MQTT tested behavior), so each attribute is held to its own halt. The color move starts
   # 1 s after the brightness one, as a second button would.
   - name: halts_brightness_and_saturation
     roles: [light_color, group_color]

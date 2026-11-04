@@ -1,5 +1,5 @@
 """A small Hue bridge client for rig tests: CLIP v2 reads and writes made behind Home Assistant's back. CLIP v2 only:
-the v1 API stranded a bulb on old firmware (docs/plans/2026-10-31-a60-move-probe.md).
+the v1 API stranded a bulb on old firmware (docs/integration-internals.md, Hue tested behavior).
 
 A rig case uses it to act as another actor (the Hue app, a dimmer, a motion rule), so Device Side sees a change it
 did not make and Home Assistant did not send.

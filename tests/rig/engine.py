@@ -3,7 +3,7 @@
 One file per action (`steps/<action>.yaml`) runs on every integration in the profile that has that action's adapter; a
 file with `options` (`steps/<action>-<option>.yaml`) runs it again with those device_side options on. The registry
 supplies what differs per integration: the expected status, the tolerance, and the options in scope.
-No pytest here: scripts/rig.py calls run(), and a tester's one-file runner can import this module unchanged.
+No pytest here: scripts/rig.py calls run().
 """
 
 import ast

@@ -20,7 +20,6 @@ sys.path.insert(0, str(REPO))
 
 from tests.rig.profile import (  # noqa: E402
     ENV_FILE,
-    LEGACY_INVENTORY,
     MAIN_CHECKOUT,
     Profile,
     colon_ieee,
@@ -37,10 +36,10 @@ def private_terms(
     profiles: Iterable[Path] | None = None, env_file: Path = ENV_FILE, terms_file: Path = PRIVATE_TERMS
 ) -> dict[str, str]:
     """Lowercased term -> label to report. Secrets are reported by label, never echoed. `profiles` defaults to every
-    profile, and the inventory.yaml they replaced while it is still there."""
+    profile."""
     terms: dict[str, str] = {}
     if profiles is None:
-        profiles = [*profile_paths(), LEGACY_INVENTORY]
+        profiles = profile_paths()
     for path in profiles:
         if path.exists():
             terms.update((entity_id.lower(), entity_id) for entity_id in profile_entities(Profile.load(path)))

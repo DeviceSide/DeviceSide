@@ -87,14 +87,11 @@ def test_main_fails_on_a_hit(tmp_path, monkeypatch, capsys):
     assert "Acme Street" in capsys.readouterr().out
 
 
-def test_terms_default_to_every_profile_and_the_old_inventory(tmp_path, monkeypatch):
+def test_terms_default_to_every_profile(tmp_path, monkeypatch):
     lab = write(tmp_path, "lab.yaml", "pause:\n  all: [switch.lab_al]\n  zha: [automation.lab_zha]\n")
-    legacy = write(tmp_path, "inventory.yaml", "pause: [switch.old_al]\n")
     monkeypatch.setattr(check_private, "profile_paths", lambda: [lab])
-    monkeypatch.setattr(check_private, "LEGACY_INVENTORY", legacy)
     found = check_private.private_terms(env_file=tmp_path / "missing.env", terms_file=tmp_path / "missing.terms")
     assert found == {
         "switch.lab_al": "switch.lab_al",
         "automation.lab_zha": "automation.lab_zha",
-        "switch.old_al": "switch.old_al",
     }
