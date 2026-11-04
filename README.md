@@ -23,17 +23,17 @@ Device Side also patches some usability quirks in individual integrations.
 
 ## Features
 
-| Action                                 | ZHA | Zigbee2MQTT | Shelly | Hue | Matter |
-|:-------------------------------------- |:---:|:-----------:|:------:|:---:|:------:|
-| `turn_on_for`                          | ✅  | ✅          | ✅     |     | ✅     |
-| `turn_off_for`                         |     |             | ✅     |     |        |
-| `raise_brightness`, `lower_brightness` | ✅  | ✅          |        | ✅  |        |
-| `raise_saturation`, `lower_saturation` | ✅  | ✅          |        | ✅  |        |
-| `raise_hue`, `lower_hue`               | ✅  | ✅          |        |     |        |
-| `stop`                                 | ✅  | ✅          |        | ✅  |        |
-| `set_attributes`                       | ✅  | ✅          |        | ✅  |        |
-| `set_scene`                            |     |             |        | ✅  |        |
-| `get_attributes`                       | ✅  | ✅          | ✅     | ✅  | ✅     |
+| Action                                 | ZHA | Zigbee2MQTT | Shelly | Hue Bridge | Matter |
+|:-------------------------------------- |:---:|:-----------:|:------:|:----------:|:------:|
+| `turn_on_for`                          | ✅  | ✅          | ✅     |            | ✅     |
+| `turn_off_for`                         |     |             | ✅     |            |        |
+| `raise_brightness`, `lower_brightness` | ✅  | ✅          |        | ✅         |        |
+| `raise_saturation`, `lower_saturation` | ✅  | ✅          |        | ✅         |        |
+| `raise_hue`, `lower_hue`               | ✅  | ✅          |        |            |        |
+| `stop`                                 | ✅  | ✅          |        | ✅         |        |
+| `set_attributes`                       | ✅  | ✅          |        | ✅         |        |
+| `set_scene`                            |     |             |        | ✅         |        |
+| `get_attributes`                       | ✅  | ✅          | ✅     | ✅         | ✅     |
 
 ### Timed on/off
 
