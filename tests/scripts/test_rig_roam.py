@@ -561,6 +561,56 @@ async def test_a_join_ha_never_shows_a_light_for_stops_the_move(lab, monkeypatch
         await roamer(lab).go("zha")
 
 
+def renames(lab: Lab) -> list[dict]:
+    return [
+        json.loads(call[2]["payload"])
+        for call in lab.ha.calls
+        if call[:2] == ("mqtt", "publish") and call[2]["topic"].endswith("/device/rename")
+    ]
+
+
+@pytest.fixture
+def withheld(lab, monkeypatch) -> Lab:
+    """Z2M holds light.lab_a's light published, which HA has lost (#208)."""
+    monkeypatch.setattr(roam, "REDISCOVER_S", 0.02)
+    lab.ha.z2m_withheld.add(normalize_ieee(A))
+    return lab
+
+
+async def test_a_z2m_light_ha_lost_comes_back_by_a_rename_and_takes_the_fixed_id(withheld):
+    printed = []
+    await roamer(withheld, out=printed.append).go("zigbee2mqtt")
+    assert withheld.device_of("light.lab_a")["identifiers"][0][0] == "mqtt"
+    assert renames(withheld) == [{"from": A, "to": f"{A}_rediscovered", "homeassistant_rename": True}]
+    assert any(line.startswith("HA shows no light for light.lab_a on Z2M; renaming it") for line in printed)
+    assert await where(withheld) == ["zigbee2mqtt", "zigbee2mqtt"]  # read through the new name
+
+
+async def test_a_z2m_join_whose_light_shows_renames_nothing(lab):
+    await roamer(lab).go("zigbee2mqtt")
+    assert renames(lab) == []
+
+
+async def test_a_bulb_rediscovered_before_is_renamed_to_another_name(withheld):
+    withheld.ha.z2m_names[normalize_ieee(A)] = f"{A}_rediscovered"  # a rename earlier in Z2M's life: no rename to it
+    await roamer(withheld).go("zigbee2mqtt")
+    assert renames(withheld)[0]["to"] == f"{A}_rediscovered_again"
+
+
+async def test_a_light_still_missing_after_the_rename_stops_the_move(withheld, monkeypatch):
+    monkeypatch.setattr(roam, "ENTITY_S", 0.02)
+    withheld.ha.z2m_rename_lights = False
+    with pytest.raises(RoamError, match="even 0.02 s after Z2M published its discovery again"):
+        await roamer(withheld).go("zigbee2mqtt")
+
+
+async def test_a_rename_z2m_never_makes_stops_the_move(withheld, monkeypatch):
+    monkeypatch.setattr(client, "Z2M_REQUEST_TIMEOUT_S", 0.02)
+    withheld.ha.z2m_ignores.add("device/rename")
+    with pytest.raises(RoamError, match="Z2M couldn't rename it: Zigbee2MQTT did not rename"):
+        await roamer(withheld).go("zigbee2mqtt")
+
+
 async def test_a_release_the_network_never_takes_stops_the_move(lab, monkeypatch):
     monkeypatch.setattr(roam, "RELEASE_S", 0.02)
     await roamer(lab).go("zha")

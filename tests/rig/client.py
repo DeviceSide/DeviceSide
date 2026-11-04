@@ -310,6 +310,16 @@ class HAClient:
             "mqtt", "publish", {"topic": f"{Z2M_TOPIC}/request/device/interview", "payload": payload}
         )
 
+    async def z2m_rename(self, ieee: str, to: str) -> None:
+        """Rename a Zigbee2MQTT device with homeassistant_rename, and wait until bridge/devices shows the new name. Z2M
+        clears the device's HA discovery and publishes it all again, under the new name."""
+
+        async def done() -> bool:
+            return (await self.z2m_device(ieee) or {}).get("friendly_name") == to
+
+        payload = {"from": ieee, "to": to, "homeassistant_rename": True}
+        await self._z2m_request("device/rename", payload, done, f"rename {ieee} to {to}")
+
     async def z2m_device(self, ieee: str) -> dict | None:
         """Zigbee2MQTT's entry for `ieee` in its retained bridge/devices (`interview_completed` says it is in), or
         None."""

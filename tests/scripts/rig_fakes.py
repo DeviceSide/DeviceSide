@@ -47,6 +47,11 @@ class FakeHA(HAClient):
         self.z2m_group_ids: dict[str, int] = {}
         self.z2m_ignores: set[str] = set()  # request topics Z2M never acts on
         self.z2m_options: dict[str, dict] = {}  # device options by IEEE, as bridge/info's config.devices
+        self.z2m_names: dict[str, str] = {}  # friendly names a rename gave, by normalized IEEE; the IEEE otherwise
+        # Normalized IEEEs whose light Z2M holds published though HA lost it: a join gets no light, until a rename
+        # with homeassistant_rename publishes it again (or `z2m_rename_lights` is False, when nothing does).
+        self.z2m_withheld: set[str] = set()
+        self.z2m_rename_lights = True
         self.z2m_level = "warning"  # Z2M's log level
         self.z2m_debug_to_mqtt = False  # bridge/info's config.advanced.log_debug_to_mqtt_frontend
         self.z2m_logging: asyncio.Queue[str] = asyncio.Queue()  # what Z2M publishes to bridge/logging
@@ -76,6 +81,8 @@ class FakeHA(HAClient):
             self.z2m_devices.append(ieee)
             self._z2m_interviewed(ieee)
         if entity_id is not None:
+            if integration == "zigbee2mqtt" and normalize_ieee(ieee) in self.z2m_withheld:
+                return device_id
             unique_id = f"{ieee}-11" if integration == "zha" else f"{ieee}_light_zigbee2mqtt"
             self.register(entity_id, device_id, "zha" if integration == "zha" else "mqtt", unique_id)
         return device_id
@@ -124,6 +131,8 @@ class FakeHA(HAClient):
             self.z2m_options.setdefault(payload["id"], {}).update(payload["options"])
         elif topic == "device/remove":
             self._z2m_remove_request(payload)
+        elif topic == "device/rename":
+            self._z2m_rename(payload)
         else:
             self._z2m_group_handle(topic, payload)
 
@@ -142,6 +151,21 @@ class FakeHA(HAClient):
                 self.unregister(f"{group_id}_light_zigbee2mqtt")
         elif topic == "group/members/add":
             self.z2m_groups[payload["group"]].append(payload["device"])
+
+    def _z2m_rename(self, payload: dict) -> None:
+        """A rename by IEEE; with homeassistant_rename, Z2M publishes the device's discovery again, so a withheld light
+        shows, under a generated entity ID."""
+        key = normalize_ieee(payload["from"])
+        self.z2m_names[key] = payload["to"]
+        if not payload.get("homeassistant_rename") or key not in self.z2m_withheld or not self.z2m_rename_lights:
+            return
+        self.z2m_withheld.discard(key)
+        device = next(d for d in self.devices if normalize_ieee(device_ieee(d, "zigbee2mqtt") or "") == key)
+        self.register(f"light.{payload['to']}", device["id"], "mqtt", f"{payload['from']}_light_zigbee2mqtt")
+
+    def _z2m_ieee(self, name: str) -> str:
+        """The normalized IEEE a Z2M device topic's name stands for."""
+        return next((key for key, given in self.z2m_names.items() if given == name), None) or normalize_ieee(name)
 
     def _z2m_interviewed(self, ieee: str) -> None:
         """One interview of `ieee`: it fails while z2m_failing still counts one for it."""
@@ -173,14 +197,15 @@ class FakeHA(HAClient):
         failed = normalize_ieee(ieee) in self.z2m_failing
         return {
             "ieee_address": ieee,
-            "friendly_name": ieee,
+            "friendly_name": self.z2m_names.get(normalize_ieee(ieee), ieee),
             "interview_completed": not failed,
             "interview_state": "FAILED" if failed else "SUCCESSFUL",
         }
 
     def _z2m_remove(self, ieee: str, leave: bool = True) -> None:
         self.z2m_devices = [i for i in self.z2m_devices if normalize_ieee(i) != normalize_ieee(ieee)]
-        self.z2m_options.pop(ieee, None)  # as Z2M: a removed device's options go with it
+        self.z2m_options.pop(ieee, None)  # as Z2M: a removed device's options go with it, and its name
+        self.z2m_names.pop(normalize_ieee(ieee), None)
         self._leave("zigbee2mqtt", ieee)
         for members in self.z2m_groups.values():
             members[:] = [i for i in members if normalize_ieee(i) != normalize_ieee(ieee)]
@@ -238,9 +263,9 @@ class FakeHA(HAClient):
     async def _z2m_device_topic(self, topic: str, queue: asyncio.Queue[str]) -> asyncio.Queue[str]:
         """A device's availability (retained), or its state topic, which a `/get` answers while the device is there."""
         if topic.endswith("/availability"):
-            name = topic.removesuffix("/availability")
-            if any(normalize_ieee(i) == normalize_ieee(name) for i in self.z2m_devices):
-                state = "offline" if normalize_ieee(name) in self.z2m_offline else "online"
+            key = self._z2m_ieee(topic.removesuffix("/availability"))
+            if any(normalize_ieee(i) == key for i in self.z2m_devices):
+                state = "offline" if key in self.z2m_offline else "online"
                 queue.put_nowait(json.dumps({"state": state}))
         else:
             self._z2m_device_topics[topic] = queue
@@ -287,7 +312,7 @@ class FakeHA(HAClient):
         """A Z2M bridge request, or a device's `/get`, answered while the device is there."""
         if topic.endswith("/get"):
             name = topic.removeprefix("zigbee2mqtt/").removesuffix("/get")
-            if normalize_ieee(name) not in self.z2m_offline and (queue := self._z2m_device_topics.get(name)):
+            if self._z2m_ieee(name) not in self.z2m_offline and (queue := self._z2m_device_topics.get(name)):
                 queue.put_nowait(json.dumps({"state": "ON"}))
             return
         self._z2m_handle(topic.removeprefix("zigbee2mqtt/bridge/request/"), payload)
