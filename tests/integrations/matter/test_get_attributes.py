@@ -6,6 +6,12 @@ import pytest
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util import dt as dt_util
 
+from custom_components.device_side.integrations.matter.addressing import (
+    endpoint_id_from_unique_id,
+    matter_client,
+    node_id_from_unique_id,
+)
+
 from ...conftest import call, refusal
 from ...fixtures.matter import NODE_ID, add_matter_entity, matter_device, on_time_reads
 
@@ -102,3 +108,19 @@ async def test_two_targets_read_in_one_call(hass):
     response = await call(hass, "get_attributes", {"entity_id": ["switch.timed", "switch.idle"]})
 
     assert response == {"switch.timed": {"timer": timer(5.0)}, "switch.idle": {}}
+
+
+def test_non_numeric_unique_id_segment_is_unparsable():
+    """Seven parts pass the length guard, but a non-numeric node or endpoint segment parses to None."""
+    assert node_id_from_unique_id("00-zzzzzzzzzzzzzzzz-0-1-2-3-4") is None
+    assert endpoint_id_from_unique_id("00-0000000000000001-0-zz-2-3-4") is None
+
+
+def test_matter_client_without_entry_id_or_loaded_entry_is_none(hass):
+    assert matter_client(hass) is None
+
+
+def test_matter_client_without_entry_id_uses_first_loaded_entry(hass):
+    entry, _, _ = matter_device(hass, endpoint_id=EP)
+
+    assert matter_client(hass) is entry.runtime_data.adapter.matter_client
