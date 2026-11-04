@@ -27,7 +27,7 @@ and off.
 component), whatever entity domain the target shows: a relay exposed as a `switch` or an on/off `light` rides one
 record. A capability or field nobody has tested is left out of scope and refused, never added on a sibling's proof.
 A native group path is proven once any action of the same adapter class has passed through it and the command has
-passed on one light (PR #NNN).
+passed on one light (PR #204).
 
 ## Pull requests
 
