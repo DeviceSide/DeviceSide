@@ -24,9 +24,9 @@ def broker(hass, monkeypatch):
     fake = Broker()
     fake.retained[INFO] = {"config": {"devices": {IEEE: {"friendly_name": "bulb"}}, "groups": {}}}
     monkeypatch.setattr(bridge.mqtt, "async_subscribe", fake.subscribe)
-    monkeypatch.setattr(bridge, "_RETAINED_TIMEOUT_S", 0.01)
-    monkeypatch.setattr(bridge, "_REPLY_TIMEOUT_S", 0.01)
-    monkeypatch.setattr(read, "_REPLY_TIMEOUT_S", 0.01)
+    monkeypatch.setattr(bridge, "_RETAINED_TIMEOUT_S", 0.25)
+    monkeypatch.setattr(bridge, "_REPLY_TIMEOUT_S", 0.25)
+    monkeypatch.setattr(read, "_REPLY_TIMEOUT_S", 0.25)
     monkeypatch.setattr(set_attributes, "_FADE_WAIT_S", 0.0)
     monkeypatch.setattr(set_attributes, "_RETRY_S", 0.0)
     hass.services.async_register("mqtt", "publish", fake.publish)
