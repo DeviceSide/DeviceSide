@@ -2,7 +2,8 @@
 that make them say more (DebugLevels).
 
 Z2M's frontend keeps only its last 1000 lines and HA's log restarts with HA, so a failure read later finds nothing.
-Both logs are captured for every run, next to its report; they are deleted after a clean run unless asked for.
+Both logs are captured for every run, next to its report; they are deleted after a clean run unless asked for, or
+unless Z2M's coordinator crashed during it.
 """
 
 import asyncio
@@ -23,6 +24,33 @@ HA_DOMAINS = {"hue": "hue", "zha": "zha", "zigbee2mqtt": "mqtt", "shelly": "shel
 ROAM_INTEGRATIONS = ("hue", "zha", "zigbee2mqtt")
 LOG_SECTION = "log_levels"
 STAMPED = re.compile(r"^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)")
+# Z2M's error lines when its coordinator crashes (EmberZNet over USB, 3 Nov: ERROR_EXCEEDED_MAXIMUM_ACK_TIMEOUT_COUNT),
+# logged at any level; Z2M restarts. The ACK timeouts that lead up to one show at debug only.
+CRASH_MARKS = ("ASH_NCP_FATAL_ERROR", "Adapter disconnected")
+ACK_TIMEOUT = "Timer expired waiting for ACK"
+CRASH_GAP_S = 60  # crash lines closer than this are one crash
+
+
+def coordinator_crashes(log: str) -> tuple[list[str], int]:
+    """From a captured Z2M log (z2m_line's format): the time of each coordinator crash, and how many ACK timeouts it
+    logged."""
+    crashes: list[str] = []
+    last: datetime.datetime | None = None
+    acks = 0
+    for line in log.splitlines():
+        stamp, _, rest = line.partition(" ")
+        level, _, message = rest.strip().partition(" ")
+        acks += ACK_TIMEOUT in message
+        if level != "error" or not any(mark in message for mark in CRASH_MARKS):
+            continue
+        try:
+            at = datetime.datetime.strptime(stamp[:8], "%H:%M:%S")
+        except ValueError:
+            continue
+        if last is None or not 0 <= (at - last).total_seconds() < CRASH_GAP_S:
+            crashes.append(stamp[:8])
+        last = at
+    return crashes, acks
 
 
 def z2m_line(raw: str, now: datetime.datetime) -> str:
@@ -119,9 +147,27 @@ class RunLogs:
             return
         self.written.append(self.ha_path)
 
+    def z2m_crashes(self) -> list[str]:
+        """Each coordinator crash in the captured Z2M log, printed with the ACK timeouts it shows."""
+        if self.z2m_path not in self.written:
+            return []
+        try:
+            crashes, acks = coordinator_crashes(self.z2m_path.read_text())
+        except OSError as err:
+            self.out(f"Z2M's log couldn't be read for crashes: {err}")
+            return []
+        if crashes:
+            times = "once" if len(crashes) == 1 else f"{len(crashes)} times"
+            self.out(f"Z2M's coordinator crashed {times} ({', '.join(crashes)}).")
+        if acks:
+            self.out(f"Z2M logged {acks} ACK timeout{'s' if acks > 1 else ''} with its coordinator.")
+        return crashes
+
     def settle(self, clean: bool) -> None:
-        """After a clean run the files go unless `keep`; after any other they stay, and their paths are printed."""
-        if clean and not self.keep:
+        """Name each crash of Z2M's coordinator the run's Z2M log shows. After a clean run with none, the files go
+        unless `keep`; otherwise they stay, and their paths are printed."""
+        crashes = self.z2m_crashes()
+        if clean and not self.keep and not crashes:
             for path in self.written:
                 path.unlink(missing_ok=True)
             return

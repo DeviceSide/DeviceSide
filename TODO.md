@@ -72,6 +72,7 @@ v0.1.0 is the next release.
 | 15 (follow-up) | Rig captures Z2M's and HA's logs for every run (kept after a failure), and `--debug-logs` raises both to debug | #183 |
 | 15 (follow-up) | Tests no longer color the cmux workspace running them green (a locks test's `monkeypatch.undo()` reached the real cmux) | #184 |
 | 15 (follow-up) | Rig clear gate per profile: `pre_authorized: true` profiles (the lab's) skip `RIG_BLOCKER_ENTITY`; others stay gated | #187 |
+| 15 (follow-up) | Rig places a roaming bulb where it is live and deletes a stale ZHA or Z2M listing; a Z2M remove a coordinator crash cut short is tried again; each run names Z2M coordinator crashes | #206 |
 
 ## To go, in order
 
