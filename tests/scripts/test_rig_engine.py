@@ -691,6 +691,17 @@ def group_ha(respond) -> FakeHA:
     return FakeHA({"light.room": {"attributes": {"entity_id": members}}, "light.a": {}, "light.b": {}}, respond)
 
 
+async def test_attributes_in_a_command_response_fail_the_step(tmp_path):
+    """A command's response is status alone: attributes are read with get_attributes."""
+    text = GROUP.replace("{status: sent, integration: self}", "{attributes: {brightness: 102}}")
+    steps = suite(tmp_path, text, "fake")
+    ha = group_ha(members_on("light.a", "light.b"))
+    result = await run_one(ha, steps, profile("fake", group="light.room"), registry=GROUP_REGISTRY)
+    outcome, detail = outcomes(result)["every_member[group]"]
+    assert outcome is Outcome.FAIL
+    assert detail.endswith("attributes are checked in a query's response, not turn_on_for's")
+
+
 def members_on(*members: str) -> Callable:
     def _respond(ha, action, data):
         for member in members:
@@ -805,26 +816,31 @@ async def test_a_group_fails_on_a_lagging_member(tmp_path):
 
 
 MIXED = """
-action: turn_on_for
+action: get_attributes
 rig_seconds: 5
 tests:
   - name: mixed
     roles: [group]
     steps:
-      - call: {duration: 6}
+      - call: {}
       - expect_response: {attributes: {brightness: 102, color_temp_kelvin: 2700}}
-      - expect_state: {state: off, brightness: 102, color_temp_kelvin: 2700}
 """
 
 CT = {"supported_color_modes": ["color_temp"], "brightness": 102, "color_temp_kelvin": 2700}
 WHITE = {"supported_color_modes": ["brightness"], "brightness": 102}
 
 
+# GROUP_REGISTRY, with get_attributes known as a query, as the real registry knows it.
+QUERY_REGISTRY = SimpleNamespace(
+    adapter=GROUP_REGISTRY.adapter, actions={"get_attributes": SimpleNamespace(kind="query")}
+)
+
+
 def mixed_ha(a: dict, b: dict) -> FakeHA:
-    """A group of light.a and light.b, off, whose call answers each member's attributes as HA shows them."""
+    """A group of light.a and light.b, off, whose query answers each member's attributes as HA shows them."""
 
     def respond(ha, action, data):
-        return {m: {"attributes": dict(ha.states[m]["attributes"])} for m in ("light.a", "light.b")}
+        return {m: dict(ha.states[m]["attributes"]) for m in ("light.a", "light.b")}
 
     states = {"light.a": {"attributes": a}, "light.b": {"attributes": b}}
     return FakeHA({"light.room": {"attributes": {"entity_id": ["light.a", "light.b"]}}} | states, respond)
@@ -833,14 +849,14 @@ def mixed_ha(a: dict, b: dict) -> FakeHA:
 async def test_a_mixed_group_checks_each_member_for_what_it_takes(tmp_path):
     """The White member has no color temperature: it is checked for brightness alone."""
     steps = suite(tmp_path, MIXED, "fake")
-    result = await run_one(mixed_ha(CT, WHITE), steps, profile("fake", group="light.room"), registry=GROUP_REGISTRY)
+    result = await run_one(mixed_ha(CT, WHITE), steps, profile("fake", group="light.room"), registry=QUERY_REGISTRY)
     assert outcomes(result) == {"mixed[group]": (Outcome.PASS, "")}
 
 
 async def test_a_member_that_takes_an_attribute_is_still_checked_for_it(tmp_path):
     steps = suite(tmp_path, MIXED, "fake")
     ha = mixed_ha(CT | {"color_temp_kelvin": 4000}, WHITE)
-    result = await run_one(ha, steps, profile("fake", group="light.room"), registry=GROUP_REGISTRY)
+    result = await run_one(ha, steps, profile("fake", group="light.room"), registry=QUERY_REGISTRY)
     outcome, detail = outcomes(result)["mixed[group]"]
     assert outcome is Outcome.FAIL
     assert detail.startswith("step 2 (expect_response): light.a: attributes ['color_temp_kelvin']")
@@ -850,7 +866,7 @@ async def test_a_member_that_cant_take_an_attribute_must_show_it_absent(tmp_path
     """The White member showing a color temperature is a fault, not something to skip."""
     steps = suite(tmp_path, MIXED, "fake")
     ha = mixed_ha(CT, WHITE | {"color_temp_kelvin": 2700})
-    result = await run_one(ha, steps, profile("fake", group="light.room"), registry=GROUP_REGISTRY)
+    result = await run_one(ha, steps, profile("fake", group="light.room"), registry=QUERY_REGISTRY)
     outcome, detail = outcomes(result)["mixed[group]"]
     assert outcome is Outcome.FAIL
     assert detail.startswith("step 2 (expect_response): light.b: attributes ['color_temp_kelvin']")
@@ -902,7 +918,7 @@ async def test_a_step_that_names_the_detail_keeps_it(tmp_path):
 
 async def test_an_attribute_no_member_takes_fails(tmp_path):
     steps = suite(tmp_path, MIXED, "fake")
-    result = await run_one(mixed_ha(WHITE, WHITE), steps, profile("fake", group="light.room"), registry=GROUP_REGISTRY)
+    result = await run_one(mixed_ha(WHITE, WHITE), steps, profile("fake", group="light.room"), registry=QUERY_REGISTRY)
     outcome, detail = outcomes(result)["mixed[group]"]
     assert outcome is Outcome.FAIL
     assert detail == "step 2 (expect_response): no member of light.room takes color_temp_kelvin"
@@ -913,10 +929,9 @@ async def test_a_wanted_absence_holds_on_a_light_without_the_mode(tmp_path):
     text = MIXED.replace(
         "{brightness: 102, color_temp_kelvin: 2700}}", "{rgb_color: [255, 0, 0], color_temp_kelvin: null}}"
     )
-    text = text.replace("      - expect_state: {state: off, brightness: 102, color_temp_kelvin: 2700}\n", "")
     rgb = {"supported_color_modes": ["rgb"], "rgb_color": [255, 0, 0]}
     steps = suite(tmp_path, text, "fake")
-    result = await run_one(mixed_ha(rgb, rgb), steps, profile("fake", group="light.room"), registry=GROUP_REGISTRY)
+    result = await run_one(mixed_ha(rgb, rgb), steps, profile("fake", group="light.room"), registry=QUERY_REGISTRY)
     assert outcomes(result) == {"mixed[group]": (Outcome.PASS, "")}
 
 
@@ -1453,6 +1468,9 @@ class Z2MHA(FakeHA):
     async def z2m_device_options(self, ieee: str) -> dict:
         return dict(self.options)
 
+    async def z2m_device(self, ieee: str) -> dict:
+        return {"ieee_address": ieee}
+
 
 def native_control(turns_it_on: bool) -> Callable:
     def respond(ha, action, data):
@@ -1481,6 +1499,16 @@ async def test_expect_z2m_option_fails_when_the_option_stays_off(tmp_path):
     outcome, detail = outcomes(result)["color_then_off[light_color]"]
     assert outcome is Outcome.FAIL
     assert "Zigbee2MQTT option hue_native_control is False, expected True" in detail
+
+
+async def test_a_failed_case_still_puts_the_option_back(tmp_path):
+    ha = Z2MHA(native_control(turns_it_on=False))
+    ha.options = {"hue_native_control": True}
+    steps = suite(tmp_path, Z2M_COLOR, "zigbee2mqtt")
+    result = await run_one(ha, steps, profile("zigbee2mqtt", light_color="light.bulb"), admin=ha)
+    assert outcomes(result)["color_then_off[light_color]"][0] is Outcome.FAIL
+    assert ha.options == {"hue_native_control": True}
+    assert ha.calls[-1] == ("z2m", "options", {"id": "0x0017880100000001", "hue_native_control": True})
 
 
 async def test_z2m_option_steps_do_nothing_in_another_integrations_suite(tmp_path):
@@ -2048,3 +2076,34 @@ def test_expect_hue_travel_needs_numbers(tmp_path, args, error):
 def test_mark_hue_takes_only_a_target(tmp_path):
     with pytest.raises(ValueError):
         suite(tmp_path, HUE_TRAVEL.replace("mark_hue: {}", "mark_hue: {by: 1}"), "zha")
+
+
+async def test_a_restore_that_fails_stays_journaled_past_the_next_case_until_recovered(tmp_path):
+    journal = Journal(tmp_path / "journal.json")
+    ha = FakeHA({"light.a": {"state": "on"}, "light.b": {"state": "off"}})
+    call_service = ha.call_service
+
+    async def refuse_a(domain, service, data=None, return_response=False):
+        if (data or {}).get("entity_id") == "light.a":
+            raise HAError("light.a is unavailable")
+        return await call_service(domain, service, data, return_response)
+
+    first = engine.Snapshot(ha, journal=journal)
+    await first.take("light.a")
+    ha.set("light.a", "off")
+    ha.call_service = refuse_a
+    await first.restore()
+    ha.call_service = call_service
+    unrestored = f"{engine.SERIAL}{engine.UNRESTORED}"
+    assert set(journal.get("cases")) == {unrestored}
+    assert journal.get("cases")[unrestored]["taken"]["light.a"]["state"] == "on"
+
+    second = engine.Snapshot(ha, journal=journal)  # the lane's next case
+    await second.take("light.b")
+    await second.restore()
+    assert set(Journal(journal.path).get("cases")) == {unrestored}
+
+    for key, entry in dict(journal.get("cases")).items():  # as --recover does
+        await engine.Snapshot(ha, taken=entry["taken"], journal=journal, journal_key=key).restore()
+    assert ha.states["light.a"]["state"] == "on"
+    assert not journal.path.exists()

@@ -2,6 +2,7 @@
 one process conflict as two runs would; no rig is touched."""
 
 import argparse
+import asyncio
 import contextlib
 import fcntl
 import importlib.util
@@ -14,7 +15,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from tests.rig import ledger, locks
+from tests.rig import baseline, locks
 from tests.rig.engine import load_step_file
 from tests.rig.journal import LEGACY_NAME, Journal, orphans
 from tests.rig.locks import Claim
@@ -734,13 +735,26 @@ def test_hold_pauses_its_integrations_entries_while_the_command_runs(probe, monk
     assert seen == [{"automation.motion": "off", "switch.al": "on"}]
     assert ProbeHA.calls == [("turn_off", "automation.motion"), ("turn_on", "automation.motion")]
     assert not list(probe.glob("device_side-rig.journal.*"))  # its liveness token is gone with it
-    assert not (probe / ledger.NAME).exists()
+    assert not (probe / baseline.NAME).exists()
 
 
 def test_hold_pausing_nothing_needs_no_ha(probe, monkeypatch):
     (probe / "lab.yaml").write_text("shelly:\n")
     monkeypatch.setattr(rig, "load_env", dict)
     assert rig.main(["--hold", "hue", "--", "true"]) == 0
+
+
+def test_recover_puts_back_a_crashed_probes_pauses_with_no_orphan_journal(probe, capsys):
+    crashed = Journal.start(probe)  # a probe's journal is never written
+    asyncio.run(baseline.Baseline.of(ProbeHA("", ""), crashed, "pause").pause(["automation.motion"]))
+    crashed.release()
+    assert ProbeHA.states["automation.motion"] == "off"
+
+    assert rig.recover_all(argparse.Namespace(dry_run=False), probe) == 0
+
+    assert "No aborted run left anything to put back." in capsys.readouterr().out
+    assert ProbeHA.states["automation.motion"] == "on"
+    assert not (probe / baseline.NAME).exists()
 
 
 def test_hold_pausing_needs_ha_settings(probe, monkeypatch):

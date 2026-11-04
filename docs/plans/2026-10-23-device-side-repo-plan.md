@@ -374,7 +374,7 @@ class Target: entity_id, domain, integration, entry: er.RegistryEntry, device, c
 
 @dataclass(slots=True)
 class EntityResult: entity_id, status, integration, clamped_to, detail, data
-    def as_response(self) -> dict   # drops None; data under "attributes"; no tier (a query returns data alone)
+    def as_response(self) -> dict   # a command's status entry; drops None; a query returns its data alone
 
 # core/scope.py
 @dataclass(frozen=True) class DurationLimits: min_s, max_s

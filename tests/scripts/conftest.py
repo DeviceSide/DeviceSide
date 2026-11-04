@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.rig import locks
+from tests.rig import locks, roam
 
 REAL_WORKSPACE_COLOR = locks.workspace_color  # the autouse fixture swaps the module's for a recorder
 
@@ -49,3 +49,9 @@ def workspace_colors(monkeypatch) -> list[str | None]:
     colors: list[str | None] = []
     monkeypatch.setattr(locks, "workspace_color", colors.append)
     return colors
+
+
+@pytest.fixture(autouse=True)
+def quick_prime(monkeypatch) -> None:
+    """No wait between a Z2M bulb's first reads (Roamer.prime_z2m): the fakes don't answer device_side's get."""
+    monkeypatch.setattr(roam, "PRIME_GAP_S", 0)

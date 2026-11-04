@@ -7,18 +7,22 @@ Each move releases the bulbs from their network and joins them to the target, by
 a Leave; then the next network opens a finite join window, closed once every bulb is in. After each join the bulb's
 light entity is renamed to its fixed profile entity ID, and on Z2M its options are set again.
 
-A bulb's home is Hue, the only home supported so far (profile.HOMES). Before a bulb first leaves Hue, its room and
-zone membership, the scene actions that target it and its name are saved; when it returns they are rewritten against
-its new device and light IDs.
+A bulb's home is Hue, the only home supported so far (profile.HOMES). Before a bulb's first move, the home record
+(home.py) saves its state, and, leaving Hue, its room and zone membership, the scene actions that target it and its
+name. When it is home again they are rewritten against its new device and light IDs, and its state is put back through
+its fixed entity; only then is the record dropped. It outlives the run, so a second crash keeps the first home.
 
 On each visit the run makes the profile's `ds-rig-*` groups on the bulbs' network: a Z2M group, a ZHA group or a Hue
 zone (whose grouped_light is the group), plus a Hue scene in the zone where the profile names one, each renamed to
 its fixed entity ID. They are removed before the bulbs move on, and by --recover after a crash.
 
-The journal's `roam` section is written before every change: where each bulb is, the move in flight, the saved
-home and each rig-made group, with each bulb's IEEE, entity ID and Z2M options, so --recover can bring the bulbs home
+The journal's `roam` section is written before every change: where each bulb is, the move in flight and each rig-made
+group, with each bulb's IEEE, entity ID and Z2M options, so --recover can bring the bulbs home
 and remove the groups with no profile loaded. Where a bulb is, though, is always read from the networks themselves;
 the journal's copy is for a person reading it.
+
+A network can list a bulb that left it: Z2M keeps a device whose remove failed. A bulb is where it is live (locate),
+and a dead ZHA or Z2M listing is removed without a Leave, so neither a move's source nor its target can be one.
 """
 
 import asyncio
@@ -26,8 +30,10 @@ import contextlib
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterable
 from dataclasses import dataclass, field
 
+from .baseline import Baseline, BaselineError
 from .bridge import BridgeError, HueBridge
-from .client import HAClient, HAError, device_ieee
+from .client import HAClient, HAError, Z2MRemoveError, device_ieee
+from .home import HomeRecord, light_state
 from .journal import Journal
 from .profile import (
     CYCLE,
@@ -46,7 +52,7 @@ JOIN_S = 120  # how long a join window stays open, and how long a bulb has to jo
 REINTERVIEWS = 3  # how many times a join asks Z2M to interview a bulb again after a failed interview
 REINTERVIEW_GAP_S = 20  # between asks for one bulb: the retained device list may still say FAILED just after one
 JOIN_LOG_LEVEL = "info"  # Z2M's log level during a join: its default, warning, logs no join or interview
-VERBOSE_LOG_LEVELS = ("info", "debug")
+VERBOSE_LOG_LEVELS = ("info", "debug", "trace")
 RELEASE_S = 30  # for a released bulb to drop off its network
 # A bulb from Hue that a ZHA or Z2M window still doesn't show this long after it opened or the last bulb joined,
 # whichever is later, once every other bulb is in, may have missed the bridge's Leave: the slowest join seen took
@@ -76,6 +82,10 @@ ZHA_GROUP_UNIQUE_ID = "light_zha_group_0x{:04x}"
 BLUETOOTH_RESET = (
     "Reset it over Bluetooth in the Hue app and add it to the bridge, then run scripts/rig.py --recover, which puts "
     "back its Hue rooms and scenes; the journal keeps them until then."
+)
+# Z2M's coordinator crashing mid-remove (EmberZNet's ASH_NCP_FATAL_ERROR, 3 Nov) restarts Z2M, and the Leave never goes.
+Z2M_CRASHED = (
+    "Z2M's coordinator crashed mid-remove; see the run's Z2M log. Once Z2M is up, run scripts/rig.py --recover."
 )
 # zha.remove drops a bulb from HA whether or not it acts on the Leave; one that misses it stays on ZHA's network until
 # power-up, when it announces itself and ZHA adds it back.
@@ -174,17 +184,24 @@ class Roamer:
         self.groups = list(groups)
         saved = (journal.get("roam") if journal is not None else None) or {}
         self.at: dict[str, str | None] = dict(saved.get("at", {}))
-        self.home: dict[str, dict] = dict(saved.get("home", {}))
+        # Each bulb's home, until it is back as it was: shared by every run, and kept after this one ends.
+        self.homes = HomeRecord(journal.path.parent if journal is not None else None)
+        for bulb in self.bulbs:  # a journal from before the home record holds the Hue home itself
+            if (hue := saved.get("home", {}).get(bulb.entity_id)) is not None:
+                self.homes.add(
+                    bulb.ieee, {"entity_id": bulb.entity_id, "network": bulb.home, "hue": hue, "state": None}
+                )
         self.moving: dict | None = saved.get("move")
-        # Each rig-made group or scene, journaled before it is made: {network, kind, name, entity_id, renamed}.
+        # Each rig-made group or scene, journaled before it is made: {network, kind, name, entity_id, renamed}, and
+        # `renaming` from just before its entity is renamed.
         self.made: list[dict] = [dict(made) for made in saved.get("made", [])]
         # The bridge's devices before a search, until search_over has named any newcomer; journaled, so recovery can.
         before = saved.get("bridge_before")
         self.bridge_before: set[str] | None = set(before) if before is not None else None
         # The bulbs in the order they last joined a network; journaled, so recovery releases them in reverse.
         self.arrived: list[str] = list(saved.get("arrived", []))
-        # Z2M's own log level while a join holds it at JOIN_LOG_LEVEL; journaled, so a crash mid-join still restores it.
-        self.z2m_log_level: str | None = saved.get("z2m_log_level")
+        # Z2M's log level, held at JOIN_LOG_LEVEL for a join: the baseline puts it back after a crash too.
+        self.baseline = Baseline.of(ha, journal, "join", out)
 
     @classmethod
     def from_journal(cls, ha: HAClient, bridge: HueBridge, journal: Journal, out: Callable[[str], None] = print):
@@ -205,26 +222,25 @@ class Roamer:
                     "bulbs": [bulb.saved() for bulb in self.bulbs],
                     "at": self.at,
                     "move": self.moving,
-                    "home": self.home,
                     "made": self.made,
                     "bridge_before": sorted(self.bridge_before) if self.bridge_before is not None else None,
                     "arrived": self.arrived,
-                    "z2m_log_level": self.z2m_log_level,
                 }
             )
 
-    def finish(self) -> None:
-        """Clear the journal's roam section once every bulb is home with its home put back, and no rig-made group is
-        left."""
-        if (
-            self.journal is not None
-            and not self.home
-            and self.moving is None
+    @property
+    def done(self) -> bool:
+        """Whether every bulb is home with its home put back, and no move or rig-made group is left."""
+        return (
+            self.moving is None
             and not self.made
-            and not self.z2m_log_level
-        ):
-            if all(self.at.get(bulb.entity_id) == bulb.home for bulb in self.bulbs):
-                self.journal.clear("roam")
+            and all(self.at.get(b.entity_id) == b.home and self.homes.get(b.ieee) is None for b in self.bulbs)
+        )
+
+    def finish(self) -> None:
+        """Clear the journal's roam section once the roaming is done."""
+        if self.journal is not None and self.done:
+            self.journal.clear("roam")
 
     # --- where a bulb is ------------------------------------------------------------------------------------------
 
@@ -237,16 +253,88 @@ class Roamer:
         device = await self.ha.z2m_device(hex_ieee(bulb.ieee))
         return device is not None and bool(device.get("interview_completed"))
 
-    async def locate(self, bulb: Bulb) -> str | None:
-        """The network `bulb` is on, or None. Hue's bridge and Z2M's device list are asked before HA's ZHA registry,
-        which is the only view of ZHA and may keep a device a Leave already took."""
+    async def listings(self, bulb: Bulb) -> list[str]:
+        """Every network that lists `bulb`, live there or not: the Hue bridge, Z2M's device list, HA's ZHA registry."""
+        listed = []
         if await self.bridge.device_id_by_ieee(bulb.ieee) is not None:
-            return "hue"
-        if await self.ha.z2m_device(hex_ieee(bulb.ieee)) is not None:
-            return "zigbee2mqtt"
+            listed.append("hue")
         if await self.ha.device_by_ieee("zha", bulb.ieee) is not None:
-            return "zha"
-        return None
+            listed.append("zha")
+        if await self.ha.z2m_device(hex_ieee(bulb.ieee)) is not None:
+            listed.append("zigbee2mqtt")
+        return listed
+
+    async def live(self, network: str, bulb: Bulb) -> bool:
+        """Whether `bulb` is there on `network`, by that network's passive view: Hue's connectivity status, ZHA's light
+        not unavailable, Z2M's availability (or, with that off, its HA light). No sign either way counts as live."""
+        if network == "hue":
+            for connectivity in await self.bridge.get("zigbee_connectivity"):
+                if normalize_ieee(connectivity.get("mac_address", "")) == normalize_ieee(bulb.ieee):
+                    return connectivity.get("status", "connected") == "connected"
+            return False
+        if network == "zigbee2mqtt":
+            availability = await self.ha.z2m_availability(await self.z2m_name(bulb))
+            if availability is not None:
+                return availability == "online"
+        if (device := await self.ha.device_by_ieee(network, bulb.ieee)) is None:
+            return network == "zigbee2mqtt"  # Z2M lists it, HA has no device for it yet
+        lights = [
+            entry["entity_id"]
+            for entry in await self.ha.entity_registry()
+            if entry.get("device_id") == device["id"] and entry["entity_id"].startswith("light.")
+        ]
+        states = [await self.ha.get_state(entity_id) for entity_id in lights]
+        return not states or any(state is not None and state["state"] != "unavailable" for state in states)
+
+    async def locate(self, bulb: Bulb) -> str | None:
+        """The network `bulb` is live on, or None where none lists it. A dead ZHA or Z2M listing is removed without a
+        Leave, and named. Z2M's availability can lag 10 min, so a bulb live on Z2M and elsewhere is read through Z2M,
+        and a bulb that doesn't answer isn't there. It raises RoamError, removing nothing, where two networks have the
+        bulb live, where Hue lists it dead (Hue's listing holds its home), or where none has it live."""
+        listed = await self.listings(bulb)
+        if not listed:
+            return None
+        live = [network for network in listed if await self.live(network, bulb)]
+        if len(live) > 1 and "zigbee2mqtt" in live and not await self.z2m_answers(bulb):
+            live.remove("zigbee2mqtt")
+        if len(live) > 1:
+            raise RoamError(
+                f"{bulb.entity_id} is live on both {' and '.join(NAMES[network] for network in live)}; remove it from "
+                "the one it isn't on, then run scripts/rig.py --recover."
+            )
+        dead = [network for network in listed if network not in live]
+        if "hue" in dead:
+            raise RoamError(
+                f"The Hue bridge lists {bulb.entity_id}, but can't reach it"
+                + (f", and it is live on {NAMES[live[0]]}" if live else "")
+                + ". Hue's listing holds its home, so the rig leaves it: switch its lamp off and on, then run "
+                "scripts/rig.py --recover."
+            )
+        if not live:
+            raise RoamError(
+                f"{bulb.entity_id} is listed on {' and '.join(NAMES[network] for network in listed)} but live on none. "
+                "Switch its lamp off and on, then run scripts/rig.py --recover."
+            )
+        for network in dead:
+            await self.purge(network, bulb)
+        return live[0]
+
+    async def z2m_answers(self, bulb: Bulb) -> bool:
+        return await self.ha.z2m_answers(await self.z2m_name(bulb))
+
+    async def z2m_name(self, bulb: Bulb) -> str:
+        """The bulb's friendly name on Z2M, the device topic's name; its IEEE where Z2M gives none."""
+        device = await self.ha.z2m_device(hex_ieee(bulb.ieee)) or {}
+        return device.get("friendly_name") or hex_ieee(bulb.ieee)
+
+    async def purge(self, network: str, bulb: Bulb) -> None:
+        """Remove a ZHA or Z2M listing of a bulb that isn't there. Z2M's is a database delete, with no Leave; ZHA's
+        Leave goes nowhere."""
+        if network == "zigbee2mqtt":
+            await self.ha.z2m_force_remove(hex_ieee(bulb.ieee))
+        else:
+            await self.ha.zha_remove(colon_ieee(bulb.ieee))
+        self.out(f"Removed {bulb.entity_id}'s stale {NAMES[network]} listing: it isn't there.")
 
     # --- moving ---------------------------------------------------------------------------------------------------
 
@@ -254,12 +342,12 @@ class Roamer:
         """Remove the rig-made groups, then move every bulb not on `to` straight there, in one move, whichever
         networks they are on (after a crash, they may differ). On a bulb found on no network it raises RoamError."""
         await self.remove_groups()
-        await self.restore_z2m_log_level()  # a crash mid-join left it raised
         await self.settle(to)
         if away := [bulb for bulb in self.bulbs if self.at[bulb.entity_id] != to]:
             await self.move(away, to)
-        if to == "hue":  # a bulb back on Hue gets its rooms and scenes back
+        if to == self.home_network:  # a bulb back home gets its rooms, scenes and state back
             await self.restore_home()
+        if to == "hue":
             if not await self.search_over():
                 self.out("The Hue search is still open; anything resetting nearby may yet join the bridge.")
         self.finish()
@@ -294,8 +382,7 @@ class Roamer:
         if None in origins.values():
             sources.append("no network (a move cut short)")
         self.out(f"Moving {names} from {' and '.join(sources)} to {NAMES[target]}.")
-        if leaving_home := [bulb for bulb in bulbs if origins[bulb.entity_id] == "hue"]:
-            await self.save_home(leaving_home)
+        await self.save_home(bulbs, origins)
         self.moving = {"from": origins, "to": target, "bulbs": list(origins)}
         self.save()
         # A released bulb joins whatever network is open, so only the target may be.
@@ -305,6 +392,10 @@ class Roamer:
                 await self.release(source, bulb)
                 self.at[bulb.entity_id] = None
                 self.save()
+        if target != "hue":  # a listing the target still holds for a released bulb is stale; a window would count it
+            for bulb in bulbs:
+                if target in await self.listings(bulb):
+                    await self.purge(target, bulb)
         await self.join(target, bulbs, origins)
         for bulb in bulbs:
             self.at[bulb.entity_id] = target
@@ -367,21 +458,48 @@ class Roamer:
                 await self.bridge.delete("device", device_id)
         elif network == "zha":
             await self.ha.zha_remove(colon_ieee(bulb.ieee))
-        else:
-            try:
-                await self.ha.z2m_remove_device(hex_ieee(bulb.ieee))
-            except TimeoutError:
-                # Z2M keeps a device it couldn't send the Leave to: one that rejoined but can't be reached.
-                raise RoamError(
-                    f"Z2M couldn't remove {bulb.entity_id}: it didn't take the Leave. Switch its lamp off and on, and "
-                    "once Z2M has interviewed it again run scripts/rig.py --recover."
-                ) from None
+        elif not await self.z2m_release(bulb):
+            return
 
         async def gone() -> bool:
             return not await self.joined(network, bulb)
 
         if not await _until(gone, RELEASE_S):
             raise RoamError(f"{bulb.entity_id} is still on {NAMES[network]} {RELEASE_S} s after its removal")
+
+    async def z2m_release(self, bulb: Bulb) -> bool:
+        """Remove `bulb` from Z2M; whether it was there to remove. Z2M keeps a device whose remove failed. A crash of
+        Z2M's coordinator mid-remove (the Leave never went) gets one more try once Z2M is back. With Z2M up, a bulb
+        live on another network was never on Z2M: its record is deleted and the bulb released from where it is."""
+        try:
+            await self.ha.z2m_remove_device(hex_ieee(bulb.ieee))
+            return True
+        except Z2MRemoveError as err:
+            if not err.restarted:
+                return await self.z2m_release_failed(bulb, err)
+            self.out(f"Z2M restarted while removing {bulb.entity_id} ({err}); its coordinator crashed. Trying again.")
+        try:
+            await self.ha.z2m_remove_device(hex_ieee(bulb.ieee))
+        except Z2MRemoveError as err:
+            raise RoamError(f"Z2M couldn't remove {bulb.entity_id} ({err}). {Z2M_CRASHED}") from None
+        return True
+
+    async def z2m_release_failed(self, bulb: Bulb, err: Z2MRemoveError) -> bool:
+        elsewhere = [
+            network
+            for network in await self.listings(bulb)
+            if network != "zigbee2mqtt" and await self.live(network, bulb)
+        ]
+        if not elsewhere:
+            raise RoamError(
+                f"Z2M couldn't remove {bulb.entity_id} ({err}): it didn't take the Leave. Switch its lamp off and on, "
+                "and once Z2M has interviewed it again run scripts/rig.py --recover."
+            )
+        await self.purge("zigbee2mqtt", bulb)
+        if elsewhere[0] == "hue":  # the move took it for on Z2M, so saved no home for it
+            await self.save_home([bulb], {bulb.entity_id: "hue"})
+        await self.release(elsewhere[0], bulb)
+        return False
 
     async def join(self, network: str, bulbs: list[Bulb], origins: dict[str, str | None] | None = None) -> None:
         """Open `network` for the bulbs and wait until all are in; ZHA and Z2M close once they are, or on a timeout.
@@ -422,7 +540,7 @@ class Roamer:
             if loop.time() - quiet_since < MISSED_HUE_LEAVE_S:
                 return False
             out = [bulb for bulb in bulbs if bulb.entity_id not in self.arrived]
-            return all([bulb in from_hue and await self.locate(bulb) is None for bulb in out])
+            return all([bulb in from_hue and not await self.listings(bulb) for bulb in out])
 
         async def done() -> bool:
             return await all_in() or (bool(from_hue) and await hue_kept_them())
@@ -454,7 +572,7 @@ class Roamer:
         out of the window and seen on no network is searched for (the window is closed, so only Hue is open), and
         one that comes back is released while it is the only one going."""
         candidates = [
-            bulb for bulb in from_hue if not await self.joined(network, bulb) and await self.locate(bulb) is None
+            bulb for bulb in from_hue if not await self.joined(network, bulb) and not await self.listings(bulb)
         ]
         if not candidates:
             return False
@@ -500,33 +618,22 @@ class Roamer:
 
     @contextlib.asynccontextmanager
     async def z2m_logging(self) -> AsyncIterator[None]:
-        """Z2M at JOIN_LOG_LEVEL for a join, so its log shows each bulb's join and interview, then back to its own
-        level, which is journaled first. A level that can't be read or set leaves the log as it is: it never stops
-        the move."""
-        try:
-            before = await self.ha.z2m_log_level()
-            if before is not None and before not in VERBOSE_LOG_LEVELS:
-                self.z2m_log_level = before
-                self.save()
+        """Z2M at JOIN_LOG_LEVEL or more for a join, so its log shows each bulb's join and interview, held in the
+        baseline, which records its level first and puts it back. A level that can't be read or set leaves the log
+        as it is: it never stops the move."""
+
+        async def raise_level(_original: str) -> None:
+            if await self.ha.z2m_log_level() not in VERBOSE_LOG_LEVELS:
                 await self.ha.z2m_set_log_level(JOIN_LOG_LEVEL)
-        except (TimeoutError, HAError) as err:
+
+        try:
+            await self.baseline.hold(("z2m_log_level", "", raise_level))
+        except (TimeoutError, HAError, BaselineError) as err:
             self.out(f"Z2M's log level stays as it is for the join: {err}")
         try:
             yield
         finally:
-            await self.restore_z2m_log_level()
-
-    async def restore_z2m_log_level(self) -> None:
-        """Put back the log level a join raised, if one is journaled. A failure is printed and stays journaled."""
-        if self.z2m_log_level is None:
-            return
-        try:
-            await self.ha.z2m_set_log_level(self.z2m_log_level)
-        except (TimeoutError, HAError) as err:
-            self.out(f"Z2M's log level is still raised, not {self.z2m_log_level}: {err}. --recover tries again.")
-            return
-        self.z2m_log_level = None
-        self.save()
+            await self.baseline.release()
 
     async def missed(self, network: str, bulbs: list[Bulb], origins: dict[str, str | None]) -> None:
         """Raise RoamError for bulbs that didn't join `network`. One back on a network (it missed the Leave, or
@@ -534,7 +641,7 @@ class Roamer:
         window = {"hue": f"{HUE_SEARCHES} searches", "zigbee2mqtt": f"{JOIN_S} s, open on the coordinator only"}
         window = window.get(network, f"{JOIN_S} s")
         names = ", ".join(bulb.entity_id for bulb in bulbs)
-        found = {bulb.entity_id: await self.locate(bulb) for bulb in bulbs}
+        found = {bulb.entity_id: next(iter(await self.listings(bulb)), None) for bulb in bulbs}
         self.at.update({entity_id: where for entity_id, where in found.items() if where is not None})
         self.save()
         back = [f"{entity_id} on {NAMES[where]}" for entity_id, where in found.items() if where is not None]
@@ -722,6 +829,8 @@ class Roamer:
             raise GroupError(f"HA showed no entity for the rig's {NAMES[network]} {kind} {name} in {ENTITY_S} s")
         assert found is not None
         if found["entity_id"] != entity_id or found.get("disabled_by"):
+            made["renaming"] = True  # before the rename: a crash between it and `renamed` still drops the entity
+            self.save()
             await self.ha.rename_entity(found["entity_id"], entity_id, enable=bool(found.get("disabled_by")))
         made["renamed"] = True
         self.save()
@@ -847,7 +956,7 @@ class Roamer:
             else:
                 await self.ha.z2m_group_remove(name)
             self.out(f"Removed {NAMES[network]} {kind} {name}.")
-        if made["renamed"]:
+        if made["renamed"] or made.get("renaming"):
             await self.drop_entity(made["entity_id"], PLATFORMS[network])
 
     async def drop_entity(self, entity_id: str, platform: str) -> None:
@@ -864,75 +973,118 @@ class Roamer:
 
     # --- home -----------------------------------------------------------------------------------------------------
 
-    async def save_home(self, bulbs: list[Bulb]) -> None:
-        """Before a bulb leaves Hue: its rooms (by device), zones (by light), the scene actions on its light and its
-        name. A home already saved, by a run that crashed before restoring it, is kept."""
-        rooms, zones, scenes = [await self.bridge.get(kind) for kind in ("room", "zone", "scene")]
+    async def save_home(self, bulbs: list[Bulb], origins: dict[str, str | None]) -> None:
+        """Before a bulb's first move, record its home: its state in HA, and leaving Hue, its rooms (by device), zones
+        (by light), the scene actions on its light and its name. A home already recorded, by a run that hasn't put it
+        back, is kept; one with no Hue home gets it when the bulb is found leaving Hue."""
         for bulb in bulbs:
-            if bulb.entity_id in self.home:
-                continue
-            device_id = await self.bridge.device_id_by_ieee(bulb.ieee)
-            device = (await self.bridge.get("device", device_id))[0]
-            light_id = _light_of(device)
-            self.home[bulb.entity_id] = {
-                "device": device_id,
-                "light": light_id,
-                "metadata": {key: device.get("metadata", {}).get(key) for key in ("name", "archetype")},
-                "rooms": [room["id"] for room in rooms if _has_child(room, device_id)],
-                "zones": [zone["id"] for zone in zones if _has_child(zone, light_id) and not _rig_made(zone)],
-                "scenes": {
-                    scene["id"]: actions
-                    for scene in scenes
-                    if (actions := [a for a in scene.get("actions", []) if a["target"]["rid"] == light_id])
-                },
-            }
-        self.save()
+            leaving_hue = origins[bulb.entity_id] == "hue"
+            if (entry := self.homes.get(bulb.ieee)) is None:
+                state = light_state(await self.ha.get_state(bulb.entity_id))
+                entry = {"entity_id": bulb.entity_id, "network": bulb.home, "state": state}
+                if leaving_hue:
+                    entry["hue"] = await self.hue_home(bulb)
+                self.homes.add(bulb.ieee, entry)
+            elif leaving_hue and entry.get("hue") is None:
+                self.homes.fill(bulb.ieee, "hue", await self.hue_home(bulb))
+
+    async def hue_home(self, bulb: Bulb) -> dict:
+        rooms, zones, scenes = [await self.bridge.get(kind) for kind in ("room", "zone", "scene")]
+        device_id = await self.bridge.device_id_by_ieee(bulb.ieee)
+        device = (await self.bridge.get("device", device_id))[0]
+        light_id = _light_of(device)
+        return {
+            "device": device_id,
+            "light": light_id,
+            "metadata": {key: device.get("metadata", {}).get(key) for key in ("name", "archetype")},
+            "rooms": [room["id"] for room in rooms if _has_child(room, device_id)],
+            "zones": [zone["id"] for zone in zones if _has_child(zone, light_id) and not _rig_made(zone)],
+            "scenes": {
+                scene["id"]: actions
+                for scene in scenes
+                if (actions := [a for a in scene.get("actions", []) if a["target"]["rid"] == light_id])
+            },
+        }
 
     async def restore_home(self) -> None:
-        """Put back each saved home on the bulb's new device and light: name, rooms, zones, then scenes, whose actions
-        need the light in their room or zone. A room or scene gone from the bridge is skipped with a line."""
+        """For each bulb home with a recorded home: put back its Hue home on its new device and light (name, rooms,
+        zones, then scenes, whose actions need the light in their room or zone), then its state. A room or scene gone
+        from the bridge is skipped with a line. The record is dropped once all of it is back; a write that failed
+        keeps it, for the next run or --recover to try again."""
         for bulb in self.bulbs:
-            if (home := self.home.get(bulb.entity_id)) is None:
+            if self.at.get(bulb.entity_id) != bulb.home or (home := self.homes.get(bulb.ieee)) is None:
                 continue
-            device_id = await self.bridge.device_id_by_ieee(bulb.ieee)
-            device = (await self.bridge.get("device", device_id))[0]
-            light_id = _light_of(device)
-            await self._put(f"{bulb.entity_id}'s name", "device", device_id, {"metadata": home["metadata"]})
-            for kind, key, child in (("room", "rooms", (device_id, "device")), ("zone", "zones", (light_id, "light"))):
-                old = home["device"] if kind == "room" else home["light"]
-                for group_id in home[key]:
-                    await self._regroup(bulb, kind, group_id, old, child)
-            for scene_id, actions in home["scenes"].items():
-                await self._rescene(bulb, scene_id, home["light"], light_id, actions)
-            del self.home[bulb.entity_id]
-            self.save()
-            self.out(f"Put back {bulb.entity_id}'s Hue rooms and scenes.")
+            done = True
+            if (hue := home.get("hue")) is not None:
+                done = await self.restore_hue(bulb, hue)
+                if done:
+                    self.out(f"Put back {bulb.entity_id}'s Hue rooms and scenes.")
+            done = await self.restore_state(bulb, home.get("state")) and done
+            if done:
+                self.homes.drop(bulb.ieee)
+            else:
+                self.out(
+                    f"{bulb.entity_id}'s home isn't all back; the home record keeps it, and --recover tries again."
+                )
 
-    async def _regroup(self, bulb: Bulb, kind: str, group_id: str, old: str, child: tuple[str, str]) -> None:
+    async def restore_hue(self, bulb: Bulb, home: dict) -> bool:
+        device_id = await self.bridge.device_id_by_ieee(bulb.ieee)
+        device = (await self.bridge.get("device", device_id))[0]
+        light_id = _light_of(device)
+        done = await self._put(f"{bulb.entity_id}'s name", "device", device_id, {"metadata": home["metadata"]})
+        for kind, key, child in (("room", "rooms", (device_id, "device")), ("zone", "zones", (light_id, "light"))):
+            old = home["device"] if kind == "room" else home["light"]
+            for group_id in home[key]:
+                done = await self._regroup(bulb, kind, group_id, old, child) and done
+        for scene_id, actions in home["scenes"].items():
+            done = await self._rescene(bulb, scene_id, home["light"], light_id, actions) and done
+        return done
+
+    async def restore_state(self, bulb: Bulb, state: dict | None) -> bool:
+        """Turn the bulb back to its recorded state through its fixed entity: on with its brightness and color, or
+        off, as it also goes with no state recorded. Whether HA took it."""
+        state = state or {"state": "off"}
+        data = {key: value for key, value in state.items() if key != "state"}
+        service = "turn_on" if state["state"] == "on" else "turn_off"
+        try:
+            await self.ha.call_service("light", service, {"entity_id": bulb.entity_id, **data})
+        except Exception as err:  # noqa: BLE001 - say so, and keep the record for another try
+            self.out(f"Could not put {bulb.entity_id} back {state['state']}: {err}")
+            return False
+        self.out(f"Put {bulb.entity_id} back {state['state']}" + (f" ({_describe(data)})." if data else "."))
+        return True
+
+    async def _regroup(self, bulb: Bulb, kind: str, group_id: str, old: str, child: tuple[str, str]) -> bool:
         try:
             group = (await self.bridge.get(kind, group_id))[0]
         except BridgeError as err:
             self.out(f"Could not put {bulb.entity_id} back in {kind} {group_id}: {err}")
-            return
+            return err.status == 404  # gone from the bridge: nothing to put it back in
         children = [c for c in group.get("children", []) if c["rid"] not in (old, child[0])]
         children.append({"rid": child[0], "rtype": child[1]})
-        await self._put(f"{bulb.entity_id}'s {kind}", kind, group_id, {"children": children})
+        return await self._put(f"{bulb.entity_id}'s {kind}", kind, group_id, {"children": children})
 
-    async def _rescene(self, bulb: Bulb, scene_id: str, old: str, new: str, saved: list[dict]) -> None:
+    async def _rescene(self, bulb: Bulb, scene_id: str, old: str, new: str, saved: list[dict]) -> bool:
         try:
             scene = (await self.bridge.get("scene", scene_id))[0]
         except BridgeError as err:
             self.out(f"Could not put back {bulb.entity_id}'s action in scene {scene_id}: {err}")
-            return
+            return err.status == 404
         actions = [a for a in scene.get("actions", []) if a["target"]["rid"] not in (old, new)]
         actions += [{**action, "target": {"rid": new, "rtype": "light"}} for action in saved]
-        await self._put(f"{bulb.entity_id}'s scene action", "scene", scene_id, {"actions": actions})
+        return await self._put(f"{bulb.entity_id}'s scene action", "scene", scene_id, {"actions": actions})
 
-    async def _put(self, what: str, kind: str, resource_id: str, body: dict) -> None:
+    async def _put(self, what: str, kind: str, resource_id: str, body: dict) -> bool:
         try:
             await self.bridge.put(kind, resource_id, body)
         except BridgeError as err:
             self.out(f"Could not put back {what} ({kind} {resource_id}): {err}")
+            return False
+        return True
+
+
+def _describe(data: dict) -> str:
+    return ", ".join(f"{key} {value}" for key, value in data.items())
 
 
 def _light_of(device: dict) -> str:

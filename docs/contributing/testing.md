@@ -69,13 +69,16 @@ ZHA → Z2M → Hue (`tests/rig/roam.py`), so one set of bulbs serves every Zigb
 fixed entity ID it is renamed to after every join, its roles, and the Z2M options set again after each Z2M join.
 The suites then run in phases: Hue's with the fixed integrations', then ZHA's, then Z2M's, each after a move and
 each with its automated cases before its observed ones. The bulbs move only when a ZHA or Z2M suite runs, and end
-home on Hue, with their rooms, zones, scene actions and names put back on their new Hue IDs. A run that stops
-part way still moves them home; `--recover`, or the next run before its gate, does it after a crash. A bulb on no
+home on Hue, with their rooms, zones, scene actions and names put back on their new Hue IDs, and each bulb back as it
+was before the run: on or off, with its brightness and color. A run that stops part way still moves them home; `--recover`, or the next run before its gate, does it after a crash. A bulb on no
 network stops recovery: reset it over Bluetooth in the Hue app, then `--recover` again. A bulb still missing when
 the Hue search ends gets one more, and any other device that joins the bridge meanwhile is named, not removed. Z2M
 opens joining on its coordinator only. A bulb from Hue that a ZHA or Z2M window still lacks 30 s after the last join,
 seen on no network, may have missed the bridge's Leave: the window closes, a Hue search takes it back, and it is
-released alone for one more window. `--roam-check` runs the cycle with no suites. Roaming needs `HA_ADMIN_TOKEN` and the Hue bridge's `HUE_BRIDGE_HOST` and `HUE_APP_KEY`.
+released alone for one more window. A network can list a bulb that left it (Z2M keeps a device whose remove
+failed): a bulb is placed where it is live, a dead ZHA or Z2M listing is deleted and named, and a bulb live on two
+networks, or listed but live on none, stops the move. A Z2M remove that a coordinator crash cut short is tried once
+more when Z2M is back. `--roam-check` runs the cycle with no suites. Roaming needs `HA_ADMIN_TOKEN` and the Hue bridge's `HUE_BRIDGE_HOST` and `HUE_APP_KEY`.
 
 `roam:` can also list `groups:`, native groups of those bulbs that the run makes on each network they visit: a Z2M
 group, a ZHA group, or a Hue zone with, if the group names a `scene:`, a Hue scene in it. Each is called
@@ -85,7 +88,19 @@ run of Hue suites alone makes them on Hue without moving the bulbs; that, too, n
 
 Ctrl-C, SIGTERM or SIGHUP puts the devices back before the run exits; a second one leaves them. Each run journals
 what it changes in a file of its own; if a run dies before it can put them back, the next run whose locks cover them
-puts them back before its gate, and `--recover`, which takes every lock, puts back everything.
+puts them back before its gate, and `--recover`, which takes every lock, puts back everything, oldest run first. An
+entity a case couldn't put back stays in the journal for the next try.
+
+What a roaming bulb was before its first move (its state, and its Hue rooms, zones, scenes and name) is kept in the
+home record, `device_side-rig.home.json` in the git common dir, one entry per bulb. It outlives runs: a second crash
+keeps the first home. An entry is dropped once the bulb is home with all of it put back; until then, the next run home
+or `--recover` tries again.
+
+What runs change beyond the devices (the paused automations and switches, HA's and Z2M's log levels, Z2M device
+options a test sets) is held in one shared baseline, `device_side-rig.baseline.json` in the git common dir. The first
+run to change something records what it was; runs side by side share the change, and the last one out puts it back.
+A crashed run's share is put back by the next run's change or by `--recover`, which always clears what no live run
+holds. Z2M found at debug or trace with no run holding it goes back to `info`: debug is never its resting level.
 
 Runs share the rig through locks in the git common dir, so every worktree sees them: one per integration, and one on
 HA. A run holds each integration it tests, plus those its entities draw power through and the networks its roaming
@@ -223,11 +238,13 @@ out in time.
 Z2M's frontend keeps only its last 1000 lines and HA's log restarts with HA, so a run captures both for you. Z2M's
 lines (for a run that touches Z2M, or roams) are written to `<report>.z2m.log` as they arrive, and HA's log, from the
 run's start, to `<report>.ha.log` when the run ends, both beside the report. A clean run deletes them; after a failure,
-a stopped move or a crash they stay and their paths are printed.
+a stopped move or a crash they stay and their paths are printed. When Z2M's coordinator crashed during the run
+(`ASH_NCP_FATAL_ERROR` or `Adapter disconnected` in Z2M's log), the summary says so with each crash's time, and the logs
+stay even after a clean run; at debug it also counts the ACK timeouts that lead up to one.
 
 `--debug-logs` keeps them whatever the outcome and runs HA's `device_side`, each integration the run touches (`hue`,
 `zha`, `mqtt` for Z2M, `shelly`, `matter`; Hue, ZHA and MQTT when it roams) and Z2M at debug until the run ends. It costs
-CPU, so timing cases may read differently. The levels are journaled first, so `--recover` puts them back. Z2M's debug
+CPU, so timing cases may read differently. The levels are held in the baseline, so `--recover` puts them back. Z2M's debug
 lines reach the capture only with `advanced.log_debug_to_mqtt_frontend: true` in its configuration, which needs a
 Z2M restart; the brief warns when it is off, and the rig never sets it.
 

@@ -16,6 +16,8 @@ v0.1.0 is the next release.
 | Slice | What | PRs |
 |---|---|---|
 | 12 | README for v0.1.0: Key Features table, one usage section per feature, Hue Smooth Dimming migration, facts checked against the code (item 12's table half; the experimental half stays open) | #214 |
+| 7 | Query responses: unused nested `attributes` shape removed from `EntityResult.as_response`, the plan and the rig engine; `get_attributes` stays flat, as hue_dimmer's | #212 |
+| 11 | Matter `turn_on_for`: timer-limit comment gives the spec's 65534-tenth cap | #211 |
 | 13k | Rig: a group a network can't make ends the run as a `GroupError`, so the phases that passed keep their records and the bulbs go home | #207 |
 | 13k | Flag-clearing follow-up: composed group proof (CLAUDE.md), `sets_color_while_off` reads its color back, `predicted_state` out of the Hue saturation scopes, `saturation_stop_raise` and `hue_stop_raise`; clears Hue `raise_saturation` and `lower_saturation` (Z2M `lower_hue`'s group case failed twice on the lab's Z2M mesh) | #204 |
 | 13k | Flag audits clear 18 adapters on the lab records: Hue, ZHA, Z2M ([hue](docs/plans/2026-11-04-flag-audit-hue.md), [zha](docs/plans/2026-11-04-flag-audit-zha.md), [z2m](docs/plans/2026-11-04-flag-audit-z2m.md)) | #201, #202, #203 |
@@ -73,6 +75,9 @@ v0.1.0 is the next release.
 | 15 (follow-up) | Rig captures Z2M's and HA's logs for every run (kept after a failure), and `--debug-logs` raises both to debug | #183 |
 | 15 (follow-up) | Tests no longer color the cmux workspace running them green (a locks test's `monkeypatch.undo()` reached the real cmux) | #184 |
 | 15 (follow-up) | Rig clear gate per profile: `pre_authorized: true` profiles (the lab's) skip `RIG_BLOCKER_ENTITY`; others stay gated | #187 |
+| 15 (follow-up) | Rig places a roaming bulb where it is live and deletes a stale ZHA or Z2M listing; a Z2M remove a coordinator crash cut short is tried again; each run names Z2M coordinator crashes | #206 |
+| 15 (follow-up) | Rig: one shared baseline replaces the pause ledger; pauses, HA and Z2M log levels and Z2M device options are held there, put back by the last run out, the next run's prune or `--recover` | #209 |
+| 15 (follow-up) | Rig: a home record keeps each roaming bulb's Hue home and pre-run state until it is home as it was; a failed case restore stays journaled, a rename is journaled first, and orphans replay oldest first | #210 |
 
 ## To go, in order
 

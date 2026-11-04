@@ -2,27 +2,53 @@
 that make them say more (DebugLevels).
 
 Z2M's frontend keeps only its last 1000 lines and HA's log restarts with HA, so a failure read later finds nothing.
-Both logs are captured for every run, next to its report; they are deleted after a clean run unless asked for.
+Both logs are captured for every run, next to its report; they are deleted after a clean run unless asked for, or
+unless Z2M's coordinator crashed during it.
 """
 
 import asyncio
 import contextlib
 import datetime
 import json
-import logging
 import re
 from collections.abc import Callable
 from pathlib import Path
 
+from .baseline import Apply, Baseline
 from .client import HAClient
 from .engine import report_path
-from .journal import Journal
 
 Z2M_LOGGING_TOPIC = "zigbee2mqtt/bridge/logging"
 HA_DOMAINS = {"hue": "hue", "zha": "zha", "zigbee2mqtt": "mqtt", "shelly": "shelly", "matter": "matter"}
 ROAM_INTEGRATIONS = ("hue", "zha", "zigbee2mqtt")
-LOG_SECTION = "log_levels"
 STAMPED = re.compile(r"^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)")
+# Z2M's error lines when its coordinator crashes (EmberZNet over USB, 3 Nov: ERROR_EXCEEDED_MAXIMUM_ACK_TIMEOUT_COUNT),
+# logged at any level; Z2M restarts. The ACK timeouts that lead up to one show at debug only.
+CRASH_MARKS = ("ASH_NCP_FATAL_ERROR", "Adapter disconnected")
+ACK_TIMEOUT = "Timer expired waiting for ACK"
+CRASH_GAP_S = 60  # crash lines closer than this are one crash
+
+
+def coordinator_crashes(log: str) -> tuple[list[str], int]:
+    """From a captured Z2M log (z2m_line's format): the time of each coordinator crash, and how many ACK timeouts it
+    logged."""
+    crashes: list[str] = []
+    last: datetime.datetime | None = None
+    acks = 0
+    for line in log.splitlines():
+        stamp, _, rest = line.partition(" ")
+        level, _, message = rest.strip().partition(" ")
+        acks += ACK_TIMEOUT in message
+        if level != "error" or not any(mark in message for mark in CRASH_MARKS):
+            continue
+        try:
+            at = datetime.datetime.strptime(stamp[:8], "%H:%M:%S")
+        except ValueError:
+            continue
+        if last is None or not 0 <= (at - last).total_seconds() < CRASH_GAP_S:
+            crashes.append(stamp[:8])
+        last = at
+    return crashes, acks
 
 
 def z2m_line(raw: str, now: datetime.datetime) -> str:
@@ -119,9 +145,27 @@ class RunLogs:
             return
         self.written.append(self.ha_path)
 
+    def z2m_crashes(self) -> list[str]:
+        """Each coordinator crash in the captured Z2M log, printed with the ACK timeouts it shows."""
+        if self.z2m_path not in self.written:
+            return []
+        try:
+            crashes, acks = coordinator_crashes(self.z2m_path.read_text())
+        except OSError as err:
+            self.out(f"Z2M's log couldn't be read for crashes: {err}")
+            return []
+        if crashes:
+            times = "once" if len(crashes) == 1 else f"{len(crashes)} times"
+            self.out(f"Z2M's coordinator crashed {times} ({', '.join(crashes)}).")
+        if acks:
+            self.out(f"Z2M logged {acks} ACK timeout{'s' if acks > 1 else ''} with its coordinator.")
+        return crashes
+
     def settle(self, clean: bool) -> None:
-        """After a clean run the files go unless `keep`; after any other they stay, and their paths are printed."""
-        if clean and not self.keep:
+        """Name each crash of Z2M's coordinator the run's Z2M log shows. After a clean run with none, the files go
+        unless `keep`; otherwise they stay, and their paths are printed."""
+        crashes = self.z2m_crashes()
+        if clean and not self.keep and not crashes:
             for path in self.written:
                 path.unlink(missing_ok=True)
             return
@@ -137,85 +181,28 @@ def ha_domains(integrations: set[str], roaming: bool) -> list[str]:
 
 
 class DebugLevels:
-    """Debug log levels for the run: raised once, and put back from the journal's record, so `--recover` does the
-    same after a crash. The record is written before the raise."""
+    """Debug log levels for the run, held in the baseline (tests/rig/baseline.py), which records each level before
+    raising it: the last run out puts it back, and a crashed run's comes back with the next run's prune or --recover's.
+    A level that can't be read or set is printed and left as it is: it never stops the run."""
 
-    def __init__(self, ha: HAClient, journal: Journal | None = None, out: Callable[[str], None] = print):
-        self.ha = ha
-        self.journal = journal
+    def __init__(self, baseline: Baseline, out: Callable[[str], None] = print):
+        self.baseline = baseline
+        self.ha = baseline.ha
         self.out = out
-        self.saved: dict = (journal.get(LOG_SECTION) if journal else None) or {}
-
-    def _save(self) -> None:
-        if self.journal is not None:
-            if self.saved:
-                self.journal.update(**{LOG_SECTION: self.saved})
-            else:
-                self.journal.clear(LOG_SECTION)
 
     async def raise_levels(self, domains: list[str], z2m: bool) -> None:
-        """HA's `domains` and, with `z2m`, Zigbee2MQTT to debug. A failure is printed and leaves that log as it is."""
-        try:
-            levels = await self.ha.log_levels()
-        except Exception as err:  # noqa: BLE001
-            self.out(f"HA's log levels stay as they are: {err}")
-            levels = {}
-        ha_saved = {
-            domain: logging.getLevelName(levels[domain])
-            for domain in domains
-            if domain in levels and levels[domain] != logging.DEBUG
-        }
+        """HA's `domains` and, with `z2m`, Zigbee2MQTT to debug."""
         for domain in domains:
-            if domain not in levels:
-                self.out(f"HA doesn't report {domain}, so it stays as it is.")
-        z2m_level = None
+            await self.hold("ha_log_level", domain, lambda _, d=domain: self.ha.set_log_level(d, "DEBUG"), domain)
         if z2m:
-            try:
-                z2m_level = (await self.ha.z2m_info()).get("log_level")
-            except Exception as err:  # noqa: BLE001
-                self.out(f"Z2M's log level stays as it is: {err}")
-        self.saved = {
-            **({"ha": ha_saved} if ha_saved else {}),
-            **({"z2m": z2m_level} if z2m_level not in (None, "debug") else {}),
-        }
-        self._save()
-        for domain in ha_saved:
-            try:
-                await self.ha.set_log_level(domain, "DEBUG")
-            except Exception as err:  # noqa: BLE001
-                self.out(f"{domain} stays at {ha_saved[domain]}: {err}")
-        if "z2m" in self.saved:
-            try:
-                await self.ha.z2m_set_log_level("debug")
-            except Exception as err:  # noqa: BLE001
-                self.out(f"Z2M's log level stays at {self.saved['z2m']}: {err}")
+            await self.hold("z2m_log_level", "", lambda _: self.ha.z2m_set_log_level("debug"), "Z2M's log level")
+
+    async def hold(self, kind: str, key: str, apply: Apply, what: str) -> None:
+        try:
+            await self.baseline.hold((kind, key, apply))
+        except Exception as err:  # noqa: BLE001
+            self.out(f"{what} stays as it is: {err}")
 
     async def restore(self) -> None:
-        """Put back every level the record holds. A failure is printed and stays in the journal; a domain HA no
-        longer reports (it restarted since) is skipped."""
-        if not self.saved:
-            return
-        left: dict = {}
-        if ha_saved := self.saved.get("ha"):
-            try:
-                reported = await self.ha.log_levels()
-            except Exception as err:  # noqa: BLE001
-                self.out(f"HA's log levels are still raised: {err}. --recover tries again.")
-                left["ha"] = ha_saved
-                reported = None
-            for domain, level in ha_saved.items() if reported is not None else ():
-                if domain not in reported:
-                    continue
-                try:
-                    await self.ha.set_log_level(domain, level)
-                except Exception as err:  # noqa: BLE001
-                    self.out(f"{domain} is still at debug, not {level}: {err}. --recover tries again.")
-                    left.setdefault("ha", {})[domain] = level
-        if level := self.saved.get("z2m"):
-            try:
-                await self.ha.z2m_set_log_level(level)
-            except Exception as err:  # noqa: BLE001
-                self.out(f"Z2M's log level is still debug, not {level}: {err}. --recover tries again.")
-                left["z2m"] = level
-        self.saved = left
-        self._save()
+        """Let go of the levels; whatever no other run holds raised goes back."""
+        await self.baseline.release()

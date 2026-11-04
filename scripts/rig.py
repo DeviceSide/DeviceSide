@@ -33,7 +33,9 @@ Under cmux the run colors its workspace: green holding its locks, amber waiting 
 
 A profile (tests/rig/profiles/<name>.yaml) names the entities a run may move and what it pauses; --profile picks
 one, and may be left out when there is only one. A run pauses the profile's `all` list and those of the integrations it
-holds, through a ledger runs side by side share (tests/rig/ledger.py): the last run out turns each back on.
+holds, through a baseline runs side by side share (tests/rig/baseline.py): the last run out turns each back on. The
+baseline also holds the log levels and Z2M device options a run changes, so a crashed run's come back with the next
+run's prune, or --recover's.
 
 The run starts with lanes: one per integration, side by side, each running that integration's cases on fixed entities
 (engine.in_head). The rest run after, one at a time: cases with device_side options, whose save reloads the entry, and
@@ -53,7 +55,7 @@ only when its phase comes, after the bulbs have moved.
 Every run captures Z2M's log (when it touches Z2M) and HA's next to its report, as <report>.z2m.log and .ha.log
 (tests/rig/runlogs.py): deleted after a clean run, kept and printed after any other. --debug-logs also raises HA's
 device_side and the run's integrations, and Z2M, to debug for the run, keeps the logs, and puts the levels back (the
-journal, so --recover too).
+baseline, so --recover too).
 
 Usage: scripts/rig.py [--profile NAME] [--dry-run] [--no-deploy] [--unattended] [--serial] [--debug-logs]
                       [--integration KEY ...] [--action NAME ...] [-k TEXT]
@@ -91,6 +93,8 @@ sys.path.insert(0, str(REPO))
 
 from custom_components.device_side.core.registry import AdapterRegistry  # noqa: E402
 from tests.rig import locks  # noqa: E402
+from tests.rig.baseline import NAME as BASELINE_NAME  # noqa: E402
+from tests.rig.baseline import Baseline  # noqa: E402
 from tests.rig.bridge import BridgeError, HueBridge  # noqa: E402
 from tests.rig.client import HAClient, HAError  # noqa: E402
 from tests.rig.engine import (  # noqa: E402
@@ -111,8 +115,8 @@ from tests.rig.engine import (  # noqa: E402
     write_records,
     write_report,
 )
+from tests.rig.home import HomeRecord  # noqa: E402
 from tests.rig.journal import LEGACY_NAME, Journal, orphans  # noqa: E402
-from tests.rig.ledger import Ledger, turn_on  # noqa: E402
 from tests.rig.locks import Claim, Held  # noqa: E402
 from tests.rig.profile import (  # noqa: E402
     EXAMPLE,
@@ -828,8 +832,8 @@ def hold_command(args: argparse.Namespace, directory: Path) -> int:
     """A command after --: run a probe holding the integrations --hold names and HA, shared or with --exclusive
     exclusively, with the profile's automations for them paused, and return its exit code. No case journal: the
     probe puts back what it changes. Its only gate is the clear one (probe_approved), checked before and after the
-    wait for the locks. A journal is started all the same, never written, as the name the pause ledger knows the
-    probe by, alive while it runs."""
+    wait for the locks. A journal is started all the same, never written, as the name the baseline knows the probe
+    by, alive while it runs: a crashed probe's pauses are pruned like a run's."""
     wanted = Claim("exclusive" if args.exclusive else "shared", frozenset(args.hold or ()))
     env = load_env()
     try:
@@ -847,15 +851,14 @@ def hold_command(args: argparse.Namespace, directory: Path) -> int:
         if clear and clear[0] and not probe_approved(clear := clearance(env, gated)):
             return 1
         journal = Journal.start(directory)
-        ledger = Ledger(directory, journal.name)
         try:
             with watching(env, gated if clear and clear[0] else None):
                 if pausing:
-                    asyncio.run(with_ha(env, lambda ha: ledger.pause(ha, pausing)))
+                    asyncio.run(with_ha(env, lambda ha: Baseline.of(ha, journal, "pause").pause(pausing)))
                 return run_command(args.command)
         finally:
             if pausing:
-                asyncio.run(with_ha(env, ledger.resume))
+                asyncio.run(with_ha(env, lambda ha: Baseline.of(ha, journal, "pause").release()))
             journal.release()
 
 
@@ -869,13 +872,15 @@ def probe_approved(clear: tuple[bool, str] | None, prompt: Callable[[str], str] 
 
 
 async def with_ha(env: dict, call: Callable[[HAClient], Awaitable[None]]) -> None:
-    """`call` on a connection to HA, closed after."""
-    ha = HAClient(env["HA_URL"], env["HA_TOKEN"])
-    await ha.connect()
+    """`call` on a connection to HA, the admin one where .env.rig has it (the baseline's prune may set Z2M's level
+    or options, which only an admin may), closed after."""
+    ha, admin = await connect(env)
     try:
-        await call(ha)
+        await call(admin or ha)
     finally:
         await ha.close()
+        if admin:
+            await admin.close()
 
 
 def run_command(command: list[str]) -> int:
@@ -892,15 +897,15 @@ def run_command(command: list[str]) -> int:
 
 def recover_all(args: argparse.Namespace, directory: Path) -> int:
     """--recover: hold everything, so no run is going, and put back what every aborted run left, the journal from
-    before per-run journals included. Nonzero while something is left."""
+    before per-run journals included, then what the baseline holds for no live run. Nonzero while something is left."""
     env = load_env()
     held = None if args.dry_run else locks.hold(Claim.everything(), git("rev-parse", "--abbrev-ref", "HEAD"), directory)
     try:
         with end_on_signals():
-            journals = [*orphans(directory), *filter(None, [Journal(directory / LEGACY_NAME)])]
+            # The journal from before per-run journals is older than any of them; orphans come oldest first.
+            journals = [*filter(None, [Journal(directory / LEGACY_NAME)]), *orphans(directory)]
             if not journals:
                 print("No aborted run left anything to put back.")
-                return 0
             for journal in journals:
                 try:
                     if args.dry_run:
@@ -909,7 +914,9 @@ def recover_all(args: argparse.Namespace, directory: Path) -> int:
                         asyncio.run(recover_rig(env, journal))
                 finally:
                     journal.release()
-            return 1 if any(journals) else 0
+            if not args.dry_run and (directory / BASELINE_NAME).exists():
+                asyncio.run(prune_baseline(env, directory))
+            return 1 if any(journals) or (directory / BASELINE_NAME).exists() else 0
     except Aborted as err:
         print(err)
         return 1
@@ -1046,8 +1053,8 @@ def run_tests(rig_run: Coroutine[Any, Any, int]) -> int:
 
 def replay(env: dict, held: Held | None, directory: Path) -> set[str]:
     """Put back what aborted runs left changed, each whose claim the run holds (needs); say how to put back the rest.
-    A dry run holds nothing, so it only says what is there. Returns the roaming bulbs whose Hue home a journal still
-    holds, which a run puts back."""
+    A dry run holds nothing, so it only says what is there. Returns the roaming bulbs whose Hue home the home record
+    or a journal from before it still holds, which a run puts back."""
     homes: set[str] = set()
     for orphan in orphans(directory):
         try:
@@ -1061,14 +1068,14 @@ def replay(env: dict, held: Held | None, directory: Path) -> set[str]:
                     f"An aborted run left changes in {orphan.path} that need {needed}, more than this run holds; "
                     "a run holding that, or --recover, puts them back."
                 )
-            # What is left: a recovery that brought the bulbs home cleared its roam section.
+            # What is left in a journal from before the home record: a recovery that brought the bulbs home cleared it.
             homes |= set((orphan.get("roam") or {}).get("home", {}))
         finally:
             orphan.release()
     if legacy := Journal(directory / LEGACY_NAME):
         print(f"A run from before per-run journals left changes in {legacy.path}; --recover puts them back.")
         homes |= set((legacy.get("roam") or {}).get("home", {}))
-    return homes
+    return homes | {entry["entity_id"] for entry in HomeRecord(directory).all().values() if entry.get("hue")}
 
 
 def needs(journal: Journal) -> Claim:
@@ -1225,7 +1232,7 @@ async def run_rig(
     groups = profile.roam_groups if grouping else ()
     roamer = Roamer(admin, bridge, map(Bulb.of, profile.roam), journal, groups=groups) if lab else None
     # The pauses are the run's, by its journal's name: a run with no journal (a test's) pauses nothing.
-    ledger = Ledger(journal.path.parent, journal.name) if journal is not None else None
+    pauses = Baseline.of(admin or ha, journal, "pause") if journal is not None else None
     pausing = profile.paused_by(claim.integrations if claim else None)
     stopped: Roamer | None = None  # the roamer, once a RoamError stopped the run
     home = True  # whether the roaming bulbs ended at home, with no rig-made group left
@@ -1235,7 +1242,7 @@ async def run_rig(
     started = datetime.datetime.now()
     stamp = started.strftime("%Y-%m-%d %H:%M:%S")
     logs = RunLogs(logs_dir or REPORT_DIR, f"rig run {stamp}", started, keep=debug_logs)
-    levels = DebugLevels(admin or ha, journal) if debug_logs else None
+    levels = DebugLevels(Baseline.of(admin or ha, journal, "debug")) if debug_logs else None
     code = 1  # only a run that returns 0 is clean; any other end keeps the logs
     try:
         try:
@@ -1251,7 +1258,7 @@ async def run_rig(
                 registry,
                 keyword,
                 unattended,
-                (lambda: ledger.pause(ha, pausing)) if ledger and pausing else None,
+                (lambda: pauses.pause(pausing)) if pauses and pausing else None,
                 journal,
                 results,
                 lanes,
@@ -1270,8 +1277,8 @@ async def run_rig(
         finally:
             home = await leave_lab(roamer, stopped)
             await end_logging(logs, levels, admin)
-            if ledger is not None:
-                await ledger.resume(ha)
+            if pauses is not None:
+                await pauses.release()
             drop_profile(journal)
             if bridge:
                 await bridge.close()
@@ -1416,14 +1423,14 @@ async def leave_lab(roamer: Roamer | None, stopped: Roamer | None) -> bool:
 
 async def go_home(roamer: Roamer) -> bool:
     """Remove the rig-made groups and move the roaming bulbs home after a run that stopped part way (a no-op after
-    one that finished); whether both are done. A failure is printed: the journal keeps where they are, and --recover
-    tries again."""
+    one that finished); whether that is all done, their homes put back included. A failure is printed: the journal
+    keeps where they are, and --recover tries again."""
     try:
         await roamer.go(roamer.home_network)
     except Exception as err:  # noqa: BLE001 - as resume: say so, and go on putting the rest back
         print(f"Could not move the roaming bulbs home: {err}. scripts/rig.py --recover tries again.")
         return False
-    return not roamer.made
+    return roamer.done
 
 
 async def wait_for_targets(
@@ -1494,7 +1501,7 @@ async def check_devices(
     available, and, when the run roams, each roaming bulb is on a network with its light available. Prints what it
     found; returns the problems, which would otherwise stop the run part way, after moves. Rig-made groups and scenes
     don't exist yet, and a roaming bulb's light may still be under another ID, so neither is looked up as an entity.
-    `homes` are the bulbs whose Hue home the journal holds, which a run puts back."""
+    `homes` are the bulbs whose Hue home the home record holds, which a run puts back."""
     fixed = [entity for entity in targets(suites, profile, registry, keyword) if entity not in profile.made_entities]
     bulbs = list(profile.roam) if roaming else []
     print(f"Checking profile {profile.name}: {len(fixed)} entities" + (f", {len(bulbs)} roaming." if bulbs else "."))
@@ -1547,7 +1554,7 @@ async def check_roaming(
             elif state is not None and not available(state):
                 problems.append(f"{bulb.entity_id}: on {NAMES[network]}, unavailable; check it is powered")
             elif network != home and bulb.entity_id in homes:
-                print(f"  {bulb.entity_id}: on {NAMES[network]}; the journal holds its Hue home, which a run puts back")
+                print(f"  {bulb.entity_id}: on {NAMES[network]}; the home record has its Hue home for a run to restore")
             elif network != home:
                 print(
                     f"  {bulb.entity_id}: on {NAMES[network]}. The run moves it from there; it has no saved Hue home, "
@@ -1616,9 +1623,11 @@ async def recover(
 ) -> None:
     """Put back what an aborted run left changed, in the order its finally blocks would have: the case's entities,
     device_side's options, the roaming bulbs (the ds-rig-* groups removed, the bulbs moved home, their Hue rooms and
-    scenes put back), the automations it paused (the ledger's, and those of a journal from before it).
-    A step that fails is printed and dropped from the journal; options stay in it while there is no admin connection
-    to set them. The bulbs can't be left half done, so a failure there stops recovery, keeping the rest journaled."""
+    scenes put back), what it holds in the baseline (its pauses, log levels and Z2M options) and the automations a
+    journal from before the baseline paused.
+    A step that fails is printed and dropped from the journal, except an entity that couldn't be put back, which stays
+    for the next try; options stay in it while there is no admin connection to set them. The bulbs can't be left half
+    done, so a failure there stops recovery, keeping the rest journaled."""
     run_of = f" (profile {name})" if (name := journal.get("profile")) else ""
     out(f"An aborted rig run{run_of} left changes in {journal.path}; putting them back.")
     for key, entry in dict(journal.get("cases") or {}).items():
@@ -1639,23 +1648,30 @@ async def recover(
             journal.clear("options")
     if journal.get("roam") is not None:
         await recover_roam(admin, bridge, journal, out)
-    await recover_levels(admin, journal, out)
-    await Ledger(journal.path.parent, journal.name, out).resume(ha)
-    if paused := journal.get("paused"):  # a run from before the ledger kept its pauses here
+    await Baseline(admin or ha, journal.path.parent, journal.name, out).release()
+    if paused := journal.get("paused"):  # a run from before the pause ledger kept its pauses here
         for entity_id in paused:
-            await turn_on(ha, entity_id, out)
+            try:
+                await ha.call_service(entity_id.partition(".")[0], "turn_on", {"entity_id": entity_id})
+                out(f"Resumed {entity_id}.")
+            except Exception as err:  # noqa: BLE001 - try every one, and say which stayed off
+                out(f"Could not turn {entity_id} back on: {err}. Turn it on by hand.")
         journal.clear("paused")
     drop_profile(journal)
 
 
-async def recover_levels(admin: HAClient | None, journal: Journal, out: Callable[[str], None]) -> None:
-    """Put back the log levels a --debug-logs run raised; they stay journaled while there is no admin connection."""
-    if not journal.get("log_levels"):
-        return
-    if admin is None:
-        out("Putting the log levels back needs HA_ADMIN_TOKEN in .env.rig; they stay in the journal.")
-    else:
-        await DebugLevels(admin, journal, out).restore()
+async def prune_baseline(env: dict, directory: Path) -> None:
+    """Put back what the baseline holds for no live run, on the admin connection where there is one: Z2M's level
+    and options need it."""
+    if not (env.get("HA_URL") and env.get("HA_TOKEN")):
+        raise SystemExit("HA_URL and HA_TOKEN must be set in .env.rig to put back what the baseline holds")
+    ha, admin = await connect(env)
+    try:
+        await Baseline(admin or ha, directory, "recover").prune()
+    finally:
+        await ha.close()
+        if admin:
+            await admin.close()
 
 
 def recover_case(ha: HAClient, entry: dict, out: Callable[[str], None], **journaled: Any) -> Snapshot:
