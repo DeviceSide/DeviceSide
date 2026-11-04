@@ -188,7 +188,7 @@ requires it.
      field gets plain words (`duration`, `sweep_time`, `limit`).
   5. Field *values* are human terms for the outcome (`brighter`, `warmer`, a full-sweep time,
      a stop point), never device mechanics (a rate per second, a step count, a mired value).
-     The adapter owns the conversion and documents it in `docs/integrations.md`.
+     The adapter owns the conversion and documents it in `docs/contributing/integration-internals.md`.
   Domain `device_side`, UI title "Device Side", is final.
 - **Groups: highest aggregation the device accepts.** Two kinds of group reach the dispatcher:
   - *HA group entities* (light group helper, switch group, legacy `group.*`, later
@@ -250,9 +250,9 @@ requires it.
      integration loads in a real HA is the first approved rig deploy (slice 3); until then
      correctness rests on unit tests plus hassfest.
 - **Docs:** hand-written. README is the front door (pitch, install, feature table, usage). A
-  single `docs/integrations.md`, one section per integration on a fixed template (what it talks
-  to, how targets resolve, per-action notes, sharp edges), split into per-integration pages only
-  if it outgrows one file. `docs/contributing/testing.md`. No docs generator (slice 8 dropped).
+  user-facing `docs/integrations.md` (an action × integration table, then per integration: what
+  it supports, cancelling, sharp edges) and `docs/contributing/integration-internals.md` (how
+  targets resolve, what goes on the wire, tested behavior). `docs/contributing/testing.md`. No docs generator (slice 8 dropped).
 - **Repo:** private until v0.0.1 ships (slice 5), then public with contributor docs. MIT. American English in
   all user-facing text (matches HA).
 - **Versions:** minimum HA set to a release within the last six months (2026.x) so no compat
@@ -342,7 +342,8 @@ scripts/
 docs/
   device_side_handoff-2026-10-23.md          existing
   plans/2026-10-23-device-side-repo-plan.md  this plan, saved in slice 0
-  integrations.md                            one section per integration, fixed template
+  integrations.md                            what each integration supports, for users
+  contributing/integration-internals.md      addressing, wire commands, tested behavior
   contributing/testing.md
   test-records/<integration>/<action>*.md    test records (rig run, or -issue-<N> per tester report)
 tests/
@@ -667,7 +668,7 @@ the first action of that session is slice 0.
    `Unauthorized` -> `REJECTED`/`admin_required`. OnTime read-back works on the rig's Hue bulb (counts
    down live; a new timer replaces the old), so `CONFIRMED` = OnTime at or just under the request.
    Built: `integrations/zha/zcl.py` reads it through ZHA internals (`get_zha_gateway`), since the
-   public read is an admin websocket command. Per-device results: `docs/integrations.md`, ZHA, Tested behavior.
+   public read is an admin websocket command. Per-device results: `docs/contributing/integration-internals.md`, ZHA, Tested behavior.
    Cancel spike 2026-10-26 (`docs/plans/2026-10-26-zha-ontime-cancel-spike.md`), LTA004 fw `0x01001416`,
    HA 2026.10.2: no flicker-free cancel. Writing `OnTime` = 0, `OnWithTimedOff` `on_time: 0` and
    `turn_on_for` 0.05 s (clamped to 0.1 s) each end the timer by turning the bulb off.
