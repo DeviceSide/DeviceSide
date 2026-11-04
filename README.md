@@ -12,7 +12,7 @@ Device Side unlocks native features in your lights, switches and plugs on the Zi
 
 * **Set lights without turning on:** Pre-stage brightness, color, CT and scenes, so lights come on without unsightly color flashes or brightness extremes.
 
-* **Zero setup:** Device Side connects to your devices automatically via the core integrations.
+* **Zero setup:** Device Side connects to your devices automatically via the core integrations, and [patches some usability quirks](#usability-patches) in Z2M and Hue.
 
 ## Key Features
 
