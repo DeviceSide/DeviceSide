@@ -1,12 +1,13 @@
 """Tell the bridge's reports of our own fades from real changes, and forget a prediction a real change ends.
 
 The bridge reports a fade's end value at its start, and the bulb reports late, stale values, and off any straight line
-(Tested behavior in docs/integrations.md), so no value tells ours apart. Instead, while a move or stop on a light is
-inside its guard window, every report of the keys its attribute owns (attributes.ATTRIBUTES) is ours. Two reports are
-another actor's (the Hue app, a dimmer, a Hue automation): a switch to off while the light's brightness heads somewhere
-lit, and a key no live transition owns, which our writes never make the bridge report. Either drops the light's
-prediction, as does a scene recalled on the bridge, and the next move starts from what the bridge reports. A change made
-from Home Assistant drops it at once, whatever its value: HueCallResolver, on core's watch of light and scene calls.
+(Tested behavior in docs/contributing/integration-internals.md), so no value tells ours apart. Instead, while a move
+or stop on a light is inside its guard window, every report of the keys its attribute owns (attributes.ATTRIBUTES) is
+ours. Two reports are another actor's (the Hue app, a dimmer, a Hue automation): a switch to off while the light's
+brightness heads somewhere lit, and a key no live transition owns, which our writes never make the bridge report. Either
+drops the light's prediction, as does a scene recalled on the bridge, and the next move starts from what the bridge
+reports. A change made from Home Assistant drops it at once, whatever its value: HueCallResolver, on core's watch of
+light and scene calls.
 
 With the predicted_state option on, the reports of brightness and on that are ours are hidden from aiohue, and so from
 HA, which instead is sent what device_side predicts: the start value while a fade runs, the halt at a stop, the end once
