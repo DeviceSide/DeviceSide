@@ -1,4 +1,4 @@
-"""Shelly turn_off_for: the turn_on_for Set with on=False; the device flips itself back on."""
+"""Shelly turn_off_with_auto_on: the turn_on_with_auto_off Set with on=False; the device flips itself back on."""
 
 from unittest.mock import call as rpc_call
 
@@ -16,7 +16,7 @@ async def test_each_capability_in_scope_gets_a_set(hass, setup_production):
 
     response = await call(
         hass,
-        "turn_off_for",
+        "turn_off_with_auto_on",
         {"entity_id": ["light.lamp", "light.bulb", "switch.heater"], "duration": 90},
     )
 
@@ -37,7 +37,10 @@ async def test_rgbw_is_refused(hass, setup_production):
     entry, _ = shelly_device(hass)
     add_shelly_entity(hass, entry, "light.strip", "rgbw:0", state="on")
 
-    assert await refusal(hass, "turn_off_for", {"entity_id": "light.strip", "duration": 90}) == "capability_not_tested"
+    assert (
+        await refusal(hass, "turn_off_with_auto_on", {"entity_id": "light.strip", "duration": 90})
+        == "capability_not_tested"
+    )
 
 
 async def test_gen1_is_refused(hass, setup_production):
@@ -46,7 +49,10 @@ async def test_gen1_is_refused(hass, setup_production):
     entry, _ = shelly_device(hass)
     add_shelly_entity(hass, entry, "switch.heater", "switch:0")
 
-    assert await refusal(hass, "turn_off_for", {"entity_id": "switch.old_relay", "duration": 5}) == "gen1_unsupported"
-    assert await call(hass, "turn_off_for", {"entity_id": "switch.heater", "duration": 5}) == {
+    assert (
+        await refusal(hass, "turn_off_with_auto_on", {"entity_id": "switch.old_relay", "duration": 5})
+        == "gen1_unsupported"
+    )
+    assert await call(hass, "turn_off_with_auto_on", {"entity_id": "switch.heater", "duration": 5}) == {
         "switch.heater": CONFIRMED
     }

@@ -5,16 +5,16 @@ from homeassistant.core import HomeAssistant
 
 from .addressing import COMPONENT_FIELDS, address, unsupported_reason
 from .rpc import TIMER_LIMITS, light_params, set_with_timer
-from ...actions.turn_on_for import TurnOnForRequest
+from ...actions.turn_on_with_auto_off import TurnOnWithAutoOffRequest
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Target
 from ...core.scope import AdapterScope
 
 
-class ShellyTurnOnFor(Adapter[TurnOnForRequest]):
+class ShellyTurnOnWithAutoOff(Adapter[TurnOnWithAutoOffRequest]):
     """One <Component>.Set carrying on, the light fields and toggle_after."""
 
-    action: ClassVar[str] = "turn_on_for"
+    action: ClassVar[str] = "turn_on_with_auto_off"
     integration: ClassVar[str] = "shelly"
     scope: ClassVar[AdapterScope] = AdapterScope(
         domains=frozenset({"light", "switch"}),
@@ -26,11 +26,11 @@ class ShellyTurnOnFor(Adapter[TurnOnForRequest]):
         confirmable=True,
     )
 
-    def supports(self, hass: HomeAssistant, request: TurnOnForRequest, target: Target) -> str | None:
+    def supports(self, hass: HomeAssistant, request: TurnOnWithAutoOffRequest, target: Target) -> str | None:
         return super().supports(hass, request, target) or unsupported_reason(target, self.scope.capabilities)
 
     async def execute(
-        self, hass: HomeAssistant, request: TurnOnForRequest, targets: list[Target]
+        self, hass: HomeAssistant, request: TurnOnWithAutoOffRequest, targets: list[Target]
     ) -> list[EntityResult]:
         async def send(target: Target) -> EntityResult:
             # The dispatcher drops the fields HA's state says the light lacks; the component is the device's word.

@@ -1,4 +1,4 @@
-"""Zigbee2MQTT turn_on_for: optional light.turn_on then mqtt.publish with on_time."""
+"""Zigbee2MQTT turn_on_with_auto_off: optional light.turn_on then mqtt.publish with on_time."""
 
 import json
 import logging
@@ -12,7 +12,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import async_mock_service
 
-from custom_components.device_side.integrations.zigbee2mqtt import turn_on_for
+from custom_components.device_side.integrations.zigbee2mqtt import turn_on_with_auto_off
 from custom_components.device_side.integrations.zigbee2mqtt.addressing import (
     is_z2m_group,
     state_topic,
@@ -43,7 +43,7 @@ async def test_light_without_fields_publishes_on_time(hass, setup_production, pu
     entry = z2m_entry(hass)
     add_z2m_entity(hass, entry, "light.kitchen")
 
-    response = await call(hass, "turn_on_for", {"entity_id": "light.kitchen", "duration": 5})
+    response = await call(hass, "turn_on_with_auto_off", {"entity_id": "light.kitchen", "duration": 5})
 
     assert response == {"light.kitchen": SENT}
     assert not turn_ons
@@ -56,7 +56,9 @@ async def test_light_with_brightness_calls_turn_on_then_publishes_on_time(hass, 
     entry = z2m_entry(hass)
     add_z2m_entity(hass, entry, "light.kitchen")
 
-    response = await call(hass, "turn_on_for", {"entity_id": "light.kitchen", "duration": 10, "brightness": 128})
+    response = await call(
+        hass, "turn_on_with_auto_off", {"entity_id": "light.kitchen", "duration": 10, "brightness": 128}
+    )
 
     assert response == {"light.kitchen": SENT}
     assert len(turn_ons) == 1
@@ -72,7 +74,7 @@ async def test_light_with_multiple_fields_passes_them_all_to_turn_on(hass, setup
 
     await call(
         hass,
-        "turn_on_for",
+        "turn_on_with_auto_off",
         {"entity_id": "light.kitchen", "duration": 5, "brightness": 200, "color_temp_kelvin": 3000},
     )
 
@@ -84,7 +86,9 @@ async def test_light_with_multiple_fields_passes_them_all_to_turn_on(hass, setup
 async def test_switch_is_out_of_scope(hass, setup_production, publishes, turn_ons):
     add_z2m_entity(hass, z2m_entry(hass), "switch.plug")
 
-    assert await refusal(hass, "turn_on_for", {"entity_id": "switch.plug", "duration": 5}) == "domain_not_tested"
+    assert (
+        await refusal(hass, "turn_on_with_auto_off", {"entity_id": "switch.plug", "duration": 5}) == "domain_not_tested"
+    )
     assert not publishes
 
 
@@ -92,7 +96,7 @@ async def test_duration_rounded_to_one_decimal_place(hass, setup_production, pub
     entry = z2m_entry(hass)
     add_z2m_entity(hass, entry, "light.kitchen")
 
-    await call(hass, "turn_on_for", {"entity_id": "light.kitchen", "duration": {"milliseconds": 1500}})
+    await call(hass, "turn_on_with_auto_off", {"entity_id": "light.kitchen", "duration": {"milliseconds": 1500}})
 
     assert json.loads(publishes[0].data["payload"]) == {"state": "ON", "on_time": 1.5}
 
@@ -101,7 +105,7 @@ async def test_duration_clamped_to_z2m_max(hass, setup_production, publishes, tu
     entry = z2m_entry(hass)
     add_z2m_entity(hass, entry, "light.kitchen")
 
-    response = await call(hass, "turn_on_for", {"entity_id": "light.kitchen", "duration": {"hours": 2}})
+    response = await call(hass, "turn_on_with_auto_off", {"entity_id": "light.kitchen", "duration": {"hours": 2}})
 
     assert response == {"light.kitchen": {**SENT, "clamped_to": 6553.4}}
     assert json.loads(publishes[0].data["payload"]) == {"state": "ON", "on_time": 6553.4}
@@ -125,9 +129,9 @@ async def test_non_z2m_mqtt_entity_is_refused(hass, setup_production, publishes,
     hass.states.async_set("light.other_light", "off")
     add_z2m_entity(hass, entry, "light.kitchen")
 
-    reason = await refusal(hass, "turn_on_for", {"entity_id": "light.other_light", "duration": 5})
+    reason = await refusal(hass, "turn_on_with_auto_off", {"entity_id": "light.other_light", "duration": 5})
     assert reason == "integration_not_supported"
-    response = await call(hass, "turn_on_for", {"entity_id": "light.kitchen", "duration": 5})
+    response = await call(hass, "turn_on_with_auto_off", {"entity_id": "light.kitchen", "duration": 5})
     assert response["light.kitchen"] == SENT
 
 
@@ -137,7 +141,7 @@ async def test_publish_error_rejects_that_target(hass, setup_production, turn_on
     async_mock_service(hass, "mqtt", "publish", raise_exception=Exception("broker unreachable"))
 
     with pytest.raises(HomeAssistantError) as raised:
-        await call(hass, "turn_on_for", {"entity_id": "light.kitchen", "duration": 5})
+        await call(hass, "turn_on_with_auto_off", {"entity_id": "light.kitchen", "duration": 5})
 
     assert raised.value.translation_key == "targets_failed"
 
@@ -149,7 +153,7 @@ async def test_turn_on_error_rejects_that_target(hass, setup_production, publish
     async_mock_service(hass, "light", "turn_on", raise_exception=Exception("entity unavailable"))
 
     with pytest.raises(HomeAssistantError) as raised:
-        await call(hass, "turn_on_for", {"entity_id": "light.kitchen", "duration": 5, "brightness": 128})
+        await call(hass, "turn_on_with_auto_off", {"entity_id": "light.kitchen", "duration": 5, "brightness": 128})
 
     assert raised.value.translation_key == "targets_failed"
     assert not publishes  # publish was never reached
@@ -161,7 +165,7 @@ async def test_multiple_devices_each_get_their_own_topic(hass, setup_production,
     add_z2m_entity(hass, entry, "light.room1", ieee=ieee1)
     add_z2m_entity(hass, entry, "light.room2", ieee=ieee2)
 
-    response = await call(hass, "turn_on_for", {"entity_id": ["light.room1", "light.room2"], "duration": 5})
+    response = await call(hass, "turn_on_with_auto_off", {"entity_id": ["light.room1", "light.room2"], "duration": 5})
 
     assert response["light.room1"] == SENT
     assert response["light.room2"] == SENT
@@ -173,7 +177,9 @@ async def test_duration_below_50ms_is_clamped(hass, setup_production, publishes,
     entry = z2m_entry(hass)
     add_z2m_entity(hass, entry, "light.kitchen")
 
-    response = await call(hass, "turn_on_for", {"entity_id": "light.kitchen", "duration": {"milliseconds": 20}})
+    response = await call(
+        hass, "turn_on_with_auto_off", {"entity_id": "light.kitchen", "duration": {"milliseconds": 20}}
+    )
 
     assert response == {"light.kitchen": {**SENT, "clamped_to": 0.05}}
     assert json.loads(publishes[0].data["payload"]) == {"state": "ON", "on_time": 0.1}
@@ -182,7 +188,7 @@ async def test_duration_below_50ms_is_clamped(hass, setup_production, publishes,
 async def test_group_without_fields_publishes_to_group_id_topic(hass, setup_production, publishes, turn_ons):
     add_z2m_group(hass, z2m_entry(hass), "light.downstairs", group_id=7)
 
-    response = await call(hass, "turn_on_for", {"entity_id": "light.downstairs", "duration": 5})
+    response = await call(hass, "turn_on_with_auto_off", {"entity_id": "light.downstairs", "duration": 5})
 
     assert response == {"light.downstairs": SENT}
     assert not turn_ons
@@ -194,7 +200,9 @@ async def test_group_without_fields_publishes_to_group_id_topic(hass, setup_prod
 async def test_group_with_fields_calls_turn_on_then_publishes(hass, setup_production, publishes, turn_ons):
     add_z2m_group(hass, z2m_entry(hass), "light.downstairs", group_id=7)
 
-    response = await call(hass, "turn_on_for", {"entity_id": "light.downstairs", "duration": 5, "brightness": 128})
+    response = await call(
+        hass, "turn_on_with_auto_off", {"entity_id": "light.downstairs", "duration": 5, "brightness": 128}
+    )
 
     assert response == {"light.downstairs": SENT}
     assert turn_ons[0].data == {"entity_id": "light.downstairs", "brightness": 128}
@@ -204,7 +212,10 @@ async def test_group_with_fields_calls_turn_on_then_publishes(hass, setup_produc
 async def test_group_on_custom_base_topic_is_not_addressable(hass, setup_production, publishes, turn_ons):
     add_z2m_group(hass, z2m_entry(hass), "light.downstairs", group_id=7, base_topic="z2m")
 
-    assert await refusal(hass, "turn_on_for", {"entity_id": "light.downstairs", "duration": 5}) == "not_addressable"
+    assert (
+        await refusal(hass, "turn_on_with_auto_off", {"entity_id": "light.downstairs", "duration": 5})
+        == "not_addressable"
+    )
     assert not publishes
 
 
@@ -213,7 +224,9 @@ async def test_device_and_group_each_get_their_own_topic(hass, setup_production,
     add_z2m_entity(hass, entry, "light.kitchen")
     add_z2m_group(hass, entry, "light.downstairs", group_id=7)
 
-    response = await call(hass, "turn_on_for", {"entity_id": ["light.kitchen", "light.downstairs"], "duration": 5})
+    response = await call(
+        hass, "turn_on_with_auto_off", {"entity_id": ["light.kitchen", "light.downstairs"], "duration": 5}
+    )
 
     assert response == {"light.kitchen": SENT, "light.downstairs": SENT}
     assert {p.data["topic"] for p in publishes} == {TOPIC, "zigbee2mqtt/7/set"}
@@ -260,8 +273,8 @@ class StateTopic:
 @pytest.fixture
 def z2m(hass, monkeypatch):
     fake = StateTopic(hass)
-    monkeypatch.setattr(turn_on_for.mqtt, "async_subscribe", fake.subscribe)
-    monkeypatch.setattr(turn_on_for, "_STATE_TIMEOUT_S", 0.2)
+    monkeypatch.setattr(turn_on_with_auto_off.mqtt, "async_subscribe", fake.subscribe)
+    monkeypatch.setattr(turn_on_with_auto_off, "_STATE_TIMEOUT_S", 0.2)
     hass.services.async_register("light", "turn_on", fake.turn_on)
     hass.services.async_register("mqtt", "publish", fake.publish)
     return fake
@@ -270,7 +283,9 @@ def z2m(hass, monkeypatch):
 async def test_timer_waits_for_the_state_z2m_publishes_after_turn_on(hass, setup_production, z2m):
     add_z2m_entity(hass, z2m_entry(hass), "light.kitchen", name="Kitchen")
 
-    response = await call(hass, "turn_on_for", {"entity_id": "light.kitchen", "duration": 5, "xy_color": [0.15, 0.06]})
+    response = await call(
+        hass, "turn_on_with_auto_off", {"entity_id": "light.kitchen", "duration": 5, "xy_color": [0.15, 0.06]}
+    )
 
     assert response == {"light.kitchen": SENT}
     assert z2m.events == ["turn_on", "state", "timer"]
@@ -281,7 +296,7 @@ async def test_a_retained_state_is_not_the_answer(hass, setup_production, z2m):
     add_z2m_entity(hass, z2m_entry(hass), "light.kitchen", name="Kitchen")
     z2m.retained = '{"state":"OFF"}'
 
-    await call(hass, "turn_on_for", {"entity_id": "light.kitchen", "duration": 5, "brightness": 128})
+    await call(hass, "turn_on_with_auto_off", {"entity_id": "light.kitchen", "duration": 5, "brightness": 128})
 
     assert z2m.events == ["turn_on", "state", "timer"]
 
@@ -290,7 +305,9 @@ async def test_no_state_by_the_timeout_still_sends_the_timer(hass, setup_product
     add_z2m_entity(hass, z2m_entry(hass), "light.kitchen", name="Kitchen")
     z2m.answer = False
 
-    response = await call(hass, "turn_on_for", {"entity_id": "light.kitchen", "duration": 5, "brightness": 128})
+    response = await call(
+        hass, "turn_on_with_auto_off", {"entity_id": "light.kitchen", "duration": 5, "brightness": 128}
+    )
 
     assert response == {"light.kitchen": SENT}
     assert z2m.events == ["turn_on", "timer"]
@@ -306,7 +323,7 @@ async def test_a_failed_turn_on_unsubscribes_and_rejects(hass, setup_production,
     async_mock_service(hass, "light", "turn_on", raise_exception=Exception("entity unavailable"))
 
     with pytest.raises(HomeAssistantError) as raised:
-        await call(hass, "turn_on_for", {"entity_id": "light.kitchen", "duration": 5, "brightness": 128})
+        await call(hass, "turn_on_with_auto_off", {"entity_id": "light.kitchen", "duration": 5, "brightness": 128})
 
     assert raised.value.translation_key == "targets_failed"
     assert "timer" not in z2m.events
@@ -316,7 +333,7 @@ async def test_a_failed_turn_on_unsubscribes_and_rejects(hass, setup_production,
 async def test_a_group_waits_on_its_own_state_topic(hass, setup_production, z2m):
     add_z2m_group(hass, z2m_entry(hass), "light.downstairs", group_id=7, name="Kitchen")
 
-    await call(hass, "turn_on_for", {"entity_id": "light.downstairs", "duration": 5, "brightness": 128})
+    await call(hass, "turn_on_with_auto_off", {"entity_id": "light.downstairs", "duration": 5, "brightness": 128})
 
     assert z2m.events == ["turn_on", "state", "timer"]
 
@@ -324,7 +341,7 @@ async def test_a_group_waits_on_its_own_state_topic(hass, setup_production, z2m)
 async def test_without_fields_nothing_is_subscribed(hass, setup_production, z2m):
     add_z2m_entity(hass, z2m_entry(hass), "light.kitchen", name="Kitchen")
 
-    await call(hass, "turn_on_for", {"entity_id": "light.kitchen", "duration": 5})
+    await call(hass, "turn_on_with_auto_off", {"entity_id": "light.kitchen", "duration": 5})
 
     assert z2m.events == ["timer"]
     assert z2m.subscribers == {}
@@ -362,7 +379,7 @@ async def test_without_fields_reads_on_then_twice_after_the_timer(hass, setup_pr
     add_z2m_entity(hass, z2m_entry(hass), "light.kitchen")
     start = wall_clock_now()
 
-    await call(hass, "turn_on_for", {"entity_id": "light.kitchen", "duration": 10})
+    await call(hass, "turn_on_with_auto_off", {"entity_id": "light.kitchen", "duration": 10})
     assert _reads(publishes) == []
 
     await advance(hass, start, 1.5)
@@ -379,7 +396,7 @@ async def test_with_fields_reads_only_after_the_timer(hass, setup_production, pu
     add_z2m_entity(hass, z2m_entry(hass), "light.kitchen")
     start = wall_clock_now()
 
-    await call(hass, "turn_on_for", {"entity_id": "light.kitchen", "duration": 10, "brightness": 128})
+    await call(hass, "turn_on_with_auto_off", {"entity_id": "light.kitchen", "duration": 10, "brightness": 128})
 
     await advance(hass, start, 1.5)
     assert _reads(publishes) == []
@@ -392,7 +409,7 @@ async def test_late_end_read_scales_with_a_long_timer(hass, setup_production, pu
     add_z2m_entity(hass, z2m_entry(hass), "light.kitchen")
     start = wall_clock_now()
 
-    await call(hass, "turn_on_for", {"entity_id": "light.kitchen", "duration": 1000})
+    await call(hass, "turn_on_with_auto_off", {"entity_id": "light.kitchen", "duration": 1000})
 
     await advance(hass, start, 1001.5)
     assert len(_reads(publishes)) == 2  # the on read and the first end read
@@ -406,7 +423,7 @@ async def test_group_reads_its_group_topic(hass, setup_production, publishes, tu
     add_z2m_group(hass, z2m_entry(hass), "light.downstairs", group_id=7)
     start = wall_clock_now()
 
-    await call(hass, "turn_on_for", {"entity_id": "light.downstairs", "duration": 5})
+    await call(hass, "turn_on_with_auto_off", {"entity_id": "light.downstairs", "duration": 5})
     await advance(hass, start, 10.5)
 
     assert _reads(publishes) == ["zigbee2mqtt/7/get"] * 3
@@ -421,8 +438,8 @@ async def test_a_second_call_replaces_the_pending_reads_of_that_target_only(
     add_z2m_entity(hass, entry, "light.hall", ieee="0x00124b0000000002")
     start = wall_clock_now()
 
-    await call(hass, "turn_on_for", {"entity_id": ["light.kitchen", "light.hall"], "duration": 10})
-    await call(hass, "turn_on_for", {"entity_id": "light.kitchen", "duration": 100, "brightness": 128})
+    await call(hass, "turn_on_with_auto_off", {"entity_id": ["light.kitchen", "light.hall"], "duration": 10})
+    await call(hass, "turn_on_with_auto_off", {"entity_id": "light.kitchen", "duration": 100, "brightness": 128})
 
     await advance(hass, start, 15.5)
     assert _reads(publishes) == [other_get] * 3  # the kitchen's first schedule never fired
@@ -434,7 +451,7 @@ async def test_unload_cancels_pending_reads(hass, setup_production, publishes, t
     add_z2m_entity(hass, z2m_entry(hass), "light.kitchen")
     start = wall_clock_now()
 
-    await call(hass, "turn_on_for", {"entity_id": "light.kitchen", "duration": 5})
+    await call(hass, "turn_on_with_auto_off", {"entity_id": "light.kitchen", "duration": 5})
     assert await hass.config_entries.async_unload(setup_production.entry_id)
     await advance(hass, start, 10.5)
 
@@ -453,7 +470,7 @@ async def test_a_failed_read_is_logged_and_the_result_stays_sent(hass, setup_pro
 
     hass.services.async_register("mqtt", "publish", publish)
 
-    response = await call(hass, "turn_on_for", {"entity_id": "light.kitchen", "duration": 5})
+    response = await call(hass, "turn_on_with_auto_off", {"entity_id": "light.kitchen", "duration": 5})
     with caplog.at_level(logging.DEBUG, logger="custom_components.device_side.integrations.zigbee2mqtt"):
         await advance(hass, start, 10.5)
 
@@ -532,11 +549,11 @@ def test_supports_returns_super_reason_when_scope_refuses(hass):
     """Line 48: super().supports() returns non-None; the adapter propagates the reason."""
     import dataclasses
 
-    from custom_components.device_side.actions.turn_on_for import TurnOnForRequest
+    from custom_components.device_side.actions.turn_on_with_auto_off import TurnOnWithAutoOffRequest
     from custom_components.device_side.core.models import LightFields
-    from custom_components.device_side.integrations.zigbee2mqtt.turn_on_for import Z2MTurnOnFor
+    from custom_components.device_side.integrations.zigbee2mqtt.turn_on_with_auto_off import Z2MTurnOnWithAutoOff
 
-    adapter = Z2MTurnOnFor()
+    adapter = Z2MTurnOnWithAutoOff()
     device = MagicMock()
     device.identifiers = {("mqtt", f"zigbee2mqtt_{IEEE}")}
     target = SimpleNamespace(
@@ -551,11 +568,11 @@ def test_supports_returns_super_reason_when_scope_refuses(hass):
         is_group=False,
     )
     # Request with brightness; temporarily restrict scope so brightness is not in scope.
-    request = TurnOnForRequest(duration_s=5.0, light=LightFields(brightness=128))
-    restricted_scope = dataclasses.replace(Z2MTurnOnFor.scope, fields=frozenset())
-    original_scope = Z2MTurnOnFor.scope
-    Z2MTurnOnFor.scope = restricted_scope
+    request = TurnOnWithAutoOffRequest(duration_s=5.0, light=LightFields(brightness=128))
+    restricted_scope = dataclasses.replace(Z2MTurnOnWithAutoOff.scope, fields=frozenset())
+    original_scope = Z2MTurnOnWithAutoOff.scope
+    Z2MTurnOnWithAutoOff.scope = restricted_scope
     try:
         assert adapter.supports(hass, request, target) == "fields_not_tested"
     finally:
-        Z2MTurnOnFor.scope = original_scope
+        Z2MTurnOnWithAutoOff.scope = original_scope

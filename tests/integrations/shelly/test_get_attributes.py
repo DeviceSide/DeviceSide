@@ -31,7 +31,7 @@ def timer(turns: str, remaining_s: float) -> dict:
     return {"turns": turns, "ends_at": ends_at, "remaining_s": remaining_s}
 
 
-@pytest.mark.parametrize(("action", "turns"), [("turn_on_for", "off"), ("turn_off_for", "on")])
+@pytest.mark.parametrize(("action", "turns"), [("turn_on_with_auto_off", "off"), ("turn_off_with_auto_on", "on")])
 async def test_switch_reports_the_running_timer(hass, action, turns):
     entry, call_rpc = shelly_device(hass)
     add_shelly_entity(hass, entry, "switch.porch", "switch:1")
@@ -47,7 +47,7 @@ async def test_switch_as_x_light_reads_the_switch(hass):
     entry, call_rpc = shelly_device(hass)
     add_shelly_entity(hass, entry, "switch.porch", "switch:0")
     add_switch_as_x(hass, "light.porch", "switch.porch")
-    await call(hass, "turn_on_for", {"entity_id": "light.porch", "duration": 5})
+    await call(hass, "turn_on_with_auto_off", {"entity_id": "light.porch", "duration": 5})
 
     response = await call(hass, "get_attributes", {"entity_id": "light.porch"})
 
@@ -91,7 +91,7 @@ async def test_bulb_off_still_reads_and_carries_its_timer(hass):
     # The bulb keeps brightness, ct and rgb in its status while off (probed on a Multicolor Bulb Gen3).
     entry, _ = shelly_device(hass, status={**BULB, "mode": "cct"})
     add_shelly_entity(hass, entry, "light.bulb", "rgbcct:0")
-    await call(hass, "turn_off_for", {"entity_id": "light.bulb", "duration": 30})
+    await call(hass, "turn_off_with_auto_on", {"entity_id": "light.bulb", "duration": 30})
 
     response = await call(hass, "get_attributes", {"entity_id": "light.bulb"})
 
@@ -152,7 +152,7 @@ async def test_mixed_targets_read_in_one_call(hass):
     entry, call_rpc = shelly_device(hass, status={**BULB, "mode": "cct"})
     add_shelly_entity(hass, entry, "switch.porch", "switch:0")
     add_shelly_entity(hass, entry, "light.bulb", "rgbcct:0")
-    await call(hass, "turn_on_for", {"entity_id": "switch.porch", "duration": 5})
+    await call(hass, "turn_on_with_auto_off", {"entity_id": "switch.porch", "duration": 5})
 
     response = await call(hass, "get_attributes", {"entity_id": ["switch.porch", "light.bulb"]})
 

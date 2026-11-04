@@ -1,4 +1,4 @@
-"""ZHA turn_on_for: optional light.turn_on, OnWithTimedOff through issue_zigbee_cluster_command (or one
+"""ZHA turn_on_with_auto_off: optional light.turn_on, OnWithTimedOff through issue_zigbee_cluster_command (or one
 issue_zigbee_group_command for a ZHA group's members), then an OnOff and OnTime read-back."""
 
 from unittest.mock import AsyncMock
@@ -46,7 +46,7 @@ def turn_ons(hass):
 async def test_light_sends_on_with_timed_off(hass, setup_production, commands, turn_ons):
     add_zha_entity(hass, zha_entry(hass), "light.bulb")
 
-    response = await call(hass, "turn_on_for", {"entity_id": "light.bulb", "duration": 5})
+    response = await call(hass, "turn_on_with_auto_off", {"entity_id": "light.bulb", "duration": 5})
 
     assert response == {"light.bulb": CONFIRMED}
     assert not turn_ons
@@ -65,7 +65,7 @@ async def test_light_sends_on_with_timed_off(hass, setup_production, commands, t
 async def test_brightness_calls_turn_on_first(hass, setup_production, commands, turn_ons):
     add_zha_entity(hass, zha_entry(hass), "light.bulb")
 
-    response = await call(hass, "turn_on_for", {"entity_id": "light.bulb", "duration": 5, "brightness": 128})
+    response = await call(hass, "turn_on_with_auto_off", {"entity_id": "light.bulb", "duration": 5, "brightness": 128})
 
     assert response == {"light.bulb": CONFIRMED}
     assert turn_ons[0].data == {"entity_id": "light.bulb", "brightness": 128}
@@ -76,7 +76,7 @@ async def test_untested_field_is_refused(hass, setup_production, commands, turn_
     add_zha_entity(hass, zha_entry(hass), "light.bulb")
 
     data = {"entity_id": "light.bulb", "duration": 5, "hs_color": [30, 50]}
-    assert await refusal(hass, "turn_on_for", data) == "fields_not_tested"
+    assert await refusal(hass, "turn_on_with_auto_off", data) == "fields_not_tested"
     assert not commands
 
 
@@ -84,7 +84,7 @@ async def test_duration_in_tenths_and_clamped(hass, setup_production, commands, 
     add_zha_entity(hass, zha_entry(hass), "light.bulb")
     readback.return_value = reads(65534)
 
-    response = await call(hass, "turn_on_for", {"entity_id": "light.bulb", "duration": {"hours": 2}})
+    response = await call(hass, "turn_on_with_auto_off", {"entity_id": "light.bulb", "duration": {"hours": 2}})
 
     assert response == {"light.bulb": {**CONFIRMED, "clamped_to": 6553.4}}
     assert commands[0].data["params"]["on_time"] == 65534
@@ -95,7 +95,7 @@ async def test_on_time_within_slack_confirms(hass, setup_production, commands, r
     add_zha_entity(hass, zha_entry(hass), "light.bulb")
     readback.return_value = reads(remaining)
 
-    response = await call(hass, "turn_on_for", {"entity_id": "light.bulb", "duration": 5})
+    response = await call(hass, "turn_on_with_auto_off", {"entity_id": "light.bulb", "duration": 5})
 
     assert response == {"light.bulb": CONFIRMED}
     readback.assert_awaited_once_with(hass, (IEEE, 11), 0x0006, (0x0000,), optional=(0x4001,))
@@ -106,7 +106,7 @@ async def test_on_time_outside_slack_is_sent(hass, setup_production, commands, r
     add_zha_entity(hass, zha_entry(hass), "light.bulb")
     readback.return_value = reads(remaining)
 
-    response = await call(hass, "turn_on_for", {"entity_id": "light.bulb", "duration": 5})
+    response = await call(hass, "turn_on_with_auto_off", {"entity_id": "light.bulb", "duration": 5})
 
     assert response == {"light.bulb": {"status": "sent", "integration": "zha", "detail": "timer_not_reported"}}
 
@@ -115,7 +115,7 @@ async def test_a_running_timer_on_a_device_that_stayed_off_is_sent(hass, setup_p
     add_zha_entity(hass, zha_entry(hass), "light.bulb")
     readback.return_value = reads(50, on=False)
 
-    response = await call(hass, "turn_on_for", {"entity_id": "light.bulb", "duration": 5})
+    response = await call(hass, "turn_on_with_auto_off", {"entity_id": "light.bulb", "duration": 5})
 
     assert response == {"light.bulb": {"status": "sent", "integration": "zha", "detail": "not_on"}}
 
@@ -134,7 +134,7 @@ async def test_failed_read_is_sent(hass, setup_production, commands, readback, r
     add_zha_entity(hass, zha_entry(hass), "light.bulb")
     readback.configure_mock(**read)
 
-    response = await call(hass, "turn_on_for", {"entity_id": "light.bulb", "duration": 5})
+    response = await call(hass, "turn_on_with_auto_off", {"entity_id": "light.bulb", "duration": 5})
 
     assert response == {"light.bulb": {"status": "sent", "integration": "zha", "detail": "readback_failed"}}
 
@@ -142,13 +142,17 @@ async def test_failed_read_is_sent(hass, setup_production, commands, readback, r
 async def test_switch_is_out_of_scope(hass, setup_production, commands, turn_ons):
     add_zha_entity(hass, zha_entry(hass), "switch.plug")
 
-    assert await refusal(hass, "turn_on_for", {"entity_id": "switch.plug", "duration": 5}) == "domain_not_tested"
+    assert (
+        await refusal(hass, "turn_on_with_auto_off", {"entity_id": "switch.plug", "duration": 5}) == "domain_not_tested"
+    )
 
 
 async def test_entity_without_a_light_unique_id_is_not_addressable(hass, setup_production, commands, turn_ons):
     add_zha_entity(hass, zha_entry(hass), "light.quirk", unique_id=f"{IEEE}-1-6-child_lock")
 
-    assert await refusal(hass, "turn_on_for", {"entity_id": "light.quirk", "duration": 5}) == "not_addressable"
+    assert (
+        await refusal(hass, "turn_on_with_auto_off", {"entity_id": "light.quirk", "duration": 5}) == "not_addressable"
+    )
 
 
 async def test_zha_error_rejects_that_target(hass, setup_production, turn_ons):
@@ -164,7 +168,7 @@ async def test_zha_error_rejects_that_target(hass, setup_production, turn_ons):
     hass.services.async_register("zha", "issue_zigbee_cluster_command", handler)
 
     with pytest.raises(HomeAssistantError) as raised:
-        await call(hass, "turn_on_for", {"entity_id": ["light.bulb", "light.gone"], "duration": 5})
+        await call(hass, "turn_on_with_auto_off", {"entity_id": ["light.bulb", "light.gone"], "duration": 5})
 
     assert raised.value.translation_key == "targets_failed"
     assert "light.gone: error" in raised.value.translation_placeholders["summary"]
@@ -186,7 +190,7 @@ def admin_command(hass):
 async def _call_as(hass, user) -> dict:
     return await hass.services.async_call(
         DOMAIN,
-        "turn_on_for",
+        "turn_on_with_auto_off",
         {"entity_id": "light.bulb", "duration": 5},
         blocking=True,
         return_response=True,
@@ -247,7 +251,7 @@ def two_light_group(hass, zha_groups):
 async def test_group_members_get_one_groupcast_and_a_read_back_each(
     hass, setup_production, two_light_group, commands, group_commands, turn_ons, readback
 ):
-    response = await call(hass, "turn_on_for", {"entity_id": "light.zha_group", "duration": 5})
+    response = await call(hass, "turn_on_with_auto_off", {"entity_id": "light.zha_group", "duration": 5})
 
     assert response == {"light.a": CONFIRMED, "light.b": CONFIRMED}
     assert [command.data for command in group_commands] == [
@@ -261,7 +265,7 @@ async def test_group_members_get_one_groupcast_and_a_read_back_each(
 async def test_group_fields_turn_on_the_group_entity_once(
     hass, setup_production, two_light_group, group_commands, turn_ons
 ):
-    await call(hass, "turn_on_for", {"entity_id": "light.zha_group", "duration": 5, "brightness": 120})
+    await call(hass, "turn_on_with_auto_off", {"entity_id": "light.zha_group", "duration": 5, "brightness": 120})
 
     assert [turn_on.data for turn_on in turn_ons] == [{"entity_id": "light.zha_group", "brightness": 120}]
     assert len(group_commands) == 1
@@ -274,7 +278,7 @@ async def test_a_member_without_on_time_reports_no_timer(
     """A member that can't run the timer drops the groupcast silently; its read-back says so."""
     readback.side_effect = lambda hass, addr, *args, **kwargs: {zcl.ON_OFF: on} if addr.ieee == B else reads(50)
 
-    response = await call(hass, "turn_on_for", {"entity_id": "light.zha_group", "duration": 5})
+    response = await call(hass, "turn_on_with_auto_off", {"entity_id": "light.zha_group", "duration": 5})
 
     assert response == {"light.a": CONFIRMED, "light.b": {"status": "sent", "integration": "zha", "detail": detail}}
 
@@ -282,7 +286,7 @@ async def test_a_member_without_on_time_reports_no_timer(
 async def test_a_group_zha_no_longer_knows_is_skipped_as_empty(hass, setup_production, zha_groups, group_commands):
     add_zha_entity(hass, zha_entry(hass), "light.zha_group", unique_id="light_zha_group_0x0002")
 
-    await call(hass, "turn_on_for", {"entity_id": "light.zha_group", "duration": 5}, return_response=False)
+    await call(hass, "turn_on_with_auto_off", {"entity_id": "light.zha_group", "duration": 5}, return_response=False)
 
     assert not group_commands
 
@@ -293,7 +297,9 @@ async def test_a_light_named_directly_or_through_an_ha_group_gets_its_own_comman
     add_zha_entity(hass, two_light_group, "light.bulb")
     hass.states.async_set("group.room", "on", {"entity_id": ["light.bulb"]})
 
-    response = await call(hass, "turn_on_for", {"entity_id": ["group.room", "light.zha_group"], "duration": 5})
+    response = await call(
+        hass, "turn_on_with_auto_off", {"entity_id": ["group.room", "light.zha_group"], "duration": 5}
+    )
 
     assert response == {"light.bulb": CONFIRMED, "light.a": CONFIRMED, "light.b": CONFIRMED}
     assert [command.data["ieee"] for command in commands] == [IEEE]
@@ -314,7 +320,7 @@ async def test_non_admin_caller_is_refused_for_every_member(
     with pytest.raises(HomeAssistantError) as raised:
         await hass.services.async_call(
             DOMAIN,
-            "turn_on_for",
+            "turn_on_with_auto_off",
             {"entity_id": "light.zha_group", "duration": 5},
             blocking=True,
             return_response=True,
@@ -337,7 +343,7 @@ async def test_a_failed_groupcast_rejects_only_that_groups_members(
     hass.services.async_register("zha", "issue_zigbee_group_command", handler)
 
     with pytest.raises(HomeAssistantError) as raised:
-        await call(hass, "turn_on_for", {"entity_id": ["light.bulb", "light.zha_group"], "duration": 5})
+        await call(hass, "turn_on_with_auto_off", {"entity_id": ["light.bulb", "light.zha_group"], "duration": 5})
 
     # light.bulb was confirmed, so it is not among the failures.
     assert raised.value.translation_placeholders["summary"] == "light.a: error, light.b: error"

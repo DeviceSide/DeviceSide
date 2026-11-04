@@ -1,11 +1,11 @@
-# Shelly · turn_off_for
+# Shelly · turn_off_with_auto_on
 
 | | |
 |---|---|
 | Result | pass |
 | Date | 2026-10-27 |
 | Source | rig run (`scripts/rig.py`), commit `e330c4e` |
-| Fingerprint | `6991c2aebe1adda0` (`integrations/shelly/turn_off_for.py`) |
+| Fingerprint | `6991c2aebe1adda0` (`integrations/shelly/turn_off_with_auto_on.py`) |
 | Home Assistant | 2026.10.2 |
 | Device | Shelly 1 Mini Gen3 (`S3SW-001X8EU`), firmware `20260923-075459/2.0.1-ge1a198b`; Shelly 1 Mini Gen4 (`S4SW-001X8EU`), firmware `20260923-075524/2.0.1-ge1a198b`; Shelly Multicolor Bulb Gen3 (`S3BL-C010007AEU`), firmware `20261026-122229/2.0.3-g4601943` |
 | Capabilities | `RGBCCT`, `Switch` |

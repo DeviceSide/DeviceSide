@@ -1,4 +1,4 @@
-"""Matter turn_on_for: OnWithTimedOff on the OnOff cluster, then OnTime read-back."""
+"""Matter turn_on_with_auto_off: OnWithTimedOff on the OnOff cluster, then OnTime read-back."""
 
 import logging
 from typing import ClassVar
@@ -13,7 +13,7 @@ from .addressing import (
     ontime_attr_path,
     unsupported_reason,
 )
-from ...actions.turn_on_for import TurnOnForRequest
+from ...actions.turn_on_with_auto_off import TurnOnWithAutoOffRequest
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Status, Target
 from ...core.scope import AdapterScope, DurationLimits
@@ -24,10 +24,10 @@ _LOGGER = logging.getLogger(__name__)
 _TIMER_LIMITS = DurationLimits(min_s=0.1, max_s=6553.4)
 
 
-class MatterTurnOnFor(Adapter[TurnOnForRequest]):
+class MatterTurnOnWithAutoOff(Adapter[TurnOnWithAutoOffRequest]):
     """Send OnWithTimedOff on the OnOff cluster."""
 
-    action: ClassVar[str] = "turn_on_for"
+    action: ClassVar[str] = "turn_on_with_auto_off"
     integration: ClassVar[str] = "matter"
     scope: ClassVar[AdapterScope] = AdapterScope(
         # Plugs only: Matter lights take the same command but stay out of scope until a test record covers them.
@@ -38,11 +38,11 @@ class MatterTurnOnFor(Adapter[TurnOnForRequest]):
         confirmable=True,
     )
 
-    def supports(self, hass: HomeAssistant, request: TurnOnForRequest, target: Target) -> str | None:
+    def supports(self, hass: HomeAssistant, request: TurnOnWithAutoOffRequest, target: Target) -> str | None:
         return super().supports(hass, request, target) or unsupported_reason(hass, target)
 
     async def execute(
-        self, hass: HomeAssistant, request: TurnOnForRequest, targets: list[Target]
+        self, hass: HomeAssistant, request: TurnOnWithAutoOffRequest, targets: list[Target]
     ) -> list[EntityResult]:
         async def send(target: Target) -> EntityResult:
             node_id = node_id_from_unique_id(target.entry.unique_id)
@@ -63,7 +63,7 @@ class MatterTurnOnFor(Adapter[TurnOnForRequest]):
                 read = await client.read_attribute(node_id=node_id, attribute_path=path)
                 on_time_value = read.get(path)
             except Exception as err:  # noqa: BLE001
-                _LOGGER.debug("turn_on_for matter read-back failed for %s: %s", target.entity_id, err)
+                _LOGGER.debug("turn_on_with_auto_off matter read-back failed for %s: %s", target.entity_id, err)
                 return self.result(target, Status.SENT, detail="readback_failed")
 
             if on_time_value:

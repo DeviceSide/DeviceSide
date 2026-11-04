@@ -20,4 +20,4 @@
 | `reads_a_running_timer[light_wrapped]` | `light` (light_wrapped) | pass |
 | `reads_a_running_timer[light_dimmable]` | `light` (light_dimmable) | pass |
 | `reads_no_timer_after_a_turn_off[switch_plug]` | `switch` (switch_plug) | pass |
-| `reads_a_turn_off_for_timer[switch_plug]` | `switch` (switch_plug) | pass |
+| `reads_an_auto_on_timer[switch_plug]` | `switch` (switch_plug) | pass |

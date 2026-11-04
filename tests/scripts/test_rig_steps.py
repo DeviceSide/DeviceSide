@@ -26,8 +26,8 @@ def test_every_step_file_has_an_action():
         "set_attributes",
         "set_scene",
         "stop",
-        "turn_on_for",
-        "turn_off_for",
+        "turn_on_with_auto_off",
+        "turn_off_with_auto_on",
     }
     assert actions <= set(AdapterRegistry.discover().actions)
 
@@ -43,7 +43,7 @@ def test_every_only_names_an_integration():
 
 def test_the_step_files_keep_their_roles():
     by_action = {step_file.action: step_file for step_file in load_step_files()}
-    assert by_action["turn_on_for"].roles == (
+    assert by_action["turn_on_with_auto_off"].roles == (
         "switch_plug",
         "light_onoff",
         "light_wrapped",
@@ -52,10 +52,12 @@ def test_the_step_files_keep_their_roles():
         "light_color",
         "group",
     )
-    assert by_action["turn_off_for"].roles == ("switch_plug", "light_onoff", "light_wrapped", "light_dimmable")
+    assert by_action["turn_off_with_auto_on"].roles == ("switch_plug", "light_onoff", "light_wrapped", "light_dimmable")
 
 
-HEADER = "action: turn_on_for\nrig_seconds: 5\ntests:\n  - name: broken\n    roles: [switch_plug]\n    steps:\n"
+HEADER = (
+    "action: turn_on_with_auto_off\nrig_seconds: 5\ntests:\n  - name: broken\n    roles: [switch_plug]\n    steps:\n"
+)
 
 
 def observed(observe: str = "{see: s, watch: w, ask: a}", setup: str = "[{wait: 0}]") -> str:
@@ -67,9 +69,9 @@ def observed(observe: str = "{see: s, watch: w, ask: a}", setup: str = "[{wait: 
     ("text", "message"),
     [
         ("- 1\n", "expected a mapping"),
-        ("action: turn_on_for\nrig_seconds: 5\ntests: []\n", "tests must be a non-empty list"),
-        ("action: turn_on_for\nrig_seconds: 0\ntests: [x]\n", "rig_seconds must be a positive whole number"),
-        ("action: turn_on_for\nrig_seconds: 5\ntests: [x]\nextra: 1\n", "unknown key"),
+        ("action: turn_on_with_auto_off\nrig_seconds: 5\ntests: []\n", "tests must be a non-empty list"),
+        ("action: turn_on_with_auto_off\nrig_seconds: 0\ntests: [x]\n", "rig_seconds must be a positive whole number"),
+        ("action: turn_on_with_auto_off\nrig_seconds: 5\ntests: [x]\nextra: 1\n", "unknown key"),
         ("rig_seconds: 5\ntests: [x]\n", "action must name"),
         ("action: x\nrig_seconds: 5\ntests: [{roles: [switch_plug]}]\n", "a test needs a name"),
         (HEADER + "      - bogus: 1\n", "test broken, step 1 (bogus): unknown step"),

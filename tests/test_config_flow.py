@@ -66,7 +66,7 @@ async def test_an_integration_stuck_in_setup_does_not_hold_device_side_back(hass
     try:
         async with asyncio.timeout(5):
             assert await hass.config_entries.async_setup(entry.entry_id)
-        assert hass.services.has_service(DOMAIN, "turn_on_for")
+        assert hass.services.has_service(DOMAIN, "turn_on_with_auto_off")
         add_zha_entity(hass, zha, "light.a")
         assert resolve(hass, get_runtime(hass).registry, "light.a") == "integration_not_loaded"
     finally:

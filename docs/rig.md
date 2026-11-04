@@ -83,7 +83,7 @@ writes no journal, so the probe puts back what it changes.
 ## Writing a step file
 
 ```yaml
-action: turn_on_for        # the device_side action every test in the file calls
+action: turn_on_with_auto_off        # the device_side action every test in the file calls
 rig_seconds: 25            # the gate's duration estimate
 tests:
   - name: on_then_off
@@ -140,7 +140,7 @@ fails nothing. Keep a pattern as narrow as the warning it expects.
 
 ```yaml
 expected_log:
-  - 'core\.dispatcher\] turn_on_for on zha timed out'
+  - 'core\.dispatcher\] turn_on_with_auto_off on zha timed out'
 ```
 
 An integration in `SETTLE_S` (`tests/rig/profile.py`) predicts a light's brightness for a while after a raise, lower

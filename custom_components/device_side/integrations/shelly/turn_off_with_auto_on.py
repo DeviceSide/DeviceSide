@@ -9,10 +9,10 @@ from ...core.models import EntityResult, Target, TimedRequest
 from ...core.scope import AdapterScope
 
 
-class ShellyTurnOffFor(Adapter[TimedRequest]):
+class ShellyTurnOffWithAutoOn(Adapter[TimedRequest]):
     """One <Component>.Set carrying on=False and toggle_after; the device turns itself back on."""
 
-    action: ClassVar[str] = "turn_off_for"
+    action: ClassVar[str] = "turn_off_with_auto_on"
     integration: ClassVar[str] = "shelly"
     scope: ClassVar[AdapterScope] = AdapterScope(
         domains=frozenset({"light", "switch"}),
