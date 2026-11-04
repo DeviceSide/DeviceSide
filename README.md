@@ -27,10 +27,9 @@ Device Side also patches some usability quirks in individual integrations.
 |:--------------------------------------- |:---:|:---:|:------:|:----------:|:------:|
 | `turn_on_for`                            | ✅   | ✅   | ✅      |            | ✅      |
 | `turn_off_for`                           |     |     | ✅      |            |        |
-| `raise_brightness`<br>`lower_brightness` | ✅   | ✅   |        | ✅          |        |
-| `raise_saturation`<br>`lower_saturation` | ✅   | ✅   |        | ✅          |        |
-| `raise_hue`<br>`lower_hue`               | ✅   | ✅   |        |            |        |
-| `stop`                                   | ✅   | ✅   |        | ✅          |        |
+| `raise_brightness`<br>`lower_brightness`<br>`stop` | ✅   | ✅   |        | ✅          |        |
+| `raise_saturation`<br>`lower_saturation`<br>`stop` | ✅   | ✅   |        | ✅          |        |
+| `raise_hue`<br>`lower_hue`<br>`stop`               | ✅   | ✅   |        |            |        |
 | `set_attributes`                         | ✅   | ✅   |        | ✅          |        |
 | `set_scene`                              |     |     |        | ✅          |        |
 | `get_attributes`                         | ✅   | ✅   | ✅      | ✅          | ✅      |
