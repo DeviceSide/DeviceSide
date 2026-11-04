@@ -81,6 +81,7 @@ v0.1.0 is the next release.
 | 15 (follow-up) | Rig: one shared baseline replaces the pause ledger; pauses, HA and Z2M log levels and Z2M device options are held there, put back by the last run out, the next run's prune or `--recover` | #209 |
 | 15 (follow-up) | Rig: a home record keeps each roaming bulb's Hue home and pre-run state until it is home as it was; a failed case restore stays journaled, a rename is journaled first, and orphans replay oldest first | #210 |
 | — | CI skips pytest when a change touches only `*.md` and `docs/`; the required check still reports, as skipped | #219 |
+| 15 (follow-up) | Rig: a Z2M bulb whose light HA lost (Z2M still holding it published) gets its discovery published again by an HA override set then cleared | #213 |
 
 ## To go, in order
 
