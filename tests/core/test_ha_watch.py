@@ -1,4 +1,4 @@
-"""The core watch of light and scene calls from HA: one target resolution, handed to each busy platform's resolver."""
+"""The core watch of light and scene calls from HA: one target resolution, handed to each busy resolver."""
 
 import asyncio
 from unittest.mock import patch
@@ -87,7 +87,7 @@ async def test_an_idle_watch_resolves_nothing(hass, watched, resolvers):
     assert resolvers["alpha"].calls == []
 
 
-async def test_each_resolver_gets_its_own_platforms_entries(hass, watched, resolvers):
+async def test_each_resolver_gets_its_own_integrations_entries(hass, watched, resolvers):
     entity(hass, "alpha", "light.a")
     entity(hass, "beta", "light.b")
     entity(hass, "demo", "light.other")
@@ -99,7 +99,7 @@ async def test_each_resolver_gets_its_own_platforms_entries(hass, watched, resol
     assert resolvers["beta"].calls == [(call, ["light.b"])]
 
 
-async def test_a_call_naming_no_entity_of_a_platform_skips_its_resolver(hass, watched, resolvers):
+async def test_a_call_naming_no_entity_of_an_integration_skips_its_resolver(hass, watched, resolvers):
     entity(hass, "alpha", "light.a")
 
     await light_call(hass, {"entity_id": "light.a"})
