@@ -6,7 +6,7 @@ adapter scopes on 4 Nov 2026. It is also the "testers needed" list for the relea
 leaving capabilities out.
 
 A **tester** is someone with the hardware and a Home Assistant they can point the rig's step files at
-(`tests/rig/steps/`, see [testing.md](testing.md)). A passing record clears the entry: widen the adapter's
+(`tests/rig/steps/`, see [rig.md](rig.md)). A passing record clears the entry: widen the adapter's
 `AdapterScope` and add the record under `docs/test-records/`. Proof follows the call, so one record covers every
 entity domain the same call reaches.
 

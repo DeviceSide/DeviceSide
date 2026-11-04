@@ -17,7 +17,7 @@ CONFIRMED = {"status": "confirmed", "integration": "shelly"}
 
 @pytest.fixture
 def every_light_in_scope(monkeypatch):
-    """Light, CCT, RGB and RGBW as testers' reports would add them; until then they are refused first."""
+    """Light, CCT, RGB and RGBW as test records would add them; until then they are refused first."""
     scope = dataclasses.replace(ShellyTurnOnFor.scope, capabilities=None)
     monkeypatch.setattr(ShellyTurnOnFor, "scope", scope)
 

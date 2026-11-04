@@ -22,7 +22,7 @@ _LOGGER = logging.getLogger(__name__)
 
 # A group with no members holds nothing to act on, which is not a reason it can't: it is skipped, never raised.
 EMPTY_GROUP = "empty_group"
-# The config entry behind the target isn't loaded: unavailable, as core treats an entity whose platform isn't up.
+# The config entry behind the target isn't loaded: unavailable, as core treats an entity whose integration isn't up.
 NOT_LOADED = "integration_not_loaded"
 
 

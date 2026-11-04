@@ -2,8 +2,8 @@
 
 A call from a dashboard, an automation or a script can change a light while a fade of ours runs, and the light's next
 move or stop would then plan from the wrong value. One listener watches the light and scene calls, resolves each
-call's target once, and hands each integration's resolver (IntegrationInfo.call_resolver) the registry entries of its
-platform. Our own commands go outside the light domain, or over MQTT, so they pass it by.
+call's target once, and hands each integration's resolver (IntegrationInfo.call_resolver) the registry entries it
+owns. Our own commands go outside the light domain, or over MQTT, so they pass it by.
 
 The listener runs before the call's service does. A resolver that must look something up (a Z2M group's members) runs
 in a task instead, and settled() waits for it: the dispatcher awaits it before any adapter plans.
@@ -82,21 +82,21 @@ class CallResolver(Protocol):
         ...
 
     def forget(self, hass: HomeAssistant, call: Call, entries: Entries) -> Awaitable[None] | None:
-        """Drop what the call leaves stale for these entries of the integration's platform, or for ALL."""
+        """Drop what the call leaves stale for these entries of the integration, or for ALL."""
         ...
 
 
 def attach(hass: HomeAssistant, resolvers: Mapping[str, CallResolver]) -> CALLBACK_TYPE:
-    """Listen for light and scene calls; resolvers are keyed by the platform (registry entry platform) each owns."""
+    """Listen for light and scene calls; resolvers are keyed by their integration's ha_domain."""
 
     @callback
     def on_call(event: Event) -> None:
-        if not (busy := {platform: r for platform, r in resolvers.items() if _busy(hass, platform, r)}):
+        if not (busy := {ha_domain: r for ha_domain, r in resolvers.items() if _busy(hass, ha_domain, r)}):
             return
         service_data = event.data.get(ATTR_SERVICE_DATA) or {}
         call = Call(event.data[ATTR_DOMAIN], event.data[ATTR_SERVICE], service_data)
-        for platform, entries in _entries(hass, service_data, busy).items():
-            _forget(hass, platform, busy[platform], call, entries)
+        for ha_domain, entries in _entries(hass, service_data, busy).items():
+            _forget(hass, ha_domain, busy[ha_domain], call, entries)
 
     return hass.bus.async_listen(EVENT_CALL_SERVICE, on_call, event_filter=_is_light_call)
 
@@ -108,45 +108,45 @@ async def settled(hass: HomeAssistant) -> None:
 
 
 def _entries(
-    hass: HomeAssistant, service_data: Mapping[str, Any], platforms: Mapping[str, CallResolver]
+    hass: HomeAssistant, service_data: Mapping[str, Any], resolvers: Mapping[str, CallResolver]
 ) -> dict[str, Entries]:
-    """The call's target, once, split by the platform of each entry."""
+    """The call's target, once, split by the ha_domain owning each entry (its registry platform)."""
     if service_data.get(ATTR_ENTITY_ID) == ENTITY_MATCH_ALL:
-        return dict.fromkeys(platforms, ALL)
+        return dict.fromkeys(resolvers, ALL)
     selected = async_extract_referenced_entity_ids(hass, TargetSelection(service_data))
     registry = er.async_get(hass)
-    by_platform: dict[str, Entries] = {}
+    by_domain: dict[str, Entries] = {}
     for entity_id in sorted(selected.referenced | selected.indirectly_referenced):
-        if (entry := registry.async_get(entity_id)) is not None and entry.platform in platforms:
-            by_platform.setdefault(entry.platform, []).append(entry)
-    return by_platform
+        if (entry := registry.async_get(entity_id)) is not None and entry.platform in resolvers:
+            by_domain.setdefault(entry.platform, []).append(entry)
+    return by_domain
 
 
-def _busy(hass: HomeAssistant, platform: str, resolver: CallResolver) -> bool:
+def _busy(hass: HomeAssistant, ha_domain: str, resolver: CallResolver) -> bool:
     try:
         return resolver.busy(hass)
     except Exception:
-        _LOGGER.exception("The %s call resolver failed", platform)
+        _LOGGER.exception("The %s call resolver failed", ha_domain)
         return False
 
 
-def _forget(hass: HomeAssistant, platform: str, resolver: CallResolver, call: Call, entries: Entries) -> None:
+def _forget(hass: HomeAssistant, ha_domain: str, resolver: CallResolver, call: Call, entries: Entries) -> None:
     """Run the resolver, logging a failure so the others still run; one that returns an awaitable runs in a task."""
     try:
         if (later := resolver.forget(hass, call, entries)) is None:
             return
     except Exception:
-        _LOGGER.exception("The %s call resolver failed on %s.%s", platform, call.domain, call.service)
+        _LOGGER.exception("The %s call resolver failed on %s.%s", ha_domain, call.domain, call.service)
         return
 
     async def run() -> None:
         try:
             await later
         except Exception:
-            _LOGGER.exception("The %s call resolver failed on %s.%s", platform, call.domain, call.service)
+            _LOGGER.exception("The %s call resolver failed on %s.%s", ha_domain, call.domain, call.service)
 
     pending = _pending(hass)
-    task = hass.async_create_task(run(), f"device_side {platform} call resolver")
+    task = hass.async_create_task(run(), f"device_side {ha_domain} call resolver")
     if not task.done():
         pending.add(task)
         task.add_done_callback(pending.discard)

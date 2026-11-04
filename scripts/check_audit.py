@@ -7,7 +7,7 @@ The record is `docs/audits/<rc>.md`: YAML frontmatter (rc, base, passes, finding
 - Passes chain from it (`passes[0].from == base`, each `from` the previous `to`); each `to` is an ancestor of the head.
 - Nothing outside `docs/audits/` changed after the last pass.
 - A Critical or High finding is `fixed` (`fixed_in` inside a pass after the first) or `waived` (with a `reason`).
-See docs/plans/2026-10-23-rc-audit-gate.md.
+See .claude/skills/rc-audit/SKILL.md.
 
 Usage: scripts/check_audit.py <rc> <head-sha>
        scripts/check_audit.py --base <rc>   (print the base /rc-audit starts rc1 or a new RC from)

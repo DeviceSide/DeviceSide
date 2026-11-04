@@ -72,7 +72,7 @@ async def test_plug_sends_on_with_timed_off(setup_matter, hass):
 
 
 async def test_light_is_out_of_scope(setup_matter, hass):
-    """A Matter light raises TargetNotSupported until a tester's report brings lights into scope."""
+    """A Matter light raises TargetNotSupported until a test record brings lights into scope."""
     entry, send_cmd, _ = matter_device(hass, endpoint_id=EP)
     add_matter_entity(hass, entry, "light.bulb", endpoint_id=EP)
 

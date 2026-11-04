@@ -77,7 +77,7 @@ def stops(attributes: Iterable[str]) -> dict:
 
 def xy_halt(xy: tuple[float, float]) -> dict:
     """The PUT body fields that halt an xy fade at this xy, its predicted one: the bridge has no color delta stop, and
-    reports the written xy at once (A60 probe, docs/plans/2026-10-27-hue-move-color.md). The duration of 0 holds for
+    reports the written xy at once (docs/integration-internals.md, Hue tested behavior). The duration of 0 holds for
     every field in the PUT."""
     return {"color": {"xy": {"x": xy[0], "y": xy[1]}}, "dynamics": {"duration": 0}}
 

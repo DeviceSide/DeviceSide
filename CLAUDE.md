@@ -1,7 +1,7 @@
 # device_side
 
-Design and delivery plan: `docs/plans/2026-10-23-device-side-repo-plan.md`; use its glossary's terms in code
-and docs; "platform", "backing" and "claim" are retired. Progress to v0.1.0: `TODO.md`; tick items off in the PR that finishes them.
+Design: `docs/design.md`; use its glossary's terms in code and docs. Progress to v0.1.0: `TODO.md`; tick items off
+in the PR that finishes them.
 
 When an action should raise, skip a target, or what its response holds: match core, per `docs/action-behavior.md`.
 
@@ -19,9 +19,8 @@ not; CI checks it.
 a released adapter that the rig can't exercise. Leave it off for refactors, performance work and fixes the rig run
 before each RC covers. When unsure, ask.
 
-**Clearing it:** a PR citing a passing test record (`docs/test-records/<integration>/<action>*.md`) or tester issue
-that covers the adapter's whole scope: `AdapterScope.domains`, `.capabilities`, `.fields`, and each of `.options` on
-and off.
+**Clearing it:** a PR citing a passing test record (`docs/test-records/<integration>/<action>*.md`) that covers the
+adapter's whole scope: `AdapterScope.domains`, `.capabilities`, `.fields`, and each of `.options` on and off.
 
 **Proof follows the call.** A record proves the call an adapter sends and the capability it reaches (Shelly: the RPC
 component), whatever entity domain the target shows: a relay exposed as a `switch` or an on/off `light` rides one
@@ -46,7 +45,8 @@ passed on one light (PR #204).
 - `tests/{core,actions,integrations,rig}`: mirror the above; `rig/` drives the live HA, only via `scripts/rig.py`,
   on a profile (`tests/rig/profiles/<name>.yaml`, gitignored)
 - `scripts/`: rig runner, household check, deploy, release checks (coverage and the release flag, tags, RC audits)
-- `docs/test-records/<integration>/`: test records. Design detail lives in the repo plan.
+- `docs/test-records/<integration>/`: test records. Design detail lives in `docs/design.md`; running the rig and
+  writing step files in `docs/rig.md`.
 
 ## Conventions
 
