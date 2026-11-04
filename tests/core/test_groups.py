@@ -1,4 +1,4 @@
-"""HA group-platform expansion, any domain."""
+"""HA group expansion, any domain."""
 
 import pytest
 
