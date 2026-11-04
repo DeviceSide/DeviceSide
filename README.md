@@ -38,64 +38,7 @@ Details per integration are in [docs/integrations.md](docs/integrations.md).
 
 **Warning:** Some devices accept commands for features that they don't fully support. Test each of your devices with Device Side before relying on device-native features.
 
-### Delayed Off
-
-Action: `turn_on_for`
-
-Turn on, then off after a delay. Timer runs on the device. Example use cases:
-
-- Cut power to a heater or ironing station after 4 hours, in case someone leaves it on.
-- Run a fan for 20 minutes after a shower.
-
-### Delayed On
-
-Action: `turn_off_for`
-
-Turn off, then on after a delay. Timer runs on the device. Example use case:
-
-- Power-cycle a router.
-
-### Smooth Dimming
-
-Actions: `raise_brightness`, `lower_brightness`, `stop`
-
-Create "press to dim, release to stop" automations. Transitions run natively on the device.
-
-### Smooth Color Transitions
-
-Actions: `raise_saturation`, `lower_saturation`, `raise_hue`, `lower_hue`, `stop`
-
-Create "press to change color, release to stop" automations. Transitions run natively on the device.
-
-### Set Lights Without Turning On
-
-Actions: `set_attributes`, `set_scene`
-
-Set scenes, brightness, color and color temperature while the lights are off, so that they turn on smoothly without unsightly color or brightness flashes.
-
-### Get Attributes
-
-Action: `get_attributes`
-
-Read device attributes that aren't exposed reliably by Home Assistant:
-
-* Check a device's on/off timer.
-
-* Check brightness, color or color temperature while a light is off or transitioning.
-
-### Usability patches
-
-* **Color lights on Zigbee2MQTT:**
-
-  * Home Assistant shows the wrong color for full-color bulbs in hue-saturation (HS) mode. Device Side fixes this by [announcing both of their color modes](docs/integrations.md#what-device-side-changes-in-zigbee2mqtt).
-
-  * Hue bulbs: before a delayed off with a color, Device Side turns on Z2M's Hue native control setting for that bulb, so it comes on in the new color instead of flashing its last one.
-
-* **Hue Bridge:** When a brightness move starts, the bridge reports its target brightness (e.g. 0% or 100%) to Home Assistant, which is jarring for moves that you plan to stop. Device Side suppresses the bridge's report when a transition starts, and reports the new brightness once the transition stops.
-
-The HS mode and Hue Bridge patches are on by default; turn them off in Device Side's options.
-
-## Get Started
+## Get started
 
 ### Requirements
 
@@ -132,57 +75,18 @@ Device Side's actions are drop-in replacements for Hue Smooth Dimming, apart fro
 
 * change `lower` to `lower_brightness`
 
-## Usage
+## Delayed off/on
 
-### Delayed Off/On
+### Delayed off
 
-**Delayed off:** `device_side.turn_on_for` turns on, then off automatically after a delay.
+Action: `device_side.turn_on_for`
 
-| Field               | Description                                                                                                            |
-|:------------------- |:---------------------------------------------------------------------------------------------------------------------- |
-| `target`            | Lights and switches (required)                                                                                         |
-| `duration`          | Delay until the device turns off (required). Up to 7 days on Shelly, 6,553.4 s (about 1 h 49 min) on Zigbee and Matter |
-| `brightness`        | Brightness (1–255). ZHA, Z2M, Shelly                                                                                   |
-| `color_temp_kelvin` | Color temperature (2000–6500 K). ZHA, Z2M, Shelly                                                                      |
-| `rgb_color`         | Color as `[red, green, blue]` (0–255 each). Z2M, Shelly                                                                |
-| `hs_color`          | Color as `[hue, saturation]` (0–360, 0–100). Z2M                                                                       |
-| `xy_color`          | Color as `[x, y]`. Z2M                                                                                                 |
-| `transition`        | Fade time (0–300 s). Z2M, Shelly                                                                                       |
-| `response_variable` | Variable that receives the response from each entity (optional)                                                        |
+Turn on, then off after a delay. Timer runs on the device. Example use cases:
 
-**Delayed on:** `device_side.turn_off_for` turns off, then on automatically after a delay.
+- Cut power to a heater or ironing station after 4 hours, in case someone leaves it on.
+- Run a fan for 20 minutes after a shower.
 
-| Field               | Description                                                     |
-|:------------------- |:--------------------------------------------------------------- |
-| `target`            | Shelly lights and switches (required)                           |
-| `duration`          | Delay until the device turns on (required). Up to 7 days        |
-| `response_variable` | Variable that receives the response from each entity (optional) |
-
-**Cancel:** The following actions cancel a delayed on/off timer:
-
-* Turn off a device that was on, or vice versa
-
-* Send a new delayed on/off command (restarts the countdown)
-
-* Send `turn_on` to a device that's already on (Shelly, and most lights on Z2M)
-
-* Send `turn_off` to a device that's already off (Shelly only)
-
-#### Results
-
-Each targeted entity reports a `status` in the response variable:
-
-| Status      | Meaning                                            |
-| ----------- | -------------------------------------------------- |
-| `confirmed` | Command accepted; device reported a running timer  |
-| `sent`      | Command accepted; timer not confirmed in read-back |
-| `unchanged` | Nothing to send; `detail` says why                 |
-
-If a requested duration is out of range, `clamped_to` reports the duration the device actually used, in seconds. A field the entity can't take, like brightness on a plug, is dropped and the rest of the call goes ahead, with `detail: fields_dropped`.
-
-If a device fails, the action fails and stops the automation.
-
-#### YAML Example: Heater off after 4 hours, with a warning
+#### YAML example: heater off after 4 hours, with a warning
 
 ```yaml
 actions:
@@ -199,9 +103,77 @@ actions:
           message: "Heater timer not confirmed: {{ result['switch.heater'].status }}"
 ```
 
-***
+| Field               | Description                                                                                                            |
+|:------------------- |:---------------------------------------------------------------------------------------------------------------------- |
+| `target`            | Lights and switches (required)                                                                                         |
+| `duration`          | Delay until the device turns off (required). Up to 7 days on Shelly, 6,553.4 s (about 1 h 49 min) on Zigbee and Matter |
+| `brightness`        | Brightness (1–255). ZHA, Z2M, Shelly                                                                                   |
+| `color_temp_kelvin` | Color temperature (2000–6500 K). ZHA, Z2M, Shelly                                                                      |
+| `rgb_color`         | Color as `[red, green, blue]` (0–255 each). Z2M, Shelly                                                                |
+| `hs_color`          | Color as `[hue, saturation]` (0–360, 0–100). Z2M                                                                       |
+| `xy_color`          | Color as `[x, y]`. Z2M                                                                                                 |
+| `transition`        | Fade time (0–300 s). Z2M, Shelly                                                                                       |
+| `response_variable` | Variable that receives the response from each entity (optional)                                                        |
 
-### Smooth Dimming
+### Delayed on
+
+Action: `device_side.turn_off_for`
+
+Turn off, then on after a delay. Timer runs on the device. Example use case:
+
+- Power-cycle a router.
+
+| Field               | Description                                                     |
+|:------------------- |:--------------------------------------------------------------- |
+| `target`            | Shelly lights and switches (required)                           |
+| `duration`          | Delay until the device turns on (required). Up to 7 days        |
+| `response_variable` | Variable that receives the response from each entity (optional) |
+
+### Cancel a timer
+
+The following actions cancel a delayed on/off timer:
+
+* Turn off a device that was on, or vice versa
+
+* Send a new delayed on/off command (restarts the countdown)
+
+* Send `turn_on` to a device that's already on (Shelly, and most lights on Z2M)
+
+* Send `turn_off` to a device that's already off (Shelly only)
+
+<details>
+<summary>Results</summary>
+
+Each targeted entity reports a `status` in the response variable:
+
+| Status      | Meaning                                            |
+| ----------- | -------------------------------------------------- |
+| `confirmed` | Command accepted; device reported a running timer  |
+| `sent`      | Command accepted; timer not confirmed in read-back |
+| `unchanged` | Nothing to send; `detail` says why                 |
+
+If a requested duration is out of range, `clamped_to` reports the duration the device actually used, in seconds. A field the entity can't take, like brightness on a plug, is dropped and the rest of the call goes ahead, with `detail: fields_dropped`.
+
+If a device fails, the action fails and stops the automation.
+
+</details>
+
+## Smooth dimming
+
+Create "press to dim, release to stop" automations. Transitions run natively on the device.
+
+#### YAML example: two-button dimmer
+
+```yaml
+left_button_held:
+  - action: device_side.lower_brightness
+
+right_button_held:
+  - action: device_side.raise_brightness
+
+buttons_released:
+  - action: device_side.stop
+```
 
 | Action                         | Description                                    |
 |:------------------------------ |:---------------------------------------------- |
@@ -217,22 +189,19 @@ actions:
 
 To move several lights in step, target a Hue room or zone, or a Zigbee2MQTT or ZHA group, instead of separate lights. One group-wide Zigbee message then moves them together.
 
-#### YAML Example: Two-button dimmer
+## Smooth color transitions
+
+Create "press to change color, release to stop" automations. Transitions run natively on the device.
+
+#### YAML example: hold to cycle color
 
 ```yaml
-left_button_held:
-  - action: device_side.lower_brightness
+button_held:
+  - action: device_side.raise_hue
 
-right_button_held:
-  - action: device_side.raise_brightness
-
-buttons_released:
+button_released:
   - action: device_side.stop
 ```
-
-***
-
-### Smooth Color Transitions
 
 | Action                         | Description                                                     |
 |:------------------------------ |:--------------------------------------------------------------- |
@@ -250,40 +219,11 @@ buttons_released:
 
 Groups move in step, as for dimming.
 
-#### YAML Example: Hold to cycle color
+## Set lights without turning on
 
-```yaml
-button_held:
-  - action: device_side.raise_hue
+Set scenes, brightness, color and color temperature while the lights are off, so that they turn on smoothly without unsightly color or brightness flashes.
 
-button_released:
-  - action: device_side.stop
-```
-
-***
-
-### Set Lights Without Turning On
-
-**Set brightness, color or CT:** `device_side.set_attributes` sets brightness, color temp or color without changing on/off state.
-
-| Field               | Description                                 |
-|:------------------- |:------------------------------------------- |
-| `target`            | Lights and groups (required)                |
-| `brightness`        | Brightness level (%)                        |
-| `min_brightness`    | Enforce a minimum brightness (%)            |
-| `max_brightness`    | Enforce a maximum brightness (%)            |
-| `color_temp_kelvin` | Color temperature (K)                       |
-| `rgb_color`         | Color as `[red, green, blue]` (0–255 each)  |
-| `hs_color`          | Color as `[hue, saturation]` (0–360, 0–100) |
-| `xy_color`          | Color as `[x, y]`                           |
-
-**Set scene:** `device_side.set_scene` sets a Hue scene without turning its lights on.
-
-| Field    | Description           |
-|:-------- |:--------------------- |
-| `target` | Hue scenes (required) |
-
-#### YAML Example: Set scene for next turn-on
+#### YAML example: set scene for next turn-on
 
 ```yaml
 description: Stage the Relax scene in the living room at 22:00, without turning the lights on.
@@ -298,25 +238,40 @@ actions:
 
 To set brightness for the next turn-on from the visual editor, see [docs/examples/set-turn-on-brightness.md](docs/examples/set-turn-on-brightness.md).
 
-***
+### Set brightness, color or CT
 
-### Get Attributes
+Action: `device_side.set_attributes`. Sets brightness, color temp or color without changing on/off state.
 
-`device_side.get_attributes` returns one record per target, containing:
+| Field               | Description                                 |
+|:------------------- |:------------------------------------------- |
+| `target`            | Lights and groups (required)                |
+| `brightness`        | Brightness level (%)                        |
+| `min_brightness`    | Enforce a minimum brightness (%)            |
+| `max_brightness`    | Enforce a maximum brightness (%)            |
+| `color_temp_kelvin` | Color temperature (K)                       |
+| `rgb_color`         | Color as `[red, green, blue]` (0–255 each)  |
+| `hs_color`          | Color as `[hue, saturation]` (0–360, 0–100) |
+| `xy_color`          | Color as `[x, y]`                           |
 
-* Brightness, color temp and color (RGB, HS, XY) of lights, even while off or moving.
+### Set scene
 
-* Any delayed on/off timer running on the device.
+Action: `device_side.set_scene`. Sets a Hue scene without turning its lights on.
 
-| Field    | Description                    |
-|:-------- |:------------------------------ |
-| `target` | Lights and switches (required) |
+| Field    | Description           |
+|:-------- |:--------------------- |
+| `target` | Hue scenes (required) |
 
-A record holds the keys the device reports: `brightness` (%), `color_temp_kelvin`, `rgb_color`, `hs_color`, `xy_color`, and `timer` while one is running.
+## Get attributes
 
-The `timer` key holds `turns` (`on` or `off`), `ends_at` (UTC) and `remaining_s`.
+Action: `device_side.get_attributes`
 
-#### YAML Example: How long until the heater turns off
+Read device attributes that aren't exposed reliably by Home Assistant:
+
+* Check a device's on/off timer.
+
+* Check brightness, color or color temperature while a light is off or transitioning.
+
+#### YAML example: how long until the heater turns off
 
 ```yaml
 actions:
@@ -332,7 +287,25 @@ actions:
         {% else %}No heater timer running.{% endif %}
 ```
 
-***
+| Field    | Description                    |
+|:-------- |:------------------------------ |
+| `target` | Lights and switches (required) |
+
+A record holds the keys the device reports: `brightness` (%), `color_temp_kelvin`, `rgb_color`, `hs_color`, `xy_color`, and `timer` while one is running.
+
+The `timer` key holds `turns` (`on` or `off`), `ends_at` (UTC) and `remaining_s`.
+
+## Usability patches
+
+* **Color lights on Zigbee2MQTT:**
+
+  * Home Assistant shows the wrong color for full-color bulbs in hue-saturation (HS) mode. Device Side fixes this by [announcing both of their color modes](docs/integrations.md#what-device-side-changes-in-zigbee2mqtt).
+
+  * Hue bulbs: before a delayed off with a color, Device Side turns on Z2M's Hue native control setting for that bulb, so it comes on in the new color instead of flashing its last one.
+
+* **Hue Bridge:** When a brightness move starts, the bridge reports its target brightness (e.g. 0% or 100%) to Home Assistant, which is jarring for moves that you plan to stop. Device Side suppresses the bridge's report when a transition starts, and reports the new brightness once the transition stops.
+
+The HS mode and Hue Bridge patches are on by default; turn them off in Device Side's options.
 
 ## Uninstall
 
