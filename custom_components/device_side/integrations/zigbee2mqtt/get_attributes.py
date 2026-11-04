@@ -30,7 +30,6 @@ class Z2MGetAttributes(Adapter[Request]):
     action: ClassVar[str] = "get_attributes"
     integration: ClassVar[str] = "zigbee2mqtt"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        experimental=True,
         # Switches stay out of scope, as in turn_on_for.
         domains=frozenset({"light"}),
         confirmable=True,

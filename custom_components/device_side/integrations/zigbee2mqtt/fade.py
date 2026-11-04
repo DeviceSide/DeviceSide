@@ -116,9 +116,9 @@ class Fade:
     before: tuple[tuple[str, dict], ...] = ()
 
 
-def ramp_scope(attribute: str) -> AdapterScope:
+def ramp_scope(attribute: str, *, experimental: bool) -> AdapterScope:
     return AdapterScope(
-        experimental=True, domains=frozenset({"light"}), fields=frozenset({attribute}), native_groups=True
+        experimental=experimental, domains=frozenset({"light"}), fields=frozenset({attribute}), native_groups=True
     )
 
 
