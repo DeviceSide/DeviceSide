@@ -15,6 +15,7 @@ v0.1.0 is the next release.
 
 | Slice | What | PRs |
 |---|---|---|
+| 7 | Query responses: unused nested `attributes` shape removed from `EntityResult.as_response`, the plan and the rig engine; `get_attributes` stays flat, as hue_dimmer's | #212 |
 | 11 | Matter `turn_on_for`: timer-limit comment gives the spec's 65534-tenth cap | #211 |
 | 13k | Rig: a group a network can't make ends the run as a `GroupError`, so the phases that passed keep their records and the bulbs go home | #207 |
 | 13k | Flag-clearing follow-up: composed group proof (CLAUDE.md), `sets_color_while_off` reads its color back, `predicted_state` out of the Hue saturation scopes, `saturation_stop_raise` and `hue_stop_raise`; clears Hue `raise_saturation` and `lower_saturation` (Z2M `lower_hue`'s group case failed twice on the lab's Z2M mesh) | #204 |
