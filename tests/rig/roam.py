@@ -58,6 +58,8 @@ HUE_SEARCH_S = 56  # how long a Hue search stays open; it can't be ended early
 # opens one window, and a failing one two, for whatever device is resetting nearby to join.
 HUE_SEARCHES = 2
 POLL_S = 2.0
+PRIME_ATTEMPTS = 3  # reads of a newly joined Z2M bulb: the first, just after its interview, can go unanswered
+PRIME_GAP_S = 3.0
 GONE_S = 15  # for HA to drop a rig-made group's entity once the group is removed; after that the rig removes it
 # The rig-made Hue scene: every member on at 40 %, and 366 mirek (2732 K) where it takes a color temperature. Below
 # full, so a recall mid-fade shows (raise_brightness-predicted_state's bridge_scene_recall_mid_fade_shows_at_once).
@@ -624,12 +626,20 @@ class Roamer:
     async def prime_z2m(self, bulb: Bulb) -> None:
         """Read the bulb once through device_side: a bulb newly joined to Z2M has no color_mode in its state, and HA's
         MQTT light then shows no brightness (a group case's setup would fail on it); a read fills it."""
-        try:
-            await self.ha.call_service(
-                "device_side", "get_attributes", {"entity_id": bulb.entity_id}, return_response=True
-            )
-        except Exception as err:  # noqa: BLE001 - the case's own steps report what this would have prevented
-            self.out(f"Could not read {bulb.entity_id} from Zigbee2MQTT ({err}); it may show no brightness until read.")
+        for attempt in range(1, PRIME_ATTEMPTS + 1):
+            try:
+                await self.ha.call_service(
+                    "device_side", "get_attributes", {"entity_id": bulb.entity_id}, return_response=True
+                )
+                return
+            except Exception as err:  # noqa: BLE001 - the case's own steps report what this would have prevented
+                if attempt == PRIME_ATTEMPTS:
+                    self.out(
+                        f"Could not read {bulb.entity_id} from Zigbee2MQTT ({err}); "
+                        "it may show no brightness until read."
+                    )
+                else:
+                    await asyncio.sleep(PRIME_GAP_S)
 
     async def free(self, bulb: Bulb, network: str) -> None:
         """Remove a registry entry that holds the bulb's fixed ID from an earlier visit. Only a stale one goes: its
