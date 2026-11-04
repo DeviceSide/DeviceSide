@@ -12,7 +12,7 @@ import contextlib
 import logging
 import operator
 import threading
-from collections.abc import Callable, Iterable
+from collections.abc import Awaitable, Callable, Iterable
 from dataclasses import dataclass, field, replace
 from enum import StrEnum
 from pathlib import Path
@@ -20,6 +20,7 @@ from typing import Any
 
 import yaml
 
+from .baseline import Baseline
 from .bridge import BridgeError, HueBridge
 from .client import HAClient, HAError, device_ieee
 from .journal import Journal
@@ -986,6 +987,9 @@ class _CaseRun:
             journal=journal,
             journal_key=journal_key,
         )
+        # Z2M device options a z2m_option step sets, held for the case in the baseline, which puts them back.
+        self.baseline: Baseline | None = None
+        self.journal, self.journal_key = journal, journal_key
         self.response: dict | None = None
         self.error: HAError | None = None
         self.last_action = case.suite.action
@@ -1045,6 +1049,8 @@ class _CaseRun:
             result.outcome = Outcome.NOT_OBSERVED
         finally:
             await self.snapshot.restore()
+            if self.baseline is not None:
+                await self.baseline.release()
         return result
 
     async def steps(self, steps: tuple[Step, ...], relaxed: bool = False) -> None:
@@ -1155,8 +1161,17 @@ class _CaseRun:
     async def _z2m_option(self, args: dict, _following: str | None) -> None:
         if self.integration != "zigbee2mqtt":
             return
+        ieee = await self.z2m_ieee(self.entity(args))
+
+        def setting(name: str, value: Any) -> Callable[[Any], Awaitable[None]]:
+            return lambda _original: self.ha.set_z2m_device_options(ieee, {name: value})
+
+        if self.baseline is None:
+            self.baseline = Baseline.of(self.ha, self.journal, f"case:{self.journal_key}", self.out)
         options = {name: value for name, value in args.items() if name != "target"}
-        await self.ha.set_z2m_device_options(await self.z2m_ieee(self.entity(args)), options)
+        await self.baseline.hold(
+            *[("z2m_option", f"{ieee}:{name}", setting(name, value)) for name, value in options.items()]
+        )
 
     async def _expect_z2m_option(self, args: dict, _following: str | None) -> None:
         if self.integration != "zigbee2mqtt":

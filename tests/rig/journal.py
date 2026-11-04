@@ -43,7 +43,7 @@ class Journal:
 
     @property
     def name(self) -> str:
-        """The run's name, which its lock file and the pause ledger know it by."""
+        """The run's name, which its lock file and the baseline know it by."""
         return self.path.stem
 
     @property

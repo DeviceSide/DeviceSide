@@ -8,7 +8,8 @@ from pathlib import Path
 
 import pytest
 
-from tests.rig import engine
+from tests.rig import baseline, engine
+from tests.rig.baseline import Baseline
 from tests.rig.engine import load_step_file
 from tests.rig.journal import Journal
 from tests.rig.runlogs import DebugLevels, RunLogs, coordinator_crashes, ha_domains, since
@@ -181,35 +182,21 @@ async def test_a_failed_z2m_subscription_is_printed_and_the_run_goes_on(tmp_path
 
 
 async def test_recover_puts_back_the_levels_a_crash_left(tmp_path, ha):
-    journal = Journal(tmp_path / "journal.json")
-    await DebugLevels(ha, journal, lambda _: None).raise_levels(["device_side", "mqtt"], z2m=True)
-    assert journal.get("log_levels") == {"ha": {"device_side": "WARNING", "mqtt": "WARNING"}, "z2m": "warning"}
-    assert ha.z2m_level == "debug"
+    orphan = Journal.start(tmp_path)
+    await DebugLevels(Baseline.of(ha, orphan, "debug"), lambda _: None).raise_levels(["device_side", "mqtt"], z2m=True)
+    assert (ha.ha_levels["device_side"], ha.ha_levels["mqtt"], ha.z2m_level) == (10, 10, "debug")
 
-    await rig.recover(ha, ha, Journal(journal.path), out=lambda _: None)
+    await rig.recover(ha, ha, orphan, out=lambda _: None)  # it holds the orphan's lock meanwhile
 
     assert (ha.ha_levels["device_side"], ha.ha_levels["mqtt"], ha.z2m_level) == (30, 30, "warning")
-    assert not journal.path.exists()
+    assert not (tmp_path / baseline.NAME).exists()
 
 
-async def test_a_level_ha_no_longer_reports_is_skipped(tmp_path, ha):
-    journal = Journal(tmp_path / "journal.json")
-    levels = DebugLevels(ha, journal, lambda _: None)
-    await levels.raise_levels(["device_side", "mqtt"], z2m=False)
-    del ha.ha_levels["mqtt"]
-    ha.log_level_calls.clear()
-
-    await levels.restore()
-
-    assert ha.log_level_calls == [("device_side", "WARNING")]
-    assert not journal.path.exists()
-
-
-async def test_a_z2m_already_at_debug_is_left_alone(tmp_path, ha):
-    ha.z2m_level = "debug"
-    levels = DebugLevels(ha, None, lambda _: None)
-    await levels.raise_levels([], z2m=True)
-    assert levels.saved == {}
+async def test_a_level_that_cant_be_raised_is_printed_and_the_rest_go_on(ha):
+    printed = []
+    await DebugLevels(Baseline.of(ha, None, "debug"), printed.append).raise_levels(["matter", "mqtt"], z2m=False)
+    assert printed == ["matter stays as it is: HA doesn't report matter"]
+    assert ha.ha_levels["mqtt"] == 10
 
 
 async def test_the_brief_warns_when_z2m_wont_send_debug_lines(ha, capsys):

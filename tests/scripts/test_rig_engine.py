@@ -1453,6 +1453,9 @@ class Z2MHA(FakeHA):
     async def z2m_device_options(self, ieee: str) -> dict:
         return dict(self.options)
 
+    async def z2m_device(self, ieee: str) -> dict:
+        return {"ieee_address": ieee}
+
 
 def native_control(turns_it_on: bool) -> Callable:
     def respond(ha, action, data):
@@ -1481,6 +1484,16 @@ async def test_expect_z2m_option_fails_when_the_option_stays_off(tmp_path):
     outcome, detail = outcomes(result)["color_then_off[light_color]"]
     assert outcome is Outcome.FAIL
     assert "Zigbee2MQTT option hue_native_control is False, expected True" in detail
+
+
+async def test_a_failed_case_still_puts_the_option_back(tmp_path):
+    ha = Z2MHA(native_control(turns_it_on=False))
+    ha.options = {"hue_native_control": True}
+    steps = suite(tmp_path, Z2M_COLOR, "zigbee2mqtt")
+    result = await run_one(ha, steps, profile("zigbee2mqtt", light_color="light.bulb"), admin=ha)
+    assert outcomes(result)["color_then_off[light_color]"][0] is Outcome.FAIL
+    assert ha.options == {"hue_native_control": True}
+    assert ha.calls[-1] == ("z2m", "options", {"id": "0x0017880100000001", "hue_native_control": True})
 
 
 async def test_z2m_option_steps_do_nothing_in_another_integrations_suite(tmp_path):

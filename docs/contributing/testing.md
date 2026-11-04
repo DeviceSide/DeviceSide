@@ -90,6 +90,12 @@ Ctrl-C, SIGTERM or SIGHUP puts the devices back before the run exits; a second o
 what it changes in a file of its own; if a run dies before it can put them back, the next run whose locks cover them
 puts them back before its gate, and `--recover`, which takes every lock, puts back everything.
 
+What runs change beyond the devices (the paused automations and switches, HA's and Z2M's log levels, Z2M device
+options a test sets) is held in one shared baseline, `device_side-rig.baseline.json` in the git common dir. The first
+run to change something records what it was; runs side by side share the change, and the last one out puts it back.
+A crashed run's share is put back by the next run's change or by `--recover`, which always clears what no live run
+holds. Z2M found at debug or trace with no run holding it goes back to `info`: debug is never its resting level.
+
 Runs share the rig through locks in the git common dir, so every worktree sees them: one per integration, and one on
 HA. A run holds each integration it tests, plus those its entities draw power through and the networks its roaming
 bulbs visit, so runs on different integrations go side by side, and one on the same integration waits. It holds HA
@@ -232,7 +238,7 @@ stay even after a clean run; at debug it also counts the ACK timeouts that lead 
 
 `--debug-logs` keeps them whatever the outcome and runs HA's `device_side`, each integration the run touches (`hue`,
 `zha`, `mqtt` for Z2M, `shelly`, `matter`; Hue, ZHA and MQTT when it roams) and Z2M at debug until the run ends. It costs
-CPU, so timing cases may read differently. The levels are journaled first, so `--recover` puts them back. Z2M's debug
+CPU, so timing cases may read differently. The levels are held in the baseline, so `--recover` puts them back. Z2M's debug
 lines reach the capture only with `advanced.log_debug_to_mqtt_frontend: true` in its configuration, which needs a
 Z2M restart; the brief warns when it is off, and the rig never sets it.
 

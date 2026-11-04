@@ -7,7 +7,7 @@ import json
 import pytest
 
 from scripts import check_private
-from tests.rig import client, roam
+from tests.rig import baseline, client, roam
 from tests.rig.client import HAError, Z2MRemoveError
 from tests.rig.journal import Journal
 from tests.rig.profile import Profile, normalize_ieee
@@ -20,7 +20,6 @@ A, B, OPTIONS, BULBS = LAB_A, LAB_B, LAB_OPTIONS, LAB_BULBS
 @pytest.fixture(autouse=True)
 def fast(monkeypatch):
     monkeypatch.setattr(roam, "POLL_S", 0)
-    monkeypatch.setattr(roam, "PRIME_GAP_S", 0)
     for name, value in (("Z2M_SETTLE_S", 0), ("Z2M_ANSWER_S", 0.05), ("Z2M_POLL_S", 0), ("Z2M_CRASH_WATCH_S", 0.05)):
         monkeypatch.setattr(client, name, value)
 
@@ -695,33 +694,34 @@ async def test_z2m_logs_at_info_during_a_join_and_goes_back_to_its_own_level(lab
     assert lab.ha.z2m_level == "warning"
 
 
-async def test_a_z2m_already_at_debug_is_left_there(lab):
+async def test_a_z2m_left_at_debug_by_no_run_is_left_there_for_the_join_then_lowered(lab):
     lab.ha.z2m_level = "debug"
-    await roamer(lab).go("zigbee2mqtt")
-    assert lab.ha.z2m_level == "debug"
-    assert not [call for call in lab.ha.calls if "request/options" in str(call)]
+    levels = []
+    lab.ha.on_open = lambda network: (levels.append(lab.ha.z2m_level), lab.opened(network))
+    printed = []
+    await roamer(lab, out=printed.append).go("zigbee2mqtt")
+    assert levels == ["debug"]
+    assert lab.ha.z2m_level == "info"
+    assert "Z2M's log level is debug with no run holding it; it goes back to info." in printed
 
 
-async def test_a_crash_mid_join_leaves_the_level_journaled_and_recovery_puts_it_back(lab, tmp_path, monkeypatch):
-    journal = Journal(tmp_path / "journal.json")
+async def test_a_crash_mid_join_leaves_the_level_in_the_baseline_and_recovery_puts_it_back(lab, tmp_path):
+    journal = Journal.start(tmp_path)
     moving = roamer(lab, journal)
 
-    restore, calls = moving.restore_z2m_log_level, []
+    async def killed_mid_join():
+        raise KeyboardInterrupt
 
-    async def killed_mid_join():  # the first call is go()'s own; the second, the join's, never happens
-        calls.append(1)
-        if len(calls) > 1:
-            raise KeyboardInterrupt
-        await restore()
-
-    monkeypatch.setattr(moving, "restore_z2m_log_level", killed_mid_join)
+    moving.baseline.release = killed_mid_join
     with pytest.raises(KeyboardInterrupt):
         await moving.go("zigbee2mqtt")
     assert lab.ha.z2m_level == "info"
-    assert journal.get("roam")["z2m_log_level"] == "warning"
-    await roamer(lab, journal).go("hue")
+    held = json.loads((tmp_path / baseline.NAME).read_text())
+    assert held == {"z2m_log_level": {"original": "warning", "holders": [f"{journal.name}#join"]}}
+
+    await baseline.Baseline(lab.ha, tmp_path, journal.name).release()  # as --recover does, holding the journal
     assert lab.ha.z2m_level == "warning"
-    assert journal.get("roam") is None
+    assert not (tmp_path / baseline.NAME).exists()
 
 
 async def test_a_z2m_that_wont_set_its_level_doesnt_stop_the_move(lab):
