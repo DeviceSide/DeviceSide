@@ -26,15 +26,19 @@ def test_no_entity_is_a_no_op():
     replace_if_set(None, "_last_brightness", 40.0)
 
 
-def test_a_missing_attribute_is_logged_once_and_never_raises(caplog, monkeypatch):
+def test_a_missing_attribute_warns_once_and_never_raises(caplog, monkeypatch):
     monkeypatch.setattr(module, "_missing", set())
     renamed = SimpleNamespace()
-    with caplog.at_level(logging.DEBUG, logger=module.__name__):
+    with caplog.at_level(logging.WARNING, logger=module.__name__):
         replace_if_set(renamed, "_last_brightness", 40.0)
         replace_if_set(renamed, "_last_brightness", 40.0)
     assert not hasattr(renamed, "_last_brightness")
-    assert [record.message for record in caplog.records] == [
-        "SimpleNamespace has no _last_brightness; HA's own behavior stays"
+    assert [(record.levelno, record.message) for record in caplog.records] == [
+        (
+            logging.WARNING,
+            "SimpleNamespace has no _last_brightness, so Home Assistant's own behavior stays: a plain turn_on after "
+            "set_attributes while the light is off may come on at the old level",
+        )
     ]
 
 

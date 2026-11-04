@@ -29,7 +29,12 @@ def replace_if_set(obj: Any, attribute: str, value: Any) -> None:
     if not hasattr(obj, attribute):
         if (key := f"{type(obj).__qualname__}.{attribute}") not in _missing:
             _missing.add(key)
-            _LOGGER.debug("%s has no %s; HA's own behavior stays", type(obj).__qualname__, attribute)
+            _LOGGER.warning(
+                "%s has no %s, so Home Assistant's own behavior stays: a plain turn_on after set_attributes while the "
+                "light is off may come on at the old level",
+                type(obj).__qualname__,
+                attribute,
+            )
         return
     if getattr(obj, attribute) is not None:
         setattr(obj, attribute, value)

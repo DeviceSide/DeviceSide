@@ -59,6 +59,6 @@ async def set_with_timer(adapter: Adapter, target: Target, params: dict[str, Any
     except Exception as err:  # noqa: BLE001 - aioshelly's errors can't be imported here; see addressing.py
         _LOGGER.debug("%s read-back failed for %s: %s", adapter.action, target.entity_id, err)
         return adapter.result(target, Status.SENT, detail="readback_failed")
-    if status.get("output") is params["on"] and "timer_duration" in status:
+    if status.get("output") == params["on"] and "timer_duration" in status:
         return adapter.result(target, Status.CONFIRMED)
     return adapter.result(target, Status.SENT, detail="timer_not_reported")
