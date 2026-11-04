@@ -23,45 +23,49 @@ Device Side also patches some usability quirks in individual integrations.
 
 ## Features
 
-| Feature                                                                          | ZHA | Z2M | Shelly | Hue Bridge | Matter |
-|:-------------------------------------------------------------------------------- |:---:|:---:|:------:|:----------:|:------:|
-| [Delayed off](#delayed-off)                                                      | ✅   | ✅   | ✅      |            | ✅      |
-| [Delayed on](#delayed-on)                                                        |     |     | ✅      |            |        |
-| [Smooth dimming](#smooth-dimming)                                                | ✅   | ✅   |        | ✅          |        |
-| [Smooth saturation change](#smooth-color-transitions)                            | ✅   | ✅   |        | ✅          |        |
-| [Smooth hue change](#smooth-color-transitions)                                   | ✅   | ✅   |        |            |        |
+| Feature                                                                             | ZHA | Z2M | Shelly | Hue Bridge | Matter |
+|:----------------------------------------------------------------------------------- |:---:|:---:|:------:|:----------:|:------:|
+| [Delayed off](#delayed-off)                                                         | ✅   | ✅   | ✅      |            | ✅      |
+| [Delayed on](#delayed-on)                                                           |     |     | ✅      |            |        |
+| [Smooth dimming](#smooth-dimming)                                                   | ✅   | ✅   |        | ✅          |        |
+| [Smooth saturation change](#smooth-color-transitions)                               | ✅   | ✅   |        | ✅          |        |
+| [Smooth hue change](#smooth-color-transitions)                                      | ✅   | ✅   |        |            |        |
 | [Set brightness, color or CT<br>without turning on](#set-lights-without-turning-on) | ✅   | ✅   |        | ✅          |        |
-| [Set scene without turning on](#set-lights-without-turning-on)                   |     |     |        | ✅          |        |
-| [Get attributes](#get-attributes)                                                | ✅   | ✅   | ✅      | ✅          | ✅      |
+| [Set scene without turning on](#set-lights-without-turning-on)                      |     |     |        | ✅          |        |
+| [Get attributes](#get-attributes)                                                   | ✅   | ✅   | ✅      | ✅          | ✅      |
+
+Details per integration are in [docs/integrations.md](docs/integrations.md).
+
+**Warning:** Some devices accept commands for features that they don't support. Test each of your devices with Device Side before relying on device-native features.
 
 ### Delayed Off
 
 Action: `turn_on_for`
 
-Turn on, with a delayed flip back to off. Flip-back timer runs on the device. Example use cases:
+Turn on, then off after a delay. Timer runs on the device. Example use cases:
 
-- Cut power to a heater or ironing station after 4 hours, in case someone forgets to turn it off.
-- Run a bathroom fan for 20 minutes after a shower.
+- Cut power to a heater or ironing station after 4 hours.
+- Run a fan for 20 minutes after a shower.
 
 ### Delayed On
 
 Action: `turn_off_for`
 
-Turn off, with a delayed flip back to on. Flip-back timer runs on the device. Example use case:
+Turn off, then on after a delay. Timer runs on the device. Example use case:
 
-- Power-cycle your router via a smart plug.
+- Power-cycle a router.
 
 ### Smooth Dimming
 
 Actions: `raise_brightness`, `lower_brightness`, `stop`
 
-Create polished “press to dim, release to stop" automations. Transitions run natively on the device, with one command to start and a second to stop.
+Create “press to dim, release to stop" automations. Transitions run natively on the device.
 
 ### Smooth Color Transitions
 
 Actions: `raise_saturation`, `lower_saturation`, `raise_hue`, `lower_hue`, `stop`
 
-Create polished “press to change color, release to stop" automations. Transitions run natively on the device, with one command to start and a second to stop.
+Create “press to change color, release to stop" automations. Transitions run natively on the device.
 
 ### Set Lights Without Turning On
 
@@ -73,7 +77,7 @@ Set scenes, brightness, color and color temperature while the lights are off, so
 
 Action: `get_attributes`
 
-Read device attributes that aren't exposed reliably by Home Assistant. Example use cases:
+Read device attributes that aren't exposed reliably by Home Assistant:
 
 * Check a device's on/off timer.
 
@@ -81,15 +85,17 @@ Read device attributes that aren't exposed reliably by Home Assistant. Example u
 
 ### Usability patches
 
-* On Zigbee2MQTT, Device Side fixes Home Assistant showing the wrong color for full-color bulbs, by [announcing both of their color modes](docs/integrations.md#what-device-side-changes-in-zigbee2mqtt).
+* **Hue color lights on Zigbee2MQTT:**
 
-* When a brightness move starts, the Hue bridge reports its target brightness (e.g. 0% or 100%), which is jarring on moves that you plan to stop. Device Side shows the starting brightness until the transition ends or is stopped, and then shows the new brightness.
+  * Home Assistant shows the wrong color for full-color bulbs in HS mode. Device Side fixes this by [announcing both of their color modes](docs/integrations.md#what-device-side-changes-in-zigbee2mqtt).
 
-These are on by default; turn them off in Device Side's options.
+  * Device Side enables Z2M's Hue enhanced control setting automatically when you call the smooth color transition actions, to save you from having to change the setting manually on each of your Hue color lights.
 
-Details per integration are in [docs/integrations.md](docs/integrations.md), including the Zigbee2MQTT options Device Side sets on your devices.
+* **Hue Bridge:** When a brightness move starts, the bridge reports target brightness (e.g. 0% or 100%) to Home Assistant, which is jarring for moves that you plan to stop. Device Side suppresses the bridge's report when a transition starts, and reports the new brightness once the transition stops.
 
-**Disclaimer:** Some devices pretend to support features that they don't. Test each of your devices with the Device Side actions before relying on device-native features.
+These patches are on by default; turn them off in Device Side's options.
+
+
 
 ## Get Started
 
@@ -118,33 +124,51 @@ Details per integration are in [docs/integrations.md](docs/integrations.md), inc
 
 </details>
 
-### Coming from Hue Smooth Dimming
+### Coming from [Hue Smooth Dimming](https://github.com/jasonmx/hue-smooth-dimming)
 
-Device Side's actions take the same fields. Change the domain from `hue_dimmer` to `device_side`, and rename `raise` to `raise_brightness` and `lower` to `lower_brightness`. Move your automations over, then remove Hue Smooth Dimming.
+Device Side's actions are drop-in replacements for Hue Smooth Dimming, apart from a name change on the  `raise` and `lower` actions. To migrate to Device Side, make these YAML edits in your automations:
+
+* change `hue_dimmer` to `device_side`. E.g. `hue_dimmer.stop` → `device_side.stop`
+
+* change `raise` to `raise_brightness`
+
+* change `lower` to `lower_brightness`
 
 ## Usage
 
 ### Delayed Off/On
 
-| Action                     | Description                                     |
-|:-------------------------- |:----------------------------------------------- |
-| `device_side.turn_on_for`  | Turns on, then off automatically after a delay. |
-| `device_side.turn_off_for` | Turns off, then on automatically after a delay. |
+**Delayed off:** `device_side.turn_on_for` turns on, then off automatically after a delay.
 
-| Field               | Actions     | Description                                                                                                           |
-|:------------------- |:----------- |:--------------------------------------------------------------------------------------------------------------------- |
-| `target`            | all         | Lights and switches (required)                                                                                        |
-| `duration`          | all         | How long until the device toggles (required). Up to 7 days on Shelly, 1 h 49 min on Zigbee and Matter                 |
-| `brightness`        | turn_on_for | Brightness (1–255). ZHA, Z2M, Shelly                                                                                  |
-| `color_temp_kelvin` | turn_on_for | Color temperature (2000–6500 K). ZHA, Z2M, Shelly                                                                     |
-| `rgb_color`         | turn_on_for | Color as `[red, green, blue]` (0–255 each). Z2M, Shelly                                                               |
-| `hs_color`          | turn_on_for | Color as `[hue, saturation]` (0–360, 0–100). Z2M                                                                      |
-| `xy_color`          | turn_on_for | Color as `[x, y]`. Z2M                                                                                                |
-| `transition`        | turn_on_for | Fade time (0–300 s). Z2M, Shelly                                                                                      |
-| `response_variable` | all         | Name of a variable that receives a result for each entity (optional). In the visual editor it's **Response variable** |
+| Field               | Description                                                                                                           |
+|:------------------- |:--------------------------------------------------------------------------------------------------------------------- |
+| `target`            | Lights and switches (required)                                                                                        |
+| `duration`          | How long until the device turns off (required). Up to 7 days on Shelly, 1 h 49 min on Zigbee and Matter               |
+| `brightness`        | Brightness (1–255). ZHA, Z2M, Shelly                                                                                  |
+| `color_temp_kelvin` | Color temperature (2000–6500 K). ZHA, Z2M, Shelly                                                                     |
+| `rgb_color`         | Color as `[red, green, blue]` (0–255 each). Z2M, Shelly                                                               |
+| `hs_color`          | Color as `[hue, saturation]` (0–360, 0–100). Z2M                                                                      |
+| `xy_color`          | Color as `[x, y]`. Z2M                                                                                                |
+| `transition`        | Fade time (0–300 s). Z2M, Shelly                                                                                      |
+| `response_variable` | Name of a variable that receives a result for each entity (optional). In the visual editor it's **Response variable** |
 
-**Cancel:** to cancel a timer, send a new action (e.g. `turn_on`, `turn_off`, `toggle` or a new delayed off/on).
-On ZHA, only `turn_off` or a new `turn_on_for` cancels; to keep the light on, turn it off, then on.
+**Delayed on:** `device_side.turn_off_for` turns off, then on automatically after a delay.
+
+| Field               | Description                                                                                                           |
+|:------------------- |:--------------------------------------------------------------------------------------------------------------------- |
+| `target`            | Shelly lights and switches (required)                                                                                 |
+| `duration`          | How long until the device turns on (required). Up to 7 days                                                           |
+| `response_variable` | Name of a variable that receives a result for each entity (optional). In the visual editor it's **Response variable** |
+
+**Cancel:** The following actions cancel a delayed on/off timer:
+
+* Turn off a device that was on, or vice versa
+
+* Send a new delayed on/off command
+
+* Send `turn_on` to a device that's already on (Z2M and Shelly only)
+
+* Send `turn_off`  to a device that's already off (Shelly only)
 
 #### Results
 
@@ -157,8 +181,6 @@ Each targeted entity gets a `status` in the response variable:
 | `unchanged` | Nothing to send; `detail` says why                 |
 
 If a requested duration is out of range, `clamped_to` reports the duration the device actually used, in seconds. A field the entity can't take, like brightness on a plug, is dropped and the rest of the call goes ahead, with `detail: fields_dropped`.
-
-Failures follow Home Assistant's own actions. The action fails, stopping the automation, if an entity you listed by name can't take it (the error says why) or if a device fails (every entity is still sent the command first, and the error lists the ones that failed). An entity reached through an area, device, label or group that can't take the action is skipped and logged, and unavailable entities are skipped. Skipped entities are left out of the response.
 
 #### YAML Example: Heater off after 4 hours, with a warning
 
