@@ -8,7 +8,8 @@ finishes them. Delete this file in the v0.1.0 release PR.
 `v0.0.1` is out, and HACS accepted the submission ([hacs/default#12611](https://github.com/hacs/default/pull/12611))
 on 4 Nov 2026. v0.1.0 is next: everything lands on `release/v0.1.0` (cut from `release/v0.0.2`'s head, which is
 retired; v0.0.2 is not released). Release candidates resume from that branch, and v0.1.0 ships every adapter passing
-its tests, no soak.
+its tests, no soak. An RC also needs a rig run since each released adapter's last code change
+(`check_release.py --records`): today every released adapter's records predate its code.
 
 ## To go
 

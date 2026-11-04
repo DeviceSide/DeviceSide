@@ -1,8 +1,9 @@
 name: Cut release candidate
 
 # The only way a vX.Y.ZrcN tag is made (a tag ruleset refuses any other): from release/vX.Y.Z, or from main as a
-# hotfix RC. Requires manifest.json at X.Y.Z, green CI on the head and docs/audits/<rc>.md covering every commit since
-# the previous RC.
+# hotfix RC. Requires manifest.json at X.Y.Z, green CI on the head, docs/audits/<rc>.md covering every commit since
+# the previous RC, and every released adapter's test records citing a commit with the head's adapter code
+# (check_release --records).
 # Tags pushed with GITHUB_TOKEN start no other workflow, so anything an RC needs runs here.
 
 on:
@@ -55,6 +56,20 @@ jobs:
 
       - name: Check the audit record
         run: uv run --no-project --with pyyaml==6.0.3 python scripts/check_audit.py "$RC" "$GITHUB_SHA"
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      # A record cites the commit its rig run deployed, often on a PR branch since squash-merged and deleted.
+      - name: Fetch the commits test records cite
+        run: git fetch --quiet origin '+refs/pull/*/head:refs/remotes/pull/*'
+
+      - name: Refuse a test record older than its adapter's code
+        run: .venv/bin/python scripts/check_release.py --records
 
       - name: Tag and publish a pre-release
         run: |

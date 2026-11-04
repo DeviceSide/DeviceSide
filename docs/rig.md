@@ -203,5 +203,7 @@ rig never sets it.
 
 When every test of an adapter passes, the run writes `docs/test-records/<integration>/<action>.md`: the date, the Home
 Assistant version, the devices' model and firmware, and each test's result. A failed or partial (`-k`) run writes
-nothing. Records are evidence for people, not read by any script: the PR that clears an adapter's `experimental` flag
-cites one.
+nothing. The PR that clears an adapter's `experimental` flag cites one, and `cut-release-candidate` and `cut-release`
+refuse a head where a released adapter's code (its module and the modules it imports from its integration package)
+differs from the commit one of its records cites: `scripts/check_release.py --records`. So every adapter changed
+since its last run needs a new run before the next RC.

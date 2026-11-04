@@ -30,11 +30,11 @@ passed on one light (PR #204).
 
 ## Releasing
 
-The cut workflows enforce the tag rules, green CI, the RC audit (its record comes from `/rc-audit`) and the release
-flag; see their headers. The steps they don't check:
+The cut workflows enforce the tag rules, green CI, the RC audit (its record comes from `/rc-audit`), the release
+flag, and test records no older than their adapter's code (`check_release.py --records`, so each adapter changed
+since its last rig run needs a new one); see their headers. The steps they don't check:
 
-1. **Each RC:** a rig run at its head; its test records cite the commit, so no sign-off is needed. Then install the
-   RC through HACS (the rig deploys a checkout, not the release); it loads and the log is clean.
+1. **Each RC:** install it through HACS (the rig deploys a checkout, not the release); it loads and the log is clean.
 2. **Before the release:** the README feature table is current.
 3. Merge `release/vX.Y.Z` into `main`. Check that every issue the release fixes closed with it: closing keywords
    only take effect on `main`.
@@ -58,7 +58,7 @@ flag; see their headers. The steps they don't check:
 - `custom_components/device_side/integrations/<integration>/`: one adapter module per action
 - `tests/{core,actions,integrations,rig}`: mirror the above; `rig/` drives the live HA, only via `scripts/rig.py`,
   on a profile (`tests/rig/profiles/<name>.yaml`, gitignored)
-- `scripts/`: rig runner, household check, deploy, release checks (coverage and the release flag, tags, RC audits)
+- `scripts/`: rig runner, household check, deploy, release checks (coverage, the release flag, record freshness, tags, RC audits)
 - `docs/test-records/<integration>/`: test records. Design detail lives in `docs/design.md`; running the rig and
   writing step files in `docs/rig.md`.
 
