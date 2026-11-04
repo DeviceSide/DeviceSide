@@ -44,7 +44,7 @@ Action: `turn_on_for`
 
 Turn on, then off after a delay. Timer runs on the device. Example use cases:
 
-- Cut power to a heater or ironing station after 4 hours, if someone left it on.
+- Cut power to a heater or ironing station after 4 hours, in case someone leaves it on.
 - Run a fan for 20 minutes after a shower.
 
 ### Delayed On
@@ -59,13 +59,13 @@ Turn off, then on after a delay. Timer runs on the device. Example use case:
 
 Actions: `raise_brightness`, `lower_brightness`, `stop`
 
-Create “press to dim, release to stop" automations. Transitions run natively on the device.
+Create "press to dim, release to stop" automations. Transitions run natively on the device.
 
 ### Smooth Color Transitions
 
 Actions: `raise_saturation`, `lower_saturation`, `raise_hue`, `lower_hue`, `stop`
 
-Create “press to change color, release to stop" automations. Transitions run natively on the device.
+Create "press to change color, release to stop" automations. Transitions run natively on the device.
 
 ### Set Lights Without Turning On
 
@@ -99,9 +99,9 @@ The HS mode and Hue Bridge patches are on by default; turn them off in Device Si
 
 ### Requirements
 
-* At least one of [ZHA](https://www.home-assistant.io/integrations/zha/), [Z2M](https://www.zigbee2mqtt.io) via [MQTT](https://www.home-assistant.io/integrations/mqtt/), [Shelly](https://www.home-assistant.io/integrations/shelly/), [Philips Hue](https://www.home-assistant.io/integrations/hue) or [Matter](https://www.home-assistant.io/integrations/matter/) integrations installed.
+* At least one of the [ZHA](https://www.home-assistant.io/integrations/zha/), [Z2M](https://www.zigbee2mqtt.io) via [MQTT](https://www.home-assistant.io/integrations/mqtt/), [Shelly](https://www.home-assistant.io/integrations/shelly/), [Philips Hue](https://www.home-assistant.io/integrations/hue) or [Matter](https://www.home-assistant.io/integrations/matter/) integrations installed.
 
-* Not supported: Hue Bridge v1, Shelly Gen 1, Zigbee plugs and switches
+* Not supported: Hue Bridge v1, Shelly Gen 1, Zigbee plugs and switches, Matter lights
 
 ### Install from HACS
 
@@ -138,25 +138,25 @@ Device Side's actions are drop-in replacements for Hue Smooth Dimming, apart fro
 
 **Delayed off:** `device_side.turn_on_for` turns on, then off automatically after a delay.
 
-| Field               | Description                                                                                                           |
-|:------------------- |:--------------------------------------------------------------------------------------------------------------------- |
-| `target`            | Lights and switches (required)                                                                                        |
-| `duration`          | How long until the device turns off (required). Up to 7 days on Shelly, 1 h 49 min on Zigbee and Matter               |
-| `brightness`        | Brightness (1–255). ZHA, Z2M, Shelly                                                                                  |
-| `color_temp_kelvin` | Color temperature (2000–6500 K). ZHA, Z2M, Shelly                                                                     |
-| `rgb_color`         | Color as `[red, green, blue]` (0–255 each). Z2M, Shelly                                                               |
-| `hs_color`          | Color as `[hue, saturation]` (0–360, 0–100). Z2M                                                                      |
-| `xy_color`          | Color as `[x, y]`. Z2M                                                                                                |
-| `transition`        | Fade time (0–300 s). Z2M, Shelly                                                                                      |
-| `response_variable` | Name of a variable that receives a result for each entity (optional). In the visual editor it's **Response variable** |
+| Field               | Description                                                                                                            |
+|:------------------- |:---------------------------------------------------------------------------------------------------------------------- |
+| `target`            | Lights and switches (required)                                                                                         |
+| `duration`          | Delay until the device turns off (required). Up to 7 days on Shelly, 6,553.4 s (about 1 h 49 min) on Zigbee and Matter |
+| `brightness`        | Brightness (1–255). ZHA, Z2M, Shelly                                                                                   |
+| `color_temp_kelvin` | Color temperature (2000–6500 K). ZHA, Z2M, Shelly                                                                      |
+| `rgb_color`         | Color as `[red, green, blue]` (0–255 each). Z2M, Shelly                                                                |
+| `hs_color`          | Color as `[hue, saturation]` (0–360, 0–100). Z2M                                                                       |
+| `xy_color`          | Color as `[x, y]`. Z2M                                                                                                 |
+| `transition`        | Fade time (0–300 s). Z2M, Shelly                                                                                       |
+| `response_variable` | Variable that receives the response from each entity (optional)                                                        |
 
 **Delayed on:** `device_side.turn_off_for` turns off, then on automatically after a delay.
 
-| Field               | Description                                                                                                           |
-|:------------------- |:--------------------------------------------------------------------------------------------------------------------- |
-| `target`            | Shelly lights and switches (required)                                                                                 |
-| `duration`          | How long until the device turns on (required). Up to 7 days                                                           |
-| `response_variable` | Name of a variable that receives a result for each entity (optional). In the visual editor it's **Response variable** |
+| Field               | Description                                                     |
+|:------------------- |:--------------------------------------------------------------- |
+| `target`            | Shelly lights and switches (required)                           |
+| `duration`          | Delay until the device turns on (required). Up to 7 days        |
+| `response_variable` | Variable that receives the response from each entity (optional) |
 
 **Cancel:** The following actions cancel a delayed on/off timer:
 
@@ -170,7 +170,7 @@ Device Side's actions are drop-in replacements for Hue Smooth Dimming, apart fro
 
 #### Results
 
-Each targeted entity gets a `status` in the response variable:
+Each targeted entity reports a `status` in the response variable:
 
 | Status      | Meaning                                            |
 | ----------- | -------------------------------------------------- |
@@ -209,12 +209,11 @@ actions:
 | `device_side.lower_brightness` | Start lowering brightness                      |
 | `device_side.stop`             | Freeze every move on the target where it is    |
 
-| Field        | Actions          | Description                                                                            |
-|:------------ |:---------------- |:-------------------------------------------------------------------------------------- |
-| `target`     | all              | Lights and groups (required)                                                           |
-| `sweep_time` | raise, lower     | Seconds a full 0–100% sweep takes (default 5 s)                                        |
-| `limit`      | raise_brightness | Maximum brightness (default 100%)                                                      |
-| `limit`      | lower_brightness | Minimum brightness (default 0%). The light turns off at 0%. Choose 0.4%+ to keep it on |
+| Field        | Description                                                                                                                   |
+|:------------ |:----------------------------------------------------------------------------------------------------------------------------- |
+| `target`     | Lights and groups (required)                                                                                                  |
+| `sweep_time` | Seconds a full 0–100% sweep takes (default 5 s). Raise and lower only                                                         |
+| `limit`      | Raise: maximum brightness (default 100%).<br>Lower: minimum brightness (default 0%). The light turns off at 0%; choose 0.4%+ to keep it on |
 
 To move several lights in step, target a Hue room or zone, or a Zigbee2MQTT or ZHA group, instead of separate lights. One group-wide Zigbee message then moves them together.
 
@@ -243,12 +242,11 @@ buttons_released:
 | `device_side.lower_hue`        | Start cycling hue: red, magenta, blue, green. Runs until `stop` |
 | `device_side.stop`             | Freeze every move on the target where it is                     |
 
-| Field        | Actions          | Description                                                                               |
-|:------------ |:---------------- |:----------------------------------------------------------------------------------------- |
-| `target`     | all              | Lights and groups (required)                                                              |
-| `sweep_time` | raise, lower     | Seconds a full 0–100% saturation sweep or one turn of the color wheel takes (default 5 s) |
-| `limit`      | raise_saturation | Maximum saturation (default 100%)                                                         |
-| `limit`      | lower_saturation | Minimum saturation (default 0%)                                                           |
+| Field        | Description                                                                                                  |
+|:------------ |:------------------------------------------------------------------------------------------------------------ |
+| `target`     | Lights and groups (required)                                                                                 |
+| `sweep_time` | Seconds a full 0–100% saturation sweep or one turn of the color wheel takes (default 5 s). Raise and lower only |
+| `limit`      | Raise saturation: maximum (default 100%).<br>Lower saturation: minimum (default 0%). Hue moves take no limit |
 
 Groups move in step, as for dimming.
 
@@ -302,13 +300,19 @@ To set brightness for the next turn-on from the visual editor, see [docs/example
 
 ### Get Attributes
 
-`device_side.get_attributes` returns one record per target: brightness, color temp and color (RGB, HS, XY), even while the light is off or moving, and any on/off timer running on the device.
+`device_side.get_attributes` returns one record per target, containing:
 
-| Field               | Description                                             |
-|:------------------- |:------------------------------------------------------- |
-| `target`            | Lights and switches (required)                          |
+* Brightness, color temp and color (RGB, HS, XY) of lights, even while off or moving.
 
-A record holds the keys the device reports: `brightness` (%), `color_temp_kelvin`, `rgb_color`, `hs_color`, `xy_color`, and `timer` while one runs. `timer` holds `turns` (`on` or `off`), `ends_at` (UTC) and `remaining_s`.
+* Any delayed on/off timer running on the device.
+
+| Field    | Description                    |
+|:-------- |:------------------------------ |
+| `target` | Lights and switches (required) |
+
+A record holds the keys the device reports: `brightness` (%), `color_temp_kelvin`, `rgb_color`, `hs_color`, `xy_color`, and `timer` while one is running.
+
+The `timer` key holds `turns` (`on` or `off`), `ends_at` (UTC) and `remaining_s`.
 
 #### YAML Example: How long until the heater turns off
 
@@ -322,7 +326,7 @@ actions:
     data:
       message: >
         {% set timer = result['switch.heater'].get('timer') %}
-        {% if timer %}Heater turns {{ timer.turns }} in {{ (timer.remaining_s / 60) | round }} min.
+        {% if timer %}Heater turns {{ timer.turns }} in {{ (timer.remaining_s / 60) | round | int }} min.
         {% else %}No heater timer running.{% endif %}
 ```
 
@@ -334,6 +338,6 @@ This integration follows standard integration removal.
 
 1. Open the integration
 
-[![Open the Device Side integration in your Home Assistant instance.](https://my.home-assistant.io/badges/integration.svg)](https://my.home-assistant.io/redirect/integration/?domain=device_side)
+   [![Open the Device Side integration in your Home Assistant instance.](https://my.home-assistant.io/badges/integration.svg)](https://my.home-assistant.io/redirect/integration/?domain=device_side)
 
 2. Open the ⋮ menu and choose **Delete**
