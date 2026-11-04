@@ -1892,6 +1892,28 @@ async def test_a_failure_to_enable_after_the_steps_is_the_cases_detail(tmp_path)
     assert detail.startswith("could not enable device_side's entry again: ")
 
 
+@pytest.mark.usefixtures("_no_reload_wait")
+async def test_a_disable_that_fails_partway_is_still_enabled_again(tmp_path):
+    admin = entry_admin()
+    command = admin.command
+
+    async def drops_the_reply(payload):
+        result = await command(payload)
+        if payload["type"] == "config_entries/disable" and payload["disabled_by"]:
+            raise TimeoutError  # HA disabled it, but the reply never came
+        return result
+
+    admin.command = drops_the_reply
+    journal = Journal(tmp_path / "journal.json")
+
+    result = await run_entry(tmp_path, admin, journal=journal)
+
+    assert outcomes(result)["refuses_while_disabled[light_ct]"][0] is Outcome.FAIL
+    assert admin.moves == ["reload", "disable", "enable"]
+    assert not admin.disabled
+    assert not journal.path.exists()
+
+
 async def test_entry_steps_need_the_admin_token(tmp_path):
     out: list[str] = []
     result = await run(
