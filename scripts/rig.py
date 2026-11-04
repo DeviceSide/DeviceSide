@@ -673,8 +673,7 @@ def claim(args: argparse.Namespace, setup: Setup) -> Claim:
     """What the run must hold: each integration with a suite that has an adapter, the integrations their entities draw
     power through, and the networks its roaming bulbs visit, home included; HA exclusively when it deploys, which
     restarts HA, or runs a suite with device_side options, whose save reloads the entry; HA shared otherwise."""
-    runnable = [suite for suite in setup.suites if setup.registry.adapter(suite.action, suite.integration)]
-    integrations = {suite.integration for suite in runnable}
+    integrations = {suite.integration for suite in runnable(setup)}
     integrations |= supplies(setup.profile, integrations)
     if setup.roaming:
         integrations |= {network for network, _ in phases(setup.suites, setup.profile, roaming=True) if network}
@@ -684,9 +683,14 @@ def claim(args: argparse.Namespace, setup: Setup) -> Claim:
     return Claim("exclusive" if exclusive else "shared", frozenset(integrations))
 
 
+def runnable(setup: Setup) -> list[Suite]:
+    """The suites with an adapter, which the run can run."""
+    return [suite for suite in setup.suites if setup.registry.adapter(suite.action, suite.integration)]
+
+
 def reloads(setup: Setup) -> bool:
     """Whether a suite the run can run has device_side options, whose save reloads the entry under every other run."""
-    return any(suite.file.options for suite in setup.suites if setup.registry.adapter(suite.action, suite.integration))
+    return any(suite.file.options for suite in runnable(setup))
 
 
 def supplies(profile: Profile, integrations: set[str]) -> set[str]:

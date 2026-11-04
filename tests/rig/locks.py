@@ -93,8 +93,10 @@ class Held:
             return
         self.ha.truncate(0)  # shared holders leave no entry; cleared while still exclusive, so no one else's is lost
         self.ha.flush()
-        wait_for_lock(self.ha, fcntl.LOCK_SH, out, "HA")
         self.claim = Claim("shared", self.claim.integrations)
+        if wait_for_lock(self.ha, fcntl.LOCK_SH, out, "HA"):
+            out(f"Rig locks acquired: {self.claim}.")
+            workspace_color(WORKSPACE_HELD)
 
     def close(self) -> None:
         for handle in reversed(self.handles):

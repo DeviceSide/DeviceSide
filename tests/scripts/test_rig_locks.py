@@ -297,6 +297,19 @@ def test_share_ha_keeps_the_integrations_and_lets_a_shared_run_start(tmp_path):
         assert locks.held_by(tmp_path / locks.LOCK_NAME) is None
 
 
+def test_a_share_ha_that_waited_says_so_and_turns_the_workspace_green(tmp_path, monkeypatch, workspace_colors):
+    """flock's conversion may drop HA first, so a queued deploy can slip in; the run then waits for HA shared."""
+    printed: list[str] = []
+    with locks.hold(claim("hue", ha="exclusive"), "wt/deploy", tmp_path, out=quiet()) as held:
+        workspace_colors.clear()
+        monkeypatch.setattr(
+            locks, "wait_for_lock", lambda *_args: workspace_colors.append(locks.WORKSPACE_QUEUED) or True
+        )
+        held.share_ha(out=printed.append)
+    assert printed == ["Rig locks acquired: HA shared, hue."]
+    assert workspace_colors == [locks.WORKSPACE_QUEUED, locks.WORKSPACE_HELD]
+
+
 def test_share_ha_on_a_shared_hold_does_nothing(tmp_path):
     with locks.hold(claim("hue"), "wt/hue", tmp_path, out=quiet()) as held:
         held.share_ha(out=quiet())
@@ -449,6 +462,14 @@ def test_a_deploying_run_without_options_steps_ha_down_to_shared(tmp_path, monke
     with held:
         assert held.claim == given[0] == claim("shelly")
         assert not blocked(tmp_path, claim("zha"))
+
+
+def test_a_run_that_does_not_deploy_keeps_its_claim(tmp_path, monkeypatch):
+    profile = fakes.profile("shelly", light_ct="light.a")
+    run = setup(tmp_path, profile, step_suites(tmp_path, fakes.RESTORED_MIDWAY, "shelly"))
+    held, given = approved(tmp_path, monkeypatch, run, deploying=False)
+    with held:
+        assert held.claim == given[0] == claim("shelly")
 
 
 def test_a_deploying_run_with_options_keeps_ha_exclusive(tmp_path, monkeypatch):
