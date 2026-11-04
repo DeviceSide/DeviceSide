@@ -124,7 +124,7 @@ Device Side's actions take the same fields. Change the domain from `hue_dimmer` 
 
 ## Usage
 
-### Timed on/off
+### Delayed Off/On
 
 | Action                     | Description                                     |
 |:-------------------------- |:----------------------------------------------- |
