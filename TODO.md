@@ -15,6 +15,7 @@ v0.1.0 is the next release.
 
 | Slice | What | PRs |
 |---|---|---|
+| 12 | README for v0.1.0: Key Features table, one usage section per feature, Hue Smooth Dimming migration, facts checked against the code (item 12's table half; the experimental half stays open) | #214 |
 | 7 | Query responses: unused nested `attributes` shape removed from `EntityResult.as_response`, the plan and the rig engine; `get_attributes` stays flat, as hue_dimmer's | #212 |
 | 11 | Matter `turn_on_for`: timer-limit comment gives the spec's 65534-tenth cap | #211 |
 | 13k | Rig: a group a network can't make ends the run as a `GroupError`, so the phases that passed keep their records and the bulbs go home | #207 |
