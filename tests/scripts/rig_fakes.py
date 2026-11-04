@@ -654,20 +654,41 @@ OPTION_REGISTRY = SimpleNamespace(
 
 
 class FakeAdmin(FakeHA):
-    """FakeHA plus device_side's entry and its options flow, which saves what it is sent."""
+    """FakeHA plus device_side's entry and its options flow, which saves what it is sent. The entry reloads and is
+    disabled and enabled as HA's are, `moves` listing each; while it is disabled, device_side's actions raise
+    not_loaded, and `stuck` makes enabling it fail."""
 
     def __init__(self, states: dict[str, dict], respond: Callable | None = None, options: dict | None = None):
         super().__init__(states, respond)
         self.options = {"opt": True, "other": False} | (options or {})
         self.saved: list[dict] = []
         self.aborted = 0
+        self.disabled = False
+        self.stuck = False
+        self.moves: list[str] = []
 
     async def command(self, payload: dict):
         if payload["type"] == "config_entries/get":
-            return [{"entry_id": "e1", "state": "loaded"}]
+            return [{"entry_id": "e1", "state": "not_loaded" if self.disabled else "loaded"}]
+        if payload["type"] == "config_entries/disable":
+            assert payload["entry_id"] == "e1"
+            if payload["disabled_by"] is None and self.stuck:
+                raise HAError({"code": "unknown_error", "message": "setup failed"})
+            self.disabled = payload["disabled_by"] == "user"
+            self.moves.append("disable" if self.disabled else "enable")
+            return {"require_restart": False}
         return await super().command(payload)
 
+    async def call_service(self, domain: str, service: str, data: dict | None = None, return_response=False):
+        if domain == "device_side" and self.disabled:
+            self.calls.append((domain, service, dict(data or {})))
+            raise HAError({"code": "service_validation_error", "translation_key": "not_loaded", "message": "x"})
+        return await super().call_service(domain, service, data, return_response)
+
     async def rest(self, method: str, path: str, json: dict | None = None):
+        if path == "/api/config/config_entries/entry/e1/reload":
+            self.moves.append("reload")
+            return {"require_restart": False}
         if path.endswith("/options/flow"):
             schema = [{"name": name, "default": value, "type": "boolean"} for name, value in self.options.items()]
             return {"type": "form", "flow_id": "f1", "data_schema": schema}

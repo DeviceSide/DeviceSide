@@ -1778,6 +1778,181 @@ async def test_a_record_with_options_on_is_named_for_them(tmp_path):
     assert path.read_text().startswith("# Hue · raise_brightness-predicted_state\n")
 
 
+# --- entry steps ----------------------------------------------------------------------------------------------
+
+LIFECYCLE = """
+action: get_attributes
+name: lifecycle
+rig_seconds: 5
+tests:
+  - name: works_after_a_reload
+    roles: [light_ct]
+    steps:
+      - entry: reload
+      - call: {}
+      - expect_response: {integration: self}
+  - name: refuses_while_disabled
+    roles: [light_ct]
+    steps:
+      - entry: disable
+      - call: {}
+      - expect_error: {key: not_loaded}
+      - entry: enable
+      - call: {}
+      - expect_response: {integration: self}
+"""
+ENTRY_REGISTRY = SimpleNamespace(
+    adapter=lambda action, integration: SimpleNamespace(scope=SimpleNamespace(confirmable=False, options=frozenset()))
+)
+STORED = {"brightness": 80}
+
+
+def read_back(ha, action, data):
+    """get_attributes reads back what an off light keeps; set_attributes writes it."""
+    return {data["entity_id"]: {"status": "sent", "integration": "fake", **STORED}}
+
+
+def entry_admin() -> FakeAdmin:
+    return FakeAdmin({"light.a": {"state": "off"}}, read_back)
+
+
+async def run_entry(tmp_path, admin: FakeAdmin, text: str = LIFECYCLE, **kwargs) -> RunResult:
+    return await run(
+        [suite(tmp_path, text, "fake")],
+        profile("fake", light_ct="light.a"),
+        ENTRY_REGISTRY,
+        admin,
+        admin=admin,
+        tolerance=TOLERANCE,
+        out=lambda _: None,
+        **kwargs,
+    )
+
+
+@pytest.fixture
+def _no_reload_wait(monkeypatch):
+    monkeypatch.setattr(engine, "OPTIONS_RELOAD_S", 0)
+
+
+@pytest.mark.usefixtures("_no_reload_wait")
+async def test_the_lifecycle_cases_reload_disable_and_enable_the_entry(tmp_path):
+    admin = entry_admin()
+    journal = Journal(tmp_path / "journal.json")
+
+    result = await run_entry(tmp_path, admin, journal=journal)
+
+    assert outcomes(result) == {
+        "works_after_a_reload[light_ct]": (Outcome.PASS, ""),
+        "refuses_while_disabled[light_ct]": (Outcome.PASS, ""),
+    }
+    assert admin.moves == ["reload", "disable", "enable"]
+    assert not journal.path.exists()
+    assert result.suites[0].suite.name == "lifecycle"
+
+
+@pytest.mark.usefixtures("_no_reload_wait")
+async def test_a_case_that_fails_disabled_enables_the_entry_before_its_restore(tmp_path):
+    # The restore writes the off light's stored attributes back through device_side, which a disabled entry refuses.
+    admin = entry_admin()
+    text = LIFECYCLE.replace("{key: not_loaded}", "{key: something_else}")
+
+    result = await run_entry(tmp_path, admin, text)
+
+    outcome, detail = outcomes(result)["refuses_while_disabled[light_ct]"]
+    assert outcome is Outcome.FAIL
+    assert detail.startswith("step 3 (expect_error): error key is 'not_loaded'")
+    assert admin.moves == ["reload", "disable", "enable"]
+    assert admin.calls[-1] == ("device_side", "set_attributes", {"entity_id": "light.a", "brightness": 80})
+
+
+@pytest.mark.usefixtures("_no_reload_wait")
+async def test_an_entry_that_wont_enable_fails_the_case_and_stays_journaled(tmp_path):
+    admin = entry_admin()
+    admin.stuck = True
+    journal = Journal(tmp_path / "journal.json")
+
+    result = await run_entry(tmp_path, admin, journal=journal)
+
+    outcome, detail = outcomes(result)["refuses_while_disabled[light_ct]"]
+    assert outcome is Outcome.FAIL
+    assert detail == "step 4 (entry): HAError: setup failed"  # the step's own failure comes first
+    assert Journal(journal.path).get("entry") == "e1"
+
+
+@pytest.mark.usefixtures("_no_reload_wait")
+async def test_a_failure_to_enable_after_the_steps_is_the_cases_detail(tmp_path):
+    admin = entry_admin()
+    admin.stuck = True
+    text = LIFECYCLE.split("      - entry: enable")[0]
+
+    result = await run_entry(tmp_path, admin, text)
+
+    outcome, detail = outcomes(result)["refuses_while_disabled[light_ct]"]
+    assert outcome is Outcome.FAIL
+    assert detail.startswith("could not enable device_side's entry again: ")
+
+
+async def test_entry_steps_need_the_admin_token(tmp_path):
+    out: list[str] = []
+    result = await run(
+        [suite(tmp_path, LIFECYCLE, "fake")],
+        profile("fake", light_ct="light.a"),
+        ENTRY_REGISTRY,
+        FakeHA({"light.a": {}}),
+        tolerance=TOLERANCE,
+        out=out.append,
+    )
+    assert result.suites == []
+    assert "fake / get_attributes: needs HA_ADMIN_TOKEN, skipped" in out
+
+
+async def test_an_entry_step_without_an_admin_connection_fails(tmp_path):
+    steps = suite(tmp_path, LIFECYCLE, "fake")
+    [case] = [case for case in cases(steps, profile("fake", light_ct="light.a")) if "reload" in case.id]
+    result = await engine._CaseRun(case, entry_admin(), ENTRY_REGISTRY, TOL, None).run()
+    assert (result.outcome, result.detail) == (
+        Outcome.FAIL,
+        "step 1 (entry): entry steps need HA_ADMIN_TOKEN in .env.rig",
+    )
+
+
+@pytest.mark.usefixtures("_no_reload_wait")
+async def test_a_run_holding_ha_shared_refuses_entry_steps(tmp_path):
+    admin = entry_admin()
+    result = await run_entry(tmp_path, admin, reloads=False)
+    assert all(case.outcome is Outcome.FAIL for case in result.suites[0].cases)
+    assert "this run holds HA shared" in outcomes(result)["works_after_a_reload[light_ct]"][1]
+    assert admin.moves == []
+
+
+def test_a_file_with_entry_steps_runs_alone(tmp_path):
+    steps = suite(tmp_path, LIFECYCLE, "fake")
+    assert steps.file.moves_entry and steps.file.reloads
+    assert not any(
+        engine.in_head(case, profile("fake", light_ct="light.a"))
+        for case in cases(steps, profile("fake", light_ct="light.a"))
+    )
+
+
+@pytest.mark.parametrize(
+    ("text", "error"),
+    [
+        (LIFECYCLE.replace("entry: reload", "entry: restart"), "entry takes reload, disable, enable"),
+        (LIFECYCLE.replace("name: lifecycle\n", ""), "needs a name, or its record would replace get_attributes's"),
+        (LIFECYCLE.replace("name: lifecycle", "name: get_attributes"), "name must name the record"),
+        (LIFECYCLE.replace("name: lifecycle", "name: lifecycle\noptions: [opt]"), "name must name the record"),
+    ],
+)
+def test_entry_steps_and_names_are_checked_when_the_file_loads(tmp_path, text, error):
+    with pytest.raises(engine.SchemaError, match=re.escape(error)):
+        suite(tmp_path, text, "fake")
+
+
+def test_the_lifecycle_step_file_loads():
+    step_file = load_step_file(engine.STEPS_DIR / "lifecycle.yaml")
+    assert (step_file.name, step_file.action, step_file.moves_entry) == ("lifecycle", "get_attributes", True)
+
+
 # --- bridge ---------------------------------------------------------------------------------------------------
 
 BRIDGE_STEPS = """
