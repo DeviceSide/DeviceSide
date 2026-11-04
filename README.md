@@ -25,8 +25,8 @@ Device Side also patches some usability quirks in individual integrations.
 
 | Feature                                                          | ZHA | Z2M | Shelly | Hue Bridge | Matter |
 |:---------------------------------------------------------------- |:---:|:---:|:------:|:----------:|:------:|
-| [Delayed off](#timed-onoff)                                      | ✅  | ✅  | ✅     |            | ✅     |
-| [Delayed on](#timed-onoff)                                       |     |     | ✅     |            |        |
+| [Delayed off](#delayed-off)                                      | ✅  | ✅  | ✅     |            | ✅     |
+| [Delayed on](#delayed-on)                                        |     |     | ✅     |            |        |
 | [Smooth dimming](#smooth-dimming)                                | ✅  | ✅  |        | ✅         |        |
 | [Smooth saturation change](#smooth-color-transitions)            | ✅  | ✅  |        | ✅         |        |
 | [Smooth hue change](#smooth-color-transitions)                   | ✅  | ✅  |        |            |        |
@@ -34,14 +34,21 @@ Device Side also patches some usability quirks in individual integrations.
 | [Set scenes without turning on](#set-lights-without-turning-on) |     |     |        | ✅         |        |
 | [Get attributes](#get-attributes)                                | ✅  | ✅  | ✅     | ✅         | ✅     |
 
-### Timed on/off
+### Delayed Off
 
-Actions: `turn_on_for`, `turn_off_for`
+Action: `turn_on_for`
 
-Turn on or off, with a delayed flip back. Flip-back timer runs on the device. Example use cases:
+Turn on, with a delayed flip back to off. Flip-back timer runs on the device. Example use cases:
 
 - Cut power to a heater or ironing station after 4 hours, in case someone forgets to turn it off.
 - Run a bathroom fan for 20 minutes after a shower.
+
+### Delayed On
+
+Action: `turn_off_for`
+
+Turn off, with a delayed flip back to on. Flip-back timer runs on the device. Example use case:
+
 - Power-cycle your router via a smart plug.
 
 ### Smooth Dimming
