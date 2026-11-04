@@ -2,7 +2,7 @@
 
 [![HACS Default](https://img.shields.io/badge/HACS-Default-orange.svg)](https://hacs.xyz/) [![Latest Version](https://img.shields.io/github/v/release/jasonmx/device-side?sort=date)](https://github.com/jasonmx/device-side/releases) [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/jasonmx)
 
-Device Side unlocks native features in lights on the Zigbee and Philips Hue integrations, lights, switches and plugs on Shelly, and switches and plugs on Matter. It allows you to:
+Device Side unlocks native features in your lights, switches and plugs on the Zigbee, Shelly, Philips Hue and Matter integrations. It allows you to:
 
 * **Delay a turn-off:** Tell a device to turn off automatically, even if HA goes offline.
 
