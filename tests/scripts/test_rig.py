@@ -155,22 +155,26 @@ def test_load_env_reads_command_vars(tmp_path, monkeypatch):
 
 
 def test_select_plan_lines_and_estimate(profile):
-    step_files = [step_file for step_file in load_step_files() if step_file.action in ("turn_off_for", "turn_on_for")]
+    step_files = [
+        step_file
+        for step_file in load_step_files()
+        if step_file.action in ("turn_off_with_auto_on", "turn_on_with_auto_off")
+    ]
     suites = rig.select(step_files, profile, None)
     assert [(suite.integration, suite.action) for suite in suites] == [
-        ("shelly", "turn_off_for"),
-        ("hue", "turn_off_for"),
-        ("shelly", "turn_on_for"),
-        ("hue", "turn_on_for"),
+        ("shelly", "turn_off_with_auto_on"),
+        ("hue", "turn_off_with_auto_on"),
+        ("shelly", "turn_on_with_auto_off"),
+        ("hue", "turn_on_with_auto_off"),
     ]
     assert [suite.integration for suite in rig.select(step_files, profile, ["hue"])] == ["hue", "hue"]
-    narrowed = rig.select(step_files, profile, ["hue"], ["turn_on_for"])
-    assert [(suite.integration, suite.action) for suite in narrowed] == [("hue", "turn_on_for")]
+    narrowed = rig.select(step_files, profile, ["hue"], ["turn_on_with_auto_off"])
+    assert [(suite.integration, suite.action) for suite in narrowed] == [("hue", "turn_on_with_auto_off")]
 
     registry = AdapterRegistry.discover()
-    shelly_on = [suite for suite in suites if suite.integration == "shelly" and suite.action == "turn_on_for"]
+    shelly_on = [suite for suite in suites if suite.integration == "shelly" and suite.action == "turn_on_with_auto_off"]
     assert rig.plan_lines(shelly_on + suites[1:2], profile, registry) == [
-        "shelly / turn_on_for -> switch.plug",
+        "shelly / turn_on_with_auto_off -> switch.plug",
         "    on_then_off[switch_plug]: switch.plug",
         "    on_then_off[light_onoff]: no light_onoff entity in the profile",
         "    on_then_off[light_wrapped]: no light_wrapped entity in the profile",
@@ -183,10 +187,10 @@ def test_select_plan_lines_and_estimate(profile):
         "    rgbcct_bulb_rgb_then_off[light_color]: no light_color entity in the profile",
         "    rgbcct_bulb_hs_then_off[light_color]: no light_color entity in the profile",
         "    rgbcct_bulb_xy_then_off[light_color]: no light_color entity in the profile",
-        "hue / turn_off_for (no adapter, will skip)",
+        "hue / turn_off_with_auto_on (no adapter, will skip)",
     ]
     assert rig.plan_lines(shelly_on, profile, registry, "on_then") == [
-        "shelly / turn_on_for -> switch.plug",
+        "shelly / turn_on_with_auto_off -> switch.plug",
         "    on_then_off[switch_plug]: switch.plug",
         "    on_then_off[light_onoff]: no light_onoff entity in the profile",
         "    on_then_off[light_wrapped]: no light_wrapped entity in the profile",
@@ -379,7 +383,7 @@ def fake_clock(monkeypatch):
 
 
 def test_wait_until_ready_returns_once_the_service_is_listed(monkeypatch):
-    services = [{"domain": "device_side", "services": {"turn_on_for": {}}}]
+    services = [{"domain": "device_side", "services": {"turn_on_with_auto_off": {}}}]
     running = {"state": "RUNNING"}
     fake_ha(monkeypatch, [rig.urllib.error.URLError("down"), running, None, running, services])
     rig.wait_until_ready("http://ha", "token", timeout=60, sleep=lambda _: None)
@@ -556,7 +560,7 @@ def test_main_checkout_falls_back_outside_a_repo(tmp_path, monkeypatch):
 
 def test_check_tokens_stops_a_zha_run_without_an_admin_token():
     registry = AdapterRegistry.discover()
-    step_file = next(f for f in load_step_files() if f.action == "turn_on_for")
+    step_file = next(f for f in load_step_files() if f.action == "turn_on_with_auto_off")
     zha, shelly = rig.Suite(step_file, "zha"), rig.Suite(step_file, "shelly")
     env = {"HA_URL": "http://ha:8123", "HA_TOKEN": "tok"}
     with pytest.raises(SystemExit, match="HA_URL and HA_TOKEN"):

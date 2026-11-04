@@ -191,7 +191,7 @@ class RigTest:
 
     @property
     def calls(self) -> tuple[str, ...]:
-        """The other actions its `call` steps name (`call: {action: turn_on_for}`), in first-use order."""
+        """The other actions its `call` steps name (`call: {action: turn_on_with_auto_off}`), in first-use order."""
         steps = (*self.setup, *self.steps)
         named = (step.args.get("action") for step in steps if step.kind == "call" and isinstance(step.args, dict))
         return tuple(dict.fromkeys(filter(None, named)))

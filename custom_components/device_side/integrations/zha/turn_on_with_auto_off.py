@@ -1,5 +1,6 @@
-"""ZHA turn_on_for: optional light.turn_on for fields, OnWithTimedOff through zha.issue_zigbee_cluster_command (or
-one zha.issue_zigbee_group_command for a ZHA group's members), then an OnOff and OnTime read-back per light."""
+"""ZHA turn_on_with_auto_off: optional light.turn_on for fields, OnWithTimedOff through
+zha.issue_zigbee_cluster_command (or one zha.issue_zigbee_group_command for a ZHA group's members), then an OnOff
+and OnTime read-back per light."""
 
 import asyncio
 import logging
@@ -10,7 +11,7 @@ from homeassistant.exceptions import Unauthorized
 
 from . import zcl
 from .addressing import Address, address, unsupported_reason, via_zha_group
-from ...actions.turn_on_for import TurnOnForRequest
+from ...actions.turn_on_with_auto_off import TurnOnWithAutoOffRequest
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Status, Target
 from ...core.scope import AdapterScope, DurationLimits
@@ -27,7 +28,7 @@ _READBACK_SLACK_TENTHS = 30
 _LOGGER = logging.getLogger(__name__)
 
 
-class ZHATurnOnFor(Adapter[TurnOnForRequest]):
+class ZHATurnOnWithAutoOff(Adapter[TurnOnWithAutoOffRequest]):
     """Send OnWithTimedOff on the OnOff cluster; light.turn_on first when fields are present.
 
     The dispatcher expands a ZHA group entity into its member lights (groups.expand_group). Members that came from
@@ -46,7 +47,7 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
     it as its own countdown and stays off.
     """
 
-    action: ClassVar[str] = "turn_on_for"
+    action: ClassVar[str] = "turn_on_with_auto_off"
     integration: ClassVar[str] = "zha"
     scope: ClassVar[AdapterScope] = AdapterScope(
         # Zigbee plugs and switches rarely honor OnWithTimedOff (the rig's Tuya TS011F stores OnTime as a countdown
@@ -58,11 +59,11 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
         confirmable=True,
     )
 
-    def supports(self, hass: HomeAssistant, request: TurnOnForRequest, target: Target) -> str | None:
+    def supports(self, hass: HomeAssistant, request: TurnOnWithAutoOffRequest, target: Target) -> str | None:
         return super().supports(hass, request, target) or unsupported_reason(target)
 
     async def execute(
-        self, hass: HomeAssistant, request: TurnOnForRequest, targets: list[Target]
+        self, hass: HomeAssistant, request: TurnOnWithAutoOffRequest, targets: list[Target]
     ) -> list[EntityResult]:
         on_time = round(request.duration_s * 10)
         groups: dict[tuple[str, int], list[Target]] = {}
@@ -81,7 +82,7 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
         return [result for batch in batches for result in batch]
 
     async def _unicast(
-        self, hass: HomeAssistant, request: TurnOnForRequest, target: Target, on_time: int
+        self, hass: HomeAssistant, request: TurnOnWithAutoOffRequest, target: Target, on_time: int
     ) -> EntityResult:
         addr = address(target.entry.unique_id)  # supports() refused the targets it can't address
         if request.light.present():
@@ -102,7 +103,7 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
     async def _groupcast(
         self,
         hass: HomeAssistant,
-        request: TurnOnForRequest,
+        request: TurnOnWithAutoOffRequest,
         group_entity: str,
         gid: int,
         members: list[Target],
@@ -130,7 +131,7 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
 
         return await self.gather(hass, members, read_back)
 
-    async def _turn_on(self, hass: HomeAssistant, request: TurnOnForRequest, entity_id: str) -> None:
+    async def _turn_on(self, hass: HomeAssistant, request: TurnOnWithAutoOffRequest, entity_id: str) -> None:
         await hass.services.async_call(
             "light",
             "turn_on",

@@ -12,7 +12,7 @@ from .raise_hue import Z2MRaiseHue
 from .raise_saturation import Z2MRaiseSaturation
 from .set_attributes import Z2MSetAttributes
 from .stop import Z2MStop
-from .turn_on_for import Z2MTurnOnFor
+from .turn_on_with_auto_off import Z2MTurnOnWithAutoOff
 from ...core.scope import IntegrationInfo
 
 INTEGRATION = IntegrationInfo(
@@ -35,5 +35,5 @@ ADAPTERS = [
     Z2MRaiseSaturation,
     Z2MSetAttributes,
     Z2MStop,
-    Z2MTurnOnFor,
+    Z2MTurnOnWithAutoOff,
 ]

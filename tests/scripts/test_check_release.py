@@ -24,13 +24,16 @@ class FakeRegistry:
         self._adapters = {key: FakeAdapter(scope) for key, scope in adapters.items()}
 
     def matrix(self):
-        yield "turn_off_for", "shelly", None
+        yield "turn_off_with_auto_on", "shelly", None
         for (action, integration), adapter in sorted(self._adapters.items()):
             yield action, integration, adapter
 
 
 REGISTRY = FakeRegistry(
-    {("turn_on_for", "shelly"): AdapterScope(), ("turn_on_for", "matter"): AdapterScope(experimental=True)}
+    {
+        ("turn_on_with_auto_off", "shelly"): AdapterScope(),
+        ("turn_on_with_auto_off", "matter"): AdapterScope(experimental=True),
+    }
 )
 
 
@@ -44,15 +47,15 @@ def coverage(tmp_path: Path, covered: int, statements: int = 100) -> Path:
 def test_coverage_under_the_bar_is_an_error_experimental_or_not(tmp_path):
     data = json.loads(coverage(tmp_path, 94).read_text())
     assert cr.coverage_errors(REGISTRY, data) == [
-        f"matter / turn_on_for: 94.0% line coverage of {THIS_FILE}, under 95%",
-        f"shelly / turn_on_for: 94.0% line coverage of {THIS_FILE}, under 95%",
+        f"matter / turn_on_with_auto_off: 94.0% line coverage of {THIS_FILE}, under 95%",
+        f"shelly / turn_on_with_auto_off: 94.0% line coverage of {THIS_FILE}, under 95%",
     ]
     assert cr.coverage_errors(REGISTRY, json.loads(coverage(tmp_path, 95).read_text())) == []
     assert cr.coverage_errors(REGISTRY, json.loads(coverage(tmp_path, 0, statements=0).read_text())) == []
 
 
 def test_a_module_missing_from_coverage_is_an_error():
-    [error] = cr.coverage_errors(FakeRegistry({("turn_on_for", "shelly"): AdapterScope()}), {"files": {}})
+    [error] = cr.coverage_errors(FakeRegistry({("turn_on_with_auto_off", "shelly"): AdapterScope()}), {"files": {}})
     assert "0.0% line coverage" in error
 
 
@@ -60,48 +63,54 @@ def test_main_prints_the_table_and_the_step_summary(tmp_path, monkeypatch, capsy
     summary = tmp_path / "summary.md"
     monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary))
     assert cr.main(["--coverage", str(coverage(tmp_path, 100))], REGISTRY) == 0
-    assert capsys.readouterr().out.splitlines() == ["matter / turn_on_for  experimental", "shelly / turn_on_for"]
-    assert summary.read_text().splitlines()[-2:] == ["| matter / turn_on_for | yes |", "| shelly / turn_on_for |  |"]
+    assert capsys.readouterr().out.splitlines() == [
+        "matter / turn_on_with_auto_off  experimental",
+        "shelly / turn_on_with_auto_off",
+    ]
+    assert summary.read_text().splitlines()[-2:] == [
+        "| matter / turn_on_with_auto_off | yes |",
+        "| shelly / turn_on_with_auto_off |  |",
+    ]
 
 
 def test_release_fails_on_an_experimental_adapter(tmp_path, monkeypatch, capsys):
     monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
     assert cr.main([], REGISTRY) == 0
     assert cr.main(["--release"], REGISTRY) == 1
-    assert "matter / turn_on_for is experimental" in capsys.readouterr().err
-    assert cr.main(["--release"], FakeRegistry({("turn_on_for", "shelly"): AdapterScope()})) == 0
+    assert "matter / turn_on_with_auto_off is experimental" in capsys.readouterr().err
+    assert cr.main(["--release"], FakeRegistry({("turn_on_with_auto_off", "shelly"): AdapterScope()})) == 0
     assert cr.main(["--coverage", str(coverage(tmp_path, 50))], REGISTRY) == 1
 
 
 def test_main_reads_the_real_registry(monkeypatch, capsys):
     monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
     assert cr.main([]) == 0
-    assert "shelly / turn_on_for" in capsys.readouterr().out
+    assert "shelly / turn_on_with_auto_off" in capsys.readouterr().out
 
 
 PACKAGE = "custom_components/device_side/integrations/fake"
-ADAPTER = f"{PACKAGE}/turn_on_for.py"
+ADAPTER = f"{PACKAGE}/turn_on_with_auto_off.py"
 
 
 class FakeRecordsRegistry:
-    """One adapter, fake / turn_on_for, whose class's module is the repository's adapter module."""
+    """One adapter, fake / turn_on_with_auto_off, whose class's module is the repository's adapter module."""
 
     def __init__(self, repo, monkeypatch, experimental: bool = False):
-        module = types.ModuleType("fake_turn_on_for")
+        module = types.ModuleType("fake_turn_on_with_auto_off")
         module.__file__ = str(repo.path / ADAPTER)
         monkeypatch.setitem(sys.modules, module.__name__, module)
-        cls = type("FakeTurnOnFor", (FakeAdapter,), {"__module__": module.__name__})
+        cls = type("FakeTurnOnWithAutoOff", (FakeAdapter,), {"__module__": module.__name__})
         self.adapter = cls(AdapterScope(experimental=experimental))
-        self.adapter.action, self.adapter.integration = "turn_on_for", "fake"
+        self.adapter.action, self.adapter.integration = "turn_on_with_auto_off", "fake"
 
     def matrix(self):
-        yield "turn_on_for", "fake", self.adapter
+        yield "turn_on_with_auto_off", "fake", self.adapter
 
 
 def write_record(repo, name: str, commit: str | None) -> str:
     """Commit docs/test-records/fake/<name> citing the commit (or no commit) and return the new head."""
     source = f"rig run (`scripts/rig.py`), commit `{commit[:7]}`" if commit else "probe script"
-    text = f"# Fake · turn_on_for\n\n| | |\n|---|---|\n| Result | pass |\n| Source | {source} |\n"
+    text = f"# Fake · turn_on_with_auto_off\n\n| | |\n|---|---|\n| Result | pass |\n| Source | {source} |\n"
     return repo.commit(f"docs/test-records/fake/{name}", text)
 
 
@@ -112,7 +121,10 @@ def tested(repo, monkeypatch):
     monkeypatch.setattr(cr, "REPO", repo.path)
     monkeypatch.setattr(cr, "RECORDS", repo.path / "docs" / "test-records")
     for path, text in [
-        (f"{PACKAGE}/__init__.py", "from .turn_on_for import FakeTurnOnFor\nfrom .other import Other\n"),
+        (
+            f"{PACKAGE}/__init__.py",
+            "from .turn_on_with_auto_off import FakeTurnOnWithAutoOff\nfrom .other import Other\n",
+        ),
         (f"{PACKAGE}/shared.py", "from . import nested\n"),
         (f"{PACKAGE}/nested.py", ""),
         (f"{PACKAGE}/addressing.py", "from ...core import scope\n"),
@@ -121,22 +133,33 @@ def tested(repo, monkeypatch):
         (ADAPTER, "from . import shared\nfrom .addressing import address\nfrom ..zha import zcl\n"),
     ]:
         tested_at = repo.commit(path, text)
-    write_record(repo, "turn_on_for.md", tested_at)
+    write_record(repo, "turn_on_with_auto_off.md", tested_at)
     return repo, tested_at
 
 
 def test_adapter_code_is_the_module_and_what_it_imports_from_its_package(tested):
     repo, _ = tested
     code = cr.adapter_code(repo.path / ADAPTER)
-    assert [path.name for path in code] == ["__init__.py", "addressing.py", "nested.py", "shared.py", "turn_on_for.py"]
+    assert [path.name for path in code] == [
+        "__init__.py",
+        "addressing.py",
+        "nested.py",
+        "shared.py",
+        "turn_on_with_auto_off.py",
+    ]
 
 
 def test_records_are_the_action_and_its_options(tested):
     repo, sha = tested
-    for name in ["turn_on_for-predicted_state.md", "turn_on_for_x.md", "turn_off_for.md", "color_modes.md"]:
+    for name in [
+        "turn_on_with_auto_off-predicted_state.md",
+        "turn_on_with_auto_off_x.md",
+        "turn_off_with_auto_on.md",
+        "color_modes.md",
+    ]:
         write_record(repo, name, sha)
-    names = [path.name for path in cr.records("fake", "turn_on_for")]
-    assert names == ["turn_on_for-predicted_state.md", "turn_on_for.md"]
+    names = [path.name for path in cr.records("fake", "turn_on_with_auto_off")]
+    assert names == ["turn_on_with_auto_off-predicted_state.md", "turn_on_with_auto_off.md"]
 
 
 def test_a_record_as_new_as_the_code_passes(tested, monkeypatch):
@@ -151,17 +174,19 @@ def test_a_change_to_the_adapters_code_after_its_record_is_an_error(tested, monk
     repo, sha = tested
     repo.commit(changed)
     assert cr.record_errors(FakeRecordsRegistry(repo, monkeypatch)) == [
-        f"fake / turn_on_for: docs/test-records/fake/turn_on_for.md cites {sha[:7]}; changed since: {changed}"
+        f"fake / turn_on_with_auto_off: docs/test-records/fake/turn_on_with_auto_off.md cites {sha[:7]}; changed since: {changed}"
     ]
 
 
 def test_every_record_of_the_adapter_must_be_new(tested, monkeypatch):
     repo, sha = tested
-    write_record(repo, "turn_on_for-predicted_state.md", sha)
+    write_record(repo, "turn_on_with_auto_off-predicted_state.md", sha)
     repo.commit(ADAPTER)
-    write_record(repo, "turn_on_for.md", repo.git("rev-parse", "HEAD"))
+    write_record(repo, "turn_on_with_auto_off.md", repo.git("rev-parse", "HEAD"))
     [error] = cr.record_errors(FakeRecordsRegistry(repo, monkeypatch))
-    assert error.startswith("fake / turn_on_for: docs/test-records/fake/turn_on_for-predicted_state.md cites")
+    assert error.startswith(
+        "fake / turn_on_with_auto_off: docs/test-records/fake/turn_on_with_auto_off-predicted_state.md cites"
+    )
 
 
 def test_a_record_citing_an_unmerged_branch_compares_trees(tested, monkeypatch):
@@ -169,7 +194,7 @@ def test_a_record_citing_an_unmerged_branch_compares_trees(tested, monkeypatch):
     repo.git("checkout", "-q", "-b", "rig", sha)
     branch = repo.commit(f"{PACKAGE}/other.py")
     repo.git("checkout", "-q", "main")
-    write_record(repo, "turn_on_for.md", branch)
+    write_record(repo, "turn_on_with_auto_off.md", branch)
     assert cr.record_errors(FakeRecordsRegistry(repo, monkeypatch)) == []
 
 
@@ -184,14 +209,16 @@ def test_a_failing_git_diff_stops_the_check(tested, monkeypatch):
 def test_a_missing_unciting_or_unknown_record_is_an_error(tested, monkeypatch):
     repo, _ = tested
     registry = FakeRecordsRegistry(repo, monkeypatch)
-    write_record(repo, "turn_on_for.md", None)
-    assert cr.record_errors(registry) == ["fake / turn_on_for: docs/test-records/fake/turn_on_for.md cites no commit"]
-    write_record(repo, "turn_on_for.md", "0" * 40)
+    write_record(repo, "turn_on_with_auto_off.md", None)
     assert cr.record_errors(registry) == [
-        "fake / turn_on_for: docs/test-records/fake/turn_on_for.md cites commit 0000000, which git can't find"
+        "fake / turn_on_with_auto_off: docs/test-records/fake/turn_on_with_auto_off.md cites no commit"
     ]
-    repo.git("rm", "-q", "docs/test-records/fake/turn_on_for.md")
-    assert cr.record_errors(registry) == ["fake / turn_on_for: no test record in docs/test-records/fake/"]
+    write_record(repo, "turn_on_with_auto_off.md", "0" * 40)
+    assert cr.record_errors(registry) == [
+        "fake / turn_on_with_auto_off: docs/test-records/fake/turn_on_with_auto_off.md cites commit 0000000, which git can't find"
+    ]
+    repo.git("rm", "-q", "docs/test-records/fake/turn_on_with_auto_off.md")
+    assert cr.record_errors(registry) == ["fake / turn_on_with_auto_off: no test record in docs/test-records/fake/"]
 
 
 def test_an_experimental_adapter_is_exempt(tested, monkeypatch):

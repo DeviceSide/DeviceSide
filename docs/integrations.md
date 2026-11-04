@@ -9,7 +9,7 @@ setup. How the commands work on the wire, and what was measured on real bulbs, i
 - **Refused targets.** A target that can't take an action fails the call if you named it, and is skipped if it
   came through an area, device, label or group ([action-behavior.md](action-behavior.md)). The error names the
   reason, such as `capability_not_tested`.
-- **Groups.** For delayed off and smooth moves, Zigbee2MQTT and ZHA groups and Hue rooms and zones get one
+- **Groups.** For auto-off timers and smooth moves, Zigbee2MQTT and ZHA groups and Hue rooms and zones get one
   command, so their lights move together. `set_attributes` writes a ZHA group's or Hue room's lights one by one.
   Any other group, such as a light group helper, is expanded and each light gets its own command.
 - **Wrapped switches.** A `switch_as_x` light over a supported switch is treated as that switch: light fields are
@@ -29,7 +29,7 @@ bulbs. Tested on Gen3 and Gen4 relays (firmware 2.0.1) and a Multicolor Bulb Gen
 lights (Light, CCT, RGB, RGBW) take the same command but are refused (`capability_not_tested`) until one passes
 a [rig run](rig.md). Gen1 is refused (`gen1_unsupported`).
 
-**Delayed off and on.** The device runs the timer and confirms it. A transition is at least 0.5 s. A color
+**Auto-off and auto-on timers.** The device runs the timer and confirms it. A transition is at least 0.5 s. A color
 temperature outside the bulb's range is clamped. `hs_color` and `xy_color` are sent as the RGB color Home
 Assistant would send for them, whatever mode the bulb is in.
 
@@ -52,14 +52,14 @@ Device Side sets three Zigbee2MQTT options, and logs each change at info level:
   untouched. Lights with one color model, lights on an endpoint (`light_l1`), and lights with an override of your
   own are left alone. Turning **Fix colors of full-color Zigbee2MQTT lights** off in Device Side's options puts
   back the modes Zigbee2MQTT announced itself.
-- **`hue_native_control`**, on a Hue bulb, or a group with one, the first time it gets a delayed off with a color.
+- **`hue_native_control`**, on a Hue bulb, or a group with one, the first time it gets an auto-off timer with a color.
   Without it, a Hue bulb that is off drops the color and lights at its last one first. The option applies to every
   command Zigbee2MQTT sends that bulb, not just Device Side's, and Zigbee2MQTT stops simulating on/off transitions
-  for it. If you turn it off in Zigbee2MQTT, the next delayed off with a color turns it on again.
+  for it. If you turn it off in Zigbee2MQTT, the next auto-off timer with a color turns it on again.
 - **`filtered_cache`**, before the first read of a device, so a read's answer isn't resent in every later state
   message. Your own entries are kept. Removing Device Side's is harmless: it comes back at the next read.
 
-### Delayed off
+### Auto-off timer
 
 With light fields, Device Side calls `light.turn_on` first, then starts the timer once Zigbee2MQTT reports the
 light's new state, usually within a fraction of a second. If that takes over 5 s, the light stays on up to 5 s
@@ -102,17 +102,17 @@ Lights on the core `zha` integration.
 **Admin only.** Device Side uses ZHA's admin-only actions, so a call made by a non-admin user fails
 (`admin_required`). Automations run without a user and pass.
 
-### Delayed off
+### Auto-off timer
 
 Device Side reads the timer back from the bulb, so the result is `confirmed`, or `sent` if the read-back didn't
 show it.
 
-**Cancelling.** Only `turn_off` or a new delayed off cancels the timer. A plain `turn_on`, or a brightness change,
+**Cancelling.** Only `turn_off` or a new auto-off timer cancels the timer. A plain `turn_on`, or a brightness change,
 leaves it running, and the light still turns off when it ends. Nothing stops a timer and keeps the light on: turn
 it off, then on, which blinks.
 
 **Why the timer belongs on the device.** For 1.5 s after `light.turn_off`, ZHA ignores the light's "on" report, so
-a delayed off sent in that window lights the bulb while Home Assistant shows it off. The bulb still turns itself
+an auto-off timer sent in that window lights the bulb while Home Assistant shows it off. The bulb still turns itself
 off on time; an automation waiting for the light to be on would never fire.
 
 ### Smooth moves, set and get
@@ -137,7 +137,7 @@ Plugs on the core `matter` integration whose endpoint has the On/Off cluster's L
 timer needs; one without it is refused (`no_lt_feature`). Matter lights take the same command but are refused
 (`domain_not_tested`) until one passes a [rig run](rig.md).
 
-The delayed off is read back from the plug, so the result is `confirmed`, or `sent` if the read-back didn't show it.
+The auto-off timer is read back from the plug, so the result is `confirmed`, or `sent` if the read-back didn't show it.
 `turn_off` cancels the timer; a plain `turn_on` doesn't.
 
 ## Hue
@@ -145,7 +145,7 @@ The delayed off is read back from the plug, so the result is `confirmed`, or `se
 A Hue Bridge v2 or Bridge Pro on the core `hue` integration. A v1 bridge is refused (`bridge_v1`). Rooms and zones
 are targets in their own right.
 
-**No delayed on or off.** The bridge's own timers keep running through a plain on or off, from Home Assistant, the
+**No auto-off or auto-on timers.** The bridge's own timers keep running through a plain on or off, from Home Assistant, the
 Hue app or a dimmer switch, and the Hue app doesn't show them. To time Hue bulbs, pair them with ZHA, Zigbee2MQTT
 or Matter.
 

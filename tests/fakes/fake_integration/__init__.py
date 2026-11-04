@@ -28,8 +28,8 @@ INTEGRATION = IntegrationInfo(
 )
 
 
-class FakeTurnOnFor(ScriptedAdapter):
-    action = "turn_on_for"
+class FakeTurnOnWithAutoOff(ScriptedAdapter):
+    action = "turn_on_with_auto_off"
     integration = "fake"
     scope = AdapterScope(
         domains=frozenset({"light", "switch"}),
@@ -38,8 +38,8 @@ class FakeTurnOnFor(ScriptedAdapter):
     )
 
 
-class FakeTurnOffFor(ScriptedAdapter):
-    action = "turn_off_for"
+class FakeTurnOffWithAutoOn(ScriptedAdapter):
+    action = "turn_off_with_auto_on"
     integration = "fake"
     scope = AdapterScope(domains=frozenset({"switch"}), duration=LIMITS, native_groups=True)
 
@@ -50,4 +50,4 @@ class FakeSetAttributes(ScriptedAdapter):
     scope = AdapterScope(fields=frozenset({"brightness"}))
 
 
-ADAPTERS = [FakeTurnOnFor, FakeTurnOffFor, FakeSetAttributes]
+ADAPTERS = [FakeTurnOnWithAutoOff, FakeTurnOffWithAutoOn, FakeSetAttributes]

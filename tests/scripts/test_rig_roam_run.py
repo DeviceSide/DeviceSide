@@ -284,11 +284,11 @@ def test_main_dry_runs_roam_check_with_the_moves_and_no_deploy(tmp_path, monkeyp
 def test_the_plan_lists_each_phase_and_the_moves(tmp_path, capsys):
     profile = lab_with_pause(tmp_path)
     registry = AdapterRegistry.discover()
-    run = rig.select(rig.load_step_files(), profile, None, ["turn_on_for"])
+    run = rig.select(rig.load_step_files(), profile, None, ["turn_on_with_auto_off"])
     rig.print_phases(profile, run, registry, None, rig.roams(profile, run))
     out = capsys.readouterr().out
     assert out.index("Adapters on Hue:") < out.index("Adapters on ZHA:") < out.index("Adapters on Z2M:")
-    assert "zha / turn_on_for -> light.lab_b, light.lab_a" in out
+    assert "zha / turn_on_with_auto_off -> light.lab_b, light.lab_a" in out
     assert rig.estimate(run, registry, False, True) == rig.estimate(run, registry, False) + rig.ROAM_ESTIMATE_S
 
 
@@ -601,7 +601,7 @@ async def test_a_leftover_rig_zone_isnt_saved_as_a_bulbs_home(lab):
 # --- the device check: every phase's devices before the gate, and --check -------------------------------------------
 
 PLUG_AND_BULB = """
-action: turn_on_for
+action: turn_on_with_auto_off
 rig_seconds: 5
 tests:
   - name: t

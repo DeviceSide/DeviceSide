@@ -8,8 +8,8 @@ goes on the wire, and what was measured on real devices, is in [integration-inte
 Code and docs use these terms. "Platform", "backing" and "claim" are retired; `services.yaml` keeps its name because
 HA requires it.
 
-- **Action**: what the user calls, e.g. `device_side.turn_on_for`.
-- **Feature**: the user experience one or more actions deliver (a timed flip, smooth dimming). Prose only.
+- **Action**: what the user calls, e.g. `device_side.turn_on_with_auto_off`.
+- **Feature**: the user experience one or more actions deliver (an auto-off timer, smooth dimming). Prose only.
 - **Integration**: the HA integration that is the first hop to the device (Shelly, ZHA, MQTT, Hue).
 - **Bridge**: a separate system between the integration and the device, named only when the integration alone
   doesn't say how the device is reached (Zigbee2MQTT behind MQTT). The Hue Bridge is not counted.
@@ -47,7 +47,7 @@ HA requires it.
 1. `verb_object`, in HA vocabulary only: objects are the names HA's own services and state attributes use
    (`brightness`, `attributes`, `scene`). Protocol vocabulary (`level`, `OnLevel`, `toggle_after`) never appears in an
    action or field name.
-2. Commands use HA's command verbs: `turn_on_for`, `raise_brightness`, `stop`, `set_attributes`.
+2. Commands use HA's command verbs: `turn_on_with_auto_off`, `raise_brightness`, `stop`, `set_attributes`.
 3. A persistent setting (how the device behaves from now on) would be `set_<behavior>` with the trigger in plain
    English, e.g. `set_power_on_defaults`. None exist.
 4. Field names are `light.turn_on`'s wherever one exists; a feature-specific field gets plain words (`duration`,
@@ -59,11 +59,12 @@ Integrations: Zigbee2MQTT (via `mqtt`), ZHA, Matter, Shelly Gen2+ and Hue (CLIP 
 scope, is in each adapter's `AdapterScope`; `scripts/check_release.py` lists every adapter and whether it is
 experimental.
 
-- **`turn_on_for`, `turn_off_for`**: on, then off after `duration` (or the reverse), timed on the device.
-  `turn_off_for` is Shelly only: Zigbee and Matter `OnWithTimedOff` is on-then-off only. `turn_on_for` accepts the
-  `light.turn_on` fields; Shelly sends them in one RPC, the others send a `light.turn_on` first. What cancels a timer
-  differs by integration ([integrations.md](integrations.md)). Hue has neither: its bridge timers ignore manual
-  on/off, so they can't be cancelled the way users expect.
+- **`turn_on_with_auto_off`, `turn_off_with_auto_on`** (the auto-off and auto-on timers): on, then off after
+  `duration` (or the reverse), timed on the device. `turn_off_with_auto_on` is Shelly only: Zigbee and Matter
+  `OnWithTimedOff` is on-then-off only. `turn_on_with_auto_off` accepts the `light.turn_on` fields; Shelly sends
+  them in one RPC, the others send a `light.turn_on` first. What cancels a timer differs by integration
+  ([integrations.md](integrations.md)). Hue has neither: its bridge timers ignore manual on/off, so they can't be
+  cancelled the way users expect.
 - **`raise_*`, `lower_*`, `stop`**: one action per attribute (brightness, saturation, hue) and direction, as HA names
   its direction actions (`cover.open_cover`, `fan.increase_speed`). `sweep_time` is how long a full range takes, so
   the speed is the same wherever the move starts; `limit` ends the move early. A call already at or past its limit

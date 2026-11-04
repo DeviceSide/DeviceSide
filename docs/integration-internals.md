@@ -71,7 +71,7 @@ Only devices Z2M registered through MQTT discovery are found: the device carries
   every later message carries, so an unfiltered answer would look fresh forever. If it can't be set, the read
   raises.
 
-### Delayed off
+### Auto-off timer
 
 Publishes `{"state": "ON", "on_time": <s>}`; Z2M sends `OnWithTimedOff` (`on_time` to 0.1 s; max 6553.4 s). With
 fields, `light.turn_on` goes first, and the timer waits for Z2M's state publish on `zigbee2mqtt/<friendly name>`
@@ -153,7 +153,7 @@ Side passes the caller's context). The unique ID is `{ieee}-{endpoint_id}`; a lo
 quirk's extra entity) is `not_addressable`, so a timer can't land on the wrong entity. A ZHA group entity
 (`{platform}_zha_group_0x{group_id:04x}`) expands to its members for results; commands use the group where noted.
 
-### Delayed off
+### Auto-off timer
 
 `OnWithTimedOff` (cluster `0x0006`, command `0x42`, `on_off_control: 0`, `off_wait_time: 0`), after
 `light.turn_on` when there are fields. Then OnOff (`0x0000`) and OnTime (`0x4001`) are read in one uncached
@@ -228,7 +228,7 @@ held at 100 with the bulb on, and Home Assistant showed 100 from the bulb's repo
 3.9 s; a 4 s soft off read off, at level 1, by 4.3 s. Group `MoveToLevelWithOnOff` and `Stop` act as the unicast
 ones.
 
-Groups (2026-10-27, the LTA004, a Sengled E11-G13 and a plug): a unicast `turn_on_for` takes about 0.23 s per member
+Groups (2026-10-27, the LTA004, a Sengled E11-G13 and a plug): a unicast `turn_on_with_auto_off` takes about 0.23 s per member
 (0.34 s with brightness), so under `max_concurrency` 2 the last of 8 lights starts 0.7 to 1 s after the first. A
 group `OnWithTimedOff` returns in 0.02 s, zigpy's own success with no delivery feedback, and a member that refuses
 the command (the Sengled, `UNSUP_CLUSTER_COMMAND` by unicast) misses it silently, so each member is read back.
@@ -240,7 +240,7 @@ Through the core integration's python-matter-server connection. The unique ID is
 FeatureMap bit 0 from the node data (`node_data.attributes["{endpoint}/6/65532"]`), avoiding a chip.clusters import
 that `MatterEndpoint.get_attribute_value` would need.
 
-- **Delayed off.** `OnOff.Commands.OnWithTimedOff(onOffControl=0, onTime=<tenths>, offWaitTime=0)`, then a read of
+- **Auto-off timer.** `OnOff.Commands.OnWithTimedOff(onOffControl=0, onTime=<tenths>, offWaitTime=0)`, then a read of
   `OnOff.OnTime`: `confirmed` when non-zero.
 - **`get_attributes`.** A live read of `OnTime`, as the plug tested never reports it on its subscription, so the
   node cache reads 0 mid-timer (Tested behavior). `turns` is always `off`.

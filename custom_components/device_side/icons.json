@@ -30,10 +30,10 @@
     "stop": {
       "service": "mdi:stop-circle-outline"
     },
-    "turn_off_for": {
+    "turn_off_with_auto_on": {
       "service": "mdi:timer-outline"
     },
-    "turn_on_for": {
+    "turn_on_with_auto_off": {
       "service": "mdi:timer-outline"
     }
   }

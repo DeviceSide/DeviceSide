@@ -15,10 +15,10 @@ INTEGRATION = IntegrationInfo(
 )
 
 
-class SpecialTurnOnFor(ScriptedAdapter):
-    action = "turn_on_for"
+class SpecialTurnOnWithAutoOff(ScriptedAdapter):
+    action = "turn_on_with_auto_off"
     integration = "fake_special"
     scope = AdapterScope(domains=frozenset({"light", "switch"}), duration=LIMITS)
 
 
-ADAPTERS = [SpecialTurnOnFor]
+ADAPTERS = [SpecialTurnOnWithAutoOff]

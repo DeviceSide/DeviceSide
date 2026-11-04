@@ -4,7 +4,7 @@
 
 Device Side unlocks native features in your lights, switches and plugs on the Zigbee, Shelly, Philips Hue and Matter integrations.
 
-* **Delay a turn-off:** Turn off devices automatically, even if HA goes offline or restarts.
+* **Auto-off timer:** Turn off devices automatically, even if HA goes offline or restarts.
 
 * **Dim smoothly:** Press to dim and release to stop, using third-party buttons. No more jittery steps or overshoots.
 
@@ -18,8 +18,8 @@ Device Side unlocks native features in your lights, switches and plugs on the Zi
 
 | Feature                                                                             | ZHA | Z2M | Shelly | Hue Bridge | Matter |
 |:----------------------------------------------------------------------------------- |:---:|:---:|:------:|:----------:|:------:|
-| [Delayed off](#delayed-off)                                                         | ✅   | ✅   | ✅      |            | ✅      |
-| [Delayed on](#delayed-on)                                                           |     |     | ✅      |            |        |
+| [Auto-off timer](#auto-off-timer)                                                   | ✅   | ✅   | ✅      |            | ✅      |
+| [Auto-on timer](#auto-on-timer)                                                     |     |     | ✅      |            |        |
 | [Smooth dimming](#smooth-dimming)                                                   | ✅   | ✅   |        | ✅          |        |
 | [Smooth saturation change](#smooth-color-transitions)                               | ✅   | ✅   |        | ✅          |        |
 | [Smooth hue change](#smooth-color-transitions)                                      | ✅   | ✅   |        |            |        |
@@ -70,9 +70,9 @@ Device Side's actions are drop-in replacements for Hue Smooth Dimming, apart fro
 
 ## Usage
 
-### Delayed off
+### Auto-off timer
 
-Action: `device_side.turn_on_for`
+Action: `device_side.turn_on_with_auto_off`
 
 Turn on, then off after a delay. Timer runs on the device. Example use cases:
 
@@ -83,7 +83,7 @@ Turn on, then off after a delay. Timer runs on the device. Example use cases:
 
 ```yaml
 actions:
-  - action: device_side.turn_on_for
+  - action: device_side.turn_on_with_auto_off
     target:
       entity_id: switch.heater
     data:
@@ -127,17 +127,17 @@ If a device fails, the action fails and stops the automation.
 
 #### Cancel a timer
 
-The following actions cancel a delayed off timer, on a device that's on:
+The following actions cancel an auto-off timer, on a device that's on:
 
 * Turn off
 
-* Send a new delayed on/off command (restarts the countdown)
+* Start a new auto-off or auto-on timer (restarts the countdown)
 
 * Turn on (i.e. leave on). Tested on Shelly only
 
-### Delayed on
+### Auto-on timer
 
-Action: `device_side.turn_off_for`
+Action: `device_side.turn_off_with_auto_on`
 
 Turn off, then on after a delay. Timer runs on the device. Example use case:
 
@@ -168,11 +168,11 @@ If a device fails, the action fails and stops the automation.
 
 #### Cancel a timer
 
-The following actions cancel a delayed on timer, on a device that's off:
+The following actions cancel an auto-on timer, on a device that's off:
 
 * Turn on
 
-* Send a new delayed on/off command (restarts the countdown)
+* Start a new auto-off or auto-on timer (restarts the countdown)
 
 * Turn off (i.e. leave off)
 
@@ -319,7 +319,7 @@ The `timer` key holds `turns` (`on` or `off`), `ends_at` (UTC) and `remaining_s`
 
   * Home Assistant shows the wrong color for full-color bulbs in hue-saturation (HS) mode. Device Side fixes this by [announcing both of their color modes](docs/integrations.md#what-device-side-changes-in-zigbee2mqtt).
 
-  * Hue bulbs: before a delayed off with a color, Device Side turns on Z2M's Hue native control setting for that bulb, so it comes on in the new color instead of flashing its last one.
+  * Hue bulbs: before an auto-off timer with a color, Device Side turns on Z2M's Hue native control setting for that bulb, so it comes on in the new color instead of flashing its last one.
 
 * **Hue Bridge:** When a brightness move starts, the bridge reports its target brightness (e.g. 0% or 100%) to Home Assistant, which is jarring for moves that you plan to stop. Device Side suppresses the bridge's report when a transition starts, and reports the new brightness once the transition stops.
 
