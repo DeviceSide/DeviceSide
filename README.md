@@ -85,17 +85,15 @@ Read device attributes that aren't exposed reliably by Home Assistant:
 
 ### Usability patches
 
-* **Hue color lights on Zigbee2MQTT:**
+* **Full-color lights on Zigbee2MQTT:**
 
   * Home Assistant shows the wrong color for full-color bulbs in HS mode. Device Side fixes this by [announcing both of their color modes](docs/integrations.md#what-device-side-changes-in-zigbee2mqtt).
 
-  * Device Side enables Z2M's Hue enhanced control setting automatically when you call the smooth color transition actions, to save you from having to change the setting manually on each of your Hue color lights.
+  * Hue bulbs: before a delayed off with a color, Device Side turns on Z2M's Hue native control setting for that bulb, so it comes on in the new color instead of flashing its last one.
 
-* **Hue Bridge:** When a brightness move starts, the bridge reports target brightness (e.g. 0% or 100%) to Home Assistant, which is jarring for moves that you plan to stop. Device Side suppresses the bridge's report when a transition starts, and reports the new brightness once the transition stops.
+* **Hue Bridge:** When a brightness move starts, the bridge reports its target brightness (e.g. 0% or 100%) to Home Assistant, which is jarring for moves that you plan to stop. Device Side suppresses the bridge's report when a transition starts, and reports the new brightness once the transition stops.
 
-These patches are on by default; turn them off in Device Side's options.
-
-
+The color-mode and Hue Bridge patches are on by default; turn them off in Device Side's options.
 
 ## Get Started
 
@@ -126,7 +124,7 @@ These patches are on by default; turn them off in Device Side's options.
 
 ### Coming from [Hue Smooth Dimming](https://github.com/jasonmx/hue-smooth-dimming)
 
-Device Side's actions are drop-in replacements for Hue Smooth Dimming, apart from a name change on the  `raise` and `lower` actions. To migrate to Device Side, make these YAML edits in your automations:
+Device Side's actions are drop-in replacements for Hue Smooth Dimming, apart from a name change on the `raise` and `lower` actions. To migrate to Device Side, make these YAML edits in your automations:
 
 * change `hue_dimmer` to `device_side`. E.g. `hue_dimmer.stop` → `device_side.stop`
 
@@ -164,11 +162,11 @@ Device Side's actions are drop-in replacements for Hue Smooth Dimming, apart fro
 
 * Turn off a device that was on, or vice versa
 
-* Send a new delayed on/off command
+* Send a new delayed on/off command (restarts the countdown)
 
-* Send `turn_on` to a device that's already on (Z2M and Shelly only)
+* Send `turn_on` to a device that's already on (Shelly, and most lights on Z2M)
 
-* Send `turn_off`  to a device that's already off (Shelly only)
+* Send `turn_off` to a device that's already off (Shelly only)
 
 #### Results
 
@@ -181,6 +179,8 @@ Each targeted entity gets a `status` in the response variable:
 | `unchanged` | Nothing to send; `detail` says why                 |
 
 If a requested duration is out of range, `clamped_to` reports the duration the device actually used, in seconds. A field the entity can't take, like brightness on a plug, is dropped and the rest of the call goes ahead, with `detail: fields_dropped`.
+
+If a device fails, the action fails and stops the automation.
 
 #### YAML Example: Heater off after 4 hours, with a warning
 
