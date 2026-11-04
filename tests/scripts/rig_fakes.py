@@ -18,6 +18,15 @@ from tests.rig.roam import Z2M_GROUP_IDENTIFIER, ZHA_GROUP_UNIQUE_ID, Bulb
 PENDING: list[asyncio.TimerHandle | asyncio.Task] = []
 
 
+def _merge(into: dict, options: dict) -> None:
+    """Merge device options as Z2M does (objectAssignDeep): nested dicts key by key, a cleared key kept as null."""
+    for key, value in options.items():
+        if isinstance(value, dict) and isinstance(into.get(key), dict):
+            _merge(into[key], value)
+        else:
+            into[key] = value
+
+
 class FakeHA(HAClient):
     """Entity states HA would hold, plain on/off services, and device_side actions answered by `respond`.
 
@@ -48,6 +57,10 @@ class FakeHA(HAClient):
         self.z2m_busy_closes = 0  # permit_join closes Z2M fails with BUSY before one takes
         self.z2m_ignores: set[str] = set()  # request topics Z2M never acts on
         self.z2m_options: dict[str, dict] = {}  # device options by IEEE, as bridge/info's config.devices
+        # Normalized IEEEs whose light Z2M holds published though HA lost it: a join gets no light, until an options
+        # change to the light's HA override publishes it again (or `z2m_republishes` is False, when nothing does).
+        self.z2m_withheld: set[str] = set()
+        self.z2m_republishes = True
         self.z2m_level = "warning"  # Z2M's log level
         self.z2m_debug_to_mqtt = False  # bridge/info's config.advanced.log_debug_to_mqtt_frontend
         self.z2m_logging: asyncio.Queue[str] = asyncio.Queue()  # what Z2M publishes to bridge/logging
@@ -77,6 +90,8 @@ class FakeHA(HAClient):
             self.z2m_devices.append(ieee)
             self._z2m_interviewed(ieee)
         if entity_id is not None:
+            if integration == "zigbee2mqtt" and normalize_ieee(ieee) in self.z2m_withheld:
+                return device_id
             unique_id = f"{ieee}-11" if integration == "zha" else f"{ieee}_light_zigbee2mqtt"
             self.register(entity_id, device_id, "zha" if integration == "zha" else "mqtt", unique_id)
         return device_id
@@ -125,7 +140,9 @@ class FakeHA(HAClient):
             self.z2m_interviews.append(payload["id"])
             self._z2m_interviewed(payload["id"])
         elif topic == "device/options":
-            self.z2m_options.setdefault(payload["id"], {}).update(payload["options"])
+            _merge(self.z2m_options.setdefault(payload["id"], {}), payload["options"])
+            if "light" in payload["options"].get("homeassistant", {}):
+                self._z2m_republish(payload["id"])
         elif topic == "device/remove":
             self._z2m_remove_request(payload)
         else:
@@ -146,6 +163,15 @@ class FakeHA(HAClient):
                 self.unregister(f"{group_id}_light_zigbee2mqtt")
         elif topic == "group/members/add":
             self.z2m_groups[payload["group"]].append(payload["device"])
+
+    def _z2m_republish(self, ieee: str) -> None:
+        """The light's discovery payload changed, so Z2M publishes it: a withheld light shows, under a generated ID."""
+        key = normalize_ieee(ieee)
+        if key not in self.z2m_withheld or not self.z2m_republishes:
+            return
+        self.z2m_withheld.discard(key)
+        device = next(d for d in self.devices if normalize_ieee(device_ieee(d, "zigbee2mqtt") or "") == key)
+        self.register(f"light.{ieee}", device["id"], "mqtt", f"{ieee}_light_zigbee2mqtt")
 
     def _z2m_interviewed(self, ieee: str) -> None:
         """One interview of `ieee`: it fails while z2m_failing still counts one for it."""

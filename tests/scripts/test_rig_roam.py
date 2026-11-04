@@ -561,6 +561,61 @@ async def test_a_join_ha_never_shows_a_light_for_stops_the_move(lab, monkeypatch
         await roamer(lab).go("zha")
 
 
+def overrides(lab: Lab) -> list[dict]:
+    """Each Z2M options request that touched a light's HA override, in order."""
+    return [
+        json.loads(call[2]["payload"])["options"]["homeassistant"]
+        for call in lab.ha.calls
+        if call[:2] == ("mqtt", "publish")
+        and call[2]["topic"].endswith("/device/options")
+        and "homeassistant" in json.loads(call[2]["payload"])["options"]
+    ]
+
+
+@pytest.fixture
+def withheld(lab, monkeypatch) -> Lab:
+    """Z2M holds light.lab_a's light published, which HA has lost (#208)."""
+    monkeypatch.setattr(roam, "REDISCOVER_S", 0.02)
+    lab.ha.z2m_withheld.add(normalize_ieee(A))
+    return lab
+
+
+async def test_a_z2m_light_ha_lost_comes_back_by_an_override_set_then_cleared(withheld):
+    printed = []
+    await roamer(withheld, out=printed.append).go("zigbee2mqtt")
+    assert withheld.device_of("light.lab_a")["identifiers"][0][0] == "mqtt"  # it took the fixed ID
+    assert overrides(withheld) == [{"light": {"icon": "mdi:lightbulb"}}, {"light": {"icon": None}}]
+    assert withheld.ha.z2m_options[A]["homeassistant"] == {"light": {"icon": None}}  # cleared: the payload as it was
+    assert any(line.startswith("HA shows no light for light.lab_a on Z2M") for line in printed)
+
+
+async def test_a_bulb_with_its_own_light_override_keeps_it_through_the_rediscovery(withheld):
+    own = {"homeassistant": {"light": {"supported_color_modes": ["xy"]}}}
+    await Roamer(withheld.ha, withheld.bridge, [roam.Bulb(A[2:], "light.lab_a", own)], out=lambda _: None).go(
+        "zigbee2mqtt"
+    )
+    assert withheld.ha.z2m_options[A]["homeassistant"]["light"] == {"icon": None, "supported_color_modes": ["xy"]}
+
+
+async def test_a_z2m_join_whose_light_shows_changes_no_override(lab):
+    await roamer(lab).go("zigbee2mqtt")
+    assert overrides(lab) == []
+
+
+async def test_a_light_still_missing_after_the_override_stops_the_move(withheld, monkeypatch):
+    monkeypatch.setattr(roam, "ENTITY_S", 0.02)
+    withheld.ha.z2m_republishes = False
+    with pytest.raises(RoamError, match="even 0.02 s after Z2M published its discovery again"):
+        await roamer(withheld).go("zigbee2mqtt")
+
+
+async def test_an_override_z2m_never_takes_stops_the_move(withheld, monkeypatch):
+    monkeypatch.setattr(client, "Z2M_REQUEST_TIMEOUT_S", 0.02)
+    withheld.ha.z2m_ignores.add("device/options")
+    with pytest.raises(RoamError, match="Z2M didn't take its options: Zigbee2MQTT did not set"):
+        await roamer(withheld).go("zigbee2mqtt")
+
+
 async def test_a_release_the_network_never_takes_stops_the_move(lab, monkeypatch):
     monkeypatch.setattr(roam, "RELEASE_S", 0.02)
     await roamer(lab).go("zha")
