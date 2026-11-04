@@ -174,7 +174,8 @@ def test_a_change_to_the_adapters_code_after_its_record_is_an_error(tested, monk
     repo, sha = tested
     repo.commit(changed)
     assert cr.record_errors(FakeRecordsRegistry(repo, monkeypatch)) == [
-        f"fake / turn_on_with_auto_off: docs/test-records/fake/turn_on_with_auto_off.md cites {sha[:7]}; changed since: {changed}"
+        f"fake / turn_on_with_auto_off: docs/test-records/fake/turn_on_with_auto_off.md cites {sha[:7]}; "
+        f"changed since: {changed}"
     ]
 
 
@@ -215,7 +216,8 @@ def test_a_missing_unciting_or_unknown_record_is_an_error(tested, monkeypatch):
     ]
     write_record(repo, "turn_on_with_auto_off.md", "0" * 40)
     assert cr.record_errors(registry) == [
-        "fake / turn_on_with_auto_off: docs/test-records/fake/turn_on_with_auto_off.md cites commit 0000000, which git can't find"
+        "fake / turn_on_with_auto_off: docs/test-records/fake/turn_on_with_auto_off.md cites commit 0000000, "
+        "which git can't find"
     ]
     repo.git("rm", "-q", "docs/test-records/fake/turn_on_with_auto_off.md")
     assert cr.record_errors(registry) == ["fake / turn_on_with_auto_off: no test record in docs/test-records/fake/"]
