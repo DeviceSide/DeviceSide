@@ -26,6 +26,13 @@ entity domain the same call reaches.
 | Hue Bridge v1 (`bridge_v1`) | The Hue adapters use CLIP v2 only. Unsupported, not untested |
 | Shelly Gen1 (`gen1_unsupported`) | No RPC. Unsupported, not untested |
 | Hue smart (All-Day) scenes (`smart_scene`) | They have no fixed settings to write. Unsupported, not untested |
-| Shelly `hs_color` and `xy_color` (`fields_not_tested`) | The conversion depends on the bulb's mode, so the answer is `rgb_color`. Revisit only on a user request |
-| Shelly `light_onoff` rig role | Skipped, not out of scope. A relay shown as a light sends the same `Switch.Set`, which `switch_plug` and `light_wrapped` prove |
 | Option `z2m_color_modes` off | Unit-tested only. The rig can't cleanly remove the override the option writes, so no record covers turning it off |
+
+## The rig could prove these (open issues)
+
+Omissions, not missing hardware.
+
+| Entry | Issue |
+|---|---|
+| Shelly relay shown natively as a light (`light_onoff`): skipped for want of an inventory entry. Not covered by `switch_plug` or `light_wrapped`, which reach the call through other entities | #225 |
+| Shelly `hs_color` and `xy_color` (`fields_not_tested`): the rig's RGBCCT bulb can test them | #226 |
