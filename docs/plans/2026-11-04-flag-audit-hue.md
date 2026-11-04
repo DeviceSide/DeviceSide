@@ -58,13 +58,13 @@ Notes, not scope items:
 | | observed | `saturation_down_stop[light_color]`, `halts_brightness_and_saturation[light_color]`: `not observed` | **owed** |
 | `raise_saturation` | domain `light`, field `saturation` | `raise_saturation.md`: `saturation_to_a_limit[light_color]`, `[group_color]` | proven |
 | | `predicted_state` off | `raise_saturation.md` | proven |
-| | `predicted_state` on | none: there is no `raise_saturation-predicted_state.yaml` | **none** |
+| | `predicted_state` on | out of scope since the flag-clearing follow-up: inert for saturation | n/a |
 | `lower_saturation` | domain `light`, field `saturation` | `lower_saturation.md`: `saturation_to_a_limit[light_color]`, `[group_color]` | proven |
 | | `predicted_state` off | `lower_saturation.md` | proven |
-| | `predicted_state` on | none: there is no `lower_saturation-predicted_state.yaml` | **none** |
+| | `predicted_state` on | out of scope since the flag-clearing follow-up: inert for saturation | n/a |
 
-`rgb_color` rests on the observation alone: the automated `sets_color_while_off` checks that the light stays off,
-and nothing reads its color after the turn on.
+`rgb_color` rested on the observation alone; since the flag-clearing follow-up, the automated `sets_color_while_off`
+reads the color after the turn on, and the observation is owed only for the flash of the old color.
 
 ### Cases still needed
 
@@ -73,14 +73,11 @@ and nothing reads its color after the turn on.
 | `set_attributes` | `sets_color_while_off[light_color]`, observed | watched lab session |
 | `stop` | `saturation_down_stop[light_color]`, observed | watched lab session |
 | `stop` | `halts_brightness_and_saturation[light_color]`, observed (does the predicted-xy halt jump?) | watched lab session |
-| `raise_saturation` | a `raise_saturation-predicted_state.yaml` suite (`options: [predicted_state]`), `light_color` and `group_color` | unattended lab, once the step file exists |
-| `lower_saturation` | a `lower_saturation-predicted_state.yaml` suite, the same | unattended lab, once the step file exists |
 
 All three watched cases are in the Hue `stop` and `set_attributes` suites, so one watched lab session
-(`--profile lab --integration hue --action stop --action set_attributes`) covers them. The saturation suites need
-`light_color` on Hue, which the lab and the house profile (the A60 roaming) both have.
+(`--profile lab --integration hue --action stop --action set_attributes`) covers them.
 
-## Proposals (design calls, not made here)
+## Proposals (both taken by Jason on 4 Nov: `2026-11-04-flag-clearing-follow-up.md`)
 
 - **Drop `predicted_state` from the saturation scopes**, instead of writing and running the two new suites.
   `HueFade`'s docstring says saturation shows the bridge's end xy at once with the option on too, so the option may

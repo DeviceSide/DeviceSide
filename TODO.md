@@ -15,6 +15,9 @@ v0.1.0 is the next release.
 
 | Slice | What | PRs |
 |---|---|---|
+| 13k | Rig: a group a network can't make ends the run as a `GroupError`, so the phases that passed keep their records and the bulbs go home | #207 |
+| 13k | Flag-clearing follow-up: composed group proof (CLAUDE.md), `sets_color_while_off` reads its color back, `predicted_state` out of the Hue saturation scopes, `saturation_stop_raise` and `hue_stop_raise`; clears Hue `raise_saturation` and `lower_saturation` (Z2M `lower_hue`'s group case failed twice on the lab's Z2M mesh) | #204 |
+| 13k | Flag audits clear 18 adapters on the lab records: Hue, ZHA, Z2M ([hue](docs/plans/2026-11-04-flag-audit-hue.md), [zha](docs/plans/2026-11-04-flag-audit-zha.md), [z2m](docs/plans/2026-11-04-flag-audit-z2m.md)) | #201, #202, #203 |
 | 13j | Z2M `set_attributes` and `stop` on the lab: read after the write fade, soft-off cut, rig settles and reads a joined bulb | #192, #196 |
 | 9a | Rig step files | #26, #27 |
 | 6 | Z2M `turn_on_for` | #22, #23, #25 |
@@ -114,16 +117,14 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. Lanes on dif
 - [ ] **15 follow-up** The first lab run's 26 failures (#157; findings in the lab plan; fixes in
   `docs/plans/2026-11-02-lab-run-failures.md`). Fixes merged (#160–#163, #172); left: the lab rerun, which also
   retries Z2M `not_stored` with `hue_native_control` on (D) and the single readings (E), then fixes for what repeats.
-- [ ] **Z2M A60 run** (13k step 1): full Z2M suite on the lab, with the `group_color` cases on its rig-made group
-  holding only the A60. Attended for its four
-  observed cases (9d ledger in the [plan](docs/plans/2026-10-30-rig-coverage-sweep.md)). Clears `experimental` on the
-  Z2M adapters it proves. The lab records cleared seven of the ten; `lower_hue`'s group case and the four observed
-  cases are left ([audit](docs/plans/2026-11-04-flag-audit-z2m.md)).
+- [ ] **Watched lab session** (13k), `--profile lab`, the A60 visiting each network: Hue `saturation_down_stop`,
+  `halts_brightness_and_saturation`, `sets_color_while_off`; ZHA `hue_cycle_stop`, `saturation_down_stop`,
+  `sets_color_while_off`; Z2M `halts_a_lower_to_off`, `hue_cycle_stop`, `saturation_down_stop`,
+  `sets_color_while_off`. Unattended alongside: Z2M `lower_hue` `cycles_down_the_wheel[group_color]` (failed twice
+  on 4 Nov: the sideboard missed the group stop, then a read errored) and ZHA `lower_brightness`. Then the PR
+  clearing the last flags: every `set_attributes` and `stop`, Z2M `lower_hue` and ZHA `lower_brightness`.
 - [x] **7c2** Hue `raise_saturation`/`lower_saturation`, built against the A60
   ([`2026-10-27-hue-move-color.md`](docs/plans/2026-10-27-hue-move-color.md)). Experimental until the Hue A60 run.
-- [ ] **Hue A60 run** (13k step 2), on the lab: `set_attributes` color (rgb, hs and xy) and gamut clamp, the `get_attributes`
-  color read, 7c saturation, with no `light_color` skips. Attended for `sets_color_while_off`, and on Hue for `saturation_down_stop` and `halts_brightness_and_saturation`
-  (does the predicted-xy halt jump?). Hue code freezes. Clears `experimental` on the Hue adapters it proves.
 - [x] **13f** ZHA raise, lower and `stop`, after the `Transition` PR. ZHA code freezes. Built on `wt/zha-move-stop`
   over the six raise and lower actions; lab runs and records in its
   [handoff note](docs/plans/2026-10-28-zha-move-stop.md#status-and-handoff-2026-11-02).
@@ -167,10 +168,6 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. Lanes on dif
   the bulb, the Hue Essential.
   The sideboard is also the only different model on the mesh: the Hue Essential (firmware 1.164.2); the corner and desk
   bulbs are the full-range white ambiance (1.163.1) and white A60 (1.104.2) lines. A bulb swap with the corner would settle it.
-- [ ] **ZHA A60 run** (13k step 3), on the lab: ZHA color suites, `set_attributes` hs and xy included. Attended for
-  `sets_color_while_off`. Clears `experimental` on the ZHA adapters it proves. Seven cleared on the 3 Nov lab
-  records; the watched cases left for `lower_brightness`, `stop` and `set_attributes` are in the
-  [flag audit](docs/plans/2026-11-04-flag-audit-zha.md).
 - [ ] **9d** Rig coverage sweep for the non-color scope
   ([`2026-10-30-rig-coverage-sweep.md`](docs/plans/2026-10-30-rig-coverage-sweep.md)). 13k covers the color part.
 - [ ] **12** v0.1.0: no adapter left `experimental` (`scripts/check_release.py --release`); README feature table

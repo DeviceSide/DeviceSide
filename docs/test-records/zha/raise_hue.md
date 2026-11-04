@@ -3,11 +3,11 @@
 | | |
 |---|---|
 | Result | pass |
-| Date | 2026-11-03 |
-| Source | rig run (`scripts/rig.py`), commit `5d39db8` |
+| Date | 2026-11-04 |
+| Source | rig run (`scripts/rig.py`), commit `c3c83fe` |
 | Profile | lab |
 | Home Assistant | 2026.10.2 |
-| Device | Hue Essential lamp (`LCA016`), firmware `1.164.2` |
+| Device | LCA016, firmware `0x01001200` |
 
 ## Tests
 
@@ -15,3 +15,5 @@
 |---|---|---|
 | `cycles_up_the_wheel[light_color]` | `light` (light_color) | pass |
 | `cycles_up_the_wheel[group_color]` | group_color: none in the profile | skipped |
+| `hue_stop_raise[light_color]` | `light` (light_color) | pass |
+| `hue_stop_raise[group_color]` | group_color: none in the profile | skipped |

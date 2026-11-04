@@ -486,6 +486,47 @@ async def test_a_group_that_cant_be_made_away_from_home_still_brings_the_bulbs_h
     assert not journal.path.exists()
 
 
+async def test_a_group_timeout_in_a_later_phase_reports_the_phases_that_passed(tmp_path, monkeypatch, lab):
+    monkeypatch.setattr(roam, "GONE_S", 0)
+    fake_phases(monkeypatch, lab)
+    passed = object()  # the Hue phase's suite result, as on 4 Nov, when Z2M then timed out adding a bulb to the group
+
+    async def run(phase_suites, *args, **kwargs):
+        return engine.RunResult([passed] if phase_suites[0].integration == "hue" else [])
+
+    reported = []
+
+    async def report(result, *args):
+        reported.append(result.suites)
+
+    async def z2m_group_add(name, members=()):
+        raise TimeoutError(f"Zigbee2MQTT did not add {members[0]} to {name} within 30 s")
+
+    monkeypatch.setattr(rig, "run", run)
+    monkeypatch.setattr(rig, "report", report)
+    monkeypatch.setattr(lab.ha, "z2m_group_add", z2m_group_add)
+    journal = Journal(tmp_path / "journal.json")
+
+    with pytest.raises(SystemExit, match="Roaming stopped: couldn't make ds-rig-test-group on Z2M: Zigbee2MQTT did"):
+        await rig.run_rig(
+            ENV,
+            suites(tmp_path, "hue", "zigbee2mqtt"),
+            lab_with_groups(tmp_path),
+            None,
+            None,
+            True,
+            None,
+            journal,
+            roaming=True,
+            grouping=True,
+        )
+
+    assert reported == [[passed]]
+    assert await where(lab) == ["hue", "hue"]
+    assert "light.test_group" not in lab.ha.entity_meta
+    assert not journal.path.exists()
+
+
 async def test_a_leftover_rig_zone_isnt_saved_as_a_bulbs_home(lab):
     lab.bridge.resources["zone"]["z9"] = {
         "id": "z9",

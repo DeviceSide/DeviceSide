@@ -815,7 +815,12 @@ class Roamer:
         made = {"network": network, "kind": kind, "name": name, "entity_id": entity_id, "renamed": False}
         self.made.append(made)
         self.save()
-        native, find = await create()
+        try:
+            native, find = await create()
+        except (TimeoutError, HAError, BridgeError) as err:
+            # A network that won't make the group ends the run as a GroupError: the phases that ran keep their
+            # records and the bulbs go home. Anything else is a bug, and crashes.
+            raise GroupError(f"couldn't make {name} on {NAMES[network]}: {err}") from None
         found: dict | None = None
 
         async def shown() -> bool:
