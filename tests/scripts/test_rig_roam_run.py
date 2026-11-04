@@ -13,6 +13,7 @@ import pytest
 from custom_components.device_side.core.registry import AdapterRegistry
 from tests.rig import engine, roam
 from tests.rig.engine import load_step_file
+from tests.rig.home import HomeRecord
 from tests.rig.journal import LEGACY_NAME, Journal
 from tests.rig.profile import Profile
 from tests.rig.roam import Roamer
@@ -226,7 +227,7 @@ async def test_a_move_home_that_fails_after_the_last_phase_stops_the_run(tmp_pat
         await rig.run_rig(
             ENV, suites(tmp_path, "zha"), lab_with_pause(tmp_path), None, None, True, None, journal, roaming=True
         )
-    assert "light.lab_a" in Journal(journal.path).get("roam")["home"]
+    assert HomeRecord(tmp_path).get(A[2:])["hue"]
 
 
 async def test_roam_check_runs_the_cycle_with_no_suites(monkeypatch, lab, tmp_path):
@@ -304,6 +305,50 @@ async def test_recover_moves_the_bulbs_home_then_resumes_the_automations(tmp_pat
     assert lab.ha.states["automation.lab"]["state"] == "on"
     assert lab.ha.calls[-1][:2] == ("automation", "turn_on")
     assert not journal.path.exists()
+
+
+async def test_recover_puts_back_each_bulbs_pre_run_state(tmp_path, lab):
+    lab.ha.set("light.lab_a", "on", brightness=120, color_mode="xy", xy_color=(0.3, 0.32), color_temp_kelvin=None)
+    lab.ha.set("light.lab_b", "on", brightness=40, color_mode="color_temp", color_temp_kelvin=2700, xy_color=(0.4, 0.4))
+    journal = await aborted_on_zha(lab, tmp_path / "journal.json")
+    lab.ha.set("light.lab_a", "on", brightness=255)  # what a join leaves
+    lab.ha.set("light.lab_b", "off")
+
+    await rig.recover(lab.ha, lab.ha, Journal(journal.path), lambda _: None, bridge=lab.bridge)
+
+    a, b = lab.ha.states["light.lab_a"], lab.ha.states["light.lab_b"]
+    assert a["state"] == "on" and a["attributes"] == {"brightness": 120, "xy_color": [0.3, 0.32]}
+    assert b["state"] == "on" and b["attributes"] == {"brightness": 40, "color_temp_kelvin": 2700}
+    assert HomeRecord(tmp_path).all() == {} and not journal.path.exists()
+
+
+async def test_a_bulb_off_before_the_run_ends_off(tmp_path, lab):
+    journal = await aborted_on_zha(lab, tmp_path / "journal.json")  # both bulbs off, as the lab fake starts them
+    lab.ha.set("light.lab_a", "on", brightness=255)
+    await rig.recover(lab.ha, lab.ha, Journal(journal.path), lambda _: None, bridge=lab.bridge)
+    assert lab.ha.states["light.lab_a"]["state"] == "off"
+
+
+async def test_a_state_that_wont_go_back_keeps_the_home_record_and_the_journal(tmp_path, lab):
+    journal = await aborted_on_zha(lab, tmp_path / "journal.json")
+    respond = lab.ha.call_service
+
+    async def refuse_lights(domain, service, data=None, return_response=False):
+        if domain == "light":
+            raise RuntimeError("light.turn_off failed")
+        return await respond(domain, service, data, return_response)
+
+    lab.ha.call_service = refuse_lights
+    printed = []
+    await rig.recover(lab.ha, lab.ha, Journal(journal.path), printed.append, bridge=lab.bridge)
+    assert await where(lab) == ["hue", "hue"]
+    assert set(HomeRecord(tmp_path).all()) == {A[2:], B[2:]}
+    assert "roam" in Journal(journal.path).sections
+    assert any("home isn't all back; the home record keeps it" in line for line in printed)
+
+    lab.ha.call_service = respond
+    await rig.recover(lab.ha, lab.ha, Journal(journal.path), lambda _: None, bridge=lab.bridge)
+    assert HomeRecord(tmp_path).all() == {} and not journal.path.exists()
 
 
 def test_main_recover_builds_the_bridge_and_brings_the_bulbs_home(tmp_path, monkeypatch, lab):
@@ -535,7 +580,7 @@ async def test_a_leftover_rig_zone_isnt_saved_as_a_bulbs_home(lab):
     }
     moving = Roamer(lab.ha, lab.bridge, BULBS, out=lambda _: None)
     await moving.go("zha")
-    assert moving.home["light.lab_a"]["zones"] == ["z1"]
+    assert moving.homes.get(A[2:])["hue"]["zones"] == ["z1"]
 
 
 # --- the device check: every phase's devices before the gate, and --check -------------------------------------------
@@ -606,7 +651,7 @@ async def test_the_check_says_a_bulb_away_from_hue_will_be_moved_and_finds_one_u
     assert await check(tmp_path) == ["light.lab_a: on Hue, unavailable; check it is powered"]
 
 
-async def test_the_check_says_a_run_puts_back_a_home_the_journal_holds(tmp_path, lab, capsys):
+async def test_the_check_says_a_run_puts_back_a_home_the_home_record_holds(tmp_path, lab, capsys):
     lab.ha.states["switch.plug"] = {"entity_id": "switch.plug", "state": "on", "attributes": {}}
     leave_hue(lab, "hue-device-2")
     lab.opened("zha")
@@ -618,7 +663,7 @@ async def test_the_check_says_a_run_puts_back_a_home_the_journal_holds(tmp_path,
         )
         == []
     )
-    assert "light.lab_b: on ZHA; the journal holds its Hue home, which a run puts back" in capsys.readouterr().out
+    assert "light.lab_b: on ZHA; the home record has its Hue home for a run to restore" in capsys.readouterr().out
 
 
 async def test_the_check_reports_a_network_it_cannot_ask(tmp_path, lab):

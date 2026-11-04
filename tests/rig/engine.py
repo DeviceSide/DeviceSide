@@ -58,6 +58,7 @@ _COLOR_CLUSTER, _CURRENT_HUE, _ENHANCED_CURRENT_HUE = 0x0300, 0x0000, 0x4000
 
 # The journal key of a case that runs alone (Snapshot.journal_key); a case in a lane uses its integration.
 SERIAL = "serial"
+UNRESTORED = "+unrestored"  # appended to a case's journal key for the entities its restore couldn't put back
 
 # How long after saving options the engine waits before checking the entry has reloaded.
 OPTIONS_RELOAD_S = 1.0
@@ -737,7 +738,9 @@ class Snapshot:
     get_attributes and set_attributes adapters) an off light's device-side attributes are read when it is first
     touched and written back after it is turned off again. A group is skipped there: its members are touched too.
     What it takes is journaled under `cases[journal_key]` before the case moves the entity, and cleared once
-    restored: cases running at once in lanes each have their own key, the integration.
+    restored: cases running at once in lanes each have their own key, the integration. An entity that couldn't be put
+    back moves to `cases[<key>+unrestored]`, which the lane's next case doesn't overwrite, so --recover tries again;
+    an entity already there keeps the state it had first.
     """
 
     ha: HAClient
@@ -772,6 +775,7 @@ class Snapshot:
         # A powered entity goes back after its supply, whatever order the case touched them in.
         cut = [entity_id for entity_id in self.taken if self.power.get(entity_id) in self.taken]
         put_back = False
+        failed: list[str] = []
         for entity_id in [entity_id for entity_id in self.taken if entity_id not in cut] + cut:
             state = self.taken[entity_id]
             if state is None or state["state"] not in ("on", "off"):
@@ -781,26 +785,52 @@ class Snapshot:
                     await self.put_back(entity_id, state)
                     put_back = True
                 except Exception as err:  # noqa: BLE001 - a failed restore is logged so it can't mask the test result
-                    _LOGGER.warning("Could not restore %s to %s: %s", entity_id, state["state"], err)
+                    _LOGGER.warning(
+                        "Could not restore %s to %s: %s; --recover tries again", entity_id, state["state"], err
+                    )
+                    failed.append(entity_id)
             elif (self.taken[self.power[entity_id]] or {}).get("state") == "on":  # unpowered before: nothing to restore
-                await self.put_back_after_power(entity_id, state)
+                if not await self.put_back_after_power(entity_id, state):
+                    failed.append(entity_id)
         if clear and put_back:
             await asyncio.sleep(RESTORE_SETTLE_S)
         if clear and self.journal is not None:
             self.journal.drop("cases", self.journal_key)
+            self.keep_unrestored(failed)
 
-    async def put_back_after_power(self, entity_id: str, state: dict) -> None:
+    def keep_unrestored(self, failed: list[str]) -> None:
+        """Journal the entities a restore failed on under the key's `unrestored` entry, keeping any already there.
+        Recovering that entry itself, it was dropped first, so only what failed again is left."""
+        if not failed or self.journal is None:
+            return
+        key = self.journal_key if self.journal_key.endswith(UNRESTORED) else f"{self.journal_key}{UNRESTORED}"
+        kept = (self.journal.get("cases") or {}).get(key) or {"taken": {}, "stored": {}, "power": {}}
+        for entity_id in failed:
+            if entity_id not in kept["taken"]:
+                kept["taken"][entity_id] = self.taken[entity_id]
+                if entity_id in self.stored:
+                    kept["stored"][entity_id] = self.stored[entity_id]
+                if entity_id in self.power:
+                    kept["power"][entity_id] = self.power[entity_id]
+                    supply = self.power[entity_id]
+                    kept["taken"].setdefault(supply, self.taken.get(supply))
+        self.journal.put("cases", key, kept)
+
+    async def put_back_after_power(self, entity_id: str, state: dict) -> bool:
+        """Put back an entity once its supply's power is back, retrying while it rejoins; whether it went back."""
         loop = asyncio.get_running_loop()
         await asyncio.sleep(POWER_SETTLE_S)
         deadline = loop.time() + POWER_REJOIN_S
         while True:
             try:
                 await self.put_back(entity_id, state)
-                return
+                return True
             except Exception as err:  # noqa: BLE001 - as restore(): retried, then logged
                 if loop.time() >= deadline:
-                    _LOGGER.warning("Could not restore %s after power returned: %s", entity_id, err)
-                    return
+                    _LOGGER.warning(
+                        "Could not restore %s after power returned: %s; --recover tries again", entity_id, err
+                    )
+                    return False
             await asyncio.sleep(POWER_RETRY_S)
 
     async def put_back(self, entity_id: str, state: dict) -> None:

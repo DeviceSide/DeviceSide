@@ -69,8 +69,8 @@ ZHA → Z2M → Hue (`tests/rig/roam.py`), so one set of bulbs serves every Zigb
 fixed entity ID it is renamed to after every join, its roles, and the Z2M options set again after each Z2M join.
 The suites then run in phases: Hue's with the fixed integrations', then ZHA's, then Z2M's, each after a move and
 each with its automated cases before its observed ones. The bulbs move only when a ZHA or Z2M suite runs, and end
-home on Hue, with their rooms, zones, scene actions and names put back on their new Hue IDs. A run that stops
-part way still moves them home; `--recover`, or the next run before its gate, does it after a crash. A bulb on no
+home on Hue, with their rooms, zones, scene actions and names put back on their new Hue IDs, and each bulb back as it
+was before the run: on or off, with its brightness and color. A run that stops part way still moves them home; `--recover`, or the next run before its gate, does it after a crash. A bulb on no
 network stops recovery: reset it over Bluetooth in the Hue app, then `--recover` again. A bulb still missing when
 the Hue search ends gets one more, and any other device that joins the bridge meanwhile is named, not removed. Z2M
 opens joining on its coordinator only. A bulb from Hue that a ZHA or Z2M window still lacks 30 s after the last join,
@@ -88,7 +88,13 @@ run of Hue suites alone makes them on Hue without moving the bulbs; that, too, n
 
 Ctrl-C, SIGTERM or SIGHUP puts the devices back before the run exits; a second one leaves them. Each run journals
 what it changes in a file of its own; if a run dies before it can put them back, the next run whose locks cover them
-puts them back before its gate, and `--recover`, which takes every lock, puts back everything.
+puts them back before its gate, and `--recover`, which takes every lock, puts back everything, oldest run first. An
+entity a case couldn't put back stays in the journal for the next try.
+
+What a roaming bulb was before its first move (its state, and its Hue rooms, zones, scenes and name) is kept in the
+home record, `device_side-rig.home.json` in the git common dir, one entry per bulb. It outlives runs: a second crash
+keeps the first home. An entry is dropped once the bulb is home with all of it put back; until then, the next run home
+or `--recover` tries again.
 
 What runs change beyond the devices (the paused automations and switches, HA's and Z2M's log levels, Z2M device
 options a test sets) is held in one shared baseline, `device_side-rig.baseline.json` in the git common dir. The first

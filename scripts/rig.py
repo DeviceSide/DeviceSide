@@ -115,6 +115,7 @@ from tests.rig.engine import (  # noqa: E402
     write_records,
     write_report,
 )
+from tests.rig.home import HomeRecord  # noqa: E402
 from tests.rig.journal import LEGACY_NAME, Journal, orphans  # noqa: E402
 from tests.rig.locks import Claim, Held  # noqa: E402
 from tests.rig.profile import (  # noqa: E402
@@ -901,7 +902,8 @@ def recover_all(args: argparse.Namespace, directory: Path) -> int:
     held = None if args.dry_run else locks.hold(Claim.everything(), git("rev-parse", "--abbrev-ref", "HEAD"), directory)
     try:
         with end_on_signals():
-            journals = [*orphans(directory), *filter(None, [Journal(directory / LEGACY_NAME)])]
+            # The journal from before per-run journals is older than any of them; orphans come oldest first.
+            journals = [*filter(None, [Journal(directory / LEGACY_NAME)]), *orphans(directory)]
             if not journals:
                 print("No aborted run left anything to put back.")
             for journal in journals:
@@ -1051,8 +1053,8 @@ def run_tests(rig_run: Coroutine[Any, Any, int]) -> int:
 
 def replay(env: dict, held: Held | None, directory: Path) -> set[str]:
     """Put back what aborted runs left changed, each whose claim the run holds (needs); say how to put back the rest.
-    A dry run holds nothing, so it only says what is there. Returns the roaming bulbs whose Hue home a journal still
-    holds, which a run puts back."""
+    A dry run holds nothing, so it only says what is there. Returns the roaming bulbs whose Hue home the home record
+    or a journal from before it still holds, which a run puts back."""
     homes: set[str] = set()
     for orphan in orphans(directory):
         try:
@@ -1066,14 +1068,14 @@ def replay(env: dict, held: Held | None, directory: Path) -> set[str]:
                     f"An aborted run left changes in {orphan.path} that need {needed}, more than this run holds; "
                     "a run holding that, or --recover, puts them back."
                 )
-            # What is left: a recovery that brought the bulbs home cleared its roam section.
+            # What is left in a journal from before the home record: a recovery that brought the bulbs home cleared it.
             homes |= set((orphan.get("roam") or {}).get("home", {}))
         finally:
             orphan.release()
     if legacy := Journal(directory / LEGACY_NAME):
         print(f"A run from before per-run journals left changes in {legacy.path}; --recover puts them back.")
         homes |= set((legacy.get("roam") or {}).get("home", {}))
-    return homes
+    return homes | {entry["entity_id"] for entry in HomeRecord(directory).all().values() if entry.get("hue")}
 
 
 def needs(journal: Journal) -> Claim:
@@ -1499,7 +1501,7 @@ async def check_devices(
     available, and, when the run roams, each roaming bulb is on a network with its light available. Prints what it
     found; returns the problems, which would otherwise stop the run part way, after moves. Rig-made groups and scenes
     don't exist yet, and a roaming bulb's light may still be under another ID, so neither is looked up as an entity.
-    `homes` are the bulbs whose Hue home the journal holds, which a run puts back."""
+    `homes` are the bulbs whose Hue home the home record holds, which a run puts back."""
     fixed = [entity for entity in targets(suites, profile, registry, keyword) if entity not in profile.made_entities]
     bulbs = list(profile.roam) if roaming else []
     print(f"Checking profile {profile.name}: {len(fixed)} entities" + (f", {len(bulbs)} roaming." if bulbs else "."))
@@ -1552,7 +1554,7 @@ async def check_roaming(
             elif state is not None and not available(state):
                 problems.append(f"{bulb.entity_id}: on {NAMES[network]}, unavailable; check it is powered")
             elif network != home and bulb.entity_id in homes:
-                print(f"  {bulb.entity_id}: on {NAMES[network]}; the journal holds its Hue home, which a run puts back")
+                print(f"  {bulb.entity_id}: on {NAMES[network]}; the home record has its Hue home for a run to restore")
             elif network != home:
                 print(
                     f"  {bulb.entity_id}: on {NAMES[network]}. The run moves it from there; it has no saved Hue home, "
@@ -1623,8 +1625,9 @@ async def recover(
     device_side's options, the roaming bulbs (the ds-rig-* groups removed, the bulbs moved home, their Hue rooms and
     scenes put back), what it holds in the baseline (its pauses, log levels and Z2M options) and the automations a
     journal from before the baseline paused.
-    A step that fails is printed and dropped from the journal; options stay in it while there is no admin connection
-    to set them. The bulbs can't be left half done, so a failure there stops recovery, keeping the rest journaled."""
+    A step that fails is printed and dropped from the journal, except an entity that couldn't be put back, which stays
+    for the next try; options stay in it while there is no admin connection to set them. The bulbs can't be left half
+    done, so a failure there stops recovery, keeping the rest journaled."""
     run_of = f" (profile {name})" if (name := journal.get("profile")) else ""
     out(f"An aborted rig run{run_of} left changes in {journal.path}; putting them back.")
     for key, entry in dict(journal.get("cases") or {}).items():

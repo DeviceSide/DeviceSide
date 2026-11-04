@@ -2061,3 +2061,34 @@ def test_expect_hue_travel_needs_numbers(tmp_path, args, error):
 def test_mark_hue_takes_only_a_target(tmp_path):
     with pytest.raises(ValueError):
         suite(tmp_path, HUE_TRAVEL.replace("mark_hue: {}", "mark_hue: {by: 1}"), "zha")
+
+
+async def test_a_restore_that_fails_stays_journaled_past_the_next_case_until_recovered(tmp_path):
+    journal = Journal(tmp_path / "journal.json")
+    ha = FakeHA({"light.a": {"state": "on"}, "light.b": {"state": "off"}})
+    call_service = ha.call_service
+
+    async def refuse_a(domain, service, data=None, return_response=False):
+        if (data or {}).get("entity_id") == "light.a":
+            raise HAError("light.a is unavailable")
+        return await call_service(domain, service, data, return_response)
+
+    first = engine.Snapshot(ha, journal=journal)
+    await first.take("light.a")
+    ha.set("light.a", "off")
+    ha.call_service = refuse_a
+    await first.restore()
+    ha.call_service = call_service
+    unrestored = f"{engine.SERIAL}{engine.UNRESTORED}"
+    assert set(journal.get("cases")) == {unrestored}
+    assert journal.get("cases")[unrestored]["taken"]["light.a"]["state"] == "on"
+
+    second = engine.Snapshot(ha, journal=journal)  # the lane's next case
+    await second.take("light.b")
+    await second.restore()
+    assert set(Journal(journal.path).get("cases")) == {unrestored}
+
+    for key, entry in dict(journal.get("cases")).items():  # as --recover does
+        await engine.Snapshot(ha, taken=entry["taken"], journal=journal, journal_key=key).restore()
+    assert ha.states["light.a"]["state"] == "on"
+    assert not journal.path.exists()

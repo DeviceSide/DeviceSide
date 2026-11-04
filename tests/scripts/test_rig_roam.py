@@ -9,6 +9,7 @@ import pytest
 from scripts import check_private
 from tests.rig import baseline, client, roam
 from tests.rig.client import HAError, Z2MRemoveError
+from tests.rig.home import HomeRecord
 from tests.rig.journal import Journal
 from tests.rig.profile import Profile, normalize_ieee
 from tests.rig.roam import Roamer, RoamError
@@ -120,7 +121,7 @@ async def test_home_is_saved_on_leaving_and_put_back_on_the_new_ids(lab, tmp_pat
     journal = Journal(tmp_path / "journal.json")
     moving = roamer(lab, journal)
     await moving.go("zha")
-    saved = journal.get("roam")["home"]["light.lab_a"]
+    saved = HomeRecord(tmp_path).get(A[2:])["hue"]
     assert saved["rooms"] == ["r1"] and saved["zones"] == ["z1"] and list(saved["scenes"]) == ["s1"]
     resources = lab.bridge.resources
     assert resources["room"]["r1"]["children"] == [{"rid": "other-device", "rtype": "device"}]
@@ -136,6 +137,41 @@ async def test_home_is_saved_on_leaving_and_put_back_on_the_new_ids(lab, tmp_pat
     actions = resources["scene"]["s1"]["actions"]
     assert Lab.action("other-light", 10) in actions and Lab.action(light_a, 50) in actions and len(actions) == 3
     assert resources["device"][device_a]["metadata"]["name"] == "Lamp light.lab_a"
+    assert not journal.path.exists() and HomeRecord(tmp_path).all() == {}
+
+
+async def test_a_home_half_put_back_keeps_the_first_home_through_the_next_move(lab, tmp_path):
+    first = Journal(tmp_path / "first.json")
+    await roamer(lab, first).go("zha")  # a run dies on ZHA
+    lab.bridge.fail[("PUT", "room")] = "bridge busy"
+    await Roamer.from_journal(lab.ha, lab.bridge, first).go("hue")  # its recovery can't put the room back
+    rooms = lab.bridge.resources["room"]["r1"]["children"]
+    assert rooms == [{"rid": "other-device", "rtype": "device"}]
+    assert HomeRecord(tmp_path).get(A[2:])["hue"]["rooms"] == ["r1"]
+
+    second = Journal(tmp_path / "second.json")
+    await roamer(lab, second).go("zha")  # the next run leaves Hue from outside r1, and dies too
+    assert HomeRecord(tmp_path).get(A[2:])["hue"]["rooms"] == ["r1"]
+
+    del lab.bridge.fail[("PUT", "room")]
+    await Roamer.from_journal(lab.ha, lab.bridge, second).go("hue")
+    await Roamer.from_journal(lab.ha, lab.bridge, first).go("hue")
+    device_a = await lab.bridge.device_id_by_ieee(A)
+    assert {"rid": device_a, "rtype": "device"} in lab.bridge.resources["room"]["r1"]["children"]
+    assert HomeRecord(tmp_path).all() == {}
+    assert not first.path.exists() and not second.path.exists()
+
+
+async def test_a_journal_from_before_the_home_record_has_its_home_read_in(lab, tmp_path):
+    journal = Journal(tmp_path / "journal.json")
+    await roamer(lab, journal).go("zha")
+    old = {entry["entity_id"]: entry["hue"] for entry in HomeRecord(tmp_path).all().values()}
+    (tmp_path / "device_side-rig.home.json").unlink()
+    journal.update(roam=journal.get("roam") | {"home": old})
+
+    await Roamer.from_journal(lab.ha, lab.bridge, Journal(journal.path)).go("hue")
+    device_a = await lab.bridge.device_id_by_ieee(A)
+    assert {"rid": device_a, "rtype": "device"} in lab.bridge.resources["room"]["r1"]["children"]
     assert not journal.path.exists()
 
 
@@ -145,7 +181,7 @@ async def test_the_journal_names_the_move_in_flight_before_the_release(lab, tmp_
     deleted = lab.bridge.on_delete
 
     def on_delete(resource_type, resource_id):
-        seen.append(json.loads(journal.path.read_text())["roam"])
+        seen.append(json.loads(journal.path.read_text())["roam"] | {"home": HomeRecord(tmp_path).all()})
         deleted(resource_type, resource_id)
 
     lab.bridge.on_delete = on_delete
@@ -156,7 +192,7 @@ async def test_the_journal_names_the_move_in_flight_before_the_release(lab, tmp_
         "bulbs": ["light.lab_a", "light.lab_b"],
     }
     assert seen[0]["bulbs"][0] == {"ieee": A[2:], "entity_id": "light.lab_a", "z2m_options": OPTIONS, "home": "hue"}
-    assert set(seen[0]["home"]) == {"light.lab_a", "light.lab_b"}
+    assert set(seen[0]["home"]) == {A[2:], B[2:]}
     roamed = journal.get("roam")
     assert roamed["move"] is None and roamed["at"] == {"light.lab_a": "zha", "light.lab_b": "zha"}
 
@@ -173,7 +209,7 @@ async def test_a_bulb_that_never_joins_aborts_with_the_reset_instruction_and_clo
     assert not lab.ha.zha_open
     roamed = journal.get("roam")
     assert roamed["at"]["light.lab_a"] is None and roamed["move"]["to"] == "zha"
-    assert "light.lab_a" in roamed["home"]
+    assert A[2:] in HomeRecord(tmp_path).all()
 
 
 async def test_z2m_joining_is_closed_even_when_a_bulb_never_joins(lab, monkeypatch):
@@ -374,7 +410,7 @@ async def test_a_bulb_on_no_network_stops_with_the_reset_instruction(lab, tmp_pa
     with pytest.raises(RoamError, match=r"Not on any Zigbee network: light.lab_b\. Reset it over Bluetooth"):
         await Roamer.from_journal(lab.ha, lab.bridge, journal).go("hue")
     assert await where(lab) == ["zha", None]
-    assert journal.get("roam")["home"]
+    assert HomeRecord(tmp_path).all()
 
 
 def test_a_profile_lists_each_roaming_bulb_under_every_network(tmp_path):
@@ -871,4 +907,4 @@ async def test_a_failed_z2m_remove_of_a_bulb_live_on_hue_saves_its_home_before_r
     rig = roamer(lab, journal)
     await rig.release("zigbee2mqtt", BULBS[0])
     assert await lab.bridge.device_id_by_ieee(A) is None
-    assert journal.get("roam")["home"]["light.lab_a"]["rooms"] == ["r1"]
+    assert HomeRecord(tmp_path).get(A[2:])["hue"]["rooms"] == ["r1"]
