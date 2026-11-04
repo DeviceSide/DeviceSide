@@ -25,3 +25,8 @@ its tests, no soak.
 - [ ] **9d** Rig coverage sweep for the non-color scope; the watched session covers the color part.
 - [ ] **12** v0.1.0: no adapter left `experimental` (`scripts/check_release.py --release`); README feature table
   current; release checklist adapted from hue_dimmer.
+
+## After v0.1.0
+
+- **9b** Remote tester flow, once an adapter needs hardware the rig lacks
+  ([the list](docs/hardware-the-rig-lacks.md)).
