@@ -2,7 +2,7 @@
 
 [![HACS Default](https://img.shields.io/badge/HACS-Default-orange.svg)](https://hacs.xyz/) [![Latest Version](https://img.shields.io/github/v/release/jasonmx/device-side?sort=date)](https://github.com/jasonmx/device-side/releases) [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/jasonmx)
 
-Device Side unlocks native features in your lights, switches and plugs on the Zigbee, Shelly, Philips Hue and Matter integrations. It allows you to:
+Device Side unlocks native features in lights on the Zigbee and Philips Hue integrations, lights, switches and plugs on Shelly, and switches and plugs on Matter. It allows you to:
 
 * **Delay a turn-off:** Tell a device to turn off automatically, even if HA goes offline.
 
@@ -99,9 +99,9 @@ The HS mode and Hue Bridge patches are on by default; turn them off in Device Si
 
 ### Requirements
 
-* At least one of the [ZHA](https://www.home-assistant.io/integrations/zha/), [Z2M](https://www.zigbee2mqtt.io) via [MQTT](https://www.home-assistant.io/integrations/mqtt/), [Shelly](https://www.home-assistant.io/integrations/shelly/), [Philips Hue](https://www.home-assistant.io/integrations/hue) or [Matter](https://www.home-assistant.io/integrations/matter/) integrations installed.
+* At least one of the [ZHA](https://www.home-assistant.io/integrations/zha/), [Z2M](https://www.zigbee2mqtt.io) via [MQTT](https://www.home-assistant.io/integrations/mqtt/), [Shelly](https://www.home-assistant.io/integrations/shelly/), [Hue](https://www.home-assistant.io/integrations/hue) or [Matter](https://www.home-assistant.io/integrations/matter/) integrations installed.
 
-* Not supported: Hue Bridge v1, Shelly Gen 1, Zigbee plugs and switches, Matter lights
+* Not supported yet: Hue Bridge v1, Shelly Gen 1, Zigbee plugs/switches, Matter lights
 
 ### Install from HACS
 
@@ -209,10 +209,10 @@ actions:
 | `device_side.lower_brightness` | Start lowering brightness                      |
 | `device_side.stop`             | Freeze every move on the target where it is    |
 
-| Field        | Description                                                                                                                   |
-|:------------ |:----------------------------------------------------------------------------------------------------------------------------- |
-| `target`     | Lights and groups (required)                                                                                                  |
-| `sweep_time` | Seconds a full 0–100% sweep takes (default 5 s). Raise and lower only                                                         |
+| Field        | Description                                                                                                                                |
+|:------------ |:------------------------------------------------------------------------------------------------------------------------------------------ |
+| `target`     | Lights and groups (required)                                                                                                               |
+| `sweep_time` | Seconds a full 0–100% sweep takes (default 5 s). Raise and lower only                                                                      |
 | `limit`      | Raise: maximum brightness (default 100%).<br>Lower: minimum brightness (default 0%). The light turns off at 0%; choose 0.4%+ to keep it on |
 
 To move several lights in step, target a Hue room or zone, or a Zigbee2MQTT or ZHA group, instead of separate lights. One group-wide Zigbee message then moves them together.
@@ -242,11 +242,11 @@ buttons_released:
 | `device_side.lower_hue`        | Start cycling hue: red, magenta, blue, green. Runs until `stop` |
 | `device_side.stop`             | Freeze every move on the target where it is                     |
 
-| Field        | Description                                                                                                  |
-|:------------ |:------------------------------------------------------------------------------------------------------------ |
-| `target`     | Lights and groups (required)                                                                                 |
-| `sweep_time` | Seconds a full 0–100% saturation sweep or one turn of the color wheel takes (default 5 s). Raise and lower only |
-| `limit`      | Raise saturation: maximum (default 100%).<br>Lower saturation: minimum (default 0%). Hue moves take no limit |
+| Field        | Description                                                                                                       |
+|:------------ |:----------------------------------------------------------------------------------------------------------------- |
+| `target`     | Lights and groups (required)                                                                                      |
+| `sweep_time` | Seconds a full 0–100% saturation sweep or one turn of the color wheel takes (default 5 s). Raise and lower only   |
+| `limit`      | Raise saturation: maximum (default 100%).<br>Lower saturation: minimum (default 0%). <br/>Hue moves take no limit |
 
 Groups move in step, as for dimming.
 
@@ -264,22 +264,24 @@ button_released:
 
 ### Set Lights Without Turning On
 
-| Action                       | Description                                                       |
-|:---------------------------- |:----------------------------------------------------------------- |
-| `device_side.set_scene`      | Set a Hue scene without turning its lights on                     |
-| `device_side.set_attributes` | Set brightness, color temp or color without changing on/off state |
+**Set brightness, color or CT:** `device_side.set_attributes` sets brightness, color temp or color without changing on/off state.
 
-| Field               | Actions        | Description                                 |
-|:------------------- |:-------------- |:------------------------------------------- |
-| `target`            | set_scene      | Hue scenes (required)                       |
-| `target`            | set_attributes | Lights and groups (required)                |
-| `brightness`        | set_attributes | Brightness level (%)                        |
-| `min_brightness`    | set_attributes | Enforce a minimum brightness (%)            |
-| `max_brightness`    | set_attributes | Enforce a maximum brightness (%)            |
-| `color_temp_kelvin` | set_attributes | Color temperature (K)                       |
-| `rgb_color`         | set_attributes | Color as `[red, green, blue]` (0–255 each)  |
-| `hs_color`          | set_attributes | Color as `[hue, saturation]` (0–360, 0–100) |
-| `xy_color`          | set_attributes | Color as `[x, y]`                           |
+| Field               | Description                                 |
+|:------------------- |:------------------------------------------- |
+| `target`            | Lights and groups (required)                |
+| `brightness`        | Brightness level (%)                        |
+| `min_brightness`    | Enforce a minimum brightness (%)            |
+| `max_brightness`    | Enforce a maximum brightness (%)            |
+| `color_temp_kelvin` | Color temperature (K)                       |
+| `rgb_color`         | Color as `[red, green, blue]` (0–255 each)  |
+| `hs_color`          | Color as `[hue, saturation]` (0–360, 0–100) |
+| `xy_color`          | Color as `[x, y]`                           |
+
+**Set scene:** `device_side.set_scene` sets a Hue scene without turning its lights on.
+
+| Field    | Description           |
+|:-------- |:--------------------- |
+| `target` | Hue scenes (required) |
 
 #### YAML Example: Set scene for next turn-on
 
