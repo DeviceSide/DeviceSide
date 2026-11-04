@@ -15,6 +15,8 @@ v0.1.0 is the next release.
 
 | Slice | What | PRs |
 |---|---|---|
+| 12 | `docs/integrations.md` rewritten for users; addressing, wire commands and tested behavior moved to `docs/contributing/integration-internals.md`; README's turn-on cancel claim limited to Shelly | #218 |
+| 12 | Example page: screenshots retaken with Device Side's `set_attributes` | #217 |
 | 12 | README for v0.1.0: Key Features table, one usage section per feature, Hue Smooth Dimming migration, facts checked against the code (item 12's table half; the experimental half stays open) | #214 |
 | 7 | Query responses: unused nested `attributes` shape removed from `EntityResult.as_response`, the plan and the rig engine; `get_attributes` stays flat, as hue_dimmer's | #212 |
 | 11 | Matter `turn_on_for`: timer-limit comment gives the spec's 65534-tenth cap | #211 |
@@ -78,7 +80,11 @@ v0.1.0 is the next release.
 | 15 (follow-up) | Rig places a roaming bulb where it is live and deletes a stale ZHA or Z2M listing; a Z2M remove a coordinator crash cut short is tried again; each run names Z2M coordinator crashes | #206 |
 | 15 (follow-up) | Rig: one shared baseline replaces the pause ledger; pauses, HA and Z2M log levels and Z2M device options are held there, put back by the last run out, the next run's prune or `--recover` | #209 |
 | 15 (follow-up) | Rig: a home record keeps each roaming bulb's Hue home and pre-run state until it is home as it was; a failed case restore stays journaled, a rename is journaled first, and orphans replay oldest first | #210 |
+<<<<<<< HEAD
 | 15 (follow-up) | Rig: a Z2M bulb whose light HA lost (Z2M still holding it published) gets its discovery published again by an HA override set then cleared | #213 |
+=======
+| — | CI skips pytest when a change touches only `*.md` and `docs/`; the required check still reports, as skipped | #219 |
+>>>>>>> origin/release/v0.0.2
 
 ## To go, in order
 

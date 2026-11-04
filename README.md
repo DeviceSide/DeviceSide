@@ -127,15 +127,13 @@ If a device fails, the action fails and stops the automation.
 
 #### Cancel a timer
 
-The following actions cancel a delayed on/off timer:
+The following actions cancel a delayed off timer, on a device that's on:
 
-* Turn off a device that was on, or vice versa
+* Turn off
 
 * Send a new delayed on/off command (restarts the countdown)
 
-* Turn on a device that's already on (Shelly, and most lights on Z2M)
-
-* Turn off a device that's already off (Shelly only)
+* Turn on (i.e. leave on). Tested on Shelly only
 
 ### Delayed on
 
@@ -150,6 +148,33 @@ Turn off, then on after a delay. Timer runs on the device. Example use case:
 | `target`            | Shelly lights and switches (required)                           |
 | `duration`          | Delay until the device turns on (required). Up to 7 days        |
 | `response_variable` | Variable that receives the response from each entity (optional) |
+
+<details>
+<summary>Results</summary>
+
+Each targeted entity reports a `status` in the response variable:
+
+| Status      | Meaning                                            |
+| ----------- | -------------------------------------------------- |
+| `confirmed` | Command accepted; device reported a running timer  |
+| `sent`      | Command accepted; timer not confirmed in read-back |
+| `unchanged` | Nothing to send; `detail` says why                 |
+
+If a requested duration is out of range, `clamped_to` reports the duration the device actually used, in seconds.
+
+If a device fails, the action fails and stops the automation.
+
+</details>
+
+#### Cancel a timer
+
+The following actions cancel a delayed on timer, on a device that's off:
+
+* Turn on
+
+* Send a new delayed on/off command (restarts the countdown)
+
+* Turn off (i.e. leave off)
 
 ### Smooth dimming
 
