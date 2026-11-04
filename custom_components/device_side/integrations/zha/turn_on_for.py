@@ -49,7 +49,6 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
     action: ClassVar[str] = "turn_on_for"
     integration: ClassVar[str] = "zha"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        experimental=True,
         # Zigbee plugs and switches rarely honor OnWithTimedOff (the rig's Tuya TS011F stores OnTime as a countdown
         # and never switches on), so switch stays out of scope until users ask.
         domains=frozenset({"light"}),

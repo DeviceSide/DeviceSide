@@ -151,7 +151,9 @@ and Hue (7c2, its A60 run). The lab lands before the first A60 run. Lanes on dif
   then `ZIGBEE_DELIVERY_FAILED` on the read. The cause is the mesh path, not the adapter; fixing it needs the
   join-route plan or a better-placed relay, not a code change here.
 - [ ] **ZHA A60 run** (13k step 3), on the lab: ZHA color suites, `set_attributes` hs and xy included. Attended for
-  `sets_color_while_off`. Clears `experimental` on the ZHA adapters it proves.
+  `sets_color_while_off`. Clears `experimental` on the ZHA adapters it proves. Seven cleared on the 3 Nov lab
+  records; the watched cases left for `lower_brightness`, `stop` and `set_attributes` are in the
+  [flag audit](docs/plans/2026-11-04-flag-audit-zha.md).
 - [ ] **9d** Rig coverage sweep for the non-color scope
   ([`2026-10-30-rig-coverage-sweep.md`](docs/plans/2026-10-30-rig-coverage-sweep.md)). 13k covers the color part.
 - [ ] **12** v0.1.0: no adapter left `experimental` (`scripts/check_release.py --release`); README feature table
