@@ -202,8 +202,8 @@ def test_shared_claims_wait_for_an_exclusive_holder(tmp_path):
         assert blocked(tmp_path, SHARED)
 
 
-def test_a_waiting_exclusive_claim_holds_off_new_shared_ones(tmp_path, monkeypatch):
-    """The turnstile: once a deploy waits for HA, a new shared claim queues behind it rather than starve it."""
+def test_a_waiting_exclusive_claim_holds_off_no_shared_one(tmp_path, monkeypatch):
+    """Throughput now: a shared claim that is ready starts at once, even while a deploy waits for HA."""
     sharing = locks.hold(claim("hue"), "wt/hue", tmp_path, out=quiet())
     seen: list[bool] = []
 
@@ -214,17 +214,7 @@ def test_a_waiting_exclusive_claim_holds_off_new_shared_ones(tmp_path, monkeypat
 
     monkeypatch.setattr(locks.time, "sleep", meanwhile)
     locks.hold(EXCLUSIVE, "wt/deploy", tmp_path, out=quiet()).close()
-    assert seen == [True]
-
-
-def test_the_waits_name_the_turnstile_holder(tmp_path, monkeypatch):
-    with (tmp_path / locks.TURNSTILE_NAME).open("a+") as turnstile:
-        fcntl.flock(turnstile, fcntl.LOCK_EX)
-        locks.write_holder(turnstile, "wt/deploy, waiting for HA")
-        printed: list[str] = []
-        monkeypatch.setattr(locks.time, "sleep", lambda _s: fcntl.flock(turnstile, fcntl.LOCK_UN))
-        locks.hold(claim("hue"), "wt/hue", tmp_path, out=printed.append).close()
-    assert printed[0].startswith("Another rig run holds the turn for HA: wt/deploy, waiting for HA (pid")
+    assert seen == [False]
 
 
 def test_an_exclusive_wait_leaves_its_own_integrations_out_of_the_holders(tmp_path, monkeypatch):
@@ -236,9 +226,7 @@ def test_an_exclusive_wait_leaves_its_own_integrations_out_of_the_holders(tmp_pa
     assert "hue:" not in printed[0]
 
 
-def test_claims_take_their_integrations_in_sorted_order(tmp_path, monkeypatch):
-    """Two claims over the same integrations, listed in either order, take them in one order, which is what keeps two
-    runs from each holding what the other waits for: the second waits on the first's first lock, holding nothing."""
+def test_a_run_blocked_on_one_lock_names_its_holder_and_takes_them_all_once_free(tmp_path, monkeypatch):
     first = locks.hold(Claim("shared", frozenset(["zha", "hue"])), "wt/first", tmp_path, out=quiet())
     printed: list[str] = []
 
@@ -249,7 +237,39 @@ def test_claims_take_their_integrations_in_sorted_order(tmp_path, monkeypatch):
     second = locks.hold(Claim("exclusive", frozenset(["hue", "zha"])), "wt/second", tmp_path, out=printed.append)
     assert printed[0].startswith("Another rig run holds the hue lock: wt/first")
     assert len(second.handles) == 3
+    assert (tmp_path / locks.integration_lock("zha")).read_text().startswith("wt/second ")
     second.close()
+
+
+def test_a_waiting_run_holds_none_of_its_locks(tmp_path, monkeypatch):
+    """A run waiting for zha leaves hue, which it also claims, and HA to a run that is ready."""
+    first = locks.hold(claim("zha"), "wt/zha", tmp_path, out=quiet())
+    seen: list[bool] = []
+
+    def meanwhile(_seconds):
+        seen.extend([blocked(tmp_path, claim("hue")), blocked(tmp_path, EXCLUSIVE)])
+        first.close()
+
+    monkeypatch.setattr(locks.time, "sleep", meanwhile)
+    with locks.hold(claim("hue", "zha"), "wt/both", tmp_path, out=quiet()):
+        assert seen == [False, True]  # HA: first still holds it shared
+        assert blocked(tmp_path, claim("hue"))
+        assert blocked(tmp_path, claim("zha"))
+
+
+def test_a_deploy_waiting_for_ha_leaves_its_integrations_free(tmp_path, monkeypatch):
+    sharing = locks.hold(claim("hue"), "wt/hue", tmp_path, out=quiet())
+    seen: list[bool] = []
+
+    def meanwhile(_seconds):
+        seen.append(blocked(tmp_path, claim("zha")))
+        sharing.close()
+
+    monkeypatch.setattr(locks.time, "sleep", meanwhile)
+    with locks.hold(claim("zha", ha="exclusive"), "wt/deploy", tmp_path, out=quiet()):
+        assert seen == [False]
+        assert blocked(tmp_path, claim("zha"))
+        assert blocked(tmp_path, SHARED)
 
 
 def test_a_failed_wait_lets_go_of_what_it_took(tmp_path):
@@ -284,6 +304,37 @@ def test_holders_lists_what_a_claim_would_wait_for(tmp_path):
         assert locks.holders(tmp_path, claim("hue", ha="exclusive")) == ["HA: shared by a run on no other integration"]
         lines = locks.holders(tmp_path, claim("zha", ha="exclusive"))
         assert [line.split(" (pid")[0] for line in lines] == ["zha: wt/zha", "HA: shared by the runs above"]
+
+
+def test_share_ha_keeps_the_integrations_and_lets_a_shared_run_start(tmp_path):
+    with locks.hold(claim("zigbee2mqtt", ha="exclusive"), "wt/deploy", tmp_path, out=quiet()) as held:
+        assert blocked(tmp_path, claim("shelly"))
+        held.share_ha(out=quiet())
+        assert held.claim == claim("zigbee2mqtt")
+        assert not blocked(tmp_path, claim("shelly"))
+        assert blocked(tmp_path, claim("zigbee2mqtt"))
+        assert blocked(tmp_path, EXCLUSIVE)
+        assert locks.held_by(tmp_path / locks.LOCK_NAME) is None
+
+
+def test_a_share_ha_that_waited_says_so_and_turns_the_workspace_green(tmp_path, monkeypatch, workspace_colors):
+    """flock's conversion may drop HA first, so a queued deploy can slip in; the run then waits for HA shared."""
+    printed: list[str] = []
+    with locks.hold(claim("hue", ha="exclusive"), "wt/deploy", tmp_path, out=quiet()) as held:
+        workspace_colors.clear()
+        monkeypatch.setattr(
+            locks, "wait_for_lock", lambda *_args: workspace_colors.append(locks.WORKSPACE_QUEUED) or True
+        )
+        held.share_ha(out=printed.append)
+    assert printed == ["Rig locks acquired: HA shared, hue."]
+    assert workspace_colors == [locks.WORKSPACE_QUEUED, locks.WORKSPACE_HELD]
+
+
+def test_share_ha_on_a_shared_hold_does_nothing(tmp_path):
+    with locks.hold(claim("hue"), "wt/hue", tmp_path, out=quiet()) as held:
+        held.share_ha(out=quiet())
+        assert held.claim == claim("hue")
+        assert not blocked(tmp_path, claim("zha"))
 
 
 # --- Claims ---------------------------------------------------------------------------------------------------
@@ -410,6 +461,45 @@ def test_a_run_that_still_matches_keeps_its_first_claim(tmp_path, monkeypatch):
     monkeypatch.setattr(rig, "git", lambda *args, check=True: "wt")
     with rig.take(run_args(), run, tmp_path) as held:
         assert held.claim == claim("shelly")
+
+
+def approved(tmp_path, monkeypatch, run, deploying: bool) -> tuple[locks.Held, list[Claim]]:
+    """run_approved with the deploy and the tests faked out: what the run holds after, and the claim run_rig got."""
+    held = locks.hold(rig.claim(run_args(), run), "wt", tmp_path, out=quiet())
+    given: list[Claim] = []
+    monkeypatch.setattr(rig, "deploy_and_wait", lambda _env, _branch: None)
+    monkeypatch.setattr(rig, "tested_commit", lambda *_args: "c1")
+    monkeypatch.setattr(rig, "run_rig", lambda *_args, claim, **_kw: given.append(claim))
+    monkeypatch.setattr(rig, "run_tests", lambda _run: 0)
+    rig.run_approved(SimpleNamespace(keyword=None, unattended=True, debug_logs=False), run, held, None, deploying, True)
+    return held, given
+
+
+def test_a_deploying_run_without_options_steps_ha_down_to_shared(tmp_path, monkeypatch):
+    profile = fakes.profile("shelly", light_ct="light.a")
+    run = setup(tmp_path, profile, step_suites(tmp_path, fakes.RESTORED_MIDWAY, "shelly"), deploy_needed=True)
+    held, given = approved(tmp_path, monkeypatch, run, deploying=True)
+    with held:
+        assert held.claim == given[0] == claim("shelly")
+        assert not blocked(tmp_path, claim("zha"))
+
+
+def test_a_run_that_does_not_deploy_keeps_its_claim(tmp_path, monkeypatch):
+    profile = fakes.profile("shelly", light_ct="light.a")
+    run = setup(tmp_path, profile, step_suites(tmp_path, fakes.RESTORED_MIDWAY, "shelly"))
+    held, given = approved(tmp_path, monkeypatch, run, deploying=False)
+    with held:
+        assert held.claim == given[0] == claim("shelly")
+
+
+def test_a_deploying_run_with_options_keeps_ha_exclusive(tmp_path, monkeypatch):
+    profile = fakes.profile("shelly", light_ct="light.a")
+    options = fakes.RESTORED_MIDWAY.replace("tests:", "options: [opt]\ntests:", 1)
+    run = setup(tmp_path, profile, step_suites(tmp_path, options, "shelly"), deploy_needed=True)
+    held, given = approved(tmp_path, monkeypatch, run, deploying=True)
+    with held:
+        assert held.claim == given[0] == claim("shelly", ha="exclusive")
+        assert blocked(tmp_path, claim("zha"))
 
 
 # --- Journals -------------------------------------------------------------------------------------------------

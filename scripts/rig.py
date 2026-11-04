@@ -10,7 +10,8 @@ integrations it moves, so runs on different ones go side by side, and HA, shared
 suite with device_side options, which restart or reload device_side under every other run. The plan prints the run's
 locks. Each run deploys and restarts HA onto its own checkout's tree when HA hasn't loaded it, so a run queued behind
 another tests its own code; it reads the deploy state again once it holds its locks, and takes HA exclusively if it
-must deploy after all. Ctrl-C mid-deploy waits for the deploy and HA's restart to finish before releasing the locks.
+must deploy after all. Once its deploy is done and HA is back, a run with no option suites steps HA down to shared.
+Ctrl-C mid-deploy waits for the deploy and HA's restart to finish before releasing the locks.
 The tests are the step files in tests/rig/steps, run by tests/rig/engine.py; a full pass of an adapter rewrites its
 test record.
 
@@ -672,15 +673,24 @@ def claim(args: argparse.Namespace, setup: Setup) -> Claim:
     """What the run must hold: each integration with a suite that has an adapter, the integrations their entities draw
     power through, and the networks its roaming bulbs visit, home included; HA exclusively when it deploys, which
     restarts HA, or runs a suite with device_side options, whose save reloads the entry; HA shared otherwise."""
-    runnable = [suite for suite in setup.suites if setup.registry.adapter(suite.action, suite.integration)]
-    integrations = {suite.integration for suite in runnable}
+    integrations = {suite.integration for suite in runnable(setup)}
     integrations |= supplies(setup.profile, integrations)
     if setup.roaming:
         integrations |= {network for network, _ in phases(setup.suites, setup.profile, roaming=True) if network}
     if setup.grouping:
         integrations.add(setup.profile.roam_home)
-    exclusive = setup.deploying(args) or any(suite.file.options for suite in runnable)
+    exclusive = setup.deploying(args) or reloads(setup)
     return Claim("exclusive" if exclusive else "shared", frozenset(integrations))
+
+
+def runnable(setup: Setup) -> list[Suite]:
+    """The suites with an adapter, which the run can run."""
+    return [suite for suite in setup.suites if setup.registry.adapter(suite.action, suite.integration)]
+
+
+def reloads(setup: Setup) -> bool:
+    """Whether a suite the run can run has device_side options, whose save reloads the entry under every other run."""
+    return any(suite.file.options for suite in runnable(setup))
 
 
 def supplies(profile: Profile, integrations: set[str]) -> set[str]:
@@ -794,6 +804,8 @@ def run_approved(
     """The deploy and the tests, once the run is approved."""
     env, deploy = setup.env, setup.deploy
     deploy_and_wait(env, deploy.branch if deploying else None)
+    if deploying and not reloads(setup):  # HA is back, and nothing left restarts or reloads it under other runs
+        held.share_ha()
     commit = tested_commit(env.get("RIG_STATUS_CMD", ""), deploy, deploying)
     return run_tests(
         run_rig(
