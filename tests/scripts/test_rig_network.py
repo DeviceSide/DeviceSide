@@ -6,7 +6,7 @@ import pytest
 from aiohttp import WSMsgType, web
 from aiohttp.test_utils import TestServer
 
-from tests.rig.client import HAClient, HAError, device_ieee
+from tests.rig.client import HAClient, HAError, Z2MRemoveError, device_ieee
 from tests.scripts.rig_fakes import FakeBridge, FakeHA
 
 IEEE = "0x001788010abcdef0"
@@ -158,8 +158,69 @@ async def test_z2m_request_that_never_takes_effect_times_out(monkeypatch):
     ha = FakeHA({})
     ha.join("zigbee2mqtt", IEEE)
     ha.z2m_ignores.add("device/remove")
-    with pytest.raises(TimeoutError, match=f"did not remove {IEEE}"):
+    with pytest.raises(TimeoutError, match=f"did not force remove {IEEE}"):
+        await ha.z2m_force_remove(IEEE)
+
+
+@pytest.fixture
+def quick_z2m(monkeypatch):
+    for name, value in (("Z2M_REQUEST_TIMEOUT_S", 0.05), ("Z2M_POLL_S", 0.01), ("Z2M_CRASH_WATCH_S", 0.05)):
+        monkeypatch.setattr(f"tests.rig.client.{name}", value)
+    monkeypatch.setattr("tests.rig.client.Z2M_RESTART_S", 1)
+
+
+async def test_a_z2m_remove_that_never_takes_effect_fails_with_z2m_up(quick_z2m):
+    ha = FakeHA({})
+    ha.join("zigbee2mqtt", IEEE)
+    ha.z2m_ignores.add("device/remove")
+    with pytest.raises(Z2MRemoveError, match=f"did not remove {IEEE}") as raised:
         await ha.z2m_remove_device(IEEE)
+    assert not raised.value.restarted
+
+
+async def test_a_z2m_remove_error_is_read_from_its_response(quick_z2m):
+    ha = FakeHA({})
+    ha.join("zigbee2mqtt", IEEE)
+    ha.z2m_remove_fails[IEEE[2:]] = 1
+    with pytest.raises(Z2MRemoveError, match=f"Failed to remove '{IEEE}'") as raised:
+        await ha.z2m_remove_device(IEEE)
+    assert not raised.value.restarted
+    await ha.z2m_remove_device(IEEE)
+    assert not await ha.z2m_has_device(IEEE)
+
+
+async def test_a_z2m_remove_cut_short_by_a_crash_says_so_once_z2m_is_back(quick_z2m):
+    ha = FakeHA({})
+    ha.join("zigbee2mqtt", IEEE)
+    ha.z2m_remove_fails[IEEE[2:]] = 1
+    ha.z2m_crash_on_remove = True
+    ha.z2m_restart_s = 0.1
+    with pytest.raises(Z2MRemoveError) as raised:
+        await ha.z2m_remove_device(IEEE)
+    assert raised.value.restarted and ha.z2m_bridge_state == "online"
+
+
+async def test_a_force_remove_deletes_the_record_with_no_leave():
+    ha = FakeHA({})
+    ha.join("zigbee2mqtt", IEEE)
+    left = []
+    ha.on_leave = lambda integration, ieee: left.append(ieee)
+    await ha.z2m_force_remove(IEEE)
+    assert not await ha.z2m_has_device(IEEE) and left == []
+    remove = [json.loads(c[2]["payload"]) for c in ha.calls if c[2]["topic"].endswith("/device/remove")]
+    assert remove == [{"id": IEEE, "force": True}]
+
+
+async def test_z2m_availability_and_a_read_tell_a_device_that_is_there_from_one_that_isnt(monkeypatch):
+    monkeypatch.setattr("tests.rig.client.Z2M_SETTLE_S", 0)
+    monkeypatch.setattr("tests.rig.client.Z2M_ANSWER_S", 0.05)
+    ha = FakeHA({})
+    ha.join("zigbee2mqtt", IEEE)
+    assert await ha.z2m_availability(IEEE) == "online" and await ha.z2m_answers(IEEE)
+    ha.z2m_offline.add(IEEE[2:])
+    assert await ha.z2m_availability(IEEE) == "offline" and not await ha.z2m_answers(IEEE)
+    ha.z2m_availability_on = False
+    assert await ha.z2m_availability(IEEE) is None
 
 
 async def test_z2m_groups_add_members_and_remove():

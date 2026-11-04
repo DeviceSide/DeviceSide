@@ -7,8 +7,8 @@ import json
 import pytest
 
 from scripts import check_private
-from tests.rig import roam
-from tests.rig.client import HAError
+from tests.rig import client, roam
+from tests.rig.client import HAError, Z2MRemoveError
 from tests.rig.journal import Journal
 from tests.rig.profile import Profile, normalize_ieee
 from tests.rig.roam import Roamer, RoamError
@@ -21,6 +21,8 @@ A, B, OPTIONS, BULBS = LAB_A, LAB_B, LAB_OPTIONS, LAB_BULBS
 def fast(monkeypatch):
     monkeypatch.setattr(roam, "POLL_S", 0)
     monkeypatch.setattr(roam, "PRIME_GAP_S", 0)
+    for name, value in (("Z2M_SETTLE_S", 0), ("Z2M_ANSWER_S", 0.05), ("Z2M_POLL_S", 0), ("Z2M_CRASH_WATCH_S", 0.05)):
+        monkeypatch.setattr(client, name, value)
 
 
 @pytest.fixture
@@ -653,10 +655,12 @@ async def test_a_z2m_remove_that_cant_be_delivered_stops_with_the_power_cycle_in
     await roamer(lab).go("zigbee2mqtt")
 
     async def undeliverable(ieee):
-        raise TimeoutError(f"Zigbee2MQTT did not remove {ieee} within 30 s")
+        raise Z2MRemoveError(f"Zigbee2MQTT did not remove {ieee} within 30 s", restarted=False)
 
     monkeypatch.setattr(lab.ha, "z2m_remove_device", undeliverable)
-    with pytest.raises(RoamError, match=r"Z2M couldn't remove light.lab_a: it didn't take the Leave\. Switch its lamp"):
+    with pytest.raises(
+        RoamError, match=r"Z2M couldn't remove light.lab_a \(.*\): it didn't take the Leave\. Switch its lamp"
+    ):
         await roamer(lab).go("hue")
     assert await where(lab) == ["zigbee2mqtt", "zigbee2mqtt"]
 
@@ -740,3 +744,131 @@ async def test_asks_for_one_bulb_wait_out_the_gap(lab, monkeypatch):
     with pytest.raises(RoamError):
         await roamer(lab).go("zigbee2mqtt")
     assert len(lab.ha.z2m_interviews) == 1  # the 20 s gap outlasts the window
+
+
+# --- a bulb listed where it isn't; Z2M's coordinator crashing mid-remove ----------------------------------------------
+
+
+async def test_a_bulb_live_on_zha_and_stale_on_z2m_is_found_on_zha_and_joins_z2m(lab):
+    """4 Nov, 09:29: Z2M still listed the A60 after a crash cut its remove short, and the rig took it for on Z2M."""
+    await roamer(lab).go("zha")
+    lab.stale("zigbee2mqtt", A)
+    printed = []
+    await roamer(lab, out=printed.append).go("zigbee2mqtt")
+    assert "Removed light.lab_a's stale Z2M listing: it isn't there." in printed
+    assert any(line.startswith("Moving light.lab_a, light.lab_b from ZHA to Z2M") for line in printed)
+    assert await where(lab) == ["zigbee2mqtt", "zigbee2mqtt"]
+    assert lab.device_of("light.lab_a")["identifiers"][0][0] == "mqtt"
+
+
+async def test_a_stale_zha_listing_is_removed_where_the_bulb_is_on_hue(lab):
+    lab.stale("zha", A)
+    printed = []
+    assert await roamer(lab, out=printed.append).locate(BULBS[0]) == "hue"
+    assert "Removed light.lab_a's stale ZHA listing: it isn't there." in printed
+    assert await lab.ha.device_by_ieee("zha", A) is None and A[2:] not in lab.searching
+
+
+async def test_a_stale_listing_on_the_target_is_removed_before_the_window_opens(lab, monkeypatch):
+    """A stale Z2M entry would read as arrived the moment the window opened."""
+    opened = []
+
+    def watch(network):
+        opened.append([normalize_ieee(i) for i in lab.ha.z2m_devices])
+        lab.opened(network)
+
+    lab.ha.on_open = watch
+    located = Roamer.locate
+
+    async def blind(self, bulb):  # the listing appears after settle looked: only move's purge can catch it
+        found = await located(self, bulb)
+        if bulb.entity_id == "light.lab_a" and not lab.stale_on:
+            lab.stale("zigbee2mqtt", A)
+        return found
+
+    monkeypatch.setattr(Roamer, "locate", blind)
+    await roamer(lab).go("zigbee2mqtt")
+    assert opened[0] == []
+    assert await where(lab) == ["zigbee2mqtt", "zigbee2mqtt"]
+
+
+async def test_a_bulb_live_on_two_networks_stops_the_move(lab):
+    lab.ha.join("zigbee2mqtt", A)  # Z2M lists it, online, and it answers
+    with pytest.raises(RoamError, match=r"light.lab_a is live on both Hue and Z2M"):
+        await roamer(lab).go("zha")
+    assert await lab.ha.z2m_has_device(A)
+    assert await lab.bridge.device_id_by_ieee(A) is not None
+
+
+async def test_a_z2m_listing_marked_online_that_doesnt_answer_is_stale(lab):
+    lab.stale("zigbee2mqtt", A)
+    lab.ha.z2m_availability_on = False  # no availability to read; the read decides
+    printed = []
+    assert await roamer(lab, out=printed.append).locate(BULBS[0]) == "hue"
+    assert "Removed light.lab_a's stale Z2M listing: it isn't there." in printed
+
+
+async def test_a_dead_hue_listing_is_kept_and_stops_the_move(lab):
+    link = next(c for c in lab.bridge.resources["zigbee_connectivity"].values() if c["mac_address"].endswith("f0"))
+    link["status"] = "connectivity_issue"
+    lab.ha.join("zha", "00:17:88:01:0a:bc:de:f0", "light.zha_bulb_9")
+    with pytest.raises(RoamError, match=r"The Hue bridge lists light.lab_a, but can't reach it, and it is live on ZHA"):
+        await roamer(lab).go("zigbee2mqtt")
+    assert await lab.bridge.device_id_by_ieee(A) is not None
+
+
+async def test_a_bulb_listed_but_live_nowhere_stops_the_move(lab):
+    await roamer(lab).go("zigbee2mqtt")
+    lab.ha.z2m_offline.add(normalize_ieee(A))
+    with pytest.raises(RoamError, match=r"light.lab_a is listed on Z2M but live on none"):
+        await roamer(lab).go("hue")
+    assert await lab.ha.z2m_has_device(A)
+
+
+async def test_a_z2m_remove_a_coordinator_crash_cut_short_is_tried_again_once_z2m_is_back(lab, monkeypatch):
+    await roamer(lab).go("zigbee2mqtt")
+    lab.ha.z2m_remove_fails[normalize_ieee(A)] = 1
+    lab.ha.z2m_crash_on_remove = True
+    printed = []
+    await roamer(lab, out=printed.append).go("hue")
+    assert any(line.startswith("Z2M restarted while removing light.lab_a") for line in printed)
+    assert await where(lab) == ["hue", "hue"]
+
+
+async def test_a_z2m_remove_that_fails_across_two_crashes_names_the_crash(lab):
+    await roamer(lab).go("zigbee2mqtt")
+    lab.ha.z2m_remove_fails[normalize_ieee(A)] = 2
+    lab.ha.z2m_crash_on_remove = True
+    with pytest.raises(RoamError, match=r"Z2M couldn't remove light.lab_a .*Z2M's coordinator crashed mid-remove; see"):
+        await roamer(lab).go("hue")
+
+
+async def test_a_z2m_remove_error_with_z2m_up_names_the_bulb(lab):
+    await roamer(lab).go("zigbee2mqtt")
+    lab.ha.z2m_remove_fails[normalize_ieee(A)] = 1
+    with pytest.raises(RoamError, match=r"Z2M couldn't remove light.lab_a \(Failed to remove .*Switch its lamp"):
+        await roamer(lab).go("hue")
+
+
+async def test_a_failed_z2m_remove_of_a_bulb_live_elsewhere_deletes_the_record_and_releases_it_there(lab, monkeypatch):
+    await roamer(lab).go("zha")
+    lab.ha.join("zigbee2mqtt", A)
+    lab.stale_on.add(("zigbee2mqtt", normalize_ieee(A)))
+    lab.ha.z2m_remove_fails[normalize_ieee(A)] = 1
+    rig = roamer(lab)
+    rig.at = {"light.lab_a": "zigbee2mqtt"}
+    lab.ha.z2m_offline.add(normalize_ieee(A))  # dead on Z2M from here on, as its failed remove shows
+    await rig.release("zigbee2mqtt", BULBS[0])
+    assert not await lab.ha.z2m_has_device(A) and await lab.ha.device_by_ieee("zha", A) is None
+
+
+async def test_a_failed_z2m_remove_of_a_bulb_live_on_hue_saves_its_home_before_releasing_it(lab, tmp_path):
+    journal = Journal(tmp_path / "journal.json")
+    lab.ha.join("zigbee2mqtt", A)
+    lab.stale_on.add(("zigbee2mqtt", normalize_ieee(A)))
+    lab.ha.z2m_remove_fails[normalize_ieee(A)] = 1
+    lab.ha.z2m_offline.add(normalize_ieee(A))
+    rig = roamer(lab, journal)
+    await rig.release("zigbee2mqtt", BULBS[0])
+    assert await lab.bridge.device_id_by_ieee(A) is None
+    assert journal.get("roam")["home"]["light.lab_a"]["rooms"] == ["r1"]

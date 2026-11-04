@@ -18,6 +18,10 @@ Z2M_COORDINATOR = "Coordinator"  # the coordinator's friendly name, which permit
 RETAINED_TIMEOUT_S = 5
 Z2M_REQUEST_TIMEOUT_S = 30
 Z2M_POLL_S = 0.5
+Z2M_ANSWER_S = 10  # for a device to answer a read through Z2M; no reply means it isn't there
+Z2M_SETTLE_S = 1.0  # after subscribing to a device's topic, for its retained state, which is no answer, to land
+Z2M_CRASH_WATCH_S = 30  # after a failed remove, for Z2M to go offline: its coordinator crashed
+Z2M_RESTART_S = 120  # for Z2M to come back online after a crash
 
 
 def device_ieee(device: dict, integration: str) -> str | None:
@@ -35,6 +39,18 @@ def device_ieee(device: dict, integration: str) -> str | None:
     return None
 
 
+def _remove_error(responses: asyncio.Queue[str], ieee: str) -> str | None:
+    """Z2M's error for removing `ieee`, from the bridge/response/device/remove payloads queued so far, or None."""
+    while not responses.empty():
+        try:
+            response = json.loads(responses.get_nowait())
+        except ValueError:
+            continue
+        if response.get("status") == "error" and (response.get("data") or {}).get("id") == ieee:
+            return response.get("error") or "Z2M refused the remove"
+    return None
+
+
 class HAError(Exception):
     """A failed WebSocket command, carrying HA's error code and translation key."""
 
@@ -43,6 +59,24 @@ class HAError(Exception):
         self.code: str | None = error.get("code")
         self.translation_key: str | None = error.get("translation_key")
         self.translation_placeholders: dict = error.get("translation_placeholders") or {}
+
+
+class Z2MRemoveError(Exception):
+    """A Zigbee2MQTT remove that failed: Z2M's error, and whether Z2M restarted (its coordinator crashed) meanwhile."""
+
+    def __init__(self, error: str, restarted: bool):
+        super().__init__(error)
+        self.error = error
+        self.restarted = restarted
+
+
+def _state_of(raw: str) -> str | None:
+    """`state` from a Z2M availability or bridge/state payload: JSON `{"state": ...}`, or the legacy bare word."""
+    try:
+        decoded = json.loads(raw)
+    except ValueError:
+        return raw.strip() or None
+    return decoded.get("state") if isinstance(decoded, dict) else str(decoded)
 
 
 class HAClient:
@@ -220,14 +254,18 @@ class HAClient:
         Like set_z2m_device_options, it reads retained topics rather than waiting for Z2M's reply, which can arrive
         before HA's subscription is live.
         """
-        await self.call_service(
-            "mqtt", "publish", {"topic": f"{Z2M_TOPIC}/request/{topic}", "payload": json.dumps(payload)}
-        )
+        await self._z2m_publish(topic, payload)
         deadline = asyncio.get_running_loop().time() + Z2M_REQUEST_TIMEOUT_S
         while not await done():
             if asyncio.get_running_loop().time() > deadline:
                 raise TimeoutError(f"Zigbee2MQTT did not {what} within {Z2M_REQUEST_TIMEOUT_S} s")
             await asyncio.sleep(Z2M_POLL_S)
+
+    async def _z2m_publish(self, topic: str, payload: dict) -> None:
+        """Publish a Zigbee2MQTT `bridge/request/<topic>`."""
+        await self.call_service(
+            "mqtt", "publish", {"topic": f"{Z2M_TOPIC}/request/{topic}", "payload": json.dumps(payload)}
+        )
 
     # --- Zigbee2MQTT: joining, removing, groups -------------------------------------------------------------------
 
@@ -284,12 +322,86 @@ class HAClient:
         return await self.z2m_device(ieee) is not None
 
     async def z2m_remove_device(self, ieee: str) -> None:
-        """Remove a device from Zigbee2MQTT (it sends the bulb a Leave), then wait until bridge/devices drops it."""
+        """Remove a device from Zigbee2MQTT (it sends the bulb a Leave), then wait until bridge/devices drops it.
+
+        A remove that fails raises Z2MRemoveError with Z2M's error (bridge/response/device/remove) or the timeout. If
+        Z2M went offline meanwhile, or does within Z2M_CRASH_WATCH_S, its coordinator crashed: the error says it
+        restarted, and comes once Z2M is back online (or Z2M_RESTART_S has passed), so the remove can be tried again.
+        """
+        loop = asyncio.get_running_loop()
+        async with self._mqtt_messages(f"{Z2M_TOPIC}/response/device/remove") as responses:
+            await self._z2m_publish("device/remove", {"id": ieee})
+            deadline = loop.time() + Z2M_REQUEST_TIMEOUT_S
+            while await self.z2m_has_device(ieee):
+                if error := _remove_error(responses, ieee):
+                    break
+                if await self.z2m_state() == "offline":
+                    error = "Z2M went offline"
+                    break
+                if loop.time() > deadline:
+                    error = f"Zigbee2MQTT did not remove {ieee} within {Z2M_REQUEST_TIMEOUT_S} s"
+                    break
+                await asyncio.sleep(Z2M_POLL_S)
+            else:
+                return
+        restarted = await self._z2m_state_becomes("offline", Z2M_CRASH_WATCH_S)
+        if restarted and not await self._z2m_state_becomes("online", Z2M_RESTART_S):
+            error += f"; Z2M not back online within {Z2M_RESTART_S} s"
+        raise Z2MRemoveError(error, restarted)
+
+    async def z2m_force_remove(self, ieee: str) -> None:
+        """Delete a device from Zigbee2MQTT's database without a Leave, for a record of a device that isn't there."""
 
         async def done() -> bool:
             return not await self.z2m_has_device(ieee)
 
-        await self._z2m_request("device/remove", {"id": ieee}, done, f"remove {ieee}")
+        await self._z2m_request("device/remove", {"id": ieee, "force": True}, done, f"force remove {ieee}")
+
+    async def z2m_state(self) -> str | None:
+        """Zigbee2MQTT's retained bridge/state, `online` or `offline`; None if it has none."""
+        return await self._retained_state(f"{Z2M_TOPIC}/state")
+
+    async def _z2m_state_becomes(self, state: str, timeout: float) -> bool:
+        """Whether Z2M's bridge/state reads `state` within `timeout`."""
+        deadline = asyncio.get_running_loop().time() + timeout
+        while await self.z2m_state() != state:
+            if asyncio.get_running_loop().time() > deadline:
+                return False
+            await asyncio.sleep(Z2M_POLL_S)
+        return True
+
+    async def z2m_availability(self, name: str) -> str | None:
+        """`online` or `offline`, from Z2M's retained availability for the device `name`; None when Z2M's
+        availability is off or it published none. Z2M marks a mains device offline only after 10 min unheard."""
+        config = (await self.z2m_info()).get("config") or {}
+        enabled = config.get("availability")
+        if isinstance(enabled, dict):
+            enabled = enabled.get("enabled", True)
+        if not enabled:
+            return None
+        return await self._retained_state(f"zigbee2mqtt/{name}/availability")
+
+    async def z2m_answers(self, name: str) -> bool:
+        """Whether the Z2M device `name` answers a read of its on/off state (genOnOff) within Z2M_ANSWER_S."""
+        async with self._mqtt_messages(f"zigbee2mqtt/{name}") as messages:
+            await asyncio.sleep(Z2M_SETTLE_S)  # its retained state comes first, and is no answer
+            while not messages.empty():
+                messages.get_nowait()
+            payload = json.dumps({"state": ""})
+            await self.call_service("mqtt", "publish", {"topic": f"zigbee2mqtt/{name}/get", "payload": payload})
+            try:
+                await asyncio.wait_for(messages.get(), timeout=Z2M_ANSWER_S)
+            except TimeoutError:
+                return False
+            return True
+
+    async def _retained_state(self, topic: str) -> str | None:
+        """The `state` in a topic's retained message, or None if none comes within RETAINED_TIMEOUT_S."""
+        async with self._mqtt_messages(topic) as messages:
+            try:
+                return _state_of(await asyncio.wait_for(messages.get(), timeout=RETAINED_TIMEOUT_S))
+            except TimeoutError:
+                return None
 
     async def z2m_group(self, name: str) -> dict | None:
         """Zigbee2MQTT's entry for the group `name` in its retained bridge/groups (its `id` and `members`), or None."""

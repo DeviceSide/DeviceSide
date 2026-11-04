@@ -75,7 +75,10 @@ network stops recovery: reset it over Bluetooth in the Hue app, then `--recover`
 the Hue search ends gets one more, and any other device that joins the bridge meanwhile is named, not removed. Z2M
 opens joining on its coordinator only. A bulb from Hue that a ZHA or Z2M window still lacks 30 s after the last join,
 seen on no network, may have missed the bridge's Leave: the window closes, a Hue search takes it back, and it is
-released alone for one more window. `--roam-check` runs the cycle with no suites. Roaming needs `HA_ADMIN_TOKEN` and the Hue bridge's `HUE_BRIDGE_HOST` and `HUE_APP_KEY`.
+released alone for one more window. A network can list a bulb that left it (Z2M keeps a device whose remove
+failed): a bulb is placed where it is live, a dead ZHA or Z2M listing is deleted and named, and a bulb live on two
+networks, or listed but live on none, stops the move. A Z2M remove that a coordinator crash cut short is tried once
+more when Z2M is back. `--roam-check` runs the cycle with no suites. Roaming needs `HA_ADMIN_TOKEN` and the Hue bridge's `HUE_BRIDGE_HOST` and `HUE_APP_KEY`.
 
 `roam:` can also list `groups:`, native groups of those bulbs that the run makes on each network they visit: a Z2M
 group, a ZHA group, or a Hue zone with, if the group names a `scene:`, a Hue scene in it. Each is called
@@ -223,7 +226,9 @@ out in time.
 Z2M's frontend keeps only its last 1000 lines and HA's log restarts with HA, so a run captures both for you. Z2M's
 lines (for a run that touches Z2M, or roams) are written to `<report>.z2m.log` as they arrive, and HA's log, from the
 run's start, to `<report>.ha.log` when the run ends, both beside the report. A clean run deletes them; after a failure,
-a stopped move or a crash they stay and their paths are printed.
+a stopped move or a crash they stay and their paths are printed. When Z2M's coordinator crashed during the run
+(`ASH_NCP_FATAL_ERROR` or `Adapter disconnected` in Z2M's log), the summary says so with each crash's time, and the logs
+stay even after a clean run; at debug it also counts the ACK timeouts that lead up to one.
 
 `--debug-logs` keeps them whatever the outcome and runs HA's `device_side`, each integration the run touches (`hue`,
 `zha`, `mqtt` for Z2M, `shelly`, `matter`; Hue, ZHA and MQTT when it roams) and Z2M at debug until the run ends. It costs

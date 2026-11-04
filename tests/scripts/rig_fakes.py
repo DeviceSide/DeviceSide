@@ -57,6 +57,14 @@ class FakeHA(HAClient):
         self.z2m_interviews: list[str] = []  # each device/interview request's id
         self.on_open: Callable[[str], None] | None = None  # ZHA or Z2M joining opened (Lab joins its bulbs)
         self.on_leave: Callable[[str, str], None] | None = None  # (integration, IEEE) after a remove
+        self.z2m_offline: set[str] = set()  # IEEEs Z2M lists that aren't there: availability offline, no reply
+        self.z2m_availability_on = True  # bridge/info's config.availability.enabled
+        self.z2m_bridge_state = "online"  # the retained bridge/state
+        self.z2m_remove_fails: dict[str, int] = {}  # IEEE -> removes still to fail with an error response
+        self.z2m_crash_on_remove = False  # a failing remove takes Z2M offline, back online after z2m_restart_s
+        self.z2m_restart_s = 0.01
+        self._z2m_responses: list[asyncio.Queue[str]] = []  # live bridge/response/device/remove subscriptions
+        self._z2m_device_topics: dict[str, asyncio.Queue[str]] = {}  # live zigbee2mqtt/<name> subscriptions
 
     def join(self, integration: str, ieee: str, entity_id: str | None = None) -> str:
         """A bulb joins `integration` ("zha" or "zigbee2mqtt"), with a registry entity if `entity_id` is given."""
@@ -64,6 +72,7 @@ class FakeHA(HAClient):
         ident = ["zha", ieee] if integration == "zha" else ["mqtt", f"zigbee2mqtt_{ieee}"]
         self.devices.append({"id": device_id, "identifiers": [ident]})
         if integration == "zigbee2mqtt":
+            self.z2m_offline.discard(normalize_ieee(ieee))
             self.z2m_devices.append(ieee)
             self._z2m_interviewed(ieee)
         if entity_id is not None:
@@ -114,7 +123,7 @@ class FakeHA(HAClient):
         elif topic == "device/options":
             self.z2m_options.setdefault(payload["id"], {}).update(payload["options"])
         elif topic == "device/remove":
-            self._z2m_remove(payload["id"])
+            self._z2m_remove_request(payload)
         else:
             self._z2m_group_handle(topic, payload)
 
@@ -142,21 +151,40 @@ class FakeHA(HAClient):
             if self.z2m_failing[key] < 0:
                 del self.z2m_failing[key]
 
+    def _z2m_remove_request(self, payload: dict) -> None:
+        """A remove: forced, a database delete with no Leave; else one that may fail, and may crash Z2M doing it."""
+        ieee, key = payload["id"], normalize_ieee(payload["id"])
+        if payload.get("force"):
+            self._z2m_remove(ieee, leave=False)
+            return
+        if self.z2m_remove_fails.get(key):
+            self.z2m_remove_fails[key] -= 1
+            error = {"data": {"id": ieee}, "status": "error", "error": f"Failed to remove '{ieee}'"}
+            for queue in self._z2m_responses:
+                queue.put_nowait(json.dumps(error))
+            if self.z2m_crash_on_remove:
+                self.z2m_bridge_state = "offline"
+                loop = asyncio.get_running_loop()
+                PENDING.append(loop.call_later(self.z2m_restart_s, setattr, self, "z2m_bridge_state", "online"))
+            return
+        self._z2m_remove(ieee)
+
     def _z2m_entry(self, ieee: str) -> dict:
         failed = normalize_ieee(ieee) in self.z2m_failing
         return {
             "ieee_address": ieee,
+            "friendly_name": ieee,
             "interview_completed": not failed,
             "interview_state": "FAILED" if failed else "SUCCESSFUL",
         }
 
-    def _z2m_remove(self, ieee: str) -> None:
+    def _z2m_remove(self, ieee: str, leave: bool = True) -> None:
         self.z2m_devices = [i for i in self.z2m_devices if normalize_ieee(i) != normalize_ieee(ieee)]
         self.z2m_options.pop(ieee, None)  # as Z2M: a removed device's options go with it
         self._leave("zigbee2mqtt", ieee)
         for members in self.z2m_groups.values():
             members[:] = [i for i in members if normalize_ieee(i) != normalize_ieee(ieee)]
-        if self.on_leave is not None:
+        if leave and self.on_leave is not None:
             self.on_leave("zigbee2mqtt", ieee)
 
     async def error_log(self) -> str:
@@ -169,11 +197,26 @@ class FakeHA(HAClient):
         if topic.endswith("/logging"):
             yield self.z2m_logging
             return
+        queue: asyncio.Queue[str] = asyncio.Queue()
+        if not topic.startswith("zigbee2mqtt/bridge/"):
+            try:
+                yield await self._z2m_device_topic(topic.removeprefix("zigbee2mqtt/"), queue)
+            finally:
+                self._z2m_device_topics.pop(topic.removeprefix("zigbee2mqtt/"), None)
+            return
+        if topic.endswith("/response/device/remove"):
+            self._z2m_responses.append(queue)
+            try:
+                yield queue
+            finally:
+                self._z2m_responses.remove(queue)
+            return
         retained = {
             "info": {
                 "permit_join": self.z2m_open,
                 "log_level": self.z2m_level,
                 "config": {
+                    "availability": {"enabled": self.z2m_availability_on},
                     "devices": self.z2m_options,
                     "advanced": {"log_debug_to_mqtt_frontend": self.z2m_debug_to_mqtt},
                 },
@@ -187,10 +230,21 @@ class FakeHA(HAClient):
                 }
                 for name, members in self.z2m_groups.items()
             ],
+            "state": {"state": self.z2m_bridge_state},
         }[topic.removeprefix("zigbee2mqtt/bridge/")]
-        queue: asyncio.Queue[str] = asyncio.Queue()
         queue.put_nowait(json.dumps(retained))
         yield queue
+
+    async def _z2m_device_topic(self, topic: str, queue: asyncio.Queue[str]) -> asyncio.Queue[str]:
+        """A device's availability (retained), or its state topic, which a `/get` answers while the device is there."""
+        if topic.endswith("/availability"):
+            name = topic.removesuffix("/availability")
+            if any(normalize_ieee(i) == normalize_ieee(name) for i in self.z2m_devices):
+                state = "offline" if normalize_ieee(name) in self.z2m_offline else "online"
+                queue.put_nowait(json.dumps({"state": state}))
+        else:
+            self._z2m_device_topics[topic] = queue
+        return queue
 
     def set(self, entity_id: str, state: str, **attributes) -> None:
         # HA keeps an entity's name whatever its state; every other attribute is the new state's own.
@@ -216,7 +270,7 @@ class FakeHA(HAClient):
                     self.on_leave("zha", data["ieee"])
             return None
         if domain == "mqtt":
-            self._z2m_handle(data["topic"].removeprefix("zigbee2mqtt/bridge/request/"), json.loads(data["payload"]))
+            self._mqtt_publish(data["topic"], json.loads(data["payload"]))
             return None
         entity_id = data["entity_id"]
         attributes = {key: value for key, value in data.items() if key != "entity_id"}
@@ -228,6 +282,15 @@ class FakeHA(HAClient):
         if members:
             self.states[entity_id]["attributes"]["entity_id"] = members
         return None
+
+    def _mqtt_publish(self, topic: str, payload: dict) -> None:
+        """A Z2M bridge request, or a device's `/get`, answered while the device is there."""
+        if topic.endswith("/get"):
+            name = topic.removeprefix("zigbee2mqtt/").removesuffix("/get")
+            if normalize_ieee(name) not in self.z2m_offline and (queue := self._z2m_device_topics.get(name)):
+                queue.put_nowait(json.dumps({"state": "ON"}))
+            return
+        self._z2m_handle(topic.removeprefix("zigbee2mqtt/bridge/request/"), payload)
 
     async def get_state(self, entity_id: str) -> dict | None:
         return copy.deepcopy(self.states.get(entity_id))
@@ -403,7 +466,8 @@ class Lab:
         self.joins = 0
         self.searches = 0
         ha.on_open = self.opened
-        ha.on_leave = lambda _integration, ieee: self.searching.add(normalize_ieee(ieee))
+        self.stale_on: set[tuple[str, str]] = set()  # (network, IEEE): listings of bulbs that aren't there
+        ha.on_leave = self.left
         bridge.on_search = self.searched
         bridge.on_delete = self.deleted
         bridge.on_post = self.posted
@@ -419,6 +483,27 @@ class Lab:
             bridge.resources["room"]["r1"]["children"].append({"rid": device_id, "rtype": "device"})
             bridge.resources["zone"]["z1"]["children"].append({"rid": light_id, "rtype": "light"})
             bridge.resources["scene"]["s1"]["actions"].append(self.action(light_id, 50))
+
+    def left(self, integration: str, ieee: str) -> None:
+        """A Leave: the bulb searches, unless the listing was stale, when the Leave reaches nobody."""
+        if (integration, normalize_ieee(ieee)) in self.stale_on:
+            self.stale_on.discard((integration, normalize_ieee(ieee)))
+            return
+        self.searching.add(normalize_ieee(ieee))
+
+    def stale(self, network: str, ieee: str) -> None:
+        """`network` lists the bulb, which isn't there: Z2M, with its availability offline and no reply to a read
+        (as on 4 Nov, after a remove a coordinator crash cut short); ZHA, with its light unavailable."""
+        key = normalize_ieee(ieee)
+        self.stale_on.add((network, key))
+        if network == "zigbee2mqtt":
+            self.ha.join(network, hex_ieee(key))
+            self.ha.z2m_offline.add(key)
+        else:
+            self.joins += 1
+            entity_id = f"light.zha_stale_{self.joins}"
+            self.ha.join(network, colon_ieee(key), entity_id)
+            self.ha.set(entity_id, "unavailable")
 
     @staticmethod
     def action(light_id: str, brightness: int) -> dict:
@@ -453,6 +538,7 @@ class Lab:
 
     def add(self, network: str, ieee: str, entity_id: str | None = None) -> tuple[str, str]:
         self.searching.discard(ieee)
+        self.stale_on.discard((network, ieee))
         self.joins += 1
         n = self.joins
         entity_id = entity_id or f"light.{network}_bulb_{n}"
@@ -473,6 +559,7 @@ class Lab:
             "id": link,
             "mac_address": mac,
             "owner": {"rid": device_id},
+            "status": "connected",
         }
         self.ha.devices.append({"id": f"ha-{device_id}", "identifiers": [["hue", device_id]]})
         self.ha.register(entity_id, f"ha-{device_id}", "hue", light_id)

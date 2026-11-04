@@ -11,7 +11,7 @@ import pytest
 from tests.rig import engine
 from tests.rig.engine import load_step_file
 from tests.rig.journal import Journal
-from tests.rig.runlogs import DebugLevels, ha_domains, since
+from tests.rig.runlogs import DebugLevels, RunLogs, coordinator_crashes, ha_domains, since
 from tests.scripts import rig_fakes as fakes
 
 REPO = Path(__file__).parents[2]
@@ -98,6 +98,40 @@ async def test_the_ha_log_is_trimmed_to_the_runs_start(tmp_path, monkeypatch, ha
     with pytest.raises(RuntimeError):
         await go(tmp_path, "zigbee2mqtt")
     assert logs(tmp_path)["ha.log"] == f"{FUTURE} ERROR in the run\nTraceback: boom\n"
+
+
+CRASHED = (
+    "23:08:40.100 debug   [zh:ember:uart:ash] Timer expired waiting for ACK\n"
+    "23:08:46.200 error   [zh:ember:uart:ash] ASH_NCP_FATAL_ERROR\n"
+    "23:08:46.300 error   [zh:ember] Adapter disconnected\n"
+    "23:08:47.000 info    [z2m] Stopping\n"
+    "23:30:01.000 error   [zh:ember:uart:ash] ASH_NCP_FATAL_ERROR\n"
+    "23:31:00.000 info    [z2m] Delivery failed, ASH_NCP_FATAL_ERROR quoted at info isn't one\n"
+)
+
+
+def test_coordinator_crashes_are_counted_once_each_with_their_times():
+    assert coordinator_crashes(CRASHED) == (["23:08:46", "23:30:01"], 1)
+    assert coordinator_crashes("10:00:00.000 info    [z2m] fine\n") == ([], 0)
+
+
+def test_a_clean_run_whose_coordinator_crashed_says_so_and_keeps_the_log(tmp_path):
+    printed = []
+    logs = RunLogs(tmp_path, "rig run", datetime.datetime.now(), out=printed.append)
+    logs.z2m_path.write_text(CRASHED)
+    logs.written.append(logs.z2m_path)
+    logs.settle(clean=True)
+    assert "Z2M's coordinator crashed 2 times (23:08:46, 23:30:01)." in printed
+    assert "Z2M logged 1 ACK timeout with its coordinator." in printed
+    assert logs.z2m_path.exists() and f"Log: {logs.z2m_path}" in printed
+
+
+def test_a_clean_run_with_no_crash_still_deletes_its_logs(tmp_path):
+    logs = RunLogs(tmp_path, "rig run", datetime.datetime.now(), out=lambda _: None)
+    logs.z2m_path.write_text("10:00:00.000 info    [z2m] fine\n")
+    logs.written.append(logs.z2m_path)
+    logs.settle(clean=True)
+    assert not logs.z2m_path.exists()
 
 
 def test_a_log_with_nothing_from_the_start_on_is_kept_whole():
