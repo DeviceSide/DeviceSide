@@ -2,7 +2,7 @@
 
 When lights turn off for an hour, set brightness for next turn-on.
 
-![Set turn-on behavior](update-lights-after-turn-off--step-2.png)
+![Set turn-on behavior](set-turn-on-brightness--step-2.png)
 
 To set up this automation:
 
@@ -11,7 +11,7 @@ To set up this automation:
 3. Open the ⋮ menu and switch view to **Edit in YAML**
 4. Copy-paste the YAML below (replacing HA's placeholder YAML)
 5. Switch view back to **Edit in visual editor**
-6. Select the ["When something changes" entry](update-lights-after-turn-off--step-1.png?raw=true) and add your lights.
+6. Select the ["When something changes" entry](set-turn-on-brightness--step-1.png?raw=true) and add your lights.
 7. Select the "Set turn-on behavior" entry and choose your settings. Don't touch the Targets section.
 8. Click **Save**
 

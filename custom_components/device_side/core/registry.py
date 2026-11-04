@@ -60,12 +60,12 @@ class AdapterRegistry:
         return [info for info in self.integrations.values() if info.available]
 
     def call_resolvers(self) -> dict[str, CallResolver]:
-        """Each available integration's call resolver, by the registry platform of the entities it owns."""
+        """Each available integration's call resolver, by its ha_domain."""
         resolvers: dict[str, CallResolver] = {}
         for info in self.available_integrations():
             if info.call_resolver is not None:
                 if info.ha_domain in resolvers:
-                    raise ValueError(f"Two call resolvers for platform {info.ha_domain}")
+                    raise ValueError(f"Two call resolvers for ha_domain {info.ha_domain}")
                 resolvers[info.ha_domain] = info.call_resolver
         return resolvers
 

@@ -2,7 +2,7 @@
 """Check the adapters against the release gates: the coverage bar, and no experimental adapter in a release.
 
 `experimental=True` on an adapter's scope means it is not in a stable release yet. It is cleared by a PR citing a
-passing test record or tester issue that covers the scope.
+passing test record that covers the scope.
 
 Exits 1 on any adapter module under 95% line coverage (with --coverage), or any experimental adapter (with
 --release).

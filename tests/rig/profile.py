@@ -36,8 +36,6 @@ def main_checkout(repo: Path = REPO) -> Path:
 MAIN_CHECKOUT = main_checkout()
 PROFILES_DIR = MAIN_CHECKOUT / RIG_DIR.relative_to(REPO) / "profiles"
 EXAMPLE = RIG_DIR / "profile.example.yaml"  # the tracked template a profile is copied from
-# The single file profiles replaced; a run refuses while it is there, and the household check still reads it.
-LEGACY_INVENTORY = MAIN_CHECKOUT / RIG_DIR.relative_to(REPO) / "inventory.yaml"
 ENV_FILE = MAIN_CHECKOUT / ".env.rig"
 
 PAUSABLE = ("automation", "switch")

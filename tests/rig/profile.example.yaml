@@ -20,7 +20,7 @@
 # members lists a group's (or group_color's) lights, for a group light with no entity_id attribute (a Z2M group).
 #
 # roam: bulbs the run moves from their home round the networks it declares, of Hue -> ZHA -> Z2M, and home again
-# (docs/contributing/testing.md, Roaming). networks lists where they may go, home included; a run locks only those
+# (docs/rig.md, Shared state). networks lists where they may go, home included; a run locks only those
 # it visits, and on any other network their roles find no entity, so those cases skip. Each bulb's home is hue, the
 # only home supported so far. A roaming bulb is listed here only, never under an integration: each network's suites
 # use it while it is there. Its groups are native groups of those bulbs the run makes on each network
