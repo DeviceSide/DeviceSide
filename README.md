@@ -2,19 +2,21 @@
 
 [![HACS Default](https://img.shields.io/badge/HACS-Default-orange.svg)](https://hacs.xyz/) [![Latest Version](https://img.shields.io/github/v/release/jasonmx/device-side?sort=date)](https://github.com/jasonmx/device-side/releases) [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/jasonmx)
 
-Device Side unlocks native features in your lights, switches and plugs on the Zigbee, Shelly, Philips Hue and Matter integrations, so you can:
+Device Side unlocks native features in your lights, switches and plugs on the Zigbee, Shelly, Philips Hue and Matter integrations. It allows you to:
 
 * **Delay a turn-off:** Tell a device to turn off automatically, even if HA goes offline.
 
 * **Dim smoothly:** Press to dim and release to stop, using third-party buttons.
+
 * **Change colors smoothly:** Press to change color, release to stop.
+
 * **Set lights without turning on:** Pre-stage brightness, color, CT and scenes.
 
 Device Side also patches some usability quirks in individual integrations.
 
 ## How It Helps You 🔅💡🔆
 
-* **Convenient & reliable:** Replace automations with actions that survive HA restarts.
+* **Convenient & reliable:** Use one-shot actions that survive HA restarts.
 * **Silky smooth:** Brightness and color transitions are continuous and precise. No more jittery steps or overshoots.
 * **Predictable:** Prepare your lights to turn on how you want them, without unsightly color flashes or brightness extremes.
 * **Zero setup:** Connects to your devices automatically via the core integrations.
@@ -71,33 +73,21 @@ get_attributes
 
 Usability patches
 
-* Zigbee2MQTT lights now report color after hue/saturation commands.
+* On Zigbee2MQTT, Device Side fixes Home Assistant showing the wrong color for full-color bulbs, by [announcing both of their color modes](docs/integrations.md#what-device-side-changes-in-zigbee2mqtt).
 
-* ZHA optimistic turn-off...
+* During a brightness or saturation transition, Hue Bridge and ZHA report the end value speculatively to Home Assistant (e.g. 0% or 100%). This is jarring on dashboards and confusing for automations when lights report intermediate values later. By contrast, Zigbee2MQTT reports actual values with a short delay. Device Side aligns Hue's and ZHA's transition reports to the Zigbee2MQTT model.
 
-* Hue Bridge optimistic transition...
+These are on by default; turn them off in Device Side's options.
 
 [get Claude to check for others]
-
-|                        | Shelly                                     | Zigbee2MQTT | ZHA | Matter                  | Hue |
-|:---------------------- |:------------------------------------------:|:-----------:|:---:|:-----------------------:|:---:|
-| On With Timed Off      | ✅ switches, color bulbs<br>🙋 other lights |             |     | ✅ switches<br>🙋 lights | ❌   |
-| Off With Timed On      | ✅ switches, color bulbs<br>🙋 other lights | ❌           | ❌   | ❌                       | ❌   |
-| Smooth Dimming         |                                            |             |     |                         | ✅¹  |
-| Read Timer and Color   | ✅ switches, color bulbs<br>🙋 other lights |             |     | ✅ switches<br>🙋 lights |     |
-| Set Without Turning On |                                            |             |     |                         | ✅¹  |
-
-✅ Stable · 🙋 Ready for release once a [volunteer tests it](CONTRIBUTING.md) · ❌ Appears not possible
-
-¹ Available now in [Hue Smooth Dimming](https://github.com/jasonmx/hue-smooth-dimming).
 
 Details per integration are in [docs/integrations.md](docs/integrations.md), including the Zigbee2MQTT options Device Side sets on your devices. Shelly Gen 1, Hue Bridge v1, and Zigbee plugs and switches are unsupported.
 
 During a Hue fade, Home Assistant shows the brightness Device Side predicts, rather than the end value the bridge reports as the fade starts. This is on by default; turn it off in Device Side's options.
 
-On Zigbee2MQTT, Device Side fixes Home Assistant showing the wrong color for full-color bulbs, by [announcing both of their color modes](docs/integrations.md#what-device-side-changes-in-zigbee2mqtt). This is on by default; turn it off in Device Side's options.
 
-**Disclaimer:** Some devices pretend to support these features (they accept the commands but don't implement the behaviors). Test each of your devices with the Device Side actions before relying on device-native features.
+
+**Disclaimer:** Some devices pretend to support features that they don't. Test each of your devices with the Device Side actions before relying on device-native features.
 
 ## Get Started
 
