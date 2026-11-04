@@ -145,9 +145,9 @@ The auto-off timer is read back from the plug, so the result is `confirmed`, or 
 A Hue Bridge v2 or Bridge Pro on the core `hue` integration. A v1 bridge is refused (`bridge_v1`). Rooms and zones
 are targets in their own right.
 
-**No auto-off or auto-on timers.** The bridge's own timers keep running through a plain on or off, from Home Assistant, the
-Hue app or a dimmer switch, and the Hue app doesn't show them. To time Hue bulbs, pair them with ZHA, Zigbee2MQTT
-or Matter.
+**No auto-off or auto-on timers.** The bridge's own timers keep running through a plain on or off, from Home
+Assistant, the Hue app or a dimmer switch, and the Hue app doesn't show them. To time Hue bulbs, pair them with ZHA,
+Zigbee2MQTT or Matter.
 
 ### Smooth moves
 

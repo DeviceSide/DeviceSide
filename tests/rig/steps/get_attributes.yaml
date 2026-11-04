@@ -126,7 +126,7 @@ tests:
       - call: {}
       - expect_response: {attributes: {timer: null}}
 
-  - name: reads_a_turn_off_with_auto_on_timer
+  - name: reads_an_auto_on_timer
     roles: [switch_plug]
     only: [shelly]  # Matter has no OffWithTimedOn
     steps:

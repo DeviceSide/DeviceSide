@@ -228,10 +228,11 @@ held at 100 with the bulb on, and Home Assistant showed 100 from the bulb's repo
 3.9 s; a 4 s soft off read off, at level 1, by 4.3 s. Group `MoveToLevelWithOnOff` and `Stop` act as the unicast
 ones.
 
-Groups (2026-10-27, the LTA004, a Sengled E11-G13 and a plug): a unicast `turn_on_with_auto_off` takes about 0.23 s per member
-(0.34 s with brightness), so under `max_concurrency` 2 the last of 8 lights starts 0.7 to 1 s after the first. A
-group `OnWithTimedOff` returns in 0.02 s, zigpy's own success with no delivery feedback, and a member that refuses
-the command (the Sengled, `UNSUP_CLUSTER_COMMAND` by unicast) misses it silently, so each member is read back.
+Groups (2026-10-27, the LTA004, a Sengled E11-G13 and a plug): a unicast `turn_on_with_auto_off` takes about
+0.23 s per member (0.34 s with brightness), so under `max_concurrency` 2 the last of 8 lights starts 0.7 to 1 s
+after the first. A group `OnWithTimedOff` returns in 0.02 s, zigpy's own success with no delivery feedback, and a
+member that refuses the command (the Sengled, `UNSUP_CLUSTER_COMMAND` by unicast) misses it silently, so each member
+is read back.
 
 ## Matter
 
