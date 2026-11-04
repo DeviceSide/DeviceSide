@@ -15,6 +15,7 @@ v0.1.0 is the next release.
 
 | Slice | What | PRs |
 |---|---|---|
+| 13k | Rig: a group a network can't make ends the run as a `GroupError`, so the phases that passed keep their records and the bulbs go home | #207 |
 | 13k | Flag-clearing follow-up: composed group proof (CLAUDE.md), `sets_color_while_off` reads its color back, `predicted_state` out of the Hue saturation scopes, `saturation_stop_raise` and `hue_stop_raise`; clears Hue `raise_saturation` and `lower_saturation` (Z2M `lower_hue`'s group case failed twice on the lab's Z2M mesh) | #204 |
 | 13k | Flag audits clear 18 adapters on the lab records: Hue, ZHA, Z2M ([hue](docs/plans/2026-11-04-flag-audit-hue.md), [zha](docs/plans/2026-11-04-flag-audit-zha.md), [z2m](docs/plans/2026-11-04-flag-audit-z2m.md)) | #201, #202, #203 |
 | 13j | Z2M `set_attributes` and `stop` on the lab: read after the write fade, soft-off cut, rig settles and reads a joined bulb | #192, #196 |
