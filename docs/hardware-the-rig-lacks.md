@@ -35,4 +35,3 @@ Omissions, not missing hardware.
 | Entry | Issue |
 |---|---|
 | Shelly relay shown natively as a light (`light_onoff`): skipped for want of an inventory entry. Not covered by `switch_plug` or `light_wrapped`, which reach the call through other entities | #225 |
-| Shelly `hs_color` and `xy_color` (`fields_not_tested`): the rig's RGBCCT bulb can test them | #226 |

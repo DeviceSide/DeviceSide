@@ -4,6 +4,7 @@ import logging
 from typing import Any
 
 from homeassistant.core import State
+from homeassistant.util.color import color_hs_to_RGB, color_xy_to_RGB
 
 from .addressing import address, rpc_device
 from ...core.adapter import Adapter
@@ -34,8 +35,14 @@ def light_params(light: LightFields, component: str, state: State | None) -> dic
             high = state.attributes.get("max_color_temp_kelvin", kelvin)
             kelvin = min(max(kelvin, low), high)
         params["ct"] = kelvin
+    # Core's light.turn_on sends hs and xy to a light without those modes as rgb, at full value, whatever mode the
+    # light is in: light/helper.py process_turn_on_params. The schema allows one color per call.
     if light.rgb_color is not None:
         params["rgb"] = list(light.rgb_color)
+    elif light.hs_color is not None:
+        params["rgb"] = list(color_hs_to_RGB(*light.hs_color))
+    elif light.xy_color is not None:
+        params["rgb"] = list(color_xy_to_RGB(*light.xy_color))
     if component == "RGBCCT" and ("ct" in params or "rgb" in params):
         params["mode"] = "cct" if "ct" in params else "rgb"
     return params

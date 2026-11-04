@@ -18,15 +18,16 @@ _UNIQUE_ID = re.compile(r"^[^-]+-(?P<key>switch|light|cct|rgb|rgbcct|rgbw):(?P<i
 COMPONENTS = {"switch": "Switch", "light": "Light", "cct": "CCT", "rgb": "RGB", "rgbcct": "RGBCCT", "rgbw": "RGBW"}
 
 _DIMMABLE = frozenset({"brightness", "transition"})
+_COLOR = frozenset({"hs_color", "rgb_color", "xy_color"})
 
 # light.turn_on fields each component takes, as shelly/light.py translates them. A Switch shown as a light is on/off.
 COMPONENT_FIELDS = {
     "Switch": frozenset(),
     "Light": _DIMMABLE,
     "CCT": _DIMMABLE | {"color_temp_kelvin"},
-    "RGB": _DIMMABLE | {"rgb_color"},
-    "RGBW": _DIMMABLE | {"rgb_color"},
-    "RGBCCT": _DIMMABLE | {"color_temp_kelvin", "rgb_color"},
+    "RGB": _DIMMABLE | _COLOR,
+    "RGBW": _DIMMABLE | _COLOR,
+    "RGBCCT": _DIMMABLE | _COLOR | {"color_temp_kelvin"},
 }
 
 

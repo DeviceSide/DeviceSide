@@ -103,8 +103,8 @@ actions:
 | `brightness`        | Brightness (1–255). ZHA, Z2M, Shelly                                                                                   |
 | `color_temp_kelvin` | Color temperature (2000–6500 K). ZHA, Z2M, Shelly                                                                      |
 | `rgb_color`         | Color as `[red, green, blue]` (0–255 each). Z2M, Shelly                                                                |
-| `hs_color`          | Color as `[hue, saturation]` (0–360, 0–100). Z2M                                                                       |
-| `xy_color`          | Color as `[x, y]`. Z2M                                                                                                 |
+| `hs_color`          | Color as `[hue, saturation]` (0–360, 0–100). Z2M, Shelly                                                               |
+| `xy_color`          | Color as `[x, y]`. Z2M, Shelly                                                                                         |
 | `transition`        | Fade time (0–300 s). Z2M, Shelly                                                                                       |
 | `response_variable` | Variable that receives the response from each entity (optional)                                                        |
 

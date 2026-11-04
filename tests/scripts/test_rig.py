@@ -181,6 +181,8 @@ def test_select_plan_lines_and_estimate(profile):
         "    bulb_color_temp_then_off[light_ct]: no light_ct entity in the profile",
         "    bulb_transition_then_off[light_dimmable]: no light_dimmable entity in the profile",
         "    rgbcct_bulb_rgb_then_off[light_color]: no light_color entity in the profile",
+        "    rgbcct_bulb_hs_then_off[light_color]: no light_color entity in the profile",
+        "    rgbcct_bulb_xy_then_off[light_color]: no light_color entity in the profile",
         "hue / turn_off_for (no adapter, will skip)",
     ]
     assert rig.plan_lines(shelly_on, profile, registry, "on_then") == [
