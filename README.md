@@ -23,18 +23,20 @@ Device Side also patches some usability quirks in individual integrations.
 
 ## Features
 
-| Action                                   | ZHA | Z2M | Shelly | Hue Bridge | Matter |
-|:--------------------------------------- |:---:|:---:|:------:|:----------:|:------:|
-| `turn_on_for`                            | ✅   | ✅   | ✅      |            | ✅      |
-| `turn_off_for`                           |     |     | ✅      |            |        |
-| `raise_brightness`<br>`lower_brightness`<br>`stop` | ✅   | ✅   |        | ✅          |        |
-| `raise_saturation`<br>`lower_saturation`<br>`stop` | ✅   | ✅   |        | ✅          |        |
-| `raise_hue`<br>`lower_hue`<br>`stop`               | ✅   | ✅   |        |            |        |
-| `set_attributes`                         | ✅   | ✅   |        | ✅          |        |
-| `set_scene`                              |     |     |        | ✅          |        |
-| `get_attributes`                         | ✅   | ✅   | ✅      | ✅          | ✅      |
+| Feature                                                          | ZHA | Z2M | Shelly | Hue Bridge | Matter |
+|:---------------------------------------------------------------- |:---:|:---:|:------:|:----------:|:------:|
+| [Delayed off](#timed-onoff)                                      | ✅  | ✅  | ✅     |            | ✅     |
+| [Delayed on](#timed-onoff)                                       |     |     | ✅     |            |        |
+| [Smooth dimming](#smooth-dimming)                                | ✅  | ✅  |        | ✅         |        |
+| [Smooth saturation change](#smooth-color-transitions)            | ✅  | ✅  |        | ✅         |        |
+| [Smooth hue change](#smooth-color-transitions)                   | ✅  | ✅  |        |            |        |
+| [Set lights without turning on](#set-lights-without-turning-on) | ✅  | ✅  |        | ✅         |        |
+| [Set scenes without turning on](#set-lights-without-turning-on) |     |     |        | ✅         |        |
+| [Get attributes](#get-attributes)                                | ✅  | ✅  | ✅     | ✅         | ✅     |
 
 ### Timed on/off
+
+Actions: `turn_on_for`, `turn_off_for`
 
 Turn on or off, with a delayed flip back. Flip-back timer runs on the device. Example use cases:
 
@@ -42,15 +44,27 @@ Turn on or off, with a delayed flip back. Flip-back timer runs on the device. Ex
 - Run a bathroom fan for 20 minutes after a shower.
 - Power-cycle your router via a smart plug.
 
-### Smooth Dimming & Color Transitions
+### Smooth Dimming
 
-Create polished “press to dim or change color, release to stop" automations. Transitions run natively on the device, with one command to start and a second to stop.
+Actions: `raise_brightness`, `lower_brightness`, `stop`
+
+Create polished “press to dim, release to stop" automations. Transitions run natively on the device, with one command to start and a second to stop.
+
+### Smooth Color Transitions
+
+Actions: `raise_saturation`, `lower_saturation`, `raise_hue`, `lower_hue`, `stop`
+
+Create polished “press to change color, release to stop" automations. Transitions run natively on the device, with one command to start and a second to stop.
 
 ### Set Lights Without Turning On
+
+Actions: `set_attributes`, `set_scene`
 
 Set scenes, brightness, color and color temperature while the lights are off, so that they turn on smoothly without unsightly color or brightness flashes.
 
 ### Get Attributes
+
+Action: `get_attributes`
 
 Read device attributes that aren't exposed reliably by Home Assistant. Example use cases:
 
@@ -158,25 +172,20 @@ actions:
 
 ***
 
-### Smooth Dimming & Color Transitions
+### Smooth Dimming
 
-| Action                         | Description                                                    |
-|:------------------------------ |:-------------------------------------------------------------- |
-| `device_side.raise_brightness` | Start raising brightness, turning the light on                 |
-| `device_side.lower_brightness` | Start lowering brightness                                      |
-| `device_side.raise_saturation` | Start raising saturation, toward a richer color                |
-| `device_side.lower_saturation` | Start lowering saturation, toward white                        |
-| `device_side.raise_hue`        | Start cycling hue: red, yellow, green, blue. Runs until `stop` |
-| `device_side.lower_hue`        | Start cycling hue: red, magenta, blue, green. Runs until `stop` |
-| `device_side.stop`             | Freeze every move on the target where it is                    |
+| Action                         | Description                                    |
+|:------------------------------ |:---------------------------------------------- |
+| `device_side.raise_brightness` | Start raising brightness, turning the light on |
+| `device_side.lower_brightness` | Start lowering brightness                      |
+| `device_side.stop`             | Freeze every move on the target where it is    |
 
-| Field        | Actions                             | Description                                                                         |
-|:------------ |:----------------------------------- |:----------------------------------------------------------------------------------- |
-| `target`     | all                                 | Lights and groups (required)                                                        |
-| `sweep_time` | raise, lower                        | Seconds a full 0–100% sweep takes, or one turn of the color wheel (default 5 s)     |
-| `limit`      | raise_brightness, raise_saturation  | Maximum (default 100%)                                                              |
-| `limit`      | lower_brightness                    | Minimum brightness (default 0%). The light turns off at 0%. Choose 0.4%+ to keep it on |
-| `limit`      | lower_saturation                    | Minimum saturation (default 0%)                                                     |
+| Field        | Actions          | Description                                                                             |
+|:------------ |:---------------- |:--------------------------------------------------------------------------------------- |
+| `target`     | all              | Lights and groups (required)                                                            |
+| `sweep_time` | raise, lower     | Seconds a full 0–100% sweep takes (default 5 s)                                         |
+| `limit`      | raise_brightness | Maximum brightness (default 100%)                                                       |
+| `limit`      | lower_brightness | Minimum brightness (default 0%). The light turns off at 0%. Choose 0.4%+ to keep it on |
 
 To move several lights in step, target a Hue room or zone, or a Zigbee2MQTT or ZHA group, instead of separate lights. One group-wide Zigbee message then moves them together.
 
@@ -190,6 +199,37 @@ right_button_held:
   - action: device_side.raise_brightness
 
 buttons_released:
+  - action: device_side.stop
+```
+
+***
+
+### Smooth Color Transitions
+
+| Action                         | Description                                                     |
+|:------------------------------ |:--------------------------------------------------------------- |
+| `device_side.raise_saturation` | Start raising saturation, toward a richer color                 |
+| `device_side.lower_saturation` | Start lowering saturation, toward white                         |
+| `device_side.raise_hue`        | Start cycling hue: red, yellow, green, blue. Runs until `stop`  |
+| `device_side.lower_hue`        | Start cycling hue: red, magenta, blue, green. Runs until `stop` |
+| `device_side.stop`             | Freeze every move on the target where it is                     |
+
+| Field        | Actions          | Description                                                                 |
+|:------------ |:---------------- |:--------------------------------------------------------------------------- |
+| `target`     | all              | Lights and groups (required)                                                |
+| `sweep_time` | raise, lower     | Seconds a full 0–100% saturation sweep or one turn of the color wheel takes (default 5 s) |
+| `limit`      | raise_saturation | Maximum saturation (default 100%)                                           |
+| `limit`      | lower_saturation | Minimum saturation (default 0%)                                             |
+
+Groups move in step, as for dimming.
+
+#### YAML Example: Hold to cycle color
+
+```yaml
+button_held:
+  - action: device_side.raise_hue
+
+button_released:
   - action: device_side.stop
 ```
 
