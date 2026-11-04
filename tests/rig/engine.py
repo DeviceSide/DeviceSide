@@ -1301,9 +1301,10 @@ class _CaseRun:
             for name, want in expect[key].items():
                 if not _matches(entry.get(name), expected := self.expected(name, want)):
                     raise StepFailure(f"{key}: {name} is {entry.get(name)!r}, expected {expected!r}: {entry}")
-            if "attributes" in args:
-                want = attributes[key]
-                got = entry if self.query else entry.get("attributes") or {}
+            if args["attributes"]:
+                if not self.query:
+                    raise StepFailure(f"attributes are checked in a query's response, not {self.last_action}'s")
+                want, got = attributes[key], entry
                 if bad := [attr for attr, value in want.items() if not _matches(_lookup(got, attr), value)]:
                     raise StepFailure(f"{key}: attributes {bad} are {got}, expected {want}")
 
