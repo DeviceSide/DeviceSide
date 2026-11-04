@@ -1750,6 +1750,23 @@ def test_a_step_file_lists_options_by_name(tmp_path):
         load_step_file(path)
 
 
+def test_a_step_file_lists_the_log_lines_it_expects_as_patterns(tmp_path):
+    path = tmp_path / "steps.yaml"
+    path.write_text(option_file().replace("rig_seconds: 5", "rig_seconds: 5\nexpected_log: ['timed out']"))
+    assert [pattern.pattern for pattern in load_step_file(path).expected_log] == ["timed out"]
+
+
+@pytest.mark.parametrize(
+    ("value", "error"),
+    [("'timed out'", "expected_log must be a list"), ("['']", "expected_log must be a list"), ("['(']", "'\\(': ")],
+)
+def test_expected_log_must_be_a_list_of_regular_expressions(tmp_path, value, error):
+    path = tmp_path / "steps.yaml"
+    path.write_text(option_file().replace("rig_seconds: 5", f"rig_seconds: 5\nexpected_log: {value}"))
+    with pytest.raises(engine.SchemaError, match=error):
+        load_step_file(path)
+
+
 async def test_a_record_with_options_on_is_named_for_them(tmp_path):
     steps = suite(tmp_path, option_file("predicted_state"), "hue")
     case = CaseResult("t[light_ct]", "light_ct", "light", Outcome.PASS)

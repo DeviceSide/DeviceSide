@@ -4,6 +4,7 @@ how the run ended, and the debug levels raised for the run's integrations and pu
 import asyncio
 import datetime
 import importlib.util
+import re
 from pathlib import Path
 
 import pytest
@@ -12,7 +13,7 @@ from tests.rig import baseline, engine
 from tests.rig.baseline import Baseline
 from tests.rig.engine import load_step_file
 from tests.rig.journal import Journal
-from tests.rig.runlogs import DebugLevels, RunLogs, coordinator_crashes, ha_domains, since
+from tests.rig.runlogs import DebugLevels, RunLogs, coordinator_crashes, device_side_lines, ha_domains, since
 from tests.scripts import rig_fakes as fakes
 
 REPO = Path(__file__).parents[2]
@@ -42,9 +43,10 @@ def ha(monkeypatch, tmp_path) -> LoggedHA:
     return ha
 
 
-def suites(tmp_path: Path, *integrations: str) -> list[rig.Suite]:
+def suites(tmp_path: Path, *integrations: str, expected_log: str = "") -> list[rig.Suite]:
     path = tmp_path / "steps.yaml"
-    path.write_text(fakes.RESTORED_MIDWAY)
+    head = f"expected_log: [{expected_log!r}]\n" if expected_log else ""
+    path.write_text(head + fakes.RESTORED_MIDWAY)
     return [rig.Suite(load_step_file(path), integration) for integration in integrations]
 
 
@@ -68,10 +70,10 @@ def phases(monkeypatch, ha: LoggedHA, crash: bool = False, during=None):
     monkeypatch.setattr(rig, "wait_for_targets", wait_for_targets)
 
 
-async def go(tmp_path: Path, *integrations: str, **kwargs) -> int:
+async def go(tmp_path: Path, *integrations: str, expected_log: str = "", **kwargs) -> int:
     return await rig.run_rig(
-        {"HA_ADMIN_TOKEN": "a"}, suites(tmp_path, *integrations), fakes.profile("zigbee2mqtt"), None, None, True, None,
-        **kwargs,
+        {"HA_ADMIN_TOKEN": "a"}, suites(tmp_path, *integrations, expected_log=expected_log),
+        fakes.profile("zigbee2mqtt"), None, None, True, None, **kwargs,
     )  # fmt: skip
 
 
@@ -135,9 +137,57 @@ def test_a_clean_run_with_no_crash_still_deletes_its_logs(tmp_path):
     assert not logs.z2m_path.exists()
 
 
-def test_a_log_with_nothing_from_the_start_on_is_kept_whole():
-    log = "2000-01-01 00:00:00.000 INFO old\n"
-    assert since(log, datetime.datetime.now()) == log
+WARNED = (
+    f"{FUTURE} WARNING (MainThread) [custom_components.device_side.core.dispatcher] stop on zha timed out after 5s\n"
+    f"{FUTURE} ERROR (MainThread) [custom_components.device_side] Error setting up entry\n"
+    "Traceback (most recent call last):\n"
+    f"{FUTURE} INFO (MainThread) [custom_components.device_side.core] loaded\n"
+    f"{FUTURE} WARNING (MainThread) [custom_components.device_side_extra] another integration\n"
+    f"{FUTURE} ERROR (MainThread) [homeassistant.components.zha] not ours\n"
+)
+
+
+def test_device_side_warnings_and_errors_are_picked_out_of_the_ha_log():
+    unexpected, matched = device_side_lines(WARNED)
+    assert [line.split("[", 1)[1] for line in unexpected] == [
+        "custom_components.device_side.core.dispatcher] stop on zha timed out after 5s",
+        "custom_components.device_side] Error setting up entry",
+    ]
+    assert matched == 0
+    assert device_side_lines(WARNED, [re.compile(r"dispatcher\] stop on zha timed out")]) == ([unexpected[1]], 1)
+
+
+async def test_an_unexpected_device_side_warning_fails_a_clean_run_and_keeps_its_logs(
+    tmp_path, monkeypatch, ha, capsys
+):
+    phases(monkeypatch, ha)
+    ha.ha_log = WARNED
+    assert await go(tmp_path, "zigbee2mqtt") == 1
+    out = capsys.readouterr().out
+    assert "HA's log has 2 device_side warnings or errors no step file expects:" in out
+    assert "stop on zha timed out after 5s" in out
+    assert sorted(logs(tmp_path)) == ["ha.log", "z2m.log"]
+
+
+async def test_a_warning_a_step_file_expects_is_counted_and_fails_nothing(tmp_path, monkeypatch, ha, capsys):
+    phases(monkeypatch, ha)
+    ha.ha_log = WARNED.splitlines(keepends=True)[0]
+    assert await go(tmp_path, "zigbee2mqtt", expected_log="stop on zha timed out") == 0
+    assert "HA's log has 1 device_side warning or error the step files expect." in capsys.readouterr().out
+    assert logs(tmp_path) == {}
+
+
+def test_a_log_with_nothing_from_the_start_on_has_no_run_lines():
+    assert since("2000-01-01 00:00:00.000 INFO old\n", datetime.datetime.now()) is None
+
+
+async def test_a_log_with_nothing_from_the_start_on_is_kept_whole_and_not_checked(tmp_path, monkeypatch, ha, capsys):
+    phases(monkeypatch, ha, crash=True)
+    ha.ha_log = WARNED.replace(FUTURE, "2000-01-01 00:00:00.000")
+    with pytest.raises(RuntimeError):
+        await go(tmp_path, "zigbee2mqtt")
+    assert logs(tmp_path)["ha.log"] == ha.ha_log
+    assert "so its device_side warnings aren't checked" in capsys.readouterr().out
 
 
 async def test_a_clean_run_deletes_its_logs(tmp_path, monkeypatch, ha):
