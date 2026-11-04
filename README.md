@@ -36,7 +36,7 @@ Device Side also patches some usability quirks in individual integrations.
 
 Details per integration are in [docs/integrations.md](docs/integrations.md).
 
-**Warning:** Some devices accept commands for features that they don't support. Test each of your devices with Device Side before relying on device-native features.
+**Warning:** Some devices accept commands for features that they don't fully support. Test each of your devices with Device Side before relying on device-native features.
 
 ### Delayed Off
 
@@ -44,7 +44,7 @@ Action: `turn_on_for`
 
 Turn on, then off after a delay. Timer runs on the device. Example use cases:
 
-- Cut power to a heater or ironing station after 4 hours.
+- Cut power to a heater or ironing station after 4 hours, if someone left it on.
 - Run a fan for 20 minutes after a shower.
 
 ### Delayed On
@@ -81,19 +81,19 @@ Read device attributes that aren't exposed reliably by Home Assistant:
 
 * Check a device's on/off timer.
 
-* Check a light's brightness, color or color temperature while it's off or transitioning.
+* Check brightness, color or color temperature while a light is off or transitioning.
 
 ### Usability patches
 
-* **Full-color lights on Zigbee2MQTT:**
+* **Color lights on Zigbee2MQTT:**
 
-  * Home Assistant shows the wrong color for full-color bulbs in HS mode. Device Side fixes this by [announcing both of their color modes](docs/integrations.md#what-device-side-changes-in-zigbee2mqtt).
+  * Home Assistant shows the wrong color for full-color bulbs in hue-saturation (HS) mode. Device Side fixes this by [announcing both of their color modes](docs/integrations.md#what-device-side-changes-in-zigbee2mqtt).
 
   * Hue bulbs: before a delayed off with a color, Device Side turns on Z2M's Hue native control setting for that bulb, so it comes on in the new color instead of flashing its last one.
 
 * **Hue Bridge:** When a brightness move starts, the bridge reports its target brightness (e.g. 0% or 100%) to Home Assistant, which is jarring for moves that you plan to stop. Device Side suppresses the bridge's report when a transition starts, and reports the new brightness once the transition stops.
 
-The color-mode and Hue Bridge patches are on by default; turn them off in Device Side's options.
+The HS mode and Hue Bridge patches are on by default; turn them off in Device Side's options.
 
 ## Get Started
 
@@ -307,7 +307,6 @@ To set brightness for the next turn-on from the visual editor, see [docs/example
 | Field               | Description                                             |
 |:------------------- |:------------------------------------------------------- |
 | `target`            | Lights and switches (required)                          |
-| `response_variable` | Name of a variable that receives the records (required) |
 
 A record holds the keys the device reports: `brightness` (%), `color_temp_kelvin`, `rgb_color`, `hs_color`, `xy_color`, and `timer` while one runs. `timer` holds `turns` (`on` or `off`), `ends_at` (UTC) and `remaining_s`.
 
