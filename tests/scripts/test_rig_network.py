@@ -162,6 +162,30 @@ async def test_z2m_request_that_never_takes_effect_times_out(monkeypatch):
         await ha.z2m_force_remove(IEEE)
 
 
+async def test_z2m_close_is_sent_again_while_joining_stays_open(quick_z2m, monkeypatch, capsys):
+    monkeypatch.setattr("tests.rig.client.Z2M_REQUEST_TIMEOUT_S", 1)
+    monkeypatch.setattr("tests.rig.client.Z2M_CLOSE_RETRY_S", 0.02)
+    ha = FakeHA({})
+    await ha.z2m_permit_join(120)
+    ha.z2m_busy_closes = 1
+    await ha.z2m_permit_join(0)
+    assert not await ha.z2m_permit_join_open()
+    closes = [c for c in ha.calls if json.loads(c[2]["payload"])["time"] == 0]
+    assert len(closes) == 2
+    assert "sending the close again (2/3)" in capsys.readouterr().out
+
+
+async def test_z2m_close_that_always_fails_stops_after_its_tries(quick_z2m, monkeypatch):
+    monkeypatch.setattr("tests.rig.client.Z2M_REQUEST_TIMEOUT_S", 1)
+    monkeypatch.setattr("tests.rig.client.Z2M_CLOSE_RETRY_S", 0.02)
+    ha = FakeHA({})
+    await ha.z2m_permit_join(120)
+    ha.z2m_busy_closes = 99
+    with pytest.raises(TimeoutError, match="did not close joining"):
+        await ha.z2m_permit_join(0)
+    assert len([c for c in ha.calls if json.loads(c[2]["payload"])["time"] == 0]) == 3
+
+
 @pytest.fixture
 def quick_z2m(monkeypatch):
     for name, value in (("Z2M_REQUEST_TIMEOUT_S", 0.05), ("Z2M_POLL_S", 0.01), ("Z2M_CRASH_WATCH_S", 0.05)):

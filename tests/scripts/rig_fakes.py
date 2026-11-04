@@ -45,6 +45,7 @@ class FakeHA(HAClient):
         self.z2m_devices: list[str] = []
         self.z2m_groups: dict[str, list[str]] = {}
         self.z2m_group_ids: dict[str, int] = {}
+        self.z2m_busy_closes = 0  # permit_join closes Z2M fails with BUSY before one takes
         self.z2m_ignores: set[str] = set()  # request topics Z2M never acts on
         self.z2m_options: dict[str, dict] = {}  # device options by IEEE, as bridge/info's config.devices
         self.z2m_level = "warning"  # Z2M's log level
@@ -112,6 +113,9 @@ class FakeHA(HAClient):
         if topic in self.z2m_ignores:
             return
         if topic == "permit_join":
+            if payload["time"] == 0 and self.z2m_busy_closes:
+                self.z2m_busy_closes -= 1  # Z2M's radio answers BUSY: the request fails, joining stays open
+                return
             self.z2m_open = payload["time"] > 0
             if self.z2m_open and self.on_open is not None:
                 self.on_open("zigbee2mqtt")

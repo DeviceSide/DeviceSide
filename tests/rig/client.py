@@ -18,6 +18,8 @@ Z2M_COORDINATOR = "Coordinator"  # the coordinator's friendly name, which permit
 RETAINED_TIMEOUT_S = 5
 Z2M_REQUEST_TIMEOUT_S = 30
 Z2M_POLL_S = 0.5
+Z2M_CLOSE_TRIES = 3  # a close Z2M answers with an error (radio BUSY after a join) is sent again
+Z2M_CLOSE_RETRY_S = 5  # how long a close gets to show in bridge/info before it is sent again
 Z2M_ANSWER_S = 10  # for a device to answer a read through Z2M; no reply means it isn't there
 Z2M_SETTLE_S = 1.0  # after subscribing to a device's topic, for its retained state, which is no answer, to land
 Z2M_CRASH_WATCH_S = 30  # after a failed remove, for Z2M to go offline: its coordinator crashed
@@ -283,8 +285,28 @@ class HAClient:
         async def done() -> bool:
             return await self.z2m_permit_join_open() == (seconds > 0)
 
-        payload = {"time": seconds, "device": Z2M_COORDINATOR} if seconds else {"time": 0}
-        await self._z2m_request("permit_join", payload, done, f"{'open' if seconds else 'close'} joining")
+        if seconds:
+            await self._z2m_request("permit_join", {"time": seconds, "device": Z2M_COORDINATOR}, done, "open joining")
+            return
+        # Right after a join the radio can answer a close with BUSY: Z2M closes the stack but bridge/info keeps
+        # permit_join true, and nothing resends it. So send it again while the window still shows open.
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + Z2M_REQUEST_TIMEOUT_S
+        for attempt in range(1, Z2M_CLOSE_TRIES + 1):
+            await self._z2m_publish("permit_join", {"time": 0})
+            last = attempt == Z2M_CLOSE_TRIES
+            attempt_end = deadline if last else min(deadline, loop.time() + Z2M_CLOSE_RETRY_S)
+            while not await done():
+                if loop.time() >= attempt_end:
+                    break
+                await asyncio.sleep(Z2M_POLL_S)
+            else:
+                return
+            if not last and loop.time() < deadline:
+                print(
+                    f"Zigbee2MQTT still shows joining open; sending the close again ({attempt + 1}/{Z2M_CLOSE_TRIES})"
+                )
+        raise TimeoutError(f"Zigbee2MQTT did not close joining within {Z2M_REQUEST_TIMEOUT_S} s")
 
     async def z2m_log_level(self) -> str | None:
         """Zigbee2MQTT's log level, from its retained bridge/info."""
