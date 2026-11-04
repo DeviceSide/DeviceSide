@@ -7,14 +7,16 @@ Delete this file in the v0.1.0 release PR.
 
 ## Releases
 
-`v0.0.1` is out, and the HACS submission ([hacs/default#12611](https://github.com/hacs/default/pull/12611)) is
-waiting for review. Until it is accepted, no release or RC is cut. Everything lands on `release/v0.0.2`, and
-v0.1.0 is the next release.
+`v0.0.1` is out, and HACS accepted the submission ([hacs/default#12611](https://github.com/hacs/default/pull/12611))
+on 4 Nov 2026. v0.1.0 is next: everything lands on `release/v0.1.0` (cut from `release/v0.0.2`'s head, which is
+retired; v0.0.2 is not released). Release candidates resume from that branch, and v0.1.0 ships every adapter passing
+its tests, no soak.
 
 ## Done since v0.0.1
 
 | Slice | What | PRs |
 |---|---|---|
+| 12 | Release housekeeping: HACS accepted, `release/v0.1.0` cut, manifest version 0.1.0 | this PR |
 | 12 | `docs/integrations.md` rewritten for users; addressing, wire commands and tested behavior moved to `docs/contributing/integration-internals.md`; README's turn-on cancel claim limited to Shelly | #218 |
 | 12 | Example page: screenshots retaken with Device Side's `set_attributes` | #217 |
 | 12 | README for v0.1.0: Key Features table, one usage section per feature, Hue Smooth Dimming migration, facts checked against the code (item 12's table half; the experimental half stays open) | #214 |
