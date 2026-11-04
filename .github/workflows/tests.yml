@@ -9,7 +9,38 @@ on:
       - "wt/**"
 
 jobs:
+  # A change touching only *.md files and docs/ skips pytest. The skip happens in the job, not the trigger: the
+  # ruleset requires the "pytest" check, which a skipped job satisfies and a workflow that never ran leaves pending.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Look for changes outside docs
+        id: diff
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          # A new branch's push has an all-zero base, and a force push's may be gone: test those.
+          if ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            code=true
+          else
+            files=$(git diff --name-only --no-renames "$BASE...$HEAD")
+            echo "$files"
+            if [ -n "$files" ] && grep -qvE '(\.md$|^docs/)' <<<"$files"; then code=true; else code=false; fi
+          fi
+          echo "code=$code" | tee -a "$GITHUB_OUTPUT"
+
   pytest:
+    needs: changes
+    # Fails open: tests run unless the changes job succeeded and found docs only.
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.code != 'false') }}
     runs-on: ubuntu-latest
 
     steps:
