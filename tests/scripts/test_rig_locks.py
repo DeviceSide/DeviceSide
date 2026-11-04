@@ -226,9 +226,7 @@ def test_an_exclusive_wait_leaves_its_own_integrations_out_of_the_holders(tmp_pa
     assert "hue:" not in printed[0]
 
 
-def test_claims_take_their_integrations_in_sorted_order(tmp_path, monkeypatch):
-    """Two claims over the same integrations, listed in either order, take them in one order, which is what keeps two
-    runs from each holding what the other waits for: the second waits on the first's first lock, holding nothing."""
+def test_a_run_blocked_on_one_lock_names_its_holder_and_takes_them_all_once_free(tmp_path, monkeypatch):
     first = locks.hold(Claim("shared", frozenset(["zha", "hue"])), "wt/first", tmp_path, out=quiet())
     printed: list[str] = []
 
@@ -239,7 +237,39 @@ def test_claims_take_their_integrations_in_sorted_order(tmp_path, monkeypatch):
     second = locks.hold(Claim("exclusive", frozenset(["hue", "zha"])), "wt/second", tmp_path, out=printed.append)
     assert printed[0].startswith("Another rig run holds the hue lock: wt/first")
     assert len(second.handles) == 3
+    assert (tmp_path / locks.integration_lock("zha")).read_text().startswith("wt/second ")
     second.close()
+
+
+def test_a_waiting_run_holds_none_of_its_locks(tmp_path, monkeypatch):
+    """A run waiting for zha leaves hue, which it also claims, and HA to a run that is ready."""
+    first = locks.hold(claim("zha"), "wt/zha", tmp_path, out=quiet())
+    seen: list[bool] = []
+
+    def meanwhile(_seconds):
+        seen.extend([blocked(tmp_path, claim("hue")), blocked(tmp_path, EXCLUSIVE)])
+        first.close()
+
+    monkeypatch.setattr(locks.time, "sleep", meanwhile)
+    with locks.hold(claim("hue", "zha"), "wt/both", tmp_path, out=quiet()):
+        assert seen == [False, True]  # HA: first still holds it shared
+        assert blocked(tmp_path, claim("hue"))
+        assert blocked(tmp_path, claim("zha"))
+
+
+def test_a_deploy_waiting_for_ha_leaves_its_integrations_free(tmp_path, monkeypatch):
+    sharing = locks.hold(claim("hue"), "wt/hue", tmp_path, out=quiet())
+    seen: list[bool] = []
+
+    def meanwhile(_seconds):
+        seen.append(blocked(tmp_path, claim("zha")))
+        sharing.close()
+
+    monkeypatch.setattr(locks.time, "sleep", meanwhile)
+    with locks.hold(claim("zha", ha="exclusive"), "wt/deploy", tmp_path, out=quiet()):
+        assert seen == [False]
+        assert blocked(tmp_path, claim("zha"))
+        assert blocked(tmp_path, SHARED)
 
 
 def test_a_failed_wait_lets_go_of_what_it_took(tmp_path):

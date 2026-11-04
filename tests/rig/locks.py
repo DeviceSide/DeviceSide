@@ -6,9 +6,11 @@ HA is back (Held.share_ha). It holds each integration it moves exclusively. So r
 by side. A deploy waits until HA is free and holds off no one meanwhile: a shared run that is ready goes ahead of it,
 for throughput now over a deploy's wait.
 
-flock drops a lock when its process dies, so nothing goes stale. Locks are taken in one order (the integrations
-sorted, then HA), so two runs never each hold what the other waits for. A waiting run polls, and says who holds what
-it waits for, with their Claude Code session so a waiting agent can message them.
+flock drops a lock when its process dies, so nothing goes stale. A run takes all its locks at once or none, and holds
+nothing while it waits: no two runs each hold what the other waits for, and a run that is ready never queues behind
+one that waits. Who goes first is whoever polls first, so a big claim may wait behind a stream of small ones, for
+throughput now. A waiting run polls, and says who holds what it waits for, with their Claude Code session so a waiting
+agent can message them.
 """
 
 import contextlib
@@ -170,24 +172,41 @@ def write_holder(handle: TextIO, holder: str) -> None:
     handle.flush()
 
 
+@dataclass(slots=True)
+class Waiting:
+    """A wait for locks: says who holds what it waits for, again whenever that changes, and colors the workspace
+    amber from the first."""
+
+    out: Out
+    waiting_on: str | None = None
+
+    @property
+    def waited(self) -> bool:
+        return self.waiting_on is not None
+
+    def on(self, name: str, held_by: str) -> None:
+        """`name` is held by `held_by`: say so if that is news, then sleep a poll."""
+        what = f"{name}: {held_by}"
+        if what != self.waiting_on:
+            if self.waiting_on is None:
+                workspace_color(WORKSPACE_QUEUED)
+            self.out(f"Another rig run holds {what}. Waiting for it to finish (Ctrl-C to give up)...")
+            self.waiting_on = what
+        time.sleep(LOCK_POLL_S)
+
+
 def wait_for_lock(
     handle: TextIO, operation: int, out: Out, name: str = "the rig lock", holders: Callable[[], str] | None = None
 ) -> bool:
     """Take `operation` (LOCK_EX or LOCK_SH) on `handle`, polling while it is held and saying who holds it (`holders`,
     else the entry in the file), and again whenever that changes. Returns whether it had to wait."""
-    waiting_on = None
+    waiting = Waiting(out)
     while True:
         try:
             fcntl.flock(handle, operation | fcntl.LOCK_NB)
-            return waiting_on is not None
+            return waiting.waited
         except BlockingIOError:
-            held_by = holders() if holders else read_holder(handle)
-            if held_by != waiting_on:
-                if waiting_on is None:
-                    workspace_color(WORKSPACE_QUEUED)
-                out(f"Another rig run holds {name}: {held_by}. Waiting for it to finish (Ctrl-C to give up)...")
-                waiting_on = held_by
-            time.sleep(LOCK_POLL_S)
+            waiting.on(name, holders() if holders else read_holder(handle))
 
 
 def free(path: Path, operation: int = fcntl.LOCK_EX) -> bool:
@@ -239,33 +258,47 @@ def holders(directory: Path, claim: Claim) -> list[str]:
 
 
 def hold(claim: Claim, holder: str, directory: Path, out: Out = print) -> Held:
-    """Take `claim`'s locks, waiting for each in turn: the integrations sorted, then HA, so no two runs each hold what
-    the other waits for. Every lock held alone gets `holder`'s entry, for whoever waits on it.
-
-    An exclusive claim waiting for HA keeps out no shared one: it waits until HA is free."""
+    """Take `claim`'s locks all at once, or, while any is held, none, polling until they are all free: a waiting run
+    holds nothing, so a run that is ready never queues behind it. Every lock held alone gets `holder`'s entry, for
+    whoever waits on it."""
     held = Held(claim)
-    waited = False
+    waiting = Waiting(out)
     try:
         for integration in sorted(claim.integrations):
-            handle = (directory / integration_lock(integration)).open("a+")
-            held.handles.append(handle)
-            waited |= wait_for_lock(handle, fcntl.LOCK_EX, out, f"the {integration} lock")
+            held.handles.append((directory / integration_lock(integration)).open("a+"))
+        held.ha = (directory / LOCK_NAME).open("a+")
+        held.handles.append(held.ha)
+        while blocker := take_all(held, directory):
+            waiting.on(*blocker)
+        for handle in held.handles[:-1]:
             write_holder(handle, holder)
-        ha = (directory / LOCK_NAME).open("a+")
-        held.handles.append(ha)
-        held.ha = ha
         if claim.ha == "exclusive":
-            waited |= wait_for_lock(ha, fcntl.LOCK_EX, out, "HA", lambda: ha_holders(directory, claim.integrations))
-            write_holder(ha, holder)
-        else:
-            waited |= wait_for_lock(ha, fcntl.LOCK_SH, out, "HA")
+            write_holder(held.ha, holder)
     except BaseException:
         held.close()
         raise
-    if waited:
+    if waiting.waited:
         out(f"Rig locks acquired: {claim}.")
     workspace_color(WORKSPACE_HELD)
     return held
+
+
+def take_all(held: Held, directory: Path) -> tuple[str, str] | None:
+    """Try each of `held`'s locks at once (its integrations sorted, then HA). If one is held, let go of those taken and
+    return its name and who holds it; None once all are taken."""
+    exclusive = held.claim.ha == "exclusive"
+    names = [f"the {integration} lock" for integration in sorted(held.claim.integrations)] + ["HA"]
+    for index, (handle, name) in enumerate(zip(held.handles, names, strict=True)):
+        is_ha = handle is held.ha
+        try:
+            fcntl.flock(handle, (fcntl.LOCK_SH if is_ha and not exclusive else fcntl.LOCK_EX) | fcntl.LOCK_NB)
+        except BlockingIOError:
+            for taken in held.handles[:index]:
+                fcntl.flock(taken, fcntl.LOCK_UN)
+            if is_ha and exclusive:
+                return name, ha_holders(directory, held.claim.integrations)
+            return name, read_holder(handle)
+    return None
 
 
 def wait_free(directory: Path, integrations: Iterable[str] | None = None, out: Out = print) -> None:
