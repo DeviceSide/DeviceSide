@@ -72,9 +72,9 @@ Device Side's actions are drop-in replacements for Hue Smooth Dimming, apart fro
 
 ### Auto-off timer
 
-Action: `device_side.turn_on_with_auto_off`
+Action: `device_side.turn_on_for`
 
-Turn on, then off after a delay. Timer runs on the device. Example use cases:
+Turn on, then off after a delay. Timer runs on the device, for this turn-on only: it doesn't change a Shelly's own Auto OFF setting. Example use cases:
 
 - Cut power to a heater or ironing station automatically, in case someone leaves it on.
 - Run a fan for 20 minutes after a shower.
@@ -83,7 +83,7 @@ Turn on, then off after a delay. Timer runs on the device. Example use cases:
 
 ```yaml
 actions:
-  - action: device_side.turn_on_with_auto_off
+  - action: device_side.turn_on_for
     target:
       entity_id: switch.heater
     data:
@@ -137,7 +137,7 @@ The following actions cancel an auto-off timer, on a device that's on:
 
 ### Auto-on timer
 
-Action: `device_side.turn_off_with_auto_on`
+Action: `device_side.turn_off_for`
 
 Turn off, then on after a delay. Timer runs on the device. Example use case:
 

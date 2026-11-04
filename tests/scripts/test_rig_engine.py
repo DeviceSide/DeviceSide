@@ -47,7 +47,7 @@ TOLERANCE = {"shelly": TOL, "zha": TOL, "zigbee2mqtt": TOL, "hue": TOL, "fake": 
 REGISTRY = AdapterRegistry.discover()
 
 ON_THEN_OFF = """
-action: turn_on_with_auto_off
+action: turn_on_for
 rig_seconds: 5
 tests:
   - name: on_then_off
@@ -80,7 +80,7 @@ async def _cancel_pending():
 
 
 def timer_on(ha: FakeHA, action: str, data: dict) -> dict:
-    """turn_on_with_auto_off as a device with a working timer: on now, off after the duration."""
+    """turn_on_for as a device with a working timer: on now, off after the duration."""
     entity_id = data["entity_id"]
     ha.set(entity_id, "on")
     ha.later(data["duration"]["seconds"], entity_id, "off")
@@ -105,11 +105,7 @@ async def test_a_timed_on_off_passes_and_restores(tmp_path):
     ha = FakeHA({"switch.plug": {"state": "on"}}, timer_on)
     result = await run_one(ha, suite(tmp_path, ON_THEN_OFF), profile(switch_plug="switch.plug"))
     assert outcomes(result) == {"on_then_off[switch_plug]": (Outcome.PASS, "")}
-    assert (
-        "device_side",
-        "turn_on_with_auto_off",
-        {"entity_id": "switch.plug", "duration": {"seconds": 0.6}},
-    ) in ha.calls
+    assert ("device_side", "turn_on_for", {"entity_id": "switch.plug", "duration": {"seconds": 0.6}}) in ha.calls
     assert ha.calls[-1] == ("switch", "turn_on", {"entity_id": "switch.plug"})
     assert not result.failed
 
@@ -139,7 +135,7 @@ async def test_a_sent_status_fails_where_the_adapter_can_confirm(tmp_path):
 
 
 REFUSAL = """
-action: turn_on_with_auto_off
+action: turn_on_for
 rig_seconds: 5
 tests:
   - name: refuses
@@ -182,15 +178,13 @@ async def test_a_call_that_succeeds_where_an_error_is_expected_fails(tmp_path):
 async def test_an_unexpected_error_fails_the_call_step(tmp_path):
     ha = FakeHA({"switch.plug": {}}, refuse("capability_not_tested"))
     result = await run_one(ha, suite(tmp_path, ON_THEN_OFF), profile(switch_plug="switch.plug"))
-    assert outcomes(result)["on_then_off[switch_plug]"][1].startswith(
-        "step 2 (call): device_side.turn_on_with_auto_off raised"
-    )
+    assert outcomes(result)["on_then_off[switch_plug]"][1].startswith("step 2 (call): device_side.turn_on_for raised")
 
 
 async def test_a_failure_still_restores_brightness(tmp_path):
     ha = FakeHA({"light.lamp": {"state": "on", "attributes": {"brightness": 50, "hs_color": [30, 50]}}}, None)
     text = """
-action: turn_on_with_auto_off
+action: turn_on_for
 rig_seconds: 5
 tests:
   - name: fails
@@ -328,7 +322,7 @@ tests:
 
 
 OBSERVED = """
-action: turn_on_with_auto_off
+action: turn_on_for
 rig_seconds: 5
 tests:
   - name: on_then_off
@@ -413,7 +407,7 @@ async def test_a_report_lists_every_suite_with_its_reasons(tmp_path):
     path = write_report(result, tmp_path / "reports", "rig run 2026-10-26 14:03:05")
     assert path == tmp_path / "reports" / "rig-run-2026-10-26-140305.md"
     text = path.read_text()
-    assert text.startswith("# rig run 2026-10-26 14:03:05\n\n## shelly / turn_on_with_auto_off\n")
+    assert text.startswith("# rig run 2026-10-26 14:03:05\n\n## shelly / turn_on_for\n")
     assert "| fail: step 5 (expect_state): switch.plug: expected {'state': 'off'}" in text
     assert "| skipped: automated case failed |" in text
 
@@ -440,13 +434,13 @@ async def test_setup_runs_before_the_brief_and_the_steps_after_enter(tmp_path):
     start = printed.index("1 test needs you")
     assert printed[start + 1 : start + 5] == [
         "",
-        "--- turn_on_with_auto_off / on_then_off on switch_plug (1 of 1) ---",
+        "--- turn_on_for / on_then_off on switch_plug (1 of 1) ---",
         "Lights: switch.plug",
         "You'll see: \033[1mIt clicks on then off.\033[0m",
     ]
     enter = calls_at_enter[0]
     assert ha.calls[enter - 1] == ("switch", "turn_off", {"entity_id": "switch.plug"})
-    assert ha.calls[enter][:2] == ("device_side", "turn_on_with_auto_off")
+    assert ha.calls[enter][:2] == ("device_side", "turn_on_for")
 
 
 async def test_an_observed_case_relaxes_its_checks(tmp_path):
@@ -457,7 +451,7 @@ async def test_an_observed_case_relaxes_its_checks(tmp_path):
         return {data["entity_id"]: {"status": "sent"}}
 
     text = """
-action: turn_on_with_auto_off
+action: turn_on_for
 rig_seconds: 5
 tests:
   - name: ramps
@@ -509,7 +503,7 @@ async def test_a_call_that_raises_after_enter_says_there_is_nothing_to_observe(t
     assert asked == ["Press Enter to start... ", "Press Enter to go on... "]
     outcome, detail = outcomes(result)[WATCHED]
     assert outcome is Outcome.FAIL
-    assert detail.startswith("step 1 (call): device_side.turn_on_with_auto_off raised targets_failed")
+    assert detail.startswith("step 1 (call): device_side.turn_on_for raised targets_failed")
     assert f"    nothing to observe: {detail}" in printed
 
 
@@ -532,13 +526,13 @@ async def test_every_automated_case_runs_before_the_first_brief(tmp_path):
     assert len(automated) == 2
     assert max(automated) < printed.index("2 tests need you") < min(briefs)
     assert [printed[index] for index in briefs] == [
-        "--- turn_on_with_auto_off / on_then_off on switch_plug (1 of 2) ---",
-        "--- turn_on_with_auto_off / on_then_off on switch_plug (2 of 2) ---",
+        "--- turn_on_for / on_then_off on switch_plug (1 of 2) ---",
+        "--- turn_on_for / on_then_off on switch_plug (2 of 2) ---",
     ]
 
 
 ONLY = """
-action: turn_on_with_auto_off
+action: turn_on_for
 rig_seconds: 5
 tests:
   - name: everywhere
@@ -616,7 +610,7 @@ async def test_eof_at_the_question_leaves_the_case_not_observed(tmp_path):
 
 async def test_an_observed_case_relaxes_expect_error(tmp_path):
     text = """
-action: turn_on_with_auto_off
+action: turn_on_for
 rig_seconds: 5
 tests:
   - name: refuses
@@ -669,7 +663,7 @@ async def test_the_brief_counts_only_the_observed_cases_that_run(tmp_path):
     inv = profile(switch_plug="switch.plug")
     await run([steps], inv, REGISTRY, ha, tolerance=TOLERANCE, out=printed.append, ask=lambda _: "y")
     assert [line for line in printed if line.startswith("---")] == [
-        "--- turn_on_with_auto_off / everywhere on switch_plug (1 of 1) ---"
+        "--- turn_on_for / everywhere on switch_plug (1 of 1) ---"
     ]
 
 
@@ -679,7 +673,7 @@ async def test_a_suite_without_an_adapter_is_skipped(tmp_path):
 
 
 GROUP = """
-action: turn_on_with_auto_off
+action: turn_on_for
 rig_seconds: 5
 tests:
   - name: every_member
@@ -705,7 +699,7 @@ async def test_attributes_in_a_command_response_fail_the_step(tmp_path):
     result = await run_one(ha, steps, profile("fake", group="light.room"), registry=GROUP_REGISTRY)
     outcome, detail = outcomes(result)["every_member[group]"]
     assert outcome is Outcome.FAIL
-    assert detail.endswith("attributes are checked in a query's response, not turn_on_with_auto_off's")
+    assert detail.endswith("attributes are checked in a query's response, not turn_on_for's")
 
 
 def members_on(*members: str) -> Callable:
@@ -724,11 +718,9 @@ GROUP_REGISTRY = SimpleNamespace(
 )
 
 
-# Like Z2M: a turn_on_with_auto_off adapter, and none for get_attributes or set_attributes.
+# Like Z2M: a turn_on_for adapter, and none for get_attributes or set_attributes.
 NO_ATTRIBUTES_REGISTRY = SimpleNamespace(
-    adapter=lambda action, integration: (
-        GROUP_REGISTRY.adapter(action, integration) if action == "turn_on_with_auto_off" else None
-    )
+    adapter=lambda action, integration: GROUP_REGISTRY.adapter(action, integration) if action == "turn_on_for" else None
 )
 
 
@@ -968,15 +960,13 @@ tests:
   - name: reads_a_timer
     roles: [switch_plug]
     steps:
-      - call: {action: turn_on_with_auto_off, duration: 20}
+      - call: {action: turn_on_for, duration: 20}
       - call: {}
 """
 
-# Like Hue: a get_attributes adapter, and none for turn_on_with_auto_off.
+# Like Hue: a get_attributes adapter, and none for turn_on_for.
 NO_TIMER_REGISTRY = SimpleNamespace(
-    adapter=lambda action, integration: (
-        None if action == "turn_on_with_auto_off" else GROUP_REGISTRY.adapter(action, integration)
-    )
+    adapter=lambda action, integration: None if action == "turn_on_for" else GROUP_REGISTRY.adapter(action, integration)
 )
 
 
@@ -984,22 +974,20 @@ async def test_a_case_calling_an_action_without_an_adapter_is_skipped(tmp_path):
     ha = FakeHA({"switch.plug": {}}, lambda ha, action, data: {})
     steps = suite(tmp_path, CROSS_ACTION, "hue")
     result = await run_one(ha, steps, profile("hue", switch_plug="switch.plug"), registry=NO_TIMER_REGISTRY)
-    assert outcomes(result) == {
-        "reads_a_timer[switch_plug]": (Outcome.SKIPPED, "no turn_on_with_auto_off adapter on hue")
-    }
+    assert outcomes(result) == {"reads_a_timer[switch_plug]": (Outcome.SKIPPED, "no turn_on_for adapter on hue")}
     assert not ha.calls
 
 
 def test_a_case_calling_an_action_with_an_adapter_runs(tmp_path):
     steps = suite(tmp_path, CROSS_ACTION, "hue")
     adapters = engine.adapters_for(steps, GROUP_REGISTRY)
-    assert adapters == {"turn_on_with_auto_off"}
+    assert adapters == {"turn_on_for"}
     (case,) = cases(steps, profile("hue", switch_plug="switch.plug"), adapters=adapters)
     assert case.skip is None
 
 
 SAMPLE = """
-action: turn_on_with_auto_off
+action: turn_on_for
 rig_seconds: 5
 tests:
   - name: ramps
@@ -1126,7 +1114,7 @@ async def test_a_sample_reads_a_dotted_attribute(tmp_path):
 
 
 MATCHES_READ = """
-action: turn_on_with_auto_off
+action: turn_on_for
 rig_seconds: 5
 tests:
   - name: matches
@@ -1220,9 +1208,7 @@ def test_the_engine_knows_every_raise_and_lower_action():
 
 
 async def test_duration_before_any_call_fails_the_step(tmp_path):
-    text = (
-        "action: turn_on_with_auto_off\nrig_seconds: 5\ntests:\n  - name: early\n    roles: [switch_plug]\n    steps:\n"
-    )
+    text = "action: turn_on_for\nrig_seconds: 5\ntests:\n  - name: early\n    roles: [switch_plug]\n    steps:\n"
     text += "      - wait: duration\n"
     result = await run_one(FakeHA({"switch.plug": {}}), suite(tmp_path, text), profile(switch_plug="switch.plug"))
     detail = outcomes(result)["early[switch_plug]"][1]
@@ -1243,9 +1229,9 @@ async def test_a_full_pass_writes_a_record_and_a_failure_writes_none(tmp_path):
     assert await write_records(failed, REGISTRY, tmp_path / "test-records", "2026-10-25", "test", "lab") == []
 
     [path] = await write_records(passed, REGISTRY, tmp_path / "test-records", "2026-10-25", "rig run", "lab")
-    assert path == tmp_path / "test-records" / "shelly" / "turn_on_with_auto_off.md"
+    assert path == tmp_path / "test-records" / "shelly" / "turn_on_for.md"
     record = path.read_text()
-    assert record.startswith("# Shelly · turn_on_with_auto_off\n")
+    assert record.startswith("# Shelly · turn_on_for\n")
     assert "| Device | Mini (`S3`), firmware `2.0` |" in record
     assert "| Profile | lab |" in record
     assert "| `on_then_off[switch_plug]` | `switch` (switch_plug) | pass |" in record
@@ -1289,7 +1275,7 @@ async def test_a_failed_facts_lookup_keeps_the_run_and_writes_no_record(tmp_path
 
 def header(role: str) -> str:
     """A one-test step file on `role`, steps to follow."""
-    return f"action: turn_on_with_auto_off\nrig_seconds: 5\ntests:\n  - name: t\n    roles: [{role}]\n    steps:\n"
+    return f"action: turn_on_for\nrig_seconds: 5\ntests:\n  - name: t\n    roles: [{role}]\n    steps:\n"
 
 
 async def test_a_failed_restore_is_logged_and_keeps_the_result(tmp_path, caplog):
@@ -1448,7 +1434,7 @@ async def test_an_entity_that_never_rejoins_is_logged_after_the_deadline(tmp_pat
 
 
 Z2M_COLOR = """
-action: turn_on_with_auto_off
+action: turn_on_for
 rig_seconds: 5
 tests:
   - name: color_then_off
@@ -2039,9 +2025,7 @@ def bridge_inventory() -> Profile:
 
 async def run_bridge(tmp_path, bridge, ha=None, text=BRIDGE_STEPS, integration="hue") -> dict:
     ha = ha or BridgeHA()
-    steps = suite(
-        tmp_path, text.replace("set_scene", "turn_on_with_auto_off") if integration == "shelly" else text, integration
-    )
+    steps = suite(tmp_path, text.replace("set_scene", "turn_on_for") if integration == "shelly" else text, integration)
     result = await run_one(
         ha,
         steps,

@@ -12,7 +12,7 @@ from .raise_hue import ZHARaiseHue
 from .raise_saturation import ZHARaiseSaturation
 from .set_attributes import ZHASetAttributes
 from .stop import ZHAStop
-from .turn_on_with_auto_off import ZHATurnOnWithAutoOff
+from .turn_on_for import ZHATurnOnFor
 from ...core.scope import IntegrationInfo
 
 INTEGRATION = IntegrationInfo(
@@ -35,5 +35,5 @@ ADAPTERS = [
     ZHARaiseSaturation,
     ZHASetAttributes,
     ZHAStop,
-    ZHATurnOnWithAutoOff,
+    ZHATurnOnFor,
 ]

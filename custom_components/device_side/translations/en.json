@@ -175,7 +175,7 @@
       "name": "Stop",
       "description": "Stops every raise and lower in flight on the target, whichever attribute, where it is now."
     },
-    "turn_off_with_auto_on": {
+    "turn_off_for": {
       "name": "Auto-on timer",
       "description": "Devices turn off, then on again after a delay. To cancel the auto-on timer, send a regular turn off.",
       "fields": {
@@ -185,7 +185,7 @@
         }
       }
     },
-    "turn_on_with_auto_off": {
+    "turn_on_for": {
       "name": "Auto-off timer",
       "description": "Devices turn on, then off again after a delay. To cancel the auto-off timer, send a regular turn on (on ZHA, a turn off).",
       "fields": {

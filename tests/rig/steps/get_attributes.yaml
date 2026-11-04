@@ -57,7 +57,7 @@ tests:
     only: [zigbee2mqtt]
     steps:
       - set: {state: off}
-      - call: {action: turn_on_with_auto_off, duration: 20}
+      - call: {action: turn_on_for, duration: 20}
       - call: {}
       - expect_response: {attributes: {timer.turns: "off", timer.remaining_s: {min: 15, max: 20}}}
       - expect_state: {state: off, within: 20 + 2 * tol}
@@ -105,7 +105,7 @@ tests:
     steps:
       - set: {state: off}
       - wait: 2  # ZHA ignores a light's "on" report for 1.5 s after light.turn_off
-      - call: {action: turn_on_with_auto_off, duration: 20}
+      - call: {action: turn_on_for, duration: 20}
       - expect_state: {state: on, within: tol}
       - call: {}
       - expect_response: {attributes: {timer.turns: "off", timer.remaining_s: {min: 15, max: 20}}}
@@ -121,7 +121,7 @@ tests:
     roles: [switch_plug]
     steps:
       - set: {state: off}
-      - call: {action: turn_on_with_auto_off, duration: 20}
+      - call: {action: turn_on_for, duration: 20}
       - set: {state: off}
       - call: {}
       - expect_response: {attributes: {timer: null}}
@@ -131,7 +131,7 @@ tests:
     only: [shelly]  # Matter has no OffWithTimedOn
     steps:
       - set: {state: on}
-      - call: {action: turn_off_with_auto_on, duration: 20}
+      - call: {action: turn_off_for, duration: 20}
       - call: {}
       - expect_response: {attributes: {timer.turns: "on", timer.remaining_s: {min: 15, max: 20}}}
       - expect_state: {state: on, within: 20 + 2 * tol}

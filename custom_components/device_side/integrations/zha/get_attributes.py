@@ -77,7 +77,7 @@ class ZHAGetAttributes(Adapter[Request]):
     action: ClassVar[str] = "get_attributes"
     integration: ClassVar[str] = "zha"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        # Zigbee plugs don't honor OnTime (see turn_on_with_auto_off), so a switch row would always be empty.
+        # Zigbee plugs don't honor OnTime (see turn_on_for), so a switch row would always be empty.
         domains=frozenset({"light"}),
         max_concurrency=2,
         confirmable=True,

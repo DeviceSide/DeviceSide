@@ -1,7 +1,7 @@
 """Matter over the core matter integration's connection to python-matter-server."""
 
 from .get_attributes import MatterGetAttributes
-from .turn_on_with_auto_off import MatterTurnOnWithAutoOff
+from .turn_on_for import MatterTurnOnFor
 from ...core.scope import IntegrationInfo
 
 INTEGRATION = IntegrationInfo(
@@ -11,4 +11,4 @@ INTEGRATION = IntegrationInfo(
     max_concurrency=2,
 )
 
-ADAPTERS = [MatterGetAttributes, MatterTurnOnWithAutoOff]
+ADAPTERS = [MatterGetAttributes, MatterTurnOnFor]

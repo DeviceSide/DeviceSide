@@ -1,4 +1,4 @@
-"""Shelly turn_on_with_auto_off: one <Component>.Set with toggle_after, GetStatus read-back."""
+"""Shelly turn_on_for: one <Component>.Set with toggle_after, GetStatus read-back."""
 
 import dataclasses
 from unittest.mock import call as rpc_call
@@ -6,7 +6,7 @@ from unittest.mock import call as rpc_call
 import pytest
 from homeassistant.exceptions import HomeAssistantError
 
-from custom_components.device_side.integrations.shelly.turn_on_with_auto_off import ShellyTurnOnWithAutoOff
+from custom_components.device_side.integrations.shelly.turn_on_for import ShellyTurnOnFor
 
 from ...conftest import call, refusal
 from ...fixtures.fake import add_switch_as_x
@@ -18,15 +18,15 @@ CONFIRMED = {"status": "confirmed", "integration": "shelly"}
 @pytest.fixture
 def every_light_in_scope(monkeypatch):
     """Light, CCT, RGB and RGBW as test records would add them; until then they are refused first."""
-    scope = dataclasses.replace(ShellyTurnOnWithAutoOff.scope, capabilities=None)
-    monkeypatch.setattr(ShellyTurnOnWithAutoOff, "scope", scope)
+    scope = dataclasses.replace(ShellyTurnOnFor.scope, capabilities=None)
+    monkeypatch.setattr(ShellyTurnOnFor, "scope", scope)
 
 
 async def test_switch_one_set_then_read_back(hass, setup_production):
     entry, call_rpc = shelly_device(hass)
     add_shelly_entity(hass, entry, "switch.porch", "switch:1")
 
-    response = await call(hass, "turn_on_with_auto_off", {"entity_id": "switch.porch", "duration": 5})
+    response = await call(hass, "turn_on_for", {"entity_id": "switch.porch", "duration": 5})
 
     assert response == {"switch.porch": CONFIRMED}
     assert call_rpc.await_args_list == [
@@ -40,7 +40,7 @@ async def test_light_fields_ride_in_the_same_set(hass, setup_production, every_l
     add_shelly_entity(hass, entry, "light.desk", "light:0")
 
     response = await call(
-        hass, "turn_on_with_auto_off", {"entity_id": "light.desk", "duration": 5, "brightness": 128, "transition": 0.2}
+        hass, "turn_on_for", {"entity_id": "light.desk", "duration": 5, "brightness": 128, "transition": 0.2}
     )
 
     assert response == {"light.desk": CONFIRMED}
@@ -66,7 +66,7 @@ async def test_rgbcct_sets_mode_and_clamps_kelvin_to_the_entity_range(hass, setu
     kelvin_range = {"min_color_temp_kelvin": 2700, "max_color_temp_kelvin": 6500}
     add_shelly_entity(hass, entry, "light.bulb", "rgbcct:0", attributes=kelvin_range)
 
-    response = await call(hass, "turn_on_with_auto_off", {"entity_id": "light.bulb", "duration": 5, **data})
+    response = await call(hass, "turn_on_for", {"entity_id": "light.bulb", "duration": 5, **data})
 
     assert response == {"light.bulb": CONFIRMED}
     assert call_rpc.await_args_list[0] == rpc_call("RGBCCT.Set", {"id": 0, "on": True, "toggle_after": 5.0, **expected})
@@ -76,7 +76,7 @@ async def test_switch_drops_light_fields(hass, setup_production):
     entry, call_rpc = shelly_device(hass)
     add_shelly_entity(hass, entry, "switch.porch", "switch:0")
 
-    response = await call(hass, "turn_on_with_auto_off", {"entity_id": "switch.porch", "duration": 5, "brightness": 10})
+    response = await call(hass, "turn_on_for", {"entity_id": "switch.porch", "duration": 5, "brightness": 10})
 
     # The dispatcher drops brightness for a switch domain; the timer still runs.
     assert response == {"switch.porch": {**CONFIRMED, "detail": "fields_dropped"}}
@@ -88,7 +88,7 @@ async def test_switch_as_x_light_sends_the_switch_call(hass, setup_production):
     add_shelly_entity(hass, entry, "switch.porch", "switch:0")
     add_switch_as_x(hass, "light.porch", "switch.porch")
 
-    response = await call(hass, "turn_on_with_auto_off", {"entity_id": "light.porch", "duration": 5})
+    response = await call(hass, "turn_on_for", {"entity_id": "light.porch", "duration": 5})
 
     assert response == {"light.porch": CONFIRMED}
     assert call_rpc.await_args_list[0] == rpc_call("Switch.Set", {"id": 0, "on": True, "toggle_after": 5.0})
@@ -110,7 +110,7 @@ async def test_component_fields_not_in_component_are_dropped(
     entry, call_rpc = shelly_device(hass)
     add_shelly_entity(hass, entry, entity_id, key)
 
-    response = await call(hass, "turn_on_with_auto_off", {"entity_id": entity_id, "duration": 5, **data})
+    response = await call(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5, **data})
 
     assert response[entity_id] == {**CONFIRMED, "detail": "fields_dropped"}
 
@@ -121,14 +121,11 @@ async def test_relay_drops_brightness_and_dimmer_is_refused_by_capability(hass, 
     add_shelly_entity(hass, entry, "light.dimmer", "light:0")
 
     # A relay-as-light drops brightness it can't take and still runs the timer.
-    response = await call(hass, "turn_on_with_auto_off", {"entity_id": "light.relay", "duration": 5, "brightness": 10})
+    response = await call(hass, "turn_on_for", {"entity_id": "light.relay", "duration": 5, "brightness": 10})
     assert response["light.relay"] == {**CONFIRMED, "detail": "fields_dropped"}
 
     # An untested capability (Light:0) raises before any new sends.
-    assert (
-        await refusal(hass, "turn_on_with_auto_off", {"entity_id": "light.dimmer", "duration": 5})
-        == "capability_not_tested"
-    )
+    assert await refusal(hass, "turn_on_for", {"entity_id": "light.dimmer", "duration": 5}) == "capability_not_tested"
     assert [args.args[0] for args in call_rpc.await_args_list] == ["Switch.Set", "Switch.GetStatus"]
 
 
@@ -139,17 +136,9 @@ async def test_gen1_and_non_timer_entities_are_refused(hass, setup_production):
     add_shelly_entity(hass, entry, "switch.child_lock", "boolean:200-boolean_child_lock")
     add_shelly_entity(hass, entry, "switch.porch", "switch:0")
 
-    assert (
-        await refusal(hass, "turn_on_with_auto_off", {"entity_id": "switch.old_relay", "duration": 5})
-        == "gen1_unsupported"
-    )
-    assert (
-        await refusal(hass, "turn_on_with_auto_off", {"entity_id": "switch.child_lock", "duration": 5})
-        == "not_addressable"
-    )
-    assert await call(hass, "turn_on_with_auto_off", {"entity_id": "switch.porch", "duration": 5}) == {
-        "switch.porch": CONFIRMED
-    }
+    assert await refusal(hass, "turn_on_for", {"entity_id": "switch.old_relay", "duration": 5}) == "gen1_unsupported"
+    assert await refusal(hass, "turn_on_for", {"entity_id": "switch.child_lock", "duration": 5}) == "not_addressable"
+    assert await call(hass, "turn_on_for", {"entity_id": "switch.porch", "duration": 5}) == {"switch.porch": CONFIRMED}
 
 
 async def test_set_error_rejects_only_that_target(hass, setup_production):
@@ -158,7 +147,7 @@ async def test_set_error_rejects_only_that_target(hass, setup_production):
     call_rpc.side_effect = ConnectionError("device unreachable")
 
     with pytest.raises(HomeAssistantError) as raised:
-        await call(hass, "turn_on_with_auto_off", {"entity_id": "switch.porch", "duration": 5})
+        await call(hass, "turn_on_for", {"entity_id": "switch.porch", "duration": 5})
 
     assert raised.value.translation_key == "targets_failed"
     assert raised.value.translation_placeholders == {"summary": "switch.porch: error"}
@@ -177,7 +166,7 @@ async def test_inconclusive_read_back_reports_sent(hass, setup_production, statu
     add_shelly_entity(hass, entry, "switch.porch", "switch:0")
     call_rpc.side_effect = [{"was_on": False}, status]
 
-    response = await call(hass, "turn_on_with_auto_off", {"entity_id": "switch.porch", "duration": 5})
+    response = await call(hass, "turn_on_for", {"entity_id": "switch.porch", "duration": 5})
 
     assert response == {"switch.porch": {"status": "sent", "integration": "shelly", "detail": detail}}
 
@@ -186,7 +175,7 @@ async def test_duration_beyond_the_limit_is_clamped(hass, setup_production):
     entry, call_rpc = shelly_device(hass)
     add_shelly_entity(hass, entry, "switch.porch", "switch:0")
 
-    response = await call(hass, "turn_on_with_auto_off", {"entity_id": "switch.porch", "duration": {"days": 8}})
+    response = await call(hass, "turn_on_for", {"entity_id": "switch.porch", "duration": {"days": 8}})
 
     assert response == {"switch.porch": {**CONFIRMED, "clamped_to": 604800}}
     assert call_rpc.await_args_list[0].args[1]["toggle_after"] == 604800
@@ -196,9 +185,7 @@ async def test_fractional_duration_passes_through_unrounded(hass, setup_producti
     entry, call_rpc = shelly_device(hass)
     add_shelly_entity(hass, entry, "switch.porch", "switch:0")
 
-    response = await call(
-        hass, "turn_on_with_auto_off", {"entity_id": "switch.porch", "duration": {"milliseconds": 50}}
-    )
+    response = await call(hass, "turn_on_for", {"entity_id": "switch.porch", "duration": {"milliseconds": 50}})
 
     assert response == {"switch.porch": CONFIRMED}
     assert call_rpc.await_args_list[0].args[1]["toggle_after"] == 0.05
@@ -208,9 +195,7 @@ async def test_duration_under_50ms_is_floored_and_reported(hass, setup_productio
     entry, call_rpc = shelly_device(hass)
     add_shelly_entity(hass, entry, "switch.porch", "switch:0")
 
-    response = await call(
-        hass, "turn_on_with_auto_off", {"entity_id": "switch.porch", "duration": {"milliseconds": 20}}
-    )
+    response = await call(hass, "turn_on_for", {"entity_id": "switch.porch", "duration": {"milliseconds": 20}})
 
     assert response == {"switch.porch": {**CONFIRMED, "clamped_to": 0.05}}
     assert call_rpc.await_args_list[0].args[1]["toggle_after"] == 0.05

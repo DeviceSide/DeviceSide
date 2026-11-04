@@ -17,7 +17,7 @@ def test_broken_integration_is_recorded_unavailable_and_others_load():
     assert not broken.available
     assert "fakelib" in broken.unavailable_reason
     assert [info.key for info in registry.available_integrations()] == ["fake", "fake_special"]
-    assert registry.adapter("turn_on_with_auto_off", "fake").integration == "fake"
+    assert registry.adapter("turn_on_for", "fake").integration == "fake"
 
 
 def test_matrix_lists_every_pair_sorted():
@@ -54,21 +54,21 @@ def test_matrix_lists_every_pair_sorted():
         ("stop", "broken_integration", False),
         ("stop", "fake", False),
         ("stop", "fake_special", False),
-        ("turn_off_with_auto_on", "broken_integration", False),
-        ("turn_off_with_auto_on", "fake", True),
-        ("turn_off_with_auto_on", "fake_special", False),
-        ("turn_on_with_auto_off", "broken_integration", False),
-        ("turn_on_with_auto_off", "fake", True),
-        ("turn_on_with_auto_off", "fake_special", True),
+        ("turn_off_for", "broken_integration", False),
+        ("turn_off_for", "fake", True),
+        ("turn_off_for", "fake_special", False),
+        ("turn_on_for", "broken_integration", False),
+        ("turn_on_for", "fake", True),
+        ("turn_on_for", "fake_special", True),
     ]
 
 
 def test_adapter_for_unknown_action_is_refused():
     from types import SimpleNamespace
 
-    from ..fakes.fake_integration import INTEGRATION, FakeTurnOnWithAutoOff
+    from ..fakes.fake_integration import INTEGRATION, FakeTurnOnFor
 
-    class Stray(FakeTurnOnWithAutoOff):
+    class Stray(FakeTurnOnFor):
         action = "no_such_action"
 
     with pytest.raises(ValueError, match="unknown action"):
@@ -88,13 +88,13 @@ def test_production_discovery_imports_cleanly():
         "set_attributes",
         "set_scene",
         "stop",
-        "turn_off_with_auto_on",
-        "turn_on_with_auto_off",
+        "turn_off_for",
+        "turn_on_for",
     }
     assert registry.integrations["shelly"].available
     assert registry.integrations["hue"].available
-    assert registry.adapter("turn_on_with_auto_off", "shelly") is not None
-    assert registry.adapter("turn_off_with_auto_on", "shelly") is not None
+    assert registry.adapter("turn_on_for", "shelly") is not None
+    assert registry.adapter("turn_off_for", "shelly") is not None
 
 
 def test_call_resolvers_are_keyed_by_ha_domain():

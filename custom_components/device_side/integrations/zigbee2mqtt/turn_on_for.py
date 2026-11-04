@@ -1,4 +1,4 @@
-"""Zigbee2MQTT turn_on_with_auto_off: optional light.turn_on, mqtt.publish with on_time, then state read-backs."""
+"""Zigbee2MQTT turn_on_for: optional light.turn_on, mqtt.publish with on_time, then state read-backs."""
 
 import asyncio
 import json
@@ -10,7 +10,7 @@ from homeassistant.core import HomeAssistant, callback
 
 from .addressing import state_topic, topic
 from .native_control import COLOR_FIELDS, ensure_native_control
-from ...actions.turn_on_with_auto_off import TurnOnWithAutoOffRequest
+from ...actions.turn_on_for import TurnOnForRequest
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Status, Target
 from ...core.runtime import get_runtime
@@ -31,7 +31,7 @@ _LATE_END_READ_FRACTION = 0.02
 _STATE_TIMEOUT_S = 5.0
 
 
-class Z2MTurnOnWithAutoOff(Adapter[TurnOnWithAutoOffRequest]):
+class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
     """Turn a Z2M light on for a duration using Zigbee2MQTT's on_time attribute.
 
     With fields: calls light.turn_on first so HA's MQTT light entity applies brightness, color and
@@ -49,7 +49,7 @@ class Z2MTurnOnWithAutoOff(Adapter[TurnOnWithAutoOffRequest]):
     change the result.
     """
 
-    action: ClassVar[str] = "turn_on_with_auto_off"
+    action: ClassVar[str] = "turn_on_for"
     integration: ClassVar[str] = "zigbee2mqtt"
     scope: ClassVar[AdapterScope] = AdapterScope(
         # Zigbee plugs and switches rarely honor OnWithTimedOff, so switch stays out of scope until users ask.
@@ -61,7 +61,7 @@ class Z2MTurnOnWithAutoOff(Adapter[TurnOnWithAutoOffRequest]):
         native_groups=True,  # Z2M group entities receive commands on <base>/<group ID>/set.
     )
 
-    def supports(self, hass: HomeAssistant, request: TurnOnWithAutoOffRequest, target: Target) -> str | None:
+    def supports(self, hass: HomeAssistant, request: TurnOnForRequest, target: Target) -> str | None:
         if (reason := super().supports(hass, request, target)) is not None:
             return reason
         if topic(target, "set") is None:
@@ -69,7 +69,7 @@ class Z2MTurnOnWithAutoOff(Adapter[TurnOnWithAutoOffRequest]):
         return None
 
     async def execute(
-        self, hass: HomeAssistant, request: TurnOnWithAutoOffRequest, targets: list[Target]
+        self, hass: HomeAssistant, request: TurnOnForRequest, targets: list[Target]
     ) -> list[EntityResult]:
         async def send(target: Target) -> EntityResult:
             set_topic = topic(target, "set")  # supports() refused the targets it can't address

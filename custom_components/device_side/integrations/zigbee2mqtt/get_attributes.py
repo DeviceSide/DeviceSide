@@ -30,7 +30,7 @@ class Z2MGetAttributes(Adapter[Request]):
     action: ClassVar[str] = "get_attributes"
     integration: ClassVar[str] = "zigbee2mqtt"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        # Switches stay out of scope, as in turn_on_with_auto_off.
+        # Switches stay out of scope, as in turn_on_for.
         domains=frozenset({"light"}),
         confirmable=True,
         native_groups=True,  # read through its members, which only Z2M's bridge/groups knows
