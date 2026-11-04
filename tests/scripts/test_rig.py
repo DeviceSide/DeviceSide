@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 from custom_components.device_side.core.registry import AdapterRegistry
-from tests.rig import engine, ledger
+from tests.rig import baseline, engine
 from tests.rig.engine import load_step_file, load_step_files
 from tests.rig.journal import LEGACY_NAME, Journal
 from tests.rig.profile import EXAMPLE, Profile, RigEntity, load_env, main_checkout, profile_paths
@@ -714,8 +714,8 @@ async def test_a_signal_mid_case_puts_everything_back_and_leaves_no_journal(tmp_
     while ha.states["light.a"]["state"] != "off":
         await asyncio.sleep(0.005)
     assert set(journal.sections) == {"profile", "options", "cases"}
-    assert json.loads((tmp_path / ledger.NAME).read_text()) == {
-        "automation.motion": {"was_on": True, "holders": [journal.name]}
+    assert json.loads((tmp_path / baseline.NAME).read_text()) == {
+        "automation:automation.motion": {"original": "on", "holders": [f"{journal.name}#pause"]}
     }
     assert set(journal.get("cases")) == {"serial"}
 
@@ -726,7 +726,7 @@ async def test_a_signal_mid_case_puts_everything_back_and_leaves_no_journal(tmp_
     assert "Aborting: putting devices back" in capsys.readouterr().out
     assert put_back(ha)
     assert not journal.path.exists()
-    assert not (tmp_path / ledger.NAME).exists()
+    assert not (tmp_path / baseline.NAME).exists()
 
 
 @pytest.mark.parametrize(("commit", "sources"), [("c1", ["rig run (`scripts/rig.py`), commit `c1short`"]), (None, [])])
@@ -803,17 +803,17 @@ async def test_recover_puts_back_a_case_a_journal_from_before_lanes_left(tmp_pat
     assert not journal.path.exists()
 
 
-async def test_recover_resumes_what_the_orphan_holds_paused_in_the_ledger(tmp_path, monkeypatch):
+async def test_recover_resumes_what_the_orphan_holds_paused_in_the_baseline(tmp_path, monkeypatch):
     ha = rig_ha(monkeypatch, light="on", opt=True, automation="on")
     orphan = Journal.start(tmp_path)
     orphan.update(profile="lab")
-    await ledger.Ledger(tmp_path, orphan.name, lambda _: None).pause(ha, ["automation.motion"])
+    await baseline.Baseline.of(ha, orphan, "pause", lambda _: None).pause(["automation.motion"])
     assert ha.states["automation.motion"]["state"] == "off"
 
     await rig.recover(ha, ha, orphan, out=lambda _: None)  # it holds the orphan's lock meanwhile
 
     assert ha.states["automation.motion"]["state"] == "on"
-    assert not (tmp_path / ledger.NAME).exists()
+    assert not (tmp_path / baseline.NAME).exists()
     assert not orphan.path.exists()
 
 

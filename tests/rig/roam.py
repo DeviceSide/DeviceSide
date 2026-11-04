@@ -29,6 +29,7 @@ import contextlib
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterable
 from dataclasses import dataclass, field
 
+from .baseline import Baseline, BaselineError
 from .bridge import BridgeError, HueBridge
 from .client import HAClient, HAError, Z2MRemoveError, device_ieee
 from .journal import Journal
@@ -49,7 +50,7 @@ JOIN_S = 120  # how long a join window stays open, and how long a bulb has to jo
 REINTERVIEWS = 3  # how many times a join asks Z2M to interview a bulb again after a failed interview
 REINTERVIEW_GAP_S = 20  # between asks for one bulb: the retained device list may still say FAILED just after one
 JOIN_LOG_LEVEL = "info"  # Z2M's log level during a join: its default, warning, logs no join or interview
-VERBOSE_LOG_LEVELS = ("info", "debug")
+VERBOSE_LOG_LEVELS = ("info", "debug", "trace")
 RELEASE_S = 30  # for a released bulb to drop off its network
 # A bulb from Hue that a ZHA or Z2M window still doesn't show this long after it opened or the last bulb joined,
 # whichever is later, once every other bulb is in, may have missed the bridge's Leave: the slowest join seen took
@@ -190,8 +191,8 @@ class Roamer:
         self.bridge_before: set[str] | None = set(before) if before is not None else None
         # The bulbs in the order they last joined a network; journaled, so recovery releases them in reverse.
         self.arrived: list[str] = list(saved.get("arrived", []))
-        # Z2M's own log level while a join holds it at JOIN_LOG_LEVEL; journaled, so a crash mid-join still restores it.
-        self.z2m_log_level: str | None = saved.get("z2m_log_level")
+        # Z2M's log level, held at JOIN_LOG_LEVEL for a join: the baseline puts it back after a crash too.
+        self.baseline = Baseline.of(ha, journal, "join", out)
 
     @classmethod
     def from_journal(cls, ha: HAClient, bridge: HueBridge, journal: Journal, out: Callable[[str], None] = print):
@@ -216,20 +217,13 @@ class Roamer:
                     "made": self.made,
                     "bridge_before": sorted(self.bridge_before) if self.bridge_before is not None else None,
                     "arrived": self.arrived,
-                    "z2m_log_level": self.z2m_log_level,
                 }
             )
 
     def finish(self) -> None:
         """Clear the journal's roam section once every bulb is home with its home put back, and no rig-made group is
         left."""
-        if (
-            self.journal is not None
-            and not self.home
-            and self.moving is None
-            and not self.made
-            and not self.z2m_log_level
-        ):
+        if self.journal is not None and not self.home and self.moving is None and not self.made:
             if all(self.at.get(bulb.entity_id) == bulb.home for bulb in self.bulbs):
                 self.journal.clear("roam")
 
@@ -333,7 +327,6 @@ class Roamer:
         """Remove the rig-made groups, then move every bulb not on `to` straight there, in one move, whichever
         networks they are on (after a crash, they may differ). On a bulb found on no network it raises RoamError."""
         await self.remove_groups()
-        await self.restore_z2m_log_level()  # a crash mid-join left it raised
         await self.settle(to)
         if away := [bulb for bulb in self.bulbs if self.at[bulb.entity_id] != to]:
             await self.move(away, to)
@@ -610,33 +603,22 @@ class Roamer:
 
     @contextlib.asynccontextmanager
     async def z2m_logging(self) -> AsyncIterator[None]:
-        """Z2M at JOIN_LOG_LEVEL for a join, so its log shows each bulb's join and interview, then back to its own
-        level, which is journaled first. A level that can't be read or set leaves the log as it is: it never stops
-        the move."""
-        try:
-            before = await self.ha.z2m_log_level()
-            if before is not None and before not in VERBOSE_LOG_LEVELS:
-                self.z2m_log_level = before
-                self.save()
+        """Z2M at JOIN_LOG_LEVEL or more for a join, so its log shows each bulb's join and interview, held in the
+        baseline, which records its level first and puts it back. A level that can't be read or set leaves the log
+        as it is: it never stops the move."""
+
+        async def raise_level(_original: str) -> None:
+            if await self.ha.z2m_log_level() not in VERBOSE_LOG_LEVELS:
                 await self.ha.z2m_set_log_level(JOIN_LOG_LEVEL)
-        except (TimeoutError, HAError) as err:
+
+        try:
+            await self.baseline.hold(("z2m_log_level", "", raise_level))
+        except (TimeoutError, HAError, BaselineError) as err:
             self.out(f"Z2M's log level stays as it is for the join: {err}")
         try:
             yield
         finally:
-            await self.restore_z2m_log_level()
-
-    async def restore_z2m_log_level(self) -> None:
-        """Put back the log level a join raised, if one is journaled. A failure is printed and stays journaled."""
-        if self.z2m_log_level is None:
-            return
-        try:
-            await self.ha.z2m_set_log_level(self.z2m_log_level)
-        except (TimeoutError, HAError) as err:
-            self.out(f"Z2M's log level is still raised, not {self.z2m_log_level}: {err}. --recover tries again.")
-            return
-        self.z2m_log_level = None
-        self.save()
+            await self.baseline.release()
 
     async def missed(self, network: str, bulbs: list[Bulb], origins: dict[str, str | None]) -> None:
         """Raise RoamError for bulbs that didn't join `network`. One back on a network (it missed the Leave, or

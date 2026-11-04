@@ -73,6 +73,7 @@ v0.1.0 is the next release.
 | 15 (follow-up) | Tests no longer color the cmux workspace running them green (a locks test's `monkeypatch.undo()` reached the real cmux) | #184 |
 | 15 (follow-up) | Rig clear gate per profile: `pre_authorized: true` profiles (the lab's) skip `RIG_BLOCKER_ENTITY`; others stay gated | #187 |
 | 15 (follow-up) | Rig places a roaming bulb where it is live and deletes a stale ZHA or Z2M listing; a Z2M remove a coordinator crash cut short is tried again; each run names Z2M coordinator crashes | #206 |
+| 15 (follow-up) | Rig: one shared baseline replaces the pause ledger; pauses, HA and Z2M log levels and Z2M device options are held there, put back by the last run out, the next run's prune or `--recover` | #209 |
 
 ## To go, in order
 
