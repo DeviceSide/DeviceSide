@@ -2,7 +2,7 @@
 # A room is written light by light, so on the group role the response and expect_state cover every member.
 # Color steps run on the light_color role, and the hs and xy ones on group_color too (a Z2M color groupcast).
 action: set_attributes
-rig_seconds: 145
+rig_seconds: 150
 tests:
   - name: sets_while_off  # §3.1
     roles: [light_ct, group]
@@ -32,14 +32,19 @@ tests:
   - name: sets_color_while_off  # §3.2
     roles: [light_color]
     setup:
+      - set: {state: on, hs_color: [240, 90]}
+      - wait: 2  # as in sets_hs_while_off: let the old color land before the off
       - set: {state: off}
     steps:
       - call: {rgb_color: [255, 0, 0]}
       - expect_response: {status: expected, integration: self}
       - expect_state: {state: off}
       - set: {state: on}
+      # Red clamped to the bulb's gamut: HA shows (255, 0, 0) on gamut C to (255, 92, 47) on gamut A, not the blue.
+      - expect_state: {rgb_color.0: {min: 250}, rgb_color.1: {max: 100}, rgb_color.2: {max: 60}, within: tol}
+      - expect_matches_read: {attributes: [xy_color.0, xy_color.1], tolerance: 0.01, within: 2}
     observe:
-      see: The color lamp, off, gets red set while off, then turns on.
+      see: The color lamp, blue then off, gets red set while off, then turns on.
       watch: 'The first moment it lights: red from the start, with no flash of its old color.'
       ask: Did it come on red?
 

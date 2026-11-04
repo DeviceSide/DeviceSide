@@ -70,10 +70,11 @@ class Fade:
 
 
 def fade_scope(attribute: str, *, experimental: bool) -> AdapterScope:
+    """predicted_state is brightness's only: HA is shown the bridge's xy for saturation either way."""
     return AdapterScope(
         experimental=experimental,
         fields=frozenset({attribute}),
-        options=frozenset({"predicted_state"}),
+        options=frozenset({"predicted_state"}) if attribute == BRIGHTNESS else frozenset(),
         native_groups=True,
     )
 

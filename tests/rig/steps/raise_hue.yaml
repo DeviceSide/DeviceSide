@@ -1,7 +1,7 @@
 # Hue on Zigbee2MQTT and ZHA: a cycle the bulb runs until a stop, so each test ends with one. Zigbee2MQTT publishes a
 # hue stop's color as hs, which HA takes only with z2m_color_modes on (the default).
 action: raise_hue
-rig_seconds: 75
+rig_seconds: 110
 tests:
   - name: cycles_up_the_wheel
     roles: [light_color, group_color]
@@ -12,6 +12,30 @@ tests:
     steps:
       - mark_hue: {}
       - call: {sweep_time: 20}  # 18° a second: 54° up the wheel after 3 s
+      - expect_response: {status: expected, integration: self}
+      - wait: 3
+      - call: {action: stop}
+      - expect_matches_read: {attributes: [xy_color.0, xy_color.1], tolerance: 0.01, within: 3}
+      - expect_hue_travel: {by: 54, tolerance: 12}
+
+  # Hue is a cycle with no prediction, so this catches the bookkeeping a stop leaves: a second cycle refused, or one
+  # that restarts from the setup's hue instead of turning on from the halt.
+  - name: hue_stop_raise
+    roles: [light_color, group_color]
+    only: [zigbee2mqtt, zha]
+    setup:
+      - set: {state: on, brightness_pct: 70, hs_color: [30, 90]}
+      - wait: 1  # as in cycles_up_the_wheel
+    steps:
+      - mark_hue: {}
+      - call: {sweep_time: 20}  # 18° a second: 54° up the wheel after 3 s
+      - wait: 3
+      - call: {action: stop}
+      - expect_response: {status: expected, integration: self}
+      - expect_matches_read: {attributes: [xy_color.0, xy_color.1], tolerance: 0.01, within: 3}
+      - expect_hue_travel: {by: 54, tolerance: 12}
+      - mark_hue: {}
+      - call: {sweep_time: 20}
       - expect_response: {status: expected, integration: self}
       - wait: 3
       - call: {action: stop}

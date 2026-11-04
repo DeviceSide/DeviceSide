@@ -241,6 +241,9 @@ prediction, so it proves nothing about the light there.
 | `turn_on_for: bulb_rgb_then_off` | Z2M | red from the start, off at 6 s | seen | `zigbee2mqtt/turn_on_for.md`, #80 |
 | `turn_on_for: group_on_then_off` | Z2M | both off at once | seen | `zigbee2mqtt/turn_on_for.md`, #80 |
 | | ZHA | | deducible | one group command, as on Z2M; HA's group reads off only once every member is, checked within 2 × tol |
+| `lower_brightness: soft_off_keeps_level` | ZHA | dark while off, back at 60 % on the plain on | deducible (Jason, 2026-11-04) | `expect_state` checks off, then HA's level after the plain on; added by #167 after this ledger |
+| `stop: hue_cycle_stop` | ZHA | no jump at the stop or a second later | **needs eyes** (Jason, 2026-11-04) | as on Z2M: the same bulb, added by #167 |
+| `stop: saturation_down_stop` | ZHA | holds, no drift toward white, no jump | **needs eyes** (Jason, 2026-11-04) | as above |
 
 Needs eyes, approved by Jason on 2026-10-31: Z2M `halts_a_lower_to_off[light_ct]`, `hue_cycle_stop[light_color]`,
 `saturation_down_stop[light_color]`, and `sets_color_while_off[light_color]` on each of the A60's three visits (it

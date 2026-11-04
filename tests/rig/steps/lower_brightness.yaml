@@ -27,10 +27,6 @@ tests:
       - expect_state: {state: off}
       - set: {state: on}
       - expect_state: {state: on, brightness: {min: 148, max: 158}, within: 2}
-    observe:
-      see: The light at 60 %, fading to off over 1.8 s, dark for about 3 s, then turned on with no brightness given.
-      watch: 'While dark: no flash or glow. At the turn on: it comes straight back at 60 %, not dim.'
-      ask: Did it stay dark, then come back on at the 60 % it started from, with no dim start?
 
   - name: lower_to_a_limit  # §2.4
     roles: [light_ct, group]
