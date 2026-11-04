@@ -4,22 +4,15 @@
 
 Device Side unlocks native features in your lights, switches and plugs on the Zigbee, Shelly, Philips Hue and Matter integrations. It allows you to:
 
-* **Delay a turn-off:** Tell a device to turn off automatically, even if HA goes offline.
+* **Delay a turn-off:** Tell a device to turn off automatically, even if HA goes offline or restarts.
 
-* **Dim smoothly:** Press to dim and release to stop, using third-party buttons.
+* **Dim smoothly:** Press to dim and release to stop, using third-party buttons. No more jittery steps or overshoots.
 
 * **Change colors smoothly:** Press to change color, release to stop.
 
-* **Set lights without turning on:** Pre-stage brightness, color, CT and scenes.
+* **Set lights without turning on:** Pre-stage brightness, color, CT and scenes, so lights turn on without unsightly color flashes or brightness extremes.
 
-Device Side also patches some usability quirks in individual integrations.
-
-## How It Helps You 🔅💡🔆
-
-* **Convenient & reliable:** Use one-shot actions that survive HA restarts.
-* **Silky smooth:** Brightness and color transitions are continuous and precise. No more jittery steps or overshoots.
-* **Predictable:** Prepare your lights to turn on how you want them, without unsightly color flashes or brightness extremes.
-* **Zero setup:** Connects to your devices automatically via the core integrations.
+It connects to your devices automatically via the core integrations, and patches some usability quirks in individual integrations.
 
 ## Features
 
@@ -75,9 +68,11 @@ Device Side's actions are drop-in replacements for Hue Smooth Dimming, apart fro
 
 * change `lower` to `lower_brightness`
 
-## Delayed off/on
+## Usage
 
-### Delayed off
+### Delayed off/on
+
+#### Delayed off
 
 Action: `device_side.turn_on_for`
 
@@ -86,7 +81,7 @@ Turn on, then off after a delay. Timer runs on the device. Example use cases:
 - Cut power to a heater or ironing station after 4 hours, in case someone leaves it on.
 - Run a fan for 20 minutes after a shower.
 
-#### YAML example: heater off after 4 hours, with a warning
+##### YAML example: heater off after 4 hours, with a warning
 
 ```yaml
 actions:
@@ -115,7 +110,7 @@ actions:
 | `transition`        | Fade time (0–300 s). Z2M, Shelly                                                                                       |
 | `response_variable` | Variable that receives the response from each entity (optional)                                                        |
 
-### Delayed on
+#### Delayed on
 
 Action: `device_side.turn_off_for`
 
@@ -128,18 +123,6 @@ Turn off, then on after a delay. Timer runs on the device. Example use case:
 | `target`            | Shelly lights and switches (required)                           |
 | `duration`          | Delay until the device turns on (required). Up to 7 days        |
 | `response_variable` | Variable that receives the response from each entity (optional) |
-
-### Cancel a timer
-
-The following actions cancel a delayed on/off timer:
-
-* Turn off a device that was on, or vice versa
-
-* Send a new delayed on/off command (restarts the countdown)
-
-* Send `turn_on` to a device that's already on (Shelly, and most lights on Z2M)
-
-* Send `turn_off` to a device that's already off (Shelly only)
 
 <details>
 <summary>Results</summary>
@@ -158,7 +141,19 @@ If a device fails, the action fails and stops the automation.
 
 </details>
 
-## Smooth dimming
+#### Cancel a timer
+
+The following actions cancel a delayed on/off timer:
+
+* Turn off a device that was on, or vice versa
+
+* Send a new delayed on/off command (restarts the countdown)
+
+* Turn on a device that's already on (Shelly, and most lights on Z2M)
+
+* Turn off a device that's already off (Shelly only)
+
+### Smooth dimming
 
 Create "press to dim, release to stop" automations. Transitions run natively on the device.
 
@@ -189,7 +184,7 @@ buttons_released:
 
 To move several lights in step, target a Hue room or zone, or a Zigbee2MQTT or ZHA group, instead of separate lights. One group-wide Zigbee message then moves them together.
 
-## Smooth color transitions
+### Smooth color transitions
 
 Create "press to change color, release to stop" automations. Transitions run natively on the device.
 
@@ -219,7 +214,7 @@ button_released:
 
 Groups move in step, as for dimming.
 
-## Set lights without turning on
+### Set lights without turning on
 
 Set scenes, brightness, color and color temperature while the lights are off, so that they turn on smoothly without unsightly color or brightness flashes.
 
@@ -238,7 +233,7 @@ actions:
 
 To set brightness for the next turn-on from the visual editor, see [docs/examples/set-turn-on-brightness.md](docs/examples/set-turn-on-brightness.md).
 
-### Set brightness, color or CT
+#### Set brightness, color or CT
 
 Action: `device_side.set_attributes`. Sets brightness, color temp or color without changing on/off state.
 
@@ -253,7 +248,7 @@ Action: `device_side.set_attributes`. Sets brightness, color temp or color witho
 | `hs_color`          | Color as `[hue, saturation]` (0–360, 0–100) |
 | `xy_color`          | Color as `[x, y]`                           |
 
-### Set scene
+#### Set scene
 
 Action: `device_side.set_scene`. Sets a Hue scene without turning its lights on.
 
@@ -261,7 +256,7 @@ Action: `device_side.set_scene`. Sets a Hue scene without turning its lights on.
 |:-------- |:--------------------- |
 | `target` | Hue scenes (required) |
 
-## Get attributes
+### Get attributes
 
 Action: `device_side.get_attributes`
 
