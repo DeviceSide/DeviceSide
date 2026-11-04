@@ -30,8 +30,8 @@ Device Side also patches some usability quirks in individual integrations.
 | [Smooth dimming](#smooth-dimming)                                | ✅  | ✅  |        | ✅         |        |
 | [Smooth saturation change](#smooth-color-transitions)            | ✅  | ✅  |        | ✅         |        |
 | [Smooth hue change](#smooth-color-transitions)                   | ✅  | ✅  |        |            |        |
-| [Set lights without turning on](#set-lights-without-turning-on) | ✅  | ✅  |        | ✅         |        |
-| [Set scenes without turning on](#set-lights-without-turning-on) |     |     |        | ✅         |        |
+| [Set brightness, color or CT without turning on](#set-lights-without-turning-on) | ✅  | ✅  |        | ✅         |        |
+| [Set scene without turning on](#set-lights-without-turning-on) |     |     |        | ✅         |        |
 | [Get attributes](#get-attributes)                                | ✅  | ✅  | ✅     | ✅         | ✅     |
 
 ### Delayed Off
