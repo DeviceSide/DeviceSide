@@ -1,7 +1,7 @@
 # Integration internals
 
 How each adapter addresses a target, what it sends and reads back, and what was measured on real hardware. What a
-user sees is in [integrations.md](../integrations.md) and isn't repeated here; result and detail codes are in the
+user sees is in [integrations.md](integrations.md) and isn't repeated here; result and detail codes are in the
 code. Code comments cite the Tested behavior sections.
 
 ## Shared
@@ -131,6 +131,21 @@ Side gets `{"color": ""}` 1 s after a saturation stop and at the end of a satura
 back from its first member only, so these reads go to each member. After a hue or saturation command the bulb is in
 hs mode; Home Assistant accepts that only with the color-modes option on.
 
+### Tested behavior
+
+Measured 2026-10-28 on Z2M 2.14.2 with Hue bulbs (a CT bulb and the A60), Home Assistant 2026.10.2.
+
+- **Color-mode override.** It deep-merges into the device's options, and Z2M republishes the discovery message at
+  once, with no restart; Home Assistant's entity keeps its entity ID and shows `color_temp`, `hs` and `xy`. A
+  group's options behave the same. A `null` can't remove it: `supported_color_modes: null` deletes the key from the
+  announcement, `light: null` drops the light from discovery, and `homeassistant: null` the whole device.
+- **Stops, by eye** (a 10 s fade halted 3 s in). Brightness and hue stops freeze cleanly. Every color temperature
+  stop jumps, whichever command halts it, the Hue bridge's own included. With brightness and color temperature in
+  one fade, a brightness stop leaves the color temperature fading on to its end. `saturation_move: stop` lets an xy
+  fade drift on for about 3 s; a raw `stopMoveStep` holds it.
+- **After an xy stop,** Z2M's read-back carries its cached end-point x/y, not where the bulb halted; a
+  `{"color": ""}` get publishes the halted x/y.
+
 ## ZHA
 
 Commands go through `zha.issue_zigbee_cluster_command` and `zha.issue_zigbee_group_command` (admin-only; Device
@@ -146,8 +161,7 @@ request: `confirmed` when on and OnTime is above 0, at most the request and no m
 
 A group gets one `light.turn_on` and one group `OnWithTimedOff`; per-member commands would start about 0.7 s apart
 across 8 lights. A group command gets no reply, so every member is still read back. A slow end device (the rig's
-Sengled) can read `not_on` before it takes the group's `light.turn_on`
-(`docs/plans/2026-10-27-zha-groups-probe.md`).
+Sengled) can read `not_on` before it takes the group's `light.turn_on` (Tested behavior).
 
 ### `set_attributes`
 
@@ -205,15 +219,19 @@ devices may differ.
   `on_time: 0`, or a 0.1 s timer each turned the bulb off within 0.3 s. Writing OnTime resets the time left (100
   with 15.6 s left: off 10 s later). With no timer running, writing 0 changes nothing.
 
-Writes while off (`docs/plans/2026-10-27-zigbee-probe.md`, `docs/plans/2026-11-02-lab-run-failures.md` bucket C):
-the LTA004, LWA012, LTA009 and LCA016 store `MoveToLevel` and `MoveToColorTemp` with `ExecuteIfOff`, at any delay
+Writes while off: the LTA004, LWA012, LTA009 and LCA016 store `MoveToLevel` and `MoveToColorTemp` with `ExecuteIfOff`, at any delay
 0 to 2 s after a plain off, and drop them without it. A Sengled E11-G13 (firmware `0x00000009`) takes `MoveToLevel`
 while on, but while off, with the override or without, jumps CurrentLevel to 255 and comes on at full.
 
-Moves, on the LTA004 (`docs/plans/2026-10-28-zha-move-stop.md`): a Level `Stop` 3 s into a 6 s soft off from 200
+Moves, on the LTA004: a Level `Stop` 3 s into a 6 s soft off from 200
 held at 100 with the bulb on, and Home Assistant showed 100 from the bulb's report. A 4 s fade read its end level by
 3.9 s; a 4 s soft off read off, at level 1, by 4.3 s. Group `MoveToLevelWithOnOff` and `Stop` act as the unicast
 ones.
+
+Groups (2026-10-27, the LTA004, a Sengled E11-G13 and a plug): a unicast `turn_on_for` takes about 0.23 s per member
+(0.34 s with brightness), so under `max_concurrency` 2 the last of 8 lights starts 0.7 to 1 s after the first. A
+group `OnWithTimedOff` returns in 0.02 s, zigpy's own success with no delivery feedback, and a member that refuses
+the command (the Sengled, `UNSUP_CLUSTER_COMMAND` by unicast) misses it silently, so each member is read back.
 
 ## Matter
 
@@ -225,7 +243,12 @@ that `MatterEndpoint.get_attribute_value` would need.
 - **Delayed off.** `OnOff.Commands.OnWithTimedOff(onOffControl=0, onTime=<tenths>, offWaitTime=0)`, then a read of
   `OnOff.OnTime`: `confirmed` when non-zero.
 - **`get_attributes`.** A live read of `OnTime`, as the plug tested never reports it on its subscription, so the
-  node cache reads 0 mid-timer (`docs/plans/2026-10-28-matter-get-attributes.md`). `turns` is always `off`.
+  node cache reads 0 mid-timer (Tested behavior). `turns` is always `off`.
+
+### Tested behavior
+
+On a WiZ Smart Plug (firmware v1.4), 2026-10-28: the node cache's `OnTime` read 0 before, during and after a 20 s
+timer, as the plug never reports it on its subscription. A plain `switch.turn_on` mid-timer left it running.
 
 ## Hue
 
@@ -293,3 +316,6 @@ Assistant 2026.10.2, aiohue 4.9.0, unless dated otherwise. Home Assistant shows 
 - **A bridge scene recall** sets `status.active` to `static` within about 1 s of its lights' reports. A light whose
   color the scene leaves alone reports only `on` and `dimming`, so only the scene's report shows the change came
   from elsewhere.
+- **Moving a bulb between networks** (2026-10-31, the A60 on firmware 1.164.2): a CLIP v2 `DELETE device/<id>`
+  sends it a Leave, as Z2M's and ZHA's removes do, and it joins the next network in about 10 s. On older firmware,
+  a v1 light delete left it on no network, until a delete in the Hue app released it.

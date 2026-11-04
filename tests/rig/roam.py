@@ -1,12 +1,14 @@
 """Roaming: the rig moves a profile's lab bulbs between Zigbee networks, all together, to each network the profile
 declares whose suites the run holds, in the order Hue, ZHA, Z2M (profile.CYCLE), then straight home. Every move is
-direct: a bulb leaves the network it is on for the target, so recovery takes one move from anywhere.
+direct: a bulb leaves the network it is on for the target, so recovery takes one move from anywhere. The suites run
+in phases: Hue's with the fixed integrations', then ZHA's, then Z2M's, each after a move and each with its automated
+cases before its observed ones.
 
-Each move releases the bulbs from their network and joins them to the target, by the procedure the A60 move probe proved
-(docs/plans/2026-10-31-a60-move-probe.md): Hue deletes the device (CLIP v2 only), ZHA and Z2M remove it, each sending
-a Leave; then the next network opens a finite join window, closed once every bulb is in. After each join the bulb's
-light entity is renamed to its fixed profile entity ID, and on Z2M its options are set again. A Z2M bulb whose light
-HA doesn't show soon gets its discovery published again (Roamer.z2m_rediscover).
+Each move releases the bulbs from their network and joins them to the target, by the procedure the A60 move probe
+proved (docs/integration-internals.md, Hue tested behavior): Hue deletes the device (CLIP v2 only), ZHA and Z2M remove
+it, each sending a Leave; then the next network opens a finite join window, closed once every bulb is in. After each
+join the bulb's light entity is renamed to its fixed profile entity ID, and on Z2M its options are set again. A Z2M
+bulb whose light HA doesn't show soon gets its discovery published again (Roamer.z2m_rediscover).
 
 A bulb's home is Hue, the only home supported so far (profile.HOMES). Before a bulb's first move, the home record
 (home.py) saves its state, and, leaving Hue, its room and zone membership, the scene actions that target it and its
