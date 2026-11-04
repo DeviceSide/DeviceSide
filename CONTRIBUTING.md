@@ -2,10 +2,9 @@
 
 Everybody is invited and welcome to contribute.
 
-We're looking for four kinds of help in particular:
+We're looking for three kinds of help in particular:
 
-- **Testers.** No coding needed. You just need to have lights or switches on Matter, ZHA, Zigbee2MQTT, Shelly or Hue. You install an experimental pre-release, run a few automations, and tell us what happened. The tests will take 5-15 minutes. A successful test unlocks the feature for other users. Please [open an issue](https://github.com/jasonmx/device-side/issues/new?title=Volunteer%20tester&body=I%27d%20like%20to%20volunteer%20for%20testing.%0A%0AIntegrations%20my%20lights%20and%20switches%20use%3A%0A%0AFeatures%20I%27d%20like%20to%20test%3A%0A) to get in touch, listing the features and integrations you're willing to test.
-- **Feature requests.** Tell us which on-device features and integrations you'd most like added next, and why. A Home Assistant Community thread for this is coming shortly after the v0.0.1 release.
+- **Feature requests.** Tell us which on-device features and integrations you want most, and why, via the Device Side thread on Home Assistant Community.
 - **Bug reports.** If something doesn't look or work right, please [open an issue](https://github.com/jasonmx/device-side/issues/new?body=What%20happened%3A%0A%0AWhat%20I%20expected%3A%0A%0ASteps%20to%20reproduce%3A%0A%0ADevice%20Side%20version%20and%20integration%3A%0A) and let us know.
 - **Code.** Add support for a new device capability or integration, or fix a bug. Read
   [What gets built](#what-gets-built) before you start, so your work isn't turned down for scope.
@@ -20,7 +19,7 @@ We're looking for four kinds of help in particular:
 
 ## Developing
 
-- To test on your own Home Assistant, see [docs/contributing/testing.md](docs/contributing/testing.md).
+- To run the rig tests against your own Home Assistant and devices, see [docs/rig.md](docs/rig.md).
 - If you use a coding agent, point it at [CLAUDE.md](CLAUDE.md). It holds the repo's rules.
 - Open pull requests against whichever is newer: `main` or the latest `release/vX.Y.Z` branch.
   Just after a release there may be no release branch.

@@ -36,7 +36,7 @@ class MatterGetAttributes(Adapter[Request]):
     action: ClassVar[str] = "get_attributes"
     integration: ClassVar[str] = "matter"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        # Plugs only: Matter lights carry the same attribute but wait for a tester's report.
+        # Plugs only: Matter lights carry the same attribute but stay out of scope until a test record covers them.
         domains=frozenset({"switch"}),
         fields=frozenset(),
         confirmable=True,
@@ -48,7 +48,7 @@ class MatterGetAttributes(Adapter[Request]):
     async def execute(self, hass: HomeAssistant, request: Request, targets: list[Target]) -> list[EntityResult]:
         async def read(target: Target) -> EntityResult:
             # Live, not the node cache: the plug never reports OnTime on its subscription, so the cache reads 0
-            # while a timer runs (probed, docs/plans/2026-10-28-matter-get-attributes.md).
+            # while a timer runs (docs/integration-internals.md, Matter tested behavior).
             path = ontime_attr_path(endpoint_id_from_unique_id(target.entry.unique_id))
             client = matter_client(hass, target.entry.config_entry_id)  # supports() refused the targets without one
             answer = await client.read_attribute(

@@ -8,7 +8,6 @@ __pycache__/
 .env.rig
 
 # Household details (also check-private's blocklist)
-tests/rig/inventory.yaml
 tests/rig/profiles/
 .private-terms
 
