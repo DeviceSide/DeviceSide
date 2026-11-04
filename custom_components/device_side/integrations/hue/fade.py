@@ -69,9 +69,12 @@ class Fade:
     paths: dict[str, tuple[XY, XY]] = field(default_factory=dict)
 
 
-def fade_scope(attribute: str) -> AdapterScope:
+def fade_scope(attribute: str, *, experimental: bool) -> AdapterScope:
     return AdapterScope(
-        experimental=True, fields=frozenset({attribute}), options=frozenset({"predicted_state"}), native_groups=True
+        experimental=experimental,
+        fields=frozenset({attribute}),
+        options=frozenset({"predicted_state"}),
+        native_groups=True,
     )
 
 

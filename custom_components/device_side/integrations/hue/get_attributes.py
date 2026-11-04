@@ -68,7 +68,7 @@ class HueGetAttributes(Adapter[Request]):
 
     action: ClassVar[str] = "get_attributes"
     integration: ClassVar[str] = "hue"
-    scope: ClassVar[AdapterScope] = AdapterScope(experimental=True, confirmable=True, native_groups=True)
+    scope: ClassVar[AdapterScope] = AdapterScope(confirmable=True, native_groups=True)
 
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:
         if (reason := super().supports(hass, request, target)) is not None:

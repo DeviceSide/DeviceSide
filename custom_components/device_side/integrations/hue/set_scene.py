@@ -52,7 +52,7 @@ class HueSetScene(Adapter[Request]):
 
     action: ClassVar[str] = "set_scene"
     integration: ClassVar[str] = "hue"
-    scope: ClassVar[AdapterScope] = AdapterScope(experimental=True, domains=frozenset({"scene"}))
+    scope: ClassVar[AdapterScope] = AdapterScope(domains=frozenset({"scene"}))
 
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:
         if (reason := super().supports(hass, request, target)) is not None:
