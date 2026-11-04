@@ -6,6 +6,10 @@ from aiohue.v2.controllers.events import EventType
 from homeassistant.exceptions import HomeAssistantError
 from pytest_homeassistant_custom_component.common import async_mock_service
 
+from custom_components.device_side.integrations.hue.lower_brightness import HueLowerBrightness
+from custom_components.device_side.integrations.hue.lower_saturation import HueLowerSaturation
+from custom_components.device_side.integrations.hue.raise_brightness import HueRaiseBrightness
+from custom_components.device_side.integrations.hue.raise_saturation import HueRaiseSaturation
 from custom_components.device_side.integrations.hue.transition_cache import transition_cache
 
 from .conftest import fade_put, lamp, mixed_room, percent, room
@@ -192,3 +196,9 @@ async def test_the_fade_is_timed_from_when_the_write_was_sent(hass, bridge, cloc
     await call(hass, "raise_brightness", {"entity_id": entity_id, "sweep_time": 10})
 
     assert transition_cache(hass).value("light-1", "brightness", 0.0) == pytest.approx(25.0)
+
+
+def test_predicted_state_is_in_the_brightness_scopes_only():
+    """HA is shown the bridge's xy for saturation with the option on or off, so it is no part of that scope."""
+    assert HueRaiseBrightness.scope.options == HueLowerBrightness.scope.options == {"predicted_state"}
+    assert HueRaiseSaturation.scope.options == HueLowerSaturation.scope.options == frozenset()
