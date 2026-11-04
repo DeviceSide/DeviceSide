@@ -28,6 +28,20 @@ record. A capability or field nobody has tested is left out of scope and refused
 A native group path is proven once any action of the same adapter class has passed through it and the command has
 passed on one light (PR #204).
 
+## Releasing
+
+The cut workflows enforce the tag rules, green CI, the RC audit (its record comes from `/rc-audit`) and the release
+flag; see their headers. The steps they don't check:
+
+1. **Each RC:** a rig run at its head; its test records cite the commit, so no sign-off is needed. Then install the
+   RC through HACS (the rig deploys a checkout, not the release); it loads and the log is clean.
+2. **Before the release:** the README feature table is current.
+3. Merge `release/vX.Y.Z` into `main`. Check that every issue the release fixes closed with it: closing keywords
+   only take effect on `main`.
+4. Dispatch `cut-release` from `main` with `vX.Y.Z`.
+5. Cut the next version's branch, `release/vA.B.C`, from `main` and set `manifest.json` to `A.B.C`; its first tag
+   is `vA.B.Crc1`.
+
 ## Pull requests
 
 - Base: whichever is newer, `main` or the latest `release/vX.Y.Z` branch.
