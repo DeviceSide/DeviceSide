@@ -286,6 +286,24 @@ def test_holders_lists_what_a_claim_would_wait_for(tmp_path):
         assert [line.split(" (pid")[0] for line in lines] == ["zha: wt/zha", "HA: shared by the runs above"]
 
 
+def test_share_ha_keeps_the_integrations_and_lets_a_shared_run_start(tmp_path):
+    with locks.hold(claim("zigbee2mqtt", ha="exclusive"), "wt/deploy", tmp_path, out=quiet()) as held:
+        assert blocked(tmp_path, claim("shelly"))
+        held.share_ha(out=quiet())
+        assert held.claim == claim("zigbee2mqtt")
+        assert not blocked(tmp_path, claim("shelly"))
+        assert blocked(tmp_path, claim("zigbee2mqtt"))
+        assert blocked(tmp_path, EXCLUSIVE)
+        assert locks.held_by(tmp_path / locks.LOCK_NAME) is None
+
+
+def test_share_ha_on_a_shared_hold_does_nothing(tmp_path):
+    with locks.hold(claim("hue"), "wt/hue", tmp_path, out=quiet()) as held:
+        held.share_ha(out=quiet())
+        assert held.claim == claim("hue")
+        assert not blocked(tmp_path, claim("zha"))
+
+
 # --- Claims ---------------------------------------------------------------------------------------------------
 
 
@@ -410,6 +428,37 @@ def test_a_run_that_still_matches_keeps_its_first_claim(tmp_path, monkeypatch):
     monkeypatch.setattr(rig, "git", lambda *args, check=True: "wt")
     with rig.take(run_args(), run, tmp_path) as held:
         assert held.claim == claim("shelly")
+
+
+def approved(tmp_path, monkeypatch, run, deploying: bool) -> tuple[locks.Held, list[Claim]]:
+    """run_approved with the deploy and the tests faked out: what the run holds after, and the claim run_rig got."""
+    held = locks.hold(rig.claim(run_args(), run), "wt", tmp_path, out=quiet())
+    given: list[Claim] = []
+    monkeypatch.setattr(rig, "deploy_and_wait", lambda _env, _branch: None)
+    monkeypatch.setattr(rig, "tested_commit", lambda *_args: "c1")
+    monkeypatch.setattr(rig, "run_rig", lambda *_args, claim, **_kw: given.append(claim))
+    monkeypatch.setattr(rig, "run_tests", lambda _run: 0)
+    rig.run_approved(SimpleNamespace(keyword=None, unattended=True, debug_logs=False), run, held, None, deploying, True)
+    return held, given
+
+
+def test_a_deploying_run_without_options_steps_ha_down_to_shared(tmp_path, monkeypatch):
+    profile = fakes.profile("shelly", light_ct="light.a")
+    run = setup(tmp_path, profile, step_suites(tmp_path, fakes.RESTORED_MIDWAY, "shelly"), deploy_needed=True)
+    held, given = approved(tmp_path, monkeypatch, run, deploying=True)
+    with held:
+        assert held.claim == given[0] == claim("shelly")
+        assert not blocked(tmp_path, claim("zha"))
+
+
+def test_a_deploying_run_with_options_keeps_ha_exclusive(tmp_path, monkeypatch):
+    profile = fakes.profile("shelly", light_ct="light.a")
+    options = fakes.RESTORED_MIDWAY.replace("tests:", "options: [opt]\ntests:", 1)
+    run = setup(tmp_path, profile, step_suites(tmp_path, options, "shelly"), deploy_needed=True)
+    held, given = approved(tmp_path, monkeypatch, run, deploying=True)
+    with held:
+        assert held.claim == given[0] == claim("shelly", ha="exclusive")
+        assert blocked(tmp_path, claim("zha"))
 
 
 # --- Journals -------------------------------------------------------------------------------------------------

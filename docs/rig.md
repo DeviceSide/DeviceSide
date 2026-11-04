@@ -70,7 +70,8 @@ is safe. `--no-deploy` tests whatever HA runs and, unless that is your checkout'
 - **Baseline.** Changes beyond the devices (paused automations, log levels, Z2M device options) are shared by runs
   side by side, and the last one out puts them back (`tests/rig/baseline.py`).
 - **Locks.** Runs share the rig through one lock per integration and one on HA, so runs on different integrations go
-  side by side (`tests/rig/locks.py`). The plan prints a run's locks. `--wait-free` waits until the rig is free, or
+  side by side (`tests/rig/locks.py`). A deploy holds HA exclusively, and a run with no option suites steps
+  down to shared once HA is back. The plan prints a run's locks. `--wait-free` waits until the rig is free, or
   with `--integration`, until those integrations are, without taking a lock.
 
 A probe takes the same locks through `--hold`, which runs a command while holding them and returns its exit code:

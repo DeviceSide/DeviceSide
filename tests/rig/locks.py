@@ -1,8 +1,9 @@
 """The rig's locks, in the git common dir so every worktree shares them: one on HA, and one per integration.
 
 A run holds HA shared, unless it restarts HA or reloads device_side's entry (a deploy, a suite with device_side
-options, --recover), and then exclusively. It holds each integration it moves exclusively. So runs on different
-integrations go side by side, and a deploy waits for every run and holds off new ones meanwhile.
+options, --recover), and then exclusively. A run that deploys but has no option suites steps HA down to shared once
+HA is back (Held.share_ha). It holds each integration it moves exclusively. So runs on different integrations go side
+by side, and a deploy waits for every run and holds off new ones meanwhile.
 
 flock drops a lock when its process dies, so nothing goes stale. Locks are taken in one order (the integrations
 sorted, then HA), so two runs never each hold what the other waits for. A waiting run polls, and says who holds what
@@ -79,11 +80,27 @@ class Held:
 
     claim: Claim
     handles: list[TextIO] = field(default_factory=list)
+    ha: TextIO | None = None  # HA's lock, among `handles`
+
+    def share_ha(self, out: Out = print) -> None:
+        """Step HA down from exclusive to shared, keeping the integrations: once a deploy's restart is done, a run with
+        no option suites needs HA shared only. Nothing changes for a claim that holds HA shared.
+
+        flock's conversion need not be atomic (it may drop the lock before taking the new one), so a run waiting for HA
+        exclusively may slip in between; this then waits for it, saying who holds HA, as any shared claim does. The
+        turnstile isn't taken: a run waiting for HA exclusively holds it, waiting on this very lock."""
+        if self.claim.ha != "exclusive" or self.ha is None:
+            return
+        self.ha.truncate(0)  # shared holders leave no entry; cleared while still exclusive, so no one else's is lost
+        self.ha.flush()
+        wait_for_lock(self.ha, fcntl.LOCK_SH, out, "HA")
+        self.claim = Claim("shared", self.claim.integrations)
 
     def close(self) -> None:
         for handle in reversed(self.handles):
             handle.close()
         self.handles.clear()
+        self.ha = None
 
     def __enter__(self) -> Held:
         return self
@@ -240,6 +257,7 @@ def hold(claim: Claim, holder: str, directory: Path, out: Out = print) -> Held:
             write_holder(turnstile, f"{holder}, waiting for HA" if claim.ha == "exclusive" else holder)
             ha = (directory / LOCK_NAME).open("a+")
             held.handles.append(ha)
+            held.ha = ha
             if claim.ha == "exclusive":
                 waited |= wait_for_lock(ha, fcntl.LOCK_EX, out, "HA", lambda: ha_holders(directory, claim.integrations))
                 write_holder(ha, holder)
