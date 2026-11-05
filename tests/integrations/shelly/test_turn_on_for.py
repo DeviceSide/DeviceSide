@@ -38,7 +38,7 @@ async def test_switch_one_set_then_read_back(hass, setup_production):
         ("cct:0", {"brightness": 128, "color_temp_kelvin": 3000}, {"brightness": 50, "ct": 3000}),
         ("cct:0", {"color_temp_kelvin": 9000}, {"ct": 6500}),  # clamped to the entity's range; no mode on a CCT
         ("rgb:0", {"brightness": 255, "transition": 2}, {"brightness": 100, "transition_duration": 2.0}),
-        ("rgbw:0", {"brightness": 1}, {"brightness": 0}),
+        ("rgbw:0", {"brightness": 64}, {"brightness": 25}),
     ],
 )
 async def test_documented_components_take_the_same_set(hass, setup_production, key, data, expected):

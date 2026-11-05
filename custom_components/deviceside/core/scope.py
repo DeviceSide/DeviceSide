@@ -1,6 +1,7 @@
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from enum import IntEnum
+from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from homeassistant.core import HomeAssistant
@@ -36,7 +37,8 @@ def documented(*items: str) -> dict[str, Level]:
     return dict.fromkeys(items, Level.DOCUMENTED)
 
 
-@dataclass(frozen=True, slots=True)
+# eq=False: compared and hashed by identity, as the mappings it holds can't be hashed.
+@dataclass(frozen=True, slots=True, eq=False)
 class AdapterScope:
     """The entity domains, capabilities and fields an adapter is known to work with, each at its Level, plus its
     settings. An item nobody has tested, and that is not Documented, is left out of scope and refused, not gated at
@@ -64,6 +66,10 @@ class AdapterScope:
     def __post_init__(self) -> None:
         if any(level is not Level.VERIFIED for level in self.fields.values()):
             raise ValueError("fields are never Documented: a field changes the call")
+        # Read-only copies: adapters share mappings such as Shelly's CAPABILITIES, and a frozen scope stays frozen.
+        for name in ("domains", "fields", "capabilities"):
+            if (items := getattr(self, name)) is not None:
+                object.__setattr__(self, name, MappingProxyType(dict(items)))
 
     def level(self, domain: str, capability: str | None = None) -> Level:
         """The weakest level among the in-scope items a call to this domain and capability touches."""

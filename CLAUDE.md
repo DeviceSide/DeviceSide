@@ -20,7 +20,8 @@ a released adapter that the rig can't exercise. Leave it off for refactors, perf
 before each RC covers, and for a Documented item (below). When unsure, ask.
 
 **Clearing it:** a PR citing a passing test record (`docs/test-records/<integration>/<action>*.md`) that covers the
-adapter's whole scope: `AdapterScope.domains`, `.capabilities`, `.fields`, and each of `.options` on and off.
+adapter's whole scope bar its Documented items: `AdapterScope.domains`, `.capabilities`, `.fields`, and each of
+`.options` on and off.
 
 **Proof follows the call.** A record proves the call an adapter sends and the capability it reaches (Shelly: the RPC
 component), whatever entity domain the target shows: a relay exposed as a `switch` or an on/off `light` rides one

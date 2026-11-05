@@ -36,3 +36,14 @@ def test_level_is_the_weakest_item_touched(domain, capability, level):
 def test_a_documented_field_is_refused():
     with pytest.raises(ValueError, match="fields are never Documented"):
         AdapterScope(fields=documented("brightness"))
+
+
+def test_mappings_are_read_only_copies_and_the_scope_hashes():
+    shared = verified("Switch")
+    scope = AdapterScope(capabilities=shared)
+    shared["Light"] = Level.VERIFIED
+
+    assert "Light" not in scope.capabilities
+    with pytest.raises(TypeError):
+        scope.domains["switch"] = Level.VERIFIED
+    assert hash(scope) == hash(scope)

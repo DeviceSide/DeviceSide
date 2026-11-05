@@ -59,7 +59,7 @@ the first contributor to reach it sets up the test checklist with the maintainer
 
 ## Developing
 
-- An adapter leaves `experimental` on a passing test record that covers its whole scope (see
+- An adapter leaves `experimental` on a passing test record that covers its whole scope bar its Documented items (see
   [Support levels](#support-levels)). The maintainer's rig is kept outside this repo.
 - If you use a coding agent, point it at [CLAUDE.md](CLAUDE.md). It holds the repo's rules.
 - Open pull requests against `main`, or against a `release/vX.Y.Z` branch when one exists for the fix.

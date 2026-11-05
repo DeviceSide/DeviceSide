@@ -26,7 +26,8 @@ HA requires it.
   `docs/test-records/<integration>/<action>*.md`. Clearing `experimental` cites one.
 - **Support level**: what an adapter's test records prove. **Verified**: a passing record from the rig.
   **Community**: a passing record from a contributor's release-candidate install through HACS. **Experimental**:
-  `experimental=True`, kept until a passing record covers the adapter's scope, so it ships in release candidates
+  `experimental=True`, kept until a passing record covers the adapter's scope bar its Documented items, so it ships
+  in release candidates
   only. A record older than its adapter's code blocks a release (`check_release.py --records`) until a rerun.
   **Documented** is a level of a scope item, not of an adapter: a domain or capability with no record that the
   adapter sends the same call as a Verified item, differing only in addressing, and that the vendor or standard

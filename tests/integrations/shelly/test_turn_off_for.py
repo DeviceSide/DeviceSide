@@ -5,7 +5,7 @@ from unittest.mock import call as rpc_call
 import pytest
 
 from ...conftest import call, refusal
-from ...fixtures.shelly import add_shelly_entity, shelly_device
+from ...fixtures.shelly import DOCUMENTED_COMPONENTS, add_shelly_entity, shelly_device
 
 CONFIRMED = {"status": "confirmed", "integration": "shelly"}
 
@@ -35,9 +35,7 @@ async def test_each_capability_in_scope_gets_a_set(hass, setup_production):
     ]
 
 
-@pytest.mark.parametrize(
-    ("key", "component"), [("light:0", "Light"), ("cct:0", "CCT"), ("rgb:0", "RGB"), ("rgbw:0", "RGBW")]
-)
+@pytest.mark.parametrize(("key", "component"), DOCUMENTED_COMPONENTS)
 async def test_documented_components_take_the_same_set(hass, setup_production, key, component):
     entry, call_rpc = shelly_device(hass)
     add_shelly_entity(hass, entry, "light.strip", key, state="on")
