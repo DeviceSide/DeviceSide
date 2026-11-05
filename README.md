@@ -4,7 +4,7 @@
 
 DeviceSide unlocks native features in your lights, switches and plugs on the Zigbee, Shelly, Philips Hue and Matter integrations.
 
-* **Turn on with timer:** Devices turn themselves off after a set time, even if HA goes offline or restarts.
+* **Auto-off/on:** Turn devices off or on automatically, even if HA goes offline or restarts.
 
 * **Dim smoothly:** Press to dim and release to stop, using third-party buttons. No more jittery steps or overshoots.
 
@@ -20,8 +20,7 @@ DeviceSide unlocks native features in your lights, switches and plugs on the Zig
 |:----------------------------------------------------------------------------------- |:---:|:---:|:------:|:----------:|:------:|
 | [Turn on with timer](#turn-on-with-timer)                                           | ✅   | ✅   | ✅      |            | ✅      |
 | [Turn off with timer](#turn-off-with-timer)                                         |     |     | ✅      |            |        |
-| [Auto-off](#auto-off-and-auto-on)                                                   |     |     | ✅      |            |        |
-| [Auto-on](#auto-off-and-auto-on)                                                    |     |     | ✅      |            |        |
+| [Auto-off/on (aka inching)](#auto-off-and-auto-on)                                  |     |     | ✅      |            |        |
 | [Smooth dimming](#smooth-dimming)                                                   | ✅   | ✅   |        | ✅          |        |
 | [Smooth saturation change](#smooth-color-transitions)                               | ✅   | ✅   |        | ✅          |        |
 | [Smooth hue change](#smooth-color-transitions)                                      | ✅   | ✅   |        |            |        |
@@ -86,11 +85,10 @@ v0.1.0 renamed the integration's domain from `device_side` to `deviceside`. HACS
 
 Action: `deviceside.turn_on_for`
 
-Also known as: auto off, On with timed off (Zigbee, Matter), `on_time` (Zigbee2MQTT), `toggle_after` (Shelly), countdown.
+Also known as on with timed off (Zigbee, Matter), `on_time` (Zigbee2MQTT), `toggle_after` (Shelly), countdown.
 
-Turn on, then off after a delay. Timer runs on the device, for this turn-on only: it doesn't change a Shelly's own [Auto-off](#auto-off-and-auto-on) setting. Example use cases:
+Turn on, then off after a delay. Timer runs on the device, for this turn-on only: it doesn't change a Shelly's own [Auto-off](#auto-off-and-auto-on) setting. Example use case:
 
-- Cut power to a heater or ironing station automatically, in case someone leaves it on.
 - Run a fan for 20 minutes after a shower.
 
 #### YAML example: heater off after 4 hours, with a warning
@@ -192,16 +190,14 @@ The following actions cancel the timer, on a device that's off:
 
 * Turn off (i.e. leave off)
 
-### Auto-off and auto-on
+### Auto-off (aka inching) and auto-on
 
 Actions: `deviceside.set_auto_off`, `deviceside.set_auto_on`, `deviceside.clear_auto_off`, `deviceside.clear_auto_on`
 
-Also known as: Auto OFF and Auto ON (Shelly app), inching.
+Configure a persistent auto-off delay, that fires on every turn-on independent of Home Assistant. Auto-on is the reverse. Example use cases:
 
-Store a delay on the device. From then on, every turn-on from any source (a wall button, the Shelly app, a schedule or Home Assistant) turns the device off again after that delay. Auto-on is the reverse. The setting lasts until you clear it. Example use cases:
-
-- Pulse a garage door opener's relay for 1 second, whatever presses it.
-- Make sure a bathroom fan never runs for more than an hour.
+- Inch a garage door by pulsing its relay for 1 second.
+- Turn off an ironing station automatically after an hour.
 
 #### YAML example: garage door relay
 
@@ -215,13 +211,13 @@ data:
   duration: 1
 ```
 
-| Field               | Description                                                                                                      |
-|:------------------- |:---------------------------------------------------------------------------------------------------------------- |
-| `target`            | Shelly lights and switches (required)                                                                            |
-| `duration`          | `set_auto_off`: delay after each turn-on until the device turns off. `set_auto_on`: the reverse. Required        |
-| `response_variable` | Variable that receives the response from each entity (optional)                                                  |
+| Field               | Description                                                     |
+|:------------------- |:--------------------------------------------------------------- |
+| `target`            | Shelly lights and switches (required)                           |
+| `duration`          | Delay until the device turns off/on. Up to 7 days (required)    |
+| `response_variable` | Variable that receives the response from each entity (optional) |
 
-`clear_auto_off` and `clear_auto_on` take only a target, and leave the device on or off as it is.
+`clear_auto_off` and `clear_auto_on` take only a target.
 
 <details>
 <summary>Results</summary>
@@ -238,11 +234,10 @@ If a device fails, the action fails and stops the automation.
 
 </details>
 
-#### Good to know
+#### Warning
 
-* Changing the setting makes Home Assistant reload the Shelly device about a minute later, so its entities are briefly unavailable. The output doesn't change.
-* Each change is written to the device's flash memory. Set it once, not from a frequent automation.
-* [Get attributes](#get-attributes) reports both settings.
+* Each config change writes to the device's flash memory. Set it once, not from a frequent automation.
+* Home Assistant reloads a Shelly device after a config change, so expect the entity to go unavailable briefly after each call.
 
 ### Smooth dimming
 
@@ -261,8 +256,8 @@ buttons_released:
   - action: deviceside.stop
 ```
 
-| Action                         | Description                                    |
-|:------------------------------ |:---------------------------------------------- |
+| Action                        | Description                                    |
+|:----------------------------- |:---------------------------------------------- |
 | `deviceside.raise_brightness` | Start raising brightness, turning the light on |
 | `deviceside.lower_brightness` | Start lowering brightness                      |
 | `deviceside.stop`             | Freeze every move on the target where it is    |
@@ -289,8 +284,8 @@ button_released:
   - action: deviceside.stop
 ```
 
-| Action                         | Description                                                     |
-|:------------------------------ |:--------------------------------------------------------------- |
+| Action                        | Description                                                     |
+|:----------------------------- |:--------------------------------------------------------------- |
 | `deviceside.raise_saturation` | Start raising saturation, toward a richer color                 |
 | `deviceside.lower_saturation` | Start lowering saturation, toward white                         |
 | `deviceside.raise_hue`        | Start cycling hue: red, yellow, green, blue. Runs until `stop`  |
@@ -353,11 +348,9 @@ Action: `deviceside.get_attributes`
 
 Read device attributes that aren't exposed reliably by Home Assistant:
 
-* Check a device's on/off timer.
+* Check a device's on/off timer and auto-off/on settings.
 
-* Check a Shelly device's auto-off and auto-on settings.
-
-* Check brightness, color or color temperature while a light is off or transitioning.
+* Check a light's brightness, color or color temperature while it's off or transitioning.
 
 #### YAML example: how long until the heater turns off
 
