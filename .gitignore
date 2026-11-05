@@ -7,9 +7,11 @@ __pycache__/
 .env
 .env.rig
 
-# Household details (also check-private's blocklist)
-tests/rig/profiles/
+# Household details (check-private's blocklist; the rig writes .private-terms.rig)
 .private-terms
+.private-terms.rig
+# Where the rig kept its profiles before it moved out; ignored so a stale copy is never committed
+tests/rig/profiles/
 
 # Virtual environments
 .venv/

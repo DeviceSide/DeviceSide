@@ -20,10 +20,12 @@ HA requires it.
 - **Entity domain**: light, switch. "Domain" alone is fine where unambiguous.
 - **Scope**: the entity domains, capabilities and fields an adapter is known to work with, on tested hardware.
   Outside it, calls are refused as not yet tested.
+- **Rig**: the maintainer's live Home Assistant and devices, and the private tool that runs Device Side's actions on
+  them and writes test records. It is kept outside this repo; the records are its output here.
 - **Test record**: the evidence that an adapter works on real hardware, from a rig run:
   `docs/test-records/<integration>/<action>*.md`. Clearing `experimental` cites one.
-- **Profile**: one test setup on the rig's HA, `tests/rig/profiles/<name>.yaml` (gitignored): the entities a run may
-  move, by integration and role, and what it pauses. `.env.rig` holds the HA instance's settings.
+- **Profile**: one test setup on the rig's HA, the entities a run may move by integration and role; a record names the
+  one it ran on (`lab`, `house`).
 
 ## Principles
 
@@ -110,16 +112,16 @@ custom_components/device_side/
     runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, integration state
   actions/           one module per action, each exporting ACTION
   integrations/<integration>/   INTEGRATION, ADAPTERS, one module per adapter, shared helpers
-scripts/             rig runner, deploy, release, tag and audit checks, household check
+scripts/             release, tag and audit checks, household check
 tests/{core,actions,integrations,scripts}   unit tests, mirroring the code; tests/fakes holds a fake integration
-tests/rig/           the rig: client, engine, step files, profiles (docs/rig.md)
 ```
 
 ### Core contract
 
 - **Registry.** `pkgutil` discovery over `actions/` and `integrations/`. Modules export data (`ACTION`,
   `INTEGRATION`, `ADAPTERS`), not decorators, so import has no side effects, order is sorted and deterministic, and
-  `check_release.py` and the rig runner import the registry without `hass`. A failing integration import (its core
+  `check_release.py` and the rig, from outside the repo, import the registry without `hass`, so a change to
+  `AdapterRegistry`'s interface needs the rig's matching change. A failing integration import (its core
   integration isn't installed) records it unavailable and setup carries on.
 - **Resolver.** Candidates are the available integrations whose `ha_domain` is the entity's registry platform;
   one with a `detect` hook wins first (Z2M over plain MQTT). A `switch_as_x` light resolves to the switch it wraps,
@@ -169,5 +171,5 @@ adapter's targets at once, so native group commands stay possible.
   `scripts/check_tag.py` refuses a tag that isn't `vX.Y.Z` or `vX.Y.ZrcN` or doesn't match its branch, and an RC
   needs its audit record (`scripts/check_audit.py`).
 - **Testing.** Unit tests mock each integration at its boundary (`mqtt.publish`, the ZHA service, the Shelly RPC,
-  the Matter client, aiohue) against a real `hass`. The rig ([rig.md](rig.md)) runs step files against a live HA and
-  writes the test records.
+  the Matter client, aiohue) against a real `hass`. The rig runs step files against a live HA and writes the test
+  records.

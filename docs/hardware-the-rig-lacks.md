@@ -5,8 +5,9 @@ the reason shown, or (where noted) not refused at all, until a passing test reco
 adapter scopes on 4 Nov 2026. It is also the "testers needed" list for the release candidate that follows a release
 leaving capabilities out.
 
-A **tester** is someone with the hardware and a Home Assistant they can point the rig's step files at
-(`tests/rig/steps/`, see [rig.md](rig.md)). A passing record clears the entry: widen the adapter's
+A **tester** is someone with the hardware and a Home Assistant the rig's tests can run against; the rig is kept
+outside this repo, so how a tester runs them is the remote tester flow still to come (TODO.md, 9b). A passing record
+clears the entry: widen the adapter's
 `AdapterScope` and add the record under `docs/test-records/`. Proof follows the call, so one record covers every
 entity domain the same call reaches.
 

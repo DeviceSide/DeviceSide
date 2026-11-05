@@ -7,7 +7,7 @@ When an action should raise, skip a target, or what its response holds: match co
 
 **The repo is public:** no household entity IDs, device names, MACs or hostnames anywhere in it, commit messages included.
 
-**No personal tooling:** deploy hosts, SSH aliases, and private stacks belong in gitignored files (`.env.rig`, `notes/`, `CLAUDE.local.md`), not in committed code, docs or commit messages.
+**No personal tooling:** deploy hosts, SSH aliases, and private stacks belong in gitignored files (`.private-terms`, `notes/`, `CLAUDE.local.md`), not in committed code, docs or commit messages.
 
 ## Release flag
 
@@ -56,11 +56,12 @@ since its last rig run needs a new one); see their headers. The steps they don't
 - `custom_components/device_side/core/`: registry, resolver, dispatcher, action registration
 - `custom_components/device_side/actions/`: one module per action
 - `custom_components/device_side/integrations/<integration>/`: one adapter module per action
-- `tests/{core,actions,integrations,rig}`: mirror the above; `rig/` drives the live HA, only via `scripts/rig.py`,
-  on a profile (`tests/rig/profiles/<name>.yaml`, gitignored)
-- `scripts/`: rig runner, household check, deploy, release checks (coverage, the release flag, record freshness, tags, RC audits)
-- `docs/test-records/<integration>/`: test records. Design detail lives in `docs/design.md`; running the rig and
-  writing step files in `docs/rig.md`.
+- `tests/{core,actions,integrations,scripts}`: mirror the above
+- `scripts/`: household check, release checks (coverage, the release flag, record freshness, tags, RC audits)
+- `docs/test-records/<integration>/`: test records, written by the rig. Design detail lives in `docs/design.md`.
+
+The rig, which drives the live HA and writes the records, is a private repo kept out of this one: don't add rig code,
+step files or rig docs here. When it is attached to the session, its `CLAUDE.md` says how to run it.
 
 ## Conventions
 
