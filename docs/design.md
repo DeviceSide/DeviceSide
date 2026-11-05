@@ -9,7 +9,7 @@ Code and docs use these terms. "Platform", "backing" and "claim" are retired; `s
 HA requires it.
 
 - **Action**: what the user calls, e.g. `deviceside.turn_on_for`.
-- **Feature**: the user experience one or more actions deliver (an auto-off timer, smooth dimming). Prose only.
+- **Feature**: the user experience one or more actions deliver (turn on with timer, smooth dimming). Prose only.
 - **Integration**: the HA integration that is the first hop to the device (Shelly, ZHA, MQTT, Hue).
 - **Bridge**: a separate system between the integration and the device, named only when the integration alone
   doesn't say how the device is reached (Zigbee2MQTT behind MQTT). The Hue Bridge is not counted.
@@ -61,8 +61,8 @@ Integrations: Zigbee2MQTT (via `mqtt`), ZHA, Matter, Shelly Gen2+ and Hue (CLIP 
 scope, is in each adapter's `AdapterScope`; `scripts/check_release.py` lists every adapter and whether it is
 experimental.
 
-- **`turn_on_for`, `turn_off_for`** (the auto-off and auto-on timers): on, then off after `duration` (or the reverse),
-  timed on the device. `turn_off_for` is Shelly only: Zigbee and Matter `OnWithTimedOff` is on-then-off only.
+- **`turn_on_for`, `turn_off_for`** (turn on with timer, turn off with timer): on, then off after `duration` (or
+  the reverse), timed on the device. `turn_off_for` is Shelly only: Zigbee and Matter `OnWithTimedOff` is on-then-off only.
   `turn_on_for` accepts the `light.turn_on` fields; Shelly sends them in one RPC, the others send a `light.turn_on`
   first. What cancels a timer differs by integration ([integrations.md](integrations.md)). Hue has neither: its bridge
   timers ignore manual on/off, so they can't be cancelled the way users expect.
