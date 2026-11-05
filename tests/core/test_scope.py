@@ -14,7 +14,6 @@ def test_defaults_are_a_verified_light_with_every_capability():
 
     assert scope.domains == {"light": Level.VERIFIED}
     assert scope.level("light", "anything") is Level.VERIFIED
-    assert scope.documented_items() == []
 
 
 @pytest.mark.parametrize(
@@ -32,14 +31,6 @@ def test_level_is_the_weakest_item_touched(domain, capability, level):
     )
 
     assert scope.level(domain, capability) is level
-
-
-def test_documented_items_lists_domains_then_capabilities():
-    scope = AdapterScope(
-        domains=verified("switch") | documented("light"), capabilities=verified("Switch") | documented("CCT", "RGB")
-    )
-
-    assert scope.documented_items() == ["light", "CCT", "RGB"]
 
 
 def test_a_documented_field_is_refused():

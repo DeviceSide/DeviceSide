@@ -7,6 +7,9 @@ DeviceSide was tested on the models below. Others may work. If yours isn't liste
 or not.
 
 **Verified**: a passing test record from a rig run. The models in the record are the ones tested.
+**Documented**: no record yet, but DeviceSide sends it the same call as a Verified row, differing only in which
+component, endpoint or entity it addresses, and the vendor or standard documents that call identically for both. It
+ships in stable releases, and a bug on it is a real bug: please report it.
 **Experimental**: no current record. It may work, and it is not in a stable release.
 
 A group is a native group of the integration (a Hue zone, a ZHA or Zigbee2MQTT group).
@@ -29,19 +32,28 @@ A group is a native group of the integration (a Hue zone, a ZHA or Zigbee2MQTT g
 | Action | Level | Tested models | Records | Reported working |
 |---|---|---|---|---|
 | `get_attributes` | Verified | `8979`, firmware `v1.4` | [record](test-records/matter/get_attributes.md) | |
+| `get_attributes` | Documented | none (untested: light entities) | | |
 | `turn_on_for` | Verified | `8979`, firmware `v1.4` | [record](test-records/matter/turn_on_for.md) | |
+| `turn_on_for` | Documented | none (untested: light entities) | | |
 
 ## Shelly
 
 | Action | Level | Tested models | Records | Reported working |
 |---|---|---|---|---|
 | `clear_auto_off` | Experimental | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/clear_auto_off.md) | |
+| `clear_auto_off` | Experimental | none (untested: Light, CCT, RGB, RGBW components) | | |
 | `clear_auto_on` | Experimental | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/clear_auto_on.md) | |
+| `clear_auto_on` | Experimental | none (untested: Light, CCT, RGB, RGBW components) | | |
 | `get_attributes` | Experimental | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943`<br>`S4SW-001X8EU`, firmware `20261026-122156/2.0.3-g4601943`<br>`S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](test-records/shelly/get_attributes.md) | |
+| `get_attributes` | Experimental | none (untested: Light, CCT, RGB, RGBW components) | | |
 | `set_auto_off` | Experimental | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/set_auto_off.md) | |
+| `set_auto_off` | Experimental | none (untested: Light, CCT, RGB, RGBW components) | | |
 | `set_auto_on` | Experimental | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/set_auto_on.md) | |
+| `set_auto_on` | Experimental | none (untested: Light, CCT, RGB, RGBW components) | | |
 | `turn_off_for` | Verified | `S4SW-001X8EU`, firmware `20261026-122156/2.0.3-g4601943`<br>`S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943`<br>`S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/turn_off_for.md) | |
+| `turn_off_for` | Documented | none (untested: Light, CCT, RGB, RGBW components) | | |
 | `turn_on_for` | Verified | `S4SW-001X8EU`, firmware `20261026-122156/2.0.3-g4601943`<br>`S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943`<br>`S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/turn_on_for.md) | |
+| `turn_on_for` | Documented | none (untested: Light, CCT, RGB, RGBW components) | | |
 
 ## ZHA
 

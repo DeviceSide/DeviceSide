@@ -1,4 +1,4 @@
-"""Matter turn_on_for: OnWithTimedOff on the OnOff cluster, then OnTime read-back."""
+"""Matter turn_on_for: OnWithTimedOff on the OnOff cluster, then an OnTime and OnOff read-back."""
 
 import logging
 from typing import ClassVar
@@ -10,13 +10,14 @@ from .addressing import (
     make_on_with_timed_off,
     matter_client,
     node_id_from_unique_id,
-    ontime_attr_path,
+    read_timer,
+    timer_running,
     unsupported_reason,
 )
 from ...actions.turn_on_for import TurnOnForRequest
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Status, Target
-from ...core.scope import AdapterScope, DurationLimits, verified
+from ...core.scope import AdapterScope, DurationLimits, documented, verified
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -30,11 +31,11 @@ class MatterTurnOnFor(Adapter[TurnOnForRequest]):
     action: ClassVar[str] = "turn_on_for"
     integration: ClassVar[str] = "matter"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        # Plugs only: Matter lights take the same command but stay out of scope until a test record covers them.
-        domains=verified("switch"),
+        # Lights take the same OnWithTimedOff as plugs, behind the same LT check: Documented until a record covers them.
+        domains=verified("switch") | documented("light"),
         duration=_TIMER_LIMITS,
         fields=verified(),
-        # capabilities=None covers every plug endpoint that passes the LT feature check.
+        # capabilities=None covers every endpoint that passes the LT feature check.
         confirmable=True,
     )
 
@@ -57,16 +58,13 @@ class MatterTurnOnFor(Adapter[TurnOnForRequest]):
                 command=command,
             )
 
-            # Optional read-back: confirm the timer is running. The client returns {path: value}.
-            path = ontime_attr_path(ep_id)
             try:
-                read = await client.read_attribute(node_id=node_id, attribute_path=path)
-                on_time_value = read.get(path)
+                on_time, on_off = await read_timer(client, node_id, ep_id)
             except Exception as err:  # noqa: BLE001
                 _LOGGER.debug("turn_on_for matter read-back failed for %s: %s", target.entity_id, err)
                 return self.result(target, Status.SENT, detail="readback_failed")
 
-            if on_time_value:
+            if timer_running(on_time, on_off):
                 return self.result(target, Status.CONFIRMED)
             return self.result(target, Status.SENT, detail="timer_not_reported")
 

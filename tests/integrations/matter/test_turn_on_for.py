@@ -3,6 +3,9 @@
 import pytest
 from homeassistant.exceptions import HomeAssistantError
 
+from custom_components.deviceside.core.scope import Level
+from custom_components.deviceside.integrations.matter.turn_on_for import MatterTurnOnFor
+
 from ...conftest import call, refusal
 from ...fixtures.matter import (
     NODE_ID,
@@ -37,7 +40,7 @@ async def test_sends_on_with_timed_off_and_confirms(setup_matter, hass):
     assert cmd.onOffControl == 0
     assert cmd.onTime == 50  # 5 s * 10 = 50 tenths
     assert cmd.offWaitTime == 0
-    read_attr.assert_awaited_once()
+    assert read_attr.await_count == 2  # OnTime, then OnOff
 
 
 async def test_duration_converted_to_tenths(setup_matter, hass):
@@ -71,12 +74,35 @@ async def test_plug_sends_on_with_timed_off(setup_matter, hass):
     assert send_cmd.call_args.kwargs["command"].onTime == 50
 
 
-async def test_light_is_out_of_scope(setup_matter, hass):
-    """A Matter light raises TargetNotSupported until a test record brings lights into scope."""
-    entry, send_cmd, _ = matter_device(hass, endpoint_id=EP)
+async def test_light_takes_the_same_command(setup_matter, hass):
+    """A Matter light (Documented) takes the plug's OnWithTimedOff on the same endpoint, read back the same way."""
+    entry, send_cmd, read_attr = matter_device(hass, endpoint_id=EP)
     add_matter_entity(hass, entry, "light.bulb", endpoint_id=EP)
 
-    assert await refusal(hass, "turn_on_for", {"entity_id": "light.bulb", "duration": 5}) == "domain_not_tested"
+    response = await call(hass, "turn_on_for", {"entity_id": "light.bulb", "duration": 5})
+
+    assert response == {"light.bulb": CONFIRMED}
+    call_kwargs = send_cmd.call_args.kwargs
+    assert (call_kwargs["node_id"], call_kwargs["endpoint_id"]) == (NODE_ID, EP)
+    assert vars(call_kwargs["command"]) == {"onOffControl": 0, "onTime": 50, "offWaitTime": 0}
+    assert [args.kwargs["attribute_path"] for args in read_attr.await_args_list] == [f"{EP}/6/16385", f"{EP}/6/0"]
+
+
+def test_light_is_documented_and_plug_verified():
+    assert MatterTurnOnFor.scope.level("light") is Level.DOCUMENTED
+    assert MatterTurnOnFor.scope.level("switch") is Level.VERIFIED
+
+
+@pytest.mark.parametrize("entity_id", ["switch.plug", "light.bulb"])
+async def test_on_time_while_off_does_not_confirm(setup_matter, hass, entity_id):
+    """OnTime > 0 with OnOff off is no running timer: SENT, not CONFIRMED."""
+    entry, _, read_attr = matter_device(hass, endpoint_id=EP)
+    read_attr.side_effect = on_time_reads(50, on=False).side_effect
+    add_matter_entity(hass, entry, entity_id, endpoint_id=EP)
+
+    response = await call(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5})
+
+    assert response == {entity_id: {"status": "sent", "integration": "matter", "detail": "timer_not_reported"}}
 
 
 def _no_client(entry):

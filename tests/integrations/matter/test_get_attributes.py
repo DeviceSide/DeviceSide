@@ -1,6 +1,8 @@
-"""Matter get_attributes: one live OnTime read per target, shaped as the shared timer row."""
+"""Matter get_attributes: a live OnTime and OnOff read per target, shaped as the shared timer row."""
 
 from datetime import UTC, datetime, timedelta
+from unittest.mock import AsyncMock
+from unittest.mock import call as mock_call
 
 import pytest
 from homeassistant.exceptions import HomeAssistantError
@@ -13,7 +15,7 @@ from custom_components.deviceside.integrations.matter.addressing import (
 )
 
 from ...conftest import call, refusal
-from ...fixtures.matter import NODE_ID, add_matter_entity, matter_device, on_time_reads
+from ...fixtures.matter import NODE_ID, add_matter_entity, matter_device, on_off_or, on_time_reads
 
 pytestmark = pytest.mark.usefixtures("setup_production")
 
@@ -39,17 +41,33 @@ async def test_running_timer_is_read_live(hass):
     response = await call(hass, "get_attributes", {"entity_id": "switch.plug"})
 
     assert response == {"switch.plug": {"timer": timer(12.5)}}
-    read_attr.assert_awaited_once_with(node_id=NODE_ID, attribute_path=f"{EP}/6/16385")
+    assert read_attr.await_args_list == [
+        mock_call(node_id=NODE_ID, attribute_path=f"{EP}/6/16385"),
+        mock_call(node_id=NODE_ID, attribute_path=f"{EP}/6/0"),
+    ]
 
 
-@pytest.mark.parametrize("answer", [{f"{EP}/6/16385": 0}, {}], ids=["zero", "path_missing"])
-async def test_no_timer_reports_an_empty_row(hass, answer):
+async def test_light_reads_the_same_attributes(hass):
     entry, _, read_attr = matter_device(hass, endpoint_id=EP)
-    read_attr.side_effect = None
-    read_attr.return_value = answer
-    add_matter_entity(hass, entry, "switch.plug", endpoint_id=EP)
+    read_attr.side_effect = on_time_reads(125).side_effect
+    add_matter_entity(hass, entry, "light.bulb", endpoint_id=EP, state="on")
 
-    assert await call(hass, "get_attributes", {"entity_id": "switch.plug"}) == {"switch.plug": {}}
+    assert await call(hass, "get_attributes", {"entity_id": "light.bulb"}) == {"light.bulb": {"timer": timer(12.5)}}
+    assert read_attr.await_count == 2
+
+
+@pytest.mark.parametrize(
+    "reads",
+    [on_time_reads(0), on_time_reads(125, on=False), AsyncMock(return_value={})],
+    ids=["zero", "off_with_on_time", "path_missing"],
+)
+@pytest.mark.parametrize("entity_id", ["switch.plug", "light.bulb"])
+async def test_no_timer_reports_an_empty_row(hass, reads, entity_id):
+    entry, _, read_attr = matter_device(hass, endpoint_id=EP)
+    read_attr.side_effect, read_attr.return_value = reads.side_effect, reads.return_value
+    add_matter_entity(hass, entry, entity_id, endpoint_id=EP)
+
+    assert await call(hass, "get_attributes", {"entity_id": entity_id}) == {entity_id: {}}
 
 
 async def test_no_lt_feature_is_refused(hass):
@@ -57,14 +75,6 @@ async def test_no_lt_feature_is_refused(hass):
     add_matter_entity(hass, entry, "switch.no_lt", endpoint_id=EP)
 
     assert await refusal(hass, "get_attributes", {"entity_id": "switch.no_lt"}) == "no_lt_feature"
-    read_attr.assert_not_awaited()
-
-
-async def test_light_is_out_of_scope(hass):
-    entry, _, read_attr = matter_device(hass, endpoint_id=EP)
-    add_matter_entity(hass, entry, "light.bulb", endpoint_id=EP)
-
-    assert await refusal(hass, "get_attributes", {"entity_id": "light.bulb"}) == "domain_not_tested"
     read_attr.assert_not_awaited()
 
 
@@ -100,7 +110,9 @@ async def test_read_error_raises(hass):
 async def test_two_targets_read_in_one_call(hass):
     entry, _, read_attr = matter_device(hass, endpoint_id=EP)
     on_times = {"1/6/16385": 50, "2/6/16385": 0}
-    read_attr.side_effect = lambda node_id, attribute_path: {attribute_path: on_times[attribute_path]}
+    read_attr.side_effect = lambda node_id, attribute_path: {
+        attribute_path: on_off_or(attribute_path, True, on_times.get(attribute_path))
+    }
     entry.runtime_data.adapter.matter_client.get_node.return_value.node_data.attributes["2/6/65532"] = 0x0001
     add_matter_entity(hass, entry, "switch.timed", endpoint_id=1, state="on")
     add_matter_entity(hass, entry, "switch.idle", endpoint_id=2)

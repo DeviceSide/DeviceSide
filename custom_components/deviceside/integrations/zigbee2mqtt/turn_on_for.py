@@ -52,7 +52,8 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
     action: ClassVar[str] = "turn_on_for"
     integration: ClassVar[str] = "zigbee2mqtt"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        # Zigbee plugs and switches rarely honor OnWithTimedOff, so switch stays out of scope until users ask.
+        # Zigbee plugs and switches rarely honor OnWithTimedOff, and Z2M has no read-back to show it, so switch fails
+        # the Documented conditions (CLAUDE.md, "Release flag") and stays out of scope until a record covers it.
         domains=verified("light"),
         duration=_TIMER_LIMITS,
         fields=verified("brightness", "color_temp_kelvin", "hs_color", "rgb_color", "xy_color", "transition"),

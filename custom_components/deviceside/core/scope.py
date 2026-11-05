@@ -72,11 +72,6 @@ class AdapterScope:
             levels.append(self.capabilities[capability])
         return min(levels)
 
-    def documented_items(self) -> list[str]:
-        """The Documented domains and capabilities, in declaration order."""
-        items = [*self.domains.items(), *(self.capabilities or {}).items()]
-        return [item for item, level in items if level is Level.DOCUMENTED]
-
 
 @dataclass(slots=True)
 class IntegrationInfo:
