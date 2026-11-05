@@ -1,4 +1,4 @@
-name: Device request
+name: Request Device, Integration or Feature
 description: Ask for a device, integration or feature DeviceSide doesn't cover yet, with a YAML call that already works.
 labels: ["device-request"]
 body:

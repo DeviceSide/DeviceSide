@@ -31,7 +31,8 @@ the first contributor to reach it sets up the test checklist with the maintainer
 
 1. **Report a device.** Tried DeviceSide on a device that isn't listed? Open a
    [device report](https://github.com/jasonmx/DeviceSide/issues/new?template=device_report.yml) and say whether it
-   worked. A "works" report counts as much as a "doesn't work" one.
+   worked. A "works" report counts as much as a "doesn't work" one. In Home Assistant, **Settings > Devices & services > DeviceSide > Configure > Report a device**
+   opens the same form with your device's details filled in.
 2. **Request a device.** For a device, integration or feature DeviceSide doesn't cover, open a
    [device request](https://github.com/jasonmx/DeviceSide/issues/new?template=device_request.yml). It needs a YAML
    call that already does the job on your device (an MQTT publish, a ZHA cluster command and so on), the device's

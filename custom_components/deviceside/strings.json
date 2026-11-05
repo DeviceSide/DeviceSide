@@ -17,6 +17,13 @@
   "options": {
     "step": {
       "init": {
+        "title": "DeviceSide",
+        "menu_options": {
+          "settings": "Settings",
+          "report_device": "Report a device"
+        }
+      },
+      "settings": {
         "title": "DeviceSide options",
         "data": {
           "predicted_state": "Show predicted brightness during Hue fades",
@@ -26,7 +33,17 @@
           "predicted_state": "A Hue bridge reports a fade's end brightness as soon as it starts, and where a stopped fade halted late or never. With this on, Home Assistant shows the brightness at the start, where a stop halted it, and the end once the fade has run. Turn it off to show what the bridge reports.",
           "z2m_color_modes": "Zigbee2MQTT tells Home Assistant a full-color light has one color mode, so Home Assistant keeps showing the old color whenever the bulb reports in the other. With this on, DeviceSide sets each such light's and group's Home Assistant override in Zigbee2MQTT's settings to announce both. Turn it off to remove those overrides."
         }
+      },
+      "report_device": {
+        "title": "Report a device",
+        "description": "Choose a light or switch to report on. DeviceSide opens a prefilled report on GitHub with the device's integration, model and firmware, and the DeviceSide and Home Assistant versions. It never includes the entity ID, name, area or address.",
+        "data": {
+          "entity_id": "Light or switch"
+        }
       }
+    },
+    "abort": {
+      "report_link": "[Open the device report]({url}) on GitHub. Check what it contains before you submit it."
     }
   },
   "exceptions": {

@@ -313,6 +313,7 @@ async def test_saving_the_option_off_puts_back_z2m_defaults(hass, z2m, mqtt_read
     z2m.retained[INFO]["config"]["devices"][IEEE] = ON
 
     result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": "settings"})
     assert result["data_schema"]({})[CONF_Z2M_COLOR_MODES] is True
     result = await hass.config_entries.options.async_configure(
         result["flow_id"], {**result["data_schema"]({}), CONF_Z2M_COLOR_MODES: False}

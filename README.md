@@ -34,7 +34,7 @@ Details per integration are in [docs/integrations.md](docs/integrations.md). Tes
 
 Maybe. Devices implement the same standards differently, which is why most of these features aren't in Home Assistant core: a feature that works on one Zigbee light can do nothing on another. Each ✅ means the feature passed a test on at least one device on that integration, not on every device. Some devices also accept commands for features they don't fully support, so test each of your devices before relying on a device-native feature.
 
-The tested models are on the [compatibility page](docs/compatibility.md). If yours isn't there, please try it and [report the result](https://github.com/jasonmx/DeviceSide/issues/new?template=device_report.yml), whether it works or not.
+The tested models are on the [compatibility page](docs/compatibility.md). If yours isn't there, please try it and [report the result](https://github.com/jasonmx/DeviceSide/issues/new?template=device_report.yml), whether it works or not. The quickest way is in Home Assistant: **Settings > Devices & services > DeviceSide > Configure > Report a device**. Pick a light or switch and DeviceSide opens a report with its integration, model, firmware and the versions filled in. It never includes the entity ID, name, area or address.
 
 ## Get started
 
@@ -392,7 +392,7 @@ The `timer` key holds `turns` (`on` or `off`), `ends_at` (UTC) and `remaining_s`
 
 * **Hue Bridge:** When a brightness move starts, the bridge reports its target brightness (e.g. 0% or 100%) to Home Assistant, which is jarring for moves that you plan to stop. DeviceSide suppresses the bridge's report when a transition starts, and reports the new brightness once the transition stops.
 
-The HS mode and Hue Bridge patches are on by default; turn them off in DeviceSide's options.
+The HS mode and Hue Bridge patches are on by default; turn them off in DeviceSide's options (**Configure > Settings**).
 
 ## Contributing
 
