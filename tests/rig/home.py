@@ -1,7 +1,7 @@
 """The home record: what a roaming bulb was before the rig first moved it, kept until it is back as it was, across
 runs and crashes. In the git common dir with the locks and the journals (it holds household entity IDs).
 
-`device_side-rig.home.json` maps a bulb's IEEE to:
+`deviceside-rig.home.json` maps a bulb's IEEE to:
 
 - `entity_id`: its fixed entity ID, to say which bulb it is;
 - `network`: its home network;
@@ -13,7 +13,7 @@ runs and crashes. In the git common dir with the locks and the journals (it hold
 An entry is written once, before the bulb's first move, and never overwritten while it exists: a second crash keeps
 the first home. Only a part it lacks is filled in: the Hue home of a bulb found leaving Hue after it was written. It
 is dropped only once the bulb is home, its Hue home is put back and its state is too. The file is written whole
-under `device_side-rig.home.lock`; with no directory (a test's run, with no journal), the record lives in memory.
+under `deviceside-rig.home.lock`; with no directory (a test's run, with no journal), the record lives in memory.
 """
 
 import contextlib
@@ -24,8 +24,8 @@ from pathlib import Path
 
 from .journal import write_whole
 
-NAME = "device_side-rig.home.json"
-LOCK_NAME = "device_side-rig.home.lock"
+NAME = "deviceside-rig.home.json"
+LOCK_NAME = "deviceside-rig.home.lock"
 
 
 class HomeRecord:

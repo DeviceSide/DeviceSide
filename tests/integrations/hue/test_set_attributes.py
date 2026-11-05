@@ -10,7 +10,7 @@ import pytest
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.util.color import color_hs_to_xy, color_RGB_to_xy
 
-from custom_components.device_side.integrations.hue import set_attributes as adapter
+from custom_components.deviceside.integrations.hue import set_attributes as adapter
 
 from ...conftest import call, refusal
 from ...fixtures.hue import add_hue_entity, add_hue_group, hue_entry

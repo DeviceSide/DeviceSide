@@ -1,4 +1,4 @@
-# lower_brightness.yaml's fades with predicted_state on: HA's state shows device_side's predictions, so these checks
+# lower_brightness.yaml's fades with predicted_state on: HA's state shows DeviceSide's predictions, so these checks
 # read HA, in 0-255 (60 % is 153).
 action: lower_brightness
 rig_seconds: 60

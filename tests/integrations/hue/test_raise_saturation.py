@@ -3,8 +3,8 @@
 import pytest
 from homeassistant.util.color import color_hs_to_xy, color_xy_to_hs
 
-from custom_components.device_side.core.transition import SATURATION
-from custom_components.device_side.integrations.hue.transition_cache import transition_cache
+from custom_components.deviceside.core.transition import SATURATION
+from custom_components.deviceside.integrations.hue.transition_cache import transition_cache
 
 from .conftest import SENT, color_lamp, color_room, hs_xy, xy_put
 from ...conftest import call

@@ -3,7 +3,7 @@
 Each section is written before the change it guards and cleared once that change is undone; an empty journal is
 deleted. scripts/rig.py keeps them in the git common dir, out of the repo: they hold household entity IDs.
 
-Each run has its own journal, `device_side-rig.journal.<id>.json`, and holds a lock on `<id>.lock` beside it for its
+Each run has its own journal, `deviceside-rig.journal.<id>.json`, and holds a lock on `<id>.lock` beside it for its
 whole life. A journal whose lock nobody holds is an orphan: its run died, and another run may put back what it left.
 The lock file is locked before it takes its name, so whoever finds one unlocked knows its run is gone.
 
@@ -19,13 +19,13 @@ import time
 from pathlib import Path
 from typing import Any, TextIO
 
-PREFIX = "device_side-rig.journal."
+PREFIX = "deviceside-rig.journal."
 # A dry run or --check probing a journal's lock holds it for a moment; a run that finds it locked looks again this many
 # times, this far apart, before taking it for a live run's.
 PROBES = 3
 PROBE_GAP_S = 0.05
 # The one journal every run shared before each had its own; only --recover, which holds everything, puts it back.
-LEGACY_NAME = "device_side-rig.journal.json"
+LEGACY_NAME = "deviceside-rig.journal.json"
 STARTED = "started"
 
 

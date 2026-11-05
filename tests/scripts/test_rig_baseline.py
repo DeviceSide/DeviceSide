@@ -24,7 +24,7 @@ class BaselineHA:
 
     def __init__(self, states: dict[str, str] | None = None, failing: str | None = None):
         self.states, self.failing, self.calls = dict(states or {}), failing, []
-        self.ha_levels = {"device_side": logging.WARNING, "mqtt": logging.WARNING}
+        self.ha_levels = {"deviceside": logging.WARNING, "mqtt": logging.WARNING}
         self.z2m_level = "warning"
         self.z2m_options: dict[str, dict] = {"0xa": {"hue_native_control": True}}
 
@@ -74,7 +74,7 @@ def baseline(tmp_path) -> dict:
 
 
 def debug(ha):
-    return ("ha_log_level", "device_side", lambda _: ha.set_log_level("device_side", "DEBUG"))
+    return ("ha_log_level", "deviceside", lambda _: ha.set_log_level("deviceside", "DEBUG"))
 
 
 def z2m_level(ha, level):
@@ -89,7 +89,7 @@ def native(ha, on: bool):
 def current(ha) -> tuple:
     return (
         ha.states.get("automation.motion"),
-        ha.ha_levels["device_side"],
+        ha.ha_levels["deviceside"],
         ha.z2m_level,
         ha.z2m_options["0xa"]["hue_native_control"],
     )
@@ -116,7 +116,7 @@ async def test_two_runs_overlap_then_one_crashes_and_the_other_ending_puts_every
     await hold_every_kind(live, ha)  # finds each changed, but held: it joins rather than records the change
     assert current(ha) == CHANGED
     held = baseline(tmp_path)
-    assert held["ha_log_level:device_side"] == {"original": "WARNING", "holders": [crashed.holder, live.holder]}
+    assert held["ha_log_level:deviceside"] == {"original": "WARNING", "holders": [crashed.holder, live.holder]}
     assert held["z2m_option:0xa:hue_native_control"]["original"] is True
 
     crashed_journal.lock.close()  # the run dies: its lock file stays, unlocked
@@ -196,11 +196,11 @@ async def test_a_level_ha_no_longer_reports_is_dropped(tmp_path):
     ha = BaselineHA()
     _, a = run(tmp_path, ha, "debug")
     await a.hold(debug(ha))
-    del ha.ha_levels["device_side"]  # HA restarted: its levels are its own again
+    del ha.ha_levels["deviceside"]  # HA restarted: its levels are its own again
 
     await a.release()
 
-    assert ("log_level", "device_side", "WARNING") not in ha.calls
+    assert ("log_level", "deviceside", "WARNING") not in ha.calls
     assert baseline(tmp_path) == {}
 
 

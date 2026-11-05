@@ -54,20 +54,20 @@ Only devices Z2M registered through MQTT discovery are found: the device carries
 - **Both assume the default base topic.** A group's identifier carries it, so another is refused; a device's
   doesn't, so its publish goes nowhere.
 
-### Options Device Side sets
+### Options DeviceSide sets
 
 - **Color modes.** The Home Assistant override is set to `xy`, `hs` and, where present, `color_temp`, on lights
   exposing both `color_xy` and `color_hs`, and on groups whose members all qualify. Z2M re-announces at once and
   Home Assistant keeps the entity. Rerun at setup and on every device or group announcement, reading Z2M's settings
   each time. Z2M can't delete an override (`null` strips the key from the announcement instead), so opting out
-  writes back the modes Z2M announces by itself, wherever the value is still Device Side's. Z2M declined to
+  writes back the modes Z2M announces by itself, wherever the value is still DeviceSide's. Z2M declined to
   announce both by default, as some lights handle mixed modes badly
   ([#33025](https://github.com/Koenkk/zigbee2mqtt/issues/33025)).
 - **`hue_native_control`** makes Z2M send on, brightness, color and color temperature as one Philips command, so a
   Hue bulb (manufacturer `Philips`) lights in the new color and keeps the timer. Set before a timer carrying a
   color or color temperature, checked on each such call (a fraction of a second), waiting up to 5 s for Z2M. A
   group uses its own options, not its members', so it's set on the group when any member is a Hue bulb.
-- **`filtered_cache`** gets `device_side_read` appended. Z2M deep-merges a read's answer into the cached state that
+- **`filtered_cache`** gets `deviceside_read` appended. Z2M deep-merges a read's answer into the cached state that
   every later message carries, so an unfiltered answer would look fresh forever. If it can't be set, the read
   raises.
 
@@ -79,7 +79,7 @@ fields, `light.turn_on` goes first, and the timer waits for Z2M's state publish 
 Assistant keeps, and the two would contend on the mesh, delaying the timer by seconds.
 
 Z2M publishes no state for a timed command (the `on_time` branch of `on_off` in zigbee-herdsman-converters returns
-none) and turns reporting off for Hue bulbs. So Device Side publishes `{"state": ""}` to the get topic 1 s after
+none) and turns reporting off for Hue bulbs. So DeviceSide publishes `{"state": ""}` to the get topic 1 s after
 the start (without fields only), and at the end + 1 s and end + max(5 s, 2 % of the duration), for a slow bulb
 clock. A new call replaces pending reads. Attribute reporting isn't used instead: it would need setting up on every
 bulb, and Z2M turned it off for Hue on purpose. A group gets one publish and one groupcast read; Z2M shows it off
@@ -96,7 +96,7 @@ light is clamped from the brightness Z2M holds.
 
 ### `get_attributes`
 
-Z2M's generic read, `{"read": {"cluster", "attributes", "state_property": "device_side_read"}}`, one cluster at a
+Z2M's generic read, `{"read": {"cluster", "attributes", "state_property": "deviceside_read"}}`, one cluster at a
 time, answered on the state topic:
 
 - `genOnOff` (`onOff`, `onTime` in tenths): the timer.
@@ -125,7 +125,7 @@ one, the longest.
   publish, color first: Z2M reads back about 0.7 s after a brightness stop before sending the next key.
 
 Z2M publishes a fade's end value at once and reads back within a second of a brightness or hue stop. Once a fade has
-run, Device Side gets `{"state": "", "brightness": ""}`, in case a mid-fade `get_attributes` overwrote the end
+run, DeviceSide gets `{"state": "", "brightness": ""}`, in case a mid-fade `get_attributes` overwrote the end
 value. A saturation stop is raw, and after an xy stop Z2M's read-back carries its cached end-point x/y, so Device
 Side gets `{"color": ""}` 1 s after a saturation stop and at the end of a saturation fade. Z2M reads a group's stop
 back from its first member only, so these reads go to each member. After a hue or saturation command the bulb is in
@@ -169,7 +169,7 @@ Commands go one after another: `brightness` as a percent of level 254 (`0` sends
 mireds clamped to the light's range, color as `MoveToColor`, or `MoveToHueAndSaturation` on a light without xy. A
 color light without color temperature takes one as a color, as core does. `min_brightness`/`max_brightness` read
 CurrentLevel live. Then `homeassistant.update_entity`, since ZHA never applies a color temperature report; ZHA skips
-it while the light is transitioning (1.5 s after a plain off), so Device Side waits up to 3 s, and after a longer
+it while the light is transitioning (1.5 s after a plain off), so DeviceSide waits up to 3 s, and after a longer
 off fade refreshes again when it ends. Models in `zcl.DROPS_WHILE_OFF` are refused.
 
 ### `get_attributes`
@@ -193,12 +193,12 @@ light reads on, as a TS011F counts OnTime down while off.
 - `stop`: `StopMoveStep` where a color move runs, then Level `Stop`.
 
 A transition longer than ZCL's 6553.4 s runs at that. The bulb reports brightness during a fade, never color, so
-Device Side calls `homeassistant.update_entity` 1 s after a fade should end and straight after a stop; raw commands
+DeviceSide calls `homeassistant.update_entity` 1 s after a fade should end and straight after a stop; raw commands
 leave ZHA's transition guard down, so the read is the bulb's.
 
 ZHA can't tell a change from a remote or app from the bulb's own reports, so the remembered position can go stale.
 To keep hold-to-dim instant, the brightness fade is sent first and CurrentLevel read just after; the read, timed at
-the middle of its round trip, lies on the bulb's ramp, so Device Side fits the ramp's real start to it. A brightness
+the middle of its round trip, lies on the bulb's ramp, so DeviceSide fits the ramp's real start to it. A brightness
 call the remembered value says is `at_limit` or `off` is replanned from Home Assistant's state.
 
 A group gets one command when every light in it moves; otherwise, such as a soft off with a member off, each moving
@@ -275,12 +275,12 @@ One write of the end point with a duration; a room is one `grouped_light` write.
 
 `stop` sends the dimming stop. The bridge has no xy stop, so a saturation fade is halted by writing its predicted xy
 with no duration, in the same write (per light for a room). The bridge refuses a dimming stop during a soft off, so
-Device Side's own soft off is cut with `on: true` at the predicted brightness and no duration.
+DeviceSide's own soft off is cut with `on: true` at the predicted brightness and no duration.
 
 Reports during a remembered move can't be told apart by value (Tested behavior), so every report of what the move
-changed (brightness and on, or color) is taken as Device Side's, except a switch to off while fading to or halted at
+changed (brightness and on, or color) is taken as DeviceSide's, except a switch to off while fading to or halted at
 a lit level, and a report of anything the move didn't change; those, a bridge scene recall (`status.active`), and a
-Home Assistant call end the prediction. With `predicted_state` on, the reports taken as Device Side's are hidden from
+Home Assistant call end the prediction. With `predicted_state` on, the reports taken as DeviceSide's are hidden from
 aiohue and Home Assistant is sent the prediction instead; a raise from off shows 0.4 %, where the fade starts.
 
 ### Tested behavior

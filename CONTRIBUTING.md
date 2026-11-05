@@ -4,8 +4,8 @@ Everybody is invited and welcome to contribute.
 
 We're looking for three kinds of help in particular:
 
-- **Feature requests.** Tell us which on-device features and integrations you want most, and why, via the Device Side thread on Home Assistant Community.
-- **Bug reports.** If something doesn't look or work right, please [open an issue](https://github.com/jasonmx/device-side/issues/new?body=What%20happened%3A%0A%0AWhat%20I%20expected%3A%0A%0ASteps%20to%20reproduce%3A%0A%0ADevice%20Side%20version%20and%20integration%3A%0A) and let us know.
+- **Feature requests.** Tell us which on-device features and integrations you want most, and why, via the DeviceSide thread on Home Assistant Community.
+- **Bug reports.** If something doesn't look or work right, please [open an issue](https://github.com/jasonmx/DeviceSide/issues/new?body=What%20happened%3A%0A%0AWhat%20I%20expected%3A%0A%0ASteps%20to%20reproduce%3A%0A%0ADeviceSide%20version%20and%20integration%3A%0A) and let us know.
 - **Code.** Add support for a new device capability or integration, or fix a bug. Read
   [What gets built](#what-gets-built) before you start, so your work isn't turned down for scope.
 

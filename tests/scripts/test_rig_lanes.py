@@ -37,7 +37,7 @@ def fast(monkeypatch):
 
 
 class Overlapping(fakes.FakeAdmin):
-    """device_side's calls take a while; it counts how many are in flight at once, and what the journal held then."""
+    """DeviceSide's calls take a while; it counts how many are in flight at once, and what the journal held then."""
 
     def __init__(self, states: dict, journal: Journal | None = None, call_s: float = 0.05):
         super().__init__(states, lambda ha, action, data: {data["entity_id"]: {"status": "sent"}})
@@ -47,7 +47,7 @@ class Overlapping(fakes.FakeAdmin):
         self.saves_seen: list[int] = []  # how many option saves there had been at each call
 
     async def call_service(self, domain, service, data=None, return_response=False):
-        if domain == "device_side" and service == "raise_brightness":
+        if domain == "deviceside" and service == "raise_brightness":
             self.saves_seen.append(len(self.saved))
             self.active += 1
             self.most = max(self.most, self.active)
@@ -116,7 +116,7 @@ async def test_lanes_refuse_suites_that_want_different_options(tmp_path):
     with_opt.write_text(STEPS.replace("tests:", "options: [opt]\ntests:"))
     suites[1] = Suite(load_step_file(with_opt), "zha")
 
-    with pytest.raises(RuntimeError, match="same device_side options"):
+    with pytest.raises(RuntimeError, match="same DeviceSide options"):
         await run_two(ha, suites, profile, lanes=True)
 
 

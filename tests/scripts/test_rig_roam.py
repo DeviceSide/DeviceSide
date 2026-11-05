@@ -60,7 +60,7 @@ async def test_a_z2m_join_sets_the_bulbs_options_again(lab):
 async def test_a_z2m_join_reads_the_bulb_once_so_its_state_has_a_color_mode(lab):
     lab.ha.respond = lambda ha, service, data: {}
     await roamer(lab).go("zigbee2mqtt")
-    reads = [call[2] for call in lab.ha.calls if call[:2] == ("device_side", "get_attributes")]
+    reads = [call[2] for call in lab.ha.calls if call[:2] == ("deviceside", "get_attributes")]
     assert reads == [{"entity_id": "light.lab_a"}, {"entity_id": "light.lab_b"}]
 
 
@@ -77,7 +77,7 @@ async def test_a_post_join_read_that_goes_unanswered_is_asked_again(lab, monkeyp
     lab.ha.respond = respond
     printed = []
     await roamer(lab, out=printed.append).go("zigbee2mqtt")
-    reads = [call[2]["entity_id"] for call in lab.ha.calls if call[:2] == ("device_side", "get_attributes")]
+    reads = [call[2]["entity_id"] for call in lab.ha.calls if call[:2] == ("deviceside", "get_attributes")]
     assert reads == ["light.lab_a", "light.lab_a", "light.lab_b"]
     assert not [line for line in printed if line.startswith("Could not read")]
 
@@ -89,7 +89,7 @@ async def test_a_post_join_read_that_never_answers_is_reported_after_three_tries
     lab.ha.respond = respond
     printed = []
     await roamer(lab, out=printed.append).go("zigbee2mqtt")
-    reads = [call[2]["entity_id"] for call in lab.ha.calls if call[:2] == ("device_side", "get_attributes")]
+    reads = [call[2]["entity_id"] for call in lab.ha.calls if call[:2] == ("deviceside", "get_attributes")]
     assert reads.count("light.lab_a") == 3
     assert any(line.startswith("Could not read light.lab_a") for line in printed)
 
@@ -166,7 +166,7 @@ async def test_a_journal_from_before_the_home_record_has_its_home_read_in(lab, t
     journal = Journal(tmp_path / "journal.json")
     await roamer(lab, journal).go("zha")
     old = {entry["entity_id"]: entry["hue"] for entry in HomeRecord(tmp_path).all().values()}
-    (tmp_path / "device_side-rig.home.json").unlink()
+    (tmp_path / "deviceside-rig.home.json").unlink()
     journal.update(roam=journal.get("roam") | {"home": old})
 
     await Roamer.from_journal(lab.ha, lab.bridge, Journal(journal.path)).go("hue")

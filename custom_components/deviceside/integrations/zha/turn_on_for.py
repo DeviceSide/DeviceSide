@@ -37,7 +37,7 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
     target gets its own command.
 
     issue_zigbee_cluster_command and issue_zigbee_group_command are admin-only actions, so the call carries the
-    caller's context: a non-admin caller is refused by ZHA, not let through with Device Side's own rights. The zha
+    caller's context: a non-admin caller is refused by ZHA, not let through with DeviceSide's own rights. The zha
     library raises on a unicast delivery failure or a non-success ZCL status, so a unicast that returns was
     accepted; a groupcast returns at once with no delivery feedback, and a member that can't run the timer drops
     it silently. So each light is read back either way: a new timer replaces a running one, so reading OnTime

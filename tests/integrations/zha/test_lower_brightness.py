@@ -6,8 +6,8 @@ from homeassistant.core import ServiceCall
 from homeassistant.exceptions import HomeAssistantError
 from pytest_homeassistant_custom_component.common import async_mock_service
 
-from custom_components.device_side.integrations.zha import zcl
-from custom_components.device_side.integrations.zha.fade import soft_off_restores
+from custom_components.deviceside.integrations.zha import zcl
+from custom_components.deviceside.integrations.zha.fade import soft_off_restores
 
 from .conftest import RESTORE_60, SENT, A, B, bulb, on_off_reads, sent, to, unchanged
 from ...conftest import advance, call, wall_clock_now

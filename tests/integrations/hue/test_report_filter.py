@@ -10,10 +10,10 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import async_mock_service
 
-from custom_components.device_side.core.runtime import get_runtime
-from custom_components.device_side.core.transition import BRIGHTNESS, SATURATION
-from custom_components.device_side.integrations.hue.report_filter import Report, applies_later, classify
-from custom_components.device_side.integrations.hue.transition_cache import API_SETTLE_SECONDS, transition_cache
+from custom_components.deviceside.core.runtime import get_runtime
+from custom_components.deviceside.core.transition import BRIGHTNESS, SATURATION
+from custom_components.deviceside.integrations.hue.report_filter import Report, applies_later, classify
+from custom_components.deviceside.integrations.hue.transition_cache import API_SETTLE_SECONDS, transition_cache
 
 from .conftest import light_event, setup_room
 from ...conftest import call
@@ -266,7 +266,7 @@ async def test_a_failing_filter_never_stops_aiohue_applying_the_event(hass, brid
     def broken(*_args):
         raise RuntimeError("boom")
 
-    monkeypatch.setattr("custom_components.device_side.integrations.hue.report_filter.classify", broken)
+    monkeypatch.setattr("custom_components.deviceside.integrations.hue.report_filter.classify", broken)
     bridge.api.events.emit(EventType.RESOURCE_UPDATED, light_event("one", brightness=90.0))
     await hass.async_block_till_done()
 

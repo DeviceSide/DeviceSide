@@ -9,7 +9,7 @@ modes fixes it in HA without touching the bulb.
 
 Z2M's options API can't delete a key under `homeassistant`: a null there is kept, and means "strip this from the
 discovery message" (for `light`, "don't announce the light"). So turning the option off writes back the modes Z2M
-announces by itself, which leaves HA as it would be without device_side. Either of those two values is device_side's
+announces by itself, which leaves HA as it would be without DeviceSide. Either of those two values is DeviceSide's
 own; any other value is the user's and is left alone.
 """
 
@@ -54,7 +54,7 @@ def qualifies(expose: dict | None) -> bool:
 
 
 def both_modes(exposes: list[dict]) -> list[str]:
-    """What device_side announces: both color modes, and color temperature where Z2M would announce it."""
+    """What DeviceSide announces: both color modes, and color temperature where Z2M would announce it."""
     return ["xy", "hs"] + (["color_temp"] if any("color_temp" in _features(e) for e in exposes) else [])
 
 
@@ -206,6 +206,6 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry, enabled: bool) ->
 
 
 async def async_remove(hass: HomeAssistant) -> None:
-    """Put back Z2M's own color modes, as device_side is deleted."""
+    """Put back Z2M's own color modes, as DeviceSide is deleted."""
     if await mqtt.async_wait_for_mqtt_client(hass):
         await ensure_color_modes(hass, False)

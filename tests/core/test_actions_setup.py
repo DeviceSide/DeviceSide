@@ -6,10 +6,10 @@ from pathlib import Path
 import pytest
 import yaml
 
-from custom_components.device_side.actions import discover
-from custom_components.device_side.core.registry import AdapterRegistry
+from custom_components.deviceside.actions import discover
+from custom_components.deviceside.core.registry import AdapterRegistry
 
-PACKAGE = Path(__file__).parents[2] / "custom_components" / "device_side"
+PACKAGE = Path(__file__).parents[2] / "custom_components" / "deviceside"
 
 
 def _load_json(name: str) -> dict:

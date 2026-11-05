@@ -82,7 +82,7 @@ SCENE_MIREK = 366
 # HA's platform for each network's entities, so the rig removes only a leftover entity of its own kind.
 PLATFORMS = {"hue": "hue", "zha": "zha", "zigbee2mqtt": "mqtt"}
 # Z2M registers a group's HA device as ("mqtt", "zigbee2mqtt_<base topic as character codes>_<group ID>")
-# (getEncodedBaseTopic in Z2M's lib/extension/homeassistant.ts; device_side's zigbee2mqtt/addressing.py reads it).
+# (getEncodedBaseTopic in Z2M's lib/extension/homeassistant.ts; DeviceSide's zigbee2mqtt/addressing.py reads it).
 Z2M_GROUP_IDENTIFIER = "zigbee2mqtt_" + "".join(str(ord(c)) for c in "zigbee2mqtt") + "_{}"
 # The zha library gives a group's entity the unique_id "{platform}_zha_group_0x{group_id:04x}" (zha/addressing.py).
 ZHA_GROUP_UNIQUE_ID = "light_zha_group_0x{:04x}"
@@ -776,12 +776,12 @@ class Roamer:
             ) from None
 
     async def prime_z2m(self, bulb: Bulb) -> None:
-        """Read the bulb once through device_side: a bulb newly joined to Z2M has no color_mode in its state, and HA's
+        """Read the bulb once through DeviceSide: a bulb newly joined to Z2M has no color_mode in its state, and HA's
         MQTT light then shows no brightness (a group case's setup would fail on it); a read fills it."""
         for attempt in range(1, PRIME_ATTEMPTS + 1):
             try:
                 await self.ha.call_service(
-                    "device_side", "get_attributes", {"entity_id": bulb.entity_id}, return_response=True
+                    "deviceside", "get_attributes", {"entity_id": bulb.entity_id}, return_response=True
                 )
                 return
             except Exception as err:  # noqa: BLE001 - the case's own steps report what this would have prevented

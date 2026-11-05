@@ -1,4 +1,4 @@
-"""The rig engine against a fake HAClient: a state machine plus scripted device_side responses. No HA, no rig."""
+"""The rig engine against a fake HAClient: a state machine plus scripted DeviceSide responses. No HA, no rig."""
 
 import asyncio
 import contextlib
@@ -11,7 +11,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from custom_components.device_side.core.registry import AdapterRegistry
+from custom_components.deviceside.core.registry import AdapterRegistry
 from tests.rig import engine
 from tests.rig.bridge import BridgeError
 from tests.rig.client import HAError
@@ -105,7 +105,7 @@ async def test_a_timed_on_off_passes_and_restores(tmp_path):
     ha = FakeHA({"switch.plug": {"state": "on"}}, timer_on)
     result = await run_one(ha, suite(tmp_path, ON_THEN_OFF), profile(switch_plug="switch.plug"))
     assert outcomes(result) == {"on_then_off[switch_plug]": (Outcome.PASS, "")}
-    assert ("device_side", "turn_on_for", {"entity_id": "switch.plug", "duration": {"seconds": 0.6}}) in ha.calls
+    assert ("deviceside", "turn_on_for", {"entity_id": "switch.plug", "duration": {"seconds": 0.6}}) in ha.calls
     assert ha.calls[-1] == ("switch", "turn_on", {"entity_id": "switch.plug"})
     assert not result.failed
 
@@ -178,7 +178,7 @@ async def test_a_call_that_succeeds_where_an_error_is_expected_fails(tmp_path):
 async def test_an_unexpected_error_fails_the_call_step(tmp_path):
     ha = FakeHA({"switch.plug": {}}, refuse("capability_not_tested"))
     result = await run_one(ha, suite(tmp_path, ON_THEN_OFF), profile(switch_plug="switch.plug"))
-    assert outcomes(result)["on_then_off[switch_plug]"][1].startswith("step 2 (call): device_side.turn_on_for raised")
+    assert outcomes(result)["on_then_off[switch_plug]"][1].startswith("step 2 (call): deviceside.turn_on_for raised")
 
 
 async def test_a_failure_still_restores_brightness(tmp_path):
@@ -201,10 +201,10 @@ tests:
 
 @pytest.mark.parametrize(("brightness", "outcome"), [(40.0, Outcome.PASS), (60.0, Outcome.FAIL)])
 async def test_a_query_response_is_checked_without_a_status(tmp_path, brightness, outcome):
-    def device_side(ha, action, data):
+    def DeviceSide(ha, action, data):
         return {data["entity_id"]: {"brightness": brightness}}
 
-    ha = FakeHA({"light.lamp": {"state": "on"}}, device_side)
+    ha = FakeHA({"light.lamp": {"state": "on"}}, DeviceSide)
     text = """
 action: get_attributes
 rig_seconds: 5
@@ -290,15 +290,15 @@ tests:
     assert outcomes(result)["reads[switch_plug]"][0] is outcome
 
 
-async def test_an_off_light_gets_its_device_side_attributes_back(tmp_path):
-    def device_side(ha, action, data):
+async def test_an_off_light_gets_its_deviceside_attributes_back(tmp_path):
+    def DeviceSide(ha, action, data):
         entity_id = data["entity_id"]
         if action == "get_attributes":
             attributes = {"brightness": 40, "color_temp_kelvin": 2700, "xy_color": [0.46, 0.41]}
             return {entity_id: attributes}
         return {entity_id: {"status": "sent", "integration": "hue"}}
 
-    ha = FakeHA({"light.lamp": {}, "light.room": {"attributes": {"entity_id": ["light.lamp"]}}}, device_side)
+    ha = FakeHA({"light.lamp": {}, "light.room": {"attributes": {"entity_id": ["light.lamp"]}}}, DeviceSide)
     text = """
 action: set_attributes
 rig_seconds: 5
@@ -313,11 +313,11 @@ tests:
     assert outcomes(result) == {"brightens_while_off[group]": (Outcome.PASS, "")}
     # Read for the member only: the room's own row averages its lights, and the member is restored itself.
     assert [call for call in ha.calls if call[1] == "get_attributes"] == [
-        ("device_side", "get_attributes", {"entity_id": "light.lamp"})
+        ("deviceside", "get_attributes", {"entity_id": "light.lamp"})
     ]
     assert ha.calls[-2:] == [
         ("light", "turn_off", {"entity_id": "light.lamp"}),
-        ("device_side", "set_attributes", {"entity_id": "light.lamp", "brightness": 40, "color_temp_kelvin": 2700}),
+        ("deviceside", "set_attributes", {"entity_id": "light.lamp", "brightness": 40, "color_temp_kelvin": 2700}),
     ]
 
 
@@ -354,7 +354,7 @@ def answers(*replies: str) -> tuple[list[str], Callable[[str], str]]:
 
 
 def in_turn(*responders: Callable) -> Callable:
-    """The nth device_side call answered by the nth responder: the automated case's first, then the observed one's."""
+    """The nth DeviceSide call answered by the nth responder: the automated case's first, then the observed one's."""
     responders_left = iter(responders)
     return lambda ha, action, data: next(responders_left)(ha, action, data)
 
@@ -366,7 +366,7 @@ async def test_unattended_reports_observed_cases_not_observed_and_proves_nothing
         [suite(tmp_path, OBSERVED)], inv, REGISTRY, ha, tolerance=TOLERANCE, out=printed.append, ask=None
     )
     assert outcomes(result) == {AUTOMATED: (Outcome.PASS, ""), WATCHED: (Outcome.NOT_OBSERVED, "")}
-    assert len([call for call in ha.calls if call[0] == "device_side"]) == 1
+    assert len([call for call in ha.calls if call[0] == "deviceside"]) == 1
     assert not [line for line in printed if line.startswith(("---", "You'll")) or "need" in line]
     assert result.suites[0].proven == []
     assert not result.suites[0].recordable
@@ -440,7 +440,7 @@ async def test_setup_runs_before_the_brief_and_the_steps_after_enter(tmp_path):
     ]
     enter = calls_at_enter[0]
     assert ha.calls[enter - 1] == ("switch", "turn_off", {"entity_id": "switch.plug"})
-    assert ha.calls[enter][:2] == ("device_side", "turn_on_for")
+    assert ha.calls[enter][:2] == ("deviceside", "turn_on_for")
 
 
 async def test_an_observed_case_relaxes_its_checks(tmp_path):
@@ -503,7 +503,7 @@ async def test_a_call_that_raises_after_enter_says_there_is_nothing_to_observe(t
     assert asked == ["Press Enter to start... ", "Press Enter to go on... "]
     outcome, detail = outcomes(result)[WATCHED]
     assert outcome is Outcome.FAIL
-    assert detail.startswith("step 1 (call): device_side.turn_on_for raised targets_failed")
+    assert detail.startswith("step 1 (call): deviceside.turn_on_for raised targets_failed")
     assert f"    nothing to observe: {detail}" in printed
 
 
@@ -1066,9 +1066,9 @@ async def test_a_steady_brightness_may_settle_one_step(tmp_path, settled, failur
 
 
 @pytest.mark.parametrize(("settled", "failure"), [(40.2, ""), (39.8, "moved")])
-async def test_a_steady_device_side_brightness_may_settle_one_rounded_step(tmp_path, settled, failure):
+async def test_a_steady_deviceside_brightness_may_settle_one_rounded_step(tmp_path, settled, failure):
     # 103/254 and 102/254 of full read 40.6 % and 40.2 %, one step apart once rounded.
-    text = SAMPLE.replace("EXPECT", "steady").replace("max: 200}", "source: device_side}")
+    text = SAMPLE.replace("EXPECT", "steady").replace("max: 200}", "source: deviceside}")
     readings = iter([40.6])
 
     def respond(ha, action, data):
@@ -1083,8 +1083,8 @@ async def test_a_steady_device_side_brightness_may_settle_one_rounded_step(tmp_p
     assert failure in detail
 
 
-async def test_a_device_side_sample_reads_get_attributes_not_ha(tmp_path):
-    text = SAMPLE.replace("EXPECT", "rising").replace("max: 200}", "max: 50, source: device_side}")
+async def test_a_deviceside_sample_reads_get_attributes_not_ha(tmp_path):
+    text = SAMPLE.replace("EXPECT", "rising").replace("max: 200}", "max: 50, source: deviceside}")
     predicted = iter(range(10, 100, 5))
 
     def respond(ha, action, data):
@@ -1100,7 +1100,7 @@ async def test_a_device_side_sample_reads_get_attributes_not_ha(tmp_path):
 
 async def test_a_sample_reads_a_dotted_attribute(tmp_path):
     text = SAMPLE.replace("EXPECT", "falling").replace("attribute: brightness", "attribute: hs_color.1")
-    text = text.replace("max: 200}", "max: 100, source: device_side}")
+    text = text.replace("max: 200}", "max: 100, source: deviceside}")
     saturation = iter(range(90, 0, -5))
 
     def respond(ha, action, data):
@@ -1194,15 +1194,15 @@ async def test_a_case_waits_out_the_predictions_a_raise_left_on_its_lights(tmp_p
 
 
 def test_the_default_sweep_time_matches_the_ramp_actions():
-    from custom_components.device_side.actions.ramp import DEFAULT_SWEEP_TIME
+    from custom_components.deviceside.actions.ramp import DEFAULT_SWEEP_TIME
 
     assert engine.SWEEP_TIME_S == DEFAULT_SWEEP_TIME
 
 
 def test_the_engine_knows_every_raise_and_lower_action():
     # Their cases wait out the predictions the calls leave behind.
-    from custom_components.device_side.actions import discover
-    from custom_components.device_side.actions.ramp import Ramp
+    from custom_components.deviceside.actions import discover
+    from custom_components.deviceside.actions.ramp import Ramp
 
     assert {action.key for action in discover() if issubclass(action, Ramp)} == engine._RAMPS
 
@@ -1351,7 +1351,7 @@ async def test_admin_integrations_run_on_the_admin_connection(tmp_path):
     ha, admin = FakeHA({"switch.plug": {}}), FakeHA({"switch.plug": {}}, timer_on)
     await run_one(ha, suite(tmp_path, ON_THEN_OFF, "zha"), profile("zha", switch_plug="switch.plug"), admin=admin)
     assert not ha.calls
-    assert any(domain == "device_side" for domain, _, _ in admin.calls)
+    assert any(domain == "deviceside" for domain, _, _ in admin.calls)
 
 
 async def test_admin_integrations_skip_without_an_admin_connection(tmp_path):
@@ -1852,7 +1852,7 @@ async def test_the_lifecycle_cases_reload_disable_and_enable_the_entry(tmp_path)
 
 @pytest.mark.usefixtures("_no_reload_wait")
 async def test_a_case_that_fails_disabled_enables_the_entry_before_its_restore(tmp_path):
-    # The restore writes the off light's stored attributes back through device_side, which a disabled entry refuses.
+    # The restore writes the off light's stored attributes back through DeviceSide, which a disabled entry refuses.
     admin = entry_admin()
     text = LIFECYCLE.replace("{key: not_loaded}", "{key: something_else}")
 
@@ -1862,7 +1862,7 @@ async def test_a_case_that_fails_disabled_enables_the_entry_before_its_restore(t
     assert outcome is Outcome.FAIL
     assert detail.startswith("step 3 (expect_error): error key is 'not_loaded'")
     assert admin.moves == ["reload", "disable", "enable"]
-    assert admin.calls[-1] == ("device_side", "set_attributes", {"entity_id": "light.a", "brightness": 80})
+    assert admin.calls[-1] == ("deviceside", "set_attributes", {"entity_id": "light.a", "brightness": 80})
 
 
 @pytest.mark.usefixtures("_no_reload_wait")
@@ -1889,7 +1889,7 @@ async def test_a_failure_to_enable_after_the_steps_is_the_cases_detail(tmp_path)
 
     outcome, detail = outcomes(result)["refuses_while_disabled[light_ct]"]
     assert outcome is Outcome.FAIL
-    assert detail.startswith("could not enable device_side's entry again: ")
+    assert detail.startswith("could not enable DeviceSide's entry again: ")
 
 
 @pytest.mark.usefixtures("_no_reload_wait")

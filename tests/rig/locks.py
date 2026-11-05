@@ -1,6 +1,6 @@
 """The rig's locks, in the git common dir so every worktree shares them: one on HA, and one per integration.
 
-A run holds HA shared, unless it restarts HA or reloads device_side's entry (a deploy, a suite with device_side
+A run holds HA shared, unless it restarts HA or reloads DeviceSide's entry (a deploy, a suite with DeviceSide
 options, --recover), and then exclusively. A run that deploys but has no option suites steps HA down to shared once
 HA is back (Held.share_ha). It holds each integration it moves exclusively. So runs on different integrations go side
 by side. A deploy waits until HA is free and holds off no one meanwhile: a shared run that is ready goes ahead of it,
@@ -30,7 +30,7 @@ from .profile import TOLERANCE_S
 
 # HA's lock keeps the path of the single lock it replaced, so a run from an older checkout, which takes it
 # exclusively, still keeps out every new run, and they it.
-LOCK_NAME = "device_side-rig.lock"
+LOCK_NAME = "deviceside-rig.lock"
 LOCK_POLL_S = 2.0  # how often a waiting run retries a lock
 WORKSPACE_HELD = "Green"  # a cmux workspace's color while its run holds its locks
 WORKSPACE_QUEUED = "Amber"  # ...while its run waits for them
@@ -39,7 +39,7 @@ Out = Callable[[str], None]
 
 
 def integration_lock(integration: str) -> str:
-    return f"device_side-rig.{integration}.lock"
+    return f"deviceside-rig.{integration}.lock"
 
 
 @dataclass(frozen=True, slots=True)

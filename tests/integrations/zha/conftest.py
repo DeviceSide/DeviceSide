@@ -8,8 +8,8 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.util.color import color_hs_to_xy
 from pytest_homeassistant_custom_component.common import async_mock_service
 
-from custom_components.device_side.integrations.zha import zcl
-from custom_components.device_side.integrations.zha.fade import transition_cache
+from custom_components.deviceside.integrations.zha import zcl
+from custom_components.deviceside.integrations.zha.fade import transition_cache
 
 from ...fixtures.zha import IEEE, add_zha_entity, zha_entry, zha_group
 

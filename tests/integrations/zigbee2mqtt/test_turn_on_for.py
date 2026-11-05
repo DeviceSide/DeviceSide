@@ -12,14 +12,14 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import async_mock_service
 
-from custom_components.device_side.integrations.zigbee2mqtt import turn_on_for
-from custom_components.device_side.integrations.zigbee2mqtt.addressing import (
+from custom_components.deviceside.integrations.zigbee2mqtt import turn_on_for
+from custom_components.deviceside.integrations.zigbee2mqtt.addressing import (
     is_z2m_group,
     state_topic,
     topic,
     z2m_address,
 )
-from custom_components.device_side.integrations.zigbee2mqtt.detect import detect
+from custom_components.deviceside.integrations.zigbee2mqtt.detect import detect
 
 from ...conftest import advance, call, refusal, wall_clock_now
 from ...fixtures.z2m import IEEE, add_z2m_entity, add_z2m_group, z2m_entry
@@ -454,7 +454,7 @@ async def test_a_failed_read_is_logged_and_the_result_stays_sent(hass, setup_pro
     hass.services.async_register("mqtt", "publish", publish)
 
     response = await call(hass, "turn_on_for", {"entity_id": "light.kitchen", "duration": 5})
-    with caplog.at_level(logging.DEBUG, logger="custom_components.device_side.integrations.zigbee2mqtt"):
+    with caplog.at_level(logging.DEBUG, logger="custom_components.deviceside.integrations.zigbee2mqtt"):
         await advance(hass, start, 10.5)
 
     assert response == {"light.kitchen": SENT}
@@ -532,9 +532,9 @@ def test_supports_returns_super_reason_when_scope_refuses(hass):
     """Line 48: super().supports() returns non-None; the adapter propagates the reason."""
     import dataclasses
 
-    from custom_components.device_side.actions.turn_on_for import TurnOnForRequest
-    from custom_components.device_side.core.models import LightFields
-    from custom_components.device_side.integrations.zigbee2mqtt.turn_on_for import Z2MTurnOnFor
+    from custom_components.deviceside.actions.turn_on_for import TurnOnForRequest
+    from custom_components.deviceside.core.models import LightFields
+    from custom_components.deviceside.integrations.zigbee2mqtt.turn_on_for import Z2MTurnOnFor
 
     adapter = Z2MTurnOnFor()
     device = MagicMock()

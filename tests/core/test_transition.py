@@ -2,7 +2,7 @@
 
 import pytest
 
-from custom_components.device_side.core.transition import TransitionCache, transition_cache
+from custom_components.deviceside.core.transition import TransitionCache, transition_cache
 
 SETTLE_SECONDS = 15.0
 

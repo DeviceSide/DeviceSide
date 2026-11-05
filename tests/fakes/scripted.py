@@ -3,8 +3,8 @@
 import asyncio
 from dataclasses import dataclass, field
 
-from custom_components.device_side.core.adapter import Adapter
-from custom_components.device_side.core.models import EntityResult, Status, Target
+from custom_components.deviceside.core.adapter import Adapter
+from custom_components.deviceside.core.models import EntityResult, Status, Target
 
 
 @dataclass

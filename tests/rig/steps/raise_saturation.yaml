@@ -26,6 +26,6 @@ tests:
       - wait: 3
       - call: {action: stop}
       - expect_response: {status: expected}
-      - sample: {attribute: hs_color.1, for: 4, expect: steady, min: 25, max: 45, source: device_side}
+      - sample: {attribute: hs_color.1, for: 4, expect: steady, min: 25, max: 45, source: deviceside}
       - call: {sweep_time: 20}
-      - sample: {attribute: hs_color.1, for: 2, expect: rising, min: 25, max: 60, source: device_side}
+      - sample: {attribute: hs_color.1, for: 2, expect: rising, min: 25, max: 60, source: deviceside}

@@ -11,7 +11,7 @@ def ship(repo, version: str) -> None:
     """Write manifest.json with this version into the working tree, as the checkout cut-* tags from has it."""
     path = repo.path / check_tag.MANIFEST
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({"domain": "device_side", "version": version}))
+    path.write_text(json.dumps({"domain": "deviceside", "version": version}))
 
 
 @pytest.fixture

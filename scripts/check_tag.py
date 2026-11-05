@@ -16,7 +16,7 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-MANIFEST = Path("custom_components") / "device_side" / "manifest.json"
+MANIFEST = Path("custom_components") / "deviceside" / "manifest.json"
 RC = re.compile(r"^v(\d+)\.(\d+)\.(\d+)rc(\d+)$")
 RELEASE = re.compile(r"^v(\d+)\.(\d+)\.(\d+)$")
 

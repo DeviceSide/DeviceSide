@@ -10,10 +10,10 @@ reports. A change made from Home Assistant drops it at once, whatever its value:
 light and scene calls.
 
 With the predicted_state option on, the reports of brightness and on that are ours are hidden from aiohue, and so from
-HA, which instead is sent what device_side predicts: the start value while a fade runs, the halt at a stop, the end once
+HA, which instead is sent what DeviceSide predicts: the start value while a fade runs, the halt at a stop, the end once
 it has run.
 Hiding works by editing the event's dict in a synchronous subscriber, which runs before aiohue's controllers apply it
-in a task; what device_side sends goes through the same event stream in-process, never to the bridge.
+in a task; what DeviceSide sends goes through the same event stream in-process, never to the bridge.
 """
 
 import logging
@@ -42,8 +42,8 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
-# Marks an event device_side sends in the bridge's place. aiohue reads only its models' fields, so ignores it.
-MARKER = "device_side"
+# Marks an event DeviceSide sends in the bridge's place. aiohue reads only its models' fields, so ignores it.
+MARKER = "deviceside"
 # Where each bridge's ReportFilter lives in integration_state, by hue config entry.
 FILTERS = "hue_filters"
 
@@ -321,7 +321,7 @@ class HueCallResolver:
 
 def report_filter(hass: HomeAssistant, target: Target) -> ReportFilter:
     """The target's bridge's filter, attached on first use once per aiohue bridge: a reloaded hue entry gets a new one,
-    and a reloaded device_side entry (an option saved) a new one on the next move or stop."""
+    and a reloaded DeviceSide entry (an option saved) a new one on the next move or stop."""
     api = bridge_api(target)
     entry_id = target.config_entry.entry_id
     runtime = get_runtime(hass)

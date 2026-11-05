@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from custom_components.device_side.core.registry import AdapterRegistry
+from custom_components.deviceside.core.registry import AdapterRegistry
 from tests.rig import engine, roam
 from tests.rig.engine import load_step_file
 from tests.rig.home import HomeRecord

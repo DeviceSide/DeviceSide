@@ -1,6 +1,6 @@
 # Upstream defects and gaps
 
-Workarounds Device Side carries for behavior in the integrations it drives, and in Home Assistant Core, that could
+Workarounds DeviceSide carries for behavior in the integrations it drives, and in Home Assistant Core, that could
 be fixed upstream. Ranked by how likely the maintainers are to recognize the gap and accept a fix. Only the
 issues our code already cites (Koenkk/zigbee2mqtt#28757, #33025) have been checked upstream: search each tracker
 for duplicates before filing. Measurements behind each entry are in
@@ -27,7 +27,7 @@ for duplicates before filing. Measurements behind each entry are in
    `zha.issue_zigbee_cluster_command` can send it. Workaround: straight to zigpy, re-implementing ZHA's admin
    check (`zcl.hue_turn_on`, `require_admin`). Additive quirk work; Z2M's `philips.ts` is prior art.
 7. **Zigbee2MQTT: a `read` answer with `state_property` is deep-merged into the cached state forever,** so every
-   later state message carries it. Workaround: `device_side_read` appended to each device's `filtered_cache`.
+   later state message carries it. Workaround: `deviceside_read` appended to each device's `filtered_cache`.
    Fix: a non-persisting read, or `state_property` keys kept out of the cache. They may answer "use
    `filtered_cache`".
 8. **ZHA: `update_entity` does nothing while the transition flag is up,** and "on" reports are ignored for 1.5 s

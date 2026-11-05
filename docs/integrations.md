@@ -1,6 +1,6 @@
 # Integrations
 
-What the [README](../README.md) features do on each integration, their limits, and what Device Side changes in your
+What the [README](../README.md) features do on each integration, their limits, and what DeviceSide changes in your
 setup. How the commands work on the wire, and what was measured on real bulbs, is in
 [integration-internals.md](integration-internals.md).
 
@@ -16,7 +16,7 @@ setup. How the commands work on the wire, and what was measured on real bulbs, i
   dropped and the timer still runs. An inverted helper is refused (`inverted_wrapper`).
 - **No color temperature moves.** Every stop of a color temperature fade on a Hue bulb, the Hue bridge's own
   included, makes a visible jump, so there is no raise or lower for it.
-- **Fades pick up where the last one stopped.** Device Side remembers each raise, lower and `stop` for a few
+- **Fades pick up where the last one stopped.** DeviceSide remembers each raise, lower and `stop` for a few
   seconds after it ends (2 s on Zigbee, 15 s on Hue), so releasing and pressing again doesn't jump. A light
   command from Home Assistant clears it at once; a change from a remote or app in that window may be missed.
 - **Dimming to 0 % is a soft off.** The light fades out and keeps its level, so a plain turn on brings it back
@@ -40,28 +40,28 @@ integration. A wall switch wired to the device's input is untested and may depen
 
 Lights that Zigbee2MQTT announced to Home Assistant through MQTT discovery.
 
-### What Device Side changes in Zigbee2MQTT
+### What DeviceSide changes in Zigbee2MQTT
 
-Device Side sets three Zigbee2MQTT options, and logs each change at info level:
+DeviceSide sets three Zigbee2MQTT options, and logs each change at info level:
 
 - **Home Assistant color modes**, on every full-color light and group. Zigbee2MQTT announces only one of a
   full-color light's two color modes, usually xy, so Home Assistant keeps showing the old color whenever the bulb
   reports in the other: after a hue or saturation change, a Hue gradient scene, a remote, or a power cut
-  ([Koenkk/zigbee2mqtt#28757](https://github.com/Koenkk/zigbee2mqtt/issues/28757)). Device Side sets the light's
+  ([Koenkk/zigbee2mqtt#28757](https://github.com/Koenkk/zigbee2mqtt/issues/28757)). DeviceSide sets the light's
   Home Assistant override to announce both, plus color temperature where the light has it. The bulb itself is
   untouched. Lights with one color model, lights on an endpoint (`light_l1`), and lights with an override of your
-  own are left alone. Turning **Fix colors of full-color Zigbee2MQTT lights** off in Device Side's options puts
+  own are left alone. Turning **Fix colors of full-color Zigbee2MQTT lights** off in DeviceSide's options puts
   back the modes Zigbee2MQTT announced itself.
 - **`hue_native_control`**, on a Hue bulb, or a group with one, the first time it gets an auto-off timer with a color.
   Without it, a Hue bulb that is off drops the color and lights at its last one first. The option applies to every
-  command Zigbee2MQTT sends that bulb, not just Device Side's, and Zigbee2MQTT stops simulating on/off transitions
+  command Zigbee2MQTT sends that bulb, not just DeviceSide's, and Zigbee2MQTT stops simulating on/off transitions
   for it. If you turn it off in Zigbee2MQTT, the next auto-off timer with a color turns it on again.
 - **`filtered_cache`**, before the first read of a device, so a read's answer isn't resent in every later state
-  message. Your own entries are kept. Removing Device Side's is harmless: it comes back at the next read.
+  message. Your own entries are kept. Removing DeviceSide's is harmless: it comes back at the next read.
 
 ### Auto-off timer
 
-With light fields, Device Side calls `light.turn_on` first, then starts the timer once Zigbee2MQTT reports the
+With light fields, DeviceSide calls `light.turn_on` first, then starts the timer once Zigbee2MQTT reports the
 light's new state, usually within a fraction of a second. If that takes over 5 s, the light stays on up to 5 s
 longer than asked.
 
@@ -99,12 +99,12 @@ timer.
 
 Lights on the core `zha` integration.
 
-**Admin only.** Device Side uses ZHA's admin-only actions, so a call made by a non-admin user fails
+**Admin only.** DeviceSide uses ZHA's admin-only actions, so a call made by a non-admin user fails
 (`admin_required`). Automations run without a user and pass.
 
 ### Auto-off timer
 
-Device Side reads the timer back from the bulb, so the result is `confirmed`, or `sent` if the read-back didn't
+DeviceSide reads the timer back from the bulb, so the result is `confirmed`, or `sent` if the read-back didn't
 show it.
 
 **Cancelling.** Only `turn_off` or a new auto-off timer cancels the timer. A plain `turn_on`, or a brightness change,
@@ -169,7 +169,7 @@ reconnect mid-fade shows what the bridge reports.
   Dynamic scenes set their first frame; gradients and effects are skipped. Smart (All-Day) scenes are refused
   (`smart_scene`). Lights are written one after another: an 8-light scene takes under a second.
 - **`get_attributes`** reads the bridge's live event stream, so it sends nothing to the bridge. During a fade it
-  returns Device Side's prediction. A room averages the lights that are on, or all of them when every light is off,
+  returns DeviceSide's prediction. A room averages the lights that are on, or all of them when every light is off,
   as the Hue integration shows it.
 
 ### Sharp edges
@@ -183,4 +183,4 @@ reconnect mid-fade shows what the bridge reports.
 
 Unsupported on Zigbee2MQTT and ZHA. Few honor the Zigbee timer command: IKEA's are moving to Thread, and Sonoff
 and Tuya run their own countdowns (the Tuya TS011F tested never switches on). If you have one that works,
-[open an issue](https://github.com/jasonmx/device-side/issues).
+[open an issue](https://github.com/jasonmx/DeviceSide/issues).

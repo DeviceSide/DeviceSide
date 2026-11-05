@@ -1,4 +1,4 @@
-"""Fakes shared by the rig's tests: a fake HAClient (and its admin twin, with device_side's options flow), a
+"""Fakes shared by the rig's tests: a fake HAClient (and its admin twin, with DeviceSide's options flow), a
 registry whose adapters all take options, and the step files that tests/scripts/test_rig.py reuses."""
 
 import asyncio
@@ -28,7 +28,7 @@ def _merge(into: dict, options: dict) -> None:
 
 
 class FakeHA(HAClient):
-    """Entity states HA would hold, plain on/off services, and device_side actions answered by `respond`.
+    """Entity states HA would hold, plain on/off services, and DeviceSide actions answered by `respond`.
 
     It inherits HAClient's network helpers (ZHA, Z2M, registries) and fakes the three things they sit on: `command`,
     `call_service` and the MQTT subscription. A bulb joins with `join`; a leave, a permit window and a ZHA or Z2M group
@@ -65,7 +65,7 @@ class FakeHA(HAClient):
         self.z2m_debug_to_mqtt = False  # bridge/info's config.advanced.log_debug_to_mqtt_frontend
         self.z2m_logging: asyncio.Queue[str] = asyncio.Queue()  # what Z2M publishes to bridge/logging
         self.ha_log = ""  # what /api/error_log returns; an Exception instance is raised instead
-        self.ha_levels: dict[str, int] = {"device_side": 30, "hue": 20, "zha": 30, "mqtt": 30}  # logger/log_info
+        self.ha_levels: dict[str, int] = {"deviceside": 30, "hue": 20, "zha": 30, "mqtt": 30}  # logger/log_info
         self.log_level_calls: list[tuple[str, str]] = []  # each integration_log_level (domain, level)
         self.z2m_failing: dict[str, int] = {}  # IEEE -> interviews still to fail, its first (on joining) included
         self.z2m_interviews: list[str] = []  # each device/interview request's id
@@ -287,7 +287,7 @@ class FakeHA(HAClient):
 
     async def call_service(self, domain: str, service: str, data: dict | None = None, return_response=False):
         self.calls.append((domain, service, dict(data or {})))
-        if domain == "device_side":
+        if domain == "deviceside":
             return self.respond(self, service, data)
         if domain == "zha":
             if service == "permit":
@@ -654,8 +654,8 @@ OPTION_REGISTRY = SimpleNamespace(
 
 
 class FakeAdmin(FakeHA):
-    """FakeHA plus device_side's entry and its options flow, which saves what it is sent. The entry reloads and is
-    disabled and enabled as HA's are, `moves` listing each; while it is disabled, device_side's actions raise
+    """FakeHA plus DeviceSide's entry and its options flow, which saves what it is sent. The entry reloads and is
+    disabled and enabled as HA's are, `moves` listing each; while it is disabled, DeviceSide's actions raise
     not_loaded, and `stuck` makes enabling it fail."""
 
     def __init__(self, states: dict[str, dict], respond: Callable | None = None, options: dict | None = None):
@@ -680,7 +680,7 @@ class FakeAdmin(FakeHA):
         return await super().command(payload)
 
     async def call_service(self, domain: str, service: str, data: dict | None = None, return_response=False):
-        if domain == "device_side" and self.disabled:
+        if domain == "deviceside" and self.disabled:
             self.calls.append((domain, service, dict(data or {})))
             raise HAError({"code": "service_validation_error", "translation_key": "not_loaded", "message": "x"})
         return await super().call_service(domain, service, data, return_response)

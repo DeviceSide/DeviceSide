@@ -7,7 +7,7 @@ DEVICE_SIDE_RIG_APPROVED=1 answers the gate for a non-interactive caller that al
 
 Runs share the rig through locks in the git common dir, shared by every worktree (tests/rig/locks.py): each holds the
 integrations it moves, so runs on different ones go side by side, and HA, shared, or exclusively for a deploy or a
-suite with device_side options, which restart or reload device_side under every other run. The plan prints the run's
+suite with DeviceSide options, which restart or reload DeviceSide under every other run. The plan prints the run's
 locks. Each run deploys and restarts HA onto its own checkout's tree when HA hasn't loaded it, so a run queued behind
 another tests its own code; it reads the deploy state again once it holds its locks, and takes HA exclusively if it
 must deploy after all. Once its deploy is done and HA is back, a run with no option suites steps HA down to shared.
@@ -39,7 +39,7 @@ baseline also holds the log levels and Z2M device options a run changes, so a cr
 run's prune, or --recover's.
 
 The run starts with lanes: one per integration, side by side, each running that integration's cases on fixed entities
-(engine.in_head). The rest run after, one at a time: cases with device_side options, whose save reloads the entry, and
+(engine.in_head). The rest run after, one at a time: cases with DeviceSide options, whose save reloads the entry, and
 those on roaming bulbs, rig-made groups and scenes, or powered entities and their supplies. --serial runs every case
 one at a time, as before lanes.
 
@@ -54,9 +54,9 @@ use is in HA and available, and each roaming bulb is on a network. Without that,
 only when its phase comes, after the bulbs have moved.
 
 Every run captures Z2M's log (when it touches Z2M) and HA's next to its report, as <report>.z2m.log and .ha.log
-(tests/rig/runlogs.py): deleted after a clean run, kept and printed after any other. A device_side warning or error
+(tests/rig/runlogs.py): deleted after a clean run, kept and printed after any other. A DeviceSide warning or error
 in HA's log that no step file expects is listed and fails the run. --debug-logs also raises HA's
-device_side and the run's integrations, and Z2M, to debug for the run, keeps the logs, and puts the levels back (the
+DeviceSide and the run's integrations, and Z2M, to debug for the run, keeps the logs, and puts the levels back (the
 baseline, so --recover too).
 
 Usage: scripts/rig.py [--profile NAME] [--dry-run] [--no-deploy] [--unattended] [--serial] [--debug-logs]
@@ -93,7 +93,7 @@ import aiohttp
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
-from custom_components.device_side.core.registry import AdapterRegistry  # noqa: E402
+from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
 from tests.rig import locks  # noqa: E402
 from tests.rig.baseline import NAME as BASELINE_NAME  # noqa: E402
 from tests.rig.baseline import Baseline  # noqa: E402
@@ -134,9 +134,9 @@ from tests.rig.roam import BLUETOOTH_RESET, NAMES, Bulb, GroupError, Roamer, Roa
 from tests.rig.roam import plan_lines as roam_plan_lines  # noqa: E402
 from tests.rig.runlogs import DebugLevels, RunLogs, ha_domains  # noqa: E402
 
-COMPONENT = "custom_components/device_side"
+COMPONENT = "custom_components/deviceside"
 TEST_RECORDS_DIR = REPO / "docs" / "test-records"
-SERVICE = ("device_side", "turn_on_for")
+SERVICE = ("deviceside", "turn_on_for")
 # HA's bootstrap stage-1 (120 s) and stage-2 (300 s) timeouts, after which a stuck dependency is let go, plus the
 # container's start. A restart behind a hung ZHA took about 350 s.
 READY_TIMEOUT_S = 450
@@ -149,7 +149,7 @@ ABORT_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
 CLEAR_POLL_S = 15
 BLOCKED = ("on", "unknown", "unavailable")  # blocker states that revoke a run; an unread one doesn't
 # Run reports go where the OS clears old files: they are for reviewing a run, not for keeping.
-REPORT_DIR = Path(tempfile.gettempdir()) / "device_side-rig"
+REPORT_DIR = Path(tempfile.gettempdir()) / "deviceside-rig"
 
 
 class Aborted(Exception):
@@ -449,7 +449,7 @@ def wait_until_ready(
     timeout: float = READY_TIMEOUT_S,
     sleep: Callable[[float], None] = time.sleep,
 ) -> None:
-    """Until HA reports RUNNING and lists device_side.turn_on_for; exits the runner on timeout, saying why when HA
+    """Until HA reports RUNNING and lists deviceside.turn_on_for; exits the runner on timeout, saying why when HA
     answers without it, still starting or running."""
     deadline = time.monotonic() + timeout
     state = None
@@ -472,12 +472,12 @@ def wait_until_ready(
 
 
 def diagnose(url: str, admin_token: str | None) -> str:
-    """Why device_side's actions are missing, from HA's config entries, which only an admin may read."""
+    """Why DeviceSide's actions are missing, from HA's config entries, which only an admin may read."""
     manifest = json.loads((REPO / COMPONENT / "manifest.json").read_text())
     waits_for = manifest.get("after_dependencies", [])
     if not admin_token:
         return (
-            "Without HA_ADMIN_TOKEN in .env.rig the runner can't read config entries to say why; check device_side "
+            "Without HA_ADMIN_TOKEN in .env.rig the runner can't read config entries to say why; check DeviceSide "
             f"and the integrations it waits for ({', '.join(waits_for)}) in Settings > Devices & services."
         )
     try:
@@ -497,12 +497,12 @@ async def config_entries(url: str, admin_token: str) -> list[dict]:
 
 
 def explain(entries: list[dict], waits_for: list[str]) -> str:
-    """device_side's entry state and each integration it waits for whose enabled entry isn't loaded: HA sets up
-    device_side only after their entries finish setting up, so one stuck in setup holds it back."""
+    """DeviceSide's entry state and each integration it waits for whose enabled entry isn't loaded: HA sets up
+    DeviceSide only after their entries finish setting up, so one stuck in setup holds it back."""
     own = [entry["state"] for entry in entries if entry["domain"] == SERVICE[0]]
     if not own:
         return (
-            "On a first load, add the integration (Settings > Devices & services > Add integration > Device Side), "
+            "On a first load, add the integration (Settings > Devices & services > Add integration > DeviceSide), "
             "then rerun."
         )
     stuck = [
@@ -516,8 +516,8 @@ def explain(entries: list[dict], waits_for: list[str]) -> str:
         else f"none of the integrations it waits for ({', '.join(waits_for)}) is stuck; check HA's logs"
     )
     return (
-        f"device_side's entry is {', '.join(own)}; {why}. "
-        "device_side actions are unavailable in the house until this is fixed."
+        f"DeviceSide's entry is {', '.join(own)}; {why}. "
+        "DeviceSide actions are unavailable in the house until this is fixed."
     )
 
 
@@ -572,7 +572,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--debug-logs",
         action="store_true",
-        help="run HA's device_side and the run's integrations, and Z2M, at debug, and keep the run's captured logs "
+        help="run HA's DeviceSide and the run's integrations, and Z2M, at debug, and keep the run's captured logs "
         "(they are kept after a failure whatever this says)",
     )
     parser.add_argument("--recover", action="store_true", help="put back what an aborted run left changed, then stop")
@@ -595,7 +595,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--exclusive",
         action="store_true",
-        help="with a command after --: hold HA exclusively, for a probe that restarts HA or reloads device_side",
+        help="with a command after --: hold HA exclusively, for a probe that restarts HA or reloads DeviceSide",
     )
     args = parser.parse_args(argv)
     args.command = command
@@ -673,7 +673,7 @@ def prepare(args: argparse.Namespace) -> Setup:
 def claim(args: argparse.Namespace, setup: Setup) -> Claim:
     """What the run must hold: each integration with a suite that has an adapter, the integrations their entities draw
     power through, and the networks its roaming bulbs visit, home included; HA exclusively when it deploys, which
-    restarts HA, or runs a suite that reloads the entry (device_side options, whose save does, or entry steps); HA
+    restarts HA, or runs a suite that reloads the entry (DeviceSide options, whose save does, or entry steps); HA
     shared otherwise."""
     integrations = {suite.integration for suite in runnable(setup)}
     integrations |= supplies(setup.profile, integrations)
@@ -691,7 +691,7 @@ def runnable(setup: Setup) -> list[Suite]:
 
 
 def reloads(setup: Setup) -> bool:
-    """Whether a suite the run can run reloads the entry under every other run: it has device_side options, whose
+    """Whether a suite the run can run reloads the entry under every other run: it has DeviceSide options, whose
     save does, or entry steps."""
     return any(suite.file.reloads for suite in runnable(setup))
 
@@ -1089,7 +1089,7 @@ def replay(env: dict, held: Held | None, directory: Path) -> set[str]:
 
 def needs(journal: Journal) -> Claim:
     """What a run must hold to put back an orphan: the integrations its run held, and HA exclusively when it left
-    device_side's options changed or its entry disabled, as setting them or enabling it reloads the entry."""
+    DeviceSide's options changed or its entry disabled, as setting them or enabling it reloads the entry."""
     held = Claim.of(journal.get("claim"))
     reloads = journal.get("options") is not None or journal.get("entry") is not None
     return Claim("exclusive" if reloads else "shared", held.integrations)
@@ -1097,7 +1097,7 @@ def needs(journal: Journal) -> Claim:
 
 def check_tokens(env: dict, suites: list[Suite], registry: AdapterRegistry, roaming: bool = False) -> None:
     """Stop before the gate when .env.rig lacks a token the run needs: ADMIN_INTEGRATIONS, any adapter with options
-    (they are set through device_side's options flow) and any file with entry steps need HA_ADMIN_TOKEN; a Hue file
+    (they are set through DeviceSide's options flow) and any file with entry steps need HA_ADMIN_TOKEN; a Hue file
     with a bridge step needs the bridge's host and key; roaming, or making the lab's groups, needs both, for the
     registries, MQTT and the bridge."""
     if not (env.get("HA_URL") and env.get("HA_TOKEN")):
@@ -1230,8 +1230,8 @@ async def run_rig(
     trace to a commit proves nothing. Roaming and groups need the admin connection and the bridge (check_tokens).
 
     Z2M's log (for a run that touches it) and HA's go next to the report as `<report>.z2m.log` and `.ha.log`: deleted
-    after a clean run, kept and printed after any other, or with `debug_logs`, which also runs HA's device_side and the
-    run's integrations, and Z2M, at debug until the run ends (RunLogs, DebugLevels). A device_side warning or error in
+    after a clean run, kept and printed after any other, or with `debug_logs`, which also runs HA's DeviceSide and the
+    run's integrations, and Z2M, at debug until the run ends (RunLogs, DebugLevels). A DeviceSide warning or error in
     HA's log that no step file's `expected_log` matches is printed and fails the run; the records already written
     stand."""
     lab = roaming or grouping
@@ -1635,8 +1635,8 @@ async def recover(
     out: Callable[[str], None] = print,
     bridge: HueBridge | None = None,
 ) -> None:
-    """Put back what an aborted run left changed, in the order its finally blocks would have: device_side's entry
-    enabled, the case's entities (whose stored attributes go back through it), device_side's options, the roaming
+    """Put back what an aborted run left changed, in the order its finally blocks would have: DeviceSide's entry
+    enabled, the case's entities (whose stored attributes go back through it), DeviceSide's options, the roaming
     bulbs (the ds-rig-* groups removed, the bulbs moved home, their Hue rooms and scenes put back), what it holds in
     the baseline (its pauses, log levels and Z2M options) and the automations a journal from before the baseline
     paused.
@@ -1654,13 +1654,13 @@ async def recover(
         journal.clear("taken", "stored", "power")
     if (options := journal.get("options")) is not None:
         if admin is None:
-            out("Putting device_side's options back needs HA_ADMIN_TOKEN in .env.rig; they stay in the journal.")
+            out("Putting DeviceSide's options back needs HA_ADMIN_TOKEN in .env.rig; they stay in the journal.")
         else:
             try:
                 await EntryOptions(admin).apply(options)
-                out("Put device_side's options back.")
+                out("Put DeviceSide's options back.")
             except Exception as err:  # noqa: BLE001 - as resume: say so, and go on to the automations
-                out(f"Could not put device_side's options back; set them in HA: {err}")
+                out(f"Could not put DeviceSide's options back; set them in HA: {err}")
             journal.clear("options")
     if journal.get("roam") is not None:
         await recover_roam(admin, bridge, journal, out)
@@ -1677,17 +1677,17 @@ async def recover(
 
 
 async def recover_entry(admin: HAClient | None, journal: Journal, out: Callable[[str], None]) -> None:
-    """Enable device_side's entry, if an aborted run left it disabled; it stays journaled without an admin."""
+    """Enable DeviceSide's entry, if an aborted run left it disabled; it stays journaled without an admin."""
     if journal.get("entry") is None:
         return
     if admin is None:
-        out("Enabling device_side's entry again needs HA_ADMIN_TOKEN in .env.rig; it stays in the journal.")
+        out("Enabling DeviceSide's entry again needs HA_ADMIN_TOKEN in .env.rig; it stays in the journal.")
         return
     try:
         await EntryOptions(admin).move("enable")
-        out("Enabled device_side's entry again.")
+        out("Enabled DeviceSide's entry again.")
     except Exception as err:  # noqa: BLE001 - as the options: say so, and go on
-        out(f"Could not enable device_side's entry again; enable it in HA: {err}")
+        out(f"Could not enable DeviceSide's entry again; enable it in HA: {err}")
     journal.clear("entry")
 
 

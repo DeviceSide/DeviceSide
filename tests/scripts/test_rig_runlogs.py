@@ -13,7 +13,7 @@ from tests.rig import baseline, engine
 from tests.rig.baseline import Baseline
 from tests.rig.engine import load_step_file
 from tests.rig.journal import Journal
-from tests.rig.runlogs import DebugLevels, RunLogs, coordinator_crashes, device_side_lines, ha_domains, since
+from tests.rig.runlogs import DebugLevels, RunLogs, coordinator_crashes, deviceside_lines, ha_domains, since
 from tests.scripts import rig_fakes as fakes
 
 REPO = Path(__file__).parents[2]
@@ -138,33 +138,31 @@ def test_a_clean_run_with_no_crash_still_deletes_its_logs(tmp_path):
 
 
 WARNED = (
-    f"{FUTURE} WARNING (MainThread) [custom_components.device_side.core.dispatcher] stop on zha timed out after 5s\n"
-    f"{FUTURE} ERROR (MainThread) [custom_components.device_side] Error setting up entry\n"
+    f"{FUTURE} WARNING (MainThread) [custom_components.deviceside.core.dispatcher] stop on zha timed out after 5s\n"
+    f"{FUTURE} ERROR (MainThread) [custom_components.deviceside] Error setting up entry\n"
     "Traceback (most recent call last):\n"
-    f"{FUTURE} INFO (MainThread) [custom_components.device_side.core] loaded\n"
-    f"{FUTURE} WARNING (MainThread) [custom_components.device_side_extra] another integration\n"
+    f"{FUTURE} INFO (MainThread) [custom_components.deviceside.core] loaded\n"
+    f"{FUTURE} WARNING (MainThread) [custom_components.deviceside_extra] another integration\n"
     f"{FUTURE} ERROR (MainThread) [homeassistant.components.zha] not ours\n"
 )
 
 
-def test_device_side_warnings_and_errors_are_picked_out_of_the_ha_log():
-    unexpected, matched = device_side_lines(WARNED)
+def test_deviceside_warnings_and_errors_are_picked_out_of_the_ha_log():
+    unexpected, matched = deviceside_lines(WARNED)
     assert [line.split("[", 1)[1] for line in unexpected] == [
-        "custom_components.device_side.core.dispatcher] stop on zha timed out after 5s",
-        "custom_components.device_side] Error setting up entry",
+        "custom_components.deviceside.core.dispatcher] stop on zha timed out after 5s",
+        "custom_components.deviceside] Error setting up entry",
     ]
     assert matched == 0
-    assert device_side_lines(WARNED, [re.compile(r"dispatcher\] stop on zha timed out")]) == ([unexpected[1]], 1)
+    assert deviceside_lines(WARNED, [re.compile(r"dispatcher\] stop on zha timed out")]) == ([unexpected[1]], 1)
 
 
-async def test_an_unexpected_device_side_warning_fails_a_clean_run_and_keeps_its_logs(
-    tmp_path, monkeypatch, ha, capsys
-):
+async def test_an_unexpected_deviceside_warning_fails_a_clean_run_and_keeps_its_logs(tmp_path, monkeypatch, ha, capsys):
     phases(monkeypatch, ha)
     ha.ha_log = WARNED
     assert await go(tmp_path, "zigbee2mqtt") == 1
     out = capsys.readouterr().out
-    assert "HA's log has 2 device_side warnings or errors no step file expects:" in out
+    assert "HA's log has 2 DeviceSide warnings or errors no step file expects:" in out
     assert "stop on zha timed out after 5s" in out
     assert sorted(logs(tmp_path)) == ["ha.log", "z2m.log"]
 
@@ -173,7 +171,7 @@ async def test_a_warning_a_step_file_expects_is_counted_and_fails_nothing(tmp_pa
     phases(monkeypatch, ha)
     ha.ha_log = WARNED.splitlines(keepends=True)[0]
     assert await go(tmp_path, "zigbee2mqtt", expected_log="stop on zha timed out") == 0
-    assert "HA's log has 1 device_side warning or error the step files expect." in capsys.readouterr().out
+    assert "HA's log has 1 DeviceSide warning or error the step files expect." in capsys.readouterr().out
     assert logs(tmp_path) == {}
 
 
@@ -187,7 +185,7 @@ async def test_a_log_with_nothing_from_the_start_on_is_kept_whole_and_not_checke
     with pytest.raises(RuntimeError):
         await go(tmp_path, "zigbee2mqtt")
     assert logs(tmp_path)["ha.log"] == ha.ha_log
-    assert "so its device_side warnings aren't checked" in capsys.readouterr().out
+    assert "so its DeviceSide warnings aren't checked" in capsys.readouterr().out
 
 
 async def test_a_clean_run_deletes_its_logs(tmp_path, monkeypatch, ha):
@@ -202,15 +200,15 @@ async def test_debug_logs_keeps_a_clean_runs_logs_and_raises_then_restores_level
     assert await go(tmp_path, "zigbee2mqtt", debug_logs=True) == 0
 
     levels, z2m = raised[0]
-    assert (levels["device_side"], levels["mqtt"], levels["hue"], levels["zha"], z2m) == (10, 10, 20, 30, "debug")
-    assert (ha.ha_levels, ha.z2m_level) == ({"device_side": 30, "hue": 20, "zha": 30, "mqtt": 30}, "warning")
+    assert (levels["deviceside"], levels["mqtt"], levels["hue"], levels["zha"], z2m) == (10, 10, 20, 30, "debug")
+    assert (ha.ha_levels, ha.z2m_level) == ({"deviceside": 30, "hue": 20, "zha": 30, "mqtt": 30}, "warning")
     assert sorted(logs(tmp_path)) == ["ha.log", "z2m.log"]
 
 
 async def test_a_roaming_run_raises_hue_zha_and_mqtt(tmp_path, monkeypatch, ha):
     phases(monkeypatch, ha)
-    assert ha_domains({"shelly"}, roaming=False) == ["device_side", "shelly"]
-    assert ha_domains({"zigbee2mqtt"}, roaming=True) == ["device_side", "hue", "mqtt", "zha"]
+    assert ha_domains({"shelly"}, roaming=False) == ["deviceside", "shelly"]
+    assert ha_domains({"zigbee2mqtt"}, roaming=True) == ["deviceside", "hue", "mqtt", "zha"]
 
 
 async def test_a_failed_fetch_is_printed_and_the_result_stands(tmp_path, monkeypatch, ha, capsys):
@@ -233,12 +231,12 @@ async def test_a_failed_z2m_subscription_is_printed_and_the_run_goes_on(tmp_path
 
 async def test_recover_puts_back_the_levels_a_crash_left(tmp_path, ha):
     orphan = Journal.start(tmp_path)
-    await DebugLevels(Baseline.of(ha, orphan, "debug"), lambda _: None).raise_levels(["device_side", "mqtt"], z2m=True)
-    assert (ha.ha_levels["device_side"], ha.ha_levels["mqtt"], ha.z2m_level) == (10, 10, "debug")
+    await DebugLevels(Baseline.of(ha, orphan, "debug"), lambda _: None).raise_levels(["deviceside", "mqtt"], z2m=True)
+    assert (ha.ha_levels["deviceside"], ha.ha_levels["mqtt"], ha.z2m_level) == (10, 10, "debug")
 
     await rig.recover(ha, ha, orphan, out=lambda _: None)  # it holds the orphan's lock meanwhile
 
-    assert (ha.ha_levels["device_side"], ha.ha_levels["mqtt"], ha.z2m_level) == (30, 30, "warning")
+    assert (ha.ha_levels["deviceside"], ha.ha_levels["mqtt"], ha.z2m_level) == (30, 30, "warning")
     assert not (tmp_path / baseline.NAME).exists()
 
 

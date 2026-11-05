@@ -3,7 +3,7 @@
 import probatio
 import pytest
 
-from custom_components.device_side.actions.raise_saturation import RaiseSaturation
+from custom_components.deviceside.actions.raise_saturation import RaiseSaturation
 
 
 @pytest.mark.parametrize("limit", [0, 100])

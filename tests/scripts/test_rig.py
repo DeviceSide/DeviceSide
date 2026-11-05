@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from custom_components.device_side.core.registry import AdapterRegistry
+from custom_components.deviceside.core.registry import AdapterRegistry
 from tests.rig import baseline, engine
 from tests.rig.engine import load_step_file, load_step_files
 from tests.rig.journal import LEGACY_NAME, Journal
@@ -379,7 +379,7 @@ def fake_clock(monkeypatch):
 
 
 def test_wait_until_ready_returns_once_the_service_is_listed(monkeypatch):
-    services = [{"domain": "device_side", "services": {"turn_on_for": {}}}]
+    services = [{"domain": "deviceside", "services": {"turn_on_for": {}}}]
     running = {"state": "RUNNING"}
     fake_ha(monkeypatch, [rig.urllib.error.URLError("down"), running, None, running, services])
     rig.wait_until_ready("http://ha", "token", timeout=60, sleep=lambda _: None)
@@ -398,7 +398,7 @@ def test_wait_until_ready_says_why_the_service_is_missing(monkeypatch):
 
     async def config_entries(url, token):
         assert token == "admin"
-        return [{"domain": "device_side", "state": "not_loaded"}, {"domain": "mqtt", "state": "setup_in_progress"}]
+        return [{"domain": "deviceside", "state": "not_loaded"}, {"domain": "mqtt", "state": "setup_in_progress"}]
 
     monkeypatch.setattr(rig, "config_entries", config_entries)
     with pytest.raises(SystemExit, match="entry is not_loaded; it waits for mqtt"):
@@ -422,18 +422,18 @@ WAITS_FOR = ["hue", "zha"]
         ([], "On a first load, add the integration"),
         (
             [
-                {"domain": "device_side", "state": "not_loaded"},
+                {"domain": "deviceside", "state": "not_loaded"},
                 {"domain": "hue", "state": "loaded"},
                 {"domain": "zha", "state": "setup_in_progress"},
                 {"domain": "zha", "state": "not_loaded", "disabled_by": "user"},
                 {"domain": "met", "state": "setup_error"},
             ],
-            "device_side's entry is not_loaded; it waits for zha (setup_in_progress). "
-            "device_side actions are unavailable in the house until this is fixed.",
+            "DeviceSide's entry is not_loaded; it waits for zha (setup_in_progress). "
+            "DeviceSide actions are unavailable in the house until this is fixed.",
         ),
         (
-            [{"domain": "device_side", "state": "setup_error"}, {"domain": "hue", "state": "loaded"}],
-            "device_side's entry is setup_error; none of the integrations it waits for (hue, zha) is stuck; "
+            [{"domain": "deviceside", "state": "setup_error"}, {"domain": "hue", "state": "loaded"}],
+            "DeviceSide's entry is setup_error; none of the integrations it waits for (hue, zha) is stuck; "
             "check HA's logs.",
         ),
     ],
@@ -652,7 +652,7 @@ def test_check_tokens_stops_a_hue_bridge_step_without_the_bridge_settings(tmp_pa
 
 
 def test_check_tokens_stops_a_run_of_an_adapter_with_options_without_an_admin_token():
-    # Its options are pinned through device_side's options flow, which is admin only.
+    # Its options are pinned through DeviceSide's options flow, which is admin only.
     registry = AdapterRegistry.discover()
     step_file = next(f for f in load_step_files() if f.action == "raise_brightness")
     env = {"HA_URL": "http://ha:8123", "HA_TOKEN": "tok", "HUE_BRIDGE_HOST": "bridge", "HUE_APP_KEY": "key"}
@@ -667,7 +667,7 @@ class RigHA(fakes.FakeAdmin):
 
 
 def rig_ha(monkeypatch, light: str, opt: bool, automation: str) -> RigHA:
-    """One fake for both connections, with a light, device_side's options and an automation to pause."""
+    """One fake for both connections, with a light, DeviceSide's options and an automation to pause."""
     monkeypatch.setattr(engine, "OPTIONS_RELOAD_S", 0)
     ha = RigHA(
         {"light.a": {"state": light, "attributes": {"brightness": 200}}, "automation.motion": {"state": automation}},
@@ -836,7 +836,7 @@ async def test_recover_without_an_admin_token_leaves_the_options_in_the_journal(
 
 
 async def test_recover_enables_a_disabled_entry_before_it_puts_the_cases_back(tmp_path, monkeypatch):
-    # The case's restore may write stored attributes back through device_side, which a disabled entry refuses.
+    # The case's restore may write stored attributes back through DeviceSide, which a disabled entry refuses.
     ha = rig_ha(monkeypatch, light="off", opt=True, automation="on")
     ha.disabled = True
     journal = Journal(tmp_path / LEGACY_NAME)
@@ -846,7 +846,7 @@ async def test_recover_enables_a_disabled_entry_before_it_puts_the_cases_back(tm
     await rig.recover(ha, ha, journal, out=printed.append)
 
     assert ha.moves == ["enable"]
-    assert printed[1] == "Enabled device_side's entry again."
+    assert printed[1] == "Enabled DeviceSide's entry again."
     assert ha.states["light.a"] == LIGHT_A_ON
     assert not journal.path.exists()
 
@@ -860,7 +860,7 @@ async def test_recover_says_when_the_entry_will_not_enable(tmp_path, monkeypatch
 
     await rig.recover(ha, ha, journal, out=printed.append)
 
-    assert printed[1] == "Could not enable device_side's entry again; enable it in HA: setup failed"
+    assert printed[1] == "Could not enable DeviceSide's entry again; enable it in HA: setup failed"
     assert not journal.path.exists()
 
 

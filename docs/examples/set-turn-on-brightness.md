@@ -30,7 +30,7 @@ triggers:
       minutes: 0
       seconds: 0
 actions:
-  - action: device_side.set_attributes
+  - action: deviceside.set_attributes
     target:
       entity_id: "{{ trigger.entity_id }}"
     data:

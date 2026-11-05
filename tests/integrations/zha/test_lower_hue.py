@@ -2,7 +2,7 @@
 
 import pytest
 
-from custom_components.device_side.integrations.zha import zcl
+from custom_components.deviceside.integrations.zha import zcl
 
 from .conftest import SENT, bulb, sent, unchanged
 from ...conftest import call

@@ -1,8 +1,8 @@
-# Device Side
+# DeviceSide
 
-[![HACS Default](https://img.shields.io/badge/HACS-Default-orange.svg)](https://hacs.xyz/) [![Latest Version](https://img.shields.io/github/v/release/jasonmx/device-side?sort=date)](https://github.com/jasonmx/device-side/releases) [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/jasonmx)
+[![HACS Default](https://img.shields.io/badge/HACS-Default-orange.svg)](https://hacs.xyz/) [![Latest Version](https://img.shields.io/github/v/release/jasonmx/DeviceSide?sort=date)](https://github.com/jasonmx/DeviceSide/releases) [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/jasonmx)
 
-Device Side unlocks native features in your lights, switches and plugs on the Zigbee, Shelly, Philips Hue and Matter integrations.
+DeviceSide unlocks native features in your lights, switches and plugs on the Zigbee, Shelly, Philips Hue and Matter integrations.
 
 * **Auto-off timer:** Turn off devices automatically, even if HA goes offline or restarts.
 
@@ -12,7 +12,7 @@ Device Side unlocks native features in your lights, switches and plugs on the Zi
 
 * **Set lights without turning on:** Pre-stage brightness, color, CT and scenes, so lights come on without unsightly color flashes or brightness extremes.
 
-* **Zero setup:** Device Side connects to your devices automatically via the core integrations, and [patches some usability quirks](#usability-patches) in Z2M and Hue.
+* **Zero setup:** DeviceSide connects to your devices automatically via the core integrations, and [patches some usability quirks](#usability-patches) in Z2M and Hue.
 
 ## Key Features
 
@@ -29,7 +29,7 @@ Device Side unlocks native features in your lights, switches and plugs on the Zi
 
 Details per integration are in [docs/integrations.md](docs/integrations.md).
 
-**Warning:** Some devices accept commands for features that they don't fully support. Test each of your devices with Device Side before relying on device-native features.
+**Warning:** Some devices accept commands for features that they don't fully support. Test each of your devices with DeviceSide before relying on device-native features.
 
 ## Get started
 
@@ -44,9 +44,9 @@ Details per integration are in [docs/integrations.md](docs/integrations.md).
 <details>
 <summary>Show me how</summary>
 
-1. Open the Device Side HACS repository
+1. Open the DeviceSide HACS repository
 
-   [![Open the Device Side HACS repository in your Home Assistant instance.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=jasonmx&repository=device-side&category=integration)
+   [![Open the DeviceSide HACS repository in your Home Assistant instance.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=jasonmx&repository=DeviceSide&category=integration)
 
 2. Click **Download**
 
@@ -54,25 +54,35 @@ Details per integration are in [docs/integrations.md](docs/integrations.md).
 
 4. Add the integration
 
-   [![Add Device Side to your Home Assistant instance.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=device_side)
+   [![Add DeviceSide to your Home Assistant instance.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=deviceside)
 
 </details>
 
 ### Coming from [Hue Smooth Dimming](https://github.com/jasonmx/hue-smooth-dimming)
 
-Device Side's actions are drop-in replacements for Hue Smooth Dimming, apart from a name change on the `raise` and `lower` actions. To migrate to Device Side, make these YAML edits in your automations:
+DeviceSide's actions are drop-in replacements for Hue Smooth Dimming, apart from a name change on the `raise` and `lower` actions. To migrate to DeviceSide, make these YAML edits in your automations:
 
-* change `hue_dimmer` to `device_side`. E.g. `hue_dimmer.stop` → `device_side.stop`
+* change `hue_dimmer` to `deviceside`. E.g. `hue_dimmer.stop` → `deviceside.stop`
 
 * change `raise` to `raise_brightness`
 
 * change `lower` to `lower_brightness`
 
+### Coming from v0.0.1
+
+v0.1.0 renamed the integration's domain from `device_side` to `deviceside`. HACS installs it in a new folder and Home Assistant treats it as a new integration, so:
+
+1. Delete the old Device Side integration in Settings > Devices & services
+2. Update to v0.1.0 in HACS
+3. Delete the `custom_components/device_side` folder, then restart Home Assistant
+4. Add DeviceSide again, and set its options again if you changed them
+5. In your automations and scripts, change `device_side.` to `deviceside.`, e.g. `device_side.turn_on_for` → `deviceside.turn_on_for`
+
 ## Usage
 
 ### Auto-off timer
 
-Action: `device_side.turn_on_for`
+Action: `deviceside.turn_on_for`
 
 Turn on, then off after a delay. Timer runs on the device, for this turn-on only: it doesn't change a Shelly's own Auto OFF setting. Example use cases:
 
@@ -83,7 +93,7 @@ Turn on, then off after a delay. Timer runs on the device, for this turn-on only
 
 ```yaml
 actions:
-  - action: device_side.turn_on_for
+  - action: deviceside.turn_on_for
     target:
       entity_id: switch.heater
     data:
@@ -137,7 +147,7 @@ The following actions cancel an auto-off timer, on a device that's on:
 
 ### Auto-on timer
 
-Action: `device_side.turn_off_for`
+Action: `deviceside.turn_off_for`
 
 Turn off, then on after a delay. Timer runs on the device. Example use case:
 
@@ -184,20 +194,20 @@ Create "press to dim, release to stop" automations. Transitions run natively on 
 
 ```yaml
 left_button_held:
-  - action: device_side.lower_brightness
+  - action: deviceside.lower_brightness
 
 right_button_held:
-  - action: device_side.raise_brightness
+  - action: deviceside.raise_brightness
 
 buttons_released:
-  - action: device_side.stop
+  - action: deviceside.stop
 ```
 
 | Action                         | Description                                    |
 |:------------------------------ |:---------------------------------------------- |
-| `device_side.raise_brightness` | Start raising brightness, turning the light on |
-| `device_side.lower_brightness` | Start lowering brightness                      |
-| `device_side.stop`             | Freeze every move on the target where it is    |
+| `deviceside.raise_brightness` | Start raising brightness, turning the light on |
+| `deviceside.lower_brightness` | Start lowering brightness                      |
+| `deviceside.stop`             | Freeze every move on the target where it is    |
 
 | Field        | Description                                                                                                                                |
 |:------------ |:------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -215,19 +225,19 @@ Create "press to change color, release to stop" automations. Transitions run nat
 
 ```yaml
 button_held:
-  - action: device_side.raise_hue
+  - action: deviceside.raise_hue
 
 button_released:
-  - action: device_side.stop
+  - action: deviceside.stop
 ```
 
 | Action                         | Description                                                     |
 |:------------------------------ |:--------------------------------------------------------------- |
-| `device_side.raise_saturation` | Start raising saturation, toward a richer color                 |
-| `device_side.lower_saturation` | Start lowering saturation, toward white                         |
-| `device_side.raise_hue`        | Start cycling hue: red, yellow, green, blue. Runs until `stop`  |
-| `device_side.lower_hue`        | Start cycling hue: red, magenta, blue, green. Runs until `stop` |
-| `device_side.stop`             | Freeze every move on the target where it is                     |
+| `deviceside.raise_saturation` | Start raising saturation, toward a richer color                 |
+| `deviceside.lower_saturation` | Start lowering saturation, toward white                         |
+| `deviceside.raise_hue`        | Start cycling hue: red, yellow, green, blue. Runs until `stop`  |
+| `deviceside.lower_hue`        | Start cycling hue: red, magenta, blue, green. Runs until `stop` |
+| `deviceside.stop`             | Freeze every move on the target where it is                     |
 
 | Field        | Description                                                                                                       |
 |:------------ |:----------------------------------------------------------------------------------------------------------------- |
@@ -249,7 +259,7 @@ triggers:
   - trigger: time
     at: "22:00:00"
 actions:
-  - action: device_side.set_scene
+  - action: deviceside.set_scene
     target:
       entity_id: scene.living_room_relax
 ```
@@ -258,7 +268,7 @@ To set brightness for the next turn-on from the visual editor, see [docs/example
 
 #### Set brightness, color or CT
 
-Action: `device_side.set_attributes`. Sets brightness, color temp or color without changing on/off state.
+Action: `deviceside.set_attributes`. Sets brightness, color temp or color without changing on/off state.
 
 | Field               | Description                                 |
 |:------------------- |:------------------------------------------- |
@@ -273,7 +283,7 @@ Action: `device_side.set_attributes`. Sets brightness, color temp or color witho
 
 #### Set scene
 
-Action: `device_side.set_scene`. Sets a Hue scene without turning its lights on.
+Action: `deviceside.set_scene`. Sets a Hue scene without turning its lights on.
 
 | Field    | Description           |
 |:-------- |:--------------------- |
@@ -281,7 +291,7 @@ Action: `device_side.set_scene`. Sets a Hue scene without turning its lights on.
 
 ### Get attributes
 
-Action: `device_side.get_attributes`
+Action: `deviceside.get_attributes`
 
 Read device attributes that aren't exposed reliably by Home Assistant:
 
@@ -293,7 +303,7 @@ Read device attributes that aren't exposed reliably by Home Assistant:
 
 ```yaml
 actions:
-  - action: device_side.get_attributes
+  - action: deviceside.get_attributes
     target:
       entity_id: switch.heater
     response_variable: result
@@ -317,13 +327,13 @@ The `timer` key holds `turns` (`on` or `off`), `ends_at` (UTC) and `remaining_s`
 
 * **Color lights on Zigbee2MQTT:**
 
-  * Home Assistant shows the wrong color for full-color bulbs in hue-saturation (HS) mode. Device Side fixes this by [announcing both of their color modes](docs/integrations.md#what-device-side-changes-in-zigbee2mqtt).
+  * Home Assistant shows the wrong color for full-color bulbs in hue-saturation (HS) mode. DeviceSide fixes this by [announcing both of their color modes](docs/integrations.md#what-deviceside-changes-in-zigbee2mqtt).
 
-  * Hue bulbs: before an auto-off timer with a color, Device Side turns on Z2M's Hue native control setting for that bulb, so it comes on in the new color instead of flashing its last one.
+  * Hue bulbs: before an auto-off timer with a color, DeviceSide turns on Z2M's Hue native control setting for that bulb, so it comes on in the new color instead of flashing its last one.
 
-* **Hue Bridge:** When a brightness move starts, the bridge reports its target brightness (e.g. 0% or 100%) to Home Assistant, which is jarring for moves that you plan to stop. Device Side suppresses the bridge's report when a transition starts, and reports the new brightness once the transition stops.
+* **Hue Bridge:** When a brightness move starts, the bridge reports its target brightness (e.g. 0% or 100%) to Home Assistant, which is jarring for moves that you plan to stop. DeviceSide suppresses the bridge's report when a transition starts, and reports the new brightness once the transition stops.
 
-The HS mode and Hue Bridge patches are on by default; turn them off in Device Side's options.
+The HS mode and Hue Bridge patches are on by default; turn them off in DeviceSide's options.
 
 ## Uninstall
 
@@ -331,6 +341,6 @@ This integration follows standard integration removal.
 
 1. Open the integration
 
-   [![Open the Device Side integration in your Home Assistant instance.](https://my.home-assistant.io/badges/integration.svg)](https://my.home-assistant.io/redirect/integration/?domain=device_side)
+   [![Open the DeviceSide integration in your Home Assistant instance.](https://my.home-assistant.io/badges/integration.svg)](https://my.home-assistant.io/redirect/integration/?domain=deviceside)
 
 2. Open the ⋮ menu and choose **Delete**

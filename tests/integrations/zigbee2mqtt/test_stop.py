@@ -2,8 +2,8 @@
 
 import pytest
 
-from custom_components.device_side.core.transition import BRIGHTNESS, SATURATION
-from custom_components.device_side.integrations.zigbee2mqtt.fade import hue_moves, transition_cache
+from custom_components.deviceside.core.transition import BRIGHTNESS, SATURATION
+from custom_components.deviceside.integrations.zigbee2mqtt.fade import hue_moves, transition_cache
 
 from .conftest import GET, SENT, SET, commands, group, light
 from ...conftest import advance, call, wall_clock_now
