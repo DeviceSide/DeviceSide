@@ -1,8 +1,10 @@
 name: Cut release
 
-# The only way a vX.Y.Z tag is made (a tag ruleset refuses any other): from main, above the latest release, with
-# manifest.json at that version, green CI on the head, no experimental adapter, and every adapter's test records
-# citing a commit with the head's adapter code (check_release --release --records). Soak is the repo owner's call.
+# The only way a vX.Y.Z tag is made (a tag ruleset refuses any other). Dispatched from main, it tags the commit of
+# vX.Y.Z's latest RC, not main's head: what ships is what soaked, while main moves on. Requires a version above the
+# latest release and, at the RC's commit, manifest.json at that version, green CI, no experimental adapter, and every
+# adapter's test records citing a commit with its adapter code (check_release --release --records). Soak is the repo
+# owner's call.
 
 on:
   workflow_dispatch:
@@ -37,8 +39,10 @@ jobs:
           # The v* tag ruleset's only bypass: GITHUB_TOKEN can't bypass a ruleset on a personal repo.
           ssh-key: ${{ secrets.RELEASE_TAG_DEPLOY_KEY }}
 
-      - name: Check the tag against the branch
-        run: python3 scripts/check_tag.py "$VERSION" "$BRANCH"
+      - name: Check the tag, and find the RC it releases
+        run: |
+          target=$(python3 scripts/check_tag.py "$VERSION" "$BRANCH")
+          echo "TARGET=$target" >> "$GITHUB_ENV"
 
       - name: Refuse a release candidate
         run: |
@@ -47,8 +51,12 @@ jobs:
             exit 1
           fi
 
-      - name: Require green CI on the head
-        run: bash scripts/require_green.sh "$GITHUB_SHA"
+      - name: Require green CI on the RC
+        run: bash scripts/require_green.sh "$TARGET"
+
+      # The remaining gates check the tree that ships, with the scripts it shipped with.
+      - name: Check out the RC
+        run: git checkout --quiet --detach "$TARGET"
 
       - uses: actions/setup-python@v7
         with:
@@ -68,6 +76,6 @@ jobs:
 
       - name: Tag and publish the release
         run: |
-          git tag "$VERSION" "$GITHUB_SHA"
+          git tag "$VERSION" "$TARGET"
           git push origin "refs/tags/$VERSION"
           gh release create "$VERSION" --verify-tag --latest --generate-notes --title "$VERSION"

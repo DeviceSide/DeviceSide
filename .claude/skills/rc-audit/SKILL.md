@@ -13,8 +13,8 @@ only runs the audit and writes the record.
 - **Where it runs:** locally, in the repo owner's Claude session. CI only checks the committed record, so it needs
   no API key and no vendored copy of `audit-code`.
 - **Range:** from the previous RC tag of the same version; for rc1, from the latest release tag that is an ancestor
-  of the head (the root commit if none). That is the merge-base with `main` for a release branch, and also right
-  for a hotfix RC on `main`.
+  of the head (the root commit if none). A `release/vX.Y.Z` branch cut from an RC tag has that RC as an
+  ancestor.
 - **What blocks:** a Critical or High with status `open`. `waived` needs a `reason`; `fixed` needs a `fixed_in`
   commit inside a later pass. Medium and Low never block.
 - **Fixes get their own pass.** A fix changes code after the audit, so `--fix-pass` audits just the new commits

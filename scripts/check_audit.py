@@ -3,7 +3,7 @@
 
 The record is `docs/audits/<rc>.md`: YAML frontmatter (rc, base, passes, findings), then the audit-code report.
 - `base` is the previous RC tag of the same version, or for rc1 the latest release tag that is an ancestor of the
-  head (the root commit if none): the merge-base with main for a release branch, and right for a hotfix RC on main.
+  head (the root commit if none). A release/vX.Y.Z branch cut from an RC tag has that RC as an ancestor.
 - Passes chain from it (`passes[0].from == base`, each `from` the previous `to`); each `to` is an ancestor of the head.
 - Nothing outside `docs/audits/` changed after the last pass.
 - A Critical or High finding is `fixed` (`fixed_in` inside a pass after the first) or `waived` (with a `reason`).
