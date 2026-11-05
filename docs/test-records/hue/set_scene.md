@@ -3,11 +3,11 @@
 | | |
 |---|---|
 | Result | pass |
-| Date | 2026-11-03 |
-| Source | rig run (`scripts/rig.py`), commit `5d39db8` |
+| Date | 2026-11-05 |
+| Source | rig run (`scripts/rig.py`), commit `176ba7e` |
 | Profile | lab |
 | Home Assistant | 2026.10.2 |
-| Device | none |
+| Device | Zone, firmware `unknown` |
 
 ## Tests
 
