@@ -82,7 +82,7 @@ class ShellyGetAttributes(Adapter[Request]):
             row = status_row(address(target).component, status, dt_util.utcnow())
             if isinstance(config, Exception):
                 _LOGGER.debug("get_attributes GetConfig failed for %s: %r", target.entity_id, config)
-                return self.result(target, Status.CONFIRMED, data=row, detail="config_unreadable")
+                return self.result(target, Status.CONFIRMED, data=row)
             return self.result(target, Status.CONFIRMED, data=row | config_row(config))
 
         return await self.gather(hass, targets, read)

@@ -44,6 +44,20 @@ def timer_running(status: dict | None = None, config: dict | None = None):
     return respond
 
 
+def failing(call_rpc: AsyncMock, verb: str, after: int = 0) -> None:
+    """Make the device raise on `verb` (GetConfig, SetConfig...) once it has answered it `after` times."""
+    respond, seen = call_rpc.side_effect, []
+
+    async def side_effect(method: str, params: dict) -> dict:
+        if method.endswith(f".{verb}"):
+            seen.append(method)
+            if len(seen) > after:
+                raise ConnectionError("device unreachable")
+        return respond(method, params)
+
+    call_rpc.side_effect = side_effect
+
+
 def shelly_device(
     hass: HomeAssistant, gen1: bool = False, mac: str = MAC, status: dict | None = None, config: dict | None = None
 ) -> tuple[MockConfigEntry, AsyncMock]:

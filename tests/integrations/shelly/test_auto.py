@@ -9,7 +9,7 @@ from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from custom_components.deviceside.integrations.shelly.rpc import AUTO_DELAY_LIMITS
 
 from ...conftest import call, refusal
-from ...fixtures.shelly import add_shelly_entity, shelly_device
+from ...fixtures.shelly import add_shelly_entity, failing, shelly_device
 
 pytestmark = pytest.mark.usefixtures("setup_production")
 
@@ -19,20 +19,6 @@ WHICH = ["off", "on"]
 
 def set_configs(call_rpc) -> list:
     return [args for args in call_rpc.await_args_list if args.args[0].endswith(".SetConfig")]
-
-
-def failing(call_rpc, verb: str, after: int = 0):
-    """Make the device raise on `verb` once it has answered it `after` times."""
-    respond, seen = call_rpc.side_effect, []
-
-    async def side_effect(method, params):
-        if method.endswith(f".{verb}"):
-            seen.append(method)
-            if len(seen) > after:
-                raise ConnectionError("device unreachable")
-        return respond(method, params)
-
-    call_rpc.side_effect = side_effect
 
 
 @pytest.mark.parametrize("which", WHICH)

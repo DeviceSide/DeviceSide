@@ -13,7 +13,7 @@ from custom_components.deviceside.integrations.shelly.get_attributes import conf
 
 from ...conftest import call, refusal
 from ...fixtures.fake import add_switch_as_x
-from ...fixtures.shelly import TIMER_STARTED_AT, add_shelly_entity, shelly_device
+from ...fixtures.shelly import TIMER_STARTED_AT, add_shelly_entity, failing, shelly_device
 
 pytestmark = pytest.mark.usefixtures("setup_production")
 
@@ -197,14 +197,7 @@ def test_config_row_leaves_out_settings_the_component_lacks():
 async def test_get_config_error_keeps_the_status_row(hass):
     entry, call_rpc = shelly_device(hass, status={**BULB, "mode": "cct"})
     add_shelly_entity(hass, entry, "light.bulb", "rgbcct:0")
-    respond = call_rpc.side_effect
-
-    async def config_fails(method, params):
-        if method.endswith(".GetConfig"):
-            raise ConnectionError("device unreachable")
-        return respond(method, params)
-
-    call_rpc.side_effect = config_fails
+    failing(call_rpc, "GetConfig")
 
     response = await call(hass, "get_attributes", {"entity_id": "light.bulb"})
 
