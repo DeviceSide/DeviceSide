@@ -4,7 +4,7 @@ import pytest
 from homeassistant.core import ServiceCall
 from homeassistant.exceptions import HomeAssistantError
 
-from custom_components.device_side.integrations.zha.fade import hue_moves
+from custom_components.deviceside.integrations.zha.fade import hue_moves
 
 from .conftest import SENT, bulb, sent, unchanged, xy
 from ...conftest import advance, call, wall_clock_now

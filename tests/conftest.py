@@ -6,10 +6,10 @@ import pytest
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed
 
-from custom_components.device_side import actions
-from custom_components.device_side.const import DOMAIN
-from custom_components.device_side.core.errors import TargetNotSupported
-from custom_components.device_side.core.registry import AdapterRegistry
+from custom_components.deviceside import actions
+from custom_components.deviceside.const import DOMAIN
+from custom_components.deviceside.core.errors import TargetNotSupported
+from custom_components.deviceside.core.registry import AdapterRegistry
 
 from .fakes.scripted import SCRIPT
 

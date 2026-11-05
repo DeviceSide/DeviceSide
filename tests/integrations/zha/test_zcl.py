@@ -10,8 +10,8 @@ from homeassistant.core import Context
 from homeassistant.exceptions import HomeAssistantError, Unauthorized, UnknownUser
 from pytest_homeassistant_custom_component.common import async_mock_service
 
-from custom_components.device_side.integrations.zha import zcl
-from custom_components.device_side.integrations.zha.addressing import Address
+from custom_components.deviceside.integrations.zha import zcl
+from custom_components.deviceside.integrations.zha.addressing import Address
 
 from ...fixtures.zha import IEEE
 

@@ -2,8 +2,8 @@
 
 import pytest
 
-from custom_components.device_side.core.transition import BRIGHTNESS
-from custom_components.device_side.integrations.zigbee2mqtt.fade import transition_cache
+from custom_components.deviceside.core.transition import BRIGHTNESS
+from custom_components.deviceside.integrations.zigbee2mqtt.fade import transition_cache
 
 from .conftest import SENT, SET, commands, group, light, unchanged
 from ...conftest import call

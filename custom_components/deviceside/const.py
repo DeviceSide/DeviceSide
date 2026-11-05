@@ -1,0 +1,16 @@
+DOMAIN = "deviceside"
+NAME = "DeviceSide"
+
+# The light.turn_on fields a action may accept, under their light.turn_on names.
+LIGHT_FIELDS = ("brightness", "color_temp_kelvin", "hs_color", "rgb_color", "xy_color", "transition")
+
+# Whole-call ceiling for one adapter's execute(); an adapter still running after this is reported rejected.
+ADAPTER_TIMEOUT_S = 30
+
+# Hue fades: hide the bridge's end-value and late reports from HA and show DeviceSide's predictions instead.
+CONF_PREDICTED_STATE = "predicted_state"
+PREDICTED_STATE_DEFAULT = True
+
+# Zigbee2MQTT: announce full-color lights to HA with both color modes, so HA takes the bulb's state in either.
+CONF_Z2M_COLOR_MODES = "z2m_color_modes"
+Z2M_COLOR_MODES_DEFAULT = True

@@ -3,7 +3,7 @@
 import probatio
 import pytest
 
-from custom_components.device_side.actions.lower_hue import LowerHue
+from custom_components.deviceside.actions.lower_hue import LowerHue
 
 
 def test_there_is_no_limit():

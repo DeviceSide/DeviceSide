@@ -3,10 +3,10 @@
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.device_side.core.resolver import resolve
-from custom_components.device_side.core.runtime import get_runtime
-from custom_components.device_side.integrations.zha.addressing import group_id
-from custom_components.device_side.integrations.zha.groups import expand_group, light_members
+from custom_components.deviceside.core.resolver import resolve
+from custom_components.deviceside.core.runtime import get_runtime
+from custom_components.deviceside.integrations.zha.addressing import group_id
+from custom_components.deviceside.integrations.zha.groups import expand_group, light_members
 
 from ...fixtures.zha import add_zha_entity, zha_entry, zha_group
 

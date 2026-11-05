@@ -1,71 +1,52 @@
 #!/usr/bin/env python3
 """Refuse a commit whose files or message name the household's private details.
 
-The repo is public, so the blocklist cannot live in it. Terms come from the gitignored files that already hold them:
-every rig profile's entity IDs and roaming bulbs' IEEEs, .env.rig's HA host and token, and .private-terms (one term
-per line, for names, hostnames and anything else), all read from the main checkout so a linked worktree is checked
-too.
-Where none of those exist (CI, a contributor's clone) the check passes.
+The repo is public, so the blocklist cannot live in it. Terms come from gitignored files in the main checkout, so a
+linked worktree is checked too: .private-terms (one term per line, for names, hostnames and anything else) and
+.private-terms.rig, which the rig rewrites on each run with its profiles' entity IDs and IEEEs and its HA host and
+token. A line of either may be `term<TAB>label`, reported by its label: a secret is never echoed.
+Where neither exists (CI, a contributor's clone) the check passes.
 
 Usage: scripts/check_private.py FILE ...   (pre-commit passes staged files, or the message file at commit-msg)
 """
 
+import subprocess
 import sys
 from collections.abc import Iterable
 from pathlib import Path
-from urllib.parse import urlparse
 
 REPO = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO))
-
-from tests.rig.profile import (  # noqa: E402
-    ENV_FILE,
-    MAIN_CHECKOUT,
-    Profile,
-    colon_ieee,
-    load_env,
-    profile_paths,
-)
-
-PRIVATE_TERMS = MAIN_CHECKOUT / ".private-terms"
-# Hosts the docs and examples name on purpose.
-GENERIC_HOSTS = frozenset({"homeassistant.local", "localhost", "127.0.0.1"})
 
 
-def private_terms(
-    profiles: Iterable[Path] | None = None, env_file: Path = ENV_FILE, terms_file: Path = PRIVATE_TERMS
-) -> dict[str, str]:
-    """Lowercased term -> label to report. Secrets are reported by label, never echoed. `profiles` defaults to every
-    profile."""
+def main_checkout(repo: Path = REPO) -> Path:
+    """The main checkout, which holds the gitignored household files for every linked worktree; else `repo`."""
+    try:
+        common = subprocess.run(
+            ["git", "-C", str(repo), "rev-parse", "--path-format=absolute", "--git-common-dir"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+    except OSError, subprocess.CalledProcessError:
+        return repo
+    return Path(common).parent
+
+
+MAIN_CHECKOUT = main_checkout()
+TERMS_FILES = (MAIN_CHECKOUT / ".private-terms", MAIN_CHECKOUT / ".private-terms.rig")
+
+
+def private_terms(files: Iterable[Path] = TERMS_FILES) -> dict[str, str]:
+    """Lowercased term -> label to report."""
     terms: dict[str, str] = {}
-    if profiles is None:
-        profiles = profile_paths()
-    for path in profiles:
-        if path.exists():
-            terms.update((entity_id.lower(), entity_id) for entity_id in profile_entities(Profile.load(path)))
-    if env_file.exists():
-        env = load_env(env_file)
-        if (host := urlparse(env.get("HA_URL", "")).hostname) and host not in GENERIC_HOSTS:
-            terms[host.lower()] = host
-        if token := env.get("HA_TOKEN"):
-            terms[token.lower()] = "HA_TOKEN from .env.rig"
-    if terms_file.exists():
-        for line in terms_file.read_text().splitlines():
-            if (line := line.strip()) and not line.startswith("#"):
-                terms[line.lower()] = line
+    for path in files:
+        if not path.exists():
+            continue
+        for line in path.read_text().splitlines():
+            term, _, label = line.partition("\t")
+            if (term := term.strip()) and not term.startswith("#"):
+                terms[term.lower()] = label.strip() or term
     return terms
-
-
-def profile_entities(profile: Profile) -> set[str]:
-    """Every entity ID a profile names (its entities, their groups' members and supplies, its pause list), and each
-    roaming bulb's IEEE: as bare hex, which `0x`-prefixed spellings contain, and with colons."""
-    named = set(profile.paused_by())
-    for entities in profile.integrations.values():
-        for entity in entities:
-            named |= {entity.entity_id, *entity.members, *filter(None, [entity.powered_by])}
-    for bulb in profile.roam:
-        named |= {bulb.entity_id, bulb.ieee, colon_ieee(bulb.ieee)}
-    return named
 
 
 def find(paths: list[Path], terms: dict[str, str]) -> list[str]:
@@ -82,16 +63,11 @@ def find(paths: list[Path], terms: dict[str, str]) -> list[str]:
 
 
 def main(argv: list[str]) -> int:
-    try:
-        terms = private_terms()
-    except ValueError as err:
-        print(f"Can't read the household's terms, so nothing is checked: {err}")
-        return 1
-    if not terms:
+    if not (terms := private_terms()):
         return 0
     if hits := find([Path(arg) for arg in argv], terms):
         print("Private details in a public repo:", *hits, sep="\n  ")
-        print("Remove them, or move them to a gitignored file (CLAUDE.local.md, tests/rig/profiles/, .env.rig).")
+        print("Remove them, or move them to a gitignored file (CLAUDE.local.md, notes/, .private-terms).")
         return 1
     return 0
 

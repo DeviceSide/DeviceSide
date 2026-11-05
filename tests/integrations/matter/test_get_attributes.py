@@ -6,7 +6,7 @@ import pytest
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util import dt as dt_util
 
-from custom_components.device_side.integrations.matter.addressing import (
+from custom_components.deviceside.integrations.matter.addressing import (
     endpoint_id_from_unique_id,
     matter_client,
     node_id_from_unique_id,

@@ -10,9 +10,9 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.service import async_register_admin_service
 from pytest_homeassistant_custom_component.common import async_mock_service
 
-from custom_components.device_side.const import DOMAIN
-from custom_components.device_side.integrations.zha import zcl
-from custom_components.device_side.integrations.zha.addressing import address
+from custom_components.deviceside.const import DOMAIN
+from custom_components.deviceside.integrations.zha import zcl
+from custom_components.deviceside.integrations.zha.addressing import address
 
 from ...conftest import call, refusal
 from ...fixtures.zha import IEEE, add_zha_entity, zha_entry, zha_group

@@ -964,7 +964,7 @@ wheels = [
 ]
 
 [[package]]
-name = "device-side"
+name = "deviceside"
 version = "0"
 source = { virtual = "." }
 

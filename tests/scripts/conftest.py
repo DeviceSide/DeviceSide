@@ -1,12 +1,7 @@
 import subprocess
-from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
-
-from tests.rig import locks, roam
-
-REAL_WORKSPACE_COLOR = locks.workspace_color  # the autouse fixture swaps the module's for a recorder
 
 
 class GitRepo:
@@ -33,25 +28,3 @@ class GitRepo:
 @pytest.fixture
 def repo(tmp_path: Path) -> GitRepo:
     return GitRepo(tmp_path)
-
-
-@pytest.fixture(autouse=True, scope="session")
-def outside_cmux() -> Iterator[None]:
-    """Keep the real cmux out of reach where a test's monkeypatch.undo() also drops workspace_colors' recorder."""
-    with pytest.MonkeyPatch.context() as patch:
-        patch.delenv("CMUX_WORKSPACE_ID", raising=False)
-        yield
-
-
-@pytest.fixture(autouse=True)
-def workspace_colors(monkeypatch) -> list[str | None]:
-    """Record the cmux workspace colors a run sets, so no test reaches the real cmux."""
-    colors: list[str | None] = []
-    monkeypatch.setattr(locks, "workspace_color", colors.append)
-    return colors
-
-
-@pytest.fixture(autouse=True)
-def quick_prime(monkeypatch) -> None:
-    """No wait between a Z2M bulb's first reads (Roamer.prime_z2m): the fakes don't answer device_side's get."""
-    monkeypatch.setattr(roam, "PRIME_GAP_S", 0)

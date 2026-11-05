@@ -2,7 +2,7 @@ import pytest
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.util.color import color_hs_to_xy
 
-from custom_components.device_side.integrations.hue.transition_cache import transition_cache
+from custom_components.deviceside.integrations.hue.transition_cache import transition_cache
 
 from ...fixtures.hue import HueBridge, add_hue_entity, add_hue_group, hue_entry, light_action
 

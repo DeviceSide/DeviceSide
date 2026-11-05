@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from custom_components.device_side.core.scope import AdapterScope
+from custom_components.deviceside.core.scope import AdapterScope
 from scripts import check_release as cr
 
 # Every fake adapter is defined here, so this file is each one's module.
@@ -79,7 +79,7 @@ def test_main_reads_the_real_registry(monkeypatch, capsys):
     assert "shelly / turn_on_for" in capsys.readouterr().out
 
 
-PACKAGE = "custom_components/device_side/integrations/fake"
+PACKAGE = "custom_components/deviceside/integrations/fake"
 ADAPTER = f"{PACKAGE}/turn_on_for.py"
 
 
@@ -117,7 +117,7 @@ def tested(repo, monkeypatch):
         (f"{PACKAGE}/nested.py", ""),
         (f"{PACKAGE}/addressing.py", "from ...core import scope\n"),
         (f"{PACKAGE}/other.py", ""),
-        ("custom_components/device_side/core/scope.py", ""),
+        ("custom_components/deviceside/core/scope.py", ""),
         (ADAPTER, "from . import shared\nfrom .addressing import address\nfrom ..zha import zcl\n"),
     ]:
         tested_at = repo.commit(path, text)
@@ -142,7 +142,7 @@ def test_records_are_the_action_and_its_options(tested):
 def test_a_record_as_new_as_the_code_passes(tested, monkeypatch):
     repo, _ = tested
     repo.commit(f"{PACKAGE}/other.py")
-    repo.commit("custom_components/device_side/core/scope.py")
+    repo.commit("custom_components/deviceside/core/scope.py")
     assert cr.record_errors(FakeRecordsRegistry(repo, monkeypatch)) == []
 
 

@@ -6,11 +6,11 @@ from aiohue.v2.controllers.events import EventType
 from homeassistant.exceptions import HomeAssistantError
 from pytest_homeassistant_custom_component.common import async_mock_service
 
-from custom_components.device_side.integrations.hue.lower_brightness import HueLowerBrightness
-from custom_components.device_side.integrations.hue.lower_saturation import HueLowerSaturation
-from custom_components.device_side.integrations.hue.raise_brightness import HueRaiseBrightness
-from custom_components.device_side.integrations.hue.raise_saturation import HueRaiseSaturation
-from custom_components.device_side.integrations.hue.transition_cache import transition_cache
+from custom_components.deviceside.integrations.hue.lower_brightness import HueLowerBrightness
+from custom_components.deviceside.integrations.hue.lower_saturation import HueLowerSaturation
+from custom_components.deviceside.integrations.hue.raise_brightness import HueRaiseBrightness
+from custom_components.deviceside.integrations.hue.raise_saturation import HueRaiseSaturation
+from custom_components.deviceside.integrations.hue.transition_cache import transition_cache
 
 from .conftest import fade_put, lamp, mixed_room, percent, room
 from ...conftest import call, refusal
