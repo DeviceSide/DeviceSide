@@ -71,7 +71,7 @@ Only devices Z2M registered through MQTT discovery are found: the device carries
   every later message carries, so an unfiltered answer would look fresh forever. If it can't be set, the read
   raises.
 
-### Auto-off timer
+### Turn on with timer
 
 Publishes `{"state": "ON", "on_time": <s>}`; Z2M sends `OnWithTimedOff` (`on_time` to 0.1 s; max 6553.4 s). With
 fields, `light.turn_on` goes first, and the timer waits for Z2M's state publish on `zigbee2mqtt/<friendly name>`
@@ -153,7 +153,7 @@ Side passes the caller's context). The unique ID is `{ieee}-{endpoint_id}`; a lo
 quirk's extra entity) is `not_addressable`, so a timer can't land on the wrong entity. A ZHA group entity
 (`{platform}_zha_group_0x{group_id:04x}`) expands to its members for results; commands use the group where noted.
 
-### Auto-off timer
+### Turn on with timer
 
 `OnWithTimedOff` (cluster `0x0006`, command `0x42`, `on_off_control: 0`, `off_wait_time: 0`), after
 `light.turn_on` when there are fields. Then OnOff (`0x0000`) and OnTime (`0x4001`) are read in one uncached
@@ -240,8 +240,8 @@ Through the core integration's python-matter-server connection. The unique ID is
 FeatureMap bit 0 from the node data (`node_data.attributes["{endpoint}/6/65532"]`), avoiding a chip.clusters import
 that `MatterEndpoint.get_attribute_value` would need.
 
-- **Auto-off timer.** `OnOff.Commands.OnWithTimedOff(onOffControl=0, onTime=<tenths>, offWaitTime=0)`, then a read of
-  `OnOff.OnTime`: `confirmed` when non-zero.
+- **Turn on with timer.** `OnOff.Commands.OnWithTimedOff(onOffControl=0, onTime=<tenths>, offWaitTime=0)`, then a
+  read of `OnOff.OnTime`: `confirmed` when non-zero.
 - **`get_attributes`.** A live read of `OnTime`, as the plug tested never reports it on its subscription, so the
   node cache reads 0 mid-timer (Tested behavior). `turns` is always `off`.
 
