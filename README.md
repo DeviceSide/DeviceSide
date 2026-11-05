@@ -30,7 +30,11 @@ DeviceSide unlocks native features in your lights, switches and plugs on the Zig
 
 Details per integration are in [docs/integrations.md](docs/integrations.md).
 
-**Warning:** Some devices accept commands for features that they don't fully support. Test each of your devices with DeviceSide before relying on device-native features.
+### Will it work with my device?
+
+Maybe. Devices implement the same standards differently, which is why most of these features aren't in Home Assistant core: a feature that works on one Zigbee light can do nothing on another. Each ✅ means the feature passed a test on at least one device on that integration, not on every device. Some devices also accept commands for features they don't fully support, so test each of your devices before relying on a device-native feature.
+
+The tested models are in the [test records](docs/test-records/). If yours isn't there, please try it and [report the result](https://github.com/jasonmx/DeviceSide/issues/new?template=device_report.yml), whether it works or not.
 
 ## Get started
 
@@ -389,6 +393,10 @@ The `timer` key holds `turns` (`on` or `off`), `ends_at` (UTC) and `remaining_s`
 * **Hue Bridge:** When a brightness move starts, the bridge reports its target brightness (e.g. 0% or 100%) to Home Assistant, which is jarring for moves that you plan to stop. DeviceSide suppresses the bridge's report when a transition starts, and reports the new brightness once the transition stops.
 
 The HS mode and Hue Bridge patches are on by default; turn them off in DeviceSide's options.
+
+## Contributing
+
+Device reports, device requests, adapters and bug reports are all welcome. [CONTRIBUTING.md](CONTRIBUTING.md) says which one fits and what each needs.
 
 ## Uninstall
 

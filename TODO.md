@@ -1,7 +1,8 @@
 # TODO: road to v0.1.0
 
 What is left before v0.1.0. The design is in [`docs/design.md`](docs/design.md). Tick items off in the PR that
-finishes them. Delete this file in the v0.1.0 release PR.
+finishes them. The v0.1.0 release PR deletes "To go"; "After v0.1.0" stays until its items are done or filed
+as issues.
 
 ## Releases
 
@@ -24,11 +25,26 @@ adapter passing its tests, no soak. An RC also needs a rig run since each releas
   `lower_hue` and ZHA `lower_brightness`.
 - [ ] **Persistent auto-off/auto-on**: `set_`/`clear_auto_off`/`_on`, Shelly; records clear the flag.
 - [ ] **9d** Rig coverage sweep for the non-color scope; the watched session covers the color part.
+- [ ] **Device support, part 1**: support levels and contribution lanes in `CONTRIBUTING.md`, the README's "Will it
+  work with my device?", and the device report, device request and bug issue forms.
+- [ ] **Device support, part 2**: `scripts/gen_compat.py` generates `docs/compatibility.md` (levels and tested
+  models per action and integration) and CI checks it is current. The README table and "Will it work with my
+  device?" link to it.
+- [ ] **Device support, part 3**: a "Report a device" step in DeviceSide's options that opens a prefilled device
+  report.
 - [ ] **12** v0.1.0: no adapter left `experimental` (`scripts/check_release.py --release`); README feature table
   current. The release notes lead with the domain rename (`device_side` → `deviceside`) and link README's "Coming
   from v0.0.1". The release steps are in `CLAUDE.md` (Releasing).
 
 ## After v0.1.0
 
+- [ ] **Forum announcement**, once v0.1.0 ships: refresh the draft's testers-wanted list from
+  [the list](docs/hardware-the-rig-lacks.md) and check every link resolves (the issue forms,
+  `docs/compatibility.md`), then post it. After posting, point the "Getting involved" testers link at the heading's
+  anchor, which Discourse names after the post id.
+- [ ] **Forum thread links**: add the thread URL as the contact link in `.github/ISSUE_TEMPLATE/config.yml`, and link
+  it from `CONTRIBUTING.md` and the README's Contributing section.
 - **9b** Remote tester flow, once an adapter needs hardware the rig lacks
-  ([the list](docs/hardware-the-rig-lacks.md)).
+  ([the list](docs/hardware-the-rig-lacks.md)). It includes the Community support level's code, waiting for the
+  first contributor: a maintainer per adapter, reading a record's source, checking the record came from an RC
+  installed through HACS, and the public test checklist.
