@@ -20,6 +20,8 @@ DeviceSide unlocks native features in your lights, switches and plugs on the Zig
 |:----------------------------------------------------------------------------------- |:---:|:---:|:------:|:----------:|:------:|
 | [Turn on with timer](#turn-on-with-timer)                                           | ✅   | ✅   | ✅      |            | ✅      |
 | [Turn off with timer](#turn-off-with-timer)                                         |     |     | ✅      |            |        |
+| [Auto-off](#auto-off-and-auto-on)                                                   |     |     | ✅      |            |        |
+| [Auto-on](#auto-off-and-auto-on)                                                    |     |     | ✅      |            |        |
 | [Smooth dimming](#smooth-dimming)                                                   | ✅   | ✅   |        | ✅          |        |
 | [Smooth saturation change](#smooth-color-transitions)                               | ✅   | ✅   |        | ✅          |        |
 | [Smooth hue change](#smooth-color-transitions)                                      | ✅   | ✅   |        |            |        |
@@ -86,7 +88,7 @@ Action: `deviceside.turn_on_for`
 
 Also known as: auto off, On with timed off (Zigbee, Matter), `on_time` (Zigbee2MQTT), `toggle_after` (Shelly), countdown.
 
-Turn on, then off after a delay. Timer runs on the device, for this turn-on only: it doesn't change a Shelly's own Auto OFF setting. Example use cases:
+Turn on, then off after a delay. Timer runs on the device, for this turn-on only: it doesn't change a Shelly's own [Auto-off](#auto-off-and-auto-on) setting. Example use cases:
 
 - Cut power to a heater or ironing station automatically, in case someone leaves it on.
 - Run a fan for 20 minutes after a shower.
@@ -189,6 +191,58 @@ The following actions cancel the timer, on a device that's off:
 * Start a new timer with either action (restarts the countdown)
 
 * Turn off (i.e. leave off)
+
+### Auto-off and auto-on
+
+Actions: `deviceside.set_auto_off`, `deviceside.set_auto_on`, `deviceside.clear_auto_off`, `deviceside.clear_auto_on`
+
+Also known as: Auto OFF and Auto ON (Shelly app), inching.
+
+Store a delay on the device. From then on, every turn-on from any source (a wall button, the Shelly app, a schedule or Home Assistant) turns the device off again after that delay. Auto-on is the reverse. The setting lasts until you clear it. Example use cases:
+
+- Pulse a garage door opener's relay for 1 second, whatever presses it.
+- Make sure a bathroom fan never runs for more than an hour.
+
+#### YAML example: garage door relay
+
+Run this once, from **Developer tools > Actions** for example. The device keeps the setting.
+
+```yaml
+action: deviceside.set_auto_off
+target:
+  entity_id: switch.garage_door
+data:
+  duration: 1
+```
+
+| Field               | Description                                                                                                      |
+|:------------------- |:---------------------------------------------------------------------------------------------------------------- |
+| `target`            | Shelly lights and switches (required)                                                                            |
+| `duration`          | `set_auto_off`: delay after each turn-on until the device turns off. `set_auto_on`: the reverse. Required        |
+| `response_variable` | Variable that receives the response from each entity (optional)                                                  |
+
+`clear_auto_off` and `clear_auto_on` take only a target, and leave the device on or off as it is.
+
+<details>
+<summary>Results</summary>
+
+Each targeted entity reports a `status` in the response variable:
+
+| Status      | Meaning                                                   |
+| ----------- | --------------------------------------------------------- |
+| `confirmed` | Setting written; the device reported it in read-back      |
+| `sent`      | Setting written; not confirmed in read-back               |
+| `unchanged` | The device already holds this setting, so nothing is sent |
+
+If a device fails, the action fails and stops the automation.
+
+</details>
+
+#### Good to know
+
+* Changing the setting makes Home Assistant reload the Shelly device about a minute later, so its entities are briefly unavailable. The output doesn't change.
+* Each change is written to the device's flash memory. Set it once, not from a frequent automation.
+* [Get attributes](#get-attributes) reports both settings.
 
 ### Smooth dimming
 
@@ -301,6 +355,8 @@ Read device attributes that aren't exposed reliably by Home Assistant:
 
 * Check a device's on/off timer.
 
+* Check a Shelly device's auto-off and auto-on settings.
+
 * Check brightness, color or color temperature while a light is off or transitioning.
 
 #### YAML example: how long until the heater turns off
@@ -323,9 +379,11 @@ actions:
 |:-------- |:------------------------------ |
 | `target` | Lights and switches (required) |
 
-A record holds the keys the device reports: `brightness` (%), `color_temp_kelvin`, `rgb_color`, `hs_color`, `xy_color`, and `timer` while one is running.
+A record holds the keys the device reports: `brightness` (%), `color_temp_kelvin`, `rgb_color`, `hs_color`, `xy_color`, and `timer` while one is running. On Shelly it also holds `auto_off` and `auto_on`.
 
 The `timer` key holds `turns` (`on` or `off`), `ends_at` (UTC) and `remaining_s`.
+
+`auto_off` and `auto_on` each hold `duration` (seconds) while set, and are `null` while clear. A record without them means the setting couldn't be read.
 
 ## Usability patches
 

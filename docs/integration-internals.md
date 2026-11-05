@@ -37,7 +37,14 @@ and `rgbcct:N` → `Light`, `CCT`, `RGB`, `RGBW`, `RGBCCT`. Only `Switch` and `R
 - **Read-back.** `<Component>.GetStatus`; `confirmed` when the output matches and `timer_duration` is present.
 - **`get_attributes`.** One `GetStatus`. Time left is `timer_started_at` + `timer_duration` against Home Assistant's
   clock (both SNTP-synced), clamped to 0 to the duration to bound skew. `RGBCCT` adds brightness and the active
-  mode's color, the others derived from it.
+  mode's color, the others derived from it. A `<Component>.GetConfig` runs alongside for `auto_off` and `auto_on`;
+  if it fails, the row leaves both keys out (unknown) rather than reporting them `null` (disabled).
+- **Auto-off and auto-on.** `<Component>.GetConfig` first, and `<Component>.SetConfig` with
+  `{"id": N, "config": {...}}` only when the config differs: `auto_off: true` and `auto_off_delay` to set,
+  `auto_off: false` alone to clear (likewise `auto_on`). A delay matches to 0.01 s. `SetConfig` emits
+  `config_changed`, and core reloads the entry after its 60 s debounce (`shelly/coordinator.py`,
+  `ENTRY_RELOAD_COOLDOWN`). Read-back is a second `GetConfig`. The delay's device range is unverified: the timer's
+  604800 s ceiling until a rig run reads it.
 
 ## Zigbee2MQTT
 
