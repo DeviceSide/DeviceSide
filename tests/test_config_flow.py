@@ -152,16 +152,22 @@ async def test_a_report_for_a_supported_light_carries_its_integration_model_and_
     add_zha_entity(hass, zha, "light.kitchen_lamp")
     device = dr.async_get(hass).async_get(er.async_get(hass).async_get("light.kitchen_lamp").device_id)
     dr.async_get(hass).async_update_device(
-        device.id, model="Hue ambiance lamp", model_id="LTA009", sw_version="0x01002a00", name="Kitchen lamp"
+        device.id,
+        manufacturer="Signify Netherlands B.V.",
+        model="Hue ambiance lamp",
+        model_id="LTA009",
+        sw_version="0x01002a00",
+        name="Kitchen lamp",
     )
 
     fields, url = await report_for(hass, entry, "light.kitchen_lamp")
 
     assert fields == {
         "template": "device_report.yml",
-        "title": "Device test result: LTA009 (zha)",
+        "title": "Device test result: Hue ambiance lamp LTA009 (zha)",
         "integration": "zha",
         "model": "LTA009",
+        "product": "Signify Netherlands B.V. Hue ambiance lamp",
         "firmware": "0x01002a00",
         "deviceside_version": (await async_get_integration(hass, DOMAIN)).version,
         "ha_version": HA_VERSION,
@@ -185,6 +191,8 @@ async def test_a_report_for_an_unsupported_platform_uses_the_raw_platform(hass: 
     fields, url = await report_for(hass, entry, "light.den")
 
     assert (fields["integration"], fields["model"], fields["firmware"]) == ("tuya", "Dimmer", "1.0")
+    assert "product" not in fields  # no model_id, so the model is the whole name
+    assert fields["title"] == "Device test result: Dimmer (tuya)"
     assert "den" not in url
 
 

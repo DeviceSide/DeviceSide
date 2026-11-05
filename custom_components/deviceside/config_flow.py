@@ -46,8 +46,8 @@ class DeviceSideConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 async def device_report_url(hass: HomeAssistant, entity_id: str) -> str:
-    """A prefilled device report for an entity: its integration, model, firmware and the two versions, and nothing
-    that identifies the household (no entity ID, name, area or MAC).
+    """A prefilled device report for an entity: its integration, model, product name, firmware and the two versions,
+    and nothing that identifies the household (no entity ID, name, area or MAC).
 
     The integration is DeviceSide's key when it serves the entity. Otherwise it is the entity's platform, so a device
     DeviceSide doesn't cover (Tuya, ESPHome) still reports what people want.
@@ -59,15 +59,19 @@ async def device_report_url(hass: HomeAssistant, entity_id: str) -> str:
         target = resolve(hass, runtime.registry, entity_id)
         if not isinstance(target, str):
             integration = target.integration
+    model_id = (device.model_id or device.model) if device else ""
+    # The product name the integration reports ("Hue ambiance lamp"), with its maker; left out when it is only the ID.
+    name = device.model if device and device.model_id and device.model != device.model_id else ""
     fields = {
         "integration": integration,
-        "model": (device.model_id or device.model) if device else "",
+        "model": model_id,
+        "product": " ".join(filter(None, [device.manufacturer if device and name else "", name])),
         "firmware": device.sw_version if device else "",
         "deviceside_version": str((await async_get_integration(hass, DOMAIN)).version),
         "ha_version": HA_VERSION,
     }
-    model = fields["model"]
-    subject = f"{model} ({integration})" if model and integration else model or integration
+    device_label = " ".join(filter(None, [name, model_id]))
+    subject = f"{device_label} ({integration})" if device_label and integration else device_label or integration
     title = f"Device test result: {subject}" if subject else "Device test result"
     query = urlencode(
         {"template": "device_report.yml", "title": title, **{k: v for k, v in fields.items() if v}}, quote_via=quote

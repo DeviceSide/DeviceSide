@@ -22,6 +22,11 @@ body:
     validations:
       required: true
   - type: input
+    id: product
+    attributes:
+      label: Product name
+      description: The maker and product name, e.g. Philips Hue White Ambiance. Leave blank if you don't know it.
+  - type: input
     id: firmware
     attributes:
       label: Firmware version
