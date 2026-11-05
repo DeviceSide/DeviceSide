@@ -1,10 +1,15 @@
 """Tests for the single-instance config flow, its options and entry setup."""
 
 import asyncio
+from urllib.parse import parse_qs, urlparse
 
 from homeassistant.config_entries import SOURCE_USER, ConfigEntryState
+from homeassistant.const import __version__ as HA_VERSION
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
+from homeassistant.loader import async_get_integration
 from homeassistant.setup import async_set_domains_to_be_loaded, async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry, MockModule, mock_integration
 
@@ -12,7 +17,33 @@ from custom_components.deviceside.const import CONF_PREDICTED_STATE, CONF_Z2M_CO
 from custom_components.deviceside.core.resolver import resolve
 from custom_components.deviceside.core.runtime import get_runtime
 
-from .fixtures.zha import add_zha_entity
+from .fixtures.zha import IEEE, add_zha_entity, zha_entry
+
+
+async def open_settings(hass: HomeAssistant, entry: MockConfigEntry):
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert result["type"] is FlowResultType.MENU
+    return await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": "settings"})
+
+
+async def report_for(hass: HomeAssistant, entry: MockConfigEntry, entity_id: str) -> tuple[dict, str]:
+    """Run the report step for an entity and return the prefill fields from its link, and the link."""
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": "report_device"})
+    assert result["type"] is FlowResultType.FORM
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {"entity_id": entity_id})
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "report_link"
+    url = result["description_placeholders"]["url"]
+    assert url.startswith("https://github.com/jasonmx/DeviceSide/issues/new?")
+    return {key: value for key, [value] in parse_qs(urlparse(url).query).items()}, url
+
+
+async def loaded_entry(hass: HomeAssistant) -> MockConfigEntry:
+    entry = MockConfigEntry(domain=DOMAIN)
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    return entry
 
 
 async def test_user_step_creates_entry(hass: HomeAssistant):
@@ -86,8 +117,7 @@ async def test_saving_the_option_reloads_the_entry_with_it(hass: HomeAssistant):
     entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
 
-    result = await hass.config_entries.options.async_init(entry.entry_id)
-    assert result["type"] is FlowResultType.FORM
+    result = await open_settings(hass, entry)
     assert result["data_schema"]({}) == {CONF_PREDICTED_STATE: True, CONF_Z2M_COLOR_MODES: True}
     result = await hass.config_entries.options.async_configure(result["flow_id"], {CONF_PREDICTED_STATE: False})
     await hass.async_block_till_done()
@@ -97,5 +127,83 @@ async def test_saving_the_option_reloads_the_entry_with_it(hass: HomeAssistant):
     assert entry.state is ConfigEntryState.LOADED
     assert get_runtime(hass).predicted_state is False
 
-    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await open_settings(hass, entry)
     assert result["data_schema"]({}) == {CONF_PREDICTED_STATE: False, CONF_Z2M_COLOR_MODES: True}
+
+
+async def test_the_options_menu_offers_settings_and_a_device_report(hass: HomeAssistant):
+    entry = await loaded_entry(hass)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert result["type"] is FlowResultType.MENU
+    assert result["menu_options"] == ["settings", "report_device"]
+
+
+async def test_a_report_for_a_supported_light_carries_its_integration_model_and_firmware(hass: HomeAssistant, request):
+    entry = await loaded_entry(hass)
+    zha = zha_entry(hass)
+    request.addfinalizer(lambda: zha.mock_state(hass, ConfigEntryState.NOT_LOADED))  # HA would import the real zha
+    add_zha_entity(hass, zha, "light.kitchen_lamp")
+    device = dr.async_get(hass).async_get(er.async_get(hass).async_get("light.kitchen_lamp").device_id)
+    dr.async_get(hass).async_update_device(
+        device.id, model="Hue ambiance lamp", model_id="LTA009", sw_version="0x01002a00", name="Kitchen lamp"
+    )
+
+    fields, url = await report_for(hass, entry, "light.kitchen_lamp")
+
+    assert fields == {
+        "template": "device_report.yml",
+        "integration": "zha",
+        "model": "LTA009",
+        "firmware": "0x01002a00",
+        "deviceside_version": (await async_get_integration(hass, DOMAIN)).version,
+        "ha_version": HA_VERSION,
+    }
+    for private in ("light.kitchen_lamp", "kitchen", "Kitchen", IEEE, "00%3A17"):
+        assert private not in url
+
+
+async def test_a_report_for_an_unsupported_platform_uses_the_raw_platform(hass: HomeAssistant):
+    """Tuya isn't served, and those reports are the demand signal for new adapters."""
+    entry = await loaded_entry(hass)
+    tuya = MockConfigEntry(domain="tuya")
+    tuya.add_to_hass(hass)
+    device = dr.async_get(hass).async_get_or_create(
+        config_entry_id=tuya.entry_id, identifiers={("tuya", "x")}, model="Dimmer", sw_version="1.0"
+    )
+    er.async_get(hass).async_get_or_create(
+        "light", "tuya", "u1", suggested_object_id="den", config_entry=tuya, device_id=device.id
+    )
+
+    fields, url = await report_for(hass, entry, "light.den")
+
+    assert (fields["integration"], fields["model"], fields["firmware"]) == ("tuya", "Dimmer", "1.0")
+    assert "den" not in url
+
+
+async def test_a_report_for_an_entity_without_a_device_leaves_those_fields_out(hass: HomeAssistant):
+    entry = await loaded_entry(hass)
+    er.async_get(hass).async_get_or_create("switch", "template", "u2", suggested_object_id="virtual")
+
+    fields, _ = await report_for(hass, entry, "switch.virtual")
+
+    assert fields["integration"] == "template"
+    assert "model" not in fields
+    assert "firmware" not in fields
+    assert {"deviceside_version", "ha_version"} <= fields.keys()
+
+
+async def test_a_report_for_an_entity_outside_the_registry_leaves_the_integration_blank(hass: HomeAssistant):
+    entry = await loaded_entry(hass)
+    hass.states.async_set("light.ghost", "off")
+
+    fields, _ = await report_for(hass, entry, "light.ghost")
+
+    assert "integration" not in fields
+
+
+async def test_the_report_step_offers_only_lights_and_switches(hass: HomeAssistant):
+    entry = await loaded_entry(hass)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": "report_device"})
+    selector = result["data_schema"].schema["entity_id"]
+    assert selector.config["domain"] == ["light", "switch"]
