@@ -175,8 +175,9 @@ adapter's targets at once, so native group commands stay possible.
   and `actions/` are not, as they are unit-tested and shared by every adapter. Experimental adapters are exempt.
   There is no runtime gate: a capability or field nobody has tested is left out of scope, so `supports()` refuses it.
 - **Tags** come only from the `cut-release-candidate` and `cut-release` workflows (a tag ruleset refuses others).
-  `scripts/check_tag.py` refuses a tag that isn't `vX.Y.Z` or `vX.Y.ZrcN` or doesn't match its branch, and an RC
-  needs its audit record (`scripts/check_audit.py`).
+  `scripts/check_tag.py` refuses a tag that isn't `vX.Y.Z` or `vX.Y.ZrcN`, isn't above the latest release, or
+  doesn't match its branch: an RC comes from `main` or `release/vX.Y.Z`, and a release goes on its latest RC's commit,
+  so what ships is what soaked. An RC needs its audit record (`scripts/check_audit.py`).
 - **Testing.** Unit tests mock each integration at its boundary (`mqtt.publish`, the ZHA service, the Shelly RPC,
   the Matter client, aiohue) against a real `hass`. The rig runs step files against a live HA and writes the test
   records.
