@@ -4,7 +4,7 @@
 |---|---|
 | Result | pass |
 | Date | 2026-11-04 |
-| Source | rig run (`scripts/rig.py`), commit `c3c83fe` |
+| Source | rig run (`scripts/rig.py`), commit `4f709eb` |
 | Profile | lab |
 | Home Assistant | 2026.10.2 |
 | Device | LCA016, firmware `0x01001200` |
