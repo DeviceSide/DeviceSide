@@ -1,0 +1,81 @@
+name: Device report
+description: Tell us how DeviceSide worked on a device the test records don't list.
+labels: ["device-report"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for trying DeviceSide on a new device. A "works" report is as useful as a "doesn't work" one: it's how the list of tested models grows.
+
+        If the feature fails on a device the [test records](https://github.com/jasonmx/DeviceSide/tree/main/docs/test-records) already list, please open a [bug report](https://github.com/jasonmx/DeviceSide/issues/new?template=bug.yml) instead.
+
+        Please don't include entity IDs, device names or MAC addresses.
+  - type: input
+    id: integration
+    attributes:
+      label: Integration
+      description: The Home Assistant integration the device uses, e.g. zha, mqtt (Zigbee2MQTT), shelly, hue, matter, tuya.
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: Device model
+      description: As shown on the device page in Home Assistant.
+    validations:
+      required: true
+  - type: input
+    id: firmware
+    attributes:
+      label: Firmware version
+      description: As shown on the device page in Home Assistant. Leave blank if it isn't shown.
+  - type: dropdown
+    id: feature
+    attributes:
+      label: Action
+      options:
+        - turn_on_for
+        - turn_off_for
+        - set_auto_off
+        - set_auto_on
+        - clear_auto_off
+        - clear_auto_on
+        - raise_brightness
+        - lower_brightness
+        - raise_saturation
+        - lower_saturation
+        - raise_hue
+        - lower_hue
+        - stop
+        - set_attributes
+        - set_scene
+        - get_attributes
+        - other
+    validations:
+      required: true
+  - type: dropdown
+    id: outcome
+    attributes:
+      label: Result
+      options:
+        - works
+        - doesn't work
+    validations:
+      required: true
+  - type: input
+    id: deviceside_version
+    attributes:
+      label: DeviceSide version
+    validations:
+      required: true
+  - type: input
+    id: ha_version
+    attributes:
+      label: Home Assistant version
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Anything else, such as the action's response or an error from the log.

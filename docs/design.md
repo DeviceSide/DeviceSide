@@ -24,6 +24,12 @@ HA requires it.
   them and writes test records. It is kept outside this repo; the records are its output here.
 - **Test record**: the evidence that an adapter works on real hardware, from a rig run:
   `docs/test-records/<integration>/<action>*.md`. Clearing `experimental` cites one.
+- **Support level**: what an adapter's test records prove. **Verified**: a passing record from the rig.
+  **Community**: a passing record from a contributor's release-candidate install through HACS. **Experimental**:
+  `experimental=True`, kept until a passing record covers the adapter's scope, so it ships in release candidates
+  only. A record older than its adapter's code blocks a release (`check_release.py --records`) until a rerun.
+- **Device report**: a user's "works" or "doesn't work" for an action on a model that no test record lists. It is
+  evidence for a request or a tester, not a claim, so it changes no support level.
 - **Profile**: one test setup on the rig's HA, the entities a run may move by integration and role; a record names the
   one it ran on (`lab`, `house`).
 

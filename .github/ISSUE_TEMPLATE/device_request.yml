@@ -1,0 +1,49 @@
+name: Device request
+description: Ask for a device, integration or feature DeviceSide doesn't cover yet, with a YAML call that already works.
+labels: ["device-request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Requests need proof that the device can do it: a YAML call that already does the job in your home, such as an MQTT publish or a ZHA cluster command. Please don't include entity IDs, device names or MAC addresses.
+  - type: input
+    id: integration
+    attributes:
+      label: Integration
+      description: The Home Assistant integration the device uses.
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: Device model
+    validations:
+      required: true
+  - type: input
+    id: firmware
+    attributes:
+      label: Firmware version
+    validations:
+      required: true
+  - type: textarea
+    id: yaml
+    attributes:
+      label: Working YAML
+      description: The action call that does the job on your device today.
+      render: yaml
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: What it does on the device
+      description: What you see the device do when you run the YAML above.
+    validations:
+      required: true
+  - type: checkboxes
+    id: commitment
+    attributes:
+      label: Testing
+      options:
+        - label: I'll test the release candidate that adds this, and report the result.
+          required: true

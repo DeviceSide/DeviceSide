@@ -1,13 +1,48 @@
 # Contributing
 
-Everybody is invited and welcome to contribute.
+Everybody is invited and welcome to contribute. Devices implement the same standards differently, so the most useful
+help is evidence from devices the maintainer doesn't own: what works, what doesn't, and the calls that make it work.
 
-We're looking for three kinds of help in particular:
+## Principles
 
-- **Feature requests.** Tell us which on-device features and integrations you want most, and why, via the DeviceSide thread on Home Assistant Community.
-- **Bug reports.** If something doesn't look or work right, please [open an issue](https://github.com/jasonmx/DeviceSide/issues/new?body=What%20happened%3A%0A%0AWhat%20I%20expected%3A%0A%0ASteps%20to%20reproduce%3A%0A%0ADeviceSide%20version%20and%20integration%3A%0A) and let us know.
-- **Code.** Add support for a new device capability or integration, or fix a bug. Read
-  [What gets built](#what-gets-built) before you start, so your work isn't turned down for scope.
+- **Claims follow evidence.** A feature is listed as working on a device only when a test record shows it passing
+  there.
+- **Requests bring proof.** A device request comes with a YAML call that already works on the device, its model and
+  firmware, and a promise to test the release candidate.
+- **A bug means a claim is broken.** A bug report is for a device and feature the [test records](docs/test-records/)
+  list. Anything else is a device report or a request.
+- **Adapters have an owner who answers.** Each adapter has a maintainer who fixes it and reruns its tests. The
+  maintainer of DeviceSide may drop an adapter that nobody maintains, or that keeps breaking.
+
+## Support levels
+
+Each adapter (one action on one integration) has one of these, from its test records:
+
+- **Verified:** a passing test record from the maintainer's rig, which runs each action against real devices.
+- **Community:** a passing test record from a contributor who installed a release candidate through HACS. It can
+  ship in a stable release, after the same soak as any other release candidate.
+- **Experimental:** not yet covered by a passing test record. It ships in release candidates only, never in a
+  stable release.
+
+A record older than its adapter's code blocks the next release until the test is rerun. The Community level is new:
+the first contributor to reach it sets up the test checklist with the maintainer.
+
+## How to help
+
+1. **Report a device.** Tried DeviceSide on a device that isn't listed? Open a
+   [device report](https://github.com/jasonmx/DeviceSide/issues/new?template=device_report.yml) and say whether it
+   worked. A "works" report counts as much as a "doesn't work" one.
+2. **Request a device.** For a device, integration or feature DeviceSide doesn't cover, open a
+   [device request](https://github.com/jasonmx/DeviceSide/issues/new?template=device_request.yml). It needs a YAML
+   call that already does the job on your device (an MQTT publish, a ZHA cluster command and so on), the device's
+   model and firmware, and your promise to test the release candidate that adds it.
+3. **Contribute an adapter.** Code, plus a test record from a release candidate installed through HACS, plus your
+   agreement to maintain the adapter. Contact the maintainer before you start, for the test checklist. Read
+   [What gets built](#what-gets-built) and [Developing](#developing) first. The
+   [hardware the rig lacks](docs/hardware-the-rig-lacks.md) lists built features waiting for a tester.
+4. **Report a bug.** Only for a device and feature the [test records](docs/test-records/) list: open a
+   [bug report](https://github.com/jasonmx/DeviceSide/issues/new?template=bug.yml). A failure on any other device
+   is a device report.
 
 ## What gets built
 
@@ -19,12 +54,10 @@ We're looking for three kinds of help in particular:
 
 ## Developing
 
-- An adapter leaves `experimental` on a test record from the maintainer's rig, which runs each action against real
-  devices and is kept outside this repo. Hardware it lacks is listed in
-  [docs/hardware-the-rig-lacks.md](docs/hardware-the-rig-lacks.md): if you have some, say so in an issue.
+- An adapter leaves `experimental` on a passing test record that covers its whole scope (see
+  [Support levels](#support-levels)). The maintainer's rig is kept outside this repo.
 - If you use a coding agent, point it at [CLAUDE.md](CLAUDE.md). It holds the repo's rules.
-- Open pull requests against whichever is newer: `main` or the latest `release/vX.Y.Z` branch.
-  Just after a release there may be no release branch.
+- Open pull requests against `main`, or against a `release/vX.Y.Z` branch when one exists for the fix.
 - Set up with `uv sync`. To add a dependency, use `uv add --dev`, not `uv pip install`.
 - Run `.venv/bin/pytest` and `pre-commit run --all-files` before you push. CI runs both.
 - If you use Claude, run `/audit-code` on your diff before opening a pull request. Else ask for an audit in the PR.

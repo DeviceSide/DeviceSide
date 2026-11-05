@@ -1,0 +1,63 @@
+name: Bug report
+description: A listed feature doesn't work on a device the test records list.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Bug reports are for a device and feature the [test records](https://github.com/jasonmx/DeviceSide/tree/main/docs/test-records) list. For any other device, please open a [device report](https://github.com/jasonmx/DeviceSide/issues/new?template=device_report.yml).
+
+        Please don't include entity IDs, device names or MAC addresses; replace them with placeholders.
+  - type: input
+    id: feature
+    attributes:
+      label: Action
+      description: e.g. turn_on_for
+    validations:
+      required: true
+  - type: input
+    id: integration
+    attributes:
+      label: Integration
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: Tested model
+      description: The model, as the test record lists it.
+    validations:
+      required: true
+  - type: input
+    id: firmware
+    attributes:
+      label: Firmware version
+    validations:
+      required: true
+  - type: input
+    id: deviceside_version
+    attributes:
+      label: DeviceSide version
+    validations:
+      required: true
+  - type: input
+    id: ha_version
+    attributes:
+      label: Home Assistant version
+    validations:
+      required: true
+  - type: textarea
+    id: yaml
+    attributes:
+      label: Action YAML
+      render: yaml
+    validations:
+      required: true
+  - type: textarea
+    id: response
+    attributes:
+      label: Response and log
+      description: The action's response, and any DeviceSide lines from the log.
+      render: text
+    validations:
+      required: true
