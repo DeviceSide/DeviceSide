@@ -14,7 +14,7 @@ from .rpc import get_config, get_status
 from ...core.adapter import Adapter
 from ...core.color import rgb_row
 from ...core.models import EntityResult, Request, Status, Target
-from ...core.scope import AdapterScope
+from ...core.scope import AdapterScope, verified
 from ...core.timer import timer_row
 
 _LOGGER = logging.getLogger(__name__)
@@ -61,10 +61,10 @@ class ShellyGetAttributes(Adapter[Request]):
     action: ClassVar[str] = "get_attributes"
     integration: ClassVar[str] = "shelly"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        domains=frozenset({"light", "switch"}),
+        domains=verified("light", "switch"),
         # A relay shown as a light sends the same Switch.GetStatus; Light, CCT, RGB and RGBW stay out of scope until a
         # test record covers them.
-        capabilities=frozenset({"Switch", "RGBCCT"}),
+        capabilities=verified("Switch", "RGBCCT"),
         confirmable=True,
         experimental=True,
     )

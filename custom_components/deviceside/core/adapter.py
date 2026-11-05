@@ -28,7 +28,7 @@ class Adapter[RequestT: Request](ABC):
         """
         if target.domain not in self.scope.domains:
             return "domain_not_tested"
-        if request.fields_present() - self.scope.drops - self.scope.fields:
+        if request.fields_present() - self.scope.drops - self.scope.fields.keys():
             return "fields_not_tested"
         return None
 

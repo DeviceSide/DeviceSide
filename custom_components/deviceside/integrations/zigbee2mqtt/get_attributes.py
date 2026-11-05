@@ -15,7 +15,7 @@ from .read import Reader, reader
 from ...core.adapter import Adapter
 from ...core.dispatcher import EMPTY_GROUP
 from ...core.models import EntityResult, Request, Status, Target
-from ...core.scope import AdapterScope
+from ...core.scope import AdapterScope, verified
 from ...core.zcl_row import average, zcl_row
 
 
@@ -31,7 +31,7 @@ class Z2MGetAttributes(Adapter[Request]):
     integration: ClassVar[str] = "zigbee2mqtt"
     scope: ClassVar[AdapterScope] = AdapterScope(
         # Switches stay out of scope, as in turn_on_for.
-        domains=frozenset({"light"}),
+        domains=verified("light"),
         confirmable=True,
         native_groups=True,  # read through its members, which only Z2M's bridge/groups knows
     )

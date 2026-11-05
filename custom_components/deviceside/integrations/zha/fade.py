@@ -21,7 +21,7 @@ from ...core.adapter import Adapter
 from ...core.ha_watch import ALL, Call, Entries
 from ...core.models import EntityResult, Status, Target
 from ...core.runtime import Job, get_runtime
-from ...core.scope import AdapterScope
+from ...core.scope import AdapterScope, verified
 from ...core.transition import BRIGHTNESS, SATURATION, TransitionCache, hs_color, light_brightness, lit
 
 _LOGGER = logging.getLogger(__name__)
@@ -166,7 +166,7 @@ class HueMove:
 
 def ramp_scope(attribute: str, *, experimental: bool) -> AdapterScope:
     return AdapterScope(
-        experimental=experimental, domains=frozenset({"light"}), fields=frozenset({attribute}), max_concurrency=2
+        experimental=experimental, domains=verified("light"), fields=verified(attribute), max_concurrency=2
     )
 
 

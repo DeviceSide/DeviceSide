@@ -8,12 +8,12 @@ from .addressing import unsupported_reason
 from .rpc import AUTO_DELAY_LIMITS, write_auto
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Request, Target, TimedRequest
-from ...core.scope import AdapterScope
+from ...core.scope import AdapterScope, verified
 
-_DOMAINS = frozenset({"light", "switch"})
+_DOMAINS = verified("light", "switch")
 # A relay shown as a light sends the same Switch.SetConfig; Light, CCT, RGB and RGBW stay out of scope until a test
 # record covers them.
-_CAPABILITIES = frozenset({"Switch", "RGBCCT"})
+_CAPABILITIES = verified("Switch", "RGBCCT")
 
 
 class ShellySetAuto(Adapter[TimedRequest]):

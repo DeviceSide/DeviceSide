@@ -16,7 +16,7 @@ from .addressing import (
 from ...actions.turn_on_for import TurnOnForRequest
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Status, Target
-from ...core.scope import AdapterScope, DurationLimits
+from ...core.scope import AdapterScope, DurationLimits, verified
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -31,9 +31,9 @@ class MatterTurnOnFor(Adapter[TurnOnForRequest]):
     integration: ClassVar[str] = "matter"
     scope: ClassVar[AdapterScope] = AdapterScope(
         # Plugs only: Matter lights take the same command but stay out of scope until a test record covers them.
-        domains=frozenset({"switch"}),
+        domains=verified("switch"),
         duration=_TIMER_LIMITS,
-        fields=frozenset(),
+        fields=verified(),
         # capabilities=None covers every plug endpoint that passes the LT feature check.
         confirmable=True,
     )

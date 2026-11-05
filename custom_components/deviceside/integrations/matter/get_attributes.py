@@ -15,7 +15,7 @@ from .addressing import (
 )
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Request, Status, Target
-from ...core.scope import AdapterScope
+from ...core.scope import AdapterScope, verified
 from ...core.timer import timer_row
 
 
@@ -37,8 +37,8 @@ class MatterGetAttributes(Adapter[Request]):
     integration: ClassVar[str] = "matter"
     scope: ClassVar[AdapterScope] = AdapterScope(
         # Plugs only: Matter lights carry the same attribute but stay out of scope until a test record covers them.
-        domains=frozenset({"switch"}),
-        fields=frozenset(),
+        domains=verified("switch"),
+        fields=verified(),
         confirmable=True,
     )
 

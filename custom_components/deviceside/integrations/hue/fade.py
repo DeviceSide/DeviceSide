@@ -15,7 +15,7 @@ from .transition_cache import MIN_BRIGHTNESS_STEP, XY, HueTransitionCache, trans
 from ...actions.ramp import RampRequest
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Status, Target
-from ...core.scope import AdapterScope
+from ...core.scope import AdapterScope, verified
 from ...core.transition import BRIGHTNESS, SATURATION, TransitionCache
 
 if TYPE_CHECKING:
@@ -73,7 +73,7 @@ def fade_scope(attribute: str, *, experimental: bool) -> AdapterScope:
     """predicted_state is brightness's only: HA is shown the bridge's xy for saturation either way."""
     return AdapterScope(
         experimental=experimental,
-        fields=frozenset({attribute}),
+        fields=verified(attribute),
         options=frozenset({"predicted_state"}) if attribute == BRIGHTNESS else frozenset(),
         native_groups=True,
     )

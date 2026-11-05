@@ -1,5 +1,6 @@
-from collections.abc import Callable
-from dataclasses import dataclass
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass, field
+from enum import IntEnum
 from typing import TYPE_CHECKING
 
 from homeassistant.core import HomeAssistant
@@ -18,27 +19,63 @@ class DurationLimits:
     max_s: float
 
 
+class Level(IntEnum):
+    """How well a scope item is proven. A target's level is the weakest among the in-scope items its call touches."""
+
+    # Sends the same call as a Verified item, differing only in addressing, and documented identically for both.
+    DOCUMENTED = 10
+    # A passing test record covers it.
+    VERIFIED = 30
+
+
+def verified(*items: str) -> dict[str, Level]:
+    return dict.fromkeys(items, Level.VERIFIED)
+
+
+def documented(*items: str) -> dict[str, Level]:
+    return dict.fromkeys(items, Level.DOCUMENTED)
+
+
 @dataclass(frozen=True, slots=True)
 class AdapterScope:
-    """The entity domains, capabilities and fields an adapter is known to work with, plus its settings. A capability
-    or field nobody has tested is left out of scope and refused, not gated at runtime.
+    """The entity domains, capabilities and fields an adapter is known to work with, each at its Level, plus its
+    settings. An item nobody has tested, and that is not Documented, is left out of scope and refused, not gated at
+    runtime.
     """
 
     experimental: bool = False
-    domains: frozenset[str] = frozenset({"light"})
+    domains: Mapping[str, Level] = field(default_factory=lambda: verified("light"))
     duration: DurationLimits | None = None
-    fields: frozenset[str] = frozenset()
+    # Always Verified: a field changes the call, so it is never Documented.
+    fields: Mapping[str, Level] = field(default_factory=dict)
     # Fields the integration can never send; dropped before the scope check, as a field the light lacks is.
     drops: frozenset[str] = frozenset()
-    # Device-side capabilities tested on hardware (Shelly: RPC component names); None covers all it can address.
-    # A record proves only the capability the call reaches, so a sibling's untested capability is left out here.
-    capabilities: frozenset[str] | None = None
+    # Device-side capabilities (Shelly: RPC component names); None covers all it can address, as Verified.
+    # A record proves only the capability the call reaches, so a sibling's untested one is out of scope unless
+    # Documented.
+    capabilities: Mapping[str, Level] | None = None
     confirmable: bool = False
     # DeviceSide options that change what the adapter does; tested on hardware with each on and off.
     options: frozenset[str] = frozenset()
     native_groups: bool = False
     max_concurrency: int = 4
     notes: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        if any(level is not Level.VERIFIED for level in self.fields.values()):
+            raise ValueError("fields are never Documented: a field changes the call")
+
+    def level(self, domain: str, capability: str | None = None) -> Level:
+        """The weakest level among the in-scope items a call to this domain and capability touches."""
+        levels = [self.domains[domain]]
+        if capability is not None and self.capabilities is not None:
+            levels.append(self.capabilities[capability])
+        return min(levels)
+
+    def documented_items(self) -> list[str]:
+        """The Documented domains and capabilities, in declaration order."""
+        items = [*self.domains.items(), *(self.capabilities or {}).items()]
+        return [item for item, level in items if level is Level.DOCUMENTED]
 
 
 @dataclass(slots=True)

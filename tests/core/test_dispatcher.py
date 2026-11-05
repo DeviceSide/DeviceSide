@@ -12,7 +12,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
 from custom_components.deviceside.core.models import EntityResult, Status, TimedRequest
-from custom_components.deviceside.core.scope import AdapterScope
+from custom_components.deviceside.core.scope import AdapterScope, verified
 
 from ..conftest import call, refusal
 from ..fakes.fake_integration import LIMITS, FakeTurnOnFor
@@ -337,7 +337,7 @@ async def test_the_adapter_detail_wins_over_fields_dropped(hass, fake, reset_scr
 
 async def test_scope_drops_are_dropped_before_the_scope_check(hass, fake, reset_script):
     add_fake_entity(hass, fake, "light.a", attributes=FULL)
-    scope = AdapterScope(domains=frozenset({"light"}), duration=LIMITS, drops=frozenset({"rgb_color"}))
+    scope = AdapterScope(domains=verified("light"), duration=LIMITS, drops=frozenset({"rgb_color"}))
 
     with patch.object(FakeTurnOnFor, "scope", scope):
         response = await call(hass, "turn_on_for", {"entity_id": "light.a", "duration": 5, "rgb_color": [255, 0, 0]})

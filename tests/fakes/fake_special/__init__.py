@@ -1,6 +1,6 @@
 """Integration "fake_special": takes "fake" entities whose device is special (like Z2M on mqtt); no group hook."""
 
-from custom_components.deviceside.core.scope import AdapterScope, IntegrationInfo
+from custom_components.deviceside.core.scope import AdapterScope, IntegrationInfo, verified
 
 from ..fake_integration import LIMITS, is_group
 from ..scripted import ScriptedAdapter
@@ -18,7 +18,7 @@ INTEGRATION = IntegrationInfo(
 class SpecialTurnOnFor(ScriptedAdapter):
     action = "turn_on_for"
     integration = "fake_special"
-    scope = AdapterScope(domains=frozenset({"light", "switch"}), duration=LIMITS)
+    scope = AdapterScope(domains=verified("light", "switch"), duration=LIMITS)
 
 
 ADAPTERS = [SpecialTurnOnFor]
