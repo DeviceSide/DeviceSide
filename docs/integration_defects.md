@@ -11,10 +11,14 @@ for duplicates before filing. Measurements behind each entry are in
 1. **ZHA (zigpy/zha): color temperature attribute reports are never applied to the entity.** HA shows a stale
    color temperature after any change it didn't send. Workaround: `homeassistant.update_entity` after every write
    (`integrations/zha/set_attributes.py`) and uncached live reads in `get_attributes`. A plain state-sync bug,
-   easy to reproduce: change the color temperature from a remote.
-2. **zigbee-herdsman-converters: `saturation_move: stop` halts the attribute but lets an xy fade drift on for about
-   3 s.** The converter should send `stopMoveStep` (0x47), which halts every color move. Workaround: a raw
-   `stopMoveStep` (`integrations/zigbee2mqtt/stop.py`). A one-line converter fix with a by-eye repro.
+   easy to reproduce: change the color temperature from a remote. Already tracked as
+   [zigpy/zha#855](https://github.com/zigpy/zha/issues/855) (open; a maintainer agrees it should be fixed as
+   brightness was, and a fix sits on the `zigpy-bot/light-color-reports` branch, no PR yet). Don't file a new issue.
+2. **zigbee-herdsman-converters: `saturation_move: stop` doesn't halt a hue/saturation `color` fade; it drifts on
+   for about 3 s.** The stop key doesn't match the command that started the fade (`hue_move: stop` does halt a
+   hue cycle cleanly). The converter should send `stopMoveStep` (0x47), which halts every color move. Workaround:
+   a raw `stopMoveStep` (`integrations/zigbee2mqtt/stop.py`). A one-line converter fix with a by-eye repro; the
+   Hue bulbs honoring it is observed, not guaranteed by ZCL. Whether it needs `hue_native_control` is untested.
 3. **zigbee-herdsman-converters: `on_off` with `on_time` publishes no state.** The `on_time` branch returns
    nothing, unlike the others. Workaround: scheduled `{"state": ""}` reads at start + 1 s, end + 1 s and end +
    max(5 s, 2 %). Fix: return `{state: "ON"}` as the plain branch does.
@@ -51,6 +55,10 @@ for duplicates before filing. Measurements behind each entry are in
 13. **HA Core zha: a public accessor for the gateway.** Importing it means declaring `after_dependencies`, which
     holds our setup while ZHA is stuck, so we read `hass.data["zha"]` (`zcl.gateway`). A nice-to-have for one
     consumer.
+14. **zigbee-herdsman-converters (candidate, not probed): `brightness_move: stop` leaves a color temperature fade
+    running to its end** when brightness and color temperature fade together. Possibly the same gap as item 2,
+    fixed by a `stopMoveStep`; untested. Probe it on a Hue CT bulb before filing, and file it separately: a color
+    temperature stop that jumps whichever command halts it is a different problem.
 
 ## Not worth filing
 
