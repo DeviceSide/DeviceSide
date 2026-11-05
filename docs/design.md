@@ -80,8 +80,8 @@ experimental.
   temperature move: every stop of a Hue bulb's color temperature fade jumps visibly. Hue has no hue moves: a hue
   rotation isn't a straight line in xy, so it can't be one bridge command.
 - **`set_attributes`, `get_attributes`**: write brightness, color or color temperature to a light without turning
-  it on, and read what HA doesn't show (attributes while off, a running timer, Shelly's auto-off and auto-on). Every timed or set-while-off adapter
-  needs a matching `get_attributes` on its integration.
+  it on, and read what HA doesn't show (attributes while off, a running timer, Shelly's auto-off and auto-on).
+  Every timed or set-while-off adapter needs a matching `get_attributes` on its integration.
 - **`set_scene`**: Hue only. A Zigbee scene recall turns lights on.
 
 Out of scope until users ask: turn-on defaults (`OnLevel`), Zigbee plugs and switches, Shelly Gen1, Hue bridge v1,
