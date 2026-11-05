@@ -46,7 +46,7 @@ async def test_entry_loads_and_unloads(hass: HomeAssistant):
 
 async def test_an_integration_stuck_in_setup_does_not_hold_deviceside_back(hass: HomeAssistant):
     """HA holds an integration's setup until each of its after_dependencies being set up has finished. A ZHA that
-    never finishes must leave deviceside's actions up, refusing only ZHA's targets."""
+    never finishes must leave DeviceSide's actions up, refusing only ZHA's targets."""
     setting_up = asyncio.Event()
 
     async def hang(hass, config):

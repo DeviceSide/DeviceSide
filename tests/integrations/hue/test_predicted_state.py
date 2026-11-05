@@ -1,4 +1,4 @@
-"""predicted_state: the bridge's reports of our fades hidden from aiohue (so HA), and deviceside's predictions sent."""
+"""predicted_state: the bridge's reports of our fades hidden from aiohue (so HA), and DeviceSide's predictions sent."""
 
 import asyncio
 import logging

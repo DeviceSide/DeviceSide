@@ -428,12 +428,12 @@ WAITS_FOR = ["hue", "zha"]
                 {"domain": "zha", "state": "not_loaded", "disabled_by": "user"},
                 {"domain": "met", "state": "setup_error"},
             ],
-            "deviceside's entry is not_loaded; it waits for zha (setup_in_progress). "
-            "deviceside actions are unavailable in the house until this is fixed.",
+            "DeviceSide's entry is not_loaded; it waits for zha (setup_in_progress). "
+            "DeviceSide actions are unavailable in the house until this is fixed.",
         ),
         (
             [{"domain": "deviceside", "state": "setup_error"}, {"domain": "hue", "state": "loaded"}],
-            "deviceside's entry is setup_error; none of the integrations it waits for (hue, zha) is stuck; "
+            "DeviceSide's entry is setup_error; none of the integrations it waits for (hue, zha) is stuck; "
             "check HA's logs.",
         ),
     ],

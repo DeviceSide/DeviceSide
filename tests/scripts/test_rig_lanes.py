@@ -37,7 +37,7 @@ def fast(monkeypatch):
 
 
 class Overlapping(fakes.FakeAdmin):
-    """deviceside's calls take a while; it counts how many are in flight at once, and what the journal held then."""
+    """DeviceSide's calls take a while; it counts how many are in flight at once, and what the journal held then."""
 
     def __init__(self, states: dict, journal: Journal | None = None, call_s: float = 0.05):
         super().__init__(states, lambda ha, action, data: {data["entity_id"]: {"status": "sent"}})

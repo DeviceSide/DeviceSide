@@ -666,7 +666,7 @@ def in_head(case: Case, profile: Profile) -> bool:
 
 
 class EntryOptions:
-    """deviceside's config entry on the rig, on the admin connection: its options, set for each case through the
+    """DeviceSide's config entry on the rig, on the admin connection: its options, set for each case through the
     entry's options flow and put back when the run ends, and the reloads, disables and enables of entry steps. Saving
     a change reloads the entry. The original options are journaled before the first save, and the entry as `entry`
     before it is disabled, until it is enabled again."""
@@ -740,7 +740,7 @@ class EntryOptions:
             with contextlib.suppress(Exception):
                 await self.admin.rest("delete", flow_path)
             raise RuntimeError(
-                f"deviceside's options in HA differ from this case's ({wanted}), and saving them reloads the entry "
+                f"DeviceSide's options in HA differ from this case's ({wanted}), and saving them reloads the entry "
                 "under other runs; this run holds HA shared. Set them back in HA, or run the suite alone with an "
                 "option step file, which takes HA exclusively"
             )
@@ -748,7 +748,7 @@ class EntryOptions:
         try:
             result = await self.admin.rest("post", flow_path, values)
             if result.get("type") != "create_entry":
-                raise RuntimeError(f"deviceside's options flow did not save: {result}")
+                raise RuntimeError(f"DeviceSide's options flow did not save: {result}")
         except Exception:
             with contextlib.suppress(Exception):  # don't leave the flow open in HA; the save's error is the one raised
                 await self.admin.rest("delete", flow_path)

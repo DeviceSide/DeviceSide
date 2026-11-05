@@ -497,7 +497,7 @@ async def config_entries(url: str, admin_token: str) -> list[dict]:
 
 
 def explain(entries: list[dict], waits_for: list[str]) -> str:
-    """deviceside's entry state and each integration it waits for whose enabled entry isn't loaded: HA sets up
+    """DeviceSide's entry state and each integration it waits for whose enabled entry isn't loaded: HA sets up
     DeviceSide only after their entries finish setting up, so one stuck in setup holds it back."""
     own = [entry["state"] for entry in entries if entry["domain"] == SERVICE[0]]
     if not own:
@@ -516,8 +516,8 @@ def explain(entries: list[dict], waits_for: list[str]) -> str:
         else f"none of the integrations it waits for ({', '.join(waits_for)}) is stuck; check HA's logs"
     )
     return (
-        f"deviceside's entry is {', '.join(own)}; {why}. "
-        "deviceside actions are unavailable in the house until this is fixed."
+        f"DeviceSide's entry is {', '.join(own)}; {why}. "
+        "DeviceSide actions are unavailable in the house until this is fixed."
     )
 
 
@@ -595,7 +595,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--exclusive",
         action="store_true",
-        help="with a command after --: hold HA exclusively, for a probe that restarts HA or reloads deviceside",
+        help="with a command after --: hold HA exclusively, for a probe that restarts HA or reloads DeviceSide",
     )
     args = parser.parse_args(argv)
     args.command = command

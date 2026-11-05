@@ -1,6 +1,6 @@
 # Zigbee2MQTT · color modes
 
-deviceside's `z2m_color_modes` option (on by default): a full-color light announced to Home Assistant with both
+DeviceSide's `z2m_color_modes` option (on by default): a full-color light announced to Home Assistant with both
 color modes. Not an action, so it has no suite of its own; its rig cases ride in
 [`get_attributes.md`](get_attributes.md), and the rest comes from the probe in
 [integration-internals.md](../../integration-internals.md#tested-behavior) (Zigbee2MQTT).
@@ -18,7 +18,7 @@ color modes. Not an action, so it has no suite of its own; its rig cases ride in
 
 | Test | Result |
 |---|---|
-| `announced_with_both_color_modes[light_color]`: HA's `supported_color_modes` is `color_temp`, `hs`, `xy` after deviceside's setup | pass |
+| `announced_with_both_color_modes[light_color]`: HA's `supported_color_modes` is `color_temp`, `hs`, `xy` after DeviceSide's setup | pass |
 | `keeps_and_reads_hs_while_off[light_color]`: with Hue native control off, an `hs_color` from HA leaves HA in `color_mode: hs`, and `get_attributes` reads it back while off | pass |
 
 ## Probe
