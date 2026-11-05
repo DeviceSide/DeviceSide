@@ -1,6 +1,7 @@
 """scripts/check_private.py: terms from the gitignored files, matched in staged files and messages."""
 
 import importlib.util
+import subprocess
 from pathlib import Path
 
 REPO = Path(__file__).parents[2]
@@ -15,51 +16,30 @@ def write(tmp_path: Path, name: str, text: str) -> Path:
     return path
 
 
-def terms(tmp_path: Path, profile: str = "", env: str = "", extra: str = "") -> dict[str, str]:
-    return check_private.private_terms(
-        [write(tmp_path, "house.yaml", profile) if profile else tmp_path / "missing.yaml"],
-        write(tmp_path, ".env.rig", env) if env else tmp_path / "missing.env",
-        write(tmp_path, ".private-terms", extra) if extra else tmp_path / "missing.terms",
-    )
-
-
 def test_no_private_files_means_no_terms(tmp_path):
-    assert terms(tmp_path) == {}
+    assert check_private.private_terms([tmp_path / ".private-terms", tmp_path / ".private-terms.rig"]) == {}
 
 
 def test_terms_come_from_each_private_file(tmp_path):
-    found = terms(
+    own = write(tmp_path, ".private-terms", "# names\nAcme Street\n\n")
+    rig = write(
         tmp_path,
-        profile="shelly:\n  - entity_id: light.Kitchen_Relay\n    roles: [light_onoff]\n",
-        env="HA_URL=http://ha.example.lan:8123\nHA_TOKEN=abc.def\n",
-        extra="# names\nAcme Street\n\n",
+        ".private-terms.rig",
+        "# Written by the rig\nlight.kitchen_relay\tlight.Kitchen_Relay\nabc.def\tHA_TOKEN from .env.rig\n",
     )
-    assert found == {
-        "light.kitchen_relay": "light.Kitchen_Relay",
-        "ha.example.lan": "ha.example.lan",
-        "abc.def": "HA_TOKEN from .env.rig",
+    assert check_private.private_terms([own, rig, tmp_path / "missing"]) == {
         "acme street": "Acme Street",
+        "light.kitchen_relay": "light.Kitchen_Relay",
+        "abc.def": "HA_TOKEN from .env.rig",
     }
 
 
-def test_terms_come_from_every_entity_a_profile_names(tmp_path):
-    house = write(tmp_path, "house.yaml", "pause: [automation.Hall_Motion]\n")
-    lab = write(
-        tmp_path,
-        "lab.yaml",
-        "zigbee2mqtt:\n  - entity_id: light.desk_group\n    roles: [group]\n    members: [light.desk_a]\n"
-        "  - entity_id: light.desk_b\n    roles: [light_ct]\n    powered_by: switch.desk_plug\n"
-        "  - entity_id: switch.desk_plug\n    roles: [switch_plug]\n",
-    )
-    found = check_private.private_terms([house, lab], tmp_path / "missing.env", tmp_path / "missing.terms")
-    assert found == {
-        "automation.hall_motion": "automation.Hall_Motion",
-        **{name: name for name in ("light.desk_group", "light.desk_a", "light.desk_b", "switch.desk_plug")},
-    }
-
-
-def test_generic_host_is_not_a_term(tmp_path):
-    assert terms(tmp_path, env="HA_URL=http://homeassistant.local:8123\n") == {}
+def test_the_terms_files_are_in_the_main_checkout(tmp_path):
+    main = tmp_path / "main"
+    subprocess.run(["git", "init", "-q", str(main)], check=True)
+    assert check_private.main_checkout(main).resolve() == main.resolve()
+    assert check_private.main_checkout(tmp_path) == tmp_path  # outside a repo
+    assert [path.name for path in check_private.TERMS_FILES] == [".private-terms", ".private-terms.rig"]
 
 
 def test_find_reports_matches_case_insensitively_by_label(tmp_path):
@@ -75,23 +55,7 @@ def test_main_passes_without_terms(tmp_path, monkeypatch):
     assert check_private.main([str(write(tmp_path, "doc.md", "anything"))]) == 0
 
 
-def test_main_fails_when_a_profile_cannot_be_read(tmp_path, monkeypatch, capsys):
-    monkeypatch.setattr(check_private, "profile_paths", lambda: [write(tmp_path, "house.yaml", "pause: [a]1\n")])
-    assert check_private.main([str(write(tmp_path, "msg", "anything"))]) == 1
-    assert "house.yaml: not valid YAML" in capsys.readouterr().out
-
-
 def test_main_fails_on_a_hit(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(check_private, "private_terms", lambda: {"acme street": "Acme Street"})
     assert check_private.main([str(write(tmp_path, "msg", "Fix lamp on acme street"))]) == 1
     assert "Acme Street" in capsys.readouterr().out
-
-
-def test_terms_default_to_every_profile(tmp_path, monkeypatch):
-    lab = write(tmp_path, "lab.yaml", "pause:\n  all: [switch.lab_al]\n  zha: [automation.lab_zha]\n")
-    monkeypatch.setattr(check_private, "profile_paths", lambda: [lab])
-    found = check_private.private_terms(env_file=tmp_path / "missing.env", terms_file=tmp_path / "missing.terms")
-    assert found == {
-        "switch.lab_al": "switch.lab_al",
-        "automation.lab_zha": "automation.lab_zha",
-    }

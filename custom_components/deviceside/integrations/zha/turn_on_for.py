@@ -20,8 +20,8 @@ _TIMER_LIMITS = DurationLimits(min_s=0.1, max_s=6553.4)
 
 _ON_WITH_TIMED_OFF = 0x42
 
-# OnTime counts down live, so the read-back lands a little under the request; matches the rig's ZHA tolerance
-# (tests/rig/profile.py TOLERANCE_S["zha"]).
+# OnTime counts down live, so the read-back lands a little under the request; matches the rig's ZHA timing
+# tolerance, 3 s.
 _READBACK_SLACK_TENTHS = 30
 
 _LOGGER = logging.getLogger(__name__)

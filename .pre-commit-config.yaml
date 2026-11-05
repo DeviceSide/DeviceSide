@@ -60,5 +60,4 @@ repos:
         name: check private details
         entry: python scripts/check_private.py
         language: python
-        additional_dependencies: [pyyaml]
         stages: [pre-commit, commit-msg]

@@ -19,7 +19,9 @@ We're looking for three kinds of help in particular:
 
 ## Developing
 
-- To run the rig tests against your own Home Assistant and devices, see [docs/rig.md](docs/rig.md).
+- An adapter leaves `experimental` on a test record from the maintainer's rig, which runs each action against real
+  devices and is kept outside this repo. Hardware it lacks is listed in
+  [docs/hardware-the-rig-lacks.md](docs/hardware-the-rig-lacks.md): if you have some, say so in an issue.
 - If you use a coding agent, point it at [CLAUDE.md](CLAUDE.md). It holds the repo's rules.
 - Open pull requests against whichever is newer: `main` or the latest `release/vX.Y.Z` branch.
   Just after a release there may be no release branch.
