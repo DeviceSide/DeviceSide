@@ -25,9 +25,9 @@ setup. How the commands work on the wire, and what was measured on real bulbs, i
 ## Shelly
 
 Gen2 and later (Plus, Pro, Gen3, Gen4): relays, whether Home Assistant shows them as a switch or a light, and RGBCCT
-bulbs. Tested on Gen3 and Gen4 relays (firmware 2.0.1) and a Multicolor Bulb Gen3 (firmware 2.0.3). Other Shelly
+bulbs. The tested models are on the [compatibility page](compatibility.md). Other Shelly
 lights (Light, CCT, RGB, RGBW) take the same command but are refused (`capability_not_tested`) until one passes
-a rig run ([test records](test-records/)). Gen1 is refused (`gen1_unsupported`).
+a rig run (see the [compatibility page](compatibility.md)). Gen1 is refused (`gen1_unsupported`).
 
 **Turn on and turn off with timer.** The device runs the timer and confirms it. A transition is at least 0.5 s. A color
 temperature outside the bulb's range is clamped. `hs_color` and `xy_color` are sent as the RGB color Home
@@ -148,7 +148,7 @@ off on time; an automation waiting for the light to be on would never fire.
 
 Plugs on the core `matter` integration whose endpoint has the On/Off cluster's Lighting feature, which Matter's
 timer needs; one without it is refused (`no_lt_feature`). Matter lights take the same command but are refused
-(`domain_not_tested`) until one passes a rig run ([test records](test-records/)).
+(`domain_not_tested`) until one passes a rig run (see the [compatibility page](compatibility.md)).
 
 The timer is read back from the plug, so the result is `confirmed`, or `sent` if the read-back didn't show it.
 `turn_off` cancels the timer; a plain `turn_on` doesn't.

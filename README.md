@@ -28,13 +28,13 @@ DeviceSide unlocks native features in your lights, switches and plugs on the Zig
 | [Set scene without turning on](#set-lights-without-turning-on)                      |     |     |        | ✅          |        |
 | [Get attributes](#get-attributes)                                                   | ✅   | ✅   | ✅      | ✅          | ✅      |
 
-Details per integration are in [docs/integrations.md](docs/integrations.md).
+Details per integration are in [docs/integrations.md](docs/integrations.md). Tested models and support levels are on the [compatibility page](docs/compatibility.md).
 
 ### Will it work with my device?
 
 Maybe. Devices implement the same standards differently, which is why most of these features aren't in Home Assistant core: a feature that works on one Zigbee light can do nothing on another. Each ✅ means the feature passed a test on at least one device on that integration, not on every device. Some devices also accept commands for features they don't fully support, so test each of your devices before relying on a device-native feature.
 
-The tested models are in the [test records](docs/test-records/). If yours isn't there, please try it and [report the result](https://github.com/jasonmx/DeviceSide/issues/new?template=device_report.yml), whether it works or not.
+The tested models are on the [compatibility page](docs/compatibility.md). If yours isn't there, please try it and [report the result](https://github.com/jasonmx/DeviceSide/issues/new?template=device_report.yml), whether it works or not.
 
 ## Get started
 

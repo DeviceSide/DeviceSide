@@ -9,7 +9,7 @@ on:
       - "wt/**"
 
 jobs:
-  # A change touching only *.md files and docs/ skips pytest. The skip happens in the job, not the trigger: the
+  # A change touching only *.md files and docs/ (other than test records and the compatibility page) skips pytest. The skip happens in the job, not the trigger: the
   # ruleset requires the "pytest" check, which a skipped job satisfies and a workflow that never ran leaves pending.
   changes:
     runs-on: ubuntu-latest
@@ -33,7 +33,10 @@ jobs:
           else
             files=$(git diff --name-only --no-renames "$BASE...$HEAD")
             echo "$files"
-            if [ -n "$files" ] && grep -qvE '(\.md$|^docs/)' <<<"$files"; then code=true; else code=false; fi
+            # Records and the compatibility page are docs, but the page is generated from them: check it.
+            if [ -n "$files" ] && grep -qvE '(\.md$|^docs/)' <<<"$files"; then code=true
+            elif grep -qE '^docs/(test-records/|compatibility\.md$)' <<<"$files"; then code=true
+            else code=false; fi
           fi
           echo "code=$code" | tee -a "$GITHUB_OUTPUT"
 
@@ -62,3 +65,6 @@ jobs:
 
       - name: Check coverage
         run: .venv/bin/python scripts/check_release.py --coverage coverage.json
+
+      - name: Check the compatibility page is current
+        run: .venv/bin/python scripts/gen_compat.py --check
