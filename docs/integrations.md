@@ -183,4 +183,4 @@ reconnect mid-fade shows what the bridge reports.
 
 Unsupported on Zigbee2MQTT and ZHA. Few honor the Zigbee timer command: IKEA's are moving to Thread, and Sonoff
 and Tuya run their own countdowns (the Tuya TS011F tested never switches on). If you have one that works,
-[open an issue](https://github.com/jasonmx/deviceside/issues).
+[open an issue](https://github.com/jasonmx/DeviceSide/issues).
