@@ -67,7 +67,7 @@ Only devices Z2M registered through MQTT discovery are found: the device carries
   Hue bulb (manufacturer `Philips`) lights in the new color and keeps the timer. Set before a timer carrying a
   color or color temperature, checked on each such call (a fraction of a second), waiting up to 5 s for Z2M. A
   group uses its own options, not its members', so it's set on the group when any member is a Hue bulb.
-- **`filtered_cache`** gets `device_side_read` appended. Z2M deep-merges a read's answer into the cached state that
+- **`filtered_cache`** gets `deviceside_read` appended. Z2M deep-merges a read's answer into the cached state that
   every later message carries, so an unfiltered answer would look fresh forever. If it can't be set, the read
   raises.
 
@@ -96,7 +96,7 @@ light is clamped from the brightness Z2M holds.
 
 ### `get_attributes`
 
-Z2M's generic read, `{"read": {"cluster", "attributes", "state_property": "device_side_read"}}`, one cluster at a
+Z2M's generic read, `{"read": {"cluster", "attributes", "state_property": "deviceside_read"}}`, one cluster at a
 time, answered on the state topic:
 
 - `genOnOff` (`onOff`, `onTime` in tenths): the timer.

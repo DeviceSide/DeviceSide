@@ -104,9 +104,9 @@ tests:
 | `expect_response` | Checks the call's response: `status` (`expected` means `confirmed` where the adapter can confirm, else `sent`), `integration` (`self` is the one under test), `detail`, `clamped_to`, `attributes`. |
 | `expect_error` | The call before it must fail, with this `key` and/or `summary`. |
 | `expect_state` | Checks state and attributes now, or `within` seconds. `unchanged` is the state before the test. A `{min, max}` range fits values that drift. On a `group` it checks every member. |
-| `expect_matches_read` | Checks that HA's state of each of `attributes` (dotted: `xy_color.0`) is within `tolerance` of a live `device_side.get_attributes` read, now or `within` seconds. On a `group` it checks every member. |
+| `expect_matches_read` | Checks that HA's state of each of `attributes` (dotted: `xy_color.0`) is within `tolerance` of a live `deviceside.get_attributes` read, now or `within` seconds. On a `group` it checks every member. |
 | `wait` | Sleeps. |
-| `sample` | Polls `attribute` (dotted: `hs_color.1`) for `for` seconds and expects it `rising`, `falling` or `steady` (brightness may spread one Zigbee level step, 1/254, as a bulb settles after a stop), optionally within `min`/`max`. `source: device_side` reads `device_side.get_attributes` instead of HA's state, in its units (brightness in percent), for a fade HA shows only the end of. |
+| `sample` | Polls `attribute` (dotted: `hs_color.1`) for `for` seconds and expects it `rising`, `falling` or `steady` (brightness may spread one Zigbee level step, 1/254, as a bulb settles after a stop), optionally within `min`/`max`. `source: deviceside` reads `deviceside.get_attributes` instead of HA's state, in its units (brightness in percent), for a fade HA shows only the end of. |
 | `mark_hue` | Notes each light's hue on its own wheel, for `expect_hue_travel`. On ZHA it is read live off the bulb (EnhancedCurrentHue), since HA works its hue out from the bulb's xy, which departs from the bulb's wheel by 25° and more in the greens; elsewhere it is HA's `hs_color`. On a `group` it marks every member. |
 | `expect_hue_travel` | Checks each light has turned `by` degrees round its own wheel since `mark_hue` (negative: down), within `tolerance`, the shorter way round. A hue move's rate is in the bulb's units, so this holds on any gamut. |
 | `do` | Prints an instruction for the person and waits for Enter. Only in the `setup` of an observed test. |
@@ -184,7 +184,7 @@ They don't fail, but a test counts toward a test record only when both of its ru
 
 ### Run reports
 
-Every run, failed, partial or unattended, ends by writing a report to `device_side-rig/` in the system temp folder and
+Every run, failed, partial or unattended, ends by writing a report to `deviceside-rig/` in the system temp folder and
 printing its path: each suite's results with the reason for every failure and skip.
 
 ### Run logs
@@ -195,13 +195,13 @@ a run that touches Z2M, or roams) to `<report>.z2m.log` as they arrive, and HA's
 and their paths are printed. When Z2M's coordinator crashed during the run (`ASH_NCP_FATAL_ERROR` or
 `Adapter disconnected`), the summary says so with each crash's time, and the logs stay even after a clean run.
 
-A run also reads HA's log for `WARNING`, `ERROR` and `CRITICAL` lines from `custom_components.device_side`. Each one
+A run also reads HA's log for `WARNING`, `ERROR` and `CRITICAL` lines from `custom_components.deviceside`. Each one
 no step file of the run expects is listed in the summary, keeps the logs and fails the run, so a run that ends clean
 also proves DeviceSide logged nothing amiss; the test records it wrote stand. Another run on the same HA meanwhile
 can put lines in, so read whose they are before chasing one. A log with no line dated from the run's start (HA
 logging in another time zone) is kept whole and not checked, which the summary says.
 
-`--debug-logs` keeps them whatever the outcome and runs HA's `device_side`, each integration the run touches and Z2M
+`--debug-logs` keeps them whatever the outcome and runs HA's `deviceside`, each integration the run touches and Z2M
 at debug until the run ends. It costs CPU, so timing cases may read differently. Z2M's debug lines reach the capture
 only with `advanced.log_debug_to_mqtt_frontend: true` in its configuration; the brief warns when it is off, and the
 rig never sets it.

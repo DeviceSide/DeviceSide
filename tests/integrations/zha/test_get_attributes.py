@@ -7,7 +7,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util import dt as dt_util
 from homeassistant.util.color import color_hs_to_RGB, color_hs_to_xy, color_xy_to_hs, color_xy_to_RGB
 
-from custom_components.device_side.integrations.zha import zcl
+from custom_components.deviceside.integrations.zha import zcl
 
 from ...conftest import call, refusal
 from ...fixtures.zha import IEEE, add_zha_entity, zha_entry, zha_group

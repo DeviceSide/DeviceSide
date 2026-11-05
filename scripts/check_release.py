@@ -25,7 +25,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
-from custom_components.device_side.core.registry import AdapterRegistry  # noqa: E402
+from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
 
 COVERAGE_BAR = 95.0
 RECORDS = REPO / "docs" / "test-records"

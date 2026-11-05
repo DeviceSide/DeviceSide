@@ -11,8 +11,8 @@ from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
-from custom_components.device_side.core.models import EntityResult, Status, TimedRequest
-from custom_components.device_side.core.scope import AdapterScope
+from custom_components.deviceside.core.models import EntityResult, Status, TimedRequest
+from custom_components.deviceside.core.scope import AdapterScope
 
 from ..conftest import call, refusal
 from ..fakes.fake_integration import LIMITS, FakeTurnOnFor
@@ -399,7 +399,7 @@ async def test_adapter_exception_and_timeout_reject_every_target(hass, fake, res
     reset_script.execute_error = None
     reset_script.delay = 1
     with (
-        patch("custom_components.device_side.core.dispatcher.ADAPTER_TIMEOUT_S", 0.01),
+        patch("custom_components.deviceside.core.dispatcher.ADAPTER_TIMEOUT_S", 0.01),
         pytest.raises(HomeAssistantError) as err,
     ):
         await call(hass, "turn_on_for", {"entity_id": "light.a", "duration": 5})

@@ -2,7 +2,7 @@
 
 import pytest
 
-from custom_components.device_side.core.groups import expand_ha_groups
+from custom_components.deviceside.core.groups import expand_ha_groups
 
 from ..fixtures.fake import add_fake_native_group, add_ha_group, fake_config_entry
 

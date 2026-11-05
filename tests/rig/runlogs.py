@@ -28,8 +28,8 @@ STAMPED = re.compile(r"^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)")
 CRASH_MARKS = ("ASH_NCP_FATAL_ERROR", "Adapter disconnected")
 ACK_TIMEOUT = "Timer expired waiting for ACK"
 CRASH_GAP_S = 60  # crash lines closer than this are one crash
-# HA's log line: `2026-11-04 12:00:00.123 WARNING (MainThread) [custom_components.device_side.core.dispatcher] ...`
-DEVICE_SIDE_LINE = re.compile(r"^\S+ \S+ (?:WARNING|ERROR|CRITICAL) \(.*?\) \[custom_components\.device_side[.\]]")
+# HA's log line: `2026-11-04 12:00:00.123 WARNING (MainThread) [custom_components.deviceside.core.dispatcher] ...`
+DEVICE_SIDE_LINE = re.compile(r"^\S+ \S+ (?:WARNING|ERROR|CRITICAL) \(.*?\) \[custom_components\.deviceside[.\]]")
 
 
 def coordinator_crashes(log: str) -> tuple[list[str], int]:
@@ -54,7 +54,7 @@ def coordinator_crashes(log: str) -> tuple[list[str], int]:
     return crashes, acks
 
 
-def device_side_lines(log: str, expected: Iterable[re.Pattern[str]] = ()) -> tuple[list[str], int]:
+def deviceside_lines(log: str, expected: Iterable[re.Pattern[str]] = ()) -> tuple[list[str], int]:
     """From a captured HA log: DeviceSide's warning and error lines that no `expected` pattern is found in, and how
     many lines one was. A traceback's lines after its first aren't counted: the first names the logger."""
     patterns = tuple(expected)
@@ -193,7 +193,7 @@ class RunLogs:
             self.out("HA's log has no line dated from the run's start, so its DeviceSide warnings aren't checked.")
             return []
         try:
-            unexpected, matched = device_side_lines(self.ha_path.read_text(), self.expected)
+            unexpected, matched = deviceside_lines(self.ha_path.read_text(), self.expected)
         except OSError as err:
             self.out(f"HA's log couldn't be read for DeviceSide warnings: {err}")
             return []
@@ -228,7 +228,7 @@ def ha_domains(integrations: set[str], roaming: bool) -> list[str]:
     """The HA domains a debug run raises: DeviceSide, and each integration's the run touches, a roaming run's
     Hue, ZHA and MQTT among them."""
     keys = set(integrations) | (set(ROAM_INTEGRATIONS) if roaming else set())
-    return ["device_side", *sorted({HA_DOMAINS[key] for key in keys if key in HA_DOMAINS})]
+    return ["deviceside", *sorted({HA_DOMAINS[key] for key in keys if key in HA_DOMAINS})]
 
 
 class DebugLevels:

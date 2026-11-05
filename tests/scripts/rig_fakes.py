@@ -65,7 +65,7 @@ class FakeHA(HAClient):
         self.z2m_debug_to_mqtt = False  # bridge/info's config.advanced.log_debug_to_mqtt_frontend
         self.z2m_logging: asyncio.Queue[str] = asyncio.Queue()  # what Z2M publishes to bridge/logging
         self.ha_log = ""  # what /api/error_log returns; an Exception instance is raised instead
-        self.ha_levels: dict[str, int] = {"device_side": 30, "hue": 20, "zha": 30, "mqtt": 30}  # logger/log_info
+        self.ha_levels: dict[str, int] = {"deviceside": 30, "hue": 20, "zha": 30, "mqtt": 30}  # logger/log_info
         self.log_level_calls: list[tuple[str, str]] = []  # each integration_log_level (domain, level)
         self.z2m_failing: dict[str, int] = {}  # IEEE -> interviews still to fail, its first (on joining) included
         self.z2m_interviews: list[str] = []  # each device/interview request's id
@@ -287,7 +287,7 @@ class FakeHA(HAClient):
 
     async def call_service(self, domain: str, service: str, data: dict | None = None, return_response=False):
         self.calls.append((domain, service, dict(data or {})))
-        if domain == "device_side":
+        if domain == "deviceside":
             return self.respond(self, service, data)
         if domain == "zha":
             if service == "permit":
@@ -680,7 +680,7 @@ class FakeAdmin(FakeHA):
         return await super().command(payload)
 
     async def call_service(self, domain: str, service: str, data: dict | None = None, return_response=False):
-        if domain == "device_side" and self.disabled:
+        if domain == "deviceside" and self.disabled:
             self.calls.append((domain, service, dict(data or {})))
             raise HAError({"code": "service_validation_error", "translation_key": "not_loaded", "message": "x"})
         return await super().call_service(domain, service, data, return_response)

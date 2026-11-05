@@ -53,5 +53,5 @@ def workspace_colors(monkeypatch) -> list[str | None]:
 
 @pytest.fixture(autouse=True)
 def quick_prime(monkeypatch) -> None:
-    """No wait between a Z2M bulb's first reads (Roamer.prime_z2m): the fakes don't answer device_side's get."""
+    """No wait between a Z2M bulb's first reads (Roamer.prime_z2m): the fakes don't answer deviceside's get."""
     monkeypatch.setattr(roam, "PRIME_GAP_S", 0)

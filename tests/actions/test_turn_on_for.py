@@ -4,13 +4,13 @@ import probatio
 import pytest
 from homeassistant.core import ServiceCall
 
-from custom_components.device_side.actions.turn_off_for import TurnOffFor
-from custom_components.device_side.actions.turn_on_for import TurnOnFor
-from custom_components.device_side.core.models import LightFields
+from custom_components.deviceside.actions.turn_off_for import TurnOffFor
+from custom_components.deviceside.actions.turn_on_for import TurnOnFor
+from custom_components.deviceside.core.models import LightFields
 
 
 def _parse(hass, action, data):
-    return action.parse(hass, ServiceCall(hass, "device_side", action.key, action.schema()(data)))
+    return action.parse(hass, ServiceCall(hass, "deviceside", action.key, action.schema()(data)))
 
 
 async def test_duration_accepts_seconds_and_selector_dict(hass):

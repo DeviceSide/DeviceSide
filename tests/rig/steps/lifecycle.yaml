@@ -1,4 +1,4 @@
-# device_side's config entry, reloaded and disabled: hue_dimmer's release checklist checked both by hand. The entry
+# deviceside's config entry, reloaded and disabled: hue_dimmer's release checklist checked both by hand. The entry
 # steps reload it under every other run, so the file runs alone, holding HA exclusively; a disabled entry is enabled
 # again when the case ends, and by --recover after a crash. get_attributes, a read, stands in for every action.
 action: get_attributes
@@ -12,7 +12,7 @@ tests:
       - call: {}
       - expect_response: {integration: self}
 
-  # device_side's actions are registered once per HA run, so a disabled entry's are still there: they raise
+  # deviceside's actions are registered once per HA run, so a disabled entry's are still there: they raise
   # not_loaded (docs/action-behavior.md), not HA's action-not-found or an exception.
   - name: refuses_while_disabled
     roles: [switch_plug, light_ct]

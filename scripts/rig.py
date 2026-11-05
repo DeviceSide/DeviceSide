@@ -93,7 +93,7 @@ import aiohttp
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
-from custom_components.device_side.core.registry import AdapterRegistry  # noqa: E402
+from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
 from tests.rig import locks  # noqa: E402
 from tests.rig.baseline import NAME as BASELINE_NAME  # noqa: E402
 from tests.rig.baseline import Baseline  # noqa: E402
@@ -134,9 +134,9 @@ from tests.rig.roam import BLUETOOTH_RESET, NAMES, Bulb, GroupError, Roamer, Roa
 from tests.rig.roam import plan_lines as roam_plan_lines  # noqa: E402
 from tests.rig.runlogs import DebugLevels, RunLogs, ha_domains  # noqa: E402
 
-COMPONENT = "custom_components/device_side"
+COMPONENT = "custom_components/deviceside"
 TEST_RECORDS_DIR = REPO / "docs" / "test-records"
-SERVICE = ("device_side", "turn_on_for")
+SERVICE = ("deviceside", "turn_on_for")
 # HA's bootstrap stage-1 (120 s) and stage-2 (300 s) timeouts, after which a stuck dependency is let go, plus the
 # container's start. A restart behind a hung ZHA took about 350 s.
 READY_TIMEOUT_S = 450
@@ -149,7 +149,7 @@ ABORT_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
 CLEAR_POLL_S = 15
 BLOCKED = ("on", "unknown", "unavailable")  # blocker states that revoke a run; an unread one doesn't
 # Run reports go where the OS clears old files: they are for reviewing a run, not for keeping.
-REPORT_DIR = Path(tempfile.gettempdir()) / "device_side-rig"
+REPORT_DIR = Path(tempfile.gettempdir()) / "deviceside-rig"
 
 
 class Aborted(Exception):
@@ -449,7 +449,7 @@ def wait_until_ready(
     timeout: float = READY_TIMEOUT_S,
     sleep: Callable[[float], None] = time.sleep,
 ) -> None:
-    """Until HA reports RUNNING and lists device_side.turn_on_for; exits the runner on timeout, saying why when HA
+    """Until HA reports RUNNING and lists deviceside.turn_on_for; exits the runner on timeout, saying why when HA
     answers without it, still starting or running."""
     deadline = time.monotonic() + timeout
     state = None
@@ -497,7 +497,7 @@ async def config_entries(url: str, admin_token: str) -> list[dict]:
 
 
 def explain(entries: list[dict], waits_for: list[str]) -> str:
-    """device_side's entry state and each integration it waits for whose enabled entry isn't loaded: HA sets up
+    """deviceside's entry state and each integration it waits for whose enabled entry isn't loaded: HA sets up
     DeviceSide only after their entries finish setting up, so one stuck in setup holds it back."""
     own = [entry["state"] for entry in entries if entry["domain"] == SERVICE[0]]
     if not own:
@@ -516,8 +516,8 @@ def explain(entries: list[dict], waits_for: list[str]) -> str:
         else f"none of the integrations it waits for ({', '.join(waits_for)}) is stuck; check HA's logs"
     )
     return (
-        f"device_side's entry is {', '.join(own)}; {why}. "
-        "device_side actions are unavailable in the house until this is fixed."
+        f"deviceside's entry is {', '.join(own)}; {why}. "
+        "deviceside actions are unavailable in the house until this is fixed."
     )
 
 
@@ -595,7 +595,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--exclusive",
         action="store_true",
-        help="with a command after --: hold HA exclusively, for a probe that restarts HA or reloads device_side",
+        help="with a command after --: hold HA exclusively, for a probe that restarts HA or reloads deviceside",
     )
     args = parser.parse_args(argv)
     args.command = command

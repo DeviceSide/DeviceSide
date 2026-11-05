@@ -8,9 +8,9 @@ from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.setup import async_set_domains_to_be_loaded, async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry, MockModule, mock_integration
 
-from custom_components.device_side.const import CONF_PREDICTED_STATE, CONF_Z2M_COLOR_MODES, DOMAIN, NAME
-from custom_components.device_side.core.resolver import resolve
-from custom_components.device_side.core.runtime import get_runtime
+from custom_components.deviceside.const import CONF_PREDICTED_STATE, CONF_Z2M_COLOR_MODES, DOMAIN, NAME
+from custom_components.deviceside.core.resolver import resolve
+from custom_components.deviceside.core.runtime import get_runtime
 
 from .fixtures.zha import add_zha_entity
 
@@ -44,9 +44,9 @@ async def test_entry_loads_and_unloads(hass: HomeAssistant):
     assert entry.state is ConfigEntryState.NOT_LOADED
 
 
-async def test_an_integration_stuck_in_setup_does_not_hold_device_side_back(hass: HomeAssistant):
+async def test_an_integration_stuck_in_setup_does_not_hold_deviceside_back(hass: HomeAssistant):
     """HA holds an integration's setup until each of its after_dependencies being set up has finished. A ZHA that
-    never finishes must leave device_side's actions up, refusing only ZHA's targets."""
+    never finishes must leave deviceside's actions up, refusing only ZHA's targets."""
     setting_up = asyncio.Event()
 
     async def hang(hass, config):

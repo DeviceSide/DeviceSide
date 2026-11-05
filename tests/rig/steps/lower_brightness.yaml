@@ -45,9 +45,9 @@ tests:
       - call: {sweep_time: 10}
       - wait: 3
       - call: {action: stop}
-      - sample: {attribute: brightness, for: 4, expect: steady, source: device_side}
+      - sample: {attribute: brightness, for: 4, expect: steady, source: deviceside}
       - call: {sweep_time: 10}
-      - sample: {attribute: brightness, for: 2, expect: falling, min: 12, source: device_side}
+      - sample: {attribute: brightness, for: 2, expect: falling, min: 12, source: deviceside}
 
   - name: light_raised_mid_room_lower  # needs light_ct to be one of the group's lights
     roles: [group]
@@ -59,4 +59,4 @@ tests:
       - call: {action: raise_brightness, target: light_ct, sweep_time: 10}
       - expect_response: {target: light_ct, status: expected, integration: self}
       # From where the room's fade had it, about 60 %: a jump to the bottom breaks min, one to the top breaks rising.
-      - sample: {target: light_ct, attribute: brightness, for: 2, expect: rising, min: 40, source: device_side}
+      - sample: {target: light_ct, attribute: brightness, for: 2, expect: rising, min: 40, source: deviceside}

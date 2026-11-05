@@ -2,8 +2,8 @@
 runs side by side share each change and the last one out puts it back. In the git common dir with the locks and the
 journals (it holds household entity IDs).
 
-`device_side-rig.baseline.json` maps `kind:key` to `{"original": ..., "holders": [...]}`. It is read and written only
-under `device_side-rig.baseline.lock`, held for one hold or release. The kinds:
+`deviceside-rig.baseline.json` maps `kind:key` to `{"original": ..., "holders": [...]}`. It is read and written only
+under `deviceside-rig.baseline.lock`, held for one hold or release. The kinds:
 
 - an entity's domain (`automation`, `switch`), keyed by its entity ID: paused for the run; original "on" or "off".
 - `ha_log_level`, keyed by an HA domain: its log level's name.
@@ -22,7 +22,7 @@ so each part of a run lets go of its own holds.
   what they leave unheld, unless the hold takes it over as it is.
 
 With no directory (a test's run, with no journal), the baseline lives in memory. On first use the pause ledger it
-replaced, `device_side-rig.paused.json`, is read in.
+replaced, `deviceside-rig.paused.json`, is read in.
 """
 
 import asyncio
@@ -37,9 +37,9 @@ from typing import Any
 from .client import HAClient
 from .journal import Journal, locked, write_whole
 
-NAME = "device_side-rig.baseline.json"
-LOCK_NAME = "device_side-rig.baseline.lock"
-LEDGER_NAME = "device_side-rig.paused.json"  # the pause ledger's, read in once
+NAME = "deviceside-rig.baseline.json"
+LOCK_NAME = "deviceside-rig.baseline.lock"
+LEDGER_NAME = "deviceside-rig.paused.json"  # the pause ledger's, read in once
 LOCK_POLL_S = 0.1  # how often a run retries the baseline's lock, held only for one hold or release
 RAISED_Z2M_LEVELS = ("debug", "trace")
 RESTING_Z2M_LEVEL = "info"

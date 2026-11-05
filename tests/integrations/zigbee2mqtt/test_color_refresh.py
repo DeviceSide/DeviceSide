@@ -4,7 +4,7 @@ import logging
 
 import pytest
 
-from custom_components.device_side.integrations.zigbee2mqtt import color_refresh
+from custom_components.deviceside.integrations.zigbee2mqtt import color_refresh
 
 from .conftest import commands, group, light
 from ...conftest import advance, call, wall_clock_now
@@ -14,7 +14,7 @@ pytestmark = pytest.mark.usefixtures("setup_production", "clock")
 
 SENT = {"status": "sent", "integration": "zigbee2mqtt"}
 COLOR_GET = (f"zigbee2mqtt/{IEEE}/get", {"color": ""})
-LOGGER = "custom_components.device_side.integrations.zigbee2mqtt.color_refresh"
+LOGGER = "custom_components.deviceside.integrations.zigbee2mqtt.color_refresh"
 
 
 async def stop_after(hass, broker, entity_id: str, action: str) -> list:

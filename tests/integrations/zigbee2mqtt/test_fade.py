@@ -5,9 +5,9 @@ import asyncio
 import pytest
 from pytest_homeassistant_custom_component.common import async_mock_service
 
-from custom_components.device_side.core import ha_watch
-from custom_components.device_side.integrations.zigbee2mqtt import bridge, members
-from custom_components.device_side.integrations.zigbee2mqtt.fade import hue_moves, transition_cache
+from custom_components.deviceside.core import ha_watch
+from custom_components.deviceside.integrations.zigbee2mqtt import bridge, members
+from custom_components.deviceside.integrations.zigbee2mqtt.fade import hue_moves, transition_cache
 
 from .conftest import GET, SENT, SET, commands, group, light, unchanged
 from ...conftest import advance, call, refusal, wall_clock_now

@@ -8,7 +8,7 @@ goes on the wire, and what was measured on real devices, is in [integration-inte
 Code and docs use these terms. "Platform", "backing" and "claim" are retired; `services.yaml` keeps its name because
 HA requires it.
 
-- **Action**: what the user calls, e.g. `device_side.turn_on_for`.
+- **Action**: what the user calls, e.g. `deviceside.turn_on_for`.
 - **Feature**: the user experience one or more actions deliver (an auto-off timer, smooth dimming). Prose only.
 - **Integration**: the HA integration that is the first hop to the device (Shelly, ZHA, MQTT, Hue).
 - **Bridge**: a separate system between the integration and the device, named only when the integration alone
@@ -94,7 +94,7 @@ Facts from HA core this rests on:
 ### Layout
 
 ```
-custom_components/device_side/
+custom_components/deviceside/
   __init__.py, config_flow.py, const.py, manifest.json, services.yaml, strings.json, icons.json, translations/
   core/
     models.py        Status, ActionKind, Request, Target, EntityResult, LightFields

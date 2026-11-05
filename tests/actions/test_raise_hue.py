@@ -3,7 +3,7 @@
 import probatio
 import pytest
 
-from custom_components.device_side.actions.raise_hue import RaiseHue
+from custom_components.deviceside.actions.raise_hue import RaiseHue
 
 
 def test_there_is_no_limit():

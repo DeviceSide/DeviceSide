@@ -3,9 +3,9 @@ Hue's own command)."""
 
 import pytest
 
-from custom_components.device_side.core.transition import BRIGHTNESS
-from custom_components.device_side.integrations.zha.addressing import Address
-from custom_components.device_side.integrations.zha.fade import transition_cache
+from custom_components.deviceside.core.transition import BRIGHTNESS
+from custom_components.deviceside.integrations.zha.addressing import Address
+from custom_components.deviceside.integrations.zha.fade import transition_cache
 
 from .conftest import BOTTOM, SENT, A, B, bulb, sent, to, unchanged
 from ...conftest import call

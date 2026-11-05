@@ -158,7 +158,7 @@ class Observe:
 
 # How far a steady sample may spread, in its source's units: a Zigbee bulb can settle one level step (1/254) after a
 # stop. HA's brightness is 0-255; DeviceSide's is in percent, rounded to 0.1, which can widen the step by 0.1.
-STEADY_SPREAD = {("brightness", "ha"): 255 / 254 + 1e-9, ("brightness", "device_side"): 100 / 254 + 0.1 + 1e-9}
+STEADY_SPREAD = {("brightness", "ha"): 255 / 254 + 1e-9, ("brightness", "deviceside"): 100 / 254 + 0.1 + 1e-9}
 
 # Steps that check something; an observed run turns them into the waits they imply.
 CHECKS = frozenset({"expect_response", "expect_error", "expect_state", "expect_matches_read", "sample"})
@@ -321,8 +321,8 @@ def _parse_sample(args: Any) -> dict:
     args["every"] = Expr.parse(args.get("every", 0.5))
     if args.get("expect", "rising") not in ("rising", "falling", "steady"):
         raise ValueError(f"expect must be rising, falling or steady, got {args['expect']!r}")
-    if args.get("source", "ha") not in ("ha", "device_side"):
-        raise ValueError(f"source must be ha or device_side, got {args['source']!r}")
+    if args.get("source", "ha") not in ("ha", "deviceside"):
+        raise ValueError(f"source must be ha or deviceside, got {args['source']!r}")
     return args
 
 
@@ -391,7 +391,7 @@ PARSERS: dict[str, Callable[[Any], Any]] = {
     "expect_response": _parse_expect_response,
     "expect_error": _parse_expect_error,
     "expect_state": _parse_expect_state,
-    # HA's state matches a live device_side.get_attributes read: what HA shows is where the light really is.
+    # HA's state matches a live deviceside.get_attributes read: what HA shows is where the light really is.
     "expect_matches_read": _parse_expect_matches_read,
     "wait": Expr.parse,
     "sample": _parse_sample,
@@ -666,7 +666,7 @@ def in_head(case: Case, profile: Profile) -> bool:
 
 
 class EntryOptions:
-    """device_side's config entry on the rig, on the admin connection: its options, set for each case through the
+    """deviceside's config entry on the rig, on the admin connection: its options, set for each case through the
     entry's options flow and put back when the run ends, and the reloads, disables and enables of entry steps. Saving
     a change reloads the entry. The original options are journaled before the first save, and the entry as `entry`
     before it is disabled, until it is enabled again."""
@@ -685,7 +685,7 @@ class EntryOptions:
 
     async def find(self) -> str:
         if self.entry_id is None:
-            entries = await self.admin.command({"type": "config_entries/get", "domain": "device_side"})
+            entries = await self.admin.command({"type": "config_entries/get", "domain": "deviceside"})
             if not entries:
                 raise RuntimeError("no DeviceSide config entry on the rig")
             self.entry_id = entries[0]["entry_id"]
@@ -740,7 +740,7 @@ class EntryOptions:
             with contextlib.suppress(Exception):
                 await self.admin.rest("delete", flow_path)
             raise RuntimeError(
-                f"device_side's options in HA differ from this case's ({wanted}), and saving them reloads the entry "
+                f"deviceside's options in HA differ from this case's ({wanted}), and saving them reloads the entry "
                 "under other runs; this run holds HA shared. Set them back in HA, or run the suite alone with an "
                 "option step file, which takes HA exclusively"
             )
@@ -748,7 +748,7 @@ class EntryOptions:
         try:
             result = await self.admin.rest("post", flow_path, values)
             if result.get("type") != "create_entry":
-                raise RuntimeError(f"device_side's options flow did not save: {result}")
+                raise RuntimeError(f"deviceside's options flow did not save: {result}")
         except Exception:
             with contextlib.suppress(Exception):  # don't leave the flow open in HA; the save's error is the one raised
                 await self.admin.rest("delete", flow_path)
@@ -760,7 +760,7 @@ class EntryOptions:
         """Wait for the reload a saved change schedules, which starts after the save returns, or for a disable or an
         enable: until the entry is in `state`."""
         await asyncio.sleep(self.reload_s)
-        query = {"type": "config_entries/get", "domain": "device_side"}
+        query = {"type": "config_entries/get", "domain": "deviceside"}
         async with asyncio.timeout(30):
             while not (entries := await self.admin.command(query)) or entries[0]["state"] != state:
                 await asyncio.sleep(0.5)
@@ -826,7 +826,7 @@ class RunResult:
 class Snapshot:
     """Each touched entity's state, put back after the case.
 
-    HA shows no brightness or color for a light that is off, so with `device_side` set (the integration has
+    HA shows no brightness or color for a light that is off, so with `deviceside` set (the integration has
     get_attributes and set_attributes adapters) an off light's device-side attributes are read when it is first
     touched and written back after it is turned off again. A group is skipped there: its members are touched too.
     What it takes is journaled under `cases[journal_key]` before the case moves the entity, and cleared once
@@ -837,7 +837,7 @@ class Snapshot:
 
     ha: HAClient
     power: dict[str, str] = field(default_factory=dict)  # Profile.power(): entity -> its supply
-    device_side: bool = False
+    deviceside: bool = False
     taken: dict[str, dict | None] = field(default_factory=dict)
     stored: dict[str, dict] = field(default_factory=dict)
     journal: Journal | None = None
@@ -847,9 +847,9 @@ class Snapshot:
         """The entity's state before the case moved it, and that of every entity it powers."""
         if entity_id not in self.taken:
             state = self.taken[entity_id] = await self.ha.get_state(entity_id)
-            if self.device_side and not group and _is_off_light(entity_id, state):
+            if self.deviceside and not group and _is_off_light(entity_id, state):
                 response = await self.ha.call_service(
-                    "device_side", "get_attributes", {"entity_id": entity_id}, return_response=True
+                    "deviceside", "get_attributes", {"entity_id": entity_id}, return_response=True
                 )
                 if attributes := (response or {}).get(entity_id):
                     self.stored[entity_id] = attributes
@@ -930,7 +930,7 @@ class Snapshot:
         if state["state"] == "off":
             await self.ha.call_service(domain, "turn_off", {"entity_id": entity_id})
             if (stored := self.stored.get(entity_id)) and (data := _light_data(stored)):
-                await self.ha.call_service("device_side", "set_attributes", {"entity_id": entity_id, **data})
+                await self.ha.call_service("deviceside", "set_attributes", {"entity_id": entity_id, **data})
             return
         data = _light_data(state["attributes"]) if domain == "light" else {}
         await self.ha.call_service(domain, "turn_on", {"entity_id": entity_id, **data})
@@ -1104,7 +1104,7 @@ class _CaseRun:
         self.snapshot = Snapshot(
             ha,
             power or {},
-            device_side=all(
+            deviceside=all(
                 registry.adapter(action, self.integration) is not None
                 for action in ("get_attributes", "set_attributes")
             ),
@@ -1368,15 +1368,15 @@ class _CaseRun:
         self.query = getattr(getattr(self.registry, "actions", {}).get(action), "kind", None) == "query"
         sent_at = asyncio.get_running_loop().time()
         try:
-            self.response = await self.ha.call_service("device_side", action, data, return_response=True)
+            self.response = await self.ha.call_service("deviceside", action, data, return_response=True)
             self.call_times = (sent_at, asyncio.get_running_loop().time())
         except HAError as err:
             if following != "expect_error":
-                raise StepFailure(f"device_side.{action} raised {err.translation_key}: {err}") from None
+                raise StepFailure(f"deviceside.{action} raised {err.translation_key}: {err}") from None
             self.error = err
             return
         if following == "expect_error":
-            raise StepFailure(f"device_side.{action} succeeded where an error was expected: {self.response}")
+            raise StepFailure(f"deviceside.{action} succeeded where an error was expected: {self.response}")
         await self.mark_busy(action, data)
 
     async def mark_busy(self, action: str, data: dict) -> None:
@@ -1489,7 +1489,7 @@ class _CaseRun:
             while True:
                 state = await self.ha.get_state(member)
                 response = await self.ha.call_service(
-                    "device_side", "get_attributes", {"entity_id": member}, return_response=True
+                    "deviceside", "get_attributes", {"entity_id": member}, return_response=True
                 )
                 shown = {name: _lookup((state or {}).get("attributes", {}), name) for name in args["attributes"]}
                 read = {name: _lookup((response or {}).get(member) or {}, name) for name in args["attributes"]}
@@ -1549,7 +1549,7 @@ class _CaseRun:
         """Poll an attribute (dotted, as _lookup reads one) for `for` seconds; an absent attribute (a light that is
         off) reads as 0.
 
-        `source: device_side` reads device_side.get_attributes instead of HA's state, in its units (brightness in
+        `source: deviceside` reads deviceside.get_attributes instead of HA's state, in its units (brightness in
         percent): mid-move it predicts where the light is, where HA shows a Hue fade's end value at once.
         """
         entity_id, attribute, source = self.entity(args), args["attribute"], args.get("source", "ha")
@@ -1588,7 +1588,7 @@ class _CaseRun:
             state = await self.ha.get_state(entity_id)
             return _lookup(state["attributes"], attribute) if state else None
         response = (
-            await self.ha.call_service("device_side", "get_attributes", {"entity_id": entity_id}, return_response=True)
+            await self.ha.call_service("deviceside", "get_attributes", {"entity_id": entity_id}, return_response=True)
             or {}
         )
         if entity_id in response:

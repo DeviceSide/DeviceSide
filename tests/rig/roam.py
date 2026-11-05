@@ -781,7 +781,7 @@ class Roamer:
         for attempt in range(1, PRIME_ATTEMPTS + 1):
             try:
                 await self.ha.call_service(
-                    "device_side", "get_attributes", {"entity_id": bulb.entity_id}, return_response=True
+                    "deviceside", "get_attributes", {"entity_id": bulb.entity_id}, return_response=True
                 )
                 return
             except Exception as err:  # noqa: BLE001 - the case's own steps report what this would have prevented

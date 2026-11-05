@@ -284,15 +284,15 @@ def test_a_failed_wait_lets_go_of_what_it_took(tmp_path):
 
 
 def test_the_legacy_lock_path_still_excludes_new_runs(tmp_path):
-    """A run from an older checkout takes device_side-rig.lock exclusively; new runs wait for it, and it for them."""
-    assert locks.LOCK_NAME == "device_side-rig.lock"
-    with (tmp_path / "device_side-rig.lock").open("a+") as old:
+    """A run from an older checkout takes deviceside-rig.lock exclusively; new runs wait for it, and it for them."""
+    assert locks.LOCK_NAME == "deviceside-rig.lock"
+    with (tmp_path / "deviceside-rig.lock").open("a+") as old:
         fcntl.flock(old, fcntl.LOCK_EX)
         old.write("release/v0.0.1 (pid 1)\n")
         old.flush()
         assert blocked(tmp_path, claim("hue"))
         assert locks.holders(tmp_path, claim("hue")) == ["HA: release/v0.0.1 (pid 1), exclusively"]
-    with locks.hold(claim("hue"), "wt/new", tmp_path, out=quiet()), (tmp_path / "device_side-rig.lock").open() as old:
+    with locks.hold(claim("hue"), "wt/new", tmp_path, out=quiet()), (tmp_path / "deviceside-rig.lock").open() as old:
         with pytest.raises(BlockingIOError):
             fcntl.flock(old, fcntl.LOCK_EX | fcntl.LOCK_NB)
 
@@ -516,7 +516,7 @@ def test_a_deploying_run_with_options_keeps_ha_exclusive(tmp_path, monkeypatch):
 
 def test_a_run_journal_is_locked_and_leaves_nothing_once_empty(tmp_path):
     journal = Journal.start(tmp_path)
-    assert journal.path.name.startswith(f"device_side-rig.journal.{os.getpid()}-")
+    assert journal.path.name.startswith(f"deviceside-rig.journal.{os.getpid()}-")
     journal.update(paused=["automation.motion"])
     assert orphans(tmp_path) == []  # held, so not an orphan
     journal.clear("paused")
@@ -539,7 +539,7 @@ def test_a_journal_its_run_left_is_an_orphan_until_put_back(tmp_path):
 
 def test_orphans_sweeps_a_dead_runs_lock_with_no_journal(tmp_path):
     Journal.start(tmp_path).release()
-    (tmp_path / "device_side-rig.journal.1-abc.lock").touch()
+    (tmp_path / "deviceside-rig.journal.1-abc.lock").touch()
     assert orphans(tmp_path) == []
     assert list(tmp_path.iterdir()) == []
 
@@ -835,7 +835,7 @@ def test_hold_pauses_its_integrations_entries_while_the_command_runs(probe, monk
 
     assert seen == [{"automation.motion": "off", "switch.al": "on"}]
     assert ProbeHA.calls == [("turn_off", "automation.motion"), ("turn_on", "automation.motion")]
-    assert not list(probe.glob("device_side-rig.journal.*"))  # its liveness token is gone with it
+    assert not list(probe.glob("deviceside-rig.journal.*"))  # its liveness token is gone with it
     assert not (probe / baseline.NAME).exists()
 
 

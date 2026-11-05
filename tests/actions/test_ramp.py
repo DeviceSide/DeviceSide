@@ -4,8 +4,8 @@ import probatio
 import pytest
 from homeassistant.core import ServiceCall
 
-from custom_components.device_side.actions import discover
-from custom_components.device_side.actions.ramp import Ramp, RampRequest
+from custom_components.deviceside.actions import discover
+from custom_components.deviceside.actions.ramp import Ramp, RampRequest
 
 RAMPS = [action for action in discover() if issubclass(action, Ramp)]
 
@@ -42,7 +42,7 @@ def test_no_direction_or_other_attribute_is_a_field(action, data):
 def test_parse_carries_the_actions_attribute_and_direction(hass, action):
     data = action.schema()({"entity_id": "light.a", "sweep_time": 2})
 
-    request = action.parse(hass, ServiceCall(hass, "device_side", action.key, data))
+    request = action.parse(hass, ServiceCall(hass, "deviceside", action.key, data))
 
     assert request == RampRequest(action.attribute, action.up, 2.0, data.get("limit"))
 

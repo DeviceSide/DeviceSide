@@ -7,9 +7,9 @@ from homeassistant.core import Context, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.service import async_register_admin_service
 
-from custom_components.device_side.const import DOMAIN
-from custom_components.device_side.core.transition import BRIGHTNESS, SATURATION
-from custom_components.device_side.integrations.zha.fade import hue_moves, transition_cache
+from custom_components.deviceside.const import DOMAIN
+from custom_components.deviceside.core.transition import BRIGHTNESS, SATURATION
+from custom_components.deviceside.integrations.zha.fade import hue_moves, transition_cache
 
 from .conftest import SENT, A, B, bulb, sent, unchanged
 from ...conftest import advance, call, wall_clock_now

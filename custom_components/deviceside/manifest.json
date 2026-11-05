@@ -1,5 +1,5 @@
 {
-  "domain": "device_side",
+  "domain": "deviceside",
   "name": "DeviceSide",
   "after_dependencies": ["mqtt"],
   "codeowners": ["@jasonmx"],

@@ -6,7 +6,7 @@ from unittest.mock import call as rpc_call
 import pytest
 from homeassistant.exceptions import HomeAssistantError
 
-from custom_components.device_side.integrations.shelly.turn_on_for import ShellyTurnOnFor
+from custom_components.deviceside.integrations.shelly.turn_on_for import ShellyTurnOnFor
 
 from ...conftest import call, refusal
 from ...fixtures.fake import add_switch_as_x

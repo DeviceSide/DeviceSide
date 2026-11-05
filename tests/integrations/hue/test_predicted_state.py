@@ -1,4 +1,4 @@
-"""predicted_state: the bridge's reports of our fades hidden from aiohue (so HA), and device_side's predictions sent."""
+"""predicted_state: the bridge's reports of our fades hidden from aiohue (so HA), and deviceside's predictions sent."""
 
 import asyncio
 import logging
@@ -7,8 +7,8 @@ import pytest
 from aiohue.v2.controllers.events import EventType
 from pytest_homeassistant_custom_component.common import async_mock_service
 
-from custom_components.device_side.core.runtime import get_runtime
-from custom_components.device_side.integrations.hue.transition_cache import MIN_BRIGHTNESS_STEP
+from custom_components.deviceside.core.runtime import get_runtime
+from custom_components.deviceside.integrations.hue.transition_cache import MIN_BRIGHTNESS_STEP
 
 from .conftest import light_event, setup_room
 from ...conftest import advance, call, wall_clock_now

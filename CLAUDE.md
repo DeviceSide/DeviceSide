@@ -53,9 +53,9 @@ since its last rig run needs a new one); see their headers. The steps they don't
 
 ## Layout
 
-- `custom_components/device_side/core/`: registry, resolver, dispatcher, action registration
-- `custom_components/device_side/actions/`: one module per action
-- `custom_components/device_side/integrations/<integration>/`: one adapter module per action
+- `custom_components/deviceside/core/`: registry, resolver, dispatcher, action registration
+- `custom_components/deviceside/actions/`: one module per action
+- `custom_components/deviceside/integrations/<integration>/`: one adapter module per action
 - `tests/{core,actions,integrations,rig}`: mirror the above; `rig/` drives the live HA, only via `scripts/rig.py`,
   on a profile (`tests/rig/profiles/<name>.yaml`, gitignored)
 - `scripts/`: rig runner, household check, deploy, release checks (coverage, the release flag, record freshness, tags, RC audits)

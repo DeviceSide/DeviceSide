@@ -3,7 +3,7 @@
 import pytest
 from homeassistant.exceptions import HomeAssistantError
 
-from custom_components.device_side.integrations.hue.transition_cache import transition_cache
+from custom_components.deviceside.integrations.hue.transition_cache import transition_cache
 
 from ...conftest import call, refusal
 from ...fixtures.hue import add_hue_entity, hue_entry, light_action

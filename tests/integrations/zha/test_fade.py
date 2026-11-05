@@ -10,9 +10,9 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.service import async_register_admin_service
 from pytest_homeassistant_custom_component.common import async_mock_service
 
-from custom_components.device_side.const import DOMAIN
-from custom_components.device_side.core.transition import BRIGHTNESS, SATURATION
-from custom_components.device_side.integrations.zha.fade import hue_moves, soft_off_restores, transition_cache
+from custom_components.deviceside.const import DOMAIN
+from custom_components.deviceside.core.transition import BRIGHTNESS, SATURATION
+from custom_components.deviceside.integrations.zha.fade import hue_moves, soft_off_restores, transition_cache
 
 from .conftest import BOTTOM, RESTORE_60, SENT, A, B, bulb, on_off_reads, sent
 from ...conftest import advance, call, wall_clock_now
@@ -119,7 +119,7 @@ def read_takes(bulbs, clock, seconds: float) -> None:
 async def test_the_ramp_is_fitted_to_a_read_at_the_point_it_had_reached(hass, commands, bulbs, clock, caplog):
     """HA shows 60 %, but the bulb was set to 80 % elsewhere. The read 0.1 s into a 3 s soft off sees 77.2 %, which is
     on the ramp from 79.8 % to 0, not its start: the restore puts back 79.8 %. Every term of the fit is logged."""
-    caplog.set_level(logging.DEBUG, logger="custom_components.device_side.integrations.zha.fade")
+    caplog.set_level(logging.DEBUG, logger="custom_components.deviceside.integrations.zha.fade")
     bulb(hass)
     bulbs.levels[IEEE] = 196  # 77.2 %
     read_takes(bulbs, clock, 0.2)  # timed at its middle: 0.1 s in
@@ -142,7 +142,7 @@ async def test_a_read_within_the_deadband_keeps_the_prediction(hass, commands, b
     """The bulb starts a little after the send, so a 60 % soft off reads a shade behind schedule: 57.1 % where the
     ramp predicts 58.0 %. That's within the deadband (0.15 s of the ramp, plus a level step), so the restore puts back
     60 %, not the 61.4 % a fit of the lag would (3 Nov lab rerun: a fitted 62.5 % came back on at 159)."""
-    caplog.set_level(logging.DEBUG, logger="custom_components.device_side.integrations.zha.fade")
+    caplog.set_level(logging.DEBUG, logger="custom_components.deviceside.integrations.zha.fade")
     bulb(hass)
     bulbs.levels[IEEE] = 145  # 57.1 %
     read_takes(bulbs, clock, 0.2)

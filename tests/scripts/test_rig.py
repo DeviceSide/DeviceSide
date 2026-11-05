@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from custom_components.device_side.core.registry import AdapterRegistry
+from custom_components.deviceside.core.registry import AdapterRegistry
 from tests.rig import baseline, engine
 from tests.rig.engine import load_step_file, load_step_files
 from tests.rig.journal import LEGACY_NAME, Journal
@@ -379,7 +379,7 @@ def fake_clock(monkeypatch):
 
 
 def test_wait_until_ready_returns_once_the_service_is_listed(monkeypatch):
-    services = [{"domain": "device_side", "services": {"turn_on_for": {}}}]
+    services = [{"domain": "deviceside", "services": {"turn_on_for": {}}}]
     running = {"state": "RUNNING"}
     fake_ha(monkeypatch, [rig.urllib.error.URLError("down"), running, None, running, services])
     rig.wait_until_ready("http://ha", "token", timeout=60, sleep=lambda _: None)
@@ -398,7 +398,7 @@ def test_wait_until_ready_says_why_the_service_is_missing(monkeypatch):
 
     async def config_entries(url, token):
         assert token == "admin"
-        return [{"domain": "device_side", "state": "not_loaded"}, {"domain": "mqtt", "state": "setup_in_progress"}]
+        return [{"domain": "deviceside", "state": "not_loaded"}, {"domain": "mqtt", "state": "setup_in_progress"}]
 
     monkeypatch.setattr(rig, "config_entries", config_entries)
     with pytest.raises(SystemExit, match="entry is not_loaded; it waits for mqtt"):
@@ -422,18 +422,18 @@ WAITS_FOR = ["hue", "zha"]
         ([], "On a first load, add the integration"),
         (
             [
-                {"domain": "device_side", "state": "not_loaded"},
+                {"domain": "deviceside", "state": "not_loaded"},
                 {"domain": "hue", "state": "loaded"},
                 {"domain": "zha", "state": "setup_in_progress"},
                 {"domain": "zha", "state": "not_loaded", "disabled_by": "user"},
                 {"domain": "met", "state": "setup_error"},
             ],
-            "device_side's entry is not_loaded; it waits for zha (setup_in_progress). "
-            "device_side actions are unavailable in the house until this is fixed.",
+            "deviceside's entry is not_loaded; it waits for zha (setup_in_progress). "
+            "deviceside actions are unavailable in the house until this is fixed.",
         ),
         (
-            [{"domain": "device_side", "state": "setup_error"}, {"domain": "hue", "state": "loaded"}],
-            "device_side's entry is setup_error; none of the integrations it waits for (hue, zha) is stuck; "
+            [{"domain": "deviceside", "state": "setup_error"}, {"domain": "hue", "state": "loaded"}],
+            "deviceside's entry is setup_error; none of the integrations it waits for (hue, zha) is stuck; "
             "check HA's logs.",
         ),
     ],

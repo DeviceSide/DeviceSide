@@ -43,7 +43,7 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 # Marks an event DeviceSide sends in the bridge's place. aiohue reads only its models' fields, so ignores it.
-MARKER = "device_side"
+MARKER = "deviceside"
 # Where each bridge's ReportFilter lives in integration_state, by hue config entry.
 FILTERS = "hue_filters"
 

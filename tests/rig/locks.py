@@ -30,7 +30,7 @@ from .profile import TOLERANCE_S
 
 # HA's lock keeps the path of the single lock it replaced, so a run from an older checkout, which takes it
 # exclusively, still keeps out every new run, and they it.
-LOCK_NAME = "device_side-rig.lock"
+LOCK_NAME = "deviceside-rig.lock"
 LOCK_POLL_S = 2.0  # how often a waiting run retries a lock
 WORKSPACE_HELD = "Green"  # a cmux workspace's color while its run holds its locks
 WORKSPACE_QUEUED = "Amber"  # ...while its run waits for them
@@ -39,7 +39,7 @@ Out = Callable[[str], None]
 
 
 def integration_lock(integration: str) -> str:
-    return f"device_side-rig.{integration}.lock"
+    return f"deviceside-rig.{integration}.lock"
 
 
 @dataclass(frozen=True, slots=True)

@@ -113,7 +113,7 @@ def gateway(hass: HomeAssistant) -> Any:
 
     Not imported from homeassistant.components.zha: hassfest would then require zha in after_dependencies, and HA
     holds an integration's setup until its after_dependencies' entries finish setting up, so a ZHA stuck in setup
-    would take device_side's actions down for every integration.
+    would take deviceside's actions down for every integration.
     """
     if (data := hass.data.get("zha")) is None or (proxy := data.gateway_proxy) is None:
         raise ValueError("No ZHA gateway")
