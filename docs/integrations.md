@@ -45,8 +45,9 @@ integration. A wall switch wired to the device's input is untested and may depen
   config entry about 60 s later, so its entities go unavailable briefly. The output doesn't change. A call that
   matches what the device already holds sends nothing and returns `unchanged`, with no reload.
 - **It writes the device's flash.** Set it once, not from a frequent automation.
-- **With `turn_on_for`.** Which delay wins when a `turn_on_for` meets a stored auto-off is not yet tested; a rig
-  run will settle it and this line will say.
+- **With `turn_on_for`.** A `turn_on_for` overrides the stored auto-off for that one turn-on, whether its duration
+  is shorter or longer: the output turns off when `turn_on_for` says. Clearing auto-off doesn't stop a
+  `turn_on_for` countdown that is already running.
 
 ## Zigbee2MQTT
 
