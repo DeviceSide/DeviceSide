@@ -66,26 +66,42 @@ async def device_report_url(hass: HomeAssistant, entity_id: str) -> str:
         "deviceside_version": str((await async_get_integration(hass, DOMAIN)).version),
         "ha_version": HA_VERSION,
     }
-    query = urlencode({"template": "device_report.yml", **{k: v for k, v in fields.items() if v}}, quote_via=quote)
+    model = fields["model"]
+    subject = f"{model} ({integration})" if model and integration else model or integration
+    title = f"Device test result: {subject}" if subject else "Device test result"
+    query = urlencode(
+        {"template": "device_report.yml", "title": title, **{k: v for k, v in fields.items() if v}}, quote_via=quote
+    )
     return f"{REPORT_URL}?{query}"
 
 
 class DeviceSideOptionsFlow(config_entries.OptionsFlowWithReload):
     """A menu: the settings page, whose saving reloads the entry so the next action runs with them, and a report."""
 
+    _report_url: str = ""
+
     async def async_step_init(self, user_input=None):
         return self.async_show_menu(step_id="init", menu_options=["settings", "report_device"])
 
     async def async_step_report_device(self, user_input=None):
-        """Pick a light or switch; end on a link to a prefilled device report. Aborting avoids a reload."""
+        """Pick a light or switch; go on to a step holding the link to a prefilled device report."""
         if user_input is not None:
-            url = await device_report_url(self.hass, user_input[CONF_ENTITY])
-            return self.async_abort(reason="report_link", description_placeholders={"url": url})
+            self._report_url = await device_report_url(self.hass, user_input[CONF_ENTITY])
+            return await self.async_step_report_link()
         return self.async_show_form(
             step_id="report_device",
             data_schema=vol.Schema(
                 {vol.Required(CONF_ENTITY): EntitySelector(EntitySelectorConfig(domain=["light", "switch"]))}
             ),
+        )
+
+    async def async_step_report_link(self, user_input=None):
+        """The link, on a step of its own so the dialog carries the step's title. Submitting closes the flow with the
+        options as they were: OptionsFlowWithReload reloads only on changed options, so nothing reloads."""
+        if user_input is not None:
+            return self.async_create_entry(data=dict(self.config_entry.options))
+        return self.async_show_form(
+            step_id="report_link", data_schema=vol.Schema({}), description_placeholders={"url": self._report_url}
         )
 
     async def async_step_settings(self, user_input=None):
