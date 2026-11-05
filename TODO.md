@@ -25,7 +25,7 @@ adapter passing its tests, no soak. An RC also needs a rig run since each releas
   `lower_hue` and ZHA `lower_brightness`.
 - [ ] **Persistent auto-off/auto-on**: `set_`/`clear_auto_off`/`_on`, Shelly; records clear the flag.
 - [ ] **9d** Rig coverage sweep for the non-color scope; the watched session covers the color part.
-- [ ] **Device support, part 1**: support levels and contribution lanes in `CONTRIBUTING.md`, the README's "Will it
+- [x] **Device support, part 1** (#262): support levels and contribution lanes in `CONTRIBUTING.md`, the README's "Will it
   work with my device?", and the device report, device request and bug issue forms.
 - [ ] **Device support, part 2**: `scripts/gen_compat.py` generates `docs/compatibility.md` (levels and tested
   models per action and integration) and CI checks it is current. The README table, its "Will it work with my
