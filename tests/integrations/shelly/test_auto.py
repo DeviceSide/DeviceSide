@@ -159,11 +159,27 @@ async def test_out_of_scope_targets_are_refused(hass, action):
     gen1, _ = shelly_device(hass, gen1=True, mac="112233445566")
     add_shelly_entity(hass, gen1, "switch.old_relay", "relay_0")
     entry, call_rpc = shelly_device(hass)
-    add_shelly_entity(hass, entry, "light.strip", "rgbw:0")
     add_shelly_entity(hass, entry, "switch.child_lock", "boolean:200-boolean_child_lock")
     data = {"duration": 5} if action.startswith("set_") else {}
 
     assert await refusal(hass, action, {"entity_id": "switch.old_relay", **data}) == "gen1_unsupported"
     assert await refusal(hass, action, {"entity_id": "switch.child_lock", **data}) == "not_addressable"
-    assert await refusal(hass, action, {"entity_id": "light.strip", **data}) == "capability_not_tested"
     assert not call_rpc.await_args_list
+
+
+@pytest.mark.parametrize("which", WHICH)
+@pytest.mark.parametrize(
+    ("key", "component"), [("light:0", "Light"), ("cct:0", "CCT"), ("rgb:0", "RGB"), ("rgbw:0", "RGBW")]
+)
+async def test_documented_components_take_the_same_set_config(hass, which, key, component):
+    entry, call_rpc = shelly_device(hass, config={f"auto_{which}": True, f"auto_{which}_delay": 60.0})
+    add_shelly_entity(hass, entry, "light.strip", key)
+
+    assert await call(hass, f"set_auto_{which}", {"entity_id": "light.strip", "duration": 5}) == {
+        "light.strip": CONFIRMED
+    }
+    assert await call(hass, f"clear_auto_{which}", {"entity_id": "light.strip"}) == {"light.strip": CONFIRMED}
+    assert set_configs(call_rpc) == [
+        rpc_call(f"{component}.SetConfig", {"id": 0, "config": {f"auto_{which}": True, f"auto_{which}_delay": 5.0}}),
+        rpc_call(f"{component}.SetConfig", {"id": 0, "config": {f"auto_{which}": False}}),
+    ]

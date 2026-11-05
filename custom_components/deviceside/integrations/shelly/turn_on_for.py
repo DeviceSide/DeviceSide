@@ -3,7 +3,7 @@ from typing import ClassVar
 
 from homeassistant.core import HomeAssistant
 
-from .addressing import COMPONENT_FIELDS, address, unsupported_reason
+from .addressing import CAPABILITIES, COMPONENT_FIELDS, address, unsupported_reason
 from .rpc import TIMER_LIMITS, light_params, set_with_timer
 from ...actions.turn_on_for import TurnOnForRequest
 from ...core.adapter import Adapter
@@ -20,9 +20,8 @@ class ShellyTurnOnFor(Adapter[TurnOnForRequest]):
         domains=verified("light", "switch"),
         duration=TIMER_LIMITS,
         fields=verified("brightness", "color_temp_kelvin", "hs_color", "rgb_color", "transition", "xy_color"),
-        # A relay shown as a light sends the same Switch.Set; Light, CCT, RGB and RGBW stay out of scope until a test
-        # record covers them.
-        capabilities=verified("Switch", "RGBCCT"),
+        # A relay shown as a light sends the same Switch.Set.
+        capabilities=CAPABILITIES,
         confirmable=True,
     )
 

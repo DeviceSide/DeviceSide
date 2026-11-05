@@ -9,7 +9,7 @@ from typing import ClassVar
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 
-from .addressing import address, unsupported_reason
+from .addressing import CAPABILITIES, address, unsupported_reason
 from .rpc import get_config, get_status
 from ...core.adapter import Adapter
 from ...core.color import rgb_row
@@ -62,9 +62,8 @@ class ShellyGetAttributes(Adapter[Request]):
     integration: ClassVar[str] = "shelly"
     scope: ClassVar[AdapterScope] = AdapterScope(
         domains=verified("light", "switch"),
-        # A relay shown as a light sends the same Switch.GetStatus; Light, CCT, RGB and RGBW stay out of scope until a
-        # test record covers them.
-        capabilities=verified("Switch", "RGBCCT"),
+        # A relay shown as a light sends the same Switch.GetStatus.
+        capabilities=CAPABILITIES,
         confirmable=True,
         experimental=True,
     )

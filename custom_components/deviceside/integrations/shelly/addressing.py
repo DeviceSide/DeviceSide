@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from ...core.models import Target
+from ...core.scope import documented, verified
 
 # Relays and lights carry unique_id "{mac}-{key}" (shelly/switch.py RpcRelaySwitch, shelly/light.py
 # RpcShellyLightBase). Every other Shelly switch (virtual booleans, scripts, circuit breakers) has another suffix
@@ -22,14 +23,21 @@ _DIMMABLE = frozenset({"brightness", "transition"})
 _COLOR = frozenset({"hs_color", "rgb_color", "xy_color"})
 
 # light.turn_on fields each component takes, as shelly/light.py translates them. A Switch shown as a light is on/off.
+# RGB and RGBW take color too, but core converts it differently for them (rgb to rgbw with a white split, kelvin to
+# color), so their color is dropped until those conversions are ported.
 COMPONENT_FIELDS = {
     "Switch": frozenset(),
     "Light": _DIMMABLE,
     "CCT": _DIMMABLE | {"color_temp_kelvin"},
-    "RGB": _DIMMABLE | _COLOR,
-    "RGBW": _DIMMABLE | _COLOR,
+    "RGB": _DIMMABLE,
+    "RGBW": _DIMMABLE,
     "RGBCCT": _DIMMABLE | _COLOR | {"color_temp_kelvin"},
 }
+
+# The components every Shelly adapter addresses. Light, CCT, RGB and RGBW take the same <Component>.Set, SetConfig
+# and GetStatus calls as the Verified Switch and RGBCCT, documented identically by Shelly: Documented until a test
+# record covers them (CLAUDE.md, "Release flag").
+CAPABILITIES = verified("Switch", "RGBCCT") | documented("Light", "CCT", "RGB", "RGBW")
 
 
 @dataclass(frozen=True, slots=True)
