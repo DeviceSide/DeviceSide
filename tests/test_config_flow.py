@@ -28,14 +28,21 @@ async def open_settings(hass: HomeAssistant, entry: MockConfigEntry):
 
 async def report_for(hass: HomeAssistant, entry: MockConfigEntry, entity_id: str) -> tuple[dict, str]:
     """Run the report step for an entity and return the prefill fields from its link, and the link."""
+    options_before = dict(entry.options)
+    runtime_before = get_runtime(hass)
     result = await hass.config_entries.options.async_init(entry.entry_id)
     result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": "report_device"})
     assert result["type"] is FlowResultType.FORM
     result = await hass.config_entries.options.async_configure(result["flow_id"], {"entity_id": entity_id})
-    assert result["type"] is FlowResultType.ABORT
-    assert result["reason"] == "report_link"
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "report_link"
     url = result["description_placeholders"]["url"]
     assert url.startswith("https://github.com/jasonmx/DeviceSide/issues/new?")
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {})
+    await hass.async_block_till_done()
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.options == options_before  # closing the dialog saves nothing
+    assert get_runtime(hass) is runtime_before  # and a reload would have built a new runtime
     return {key: value for key, [value] in parse_qs(urlparse(url).query).items()}, url
 
 
@@ -152,6 +159,7 @@ async def test_a_report_for_a_supported_light_carries_its_integration_model_and_
 
     assert fields == {
         "template": "device_report.yml",
+        "title": "Device test result: LTA009 (zha)",
         "integration": "zha",
         "model": "LTA009",
         "firmware": "0x01002a00",
@@ -187,6 +195,7 @@ async def test_a_report_for_an_entity_without_a_device_leaves_those_fields_out(h
     fields, _ = await report_for(hass, entry, "switch.virtual")
 
     assert fields["integration"] == "template"
+    assert fields["title"] == "Device test result: template"
     assert "model" not in fields
     assert "firmware" not in fields
     assert {"deviceside_version", "ha_version"} <= fields.keys()
@@ -199,6 +208,7 @@ async def test_a_report_for_an_entity_outside_the_registry_leaves_the_integratio
     fields, _ = await report_for(hass, entry, "light.ghost")
 
     assert "integration" not in fields
+    assert fields["title"] == "Device test result"
 
 
 async def test_the_report_step_offers_only_lights_and_switches(hass: HomeAssistant):

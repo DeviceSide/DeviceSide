@@ -1,14 +1,11 @@
-name: Device report
+name: Report a Device Test Result
 description: Tell us how DeviceSide worked on a device the compatibility page doesn't list.
+title: "Device test result: "
 labels: ["device-report"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for trying DeviceSide on a new device. A "works" report is as useful as a "doesn't work" one: it's how the list of tested models grows.
-
-        If the feature fails on a device the [compatibility page](https://github.com/jasonmx/DeviceSide/blob/main/docs/compatibility.md) already list, please open a [bug report](https://github.com/jasonmx/DeviceSide/issues/new?template=bug.yml) instead.
-
         Please don't include entity IDs, device names or MAC addresses.
   - type: input
     id: integration
@@ -29,39 +26,6 @@ body:
     attributes:
       label: Firmware version
       description: As shown on the device page in Home Assistant. Leave blank if it isn't shown.
-  - type: dropdown
-    id: feature
-    attributes:
-      label: Action
-      options:
-        - turn_on_for
-        - turn_off_for
-        - set_auto_off
-        - set_auto_on
-        - clear_auto_off
-        - clear_auto_on
-        - raise_brightness
-        - lower_brightness
-        - raise_saturation
-        - lower_saturation
-        - raise_hue
-        - lower_hue
-        - stop
-        - set_attributes
-        - set_scene
-        - get_attributes
-        - other
-    validations:
-      required: true
-  - type: dropdown
-    id: outcome
-    attributes:
-      label: Result
-      options:
-        - works
-        - doesn't work
-    validations:
-      required: true
   - type: input
     id: deviceside_version
     attributes:
@@ -74,6 +38,52 @@ body:
       label: Home Assistant version
     validations:
       required: true
+  - type: checkboxes
+    id: worked
+    attributes:
+      label: Actions that worked
+      description: Tick every action you tested that did what it should.
+      options:
+        - label: turn_on_for
+        - label: turn_off_for
+        - label: set_auto_off
+        - label: set_auto_on
+        - label: clear_auto_off
+        - label: clear_auto_on
+        - label: raise_brightness
+        - label: lower_brightness
+        - label: raise_saturation
+        - label: lower_saturation
+        - label: raise_hue
+        - label: lower_hue
+        - label: stop
+        - label: set_attributes
+        - label: set_scene
+        - label: get_attributes
+        - label: other (say which in the notes)
+  - type: checkboxes
+    id: failed
+    attributes:
+      label: Actions that didn't work
+      description: Tick every action you tested that did not. Say what happened in the notes.
+      options:
+        - label: turn_on_for
+        - label: turn_off_for
+        - label: set_auto_off
+        - label: set_auto_on
+        - label: clear_auto_off
+        - label: clear_auto_on
+        - label: raise_brightness
+        - label: lower_brightness
+        - label: raise_saturation
+        - label: lower_saturation
+        - label: raise_hue
+        - label: lower_hue
+        - label: stop
+        - label: set_attributes
+        - label: set_scene
+        - label: get_attributes
+        - label: other (say which in the notes)
   - type: textarea
     id: notes
     attributes:

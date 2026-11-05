@@ -20,7 +20,7 @@
         "title": "DeviceSide",
         "menu_options": {
           "settings": "Settings",
-          "report_device": "Report a device"
+          "report_device": "Report a Device Test Result"
         }
       },
       "settings": {
@@ -35,15 +35,16 @@
         }
       },
       "report_device": {
-        "title": "Report a device",
+        "title": "Report a Device Test Result",
         "description": "Choose a light or switch to report on. DeviceSide opens a prefilled report on GitHub with the device's integration, model and firmware, and the DeviceSide and Home Assistant versions. It never includes the entity ID, name, area or address.",
         "data": {
           "entity_id": "Light or switch"
         }
+      },
+      "report_link": {
+        "title": "Report a Device Test Result",
+        "description": "[Open the draft device report on GitHub]({url}), add the remaining details and submit."
       }
-    },
-    "abort": {
-      "report_link": "[Open the device report]({url}) on GitHub. Check what it contains before you submit it."
     }
   },
   "exceptions": {
