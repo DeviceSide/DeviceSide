@@ -62,12 +62,14 @@ raises or the entity is skipped.
   is `on` or `off`, the state the timer leaves it in; `ends_at` is UTC ISO 8601; `remaining_s` is seconds, to
   one decimal. With no timer running the key is absent. The time left is always the device's: an integration
   that can't read it reports no timer, and DeviceSide never tracks one itself.
+- **Auto-off and auto-on.** A Shelly target carries `auto_off` and `auto_on`: `{duration}` (seconds) while set,
+  `null` while clear. A key is absent when the setting couldn't be read, so absent never means clear.
 - **`merge_response`** turns that shape into a list of the entities' dicts with `entity_id` added to each, so
   a blueprint can loop without knowing the IDs. It requires every value to be a dict and raises if one already
   has an `entity_id` key, so query data never carries `entity_id`.
 - **One entry per target.** A room returns one entry, not one per light as well, so `merge_response` lists each
   target once.
-- **Commands** return nothing in core. DeviceSide keeps an optional status response, one entry per target
+- **Commands and settings** return nothing in core. DeviceSide keeps an optional status response, one entry per target
   that ran: `confirmed`, `sent` or `unchanged`, with `integration` and, where they apply, `detail` and
   `clamped_to`. Skipped targets are left out, as core leaves them out, and `unsupported` or `rejected` never
   reach a response: the call skips or raises instead. A call that has nothing to do succeeds quietly as

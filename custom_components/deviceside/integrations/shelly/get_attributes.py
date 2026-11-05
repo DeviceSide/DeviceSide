@@ -1,5 +1,8 @@
-"""Shelly get_attributes: on/off timer, brightness, color temperature and color from one <Component>.GetStatus."""
+"""Shelly get_attributes: on/off timer, brightness, color temperature and color from <Component>.GetStatus, and the
+persistent auto-off / auto-on from <Component>.GetConfig."""
 
+import asyncio
+import logging
 from datetime import datetime
 from typing import ClassVar
 
@@ -7,12 +10,14 @@ from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 
 from .addressing import address, unsupported_reason
-from .rpc import get_status
+from .rpc import get_config, get_status
 from ...core.adapter import Adapter
 from ...core.color import rgb_row
 from ...core.models import EntityResult, Request, Status, Target
 from ...core.scope import AdapterScope
 from ...core.timer import timer_row
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def status_row(component: str, status: dict, now: datetime) -> dict:
@@ -37,8 +42,21 @@ def status_row(component: str, status: dict, now: datetime) -> dict:
     return row
 
 
+def config_row(config: dict) -> dict:
+    """auto_off and auto_on from one target's GetConfig: {"duration": seconds} when enabled, None when disabled.
+
+    A key the config lacks is left out of the row, as it is when the config can't be read: absent means unknown.
+    """
+    row: dict = {}
+    for key in ("auto_off", "auto_on"):
+        if key in config:
+            row[key] = {"duration": config[f"{key}_delay"]} if config[key] else None
+    return row
+
+
 class ShellyGetAttributes(Adapter[Request]):
-    """One GetStatus per target; a device error raises."""
+    """A GetStatus and a GetConfig per target, concurrently. A GetStatus error raises; a GetConfig error only leaves
+    the auto_off and auto_on rows out, so one unread setting doesn't lose the rest of the row."""
 
     action: ClassVar[str] = "get_attributes"
     integration: ClassVar[str] = "shelly"
@@ -48,6 +66,7 @@ class ShellyGetAttributes(Adapter[Request]):
         # test record covers them.
         capabilities=frozenset({"Switch", "RGBCCT"}),
         confirmable=True,
+        experimental=True,
     )
 
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:
@@ -55,8 +74,15 @@ class ShellyGetAttributes(Adapter[Request]):
 
     async def execute(self, hass: HomeAssistant, request: Request, targets: list[Target]) -> list[EntityResult]:
         async def read(target: Target) -> EntityResult:
-            status = await get_status(target)
+            status, config = await asyncio.gather(get_status(target), get_config(target), return_exceptions=True)
+            if isinstance(status, BaseException):
+                raise status
+            if isinstance(config, BaseException) and not isinstance(config, Exception):
+                raise config  # a cancellation, not a device error
             row = status_row(address(target).component, status, dt_util.utcnow())
-            return self.result(target, Status.CONFIRMED, data=row)
+            if isinstance(config, Exception):
+                _LOGGER.debug("get_attributes GetConfig failed for %s: %r", target.entity_id, config)
+                return self.result(target, Status.CONFIRMED, data=row)
+            return self.result(target, Status.CONFIRMED, data=row | config_row(config))
 
         return await self.gather(hass, targets, read)

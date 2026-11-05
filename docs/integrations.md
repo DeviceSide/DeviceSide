@@ -36,6 +36,18 @@ Assistant would send for them, whatever mode the bulb is in.
 **Cancelling.** Any on or off cancels the timer, whoever sends it: Home Assistant, the Shelly app or another
 integration. A wall switch wired to the device's input is untested and may depend on the input mode.
 
+**Auto-off and auto-on.** `set_auto_off` stores a delay on the device: from then on, every turn-on from any source
+(a button, the Shelly app, a schedule, Home Assistant) turns off again after it, as a garage-door relay needs.
+`set_auto_on` is the reverse. `clear_auto_off` and `clear_auto_on` remove the setting; the output stays as it is.
+`get_attributes` reports each as `{"duration": <seconds>}` when set and `null` when not.
+
+- **It reloads the Shelly entry.** Changing the setting makes the core Shelly integration reload the device's
+  config entry about 60 s later, so its entities go unavailable briefly. The output doesn't change. A call that
+  matches what the device already holds sends nothing and returns `unchanged`, with no reload.
+- **It writes the device's flash.** Set it once, not from a frequent automation.
+- **With `turn_on_for`.** Which delay wins when a `turn_on_for` meets a stored auto-off is not yet tested; a rig
+  run will settle it and this line will say.
+
 ## Zigbee2MQTT
 
 Lights that Zigbee2MQTT announced to Home Assistant through MQTT discovery.
