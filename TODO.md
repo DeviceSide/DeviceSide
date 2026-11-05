@@ -32,6 +32,8 @@ adapter passing its tests, no soak. An RC also needs a rig run since each releas
   device?", `CONTRIBUTING.md` and the bug and device report forms link to it instead of `docs/test-records/`.
 - [x] **Device support, part 3**: a "Report a device" step in DeviceSide's options that opens a prefilled device
   report.
+- [x] **Documented support level**: a `Level` per scope item; Shelly Light, CCT, RGB and RGBW components and Matter
+  lights ship Documented, and Matter confirms a timer only with OnOff on.
 - [ ] **12** v0.1.0: no adapter left `experimental` (`scripts/check_release.py --release`); README feature table
   current. The release notes lead with the domain rename (`device_side` → `deviceside`) and link README's "Coming
   from v0.0.1". The release steps are in `CLAUDE.md` (Releasing).
@@ -45,7 +47,11 @@ adapter passing its tests, no soak. An RC also needs a rig run since each releas
 - [ ] **Forum thread links**: add the thread URL as the contact link in `.github/ISSUE_TEMPLATE/config.yml` and set
   `blank_issues_enabled: false` there, and link the thread from `CONTRIBUTING.md` and the README's Contributing
   section.
+- [ ] **Shelly RGB and RGBW color**: port core's conversions (`light/helper.py` rgb to rgbw with the white split,
+  kelvin to color) so RGB and RGBW take color instead of dropping it, and give `status_row` a branch per component
+  so `get_attributes` reads Light, CCT, RGB and RGBW light state.
 - **9b** Remote tester flow, once an adapter needs hardware the rig lacks
   ([the list](docs/hardware-the-rig-lacks.md)). It includes the Community support level's code, waiting for the
   first contributor: a maintainer per adapter, reading a record's source, checking the record came from an RC
-  installed through HACS, and the public test checklist.
+  installed through HACS, and the public test checklist. A stale Community record could drop its item to
+  Documented, when the Documented conditions hold, instead of blocking the release.

@@ -34,7 +34,7 @@ Details per integration are in [docs/integrations.md](docs/integrations.md). Tes
 
 Maybe. Devices implement the same standards differently, which is why most of these features aren't in Home Assistant core: a feature that works on one Zigbee light can do nothing on another. Each ✅ means the feature passed a test on at least one device on that integration, not on every device. Some devices also accept commands for features they don't fully support, so test each of your devices before relying on a device-native feature.
 
-The tested models are on the [compatibility page](docs/compatibility.md). If yours isn't there, please try it and [report the result](https://github.com/jasonmx/DeviceSide/issues/new?template=device_report.yml), whether it works or not. The quickest way is in Home Assistant: **Settings > Devices & services > DeviceSide > Configure > Report a device**. Pick a light or switch and DeviceSide opens a report with its integration, model, firmware and the versions filled in. It never includes the entity ID, name, area or address.
+The tested models are on the [compatibility page](docs/compatibility.md). Rows marked Documented have no test yet, but DeviceSide sends them the same command as a tested device, documented identically by the maker, so they ship in stable releases and a fault on one is a bug. If yours isn't there, please try it and [report the result](https://github.com/jasonmx/DeviceSide/issues/new?template=device_report.yml), whether it works or not. The quickest way is in Home Assistant: **Settings > Devices & services > DeviceSide > Configure > Report a device**. Pick a light or switch and DeviceSide opens a report with its integration, model, firmware and the versions filled in. It never includes the entity ID, name, area or address.
 
 ## Get started
 
@@ -42,7 +42,7 @@ The tested models are on the [compatibility page](docs/compatibility.md). If you
 
 * At least one of the [ZHA](https://www.home-assistant.io/integrations/zha/), [Z2M](https://www.zigbee2mqtt.io) via [MQTT](https://www.home-assistant.io/integrations/mqtt/), [Shelly](https://www.home-assistant.io/integrations/shelly/), [Hue](https://www.home-assistant.io/integrations/hue) or [Matter](https://www.home-assistant.io/integrations/matter/) integrations installed.
 
-* Not supported yet: Hue Bridge v1, Shelly Gen 1, Zigbee plugs/switches, Matter lights
+* Not supported yet: Hue Bridge v1, Shelly Gen 1, Zigbee plugs/switches
 
 ### Install from HACS
 

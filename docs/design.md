@@ -18,8 +18,8 @@ HA requires it.
   Zigbee or Matter cluster).
 - **Field**: an action parameter, e.g. `brightness`.
 - **Entity domain**: light, switch. "Domain" alone is fine where unambiguous.
-- **Scope**: the entity domains, capabilities and fields an adapter is known to work with, on tested hardware.
-  Outside it, calls are refused as not yet tested.
+- **Scope**: the entity domains, capabilities and fields an adapter is known to work with, each at a `Level`
+  (Verified or Documented). Outside it, calls are refused as not yet tested.
 - **Rig**: the maintainer's live Home Assistant and devices, and the private tool that runs DeviceSide's actions on
   them and writes test records. It is kept outside this repo; the records are its output here.
 - **Test record**: the evidence that an adapter works on real hardware, from a rig run:
@@ -28,6 +28,11 @@ HA requires it.
   **Community**: a passing record from a contributor's release-candidate install through HACS. **Experimental**:
   `experimental=True`, kept until a passing record covers the adapter's scope, so it ships in release candidates
   only. A record older than its adapter's code blocks a release (`check_release.py --records`) until a rerun.
+  **Documented** is a level of a scope item, not of an adapter: a domain or capability with no record that the
+  adapter sends the same call as a Verified item, differing only in addressing, and that the vendor or standard
+  documents identically (conditions: [CLAUDE.md](../CLAUDE.md#release-flag)). Fields are never Documented. It ships
+  in stable releases, and a bug on it is a real bug. A target's level is the weakest among the items its call
+  touches (`AdapterScope.level`).
 - **Device report**: a user's "works" or "doesn't work" for an action on a model that no test record lists. It is
   evidence for a request or a tester, not a claim, so it changes no support level.
 - **Profile**: one test setup on the rig's HA, the entities a run may move by integration and role; a record names the
@@ -179,7 +184,8 @@ adapter's targets at once, so native group commands stay possible.
   released adapter with no test record, or one whose code changed after the commit a record cites. An adapter's code
   is its module, its integration package's `__init__.py` and the package modules it imports, transitively; `core/`
   and `actions/` are not, as they are unit-tested and shared by every adapter. Experimental adapters are exempt.
-  There is no runtime gate: a capability or field nobody has tested is left out of scope, so `supports()` refuses it.
+  There is no runtime gate: a capability or field nobody has tested, and that is not Documented, is left out of
+  scope, so `supports()` refuses it.
 - **Tags** come only from the `cut-release-candidate` and `cut-release` workflows (a tag ruleset refuses others).
   `scripts/check_tag.py` refuses a tag that isn't `vX.Y.Z` or `vX.Y.ZrcN`, isn't above the latest release, or
   doesn't match its branch: an RC comes from `main` or `release/vX.Y.Z`, and a release goes on its latest RC's commit,

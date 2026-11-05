@@ -21,6 +21,10 @@ Each adapter (one action on one integration) has one of these, from its test rec
 - **Verified:** a passing test record from the maintainer's rig, which runs each action against real devices.
 - **Community:** a passing test record from a contributor who installed a release candidate through HACS. It can
   ship in a stable release, after the same soak as any other release candidate.
+- **Documented:** no record yet for one domain or capability of an otherwise tested adapter (a Shelly RGBW strip, a
+  Matter light), but DeviceSide sends it the same call as a Verified one, differing only in what it addresses, and
+  the vendor or standard documents that call identically for both. It ships in stable releases. A bug on it is a
+  real bug, so please report it; a passing record makes it Verified.
 - **Experimental:** not yet covered by a passing test record. It ships in release candidates only, never in a
   stable release.
 

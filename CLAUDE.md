@@ -17,16 +17,22 @@ not; CI checks it.
 
 **Setting it:** for a new action, field or attribute, or integration (including ports), and for a behavior change to
 a released adapter that the rig can't exercise. Leave it off for refactors, performance work and fixes the rig run
-before each RC covers. When unsure, ask.
+before each RC covers, and for a Documented item (below). When unsure, ask.
 
 **Clearing it:** a PR citing a passing test record (`docs/test-records/<integration>/<action>*.md`) that covers the
 adapter's whole scope: `AdapterScope.domains`, `.capabilities`, `.fields`, and each of `.options` on and off.
 
 **Proof follows the call.** A record proves the call an adapter sends and the capability it reaches (Shelly: the RPC
 component), whatever entity domain the target shows: a relay exposed as a `switch` or an on/off `light` rides one
-record. A capability or field nobody has tested is left out of scope and refused, never added on a sibling's proof.
-A native group path is proven once any action of the same adapter class has passed through it and the command has
+record. A native group path is proven once any action of the same adapter class has passed through it and the command has
 passed on one light (PR #204).
+
+**Documented.** A scope item ships without a record, as `Level.DOCUMENTED`, when all of these hold: the adapter
+sends it the same call as a Verified item, differing only in addressing (component, endpoint, entity domain); the
+vendor or standard documents that call identically for both, and no known class of devices departs from it; a
+failure shows as `rejected` or `sent`, never `confirmed` or a wrong device state; and unit tests pin the payload.
+Fields are never Documented: a field changes the call. A record promotes the item to Verified. Anything else
+untested stays out of scope and refused, never added on a sibling's proof.
 
 ## Releasing
 
