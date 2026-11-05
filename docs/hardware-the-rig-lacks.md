@@ -27,11 +27,3 @@ entity domain the same call reaches.
 | Shelly Gen1 (`gen1_unsupported`) | No RPC. Unsupported, not untested |
 | Hue smart (All-Day) scenes (`smart_scene`) | They have no fixed settings to write. Unsupported, not untested |
 | Option `z2m_color_modes` off | Unit-tested only. The rig can't cleanly remove the override the option writes, so no record covers turning it off |
-
-## The rig could prove these (open issues)
-
-Omissions, not missing hardware.
-
-| Entry | Issue |
-|---|---|
-| Shelly relay shown natively as a light (`light_onoff`): skipped for want of an inventory entry. Not covered by `switch_plug` or `light_wrapped`, which reach the call through other entities | #225 |
