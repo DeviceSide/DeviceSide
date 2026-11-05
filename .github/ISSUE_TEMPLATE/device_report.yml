@@ -1,5 +1,5 @@
 name: Device report
-description: Tell us how DeviceSide worked on a device the test records don't list.
+description: Tell us how DeviceSide worked on a device the compatibility page doesn't list.
 labels: ["device-report"]
 body:
   - type: markdown
@@ -7,7 +7,7 @@ body:
       value: |
         Thanks for trying DeviceSide on a new device. A "works" report is as useful as a "doesn't work" one: it's how the list of tested models grows.
 
-        If the feature fails on a device the [test records](https://github.com/jasonmx/DeviceSide/tree/main/docs/test-records) already list, please open a [bug report](https://github.com/jasonmx/DeviceSide/issues/new?template=bug.yml) instead.
+        If the feature fails on a device the [compatibility page](https://github.com/jasonmx/DeviceSide/blob/main/docs/compatibility.md) already list, please open a [bug report](https://github.com/jasonmx/DeviceSide/issues/new?template=bug.yml) instead.
 
         Please don't include entity IDs, device names or MAC addresses.
   - type: input

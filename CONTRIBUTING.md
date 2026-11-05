@@ -9,7 +9,7 @@ help is evidence from devices the maintainer doesn't own: what works, what doesn
   there.
 - **Requests bring proof.** A device request comes with a YAML call that already works on the device, its model and
   firmware, and a promise to test the release candidate.
-- **A bug means a claim is broken.** A bug report is for a device and feature the [test records](docs/test-records/)
+- **A bug means a claim is broken.** A bug report is for a device and feature the [compatibility page](docs/compatibility.md)
   list. Anything else is a device report or a request.
 - **Adapters have an owner who answers.** Each adapter has a maintainer who fixes it and reruns its tests. The
   maintainer of DeviceSide may drop an adapter that nobody maintains, or that keeps breaking.
@@ -40,7 +40,7 @@ the first contributor to reach it sets up the test checklist with the maintainer
    agreement to maintain the adapter. Contact the maintainer before you start, for the test checklist. Read
    [What gets built](#what-gets-built) and [Developing](#developing) first. The
    [hardware the rig lacks](docs/hardware-the-rig-lacks.md) lists built features waiting for a tester.
-4. **Report a bug.** Only for a device and feature the [test records](docs/test-records/) list: open a
+4. **Report a bug.** Only for a device and feature the [compatibility page](docs/compatibility.md) list: open a
    [bug report](https://github.com/jasonmx/DeviceSide/issues/new?template=bug.yml). A failure on any other device
    is a device report.
 
