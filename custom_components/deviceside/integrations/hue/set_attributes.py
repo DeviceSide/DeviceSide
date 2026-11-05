@@ -1,0 +1,115 @@
+"""Hue set_attributes: one write per light, which the bridge stores whether the light is on or off."""
+
+from typing import TYPE_CHECKING, ClassVar
+
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
+
+from . import colors
+from .bridge import bridge_api, resource_id, write_light
+from .report_filter import write_forgetting
+from ...actions.set_attributes import SetAttributesRequest
+from ...core.adapter import Adapter
+from ...core.color import color_xy
+from ...core.ha_entity import ha_entity, replace_if_set
+from ...core.models import EntityResult, Status, Target
+from ...core.scope import AdapterScope
+
+if TYPE_CHECKING:
+    from aiohue.v2.models.light import Light
+
+# Below this a clamp changes nothing: the dimmest step a Hue light makes is 0.4 %.
+_BRIGHTNESS_EPSILON = 0.1
+
+
+def _clamp(current: float, low: float | None, high: float | None) -> float | None:
+    """The brightness min/max_brightness move the current one to, or None when it is already within them."""
+    clamped = current
+    if low is not None:
+        clamped = max(low, clamped)
+    if high is not None:
+        clamped = min(high, clamped)
+    return clamped if abs(clamped - current) > _BRIGHTNESS_EPSILON else None
+
+
+def _write_for(light: Light, request: SetAttributesRequest) -> tuple[dict, bool]:
+    """The write_light arguments for this light, and whether it had to drop a field it cannot take."""
+    fields = request.light
+    write: dict = {}
+    dropped = False
+    if request.brightness is not None or request.min_brightness is not None or request.max_brightness is not None:
+        if light.dimming is None:
+            dropped = True
+        elif request.brightness is not None:
+            write["brightness"] = request.brightness
+        elif (clamped := _clamp(light.dimming.brightness, request.min_brightness, request.max_brightness)) is not None:
+            write["brightness"] = clamped
+    if fields.color_temp_kelvin is not None:
+        if (mirek := colors.mirek(light, fields.color_temp_kelvin)) is None:
+            dropped = True
+        else:
+            write["color_temp_mirek"] = mirek
+    if (xy := color_xy(fields)) is not None:
+        if light.color is None:
+            dropped = True
+        else:
+            write["color_xy"] = colors.clamp_to_gamut(light, xy)
+    return write, dropped
+
+
+def _keep_level(hass: HomeAssistant, target: Target, written: float, absolute: float | None) -> None:
+    """Make the level HA's hue light keeps for its next plain on the one just written.
+
+    After an off with a transition, HA keeps the light's level (`_last_brightness`) and a room's
+    (`_restore_brightness`, on its grouped light), and sends it on the next turn_on without a brightness, which would
+    undo this write. Each is replaced only when set. A room reached as the target's group takes only an explicit
+    brightness: a clamp leaves its lights at different levels, so its kept one stays.
+    """
+    replace_if_set(ha_entity(hass, target.entity_id), "_last_brightness", written)
+    if absolute is None or target.via_group is None:
+        return
+    if (entry := er.async_get(hass).async_get(target.via_group)) is not None and entry.platform == "hue":
+        replace_if_set(ha_entity(hass, target.via_group), "_restore_brightness", absolute)
+
+
+class HueSetAttributes(Adapter[SetAttributesRequest]):
+    """Write the requested attributes to each light; the dispatcher expands a room or zone into its lights.
+
+    A grouped_light write does not reach the lights that are off, so a room is written light by light. A field the
+    light cannot take (color on a white bulb) is dropped and the result says so; a light that can take none of the
+    fields is unchanged. min/max_brightness clamp the brightness the bridge last stored, so they work while off.
+    A write ends any move's prediction for the light, and replaces the level HA keeps after a soft off (_keep_level).
+    """
+
+    action: ClassVar[str] = "set_attributes"
+    integration: ClassVar[str] = "hue"
+    scope: ClassVar[AdapterScope] = AdapterScope(
+        experimental=True,
+        fields=frozenset(
+            {"brightness", "color_temp_kelvin", "hs_color", "rgb_color", "xy_color", "min_brightness", "max_brightness"}
+        ),
+    )
+
+    def supports(self, hass: HomeAssistant, request: SetAttributesRequest, target: Target) -> str | None:
+        if (reason := super().supports(hass, request, target)) is not None:
+            return reason
+        if bridge_api(target) is None:
+            return "bridge_v1"
+        return None
+
+    async def execute(
+        self, hass: HomeAssistant, request: SetAttributesRequest, targets: list[Target]
+    ) -> list[EntityResult]:
+        async def send(target: Target) -> EntityResult:
+            api = bridge_api(target)
+            if (light := api.lights.get(resource_id(target))) is None:
+                return self.result(target, Status.REJECTED, detail="not_on_bridge")
+            write, dropped = _write_for(light, request)
+            if not write:
+                return self.result(target, Status.UNCHANGED, detail="fields_dropped" if dropped else "within_limits")
+            await write_forgetting(hass, light.id, write_light(api, light.id, **write))
+            if "brightness" in write:
+                _keep_level(hass, target, write["brightness"], request.brightness)
+            return self.result(target, Status.SENT, detail="fields_dropped" if dropped else None)
+
+        return await self.gather(hass, targets, send)

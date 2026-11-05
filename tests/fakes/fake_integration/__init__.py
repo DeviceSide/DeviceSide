@@ -1,7 +1,7 @@
 """Integration "fake": a generic integration with native groups whose members it can list."""
 
-from custom_components.device_side.core.resolver import resolve
-from custom_components.device_side.core.scope import AdapterScope, DurationLimits, IntegrationInfo
+from custom_components.deviceside.core.resolver import resolve
+from custom_components.deviceside.core.scope import AdapterScope, DurationLimits, IntegrationInfo
 
 from ..scripted import ScriptedAdapter
 
@@ -13,7 +13,7 @@ def is_group(hass, target) -> bool:
 
 
 def expand_group(hass, target):
-    registry = hass.data["device_side"].registry
+    registry = hass.data["deviceside"].registry
     members = target.state.attributes.get("fake_members", []) if target.state else []
     return [t for m in members if not isinstance(t := resolve(hass, registry, m, target.entity_id), str)]
 
@@ -44,4 +44,10 @@ class FakeTurnOffFor(ScriptedAdapter):
     scope = AdapterScope(domains=frozenset({"switch"}), duration=LIMITS, native_groups=True)
 
 
-ADAPTERS = [FakeTurnOnFor, FakeTurnOffFor]
+class FakeSetAttributes(ScriptedAdapter):
+    action = "set_attributes"
+    integration = "fake"
+    scope = AdapterScope(fields=frozenset({"brightness"}))
+
+
+ADAPTERS = [FakeTurnOnFor, FakeTurnOffFor, FakeSetAttributes]

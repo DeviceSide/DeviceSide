@@ -3,9 +3,9 @@
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.helpers import entity_registry as er
 
-from custom_components.device_side import actions
-from custom_components.device_side.core.registry import AdapterRegistry
-from custom_components.device_side.core.resolver import resolve
+from custom_components.deviceside import actions
+from custom_components.deviceside.core.registry import AdapterRegistry
+from custom_components.deviceside.core.resolver import resolve
 
 from ..conftest import FAKE_INTEGRATIONS
 from ..fixtures.fake import add_fake_entity, add_fake_native_group, add_switch_as_x, fake_config_entry

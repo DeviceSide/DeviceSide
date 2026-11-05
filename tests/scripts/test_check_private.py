@@ -1,6 +1,7 @@
 """scripts/check_private.py: terms from the gitignored files, matched in staged files and messages."""
 
 import importlib.util
+import subprocess
 from pathlib import Path
 
 REPO = Path(__file__).parents[2]
@@ -15,35 +16,30 @@ def write(tmp_path: Path, name: str, text: str) -> Path:
     return path
 
 
-def terms(tmp_path: Path, inventory: str = "", env: str = "", extra: str = "") -> dict[str, str]:
-    return check_private.private_terms(
-        write(tmp_path, "inventory.yaml", inventory) if inventory else tmp_path / "missing.yaml",
-        write(tmp_path, ".env.rig", env) if env else tmp_path / "missing.env",
-        write(tmp_path, ".private-terms", extra) if extra else tmp_path / "missing.terms",
-    )
-
-
 def test_no_private_files_means_no_terms(tmp_path):
-    assert terms(tmp_path) == {}
+    assert check_private.private_terms([tmp_path / ".private-terms", tmp_path / ".private-terms.rig"]) == {}
 
 
 def test_terms_come_from_each_private_file(tmp_path):
-    found = terms(
+    own = write(tmp_path, ".private-terms", "# names\nAcme Street\n\n")
+    rig = write(
         tmp_path,
-        inventory="shelly:\n  - entity_id: light.Kitchen_Relay\n    roles: [light_onoff]\n",
-        env="HA_URL=http://ha.example.lan:8123\nHA_TOKEN=abc.def\n",
-        extra="# names\nAcme Street\n\n",
+        ".private-terms.rig",
+        "# Written by the rig\nlight.kitchen_relay\tlight.Kitchen_Relay\nabc.def\tHA_TOKEN from .env.rig\n",
     )
-    assert found == {
-        "light.kitchen_relay": "light.Kitchen_Relay",
-        "ha.example.lan": "ha.example.lan",
-        "abc.def": "HA_TOKEN from .env.rig",
+    assert check_private.private_terms([own, rig, tmp_path / "missing"]) == {
         "acme street": "Acme Street",
+        "light.kitchen_relay": "light.Kitchen_Relay",
+        "abc.def": "HA_TOKEN from .env.rig",
     }
 
 
-def test_generic_host_is_not_a_term(tmp_path):
-    assert terms(tmp_path, env="HA_URL=http://homeassistant.local:8123\n") == {}
+def test_the_terms_files_are_in_the_main_checkout(tmp_path):
+    main = tmp_path / "main"
+    subprocess.run(["git", "init", "-q", str(main)], check=True)
+    assert check_private.main_checkout(main).resolve() == main.resolve()
+    assert check_private.main_checkout(tmp_path) == tmp_path  # outside a repo
+    assert [path.name for path in check_private.TERMS_FILES] == [".private-terms", ".private-terms.rig"]
 
 
 def test_find_reports_matches_case_insensitively_by_label(tmp_path):

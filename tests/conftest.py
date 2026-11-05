@@ -1,27 +1,19 @@
-import os
-from pathlib import Path
+import time
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 import pytest
 from homeassistant.core import HomeAssistant
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed
 
-from custom_components.device_side import actions
-from custom_components.device_side.const import DOMAIN
-from custom_components.device_side.core.registry import AdapterRegistry
+from custom_components.deviceside import actions
+from custom_components.deviceside.const import DOMAIN
+from custom_components.deviceside.core.errors import TargetNotSupported
+from custom_components.deviceside.core.registry import AdapterRegistry
 
 from .fakes.scripted import SCRIPT
 
 FAKE_INTEGRATIONS = ["tests.fakes.broken_integration", "tests.fakes.fake_integration", "tests.fakes.fake_special"]
-
-RIG_DIR = Path(__file__).parent / "rig"
-
-
-def pytest_ignore_collect(collection_path: Path, config):
-    """Unit runs never import the rig: it talks to the live HA. scripts/rig.py sets DEVICE_SIDE_RIG=1."""
-    if collection_path == RIG_DIR and os.environ.get("DEVICE_SIDE_RIG") != "1":
-        return True
-    return None
 
 
 @pytest.fixture(autouse=True)
@@ -62,6 +54,22 @@ async def setup_production(hass: HomeAssistant) -> MockConfigEntry:
 
 
 async def call(hass: HomeAssistant, service: str, data: dict, return_response: bool = True):
-    return await hass.services.async_call(
-        DOMAIN, service, data, blocking=True, return_response=return_response
-    )
+    return await hass.services.async_call(DOMAIN, service, data, blocking=True, return_response=return_response)
+
+
+async def refusal(hass: HomeAssistant, service: str, data: dict) -> str:
+    """The reason a call raises with for a named target that can never take the action."""
+    with pytest.raises(TargetNotSupported) as raised:
+        await call(hass, service, data)
+    return raised.value.reason
+
+
+def wall_clock_now() -> datetime:
+    """Wall-clock now, which async_fire_time_changed measures against (dt_util.utcnow can be frozen)."""
+    return datetime.fromtimestamp(time.time(), UTC)
+
+
+async def advance(hass: HomeAssistant, start: datetime, seconds: float) -> None:
+    """Fire the timers due by start + seconds and let what they started finish."""
+    async_fire_time_changed(hass, start + timedelta(seconds=seconds))
+    await hass.async_block_till_done()

@@ -2,29 +2,30 @@
 
 Everybody is invited and welcome to contribute.
 
-We're looking for four kinds of help in particular:
+We're looking for three kinds of help in particular:
 
-- **Testers.** No coding needed. You just need to have several lights and switches running on Matter, ZHA, Zigbee2MQTT or Shelly. You install an experimental pre-release, run a few automations, and tell us what happened. The tests will take 5-15 minutes. A successful test unlocks the feature for other users. Please [open an issue](https://github.com/jasonmx/device-side/issues/new?title=Volunteer%20tester&body=I%27d%20like%20to%20volunteer%20for%20testing.%0A%0AIntegrations%20my%20lights%20and%20switches%20use%3A%0A%0AFeatures%20I%27d%20like%20to%20test%3A%0A) to get in touch, listing the [features](README.md#feature-availability) you'd like to test and the integrations your lights and switches use.
-- **Feature requests.** Tell us which on-device features and integrations you'd most like added next, and why. A Home Assistant Community thread for this is coming shortly after the v0.0.1 release.
-- **Bug reports.** If something doesn't look or work right, please [open an issue](https://github.com/jasonmx/device-side/issues/new?body=What%20happened%3A%0A%0AWhat%20I%20expected%3A%0A%0ASteps%20to%20reproduce%3A%0A%0ADevice%20Side%20version%20and%20integration%3A%0A) and let us know.
+- **Feature requests.** Tell us which on-device features and integrations you want most, and why, via the DeviceSide thread on Home Assistant Community.
+- **Bug reports.** If something doesn't look or work right, please [open an issue](https://github.com/jasonmx/DeviceSide/issues/new?body=What%20happened%3A%0A%0AWhat%20I%20expected%3A%0A%0ASteps%20to%20reproduce%3A%0A%0ADeviceSide%20version%20and%20integration%3A%0A) and let us know.
 - **Code.** Add support for a new device capability or integration, or fix a bug. Read
   [What gets built](#what-gets-built) before you start, so your work isn't turned down for scope.
 
 ## What gets built
 
-- **On-device features only.** Our goal is to unlock on-device features that aren't easily available in HA, never faking them with HA-side timers or loops. We build the building blocks; experiences built on top of them, such as blueprints and dashboard cards, belong in their own repos.
-- **Focus on features with broad appeal.** An on-device feature needs to be regularly requested by users in forums or on GitHub, and to exist on devices supported by a [top-30 Home Assistant integration](https://analytics.home-assistant.io/integrations/). This keeps development focused on the most important features while keeping the codebase compact to simplify maintenance.
-- **Every integration and entity domain is welcome.** We're starting with lights and switches on Matter, ZHA, Zigbee2MQTT and Shelly, and lights on Hue. Once a feature qualifies, any integration can add it (e.g. TP-Link, Z-Wave), and other entity domains (e.g. fans, climate) are welcome too.
-- **We build for people, not machines.** We design and name our actions around how people think, not how devices operate. For example, a `stop` action ends a dimming transition, because `brightness_step: 0` is unintuitive.
-- **Fill gaps and fix sharp edges.** We don't replicate what Core and the automation editor can already do easily.
+- **On-device features only.** Our goal is to unlock features that already exist on devices and are hard to access in HA. We never simulate features with Home Assistant timers or loops.
+- **Features with broad appeal.** We focus on features that users keep asking for in community forums and feature requests, and which are supportable by at least one of the [top-30 Home Assistant integration](https://analytics.home-assistant.io/integrations/). That keeps us focused on the most important features, while keeping the codebase simple and easy to maintain.
+- **Gap fillers.** We build features that are missing from or really hard to use in HA. We avoid replicating what Core and the automation editor already do well.
+- **New integrations and entity domains.** Contributors are welcome to add new integrations (e.g. TP-Link, Z-Wave) and new entity domains (e.g. fans, climate), subject to the broad appeal principle above.
+- **Accessible to non-tech users.** We create simple actions that are easily understood by humans. For example, we end dimming transitions with a `stop` action, because `set brightness_step: 0` is not intuitive.
 
 ## Developing
 
-- To test on your own Home Assistant, see [docs/contributing/testing.md](docs/contributing/testing.md).
+- An adapter leaves `experimental` on a test record from the maintainer's rig, which runs each action against real
+  devices and is kept outside this repo. Hardware it lacks is listed in
+  [docs/hardware-the-rig-lacks.md](docs/hardware-the-rig-lacks.md): if you have some, say so in an issue.
 - If you use a coding agent, point it at [CLAUDE.md](CLAUDE.md). It holds the repo's rules.
 - Open pull requests against whichever is newer: `main` or the latest `release/vX.Y.Z` branch.
   Just after a release there may be no release branch.
-- Set up with `uv sync`, then `uv pip install -r requirements_test.txt`.
+- Set up with `uv sync`. To add a dependency, use `uv add --dev`, not `uv pip install`.
 - Run `.venv/bin/pytest` and `pre-commit run --all-files` before you push. CI runs both.
-- Run `/audit-code` on your diff in Claude Code before opening a pull request. If you don't use it, ask for an audit in the PR.
-- A new action, field or integration starts with `experimental=True` on its adapter, which waives the coverage bar so you can try things quickly. Fixes and refactors don't set it.
+- If you use Claude, run `/audit-code` on your diff before opening a pull request. Else ask for an audit in the PR.
+- A new action, field or integration starts with `experimental=True` on its adapter, which keeps it out of stable releases until it is tested on hardware. Every adapter needs 95% line coverage either way. Fixes and refactors don't set it.

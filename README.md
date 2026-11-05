@@ -1,97 +1,103 @@
-# Device Side
+# DeviceSide
 
-Device Side unlocks popular on-device features for lights and switches, like on-with-timed-off, via the Matter, Zigbee, Shelly and Hue integrations. Device-side features are more reliable than HA automations, as they work even when HA crashes or a network gets congested.
+[![HACS Default](https://img.shields.io/badge/HACS-Default-orange.svg)](https://hacs.xyz/) [![Latest Version](https://img.shields.io/github/v/release/jasonmx/DeviceSide?sort=date)](https://github.com/jasonmx/DeviceSide/releases) [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/jasonmx)
 
-**Disclaimers:**
+DeviceSide unlocks native features in your lights, switches and plugs on the Zigbee, Shelly, Philips Hue and Matter integrations.
 
-1. **Device compatibility:** Some device makes and models act on commands but don't acknowledge them, and some acknowledge but don't act. Test Device Side's actions on your own devices before relying on them.
+* **Turn on with timer:** Devices turn themselves off after a set time, even if HA goes offline or restarts.
 
-2. **AI-assisted coding:** I code with AI. I've designed, coded and built products for 35 years, so have a rough idea what I'm doing. Every feature is only released after testing on real hardware.
+* **Dim smoothly:** Press to dim and release to stop, using third-party buttons. No more jittery steps or overshoots.
 
-If you're OK with these, let's dive in!
+* **Change colors smoothly:** Press to change color, release to stop.
 
-# Get Started
+* **Set lights without turning on:** Pre-stage brightness, color, CT and scenes, so lights come on without unsightly color flashes or brightness extremes.
 
-### Install from HACS
+* **Zero setup:** DeviceSide connects to your devices automatically via the core integrations, and [patches some usability quirks](#usability-patches) in Z2M and Hue.
 
-1. Open the Device Side HACS repository
+## Key Features
 
-[![Open the Device Side HACS repository in your Home Assistant instance.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=jasonmx&repository=device-side&category=integration)
-
-2. Click **Download**
-3. Restart Home Assistant
-4. Add the integration
-
-[![Add Device Side to your Home Assistant instance.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=device_side)
-
-# Feature Availability
-
-|                        |         Shelly          | Zigbee2MQTT | ZHA | Matter | Hue |
-|:---------------------- |:-----------------------:|:-----------:|:---:|:------:|:---:|
-| On With Timed Off      | ✨ switches<br>🙋 lights |     🔵      | 🔵  |   🔵   | 🔵  |
-| Off With Timed On      | ✨ switches<br>🙋 lights |     ❌      | ❌  |   ❌   | 🔵  |
-| Set Turn-On Levels     |           🔵            |     🔵      | 🔵  |   🔵   | 🔵  |
-| Hold-to-Dim            |           🔵            |     🔵      | 🔵  |   🔵   | ✅¹ |
-| Set Without Turning On |           🔵            |     🔵      | 🔵  |   🔵   | ✅¹ |
-
-✨ New, tested on real hardware · ✅ Stable · 🙋 Needs a volunteer to test it
-([help test](CONTRIBUTING.md)) · 🔵 Roadmap · ❌ Appears not possible
-
-¹ Available now in [Hue Smooth Dimming](https://github.com/jasonmx/hue-smooth-dimming), and moving into Device Side.
+| Feature                                                                             | ZHA | Z2M | Shelly | Hue Bridge | Matter |
+|:----------------------------------------------------------------------------------- |:---:|:---:|:------:|:----------:|:------:|
+| [Turn on with timer](#turn-on-with-timer)                                           | ✅   | ✅   | ✅      |            | ✅      |
+| [Turn off with timer](#turn-off-with-timer)                                         |     |     | ✅      |            |        |
+| [Auto-off](#auto-off-and-auto-on)                                                   |     |     | ✅      |            |        |
+| [Auto-on](#auto-off-and-auto-on)                                                    |     |     | ✅      |            |        |
+| [Smooth dimming](#smooth-dimming)                                                   | ✅   | ✅   |        | ✅          |        |
+| [Smooth saturation change](#smooth-color-transitions)                               | ✅   | ✅   |        | ✅          |        |
+| [Smooth hue change](#smooth-color-transitions)                                      | ✅   | ✅   |        |            |        |
+| [Set brightness, color or CT<br>without turning on](#set-lights-without-turning-on) | ✅   | ✅   |        | ✅          |        |
+| [Set scene without turning on](#set-lights-without-turning-on)                      |     |     |        | ✅          |        |
+| [Get attributes](#get-attributes)                                                   | ✅   | ✅   | ✅      | ✅          | ✅      |
 
 Details per integration are in [docs/integrations.md](docs/integrations.md).
 
-# Usage
+**Warning:** Some devices accept commands for features that they don't fully support. Test each of your devices with DeviceSide before relying on device-native features.
 
-## Timed on/off
+## Get started
 
-Timer runs on the device. Use it to:
+### Requirements
 
-- Cut power to a heater or ironing station after 4 hours, in case someone forgets to turn it off.
-- Run a bathroom fan for 20 minutes after a shower.
-- Power-cycle your router via a smart plug.
+* At least one of the [ZHA](https://www.home-assistant.io/integrations/zha/), [Z2M](https://www.zigbee2mqtt.io) via [MQTT](https://www.home-assistant.io/integrations/mqtt/), [Shelly](https://www.home-assistant.io/integrations/shelly/), [Hue](https://www.home-assistant.io/integrations/hue) or [Matter](https://www.home-assistant.io/integrations/matter/) integrations installed.
 
-| Action                     | Description                                     |
-|:-------------------------- |:----------------------------------------------- |
-| `device_side.turn_on_for`  | Turns on, then off automatically after a delay. |
-| `device_side.turn_off_for` | Turns off, then on automatically after a delay. |
+* Not supported yet: Hue Bridge v1, Shelly Gen 1, Zigbee plugs/switches, Matter lights
 
-| Field               | Actions     | Description                                                                                                           |
-|:------------------- |:----------- |:--------------------------------------------------------------------------------------------------------------------- |
-| `target`            | all         | Lights and switches (required)                                                                                        |
-| `duration`          | all         | How long until the device flips back, 50 ms to 7 days (required)                                                      |
-| `brightness`        | turn_on_for | Brightness (1–255). 🔒                                                                                                |
-| `color_temp_kelvin` | turn_on_for | Color temperature (2000–6500 K). 🔒                                                                                   |
-| `rgb_color`         | turn_on_for | Color as `[red, green, blue]` (0–255 each). 🔒                                                                        |
-| `hs_color`          | turn_on_for | Color as `[hue, saturation]` (0–360, 0–100). 🔒                                                                       |
-| `xy_color`          | turn_on_for | Color as `[x, y]`. 🔒                                                                                                 |
-| `transition`        | turn_on_for | Fade time (0–300 s). 🔒                                                                                               |
-| `response_variable` | all         | Name of a variable that receives a result for each entity (optional). In the visual editor it's **Response variable** |
+### Install from HACS
 
-A field marked 🔒 is `unsupported` in the release, as it's awaiting testing on real hardware. You can test it for us: see [CONTRIBUTING.md](CONTRIBUTING.md).
+<details>
+<summary>Show me how</summary>
 
-**Cancel:** to cancel a timer, send a `turn_on`, `turn_off`, `toggle` or new timed on/off command.
+1. Open the DeviceSide HACS repository
 
-#### Results
+   [![Open the DeviceSide HACS repository in your Home Assistant instance.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=jasonmx&repository=DeviceSide&category=integration)
 
-Each targeted entity gets a `status` in the response variable:
+2. Click **Download**
 
-| Status        | Meaning                                            |
-| ------------- | -------------------------------------------------- |
-| `confirmed`   | Command accepted; device reported a running timer  |
-| `sent`        | Command accepted; timer not confirmed in read-back |
-| `unsupported` | Entity or field not supported; `detail` says why   |
-| `rejected`    | Command failed; `detail` says why                  |
+3. Restart Home Assistant
 
-If a requested duration is out of range, `clamped_to` reports the duration the device actually used, in seconds.
+4. Add the integration
 
-The action succeeds if at least one entity returns `confirmed` or `sent`. If every entity returns `unsupported` or `rejected`, the action fails instead: no response is returned, and the automation stops there, like any failed action. The error message lists each entity with its reason.
+   [![Add DeviceSide to your Home Assistant instance.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=deviceside)
 
-##### YAML Example: Heater off after 4 hours, with a warning
+</details>
+
+### Coming from [Hue Smooth Dimming](https://github.com/jasonmx/hue-smooth-dimming)
+
+DeviceSide's actions are drop-in replacements for Hue Smooth Dimming, apart from a name change on the `raise` and `lower` actions. To migrate to DeviceSide, make these YAML edits in your automations:
+
+* change `hue_dimmer` to `deviceside`. E.g. `hue_dimmer.stop` → `deviceside.stop`
+
+* change `raise` to `raise_brightness`
+
+* change `lower` to `lower_brightness`
+
+### Coming from v0.0.1
+
+v0.1.0 renamed the integration's domain from `device_side` to `deviceside`. HACS installs it in a new folder and Home Assistant treats it as a new integration, so:
+
+1. Delete the old Device Side integration in Settings > Devices & services
+2. Update to v0.1.0 in HACS
+3. Delete the `custom_components/device_side` folder, then restart Home Assistant
+4. Add DeviceSide again, and set its options again if you changed them
+5. In your automations and scripts, change `device_side.` to `deviceside.`, e.g. `device_side.turn_on_for` → `deviceside.turn_on_for`
+
+## Usage
+
+### Turn on with timer
+
+Action: `deviceside.turn_on_for`
+
+Also known as: auto off, On with timed off (Zigbee, Matter), `on_time` (Zigbee2MQTT), `toggle_after` (Shelly), countdown.
+
+Turn on, then off after a delay. Timer runs on the device, for this turn-on only: it doesn't change a Shelly's own [Auto-off](#auto-off-and-auto-on) setting. Example use cases:
+
+- Cut power to a heater or ironing station automatically, in case someone leaves it on.
+- Run a fan for 20 minutes after a shower.
+
+#### YAML example: heater off after 4 hours, with a warning
 
 ```yaml
 actions:
-  - action: device_side.turn_on_for
+  - action: deviceside.turn_on_for
     target:
       entity_id: switch.heater
     data:
@@ -104,6 +110,299 @@ actions:
           message: "Heater timer not confirmed: {{ result['switch.heater'].status }}"
 ```
 
-# License
+| Field               | Description                                                                                                            |
+|:------------------- |:---------------------------------------------------------------------------------------------------------------------- |
+| `target`            | Lights and switches (required)                                                                                         |
+| `duration`          | Delay until the device turns off (required). Up to 7 days on Shelly, 6,553.4 s (about 1 h 49 min) on Zigbee and Matter |
+| `brightness`        | Brightness (1–255). ZHA, Z2M, Shelly                                                                                   |
+| `color_temp_kelvin` | Color temperature (2000–6500 K). ZHA, Z2M, Shelly                                                                      |
+| `rgb_color`         | Color as `[red, green, blue]` (0–255 each). Z2M, Shelly                                                                |
+| `hs_color`          | Color as `[hue, saturation]` (0–360, 0–100). Z2M, Shelly                                                               |
+| `xy_color`          | Color as `[x, y]`. Z2M, Shelly                                                                                         |
+| `transition`        | Fade time (0–300 s). Z2M, Shelly                                                                                       |
+| `response_variable` | Variable that receives the response from each entity (optional)                                                        |
 
-MIT
+<details>
+<summary>Results</summary>
+
+Each targeted entity reports a `status` in the response variable:
+
+| Status      | Meaning                                            |
+| ----------- | -------------------------------------------------- |
+| `confirmed` | Command accepted; device reported a running timer  |
+| `sent`      | Command accepted; timer not confirmed in read-back |
+| `unchanged` | Nothing to send; `detail` says why                 |
+
+If a requested duration is out of range, `clamped_to` reports the duration the device actually used, in seconds. A field the entity can't take, like brightness on a plug, is dropped and the rest of the call goes ahead, with `detail: fields_dropped`.
+
+If a device fails, the action fails and stops the automation.
+
+</details>
+
+#### Cancel a timer
+
+The following actions cancel the timer, on a device that's on:
+
+* Turn off
+
+* Start a new timer with either action (restarts the countdown)
+
+* Turn on (i.e. leave on). Tested on Shelly only
+
+### Turn off with timer
+
+Action: `deviceside.turn_off_for`
+
+Also known as: auto on, `toggle_after` (Shelly), countdown.
+
+Turn off, then on after a delay. Timer runs on the device. Example use case:
+
+- Power-cycle a router.
+
+| Field               | Description                                                     |
+|:------------------- |:--------------------------------------------------------------- |
+| `target`            | Shelly lights and switches (required)                           |
+| `duration`          | Delay until the device turns on (required). Up to 7 days        |
+| `response_variable` | Variable that receives the response from each entity (optional) |
+
+<details>
+<summary>Results</summary>
+
+Each targeted entity reports a `status` in the response variable:
+
+| Status      | Meaning                                            |
+| ----------- | -------------------------------------------------- |
+| `confirmed` | Command accepted; device reported a running timer  |
+| `sent`      | Command accepted; timer not confirmed in read-back |
+| `unchanged` | Nothing to send; `detail` says why                 |
+
+If a requested duration is out of range, `clamped_to` reports the duration the device actually used, in seconds.
+
+If a device fails, the action fails and stops the automation.
+
+</details>
+
+#### Cancel a timer
+
+The following actions cancel the timer, on a device that's off:
+
+* Turn on
+
+* Start a new timer with either action (restarts the countdown)
+
+* Turn off (i.e. leave off)
+
+### Auto-off and auto-on
+
+Actions: `deviceside.set_auto_off`, `deviceside.set_auto_on`, `deviceside.clear_auto_off`, `deviceside.clear_auto_on`
+
+Also known as: Auto OFF and Auto ON (Shelly app), inching.
+
+Store a delay on the device. From then on, every turn-on from any source (a wall button, the Shelly app, a schedule or Home Assistant) turns the device off again after that delay. Auto-on is the reverse. The setting lasts until you clear it. Example use cases:
+
+- Pulse a garage door opener's relay for 1 second, whatever presses it.
+- Make sure a bathroom fan never runs for more than an hour.
+
+#### YAML example: garage door relay
+
+Run this once, from **Developer tools > Actions** for example. The device keeps the setting.
+
+```yaml
+action: deviceside.set_auto_off
+target:
+  entity_id: switch.garage_door
+data:
+  duration: 1
+```
+
+| Field               | Description                                                                                                      |
+|:------------------- |:---------------------------------------------------------------------------------------------------------------- |
+| `target`            | Shelly lights and switches (required)                                                                            |
+| `duration`          | `set_auto_off`: delay after each turn-on until the device turns off. `set_auto_on`: the reverse. Required        |
+| `response_variable` | Variable that receives the response from each entity (optional)                                                  |
+
+`clear_auto_off` and `clear_auto_on` take only a target, and leave the device on or off as it is.
+
+<details>
+<summary>Results</summary>
+
+Each targeted entity reports a `status` in the response variable:
+
+| Status      | Meaning                                                   |
+| ----------- | --------------------------------------------------------- |
+| `confirmed` | Setting written; the device reported it in read-back      |
+| `sent`      | Setting written; not confirmed in read-back               |
+| `unchanged` | The device already holds this setting, so nothing is sent |
+
+If a device fails, the action fails and stops the automation.
+
+</details>
+
+#### Good to know
+
+* Changing the setting makes Home Assistant reload the Shelly device about a minute later, so its entities are briefly unavailable. The output doesn't change.
+* Each change is written to the device's flash memory. Set it once, not from a frequent automation.
+* [Get attributes](#get-attributes) reports both settings.
+
+### Smooth dimming
+
+Create "press to dim, release to stop" automations. Transitions run natively on the device.
+
+#### YAML example: two-button dimmer
+
+```yaml
+left_button_held:
+  - action: deviceside.lower_brightness
+
+right_button_held:
+  - action: deviceside.raise_brightness
+
+buttons_released:
+  - action: deviceside.stop
+```
+
+| Action                         | Description                                    |
+|:------------------------------ |:---------------------------------------------- |
+| `deviceside.raise_brightness` | Start raising brightness, turning the light on |
+| `deviceside.lower_brightness` | Start lowering brightness                      |
+| `deviceside.stop`             | Freeze every move on the target where it is    |
+
+| Field        | Description                                                                                                                                |
+|:------------ |:------------------------------------------------------------------------------------------------------------------------------------------ |
+| `target`     | Lights and groups (required)                                                                                                               |
+| `sweep_time` | Seconds a full 0–100% sweep takes (default 5 s). Raise and lower only                                                                      |
+| `limit`      | Raise: maximum brightness (default 100%).<br>Lower: minimum brightness (default 0%). The light turns off at 0%; choose 0.4%+ to keep it on |
+
+To move several lights in step, target a Hue room or zone, or a Zigbee2MQTT or ZHA group, instead of separate lights. One group-wide Zigbee message then moves them together.
+
+### Smooth color transitions
+
+Create "press to change color, release to stop" automations. Transitions run natively on the device.
+
+#### YAML example: hold to cycle color
+
+```yaml
+button_held:
+  - action: deviceside.raise_hue
+
+button_released:
+  - action: deviceside.stop
+```
+
+| Action                         | Description                                                     |
+|:------------------------------ |:--------------------------------------------------------------- |
+| `deviceside.raise_saturation` | Start raising saturation, toward a richer color                 |
+| `deviceside.lower_saturation` | Start lowering saturation, toward white                         |
+| `deviceside.raise_hue`        | Start cycling hue: red, yellow, green, blue. Runs until `stop`  |
+| `deviceside.lower_hue`        | Start cycling hue: red, magenta, blue, green. Runs until `stop` |
+| `deviceside.stop`             | Freeze every move on the target where it is                     |
+
+| Field        | Description                                                                                                       |
+|:------------ |:----------------------------------------------------------------------------------------------------------------- |
+| `target`     | Lights and groups (required)                                                                                      |
+| `sweep_time` | Seconds a full 0–100% saturation sweep or one turn of the color wheel takes (default 5 s). Raise and lower only   |
+| `limit`      | Raise saturation: maximum (default 100%).<br>Lower saturation: minimum (default 0%). <br/>Hue moves take no limit |
+
+Groups move in step, as for dimming.
+
+### Set lights without turning on
+
+Set scenes, brightness, color and color temperature while the lights are off, so that they turn on smoothly without unsightly color or brightness flashes.
+
+#### YAML example: set scene for next turn-on
+
+```yaml
+description: Stage the Relax scene in the living room at 22:00, without turning the lights on.
+triggers:
+  - trigger: time
+    at: "22:00:00"
+actions:
+  - action: deviceside.set_scene
+    target:
+      entity_id: scene.living_room_relax
+```
+
+To set brightness for the next turn-on from the visual editor, see [docs/examples/set-turn-on-brightness.md](docs/examples/set-turn-on-brightness.md).
+
+#### Set brightness, color or CT
+
+Action: `deviceside.set_attributes`. Sets brightness, color temp or color without changing on/off state.
+
+| Field               | Description                                 |
+|:------------------- |:------------------------------------------- |
+| `target`            | Lights and groups (required)                |
+| `brightness`        | Brightness level (%)                        |
+| `min_brightness`    | Enforce a minimum brightness (%)            |
+| `max_brightness`    | Enforce a maximum brightness (%)            |
+| `color_temp_kelvin` | Color temperature (K)                       |
+| `rgb_color`         | Color as `[red, green, blue]` (0–255 each)  |
+| `hs_color`          | Color as `[hue, saturation]` (0–360, 0–100) |
+| `xy_color`          | Color as `[x, y]`                           |
+
+#### Set scene
+
+Action: `deviceside.set_scene`. Sets a Hue scene without turning its lights on.
+
+| Field    | Description           |
+|:-------- |:--------------------- |
+| `target` | Hue scenes (required) |
+
+### Get attributes
+
+Action: `deviceside.get_attributes`
+
+Read device attributes that aren't exposed reliably by Home Assistant:
+
+* Check a device's on/off timer.
+
+* Check a Shelly device's auto-off and auto-on settings.
+
+* Check brightness, color or color temperature while a light is off or transitioning.
+
+#### YAML example: how long until the heater turns off
+
+```yaml
+actions:
+  - action: deviceside.get_attributes
+    target:
+      entity_id: switch.heater
+    response_variable: result
+  - action: notify.notify
+    data:
+      message: >
+        {% set timer = result['switch.heater'].get('timer') %}
+        {% if timer %}Heater turns {{ timer.turns }} in {{ (timer.remaining_s / 60) | round | int }} min.
+        {% else %}No heater timer running.{% endif %}
+```
+
+| Field    | Description                    |
+|:-------- |:------------------------------ |
+| `target` | Lights and switches (required) |
+
+A record holds the keys the device reports: `brightness` (%), `color_temp_kelvin`, `rgb_color`, `hs_color`, `xy_color`, and `timer` while one is running. On Shelly it also holds `auto_off` and `auto_on`.
+
+The `timer` key holds `turns` (`on` or `off`), `ends_at` (UTC) and `remaining_s`.
+
+`auto_off` and `auto_on` each hold `duration` (seconds) while set, and are `null` while clear. A record without them means the setting couldn't be read.
+
+## Usability patches
+
+* **Color lights on Zigbee2MQTT:**
+
+  * Home Assistant shows the wrong color for full-color bulbs in hue-saturation (HS) mode. DeviceSide fixes this by [announcing both of their color modes](docs/integrations.md#what-deviceside-changes-in-zigbee2mqtt).
+
+  * Hue bulbs: before a `turn_on_for` with a color, DeviceSide turns on Z2M's Hue native control setting for that bulb, so it comes on in the new color instead of flashing its last one.
+
+* **Hue Bridge:** When a brightness move starts, the bridge reports its target brightness (e.g. 0% or 100%) to Home Assistant, which is jarring for moves that you plan to stop. DeviceSide suppresses the bridge's report when a transition starts, and reports the new brightness once the transition stops.
+
+The HS mode and Hue Bridge patches are on by default; turn them off in DeviceSide's options.
+
+## Uninstall
+
+This integration follows standard integration removal.
+
+1. Open the integration
+
+   [![Open the DeviceSide integration in your Home Assistant instance.](https://my.home-assistant.io/badges/integration.svg)](https://my.home-assistant.io/redirect/integration/?domain=deviceside)
+
+2. Open the ⋮ menu and choose **Delete**

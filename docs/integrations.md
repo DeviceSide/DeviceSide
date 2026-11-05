@@ -1,93 +1,198 @@
 # Integrations
 
-One section per integration, each on the same template: what Device Side talks to, how a target
-entity becomes a device address, notes per action, sharp edges, and a scope block generated
-from the code. The generated blocks are rewritten by `scripts/gen_docs.py`; edit the prose around
-them, never inside them.
+What the [README](../README.md) features do on each integration, their limits, and what DeviceSide changes in your
+setup. How the commands work on the wire, and what was measured on real bulbs, is in
+[integration-internals.md](integration-internals.md).
+
+## All integrations
+
+- **Refused targets.** A target that can't take an action fails the call if you named it, and is skipped if it
+  came through an area, device, label or group ([action-behavior.md](action-behavior.md)). The error names the
+  reason, such as `capability_not_tested`.
+- **Groups.** For timers and smooth moves, Zigbee2MQTT and ZHA groups and Hue rooms and zones get one
+  command, so their lights move together. `set_attributes` writes a ZHA group's or Hue room's lights one by one.
+  Any other group, such as a light group helper, is expanded and each light gets its own command.
+- **Wrapped switches.** A `switch_as_x` light over a supported switch is treated as that switch: light fields are
+  dropped and the timer still runs. An inverted helper is refused (`inverted_wrapper`).
+- **No color temperature moves.** Every stop of a color temperature fade on a Hue bulb, the Hue bridge's own
+  included, makes a visible jump, so there is no raise or lower for it.
+- **Fades pick up where the last one stopped.** DeviceSide remembers each raise, lower and `stop` for a few
+  seconds after it ends (2 s on Zigbee, 15 s on Hue), so releasing and pressing again doesn't jump. A light
+  command from Home Assistant clears it at once; a change from a remote or app in that window may be missed.
+- **Dimming to 0 % is a soft off.** The light fades out and keeps its level, so a plain turn on brings it back
+  there. Raising brightness on a light that is off fades in from the bottom.
 
 ## Shelly
 
-### What it talks to
+Gen2 and later (Plus, Pro, Gen3, Gen4): relays, whether Home Assistant shows them as a switch or a light, and RGBCCT
+bulbs. Tested on Gen3 and Gen4 relays (firmware 2.0.1) and a Multicolor Bulb Gen3 (firmware 2.0.3). Other Shelly
+lights (Light, CCT, RGB, RGBW) take the same command but are refused (`capability_not_tested`) until one passes
+a rig run ([test records](test-records/)). Gen1 is refused (`gen1_unsupported`).
 
-Shelly Gen2 and later devices (Plus, Pro, Gen3, Gen4), through the RPC connection the core
-`shelly` integration already holds open. Device Side adds no connection of its own and needs no
-credentials beyond the ones the Shelly integration was set up with. Gen1 devices (CoIoT) have no
-flip-back timer in the API Device Side uses, and are reported `unsupported` with detail
-`gen1_unsupported`.
+**Turn on and turn off with timer.** The device runs the timer and confirms it. A transition is at least 0.5 s. A color
+temperature outside the bulb's range is clamped. `hs_color` and `xy_color` are sent as the RGB color Home
+Assistant would send for them, whatever mode the bulb is in.
 
-### How targets resolve
+**Cancelling.** Any on or off cancels the timer, whoever sends it: Home Assistant, the Shelly app or another
+integration. A wall switch wired to the device's input is untested and may depend on the input mode.
 
-An entity belongs to this integration when its entity registry entry comes from `shelly`. The RPC component and
-instance come from the entity's unique ID, which the Shelly integration writes as
-`<mac>-<key>`:
+**Auto-off and auto-on.** `set_auto_off` stores a delay on the device: from then on, every turn-on from any source
+(a button, the Shelly app, a schedule, Home Assistant) turns off again after it, as a garage-door relay needs.
+`set_auto_on` is the reverse. `clear_auto_off` and `clear_auto_on` remove the setting; the output stays as it is.
+`get_attributes` reports each as `{"duration": <seconds>}` when set and `null` when not.
 
-| Key | RPC component (capability) | Entity domains | In scope | `light.turn_on` fields it can take |
-|---|---|---|---|---|
-| `switch:N` | `Switch` | `switch`, or `light` for a relay set to "light" | yes | none |
-| `light:N` | `Light` | `light` | not yet | `brightness`, `transition` |
-| `cct:N` | `CCT` | `light` | not yet | `brightness`, `transition`, `color_temp_kelvin` |
-| `rgb:N` | `RGB` | `light` | not yet | `brightness`, `transition`, `rgb_color` |
-| `rgbw:N` | `RGBW` | `light` | not yet | `brightness`, `transition`, `rgb_color` |
-| `rgbcct:N` | `RGBCCT` | `light` | not yet | `brightness`, `transition`, `color_temp_kelvin`, `rgb_color` |
+- **It reloads the Shelly entry.** Changing the setting makes the core Shelly integration reload the device's
+  config entry about 60 s later, so its entities go unavailable briefly. The output doesn't change. A call that
+  matches what the device already holds sends nothing and returns `unchanged`, with no reload.
+- **It writes the device's flash.** Set it once, not from a frequent automation.
+- **With `turn_on_for`.** Which delay wins when a `turn_on_for` meets a stored auto-off is not yet tested; a rig
+  run will settle it and this line will say.
 
-Any other Shelly entity (virtual booleans, scripts, circuit breakers) has no flip-back timer and
-returns `unsupported` with detail `not_addressable`. Shelly has no device-side groups, so a light
-group helper over Shelly lights is expanded and each member gets its own command.
+## Zigbee2MQTT
 
-A `switch_as_x` light over a Shelly switch is served as that switch: the helper forwards on/off
-unchanged, so the device receives the switch's own `Switch.Set`, and the result is keyed on the
-light's entity ID. Light fields sent to such a light return `unsupported` with detail
-`fields_not_supported`. An inverted helper returns `inverted_wrapper`, and a helper wrapping
-another helper returns `not_addressable`. This holds on every integration, not only Shelly.
+Lights that Zigbee2MQTT announced to Home Assistant through MQTT discovery.
 
-### `turn_on_for`
+### What DeviceSide changes in Zigbee2MQTT
 
-One `<Component>.Set` call with `on: true` and `toggle_after` set to the duration, so the device
-runs the timer and turns itself off even if Home Assistant is offline. Light fields travel in the
-same call, translated as the core Shelly light does: brightness to a 0 to 100 percent value,
-`transition` to `transition_duration` (at least 0.5 s), and on `RGBCCT` the mode is switched to
-`cct` or `rgb` to match the field sent. A color temperature outside the light's range is clamped
-to the range the entity reports.
+DeviceSide sets three Zigbee2MQTT options, and logs each change at info level:
 
-After the `Set`, Device Side reads `<Component>.GetStatus`. When the output matches and the device
-reports a running timer (`timer_duration`), the result is `confirmed`. Otherwise it is `sent`, with
-detail `timer_not_reported` (the device answered without a timer) or `readback_failed` (the
-read-back call itself failed). Either way the `Set` was accepted.
+- **Home Assistant color modes**, on every full-color light and group. Zigbee2MQTT announces only one of a
+  full-color light's two color modes, usually xy, so Home Assistant keeps showing the old color whenever the bulb
+  reports in the other: after a hue or saturation change, a Hue gradient scene, a remote, or a power cut
+  ([Koenkk/zigbee2mqtt#28757](https://github.com/Koenkk/zigbee2mqtt/issues/28757)). DeviceSide sets the light's
+  Home Assistant override to announce both, plus color temperature where the light has it. The bulb itself is
+  untouched. Lights with one color model, lights on an endpoint (`light_l1`), and lights with an override of your
+  own are left alone. Turning **Fix colors of full-color Zigbee2MQTT lights** off in DeviceSide's options puts
+  back the modes Zigbee2MQTT announced itself.
+- **`hue_native_control`**, on a Hue bulb, or a group with one, the first time it gets a `turn_on_for` with a color.
+  Without it, a Hue bulb that is off drops the color and lights at its last one first. The option applies to every
+  command Zigbee2MQTT sends that bulb, not just DeviceSide's, and Zigbee2MQTT stops simulating on/off transitions
+  for it. If you turn it off in Zigbee2MQTT, the next `turn_on_for` with a color turns it on again.
+- **`filtered_cache`**, before the first read of a device, so a read's answer isn't resent in every later state
+  message. Your own entries are kept. Removing DeviceSide's is harmless: it comes back at the next read.
 
-Only relays are in scope so far, whether HA shows them as a switch or a light. A dimmer, CCT or RGB
-light returns `unsupported` with detail `capability_not_tested` until someone tests one. A light
-field (brightness, color, transition) on a light returns `unsupported` with detail
-`fields_not_tested` rather than being dropped silently; a field the component can't take at all
-returns `fields_not_supported`. Fields sent to a `switch` entity are
-ignored and the result says so with detail `light_fields_ignored`.
+### Turn on with timer
 
-### `turn_off_for`
+With light fields, DeviceSide calls `light.turn_on` first, then starts the timer once Zigbee2MQTT reports the
+light's new state, usually within a fraction of a second. If that takes over 5 s, the light stays on up to 5 s
+longer than asked.
 
-The same `Set` with `on: false`: the device turns off now and turns itself back on after the
-duration. Light fields are not accepted.
+The result is always `sent`: Zigbee2MQTT doesn't confirm a timer, or report the light's state after one. Device
+Side reads the state back after the light turns on and when the timer ends, so Home Assistant stays right. A
+restart during a timer loses those reads, and the state can stay stale until the light next reports.
 
-### Cancelling
+Color bulbs of other brands have no equivalent of Hue native control, so one given a color from off may show its
+last color for a moment. With native control on, a Hue bulb may report its old color for the first seconds of a
+timer.
 
-Send a regular `turn_on` or `turn_off`: either cancels the flip-back timer. A `turn_on_for` or
-`turn_off_for` during a timer replaces it, so the countdown restarts at the new duration.
+**Cancelling.** `turn_off` cancels the timer.
 
-Tested on Gen3 and Gen4 relays (firmware 2.0.1) by direct RPC. A wall switch wired to the device's
-input was not tested, and what it does may depend on the input mode.
+### Smooth moves, set and get
+
+- **Hue moves** cycle the color wheel until `stop`, with a `sweep_time` of 1 to 254 s. Saturation and hue need a
+  light that is on and supports hue and saturation, or a group whose lights all do.
+- **Saturation on a group** publishes one color to the group, at the group's hue in Home Assistant, and every light
+  that is on moves to it. A group whose lights sit at different hues ends at one hue.
+- **`set_attributes`** reads each light back, so the result is `confirmed`. A light that ignored the write fails
+  the call (`not_stored`).
+- **`get_attributes`** reads each bulb live, since Hue bulbs on Zigbee2MQTT don't report and its cached state can
+  be stale. Each light takes up to three Zigbee round trips, a quarter of a second or less each. A group returns
+  one entry, averaged over the lights that are on, as Hue averages a room.
 
 ### Sharp edges
 
-- **Timer limits are the device's.** The device accepts any duration over 0 s up to 7 days
-  (604800 s) and keeps it to 0.01 s. Device Side rounds every duration to 10 ms with a 50 ms
-  floor, for all integrations; a duration under 50 ms or over 7 days is clamped and the result
-  carries `clamped_to`.
-- **The timer is the device's, not Home Assistant's.** Any on or off command cancels it, whatever
-  sent it: Home Assistant, the Shelly app or another integration (see Cancelling).
-- **Colors other than RGB.** `hs_color` and `xy_color` are refused rather than converted, because
-  the conversion depends on the component's color mode. Send `rgb_color` or `color_temp_kelvin`.
-- **Only relays are in scope.** `Light`, `CCT`, `RGB`, `RGBW` and `RGBCCT` document `toggle_after`
-  the same way as `Switch`, but they are different firmware and no hardware run has covered them,
-  so they are refused until a tester reports one.
+- **Custom base topic.** Groups on a base topic other than `zigbee2mqtt` are refused (`not_addressable`). Devices
+  aren't, but their commands reach nothing while the result still says `sent`.
+- **A device named with a bare number** that matches a group's ID gets that group's commands.
+- **Large groups.** A call has 30 s for all its targets. Reading a large group on a slow mesh can run out, failing
+  every target with `timeout`. Target the lights by area or label instead, which reads four at a time.
 
-<!-- generated:shelly:start -->
-_Generated from the code by `scripts/gen_docs.py` (slice 8)._
-<!-- generated:shelly:end -->
+## ZHA
+
+Lights on the core `zha` integration.
+
+**Admin only.** DeviceSide uses ZHA's admin-only actions, so a call made by a non-admin user fails
+(`admin_required`). Automations run without a user and pass.
+
+### Turn on with timer
+
+DeviceSide reads the timer back from the bulb, so the result is `confirmed`, or `sent` if the read-back didn't
+show it.
+
+**Cancelling.** Only `turn_off` or a new `turn_on_for` cancels the timer. A plain `turn_on`, or a brightness change,
+leaves it running, and the light still turns off when it ends. Nothing stops a timer and keeps the light on: turn
+it off, then on, which blinks.
+
+**Why the timer belongs on the device.** For 1.5 s after `light.turn_off`, ZHA ignores the light's "on" report, so
+a timer sent in that window lights the bulb while Home Assistant shows it off. The bulb still turns itself
+off on time; an automation waiting for the light to be on would never fire.
+
+### Smooth moves, set and get
+
+- **Hue moves** cycle the color wheel until `stop`, with a `sweep_time` of 1 to 65535 s.
+- **Saturation on a group** sends every light that is on one color, at the hue of the first of them. A group whose
+  lights sit at different hues ends at one hue.
+- **A soft off** restores the light's level just after the fade ends. A restart during the fade loses that, and
+  the light comes back at its lowest level.
+- **`set_attributes`** reads nothing back, so a bulb that ignores the write still reports `sent`. The Sengled
+  E11-G13 is refused (`execute_if_off_unsupported`): written while off, it jumps to full brightness. For the same
+  reason it doesn't fade in from the bottom when raised from off, and comes back at its lowest level after a soft
+  off.
+- **`min_brightness` and `max_brightness`** read the light's level live. Within about 0.5 s of a brightness change
+  the light is still fading, and the limit can replace the fade's end.
+- **`get_attributes`** reads each light live, not from ZHA's cache, which goes stale after a remote or a command
+  Home Assistant didn't send. A ZHA group returns one entry per light.
+
+## Matter
+
+Plugs on the core `matter` integration whose endpoint has the On/Off cluster's Lighting feature, which Matter's
+timer needs; one without it is refused (`no_lt_feature`). Matter lights take the same command but are refused
+(`domain_not_tested`) until one passes a rig run ([test records](test-records/)).
+
+The timer is read back from the plug, so the result is `confirmed`, or `sent` if the read-back didn't show it.
+`turn_off` cancels the timer; a plain `turn_on` doesn't.
+
+## Hue
+
+A Hue Bridge v2 or Bridge Pro on the core `hue` integration. A v1 bridge is refused (`bridge_v1`). Rooms and zones
+are targets in their own right.
+
+**No `turn_on_for` or `turn_off_for`.** The bridge's own timers keep running through a plain on or off, from Home
+Assistant, the Hue app or a dimmer switch, and the Hue app doesn't show them. To time Hue bulbs, pair them with ZHA,
+Zigbee2MQTT or Matter.
+
+### Smooth moves
+
+The bridge runs the fade. There are no hue moves, as a trip around the color wheel isn't a straight line the bridge
+can fade along. A room fades as one, and its lights converge on the end point. Saturation keeps each light's
+current hue, so a white deepens toward its own tint (a warm white toward amber). 100 % saturation is the edge of
+Home Assistant's color space, a little short of the deepest colors the Hue app can reach.
+
+**Show predicted brightness during Hue fades** (on by default). With it on, Home Assistant shows the brightness at
+the start while a fade runs, where a stop halted it, and the end once the fade has run, so a dashboard slider holds
+still, then jumps. Color is always shown as the bridge reports it. A change from the Hue app, a dimmer switch or a
+bridge scene shows at once, except a brightness change or a turn on within 15 s of a fade. A restart or bridge
+reconnect mid-fade shows what the bridge reports.
+
+### Set and get
+
+- **`set_attributes`** writes a room light by light, as a room write misses lights that are off.
+- **`set_scene`** reads the scene live, so edits in the Hue app apply. A light the scene turns off is turned off.
+  Dynamic scenes set their first frame; gradients and effects are skipped. Smart (All-Day) scenes are refused
+  (`smart_scene`). Lights are written one after another: an 8-light scene takes under a second.
+- **`get_attributes`** reads the bridge's live event stream, so it sends nothing to the bridge. During a fade it
+  returns DeviceSide's prediction. A room averages the lights that are on, or all of them when every light is off,
+  as the Hue integration shows it.
+
+### Sharp edges
+
+- **A room turned off with a transition keeps its level.** Turning the room on without a brightness brings every
+  light back at that level, overriding one set on its own while off. Set the room instead.
+- **Lights without an entity in Home Assistant** are skipped by `set_attributes` and `get_attributes` on their
+  room, though `set_scene` writes them. A disabled entity still counts.
+
+## Zigbee plugs and switches
+
+Unsupported on Zigbee2MQTT and ZHA. Few honor the Zigbee timer command: IKEA's are moving to Thread, and Sonoff
+and Tuya run their own countdowns (the Tuya TS011F tested never switches on). If you have one that works,
+[open an issue](https://github.com/jasonmx/DeviceSide/issues).

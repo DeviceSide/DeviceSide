@@ -1,7 +1,10 @@
 name: Cut release
 
-# The only way a vX.Y.Z tag is made (a tag ruleset refuses any other): from main, above the latest release, with
-# green CI on the head and every adapter beta (check_tiers --require-beta). Soak is the maintainer's call.
+# The only way a vX.Y.Z tag is made (a tag ruleset refuses any other). Dispatched from main, it tags the commit of
+# vX.Y.Z's latest RC, not main's head: what ships is what soaked, while main moves on. Requires a version above the
+# latest release and, at the RC's commit, manifest.json at that version, green CI, no experimental adapter, and every
+# adapter's test records citing a commit with its adapter code (check_release --release --records). Soak is the repo
+# owner's call.
 
 on:
   workflow_dispatch:
@@ -33,9 +36,13 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          # The v* tag ruleset's only bypass: GITHUB_TOKEN can't bypass a ruleset on a personal repo.
+          ssh-key: ${{ secrets.RELEASE_TAG_DEPLOY_KEY }}
 
-      - name: Check the tag against the branch
-        run: python3 scripts/check_tag.py "$VERSION" "$BRANCH"
+      - name: Check the tag, and find the RC it releases
+        run: |
+          target=$(python3 scripts/check_tag.py "$VERSION" "$BRANCH")
+          echo "TARGET=$target" >> "$GITHUB_ENV"
 
       - name: Refuse a release candidate
         run: |
@@ -44,8 +51,12 @@ jobs:
             exit 1
           fi
 
-      - name: Require green CI on the head
-        run: bash scripts/require_green.sh "$GITHUB_SHA"
+      - name: Require green CI on the RC
+        run: bash scripts/require_green.sh "$TARGET"
+
+      # The remaining gates check the tree that ships, with the scripts it shipped with.
+      - name: Check out the RC
+        run: git checkout --quiet --detach "$TARGET"
 
       - uses: actions/setup-python@v7
         with:
@@ -56,11 +67,15 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked
 
-      - name: Require every adapter beta
-        run: .venv/bin/python scripts/check_tiers.py --require-beta
+      # A record cites the commit its rig run deployed, often on a PR branch since squash-merged and deleted.
+      - name: Fetch the commits test records cite
+        run: git fetch --quiet origin '+refs/pull/*/head:refs/remotes/pull/*'
+
+      - name: Refuse an experimental adapter, or a test record older than its adapter's code
+        run: .venv/bin/python scripts/check_release.py --release --records
 
       - name: Tag and publish the release
         run: |
-          git tag "$VERSION" "$GITHUB_SHA"
+          git tag "$VERSION" "$TARGET"
           git push origin "refs/tags/$VERSION"
           gh release create "$VERSION" --verify-tag --latest --generate-notes --title "$VERSION"

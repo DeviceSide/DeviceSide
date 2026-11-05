@@ -1,0 +1,326 @@
+"""ZHA raise and lower share their fade: separate fades per attribute, failures, and the ramp fitted to a Level read."""
+
+import logging
+
+import probatio
+import pytest
+from homeassistant.core import Context, ServiceCall
+from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.service import async_register_admin_service
+from pytest_homeassistant_custom_component.common import async_mock_service
+
+from custom_components.deviceside.const import DOMAIN
+from custom_components.deviceside.core.transition import BRIGHTNESS, SATURATION
+from custom_components.deviceside.integrations.zha.fade import hue_moves, soft_off_restores, transition_cache
+
+from .conftest import BOTTOM, RESTORE_60, SENT, A, B, bulb, on_off_reads, sent
+from ...conftest import advance, call, wall_clock_now
+from ...fixtures.zha import IEEE
+
+pytestmark = pytest.mark.usefixtures("setup_production", "clock")
+
+
+@pytest.fixture(autouse=True)
+def on_off_read(bulbs):
+    return bulbs.read
+
+
+async def test_brightness_and_saturation_are_separate_fades(hass, commands, clock):
+    bulb(hass)
+
+    await call(hass, "raise_brightness", {"entity_id": "light.bulb"})
+    await call(hass, "raise_saturation", {"entity_id": "light.bulb"})
+
+    assert [command[:2] for command in sent(commands)] == [(0x0008, 0x04), (0x0300, 0x07)]
+    clock.now += 1
+    cache = transition_cache(hass)
+    assert cache.value("light.bulb", BRIGHTNESS, 0) == pytest.approx(80)
+    assert cache.value("light.bulb", SATURATION, 0) == pytest.approx(80)
+
+
+async def test_a_move_of_another_attribute_keeps_the_soft_offs_restore(hass, commands, refreshes, on_off_read):
+    bulb(hass)
+    start = wall_clock_now()
+
+    await call(hass, "lower_brightness", {"entity_id": "light.bulb"})
+    await call(hass, "lower_saturation", {"entity_id": "light.bulb"})
+    await advance(hass, start, 4.5)
+
+    assert sent(commands)[-1] == RESTORE_60
+    assert len(on_off_reads(on_off_read)) == 1
+    assert len(refreshes) == 2  # one per fade
+
+
+async def test_non_admin_caller_is_refused(hass, hass_read_only_user):
+    calls: list[ServiceCall] = []
+
+    async def handler(service: ServiceCall) -> None:
+        calls.append(service)
+
+    schema = probatio.Schema({}, extra=probatio.ALLOW_EXTRA)
+    async_register_admin_service(hass, "zha", "issue_zigbee_cluster_command", handler, schema)
+    bulb(hass)
+
+    with pytest.raises(HomeAssistantError) as raised:
+        await hass.services.async_call(
+            DOMAIN,
+            "raise_brightness",
+            {"entity_id": "light.bulb"},
+            blocking=True,
+            return_response=True,
+            context=Context(user_id=hass_read_only_user.id),
+        )
+
+    assert raised.value.translation_placeholders["summary"] == "light.bulb: admin_required"
+    assert not calls
+    assert not transition_cache(hass).tracks("light.bulb", BRIGHTNESS)
+
+
+async def test_a_failed_command_rejects_and_keeps_no_prediction(hass):
+    async def fail(call: ServiceCall) -> None:
+        raise HomeAssistantError("no route")
+
+    hass.services.async_register("zha", "issue_zigbee_cluster_command", fail)
+    bulb(hass)
+
+    with pytest.raises(HomeAssistantError) as raised:
+        await call(hass, "raise_brightness", {"entity_id": "light.bulb"})
+
+    assert raised.value.translation_placeholders["summary"] == "light.bulb: error"
+    assert not transition_cache(hass).tracks("light.bulb", BRIGHTNESS)
+
+
+async def test_a_failed_groupcast_rejects_its_members(hass, two_light_group):
+    async def fail(call: ServiceCall) -> None:
+        raise HomeAssistantError("no route")
+
+    hass.services.async_register("zha", "issue_zigbee_group_command", fail)
+    bulb(hass, "light.a", A)
+    bulb(hass, "light.b", B)
+
+    with pytest.raises(HomeAssistantError) as raised:
+        await call(hass, "raise_brightness", {"entity_id": "light.zha_group"})
+
+    assert raised.value.translation_placeholders["summary"] == "light.a: error, light.b: error"
+
+
+def read_takes(bulbs, clock, seconds: float) -> None:
+    """Each Level read takes `seconds` on the cache's clock."""
+    answer = bulbs.read.side_effect
+
+    async def slow(*args, **kwargs):
+        clock.now += seconds
+        return await answer(*args, **kwargs)
+
+    bulbs.read.side_effect = slow
+
+
+async def test_the_ramp_is_fitted_to_a_read_at_the_point_it_had_reached(hass, commands, bulbs, clock, caplog):
+    """HA shows 60 %, but the bulb was set to 80 % elsewhere. The read 0.1 s into a 3 s soft off sees 77.2 %, which is
+    on the ramp from 79.8 % to 0, not its start: the restore puts back 79.8 %. Every term of the fit is logged."""
+    caplog.set_level(logging.DEBUG, logger="custom_components.deviceside.integrations.zha.fade")
+    bulb(hass)
+    bulbs.levels[IEEE] = 196  # 77.2 %
+    read_takes(bulbs, clock, 0.2)  # timed at its middle: 0.1 s in
+    start = wall_clock_now()
+
+    await call(hass, "lower_brightness", {"entity_id": "light.bulb"})
+    await hass.async_block_till_done()
+    clock.now -= 0.1  # back to the read's middle, where the ramp passes through what it saw
+    assert transition_cache(hass).value("light.bulb", BRIGHTNESS, 0) == pytest.approx(196 * 100 / 254)
+    await advance(hass, start, 4.5)
+
+    restore = (0x0008, 0x00, {"level": 203, "transition_time": 0, "options_mask": 1, "options_override": 1})
+    assert sent(commands)[-1] == restore
+    assert "Fit for light.bulb: read 77.2 % in a 0.200 s round trip at f=0.033 of 3.0 s; ramp 60.0" in caplog.text
+    assert "fitted start 79.8" in caplog.text
+    assert "Restoring light.bulb to 79.8 % after a soft off" in caplog.text
+
+
+async def test_a_read_within_the_deadband_keeps_the_prediction(hass, commands, bulbs, clock, caplog):
+    """The bulb starts a little after the send, so a 60 % soft off reads a shade behind schedule: 57.1 % where the
+    ramp predicts 58.0 %. That's within the deadband (0.15 s of the ramp, plus a level step), so the restore puts back
+    60 %, not the 61.4 % a fit of the lag would (3 Nov lab rerun: a fitted 62.5 % came back on at 159)."""
+    caplog.set_level(logging.DEBUG, logger="custom_components.deviceside.integrations.zha.fade")
+    bulb(hass)
+    bulbs.levels[IEEE] = 145  # 57.1 %
+    read_takes(bulbs, clock, 0.2)
+    start = wall_clock_now()
+
+    await call(hass, "lower_brightness", {"entity_id": "light.bulb"})
+    await hass.async_block_till_done()
+    await advance(hass, start, 4.5)
+
+    assert sent(commands)[-1] == RESTORE_60
+    assert "predicted 58.0 ± 3.4; kept" in caplog.text
+
+
+@pytest.mark.parametrize("stopped", [False, True], ids=["read_after_the_fade_ended", "read_after_a_stop"])
+async def test_a_read_too_late_to_fit_changes_nothing(hass, commands, bulbs, clock, stopped):
+    bulb(hass)
+    bulbs.levels[IEEE] = 10
+    read_takes(bulbs, clock, 1 if stopped else 10)
+    if stopped:
+        original = bulbs.read.side_effect
+
+        async def stop_first(*args, **kwargs):
+            transition_cache(hass).stopped("light.bulb", BRIGHTNESS, 55.0)
+            return await original(*args, **kwargs)
+
+        bulbs.read.side_effect = stop_first
+
+    await call(hass, "lower_brightness", {"entity_id": "light.bulb"})
+    await hass.async_block_till_done()
+
+    assert transition_cache(hass).value("light.bulb", BRIGHTNESS, -1) == (55.0 if stopped else -1)
+
+
+async def test_nothing_to_do_by_a_stale_prediction_plans_again_from_has_state(hass, commands):
+    """A soft off, then the light turned back on at 100 % from HA within the prediction's window: a lower runs."""
+    bulb(hass)
+    await call(hass, "lower_brightness", {"entity_id": "light.bulb"})
+    transition_cache(hass).clock.now += 5  # predicted at 0 for 2 s more
+    bulb(hass, brightness=255)
+
+    response = await call(hass, "lower_brightness", {"entity_id": "light.bulb"})
+
+    assert response == {"light.bulb": SENT}
+    assert sent(commands)[-1] == (0x0008, 0x04, {"level": 0, "transition_time": 50})
+
+
+async def test_planning_again_keeps_a_running_saturation_fade(hass, commands, clock):
+    """Only the stale brightness prediction goes: a stop still halts the saturation fade with StopMoveStep."""
+    bulb(hass)
+    await call(hass, "lower_brightness", {"entity_id": "light.bulb"})
+    clock.now += 5  # predicted at 0 for 2 s more
+    bulb(hass, brightness=255)
+    await call(hass, "raise_saturation", {"entity_id": "light.bulb", "sweep_time": 10})
+
+    await call(hass, "lower_brightness", {"entity_id": "light.bulb"})
+    await call(hass, "stop", {"entity_id": "light.bulb"})
+
+    assert sent(commands)[-2:] == [(0x0300, 0x47, {"options_mask": 0, "options_override": 0}), (0x0008, 0x03, {})]
+
+
+@pytest.mark.parametrize(
+    ("service_data", "forgotten"),
+    [
+        pytest.param({"entity_id": "light.a"}, {"light.a"}, id="light"),
+        pytest.param({"entity_id": "light.zha_group"}, {"light.a", "light.b"}, id="group"),
+        pytest.param({"entity_id": "all"}, {"light.a", "light.b"}, id="all"),
+        pytest.param({"entity_id": "light.other"}, set(), id="not_zha"),
+        pytest.param({"entity_id": "switch.zha_plug"}, set(), id="not_a_light"),
+        pytest.param(None, set(), id="no_target"),
+    ],
+)
+async def test_a_light_call_from_ha_forgets_its_zha_lights(hass, commands, two_light_group, service_data, forgotten):
+    """The rig's setup, or a dashboard: a change from HA mid-fade leaves the prediction stale, so it goes."""
+    bulb(hass, "light.a", A)
+    bulb(hass, "light.b", B)
+    er.async_get(hass).async_get_or_create("light", "demo", "other", suggested_object_id="other")
+    er.async_get(hass).async_get_or_create("switch", "zha", "plug", suggested_object_id="zha_plug")
+    async_mock_service(hass, "light", "turn_off")
+    await call(hass, "raise_brightness", {"entity_id": "light.a"})
+    await call(hass, "raise_saturation", {"entity_id": "light.b"})
+
+    await hass.services.async_call("light", "turn_off", service_data, blocking=True)
+
+    cache = transition_cache(hass)
+    assert {light for light in ("light.a", "light.b") if not cache.follows(light)} == forgotten
+
+
+async def test_an_off_from_ha_during_a_soft_off_leaves_no_restore_and_still_refreshes(
+    hass, commands, refreshes, on_off_read
+):
+    """The call replaces our fade, as on Hue: the bulb stays where HA's off left it."""
+    bulb(hass)
+    start = wall_clock_now()
+    await call(hass, "lower_brightness", {"entity_id": "light.bulb"})
+    async_mock_service(hass, "light", "turn_off")
+
+    await hass.services.async_call("light", "turn_off", {"entity_id": "light.bulb"}, blocking=True)
+    await advance(hass, start, 4.5)
+
+    assert len(commands) == 1  # the soft off, and no restore
+    assert not on_off_reads(on_off_read)
+    assert [refresh.data for refresh in refreshes] == [{"entity_id": "light.bulb"}]
+    assert soft_off_restores(hass) == set()
+
+
+async def test_an_off_from_ha_while_the_soft_off_is_sent_still_cancels_its_restore(hass, refreshes, on_off_read):
+    bulb(hass)
+    start = wall_clock_now()
+    async_mock_service(hass, "light", "turn_off")
+    sent_commands = []
+
+    async def command(service_call) -> None:
+        sent_commands.append(service_call)
+        if len(sent_commands) == 1:  # the soft off, still in flight
+            await hass.services.async_call("light", "turn_off", {"entity_id": "light.bulb"}, blocking=True)
+
+    hass.services.async_register("zha", "issue_zigbee_cluster_command", command)
+
+    await call(hass, "lower_brightness", {"entity_id": "light.bulb"})
+    await advance(hass, start, 4.5)
+
+    assert len(sent_commands) == 1
+    assert not on_off_reads(on_off_read)
+
+
+async def test_a_stop_drops_the_soft_offs_restore(hass, commands):
+    bulb(hass)
+    await call(hass, "lower_brightness", {"entity_id": "light.bulb"})
+
+    await call(hass, "stop", {"entity_id": "light.bulb"})
+
+    assert soft_off_restores(hass) == set()
+
+
+@pytest.mark.parametrize(
+    ("service", "data", "cycling"),
+    [
+        pytest.param("turn_on", {"brightness_pct": 40}, {"light.bulb"}, id="brightness_only"),
+        pytest.param("turn_on", {"hs_color": [30, 80]}, set(), id="color"),
+        pytest.param("turn_on", {"color_temp_kelvin": 3000}, set(), id="color_temp"),
+        pytest.param("turn_on", {"effect": "colorloop"}, set(), id="effect"),
+        pytest.param("turn_off", {}, set(), id="off"),
+        pytest.param("toggle", {}, set(), id="toggle"),
+    ],
+)
+async def test_a_light_call_from_ha_that_sets_a_color_ends_the_hue_cycle(hass, commands, service, data, cycling):
+    bulb(hass)
+    await call(hass, "raise_hue", {"entity_id": "light.bulb"})
+    async_mock_service(hass, "light", service)
+
+    await hass.services.async_call("light", service, {"entity_id": "light.bulb", **data}, blocking=True)
+
+    assert hue_moves(hass) == cycling
+
+
+@pytest.mark.parametrize(("service_data", "cycling"), [({}, {"light.bulb"}), ({"hs_color": [30, 80]}, set())])
+async def test_a_call_to_all_lights_clears_every_zha_mark(hass, commands, service_data, cycling):
+    bulb(hass)
+    await call(hass, "raise_hue", {"entity_id": "light.bulb"})
+    await call(hass, "lower_brightness", {"entity_id": "light.bulb"})
+    async_mock_service(hass, "light", "turn_on")
+
+    await hass.services.async_call("light", "turn_on", {"entity_id": "all", **service_data}, blocking=True)
+
+    assert not transition_cache(hass).follows("light.bulb")
+    assert soft_off_restores(hass) == set()
+    assert hue_moves(hass) == cycling
+
+
+async def test_a_raise_after_ha_turned_the_light_off_mid_fade_starts_from_the_bottom(hass, commands, clock):
+    """raise_from_off on the rig: the previous case's fade was still predicted when the setup turned the light off."""
+    bulb(hass)
+    await call(hass, "raise_brightness", {"entity_id": "light.bulb"})
+    clock.now += 1
+    async_mock_service(hass, "light", "turn_off")
+    await hass.services.async_call("light", "turn_off", {"entity_id": "light.bulb"}, blocking=True)
+    bulb(hass, state="off")
+
+    await call(hass, "raise_brightness", {"entity_id": "light.bulb", "sweep_time": 5})
+
+    assert sent(commands)[-2:] == [BOTTOM, (0x0008, 0x04, {"level": 254, "transition_time": 50})]

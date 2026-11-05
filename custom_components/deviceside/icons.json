@@ -1,0 +1,52 @@
+{
+  "services": {
+    "clear_auto_off": {
+      "service": "mdi:close-circle-outline"
+    },
+    "clear_auto_on": {
+      "service": "mdi:close-circle-outline"
+    },
+    "get_attributes": {
+      "service": "mdi:lightbulb-question"
+    },
+    "lower_brightness": {
+      "service": "mdi:brightness-5"
+    },
+    "lower_hue": {
+      "service": "mdi:rotate-left"
+    },
+    "lower_saturation": {
+      "service": "mdi:invert-colors-off"
+    },
+    "raise_brightness": {
+      "service": "mdi:brightness-7"
+    },
+    "raise_hue": {
+      "service": "mdi:rotate-right"
+    },
+    "raise_saturation": {
+      "service": "mdi:invert-colors"
+    },
+    "set_attributes": {
+      "service": "mdi:tune-variant"
+    },
+    "set_auto_off": {
+      "service": "mdi:power-off"
+    },
+    "set_auto_on": {
+      "service": "mdi:power-on"
+    },
+    "set_scene": {
+      "service": "mdi:palette"
+    },
+    "stop": {
+      "service": "mdi:stop-circle-outline"
+    },
+    "turn_off_for": {
+      "service": "mdi:timer-outline"
+    },
+    "turn_on_for": {
+      "service": "mdi:timer-outline"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+# ZHA · get_attributes
+
+| | |
+|---|---|
+| Result | pass |
+| Date | 2026-11-03 |
+| Source | rig run (`scripts/rig.py`), commit `5d39db8` |
+| Profile | lab |
+| Home Assistant | 2026.10.2 |
+| Device | Hue ambiance lamp (`LTA009`), firmware `1.163.1`; Hue Essential lamp (`LCA016`), firmware `1.164.2`; Hue white lamp (`LWA012`), firmware `1.104.2` |
+
+## Tests
+
+| Test | Target | Result |
+|---|---|---|
+| `reads_while_off[light_ct]` | `light` (light_ct) | pass |
+| `reads_while_off[group]` | `light` (group) | pass |
+| `reads_color_while_off[light_color]` | `light` (light_color) | pass |
+| `reads_a_running_timer[switch_plug]` | switch_plug: none in the profile | skipped |
+| `reads_a_running_timer[light_onoff]` | light_onoff: none in the profile | skipped |
+| `reads_a_running_timer[light_wrapped]` | light_wrapped: none in the profile | skipped |
+| `reads_a_running_timer[light_dimmable]` | `light` (light_dimmable) | pass |
+| `reads_no_timer_after_a_turn_off[switch_plug]` | switch_plug: none in the profile | skipped |

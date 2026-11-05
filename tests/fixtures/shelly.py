@@ -12,23 +12,58 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 MAC = "AABBCCDDEEFF"
 
 
-def timer_running():
-    """call_rpc side effect: Set returns the API's result, GetStatus reports the timer that Set started."""
-    outputs: dict[tuple[str, int], bool] = {}
+# When a fixture timer starts, on the device's clock: 2026-10-27T12:00:00Z.
+TIMER_STARTED_AT = 1793102400.0
+
+# A component's auto-off / auto-on settings as the device ships them (Switch.GetConfig): disabled, delay 60 s.
+FACTORY_CONFIG = {"auto_on": False, "auto_on_delay": 60.0, "auto_off": False, "auto_off_delay": 60.0}
+
+
+def timer_running(status: dict | None = None, config: dict | None = None):
+    """call_rpc side effect: Set returns the API's result; GetStatus reports `status` (an RGBCCT bulb's brightness,
+    mode, ct and rgb, say) under the output and any timer the last Set started, at TIMER_STARTED_AT. GetConfig
+    reports FACTORY_CONFIG under `config` and what each SetConfig wrote."""
+    sets: dict[tuple[str, int], dict] = {}
+    configs: dict[tuple[str, int], dict] = {}
 
     def respond(method: str, params: dict) -> dict:
         component, _, verb = method.partition(".")
+        key = (component, params["id"])
         if verb == "GetStatus":
-            return {"id": params["id"], "output": outputs[(component, params["id"])], "timer_duration": 5.0}
-        outputs[(component, params["id"])] = params["on"]
+            return {"id": params["id"], "output": False, **(status or {}), **sets.get(key, {})}
+        if verb == "GetConfig":
+            return {"id": params["id"], **FACTORY_CONFIG, **(config or {}), **configs.get(key, {})}
+        if verb == "SetConfig":
+            configs.setdefault(key, {}).update(params["config"])
+            return {"restart_required": False}
+        sets[key] = {"output": params["on"]}
+        if "toggle_after" in params:
+            sets[key] |= {"timer_started_at": TIMER_STARTED_AT, "timer_duration": params["toggle_after"]}
         return {"was_on": not params["on"]}
 
     return respond
 
 
-def shelly_device(hass: HomeAssistant, gen1: bool = False, mac: str = MAC) -> tuple[MockConfigEntry, AsyncMock]:
-    """A loaded Shelly entry whose runtime_data.rpc.device.call_rpc is the returned mock."""
-    call_rpc = AsyncMock(side_effect=timer_running())
+def failing(call_rpc: AsyncMock, verb: str, after: int = 0) -> None:
+    """Make the device raise on `verb` (GetConfig, SetConfig...) once it has answered it `after` times."""
+    respond, seen = call_rpc.side_effect, []
+
+    async def side_effect(method: str, params: dict) -> dict:
+        if method.endswith(f".{verb}"):
+            seen.append(method)
+            if len(seen) > after:
+                raise ConnectionError("device unreachable")
+        return respond(method, params)
+
+    call_rpc.side_effect = side_effect
+
+
+def shelly_device(
+    hass: HomeAssistant, gen1: bool = False, mac: str = MAC, status: dict | None = None, config: dict | None = None
+) -> tuple[MockConfigEntry, AsyncMock]:
+    """A loaded Shelly entry whose runtime_data.rpc.device.call_rpc is the returned mock; status and config as
+    timer_running's."""
+    call_rpc = AsyncMock(side_effect=timer_running(status, config))
     entry = MockConfigEntry(domain="shelly", unique_id=mac)
     entry.add_to_hass(hass)
     entry.mock_state(hass, ConfigEntryState.LOADED)

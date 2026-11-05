@@ -1,6 +1,6 @@
 """Integration "fake_special": takes "fake" entities whose device is special (like Z2M on mqtt); no group hook."""
 
-from custom_components.device_side.core.scope import AdapterScope, IntegrationInfo
+from custom_components.deviceside.core.scope import AdapterScope, IntegrationInfo
 
 from ..fake_integration import LIMITS, is_group
 from ..scripted import ScriptedAdapter

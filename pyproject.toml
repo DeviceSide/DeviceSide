@@ -1,7 +1,13 @@
+# Virtual project (no build backend): uv reads requires-python and the dev group from it.
+# "0" is a placeholder; the version lives in manifest.json.
+[project]
+name = "deviceside"
+version = "0"
+requires-python = ">=3.14.2"
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-markers = ["rig: drives the live rig HA; run through scripts/rig.py only"]
 
 [tool.ruff]
 line-length = 120
@@ -27,9 +33,13 @@ section-order = ["future", "standard-library", "third-party", "first-party", "lo
 known-first-party = []
 
 [tool.codespell]
-ignore-words-list = "hass"
+ignore-words-list = "hass,currenty"
 
 [dependency-groups]
 dev = [
-    "ruff>=0.17.2",
+    # The version HA's hue manifest requires in the HA build pytest-homeassistant-custom-component pins.
+    "aiohue==4.9.0",
+    "pytest-homeassistant-custom-component==0.13.373",
+    # Bump with ruff-pre-commit's rev in .pre-commit-config.yaml, so the two never disagree.
+    "ruff==0.17.2",
 ]
