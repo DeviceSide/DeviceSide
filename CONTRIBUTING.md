@@ -6,7 +6,7 @@ help is evidence from devices the maintainer doesn't own: what works, what doesn
 ## Principles
 
 - **Claims follow evidence.** A feature is listed as working on a device only when a test record shows it passing
-  there. No support level is set by hand.
+  there.
 - **Requests bring proof.** A device request comes with a YAML call that already works on the device, its model and
   firmware, and a promise to test the release candidate.
 - **A bug means a claim is broken.** A bug report is for a device and feature the [test records](docs/test-records/)
@@ -18,13 +18,14 @@ help is evidence from devices the maintainer doesn't own: what works, what doesn
 
 Each adapter (one action on one integration) has one of these, from its test records:
 
-- **Verified:** a current test record from the maintainer's rig, which runs each action against real devices.
-- **Community:** a current test record from a contributor who installed a release candidate through HACS. It can
+- **Verified:** a passing test record from the maintainer's rig, which runs each action against real devices.
+- **Community:** a passing test record from a contributor who installed a release candidate through HACS. It can
   ship in a stable release, after the same soak as any other release candidate.
-- **Experimental:** no current test record. It ships in release candidates only, never in a stable release.
+- **Experimental:** not yet covered by a passing test record. It ships in release candidates only, never in a
+  stable release.
 
-A record is current when it is newer than the adapter's code. The Community level is new: the first contributor to
-reach it sets up the test checklist with the maintainer.
+A record older than its adapter's code blocks the next release until the test is rerun. The Community level is new:
+the first contributor to reach it sets up the test checklist with the maintainer.
 
 ## How to help
 

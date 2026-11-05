@@ -28,8 +28,8 @@ adapter passing its tests, no soak. An RC also needs a rig run since each releas
 - [ ] **Device support, part 1**: support levels and contribution lanes in `CONTRIBUTING.md`, the README's "Will it
   work with my device?", and the device report, device request and bug issue forms.
 - [ ] **Device support, part 2**: `scripts/gen_compat.py` generates `docs/compatibility.md` (levels and tested
-  models per action and integration) and CI checks it is current. The README table and "Will it work with my
-  device?" link to it.
+  models per action and integration) and CI checks it is current. The README table, its "Will it work with my
+  device?", `CONTRIBUTING.md` and the bug and device report forms link to it instead of `docs/test-records/`.
 - [ ] **Device support, part 3**: a "Report a device" step in DeviceSide's options that opens a prefilled device
   report.
 - [ ] **12** v0.1.0: no adapter left `experimental` (`scripts/check_release.py --release`); README feature table
@@ -42,8 +42,9 @@ adapter passing its tests, no soak. An RC also needs a rig run since each releas
   [the list](docs/hardware-the-rig-lacks.md) and check every link resolves (the issue forms,
   `docs/compatibility.md`), then post it. After posting, point the "Getting involved" testers link at the heading's
   anchor, which Discourse names after the post id.
-- [ ] **Forum thread links**: add the thread URL as the contact link in `.github/ISSUE_TEMPLATE/config.yml`, and link
-  it from `CONTRIBUTING.md` and the README's Contributing section.
+- [ ] **Forum thread links**: add the thread URL as the contact link in `.github/ISSUE_TEMPLATE/config.yml` and set
+  `blank_issues_enabled: false` there, and link the thread from `CONTRIBUTING.md` and the README's Contributing
+  section.
 - **9b** Remote tester flow, once an adapter needs hardware the rig lacks
   ([the list](docs/hardware-the-rig-lacks.md)). It includes the Community support level's code, waiting for the
   first contributor: a maintainer per adapter, reading a record's source, checking the record came from an RC
