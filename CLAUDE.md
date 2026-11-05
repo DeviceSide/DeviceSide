@@ -30,21 +30,22 @@ passed on one light (PR #204).
 
 ## Releasing
 
-The cut workflows enforce the tag rules, green CI, the RC audit (its record comes from `/rc-audit`), the release
-flag, and test records no older than their adapter's code (`check_release.py --records`, so each adapter changed
-since its last rig run needs a new one); see their headers. The steps they don't check:
+Work lands on `main`. RCs are cut from it, and `cut-release` tags the version's latest RC, so what ships is what
+soaked while `main` moves on. The cut workflows enforce the tag rules, green CI, the RC audit (its record comes from
+`/rc-audit`), the release flag, and test records no older than their adapter's code (`check_release.py --records`,
+so each adapter changed since its last rig run needs a new one); see their headers. The steps they don't check:
 
 1. **Each RC:** install it through HACS (the rig deploys a checkout, not the release); it loads and the log is clean.
 2. **Before the release:** the README feature table is current.
-3. Merge `release/vX.Y.Z` into `main`. Check that every issue the release fixes closed with it: closing keywords
-   only take effect on `main`.
-4. Dispatch `cut-release` from `main` with `vX.Y.Z`.
-5. Cut the next version's branch, `release/vA.B.C`, from `main` and set `manifest.json` to `A.B.C`; its first tag
-   is `vA.B.Crc1`.
+3. Dispatch `cut-release` from `main` with `vX.Y.Z`.
+4. Set `manifest.json` on `main` to the next version.
+
+To fix an RC or a release without what `main` has gained since, cut `release/vX.Y.Z` from its tag, land the fix
+there, cut the next RC from it, and merge the branch back into `main`.
 
 ## Pull requests
 
-- Base: whichever is newer, `main` or the latest `release/vX.Y.Z` branch.
+- Base: `main`, or a `release/vX.Y.Z` fix branch when one exists for the change.
 - Setup: `uv sync`. Test dependencies live in the `dev` group of `pyproject.toml`; never `uv pip install` into `.venv`, as the next sync removes it.
 - Before each push: `.venv/bin/pytest` and `pre-commit run --all-files` (ruff and the household check).
 - Before opening the PR: `/audit-code` on the diff, then fix its findings and carry on to the PR; stop for Jason
