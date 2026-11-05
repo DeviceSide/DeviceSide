@@ -3,7 +3,7 @@ that make them say more (DebugLevels).
 
 Z2M's frontend keeps only its last 1000 lines and HA's log restarts with HA, so a failure read later finds nothing.
 Both logs are captured for every run, next to its report; they are deleted after a clean run unless asked for, or
-unless Z2M's coordinator crashed during it, or HA's log shows a device_side warning or error no step file of the run
+unless Z2M's coordinator crashed during it, or HA's log shows a DeviceSide warning or error no step file of the run
 expects: such a line also fails the run.
 """
 
@@ -55,7 +55,7 @@ def coordinator_crashes(log: str) -> tuple[list[str], int]:
 
 
 def device_side_lines(log: str, expected: Iterable[re.Pattern[str]] = ()) -> tuple[list[str], int]:
-    """From a captured HA log: device_side's warning and error lines that no `expected` pattern is found in, and how
+    """From a captured HA log: DeviceSide's warning and error lines that no `expected` pattern is found in, and how
     many lines one was. A traceback's lines after its first aren't counted: the first names the logger."""
     patterns = tuple(expected)
     unexpected: list[str] = []
@@ -186,16 +186,16 @@ class RunLogs:
         return crashes
 
     def ha_warnings(self) -> list[str]:
-        """Each device_side warning or error in the captured HA log that no step file of the run expects, printed."""
+        """Each DeviceSide warning or error in the captured HA log that no step file of the run expects, printed."""
         if self.ha_path not in self.written:
             return []
         if not self.ha_dated:
-            self.out("HA's log has no line dated from the run's start, so its device_side warnings aren't checked.")
+            self.out("HA's log has no line dated from the run's start, so its DeviceSide warnings aren't checked.")
             return []
         try:
             unexpected, matched = device_side_lines(self.ha_path.read_text(), self.expected)
         except OSError as err:
-            self.out(f"HA's log couldn't be read for device_side warnings: {err}")
+            self.out(f"HA's log couldn't be read for DeviceSide warnings: {err}")
             return []
         if matched:
             self.out(f"HA's log has {_warnings(matched)} the step files expect.")
@@ -206,7 +206,7 @@ class RunLogs:
         return unexpected
 
     def settle(self, clean: bool) -> bool:
-        """Name each crash of Z2M's coordinator the run's Z2M log shows, and each device_side warning or error in HA's
+        """Name each crash of Z2M's coordinator the run's Z2M log shows, and each DeviceSide warning or error in HA's
         that no step file expects. After a clean run with neither, the files go unless `keep`; otherwise they stay, and
         their paths are printed. Whether HA's log had such a line: the caller fails the run on it."""
         crashes = self.z2m_crashes()
@@ -221,11 +221,11 @@ class RunLogs:
 
 
 def _warnings(count: int) -> str:
-    return f"{count} device_side warning or error" if count == 1 else f"{count} device_side warnings or errors"
+    return f"{count} DeviceSide warning or error" if count == 1 else f"{count} DeviceSide warnings or errors"
 
 
 def ha_domains(integrations: set[str], roaming: bool) -> list[str]:
-    """The HA domains a debug run raises: device_side, and each integration's the run touches, a roaming run's
+    """The HA domains a debug run raises: DeviceSide, and each integration's the run touches, a roaming run's
     Hue, ZHA and MQTT among them."""
     keys = set(integrations) | (set(ROAM_INTEGRATIONS) if roaming else set())
     return ["device_side", *sorted({HA_DOMAINS[key] for key in keys if key in HA_DOMAINS})]

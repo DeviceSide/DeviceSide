@@ -13,7 +13,7 @@ from .const import (
 
 
 class DeviceSideConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for Device Side."""
+    """Handle a config flow for DeviceSide."""
 
     VERSION = 1
 

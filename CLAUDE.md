@@ -1,4 +1,4 @@
-# device_side
+# DeviceSide
 
 Design: `docs/design.md`; use its glossary's terms in code and docs. Progress to v0.1.0: `TODO.md`; tick items off
 in the PR that finishes them.

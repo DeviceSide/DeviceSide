@@ -1,8 +1,8 @@
-# Device Side
+# DeviceSide
 
-[![HACS Default](https://img.shields.io/badge/HACS-Default-orange.svg)](https://hacs.xyz/) [![Latest Version](https://img.shields.io/github/v/release/jasonmx/device-side?sort=date)](https://github.com/jasonmx/device-side/releases) [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/jasonmx)
+[![HACS Default](https://img.shields.io/badge/HACS-Default-orange.svg)](https://hacs.xyz/) [![Latest Version](https://img.shields.io/github/v/release/jasonmx/deviceside?sort=date)](https://github.com/jasonmx/deviceside/releases) [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/jasonmx)
 
-Device Side unlocks native features in your lights, switches and plugs on the Zigbee, Shelly, Philips Hue and Matter integrations.
+DeviceSide unlocks native features in your lights, switches and plugs on the Zigbee, Shelly, Philips Hue and Matter integrations.
 
 * **Auto-off timer:** Turn off devices automatically, even if HA goes offline or restarts.
 
@@ -12,7 +12,7 @@ Device Side unlocks native features in your lights, switches and plugs on the Zi
 
 * **Set lights without turning on:** Pre-stage brightness, color, CT and scenes, so lights come on without unsightly color flashes or brightness extremes.
 
-* **Zero setup:** Device Side connects to your devices automatically via the core integrations, and [patches some usability quirks](#usability-patches) in Z2M and Hue.
+* **Zero setup:** DeviceSide connects to your devices automatically via the core integrations, and [patches some usability quirks](#usability-patches) in Z2M and Hue.
 
 ## Key Features
 
@@ -29,7 +29,7 @@ Device Side unlocks native features in your lights, switches and plugs on the Zi
 
 Details per integration are in [docs/integrations.md](docs/integrations.md).
 
-**Warning:** Some devices accept commands for features that they don't fully support. Test each of your devices with Device Side before relying on device-native features.
+**Warning:** Some devices accept commands for features that they don't fully support. Test each of your devices with DeviceSide before relying on device-native features.
 
 ## Get started
 
@@ -44,9 +44,9 @@ Details per integration are in [docs/integrations.md](docs/integrations.md).
 <details>
 <summary>Show me how</summary>
 
-1. Open the Device Side HACS repository
+1. Open the DeviceSide HACS repository
 
-   [![Open the Device Side HACS repository in your Home Assistant instance.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=jasonmx&repository=device-side&category=integration)
+   [![Open the DeviceSide HACS repository in your Home Assistant instance.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=jasonmx&repository=deviceside&category=integration)
 
 2. Click **Download**
 
@@ -54,13 +54,13 @@ Details per integration are in [docs/integrations.md](docs/integrations.md).
 
 4. Add the integration
 
-   [![Add Device Side to your Home Assistant instance.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=device_side)
+   [![Add DeviceSide to your Home Assistant instance.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=device_side)
 
 </details>
 
 ### Coming from [Hue Smooth Dimming](https://github.com/jasonmx/hue-smooth-dimming)
 
-Device Side's actions are drop-in replacements for Hue Smooth Dimming, apart from a name change on the `raise` and `lower` actions. To migrate to Device Side, make these YAML edits in your automations:
+DeviceSide's actions are drop-in replacements for Hue Smooth Dimming, apart from a name change on the `raise` and `lower` actions. To migrate to DeviceSide, make these YAML edits in your automations:
 
 * change `hue_dimmer` to `device_side`. E.g. `hue_dimmer.stop` → `device_side.stop`
 
@@ -317,13 +317,13 @@ The `timer` key holds `turns` (`on` or `off`), `ends_at` (UTC) and `remaining_s`
 
 * **Color lights on Zigbee2MQTT:**
 
-  * Home Assistant shows the wrong color for full-color bulbs in hue-saturation (HS) mode. Device Side fixes this by [announcing both of their color modes](docs/integrations.md#what-device-side-changes-in-zigbee2mqtt).
+  * Home Assistant shows the wrong color for full-color bulbs in hue-saturation (HS) mode. DeviceSide fixes this by [announcing both of their color modes](docs/integrations.md#what-deviceside-changes-in-zigbee2mqtt).
 
-  * Hue bulbs: before an auto-off timer with a color, Device Side turns on Z2M's Hue native control setting for that bulb, so it comes on in the new color instead of flashing its last one.
+  * Hue bulbs: before an auto-off timer with a color, DeviceSide turns on Z2M's Hue native control setting for that bulb, so it comes on in the new color instead of flashing its last one.
 
-* **Hue Bridge:** When a brightness move starts, the bridge reports its target brightness (e.g. 0% or 100%) to Home Assistant, which is jarring for moves that you plan to stop. Device Side suppresses the bridge's report when a transition starts, and reports the new brightness once the transition stops.
+* **Hue Bridge:** When a brightness move starts, the bridge reports its target brightness (e.g. 0% or 100%) to Home Assistant, which is jarring for moves that you plan to stop. DeviceSide suppresses the bridge's report when a transition starts, and reports the new brightness once the transition stops.
 
-The HS mode and Hue Bridge patches are on by default; turn them off in Device Side's options.
+The HS mode and Hue Bridge patches are on by default; turn them off in DeviceSide's options.
 
 ## Uninstall
 
@@ -331,6 +331,6 @@ This integration follows standard integration removal.
 
 1. Open the integration
 
-   [![Open the Device Side integration in your Home Assistant instance.](https://my.home-assistant.io/badges/integration.svg)](https://my.home-assistant.io/redirect/integration/?domain=device_side)
+   [![Open the DeviceSide integration in your Home Assistant instance.](https://my.home-assistant.io/badges/integration.svg)](https://my.home-assistant.io/redirect/integration/?domain=device_side)
 
 2. Open the ⋮ menu and choose **Delete**

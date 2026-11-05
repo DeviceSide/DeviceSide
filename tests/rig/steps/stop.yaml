@@ -1,5 +1,5 @@
 # hue_dimmer tests/RELEASE_CHECKLIST.md §2.5 and §2.6 from the stop side; raise_brightness.yaml and
-# lower_brightness.yaml check the move that follows. Samples after a raise or lower read device_side (Hue's
+# lower_brightness.yaml check the move that follows. Samples after a raise or lower read DeviceSide (Hue's
 # prediction, Zigbee2MQTT's and ZHA's live reads), in percent: HA shows a fade's end value at once.
 action: stop
 rig_seconds: 420

@@ -167,7 +167,7 @@ async def reader(hass: HomeAssistant, devices: list[Target]) -> AsyncIterator[Re
 
         def added(address: str) -> None:
             _LOGGER.info(
-                "Added %s to Zigbee2MQTT's %s for %s, so device_side reads it live",
+                "Added %s to Zigbee2MQTT's %s for %s, so DeviceSide reads it live",
                 READ_KEY,
                 _FILTERED_CACHE,
                 by_address[address].entity_id,

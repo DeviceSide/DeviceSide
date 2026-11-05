@@ -71,7 +71,7 @@ async def command(
     """Send a server command to the device's in cluster through zha.issue_zigbee_cluster_command; params by zigpy name.
 
     The action is admin-only, so it carries the caller's context: a non-admin caller gets Unauthorized from ZHA rather
-    than Device Side's own rights. The zha library raises on a delivery failure or a non-success ZCL status, so a call
+    than DeviceSide's own rights. The zha library raises on a delivery failure or a non-success ZCL status, so a call
     that returns was accepted.
     """
     await hass.services.async_call(

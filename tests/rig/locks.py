@@ -1,6 +1,6 @@
 """The rig's locks, in the git common dir so every worktree shares them: one on HA, and one per integration.
 
-A run holds HA shared, unless it restarts HA or reloads device_side's entry (a deploy, a suite with device_side
+A run holds HA shared, unless it restarts HA or reloads DeviceSide's entry (a deploy, a suite with DeviceSide
 options, --recover), and then exclusively. A run that deploys but has no option suites steps HA down to shared once
 HA is back (Held.share_ha). It holds each integration it moves exclusively. So runs on different integrations go side
 by side. A deploy waits until HA is free and holds off no one meanwhile: a shared run that is ready goes ahead of it,

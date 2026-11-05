@@ -1,13 +1,13 @@
 {
   "domain": "device_side",
-  "name": "Device Side",
+  "name": "DeviceSide",
   "after_dependencies": ["mqtt"],
   "codeowners": ["@jasonmx"],
   "config_flow": true,
-  "documentation": "https://github.com/jasonmx/device-side",
+  "documentation": "https://github.com/jasonmx/deviceside",
   "integration_type": "service",
   "iot_class": "local_push",
-  "issue_tracker": "https://github.com/jasonmx/device-side/issues",
+  "issue_tracker": "https://github.com/jasonmx/deviceside/issues",
   "requirements": [],
   "single_config_entry": true,
   "version": "0.1.0"

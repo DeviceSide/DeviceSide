@@ -1,5 +1,5 @@
 DOMAIN = "device_side"
-NAME = "Device Side"
+NAME = "DeviceSide"
 
 # The light.turn_on fields a action may accept, under their light.turn_on names.
 LIGHT_FIELDS = ("brightness", "color_temp_kelvin", "hs_color", "rgb_color", "xy_color", "transition")

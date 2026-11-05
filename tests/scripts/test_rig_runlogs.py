@@ -164,7 +164,7 @@ async def test_an_unexpected_device_side_warning_fails_a_clean_run_and_keeps_its
     ha.ha_log = WARNED
     assert await go(tmp_path, "zigbee2mqtt") == 1
     out = capsys.readouterr().out
-    assert "HA's log has 2 device_side warnings or errors no step file expects:" in out
+    assert "HA's log has 2 DeviceSide warnings or errors no step file expects:" in out
     assert "stop on zha timed out after 5s" in out
     assert sorted(logs(tmp_path)) == ["ha.log", "z2m.log"]
 
@@ -173,7 +173,7 @@ async def test_a_warning_a_step_file_expects_is_counted_and_fails_nothing(tmp_pa
     phases(monkeypatch, ha)
     ha.ha_log = WARNED.splitlines(keepends=True)[0]
     assert await go(tmp_path, "zigbee2mqtt", expected_log="stop on zha timed out") == 0
-    assert "HA's log has 1 device_side warning or error the step files expect." in capsys.readouterr().out
+    assert "HA's log has 1 DeviceSide warning or error the step files expect." in capsys.readouterr().out
     assert logs(tmp_path) == {}
 
 
@@ -187,7 +187,7 @@ async def test_a_log_with_nothing_from_the_start_on_is_kept_whole_and_not_checke
     with pytest.raises(RuntimeError):
         await go(tmp_path, "zigbee2mqtt")
     assert logs(tmp_path)["ha.log"] == ha.ha_log
-    assert "so its device_side warnings aren't checked" in capsys.readouterr().out
+    assert "so its DeviceSide warnings aren't checked" in capsys.readouterr().out
 
 
 async def test_a_clean_run_deletes_its_logs(tmp_path, monkeypatch, ha):

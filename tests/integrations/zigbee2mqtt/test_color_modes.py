@@ -68,7 +68,7 @@ def z2m(broker):
 
 
 async def settle(hass) -> None:
-    """Let the passes device_side runs in the background finish."""
+    """Let the passes DeviceSide runs in the background finish."""
     await hass.async_block_till_done(wait_background_tasks=True)
 
 

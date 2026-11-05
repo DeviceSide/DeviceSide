@@ -1,4 +1,4 @@
-"""The rig engine against a fake HAClient: a state machine plus scripted device_side responses. No HA, no rig."""
+"""The rig engine against a fake HAClient: a state machine plus scripted DeviceSide responses. No HA, no rig."""
 
 import asyncio
 import contextlib
@@ -201,10 +201,10 @@ tests:
 
 @pytest.mark.parametrize(("brightness", "outcome"), [(40.0, Outcome.PASS), (60.0, Outcome.FAIL)])
 async def test_a_query_response_is_checked_without_a_status(tmp_path, brightness, outcome):
-    def device_side(ha, action, data):
+    def DeviceSide(ha, action, data):
         return {data["entity_id"]: {"brightness": brightness}}
 
-    ha = FakeHA({"light.lamp": {"state": "on"}}, device_side)
+    ha = FakeHA({"light.lamp": {"state": "on"}}, DeviceSide)
     text = """
 action: get_attributes
 rig_seconds: 5
@@ -291,14 +291,14 @@ tests:
 
 
 async def test_an_off_light_gets_its_device_side_attributes_back(tmp_path):
-    def device_side(ha, action, data):
+    def DeviceSide(ha, action, data):
         entity_id = data["entity_id"]
         if action == "get_attributes":
             attributes = {"brightness": 40, "color_temp_kelvin": 2700, "xy_color": [0.46, 0.41]}
             return {entity_id: attributes}
         return {entity_id: {"status": "sent", "integration": "hue"}}
 
-    ha = FakeHA({"light.lamp": {}, "light.room": {"attributes": {"entity_id": ["light.lamp"]}}}, device_side)
+    ha = FakeHA({"light.lamp": {}, "light.room": {"attributes": {"entity_id": ["light.lamp"]}}}, DeviceSide)
     text = """
 action: set_attributes
 rig_seconds: 5
@@ -354,7 +354,7 @@ def answers(*replies: str) -> tuple[list[str], Callable[[str], str]]:
 
 
 def in_turn(*responders: Callable) -> Callable:
-    """The nth device_side call answered by the nth responder: the automated case's first, then the observed one's."""
+    """The nth DeviceSide call answered by the nth responder: the automated case's first, then the observed one's."""
     responders_left = iter(responders)
     return lambda ha, action, data: next(responders_left)(ha, action, data)
 
@@ -1852,7 +1852,7 @@ async def test_the_lifecycle_cases_reload_disable_and_enable_the_entry(tmp_path)
 
 @pytest.mark.usefixtures("_no_reload_wait")
 async def test_a_case_that_fails_disabled_enables_the_entry_before_its_restore(tmp_path):
-    # The restore writes the off light's stored attributes back through device_side, which a disabled entry refuses.
+    # The restore writes the off light's stored attributes back through DeviceSide, which a disabled entry refuses.
     admin = entry_admin()
     text = LIFECYCLE.replace("{key: not_loaded}", "{key: something_else}")
 
@@ -1889,7 +1889,7 @@ async def test_a_failure_to_enable_after_the_steps_is_the_cases_detail(tmp_path)
 
     outcome, detail = outcomes(result)["refuses_while_disabled[light_ct]"]
     assert outcome is Outcome.FAIL
-    assert detail.startswith("could not enable device_side's entry again: ")
+    assert detail.startswith("could not enable DeviceSide's entry again: ")
 
 
 @pytest.mark.usefixtures("_no_reload_wait")

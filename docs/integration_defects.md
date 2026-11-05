@@ -1,6 +1,6 @@
 # Upstream defects and gaps
 
-Workarounds Device Side carries for behavior in the integrations it drives, and in Home Assistant Core, that could
+Workarounds DeviceSide carries for behavior in the integrations it drives, and in Home Assistant Core, that could
 be fixed upstream. Ranked by how likely the maintainers are to recognize the gap and accept a fix. Only the
 issues our code already cites (Koenkk/zigbee2mqtt#28757, #33025) have been checked upstream: search each tracker
 for duplicates before filing. Measurements behind each entry are in

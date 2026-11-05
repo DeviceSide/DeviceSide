@@ -1,6 +1,6 @@
 # Design
 
-How Device Side is built and why. What each integration does for users is in [integrations.md](integrations.md); what
+How DeviceSide is built and why. What each integration does for users is in [integrations.md](integrations.md); what
 goes on the wire, and what was measured on real devices, is in [integration-internals.md](integration-internals.md).
 
 ## Glossary
@@ -31,7 +31,7 @@ HA requires it.
   HA offline. No HA-side timers, polling or emulation; docs show how to build emulation with `set_attributes` and an
   automation instead.
 - **What gets built:** see [CONTRIBUTING.md](../CONTRIBUTING.md#what-gets-built).
-- **One action per user intent, not per protocol primitive.** Zigbee has move, step and move-to; Device Side has one
+- **One action per user intent, not per protocol primitive.** Zigbee has move, step and move-to; DeviceSide has one
   raise and one lower per attribute, and the adapter picks the command.
 - **Human terms.** Fields describe what the light should do, never how the device does it: no rates, steps, mireds
   or cluster vocabulary. The adapter converts.

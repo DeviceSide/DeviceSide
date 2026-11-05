@@ -116,7 +116,7 @@ async def test_lanes_refuse_suites_that_want_different_options(tmp_path):
     with_opt.write_text(STEPS.replace("tests:", "options: [opt]\ntests:"))
     suites[1] = Suite(load_step_file(with_opt), "zha")
 
-    with pytest.raises(RuntimeError, match="same device_side options"):
+    with pytest.raises(RuntimeError, match="same DeviceSide options"):
         await run_two(ha, suites, profile, lanes=True)
 
 
