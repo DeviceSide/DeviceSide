@@ -2,7 +2,7 @@
 
 from unittest.mock import MagicMock
 
-from custom_components.device_side.core.runtime import DeviceSideData
+from custom_components.deviceside.core.runtime import DeviceSideData
 
 from ..conftest import advance, wall_clock_now
 

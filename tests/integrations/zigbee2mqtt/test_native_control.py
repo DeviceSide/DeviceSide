@@ -14,7 +14,7 @@ DEVICE_RESPONSE = "zigbee2mqtt/bridge/response/device/options"
 GROUP_REQUEST = "zigbee2mqtt/bridge/request/group/options"
 GROUP_RESPONSE = "zigbee2mqtt/bridge/response/group/options"
 MEMBER = "0x00124b00aaaaaaaa"
-LOGGER = "custom_components.device_side.integrations.zigbee2mqtt"
+LOGGER = "custom_components.deviceside.integrations.zigbee2mqtt"
 
 
 @pytest.fixture

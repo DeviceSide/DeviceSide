@@ -4,14 +4,14 @@ import pytest
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util.color import color_RGB_to_xy, color_xy_to_hs
 
-from custom_components.device_side.integrations.zigbee2mqtt import set_attributes
+from custom_components.deviceside.integrations.zigbee2mqtt import set_attributes
 
 from ...conftest import call, refusal
 from ...fixtures.z2m import GROUPS, IEEE, INFO, add_z2m_entity, add_z2m_group, z2m_entry
 
 pytestmark = pytest.mark.usefixtures("setup_production")
 
-KEY = "device_side_read"
+KEY = "deviceside_read"
 SET = f"zigbee2mqtt/{IEEE}/set"
 CONFIRMED = {"status": "confirmed", "integration": "zigbee2mqtt"}
 OVERRIDE = {"transtime": 4, "optionsMask": 1, "optionsOverride": 1}

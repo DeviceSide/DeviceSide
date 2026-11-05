@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from homeassistant.util.color import color_hs_to_RGB, color_hs_to_xy, color_xy_to_hs, color_xy_to_RGB
 
-from custom_components.device_side.core.zcl_row import average, zcl_row
+from custom_components.deviceside.core.zcl_row import average, zcl_row
 
 NOW = datetime(2026, 10, 28, 12, 0, tzinfo=UTC)
 

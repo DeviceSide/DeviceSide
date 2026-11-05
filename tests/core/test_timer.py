@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 from homeassistant.util import dt as dt_util
 
-from custom_components.device_side.core.timer import timer_row
+from custom_components.deviceside.core.timer import timer_row
 
 NOW = datetime(2026, 10, 27, 12, 0, tzinfo=UTC)
 

@@ -146,7 +146,7 @@ def _forget(hass: HomeAssistant, ha_domain: str, resolver: CallResolver, call: C
             _LOGGER.exception("The %s call resolver failed on %s.%s", ha_domain, call.domain, call.service)
 
     pending = _pending(hass)
-    task = hass.async_create_task(run(), f"device_side {ha_domain} call resolver")
+    task = hass.async_create_task(run(), f"DeviceSide {ha_domain} call resolver")
     if not task.done():
         pending.add(task)
         task.add_done_callback(pending.discard)

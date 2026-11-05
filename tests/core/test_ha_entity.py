@@ -5,8 +5,8 @@ from types import SimpleNamespace
 
 from homeassistant.helpers.entity_component import DATA_INSTANCES
 
-from custom_components.device_side.core import ha_entity as module
-from custom_components.device_side.core.ha_entity import ha_entity, replace_if_set
+from custom_components.deviceside.core import ha_entity as module
+from custom_components.deviceside.core.ha_entity import ha_entity, replace_if_set
 
 
 def test_a_set_attribute_is_replaced():

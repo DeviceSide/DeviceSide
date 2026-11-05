@@ -8,7 +8,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util import dt as dt_util
 from homeassistant.util.color import color_RGB_to_hs, color_RGB_to_xy
 
-from custom_components.device_side.integrations.shelly.get_attributes import status_row
+from custom_components.deviceside.integrations.shelly.get_attributes import status_row
 
 from ...conftest import call, refusal
 from ...fixtures.fake import add_switch_as_x

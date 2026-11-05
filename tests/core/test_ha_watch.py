@@ -9,10 +9,10 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry, async_mock_service
 
-from custom_components.device_side.const import DOMAIN
-from custom_components.device_side.core import ha_watch
-from custom_components.device_side.core.ha_watch import ALL, Call
-from custom_components.device_side.core.registry import AdapterRegistry
+from custom_components.deviceside.const import DOMAIN
+from custom_components.deviceside.core import ha_watch
+from custom_components.deviceside.core.ha_watch import ALL, Call
+from custom_components.deviceside.core.registry import AdapterRegistry
 
 
 class Resolver:

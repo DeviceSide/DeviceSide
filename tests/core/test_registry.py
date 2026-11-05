@@ -4,8 +4,8 @@ from dataclasses import replace
 
 import pytest
 
-from custom_components.device_side import actions
-from custom_components.device_side.core.registry import AdapterRegistry
+from custom_components.deviceside import actions
+from custom_components.deviceside.core.registry import AdapterRegistry
 
 from ..conftest import FAKE_INTEGRATIONS
 

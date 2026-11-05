@@ -10,9 +10,9 @@ from homeassistant.config_entries import ConfigEntryState
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed
 
-from custom_components.device_side.const import CONF_Z2M_COLOR_MODES, DOMAIN
-from custom_components.device_side.integrations.zigbee2mqtt import color_modes
-from custom_components.device_side.integrations.zigbee2mqtt.color_modes import (
+from custom_components.deviceside.const import CONF_Z2M_COLOR_MODES, DOMAIN
+from custom_components.deviceside.integrations.zigbee2mqtt import color_modes
+from custom_components.deviceside.integrations.zigbee2mqtt.color_modes import (
     both_modes,
     default_modes,
     ensure_color_modes,
@@ -27,7 +27,7 @@ from ...fixtures.z2m import GROUPS, IEEE, INFO
 DEVICES = "zigbee2mqtt/bridge/devices"
 DEVICE_REQUEST = "zigbee2mqtt/bridge/request/device/options"
 GROUP_REQUEST = "zigbee2mqtt/bridge/request/group/options"
-LOGGER = "custom_components.device_side.integrations.zigbee2mqtt.color_modes"
+LOGGER = "custom_components.deviceside.integrations.zigbee2mqtt.color_modes"
 OTHER = "0x00124b00aaaaaaaa"
 CT_ONLY = "0x00124b00bbbbbbbb"
 
@@ -68,7 +68,7 @@ def z2m(broker):
 
 
 async def settle(hass) -> None:
-    """Let the passes device_side runs in the background finish."""
+    """Let the passes DeviceSide runs in the background finish."""
     await hass.async_block_till_done(wait_background_tasks=True)
 
 
@@ -138,7 +138,7 @@ def test_default_modes_match_z2m_discovery(exposes, expected):
         ({"homeassistant": {"light": "odd"}}, True, {}),
     ],
 )
-def test_wanted_writes_only_device_sides_own_values(current, enabled, expected):
+def test_wanted_writes_only_devicesides_own_values(current, enabled, expected):
     assert wanted(current, [FULL], enabled) == expected
 
 
@@ -165,7 +165,7 @@ async def test_a_users_own_value_is_left_alone(hass, z2m):
     assert sent(z2m) == {("device", OTHER): overrides(["xy", "hs"])}
 
 
-async def test_disabled_puts_back_z2m_defaults_only_where_device_side_set_them(hass, z2m, caplog):
+async def test_disabled_puts_back_z2m_defaults_only_where_deviceside_set_them(hass, z2m, caplog):
     z2m.retained[INFO]["config"]["devices"][IEEE] = ON
     z2m.retained[INFO]["config"]["devices"][OTHER] = overrides(["hs"])
     z2m.retained[INFO]["config"]["groups"]["1"] = ON
@@ -324,7 +324,7 @@ async def test_saving_the_option_off_puts_back_z2m_defaults(hass, z2m, mqtt_read
     assert not z2m.subscribers.get(DEVICES)
 
 
-async def test_deleting_device_side_puts_back_z2m_defaults(hass, z2m, mqtt_ready):
+async def test_deleting_deviceside_puts_back_z2m_defaults(hass, z2m, mqtt_ready):
     entry = await setup_entry(hass, {CONF_Z2M_COLOR_MODES: False})
     await settle(hass)
     z2m.retained[INFO]["config"]["devices"][IEEE] = ON
@@ -335,7 +335,7 @@ async def test_deleting_device_side_puts_back_z2m_defaults(hass, z2m, mqtt_ready
     assert sent(z2m) == {("device", IEEE): OFF}
 
 
-async def test_deleting_device_side_without_mqtt_does_nothing(hass, z2m, no_mqtt):
+async def test_deleting_deviceside_without_mqtt_does_nothing(hass, z2m, no_mqtt):
     entry = await setup_entry(hass)
 
     assert await hass.config_entries.async_remove(entry.entry_id)

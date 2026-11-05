@@ -1,4 +1,4 @@
-# device_side
+# DeviceSide
 
 Design: `docs/design.md`; use its glossary's terms in code and docs. Progress to v0.1.0: `TODO.md`; tick items off
 in the PR that finishes them.
@@ -53,9 +53,9 @@ since its last rig run needs a new one); see their headers. The steps they don't
 
 ## Layout
 
-- `custom_components/device_side/core/`: registry, resolver, dispatcher, action registration
-- `custom_components/device_side/actions/`: one module per action
-- `custom_components/device_side/integrations/<integration>/`: one adapter module per action
+- `custom_components/deviceside/core/`: registry, resolver, dispatcher, action registration
+- `custom_components/deviceside/actions/`: one module per action
+- `custom_components/deviceside/integrations/<integration>/`: one adapter module per action
 - `tests/{core,actions,integrations,scripts}`: mirror the above
 - `scripts/`: household check, release checks (coverage, the release flag, record freshness, tags, RC audits)
 - `docs/test-records/<integration>/`: test records, written by the rig. Design detail lives in `docs/design.md`.

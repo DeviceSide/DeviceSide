@@ -3,9 +3,9 @@
 import pytest
 from homeassistant.util.color import color_hs_to_xy, color_RGB_to_xy, color_temperature_to_hs, color_xy_to_hs
 
-from custom_components.device_side.actions.set_attributes import SetAttributesRequest
-from custom_components.device_side.core.models import LightFields
-from custom_components.device_side.core.zcl_write import (
+from custom_components.deviceside.actions.set_attributes import SetAttributesRequest
+from custom_components.deviceside.core.models import LightFields
+from custom_components.deviceside.core.zcl_write import (
     MoveToColor,
     MoveToColorTemp,
     MoveToHueAndSaturation,

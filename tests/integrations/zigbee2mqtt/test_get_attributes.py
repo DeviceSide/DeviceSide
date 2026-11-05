@@ -9,7 +9,7 @@ import pytest
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util import dt as dt_util
 
-from custom_components.device_side.integrations.zigbee2mqtt import read
+from custom_components.deviceside.integrations.zigbee2mqtt import read
 
 from ...conftest import call, refusal
 from ...fixtures.z2m import GROUPS, IEEE, INFO, add_z2m_entity, add_z2m_group, z2m_entry
@@ -17,10 +17,10 @@ from ...fixtures.z2m import GROUPS, IEEE, INFO, add_z2m_entity, add_z2m_group, z
 pytestmark = pytest.mark.usefixtures("setup_production")
 
 NOW = datetime(2026, 10, 28, 12, 0, tzinfo=UTC)
-KEY = "device_side_read"
+KEY = "deviceside_read"
 SET = f"zigbee2mqtt/{IEEE}/set"
 DEVICE_REQUEST = "zigbee2mqtt/bridge/request/device/options"
-LOGGER = "custom_components.device_side.integrations.zigbee2mqtt"
+LOGGER = "custom_components.deviceside.integrations.zigbee2mqtt"
 CT_AND_XY = ["color_temp", "xy"]
 # A bulb at 152 of 254 in color temperature mode, at 250 mireds.
 BULB = {

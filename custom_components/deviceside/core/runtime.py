@@ -30,7 +30,7 @@ class DeviceSideData:
     pending: dict[str, list[CALLBACK_TYPE]] = field(default_factory=dict)
     # Listeners attached on first use, by the caller's key, with what they were attached for (the Hue report filters).
     listeners: dict[str, tuple[object, CALLBACK_TYPE]] = field(default_factory=dict)
-    # The entry's predicted_state option: Hue fades show device_side's predictions in HA.
+    # The entry's predicted_state option: Hue fades show DeviceSide's predictions in HA.
     predicted_state: bool = PREDICTED_STATE_DEFAULT
 
     def semaphore(self, key: str, limit: int) -> asyncio.Semaphore:

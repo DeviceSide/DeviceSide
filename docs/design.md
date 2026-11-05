@@ -1,6 +1,6 @@
 # Design
 
-How Device Side is built and why. What each integration does for users is in [integrations.md](integrations.md); what
+How DeviceSide is built and why. What each integration does for users is in [integrations.md](integrations.md); what
 goes on the wire, and what was measured on real devices, is in [integration-internals.md](integration-internals.md).
 
 ## Glossary
@@ -8,7 +8,7 @@ goes on the wire, and what was measured on real devices, is in [integration-inte
 Code and docs use these terms. "Platform", "backing" and "claim" are retired; `services.yaml` keeps its name because
 HA requires it.
 
-- **Action**: what the user calls, e.g. `device_side.turn_on_for`.
+- **Action**: what the user calls, e.g. `deviceside.turn_on_for`.
 - **Feature**: the user experience one or more actions deliver (an auto-off timer, smooth dimming). Prose only.
 - **Integration**: the HA integration that is the first hop to the device (Shelly, ZHA, MQTT, Hue).
 - **Bridge**: a separate system between the integration and the device, named only when the integration alone
@@ -20,7 +20,7 @@ HA requires it.
 - **Entity domain**: light, switch. "Domain" alone is fine where unambiguous.
 - **Scope**: the entity domains, capabilities and fields an adapter is known to work with, on tested hardware.
   Outside it, calls are refused as not yet tested.
-- **Rig**: the maintainer's live Home Assistant and devices, and the private tool that runs Device Side's actions on
+- **Rig**: the maintainer's live Home Assistant and devices, and the private tool that runs DeviceSide's actions on
   them and writes test records. It is kept outside this repo; the records are its output here.
 - **Test record**: the evidence that an adapter works on real hardware, from a rig run:
   `docs/test-records/<integration>/<action>*.md`. Clearing `experimental` cites one.
@@ -33,7 +33,7 @@ HA requires it.
   HA offline. No HA-side timers, polling or emulation; docs show how to build emulation with `set_attributes` and an
   automation instead.
 - **What gets built:** see [CONTRIBUTING.md](../CONTRIBUTING.md#what-gets-built).
-- **One action per user intent, not per protocol primitive.** Zigbee has move, step and move-to; Device Side has one
+- **One action per user intent, not per protocol primitive.** Zigbee has move, step and move-to; DeviceSide has one
   raise and one lower per attribute, and the adapter picks the command.
 - **Human terms.** Fields describe what the light should do, never how the device does it: no rates, steps, mireds
   or cluster vocabulary. The adapter converts.
@@ -96,7 +96,7 @@ Facts from HA core this rests on:
 ### Layout
 
 ```
-custom_components/device_side/
+custom_components/deviceside/
   __init__.py, config_flow.py, const.py, manifest.json, services.yaml, strings.json, icons.json, translations/
   core/
     models.py        Status, ActionKind, Request, Target, EntityResult, LightFields

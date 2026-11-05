@@ -3,7 +3,7 @@
 import probatio
 import pytest
 
-from custom_components.device_side.actions.lower_brightness import LowerBrightness
+from custom_components.deviceside.actions.lower_brightness import LowerBrightness
 
 
 @pytest.mark.parametrize("limit", [0, 99])

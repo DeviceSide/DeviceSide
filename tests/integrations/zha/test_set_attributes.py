@@ -13,9 +13,9 @@ from homeassistant.helpers.service import async_register_admin_service
 from homeassistant.util.color import color_xy_to_hs
 from pytest_homeassistant_custom_component.common import async_mock_service
 
-from custom_components.device_side.const import DOMAIN
-from custom_components.device_side.integrations.zha import set_attributes as adapter
-from custom_components.device_side.integrations.zha import zcl
+from custom_components.deviceside.const import DOMAIN
+from custom_components.deviceside.integrations.zha import set_attributes as adapter
+from custom_components.deviceside.integrations.zha import zcl
 
 from ...conftest import advance, call, refusal, wall_clock_now
 from ...fixtures.zha import IEEE, add_zha_entity, zha_entry, zha_group

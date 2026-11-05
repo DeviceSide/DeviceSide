@@ -25,7 +25,7 @@ from ...core.models import Target
 
 _LOGGER = logging.getLogger(__name__)
 
-READ_KEY = "device_side_read"
+READ_KEY = "deviceside_read"
 _FILTERED_CACHE = "filtered_cache"
 # Z2M publishes a reply within a quarter second when the bulb answers; the same wait as turn_on_for's state.
 _REPLY_TIMEOUT_S = 5.0
@@ -167,7 +167,7 @@ async def reader(hass: HomeAssistant, devices: list[Target]) -> AsyncIterator[Re
 
         def added(address: str) -> None:
             _LOGGER.info(
-                "Added %s to Zigbee2MQTT's %s for %s, so device_side reads it live",
+                "Added %s to Zigbee2MQTT's %s for %s, so DeviceSide reads it live",
                 READ_KEY,
                 _FILTERED_CACHE,
                 by_address[address].entity_id,

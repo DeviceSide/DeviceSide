@@ -1,37 +1,37 @@
 {
-  "title": "Device Side",
+  "title": "DeviceSide",
   "config": {
     "step": {
       "user": {
-        "title": "Device Side",
+        "title": "DeviceSide",
         "description": "Click submit to install."
       }
     },
     "abort": {
-      "single_instance_allowed": "Only a single instance of Device Side is needed."
+      "single_instance_allowed": "Only a single instance of DeviceSide is needed."
     },
     "create_entry": {
-      "default": "Success! You can now use device_side actions in your automations."
+      "default": "Success! You can now use DeviceSide actions in your automations."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Device Side options",
+        "title": "DeviceSide options",
         "data": {
           "predicted_state": "Show predicted brightness during Hue fades",
           "z2m_color_modes": "Fix colors of full-color Zigbee2MQTT lights"
         },
         "data_description": {
           "predicted_state": "A Hue bridge reports a fade's end brightness as soon as it starts, and where a stopped fade halted late or never. With this on, Home Assistant shows the brightness at the start, where a stop halted it, and the end once the fade has run. Turn it off to show what the bridge reports.",
-          "z2m_color_modes": "Zigbee2MQTT tells Home Assistant a full-color light has one color mode, so Home Assistant keeps showing the old color whenever the bulb reports in the other. With this on, device_side sets each such light's and group's Home Assistant override in Zigbee2MQTT's settings to announce both. Turn it off to remove those overrides."
+          "z2m_color_modes": "Zigbee2MQTT tells Home Assistant a full-color light has one color mode, so Home Assistant keeps showing the old color whenever the bulb reports in the other. With this on, DeviceSide sets each such light's and group's Home Assistant override in Zigbee2MQTT's settings to announce both. Turn it off to remove those overrides."
         }
       }
     }
   },
   "exceptions": {
     "not_loaded": {
-      "message": "Device Side is not loaded. Check the integration is set up and enabled."
+      "message": "DeviceSide is not loaded. Check the integration is set up and enabled."
     },
     "no_targets": {
       "message": "No entities were targeted. Choose at least one."
