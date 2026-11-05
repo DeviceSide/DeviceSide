@@ -13,7 +13,7 @@ from ...core.adapter import Adapter
 from ...core.color import color_xy
 from ...core.ha_entity import ha_entity, replace_if_set
 from ...core.models import EntityResult, Status, Target
-from ...core.scope import AdapterScope
+from ...core.scope import AdapterScope, verified
 
 if TYPE_CHECKING:
     from aiohue.v2.models.light import Light
@@ -85,8 +85,8 @@ class HueSetAttributes(Adapter[SetAttributesRequest]):
     integration: ClassVar[str] = "hue"
     scope: ClassVar[AdapterScope] = AdapterScope(
         experimental=True,
-        fields=frozenset(
-            {"brightness", "color_temp_kelvin", "hs_color", "rgb_color", "xy_color", "min_brightness", "max_brightness"}
+        fields=verified(
+            "brightness", "color_temp_kelvin", "hs_color", "rgb_color", "xy_color", "min_brightness", "max_brightness"
         ),
     )
 

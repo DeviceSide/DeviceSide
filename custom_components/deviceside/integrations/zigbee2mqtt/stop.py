@@ -12,7 +12,7 @@ from ...core.adapter import Adapter
 from ...core.dispatcher import EMPTY_GROUP
 from ...core.models import EntityResult, Request, Status, Target
 from ...core.runtime import get_runtime
-from ...core.scope import AdapterScope
+from ...core.scope import AdapterScope, verified
 from ...core.transition import BRIGHTNESS, SATURATION, hs_color, light_brightness, lit
 
 # Z2M's saturation_move: stop halts only the saturation attribute, and the xy fade our saturation move runs carries on.
@@ -42,7 +42,7 @@ class Z2MStop(Adapter[Request]):
 
     action: ClassVar[str] = "stop"
     integration: ClassVar[str] = "zigbee2mqtt"
-    scope: ClassVar[AdapterScope] = AdapterScope(experimental=True, domains=frozenset({"light"}), native_groups=True)
+    scope: ClassVar[AdapterScope] = AdapterScope(experimental=True, domains=verified("light"), native_groups=True)
 
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:
         if (reason := super().supports(hass, request, target)) is not None:

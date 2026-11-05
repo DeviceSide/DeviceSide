@@ -9,7 +9,7 @@ follows what the adapter reads at runtime:
             .get_node(node_id) -> mock_node
                 .node_data.attributes["{endpoint_id}/6/65532"] -> int feature_map
             .send_device_command(node_id, endpoint_id, command) -> None  (AsyncMock)
-            .read_attribute(node_id, attribute_path) -> {attribute_path: value}  (AsyncMock)
+            .read_attribute(node_id, attribute_path) -> {attribute_path: value}  (AsyncMock; OnTime 1, OnOff on)
 """
 
 import sys
@@ -38,9 +38,16 @@ def make_node_mock(endpoint_id: int, feature_map: int = 0x0001) -> MagicMock:
     return node
 
 
-def on_time_reads(value: int) -> AsyncMock:
-    """A read_attribute mock that answers like python-matter-server: {attribute_path: value}."""
-    return AsyncMock(side_effect=lambda node_id, attribute_path: {attribute_path: value})
+def on_time_reads(on_time: int, on: bool = True) -> AsyncMock:
+    """A read_attribute mock that answers like python-matter-server, {attribute_path: value}: OnOff.OnOff (x/6/0)
+    reads `on`, any other path `on_time`."""
+    return AsyncMock(
+        side_effect=lambda node_id, attribute_path: {attribute_path: on_off_or(attribute_path, on, on_time)}
+    )
+
+
+def on_off_or(attribute_path: str, on: bool, value: object) -> object:
+    return on if attribute_path.endswith("/6/0") else value
 
 
 def matter_device(

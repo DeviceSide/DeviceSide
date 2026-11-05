@@ -18,6 +18,7 @@ _ONOFF_CLUSTER_ID = 6
 _FEATUREMAP_ATTR_ID = 65532  # 0xFFFC
 _LT_FEATURE_BIT = 0x0001  # Lighting (LT) is bit 0; bit 1 (0x2) is DeadFrontBehavior
 _ONTIME_ATTR_ID = 16385  # 0x4001 — counts down to 0 while the timed-on is running
+_ONOFF_ATTR_ID = 0  # 0x0000 — true while the endpoint is on
 
 
 def node_id_from_unique_id(unique_id: str) -> int | None:
@@ -118,6 +119,28 @@ def unsupported_reason(hass: HomeAssistant, target: Target) -> str | None:
 def ontime_attr_path(endpoint_id: int) -> str:
     """Attribute path for OnOff.OnTime on the given endpoint, for python-matter-server's read_attribute."""
     return _onoff_attr_path(endpoint_id, _ONTIME_ATTR_ID)
+
+
+def onoff_attr_path(endpoint_id: int) -> str:
+    """Attribute path for OnOff.OnOff on the given endpoint, for python-matter-server's read_attribute."""
+    return _onoff_attr_path(endpoint_id, _ONOFF_ATTR_ID)
+
+
+async def read_timer(client, node_id: int, endpoint_id: int) -> tuple[object, object]:
+    """OnTime (tenths of a second) and OnOff, read live, one path per read; a value the device leaves out is None.
+
+    A timer runs only while both say so: OnTime > 0 alone is not enough, as a device may hold a stale OnTime while off.
+    An error propagates.
+    """
+    values = []
+    for path in (ontime_attr_path(endpoint_id), onoff_attr_path(endpoint_id)):
+        answer = await client.read_attribute(node_id=node_id, attribute_path=path)
+        values.append(answer.get(path))
+    return values[0], values[1]
+
+
+def timer_running(on_time: object, on_off: object) -> bool:
+    return isinstance(on_time, int) and on_time > 0 and on_off is True
 
 
 def make_on_with_timed_off(on_off_control: int, on_time: int, off_wait_time: int):

@@ -11,7 +11,7 @@ from .bridge import bridge_api, resource_id, write_light
 from .report_filter import write_forgetting
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Request, Status, Target
-from ...core.scope import AdapterScope
+from ...core.scope import AdapterScope, verified
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -52,7 +52,7 @@ class HueSetScene(Adapter[Request]):
 
     action: ClassVar[str] = "set_scene"
     integration: ClassVar[str] = "hue"
-    scope: ClassVar[AdapterScope] = AdapterScope(domains=frozenset({"scene"}))
+    scope: ClassVar[AdapterScope] = AdapterScope(domains=verified("scene"))
 
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:
         if (reason := super().supports(hass, request, target)) is not None:

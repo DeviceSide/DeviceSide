@@ -15,7 +15,7 @@ from ...actions.set_attributes import SetAttributesRequest
 from ...core.adapter import Adapter
 from ...core.dispatcher import EMPTY_GROUP
 from ...core.models import EntityResult, Status, Target
-from ...core.scope import AdapterScope
+from ...core.scope import AdapterScope, verified
 from ...core.zcl_write import (
     Command,
     MoveToColor,
@@ -135,9 +135,9 @@ class Z2MSetAttributes(Adapter[SetAttributesRequest]):
     integration: ClassVar[str] = "zigbee2mqtt"
     scope: ClassVar[AdapterScope] = AdapterScope(
         experimental=True,
-        domains=frozenset({"light"}),
-        fields=frozenset(
-            {"brightness", "color_temp_kelvin", "hs_color", "rgb_color", "xy_color", "min_brightness", "max_brightness"}
+        domains=verified("light"),
+        fields=verified(
+            "brightness", "color_temp_kelvin", "hs_color", "rgb_color", "xy_color", "min_brightness", "max_brightness"
         ),
         confirmable=True,
         native_groups=True,  # read back through its members, which only Z2M's bridge/groups knows

@@ -2,8 +2,10 @@
 
 from unittest.mock import call as rpc_call
 
+import pytest
+
 from ...conftest import call, refusal
-from ...fixtures.shelly import add_shelly_entity, shelly_device
+from ...fixtures.shelly import DOCUMENTED_COMPONENTS, add_shelly_entity, shelly_device
 
 CONFIRMED = {"status": "confirmed", "integration": "shelly"}
 
@@ -33,11 +35,18 @@ async def test_each_capability_in_scope_gets_a_set(hass, setup_production):
     ]
 
 
-async def test_rgbw_is_refused(hass, setup_production):
-    entry, _ = shelly_device(hass)
-    add_shelly_entity(hass, entry, "light.strip", "rgbw:0", state="on")
+@pytest.mark.parametrize(("key", "component"), DOCUMENTED_COMPONENTS)
+async def test_documented_components_take_the_same_set(hass, setup_production, key, component):
+    entry, call_rpc = shelly_device(hass)
+    add_shelly_entity(hass, entry, "light.strip", key, state="on")
 
-    assert await refusal(hass, "turn_off_for", {"entity_id": "light.strip", "duration": 90}) == "capability_not_tested"
+    response = await call(hass, "turn_off_for", {"entity_id": "light.strip", "duration": 90})
+
+    assert response == {"light.strip": CONFIRMED}
+    assert call_rpc.await_args_list == [
+        rpc_call(f"{component}.Set", {"id": 0, "on": False, "toggle_after": 90.0}),
+        rpc_call(f"{component}.GetStatus", {"id": 0}),
+    ]
 
 
 async def test_gen1_is_refused(hass, setup_production):

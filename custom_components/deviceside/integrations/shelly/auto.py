@@ -4,16 +4,13 @@ from typing import ClassVar, Literal
 
 from homeassistant.core import HomeAssistant
 
-from .addressing import unsupported_reason
+from .addressing import CAPABILITIES, unsupported_reason
 from .rpc import AUTO_DELAY_LIMITS, write_auto
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Request, Target, TimedRequest
-from ...core.scope import AdapterScope
+from ...core.scope import AdapterScope, verified
 
-_DOMAINS = frozenset({"light", "switch"})
-# A relay shown as a light sends the same Switch.SetConfig; Light, CCT, RGB and RGBW stay out of scope until a test
-# record covers them.
-_CAPABILITIES = frozenset({"Switch", "RGBCCT"})
+_DOMAINS = verified("light", "switch")
 
 
 class ShellySetAuto(Adapter[TimedRequest]):
@@ -25,7 +22,7 @@ class ShellySetAuto(Adapter[TimedRequest]):
         experimental=True,
         domains=_DOMAINS,
         duration=AUTO_DELAY_LIMITS,
-        capabilities=_CAPABILITIES,
+        capabilities=CAPABILITIES,
         confirmable=True,
     )
 
@@ -42,7 +39,7 @@ class ShellyClearAuto(Adapter[Request]):
     integration: ClassVar[str] = "shelly"
     which: ClassVar[Literal["off", "on"]]
     scope: ClassVar[AdapterScope] = AdapterScope(
-        experimental=True, domains=_DOMAINS, capabilities=_CAPABILITIES, confirmable=True
+        experimental=True, domains=_DOMAINS, capabilities=CAPABILITIES, confirmable=True
     )
 
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:

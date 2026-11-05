@@ -247,10 +247,13 @@ Through the core integration's python-matter-server connection. The unique ID is
 FeatureMap bit 0 from the node data (`node_data.attributes["{endpoint}/6/65532"]`), avoiding a chip.clusters import
 that `MatterEndpoint.get_attribute_value` would need.
 
-- **Turn on with timer.** `OnOff.Commands.OnWithTimedOff(onOffControl=0, onTime=<tenths>, offWaitTime=0)`, then a
-  read of `OnOff.OnTime`: `confirmed` when non-zero.
-- **`get_attributes`.** A live read of `OnTime`, as the plug tested never reports it on its subscription, so the
-  node cache reads 0 mid-timer (Tested behavior). `turns` is always `off`.
+- **Turn on with timer.** `OnOff.Commands.OnWithTimedOff(onOffControl=0, onTime=<tenths>, offWaitTime=0)`, then
+  reads of `OnOff.OnTime` and `OnOff.OnOff`, one path per `read_attribute`: `confirmed` when OnTime is non-zero and
+  OnOff is on. OnTime alone is not proof: a device can hold a stale OnTime while off.
+- **`get_attributes`.** Live reads of `OnTime` and `OnOff`, as the plug tested never reports OnTime on its
+  subscription, so the node cache reads 0 mid-timer (Tested behavior). A timer is reported only while OnOff is on.
+  `turns` is always `off`.
+- **Lights** (Documented) take the same command and reads as plugs, behind the same Lighting feature check.
 
 ### Tested behavior
 

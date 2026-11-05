@@ -3,8 +3,9 @@
 records tested.
 
 A level comes from the records, never from a label: Verified when a passing record exists and the adapter is not
-experimental, otherwise Experimental. Models come from each passing record's `| Device |` row. A group (a row with
-no firmware, firmware `unknown`, or named Group or Zone) shows as "group", not as a model.
+experimental, otherwise Experimental. An adapter's Documented domains and capabilities get a row of their own.
+Models come from each passing record's `| Device |` row. A group (a row with no firmware, firmware `unknown`, or
+named Group or Zone) shows as "group", not as a model.
 
 Usage: scripts/gen_compat.py [--check]
 
@@ -20,6 +21,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
 from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
+from custom_components.deviceside.core.scope import Level  # noqa: E402
 from scripts.check_release import adapters, records  # noqa: E402
 
 PAGE = REPO / "docs" / "compatibility.md"
@@ -38,6 +40,9 @@ DeviceSide was tested on the models below. Others may work. If yours isn't liste
 or not.
 
 **Verified**: a passing test record from a rig run. The models in the record are the ones tested.
+**Documented**: no record yet, but DeviceSide sends it the same call as a Verified row, differing only in which
+component, endpoint or entity it addresses, and the vendor or standard documents that call identically for both. It
+ships in stable releases, and a bug on it is a real bug: please report it.
 **Experimental**: no current record. It may work, and it is not in a stable release.
 
 A group is a native group of the integration (a Hue zone, a ZHA or Zigbee2MQTT group).
@@ -89,6 +94,20 @@ def row(action: str, adapter) -> str:
     return f"| `{action}` | {level} | {'<br>'.join(tested) or 'none'} | {records_cell} | |"
 
 
+def documented_row(action: str, adapter) -> str | None:
+    """The adapter's Documented domains and capabilities as one more row, or None when it has none. They have no
+    record, so no models; an experimental adapter's stay Experimental, as the rest of it is."""
+    scope = adapter.scope
+    untested = []
+    for items, noun in ((scope.domains, "entities"), (scope.capabilities or {}, "components")):
+        if documented := [item for item, level in items.items() if level is Level.DOCUMENTED]:
+            untested.append(f"{', '.join(documented)} {noun}")
+    if not untested:
+        return None
+    level = "Experimental" if scope.experimental else "Documented"
+    return f"| `{action}` | {level} | none (untested: {'; '.join(untested)}) | | |"
+
+
 def generate(registry: AdapterRegistry) -> str:
     by_integration: dict[str, list] = {}
     for _, adapter in adapters(registry):
@@ -98,7 +117,10 @@ def generate(registry: AdapterRegistry) -> str:
         parts.append(f"## {registry.integrations[key].title}\n")
         parts.append("| Action | Level | Tested models | Records | Reported working |")
         parts.append("|---|---|---|---|---|")
-        parts += [row(adapter.action, adapter) for adapter in sorted(by_integration[key], key=lambda a: a.action)]
+        for adapter in sorted(by_integration[key], key=lambda a: a.action):
+            parts.append(row(adapter.action, adapter))
+            if documented := documented_row(adapter.action, adapter):
+                parts.append(documented)
         parts.append("")
     return "\n".join(parts)
 

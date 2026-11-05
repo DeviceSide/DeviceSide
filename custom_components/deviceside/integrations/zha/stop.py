@@ -14,7 +14,7 @@ from .fade import end_key, has_color, hue_moves, refresh, send, soft_off_restore
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Request, Status, Target
 from ...core.runtime import get_runtime
-from ...core.scope import AdapterScope
+from ...core.scope import AdapterScope, verified
 from ...core.transition import BRIGHTNESS, SATURATION, TransitionCache, hs_color, light_brightness, lit
 
 _LOGGER = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ class ZHAStop(Adapter[Request]):
 
     action: ClassVar[str] = "stop"
     integration: ClassVar[str] = "zha"
-    scope: ClassVar[AdapterScope] = AdapterScope(experimental=True, domains=frozenset({"light"}), max_concurrency=2)
+    scope: ClassVar[AdapterScope] = AdapterScope(experimental=True, domains=verified("light"), max_concurrency=2)
 
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:
         return super().supports(hass, request, target) or unsupported_reason(target)

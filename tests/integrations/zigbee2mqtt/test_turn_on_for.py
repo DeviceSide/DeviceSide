@@ -12,6 +12,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import async_mock_service
 
+from custom_components.deviceside.core.scope import verified
 from custom_components.deviceside.integrations.zigbee2mqtt import turn_on_for
 from custom_components.deviceside.integrations.zigbee2mqtt.addressing import (
     is_z2m_group,
@@ -552,7 +553,7 @@ def test_supports_returns_super_reason_when_scope_refuses(hass):
     )
     # Request with brightness; temporarily restrict scope so brightness is not in scope.
     request = TurnOnForRequest(duration_s=5.0, light=LightFields(brightness=128))
-    restricted_scope = dataclasses.replace(Z2MTurnOnFor.scope, fields=frozenset())
+    restricted_scope = dataclasses.replace(Z2MTurnOnFor.scope, fields=verified())
     original_scope = Z2MTurnOnFor.scope
     Z2MTurnOnFor.scope = restricted_scope
     try:

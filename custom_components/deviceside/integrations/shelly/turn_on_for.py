@@ -3,12 +3,12 @@ from typing import ClassVar
 
 from homeassistant.core import HomeAssistant
 
-from .addressing import COMPONENT_FIELDS, address, unsupported_reason
+from .addressing import CAPABILITIES, COMPONENT_FIELDS, address, unsupported_reason
 from .rpc import TIMER_LIMITS, light_params, set_with_timer
 from ...actions.turn_on_for import TurnOnForRequest
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Target
-from ...core.scope import AdapterScope
+from ...core.scope import AdapterScope, verified
 
 
 class ShellyTurnOnFor(Adapter[TurnOnForRequest]):
@@ -17,12 +17,11 @@ class ShellyTurnOnFor(Adapter[TurnOnForRequest]):
     action: ClassVar[str] = "turn_on_for"
     integration: ClassVar[str] = "shelly"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        domains=frozenset({"light", "switch"}),
+        domains=verified("light", "switch"),
         duration=TIMER_LIMITS,
-        fields=frozenset({"brightness", "color_temp_kelvin", "hs_color", "rgb_color", "transition", "xy_color"}),
-        # A relay shown as a light sends the same Switch.Set; Light, CCT, RGB and RGBW stay out of scope until a test
-        # record covers them.
-        capabilities=frozenset({"Switch", "RGBCCT"}),
+        fields=verified("brightness", "color_temp_kelvin", "hs_color", "rgb_color", "transition", "xy_color"),
+        # A relay shown as a light sends the same Switch.Set.
+        capabilities=CAPABILITIES,
         confirmable=True,
     )
 

@@ -11,6 +11,9 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 MAC = "AABBCCDDEEFF"
 
+# The Documented components, as (RPC key, component) for a parametrize.
+DOCUMENTED_COMPONENTS = [("light:0", "Light"), ("cct:0", "CCT"), ("rgb:0", "RGB"), ("rgbw:0", "RGBW")]
+
 
 # When a fixture timer starts, on the device's clock: 2026-10-27T12:00:00Z.
 TIMER_STARTED_AT = 1793102400.0

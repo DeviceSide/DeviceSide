@@ -13,7 +13,7 @@ from custom_components.deviceside.integrations.shelly.get_attributes import conf
 
 from ...conftest import call, refusal
 from ...fixtures.fake import add_switch_as_x
-from ...fixtures.shelly import TIMER_STARTED_AT, add_shelly_entity, failing, shelly_device
+from ...fixtures.shelly import DOCUMENTED_COMPONENTS, TIMER_STARTED_AT, add_shelly_entity, failing, shelly_device
 
 pytestmark = pytest.mark.usefixtures("setup_production")
 
@@ -136,13 +136,20 @@ async def test_gen1_and_non_timer_entities_are_refused(hass):
     assert not call_rpc.await_args_list
 
 
-@pytest.mark.parametrize("key", ["light:0", "cct:0", "rgb:0", "rgbw:0"])
-async def test_untested_light_components_are_refused(hass, key):
-    entry, call_rpc = shelly_device(hass)
+@pytest.mark.parametrize(("key", "component"), DOCUMENTED_COMPONENTS)
+async def test_documented_components_report_timer_and_settings_only(hass, key, component):
+    # Their light state isn't read yet: status_row has no branch for these components.
+    entry, call_rpc = shelly_device(hass, status={"brightness": 40, "ct": 4000, "rgb": [255, 0, 0]})
     add_shelly_entity(hass, entry, "light.lamp", key)
+    await call(hass, "turn_on_for", {"entity_id": "light.lamp", "duration": 5})
 
-    assert await refusal(hass, "get_attributes", {"entity_id": "light.lamp"}) == "capability_not_tested"
-    assert not call_rpc.await_args_list
+    response = await call(hass, "get_attributes", {"entity_id": "light.lamp"})
+
+    assert response == {"light.lamp": {"timer": timer("off", 3.0), **NO_AUTO}}
+    assert call_rpc.await_args_list[-2:] == [
+        rpc_call(f"{component}.GetStatus", {"id": 0}),
+        rpc_call(f"{component}.GetConfig", {"id": 0}),
+    ]
 
 
 async def test_get_status_error_raises(hass):

@@ -1,11 +1,11 @@
 name: Bug report
-description: A listed feature doesn't work on a device the compatibility page lists.
+description: A listed feature doesn't work on a device the compatibility page lists, or on a Documented row.
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        Bug reports are for a device and feature the [compatibility page](https://github.com/jasonmx/DeviceSide/blob/main/docs/compatibility.md) list. For any other device, please open a [device report](https://github.com/jasonmx/DeviceSide/issues/new?template=device_report.yml).
+        Bug reports are for a device and feature the [compatibility page](https://github.com/jasonmx/DeviceSide/blob/main/docs/compatibility.md) lists, Documented rows included. For any other device, please open a [device report](https://github.com/jasonmx/DeviceSide/issues/new?template=device_report.yml).
 
         Please don't include entity IDs, device names or MAC addresses; replace them with placeholders.
   - type: input
@@ -25,7 +25,7 @@ body:
     id: model
     attributes:
       label: Tested model
-      description: The model, as the test record lists it.
+      description: The model, as the test record lists it. For a Documented row, your device's model.
     validations:
       required: true
   - type: input

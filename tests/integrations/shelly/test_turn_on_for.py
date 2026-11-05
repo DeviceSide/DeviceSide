@@ -6,6 +6,8 @@ from unittest.mock import call as rpc_call
 import pytest
 from homeassistant.exceptions import HomeAssistantError
 
+from custom_components.deviceside.core.scope import Level, verified
+from custom_components.deviceside.integrations.shelly.addressing import COMPONENTS
 from custom_components.deviceside.integrations.shelly.turn_on_for import ShellyTurnOnFor
 
 from ...conftest import call, refusal
@@ -13,13 +15,6 @@ from ...fixtures.fake import add_switch_as_x
 from ...fixtures.shelly import add_shelly_entity, shelly_device
 
 CONFIRMED = {"status": "confirmed", "integration": "shelly"}
-
-
-@pytest.fixture
-def every_light_in_scope(monkeypatch):
-    """Light, CCT, RGB and RGBW as test records would add them; until then they are refused first."""
-    scope = dataclasses.replace(ShellyTurnOnFor.scope, capabilities=None)
-    monkeypatch.setattr(ShellyTurnOnFor, "scope", scope)
 
 
 async def test_switch_one_set_then_read_back(hass, setup_production):
@@ -35,19 +30,30 @@ async def test_switch_one_set_then_read_back(hass, setup_production):
     ]
 
 
-async def test_light_fields_ride_in_the_same_set(hass, setup_production, every_light_in_scope):
+@pytest.mark.parametrize(
+    ("key", "data", "expected"),
+    [
+        # Translated as shelly/light.py does: brightness to percent, transition floored at 0.5 s.
+        ("light:0", {"brightness": 128, "transition": 0.2}, {"brightness": 50, "transition_duration": 0.5}),
+        ("cct:0", {"brightness": 128, "color_temp_kelvin": 3000}, {"brightness": 50, "ct": 3000}),
+        ("cct:0", {"color_temp_kelvin": 9000}, {"ct": 6500}),  # clamped to the entity's range; no mode on a CCT
+        ("rgb:0", {"brightness": 255, "transition": 2}, {"brightness": 100, "transition_duration": 2.0}),
+        ("rgbw:0", {"brightness": 64}, {"brightness": 25}),
+    ],
+)
+async def test_documented_components_take_the_same_set(hass, setup_production, key, data, expected):
     entry, call_rpc = shelly_device(hass)
-    add_shelly_entity(hass, entry, "light.desk", "light:0")
+    kelvin_range = {"min_color_temp_kelvin": 2700, "max_color_temp_kelvin": 6500}
+    add_shelly_entity(hass, entry, "light.lamp", key, attributes=kelvin_range)
 
-    response = await call(
-        hass, "turn_on_for", {"entity_id": "light.desk", "duration": 5, "brightness": 128, "transition": 0.2}
-    )
+    response = await call(hass, "turn_on_for", {"entity_id": "light.lamp", "duration": 5, **data})
 
-    assert response == {"light.desk": CONFIRMED}
-    # Translated as shelly/light.py does: brightness to percent, transition floored at 0.5 s.
-    assert call_rpc.await_args_list[0] == rpc_call(
-        "Light.Set", {"id": 0, "on": True, "toggle_after": 5.0, "brightness": 50, "transition_duration": 0.5}
-    )
+    assert response == {"light.lamp": CONFIRMED}
+    component = COMPONENTS[key.split(":")[0]]
+    assert call_rpc.await_args_list == [
+        rpc_call(f"{component}.Set", {"id": 0, "on": True, "toggle_after": 5.0, **expected}),
+        rpc_call(f"{component}.GetStatus", {"id": 0}),
+    ]
 
 
 @pytest.mark.parametrize(
@@ -101,11 +107,14 @@ async def test_switch_as_x_light_sends_the_switch_call(hass, setup_production):
         ("light.dimmer", "light:0", {"color_temp_kelvin": 3000}),
         ("light.cct", "cct:0", {"rgb_color": [1, 2, 3]}),
         ("light.cct", "cct:0", {"hs_color": [30, 50]}),
+        # Core converts color differently for RGB and RGBW, so their color is dropped until that is ported.
+        ("light.strip", "rgb:0", {"rgb_color": [1, 2, 3]}),
+        ("light.strip", "rgb:0", {"color_temp_kelvin": 3000}),
+        ("light.strip", "rgbw:0", {"hs_color": [30, 50]}),
+        ("light.strip", "rgbw:0", {"xy_color": [0.3, 0.3]}),
     ],
 )
-async def test_component_fields_not_in_component_are_dropped(
-    hass, setup_production, every_light_in_scope, entity_id, key, data
-):
+async def test_component_fields_not_in_component_are_dropped(hass, setup_production, entity_id, key, data):
     # A field the component can't take is dropped by the adapter; the timer still runs.
     entry, call_rpc = shelly_device(hass)
     add_shelly_entity(hass, entry, entity_id, key)
@@ -113,20 +122,19 @@ async def test_component_fields_not_in_component_are_dropped(
     response = await call(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5, **data})
 
     assert response[entity_id] == {**CONFIRMED, "detail": "fields_dropped"}
+    component = COMPONENTS[key.split(":")[0]]
+    assert call_rpc.await_args_list[0] == rpc_call(f"{component}.Set", {"id": 0, "on": True, "toggle_after": 5.0})
 
 
-async def test_relay_drops_brightness_and_dimmer_is_refused_by_capability(hass, setup_production):
+async def test_capability_out_of_scope_is_refused(hass, setup_production, monkeypatch):
+    monkeypatch.setattr(
+        ShellyTurnOnFor, "scope", dataclasses.replace(ShellyTurnOnFor.scope, capabilities=verified("Switch"))
+    )
     entry, call_rpc = shelly_device(hass)
-    add_shelly_entity(hass, entry, "light.relay", "switch:0")
     add_shelly_entity(hass, entry, "light.dimmer", "light:0")
 
-    # A relay-as-light drops brightness it can't take and still runs the timer.
-    response = await call(hass, "turn_on_for", {"entity_id": "light.relay", "duration": 5, "brightness": 10})
-    assert response["light.relay"] == {**CONFIRMED, "detail": "fields_dropped"}
-
-    # An untested capability (Light:0) raises before any new sends.
     assert await refusal(hass, "turn_on_for", {"entity_id": "light.dimmer", "duration": 5}) == "capability_not_tested"
-    assert [args.args[0] for args in call_rpc.await_args_list] == ["Switch.Set", "Switch.GetStatus"]
+    assert not call_rpc.await_args_list
 
 
 async def test_gen1_and_non_timer_entities_are_refused(hass, setup_production):
@@ -199,3 +207,11 @@ async def test_duration_under_50ms_is_floored_and_reported(hass, setup_productio
 
     assert response == {"switch.porch": {**CONFIRMED, "clamped_to": 0.05}}
     assert call_rpc.await_args_list[0].args[1]["toggle_after"] == 0.05
+
+
+@pytest.mark.parametrize(
+    ("component", "level"),
+    [("Switch", Level.VERIFIED), ("RGBCCT", Level.VERIFIED), ("Light", Level.DOCUMENTED), ("RGBW", Level.DOCUMENTED)],
+)
+def test_component_levels(component, level):
+    assert ShellyTurnOnFor.scope.level("light", component) is level

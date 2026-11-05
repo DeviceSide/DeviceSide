@@ -1,7 +1,7 @@
 """Integration "fake": a generic integration with native groups whose members it can list."""
 
 from custom_components.deviceside.core.resolver import resolve
-from custom_components.deviceside.core.scope import AdapterScope, DurationLimits, IntegrationInfo
+from custom_components.deviceside.core.scope import AdapterScope, DurationLimits, IntegrationInfo, verified
 
 from ..scripted import ScriptedAdapter
 
@@ -32,22 +32,22 @@ class FakeTurnOnFor(ScriptedAdapter):
     action = "turn_on_for"
     integration = "fake"
     scope = AdapterScope(
-        domains=frozenset({"light", "switch"}),
+        domains=verified("light", "switch"),
         duration=LIMITS,
-        fields=frozenset({"brightness", "transition"}),
+        fields=verified("brightness", "transition"),
     )
 
 
 class FakeTurnOffFor(ScriptedAdapter):
     action = "turn_off_for"
     integration = "fake"
-    scope = AdapterScope(domains=frozenset({"switch"}), duration=LIMITS, native_groups=True)
+    scope = AdapterScope(domains=verified("switch"), duration=LIMITS, native_groups=True)
 
 
 class FakeSetAttributes(ScriptedAdapter):
     action = "set_attributes"
     integration = "fake"
-    scope = AdapterScope(fields=frozenset({"brightness"}))
+    scope = AdapterScope(fields=verified("brightness"))
 
 
 ADAPTERS = [FakeTurnOnFor, FakeTurnOffFor, FakeSetAttributes]

@@ -10,7 +10,7 @@ from .addressing import address, unsupported_reason
 from ...core.adapter import Adapter
 from ...core.color import hs_row, xy_row
 from ...core.models import EntityResult, Request, Status, Target
-from ...core.scope import AdapterScope
+from ...core.scope import AdapterScope, verified
 from ...core.timer import timer_row
 
 _COLOR_MODES = frozenset({"color_temp", "hs", "xy"})
@@ -78,7 +78,7 @@ class ZHAGetAttributes(Adapter[Request]):
     integration: ClassVar[str] = "zha"
     scope: ClassVar[AdapterScope] = AdapterScope(
         # Zigbee plugs don't honor OnTime (see turn_on_for), so a switch row would always be empty.
-        domains=frozenset({"light"}),
+        domains=verified("light"),
         max_concurrency=2,
         confirmable=True,
     )
