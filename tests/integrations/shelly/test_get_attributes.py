@@ -1,4 +1,5 @@
-"""Shelly get_attributes: one GetStatus per target, shaped as Hue's row plus the shared timer row."""
+"""Shelly get_attributes: a GetStatus and a GetConfig per target, shaped as Hue's row plus the shared timer row and
+the auto_off / auto_on settings."""
 
 from datetime import UTC, datetime, timedelta
 from unittest.mock import call as rpc_call
@@ -8,7 +9,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util import dt as dt_util
 from homeassistant.util.color import color_RGB_to_hs, color_RGB_to_xy
 
-from custom_components.deviceside.integrations.shelly.get_attributes import status_row
+from custom_components.deviceside.integrations.shelly.get_attributes import config_row, status_row
 
 from ...conftest import call, refusal
 from ...fixtures.fake import add_switch_as_x
@@ -19,6 +20,8 @@ pytestmark = pytest.mark.usefixtures("setup_production")
 # Two seconds into a fixture timer.
 NOW = datetime.fromtimestamp(TIMER_STARTED_AT, UTC) + timedelta(seconds=2)
 BULB = {"brightness": 40, "ct": 4000, "rgb": [255, 0, 0]}
+# The settings rows of a device with neither auto-off nor auto-on set, as every fixture device ships.
+NO_AUTO = {"auto_off": None, "auto_on": None}
 
 
 @pytest.fixture(autouse=True)
@@ -39,8 +42,11 @@ async def test_switch_reports_the_running_timer(hass, action, turns):
 
     response = await call(hass, "get_attributes", {"entity_id": "switch.porch"})
 
-    assert response == {"switch.porch": {"timer": timer(turns, 3.0)}}
-    assert call_rpc.await_args_list[-1] == rpc_call("Switch.GetStatus", {"id": 1})
+    assert response == {"switch.porch": {"timer": timer(turns, 3.0), **NO_AUTO}}
+    assert call_rpc.await_args_list[-2:] == [
+        rpc_call("Switch.GetStatus", {"id": 1}),
+        rpc_call("Switch.GetConfig", {"id": 1}),
+    ]
 
 
 async def test_switch_as_x_light_reads_the_switch(hass):
@@ -51,15 +57,15 @@ async def test_switch_as_x_light_reads_the_switch(hass):
 
     response = await call(hass, "get_attributes", {"entity_id": "light.porch"})
 
-    assert response == {"light.porch": {"timer": timer("off", 3.0)}}
-    assert call_rpc.await_args_list[-1] == rpc_call("Switch.GetStatus", {"id": 0})
+    assert response == {"light.porch": {"timer": timer("off", 3.0), **NO_AUTO}}
+    assert rpc_call("Switch.GetStatus", {"id": 0}) in call_rpc.await_args_list
 
 
-async def test_switch_without_a_timer_reports_an_empty_row(hass):
+async def test_switch_without_a_timer_reports_only_its_settings(hass):
     entry, _ = shelly_device(hass)
     add_shelly_entity(hass, entry, "switch.porch", "switch:0")
 
-    assert await call(hass, "get_attributes", {"entity_id": "switch.porch"}) == {"switch.porch": {}}
+    assert await call(hass, "get_attributes", {"entity_id": "switch.porch"}) == {"switch.porch": NO_AUTO}
 
 
 async def test_bulb_in_cct_mode_reports_color_temperature_only(hass):
@@ -68,7 +74,7 @@ async def test_bulb_in_cct_mode_reports_color_temperature_only(hass):
 
     response = await call(hass, "get_attributes", {"entity_id": "light.bulb"})
 
-    assert response == {"light.bulb": {"brightness": 40, "color_temp_kelvin": 4000}}
+    assert response == {"light.bulb": {"brightness": 40, "color_temp_kelvin": 4000, **NO_AUTO}}
 
 
 async def test_bulb_in_rgb_mode_reports_color_as_hue_does(hass):
@@ -83,6 +89,7 @@ async def test_bulb_in_rgb_mode_reports_color_as_hue_does(hass):
             "rgb_color": [255, 0, 0],
             "hs_color": list(color_RGB_to_hs(255, 0, 0)),
             "xy_color": list(color_RGB_to_xy(255, 0, 0)),
+            **NO_AUTO,
         }
     }
 
@@ -95,7 +102,9 @@ async def test_bulb_off_still_reads_and_carries_its_timer(hass):
 
     response = await call(hass, "get_attributes", {"entity_id": "light.bulb"})
 
-    assert response == {"light.bulb": {"brightness": 40, "color_temp_kelvin": 4000, "timer": timer("on", 28.0)}}
+    assert response == {
+        "light.bulb": {"brightness": 40, "color_temp_kelvin": 4000, "timer": timer("on", 28.0), **NO_AUTO}
+    }
 
 
 def test_unknown_mode_reports_brightness_only():
@@ -157,6 +166,47 @@ async def test_mixed_targets_read_in_one_call(hass):
     response = await call(hass, "get_attributes", {"entity_id": ["switch.porch", "light.bulb"]})
 
     assert response == {
-        "switch.porch": {"timer": timer("off", 3.0)},  # a Switch reads only its timer from the shared status
-        "light.bulb": {"brightness": 40, "color_temp_kelvin": 4000},
+        "switch.porch": {"timer": timer("off", 3.0), **NO_AUTO},  # a Switch reads no light attributes
+        "light.bulb": {"brightness": 40, "color_temp_kelvin": 4000, **NO_AUTO},
     }
+
+
+@pytest.mark.parametrize("key", ["switch:0", "rgbcct:0"])
+async def test_settings_set_by_the_actions_are_reported(hass, key):
+    entity_id = "light.porch"
+    entry, _ = shelly_device(hass, status={**BULB, "mode": "cct"})
+    add_shelly_entity(hass, entry, entity_id, key)
+    await call(hass, "set_auto_off", {"entity_id": entity_id, "duration": 90})
+
+    response = await call(hass, "get_attributes", {"entity_id": entity_id})
+
+    assert response[entity_id]["auto_off"] == {"duration": 90.0}
+    assert response[entity_id]["auto_on"] is None
+
+
+def test_config_row():
+    config = {"auto_on": True, "auto_on_delay": 12.5, "auto_off": False, "auto_off_delay": 60.0, "name": None}
+
+    assert config_row(config) == {"auto_on": {"duration": 12.5}, "auto_off": None}
+
+
+def test_config_row_leaves_out_settings_the_component_lacks():
+    assert config_row({"name": None}) == {}
+
+
+async def test_get_config_error_keeps_the_status_row(hass):
+    entry, call_rpc = shelly_device(hass, status={**BULB, "mode": "cct"})
+    add_shelly_entity(hass, entry, "light.bulb", "rgbcct:0")
+    respond = call_rpc.side_effect
+
+    async def config_fails(method, params):
+        if method.endswith(".GetConfig"):
+            raise ConnectionError("device unreachable")
+        return respond(method, params)
+
+    call_rpc.side_effect = config_fails
+
+    response = await call(hass, "get_attributes", {"entity_id": "light.bulb"})
+
+    # No auto_off or auto_on key: unknown, which a None (disabled) would misstate.
+    assert response == {"light.bulb": {"brightness": 40, "color_temp_kelvin": 4000}}

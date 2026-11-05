@@ -23,6 +23,7 @@ its tests, no soak. An RC also needs a rig run since each released adapter's las
   `sets_color_while_off`. Unattended alongside: Z2M `lower_hue` `cycles_down_the_wheel[group_color]` (failed twice,
   #222) and ZHA `lower_brightness`. Then the PR clearing the last flags: every `set_attributes` and `stop`, Z2M
   `lower_hue` and ZHA `lower_brightness`.
+- [ ] **Persistent auto-off/auto-on**: `set_`/`clear_auto_off`/`_on`, Shelly; records clear the flag.
 - [ ] **9d** Rig coverage sweep for the non-color scope; the watched session covers the color part.
 - [ ] **12** v0.1.0: no adapter left `experimental` (`scripts/check_release.py --release`); README feature table
   current. The release notes lead with the domain rename (`device_side` → `deviceside`) and link README's "Coming

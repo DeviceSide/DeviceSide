@@ -24,6 +24,12 @@ def test_matrix_lists_every_pair_sorted():
     registry = AdapterRegistry(actions.discover(), FAKE_INTEGRATIONS)
 
     assert [(action, integration, adapter is not None) for action, integration, adapter in registry.matrix()] == [
+        ("clear_auto_off", "broken_integration", False),
+        ("clear_auto_off", "fake", False),
+        ("clear_auto_off", "fake_special", False),
+        ("clear_auto_on", "broken_integration", False),
+        ("clear_auto_on", "fake", False),
+        ("clear_auto_on", "fake_special", False),
         ("get_attributes", "broken_integration", False),
         ("get_attributes", "fake", False),
         ("get_attributes", "fake_special", False),
@@ -48,6 +54,12 @@ def test_matrix_lists_every_pair_sorted():
         ("set_attributes", "broken_integration", False),
         ("set_attributes", "fake", True),
         ("set_attributes", "fake_special", False),
+        ("set_auto_off", "broken_integration", False),
+        ("set_auto_off", "fake", False),
+        ("set_auto_off", "fake_special", False),
+        ("set_auto_on", "broken_integration", False),
+        ("set_auto_on", "fake", False),
+        ("set_auto_on", "fake_special", False),
         ("set_scene", "broken_integration", False),
         ("set_scene", "fake", False),
         ("set_scene", "fake_special", False),
@@ -78,6 +90,8 @@ def test_adapter_for_unknown_action_is_refused():
 def test_production_discovery_imports_cleanly():
     registry = AdapterRegistry.discover()
     assert set(registry.actions) == {
+        "clear_auto_off",
+        "clear_auto_on",
         "get_attributes",
         "lower_brightness",
         "lower_hue",
@@ -86,6 +100,8 @@ def test_production_discovery_imports_cleanly():
         "raise_hue",
         "raise_saturation",
         "set_attributes",
+        "set_auto_off",
+        "set_auto_on",
         "set_scene",
         "stop",
         "turn_off_for",

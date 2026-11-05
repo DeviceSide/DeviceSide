@@ -50,8 +50,10 @@ HA requires it.
    (`brightness`, `attributes`, `scene`). Protocol vocabulary (`level`, `OnLevel`, `toggle_after`) never appears in an
    action or field name.
 2. Commands use HA's command verbs: `turn_on_for`, `raise_brightness`, `stop`, `set_attributes`.
-3. A persistent setting (how the device behaves from now on) would be `set_<behavior>` with the trigger in plain
-   English, e.g. `set_power_on_defaults`. None exist.
+3. A persistent setting (how the device behaves from now on) is `set_<behavior>` with the trigger in plain English:
+   `set_auto_off`, `set_auto_on`. It is undone by `clear_<behavior>`, as core does (`sonos.clear_sleep_timer`), never
+   by a zero value: in core a zero duration means "now". `clear_`, not `cancel_`: core's `cancel` stops something
+   already running (`timer.cancel`).
 4. Field names are `light.turn_on`'s wherever one exists; a feature-specific field gets plain words (`duration`,
    `sweep_time`, `limit`).
 
@@ -66,6 +68,11 @@ experimental.
   `turn_on_for` accepts the `light.turn_on` fields; Shelly sends them in one RPC, the others send a `light.turn_on`
   first. What cancels a timer differs by integration ([integrations.md](integrations.md)). Hue has neither: its bridge
   timers ignore manual on/off, so they can't be cancelled the way users expect.
+- **`set_auto_off`, `set_auto_on`, `clear_auto_off`, `clear_auto_on`** (auto-off and auto-on): Shelly only. A
+  persistent setting stored on the device, applied after every turn-on (or turn-off) from any source: button, app,
+  schedule or Home Assistant. Core's Shelly integration doesn't expose it. A call that changes nothing sends
+  nothing and returns `unchanged`; one that does writes flash and makes core reload the Shelly entry about a
+  minute later ([integrations.md](integrations.md)).
 - **`raise_*`, `lower_*`, `stop`**: one action per attribute (brightness, saturation, hue) and direction, as HA names
   its direction actions (`cover.open_cover`, `fan.increase_speed`). `sweep_time` is how long a full range takes, so
   the speed is the same wherever the move starts; `limit` ends the move early. A call already at or past its limit
@@ -73,7 +80,7 @@ experimental.
   temperature move: every stop of a Hue bulb's color temperature fade jumps visibly. Hue has no hue moves: a hue
   rotation isn't a straight line in xy, so it can't be one bridge command.
 - **`set_attributes`, `get_attributes`**: write brightness, color or color temperature to a light without turning
-  it on, and read what HA doesn't show (attributes while off, a running timer). Every timed or set-while-off adapter
+  it on, and read what HA doesn't show (attributes while off, a running timer, Shelly's auto-off and auto-on). Every timed or set-while-off adapter
   needs a matching `get_attributes` on its integration.
 - **`set_scene`**: Hue only. A Zigbee scene recall turns lights on.
 

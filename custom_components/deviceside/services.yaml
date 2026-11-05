@@ -107,6 +107,34 @@ turn_off_for:
   fields:
     duration: *duration
 
+set_auto_off:
+  target:
+    entity:
+      - domain: [light, switch]
+        integration: shelly
+  fields:
+    duration: *duration
+
+set_auto_on:
+  target:
+    entity:
+      - domain: [light, switch]
+        integration: shelly
+  fields:
+    duration: *duration
+
+clear_auto_off:
+  target:
+    entity:
+      - domain: [light, switch]
+        integration: shelly
+
+clear_auto_on:
+  target:
+    entity:
+      - domain: [light, switch]
+        integration: shelly
+
 set_attributes:
   target:
     entity:

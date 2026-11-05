@@ -53,6 +53,14 @@
     }
   },
   "services": {
+    "clear_auto_off": {
+      "name": "Clear auto-off",
+      "description": "Devices stop turning themselves off after every turn-on. Leaves them on or off as they are."
+    },
+    "clear_auto_on": {
+      "name": "Clear auto-on",
+      "description": "Devices stop turning themselves back on after every turn-off. Leaves them on or off as they are."
+    },
     "get_attributes": {
       "name": "Get attributes",
       "description": "Get brightness, color temp, and color (RGB, HS, XY), even if lights are off, and any running on/off timer. Returns one record per target."
@@ -164,6 +172,26 @@
         "xy_color": {
           "name": "XY color",
           "description": "Color as [x, y]"
+        }
+      }
+    },
+    "set_auto_off": {
+      "name": "Set auto-off",
+      "description": "Devices turn themselves off a set time after every turn-on, from any source: button, app, schedule or Home Assistant. Stored on the device; Clear auto-off removes it.",
+      "fields": {
+        "duration": {
+          "name": "Duration",
+          "description": "How long to stay on after each turn-on."
+        }
+      }
+    },
+    "set_auto_on": {
+      "name": "Set auto-on",
+      "description": "Devices turn themselves back on a set time after every turn-off, from any source: button, app, schedule or Home Assistant. Stored on the device; Clear auto-on removes it.",
+      "fields": {
+        "duration": {
+          "name": "Duration",
+          "description": "How long to stay off after each turn-off."
         }
       }
     },
