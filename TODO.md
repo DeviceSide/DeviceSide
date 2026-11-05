@@ -32,8 +32,8 @@ adapter passing its tests, no soak. An RC also needs a rig run since each releas
   device?", `CONTRIBUTING.md` and the bug and device report forms link to it instead of `docs/test-records/`.
 - [x] **Device support, part 3**: a "Report a device" step in DeviceSide's options that opens a prefilled device
   report.
-- [x] **Documented support level**: a `Level` per scope item; Shelly Light, CCT, RGB and RGBW components and Matter
-  lights ship Documented, and Matter confirms a timer only with OnOff on.
+- [x] **Documented support level** (#267): a `Level` per scope item; Shelly Light, CCT, RGB and RGBW components and
+  Matter lights ship Documented, and Matter confirms a timer only with OnOff on.
 - [ ] **12** v0.1.0: no adapter left `experimental` (`scripts/check_release.py --release`); README feature table
   current. The release notes lead with the domain rename (`device_side` → `deviceside`) and link README's "Coming
   from v0.0.1". The release steps are in `CLAUDE.md` (Releasing).
