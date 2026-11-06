@@ -35,8 +35,7 @@ adapter passing its tests, no soak. An RC also needs a rig run since each releas
 - [x] **Documented support level** (#267): a `Level` per scope item; Shelly Light, CCT, RGB and RGBW components and
   Matter lights ship Documented, and Matter confirms a timer only with OnOff on.
 - [ ] **12** v0.1.0: no adapter left `experimental` (`scripts/check_release.py --release`); README feature table
-  current. The release notes lead with the domain rename (`device_side` → `deviceside`) and link README's "Coming
-  from v0.0.1". The release steps are in `CLAUDE.md` (Releasing).
+  current. The release steps are in `CLAUDE.md` (Releasing).
 
 ## After v0.1.0
 
