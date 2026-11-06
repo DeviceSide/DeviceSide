@@ -60,14 +60,15 @@ class IssueForm:
 
 _DEVICE_FIELDS = ("integration", "model", "product", "firmware")
 _VERSION_FIELDS = ("deviceside_version", "ha_version")
+# In the order of GitHub's template chooser, which sorts the forms by file name.
 ISSUE_FORMS = (
     IssueForm(
         "report_device", "report_link", "device_report.yml", _DEVICE_FIELDS + _VERSION_FIELDS, "Device test result"
     ),
-    IssueForm(
-        "report_bug", "bug_link", "bug_report.yml", _DEVICE_FIELDS + _VERSION_FIELDS, None, entity_required=False
-    ),
     IssueForm("propose_device", "proposal_link", "propose_device_or_integration.yml", _DEVICE_FIELDS, "Proposal"),
+    IssueForm(
+        "report_bug", "bug_link", "report_bug.yml", _DEVICE_FIELDS + _VERSION_FIELDS, None, entity_required=False
+    ),
 )
 _FORMS_BY_STEP = {form.step: form for form in ISSUE_FORMS}
 

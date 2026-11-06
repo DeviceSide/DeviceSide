@@ -1,4 +1,4 @@
-name: Report a Device Test Result
+name: Report a device test result
 description: Tell us how DeviceSide worked on a device the compatibility page doesn't list.
 title: "Device test result: "
 labels: ["device-report"]

@@ -20,7 +20,7 @@
         "title": "DeviceSide",
         "menu_options": {
           "settings": "Settings",
-          "report_device": "Report a Device Test Result",
+          "report_device": "Report a device test result",
           "report_bug": "Report a bug",
           "propose_device": "Propose a device or integration"
         }
@@ -37,14 +37,14 @@
         }
       },
       "report_device": {
-        "title": "Report a Device Test Result",
+        "title": "Report a device test result",
         "description": "Choose a light or switch to report on, and DeviceSide will prefill a report for you to submit on GitHub.",
         "data": {
           "entity_id": "Light or switch"
         }
       },
       "report_link": {
-        "title": "Report a Device Test Result",
+        "title": "Report a device test result",
         "description": "[Click here]({url}) to open the draft report on GitHub."
       },
       "report_bug": {
