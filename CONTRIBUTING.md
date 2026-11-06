@@ -37,17 +37,18 @@ the first contributor to reach it sets up the test checklist with the maintainer
    [device report](https://github.com/jasonmx/DeviceSide/issues/new?template=device_report.yml) and say whether it
    worked. A "works" report counts as much as a "doesn't work" one. In Home Assistant, **Settings > Devices & services > DeviceSide > Configure > Report a Device Test Result**
    opens the same form with your device's details filled in.
-2. **Request a device.** For a device, integration or feature DeviceSide doesn't cover, open a
-   [device request](https://github.com/jasonmx/DeviceSide/issues/new?template=device_request.yml). It needs a YAML
+2. **Propose a device.** For a device, integration or feature DeviceSide doesn't cover, open a
+   [proposal](https://github.com/jasonmx/DeviceSide/issues/new?template=propose_device_or_integration.yml). It needs a YAML
    call that already does the job on your device (an MQTT publish, a ZHA cluster command and so on), the device's
-   model and firmware, and your promise to test the release candidate that adds it.
+   model and firmware, and your promise to test the release candidate that adds it. **Configure > Propose a device
+   or integration** fills in the device's details.
 3. **Contribute an adapter.** Code, plus a test record from a release candidate installed through HACS, plus your
    agreement to maintain the adapter. Contact the maintainer before you start, for the test checklist. Read
    [What gets built](#what-gets-built) and [Developing](#developing) first. The
    [hardware the rig lacks](docs/hardware-the-rig-lacks.md) lists built features waiting for a tester.
-4. **Report a bug.** Only for a device and feature the [compatibility page](docs/compatibility.md) list: open a
-   [bug report](https://github.com/jasonmx/DeviceSide/issues/new?template=bug.yml). A failure on any other device
-   is a device report.
+4. **Report a bug.** Only for a device and feature the [compatibility page](docs/compatibility.md) lists: open a
+   [bug report](https://github.com/jasonmx/DeviceSide/issues/new?template=bug_report.yml). A failure on any other device
+   is a device report. **Configure > Report a bug** fills in the versions, and the device's details if you pick one.
 
 ## What gets built
 

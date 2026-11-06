@@ -3,10 +3,11 @@
 import asyncio
 from urllib.parse import parse_qs, urlparse
 
+import pytest
 from homeassistant.config_entries import SOURCE_USER, ConfigEntryState
 from homeassistant.const import __version__ as HA_VERSION
 from homeassistant.core import HomeAssistant
-from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.data_entry_flow import FlowResultType, InvalidData
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.loader import async_get_integration
@@ -26,16 +27,23 @@ async def open_settings(hass: HomeAssistant, entry: MockConfigEntry):
     return await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": "settings"})
 
 
-async def report_for(hass: HomeAssistant, entry: MockConfigEntry, entity_id: str) -> tuple[dict, str]:
-    """Run the report step for an entity and return the prefill fields from its link, and the link."""
+async def report_for(
+    hass: HomeAssistant,
+    entry: MockConfigEntry,
+    entity_id: str | None,
+    step: str = "report_device",
+    link_step: str = "report_link",
+) -> tuple[dict, str]:
+    """Run an issue step for an entity (None picks none) and return the prefill fields from its link, and the link."""
     options_before = dict(entry.options)
     runtime_before = get_runtime(hass)
     result = await hass.config_entries.options.async_init(entry.entry_id)
-    result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": "report_device"})
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": step})
     assert result["type"] is FlowResultType.FORM
-    result = await hass.config_entries.options.async_configure(result["flow_id"], {"entity_id": entity_id})
+    picked = {} if entity_id is None else {"entity_id": entity_id}
+    result = await hass.config_entries.options.async_configure(result["flow_id"], picked)
     assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == "report_link"
+    assert result["step_id"] == link_step
     url = result["description_placeholders"]["url"]
     assert url.startswith("https://github.com/jasonmx/DeviceSide/issues/new?")
     result = await hass.config_entries.options.async_configure(result["flow_id"], {})
@@ -44,6 +52,18 @@ async def report_for(hass: HomeAssistant, entry: MockConfigEntry, entity_id: str
     assert entry.options == options_before  # closing the dialog saves nothing
     assert get_runtime(hass) is runtime_before  # and a reload would have built a new runtime
     return {key: value for key, [value] in parse_qs(urlparse(url).query).items()}, url
+
+
+def add_mqtt_light(hass: HomeAssistant, identifier: str) -> None:
+    """light.desk on an MQTT broker that isn't loaded, so DeviceSide can't serve it."""
+    mqtt = MockConfigEntry(domain="mqtt")
+    mqtt.add_to_hass(hass)
+    device = dr.async_get(hass).async_get_or_create(
+        config_entry_id=mqtt.entry_id, identifiers={("mqtt", identifier)}, model="Bulb", sw_version="2.0"
+    )
+    er.async_get(hass).async_get_or_create(
+        "light", "mqtt", "u3", suggested_object_id="desk", config_entry=mqtt, device_id=device.id
+    )
 
 
 async def loaded_entry(hass: HomeAssistant) -> MockConfigEntry:
@@ -138,11 +158,11 @@ async def test_saving_the_option_reloads_the_entry_with_it(hass: HomeAssistant):
     assert result["data_schema"]({}) == {CONF_PREDICTED_STATE: False, CONF_Z2M_COLOR_MODES: True}
 
 
-async def test_the_options_menu_offers_settings_and_a_device_report(hass: HomeAssistant):
+async def test_the_options_menu_offers_settings_and_the_issue_forms(hass: HomeAssistant):
     entry = await loaded_entry(hass)
     result = await hass.config_entries.options.async_init(entry.entry_id)
     assert result["type"] is FlowResultType.MENU
-    assert result["menu_options"] == ["settings", "report_device"]
+    assert result["menu_options"] == ["settings", "report_device", "report_bug", "propose_device"]
 
 
 async def test_a_report_for_a_supported_light_carries_its_integration_model_and_firmware(hass: HomeAssistant, request):
@@ -219,9 +239,80 @@ async def test_a_report_for_an_entity_outside_the_registry_leaves_the_integratio
     assert fields["title"] == "Device test result"
 
 
-async def test_the_report_step_offers_only_lights_and_switches(hass: HomeAssistant):
+@pytest.mark.parametrize("step", ["report_device", "report_bug", "propose_device"])
+async def test_each_issue_step_offers_only_lights_and_switches(hass: HomeAssistant, step):
+    entry = await loaded_entry(hass)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": step})
+    selector = result["data_schema"].schema["entity_id"]
+    assert selector.config["domain"] == ["light", "switch"]
+
+
+async def test_a_z2m_device_deviceside_cannot_serve_still_reports_as_zigbee2mqtt(hass: HomeAssistant):
+    """Z2M's identifier tells its devices from other MQTT ones, even with the broker down."""
+    entry = await loaded_entry(hass)
+    add_mqtt_light(hass, "zigbee2mqtt_0x0017880102030405")
+
+    fields, _ = await report_for(hass, entry, "light.desk")
+
+    assert fields["integration"] == "zigbee2mqtt"
+    assert fields["title"] == "Device test result: Bulb (zigbee2mqtt)"
+
+
+async def test_a_plain_mqtt_device_reports_as_mqtt(hass: HomeAssistant):
+    entry = await loaded_entry(hass)
+    add_mqtt_light(hass, "tasmota_ABC123")
+
+    fields, _ = await report_for(hass, entry, "light.desk")
+
+    assert fields["integration"] == "mqtt"
+
+
+async def test_a_bug_report_keeps_its_own_title_and_carries_the_device(hass: HomeAssistant):
+    """A bug's title should name the symptom, so the reporter writes it."""
+    entry = await loaded_entry(hass)
+    add_mqtt_light(hass, "tasmota_ABC123")
+
+    fields, url = await report_for(hass, entry, "light.desk", "report_bug", "bug_link")
+
+    assert fields == {
+        "template": "bug_report.yml",
+        "integration": "mqtt",
+        "model": "Bulb",
+        "firmware": "2.0",
+        "deviceside_version": (await async_get_integration(hass, DOMAIN)).version,
+        "ha_version": HA_VERSION,
+    }
+    assert "desk" not in url
+
+
+async def test_a_bug_report_without_a_device_carries_only_the_versions(hass: HomeAssistant):
+    entry = await loaded_entry(hass)
+
+    fields, _ = await report_for(hass, entry, None, "report_bug", "bug_link")
+
+    assert fields.keys() == {"template", "deviceside_version", "ha_version"}
+
+
+async def test_a_proposal_carries_the_device_but_not_the_versions(hass: HomeAssistant):
+    """The proposal form has no version fields: DeviceSide doesn't run the device yet."""
+    entry = await loaded_entry(hass)
+    add_mqtt_light(hass, "tasmota_ABC123")
+
+    fields, _ = await report_for(hass, entry, "light.desk", "propose_device", "proposal_link")
+
+    assert fields == {
+        "template": "propose_device_or_integration.yml",
+        "title": "Proposal: Bulb (mqtt)",
+        "integration": "mqtt",
+        "model": "Bulb",
+        "firmware": "2.0",
+    }
+
+
+async def test_a_device_report_needs_a_device(hass: HomeAssistant):
     entry = await loaded_entry(hass)
     result = await hass.config_entries.options.async_init(entry.entry_id)
     result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": "report_device"})
-    selector = result["data_schema"].schema["entity_id"]
-    assert selector.config["domain"] == ["light", "switch"]
+    with pytest.raises(InvalidData):
+        await hass.config_entries.options.async_configure(result["flow_id"], {})
