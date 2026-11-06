@@ -30,10 +30,13 @@ _MIN_TRANSITION_S = 0.5
 
 
 def light_params(light: LightFields, component: str, state: State | None) -> dict[str, Any]:
-    """light.turn_on fields as <Component>.Set params, translated as shelly/light.py does."""
+    """light.turn_on fields as <Component>.Set params, translated as shelly/light.py does bar brightness.
+
+    Brightness is a percent on both sides, so it goes straight to the device's whole-percent level, never 0.
+    """
     params: dict[str, Any] = {}
     if light.brightness is not None:
-        params["brightness"] = int(100 * (light.brightness + 1) / 255)
+        params["brightness"] = max(1, round(light.brightness))
     if light.transition is not None:
         params["transition_duration"] = max(light.transition, _MIN_TRANSITION_S)
     if light.color_temp_kelvin is not None:

@@ -30,10 +30,18 @@ class ActionKind(StrEnum):
     QUERY = "query"
 
 
+# Brightness is a percent in every DeviceSide action. A brightness field that sets a level takes more than 0: 0 would
+# mean off. Values below the device's lowest level are floored to it.
+PERCENT = probatio.All(probatio.Coerce(float), probatio.Range(min=0, max=100))
+POSITIVE_PERCENT = probatio.All(probatio.Coerce(float), probatio.Range(min=0, min_included=False, max=100))
+
 # light.turn_on's own validators for the fields we accept, so ranges and the one-color-at-a-time rule never drift
-# from core. Plain-string keys (transition) become Optional markers so every field is a Marker.
+# from core; brightness alone takes a percent. Plain-string keys (transition) become Optional markers so every field
+# is a Marker.
 LIGHT_FIELD_SCHEMA: dict[probatio.Marker, Any] = {
-    (key if isinstance(key, probatio.Marker) else probatio.Optional(key)): validator
+    (key if isinstance(key, probatio.Marker) else probatio.Optional(key)): (
+        POSITIVE_PERCENT if str(key) == "brightness" else validator
+    )
     for key, validator in LIGHT_TURN_ON_SCHEMA.items()
     if str(key) in LIGHT_FIELDS
 }
@@ -41,7 +49,7 @@ LIGHT_FIELD_SCHEMA: dict[probatio.Marker, Any] = {
 
 @dataclass(frozen=True, slots=True)
 class LightFields:
-    brightness: int | None = None
+    brightness: float | None = None  # percent, above 0 and up to 100
     color_temp_kelvin: int | None = None
     hs_color: tuple[float, float] | None = None
     rgb_color: tuple[int, int, int] | None = None
@@ -55,8 +63,21 @@ class LightFields:
     def present(self) -> frozenset[str]:
         return frozenset(field.name for field in fields(self) if getattr(self, field.name) is not None)
 
+    def brightness_255(self) -> int | None:
+        """brightness on light.turn_on's 1-255 scale, never 0: that would turn the light off.
+
+        Not brightness_pct: core rounds a small percent to 0.
+        """
+        if self.brightness is None:
+            return None
+        return max(1, round(self.brightness * 255 / 100))
+
     def as_turn_on_data(self) -> dict:
-        return {name: getattr(self, name) for name in sorted(self.present())}
+        """The fields as light.turn_on data."""
+        data = {name: getattr(self, name) for name in sorted(self.present())}
+        if self.brightness is not None:
+            data["brightness"] = self.brightness_255()
+        return data
 
     def without(self, names: frozenset[str]) -> LightFields:
         return replace(self, **{name: None for name in names if name in LIGHT_FIELDS})

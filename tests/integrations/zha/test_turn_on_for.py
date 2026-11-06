@@ -65,7 +65,7 @@ async def test_light_sends_on_with_timed_off(hass, setup_production, commands, t
 async def test_brightness_calls_turn_on_first(hass, setup_production, commands, turn_ons):
     add_zha_entity(hass, zha_entry(hass), "light.bulb")
 
-    response = await call(hass, "turn_on_for", {"entity_id": "light.bulb", "duration": 5, "brightness": 128})
+    response = await call(hass, "turn_on_for", {"entity_id": "light.bulb", "duration": 5, "brightness": 50})
 
     assert response == {"light.bulb": CONFIRMED}
     assert turn_ons[0].data == {"entity_id": "light.bulb", "brightness": 128}
@@ -261,7 +261,7 @@ async def test_group_members_get_one_groupcast_and_a_read_back_each(
 async def test_group_fields_turn_on_the_group_entity_once(
     hass, setup_production, two_light_group, group_commands, turn_ons
 ):
-    await call(hass, "turn_on_for", {"entity_id": "light.zha_group", "duration": 5, "brightness": 120})
+    await call(hass, "turn_on_for", {"entity_id": "light.zha_group", "duration": 5, "brightness": 47})
 
     assert [turn_on.data for turn_on in turn_ons] == [{"entity_id": "light.zha_group", "brightness": 120}]
     assert len(group_commands) == 1

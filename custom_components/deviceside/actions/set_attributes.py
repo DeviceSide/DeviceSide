@@ -7,11 +7,10 @@ from homeassistant.exceptions import ServiceValidationError
 
 from ..const import DOMAIN
 from ..core.action import Action
-from ..core.models import LIGHT_FIELD_SCHEMA, ActionKind, LightFields, Request
+from ..core.models import LIGHT_FIELD_SCHEMA, PERCENT, ActionKind, LightFields, Request
 
-# Percent, as on Hue and hue_dimmer, whose calls these must accept unchanged. A brightness of 0 goes to the bridge,
+# PERCENT, as on Hue and hue_dimmer, whose calls these must accept unchanged. A brightness of 0 goes to the bridge,
 # which sets the light's lowest level, as hue_dimmer's calls did; the UI selector starts at 0.4.
-_PERCENT = probatio.All(probatio.Coerce(float), probatio.Range(min=0, max=100))
 _COLORS = ("color_temp_kelvin", "hs_color", "rgb_color", "xy_color")
 LIMITS = ("min_brightness", "max_brightness")
 # 0 leaves these unset, as on hue_dimmer, so a template can pass 0 for "no limit".
@@ -20,7 +19,7 @@ _UNSET_AT_ZERO = (*LIMITS, "color_temp_kelvin")
 
 @dataclass(frozen=True, slots=True)
 class SetAttributesRequest(Request):
-    light: LightFields = field(default_factory=LightFields)  # colors only: brightness here is percent, not 0-255
+    light: LightFields = field(default_factory=LightFields)  # colors only: brightness, a field of its own, may be 0
     brightness: float | None = None
     min_brightness: float | None = None
     max_brightness: float | None = None
@@ -47,7 +46,7 @@ class SetAttributes(Action[SetAttributesRequest]):
     kind: ClassVar[ActionKind] = ActionKind.COMMAND
     domains: ClassVar[frozenset[str]] = frozenset({"light"})
     fields: ClassVar[dict] = {
-        **{probatio.Optional(name): _PERCENT for name in ("brightness", *LIMITS)},
+        **{probatio.Optional(name): PERCENT for name in ("brightness", *LIMITS)},
         # light.turn_on's validators without its one-color rule: given several colors, rgb_color wins, then
         # hs_color, then xy_color, as on hue_dimmer.
         **{

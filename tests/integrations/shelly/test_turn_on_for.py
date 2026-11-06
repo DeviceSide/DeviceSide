@@ -33,12 +33,13 @@ async def test_switch_one_set_then_read_back(hass, setup_production):
 @pytest.mark.parametrize(
     ("key", "data", "expected"),
     [
-        # Translated as shelly/light.py does: brightness to percent, transition floored at 0.5 s.
-        ("light:0", {"brightness": 128, "transition": 0.2}, {"brightness": 50, "transition_duration": 0.5}),
-        ("cct:0", {"brightness": 128, "color_temp_kelvin": 3000}, {"brightness": 50, "ct": 3000}),
+        # Brightness percent to the device's whole percent, never 0; transition floored at 0.5 s, as shelly/light.py.
+        ("light:0", {"brightness": 50, "transition": 0.2}, {"brightness": 50, "transition_duration": 0.5}),
+        ("light:0", {"brightness": 0.4}, {"brightness": 1}),
+        ("cct:0", {"brightness": 50, "color_temp_kelvin": 3000}, {"brightness": 50, "ct": 3000}),
         ("cct:0", {"color_temp_kelvin": 9000}, {"ct": 6500}),  # clamped to the entity's range; no mode on a CCT
-        ("rgb:0", {"brightness": 255, "transition": 2}, {"brightness": 100, "transition_duration": 2.0}),
-        ("rgbw:0", {"brightness": 64}, {"brightness": 25}),
+        ("rgb:0", {"brightness": 100, "transition": 2}, {"brightness": 100, "transition_duration": 2.0}),
+        ("rgbw:0", {"brightness": 25.4}, {"brightness": 25}),
     ],
 )
 async def test_documented_components_take_the_same_set(hass, setup_production, key, data, expected):

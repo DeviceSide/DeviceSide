@@ -357,7 +357,7 @@ async def test_wrapper_reports_under_the_light_and_drops_light_fields(hass, fake
     assert reset_script.calls[0][3] == ["switch.relay"]
 
     reset_script.calls.clear()
-    response = await call(hass, "turn_on_for", {"entity_id": "light.relay", "duration": 5, "brightness": 128})
+    response = await call(hass, "turn_on_for", {"entity_id": "light.relay", "duration": 5, "brightness": 50})
     assert response == {"light.relay": {"status": "confirmed", "integration": "fake", "detail": "fields_dropped"}}
     assert reset_script.calls[0][2].fields_present() == frozenset()
 

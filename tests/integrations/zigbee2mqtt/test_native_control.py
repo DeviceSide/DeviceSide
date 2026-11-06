@@ -81,7 +81,7 @@ async def test_other_brands_are_left_alone(hass, setup_production, broker, turn_
     assert len(broker.timers()) == 1
 
 
-@pytest.mark.parametrize("fields", [{}, {"brightness": 128}, {"transition": 1}])
+@pytest.mark.parametrize("fields", [{}, {"brightness": 50}, {"transition": 1}])
 async def test_without_a_color_nothing_is_read(hass, setup_production, broker, turn_ons, fields):
     hue_bulb(hass)
 
