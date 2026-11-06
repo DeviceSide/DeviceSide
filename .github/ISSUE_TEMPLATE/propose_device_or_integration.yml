@@ -1,0 +1,84 @@
+name: Propose a device or integration
+description: Propose a new device or integration to be added to DeviceSide.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Proposals for new devices and integrations are accepted only from contributors who've already got them working in their homes, and can share their working YAML. Please don't submit YAML that you haven't tested yourself on a live Home Assistant instance.
+  - type: input
+    id: integration
+    attributes:
+      label: Integration
+      description: e.g. zha, mqtt (Zigbee2MQTT), shelly.
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: Device model
+      description: As shown on the device page in Home Assistant. If you're proposing a new integration, you only need to list one device in this field.
+    validations:
+      required: true
+  - type: input
+    id: product
+    attributes:
+      label: Device product name
+  - type: checkboxes
+    id: features
+    attributes:
+      label: Proposed features
+      description: Check every feature that works in your home today and you'd like to see added to DeviceSide
+      options:
+        - label: turn_on_for
+        - label: turn_off_for
+        - label: set_auto_off & clear_auto_off
+        - label: set_auto_on & clear_auto_on
+        - label: smooth dimming. I've tested fast raise-stop-raise & raise-stop-lower sequences
+        - label: color saturation transitions. I've tested fast raise-stop-raise & raise-stop-lower sequences
+        - label: color hue transitions. I've tested fast raise-stop-raise & raise-stop-lower sequences
+        - label: set_attributes
+        - label: set_scene
+        - label: get_attributes
+        - label: other (say which in the notes)
+  - type: checkboxes
+    id: qualify
+    attributes:
+      label: Checklist
+      options:
+        attributes:
+        - label: I have searched the [existing issues](https://github.com/jasonmx/DeviceSide/issues/) to see if an issue for this already exists.
+          required: true
+        - label: I've got the checked features above working in my home for the proposed device/integration.
+          required: true
+        - label: The features run natively on the device (e.g. turn-off delays use on-device timers).
+          required: true
+        - label: The features work smoothly, with no unwanted jumps, flashes, lags or freezes.
+          required: true
+        - label: If my proposal gets built in DeviceSide, I will test it on my device(s).
+          required: true
+  - type: textarea
+    id: yaml
+    attributes:
+      label: Working YAML
+      description: Paste the action calls that you've got working in Home Assistant.
+      render: yaml
+    validations:
+      required: true
+  - type: dropdown
+    id: involvement
+    attributes:
+      label: How involved do you want to be?
+      options:
+        - Experienced coders only: I want to submit the PR myself.
+        - I want to help code the change, with some guidance.
+        - I want to test only.
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Anything else you'd like to add?
+    validations:
+      required: true

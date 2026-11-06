@@ -1,22 +1,22 @@
 # DeviceSide
 
-[![HACS Default](https://img.shields.io/badge/HACS-Default-orange.svg)](https://hacs.xyz/) [![Latest Version](https://img.shields.io/github/v/release/jasonmx/DeviceSide?sort=date)](https://github.com/jasonmx/DeviceSide/releases) [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/jasonmx)
+[![HACS Default](https://img.shields.io/badge/HACS-Default-orange.svg)](https://hacs.xyz/) [![Latest Version](https://img.shields.io/github/v/release/jasonmx/DeviceSide?sort=date)](https://github.com/jasonmx/DeviceSide/releases) ![Installs](https://img.shields.io/badge/dynamic/json?color=blue&label=Installs&query=deviceside.total&url=https://analytics.home-assistant.io/custom_integrations.json) [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/jasonmx)
 
-DeviceSide unlocks native features in your lights, switches and plugs on the Zigbee, Shelly, Philips Hue and Matter integrations.
+DeviceSide unlocks native features in your lights, switches and plugs on Zigbee, Shelly, Philips Hue and Matter.
+
+## Key Features
 
 * **Auto-off/on:** Turn devices off/on automatically, even if HA goes offline or restarts.
 
 * **Dim smoothly:** Press to dim and release to stop, using third-party buttons. No more jittery steps or overshoots.
 
-* **Change colors smoothly:** Press to change color, release to stop.
+* **Change colors smoothly:** Press to change hue or saturation, release to stop.
 
-* **Set lights without turning on:** Pre-stage brightness, color, CT and scenes, so lights come on without unsightly color flashes or brightness extremes.
+* **Flash-free turn-on:** Set brightness, color, color temperature or scenes without turning the lights on
 
-* **Zero setup:** DeviceSide connects to your devices automatically via the core integrations, and [patches some usability quirks](#usability-patches) in Z2M and Hue.
+* **Zero setup:** Connects to your devices automatically via the core integrations
 
-## Key Features
-
-| Feature                                                                             | ZHA | Z2M | Shelly | Hue Bridge | Matter |
+| Feature by Integration                                                              | ZHA | Z2M | Shelly | Hue Bridge | Matter |
 |:----------------------------------------------------------------------------------- |:---:|:---:|:------:|:----------:|:------:|
 | [Turn on with timer](#turn-on-with-timer)                                           | ✅   | ✅   | ✅      |            | ✅      |
 | [Turn off with timer](#turn-off-with-timer)                                         |     |     | ✅      |            |        |
@@ -32,9 +32,9 @@ Details per integration are in [docs/integrations.md](docs/integrations.md). Tes
 
 ### Will it work with my device?
 
-Maybe. Device manufacturers implement the same standards differently, which is why most of these features aren't in Home Assistant core: a feature that works on one Zigbee light doesn’t work on another. Each ✅ means the feature passed a test on at least one device on that integration, not on every device. Some devices also accept commands for features they don't fully support, so test each of your devices before relying on a device-native feature.
+Maybe. A key reason these features aren't supported in HA core is that device makers implement them inconsistently. So the first release of DeviceSide only supports devices I could probe and test myself on an automated rig. Each ✅ above indicates a feature that works on at least one device per integration.
 
-The tested models are on the [compatibility page](docs/compatibility.md). If yours isn't there, please try it out and report your findings via **Settings > Integrations > DeviceSide > Configure > Report a Device Test Result**.
+If you own a device that isn't [listed as tested](https://github.com/jasonmx/DeviceSide/blob/main/docs/compatibility.md), please try it and report the result.
 
 ## Get started
 
@@ -44,12 +44,12 @@ The tested models are on the [compatibility page](docs/compatibility.md). If you
 
 * Not supported yet: Hue Bridge v1, Shelly Gen 1, Zigbee plugs/switches
 
-### Install from HACS
+### Install from Marketplace
 
 <details>
 <summary>Show me how</summary>
 
-1. Open the DeviceSide HACS repository
+1. Open the DeviceSide repository
 
    [![Open the DeviceSide HACS repository in your Home Assistant instance.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=jasonmx&repository=DeviceSide&category=integration)
 
@@ -63,39 +63,30 @@ The tested models are on the [compatibility page](docs/compatibility.md). If you
 
 </details>
 
-### Coming from [Hue Smooth Dimming](https://github.com/jasonmx/hue-smooth-dimming)
+<details>
+<summary>Coming from Hue Smooth Dimming?</summary>
 
-DeviceSide's actions are drop-in replacements for Hue Smooth Dimming, apart from a name change on the `raise` and `lower` actions. To migrate to DeviceSide, make these YAML edits in your automations:
+DeviceSide's actions are drop-in replacements for [Hue Smooth Dimming](https://github.com/jasonmx/hue-smooth-dimming), apart from a name change on the `raise` and `lower` actions. To migrate to DeviceSide, make these changes to your YAML:
 
-* change `hue_dimmer` to `deviceside`. E.g. `hue_dimmer.stop` → `deviceside.stop`
+* `hue_dimmer.raise` → `deviceside.raise_brightness`
+* `hue_dimmer.lower` → `deviceside.lower_brightness`
+* `hue_dimmer` → `deviceside`
 
-* change `raise` to `raise_brightness`
-
-* change `lower` to `lower_brightness`
-
-### Coming from v0.0.1
-
-v0.1.0 renamed the integration's domain from `device_side` to `deviceside`. HACS installs it in a new folder and Home Assistant treats it as a new integration, so:
-
-1. Delete the old Device Side integration in Settings > Devices & services
-2. Update to v0.1.0 in HACS
-3. Delete the `custom_components/device_side` folder, then restart Home Assistant
-4. Add DeviceSide again, and set its options again if you changed them
-5. In your automations and scripts, change `device_side.` to `deviceside.`, e.g. `device_side.turn_on_for` → `deviceside.turn_on_for`
+</details>
 
 ## Usage
 
 ### Turn on with timer
 
-Action: `deviceside.turn_on_for`
+Action: `turn_on_for`
 
-Also known as on with timed off (Zigbee, Matter), `on_time` (Zigbee2MQTT), `toggle_after` (Shelly), countdown.
+Also known as `on with timed off` (Zigbee, Matter), `on_time` (Zigbee2MQTT), `toggle_after` (Shelly), and `countdown`.
 
 Turn on, then off after a delay. Timer runs on the device, for this turn-on only: it doesn't change a Shelly's own [Auto-off](#auto-off-and-auto-on) setting. Example use case:
 
 - Run a fan for 20 minutes after a shower.
 
-#### YAML example: heater off after 4 hours, with a warning
+###### Example: heater off after 4 hours, with a warning
 
 ```yaml
 actions:
@@ -143,19 +134,17 @@ If a device fails, the action fails and stops the automation.
 
 #### Cancel a timer
 
-The following actions cancel the timer, on a device that's on:
+The following actions cancel a `turn_on_for` timer:
 
 * Turn off
 
-* Start a new timer with either action (restarts the countdown)
+* Start a new timer (replaces the old timer)
 
 * Turn on (i.e. leave on). Tested on Shelly only
 
 ### Turn off with timer
 
-Action: `deviceside.turn_off_for`
-
-Also known as: auto on, `toggle_after` (Shelly), countdown.
+Action: `turn_off_for`
 
 Turn off, then on after a delay. Timer runs on the device. Example use case:
 
@@ -186,7 +175,7 @@ If a device fails, the action fails and stops the automation.
 
 #### Cancel a timer
 
-The following actions cancel the timer, on a device that's off:
+The following actions cancel a `turn_off_for` timer:
 
 * Turn on
 
@@ -196,16 +185,16 @@ The following actions cancel the timer, on a device that's off:
 
 ### Auto-off (aka inching) and auto-on
 
-Actions: `deviceside.set_auto_off`, `deviceside.set_auto_on`, `deviceside.clear_auto_off`, `deviceside.clear_auto_on`
+Actions: `set_auto_off`, `set_auto_on`, `clear_auto_off`, `clear_auto_on`
 
-Configure a persistent auto-off delay, that fires on every turn-on independent of Home Assistant. Auto-on is the reverse. Example use cases:
+Configure a persistent auto-off delay, that fires on every turn-on (and vice versa) independent of Home Assistant. Example use cases:
 
 - Inch a garage door by pulsing its relay for 1 second.
 - Turn off an ironing station automatically after an hour.
 
-Devices go unavailable briefly in Home Assistant, as the Shelly integration reloads them after config change.
+>  [!NOTE] Devices go unavailable briefly after each config change, while the Shelly integration reloads them.
 
-#### YAML example: garage door inching
+###### Example: garage door inching
 
 ```yaml
 action: deviceside.set_auto_off
@@ -242,7 +231,7 @@ If a device fails, the action fails and stops the automation.
 
 Create "press to dim, release to stop" automations. Transitions run natively on the device.
 
-#### YAML example: two-button dimmer
+###### Example: two-button dimmer
 
 ```yaml
 left_button_held:
@@ -255,25 +244,25 @@ buttons_released:
   - action: deviceside.stop
 ```
 
-| Action                        | Description                                    |
-|:----------------------------- |:---------------------------------------------- |
-| `deviceside.raise_brightness` | Start raising brightness, turning the light on |
-| `deviceside.lower_brightness` | Start lowering brightness                      |
-| `deviceside.stop`             | Freeze every move on the target where it is    |
+| Action             | Description                                    |
+|:------------------ |:---------------------------------------------- |
+| `raise_brightness` | Start raising brightness, turning the light on |
+| `lower_brightness` | Start lowering brightness                      |
+| `stop`             | Freeze the move                                |
 
 | Field        | Description                                                                                                                                |
 |:------------ |:------------------------------------------------------------------------------------------------------------------------------------------ |
 | `target`     | Lights and groups (required)                                                                                                               |
-| `sweep_time` | Seconds a full 0–100% sweep takes (default 5 s). Raise and lower only                                                                      |
+| `sweep_time` | Duration of a full 0–100% sweep (default 5s)                                                                                               |
 | `limit`      | Raise: maximum brightness (default 100%).<br>Lower: minimum brightness (default 0%). The light turns off at 0%; choose 0.4%+ to keep it on |
 
-To move several lights in step, target a Hue room or zone, or a Zigbee2MQTT or ZHA group, instead of separate lights. One group-wide Zigbee message then moves them together.
+To dim multiple Zigbee lights together, target a Hue, Z2M or ZHA group instead of separate lights or an HA group. Native groups move in sync via group-wide Zigbee messages.
 
-### Smooth color transitions
+### Smooth color changes
 
 Create "press to change color, release to stop" automations. Transitions run natively on the device.
 
-#### YAML example: hold to cycle color
+###### Example: hold to cycle color
 
 ```yaml
 button_held:
@@ -283,27 +272,27 @@ button_released:
   - action: deviceside.stop
 ```
 
-| Action                        | Description                                                     |
-|:----------------------------- |:--------------------------------------------------------------- |
-| `deviceside.raise_saturation` | Start raising saturation, toward a richer color                 |
-| `deviceside.lower_saturation` | Start lowering saturation, toward white                         |
-| `deviceside.raise_hue`        | Start cycling hue: red, yellow, green, blue. Runs until `stop`  |
-| `deviceside.lower_hue`        | Start cycling hue: red, magenta, blue, green. Runs until `stop` |
-| `deviceside.stop`             | Freeze every move on the target where it is                     |
+| Action             | Description                                                     |
+|:------------------ |:--------------------------------------------------------------- |
+| `raise_saturation` | Start raising saturation, toward a richer color                 |
+| `lower_saturation` | Start lowering saturation, toward white                         |
+| `raise_hue`        | Start cycling hue: red, yellow, green, blue. Runs until `stop`  |
+| `lower_hue`        | Start cycling hue: red, magenta, blue, green. Runs until `stop` |
+| `stop`             | Freeze the move                                                 |
 
 | Field        | Description                                                                                                       |
 |:------------ |:----------------------------------------------------------------------------------------------------------------- |
 | `target`     | Lights and groups (required)                                                                                      |
-| `sweep_time` | Seconds a full 0–100% saturation sweep or one turn of the color wheel takes (default 5 s). Raise and lower only   |
+| `sweep_time` | Duration of a full 0–100% saturation sweep or 360º hue sweep (default 5s)                                         |
 | `limit`      | Raise saturation: maximum (default 100%).<br>Lower saturation: minimum (default 0%). <br/>Hue moves take no limit |
 
 Groups move in step, as for dimming.
 
-### Set lights without turning on
+### Flash-free turn-on
 
-Set scenes, brightness, color and color temperature while the lights are off, so that they turn on smoothly without unsightly color or brightness flashes.
+Set brightness, color temperature, color or scenes while the lights are off, so that they turn on predictably without unsightly color or brightness flashes.
 
-#### YAML example: set scene for next turn-on
+###### Example: set scene for next turn-on
 
 ```yaml
 description: Stage the Relax scene in the living room at 22:00, without turning the lights on.
@@ -316,11 +305,15 @@ actions:
       entity_id: scene.living_room_relax
 ```
 
-To set brightness for the next turn-on from the visual editor, see [docs/examples/set-turn-on-brightness.md](docs/examples/set-turn-on-brightness.md).
+###### GUI example: rearm turn-on brightness after turn-off
 
-#### Set brightness, color or CT
+See [docs/examples/set-turn-on-brightness.md](docs/examples/set-turn-on-brightness.md).
 
-Action: `deviceside.set_attributes`. Sets brightness, color temp or color without changing on/off state.
+#### Set brightness, color temperature or color without turning on
+
+Action: `set_attributes`
+
+Sets brightness, color temperature or color without changing on/off state.
 
 | Field               | Description                                 |
 |:------------------- |:------------------------------------------- |
@@ -333,13 +326,15 @@ Action: `deviceside.set_attributes`. Sets brightness, color temp or color withou
 | `hs_color`          | Color as `[hue, saturation]` (0–360, 0–100) |
 | `xy_color`          | Color as `[x, y]`                           |
 
-#### Set scene
+#### Set scene without turning on
 
-Action: `deviceside.set_scene`. Sets a Hue scene without turning its lights on.
+Action: `set_scene`
 
-| Field    | Description           |
-|:-------- |:--------------------- |
-| `target` | Hue scenes (required) |
+Currently implemented for Hue scenes on the Hue integration only.
+
+| Field    | Description          |
+|:-------- |:-------------------- |
+| `target` | Hue scene (required) |
 
 ### Get attributes
 
@@ -351,7 +346,7 @@ Read device attributes that aren't exposed reliably by Home Assistant:
 
 * Check a light's brightness, color or color temperature while it's off or transitioning.
 
-#### YAML example: how long until the heater turns off
+###### Example: how long until the heater turns off
 
 ```yaml
 actions:
@@ -371,23 +366,23 @@ actions:
 |:-------- |:------------------------------ |
 | `target` | Lights and switches (required) |
 
-A record holds the keys the device reports: `brightness` (%), `color_temp_kelvin`, `rgb_color`, `hs_color`, `xy_color`, and `timer` while one is running. On Shelly it also holds `auto_off` and `auto_on`.
+A record holds the keys the device reports: `brightness` (%), `color_temp_kelvin`, `rgb_color`, `hs_color`, `xy_color`, `timer`, `auto_off` and `auto_on`.
 
-The `timer` key holds `turns` (`on` or `off`), `ends_at` (UTC) and `remaining_s`.
+* When a timer is running, the `timer` key holds `turns` (`on` / `off`), `ends_at` (UTC) and `remaining_s`.
 
-`auto_off` and `auto_on` each hold `duration` (seconds) while set, and are `null` while clear. A record without them means the setting couldn't be read.
+* On devices that support auto-off/on, `auto_off` and `auto_on` each hold `duration` (seconds) while set and are `null` while clear. A missing record means the setting couldn't be read.
 
 ## Usability patches
 
 * **Color lights on Zigbee2MQTT:**
 
-  * Home Assistant shows the wrong color for full-color bulbs in hue-saturation (HS) mode. DeviceSide fixes this by [announcing both of their color modes](docs/integrations.md#what-deviceside-changes-in-zigbee2mqtt).
+  * Home Assistant shows the wrong color for full-color bulbs in hue-saturation (HS) mode. DeviceSide fixes this by [announcing both XY and HS color modes](docs/integrations.md#what-deviceside-changes-in-zigbee2mqtt).
 
-  * Hue bulbs: before a `turn_on_for` with a color, DeviceSide turns on Z2M's Hue native control setting for that bulb, so it comes on in the new color instead of flashing its last one.
+  * Hue bulbs: before a `turn_on_for` with a color, DeviceSide enables Z2M's Hue native control for that bulb, so it turns on without flashing its old color.
 
-* **Hue Bridge:** When a brightness move starts, the bridge reports its target brightness (e.g. 0% or 100%) to Home Assistant, which is jarring for moves that you plan to stop. DeviceSide suppresses the bridge's report when a transition starts, and reports the new brightness once the transition stops.
+* **Hue Bridge:** When a brightness move starts, the bridge reports its target brightness (e.g. 0% or 100%) to Home Assistant, which is jarring for moves that you plan to stop. DeviceSide suppresses the bridge's report as a transition starts, and reports the new brightness once the transition stops.
 
-The HS mode and Hue Bridge patches are on by default; turn them off in DeviceSide's options (**Configure > Settings**).
+The HS mode and Hue Bridge patches are on by default; turn them off in **Configure > Settings**.
 
 ## Uninstall
 

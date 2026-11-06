@@ -1,19 +1,19 @@
 name: Report a Device Test Result
 description: Tell us how DeviceSide worked on a device the compatibility page doesn't list.
 title: "Device test result: "
-labels: ["device-report"]
+labels: ["device report"]
 body:
-  - type: markdown
-    attributes:
-      value: |
-        Please don't include entity IDs, device names or MAC addresses.
   - type: input
     id: integration
     attributes:
-      label: Integration
-      description: The Home Assistant integration the device uses, e.g. zha, mqtt (Zigbee2MQTT), shelly, hue, matter, tuya.
+      label: Home Assistant Integration
+      description: e.g. zha, mqtt (Zigbee2MQTT), shelly.
     validations:
       required: true
+  - type: input
+    id: product
+    attributes:
+      label: Device product name
   - type: input
     id: model
     attributes:
@@ -21,47 +21,19 @@ body:
       description: As shown on the device page in Home Assistant.
     validations:
       required: true
-  - type: input
-    id: product
-    attributes:
-      label: Product name
-      description: The maker and product name, e.g. Philips Hue White Ambiance. Leave blank if you don't know it.
-  - type: input
-    id: firmware
-    attributes:
-      label: Firmware version
-      description: As shown on the device page in Home Assistant. Leave blank if it isn't shown.
-  - type: input
-    id: deviceside_version
-    attributes:
-      label: DeviceSide version
-    validations:
-      required: true
-  - type: input
-    id: ha_version
-    attributes:
-      label: Home Assistant version
-    validations:
-      required: true
   - type: checkboxes
     id: worked
     attributes:
-      label: Actions that worked
-      description: Tick every action you tested that did what it should.
+      label: Features that worked
+      description: Mark features you tested that worked as expected
       options:
         - label: turn_on_for
         - label: turn_off_for
-        - label: set_auto_off
-        - label: set_auto_on
-        - label: clear_auto_off
-        - label: clear_auto_on
-        - label: raise_brightness
-        - label: lower_brightness
-        - label: raise_saturation
-        - label: lower_saturation
-        - label: raise_hue
-        - label: lower_hue
-        - label: stop
+        - label: set_auto_off & clear_auto_off
+        - label: set_auto_on & clear_auto_on
+        - label: smooth dimming, including fast raise-stop-raise & raise-stop-lower sequences
+        - label: color saturation transitions, including fast raise-stop-raise & raise-stop-lower sequences
+        - label: color hue transitions, including fast raise-stop-raise & raise-stop-lower sequences
         - label: set_attributes
         - label: set_scene
         - label: get_attributes
@@ -69,22 +41,16 @@ body:
   - type: checkboxes
     id: failed
     attributes:
-      label: Actions that didn't work
-      description: Tick every action you tested that did not. Say what happened in the notes.
+      label: Features that didn't work
+      description: Mark features you tested that didn't work as expected. Say what happened in the notes.
       options:
         - label: turn_on_for
         - label: turn_off_for
-        - label: set_auto_off
-        - label: set_auto_on
-        - label: clear_auto_off
-        - label: clear_auto_on
-        - label: raise_brightness
-        - label: lower_brightness
-        - label: raise_saturation
-        - label: lower_saturation
-        - label: raise_hue
-        - label: lower_hue
-        - label: stop
+        - label: set_auto_off & clear_auto_off
+        - label: set_auto_on & clear_auto_on
+        - label: smooth dimming, including fast raise-stop-raise & raise-stop-lower sequences
+        - label: color saturation transitions, including fast raise-stop-raise & raise-stop-lower sequences
+        - label: color hue transitions, including fast raise-stop-raise & raise-stop-lower sequences
         - label: set_attributes
         - label: set_scene
         - label: get_attributes
@@ -92,5 +58,26 @@ body:
   - type: textarea
     id: notes
     attributes:
-      label: Notes
-      description: Anything else, such as the action's response or an error from the log.
+      label: Notes on failed tests
+      description: Consider redacting private information before sharing logs (e.g. devices named after people, MAC addresses).
+      placeholder: |
+      1. What I expected to happen:
+      1. What actually happened:
+      1. Steps to reproduce:
+      1. YAML and/or logs (if relevant):
+  - type: input
+    id: Device firmware
+    attributes:
+      label: Firmware version
+  - type: input
+    id: ha_version
+    attributes:
+      label: Home Assistant version
+    validations:
+      required: true
+  - type: input
+    id: deviceside_version
+    attributes:
+      label: DeviceSide version
+    validations:
+      required: true
