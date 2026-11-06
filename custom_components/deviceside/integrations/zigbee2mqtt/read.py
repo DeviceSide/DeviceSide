@@ -29,6 +29,12 @@ READ_KEY = "deviceside_read"
 _FILTERED_CACHE = "filtered_cache"
 # Z2M publishes a reply within a quarter second when the bulb answers; the same wait as turn_on_for's state.
 _REPLY_TIMEOUT_S = 5.0
+# What Z2M's error line says when the coordinator's frame went unacknowledged: ... failed (Delivery failed for '1').
+_DELIVERY_FAILED = "Delivery failed"
+
+
+class DeliveryFailed(RuntimeError):
+    """Z2M logged a read as undelivered: routine radio noise on a busy mesh, so a read is tried once more."""
 
 
 def clusters(target: Target) -> dict[str, list[str]]:
@@ -74,7 +80,7 @@ class Reader:
         except ValueError, TypeError, KeyError:
             return
         if entry.get("level") == "error" and all(part in message for part in self._failure):
-            self._reply.set_exception(RuntimeError(message))
+            self._reply.set_exception((DeliveryFailed if _DELIVERY_FAILED in message else RuntimeError)(message))
 
     @callback
     def _on_state(self, msg: mqtt.ReceiveMessage) -> None:
@@ -93,7 +99,7 @@ class Reader:
         """The light's attributes from every cluster `clusters` names, merged, read one cluster after another.
 
         CurrentLevel is the light's level as `_level` takes it. Raises when a read fails: at once when Z2M logs the
-        error, else after the timeout.
+        error (after one more try when it logs a delivery failure), else after the timeout.
         """
         attributes: dict = {}
         state: dict = {}
@@ -141,7 +147,18 @@ class Reader:
             unsubscribe()
 
     async def _read(self, target: Target, cluster: str, names: list[str]) -> tuple[dict, dict]:
-        """The cluster's reply and the state Z2M published it in, over a subscription to the state topic."""
+        """The cluster's reply and the state Z2M published it in, over a subscription to the state topic.
+
+        A read Z2M logs as undelivered is sent once more, under the same subscription; any other failure, or a second
+        delivery failure, raises.
+        """
+        try:
+            return await self._attempt(target, cluster, names)
+        except DeliveryFailed:
+            _LOGGER.debug("Read of %s.%s on %s was not delivered; reading once more", cluster, names, target.entity_id)
+            return await self._attempt(target, cluster, names)
+
+    async def _attempt(self, target: Target, cluster: str, names: list[str]) -> tuple[dict, dict]:
         self._reply, self._expected = self.hass.loop.create_future(), set(names)
         self._failure = (f"{z2m_address(target.device)}/", f"{cluster}.read(")
         payload = {"read": {"cluster": cluster, "attributes": names, "state_property": READ_KEY}}

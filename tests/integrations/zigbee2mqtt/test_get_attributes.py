@@ -255,6 +255,36 @@ async def test_a_logged_read_error_raises_at_once(hass, broker, monkeypatch, cap
     assert "lightingColorCtrl.read() failed (UNSUPPORTED_ATTRIBUTE)" in caplog.text
 
 
+async def test_a_delivery_failure_is_read_again(hass, broker, caplog):
+    bulb(hass, broker)
+    broker.read_errors_then_reply[(IEEE, "genOnOff")] = ["Delivery failed for '1'"]
+
+    await call(hass, "get_attributes", {"entity_id": "light.lamp"})
+
+    assert not [r for r in caplog.records if r.levelno >= logging.WARNING]
+
+
+async def test_two_delivery_failures_fail_the_read(hass, broker, caplog):
+    bulb(hass, broker)
+    broker.read_errors_then_reply[(IEEE, "genOnOff")] = ["Delivery failed for '1'", "Delivery failed for '2'"]
+
+    with pytest.raises(HomeAssistantError) as raised:
+        await call(hass, "get_attributes", {"entity_id": "light.lamp"})
+
+    assert raised.value.translation_key == "targets_failed"
+    assert "genOnOff.read() failed (Delivery failed for '2')" in caplog.text
+
+
+async def test_another_read_error_is_not_read_again(hass, broker):
+    bulb(hass, broker)
+    broker.read_errors_then_reply[(IEEE, "genOnOff")] = ["UNSUPPORTED_ATTRIBUTE"]
+
+    with pytest.raises(HomeAssistantError):
+        await call(hass, "get_attributes", {"entity_id": "light.lamp"})
+
+    assert not broker.read_errors_then_reply[(IEEE, "genOnOff")]
+
+
 async def test_log_lines_about_anything_else_are_ignored(hass, broker):
     bulb(hass, broker)
     other = "ZCL command 0x00124b00ffffffff/11 genOnOff.read() failed (Delivery failed for '1')"
