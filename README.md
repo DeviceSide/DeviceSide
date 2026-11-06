@@ -107,7 +107,7 @@ actions:
 |:------------------- |:---------------------------------------------------------------------------------------------------------------------- |
 | `target`            | Lights and switches (required)                                                                                         |
 | `duration`          | Delay until the device turns off (required). Up to 7 days on Shelly, 6,553.4 s (about 1 h 49 min) on Zigbee and Matter |
-| `brightness`        | Brightness (1–255). ZHA, Z2M, Shelly                                                                                   |
+| `brightness`        | Brightness (minimum 0.4%). ZHA, Z2M, Shelly                                                                            |
 | `color_temp_kelvin` | Color temperature (2000–6500 K). ZHA, Z2M, Shelly                                                                      |
 | `rgb_color`         | Color as `[red, green, blue]` (0–255 each). Z2M, Shelly                                                                |
 | `hs_color`          | Color as `[hue, saturation]` (0–360, 0–100). Z2M, Shelly                                                               |

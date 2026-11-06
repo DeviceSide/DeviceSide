@@ -29,12 +29,30 @@ async def test_light_fields_are_parsed_with_core_validators(hass):
     request = _parse(
         hass,
         TurnOnFor,
-        {"entity_id": "light.a", "duration": 5, "brightness": 300, "hs_color": [30, 50], "transition": 2},
+        {"entity_id": "light.a", "duration": 5, "brightness": "50", "hs_color": [30, 50], "transition": 2},
     )
 
-    assert request.light == LightFields(brightness=255, hs_color=(30.0, 50.0), transition=2.0)
+    assert request.light == LightFields(brightness=50.0, hs_color=(30.0, 50.0), transition=2.0)
     assert request.fields_present() == {"brightness", "hs_color", "transition"}
-    assert request.light.as_turn_on_data() == {"brightness": 255, "hs_color": (30.0, 50.0), "transition": 2.0}
+    assert request.light.as_turn_on_data() == {"brightness": 128, "hs_color": (30.0, 50.0), "transition": 2.0}
+
+
+@pytest.mark.parametrize("brightness", [0, -1, 100.1, 300])
+def test_brightness_outside_0_to_100_is_rejected(brightness):
+    with pytest.raises(probatio.Invalid):
+        TurnOnFor.schema()({"entity_id": "light.a", "duration": 5, "brightness": brightness})
+
+
+@pytest.mark.parametrize(("percent", "level"), [(0.1, 1), (0.4, 1), (50, 128), (100, 255)])
+async def test_brightness_percent_becomes_a_level_that_never_turns_off(hass, percent, level):
+    request = _parse(hass, TurnOnFor, {"entity_id": "light.a", "duration": 5, "brightness": percent})
+
+    assert request.light.brightness_255() == level
+    assert request.light.as_turn_on_data() == {"brightness": level}
+
+
+def test_no_brightness_has_no_level():
+    assert LightFields(transition=1).brightness_255() is None
 
 
 def test_one_color_at_a_time():

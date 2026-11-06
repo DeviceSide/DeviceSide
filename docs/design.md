@@ -109,8 +109,10 @@ Facts from HA core this rests on:
 - `zha.issue_zigbee_cluster_command` is an admin service, so adapters forward the caller's `call.context`.
 - HA auto-imports top-level modules named after entity platforms and after `group`, `diagnostics`, `repairs` and the
   like, so adapters live under `integrations/` and nothing at the top level is called `light.py`.
-- Schemas use `probatio` and reuse `light.const.LIGHT_TURN_ON_SCHEMA` entries, so ranges never drift from core.
-  `set_attributes` keeps Hue Smooth Dimming's percent brightness instead.
+- Schemas use `probatio` and reuse `light.const.LIGHT_TURN_ON_SCHEMA` entries, so ranges never drift from core,
+  bar brightness: it is a percent in every action, as in Hue Smooth Dimming. `turn_on_for` converts it to 1–255 where
+  it calls `light.turn_on`, never to 0, and never as `brightness_pct`, which core (`light/helper.py`) rounds to 0
+  below 0.2%.
 
 ### Layout
 

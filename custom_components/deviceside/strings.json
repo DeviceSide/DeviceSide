@@ -240,8 +240,8 @@
           "description": "How long to stay on before turning off."
         },
         "brightness": {
-          "name": "Brightness value",
-          "description": "Brightness from 1 (minimum) to 255 (maximum)."
+          "name": "Brightness",
+          "description": "Brightness level (minimum 0.4%)"
         },
         "color_temp_kelvin": {
           "name": "Color temperature",
