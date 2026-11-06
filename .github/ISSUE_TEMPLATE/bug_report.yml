@@ -1,12 +1,13 @@
 name: Bug report
+description: Report a problem with DeviceSide.
 title: "Bug: "
 labels: ["bug"]
 body:
   - type: input
     id: integration
     attributes:
-      label: Home Assistant Integration
-      description: e.g. zha, mqtt (Zigbee2MQTT), shelly.
+      label: Home Assistant integration
+      description: e.g. zha, zigbee2mqtt, shelly.
     validations:
       required: true
   - type: input
@@ -25,8 +26,7 @@ body:
     attributes:
       label: Checklist
       options:
-        attributes:
-        - label: I've checked that the feature and device is [listed as compatible](docs/compatibility.md), or I'm reporting a bug that's not device-specific.
+        - label: I've checked that the feature and device are [listed as compatible](https://github.com/jasonmx/DeviceSide/blob/main/docs/compatibility.md), or I'm reporting a bug that's not device-specific.
           required: true
         - label: I have searched the [existing issues](https://github.com/jasonmx/DeviceSide/issues/) to see if an issue for this already exists.
           required: true
@@ -36,12 +36,12 @@ body:
       label: Describe the bug
       description: Consider redacting private information before sharing YAML or logs (e.g. devices named after people, MAC addresses).
       placeholder: |
-      1. What I expected to happen:
-      1. What actually happened:
-      1. Steps to reproduce:
-      1. YAML and/or logs (if relevant):
+        1. What I expected to happen:
+        1. What actually happened:
+        1. Steps to reproduce:
+        1. YAML and/or logs (if relevant):
   - type: input
-    id: Device firmware
+    id: firmware
     attributes:
       label: Firmware version
   - type: input
