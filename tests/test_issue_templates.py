@@ -73,3 +73,8 @@ def test_the_menu_prefills_only_fields_its_form_has(form):
     assert set(form.fields) <= fields
     if form.title is not None:
         assert template["title"] == f"{form.title}: "
+
+
+def test_the_menu_lists_the_forms_in_the_chooser_s_order():
+    """GitHub's template chooser sorts the forms by file name; the options menu matches it."""
+    assert [form.template for form in ISSUE_FORMS] == [path.name for path in FORMS]

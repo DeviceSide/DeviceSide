@@ -162,7 +162,7 @@ async def test_the_options_menu_offers_settings_and_the_issue_forms(hass: HomeAs
     entry = await loaded_entry(hass)
     result = await hass.config_entries.options.async_init(entry.entry_id)
     assert result["type"] is FlowResultType.MENU
-    assert result["menu_options"] == ["settings", "report_device", "report_bug", "propose_device"]
+    assert result["menu_options"] == ["settings", "report_device", "propose_device", "report_bug"]
 
 
 async def test_a_report_for_a_supported_light_carries_its_integration_model_and_firmware(hass: HomeAssistant, request):
@@ -276,7 +276,7 @@ async def test_a_bug_report_keeps_its_own_title_and_carries_the_device(hass: Hom
     fields, url = await report_for(hass, entry, "light.desk", "report_bug", "bug_link")
 
     assert fields == {
-        "template": "bug_report.yml",
+        "template": "report_bug.yml",
         "integration": "mqtt",
         "model": "Bulb",
         "firmware": "2.0",
