@@ -26,24 +26,24 @@
       "settings": {
         "title": "DeviceSide options",
         "data": {
-          "predicted_state": "Show predicted brightness during Hue fades",
+          "predicted_state": "Fix Hue Bridge brightness reports while dimming",
           "z2m_color_modes": "Fix colors of full-color Zigbee2MQTT lights"
         },
         "data_description": {
-          "predicted_state": "A Hue bridge reports a fade's end brightness as soon as it starts, and where a stopped fade halted late or never. With this on, Home Assistant shows the brightness at the start, where a stop halted it, and the end once the fade has run. Turn it off to show what the bridge reports.",
-          "z2m_color_modes": "Zigbee2MQTT tells Home Assistant a full-color light has one color mode, so Home Assistant keeps showing the old color whenever the bulb reports in the other. With this on, DeviceSide sets each such light's and group's Home Assistant override in Zigbee2MQTT's settings to announce both. Turn it off to remove those overrides."
+          "predicted_state": "When dimming starts, Hue Bridges report 0% or 100% brightness and only snap back to a light's actual brightness after ~10 s. This setting shows the starting brightness in Home Assistant when dimming starts, and the light's actual brightness when it stops. Disable the setting to get the raw bridge reports.",
+          "z2m_color_modes": "Full color lights use both XY and HS modes, but Zigbee2MQTT announces them as XY mode only. This causes Home Assistant to ignore reports from full color lights in HS mode. This setting overrides Z2M and announces both modes to HA. Turn it off to revert to Z2M's native behavior."
         }
       },
       "report_device": {
         "title": "Report a Device Test Result",
-        "description": "Choose a light or switch to report on. DeviceSide opens a prefilled report on GitHub with the device's integration, model and firmware, and the DeviceSide and Home Assistant versions. It never includes the entity ID, name, area or address.",
+        "description": "Choose a light or switch to report on, and DeviceSide will prefill a report for you to submit on GitHub.",
         "data": {
           "entity_id": "Light or switch"
         }
       },
       "report_link": {
         "title": "Report a Device Test Result",
-        "description": "[Open the draft device report on GitHub]({url}), add the remaining details and submit."
+        "description": "[Click here]({url}) to open the draft report on GitHub."
       }
     }
   },
@@ -73,89 +73,89 @@
   "services": {
     "clear_auto_off": {
       "name": "Clear auto-off",
-      "description": "Devices stop turning themselves off after every turn-on. Leaves them on or off as they are."
+      "description": "Disables auto-off."
     },
     "clear_auto_on": {
       "name": "Clear auto-on",
-      "description": "Devices stop turning themselves back on after every turn-off. Leaves them on or off as they are."
+      "description": "Disables auto-on."
     },
     "get_attributes": {
       "name": "Get attributes",
-      "description": "Get brightness, color temp, and color (RGB, HS, XY), even if lights are off, and any running on/off timer, plus Shelly's auto-off and auto-on settings. Returns one record per target."
+      "description": "Read a device's brightness, color temp, color (RGB, HS, XY), running on/off timers and auto-off/auto-on settings, even when the device is off. Returns one record per target."
     },
     "lower_brightness": {
       "name": "Lower brightness",
-      "description": "Starts brightness falling at a steady speed until it reaches 0% or the minimum. Stop halts it where it is. Built for hold-to-dim buttons.",
+      "description": "Start lowering the brightness.",
       "fields": {
         "sweep_time": {
           "name": "Sweep time",
-          "description": "Seconds a full range takes: 0% to 100%, or once around the color wheel for hue. The speed is the same wherever the move starts."
+          "description": "Duration of 100-0% sweep."
         },
         "limit": {
-          "name": "Minimum brightness",
-          "description": "Brightness to stop at instead of 0%, in percent. The light turns off at 0%. Choose 0.4% or more to keep it on."
+          "name": "Minimum brightness limit",
+          "description": "Light turns off at 0%. Choose 0.4%+ to keep light on."
         }
       }
     },
     "lower_hue": {
       "name": "Lower hue",
-      "description": "Starts the hue angle decreasing at a steady speed: red to magenta to blue to green, wrapping at 360°. It cycles until stop halts it.",
+      "description": "Start decreasing the hue angle: red to magenta to blue to green, wrapping at 360°. It cycles until a stop action.",
       "fields": {
         "sweep_time": {
           "name": "Sweep time",
-          "description": "Seconds a full range takes: 0% to 100%, or once around the color wheel for hue. The speed is the same wherever the move starts."
+          "description": "Duration of a 360° color wheel rotation."
         }
       }
     },
     "lower_saturation": {
       "name": "Lower saturation",
-      "description": "Starts saturation falling at a steady speed, paler toward white, until it reaches 0% or the minimum. Stop halts it where it is.",
+      "description": "Start lowering the saturation, to make the color paler.",
       "fields": {
         "sweep_time": {
           "name": "Sweep time",
-          "description": "Seconds a full range takes: 0% to 100%, or once around the color wheel for hue. The speed is the same wherever the move starts."
+          "description": "Duration of 100-0% sweep."
         },
         "limit": {
-          "name": "Minimum saturation",
-          "description": "Saturation to stop at instead of 0%, in percent."
+          "name": "Minimum saturation limit",
+          "description": "Stop transition at limit."
         }
       }
     },
     "raise_brightness": {
       "name": "Raise brightness",
-      "description": "Starts brightness rising at a steady speed until it reaches 100% or the maximum, turning the light on. Stop halts it where it is. Built for hold-to-brighten buttons.",
+      "description": "Start raising the brightness.",
       "fields": {
         "sweep_time": {
           "name": "Sweep time",
-          "description": "Seconds a full range takes: 0% to 100%, or once around the color wheel for hue. The speed is the same wherever the move starts."
+          "description": "Duration of 0-100% sweep."
         },
         "limit": {
-          "name": "Maximum brightness",
-          "description": "Brightness to stop at instead of 100%, in percent."
+          "name": "Maximum brightness limit",
+          "description": "Stop transition at limit."
         }
       }
     },
     "raise_hue": {
       "name": "Raise hue",
-      "description": "Starts the hue angle increasing at a steady speed: red to yellow to green to blue, wrapping at 360°. It cycles until stop halts it.",
+      "description": "Start increasing the hue angle: red to yellow to green to blue, wrapping at 360°. It cycles until a stop action.",
       "fields": {
         "sweep_time": {
           "name": "Sweep time",
-          "description": "Seconds a full range takes: 0% to 100%, or once around the color wheel for hue. The speed is the same wherever the move starts."
+          "description": "Duration of a 360° color wheel rotation."
         }
       }
     },
     "raise_saturation": {
       "name": "Raise saturation",
-      "description": "Starts saturation rising at a steady speed, toward a richer color, until it reaches 100% or the maximum. Stop halts it where it is.",
+      "description": "Start raising saturation, to make the color richer.",
       "fields": {
         "sweep_time": {
           "name": "Sweep time",
-          "description": "Seconds a full range takes: 0% to 100%, or once around the color wheel for hue. The speed is the same wherever the move starts."
+          "description": "Duration of 0-100% sweep."
         },
         "limit": {
-          "name": "Maximum saturation",
-          "description": "Saturation to stop at instead of 100%, in percent."
+          "name": "Maximum saturation limit",
+          "description": "Stop transition at limit."
         }
       }
     },
@@ -195,21 +195,21 @@
     },
     "set_auto_off": {
       "name": "Set auto-off",
-      "description": "Devices turn themselves off a set time after every turn-on, from any source: button, app, schedule or Home Assistant. Stored on the device; Clear auto-off removes it.",
+      "description": "Turn off automatically after every turn-on. Stored on the device. Clear auto-off removes it.",
       "fields": {
         "duration": {
           "name": "Duration",
-          "description": "How long to stay on after each turn-on."
+          "description": "How long to stay on before turning off."
         }
       }
     },
     "set_auto_on": {
       "name": "Set auto-on",
-      "description": "Devices turn themselves back on a set time after every turn-off, from any source: button, app, schedule or Home Assistant. Stored on the device; Clear auto-on removes it.",
+      "description": "Turn on automatically after every turn-off. Stored on the device. Clear auto-on removes it.",
       "fields": {
         "duration": {
           "name": "Duration",
-          "description": "How long to stay off after each turn-off."
+          "description": "How long to stay off before turning on."
         }
       }
     },
@@ -219,21 +219,21 @@
     },
     "stop": {
       "name": "Stop",
-      "description": "Stops every raise and lower in flight on the target, whichever attribute, where it is now."
+      "description": "Freezes brightness and color transitions."
     },
     "turn_off_for": {
       "name": "Turn off with timer",
-      "description": "Devices turn off, then on again after a delay. To cancel the timer, send a regular turn off.",
+      "description": "Devices turn off, then on again after a delay.",
       "fields": {
         "duration": {
           "name": "Duration",
-          "description": "How long to stay off before turning back on."
+          "description": "How long to stay off before turning on."
         }
       }
     },
     "turn_on_for": {
       "name": "Turn on with timer",
-      "description": "Devices turn on, then off again after a delay. To cancel the timer, send a regular turn on (on ZHA, a turn off).",
+      "description": "Devices turn on, then off again after a delay.",
       "fields": {
         "duration": {
           "name": "Duration",
@@ -241,27 +241,27 @@
         },
         "brightness": {
           "name": "Brightness value",
-          "description": "Brightness to turn on at, from 1 (minimum) to 255 (maximum). Lights only."
+          "description": "Brightness from 1 (minimum) to 255 (maximum)."
         },
         "color_temp_kelvin": {
           "name": "Color temperature",
-          "description": "Color temperature in Kelvin to turn on at. Lights only."
+          "description": "Color temperature in Kelvin."
         },
         "hs_color": {
           "name": "Hue/Sat color",
-          "description": "Color in hue/sat format to turn on at. A list of two numbers: hue 0-360, saturation 0-100. Lights only."
+          "description": "Color in hue/sat format. A list of two numbers: hue 0-360, saturation 0-100."
         },
         "rgb_color": {
           "name": "Color",
-          "description": "Color in RGB format to turn on at. A list of three integers between 0 and 255. Lights only."
+          "description": "Color in RGB format. A list of three integers between 0 and 255."
         },
         "xy_color": {
           "name": "XY-color",
-          "description": "Color in XY format to turn on at. A list of two decimal numbers between 0 and 1. Lights only."
+          "description": "Color in XY format. A list of two decimal numbers between 0 and 1."
         },
         "transition": {
           "name": "Transition",
-          "description": "Seconds the light takes to reach the brightness and color above. Lights only."
+          "description": "Soft-on duration."
         }
       }
     }
