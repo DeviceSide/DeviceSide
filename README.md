@@ -4,7 +4,7 @@
 
 DeviceSide unlocks native features in your lights, switches and plugs on the Zigbee, Shelly, Philips Hue and Matter integrations.
 
-* **Auto-off/on:** Turn devices off or on automatically, even if HA goes offline or restarts.
+* **Auto-off/on:** Turn devices off/on automatically, even if HA goes offline or restarts.
 
 * **Dim smoothly:** Press to dim and release to stop, using third-party buttons. No more jittery steps or overshoots.
 
@@ -32,9 +32,9 @@ Details per integration are in [docs/integrations.md](docs/integrations.md). Tes
 
 ### Will it work with my device?
 
-Maybe. Devices implement the same standards differently, which is why most of these features aren't in Home Assistant core: a feature that works on one Zigbee light can do nothing on another. Each ✅ means the feature passed a test on at least one device on that integration, not on every device. Some devices also accept commands for features they don't fully support, so test each of your devices before relying on a device-native feature.
+Maybe. Device manufacturers implement the same standards differently, which is why most of these features aren't in Home Assistant core: a feature that works on one Zigbee light doesn’t work on another. Each ✅ means the feature passed a test on at least one device on that integration, not on every device. Some devices also accept commands for features they don't fully support, so test each of your devices before relying on a device-native feature.
 
-The tested models are on the [compatibility page](docs/compatibility.md). Rows marked Documented have no test yet, but DeviceSide sends them the same command as a tested device, documented identically by the maker, so they ship in stable releases and a fault on one is a bug. If yours isn't there, please try it and [report the result](https://github.com/jasonmx/DeviceSide/issues/new?template=device_report.yml), whether it works or not. The quickest way is in Home Assistant: **Settings > Devices & services > DeviceSide > Configure > Report a Device Test Result**. Pick a light or switch and DeviceSide opens a report with its integration, model, firmware and the versions filled in. It never includes the entity ID, name, area or address.
+The tested models are on the [compatibility page](docs/compatibility.md). If yours isn't there, please try it out and report your findings via **Settings > Integrations > DeviceSide > Configure > Report a Device Test Result**.
 
 ## Get started
 
@@ -203,9 +203,9 @@ Configure a persistent auto-off delay, that fires on every turn-on independent o
 - Inch a garage door by pulsing its relay for 1 second.
 - Turn off an ironing station automatically after an hour.
 
-#### YAML example: garage door relay
+Devices go unavailable briefly in Home Assistant, as the Shelly integration reloads them after config change.
 
-Run this once, from **Developer tools > Actions** for example. The device keeps the setting.
+#### YAML example: garage door inching
 
 ```yaml
 action: deviceside.set_auto_off
@@ -237,11 +237,6 @@ Each targeted entity reports a `status` in the response variable:
 If a device fails, the action fails and stops the automation.
 
 </details>
-
-#### Warning
-
-* Each config change writes to the device's flash memory. Set it once, not from a frequent automation.
-* Home Assistant reloads a Shelly device after a config change, so expect the entity to go unavailable briefly after each call.
 
 ### Smooth dimming
 
@@ -393,10 +388,6 @@ The `timer` key holds `turns` (`on` or `off`), `ends_at` (UTC) and `remaining_s`
 * **Hue Bridge:** When a brightness move starts, the bridge reports its target brightness (e.g. 0% or 100%) to Home Assistant, which is jarring for moves that you plan to stop. DeviceSide suppresses the bridge's report when a transition starts, and reports the new brightness once the transition stops.
 
 The HS mode and Hue Bridge patches are on by default; turn them off in DeviceSide's options (**Configure > Settings**).
-
-## Contributing
-
-Device reports, device requests, adapters and bug reports are all welcome. [CONTRIBUTING.md](CONTRIBUTING.md) says which one fits and what each needs.
 
 ## Uninstall
 
