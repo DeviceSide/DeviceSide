@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from urllib.parse import quote, urlencode
 
 import voluptuous as vol
@@ -45,24 +46,56 @@ class DeviceSideConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
 
-async def device_report_url(hass: HomeAssistant, entity_id: str) -> str:
-    """A prefilled device report for an entity: its integration, model, product name, firmware and the two versions,
-    and nothing that identifies the household (no entity ID, name, area or MAC).
+@dataclass(frozen=True)
+class IssueForm:
+    """An issue template the options menu prefills: its menu step, the step holding the link, and what it asks."""
 
-    The integration is DeviceSide's key when it serves the entity. Otherwise it is the entity's platform, so a device
-    DeviceSide doesn't cover (Tuya, ESPHome) still reports what people want.
-    """
-    entry = er.async_get(hass).async_get(entity_id)
+    step: str
+    link_step: str
+    template: str
+    fields: tuple[str, ...]
+    title: str | None  # The prefilled title's prefix; None keeps the template's own title for the reporter to finish.
+    entity_required: bool = True
+
+
+_DEVICE_FIELDS = ("integration", "model", "product", "firmware")
+_VERSION_FIELDS = ("deviceside_version", "ha_version")
+ISSUE_FORMS = (
+    IssueForm(
+        "report_device", "report_link", "device_report.yml", _DEVICE_FIELDS + _VERSION_FIELDS, "Device test result"
+    ),
+    IssueForm(
+        "report_bug", "bug_link", "bug_report.yml", _DEVICE_FIELDS + _VERSION_FIELDS, None, entity_required=False
+    ),
+    IssueForm("propose_device", "proposal_link", "propose_device_or_integration.yml", _DEVICE_FIELDS, "Proposal"),
+)
+_FORMS_BY_STEP = {form.step: form for form in ISSUE_FORMS}
+
+
+def _integration(hass: HomeAssistant, entry: er.RegistryEntry, device: dr.DeviceEntry | None) -> str:
+    """DeviceSide's key for the entity's integration when it serves the entity, or when a detect hook claims it (a
+    Z2M device on an MQTT broker DeviceSide can't reach yet). Otherwise the entity's platform, so a device DeviceSide
+    doesn't cover (Tuya, ESPHome) still reports what people want."""
+    if (runtime := hass.data.get(DATA)) is None:
+        return entry.platform
+    if not isinstance(target := resolve(hass, runtime.registry, entry.entity_id), str):
+        return target.integration
+    for info in runtime.registry.integrations.values():
+        if info.ha_domain == entry.platform and info.detect is not None and info.detect(hass, entry, device):
+            return info.key
+    return entry.platform
+
+
+async def issue_url(hass: HomeAssistant, form: IssueForm, entity_id: str | None) -> str:
+    """A prefilled issue for an entity: its integration, model, product name, firmware and the two versions, as far
+    as the form asks for them, and nothing that identifies the household (no entity ID, name, area or MAC)."""
+    entry = er.async_get(hass).async_get(entity_id) if entity_id else None
     device = dr.async_get(hass).async_get(entry.device_id) if entry and entry.device_id else None
-    integration = entry.platform if entry else ""
-    if (runtime := hass.data.get(DATA)) is not None and entry is not None:
-        target = resolve(hass, runtime.registry, entity_id)
-        if not isinstance(target, str):
-            integration = target.integration
+    integration = _integration(hass, entry, device) if entry else ""
     model_id = (device.model_id or device.model) if device else ""
     # The product name the integration reports ("Hue ambiance lamp"), with its maker; left out when it is only the ID.
     name = device.model if device and device.model_id and device.model != device.model_id else ""
-    fields = {
+    values = {
         "integration": integration,
         "model": model_id,
         "product": " ".join(filter(None, [device.manufacturer if device and name else "", name])),
@@ -70,42 +103,60 @@ async def device_report_url(hass: HomeAssistant, entity_id: str) -> str:
         "deviceside_version": str((await async_get_integration(hass, DOMAIN)).version),
         "ha_version": HA_VERSION,
     }
-    device_label = " ".join(filter(None, [name, model_id]))
-    subject = f"{device_label} ({integration})" if device_label and integration else device_label or integration
-    title = f"Device test result: {subject}" if subject else "Device test result"
-    query = urlencode(
-        {"template": "device_report.yml", "title": title, **{k: v for k, v in fields.items() if v}}, quote_via=quote
-    )
-    return f"{REPORT_URL}?{query}"
+    query = {"template": form.template}
+    if form.title is not None:
+        device_label = " ".join(filter(None, [name, model_id]))
+        subject = f"{device_label} ({integration})" if device_label and integration else device_label or integration
+        query["title"] = f"{form.title}: {subject}" if subject else form.title
+    query |= {field: values[field] for field in form.fields if values[field]}
+    return f"{REPORT_URL}?{urlencode(query, quote_via=quote)}"
 
 
 class DeviceSideOptionsFlow(config_entries.OptionsFlowWithReload):
-    """A menu: the settings page, whose saving reloads the entry so the next action runs with them, and a report."""
+    """A menu: the settings page, whose saving reloads the entry so the next action runs with them, and the issue
+    forms, each prefilled from a light or switch."""
 
-    _report_url: str = ""
+    _issue_url: str = ""
 
     async def async_step_init(self, user_input=None):
-        return self.async_show_menu(step_id="init", menu_options=["settings", "report_device"])
+        return self.async_show_menu(step_id="init", menu_options=["settings", *_FORMS_BY_STEP])
 
     async def async_step_report_device(self, user_input=None):
-        """Pick a light or switch; go on to a step holding the link to a prefilled device report."""
-        if user_input is not None:
-            self._report_url = await device_report_url(self.hass, user_input[CONF_ENTITY])
-            return await self.async_step_report_link()
-        return self.async_show_form(
-            step_id="report_device",
-            data_schema=vol.Schema(
-                {vol.Required(CONF_ENTITY): EntitySelector(EntitySelectorConfig(domain=["light", "switch"]))}
-            ),
-        )
+        return await self._pick_entity(_FORMS_BY_STEP["report_device"], user_input)
+
+    async def async_step_report_bug(self, user_input=None):
+        return await self._pick_entity(_FORMS_BY_STEP["report_bug"], user_input)
+
+    async def async_step_propose_device(self, user_input=None):
+        return await self._pick_entity(_FORMS_BY_STEP["propose_device"], user_input)
 
     async def async_step_report_link(self, user_input=None):
+        return self._show_link("report_link", user_input)
+
+    async def async_step_bug_link(self, user_input=None):
+        return self._show_link("bug_link", user_input)
+
+    async def async_step_proposal_link(self, user_input=None):
+        return self._show_link("proposal_link", user_input)
+
+    async def _pick_entity(self, form: IssueForm, user_input):
+        """Pick a light or switch (optional for a bug, which may not be device-specific); go on to the link."""
+        if user_input is not None:
+            self._issue_url = await issue_url(self.hass, form, user_input.get(CONF_ENTITY))
+            return self._show_link(form.link_step, None)
+        key = vol.Required(CONF_ENTITY) if form.entity_required else vol.Optional(CONF_ENTITY)
+        return self.async_show_form(
+            step_id=form.step,
+            data_schema=vol.Schema({key: EntitySelector(EntitySelectorConfig(domain=["light", "switch"]))}),
+        )
+
+    def _show_link(self, step_id: str, user_input):
         """The link, on a step of its own so the dialog carries the step's title. Submitting closes the flow with the
         options as they were: OptionsFlowWithReload reloads only on changed options, so nothing reloads."""
         if user_input is not None:
             return self.async_create_entry(data=dict(self.config_entry.options))
         return self.async_show_form(
-            step_id="report_link", data_schema=vol.Schema({}), description_placeholders={"url": self._report_url}
+            step_id=step_id, data_schema=vol.Schema({}), description_placeholders={"url": self._issue_url}
         )
 
     async def async_step_settings(self, user_input=None):

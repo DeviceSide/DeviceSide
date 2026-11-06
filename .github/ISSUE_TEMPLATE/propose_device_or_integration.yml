@@ -1,5 +1,6 @@
 name: Propose a device or integration
 description: Propose a new device or integration to be added to DeviceSide.
+title: "Proposal: "
 labels: ["enhancement"]
 body:
   - type: markdown
@@ -9,10 +10,14 @@ body:
   - type: input
     id: integration
     attributes:
-      label: Integration
-      description: e.g. zha, mqtt (Zigbee2MQTT), shelly.
+      label: Home Assistant integration
+      description: e.g. zha, zigbee2mqtt, shelly.
     validations:
       required: true
+  - type: input
+    id: product
+    attributes:
+      label: Device product name
   - type: input
     id: model
     attributes:
@@ -21,14 +26,14 @@ body:
     validations:
       required: true
   - type: input
-    id: product
+    id: firmware
     attributes:
-      label: Device product name
+      label: Firmware version
   - type: checkboxes
     id: features
     attributes:
       label: Proposed features
-      description: Check every feature that works in your home today and you'd like to see added to DeviceSide
+      description: Check every feature that works in your home today and you'd like to see added to DeviceSide.
       options:
         - label: turn_on_for
         - label: turn_off_for
@@ -46,7 +51,6 @@ body:
     attributes:
       label: Checklist
       options:
-        attributes:
         - label: I have searched the [existing issues](https://github.com/jasonmx/DeviceSide/issues/) to see if an issue for this already exists.
           required: true
         - label: I've got the checked features above working in my home for the proposed device/integration.
@@ -70,7 +74,7 @@ body:
     attributes:
       label: How involved do you want to be?
       options:
-        - Experienced coders only: I want to submit the PR myself.
+        - "Experienced coders only: I want to submit the PR myself."
         - I want to help code the change, with some guidance.
         - I want to test only.
     validations:
@@ -80,5 +84,3 @@ body:
     attributes:
       label: Notes
       description: Anything else you'd like to add?
-    validations:
-      required: true

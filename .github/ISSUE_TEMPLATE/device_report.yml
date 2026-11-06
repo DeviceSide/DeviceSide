@@ -1,13 +1,13 @@
 name: Report a Device Test Result
 description: Tell us how DeviceSide worked on a device the compatibility page doesn't list.
 title: "Device test result: "
-labels: ["device report"]
+labels: ["device-report"]
 body:
   - type: input
     id: integration
     attributes:
-      label: Home Assistant Integration
-      description: e.g. zha, mqtt (Zigbee2MQTT), shelly.
+      label: Home Assistant integration
+      description: e.g. zha, zigbee2mqtt, shelly.
     validations:
       required: true
   - type: input
@@ -25,7 +25,7 @@ body:
     id: worked
     attributes:
       label: Features that worked
-      description: Mark features you tested that worked as expected
+      description: Mark features you tested that worked as expected.
       options:
         - label: turn_on_for
         - label: turn_off_for
@@ -61,12 +61,12 @@ body:
       label: Notes on failed tests
       description: Consider redacting private information before sharing logs (e.g. devices named after people, MAC addresses).
       placeholder: |
-      1. What I expected to happen:
-      1. What actually happened:
-      1. Steps to reproduce:
-      1. YAML and/or logs (if relevant):
+        1. What I expected to happen:
+        1. What actually happened:
+        1. Steps to reproduce:
+        1. YAML and/or logs (if relevant):
   - type: input
-    id: Device firmware
+    id: firmware
     attributes:
       label: Firmware version
   - type: input

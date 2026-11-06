@@ -20,7 +20,9 @@
         "title": "DeviceSide",
         "menu_options": {
           "settings": "Settings",
-          "report_device": "Report a Device Test Result"
+          "report_device": "Report a Device Test Result",
+          "report_bug": "Report a bug",
+          "propose_device": "Propose a device or integration"
         }
       },
       "settings": {
@@ -44,6 +46,28 @@
       "report_link": {
         "title": "Report a Device Test Result",
         "description": "[Click here]({url}) to open the draft report on GitHub."
+      },
+      "report_bug": {
+        "title": "Report a bug",
+        "description": "If the bug involves a device, choose it and DeviceSide will prefill its details. Leave it empty for a bug that isn't device-specific.",
+        "data": {
+          "entity_id": "Light or switch"
+        }
+      },
+      "bug_link": {
+        "title": "Report a bug",
+        "description": "[Click here]({url}) to open the draft bug report on GitHub."
+      },
+      "propose_device": {
+        "title": "Propose a device or integration",
+        "description": "Choose the light or switch you're proposing, and DeviceSide will prefill its details. You'll need the YAML that already does the job on it.",
+        "data": {
+          "entity_id": "Light or switch"
+        }
+      },
+      "proposal_link": {
+        "title": "Propose a device or integration",
+        "description": "[Click here]({url}) to open the draft proposal on GitHub."
       }
     }
   },
