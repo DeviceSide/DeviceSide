@@ -119,3 +119,8 @@ def test_check_fails_on_a_stale_page_until_it_is_regenerated(root, capsys):
     assert gc.main([], registry, path) == 0
     assert "9.9.9" in path.read_text()
     assert gc.main(["--check"], registry, path) == 0
+
+
+def test_the_checked_in_page_matches_the_real_records():
+    """The page is generated from the records: run the real check so local pytest catches a record that drifts it."""
+    assert gc.main(["--check"]) == 0
