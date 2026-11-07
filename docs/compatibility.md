@@ -60,13 +60,13 @@ A group is a native group of the integration (a Hue zone, a ZHA or Zigbee2MQTT g
 | Action | Level | Tested models | Records | Reported working |
 |---|---|---|---|---|
 | `get_attributes` | Verified | `LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>`LWA012`, firmware `1.104.2` | [record](test-records/zha/get_attributes.md) | |
-| `lower_brightness` | Experimental | `LTA009`, firmware `0x01002a00`<br>group | [record](test-records/zha/lower_brightness.md) | |
+| `lower_brightness` | Verified | `LTA009`, firmware `0x01002a00`<br>group | [record](test-records/zha/lower_brightness.md) | |
 | `lower_hue` | Verified | `LCA016`, firmware `0x01001200` | [record](test-records/zha/lower_hue.md) | |
 | `lower_saturation` | Verified | `LCA016`, firmware `0x01001200` | [record](test-records/zha/lower_saturation.md) | |
 | `raise_brightness` | Verified | `LTA009`, firmware `0x01002a00`<br>group | [record](test-records/zha/raise_brightness.md) | |
 | `raise_hue` | Verified | `LCA016`, firmware `0x01001200` | [record](test-records/zha/raise_hue.md) | |
 | `raise_saturation` | Verified | `LCA016`, firmware `0x01001200` | [record](test-records/zha/raise_saturation.md) | |
-| `set_attributes` | Experimental | `LTA009`, firmware `0x01002a00`<br>`LCA016`, firmware `0x01001200`<br>group | [record](test-records/zha/set_attributes.md) | |
+| `set_attributes` | Experimental | `LCA016`, firmware `0x01001200` | [record](test-records/zha/set_attributes.md) | |
 | `stop` | Experimental | `LTA009`, firmware `0x01002a00`<br>`LCA016`, firmware `0x01001200`<br>group | [record](test-records/zha/stop.md) | |
 | `turn_on_for` | Verified | `LWA012`, firmware `1.104.2`<br>`LTA009`, firmware `1.163.1` | [record](test-records/zha/turn_on_for.md) | |
 

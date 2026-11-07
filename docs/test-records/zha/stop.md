@@ -3,8 +3,8 @@
 | | |
 |---|---|
 | Result | pass |
-| Date | 2026-11-03 |
-| Source | rig run (`scripts/rig.py`), commit `0bd4f6d` |
+| Date | 2026-11-07 |
+| Source | rig run (`scripts/rig.py`), commit `1de5a51` |
 | Profile | lab |
 | Home Assistant | 2026.10.2 |
 | Device | LTA009, firmware `0x01002a00`; ZBDongle-E, firmware `unknown`; LCA016, firmware `0x01001200` |
