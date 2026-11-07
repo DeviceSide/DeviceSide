@@ -27,6 +27,10 @@ adapter passing its tests, no soak. An RC also needs a rig run since each releas
   lights, and the saturation and hue moves where the device supports them. Start from the Light component's
   `DimUp`/`DimDown`/`DimStop` RPCs and probe what each model does with color. Ships `experimental`; a rig record
   clears the flag; the README table gains its Shelly cells.
+- [ ] **Shelly `set_attributes`** (#284): set brightness, color temperature or color on Shelly lights without turning
+  them on. The rig's `get_attributes` `reads_while_off` then sets Shelly's `light_ct` case up with it, replacing the
+  separate `reads_while_off_after_turn_on` that uses core's `light.turn_on` (#281). Ships `experimental`; a rig
+  record clears the flag; the README table gains its Shelly cells.
 - [ ] **9d** Rig coverage sweep for the non-color scope; the watched session covers the color part.
 - [x] **Device support, part 1** (#262): support levels and contribution lanes in `CONTRIBUTING.md`, the README's "Will it
   work with my device?", and the device report, device request and bug issue forms.
