@@ -9,11 +9,16 @@ from custom_components.deviceside.core.scope import Level
 from custom_components.deviceside.integrations.shelly.set_attributes import ShellySetAttributes
 
 from ...conftest import call, refusal
-from ...fixtures.shelly import add_shelly_entity, shelly_device
+from ...fixtures.shelly import add_shelly_entity, failing, shelly_device
 
 KELVIN_RANGE = {"min_color_temp_kelvin": 2700, "max_color_temp_kelvin": 6500}
 BULB = {"entity_id": "light.bulb"}
 CONFIRMED = {"status": "confirmed", "integration": "shelly"}
+
+
+def _output(call_rpc) -> bool:
+    """The bulb's output as the device would report it now."""
+    return call_rpc.side_effect("RGBCCT.GetStatus", {"id": 0})["output"]
 
 
 async def bulb(hass, status: dict | None = None, state: str = "off"):
@@ -52,6 +57,7 @@ async def test_a_bulb_that_is_off_stays_off(hass, setup_production):
     await call(hass, "set_attributes", {**BULB, "brightness": 40})
 
     assert all("on" not in c.args[1] for c in call_rpc.await_args_list)
+    assert _output(call_rpc) is False
 
 
 async def test_values_the_device_did_not_keep_are_rejected(hass, setup_production):
@@ -82,14 +88,7 @@ async def test_a_mode_that_did_not_switch_is_rejected(hass, setup_production):
 
 async def test_a_failed_read_back_still_reports_sent(hass, setup_production):
     call_rpc = await bulb(hass)
-    respond = call_rpc.side_effect
-
-    async def no_status(method, params):
-        if method.endswith(".GetStatus"):
-            raise ConnectionError("device unreachable")
-        return respond(method, params)
-
-    call_rpc.side_effect = no_status
+    failing(call_rpc, "GetStatus")
 
     response = await call(hass, "set_attributes", {**BULB, "brightness": 40})
 
@@ -98,7 +97,7 @@ async def test_a_failed_read_back_still_reports_sent(hass, setup_production):
 
 async def test_a_failed_set_fails_the_call(hass, setup_production):
     call_rpc = await bulb(hass)
-    call_rpc.side_effect = ConnectionError("device unreachable")
+    failing(call_rpc, "Set")
 
     with pytest.raises(HomeAssistantError):
         await call(hass, "set_attributes", {**BULB, "brightness": 40})
@@ -150,7 +149,9 @@ async def test_limits_work_while_the_bulb_is_off(hass, setup_production):
 
     await call(hass, "set_attributes", {**BULB, "min_brightness": 30})
 
+    assert rpc_call("RGBCCT.Set", {"id": 0, "brightness": 30}) in call_rpc.await_args_list
     assert all("on" not in c.args[1] for c in call_rpc.await_args_list)
+    assert _output(call_rpc) is False
 
 
 async def test_limits_with_a_color_still_send_the_color(hass, setup_production):
