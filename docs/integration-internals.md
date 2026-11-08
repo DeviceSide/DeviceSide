@@ -39,6 +39,12 @@ and `rgbcct:N` → `Light`, `CCT`, `RGB`, `RGBW`, `RGBCCT`. Only `Switch` and `R
   clock (both SNTP-synced), clamped to 0 to the duration to bound skew. `RGBCCT` adds brightness and the active
   mode's color, the others derived from it. A `<Component>.GetConfig` runs alongside for `auto_off` and `auto_on`;
   if it fails, the row leaves both keys out (unknown) rather than reporting them `null` (disabled).
+- **`set_attributes`.** `RGBCCT.Set` with the `light_params` translation and no `on`: the bulb keeps its output and
+  stores brightness, `ct`, `rgb` and `mode` (probe, 8 Nov, Multicolor Bulb Gen3). The reply is null, so a
+  `GetStatus` follows; `brightness`, `ct` and `mode` must match what was sent (`not_stored`, rejected), `rgb` is not
+  compared until a probe has shown the device returns it unrounded. A failed read-back reports `sent`.
+  `min_brightness`/`max_brightness` first read `GetStatus` `brightness` (kept while off), clamp it to whole percent,
+  and send nothing when it is already within them; an explicit `brightness` wins.
 - **Auto-off and auto-on.** `<Component>.GetConfig` first, and `<Component>.SetConfig` with
   `{"id": N, "config": {...}}` only when the config differs: `auto_off: true` and `auto_off_delay` to set,
   `auto_off: false` alone to clear (likewise `auto_on`). A delay matches to 0.01 s. `SetConfig` emits
