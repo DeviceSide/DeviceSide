@@ -26,6 +26,7 @@ record promotes them to Verified.
 | Entry | Refused as | Adapters | A tester needs | Proves |
 |---|---|---|---|---|
 | Zigbee plugs and switches on ZHA and Z2M | `domain_not_tested` | `turn_on_for`, `get_attributes` | A plug whose firmware honors the timed-on command. Not the Tuya TS011F, which stores the timer as a countdown and never switches on; many Sonoff and Tuya plugs run their own countdown instead | The OnTime timer on a `switch`. Zigbee2MQTT and ZHA each need their own record |
+| Shelly `Light`, `CCT`, `RGB`, `RGBW` components for dimming | `capability_not_tested` | `raise_brightness`, `lower_brightness`, `stop` | A Gen2+ dimmer, CCT, RGB or RGBW device | That `DimStop` halts a `Set`'s fade there without a jump (one user reports a Gen3 Dimmer jumping), and the `on: false` soft off. One component per record |
 
 ## A tester cannot clear these
 

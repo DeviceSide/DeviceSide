@@ -39,6 +39,11 @@ COMPONENT_FIELDS = {
 # record covers them (CLAUDE.md, "Release flag").
 CAPABILITIES = verified("Switch", "RGBCCT") | documented("Light", "CCT", "RGB", "RGBW")
 
+# The components raise_brightness, lower_brightness and stop address. DimStop halting a Set's fade is the rig's
+# finding on RGBCCT (fw 2.0.3), documented by Shelly for none of them, and one user reports a Gen3 Dimmer jumping on
+# DimStop: the others stay out of scope until a record covers them.
+DIMMING_CAPABILITIES = verified("RGBCCT")
+
 
 @dataclass(frozen=True, slots=True)
 class RpcAddress:

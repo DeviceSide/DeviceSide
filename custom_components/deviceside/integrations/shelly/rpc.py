@@ -1,5 +1,5 @@
-"""The RPC calls the Shelly adapters send: a <Component>.Set with a flip-back timer, and the persistent auto-off /
-auto-on setting in <Component>.SetConfig, each with a read-back."""
+"""The RPC calls the Shelly adapters send: a <Component>.Set with a flip-back timer or a fade, DimStop, and the
+persistent auto-off / auto-on setting in <Component>.SetConfig, each with a read-back."""
 
 import logging
 from collections.abc import Awaitable, Callable
@@ -26,8 +26,9 @@ AUTO_DELAY_LIMITS = DurationLimits(min_s=0, max_s=604800)
 # The device keeps the delays to 0.01 s.
 _DELAY_DIGITS = 2
 
-# Core's floor for an RPC transition (shelly/const.py RPC_MIN_TRANSITION_TIME_SEC).
-_MIN_TRANSITION_S = 0.5
+# A Set's transition_duration: core's floor (shelly/const.py RPC_MIN_TRANSITION_TIME_SEC) and the device's ceiling
+# (rig, 8 Nov: 0.5 to 10800 s, 0 refused with error -103).
+TRANSITION_LIMITS = DurationLimits(min_s=0.5, max_s=10800)
 
 
 def whole_percent(percent: float) -> int:
@@ -44,7 +45,7 @@ def light_params(light: LightFields, component: str, state: State | None) -> dic
     if light.brightness is not None:
         params["brightness"] = whole_percent(light.brightness)
     if light.transition is not None:
-        params["transition_duration"] = max(light.transition, _MIN_TRANSITION_S)
+        params["transition_duration"] = max(light.transition, TRANSITION_LIMITS.min_s)
     if light.color_temp_kelvin is not None:
         kelvin = light.color_temp_kelvin
         if state is not None:
@@ -107,6 +108,26 @@ async def set_with_timer(adapter: Adapter, target: Target, params: dict[str, Any
         return adapter.result(target, Status.SENT, detail="timer_not_reported")
 
     return await set_and_read_back(adapter, target, params, judge)
+
+
+async def set_fade(target: Target, brightness: float, duration_s: float) -> None:
+    """One <Component>.Set fading to `brightness` percent over `duration_s`; an error propagates.
+
+    The device runs the fade from its current level, mid-fade included, and from 1 % when off. Fading to 0 is
+    on: false with the transition, the device's own soft off: it ends off and keeps its stored level for the next on
+    (brightness 0 would leave it on at 0 %). Brightness always goes with on: true, or the device restores its stored
+    level. Rig, 8 Nov.
+    """
+    device, rpc = rpc_device(target), address(target)
+    params = {"on": False} if brightness == 0 else {"on": True, "brightness": whole_percent(brightness)}
+    await device.call_rpc(f"{rpc.component}.Set", {"id": rpc.id, **params, "transition_duration": duration_s})
+
+
+async def dim_stop(target: Target) -> None:
+    """<Component>.DimStop: halts a Set's fade as well as a DimUp/DimDown ramp, within ~0.1 s, and changes nothing
+    when no fade runs (rig, 8 Nov). An error propagates."""
+    device, rpc = rpc_device(target), address(target)
+    await device.call_rpc(f"{rpc.component}.DimStop", {"id": rpc.id})
 
 
 async def get_config(target: Target) -> dict[str, Any]:

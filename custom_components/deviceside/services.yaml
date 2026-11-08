@@ -169,12 +169,14 @@ set_attributes:
     xy_color: *xy_color
 
 raise_brightness:
-  target: &hue_mqtt_zha
+  target: &hue_mqtt_shelly_zha
     entity:
       - domain: light
         integration: hue
       - domain: light
         integration: mqtt
+      - domain: light
+        integration: shelly
       - domain: light
         integration: zha
   fields:
@@ -198,7 +200,7 @@ raise_brightness:
           unit_of_measurement: "%"
 
 lower_brightness:
-  target: *hue_mqtt_zha
+  target: *hue_mqtt_shelly_zha
   fields:
     sweep_time: *sweep_time
     limit:
@@ -212,7 +214,14 @@ lower_brightness:
           unit_of_measurement: "%"
 
 raise_saturation:
-  target: *hue_mqtt_zha
+  target: &hue_mqtt_zha
+    entity:
+      - domain: light
+        integration: hue
+      - domain: light
+        integration: mqtt
+      - domain: light
+        integration: zha
   fields:
     sweep_time: *sweep_time
     limit:
@@ -249,7 +258,7 @@ lower_hue:
     sweep_time: *sweep_time
 
 stop:
-  target: *hue_mqtt_zha
+  target: *hue_mqtt_shelly_zha
 
 get_attributes:
   target:

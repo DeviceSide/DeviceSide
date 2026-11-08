@@ -58,9 +58,9 @@ stoppable dim would lean on is unverified until the rig tests it.
 - Older Gen3 firmware reset the default transition after reboot and rejected sub-0.5 s values (fixed by 2.0.1).
 - `min_brightness_on_toggle` and LED flicker at low levels can stop a ramp short of 0.
 
-**Implication for DeviceSide `stop` / `ramp` on Shelly:** use `DimUp`/`DimDown`/`DimStop` for a stoppable ramp.
-Treat a timed `Light.Set` fade as non-stoppable until the rig shows that `DimStop` or a mid-fade `Light.Set`
-handles it cleanly (experiments below).
+**Implication for DeviceSide `stop` / `ramp` on Shelly:** before the rig, `DimUp`/`DimDown`/`DimStop` looked like
+the stoppable ramp. The rig showed the ramps are stepped and a timed `Light.Set` fade stops cleanly on `DimStop`, so
+DeviceSide fades with `Set` and stops with `DimStop` ("Rig results").
 
 ## Mechanisms
 
@@ -195,8 +195,30 @@ here is **[V]** for that device and firmware only. Other components and firmware
 | `Set` with no `transition_duration` | Looked instant even with the default at 5 s (the 5% start level was not read back). |
 | Ranges | Per-call `transition_duration` 0.5 to 10800 s (0 rejected, error -103). Config default 0 to 5 s. |
 
-Still open: `Light` and `RGBW` components, dimmers (ProDimmer, DALI), other firmware, the unexplained fast `DimUp`,
-and how `stop` should read the level back for the returned state.
+Still open: `Light` and `RGBW` components, dimmers (ProDimmer, DALI), other firmware, the unexplained fast `DimUp`.
+
+### Second probe: `DimStop` on timed fades, repeated (2026-11-08)
+
+Same bulb and firmware, default transition 3 s. 10 s fades from 5% to 100% and back, stopped at 1 s, 5 s and 9.5 s,
+two runs each, plus a stop 0.05 s after the `Set`; 8 s fades sampled every 0.2 s; HA's entity state sampled alongside.
+
+| Question | Result |
+|---|---|
+| `DimStop` halts a timed fade | **Every run, both directions**, early, mid, late and right after the `Set`. The level then holds. |
+| How soon | Within ~0.1 s of the send when nothing else is polling the device: the halt level was within 1 point of the linear interpolation at the stop (six runs). Its round trip is ~0.05 s. |
+| Under load | With a second client reading `GetStatus` every 0.2 s, round trips reached 0.7 s and fades ran on 0.3 to 1.8 s past the stop (up to 11 points). One `GetStatus` read after the stop still gives the exact halt level. |
+| `transition` on stop | **Clears**; `brightness` is settled at the first read after the stop's reply. |
+| Readback mid-fade | Matches the linear interpolation from the `Set`, within a point or two (a start lag of ~0.1 s). |
+| A completed fade | Ends **exactly** at the target (73, 17, 20 read back as sent). |
+| `DimStop` with no fade | Accepted (null), changes nothing, on or off. |
+| What HA sees | The start, sometimes one mid-fade update, then the end or the halt level ~0.2 s after the device settles. Mid-fade `brightness` in HA is stale. `deviceside.get_attributes` reads the device's own level. |
+| `Set {on:false, transition_duration}` | **A native soft off**: fades to off over the duration, and keeps the stored level (a plain on came back at 80). `DimStop` during it leaves the light **on** at the halt level. Adding `brightness` stores that level for the next on. |
+| `Set {on:true, brightness:0, transition_duration}` | Fades to 0 but stays **on at 0%**: not a way to turn off. |
+| Fade to 1% then `on:false` | Works, but the stored level becomes 1%: worse than the native soft off. |
+| `Set {on:true, brightness, transition_duration}` from off | Fades in **from 1%**, not from the stored level: no preset needed. |
+
+So a stoppable fade is one `Set` with `transition_duration`, halted by `DimStop`, with the halt level read back by
+`GetStatus`. Lowering to 0 is `Set {on:false, transition_duration}`.
 
 ## Primary sources
 

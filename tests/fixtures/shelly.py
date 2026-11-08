@@ -25,14 +25,16 @@ TIMER_STARTED_AT = 1793102400.0
 FACTORY_CONFIG = {"auto_on": False, "auto_on_delay": 60.0, "auto_off": False, "auto_off_delay": 60.0}
 
 
-def timer_running(status: dict | None = None, config: dict | None = None):
+def timer_running(status: dict | None = None, config: dict | None = None, halt: dict | None = None):
     """call_rpc side effect: Set returns the API's result; GetStatus reports `status` (an RGBCCT bulb's brightness,
-    mode, ct and rgb, say) under the output and any timer the last Set started, at TIMER_STARTED_AT. GetConfig
-    reports FACTORY_CONFIG under `config` and what each SetConfig wrote."""
+    mode, ct and rgb, say) under the output, the light values Sets stored, any timer the last Set started (at
+    TIMER_STARTED_AT) and the `transition` a Set with transition_duration started. DimStop ends that transition,
+    leaving the light on at `halt` (its brightness, say), as the bulb does mid-fade. GetConfig reports
+    FACTORY_CONFIG under `config` and what each SetConfig wrote."""
     sets: dict[tuple[str, int], dict] = {}
     configs: dict[tuple[str, int], dict] = {}
 
-    def respond(method: str, params: dict) -> dict:
+    def respond(method: str, params: dict) -> dict | None:
         component, _, verb = method.partition(".")
         key = (component, params["id"])
         if verb == "GetStatus":
@@ -42,13 +44,27 @@ def timer_running(status: dict | None = None, config: dict | None = None):
         if verb == "SetConfig":
             configs.setdefault(key, {}).update(params["config"])
             return {"restart_required": False}
+        if verb == "DimStop":
+            held = sets.setdefault(key, {})
+            if held.pop("transition", None) is not None:
+                held |= {"output": True, **(halt or {})}
+            return None
+        light = {k: v for k, v in params.items() if k in LIGHT_KEYS}
         if "on" not in params:
             # A light Set without `on` stores the values and leaves the output as it is.
-            sets.setdefault(key, {}).update({k: v for k, v in params.items() if k in LIGHT_KEYS})
+            sets.setdefault(key, {}).update(light)
             return None
-        sets[key] = {"output": params["on"]}
+        stored = {k: v for k, v in sets.get(key, {}).items() if k in LIGHT_KEYS}
+        sets[key] = {**stored, **light, "output": params["on"]}
         if "toggle_after" in params:
             sets[key] |= {"timer_started_at": TIMER_STARTED_AT, "timer_duration": params["toggle_after"]}
+        if "transition_duration" in params:
+            target = {"output": params["on"], **light}
+            sets[key]["transition"] = {
+                "target": target,
+                "started_at": TIMER_STARTED_AT,
+                "duration": params["transition_duration"],
+            }
         return {"was_on": not params["on"]}
 
     return respond
@@ -69,11 +85,16 @@ def failing(call_rpc: AsyncMock, verb: str, after: int = 0) -> None:
 
 
 def shelly_device(
-    hass: HomeAssistant, gen1: bool = False, mac: str = MAC, status: dict | None = None, config: dict | None = None
+    hass: HomeAssistant,
+    gen1: bool = False,
+    mac: str = MAC,
+    status: dict | None = None,
+    config: dict | None = None,
+    halt: dict | None = None,
 ) -> tuple[MockConfigEntry, AsyncMock]:
-    """A loaded Shelly entry whose runtime_data.rpc.device.call_rpc is the returned mock; status and config as
+    """A loaded Shelly entry whose runtime_data.rpc.device.call_rpc is the returned mock; status, config and halt as
     timer_running's."""
-    call_rpc = AsyncMock(side_effect=timer_running(status, config))
+    call_rpc = AsyncMock(side_effect=timer_running(status, config, halt))
     entry = MockConfigEntry(domain="shelly", unique_id=mac)
     entry.add_to_hass(hass)
     entry.mock_state(hass, ConfigEntryState.LOADED)
