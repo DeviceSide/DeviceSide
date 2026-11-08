@@ -70,6 +70,8 @@ If you own a device that isn't [listed as tested](https://github.com/jasonmx/Dev
 
 </details>
 
+## Usage
+
 <details>
 <summary>Coming from Hue Smooth Dimming?</summary>
 
@@ -80,8 +82,6 @@ DeviceSide's actions are drop-in replacements for [Hue Smooth Dimming](https://g
 * `hue_dimmer` → `deviceside`
 
 </details>
-
-## Usage
 
 ### Turn on with timer
 
