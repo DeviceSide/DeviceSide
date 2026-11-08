@@ -63,6 +63,7 @@ there, cut the next RC from it, and merge the branch back into `main`.
   fix it now unless it is genuinely out of scope, and then say where it is tracked.
 - Before merging: a clean `/audit-code` run over the whole PR diff. Skip it only for a single-commit PR that needed no
   fixes after its first audit.
+- Both audits are for PRs that change code, scripts and CI workflows included; a docs- or config-only PR skips them.
 
 ## Layout
 
