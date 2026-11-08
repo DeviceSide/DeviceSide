@@ -5,6 +5,9 @@ in the PR that finishes them.
 
 When an action should raise, skip a target, or what its response holds: match core, per `docs/action-behavior.md`.
 
+Scope comes from the design, the device's capabilities and the release flag below, never from the README: it records
+what ships, so its "not X" means not yet. Reword such a line to the real state, and update the README after the work lands.
+
 **The repo is public:** no household entity IDs, device names, MACs or hostnames anywhere in it, commit messages included.
 
 **No personal tooling:** deploy hosts, SSH aliases, and private stacks belong in gitignored files (`.private-terms`, `notes/`, `CLAUDE.local.md`), not in committed code, docs or commit messages.
@@ -58,6 +61,9 @@ there, cut the next RC from it, and merge the branch back into `main`.
 - Before opening the PR: `/audit-code` on the diff, then fix its findings and carry on to the PR; stop for Jason
   only on a big judgment call. Judge each finding by the codebase's long-term health, not the PR's convenience:
   fix it now unless it is genuinely out of scope, and then say where it is tracked.
+- Before merging: a clean `/audit-code` run over the whole PR diff. Skip it only for a single-commit PR that needed no
+  fixes after its first audit.
+- Both audits are for PRs that change code, scripts and CI workflows included; a docs- or config-only PR skips them.
 
 ## Layout
 

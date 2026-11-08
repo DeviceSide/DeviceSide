@@ -3,6 +3,7 @@
 from .clear_auto_off import ShellyClearAutoOff
 from .clear_auto_on import ShellyClearAutoOn
 from .get_attributes import ShellyGetAttributes
+from .set_attributes import ShellySetAttributes
 from .set_auto_off import ShellySetAutoOff
 from .set_auto_on import ShellySetAutoOn
 from .turn_off_for import ShellyTurnOffFor
@@ -15,6 +16,7 @@ ADAPTERS = [
     ShellyClearAutoOff,
     ShellyClearAutoOn,
     ShellyGetAttributes,
+    ShellySetAttributes,
     ShellySetAutoOff,
     ShellySetAutoOn,
     ShellyTurnOffFor,
