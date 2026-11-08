@@ -38,6 +38,11 @@ def no_blockers(monkeypatch):
     monkeypatch.setattr(gf, "NO_PATH", {})
 
 
+def headings():
+    """A heading for every row's anchor, so a test README passes the anchor check."""
+    return "".join(f"## {anchor.replace('-', ' ')}\n" for _, anchor, _ in gf.FEATURES)
+
+
 def row(text, label):
     return next(line for line in text.splitlines() if line.startswith(f"| [{label}]"))
 
@@ -102,6 +107,26 @@ def test_a_no_path_entry_naming_no_row_fails(monkeypatch):
         gf.generate(FakeRegistry(*every_row()))
 
 
+def test_a_no_path_key_with_no_icon_fails(monkeypatch):
+    monkeypatch.setattr(gf, "NO_PATH", {("Turn off with timer", "hue"): ("lights",)})
+    with pytest.raises(SystemExit, match="no icon lights"):
+        gf.generate(FakeRegistry(*every_row()))
+
+
+def test_slugs_match_githubs_anchors():
+    assert gf.slug(" Auto-off (aka inching) and auto-on") == "auto-off-aka-inching-and-auto-on"
+    assert gf.slug("Set brightness, color temperature or color without turning on") == (
+        "set-brightness-color-temperature-or-color-without-turning-on"
+    )
+
+
+def test_a_row_linking_to_no_heading_fails(tmp_path, no_blockers):
+    readme = tmp_path / "README.md"
+    readme.write_text(f"# x\n\n## Smooth dimming\n\n{gf.START}\n{gf.END}\n")
+    with pytest.raises(SystemExit, match="no heading for .*#turn-on-with-timer"):
+        gf.main(["--check"], FakeRegistry(*every_row()), readme)
+
+
 def test_an_action_with_no_adapter_anywhere_fails(no_blockers):
     adapters = [a for a in every_row() if a.action != "set_scene"]
     with pytest.raises(SystemExit, match="no adapter anywhere for set_scene"):
@@ -122,14 +147,15 @@ def test_the_readme_needs_its_markers(tmp_path, no_blockers):
 
 def test_check_fails_on_a_stale_table_until_it_is_regenerated(tmp_path, capsys, no_blockers):
     readme = tmp_path / "README.md"
-    readme.write_text(f"# x\n\n{gf.START}\nold\n{gf.END}\n\nafter\n")
+    readme.write_text(f"# x\n\n{gf.START}\nold\n{gf.END}\n\nafter\n{headings()}")
     registry = FakeRegistry(*every_row())
     assert gf.main(["--check"], registry, readme) == 1
     assert "out of date" in capsys.readouterr().err
     assert gf.main([], registry, readme) == 0
     assert gf.main(["--check"], registry, readme) == 0
     text = readme.read_text()
-    assert text.startswith("# x\n\n<!-- features:start -->") and text.endswith("<!-- features:end -->\n\nafter\n")
+    assert text.startswith("# x\n\n<!-- features:start -->")
+    assert text.endswith(f"<!-- features:end -->\n\nafter\n{headings()}")
     assert "old" not in text
 
 

@@ -11,6 +11,7 @@ Usage: scripts/gen_features.py [--check]
 """
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
@@ -111,6 +112,8 @@ def generate(registry: AdapterRegistry) -> str:
     for (label, integration), blocked in NO_PATH.items():
         if label not in labels or integration not in COLUMNS:
             raise SystemExit(f"NO_PATH entry ({label!r}, {integration!r}) names no README row or column")
+        if unknown := [key for key in blocked if key not in ICONS]:
+            raise SystemExit(f"NO_PATH entry ({label!r}, {integration!r}): no icon {', '.join(unknown)}")
         if stale := [key for key in blocked if key in cells[label, integration]]:
             raise SystemExit(
                 f"{label} on {COLUMNS[integration]}: {', '.join(stale)} is built, so not blocked; drop it from NO_PATH"
@@ -131,6 +134,18 @@ def generate(registry: AdapterRegistry) -> str:
     return "\n".join(lines)
 
 
+def slug(heading: str) -> str:
+    """GitHub's anchor for a heading: lower case, punctuation dropped bar hyphens, spaces to hyphens."""
+    return re.sub(r"[^\w\- ]", "", heading.strip().lower()).replace(" ", "-")
+
+
+def check_anchors(text: str) -> None:
+    """Every row links to a heading the README has, so a renamed heading fails here rather than leaving a dead link."""
+    anchors = {slug(line.lstrip("#")) for line in text.splitlines() if re.match(r"#{1,6} ", line)}
+    if dead := sorted({anchor for _, anchor, _ in FEATURES} - anchors):
+        raise SystemExit(f"README.md has no heading for #{', #'.join(dead)}; fix FEATURES")
+
+
 def splice(text: str, table: str) -> str:
     """The README with the text between the markers, markers included, replaced by the table."""
     if text.count(START) != 1 or text.count(END) != 1 or text.index(START) > text.index(END):
@@ -145,6 +160,7 @@ def main(argv: list[str] | None = None, registry: AdapterRegistry | None = None,
 
     text = readme.read_text()
     new = splice(text, generate(registry or AdapterRegistry.discover()))
+    check_anchors(text)
     if args.check:
         if new != text:
             print(
