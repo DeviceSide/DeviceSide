@@ -161,7 +161,5 @@ async def test_limits_with_a_color_still_send_the_color(hass, setup_production):
     assert rpc_call("RGBCCT.Set", {"id": 0, "ct": 3000, "mode": "cct"}) in call_rpc.await_args_list
 
 
-def test_the_adapter_is_experimental_with_rgbcct_verified_only():
-    scope = ShellySetAttributes.scope
-    assert scope.experimental
-    assert dict(scope.capabilities) == {"RGBCCT": Level.VERIFIED}
+def test_rgbcct_is_the_only_capability_in_scope():
+    assert dict(ShellySetAttributes.scope.capabilities) == {"RGBCCT": Level.VERIFIED}

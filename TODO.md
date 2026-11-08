@@ -23,8 +23,8 @@ adapter passing its tests, no soak. An RC also needs a rig run since each releas
   `sets_color_while_off`. Unattended alongside: Z2M `lower_hue` `cycles_down_the_wheel[group_color]` (failed twice,
   #222). Then the PR clearing the last flags: every `set_attributes` and `stop`, and Z2M `lower_hue`.
 - [ ] **Persistent auto-off/auto-on**: `set_`/`clear_auto_off`/`_on`, Shelly; records clear the flag.
-- [ ] **Shelly `set_attributes`** (#284, PR #287): the adapter is in, experimental, RGBCCT only. Left: the rig step
-  (`reads_while_off_after_turn_on` back into `reads_while_off`), and a record that clears the flag.
+- [x] **Shelly `set_attributes`** (#284, PR #287): RGBCCT, with `min_brightness`/`max_brightness`; the record clears
+  the flag.
 - [ ] **9d** Rig coverage sweep for the non-color scope; the watched session covers the color part.
 - [x] **Device support, part 1** (#262): support levels and contribution lanes in `CONTRIBUTING.md`, the README's "Will it
   work with my device?", and the device report, device request and bug issue forms.
