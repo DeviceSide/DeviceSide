@@ -54,7 +54,9 @@ integration. A wall switch wired to the device's input is untested and may depen
 **Auto-off and auto-on.** `set_auto_off` stores a delay on the device: from then on, every turn-on from any source
 (a button, the Shelly app, a schedule, Home Assistant) turns off again after it, as a garage-door relay needs.
 `set_auto_on` is the reverse. `clear_auto_off` and `clear_auto_on` remove the setting; the output stays as it is.
-`get_attributes` reports each as `{"duration": <seconds>}` when set and `null` when not.
+`get_attributes` reports each as `{"duration": <seconds>}` when set and `null` when not. The rig tests them on a
+relay; on an RGBCCT bulb, as on the other lights, they are Documented: the same calls, confirmed by reading the stored
+setting back.
 
 - **It reloads the Shelly entry.** Changing the setting makes the core Shelly integration reload the device's
   config entry about 60 s later, so its entities go unavailable briefly. The output doesn't change. A call that

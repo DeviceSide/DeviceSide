@@ -31,10 +31,17 @@ component), whatever entity domain the target shows: a relay exposed as a `switc
 record. A native group path is proven once any action of the same adapter class has passed through it and the command has
 passed on one light (PR #204).
 
+**Default to Documented.** A rig case earns its place only by catching what nothing else can: a call shape, a
+branch the adapter takes on a live reply, or a device behavior that DeviceSide or its docs rely on. One Verified
+case per call shape per adapter; every sibling that meets the test below rides it. A firmware fact (precedence,
+bounds, timing) is proven once per firmware version, not per code change. Confirming a stored setting counts as
+confirming the call.
+
 **Documented.** A scope item ships without a record, as `Level.DOCUMENTED`, when all of these hold: the adapter
 sends it the same call as a Verified item, differing only in addressing (component, endpoint, entity domain); the
 vendor or standard documents that call identically for both, and no known class of devices departs from it; a
-failure shows as `rejected` or `sent`, never `confirmed` or a wrong device state; and unit tests pin the payload.
+failure shows as `rejected` or `sent`, never a wrong device state, nor `confirmed` unless what it confirms is the
+stored setting the call wrote, read back; and unit tests pin the payload.
 Fields are never Documented: a field changes the call. A record promotes the item to Verified. Anything else
 untested stays out of scope and refused, never added on a sibling's proof.
 

@@ -39,6 +39,11 @@ COMPONENT_FIELDS = {
 # record covers them (CLAUDE.md, "Release flag").
 CAPABILITIES = verified("Switch", "RGBCCT") | documented("Light", "CCT", "RGB", "RGBW")
 
+# The components the persistent auto-off / auto-on adapters address. Their GetConfig and SetConfig are the same on
+# every component, documented identically by Shelly, and the adapter confirms the setting it stored by reading it
+# back: the Switch's record proves the call and the rest ride it, RGBCCT included (CLAUDE.md, "Default to Documented").
+AUTO_CAPABILITIES = verified("Switch") | documented("Light", "CCT", "RGB", "RGBW", "RGBCCT")
+
 # The components raise_brightness, lower_brightness and stop address. DimStop halting a Set's fade is the rig's
 # finding on RGBCCT (fw 2.0.3), documented by Shelly for none of them, and one user reports a Gen3 Dimmer jumping on
 # DimStop: the others stay out of scope until a record covers them.

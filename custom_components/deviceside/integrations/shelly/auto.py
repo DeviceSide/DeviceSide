@@ -4,7 +4,7 @@ from typing import ClassVar, Literal
 
 from homeassistant.core import HomeAssistant
 
-from .addressing import CAPABILITIES, unsupported_reason
+from .addressing import AUTO_CAPABILITIES, unsupported_reason
 from .rpc import AUTO_DELAY_LIMITS, write_auto
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Request, Target, TimedRequest
@@ -22,7 +22,7 @@ class ShellySetAuto(Adapter[TimedRequest]):
         experimental=True,
         domains=_DOMAINS,
         duration=AUTO_DELAY_LIMITS,
-        capabilities=CAPABILITIES,
+        capabilities=AUTO_CAPABILITIES,
         confirmable=True,
     )
 
@@ -39,7 +39,7 @@ class ShellyClearAuto(Adapter[Request]):
     integration: ClassVar[str] = "shelly"
     which: ClassVar[Literal["off", "on"]]
     scope: ClassVar[AdapterScope] = AdapterScope(
-        experimental=True, domains=_DOMAINS, capabilities=CAPABILITIES, confirmable=True
+        experimental=True, domains=_DOMAINS, capabilities=AUTO_CAPABILITIES, confirmable=True
     )
 
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:
