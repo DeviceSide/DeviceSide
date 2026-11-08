@@ -8,9 +8,13 @@ on:
       - "release/**"
       - "wt/**"
 
+permissions: {}
+
 jobs:
   lint:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - uses: actions/checkout@v7
@@ -32,22 +36,44 @@ jobs:
   # The pre-commit hook only sees the working tree; this catches a secret committed and later deleted.
   secrets-history:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    env:
+      # The pre-commit hook's version too: the job fails when they differ.
+      BETTERLEAKS_VERSION: "1.10.0"
+      BETTERLEAKS_SHA256: "9d9ad503cd5d80d18a939352266c3fcca52f10da9b83cd5cfe646989b13940fe"
 
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - name: Install gitleaks
-        # Same version as the pre-commit hook.
-        env:
-          VERSION: "8.24.2"
-          SHA256: "fa0500f6b7e41d28791ebc680f5dd9899cd42b58629218a5f041efa899151a8e"
+      - name: Check the hook pins the same betterleaks
         run: |
-          curl -sSfL -o gitleaks.tar.gz "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz"
-          echo "${SHA256}  gitleaks.tar.gz" | sha256sum -c -
-          tar -xzf gitleaks.tar.gz gitleaks
-          rm gitleaks.tar.gz
+          grep -q "# frozen: v${BETTERLEAKS_VERSION}$" .pre-commit-config.yaml || {
+            echo "::error::.pre-commit-config.yaml pins a different betterleaks than v${BETTERLEAKS_VERSION}"
+            exit 1
+          }
+
+      # The runner is thrown away after each run, so the binary is cached by version: a run only downloads it on a
+      # cache miss, and GitHub's release CDN sometimes answers 504.
+      - name: Cache betterleaks
+        id: cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: ~/betterleaks-bin
+          key: betterleaks-${{ env.BETTERLEAKS_VERSION }}-${{ env.BETTERLEAKS_SHA256 }}
+
+      - name: Install betterleaks
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          curl -sSfL --retry 5 --retry-delay 10 --retry-all-errors -o betterleaks.tar.gz \
+            "https://github.com/betterleaks/betterleaks/releases/download/v${BETTERLEAKS_VERSION}/betterleaks_${BETTERLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${BETTERLEAKS_SHA256}  betterleaks.tar.gz" | sha256sum -c -
+          mkdir -p ~/betterleaks-bin
+          tar -xzf betterleaks.tar.gz -C ~/betterleaks-bin betterleaks
+          rm betterleaks.tar.gz
 
       - name: Scan full history
-        run: ./gitleaks git . --log-opts=--all --redact --verbose
+        run: ~/betterleaks-bin/betterleaks git . --log-opts=--all --redact --verbose
