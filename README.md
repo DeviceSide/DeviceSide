@@ -319,8 +319,8 @@ Sets brightness, color temperature or color without changing on/off state.
 |:------------------- |:------------------------------------------- |
 | `target`            | Lights and groups (required)                |
 | `brightness`        | Brightness level (%)                        |
-| `min_brightness`    | Enforce a minimum brightness (%). Not Shelly |
-| `max_brightness`    | Enforce a maximum brightness (%). Not Shelly |
+| `min_brightness`    | Enforce a minimum brightness (%)            |
+| `max_brightness`    | Enforce a maximum brightness (%)            |
 | `color_temp_kelvin` | Color temperature (K)                       |
 | `rgb_color`         | Color as `[red, green, blue]` (0–255 each)  |
 | `hs_color`          | Color as `[hue, saturation]` (0–360, 0–100) |

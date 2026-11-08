@@ -122,10 +122,43 @@ async def test_gen1_is_refused(hass, setup_production):
     assert await refusal(hass, "set_attributes", {"entity_id": "light.old", "brightness": 40}) == "gen1_unsupported"
 
 
-async def test_brightness_limits_are_out_of_scope(hass, setup_production):
-    await bulb(hass)
+@pytest.mark.parametrize(
+    ("stored", "data", "expected"),
+    [
+        (10, {"min_brightness": 30}, 30),
+        (90, {"max_brightness": 60}, 60),
+        (50, {"min_brightness": 30, "max_brightness": 60}, None),  # within the limits: nothing sent
+        (10, {"min_brightness": 0.4}, None),
+        (10, {"min_brightness": 30, "brightness": 20}, 20),  # an explicit brightness wins
+    ],
+)
+async def test_limits_clamp_the_stored_brightness(hass, setup_production, stored, data, expected):
+    call_rpc = await bulb(hass, status={"brightness": stored})
 
-    assert await refusal(hass, "set_attributes", {**BULB, "min_brightness": 20}) == "fields_not_tested"
+    response = await call(hass, "set_attributes", {**BULB, **data})
+
+    if expected is None:
+        assert response == {"light.bulb": {"status": "unchanged", "integration": "shelly", "detail": "within_limits"}}
+        assert all(".Set" not in c.args[0] for c in call_rpc.await_args_list)
+        return
+    assert response == {"light.bulb": CONFIRMED}
+    assert rpc_call("RGBCCT.Set", {"id": 0, "brightness": expected}) in call_rpc.await_args_list
+
+
+async def test_limits_work_while_the_bulb_is_off(hass, setup_production):
+    call_rpc = await bulb(hass, status={"output": False, "brightness": 10})
+
+    await call(hass, "set_attributes", {**BULB, "min_brightness": 30})
+
+    assert all("on" not in c.args[1] for c in call_rpc.await_args_list)
+
+
+async def test_limits_with_a_color_still_send_the_color(hass, setup_production):
+    call_rpc = await bulb(hass, status={"brightness": 50})
+
+    await call(hass, "set_attributes", {**BULB, "min_brightness": 30, "color_temp_kelvin": 3000})
+
+    assert rpc_call("RGBCCT.Set", {"id": 0, "ct": 3000, "mode": "cct"}) in call_rpc.await_args_list
 
 
 def test_the_adapter_is_experimental_with_rgbcct_verified_only():

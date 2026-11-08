@@ -38,8 +38,9 @@ Assistant would send for them, whatever mode the bulb is in.
 **Set attributes.** On a Multicolor Bulb (RGBCCT) `set_attributes` sends one `RGBCCT.Set` without `on`, so a bulb
 that is off stores the values and stays off, and the next plain on comes up with them. The device answers a `Set` with
 nothing, so DeviceSide reads the status back: brightness, color temperature and mode must read as written, or the call
-fails (`not_stored`). A color is not compared, only the mode it switches to. `min_brightness` and `max_brightness` are
-not supported yet, and no other Shelly light takes `set_attributes` until a record covers it.
+fails (`not_stored`). A color is not compared, only the mode it switches to. `min_brightness` and `max_brightness`
+clamp the brightness the bulb has stored, read first, so they work while it is off; a bulb already within them is
+`unchanged`. No other Shelly light takes `set_attributes` until a record covers it.
 
 **Cancelling.** Any on or off cancels the timer, whoever sends it: Home Assistant, the Shelly app or another
 integration. A wall switch wired to the device's input is untested and may depend on the input mode.

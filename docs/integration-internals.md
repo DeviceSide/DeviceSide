@@ -43,6 +43,8 @@ and `rgbcct:N` → `Light`, `CCT`, `RGB`, `RGBW`, `RGBCCT`. Only `Switch` and `R
   stores brightness, `ct`, `rgb` and `mode` (probe, 8 Nov, Multicolor Bulb Gen3). The reply is null, so a
   `GetStatus` follows; `brightness`, `ct` and `mode` must match what was sent (`not_stored`, rejected), `rgb` is not
   compared until a probe has shown the device returns it unrounded. A failed read-back reports `sent`.
+  `min_brightness`/`max_brightness` first read `GetStatus` `brightness` (kept while off), clamp it to whole percent,
+  and send nothing when it is already within them; an explicit `brightness` wins.
 - **Auto-off and auto-on.** `<Component>.GetConfig` first, and `<Component>.SetConfig` with
   `{"id": N, "config": {...}}` only when the config differs: `auto_off: true` and `auto_off_delay` to set,
   `auto_off: false` alone to clear (likewise `auto_on`). A delay matches to 0.01 s. `SetConfig` emits
