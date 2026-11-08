@@ -46,10 +46,10 @@ repos:
   # -------------------------
   # Secrets check
   # -------------------------
-  - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.24.2
+  - repo: https://github.com/betterleaks/betterleaks
+    rev: 8d77e1712fb06fd14444cc648686f1d5655e28a8  # frozen: v1.10.0
     hooks:
-      - id: gitleaks
+      - id: betterleaks
 
   # -------------------------
   # Household details (terms from gitignored files; a no-op without them)
