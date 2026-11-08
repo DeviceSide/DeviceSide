@@ -3,11 +3,11 @@
 | | |
 |---|---|
 | Result | pass |
-| Date | 2026-11-03 |
-| Source | rig run (`scripts/rig.py`), commit `f76c08f` |
+| Date | 2026-11-08 |
+| Source | rig run (`scripts/rig.py`), commit `b39eb15` |
 | Profile | lab |
-| Home Assistant | 2026.10.2 |
-| Device | Hue ambiance lamp (`LTA009`), firmware `1.163.1`; Hue Essential lamp (`LCA016`), firmware `1.164.2` |
+| Home Assistant | 2026.10.4 |
+| Device | Hue white ambiance E27 1100lm with Bluetooth (`9290024684`), firmware `1.163.1`; Group, firmware `Zigbee2MQTT 2.14.3`; Hue Essential White and Color Ambiance A60 (`8720169392182`), firmware `1.164.2` |
 
 ## Tests
 
