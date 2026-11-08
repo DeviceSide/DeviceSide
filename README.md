@@ -21,7 +21,7 @@ DeviceSide unlocks native features in your lights, switches and plugs on Zigbee,
 | [Turn on with timer](#turn-on-with-timer)                                           | ✅   | ✅   | ✅      |            | ✅      |
 | [Turn off with timer](#turn-off-with-timer)                                         |     |     | ✅      |            |        |
 | [Auto-off/on (aka inching)](#auto-off-and-auto-on)                                  |     |     | ✅      |            |        |
-| [Smooth dimming](#smooth-dimming)                                                   | ✅   | ✅   |        | ✅          |        |
+| [Smooth dimming](#smooth-dimming)                                                   | ✅   | ✅   | ✅      | ✅          |        |
 | [Smooth saturation change](#smooth-color-transitions)                               | ✅   | ✅   |        | ✅          |        |
 | [Smooth hue change](#smooth-color-transitions)                                      | ✅   | ✅   |        |            |        |
 | [Set brightness, color or CT<br>without turning on](#set-lights-without-turning-on) | ✅   | ✅   | ✅      | ✅          |        |
@@ -258,7 +258,7 @@ buttons_released:
 
 To dim multiple Zigbee lights together, target a Hue, Z2M or ZHA group instead of separate lights or an HA group. Native groups move in sync via group-wide Zigbee messages.
 
-On Shelly, Multicolor Bulbs (Gen3) dim this way too, experimental until a rig record covers them. Other Shelly lights are refused until tested.
+On Shelly, Multicolor Bulbs (Gen3) dim this way too. Other Shelly lights are refused until tested.
 
 ### Smooth color changes
 

@@ -125,6 +125,6 @@ async def test_gen1_and_other_components_are_refused(hass, setup_production):
 
 def test_scope():
     scope = ShellyStop.scope
-    assert scope.experimental
+    assert not scope.experimental
     assert scope.confirmable
     assert dict(scope.capabilities) == {"RGBCCT": Level.VERIFIED}

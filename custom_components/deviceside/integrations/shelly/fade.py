@@ -21,7 +21,6 @@ _DURATION_DIGITS = 2
 
 def fade_scope() -> AdapterScope:
     return AdapterScope(
-        experimental=True,
         domains=verified("light"),
         fields=verified(BRIGHTNESS),
         capabilities=DIMMING_CAPABILITIES,

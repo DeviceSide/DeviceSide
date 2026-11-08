@@ -45,8 +45,8 @@ clamp the brightness the bulb has stored, read first, so they work while it is o
 **Smooth dimming.** On a Multicolor Bulb (RGBCCT), `raise_brightness` and `lower_brightness` read the bulb's own
 level, mid-fade included, then send one fade the bulb runs itself; `stop` halts it and reads back where it halted. A
 fade is at least 0.5 s. Lowering to 0% is the bulb's own soft off: it fades out, turns off, and comes back on at its
-old level; a `stop` during it leaves the bulb on. Raising a bulb that is off fades it in from the bottom. Experimental,
-and no other Shelly light takes them until a record covers it.
+old level; a `stop` during it leaves the bulb on. Raising a bulb that is off fades it in from the bottom. No other
+Shelly light takes them until a record covers it.
 
 **Cancelling.** Any on or off cancels the timer, whoever sends it: Home Assistant, the Shelly app or another
 integration. A wall switch wired to the device's input is untested and may depend on the input mode.

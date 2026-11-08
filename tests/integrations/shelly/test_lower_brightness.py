@@ -60,6 +60,6 @@ async def test_the_bottom_level_still_fades_off(hass, setup_production):
 
 def test_scope():
     scope = ShellyLowerBrightness.scope
-    assert scope.experimental
+    assert not scope.experimental
     assert scope.fields == {"brightness": Level.VERIFIED}
     assert dict(scope.capabilities) == {"RGBCCT": Level.VERIFIED}

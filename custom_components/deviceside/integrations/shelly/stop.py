@@ -24,7 +24,7 @@ class ShellyStop(Adapter[Request]):
     action: ClassVar[str] = "stop"
     integration: ClassVar[str] = "shelly"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        experimental=True, domains=verified("light"), capabilities=DIMMING_CAPABILITIES, confirmable=True
+        domains=verified("light"), capabilities=DIMMING_CAPABILITIES, confirmable=True
     )
 
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:
