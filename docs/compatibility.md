@@ -46,11 +46,14 @@ A group is a native group of the integration (a Hue zone, a ZHA or Zigbee2MQTT g
 | `clear_auto_on` | Experimental | none (untested: Light, CCT, RGB, RGBW components) | | |
 | `get_attributes` | Experimental | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943`<br>`S4SW-001X8EU`, firmware `20261026-122156/2.0.3-g4601943`<br>`S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](test-records/shelly/get_attributes.md) | |
 | `get_attributes` | Experimental | none (untested: Light, CCT, RGB, RGBW components) | | |
+| `lower_brightness` | Experimental | none |  | |
+| `raise_brightness` | Experimental | none |  | |
 | `set_attributes` | Verified | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/set_attributes.md) | |
 | `set_auto_off` | Experimental | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/set_auto_off.md) | |
 | `set_auto_off` | Experimental | none (untested: Light, CCT, RGB, RGBW components) | | |
 | `set_auto_on` | Experimental | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/set_auto_on.md) | |
 | `set_auto_on` | Experimental | none (untested: Light, CCT, RGB, RGBW components) | | |
+| `stop` | Experimental | none |  | |
 | `turn_off_for` | Verified | `S4SW-001X8EU`, firmware `20261026-122156/2.0.3-g4601943`<br>`S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943`<br>`S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/turn_off_for.md) | |
 | `turn_off_for` | Documented | none (untested: Light, CCT, RGB, RGBW components) | | |
 | `turn_on_for` | Verified | `S4SW-001X8EU`, firmware `20261026-122156/2.0.3-g4601943`<br>`S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943`<br>`S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/turn_on_for.md) | |
