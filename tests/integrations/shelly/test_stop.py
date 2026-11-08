@@ -10,7 +10,7 @@ from custom_components.deviceside.integrations.shelly.stop import ShellyStop
 
 from .conftest import BULB, CONFIRMED, SENT, dimmable_bulb, unchanged
 from ...conftest import call, refusal
-from ...fixtures.shelly import add_shelly_entity, shelly_device
+from ...fixtures.shelly import add_shelly_entity, failing, shelly_device
 
 STOP = rpc_call("RGBCCT.DimStop", {"id": 0})
 READ = rpc_call("RGBCCT.GetStatus", {"id": 0})
@@ -60,6 +60,19 @@ async def test_raise_stop_raise_continues_from_the_halt(hass, setup_production):
     )
 
 
+async def test_an_empty_transition_is_not_a_fade(hass, setup_production):
+    call_rpc = dimmable_bulb(hass)
+    respond = call_rpc.side_effect
+
+    async def idle_with_null_transition(method, params):
+        status = respond(method, params)
+        return {**status, "transition": None} if method.endswith(".GetStatus") else status
+
+    call_rpc.side_effect = idle_with_null_transition
+
+    assert await call(hass, "stop", BULB) == {"light.bulb": CONFIRMED}
+
+
 async def test_a_fade_still_running_after_the_stop_is_only_sent(hass, setup_production):
     """A device that ignored the DimStop must not read as confirmed."""
     call_rpc = dimmable_bulb(hass, brightness=40)
@@ -75,15 +88,7 @@ async def test_a_fade_still_running_after_the_stop_is_only_sent(hass, setup_prod
 
 
 async def test_a_failed_read_back_is_sent(hass, setup_production):
-    call_rpc = dimmable_bulb(hass)
-    respond = call_rpc.side_effect
-
-    async def unreadable(method, params):
-        if method.endswith(".GetStatus"):
-            raise ConnectionError("gone")
-        return respond(method, params)
-
-    call_rpc.side_effect = unreadable
+    failing(dimmable_bulb(hass), "GetStatus")
 
     assert await call(hass, "stop", BULB) == {"light.bulb": {**SENT, "detail": "readback_failed"}}
 

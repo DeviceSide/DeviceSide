@@ -11,7 +11,7 @@ from custom_components.deviceside.integrations.shelly.raise_brightness import Sh
 
 from .conftest import BULB, SENT, dimmable_bulb, unchanged
 from ...conftest import call, refusal
-from ...fixtures.shelly import DOCUMENTED_COMPONENTS, add_shelly_entity, shelly_device
+from ...fixtures.shelly import DOCUMENTED_COMPONENTS, add_shelly_entity, failing, shelly_device
 
 READ = rpc_call("RGBCCT.GetStatus", {"id": 0})
 
@@ -106,15 +106,7 @@ async def test_gen1_and_non_addressable_lights_are_refused(hass, setup_productio
 
 @pytest.mark.parametrize("verb", ["GetStatus", "Set"])
 async def test_a_device_error_rejects_the_target(hass, setup_production, verb):
-    call_rpc = dimmable_bulb(hass)
-    respond = call_rpc.side_effect
-
-    async def failing(method, params):
-        if method.endswith(f".{verb}"):
-            raise ConnectionError("device unreachable")
-        return respond(method, params)
-
-    call_rpc.side_effect = failing
+    failing(dimmable_bulb(hass), verb)
 
     with pytest.raises(HomeAssistantError) as raised:
         await call(hass, "raise_brightness", BULB)

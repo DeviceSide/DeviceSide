@@ -41,7 +41,7 @@ class ShellyStop(Adapter[Request]):
             def judge(status: dict[str, Any]) -> EntityResult:
                 if not status.get("output"):
                     return self.result(target, Status.UNCHANGED, detail="off")
-                if "transition" in status:
+                if status.get("transition"):
                     return self.result(target, Status.SENT, detail="still_fading")
                 return self.result(target, Status.CONFIRMED)
 
