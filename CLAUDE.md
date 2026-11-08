@@ -5,6 +5,9 @@ in the PR that finishes them.
 
 When an action should raise, skip a target, or what its response holds: match core, per `docs/action-behavior.md`.
 
+Scope comes from the design, the device's capabilities and the release flag below, never from the README: it records
+what ships, so its "not X" means not yet. Reword such a line to the real state, and update the README after the work lands.
+
 **The repo is public:** no household entity IDs, device names, MACs or hostnames anywhere in it, commit messages included.
 
 **No personal tooling:** deploy hosts, SSH aliases, and private stacks belong in gitignored files (`.private-terms`, `notes/`, `CLAUDE.local.md`), not in committed code, docs or commit messages.
