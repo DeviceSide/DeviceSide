@@ -80,7 +80,7 @@ experimental.
   `turn_on_for` accepts the `light.turn_on` fields; Shelly sends them in one RPC, the others send a `light.turn_on`
   first. What cancels a timer differs by integration ([integrations.md](integrations.md)). Hue has neither: its bridge
   timers ignore manual on/off, so they can't be cancelled the way users expect. These blockers, and Hue's hue moves
-  below, are the crossed icons in the README feature table (`NO_PATH` in `scripts/gen_features.py`).
+  below, are the prohibited signs in the README feature table (`NO_PATH` in `scripts/gen_features.py`).
 - **`set_auto_off`, `set_auto_on`, `clear_auto_off`, `clear_auto_on`** (auto-off and auto-on): built for Shelly,
   not yet for the others. A persistent setting stored on the device, applied after every turn-on (or turn-off) from
   any source: button, app, schedule or Home Assistant. Core's Shelly integration doesn't expose it. A call that
