@@ -1,20 +1,17 @@
 """Shelly set_attributes: one RGBCCT.Set without `on`, so a bulb that is off stores the values and stays off, then a
 GetStatus that confirms what the device kept."""
 
-import logging
 from dataclasses import replace
 from typing import Any, ClassVar
 
 from homeassistant.core import HomeAssistant
 
 from .addressing import address, unsupported_reason
-from .rpc import get_status, light_params, rpc_device
+from .rpc import get_status, light_params, set_and_read_back, whole_percent
 from ...actions.set_attributes import SetAttributesRequest
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Status, Target
 from ...core.scope import AdapterScope, verified
-
-_LOGGER = logging.getLogger(__name__)
 
 NOT_STORED = "not_stored"
 
@@ -26,7 +23,7 @@ def _clamped(current: float, request: SetAttributesRequest) -> int | None:
         clamped = max(request.min_brightness, clamped)
     if request.max_brightness is not None:
         clamped = min(request.max_brightness, clamped)
-    clamped = max(1, round(clamped))
+    clamped = whole_percent(clamped)
     return clamped if clamped != current else None
 
 
@@ -74,14 +71,13 @@ class ShellySetAttributes(Adapter[SetAttributesRequest]):
             params = light_params(light, rpc.component, target.state)
             if not params:
                 return self.result(target, Status.UNCHANGED, detail="within_limits")
-            await rpc_device(target).call_rpc(f"{rpc.component}.Set", {"id": rpc.id, **params})
-            try:
-                status = await get_status(target)
-            except Exception as err:  # noqa: BLE001 - aioshelly's errors can't be imported here; see addressing.py
-                _LOGGER.debug("set_attributes read-back failed for %s: %s", target.entity_id, err)
-                return self.result(target, Status.SENT, detail="readback_failed")
-            if any(status.get(name) != value for name, value in _expected(params).items()):
-                return self.result(target, Status.REJECTED, detail=NOT_STORED)
-            return self.result(target, Status.CONFIRMED)
+            expected = _expected(params)
+
+            def judge(status: dict[str, Any]) -> EntityResult:
+                if any(status.get(name) != value for name, value in expected.items()):
+                    return self.result(target, Status.REJECTED, detail=NOT_STORED)
+                return self.result(target, Status.CONFIRMED)
+
+            return await set_and_read_back(self, target, params, judge)
 
         return await self.gather(hass, targets, write)
