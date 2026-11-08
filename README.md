@@ -24,7 +24,7 @@ DeviceSide unlocks native features in your lights, switches and plugs on Zigbee,
 | [Smooth dimming](#smooth-dimming)                                                   | ✅   | ✅   |        | ✅          |        |
 | [Smooth saturation change](#smooth-color-transitions)                               | ✅   | ✅   |        | ✅          |        |
 | [Smooth hue change](#smooth-color-transitions)                                      | ✅   | ✅   |        |            |        |
-| [Set brightness, color or CT<br>without turning on](#set-lights-without-turning-on) | ✅   | ✅   |        | ✅          |        |
+| [Set brightness, color or CT<br>without turning on](#set-lights-without-turning-on) | ✅   | ✅   | ✅      | ✅          |        |
 | [Set scene without turning on](#set-lights-without-turning-on)                      |     |     |        | ✅          |        |
 | [Get attributes](#get-attributes)                                                   | ✅   | ✅   | ✅      | ✅          | ✅      |
 
@@ -319,8 +319,8 @@ Sets brightness, color temperature or color without changing on/off state.
 |:------------------- |:------------------------------------------- |
 | `target`            | Lights and groups (required)                |
 | `brightness`        | Brightness level (%)                        |
-| `min_brightness`    | Enforce a minimum brightness (%)            |
-| `max_brightness`    | Enforce a maximum brightness (%)            |
+| `min_brightness`    | Enforce a minimum brightness (%). Not Shelly |
+| `max_brightness`    | Enforce a maximum brightness (%). Not Shelly |
 | `color_temp_kelvin` | Color temperature (K)                       |
 | `rgb_color`         | Color as `[red, green, blue]` (0–255 each)  |
 | `hs_color`          | Color as `[hue, saturation]` (0–360, 0–100) |
