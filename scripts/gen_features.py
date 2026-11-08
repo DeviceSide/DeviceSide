@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Generate the README feature table: per feature and integration, an icon for each kind of target that is built
-(light, switch, group of lights, scene), and a crossed icon for each that can't be built, as far as we know.
+(light, switch, native group, native scene), and one prohibited sign for whatever can't be built, as far as we know.
 
 What is built comes from each adapter's `AdapterScope`; only NO_PATH, the known blockers, is kept by hand. A blank
 cell means possible but not built yet.
@@ -27,8 +27,13 @@ END = "<!-- features:end -->"
 # Absolute: HACS renders the README inside Home Assistant, where relative image paths don't resolve.
 ICON_URL = "https://raw.githubusercontent.com/jasonmx/DeviceSide/main/docs/icons/{}.svg"
 
-# Icon key -> its meaning, in the order a cell shows them.
-ICONS = {"light": "light", "switch": "switch", "group": "group of lights", "scene": "scene"}
+# Icon key -> (alt text in a cell, legend label), in the order a cell shows them.
+ICONS = {
+    "light": ("light", "lights"),
+    "switch": ("switch", "switches"),
+    "group": ("native group", "native groups"),
+    "scene": ("native scene", "native scene"),
+}
 COLUMNS = {"zha": "ZHA", "zigbee2mqtt": "Z2M", "shelly": "Shelly", "hue": "Hue Bridge", "matter": "Matter"}
 # (label, README anchor, actions): a cell is built only for what every one of the row's actions takes. A smooth move
 # is unusable without `stop`, so its rows include it.
@@ -94,16 +99,16 @@ def built(registry: AdapterRegistry) -> dict[tuple[str, str], set[str]]:
     return cells
 
 
-def icon(key: str, crossed: bool) -> str:
-    text = f"{ICONS[key]}: not possible" if crossed else ICONS[key]
-    url = ICON_URL.format(f"{key}-no" if crossed else key)
-    return f'<img src="{url}" height="20" alt="{text}" title="{text}">'
+def img(name: str, text: str) -> str:
+    return f'<img src="{ICON_URL.format(name)}" height="20" alt="{text}" title="{text}">'
 
 
 def cell(have: set[str], blocked: tuple[str, ...]) -> str:
-    return " ".join(
-        [icon(key, False) for key in ICONS if key in have] + [icon(key, True) for key in ICONS if key in blocked]
-    )
+    """An icon per built key, then one prohibited sign naming every blocked key."""
+    icons = [img(key, ICONS[key][0]) for key in ICONS if key in have]
+    if blocked:
+        icons.append(img("no", f"{', '.join(ICONS[key][0] for key in ICONS if key in blocked)}: not possible"))
+    return " ".join(icons)
 
 
 def generate(registry: AdapterRegistry) -> str:
@@ -128,8 +133,8 @@ def generate(registry: AdapterRegistry) -> str:
     for label, anchor, _ in FEATURES:
         row = [cell(cells[label, integration], NO_PATH.get((label, integration), ())) for integration in COLUMNS]
         lines.append(f"| [{label}](#{anchor}) | {' | '.join(row)} |")
-    legend = [f"{icon(key, False)} {meaning}" for key, meaning in ICONS.items()]
-    legend.append(f"{icon('light', True)} can't be done, as far as we know")
+    legend = [f"{img(key, alt)} {label}" for key, (alt, label) in ICONS.items()]
+    legend.append(f"{img('no', 'not possible')} can't be done, as far as we know")
     lines += ["", " &nbsp; ".join(legend), "", END]
     return "\n".join(lines)
 

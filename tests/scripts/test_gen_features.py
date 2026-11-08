@@ -85,14 +85,21 @@ def test_icons_keep_a_fixed_order_with_alt_and_title(no_blockers):
     text = gf.generate(FakeRegistry(*every_row(domains=verified("switch", "light"), native_groups=True)))
     cell = cells(text, "Get attributes")[2]
     assert cell.index(LIGHT) < cell.index(SWITCH) < cell.index(GROUP)
-    assert 'alt="group of lights" title="group of lights"' in cell
+    assert 'alt="native group" title="native group"' in cell
 
 
-def test_no_path_renders_crossed_icons(monkeypatch):
+def test_no_path_renders_one_prohibited_sign(monkeypatch):
     monkeypatch.setattr(gf, "NO_PATH", {("Turn off with timer", "hue"): ("light", "group")})
     cell = cells(gf.generate(FakeRegistry(*every_row())), "Turn off with timer")[3]
-    assert cell.count("-no.svg") == 2
-    assert 'alt="light: not possible"' in cell and 'alt="group of lights: not possible"' in cell
+    assert cell.count("<img") == 1 and "/no.svg" in cell
+    assert 'alt="light, native group: not possible"' in cell
+
+
+def test_a_partly_blocked_cell_puts_the_prohibited_sign_after_built_icons(monkeypatch):
+    monkeypatch.setattr(gf, "NO_PATH", {("Smooth dimming", "shelly"): ("switch",)})
+    cell = cells(gf.generate(FakeRegistry(*every_row(domains=verified("light")))), "Smooth dimming")[2]
+    assert cell.index(LIGHT) < cell.index("/no.svg")
+    assert 'alt="switch: not possible"' in cell
 
 
 def test_a_blocked_key_that_is_built_fails(monkeypatch):
