@@ -61,6 +61,8 @@ there, cut the next RC from it, and merge the branch back into `main`.
 - Before opening the PR: `/audit-code` on the diff, then fix its findings and carry on to the PR; stop for Jason
   only on a big judgment call. Judge each finding by the codebase's long-term health, not the PR's convenience:
   fix it now unless it is genuinely out of scope, and then say where it is tracked.
+- Before merging: a clean `/audit-code` run over the whole PR diff. Skip it only for a single-commit PR that needed no
+  fixes after its first audit.
 
 ## Layout
 
