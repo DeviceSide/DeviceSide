@@ -45,6 +45,15 @@ and `rgbcct:N` → `Light`, `CCT`, `RGB`, `RGBW`, `RGBCCT`. Only `Switch` and `R
   compared until a probe has shown the device returns it unrounded. A failed read-back reports `sent`.
   `min_brightness`/`max_brightness` first read `GetStatus` `brightness` (kept while off), clamp it to whole percent,
   and send nothing when it is already within them; an explicit `brightness` wins.
+- **`raise_brightness`, `lower_brightness`, `stop`.** `RGBCCT` only (`DIMMING_CAPABILITIES`). A move reads
+  `GetStatus` first: the device reports its level exactly mid-fade (rig, 8 Nov), so no transition cache is kept and
+  no call resolver is needed. Then one `<Component>.Set {on: true, brightness, transition_duration}` for the distance
+  left at the `sweep_time`'s speed, at least 0.5 s (`TRANSITION_LIMITS`, the device's 0.5 to 10800 s); to 0 it is
+  `{on: false, transition_duration}`, the device's soft off, which keeps the stored level (`brightness: 0` would
+  leave it on at 0%). From off the device fades in from 1%. `stop` sends `<Component>.DimStop {id}` first, which
+  halts a `Set`'s fade within ~0.1 s and is a no-op with none running, then `GetStatus`: `confirmed` when on with no
+  `transition` object, `sent` (`still_fading`) when one remains, `unchanged` (`off`) when off. Under a second client
+  polling the device, round trips reach 0.7 s and the halt lands late; the read-back is still exact.
 - **Auto-off and auto-on.** `<Component>.GetConfig` first, and `<Component>.SetConfig` with
   `{"id": N, "config": {...}}` only when the config differs: `auto_off: true` and `auto_off_delay` to set,
   `auto_off: false` alone to clear (likewise `auto_on`). A delay matches to 0.01 s. `SetConfig` emits

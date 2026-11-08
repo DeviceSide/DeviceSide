@@ -258,6 +258,8 @@ buttons_released:
 
 To dim multiple Zigbee lights together, target a Hue, Z2M or ZHA group instead of separate lights or an HA group. Native groups move in sync via group-wide Zigbee messages.
 
+On Shelly, Multicolor Bulbs (Gen3) dim this way too, experimental until a rig record covers them. Other Shelly lights are refused until tested.
+
 ### Smooth color changes
 
 Create "press to change color, release to stop" automations. Transitions run natively on the device.
