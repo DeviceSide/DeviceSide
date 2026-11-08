@@ -70,18 +70,18 @@ If you own a device that isn't [listed as tested](https://github.com/jasonmx/Dev
 
 </details>
 
+## Usage
+
 <details>
 <summary>Coming from Hue Smooth Dimming?</summary>
 
-DeviceSide's actions are drop-in replacements for [Hue Smooth Dimming](https://github.com/jasonmx/hue-smooth-dimming), apart from a name change on the `raise` and `lower` actions. To migrate to DeviceSide, make these changes to your YAML:
+DeviceSide's actions are drop-in replacements for [Hue Smooth Dimming](https://github.com/jasonmx/hue-smooth-dimming), apart from `raise` and `lower` which are renamed. To migrate to DeviceSide, apply these changes in your YAML:
 
 * `hue_dimmer.raise` → `deviceside.raise_brightness`
 * `hue_dimmer.lower` → `deviceside.lower_brightness`
 * `hue_dimmer` → `deviceside`
 
 </details>
-
-## Usage
 
 ### Turn on with timer
 
