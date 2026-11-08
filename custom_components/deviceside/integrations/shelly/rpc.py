@@ -2,6 +2,7 @@
 auto-on setting in <Component>.SetConfig, each with a read-back."""
 
 import logging
+from collections.abc import Awaitable, Callable
 from typing import Any, Literal
 
 from homeassistant.core import State
@@ -29,14 +30,19 @@ _DELAY_DIGITS = 2
 _MIN_TRANSITION_S = 0.5
 
 
+def whole_percent(percent: float) -> int:
+    """A brightness percent as the device's whole-percent level, never 0 (0 would switch the light off)."""
+    return max(1, round(percent))
+
+
 def light_params(light: LightFields, component: str, state: State | None) -> dict[str, Any]:
     """light.turn_on fields as <Component>.Set params, translated as shelly/light.py does bar brightness.
 
-    Brightness is a percent on both sides, so it goes straight to the device's whole-percent level, never 0.
+    Brightness is a percent on both sides, so it goes straight to the device's whole-percent level.
     """
     params: dict[str, Any] = {}
     if light.brightness is not None:
-        params["brightness"] = max(1, round(light.brightness))
+        params["brightness"] = whole_percent(light.brightness)
     if light.transition is not None:
         params["transition_duration"] = max(light.transition, _MIN_TRANSITION_S)
     if light.color_temp_kelvin is not None:
@@ -65,21 +71,42 @@ async def get_status(target: Target) -> dict[str, Any]:
     return await rpc_device(target).call_rpc(f"{rpc.component}.GetStatus", {"id": rpc.id})
 
 
-async def set_with_timer(adapter: Adapter, target: Target, params: dict[str, Any]) -> EntityResult:
-    """Send the Set (an error propagates, so gather() reports it rejected), then confirm the timer is running.
+async def read_back(
+    adapter: Adapter,
+    target: Target,
+    read: Callable[[Target], Awaitable[dict[str, Any]]],
+    judge: Callable[[dict[str, Any]], EntityResult],
+) -> EntityResult:
+    """Read what the device kept after an accepted write and let `judge` rule on it.
 
-    A failed or inconclusive read-back still reports SENT: the device accepted the Set.
+    A failed read-back reports SENT: the device accepted the write.
     """
-    device, rpc = rpc_device(target), address(target)
-    await device.call_rpc(f"{rpc.component}.Set", {"id": rpc.id, **params})
     try:
-        status = await get_status(target)
+        held = await read(target)
     except Exception as err:  # noqa: BLE001 - aioshelly's errors can't be imported here; see addressing.py
         _LOGGER.debug("%s read-back failed for %s: %s", adapter.action, target.entity_id, err)
         return adapter.result(target, Status.SENT, detail="readback_failed")
-    if status.get("output") == params["on"] and "timer_duration" in status:
-        return adapter.result(target, Status.CONFIRMED)
-    return adapter.result(target, Status.SENT, detail="timer_not_reported")
+    return judge(held)
+
+
+async def set_and_read_back(
+    adapter: Adapter, target: Target, params: dict[str, Any], judge: Callable[[dict[str, Any]], EntityResult]
+) -> EntityResult:
+    """Send the Set (an error propagates, so gather() reports it rejected), then GetStatus and let `judge` rule."""
+    device, rpc = rpc_device(target), address(target)
+    await device.call_rpc(f"{rpc.component}.Set", {"id": rpc.id, **params})
+    return await read_back(adapter, target, get_status, judge)
+
+
+async def set_with_timer(adapter: Adapter, target: Target, params: dict[str, Any]) -> EntityResult:
+    """Send the Set, then confirm the timer is running."""
+
+    def judge(status: dict[str, Any]) -> EntityResult:
+        if status.get("output") == params["on"] and "timer_duration" in status:
+            return adapter.result(target, Status.CONFIRMED)
+        return adapter.result(target, Status.SENT, detail="timer_not_reported")
+
+    return await set_and_read_back(adapter, target, params, judge)
 
 
 async def get_config(target: Target) -> dict[str, Any]:
@@ -121,11 +148,10 @@ async def write_auto(
         return adapter.result(target, Status.UNCHANGED, detail="already_clear" if duration_s is None else "already_set")
     device, rpc = rpc_device(target), address(target)
     await device.call_rpc(f"{rpc.component}.SetConfig", {"id": rpc.id, "config": wanted})
-    try:
-        config = await get_config(target)
-    except Exception as err:  # noqa: BLE001 - aioshelly's errors can't be imported here; see addressing.py
-        _LOGGER.debug("%s read-back failed for %s: %s", adapter.action, target.entity_id, err)
-        return adapter.result(target, Status.SENT, detail="readback_failed")
-    if _auto_matches(config, wanted):
-        return adapter.result(target, Status.CONFIRMED)
-    return adapter.result(target, Status.SENT, detail="config_not_reported")
+
+    def judge(config: dict[str, Any]) -> EntityResult:
+        if _auto_matches(config, wanted):
+            return adapter.result(target, Status.CONFIRMED)
+        return adapter.result(target, Status.SENT, detail="config_not_reported")
+
+    return await read_back(adapter, target, get_config, judge)
