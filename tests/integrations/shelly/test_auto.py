@@ -6,6 +6,8 @@ from unittest.mock import call as rpc_call
 import pytest
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 
+from custom_components.deviceside.core.scope import Level
+from custom_components.deviceside.integrations.shelly.auto import ShellyClearAuto, ShellySetAuto
 from custom_components.deviceside.integrations.shelly.rpc import AUTO_DELAY_LIMITS
 
 from ...conftest import call, refusal
@@ -181,3 +183,12 @@ async def test_documented_components_take_the_same_set_config(hass, which, key, 
         rpc_call(f"{component}.SetConfig", {"id": 0, "config": {f"auto_{which}": True, f"auto_{which}_delay": 5.0}}),
         rpc_call(f"{component}.SetConfig", {"id": 0, "config": {f"auto_{which}": False}}),
     ]
+
+
+def test_the_auto_adapters_prove_switch_and_document_the_light_components():
+    """The rig tests auto-off/on on a relay; every light component, RGBCCT included, rides it as Documented."""
+    for adapter in (ShellySetAuto, ShellyClearAuto):
+        assert adapter.scope.capabilities == {
+            "Switch": Level.VERIFIED,
+            **dict.fromkeys(("Light", "CCT", "RGB", "RGBW", "RGBCCT"), Level.DOCUMENTED),
+        }
