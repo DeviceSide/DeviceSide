@@ -9,7 +9,7 @@ from homeassistant.components import mqtt
 from homeassistant.core import HomeAssistant, callback
 
 from .addressing import state_topic, topic
-from .native_control import COLOR_FIELDS, ensure_native_control
+from .native_control import COLOR_FIELDS, NEED, native_control
 from ...actions.turn_on_for import TurnOnForRequest
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Status, Target
@@ -37,8 +37,8 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
     With fields: calls light.turn_on first so HA's MQTT light entity applies brightness, color and
     transition through its own protocol, waits for Z2M to publish the light's state, then publishes
     {"state":"ON","on_time":<seconds, 1dp>} to the device's command topic. Without fields: publishes only.
-    With a color or color temperature, a Hue light (or a group with a Hue member) first gets Z2M's
-    hue_native_control turned on (native_control.py), so it lights in that color rather than its last one.
+    With a color or color temperature, a Hue light (or a group with a Hue member) gets Z2M's hue_native_control on
+    for that light.turn_on (native_control.py), so it lights in that color rather than its last one.
 
     Z2M publishes no state for a timed command, and Hue bulbs on Z2M don't report, so HA's state would go
     stale. The adapter then asks Z2M to read the state back ({"state":""} on the get topic): 1 s after the
@@ -75,10 +75,10 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
         async def send(target: Target) -> EntityResult:
             set_topic = topic(target, "set")  # supports() refused the targets it can't address
 
-            if request.light.present() & COLOR_FIELDS:
-                await ensure_native_control(hass, target)
             if request.light.present():
-                await self._turn_on(hass, target, request.light.as_turn_on_data())
+                need = NEED[self.action] if request.light.present() & COLOR_FIELDS else None
+                async with native_control(hass, target, need):
+                    await self._turn_on(hass, target, request.light.as_turn_on_data())
 
             on_time = round(request.duration_s, 1)
             await hass.services.async_call(

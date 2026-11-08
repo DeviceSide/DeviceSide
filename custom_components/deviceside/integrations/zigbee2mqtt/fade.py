@@ -14,6 +14,7 @@ from .addressing import topic, z2m_address
 from .bridge import has_feature, publish
 from .color_refresh import refresh_color
 from .members import member_lights
+from .native_control import NEED, native_control
 from ...actions.ramp import RampRequest
 from ...core import transition
 from ...core.adapter import Adapter
@@ -160,7 +161,7 @@ class Z2MRamp(Adapter[RampRequest]):
                 return self.result(target, Status.UNCHANGED, detail="fields_dropped")
             if isinstance(outcome := plan(cache, request, target, lights), str):
                 return self.result(target, Status.UNCHANGED, detail=outcome)
-            clamped_to = await start(hass, cache, target, lights, outcome)
+            clamped_to = await start(hass, cache, target, lights, outcome, NEED.get(self.action))
             return self.result(target, Status.SENT, clamped_to=clamped_to)
 
         return await self.gather(hass, targets, send)
@@ -179,24 +180,31 @@ def plan(cache: TransitionCache, request: RampRequest, target: Target, lights: l
 
 
 async def start(
-    hass: HomeAssistant, cache: TransitionCache, target: Target, lights: list[Target], outcome: Fade | HueMove
+    hass: HomeAssistant,
+    cache: TransitionCache,
+    target: Target,
+    lights: list[Target],
+    outcome: Fade | HueMove,
+    need: bool | None = None,
 ) -> float | None:
     """Publish the fade, recording it, and schedule its end read-back, or publish the hue move; the clamped
-    sweep_time."""
+    sweep_time. Z2M's hue_native_control is held at need for the publishes (native_control.py)."""
     set_topic = topic(target, "set")
-    if not isinstance(outcome, Fade):
-        rate, clamped_to = outcome
-        await publish(hass, set_topic, {"hue_move": rate})
-        hue_moves(hass).update(light.entity_id for light in lights)
-        return clamped_to
-    if outcome.attribute == SATURATION:
-        hue_moves(hass).difference_update(outcome.starts)  # a color write ends the bulb's hue cycle
-    async with cache.recording((light_id, outcome.attribute) for light_id in outcome.starts):
-        for light_id, begin in outcome.starts.items():
-            cache.moving(light_id, outcome.attribute, begin, outcome.ends[light_id], outcome.duration)
-        for mqtt_topic, payload in outcome.before:
-            await publish(hass, mqtt_topic, payload)
-        await publish(hass, set_topic, outcome.payload)
+    async with native_control(hass, target, need):
+        if not isinstance(outcome, Fade):
+            rate, clamped_to = outcome
+            await publish(hass, set_topic, {"hue_move": rate})
+            hue_moves(hass).update(light.entity_id for light in lights)
+            return clamped_to
+        if outcome.attribute == SATURATION:
+            hue_moves(hass).difference_update(outcome.starts)  # a color write ends the bulb's hue cycle
+        # Inside the option's window, so the prediction starts at the publish, not before the settings writes.
+        async with cache.recording((light_id, outcome.attribute) for light_id in outcome.starts):
+            for light_id, begin in outcome.starts.items():
+                cache.moving(light_id, outcome.attribute, begin, outcome.ends[light_id], outcome.duration)
+            for mqtt_topic, payload in outcome.before:
+                await publish(hass, mqtt_topic, payload)
+            await publish(hass, set_topic, outcome.payload)
     read = end_read(hass, target, lights, outcome.attribute)
     get_runtime(hass).schedule(hass, read_back_key(target, outcome.attribute), [(outcome.duration + END_READ_S, read)])
     return None
@@ -239,8 +247,8 @@ def saturation_fade(cache: TransitionCache, request: RampRequest, target: Target
     """The saturation fade toward the limit at the current hue; off with no lit light in color, at_limit when there is
     none left to make.
 
-    Written as a color: with Z2M's hue_native_control on, the bulb fades in xy and holds its hue, and Z2M publishes the
-    end as xy, which HA takes.
+    Written as a color, with Z2M's hue_native_control on (native_control.py): the bulb fades in xy and holds its hue,
+    and Z2M publishes the end as xy, which HA takes.
     """
     if not (movers := [light for light in lit(cache, lights) if hs_color(light) is not None]):
         return "off"
