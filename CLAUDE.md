@@ -46,9 +46,8 @@ soaked while `main` moves on. The cut workflows enforce the tag rules, green CI,
 so each adapter changed since its last rig run needs a new one); see their headers. The steps they don't check:
 
 1. **Each RC:** install it through HACS (the rig deploys a checkout, not the release); it loads and the log is clean.
-2. **Before the release:** the README feature table is current.
-3. Dispatch `cut-release` from `main` with `vX.Y.Z`.
-4. Set `manifest.json` on `main` to the next version.
+2. Dispatch `cut-release` from `main` with `vX.Y.Z`.
+3. Set `manifest.json` on `main` to the next version.
 
 To fix an RC or a release without what `main` has gained since, cut `release/vX.Y.Z` from its tag, land the fix
 there, cut the next RC from it, and merge the branch back into `main`.
@@ -71,7 +70,8 @@ there, cut the next RC from it, and merge the branch back into `main`.
 - `custom_components/deviceside/actions/`: one module per action
 - `custom_components/deviceside/integrations/<integration>/`: one adapter module per action
 - `tests/{core,actions,integrations,scripts}`: mirror the above
-- `scripts/`: household check, release checks (coverage, the release flag, record freshness, tags, RC audits)
+- `scripts/`: household check, generated docs (compatibility page, README feature table), release checks
+  (coverage, the release flag, record freshness, tags, RC audits)
 - `docs/test-records/<integration>/`: test records, written by the rig. Design detail lives in `docs/design.md`.
 
 The rig, which drives the live HA and writes the records, is a private repo kept out of this one: don't add rig code,

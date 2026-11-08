@@ -1,0 +1,1 @@
+Icons for the README feature table, from [Material Design Icons](https://pictogrammers.com/library/mdi/) (`@mdi/svg` 7.4.47, [Pictogrammers Free License](https://github.com/Templarian/MaterialDesign/blob/master/LICENSE)): `light` is `mdi:lightbulb`, `switch` `mdi:toggle-switch-variant`, `group` `mdi:lightbulb-group`, `scene` `mdi:palette`; each `*-no.svg` adds a crossed circle.

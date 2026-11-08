@@ -68,3 +68,6 @@ jobs:
 
       - name: Check the compatibility page is current
         run: .venv/bin/python scripts/gen_compat.py --check
+
+      - name: Check the README feature table is current
+        run: .venv/bin/python scripts/gen_features.py --check
