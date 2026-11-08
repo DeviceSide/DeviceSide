@@ -26,8 +26,8 @@ adapter passing its tests, no soak. An RC also needs a rig run since each releas
 - [ ] **Shelly smooth dimming and color transitions**: `raise_brightness`, `lower_brightness` and `stop` on Shelly
   lights, and the saturation and hue moves where the device supports them. Start from the Light component's
   `DimUp`/`DimDown`/`DimStop` RPCs and probe what each model does with color. Upstream findings and the rig
-  experiments to run first: [`docs/shelly-dimming-research.md`](docs/shelly-dimming-research.md). Ships
-  `experimental`; a rig record clears the flag; the README table gains its Shelly cells.
+  experiments to run first: [brightness](docs/shelly-dimming-research.md) and
+  [color](docs/shelly-color-transitions-research.md). Ships `experimental`; a rig record clears the flag; the README table gains its Shelly cells.
 - [ ] **Shelly `set_attributes`** (#284): set brightness, color temperature or color on Shelly lights without turning
   them on. The rig's `get_attributes` `reads_while_off` then sets Shelly's `light_ct` case up with it, replacing the
   separate `reads_while_off_after_turn_on` that uses core's `light.turn_on` (#281). Ships `experimental`; a rig
