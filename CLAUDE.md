@@ -57,12 +57,13 @@ there, cut the next RC from it, and merge the branch back into `main`.
 - Base: `main`, or a `release/vX.Y.Z` fix branch when one exists for the change.
 - Setup: `uv sync`. Test dependencies live in the `dev` group of `pyproject.toml`; never `uv pip install` into `.venv`, as the next sync removes it.
 - Before each push: `.venv/bin/pytest` and `pre-commit run --all-files` (ruff and the household check).
-- Before opening the PR: `/audit-code` on the diff, then fix its findings and carry on to the PR; stop for Jason
-  only on a big judgment call. Judge each finding by the codebase's long-term health, not the PR's convenience:
-  fix it now unless it is genuinely out of scope, and then say where it is tracked.
-- Before merging: a clean `/audit-code` run over the whole PR diff. Skip it only for a single-commit PR that needed no
-  fixes after its first audit.
-- Both audits are for PRs that change code, scripts and CI workflows included; a docs- or config-only PR skips them.
+- Audits, for PRs that change code (scripts and CI workflows included; a docs- or config-only PR skips them): invoke
+  `audit-code` yourself, in the same turn you reach it. Each audit is a step, not a stopping point: fix its findings
+  and carry on; stop for Jason only on a big judgment call. Judge each finding by the codebase's long-term health,
+  not the PR's convenience: fix it now unless it is genuinely out of scope, and then say where it is tracked.
+  - Before opening the PR: on the diff, then open the PR.
+  - Before merging: a clean run over the whole PR diff, then merge. Skip it only for a single-commit PR that needed
+    no fixes after its first audit.
 
 ## Layout
 
