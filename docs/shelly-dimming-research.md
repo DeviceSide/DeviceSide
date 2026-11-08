@@ -12,14 +12,16 @@ Three research fragments were merged; contradictions between them are in "Confli
 1. Shelly Gen2+ has **two unrelated mechanisms**. `Light.Set {transition_duration}` is a fixed-duration fade to a
    target. `Light.DimUp` / `DimDown` / `DimStop` is an open-ended ramp (the Zigbee Move/Stop analogue).
 2. **Nothing official documents stopping a `transition_duration` fade.** `DimStop` is documented for
-   DimUp/DimDown only.
+   DimUp/DimDown only, but it halts a timed fade on a Gen3 bulb (see "Rig results").
 3. Best public working reference: **`nohat/dynamic_dimming`** (HACS, v0.7.0). It uses `DimUp`/`DimDown`/`DimStop`
    for move/stop and claims `DimStop` also halts `Light.Set` fades. **[U]** that claim comes from its code and
    README, not from a device test.
 4. **No upstream path will give us this for free soon.** aioshelly has no helpers for these calls; HA core's
    Shelly light never calls `DimStop`; core PR #183698 (`light.stop_transition`) is open and names Shelly only as a
    future follow-up.
-5. So a Shelly `stop` / `ramp` adapter needs rig experiments first (list under "Experiments").
+5. The rig has since answered the core questions on a Gen3 RGBCCT bulb (see "Rig results"): `DimStop` halts both
+   mechanisms, a new `Set` restarts a fade from the current level but does not cancel a `DimUp` ramp, and `DimStop`
+   does not jump.
 
 ## Learnings for dimming Gen2+ Shelly lights
 
@@ -161,7 +163,7 @@ the behavior is not universal).
 
 1. **Does `DimStop` stop a `transition_duration` fade?** HA-core fragment says yes ("confirmed by
    `dynamic_dimming`"); vendor fragment says undocumented. Resolution: only code/README evidence, no device test.
-   Treat as **[U]**; first rig experiment.
+   Settled by the rig: it does (see "Rig results").
 2. **HA #159526 root cause.** One fragment: device default overrides a shorter HA value. Another: the reporter later
    said the cause was "something else on my end" and it was closed not planned. The first claim may be wrong. I
    re-read the issue: the thread shows only bot comments, so I could not settle it. Treat as **[U]**.
@@ -174,16 +176,27 @@ the behavior is not universal).
 5. **`brightness_min`/`brightness_max`:** appeared in one search result; vendor fragment found the real field is
    `range_map`.
 
-## Experiments for the rig (Gen2+ Light, ideally Gen3 Dimmer plus an RGBW)
+## Rig results (2026-11-08)
 
-1. Start a 30 s `Light.Set` fade; `Light.DimStop` at 10 s. Does it stop? Final level vs a `GetStatus` read just before.
-2. Same, but stop with `Light.Set {brightness: <polled>}` and no duration. How far does it snap/overshoot?
-3. New `Light.Set` mid-fade: instant jump or restart from the current level?
-4. `DimUp` then `DimStop`: level read back after stop; does `NotifyStatus` carry intermediate levels? At what rate?
-5. `DimUp` to 100% by RPC: does it auto-stop? `DimDown`: stops at the floor or at 0 (and `min_brightness_on_toggle`)?
-6. Device default transition longer than the per-call value: is the per-call value honored?
-7. Gen3 `DimStop` jump (up and down), on current firmware.
-8. `fade_rate` 1..5 measured in %/s, to map DeviceSide's ramp speeds.
+One Shelly Multicolor Bulb Gen3 (`RGBCCT` component, fw 2.0.3), through the rig as a probe, one run each. Everything
+here is **[V]** for that device and firmware only. Other components and firmware are untested.
+
+| Question | Result |
+|---|---|
+| `DimStop` during a `transition_duration` fade | **Halts it.** A 10 s fade stopped at 3 s held at 34% for 8 s. |
+| New `Set` mid-fade | **Restarts from the current level, no jump.** A fade to 20% over 4 s ran smoothly from 34%; a 0.5 s one went ~32% to 20%. |
+| New `Set` mid-`DimUp` | **Does not cancel the ramp.** After `Set 10` the ramp resumed (20, 30, 40, 50). Only `DimStop` stops it. |
+| Readback mid-fade | Top-level `brightness` advances continuously (~3.5%/s on a 10 s fade); `transition` holds `target`, `started_at`, `duration`. |
+| Readback during `DimUp`/`DimDown` | Moves in coarse steps (5, 10 or 20 points) about once a second. |
+| `DimStop` jump on Gen3 | **None** on 2.0.3: level held from the moment of the stop, 1 s later, for `DimUp`, `DimDown` and timed fades. |
+| Ramp end-stops | `DimDown` stops at 1% and stays on, never off. `DimUp` stops at 100%. `DimUp` at 100% returns RPC error -108 "Reached the maximum 100 of brightness". |
+| `fade_rate` | 1 ~4 %/s, 3 ~10 %/s, 5 ~18-23 %/s (a few samples each). No `fade_rate` uses the config value. One run reached 80% in 2 s at the default rate, two runs of ~10 %/s did not; unexplained. |
+| Device default vs per-call transition | **Per-call honored** (1 s ran in 1.0 s with the default at 3 s and 5 s). HA #159526 does not reproduce here. |
+| `Set` with no `transition_duration` | Looked instant even with the default at 5 s (the 5% start level was not read back). |
+| Ranges | Per-call `transition_duration` 0.5 to 10800 s (0 rejected, error -103). Config default 0 to 5 s. |
+
+Still open: `Light` and `RGBW` components, dimmers (ProDimmer, DALI), other firmware, the unexplained fast `DimUp`,
+and how `stop` should read the level back for the returned state.
 
 ## Primary sources
 
