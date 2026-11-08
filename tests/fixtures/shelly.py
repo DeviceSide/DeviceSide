@@ -15,6 +15,9 @@ MAC = "AABBCCDDEEFF"
 DOCUMENTED_COMPONENTS = [("light:0", "Light"), ("cct:0", "CCT"), ("rgb:0", "RGB"), ("rgbw:0", "RGBW")]
 
 
+# The light values a Set stores, which GetStatus reports back.
+LIGHT_KEYS = ("brightness", "ct", "mode", "rgb")
+
 # When a fixture timer starts, on the device's clock: 2026-10-27T12:00:00Z.
 TIMER_STARTED_AT = 1793102400.0
 
@@ -39,6 +42,10 @@ def timer_running(status: dict | None = None, config: dict | None = None):
         if verb == "SetConfig":
             configs.setdefault(key, {}).update(params["config"])
             return {"restart_required": False}
+        if "on" not in params:
+            # A light Set without `on` stores the values and leaves the output as it is.
+            sets.setdefault(key, {}).update({k: v for k, v in params.items() if k in LIGHT_KEYS})
+            return None
         sets[key] = {"output": params["on"]}
         if "toggle_after" in params:
             sets[key] |= {"timer_started_at": TIMER_STARTED_AT, "timer_duration": params["toggle_after"]}

@@ -140,6 +140,8 @@ set_attributes:
         integration: zha
       - domain: light
         integration: mqtt
+      - domain: light
+        integration: shelly
   fields:
     brightness:
       example: 50
