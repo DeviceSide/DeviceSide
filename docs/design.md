@@ -79,12 +79,13 @@ experimental.
   the reverse), timed on the device. `turn_off_for` is Shelly only: Zigbee and Matter `OnWithTimedOff` is on-then-off only.
   `turn_on_for` accepts the `light.turn_on` fields; Shelly sends them in one RPC, the others send a `light.turn_on`
   first. What cancels a timer differs by integration ([integrations.md](integrations.md)). Hue has neither: its bridge
-  timers ignore manual on/off, so they can't be cancelled the way users expect.
-- **`set_auto_off`, `set_auto_on`, `clear_auto_off`, `clear_auto_on`** (auto-off and auto-on): Shelly only. A
-  persistent setting stored on the device, applied after every turn-on (or turn-off) from any source: button, app,
-  schedule or Home Assistant. Core's Shelly integration doesn't expose it. A call that changes nothing sends
-  nothing and returns `unchanged`; one that does writes flash and makes core reload the Shelly entry about a
-  minute later ([integrations.md](integrations.md)).
+  timers ignore manual on/off, so they can't be cancelled the way users expect. These blockers, and Hue's hue moves
+  below, are the crossed icons in the README feature table (`NO_PATH` in `scripts/gen_features.py`).
+- **`set_auto_off`, `set_auto_on`, `clear_auto_off`, `clear_auto_on`** (auto-off and auto-on): built for Shelly,
+  not yet for the others. A persistent setting stored on the device, applied after every turn-on (or turn-off) from
+  any source: button, app, schedule or Home Assistant. Core's Shelly integration doesn't expose it. A call that
+  changes nothing sends nothing and returns `unchanged`; one that does writes flash and makes core reload the Shelly
+  entry about a minute later ([integrations.md](integrations.md)).
 - **`raise_*`, `lower_*`, `stop`**: one action per attribute (brightness, saturation, hue) and direction, as HA names
   its direction actions (`cover.open_cover`, `fan.increase_speed`). `sweep_time` is how long a full range takes, so
   the speed is the same wherever the move starts; `limit` ends the move early. A call already at or past its limit
@@ -94,7 +95,8 @@ experimental.
 - **`set_attributes`, `get_attributes`**: write brightness, color or color temperature to a light without turning
   it on, and read what HA doesn't show (attributes while off, a running timer, Shelly's auto-off and auto-on).
   Every timed or set-while-off adapter needs a matching `get_attributes` on its integration.
-- **`set_scene`**: Hue only. A Zigbee scene recall turns lights on.
+- **`set_scene`**: built for Hue. Zigbee isn't built yet: a Zigbee scene recall turns lights on, so it would follow
+  Hue's pattern of writing each light's settings while it's off.
 
 Out of scope until users ask: turn-on defaults (`OnLevel`), Zigbee plugs and switches, Shelly Gen1, Hue bridge v1,
 other domains (cover, valve, lock), and other integrations (Z-Wave JS, Tuya, ESPHome, Tasmota, TP-Link Kasa). What v0.1.0 refuses for want of hardware
