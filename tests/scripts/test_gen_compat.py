@@ -19,14 +19,12 @@ DATA = {
     ],
     "capabilities": {
         "zha": {
-            "switch": {"phrase": "plugs", "type": "plug", "section": "Zigbee plugs"},
-            "Light": {"phrase": "dimmers", "type": "dimmer", "section": "Dimmers"},
-            "CCT": {"phrase": "CCT controllers", "type": "LED controller", "section": "Dimmers"},
+            "switch": {"phrase": "plugs", "section": "Zigbee plugs"},
+            "Light": {"phrase": "dimmers", "section": "Dimmers"},
+            "CCT": {"phrase": "CCT controllers", "section": "Dimmers"},
         }
     },
-    "doesnt_work": [
-        {"what": "Old plug", "integrations": ["zha"], "type": "plug", "reason": "No timer", "source": "https://x.y/z"}
-    ],
+    "doesnt_work": [{"what": "Old plug", "integrations": ["zha"], "reason": "No timer", "source": "https://x.y/z"}],
     "reports": [],
 }
 PROSE = "# Page\n\n" + "".join(
@@ -130,7 +128,7 @@ def test_a_model_a_record_names_must_be_in_devices_yaml(root):
             {"models": [{"name": "A", "ids": ["X"], "type": "plug"}, {"name": "A", "ids": ["Y"], "type": "plug"}]},
             "name 'A'",
         ),
-        ({"capabilities": {"zha": {"switch": {"type": "plug", "section": "S"}}}}, "needs a phrase"),
+        ({"capabilities": {"zha": {"switch": {"section": "S"}}}}, "needs a phrase"),
         (
             {"doesnt_work": [{"what": "X", "integrations": "zha", "reason": "r", "source": "https://s"}]},
             "must be a list",

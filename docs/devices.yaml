@@ -4,7 +4,7 @@
 # detail page.
 #
 # `section` is the heading on docs/device-compatibility.md an entry links to; it defaults to the model's `name`.
-# Types: bulb, relay, plug, dimmer, LED controller, group or scene.
+# A model's `type`, which orders the Works line: bulb, relay, plug, dimmer or LED controller.
 
 # Requirements shown on an integration's card, after its name.
 integrations:
@@ -40,19 +40,19 @@ models:
 # for the cards' Should work and Help us test lines.
 capabilities:
   shelly:
-    Light: {phrase: dimmers, type: dimmer, section: Shelly dimmers}
-    CCT: {phrase: CCT LED controllers, type: LED controller, section: Shelly LED controllers}
-    RGB: {phrase: RGB LED controllers, type: LED controller, section: Shelly LED controllers}
-    RGBW: {phrase: RGBW LED controllers, type: LED controller, section: Shelly LED controllers}
-    RGBCCT: {phrase: multicolor bulbs, type: bulb, section: Shelly multicolor bulbs}
+    Light: {phrase: dimmers, section: Shelly dimmers}
+    CCT: {phrase: CCT LED controllers, section: Shelly LED controllers}
+    RGB: {phrase: RGB LED controllers, section: Shelly LED controllers}
+    RGBW: {phrase: RGBW LED controllers, section: Shelly LED controllers}
+    RGBCCT: {phrase: multicolor bulbs, section: Shelly multicolor bulbs}
   matter:
-    light: {phrase: lights, type: bulb, section: Matter lights}
+    light: {phrase: lights, section: Matter lights}
   zha:
-    switch: {phrase: plugs and switches, type: plug, section: Zigbee plugs and switches}
+    switch: {phrase: plugs and switches, section: Zigbee plugs and switches}
   zigbee2mqtt:
-    switch: {phrase: plugs and switches, type: plug, section: Zigbee plugs and switches}
+    switch: {phrase: plugs and switches, section: Zigbee plugs and switches}
 
-# Known not to work, and why. `type` is left out for what is not a device (a bridge, a kind of scene).
+# Known not to work, and why.
 doesnt_work:
   - what: Hue Bridge v1
     integrations: [hue]
@@ -68,7 +68,6 @@ doesnt_work:
     source: https://shelly-api-docs.shelly.cloud/gen1/
   - what: Tuya TS011F
     integrations: [zha, zigbee2mqtt]
-    type: plug
     reason: It stores the Zigbee timer as a countdown and never switches on
     source: https://github.com/jasonmx/DeviceSide/blob/main/docs/integrations.md#zigbee-plugs-and-switches
 

@@ -66,7 +66,7 @@ ITEM_LEVELS = (
 )
 
 # Device types, in a card's order for its Works models.
-TYPES = ("bulb", "relay", "plug", "dimmer", "LED controller", "group or scene")
+TYPES = ("bulb", "relay", "plug", "dimmer", "LED controller")
 # Outcomes, in a card's order: (key, icon, legend).
 OUTCOMES = (
     ("works", "✅", "works: tested"),
@@ -119,8 +119,8 @@ def fail(message: str) -> None:
     raise SystemExit(f"docs/devices.yaml: {message}")
 
 
-def check_type(kind, where: str, optional: bool = False) -> None:
-    if (kind is None and not optional) or (kind is not None and kind not in TYPES):
+def check_type(kind, where: str) -> None:
+    if kind not in TYPES:
         fail(f"{where}: type {kind!r} is not one of {', '.join(TYPES)}")
 
 
@@ -158,7 +158,6 @@ def load_raw(raw: dict, registry: AdapterRegistry) -> Data:
     for key, items in data.capabilities.items():
         for item, entry in items.items():
             need(entry, f"capabilities {key} {item}", ("phrase", "section"))
-            check_type(entry.get("type"), f"capabilities {key} {item}")
             data.sections.add(entry["section"])
     for entry in raw.get("doesnt_work") or []:
         load_broken(entry, known, data)
@@ -187,7 +186,6 @@ def load_broken(entry: dict, known: set[str], data: Data) -> None:
     need(entry, "a doesnt_work entry", ("what",), ("integrations",))
     if not str(entry.get("source", "")).startswith("https://"):
         fail(f"doesnt_work {entry['what']!r}: source must be an https URL")
-    check_type(entry.get("type"), f"doesnt_work {entry['what']!r}", optional=True)
     if unknown := set(entry["integrations"]) - known:
         fail(f"doesnt_work {entry['what']!r}: no integration {', '.join(sorted(unknown))}")
     for key in ("reason", "source"):
