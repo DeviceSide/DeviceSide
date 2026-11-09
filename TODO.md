@@ -9,19 +9,40 @@ as issues.
 `v0.0.1` is out, and HACS accepted the submission ([hacs/default#12611](https://github.com/hacs/default/pull/12611))
 on 4 Nov 2026. v0.1.0 is next: everything lands on `main`, and release candidates are cut from it. v0.1.0 ships every
 adapter passing its tests, no soak. An RC also needs a rig run since each released adapter's last code change
-(`check_release.py --records`): today every released adapter's records predate its code.
+(`check_release.py --records`).
+
+**Order.** Adapter code freezes before the final rig runs: a change under `integrations/` stales the records it
+touches, and `core/` and `actions/` change behavior without tripping the check. From the freeze until the RC tag, only
+flag-only, docs, `scripts/` and rig step-file changes land. The items below run in this order.
 
 ## To go
 
-- [ ] **Raise/lower rig run**: unattended, the six actions and `stop` on Hue and Z2M. It rewrites the `stop*.md`
-  records and measures the new hue, saturation and two-call stop ranges for the first time.
-- [ ] **Lab rerun**: the first lab run's failures are fixed (#160–#163, #172); the rerun also retries Z2M
-  `not_stored` with `hue_native_control` on and the single readings, then fixes what repeats.
+- [ ] **RC audit**: `/rc-audit v0.1.0rc1` over `967bec0..HEAD` (rc1 was never tagged), fixes landed. A second pass
+  before the RC covers what lands after it.
+- [ ] **Docs sign-off** by Jason, before the freeze, as it may change the design: README, `CONTRIBUTING.md`,
+  `docs/device-compatibility.md` and its "Help us test", `docs/integrations.md`, `docs/design.md`,
+  `docs/action-behavior.md`; the GitHub issue flows end to end (`.github/ISSUE_TEMPLATE/`, and the options flow's
+  "Report a device" step as a user meets it in HA); the forum draft; hand-written v0.1.0 release notes. Each design
+  change it raises lands before the freeze.
+- [ ] **Z2M `turn_on_for` late off**: `bulb_transition_then_off[light_dimmable]` intermittently turns off late, also
+  after #302. Diagnose with `--debug-logs`; a bulb cause goes in `docs/device-compatibility.md`, a DeviceSide cause
+  is fixed before the freeze.
+- [ ] **Freeze**, then the rig runs below. Rig runs come from ha-rig `main`.
+- [ ] **Stale records rerun**: the Shelly profile (with a watched `set_attributes` `sets_color_while_off`), Matter
+  `turn_on_for` and `get_attributes`, and ZHA and Z2M `turn_on_for` and `get_attributes`.
 - [ ] **Watched lab session**, `--profile lab`, the A60 visiting each network: Hue `saturation_down_stop`,
   `halts_brightness_and_saturation`, `sets_color_while_off`; ZHA `hue_cycle_stop`, `saturation_down_stop`,
   `sets_color_while_off`; Z2M `halts_a_lower_to_off`, `hue_cycle_stop`, `saturation_down_stop`,
   `sets_color_while_off`. Unattended alongside: Z2M `lower_hue` `cycles_down_the_wheel[group_color]` (failed twice,
   #222). Then the PR clearing the last flags: every `set_attributes` and `stop`, and Z2M `lower_hue`.
+- [ ] **9d** Rig coverage sweep: `rig.py --coverage` full, and `check_release.py --records` clean.
+- [ ] **#314**: link each rig-verified model on the device cards to its records. Any time before the RC: it touches
+  `scripts/gen_compat.py` only.
+- [ ] **12** v0.1.0: no adapter left `experimental` (`scripts/check_release.py --release`). The release
+  steps are in `CLAUDE.md` (Releasing); the release body gets the signed-off notes.
+- [x] **Raise/lower rig run**: the six actions and `stop` on Hue and Z2M, rerun in the lab reruns (#297, #299).
+- [x] **Lab rerun**: the first lab run's failures fixed (#160–#163, #172) and rerun (#297, #299); the Z2M failures
+  it found fixed by #302.
 - [x] **Persistent auto-off/auto-on** (PR #305): `set_`/`clear_auto_off`/`_on`, Shelly; records clear the flag.
 - [x] **Shelly `set_attributes`** (#284, PR #287): RGBCCT, with `min_brightness`/`max_brightness`; the record clears
   the flag.
@@ -29,7 +50,6 @@ adapter passing its tests, no soak. An RC also needs a rig run since each releas
   brightness only: each move one `<Component>.Set` with `transition_duration`, halted by `DimStop` (the `DimUp`/`DimDown` ramps
   are stepped and have no `sweep_time` mapping). Findings: [`docs/shelly-dimming-research.md`](docs/shelly-dimming-research.md).
   RGBCCT; the records clear the flag.
-- [ ] **9d** Rig coverage sweep for the non-color scope; the watched session covers the color part.
 - [x] **Device support, part 1** (#262): support levels and contribution lanes in `CONTRIBUTING.md`, the README's "Will it
   work with my device?", and the device report, device request and bug issue forms.
 - [x] **Device support, part 2**: `scripts/gen_compat.py` generates `docs/compatibility.md` (levels and tested
@@ -47,8 +67,6 @@ adapter passing its tests, no soak. An RC also needs a rig run since each releas
   `docs/hardware-the-rig-lacks.md`.
 - [x] **Single report form** (#313): one device report form for results and bugs, several devices per report; the Support
   field and the options flow's action step are gone.
-- [ ] **12** v0.1.0: no adapter left `experimental` (`scripts/check_release.py --release`). The release
-  steps are in `CLAUDE.md` (Releasing).
 
 ## After v0.1.0
 
