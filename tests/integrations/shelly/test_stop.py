@@ -10,7 +10,7 @@ from custom_components.deviceside.integrations.shelly.stop import ShellyStop
 
 from .conftest import BULB, CONFIRMED, SENT, dimmable_bulb, unchanged
 from ...conftest import allow_experimental, call, refusal
-from ...fixtures.shelly import DOCUMENTED_COMPONENTS, add_shelly_entity, failing, shelly_device
+from ...fixtures.shelly import OTHER_LIGHT_COMPONENTS, add_shelly_entity, failing, shelly_device
 
 STOP = rpc_call("RGBCCT.DimStop", {"id": 0})
 READ = rpc_call("RGBCCT.GetStatus", {"id": 0})
@@ -123,7 +123,7 @@ async def test_gen1_and_other_components_are_refused(hass, setup_production):
     assert await refusal(hass, "stop", {"entity_id": "light.dimmer"}) == "experimental_off"
 
 
-@pytest.mark.parametrize(("key", "component"), DOCUMENTED_COMPONENTS)
+@pytest.mark.parametrize(("key", "component"), OTHER_LIGHT_COMPONENTS)
 async def test_other_light_components_are_experimental(hass, setup_production, key, component):
     entry, call_rpc = shelly_device(hass, status={"output": True, "brightness": 40})
     add_shelly_entity(hass, entry, "light.lamp", key, state="on")

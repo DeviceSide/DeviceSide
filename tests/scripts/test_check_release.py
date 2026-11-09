@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from custom_components.deviceside.core.scope import AdapterScope, experimental, verified
+from custom_components.deviceside.core.scope import AdapterScope, experimental, reported, verified
 from scripts import check_release as cr
 
 # Every fake adapter is defined here, so this file is each one's module.
@@ -233,8 +233,8 @@ def test_a_module_new_since_the_record_is_a_change(tested, monkeypatch):
 
 def flag_reads(tree: ast.AST) -> list[int]:
     """Lines that read `experimental`: anything but an `experimental=` argument or parameter, passing a parameter
-    of that name straight on as `experimental=experimental`, or calling `scope.experimental()`, which marks items
-    Experimental and reads no flag."""
+    of that name straight on as `experimental=experimental`, or calling the bare `experimental(...)` helper from
+    `core.scope`, which marks items Experimental and reads no flag."""
     passed_on = {
         id(keyword.value)
         for node in ast.walk(tree)
@@ -360,6 +360,23 @@ def test_an_experimental_adapter_is_exempt(tested, monkeypatch):
     repo, _ = tested
     repo.commit(ADAPTER)
     assert cr.record_errors(FakeRecordsRegistry(repo, monkeypatch, experimental=True)) == []
+
+
+@pytest.mark.parametrize(
+    "scope",
+    [
+        AdapterScope(domains=experimental("light")),
+        AdapterScope(domains=reported("light")),
+        AdapterScope(domains=verified("light"), capabilities=experimental("Light") | reported("CCT")),
+    ],
+)
+def test_an_adapter_with_no_verified_call_needs_no_record(tested, monkeypatch, scope):
+    repo, _ = tested
+    registry = FakeRecordsRegistry(repo, monkeypatch)
+    repo.git("rm", "-q", "docs/test-records/fake/turn_on_for.md")
+    assert cr.record_errors(registry) == ["fake / turn_on_for: no test record in docs/test-records/fake/"]
+    registry.adapter.scope = scope
+    assert cr.record_errors(registry) == []
 
 
 def test_main_fails_on_a_stale_record(tested, monkeypatch, capsys):

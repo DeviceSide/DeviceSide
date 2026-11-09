@@ -23,7 +23,7 @@ sys.path.insert(0, str(REPO))
 
 from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
 from custom_components.deviceside.core.scope import Level  # noqa: E402
-from scripts.check_release import adapters, records  # noqa: E402
+from scripts.check_release import adapters, proven, records  # noqa: E402
 
 PAGE = REPO / "docs" / "compatibility.md"
 RESULT = re.compile(r"^\| Result \| (\S+) \|", re.MULTILINE)
@@ -137,7 +137,9 @@ def generate(registry: AdapterRegistry) -> str:
         parts.append("| Action | Level | Tested models | Records | Reported working |")
         parts.append("|---|---|---|---|---|")
         for adapter in sorted(by_integration[key], key=lambda a: a.action):
-            parts.append(row(adapter.action, adapter))
+            # An unflagged adapter with no Verified call ships its items behind the option: level_rows lists them.
+            if adapter.scope.experimental or proven(adapter.scope):
+                parts.append(row(adapter.action, adapter))
             parts += level_rows(adapter.action, adapter)
         parts.append("")
     return "\n".join(parts)

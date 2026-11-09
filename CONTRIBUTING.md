@@ -30,8 +30,9 @@ and fields it takes:
   DeviceSide refuses it until you turn on **Experimental features** in its options. Please report how it went, either
   way: a working report makes it Reported.
 
-A change to proven code that the rig hasn't rerun yet keeps the whole adapter in release candidates only. A record
-older than its adapter's code blocks the next release until the test is rerun.
+Some changes to proven code keep the whole adapter in release candidates only, by the rules in
+[CLAUDE.md](CLAUDE.md#release-flag). A record older than its adapter's code blocks the next release until the test is
+rerun.
 
 ## How to help
 
@@ -69,4 +70,4 @@ older than its adapter's code blocks the next release until the test is rerun.
 - Set up with `uv sync`. To add a dependency, use `uv add --dev`, not `uv pip install`.
 - Run `.venv/bin/pytest` and `pre-commit run --all-files` before you push. CI runs both.
 - If you use Claude, run `/audit-code` on your diff before opening a pull request. Else ask for an audit in the PR.
-- New work (an action, integration, entity domain, device component or field) starts as an Experimental item, `Level.EXPERIMENTAL` in the adapter's scope: it ships behind the Experimental features option until it is proven. `experimental=True` on the adapter is only for a behavior change to proven code that the maintainer's rig can't rerun. Every adapter needs 95% line coverage either way.
+- New work (an action, integration, entity domain, device component or field) starts as an Experimental item, `Level.EXPERIMENTAL` in the adapter's scope: it ships behind the Experimental features option until it is proven. `experimental=True` on the adapter is for some behavior changes to proven code: see [CLAUDE.md](CLAUDE.md#release-flag). Every adapter needs 95% line coverage either way.

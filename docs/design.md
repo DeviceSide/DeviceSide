@@ -28,14 +28,15 @@ HA requires it.
   **Experimental**: built and unit-tested, with no proof on a device; it ships in stable releases, refused at runtime
   until the user turns on Experimental features. **Documented**: no record, but the adapter sends it the same call as
   a Verified item, differing only in addressing, and the vendor or standard documents that call identically; never a
-  field. **Reported**: an accepted working device report on the item's call, with unit tests pinning it. **Verified**:
+  field. **Reported**: an accepted working device report on the item's call, with unit tests pinning it; a change to that call
+  makes it Experimental again. **Verified**:
   a passing record from the rig. Documented, Reported and Verified items ship switched on, and a bug on one is a real
   bug. A call's level is the weakest among the items it touches: its domain, capability and fields
   (`AdapterScope.level`).
 - **Experimental features**: the option (`experimental_features`, off by default) that lets calls touching an
   Experimental item through. Only the dispatcher reads it.
-- **Release flag**: `experimental=True` on an adapter's scope, for a behavior change to proven code the rig hasn't
-  rerun; it keeps the whole adapter in release candidates only. Not the Experimental level: an item is gated at
+- **Release flag**: `experimental=True` on an adapter's scope; it keeps the whole adapter in release candidates only.
+  When to set and clear it: [CLAUDE.md](../CLAUDE.md#release-flag). Not the Experimental level: an item is gated at
   runtime, the flag at release. A record older than its adapter's code blocks a release (`check_release.py
   --records`) until a rerun.
 - **Device report**: a user's "works" or "doesn't work" for an action on a model. An accepted "works" on an item's
@@ -190,7 +191,7 @@ adapter's targets at once, so native group commands stay possible.
 - **Release flag.** `experimental=True` keeps an adapter out of a stable release; `cut-release` runs
   `check_release.py --release`, which fails on any. Setting and clearing it: [CLAUDE.md](../CLAUDE.md#release-flag).
 - **Record freshness.** `cut-release-candidate` and `cut-release` run `check_release.py --records`, failing any
-  released adapter with no test record, or one whose code changed, beyond its `experimental` flag, after the
+  released adapter that has a Verified call and no test record, or one whose code changed, beyond its `experimental` flag, after the
   commit a record cites. An adapter's code is its module, its integration package's `__init__.py` and the package
   modules it imports, transitively; `core/` and `actions/` are not, as they are unit-tested and shared by every
   adapter. Experimental adapters are exempt.

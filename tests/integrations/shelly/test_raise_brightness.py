@@ -11,7 +11,7 @@ from custom_components.deviceside.integrations.shelly.raise_brightness import Sh
 
 from .conftest import BULB, SENT, dimmable_bulb, unchanged
 from ...conftest import allow_experimental, call, refusal
-from ...fixtures.shelly import DOCUMENTED_COMPONENTS, add_shelly_entity, failing, shelly_device
+from ...fixtures.shelly import OTHER_LIGHT_COMPONENTS, add_shelly_entity, failing, shelly_device
 
 READ = rpc_call("RGBCCT.GetStatus", {"id": 0})
 
@@ -84,7 +84,7 @@ async def test_a_relay_shown_as_a_light_drops_brightness(hass, setup_production)
     assert not call_rpc.await_args_list
 
 
-@pytest.mark.parametrize(("key", "component"), DOCUMENTED_COMPONENTS)
+@pytest.mark.parametrize(("key", "component"), OTHER_LIGHT_COMPONENTS)
 async def test_other_light_components_are_experimental(hass, setup_production, key, component):
     """Only RGBCCT is rig-proven: DimStop halting a timed fade is documented for none of them. The rest take the
     same calls, addressed to their own component."""
@@ -125,7 +125,7 @@ async def test_a_device_error_rejects_the_target(hass, setup_production, verb):
 
 @pytest.mark.parametrize(
     ("component", "level"),
-    [("RGBCCT", Level.VERIFIED), ("Switch", None), *((c, Level.EXPERIMENTAL) for _, c in DOCUMENTED_COMPONENTS)],
+    [("RGBCCT", Level.VERIFIED), ("Switch", None), *((c, Level.EXPERIMENTAL) for _, c in OTHER_LIGHT_COMPONENTS)],
 )
 def test_scope(component, level):
     scope = ShellyRaiseBrightness.scope

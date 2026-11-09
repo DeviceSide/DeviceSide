@@ -112,6 +112,16 @@ def test_reported_documented_and_experimental_items_each_get_a_row_strongest_fir
     ]
 
 
+def test_an_unflagged_adapter_with_no_verified_call_has_only_its_level_rows(root):
+    scope = AdapterScope(domains=experimental("switch"))
+    text = gc.generate(FakeRegistry(SimpleNamespace(integration="zha", action="turn_on_for", scope=scope)))
+    assert f"`turn_on_for` | {gc.IN_RCS}" not in text
+    assert (
+        "| `turn_on_for` | Experimental | none (untested, behind Experimental features: switch entities) | | |\n"
+        in text
+    )
+
+
 def test_the_page_groups_by_integration_title_and_skips_unsupported_pairs(root):
     record(root, "zha", "stop")
     text = gc.generate(FakeRegistry(adapter("zha", "stop"), adapter("hue", "lower_hue")))

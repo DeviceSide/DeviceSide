@@ -24,8 +24,8 @@ until the user turns on the Experimental features option. The dispatcher is the 
 option, and turning it on never changes how any other item behaves. A bug in an Experimental item is never
 `severity:high`.
 
-**Setting it:** for a behavior change to a Verified, Reported or Documented item that the rig can't exercise. Leave
-it off for refactors, performance work and fixes the rig run before each RC covers. When unsure, ask.
+**Setting it:** for a behavior change to a Verified or Documented item that the rig can't exercise. Leave it
+off for refactors, performance work and fixes the rig run before each RC covers. When unsure, ask.
 
 **Clearing it:** a PR citing a passing test record (`docs/test-records/<integration>/<action>*.md`) that covers the
 adapter's whole scope bar its Documented, Reported and Experimental items: `AdapterScope.domains`, `.capabilities`,
@@ -51,8 +51,8 @@ Fields are never Documented: a field changes the call. A record promotes the ite
 untested is Experimental, or out of scope and refused, never Documented on a sibling's proof.
 
 **Reported.** A scope item ships as `Level.REPORTED` on an accepted working user report of the item's call, when unit
-tests pin the payload. It has no record, so no freshness check; a change to its call is a behavior change. Fields
-may be Reported. A record promotes it to Verified.
+tests pin the payload. It has no record, so no freshness check; a change to its call makes it Experimental until a
+new report or a record. Fields may be Reported. A record promotes it to Verified.
 
 ## Releasing
 

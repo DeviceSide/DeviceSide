@@ -24,8 +24,9 @@ pytestmark = pytest.mark.usefixtures("setup_integration")
 @pytest.fixture(autouse=True, params=[False, True], ids=["experimental_off", "experimental_on"])
 def experimental_option(request, hass, setup_integration):
     """Every test runs with the Experimental features option off and on: no fake adapter has an Experimental item,
-    so the option must change nothing. The tests of the gate set it themselves."""
+    so the option must change nothing. The tests of the gate set it themselves, or take its value."""
     allow_experimental(hass, request.param)
+    return request.param
 
 
 @pytest.fixture
@@ -36,11 +37,12 @@ def fake(hass):
 SWITCH_EXPERIMENTAL = AdapterScope(domains=verified("light") | experimental("switch"), duration=LIMITS)
 
 
-@pytest.mark.parametrize("on", [False, True])
-async def test_a_named_target_on_an_experimental_domain_raises_unless_the_option_is_on(hass, fake, reset_script, on):
+async def test_a_named_target_on_an_experimental_domain_raises_unless_the_option_is_on(
+    hass, fake, reset_script, experimental_option
+):
+    on = experimental_option
     add_fake_entity(hass, fake, "light.a")
     add_fake_entity(hass, fake, "switch.s")
-    allow_experimental(hass, on)
     data = {"entity_id": ["light.a", "switch.s"], "duration": 5}
 
     with patch.object(FakeTurnOnFor, "scope", SWITCH_EXPERIMENTAL):

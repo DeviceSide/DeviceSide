@@ -48,7 +48,8 @@ AUTO_CAPABILITIES = verified("Switch") | documented("Light", "CCT", "RGB", "RGBW
 
 # The components raise_brightness, lower_brightness and stop address. DimStop halting a Set's fade is the rig's
 # finding on RGBCCT (fw 2.0.3), documented by Shelly for none of them, and one user reports a Gen3 Dimmer jumping on
-# DimStop: the others take the same calls, so they are Experimental until a record covers them.
+# DimStop: the others take the same calls, so they are Experimental until a record covers them. That one unconfirmed
+# report keeps Light from Documented, not from Experimental: the option is opt-in, and a jump is what testers report.
 DIMMING_CAPABILITIES = verified("RGBCCT") | experimental("Light", "CCT", "RGB", "RGBW")
 
 

@@ -19,9 +19,10 @@ from custom_components.deviceside.core.scope import (
     verified,
 )
 
-INTEGRATIONS = Path(__file__).resolve().parents[2] / "custom_components" / "deviceside" / "integrations"
-# What reads the Experimental features option: only the entry setup and the dispatcher may.
+PACKAGE = Path(__file__).resolve().parents[2] / "custom_components" / "deviceside"
+# What reads the Experimental features option: only the option's definition, the entry setup and the dispatcher may.
 OPTION_NAMES = {"CONF_EXPERIMENTAL", "EXPERIMENTAL_DEFAULT", "experimental_features"}
+OPTION_READERS = {"const.py", "__init__.py", "config_flow.py", "core/runtime.py", "core/dispatcher.py"}
 
 
 def test_levels_order_weakest_first():
@@ -75,6 +76,13 @@ def test_level_folds_in_the_fields_the_call_carries(fields, level):
     assert scope.level("light", None, fields) is level
 
 
+def test_a_capability_outside_the_scope_counts_as_experimental():
+    """supports() lets a call with nothing to do past whatever its capability; the gate must not raise on it."""
+    scope = AdapterScope(capabilities=verified("RGBCCT"))
+
+    assert scope.level("light", "Switch") is Level.EXPERIMENTAL
+
+
 def test_a_documented_field_is_refused():
     with pytest.raises(ValueError, match="fields are never Documented"):
         AdapterScope(fields=documented("brightness"))
@@ -100,11 +108,13 @@ def _adapters() -> list[Adapter]:
     return [adapter for _, _, adapter in AdapterRegistry.discover().matrix() if adapter is not None]
 
 
-def test_no_integration_module_reads_the_experimental_option():
-    """The dispatcher is the one gate: an adapter that read the option could change how a proven item behaves."""
+def test_only_the_dispatcher_and_entry_setup_read_the_experimental_option():
+    """The dispatcher is the one gate: an adapter, action or other core module that read the option could change how
+    a proven item behaves."""
     found = [
-        f"{path.relative_to(INTEGRATIONS)}:{node.lineno}"
-        for path in INTEGRATIONS.rglob("*.py")
+        f"{path.relative_to(PACKAGE)}:{node.lineno}"
+        for path in PACKAGE.rglob("*.py")
+        if path.relative_to(PACKAGE).as_posix() not in OPTION_READERS
         for node in ast.walk(ast.parse(path.read_text()))
         if (isinstance(node, ast.Name) and node.id in OPTION_NAMES)
         or (isinstance(node, ast.Attribute) and node.attr in OPTION_NAMES)
@@ -134,7 +144,9 @@ def _covers(stop: AdapterScope | None, items: str, item: str, level: Level) -> b
 
 
 def test_every_move_has_a_stop_at_least_as_strong():
-    """A raise or lower that starts where stop is refused, or gated behind the option, can't be halted."""
+    """A raise or lower that starts where stop is refused, or gated behind the option, can't be halted. Item levels
+    only: group reach (native_groups against expand_group), refusals in supports() that don't come from scope, and the
+    adapter-level flag (cut-release --release catches a released move with a flagged stop) are not compared."""
     adapters = _adapters()
     stops = {adapter.integration: adapter.scope for adapter in adapters if adapter.action == "stop"}
     gaps = []
