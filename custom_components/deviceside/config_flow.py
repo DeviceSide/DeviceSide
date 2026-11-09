@@ -134,11 +134,29 @@ def _device_facts(hass: HomeAssistant, entity_id: str) -> tuple[str, _DeviceFact
     )
 
 
+_TITLE_LIMIT = 200  # GitHub's is 256; the prefix and "and N more" fit in the rest.
+
+
+def _title(prefix: str, subjects: list[str]) -> str:
+    """The prefix and as many subjects as fit the limit (always the first), then "and N more"."""
+    shown = subjects[:1]
+    for subject in subjects[1:]:
+        if len(f"{prefix}: {', '.join([*shown, subject])}") > _TITLE_LIMIT:
+            break
+        shown.append(subject)
+    if not shown:
+        return prefix
+    title = f"{prefix}: {', '.join(shown)}"
+    more = len(subjects) - len(shown)
+    return f"{title} and {more} more" if more else title
+
+
 async def issue_url(hass: HomeAssistant, form: IssueForm, entity_ids: list[str]) -> str:
     """A prefilled issue for the entities' devices (one entry per device), the two versions and whether Experimental
     features was on, as far as the form asks for them, and nothing that identifies the household (no entity ID, name,
     area or MAC)."""
-    devices = list(dict(_device_facts(hass, entity_id) for entity_id in entity_ids).values())
+    # One entry per distinct device facts, so several devices of one model give one line.
+    devices = list(dict.fromkeys(dict(_device_facts(hass, entity_id) for entity_id in entity_ids).values()))
     first = devices[0] if devices else _DeviceFacts()
     values = {
         "integration": first.integration,
@@ -154,8 +172,8 @@ async def issue_url(hass: HomeAssistant, form: IssueForm, entity_ids: list[str])
         else ("on" if runtime.experimental_features else "off"),
     }
     query = {"template": form.template}
-    subject = ", ".join(filter(None, (device.subject for device in devices)))
-    query["title"] = f"{form.title}: {subject}" if subject else form.title
+    subjects = list(dict.fromkeys(filter(None, (device.subject for device in devices))))
+    query["title"] = _title(form.title, subjects)
     query |= {field: values[field] for field in form.fields if values[field]}
     return f"{REPORT_URL}?{urlencode(query, quote_via=quote)}"
 

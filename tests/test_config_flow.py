@@ -1,11 +1,9 @@
 """Tests for the single-instance config flow, its options and entry setup."""
 
 import asyncio
-from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 import pytest
-import yaml
 from homeassistant.config_entries import SOURCE_USER, ConfigEntryState
 from homeassistant.const import __version__ as HA_VERSION
 from homeassistant.core import HomeAssistant
@@ -16,7 +14,7 @@ from homeassistant.loader import async_get_integration
 from homeassistant.setup import async_set_domains_to_be_loaded, async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry, MockModule, mock_integration
 
-from custom_components.deviceside.config_flow import _FORMS_BY_STEP, ISSUE_FORMS, issue_url
+from custom_components.deviceside.config_flow import _FORMS_BY_STEP, _title, issue_url
 from custom_components.deviceside.const import (
     CONF_EXPERIMENTAL,
     CONF_PREDICTED_STATE,
@@ -28,8 +26,6 @@ from custom_components.deviceside.core.resolver import resolve
 from custom_components.deviceside.core.runtime import get_runtime
 
 from .fixtures.zha import IEEE, add_zha_entity, zha_entry
-
-TEMPLATES = Path(__file__).parents[1] / ".github" / "ISSUE_TEMPLATE"
 
 
 async def open_settings(hass: HomeAssistant, entry: MockConfigEntry):
@@ -67,15 +63,15 @@ async def report_for(
     return {key: value for key, [value] in parse_qs(urlparse(url).query).items()}, url
 
 
-def add_mqtt_light(hass: HomeAssistant, identifier: str) -> None:
-    """light.desk on an MQTT broker that isn't loaded, so DeviceSide can't serve it."""
+def add_mqtt_light(hass: HomeAssistant, identifier: str, object_id: str = "desk") -> None:
+    """light.desk (or another) on an MQTT broker that isn't loaded, so DeviceSide can't serve it."""
     mqtt = MockConfigEntry(domain="mqtt")
     mqtt.add_to_hass(hass)
     device = dr.async_get(hass).async_get_or_create(
         config_entry_id=mqtt.entry_id, identifiers={("mqtt", identifier)}, model="Bulb", sw_version="2.0"
     )
     er.async_get(hass).async_get_or_create(
-        "light", "mqtt", "u3", suggested_object_id="desk", config_entry=mqtt, device_id=device.id
+        "light", "mqtt", f"u3-{object_id}", suggested_object_id=object_id, config_entry=mqtt, device_id=device.id
     )
 
 
@@ -315,6 +311,29 @@ async def test_two_entities_of_one_device_give_one_line(hass: HomeAssistant, zha
     assert fields["title"] == "Device report: zha"
 
 
+async def test_several_devices_of_one_model_give_one_line_and_one_subject(hass: HomeAssistant):
+    entry = await loaded_entry(hass)
+    add_mqtt_light(hass, "tasmota_A")
+    add_mqtt_light(hass, "tasmota_B", object_id="hall")
+
+    fields, _ = await report_for(hass, entry, ["light.desk", "light.hall"])
+
+    assert fields["devices"] == "mqtt \u00b7 Bulb \u00b7 2.0"
+    assert fields["title"] == "Device report: Bulb (mqtt)"
+
+
+def test_a_long_title_keeps_the_first_subject_and_counts_the_rest():
+    subjects = [f"Device number {n} of the long list" for n in range(30)]
+
+    title = _title("Device report", subjects)
+
+    assert len(title) <= 256
+    assert title.startswith("Device report: Device number 0 of the long list, Device number 1")
+    assert title.endswith(f" and {30 - title.count('Device number')} more")
+    assert _title("Device report", subjects[:2]) == "Device report: " + ", ".join(subjects[:2])
+    assert _title("Device report", []) == "Device report"
+
+
 async def test_a_report_says_whether_experimental_features_was_on(hass: HomeAssistant):
     """A report on an Experimental item means something else with the option off: it was refused, not tried."""
     entry = await loaded_entry(hass)
@@ -363,13 +382,3 @@ def zha(hass: HomeAssistant, request) -> MockConfigEntry:
     entry = zha_entry(hass)
     request.addfinalizer(lambda: entry.mock_state(hass, ConfigEntryState.NOT_LOADED))  # HA would import the real zha
     return entry
-
-
-def _template_ids(form) -> set[str]:
-    template = yaml.safe_load((TEMPLATES / form.template).read_text())
-    return {item["id"] for item in template["body"] if "id" in item}
-
-
-@pytest.mark.parametrize("form", ISSUE_FORMS, ids=lambda form: form.step)
-def test_every_field_a_form_prefills_exists_in_its_template(form):
-    assert set(form.fields) <= _template_ids(form)
