@@ -26,7 +26,7 @@ class Level(IntEnum):
 
     # Built and unit-tested, with no proof on hardware: refused unless the Experimental features option is on.
     EXPERIMENTAL = 0
-    # Sends the same call as a Verified item, differing only in addressing, and documented identically for both.
+    # Sends the same call as a Verified or Reported item, differing only in addressing, documented identically for both.
     DOCUMENTED = 10
     # An accepted user report says it works; unit tests pin the call.
     REPORTED = 20

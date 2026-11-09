@@ -50,8 +50,9 @@ sends it the same call as a Verified or Reported item, differing only in address
 domain); the vendor or standard documents that call identically for both, and no known class of devices departs from
 it; a failure shows as `rejected` or `sent`, never a wrong device state, nor `confirmed` unless what it confirms is the
 stored setting the call wrote, read back; and unit tests pin the payload.
-Fields are never Documented: a field changes the call. A change to a Documented item's call alone makes it
-Experimental until a record. A record promotes the item to Verified. Anything else untested is Experimental, or out of
+Fields are never Documented: a field changes the call. A Documented item stands only while its sibling does: a change
+to its call, or its Reported sibling falling to Experimental, makes it Experimental until a record or a new report on
+the sibling. A record promotes the item to Verified. Anything else untested is Experimental, or out of
 scope and refused, never Documented on a sibling's proof.
 
 **Reported.** A scope item ships as `Level.REPORTED` on an accepted working user report of the item's call, when unit
