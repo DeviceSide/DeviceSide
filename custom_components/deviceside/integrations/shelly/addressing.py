@@ -9,8 +9,10 @@ from collections.abc import Collection
 from dataclasses import dataclass
 from typing import Any
 
+from homeassistant.core import HomeAssistant
+
 from ...core.models import Target
-from ...core.scope import documented, verified
+from ...core.scope import documented, experimental, verified
 
 # Relays and lights carry unique_id "{mac}-{key}" (shelly/switch.py RpcRelaySwitch, shelly/light.py
 # RpcShellyLightBase). Every other Shelly switch (virtual booleans, scripts, circuit breakers) has another suffix
@@ -46,14 +48,22 @@ AUTO_CAPABILITIES = verified("Switch") | documented("Light", "CCT", "RGB", "RGBW
 
 # The components raise_brightness, lower_brightness and stop address. DimStop halting a Set's fade is the rig's
 # finding on RGBCCT (fw 2.0.3), documented by Shelly for none of them, and one user reports a Gen3 Dimmer jumping on
-# DimStop: the others stay out of scope until a record covers them.
-DIMMING_CAPABILITIES = verified("RGBCCT")
+# DimStop: the others take the same calls, so they are Experimental until a record covers them.
+DIMMING_CAPABILITIES = verified("RGBCCT") | experimental("Light", "CCT", "RGB", "RGBW")
 
 
 @dataclass(frozen=True, slots=True)
 class RpcAddress:
     component: str
     id: int
+
+
+class RpcComponent:
+    """Mixed into every Shelly adapter, ahead of Adapter: the capability a call reaches is the entity's RPC
+    component, which the dispatcher weighs against the scope's capabilities."""
+
+    def capability(self, hass: HomeAssistant, target: Target) -> str | None:
+        return rpc.component if (rpc := address(target)) is not None else None
 
 
 def rpc_device(target: Target) -> Any | None:

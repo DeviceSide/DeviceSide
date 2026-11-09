@@ -10,6 +10,7 @@ from custom_components.deviceside import actions
 from custom_components.deviceside.const import DOMAIN
 from custom_components.deviceside.core.errors import TargetNotSupported
 from custom_components.deviceside.core.registry import AdapterRegistry
+from custom_components.deviceside.core.runtime import get_runtime
 
 from .fakes.scripted import SCRIPT
 
@@ -62,6 +63,11 @@ async def refusal(hass: HomeAssistant, service: str, data: dict) -> str:
     with pytest.raises(TargetNotSupported) as raised:
         await call(hass, service, data)
     return raised.value.reason
+
+
+def allow_experimental(hass: HomeAssistant, on: bool = True) -> None:
+    """Turn the Experimental features option on (or off) for a loaded entry, as saving it in the options would."""
+    get_runtime(hass).experimental_features = on
 
 
 def wall_clock_now() -> datetime:

@@ -4,14 +4,14 @@ from typing import Any, ClassVar
 
 from homeassistant.core import HomeAssistant
 
-from .addressing import DIMMING_CAPABILITIES, address, unsupported_reason
+from .addressing import DIMMING_CAPABILITIES, RpcComponent, address, unsupported_reason
 from .rpc import dim_stop, get_status, read_back
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Request, Status, Target
 from ...core.scope import AdapterScope, verified
 
 
-class ShellyStop(Adapter[Request]):
+class ShellyStop(RpcComponent, Adapter[Request]):
     """DimStop to each target at once, then a GetStatus.
 
     DimStop goes first, with no read before it, so the halt waits on nothing: with no fade running it changes nothing

@@ -9,7 +9,7 @@ from typing import ClassVar
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 
-from .addressing import CAPABILITIES, address, unsupported_reason
+from .addressing import CAPABILITIES, RpcComponent, address, unsupported_reason
 from .rpc import get_config, get_status
 from ...core.adapter import Adapter
 from ...core.color import rgb_row
@@ -54,7 +54,7 @@ def config_row(config: dict) -> dict:
     return row
 
 
-class ShellyGetAttributes(Adapter[Request]):
+class ShellyGetAttributes(RpcComponent, Adapter[Request]):
     """A GetStatus and a GetConfig per target, concurrently. A GetStatus error raises; a GetConfig error only leaves
     the auto_off and auto_on rows out, so one unread setting doesn't lose the rest of the row."""
 

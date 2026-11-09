@@ -225,15 +225,16 @@ def test_a_module_new_since_the_record_is_a_change(tested, monkeypatch):
 
 
 def flag_reads(tree: ast.AST) -> list[int]:
-    """Lines that read `experimental`: anything but an `experimental=` argument or parameter, or passing a parameter
-    of that name straight on as `experimental=experimental`."""
+    """Lines that read `experimental`: anything but an `experimental=` argument or parameter, passing a parameter
+    of that name straight on as `experimental=experimental`, or calling `scope.experimental()`, which marks items
+    Experimental and reads no flag."""
     passed_on = {
         id(keyword.value)
         for node in ast.walk(tree)
         if isinstance(node, ast.Call)
         for keyword in node.keywords
         if keyword.arg == "experimental"
-    }
+    } | {id(node.func) for node in ast.walk(tree) if isinstance(node, ast.Call)}
     return [
         node.lineno
         for node in ast.walk(tree)

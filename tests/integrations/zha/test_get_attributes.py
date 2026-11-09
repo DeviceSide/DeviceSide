@@ -9,7 +9,7 @@ from homeassistant.util.color import color_hs_to_RGB, color_hs_to_xy, color_xy_t
 
 from custom_components.deviceside.integrations.zha import zcl
 
-from ...conftest import call, refusal
+from ...conftest import allow_experimental, call, refusal
 from ...fixtures.zha import IEEE, add_zha_entity, zha_entry, zha_group
 
 pytestmark = pytest.mark.usefixtures("setup_production")
@@ -147,6 +147,18 @@ async def test_timer_from_on_time_while_on(hass, bulb, on_off, expected):
     bulb[zcl.ON_OFF_CLUSTER] = on_off
 
     assert await call(hass, "get_attributes", {"entity_id": "light.bulb"}) == {"light.bulb": expected}
+
+
+async def test_switch_is_experimental_and_reads_only_on_off(hass, bulb, requests):
+    add_zha_entity(hass, zha_entry(hass), "switch.plug", state="on")
+    bulb[zcl.ON_OFF_CLUSTER] = {zcl.ON_OFF: 1, zcl.ON_TIME: 50}
+
+    assert await refusal(hass, "get_attributes", {"entity_id": "switch.plug"}) == "experimental_off"
+    assert not requests
+
+    allow_experimental(hass)
+    assert await call(hass, "get_attributes", {"entity_id": "switch.plug"}) == {"switch.plug": {"timer": timer(5.0)}}
+    assert clusters_read(requests) == [zcl.ON_OFF_CLUSTER]
 
 
 async def test_light_without_an_address_is_refused(hass, bulb, requests):

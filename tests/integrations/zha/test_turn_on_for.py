@@ -14,7 +14,7 @@ from custom_components.deviceside.const import DOMAIN
 from custom_components.deviceside.integrations.zha import zcl
 from custom_components.deviceside.integrations.zha.addressing import address
 
-from ...conftest import call, refusal
+from ...conftest import allow_experimental, call, refusal
 from ...fixtures.zha import IEEE, add_zha_entity, zha_entry, zha_group
 
 CONFIRMED = {"status": "confirmed", "integration": "zha"}
@@ -139,10 +139,27 @@ async def test_failed_read_is_sent(hass, setup_production, commands, readback, r
     assert response == {"light.bulb": {"status": "sent", "integration": "zha", "detail": "readback_failed"}}
 
 
-async def test_switch_is_out_of_scope(hass, setup_production, commands, turn_ons):
+@pytest.mark.parametrize(
+    ("on", "expected"),
+    [
+        (True, CONFIRMED),
+        # The rig's Tuya TS011F: it keeps OnTime as a countdown and stays off.
+        (False, {"status": "sent", "integration": "zha", "detail": "not_on"}),
+    ],
+)
+async def test_switch_is_experimental(hass, setup_production, commands, turn_ons, readback, on, expected):
     add_zha_entity(hass, zha_entry(hass), "switch.plug")
+    readback.return_value = reads(50, on=on)
+    data = {"entity_id": "switch.plug", "duration": 5}
 
-    assert await refusal(hass, "turn_on_for", {"entity_id": "switch.plug", "duration": 5}) == "domain_not_tested"
+    assert await refusal(hass, "turn_on_for", data) == "experimental_off"
+    assert not commands
+
+    allow_experimental(hass)
+    assert await call(hass, "turn_on_for", data) == {"switch.plug": expected}
+    assert not turn_ons
+    assert commands[0].data["command"] == 0x42
+    assert commands[0].data["params"] == {"on_off_control": 0, "on_time": 50, "off_wait_time": 0}
 
 
 async def test_entity_without_a_light_unique_id_is_not_addressable(hass, setup_production, commands, turn_ons):

@@ -22,7 +22,7 @@ from custom_components.deviceside.integrations.zigbee2mqtt.addressing import (
 )
 from custom_components.deviceside.integrations.zigbee2mqtt.detect import detect
 
-from ...conftest import advance, call, refusal, wall_clock_now
+from ...conftest import advance, allow_experimental, call, refusal, wall_clock_now
 from ...fixtures.z2m import IEEE, add_z2m_entity, add_z2m_group, z2m_entry
 
 SENT = {"status": "sent", "integration": "zigbee2mqtt"}
@@ -82,11 +82,18 @@ async def test_light_with_multiple_fields_passes_them_all_to_turn_on(hass, setup
     assert len(publishes) == 1
 
 
-async def test_switch_is_out_of_scope(hass, setup_production, publishes, turn_ons):
+async def test_switch_is_experimental(hass, setup_production, publishes, turn_ons):
     add_z2m_entity(hass, z2m_entry(hass), "switch.plug")
+    data = {"entity_id": "switch.plug", "duration": 5}
 
-    assert await refusal(hass, "turn_on_for", {"entity_id": "switch.plug", "duration": 5}) == "domain_not_tested"
+    assert await refusal(hass, "turn_on_for", data) == "experimental_off"
     assert not publishes
+
+    allow_experimental(hass)
+    assert await call(hass, "turn_on_for", data) == {"switch.plug": SENT}
+    assert not turn_ons
+    assert publishes[0].data["topic"] == TOPIC
+    assert json.loads(publishes[0].data["payload"]) == {"state": "ON", "on_time": 5.0}
 
 
 async def test_duration_rounded_to_one_decimal_place(hass, setup_production, publishes, turn_ons):

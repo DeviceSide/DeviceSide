@@ -1,4 +1,4 @@
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Collection, Mapping
 from dataclasses import dataclass, field
 from enum import IntEnum
 from types import MappingProxyType
@@ -21,10 +21,15 @@ class DurationLimits:
 
 
 class Level(IntEnum):
-    """How well a scope item is proven. A target's level is the weakest among the in-scope items its call touches."""
+    """How well a scope item is proven, weakest first. A call's level is the weakest among the in-scope items it
+    touches."""
 
+    # Built and unit-tested, with no proof on hardware: refused unless the Experimental features option is on.
+    EXPERIMENTAL = 0
     # Sends the same call as a Verified item, differing only in addressing, and documented identically for both.
     DOCUMENTED = 10
+    # An accepted user report says it works; unit tests pin the call.
+    REPORTED = 20
     # A passing test record covers it.
     VERIFIED = 30
 
@@ -33,22 +38,32 @@ def verified(*items: str) -> dict[str, Level]:
     return dict.fromkeys(items, Level.VERIFIED)
 
 
+def reported(*items: str) -> dict[str, Level]:
+    return dict.fromkeys(items, Level.REPORTED)
+
+
 def documented(*items: str) -> dict[str, Level]:
     return dict.fromkeys(items, Level.DOCUMENTED)
+
+
+def experimental(*items: str) -> dict[str, Level]:
+    return dict.fromkeys(items, Level.EXPERIMENTAL)
 
 
 # eq=False: compared and hashed by identity, as the mappings it holds can't be hashed.
 @dataclass(frozen=True, slots=True, eq=False)
 class AdapterScope:
-    """The entity domains, capabilities and fields an adapter is known to work with, each at its Level, plus its
-    settings. An item nobody has tested, and that is not Documented, is left out of scope and refused, not gated at
-    runtime.
+    """The entity domains, capabilities and fields an adapter is built for, each at its Level, plus its settings.
+
+    An Experimental item is gated at runtime: the dispatcher refuses a call that touches one unless the Experimental
+    features option is on. An item that is not built, or built but not unit-tested, is left out of scope and refused.
+    `experimental=True` is the adapter-level flag: it keeps a behavior change to proven code out of a stable release.
     """
 
     experimental: bool = False
     domains: Mapping[str, Level] = field(default_factory=lambda: verified("light"))
     duration: DurationLimits | None = None
-    # Always Verified: a field changes the call, so it is never Documented.
+    # Never Documented: a field changes the call, so no sibling's proof covers it.
     fields: Mapping[str, Level] = field(default_factory=dict)
     # Fields the integration can never send; dropped before the scope check, as a field the light lacks is.
     drops: frozenset[str] = frozenset()
@@ -64,16 +79,17 @@ class AdapterScope:
     notes: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
-        if any(level is not Level.VERIFIED for level in self.fields.values()):
+        if Level.DOCUMENTED in self.fields.values():
             raise ValueError("fields are never Documented: a field changes the call")
         # Read-only copies: adapters share mappings such as Shelly's CAPABILITIES, and a frozen scope stays frozen.
         for name in ("domains", "fields", "capabilities"):
             if (items := getattr(self, name)) is not None:
                 object.__setattr__(self, name, MappingProxyType(dict(items)))
 
-    def level(self, domain: str, capability: str | None = None) -> Level:
-        """The weakest level among the in-scope items a call to this domain and capability touches."""
-        levels = [self.domains[domain]]
+    def level(self, domain: str, capability: str | None = None, fields: Collection[str] = ()) -> Level:
+        """The weakest level among the in-scope items a call touches: its domain, its capability (when the scope
+        lists capabilities) and the fields it carries. Each must be in scope, as supports() has checked."""
+        levels = [self.domains[domain], *(self.fields[name] for name in fields)]
         if capability is not None and self.capabilities is not None:
             levels.append(self.capabilities[capability])
         return min(levels)
