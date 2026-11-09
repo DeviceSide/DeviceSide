@@ -12,7 +12,15 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
 from custom_components.deviceside.core.models import EntityResult, Status, TimedRequest
-from custom_components.deviceside.core.scope import AdapterScope, experimental, verified
+from custom_components.deviceside.core.runtime import get_runtime
+from custom_components.deviceside.core.scope import (
+    AdapterScope,
+    Support,
+    documented,
+    experimental,
+    reported,
+    verified,
+)
 
 from ..conftest import allow_experimental, call, refusal
 from ..fakes.fake_integration import LIMITS, FakeSetAttributes, FakeTurnOnFor
@@ -565,3 +573,47 @@ NO_FEATURES = {"supported_features": 0}
 
 def test_timed_request_is_what_adapters_see():
     assert TimedRequest(duration_s=1).fields_present() == frozenset()
+
+
+@pytest.mark.parametrize(
+    ("domains", "siblings", "support"),
+    [
+        (verified("light", "switch"), {}, Support.MAINTAINER),
+        (verified("light") | reported("switch"), {}, Support.COMMUNITY),
+        (verified("light") | documented("switch"), {"switch": "light"}, Support.MAINTAINER),
+        (reported("light") | documented("switch"), {"switch": "light"}, Support.COMMUNITY),
+        (verified("light") | experimental("switch"), {}, Support.EXPERIMENTAL),
+        (verified("light"), {}, None),  # switch out of scope: the call would be refused
+    ],
+)
+async def test_the_dispatcher_says_who_supports_an_action_on_an_entity(hass, fake, domains, siblings, support):
+    add_fake_entity(hass, fake, "switch.s")
+    scope = AdapterScope(domains=domains, siblings=siblings, duration=LIMITS)
+
+    with patch.object(FakeTurnOnFor, "scope", scope):
+        assert get_runtime(hass).dispatcher.support("turn_on_for", "switch.s") is support
+
+
+async def test_an_entity_nothing_serves_has_no_support_and_no_actions(hass, fake):
+    add_fake_entity(hass, fake, "light.a")
+    dispatcher = get_runtime(hass).dispatcher
+
+    assert dispatcher.support("turn_on_for", "light.missing") is None
+    assert dispatcher.actions_for("light.missing") == []
+    assert dispatcher.support("turn_off_for", "light.a") is None  # an action for switches only
+
+
+async def test_the_actions_for_an_entity_are_its_integrations_sorted(hass, fake):
+    add_fake_entity(hass, fake, "switch.s")
+
+    actions = get_runtime(hass).dispatcher.actions_for("switch.s")
+
+    assert actions == sorted(actions)
+    assert {"turn_on_for", "turn_off_for"} <= set(actions)
+
+
+async def test_an_action_whose_integration_has_no_adapter_for_the_entity_has_no_support(hass, fake):
+    add_fake_entity(hass, fake, "light.a")
+
+    # fake has no raise_brightness adapter: the action takes lights, the integration doesn't serve it.
+    assert get_runtime(hass).dispatcher.support("raise_brightness", "light.a") is None

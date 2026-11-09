@@ -55,7 +55,7 @@ def test_domains_show_at_any_level_and_group_follows_native_groups_or_expand_gro
     registry = FakeRegistry(expand={"zha"})
     zha = adapter("zha", "stop", domains=verified("light"))
     z2m = adapter("zigbee2mqtt", "stop", domains=verified("light"), native_groups=True)
-    matter = adapter("matter", "stop", domains=verified("switch") | documented("light"))
+    matter = adapter("matter", "stop", domains=verified("switch") | documented("light"), siblings={"light": "switch"})
     reported_light = adapter("matter", "stop", domains=reported("light"))
     assert gf.keys(zha, registry) == {"light", "group"}
     assert gf.keys(z2m, registry) == {"light", "group"}
@@ -189,3 +189,22 @@ def test_check_fails_on_a_stale_table_until_it_is_regenerated(tmp_path, capsys, 
 def test_the_checked_in_readme_matches_the_real_adapters():
     """The table is generated from the scopes: run the real check so local pytest catches a scope that drifts it."""
     assert gf.main(["--check"]) == 0
+
+
+def test_an_experimental_domain_shows_a_grey_icon_after_the_amber_ones(no_blockers):
+    adapters = every_row(domains=verified("light") | experimental("switch"))
+    cell = cells(gf.generate(FakeRegistry(*adapters)), "Get attributes")[2]
+    assert cell.index(LIGHT) < cell.index("/switch-grey.svg")
+    assert SWITCH not in cell and 'alt="switch: Experimental"' in cell
+
+
+def test_all_experimental_capabilities_show_grey(no_blockers):
+    adapters = every_row(capabilities=experimental("Light"))
+    cell = cells(gf.generate(FakeRegistry(*adapters)), "Get attributes")[2]
+    assert "/light-grey.svg" in cell and LIGHT not in cell
+
+
+def test_a_blocked_key_that_is_built_only_with_experimental_on_fails(monkeypatch):
+    monkeypatch.setattr(gf, "NO_PATH", {("Get attributes", "shelly"): ("switch",)})
+    with pytest.raises(SystemExit, match="is built, so not blocked"):
+        gf.generate(FakeRegistry(*every_row(domains=verified("light") | experimental("switch"))))

@@ -42,14 +42,17 @@ adapter passing its tests, no soak. An RC also needs a rig run since each releas
 - [x] **Experimental features option and Reported level** (#307): Experimental scope items ship in stable releases,
   refused until the option is on; Zigbee switches for `turn_on_for` and `get_attributes`, and Shelly Light, CCT, RGB
   and RGBW dimming, are Experimental.
+- [x] **Device compatibility cards** (#309): a generated card per integration in the README, from the records, scopes
+  and `docs/devices.yaml`, backed by `docs/device-compatibility.md`, which replaces `docs/compatibility.md` and
+  `docs/hardware-the-rig-lacks.md`.
 - [ ] **12** v0.1.0: no adapter left `experimental` (`scripts/check_release.py --release`). The release
   steps are in `CLAUDE.md` (Releasing).
 
 ## After v0.1.0
 
 - [ ] **Forum announcement**, once v0.1.0 ships: refresh the draft's testers-wanted list from
-  [the list](docs/hardware-the-rig-lacks.md) and check every link resolves (the issue forms,
-  `docs/compatibility.md`), then post it. After posting, point the "Getting involved" testers link at the heading's
+  [Help us test](docs/device-compatibility.md#help-us-test) and check every link resolves (the issue forms,
+  `docs/device-compatibility.md`), then post it. After posting, point the "Getting involved" testers link at the heading's
   anchor, which Discourse names after the post id.
 - [ ] **Forum thread links**: add the thread URL as the contact link in `.github/ISSUE_TEMPLATE/config.yml` and set
   `blank_issues_enabled: false` there, and link the thread from `CONTRIBUTING.md` and the README's Contributing

@@ -56,6 +56,13 @@
           "entity_id": "Light or switch"
         }
       },
+      "bug_action": {
+        "title": "Report a bug",
+        "description": "If the bug is in one of DeviceSide's actions on this device, choose it and DeviceSide will add who supports that action on it. Leave it empty otherwise.",
+        "data": {
+          "action": "Action"
+        }
+      },
       "bug_link": {
         "title": "Report a bug",
         "description": "[Click here]({url}) to open the draft bug report on GitHub."

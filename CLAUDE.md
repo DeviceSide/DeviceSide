@@ -5,6 +5,9 @@ in the PR that finishes them.
 
 When an action should raise, skip a target, or what its response holds: match core, per `docs/action-behavior.md`.
 
+A PR that teaches a device fact adds it to `docs/device-compatibility.md`, citing its source; an accepted device report
+goes into `docs/devices.yaml` (`scripts/gen_compat.py` regenerates the README cards from both).
+
 Scope comes from the design, the device's capabilities and the release flag below, never from the README: it records
 what ships, so its "not X" means not yet. Reword such a line to the real state, and update the README after the work lands.
 
@@ -21,8 +24,7 @@ not; CI checks it.
 **Experimental items, not the flag, carry new work** (PR #307). A new action, integration (including ports), domain,
 capability or field ships as `Level.EXPERIMENTAL` once built and unit-tested: in stable releases, refused at runtime
 until the user turns on the Experimental features option. The dispatcher is the only gate: adapters never read the
-option, and turning it on never changes how any other item behaves. A bug in an Experimental item is never
-`severity:high`.
+option, and turning it on never changes how any other item behaves.
 
 **Setting it:** for a behavior change to a Verified item that the rig can't exercise. Leave it off for refactors,
 performance work and fixes to adapters the rig can retest before the next RC. When unsure, ask.
@@ -43,17 +45,25 @@ bounds, timing) is proven once per firmware version, not per code change. Confir
 confirming the call.
 
 **Documented.** A scope item ships without a record, as `Level.DOCUMENTED`, when all of these hold: the adapter
-sends it the same call as a Verified item, differing only in addressing (component, endpoint, entity domain); the
-vendor or standard documents that call identically for both, and no known class of devices departs from it; a
-failure shows as `rejected` or `sent`, never a wrong device state, nor `confirmed` unless what it confirms is the
+sends it the same call as a Verified or Reported item, differing only in addressing (component, endpoint, entity
+domain); the vendor or standard documents that call identically for both, and no known class of devices departs from
+it; a failure shows as `rejected` or `sent`, never a wrong device state, nor `confirmed` unless what it confirms is the
 stored setting the call wrote, read back; and unit tests pin the payload.
 Fields are never Documented: a field changes the call. A change to a Documented item's call alone makes it
-Experimental until a record. A record promotes the item to Verified. Anything else untested is Experimental, or out of
-scope and refused, never Documented on a sibling's proof.
+Experimental until a record of it; a change it shares with its sibling rides the sibling's new record or report. It
+falls with its Reported sibling (`AdapterScope.siblings` names the sibling and refuses one below Reported). A record
+promotes the item to Verified. Anything else untested is Experimental, or out of scope and refused, never Documented
+on a sibling's proof.
 
 **Reported.** A scope item ships as `Level.REPORTED` on an accepted working user report of the item's call, when unit
 tests pin the payload. It has no record, so no freshness check; a change to its call makes it Experimental until a
-new report or a record. Fields may be Reported. A record promotes it to Verified.
+new report or a record. A field may be Reported once a report can name one (`devices.yaml` reports name a domain or
+capability only; `gen_compat.py` refuses a Reported field until then). A record promotes it to Verified. A working
+report on a Documented item promotes it to Reported too, so it becomes community-supported.
+
+**Support follows the proof** (`AdapterScope.support`): Verified, and Documented on a Verified sibling, are
+maintainer-supported; Reported, and Documented on a Reported sibling, community-supported (bugs labelled `community`,
+PRs reviewed, not fixed by the maintainer); Experimental, unsupported.
 
 ## Releasing
 
@@ -86,7 +96,7 @@ there, cut the next RC from it, and merge the branch back into `main`.
 - `custom_components/deviceside/actions/`: one module per action
 - `custom_components/deviceside/integrations/<integration>/`: one adapter module per action
 - `tests/{core,actions,integrations,scripts}`: mirror the above
-- `scripts/`: household check, generated docs (compatibility page, README feature table), release checks
+- `scripts/`: household check, generated docs (device cards, device compatibility page, README feature table), release checks
   (coverage, the release flag, record freshness, tags, RC audits)
 - `docs/test-records/<integration>/`: test records, written by the rig. Design detail lives in `docs/design.md`.
 

@@ -129,7 +129,9 @@ async def test_component_fields_not_in_component_are_dropped(hass, setup_product
 
 async def test_capability_out_of_scope_is_refused(hass, setup_production, monkeypatch):
     monkeypatch.setattr(
-        ShellyTurnOnFor, "scope", dataclasses.replace(ShellyTurnOnFor.scope, capabilities=verified("Switch"))
+        ShellyTurnOnFor,
+        "scope",
+        dataclasses.replace(ShellyTurnOnFor.scope, capabilities=verified("Switch"), siblings={}),
     )
     entry, call_rpc = shelly_device(hass)
     add_shelly_entity(hass, entry, "light.dimmer", "light:0")

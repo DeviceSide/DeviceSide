@@ -70,6 +70,13 @@ body:
     attributes:
       label: Firmware version
   - type: input
+    id: experimental_features
+    attributes:
+      label: Was Experimental features on?
+      description: "on or off: DeviceSide's options, Configure > Settings. Filled in when you start from there."
+    validations:
+      required: true
+  - type: input
     id: ha_version
     attributes:
       label: Home Assistant version

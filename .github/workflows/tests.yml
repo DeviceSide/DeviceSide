@@ -33,9 +33,9 @@ jobs:
           else
             files=$(git diff --name-only --no-renames "$BASE...$HEAD")
             echo "$files"
-            # Records and the compatibility page are docs, but the page is generated from them: check it.
+            # Records, icons, devices.yaml, the device compatibility page and the README are docs, but generated or generated from: check them.
             if [ -n "$files" ] && grep -qvE '(\.md$|^docs/)' <<<"$files"; then code=true
-            elif grep -qE '^docs/(test-records/|compatibility\.md$)' <<<"$files"; then code=true
+            elif grep -qE '^(docs/(test-records/|icons/|device-compatibility\.md$|devices\.yaml$)|README\.md$)' <<<"$files"; then code=true
             else code=false; fi
           fi
           echo "code=$code" | tee -a "$GITHUB_OUTPUT"
@@ -66,7 +66,7 @@ jobs:
       - name: Check coverage
         run: .venv/bin/python scripts/check_release.py --coverage coverage.json
 
-      - name: Check the compatibility page is current
+      - name: Check the device cards and compatibility page are current
         run: .venv/bin/python scripts/gen_compat.py --check
 
       - name: Check the README feature table is current

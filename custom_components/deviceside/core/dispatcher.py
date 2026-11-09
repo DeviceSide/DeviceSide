@@ -17,7 +17,7 @@ from .models import FAILED, ActionKind, EntityResult, Request, Status, Target, T
 from .registry import AdapterRegistry
 from .resolver import resolve
 from .runtime import get_runtime
-from .scope import Level
+from .scope import Level, Support
 from ..const import ADAPTER_TIMEOUT_S, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -165,6 +165,33 @@ class Dispatcher:
         for adapter_results in await asyncio.gather(*(self._run_adapter(*run) for run in runs)):
             results.extend(adapter_results)
         return results
+
+    def actions_for(self, entity_id: str) -> list[str]:
+        """The actions with an adapter for the entity's integration and domain, sorted; none for one it can't serve."""
+        target = resolve(self.hass, self.registry, entity_id)
+        if isinstance(target, str):
+            return []
+        return [
+            key
+            for key, action in sorted(self.registry.actions.items())
+            if target.domain in action.domains and self.registry.adapter(key, target.integration) is not None
+        ]
+
+    def support(self, action_key: str, entity_id: str) -> Support | None:
+        """Who supports the action on the entity, weighed as run_adapters plans a call that carries no fields: the
+        same resolution, adapter and supports() checks, then the scope's support for the domain and capability it
+        reaches. The entity is taken as picked, not expanded to a group's members. None when the call would be refused
+        (out of scope). It weighs a call with no fields, so a field an action always carries (a fade's attribute) is
+        not counted."""
+        action = self.registry.actions[action_key]
+        target = resolve(self.hass, self.registry, entity_id)
+        if isinstance(target, str) or target.domain not in action.domains:
+            return None
+        if (adapter := self.registry.adapter(action_key, target.integration)) is None:
+            return None
+        if adapter.supports(self.hass, Request(), target):
+            return None
+        return adapter.scope.support(target.domain, adapter.capability(self.hass, target))
 
     def _experimental(self, adapter: Adapter, request: Request, target: Target) -> bool:
         """Whether the call touches an Experimental item: its domain, capability or a field it carries. The one place

@@ -21,12 +21,22 @@ body:
       description: As shown on the device page in Home Assistant.
     validations:
       required: true
+  - type: input
+    id: action
+    attributes:
+      label: DeviceSide action
+      description: e.g. turn_on_for, fade. Leave it empty for a bug that isn't in one action.
+  - type: input
+    id: support
+    attributes:
+      label: Support
+      description: "maintainer, community, experimental (opt-in) or not supported: who fixes a bug in this action on this device ([how support works](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#support)). Filled in when you start from DeviceSide's options, Configure > Report a bug."
   - type: checkboxes
     id: qualify
     attributes:
       label: Checklist
       options:
-        - label: I've checked that the feature and device are [listed as compatible](https://github.com/jasonmx/DeviceSide/blob/main/docs/compatibility.md), or I'm reporting a bug that's not device-specific.
+        - label: I've checked that the feature and device are [listed as compatible](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md), or I'm reporting a bug that's not device-specific.
           required: true
         - label: I have searched the [existing issues](https://github.com/jasonmx/DeviceSide/issues/) to see if an issue for this already exists.
           required: true
@@ -44,6 +54,13 @@ body:
     id: firmware
     attributes:
       label: Firmware version
+  - type: input
+    id: experimental_features
+    attributes:
+      label: Was Experimental features on?
+      description: "on or off: DeviceSide's options, Configure > Settings. Filled in when you start from there."
+    validations:
+      required: true
   - type: input
     id: ha_version
     attributes:

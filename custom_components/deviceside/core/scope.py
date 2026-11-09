@@ -1,6 +1,6 @@
 from collections.abc import Callable, Collection, Mapping
 from dataclasses import dataclass, field
-from enum import IntEnum
+from enum import IntEnum, StrEnum
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
@@ -26,12 +26,30 @@ class Level(IntEnum):
 
     # Built and unit-tested, with no proof on hardware: refused unless the Experimental features option is on.
     EXPERIMENTAL = 0
-    # Sends the same call as a Verified item, differing only in addressing, and documented identically for both.
+    # Sends the same call as a Verified or Reported item, differing only in addressing, documented identically for both.
     DOCUMENTED = 10
     # An accepted user report says it works; unit tests pin the call.
     REPORTED = 20
     # A passing test record covers it.
     VERIFIED = 30
+
+
+class Support(StrEnum):
+    """Who fixes a bug in a call, by the proof behind it: the maintainer's rig, a user's report, or none yet."""
+
+    # Verified, or Documented on a Verified sibling.
+    MAINTAINER = "maintainer"
+    # Reported, or Documented on a Reported sibling: bugs are accepted, fixes come from the community.
+    COMMUNITY = "community"
+    # Unproven on hardware, opt-in: unsupported.
+    EXPERIMENTAL = "experimental (opt-in)"
+
+    @classmethod
+    def of(cls, level: Level) -> Support:
+        """The support a proof gives; a Documented item has none of its own, so it takes its sibling's."""
+        return {Level.VERIFIED: cls.MAINTAINER, Level.REPORTED: cls.COMMUNITY, Level.EXPERIMENTAL: cls.EXPERIMENTAL}[
+            level
+        ]
 
 
 def verified(*items: str) -> dict[str, Level]:
@@ -71,6 +89,9 @@ class AdapterScope:
     # A record proves only the capability the call reaches, so a sibling's untested one is out of scope unless
     # Documented.
     capabilities: Mapping[str, Level] | None = None
+    # Each Documented domain or capability → the Verified or Reported item in the same mapping whose call it rides.
+    # Required: a Documented item stands only while its sibling does, so a sibling falling below Reported fails here.
+    siblings: Mapping[str, str] = field(default_factory=dict)
     confirmable: bool = False
     # DeviceSide options that change what the adapter does; tested on hardware with each on and off.
     options: frozenset[str] = frozenset()
@@ -81,8 +102,9 @@ class AdapterScope:
     def __post_init__(self) -> None:
         if Level.DOCUMENTED in self.fields.values():
             raise ValueError("fields are never Documented: a field changes the call")
+        self._check_siblings()
         # Read-only copies: adapters share mappings such as Shelly's CAPABILITIES, and a frozen scope stays frozen.
-        for name in ("domains", "fields", "capabilities"):
+        for name in ("domains", "fields", "capabilities", "siblings"):
             if (items := getattr(self, name)) is not None:
                 object.__setattr__(self, name, MappingProxyType(dict(items)))
 
@@ -95,6 +117,43 @@ class AdapterScope:
         if capability is not None and self.capabilities is not None:
             levels.append(self.capabilities.get(capability, Level.EXPERIMENTAL))
         return min(levels)
+
+    def support(self, domain: str, capability: str | None = None, fields: Collection[str] = ()) -> Support:
+        """Who supports a call, as level() weighs it but with each Documented item counted at its sibling's level.
+        It leaves out the adapter-level flag, which no runtime path reads (scripts/check_release.py, records check):
+        a flagged adapter ships in RCs only, and the docs that show it weigh the flag themselves."""
+        levels = [self.proof(domain), *(self.fields[name] for name in fields)]
+        if capability is not None and self.capabilities is not None:
+            levels.append(self.proof(capability))
+        return Support.of(min(levels))
+
+    def proof(self, item: str) -> Level:
+        """The level of the proof behind a domain or capability: its own, or its sibling's when Documented. One outside
+        the scope counts as Experimental, as in level()."""
+        items = self.domains if item in self.domains else self.capabilities or {}
+        level = items.get(item, Level.EXPERIMENTAL)
+        return items[self.siblings[item]] if level is Level.DOCUMENTED else level
+
+    def _check_siblings(self) -> None:
+        if shared := set(self.domains) & set(self.capabilities or {}):
+            raise ValueError(f"{sorted(shared)} are both a domain and a capability; siblings can't tell them apart")
+        for name in ("domains", "capabilities"):
+            items = getattr(self, name) or {}
+            for item, level in items.items():
+                if level is not Level.DOCUMENTED:
+                    continue
+                if (sibling := self.siblings.get(item)) is None:
+                    raise ValueError(f"Documented {item} names no sibling whose call it rides")
+                if items.get(sibling, Level.EXPERIMENTAL) < Level.REPORTED:
+                    raise ValueError(f"Documented {item} rides {sibling}, which is neither Verified nor Reported")
+        documented = {
+            item
+            for items in (self.domains, self.capabilities or {})
+            for item, lv in items.items()
+            if lv is Level.DOCUMENTED
+        }
+        if stray := set(self.siblings) - documented:
+            raise ValueError(f"siblings names items that are not Documented: {sorted(stray)}")
 
 
 @dataclass(slots=True)

@@ -9,10 +9,12 @@ help is evidence from devices the maintainer doesn't own: what works, what doesn
   there, or an accepted user report says it works.
 - **Requests bring proof.** A device request comes with a YAML call that already works on the device, its model and
   firmware, and a promise to test the release candidate.
-- **A bug means a claim is broken.** A bug report is for a device and feature the [compatibility page](docs/compatibility.md)
-  list. Anything else is a device report or a request.
-- **Adapters have an owner who answers.** Each adapter has a maintainer who fixes it and reruns its tests. The
-  maintainer of DeviceSide may drop an adapter that nobody maintains, or that keeps breaking.
+- **A bug means a claim is broken.** A bug report is for a device and feature the [device compatibility page](docs/device-compatibility.md)
+  lists. Anything else is a device report or a request.
+- **Whoever can test it fixes it.** The maintainer fixes what the rig proves. A feature proven by a user's report is
+  community-supported: its bugs are accepted, labelled `community`, and fixed by pull requests from users with the
+  device, which the maintainer reviews. The maintainer may drop a feature that nobody maintains, or that keeps
+  breaking.
 
 ## Support levels
 
@@ -23,12 +25,16 @@ and fields it takes:
 - **Reported:** no record, but a user reported it working, and unit tests pin the call DeviceSide sends. It ships in
   stable releases.
 - **Documented:** no record yet for one domain or capability of an otherwise tested adapter (a Shelly RGBW strip, a
-  Matter light), but DeviceSide sends it the same call as a Verified one, differing only in what it addresses, and
-  the vendor or standard documents that call identically for both. It ships in stable releases. A bug on it is a
-  real bug, so please report it; a passing record makes it Verified.
+  Matter light), but DeviceSide sends it the same call as a Verified or Reported one, differing only in what it
+  addresses, and the vendor or standard documents that call identically for both. It ships in stable releases, and
+  takes its support from the one it rides; a passing record makes it Verified.
 - **Experimental:** built and unit-tested, but not yet proven on a device. It ships in stable releases switched off:
   DeviceSide refuses it until you turn on **Experimental features** in its options. Please report how it went, either
   way: a working report makes it Reported.
+
+Verified features, and Documented ones riding them, are supported by the maintainer. Reported features, and
+Documented ones riding them, are supported by the community; the [device compatibility page](docs/device-compatibility.md#support)
+says what that means for a bug.
 
 Some changes to proven code keep the whole adapter in release candidates only, by the rules in
 [CLAUDE.md](CLAUDE.md#release-flag). A record older than its adapter's code blocks the next release until the test is
@@ -48,8 +54,8 @@ rerun.
 3. **Contribute an adapter.** Code with unit tests, plus your agreement to maintain the adapter. It ships as
    Experimental until a test record or a working report proves it. Contact the maintainer before you start. Read
    [What gets built](#what-gets-built) and [Developing](#developing) first. The
-   [hardware the rig lacks](docs/hardware-the-rig-lacks.md) lists built features waiting for a tester.
-4. **Report a bug.** Only for a device and feature the [compatibility page](docs/compatibility.md) lists: open a
+   [Help us test](docs/device-compatibility.md#help-us-test) section lists built features waiting for a tester.
+4. **Report a bug.** Only for a device and feature the [device compatibility page](docs/device-compatibility.md) lists: open a
    [bug report](https://github.com/jasonmx/DeviceSide/issues/new?template=report_bug.yml). A failure on any other device
    is a device report. **Configure > Report a bug** fills in the versions, and the device's details if you pick one.
 
