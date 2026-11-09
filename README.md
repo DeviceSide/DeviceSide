@@ -387,7 +387,7 @@ A record holds the keys the device reports: `brightness` (%), `color_temp_kelvin
 
   * Home Assistant shows the wrong color for full-color bulbs in hue-saturation (HS) mode. DeviceSide fixes this by [announcing both XY and HS color modes](docs/integrations.md#what-deviceside-changes-in-zigbee2mqtt).
 
-  * Hue bulbs: before a `turn_on_for` with a color, DeviceSide enables Z2M's Hue native control for that bulb, so it turns on without flashing its old color.
+  * Hue bulbs: DeviceSide sets Z2M's Hue native control the way each command needs it, then puts your setting back. A `turn_on_for` with a color turns on without flashing the old color, and brightness moves keep their pace.
 
 * **Hue Bridge:** When a brightness move starts, the bridge reports its target brightness (e.g. 0% or 100%) to Home Assistant, which is jarring for moves that you plan to stop. DeviceSide suppresses the bridge's report as a transition starts, and reports the new brightness once the transition stops.
 

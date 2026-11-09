@@ -85,10 +85,16 @@ Only devices Z2M registered through MQTT discovery are found: the device carries
   writes back the modes Z2M announces by itself, wherever the value is still DeviceSide's. Z2M declined to
   announce both by default, as some lights handle mixed modes badly
   ([#33025](https://github.com/Koenkk/zigbee2mqtt/issues/33025)).
-- **`hue_native_control`** makes Z2M send on, brightness, color and color temperature as one Philips command, so a
-  Hue bulb (manufacturer `Philips`) lights in the new color and keeps the timer. Set before a timer carrying a
-  color or color temperature, checked on each such call (a fraction of a second), waiting up to 5 s for Z2M. A
-  group uses its own options, not its members', so it's set on the group when any member is a Hue bulb.
+- **`hue_native_control`** makes Z2M send on, brightness, color and color temperature as one Philips command
+  rather than ZCL ones. Each action that needs it one way declares it (`NEED` in `native_control.py`): on for a
+  `turn_on_for` with a color or color temperature (a Hue bulb, manufacturer `Philips`, lights in the new color and
+  keeps the timer) and for a saturation fade (it fades in xy and holds its hue); off for a brightness fade (native,
+  a long raise runs about 2.3x faster than its transition, and a soft off reports `onOff: 0` at once). Where the
+  setting differs, it's set (Z2M's settings read on each call, up to 5 s for Z2M), the command published, and the
+  user's value written back after Z2M's next state publish for the target (1 s cap). Z2M reads a command's options
+  as it takes it (`lib/extension/publish.ts`), so a fade already sent runs on unchanged. One lock per device or
+  group holds from the set to the restore. A group uses its own options, not its members', so it's set on the
+  group when any member is a Hue bulb. A failed set or restore logs a warning, and the command goes out anyway.
 - **`filtered_cache`** gets `deviceside_read` appended. Z2M deep-merges a read's answer into the cached state that
   every later message carries, so an unfiltered answer would look fresh forever. If it can't be set, the read
   raises.
