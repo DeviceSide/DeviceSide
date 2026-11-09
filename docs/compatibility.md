@@ -40,23 +40,23 @@ A group is a native group of the integration (a Hue zone, a ZHA or Zigbee2MQTT g
 
 | Action | Level | Tested models | Records | Reported working |
 |---|---|---|---|---|
-| `clear_auto_off` | Experimental | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/clear_auto_off.md) | |
+| `clear_auto_off` | Experimental | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](test-records/shelly/clear_auto_off.md) | |
 | `clear_auto_off` | Experimental | none (untested: Light, CCT, RGB, RGBW, RGBCCT components) | | |
-| `clear_auto_on` | Experimental | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/clear_auto_on.md) | |
+| `clear_auto_on` | Experimental | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](test-records/shelly/clear_auto_on.md) | |
 | `clear_auto_on` | Experimental | none (untested: Light, CCT, RGB, RGBW, RGBCCT components) | | |
-| `get_attributes` | Experimental | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943`<br>`S4SW-001X8EU`, firmware `20261026-122156/2.0.3-g4601943`<br>`S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](test-records/shelly/get_attributes.md) | |
+| `get_attributes` | Experimental | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943`<br>`S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](test-records/shelly/get_attributes.md) | |
 | `get_attributes` | Experimental | none (untested: Light, CCT, RGB, RGBW components) | | |
 | `lower_brightness` | Verified | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/lower_brightness.md) | |
 | `raise_brightness` | Verified | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/raise_brightness.md) | |
 | `set_attributes` | Verified | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/set_attributes.md) | |
-| `set_auto_off` | Experimental | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/set_auto_off.md) | |
+| `set_auto_off` | Experimental | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](test-records/shelly/set_auto_off.md) | |
 | `set_auto_off` | Experimental | none (untested: Light, CCT, RGB, RGBW, RGBCCT components) | | |
-| `set_auto_on` | Experimental | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/set_auto_on.md) | |
+| `set_auto_on` | Experimental | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](test-records/shelly/set_auto_on.md) | |
 | `set_auto_on` | Experimental | none (untested: Light, CCT, RGB, RGBW, RGBCCT components) | | |
 | `stop` | Verified | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/stop.md) | |
-| `turn_off_for` | Verified | `S4SW-001X8EU`, firmware `20261026-122156/2.0.3-g4601943`<br>`S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943`<br>`S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/turn_off_for.md) | |
+| `turn_off_for` | Verified | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943`<br>`S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/turn_off_for.md) | |
 | `turn_off_for` | Documented | none (untested: Light, CCT, RGB, RGBW components) | | |
-| `turn_on_for` | Verified | `S4SW-001X8EU`, firmware `20261026-122156/2.0.3-g4601943`<br>`S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943`<br>`S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/turn_on_for.md) | |
+| `turn_on_for` | Verified | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943`<br>`S4SW-001X8EU`, firmware `20261026-122156/2.0.3-g4601943`<br>`S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/turn_on_for.md) | |
 | `turn_on_for` | Documented | none (untested: Light, CCT, RGB, RGBW components) | | |
 
 ## ZHA
