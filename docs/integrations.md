@@ -73,7 +73,8 @@ Lights that Zigbee2MQTT announced to Home Assistant through MQTT discovery.
 
 ### What DeviceSide changes in Zigbee2MQTT
 
-DeviceSide sets three Zigbee2MQTT options, and logs each change at info level:
+DeviceSide sets three Zigbee2MQTT options. It logs each change at info level, except `hue_native_control`'s, which
+come with single commands and log at debug:
 
 - **Home Assistant color modes**, on every full-color light and group. Zigbee2MQTT announces only one of a
   full-color light's two color modes, usually xy, so Home Assistant keeps showing the old color whenever the bulb
@@ -83,10 +84,13 @@ DeviceSide sets three Zigbee2MQTT options, and logs each change at info level:
   untouched. Lights with one color model, lights on an endpoint (`light_l1`), and lights with an override of your
   own are left alone. Turning **Fix colors of full-color Zigbee2MQTT lights** off in DeviceSide's options puts
   back the modes Zigbee2MQTT announced itself.
-- **`hue_native_control`**, on a Hue bulb, or a group with one, the first time it gets a `turn_on_for` with a color.
-  Without it, a Hue bulb that is off drops the color and lights at its last one first. The option applies to every
-  command Zigbee2MQTT sends that bulb, not just DeviceSide's, and Zigbee2MQTT stops simulating on/off transitions
-  for it. If you turn it off in Zigbee2MQTT, the next `turn_on_for` with a color turns it on again.
+- **`hue_native_control`**, on a Hue bulb, or a group with one, for one command at a time, then put back as you had
+  it. A `turn_on_for` with a color goes out with it on: without it, a Hue bulb that is off drops
+  the color and lights at its last one first. A brightness move goes out with it off: with it, a Hue bulb runs a
+  long fade faster than asked, and reports off at once during a fade to off. DeviceSide sets the option, sends the
+  command, and puts your setting back once Zigbee2MQTT answers, within a second. Every other command, DeviceSide's
+  or not, goes out as you set it. With the option on, a plain `light.turn_on` is the bulb's own short fade (about
+  0.4 s), and a `stop` sent during it halts it there, as it halts any fade the bulb runs.
 - **`filtered_cache`**, before the first read of a device, so a read's answer isn't resent in every later state
   message. Your own entries are kept. Removing DeviceSide's is harmless: it comes back at the next read.
 
