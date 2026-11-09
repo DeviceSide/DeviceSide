@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Check the adapters against the release gates: the coverage bar, no experimental adapter in a release, and test
-records as new as the code they prove.
+records that pass and are as new as the code they prove.
 
 `experimental=True` on an adapter's scope means it is not in a stable release yet. It is cleared by a PR citing a
 passing test record that covers the scope. An Experimental scope item (`Level.EXPERIMENTAL`) is not the flag: it ships
@@ -9,9 +9,9 @@ Reported and Experimental items have no record to age, so --records weighs only 
 records.
 
 Exits 1 on any adapter module under 95% line coverage (with --coverage), any experimental adapter (with --release),
-or any released adapter whose code changed after the commit one of its test records cites, or that has a Verified call
-and no record (with --records). Setting or clearing `experimental` is not a change to the code: nothing reads it at
-runtime.
+or any released adapter with a Verified call that has no record, a record whose Result is not `pass`, or code changed
+after the commit one of its records cites (with --records). Each record holds the latest run of its call or option.
+Setting or clearing `experimental` is not a change to the code: nothing reads it at runtime.
 
 Usage: scripts/check_release.py [--coverage coverage.json] [--release] [--records]
 """
@@ -37,6 +37,7 @@ from custom_components.deviceside.core.scope import Level  # noqa: E402
 COVERAGE_BAR = 95.0
 RECORDS = REPO / "docs" / "test-records"
 CITED_COMMIT = re.compile(r"^\| Source \|.*\bcommit `([0-9a-f]{7,40})`", re.MULTILINE)
+RESULT = re.compile(r"^\| Result \| (\S+) \|", re.MULTILINE)
 
 
 def adapters(registry: AdapterRegistry) -> list[tuple[str, object]]:
@@ -137,11 +138,14 @@ def proven(scope) -> bool:
     return scope.capabilities is None or Level.VERIFIED in scope.capabilities.values()
 
 
+def result(record: Path) -> str | None:
+    """The record's Result row (`pass`, `fail`, ...), or None if it has none."""
+    return m[1] if (m := RESULT.search(record.read_text())) else None
+
+
 def record_errors(registry: AdapterRegistry) -> list[str]:
-    """A released adapter with no record, a record citing no commit or one git can't find, or code that differs
-    between the cited commit and HEAD by more than its `experimental` flag, is an error. Trees are compared, not
-    history, so a record citing a squash-merged branch counts. Experimental adapters are exempt, as no release has
-    them, and so are adapters with no Verified call, as no record proves them."""
+    """A released adapter with no record, or a record that did not pass or is stale, is an error. Experimental adapters
+    are exempt, as no release has them, and so are adapters with no Verified call, as no record proves them."""
     errors = []
     for name, adapter in adapters(registry):
         if adapter.scope.experimental or not proven(adapter.scope):
@@ -152,15 +156,28 @@ def record_errors(registry: AdapterRegistry) -> list[str]:
         code = [str(path.relative_to(REPO)) for path in adapter_code(Path(inspect.getsourcefile(type(adapter))))]
         for record in found:
             label = record.relative_to(REPO)
-            if not (cited := CITED_COMMIT.search(record.read_text())):
-                errors.append(f"{name}: {label} cites no commit")
-            elif git("rev-parse", "--verify", "--quiet", f"{cited[1]}^{{commit}}").returncode:
-                errors.append(f"{name}: {label} cites commit {cited[1]}, which git can't find")
-            elif (diff := git("diff", "--name-only", cited[1], "HEAD", "--", *code)).returncode:
-                raise SystemExit(f"git diff {cited[1]} HEAD failed: {diff.stderr.strip()}")
-            elif changed := changed_code(cited[1], diff.stdout.split()):
-                errors.append(f"{name}: {label} cites {cited[1]}; changed since: {', '.join(changed)}")
+            if (outcome := result(record)) is None:
+                errors.append(f"{name}: {label} has no Result row")
+            elif outcome != "pass":
+                errors.append(f"{name}: {label} did not pass (result: {outcome})")
+            if problem := staleness(record, code):
+                errors.append(f"{name}: {label} {problem}")
     return errors
+
+
+def staleness(record: Path, code: list[str]) -> str | None:
+    """Why the record is stale: it cites no commit or one git can't find, or the code differs between the cited commit
+    and HEAD by more than its `experimental` flag. Trees are compared, not history, so a record citing a squash-merged
+    branch counts. None if it is fresh."""
+    if not (cited := CITED_COMMIT.search(record.read_text())):
+        return "cites no commit"
+    if git("rev-parse", "--verify", "--quiet", f"{cited[1]}^{{commit}}").returncode:
+        return f"cites commit {cited[1]}, which git can't find"
+    if (diff := git("diff", "--name-only", cited[1], "HEAD", "--", *code)).returncode:
+        raise SystemExit(f"git diff {cited[1]} HEAD failed: {diff.stderr.strip()}")
+    if changed := changed_code(cited[1], diff.stdout.split()):
+        return f"cites {cited[1]}; changed since: {', '.join(changed)}"
+    return None
 
 
 def main(argv: list[str] | None = None, registry: AdapterRegistry | None = None) -> int:
@@ -168,7 +185,9 @@ def main(argv: list[str] | None = None, registry: AdapterRegistry | None = None)
     parser.add_argument("--coverage", type=Path, help="coverage.json from pytest --cov-report=json")
     parser.add_argument("--release", action="store_true", help="fail on any experimental adapter")
     parser.add_argument(
-        "--records", action="store_true", help="fail on any released adapter whose code changed since its test records"
+        "--records",
+        action="store_true",
+        help="fail on any released adapter whose test records did not pass or predate its code",
     )
     args = parser.parse_args(argv)
 

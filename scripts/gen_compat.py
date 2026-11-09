@@ -23,10 +23,9 @@ sys.path.insert(0, str(REPO))
 
 from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
 from custom_components.deviceside.core.scope import Level  # noqa: E402
-from scripts.check_release import adapters, proven, records  # noqa: E402
+from scripts.check_release import adapters, proven, records, result  # noqa: E402
 
 PAGE = REPO / "docs" / "compatibility.md"
-RESULT = re.compile(r"^\| Result \| (\S+) \|", re.MULTILINE)
 DEVICE = re.compile(r"^\| Device \| (.*) \|$", re.MULTILINE)
 ENTRY = re.compile(r"^(?P<name>.*?)(?: \(`(?P<model>[^`]+)`\))?, firmware `(?P<firmware>[^`]+)`$")
 GROUP_NAMES = {"group", "zone"}
@@ -83,7 +82,7 @@ def models(record: Path) -> list[str]:
 
 
 def passing(integration: str, action: str) -> list[Path]:
-    return [path for path in records(integration, action) if (m := RESULT.search(path.read_text())) and m[1] == "pass"]
+    return [path for path in records(integration, action) if result(path) == "pass"]
 
 
 def link(record: Path, action: str) -> str:
