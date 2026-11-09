@@ -3,21 +3,19 @@
 | | |
 |---|---|
 | Result | pass |
-| Date | 2026-11-08 |
-| Source | rig run (`scripts/rig.py`), commit `e0b8ea9` |
-| Profile | shelly_bulb |
+| Date | 2026-11-09 |
+| Source | rig run (`scripts/rig.py`), commit `63b2d95` |
+| Profile | shelly |
 | Home Assistant | 2026.10.4 |
-| Device | Shelly Multicolor Bulb Gen3 (`S3BL-C010007AEU`), firmware `20261026-122229/2.0.3-g4601943` |
+| Device | Shelly 1 Mini Gen3 (`S3SW-001X8EU`), firmware `20261026-122213/2.0.3-g4601943` |
 
 ## Tests
 
 | Test | Target | Result |
 |---|---|---|
-| `applies_to_any_turn_on[switch_plug]` | switch_plug: none in the profile | skipped |
-| `applies_to_any_turn_on[light_color]` | `light` (light_color) | pass |
-| `takes_the_bounds[switch_plug]` | switch_plug: none in the profile | skipped |
-| `takes_the_bounds[light_color]` | `light` (light_color) | pass |
-| `turn_on_for_shorter_wins_per_call[switch_plug]` | switch_plug: none in the profile | skipped |
-| `turn_on_for_shorter_wins_per_call[light_color]` | `light` (light_color) | pass |
-| `turn_on_for_longer_wins_per_call[switch_plug]` | switch_plug: none in the profile | skipped |
-| `turn_on_for_longer_wins_per_call[light_color]` | `light` (light_color) | pass |
+| `applies_to_any_turn_on[switch_plug]` | `switch` (switch_plug) | pass |
+| `takes_the_bounds[switch_plug]` | `switch` (switch_plug) | pass (firmware fact) |
+| `turn_on_for_shorter_wins_per_call[switch_plug]` | `switch` (switch_plug) | pass (firmware fact) |
+| `turn_on_for_longer_wins_per_call[switch_plug]` | `switch` (switch_plug) | pass (firmware fact) |
+
+A firmware fact proves the device's behavior, not the adapter's code: its pass stands at the firmware listed under Device, and may come from an earlier commit at that firmware.
