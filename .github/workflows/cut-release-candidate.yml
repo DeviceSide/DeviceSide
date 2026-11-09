@@ -3,8 +3,8 @@ name: Cut release candidate
 # The only way a vX.Y.ZrcN tag is made (a tag ruleset refuses any other): from main, or from release/vX.Y.Z when a
 # soaking RC or a release needs a fix without what main has gained since (cut that branch from its tag). Requires a
 # version above the latest release, manifest.json at X.Y.Z, green CI on the head, docs/audits/<rc>.md covering every
-# commit since the previous RC, and every released adapter's test records citing a commit with the head's adapter
-# code (check_release --records).
+# commit since the previous RC, and every released adapter's test records passing and citing a commit with the head's
+# adapter code (check_release --records).
 # Tags pushed with GITHUB_TOKEN start no other workflow, so anything an RC needs runs here.
 
 on:

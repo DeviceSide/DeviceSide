@@ -106,10 +106,12 @@ class FakeRecordsRegistry:
         yield "turn_on_for", "fake", self.adapter
 
 
-def write_record(repo, name: str, commit: str | None) -> str:
-    """Commit docs/test-records/fake/<name> citing the commit (or no commit) and return the new head."""
+def write_record(repo, name: str, commit: str | None, result: str | None = "pass") -> str:
+    """Commit docs/test-records/fake/<name> citing the commit (or no commit), with the result (or no Result row), and
+    return the new head."""
     source = f"rig run (`scripts/rig.py`), commit `{commit[:7]}`" if commit else "probe script"
-    text = f"# Fake · turn_on_for\n\n| | |\n|---|---|\n| Result | pass |\n| Source | {source} |\n"
+    row = f"| Result | {result} |\n" if result else ""
+    text = f"# Fake · turn_on_for\n\n| | |\n|---|---|\n{row}| Source | {source} |\n"
     return repo.commit(f"docs/test-records/fake/{name}", text)
 
 
@@ -356,6 +358,38 @@ def test_a_missing_unciting_or_unknown_record_is_an_error(tested, monkeypatch):
     assert cr.record_errors(registry) == ["fake / turn_on_for: no test record in docs/test-records/fake/"]
 
 
+def test_a_fresh_record_that_did_not_pass_is_an_error(tested, monkeypatch):
+    repo, tested_at = tested
+    registry = FakeRecordsRegistry(repo, monkeypatch)
+    write_record(repo, "turn_on_for.md", tested_at, result="fail")
+    assert cr.record_errors(registry) == [
+        "fake / turn_on_for: docs/test-records/fake/turn_on_for.md did not pass (result: fail)"
+    ]
+    write_record(repo, "turn_on_for.md", tested_at, result=None)
+    assert cr.record_errors(registry) == [
+        "fake / turn_on_for: docs/test-records/fake/turn_on_for.md has no readable Result row"
+    ]
+    write_record(repo, "turn_on_for.md", tested_at)
+    assert cr.record_errors(registry) == []
+
+
+def test_every_record_of_the_adapter_must_pass(tested, monkeypatch):
+    repo, tested_at = tested
+    write_record(repo, "turn_on_for-predicted_state.md", tested_at, result="fail")
+    assert cr.record_errors(FakeRecordsRegistry(repo, monkeypatch)) == [
+        "fake / turn_on_for: docs/test-records/fake/turn_on_for-predicted_state.md did not pass (result: fail)"
+    ]
+
+
+def test_a_failing_record_of_an_experimental_or_unproven_adapter_is_exempt(tested, monkeypatch):
+    repo, tested_at = tested
+    write_record(repo, "turn_on_for.md", tested_at, result="fail")
+    assert cr.record_errors(FakeRecordsRegistry(repo, monkeypatch, experimental=True)) == []
+    registry = FakeRecordsRegistry(repo, monkeypatch)
+    registry.adapter.scope = AdapterScope(domains=reported("light"))
+    assert cr.record_errors(registry) == []
+
+
 def test_an_experimental_adapter_is_exempt(tested, monkeypatch):
     repo, _ = tested
     repo.commit(ADAPTER)
@@ -395,3 +429,4 @@ def test_every_rig_record_in_the_repo_cites_a_commit_the_check_can_read():
     found = [path for path in cr.RECORDS.glob("*/*.md") if path.read_text().count("rig run (`scripts/rig.py")]
     assert found
     assert [path.name for path in found if not cr.CITED_COMMIT.search(path.read_text())] == []
+    assert [path.name for path in found if cr.result(path) is None] == []
