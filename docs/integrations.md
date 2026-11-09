@@ -88,7 +88,8 @@ come with single commands and log at debug:
   the color and lights at its last one first. A brightness move goes out with it off: with it, a Hue bulb runs a
   long fade faster than asked, and reports off at once during a fade to off. DeviceSide sets the option, sends the
   command, and puts your setting back once Zigbee2MQTT answers, within a second. Every other command, DeviceSide's
-  or not, goes out as you set it.
+  or not, goes out as you set it. With the option on, a plain `light.turn_on` is the bulb's own short fade (about
+  0.4 s), and a `stop` sent during it halts it there, as it halts any fade the bulb runs.
 - **`filtered_cache`**, before the first read of a device, so a read's answer isn't resent in every later state
   message. Your own entries are kept. Removing DeviceSide's is harmless: it comes back at the next read.
 
