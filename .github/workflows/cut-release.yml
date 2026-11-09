@@ -3,7 +3,7 @@ name: Cut release
 # The only way a vX.Y.Z tag is made (a tag ruleset refuses any other). Dispatched from main, it tags the commit of
 # vX.Y.Z's latest RC, not main's head: what ships is what soaked, while main moves on. Requires a version above the
 # latest release and, at the RC's commit, manifest.json at that version, green CI, no experimental adapter, and every
-# adapter's test records citing a commit with its adapter code (check_release --release --records). Soak is the repo
+# adapter's test records passing and citing a commit with its adapter code (check_release --release --records). Soak is the repo
 # owner's call.
 
 on:

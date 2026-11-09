@@ -37,7 +37,7 @@ sys.path.insert(0, str(REPO))
 
 from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
 from custom_components.deviceside.core.scope import Level  # noqa: E402
-from scripts.check_release import adapters, proven, records  # noqa: E402
+from scripts.check_release import adapters, proven, records, result  # noqa: E402
 from scripts.gen_features import anchors, slug  # noqa: E402
 
 PAGE = REPO / "docs" / "device-compatibility.md"
@@ -49,7 +49,6 @@ CARDS = ("<!-- devices:start -->", "<!-- devices:end -->")
 CARDS_TITLE = "Device compatibility by integration"
 EVIDENCE = ("<!-- evidence:start -->", "<!-- evidence:end -->")
 
-RESULT = re.compile(r"^\| Result \| (\S+) \|", re.MULTILINE)
 DEVICE = re.compile(r"^\| Device \| (.*) \|$", re.MULTILINE)
 ENTRY = re.compile(r"^(?P<name>.*?)(?: \(`(?P<model>[^`]+)`\))?, firmware `(?P<firmware>[^`]+)`$")
 ISSUE_URL = "https://github.com/jasonmx/DeviceSide/issues/"
@@ -244,7 +243,7 @@ def entries(record: Path) -> list[tuple[str, str] | str]:
 
 
 def passing(integration: str, action: str) -> list[Path]:
-    return [path for path in records(integration, action) if (m := RESULT.search(path.read_text())) and m[1] == "pass"]
+    return [path for path in records(integration, action) if result(path) == "pass"]
 
 
 def tested(adapter, data: Data, found_records: list[Path] | None = None) -> list[tuple[str, str] | str]:
