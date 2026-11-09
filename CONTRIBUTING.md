@@ -44,8 +44,8 @@ rerun.
 
 1. **Report a device.** Tried DeviceSide on a device that isn't listed? Open a
    [device report](https://github.com/jasonmx/DeviceSide/issues/new?template=device_report.yml) and say whether it
-   worked. A "works" report counts as much as a "doesn't work" one. In Home Assistant, **Settings > Devices & services > DeviceSide > Configure > Report a device test result**
-   opens the same form with your device's details filled in.
+   worked. A "works" report counts as much as a "doesn't work" one. In Home Assistant, **Settings > Devices & services > DeviceSide > Configure > Report a device test result or bug**
+   opens the same form with your devices' details filled in.
 2. **Propose a device.** For a device, integration or feature DeviceSide doesn't cover, open a
    [proposal](https://github.com/jasonmx/DeviceSide/issues/new?template=propose_device_or_integration.yml). It needs a YAML
    call that already does the job on your device (an MQTT publish, a ZHA cluster command and so on), the device's
@@ -55,9 +55,9 @@ rerun.
    Experimental until a test record or a working report proves it. Contact the maintainer before you start. Read
    [What gets built](#what-gets-built) and [Developing](#developing) first. The
    [Help us test](docs/device-compatibility.md#help-us-test) section lists built features waiting for a tester.
-4. **Report a bug.** Only for a device and feature the [device compatibility page](docs/device-compatibility.md) lists: open a
-   [bug report](https://github.com/jasonmx/DeviceSide/issues/new?template=report_bug.yml). A failure on any other device
-   is a device report. **Configure > Report a bug** fills in the versions, and the device's details if you pick one.
+4. **Report a bug.** A bug on a device goes in the same
+   [device report](https://github.com/jasonmx/DeviceSide/issues/new?template=device_report.yml). For a bug that isn't
+   about a device, open a [blank issue](https://github.com/jasonmx/DeviceSide/issues/new).
 
 ## What gets built
 

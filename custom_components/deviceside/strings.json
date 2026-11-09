@@ -20,8 +20,7 @@
         "title": "DeviceSide",
         "menu_options": {
           "settings": "Settings",
-          "report_device": "Report a device test result",
-          "report_bug": "Report a bug",
+          "report_device": "Report a device test result or bug",
           "propose_device": "Propose a device or integration"
         }
       },
@@ -35,37 +34,19 @@
         "data_description": {
           "predicted_state": "When dimming starts, Hue Bridges report 0% or 100% brightness and only snap back to a light's actual brightness after ~10 s. This setting shows the starting brightness in Home Assistant when dimming starts, and the light's actual brightness when it stops. Disable the setting to get the raw bridge reports.",
           "z2m_color_modes": "Full color lights use both XY and HS modes, but Zigbee2MQTT announces them as XY mode only. This causes Home Assistant to ignore reports from full color lights in HS mode. This setting overrides Z2M and announces both modes to HA. Turn it off to revert to Z2M's native behavior.",
-          "experimental_features": "Lets DeviceSide try features not yet proven on your device. Whether they work or not, please tell us with Report a device test result in DeviceSide's options."
+          "experimental_features": "Lets DeviceSide try features not yet proven on your device. Whether they work or not, please tell us with Report a device test result or bug in DeviceSide's options."
         }
       },
       "report_device": {
-        "title": "Report a device test result",
-        "description": "Choose a light or switch to report on, and DeviceSide will prefill a report for you to submit on GitHub.",
+        "title": "Report a device test result or bug",
+        "description": "Choose the lights and switches to report on, and DeviceSide will prefill a report for you to submit on GitHub.",
         "data": {
-          "entity_id": "Light or switch"
+          "entity_id": "Lights and switches"
         }
       },
       "report_link": {
-        "title": "Report a device test result",
+        "title": "Report a device test result or bug",
         "description": "[Click here]({url}) to open the draft report on GitHub."
-      },
-      "report_bug": {
-        "title": "Report a bug",
-        "description": "If the bug involves a device, choose it and DeviceSide will prefill its details. Leave it empty for a bug that isn't device-specific.",
-        "data": {
-          "entity_id": "Light or switch"
-        }
-      },
-      "bug_action": {
-        "title": "Report a bug",
-        "description": "If the bug is in one of DeviceSide's actions on this device, choose it and DeviceSide will add who supports that action on it. Leave it empty otherwise.",
-        "data": {
-          "action": "Action"
-        }
-      },
-      "bug_link": {
-        "title": "Report a bug",
-        "description": "[Click here]({url}) to open the draft bug report on GitHub."
       },
       "propose_device": {
         "title": "Propose a device or integration",
