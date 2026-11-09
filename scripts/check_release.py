@@ -15,6 +15,7 @@ Usage: scripts/check_release.py [--coverage coverage.json] [--release] [--record
 import argparse
 import ast
 import inspect
+import io
 import json
 import os
 import re
@@ -94,11 +95,8 @@ def runtime_shape(text: str) -> tuple[str, list[str]]:
     for node in ast.walk(tree):
         if isinstance(node, ast.Call):
             node.keywords = [keyword for keyword in node.keywords if keyword.arg != "experimental"]
-    lines = iter(text.splitlines(keepends=True))
-    comments = [
-        token.string for token in tokenize.generate_tokens(lambda: next(lines, "")) if token.type == tokenize.COMMENT
-    ]
-    return ast.dump(tree), comments
+    tokens = tokenize.generate_tokens(io.StringIO(text).readline)
+    return ast.dump(tree), [token.string for token in tokens if token.type == tokenize.COMMENT]
 
 
 def changed_code(cited: str, paths: list[str]) -> list[str]:
@@ -106,7 +104,13 @@ def changed_code(cited: str, paths: list[str]) -> list[str]:
     changed = []
     for path in paths:
         before, after = git("show", f"{cited}:{path}"), git("show", f"HEAD:{path}")
-        if before.returncode or after.returncode or runtime_shape(before.stdout) != runtime_shape(after.stdout):
+        try:
+            same = not (before.returncode or after.returncode) and runtime_shape(before.stdout) == runtime_shape(
+                after.stdout
+            )
+        except SyntaxError, tokenize.TokenError:
+            same = False
+        if not same:
             changed.append(path)
     return changed
 

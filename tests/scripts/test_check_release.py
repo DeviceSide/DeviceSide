@@ -206,6 +206,15 @@ def test_a_change_beside_the_flag_is_still_a_change(tested, monkeypatch, after):
     ]
 
 
+def test_code_the_check_cannot_parse_at_the_cited_commit_is_a_change(tested, monkeypatch):
+    repo, _ = tested
+    sha = repo.commit(ADAPTER, FLAGGED + "def broken(:\n")
+    write_record(repo, "turn_on_for.md", sha)
+    repo.commit(ADAPTER, FLAGGED)
+    [error] = cr.record_errors(FakeRecordsRegistry(repo, monkeypatch))
+    assert error.endswith(f"changed since: {ADAPTER}")
+
+
 def test_a_module_new_since_the_record_is_a_change(tested, monkeypatch):
     repo, _ = tested
     repo.commit(f"{PACKAGE}/extra.py", "")
@@ -214,13 +223,48 @@ def test_a_module_new_since_the_record_is_a_change(tested, monkeypatch):
     assert error.endswith(f"changed since: {PACKAGE}/extra.py, {PACKAGE}/nested.py")
 
 
+def flag_reads(tree: ast.AST) -> list[int]:
+    """Lines that read `experimental`: anything but an `experimental=` argument or parameter, or passing a parameter
+    of that name straight on as `experimental=experimental`."""
+    passed_on = {
+        id(keyword.value)
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        for keyword in node.keywords
+        if keyword.arg == "experimental"
+    }
+    return [
+        node.lineno
+        for node in ast.walk(tree)
+        if (isinstance(node, ast.Attribute) and node.attr == "experimental")
+        or (isinstance(node, ast.Constant) and node.value == "experimental")
+        or (
+            isinstance(node, ast.Name)
+            and node.id == "experimental"
+            and isinstance(node.ctx, ast.Load)
+            and id(node) not in passed_on
+        )
+    ]
+
+
+@pytest.mark.parametrize(
+    "code",
+    [
+        "scope.experimental",
+        "getattr(scope, 'experimental')",
+        "def ramp(*, experimental):\n    return 1 if experimental else 2",
+    ],
+)
+def test_a_read_of_the_flag_is_found(code):
+    assert flag_reads(ast.parse(code)) == [len(code.splitlines())]
+
+
 def test_nothing_in_the_integration_reads_the_flag():
     """The records check ignores `experimental` because no runtime path reads it; a read would make it a change."""
     reads = [
-        f"{path.relative_to(cr.REPO)}:{node.lineno}"
+        f"{path.relative_to(cr.REPO)}:{line}"
         for path in (cr.REPO / "custom_components").rglob("*.py")
-        for node in ast.walk(ast.parse(path.read_text()))
-        if isinstance(node, ast.Attribute) and node.attr == "experimental"
+        for line in flag_reads(ast.parse(path.read_text()))
     ]
     assert reads == []
 
