@@ -9,6 +9,7 @@ from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import async_mock_service
 
 from custom_components.deviceside.core.models import Target
+from custom_components.deviceside.integrations.zigbee2mqtt import bridge
 from custom_components.deviceside.integrations.zigbee2mqtt import native_control as nc
 
 from .conftest import SET, light
@@ -241,7 +242,7 @@ async def test_no_bridge_groups_warns_and_still_sends(hass, setup_production, br
     assert "so the command goes out as the option stands: no bridge/groups from Zigbee2MQTT" in caplog.text
 
 
-# Ramps: off for brightness, on for saturation
+# Ramps: off for brightness; saturation and hue leave it alone
 
 
 async def test_brightness_ramp_turns_it_off_for_its_publish(hass, setup_production, clock, broker):
@@ -287,24 +288,58 @@ async def test_restore_runs_when_the_body_raises(hass, setup_production, broker)
     assert options(broker) == [True, False]
 
 
+async def test_cancel_during_the_set_still_restores(hass, setup_production, broker, monkeypatch):
+    hue_bulb(hass)
+    answered = asyncio.Event()
+    ensure = nc.ensure_options
+
+    async def slow_answer(*args, **kwargs):
+        await ensure(*args, **kwargs)
+        await answered.wait()  # the request is out; Z2M's answer is late
+
+    monkeypatch.setattr(nc, "ensure_options", slow_answer)
+
+    async def body() -> None:
+        async with nc.native_control(hass, target(hass, "light.lamp"), True):
+            pytest.fail("a cancelled set runs no body")
+
+    task = asyncio.create_task(body())
+    while options(broker) != [True]:
+        await asyncio.sleep(0)
+    task.cancel()
+    await asyncio.sleep(0)
+    answered.set()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    assert options(broker) == [True, False]
+
+
 async def test_lock_keeps_opposite_needs_apart(hass, setup_production, broker):
     hue_bulb(hass)
     lamp = target(hass, "light.lamp")
     order: list[str] = []
     entered = asyncio.Event()
+    release = asyncio.Event()
 
     async def hold(need: bool, name: str) -> None:
         async with nc.native_control(hass, lamp, need):
             order.append(f"{name} in")
             entered.set()
-            await asyncio.sleep(0)
+            if need:
+                await release.wait()
             order.append(f"{name} out")
 
     first = asyncio.create_task(hold(True, "on"))
     await entered.wait()
-    # The option stays absent in bridge/info, so a need of False writes nothing: the lock is all that orders them.
-    await asyncio.gather(first, hold(False, "off"))
+    # The option stays absent in bridge/info, so a need of False writes nothing: the lock is all that holds it back.
+    second = asyncio.create_task(hold(False, "off"))
+    for _ in range(10):
+        await asyncio.sleep(0)
+    assert order == ["on in"]
 
+    release.set()
+    await asyncio.gather(first, second)
     assert order == ["on in", "on out", "off in", "off out"]
 
 
@@ -361,14 +396,14 @@ async def test_failed_state_subscribe_still_restores_after_the_cap(
     hass, setup_production, clock, broker, monkeypatch, caplog
 ):
     entity_id = light(hass, broker, manufacturer="Philips")
-    subscribe = nc.mqtt.async_subscribe
+    subscribe = bridge.mqtt.async_subscribe
 
     async def refuse_state(hass, topic, *args, **kwargs):
         if topic == "zigbee2mqtt/lamp":
             raise RuntimeError("MQTT is not connected")
         return await subscribe(hass, topic, *args, **kwargs)
 
-    monkeypatch.setattr(nc.mqtt, "async_subscribe", refuse_state)
+    monkeypatch.setattr(bridge.mqtt, "async_subscribe", refuse_state)
     loop = asyncio.get_running_loop()
 
     start = loop.time()
@@ -378,7 +413,7 @@ async def test_failed_state_subscribe_still_restores_after_the_cap(
 
     assert loop.time() - start >= nc._REPLY_CAP_S
     assert options(broker) == [True, False]
-    assert "Couldn't subscribe to zigbee2mqtt/lamp, so the restore waits" in caplog.text
+    assert "Couldn't subscribe to zigbee2mqtt/lamp, so Zigbee2MQTT's answer isn't awaited" in caplog.text
 
 
 async def test_reply_cap_is_one_second():

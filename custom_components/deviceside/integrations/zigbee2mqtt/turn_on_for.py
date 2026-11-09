@@ -5,10 +5,10 @@ import json
 import logging
 from typing import ClassVar
 
-from homeassistant.components import mqtt
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 
-from .addressing import state_topic, topic
+from .addressing import topic
+from .bridge import state_reply
 from .native_control import COLOR_FIELDS, NEED, native_control
 from ...actions.turn_on_for import TurnOnForRequest
 from ...core.adapter import Adapter
@@ -100,22 +100,11 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
         with them on the mesh, starting the timer late. With no state by the timeout, the timer goes anyway.
         """
         service_data = {"entity_id": target.entity_id, **data}
-        if (light_topic := state_topic(target)) is None:
-            await hass.services.async_call("light", "turn_on", service_data, blocking=True)
-            return
-
-        published: asyncio.Future[None] = hass.loop.create_future()
-
-        @callback
-        def received(msg: mqtt.ReceiveMessage) -> None:
-            # A retained message is old state the broker resends on subscribe, not Z2M's answer.
-            if not msg.retain and not published.done():
-                published.set_result(None)
-
-        # HA's own light entity subscribes to this topic, so the subscription is live at once.
-        unsubscribe = await mqtt.async_subscribe(hass, light_topic, received)
+        published, unsubscribe = await state_reply(hass, target)
         try:
             await hass.services.async_call("light", "turn_on", service_data, blocking=True)
+            if published is None:
+                return
             try:
                 async with asyncio.timeout(_STATE_TIMEOUT_S):
                     await published

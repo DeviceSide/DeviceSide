@@ -19,15 +19,14 @@ to a group reads the group's options, never its members', so a group with a Hue 
 
 import asyncio
 import logging
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from homeassistant.components import mqtt
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
-from .addressing import group_id, state_topic, z2m_address
-from .bridge import ensure_options, group_members
+from .addressing import group_id, z2m_address
+from .bridge import ensure_options, group_members, state_reply
 from ...core.models import Target
 from ...core.runtime import get_runtime
 
@@ -74,15 +73,24 @@ async def native_control(hass: HomeAssistant, target: Target, need: bool | None)
         yield
         return
     async with _locks(hass).setdefault(address, asyncio.Lock()):
-        if not await _set(hass, target, address, need):
+        # Shielded so that a cancel mid-set (HA stopping) still learns whether the option changed, and puts it back.
+        setting = asyncio.ensure_future(_set(hass, target, address, need))
+        try:
+            changed = await asyncio.shield(setting)
+        except asyncio.CancelledError:
+            if await setting:
+                await _set(hass, target, address, not need, restoring=True)
+            raise
+        if not changed:
             yield
             return
-        replied, unsubscribe = await _state_reply(hass, target)
+        replied, unsubscribe = await state_reply(hass, target)
         try:
             yield
             try:
                 async with asyncio.timeout(_REPLY_CAP_S):
-                    await replied
+                    # Without a reply to await, the cap is the margin for Z2M to take the command.
+                    await (replied if replied is not None else asyncio.Event().wait())
             except TimeoutError:
                 _LOGGER.debug("No state from Zigbee2MQTT for %s in %s s", target.entity_id, _REPLY_CAP_S)
         finally:
@@ -156,24 +164,3 @@ def _warn_set(target: Target, value: bool, err: Exception) -> None:
         target.entity_id,
         err,
     )
-
-
-async def _state_reply(hass: HomeAssistant, target: Target) -> tuple[asyncio.Future[None], Callable[[], None]]:
-    """A future for Z2M's next state publish for the target, subscribed before the body publishes, and its
-    unsubscribe. With no state topic, or no subscription, it never resolves, so the restore waits the cap."""
-    published: asyncio.Future[None] = hass.loop.create_future()
-    if (light_topic := state_topic(target)) is None:
-        return published, lambda: None
-
-    @callback
-    def received(msg: mqtt.ReceiveMessage) -> None:
-        # A retained message is old state the broker resends on subscribe, not Z2M's answer.
-        if not msg.retain and not published.done():
-            published.set_result(None)
-
-    try:
-        # HA's own light entity subscribes to this topic, so the subscription is live at once.
-        return published, await mqtt.async_subscribe(hass, light_topic, received)
-    except Exception as err:  # noqa: BLE001 - the restore still runs, after the cap
-        _LOGGER.debug("Couldn't subscribe to %s, so the restore waits %s s: %s", light_topic, _REPLY_CAP_S, err)
-        return published, lambda: None

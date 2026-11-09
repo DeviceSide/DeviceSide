@@ -13,7 +13,7 @@ from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import async_mock_service
 
 from custom_components.deviceside.core.scope import verified
-from custom_components.deviceside.integrations.zigbee2mqtt import turn_on_for
+from custom_components.deviceside.integrations.zigbee2mqtt import bridge, turn_on_for
 from custom_components.deviceside.integrations.zigbee2mqtt.addressing import (
     is_z2m_group,
     state_topic,
@@ -261,7 +261,7 @@ class StateTopic:
 @pytest.fixture
 def z2m(hass, monkeypatch):
     fake = StateTopic(hass)
-    monkeypatch.setattr(turn_on_for.mqtt, "async_subscribe", fake.subscribe)
+    monkeypatch.setattr(bridge.mqtt, "async_subscribe", fake.subscribe)
     monkeypatch.setattr(turn_on_for, "_STATE_TIMEOUT_S", 0.2)
     hass.services.async_register("light", "turn_on", fake.turn_on)
     hass.services.async_register("mqtt", "publish", fake.publish)
