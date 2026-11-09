@@ -12,7 +12,7 @@ maintainer owns, so a feature can pass in one of three ways:
 - **Reported:** manual tests on real hardware by users, through an accepted
   [device test report](https://github.com/jasonmx/DeviceSide/issues/new?template=device_report.yml).
 - **Documented:** where the maker's API docs show that several devices take the same call for a feature, a Verified
-  (rig-tested) pass on one device counts for the rest. DeviceSide sends them exactly the call it sends the tested
+  or Reported pass on one device counts for the rest. DeviceSide sends them exactly the call it sends the tested
   device, differing only in which component, endpoint or entity it addresses.
 
 Verified, Reported and Documented features ship in stable releases, and a bug on one is a real bug: please
@@ -85,7 +85,7 @@ it sets attributes ([integrations](integrations.md#set-and-get)).
 
 ## Should work
 
-Documented: no device of the class has been tested, but DeviceSide sends it the call a rig-tested device takes, and the
+Documented: no device of the class has been tested, but DeviceSide sends it the call a tested device takes, and the
 maker documents that call identically for both.
 
 ### Shelly dimmers

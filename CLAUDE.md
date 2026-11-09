@@ -46,9 +46,9 @@ bounds, timing) is proven once per firmware version, not per code change. Confir
 confirming the call.
 
 **Documented.** A scope item ships without a record, as `Level.DOCUMENTED`, when all of these hold: the adapter
-sends it the same call as a Verified item, differing only in addressing (component, endpoint, entity domain); the
-vendor or standard documents that call identically for both, and no known class of devices departs from it; a
-failure shows as `rejected` or `sent`, never a wrong device state, nor `confirmed` unless what it confirms is the
+sends it the same call as a Verified or Reported item, differing only in addressing (component, endpoint, entity
+domain); the vendor or standard documents that call identically for both, and no known class of devices departs from
+it; a failure shows as `rejected` or `sent`, never a wrong device state, nor `confirmed` unless what it confirms is the
 stored setting the call wrote, read back; and unit tests pin the payload.
 Fields are never Documented: a field changes the call. A change to a Documented item's call alone makes it
 Experimental until a record. A record promotes the item to Verified. Anything else untested is Experimental, or out of

@@ -23,8 +23,8 @@ and fields it takes:
 - **Reported:** no record, but a user reported it working, and unit tests pin the call DeviceSide sends. It ships in
   stable releases.
 - **Documented:** no record yet for one domain or capability of an otherwise tested adapter (a Shelly RGBW strip, a
-  Matter light), but DeviceSide sends it the same call as a Verified one, differing only in what it addresses, and
-  the vendor or standard documents that call identically for both. It ships in stable releases. A bug on it is a
+  Matter light), but DeviceSide sends it the same call as a Verified or Reported one, differing only in what it
+  addresses, and the vendor or standard documents that call identically for both. It ships in stable releases. A bug on it is a
   real bug, so please report it; a passing record makes it Verified.
 - **Experimental:** built and unit-tested, but not yet proven on a device. It ships in stable releases switched off:
   DeviceSide refuses it until you turn on **Experimental features** in its options. Please report how it went, either

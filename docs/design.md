@@ -27,8 +27,8 @@ HA requires it.
 - **Level**: how well a scope item is proven, weakest first (conditions: [CLAUDE.md](../CLAUDE.md#release-flag)).
   **Experimental**: built and unit-tested, with no proof on a device; it ships in stable releases, refused at runtime
   until the user turns on Experimental features. **Documented**: no record, but the adapter sends it the same call as
-  a Verified item, differing only in addressing, and the vendor or standard documents that call identically; never a
-  field. **Reported**: an accepted working device report on the item's call, with unit tests pinning it; a change to that call
+  a Verified or Reported item, differing only in addressing, and the vendor or standard documents that call
+  identically; never a field. **Reported**: an accepted working device report on the item's call, with unit tests pinning it; a change to that call
   makes it Experimental again. **Verified**:
   a passing record from the rig. Documented, Reported and Verified items ship switched on, and a bug on one is a real
   bug. A call's level is the weakest among the items it touches: its domain, capability and fields
