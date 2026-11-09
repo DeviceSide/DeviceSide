@@ -1,5 +1,6 @@
 """scripts/check_release.py: the coverage bar on every adapter, and no experimental adapter in a release."""
 
+import ast
 import json
 import sys
 import types
@@ -153,6 +154,75 @@ def test_a_change_to_the_adapters_code_after_its_record_is_an_error(tested, monk
     assert cr.record_errors(FakeRecordsRegistry(repo, monkeypatch)) == [
         f"fake / turn_on_for: docs/test-records/fake/turn_on_for.md cites {sha[:7]}; changed since: {changed}"
     ]
+
+
+FLAGGED = """from . import shared
+from .addressing import address
+from ..zha import zcl
+
+scope = AdapterScope(  # the scope
+    experimental=True, domains=DOMAINS, confirmable=True
+)
+ramp = ramp_scope(BRIGHTNESS, experimental=False)
+"""
+
+
+@pytest.mark.parametrize(
+    "after",
+    [
+        FLAGGED.replace("experimental=True, ", ""),
+        FLAGGED.replace(
+            "scope = AdapterScope(  # the scope\n    experimental=True, domains=DOMAINS, confirmable=True\n)",
+            "scope = AdapterScope(domains=DOMAINS, confirmable=True)  # the scope",
+        ),
+        FLAGGED.replace("experimental=True", "experimental=False").replace(", experimental=False)", ")"),
+    ],
+    ids=["dropped", "reflowed", "set_and_dropped"],
+)
+def test_a_change_to_the_experimental_flag_alone_leaves_the_record_fresh(tested, monkeypatch, after):
+    repo, _ = tested
+    sha = repo.commit(ADAPTER, FLAGGED)
+    write_record(repo, "turn_on_for.md", sha)
+    repo.commit(ADAPTER, after)
+    assert cr.record_errors(FakeRecordsRegistry(repo, monkeypatch)) == []
+
+
+@pytest.mark.parametrize(
+    "after",
+    [
+        FLAGGED.replace("experimental=True, ", "").replace("confirmable=True", "confirmable=False"),
+        FLAGGED.replace("experimental=True, ", "").replace("# the scope", "# the call"),
+        FLAGGED.replace("experimental=True", "verified=True"),
+    ],
+    ids=["another_argument", "a_comment", "a_renamed_keyword"],
+)
+def test_a_change_beside_the_flag_is_still_a_change(tested, monkeypatch, after):
+    repo, _ = tested
+    sha = repo.commit(ADAPTER, FLAGGED)
+    write_record(repo, "turn_on_for.md", sha)
+    repo.commit(ADAPTER, after)
+    assert cr.record_errors(FakeRecordsRegistry(repo, monkeypatch)) == [
+        f"fake / turn_on_for: docs/test-records/fake/turn_on_for.md cites {sha[:7]}; changed since: {ADAPTER}"
+    ]
+
+
+def test_a_module_new_since_the_record_is_a_change(tested, monkeypatch):
+    repo, _ = tested
+    repo.commit(f"{PACKAGE}/extra.py", "")
+    repo.commit(f"{PACKAGE}/nested.py", "from . import extra\n")
+    [error] = cr.record_errors(FakeRecordsRegistry(repo, monkeypatch))
+    assert error.endswith(f"changed since: {PACKAGE}/extra.py, {PACKAGE}/nested.py")
+
+
+def test_nothing_in_the_integration_reads_the_flag():
+    """The records check ignores `experimental` because no runtime path reads it; a read would make it a change."""
+    reads = [
+        f"{path.relative_to(cr.REPO)}:{node.lineno}"
+        for path in (cr.REPO / "custom_components").rglob("*.py")
+        for node in ast.walk(ast.parse(path.read_text()))
+        if isinstance(node, ast.Attribute) and node.attr == "experimental"
+    ]
+    assert reads == []
 
 
 def test_every_record_of_the_adapter_must_be_new(tested, monkeypatch):
