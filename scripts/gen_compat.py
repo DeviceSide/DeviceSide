@@ -2,15 +2,15 @@
 """Generate the README's device table and the evidence block of docs/device-compatibility.md, from the test records,
 the adapters' scopes and docs/devices.yaml.
 
-**Cards.** One collapsed table between the README's devices markers, with a card (row) per integration and a column
-per outcome:
+**Cards.** One collapsed section between the README's devices markers, with a card per integration: its name, then
+a bullet per outcome:
 - Works: the models in the passing records of adapters that ship (Verified), plus native groups, and the models of
   accepted working reports (👥, linked to the report).
 - Should work: the classes (devices.yaml `capabilities`) the shipping adapters hold as Documented.
 - Help us test: the classes they hold as Experimental, refused until the Experimental features option is on.
 - Doesn't work: devices.yaml `doesnt_work`.
-Each class entry names the features it is at that level for. The integration cell shows the best outcome per device
-type.
+Each class entry, a bullet of its own, names the features it is at that level for; classes sharing a page section
+share a link. A model or blocker drops the integration's name where it leads, as the card's name already gives it.
 Adapters with the `experimental` flag are left out of the cards: they are in RCs only.
 
 **Evidence.** Per integration, every action's level and the models its passing records tested, with a row per level
@@ -46,11 +46,7 @@ DATA = REPO / "docs" / "devices.yaml"
 # Absolute: HACS renders the README inside Home Assistant, where a relative link doesn't resolve.
 PAGE_URL = "https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md"
 CARDS = ("<!-- devices:start -->", "<!-- devices:end -->")
-TABLE_TITLE = "Device compatibility by integration"  # the README's "listed as tested" links to its anchor
-TABLE_LEGEND = (
-    "✅ tested · 🟡 takes the call a tested device takes · 🙋 built, waiting for a tester: turn on Experimental "
-    "features to try it · 👥 a user report"
-)
+CARDS_TITLE = "Device compatibility by integration"  # the README's "listed as tested" links to its anchor
 EVIDENCE = ("<!-- evidence:start -->", "<!-- evidence:end -->")
 
 RESULT = re.compile(r"^\| Result \| (\S+) \|", re.MULTILINE)
@@ -70,22 +66,16 @@ ITEM_LEVELS = (
     (Level.EXPERIMENTAL, "Experimental", "untested, behind Experimental features"),
 )
 
-# Device types, in a card summary's order within an outcome, with their plural.
-TYPES = {
-    "bulb": "bulbs",
-    "relay": "relays",
-    "plug": "plugs",
-    "dimmer": "dimmers",
-    "LED controller": "LED controllers",
-    "group or scene": "groups",
-}
-# Outcomes, best first: (key, icon, label).
+# Device types, in a card's order for its Works models.
+TYPES = ("bulb", "relay", "plug", "dimmer", "LED controller", "group or scene")
+# Outcomes, in a card's order: (key, icon, legend).
 OUTCOMES = (
-    ("works", "✅", "Works"),
-    ("should", "🟡", "Should work"),
-    ("help", "🙋", "Help us test"),
-    ("no", "⛔", "Doesn't work"),
+    ("works", "✅", "works: tested"),
+    ("should", "🟡", "should work: takes the call a tested device takes"),
+    ("help", "🙋", "help us test: built, waiting for a tester; turn on Experimental features to try it"),
+    ("no", "⛔", "doesn't work"),
 )
+CARDS_LEGEND = " · ".join([*(f"{icon} {legend}" for _, icon, legend in OUTCOMES), "👥 a user report"])
 GROUPS_ENTRY = ("native groups", "Native groups")  # (phrase, section) for the groups a record tested
 # Each action's feature, as a card names it, in the README feature table's order. `stop` rides a smooth move, so it
 # is named only when nothing else is.
@@ -379,22 +369,20 @@ class Card:
     title: str
     requires: str | None = None
     lines: dict[str, list[str]] = field(default_factory=dict)
-    best: dict[str, int] = field(default_factory=dict)  # device type -> index into OUTCOMES
 
-    def saw(self, kind: str | None, outcome: str) -> None:
-        index = [key for key, _, _ in OUTCOMES].index(outcome)
-        if kind is not None:
-            self.best[kind] = min(self.best.get(kind, index), index)
+    def short(self, name: str) -> str:
+        """The name without the integration's, which the card's title already gives: "Hue Bridge v1" -> "Bridge v1"."""
+        return name.removeprefix(f"{self.title} ")
 
-    def summary(self) -> str:
-        ordered = sorted(self.best.items(), key=lambda item: (item[1], list(TYPES).index(item[0])))
-        return " · ".join(f"{TYPES[kind]} {OUTCOMES[index][1]}" for kind, index in ordered)
-
-    def row(self) -> str:
+    def render(self) -> str:
         requires = f" ({self.requires})" if self.requires else ""
-        cells = [f"**{self.title}**{requires}<br>{self.summary()}"]
-        cells += ["<br>".join(self.lines.get(key, [])) for key, _, _ in OUTCOMES]
-        return f"| {' | '.join(cells)} |"
+        lines = [f"**{self.title}**{requires}", ""]
+        for key, icon, _ in OUTCOMES:
+            if key in ("should", "help"):
+                lines += [f"- {icon} {entry}" for entry in self.lines.get(key, [])]
+            elif self.lines.get(key):
+                lines.append(f"- {icon} {' · '.join(self.lines[key])}")
+        return "\n".join(lines)
 
 
 def classes(key: str, integration_adapters: list, level: Level, data: Data) -> dict[str, set[str]]:
@@ -413,14 +401,31 @@ def classes(key: str, integration_adapters: list, level: Level, data: Data) -> d
     return held
 
 
-def class_entries(card: Card, outcome: str, key: str, held: dict[str, set[str]], data: Data) -> list[str]:
-    """Classes with the same features share one entry: "dimmers, CCT LED controllers (turn on with timer)"."""
-    grouped: dict[tuple[str, ...], list[str]] = {}
+def merged(phrases: list[str], section: str) -> str:
+    """One link for the classes of a page section, their shared last words said once: "CCT LED controllers", "RGB LED
+    controllers" -> "LED controllers (CCT, RGB)". With no shared ending, the phrases in a list."""
+    if len(phrases) == 1:
+        return anchor(phrases[0], section)
+    words = [phrase.split() for phrase in phrases]
+    shared = 0
+    while all(len(w) > shared for w in words) and len({tuple(w[len(w) - shared - 1 :]) for w in words}) == 1:
+        shared += 1
+    if not shared or any(len(w) == shared for w in words):  # nothing shared, or a phrase with no prefix to list
+        return anchor(", ".join(phrases), section)
+    ending = " ".join(words[0][-shared:])
+    return anchor(f"{ending} ({', '.join(' '.join(w[:-shared]) for w in words)})", section)
+
+
+def class_entries(key: str, held: dict[str, set[str]], data: Data) -> list[str]:
+    """Classes with the same features share one entry: "dimmers, LED controllers (CCT, RGB): turn on with timer"."""
+    grouped: dict[tuple[str, ...], dict[str, list[str]]] = {}
     for item, actions in held.items():
         entry = data.capabilities[key][item]
-        card.saw(entry["type"], outcome)
-        grouped.setdefault(features(actions), []).append(anchor(entry["phrase"], entry["section"]))
-    return [f"{', '.join(links)} ({', '.join(names)})" for names, links in grouped.items()]
+        grouped.setdefault(features(actions), {}).setdefault(entry["section"], []).append(entry["phrase"])
+    return [
+        f"{', '.join(merged(phrases, section) for section, phrases in sections.items())}: {', '.join(names)}"
+        for names, sections in grouped.items()
+    ]
 
 
 def works(card: Card, key: str, integration_adapters: list, data: Data) -> list[str]:
@@ -444,12 +449,10 @@ def works(card: Card, key: str, integration_adapters: list, data: Data) -> list[
     by_name = {model["name"]: model for model in data.models.values()}
     names = [*tested_names, *(name for name in reported if name not in tested_names)]
     lines = []
-    for name in sorted(names, key=lambda name: list(TYPES).index(by_name[name]["type"])):
-        card.saw(by_name[name]["type"], "works")
+    for name in sorted(names, key=lambda name: TYPES.index(by_name[name]["type"])):
         badges = "" if name in tested_names else "".join(f" [👥]({issue})" for issue in reported[name])
-        lines.append(anchor(name, by_name[name]["section"]) + badges)
+        lines.append(anchor(card.short(name), by_name[name]["section"]) + badges)
     if groups:
-        card.saw("group or scene", "works")
         lines.append(anchor(*GROUPS_ENTRY))
     return lines
 
@@ -459,12 +462,11 @@ def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: 
     result.lines["works"] = works(result, key, integration_adapters, data)
     for outcome, level in (("should", Level.DOCUMENTED), ("help", Level.EXPERIMENTAL)):
         held = classes(key, integration_adapters, level, data)
-        result.lines[outcome] = class_entries(result, outcome, key, held, data)
+        result.lines[outcome] = class_entries(key, held, data)
     result.lines["no"] = []
     for entry in data.doesnt_work:
         if key in entry["integrations"]:
-            result.saw(entry.get("type"), "no")
-            result.lines["no"].append(anchor(entry["what"], entry["section"]))
+            result.lines["no"].append(anchor(result.short(entry["what"]), entry["section"]))
     return result
 
 
@@ -473,16 +475,14 @@ def cards(registry: AdapterRegistry, data: Data) -> str:
         CARDS[0],
         "<!-- Generated by scripts/gen_compat.py. Do not edit; run the script. -->",
         "",
-        f'<a id="{slug(TABLE_TITLE)}"></a>',
+        f'<a id="{slug(CARDS_TITLE)}"></a>',
         "<details>",
-        f"<summary><b>{TABLE_TITLE}</b></summary>",
+        f"<summary><b>{CARDS_TITLE}</b></summary>",
         "",
-        f"| Integration | {' | '.join(f'{icon} {label}' for _, icon, label in OUTCOMES)} |",
-        f"|:--- |{':--- |' * len(OUTCOMES)}",
     ]
     for key, integration_adapters in by_integration(registry).items():
-        parts.append(card(key, registry, integration_adapters, data).row())
-    parts += ["", TABLE_LEGEND, "", "</details>", "", CARDS[1]]
+        parts += [card(key, registry, integration_adapters, data).render(), ""]
+    parts += [CARDS_LEGEND, "", "</details>", "", CARDS[1]]
     return "\n".join(parts)
 
 

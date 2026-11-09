@@ -158,7 +158,7 @@ def generate(registry: AdapterRegistry) -> str:
         ]
         lines.append(f"| [{label}](#{anchor}) | {' | '.join(row)} |")
     legend = [f"{img(key, alt)} {label}" for key, (alt, label) in ICONS.items()]
-    legend.append(f"{img('light-grey', 'Experimental')} grey: Experimental, untested")
+    legend.append(f"{img('light-grey', 'Experimental')} grey: experimental")
     legend.append(f"{img('no', 'not possible')} can't be done, as far as we know")
     lines += ["", " &nbsp; ".join(legend), "", END]
     return "\n".join(lines)
