@@ -436,6 +436,13 @@ def test_a_working_report_on_an_item_left_below_reported_is_an_error(helper):
         data(FakeRegistry(adapter("zha", "turn_on_for", scope)), reports=reports)
 
 
+def test_a_report_on_a_scope_with_capabilities_must_name_a_capability():
+    scope = AdapterScope(domains=verified("light"), capabilities=experimental("Light"))
+    reports = [{**REPORT, "item": "light", "worked": ["turn_on_for"], "issue": f"{gc.ISSUE_URL}1"}]
+    with pytest.raises(SystemExit, match="has no item 'light' in scope"):
+        data(FakeRegistry(adapter("zha", "turn_on_for", scope)), reports=reports)
+
+
 def test_a_failed_report_may_name_an_experimental_item():
     scope = AdapterScope(domains=verified("light") | experimental("switch"))
     reports = [{**REPORT, "item": "switch", "failed": ["turn_on_for"], "issue": f"{gc.ISSUE_URL}1"}]

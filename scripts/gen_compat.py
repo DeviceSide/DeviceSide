@@ -261,7 +261,9 @@ def load_report(report: dict, known: set[str], shipped: dict[tuple[str, str], ob
 
 
 def check_item(report: dict, action: str, adapter, where: str) -> None:
-    held = {**adapter.scope.domains, **(adapter.scope.capabilities or {})}
+    # A scope that lists capabilities names its item by capability; the domain is only the entity's kind.
+    scope = adapter.scope
+    held = scope.capabilities if scope.capabilities is not None else scope.domains
     if (level := held.get(report["item"])) is None:
         fail(f"{where}: {report['integration']} {action} has no item {report['item']!r} in scope")
     if action in (report.get("worked") or []) and level < Level.REPORTED:

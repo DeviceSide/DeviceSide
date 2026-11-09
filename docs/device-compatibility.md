@@ -4,7 +4,7 @@ Will DeviceSide work with your device? The [README's cards](../README.md#will-it
 answer per integration. This page has the detail: what is known about each device and class of device, where that
 comes from, and the evidence behind every claim.
 
-Every feature that is on by default is tested on real hardware before it ships. DeviceSide is meant to support far more devices than the
+Every feature that is on by default has passed on real hardware before it ships, on that device or one that takes the same call. DeviceSide is meant to support far more devices than the
 maintainer owns, so a feature can pass in one of three ways:
 
 - **Verified:** automated tests on real hardware, run by the test rig. Each run writes a test record, linked from the
@@ -35,8 +35,8 @@ Who fixes a bug depends on how the feature was proven on your device:
 - **Experimental:** unsupported until it is proven. A report that it doesn't work is still useful: it is how features
   get fixed or left out.
 
-On the cards, ✔ marks what the automated rig verified, so it is maintainer-supported. A user-reported entry links the
-report behind it and is community-supported.
+On the cards, ✔ marks what the automated rig verified, so it is maintainer-supported. A model with a report link and
+no ✔ was reported by users and is community-supported.
 **Report a bug** in DeviceSide's options fills in which one applies to your device and action.
 
 ## Tested devices
