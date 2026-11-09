@@ -9,8 +9,10 @@ help is evidence from devices the maintainer doesn't own: what works, what doesn
   there, or an accepted user report says it works.
 - **Requests bring proof.** A device request comes with a YAML call that already works on the device, its model and
   firmware, and a promise to test the release candidate.
-- **A bug means a claim is broken.** A bug report is for a device and feature the [device compatibility page](docs/device-compatibility.md)
-  lists. Anything else is a device report or a request.
+- **One report covers a device.** A feature that works, one that doesn't, and one that broke all go in the same
+  [device report](https://github.com/jasonmx/DeviceSide/issues/new?template=device_report.yml), so every claim on the
+  [device compatibility page](docs/device-compatibility.md) can be confirmed or corrected the same way. A bug that
+  isn't about a device is a blank issue. Anything DeviceSide doesn't cover yet is a request.
 - **Whoever can test it fixes it.** The maintainer fixes what the rig proves. A feature proven by a user's report is
   community-supported: its bugs are accepted, labelled `community`, and fixed by pull requests from users with the
   device, which the maintainer reviews. The maintainer may drop a feature that nobody maintains, or that keeps
@@ -42,9 +44,9 @@ rerun.
 
 ## How to help
 
-1. **Report a device.** Tried DeviceSide on a device that isn't listed? Open a
+1. **Report a device result or bug.** Tried DeviceSide on a device? Open a
    [device report](https://github.com/jasonmx/DeviceSide/issues/new?template=device_report.yml) and say whether it
-   worked. A "works" report counts as much as a "doesn't work" one. In Home Assistant, **Settings > Devices & services > DeviceSide > Configure > Report a device test result or bug**
+   worked, or what broke. A "works" report counts as much as a "doesn't work" one. In Home Assistant, **Settings > Devices & services > DeviceSide > Configure > Report a device test result or bug**
    opens the same form with your devices' details filled in.
 2. **Propose a device.** For a device, integration or feature DeviceSide doesn't cover, open a
    [proposal](https://github.com/jasonmx/DeviceSide/issues/new?template=propose_device_or_integration.yml). It needs a YAML
@@ -55,9 +57,8 @@ rerun.
    Experimental until a test record or a working report proves it. Contact the maintainer before you start. Read
    [What gets built](#what-gets-built) and [Developing](#developing) first. The
    [Help us test](docs/device-compatibility.md#help-us-test) section lists built features waiting for a tester.
-4. **Report a bug.** A bug on a device goes in the same
-   [device report](https://github.com/jasonmx/DeviceSide/issues/new?template=device_report.yml). For a bug that isn't
-   about a device, open a [blank issue](https://github.com/jasonmx/DeviceSide/issues/new).
+4. **Report a bug.** A bug on a device is a device report (step 1). For a bug that isn't about a device, open a
+   [blank issue](https://github.com/jasonmx/DeviceSide/issues/new).
 
 ## What gets built
 
