@@ -5,6 +5,9 @@ in the PR that finishes them.
 
 When an action should raise, skip a target, or what its response holds: match core, per `docs/action-behavior.md`.
 
+A PR that teaches a device fact adds it to `docs/device-compatibility.md`, citing its source; an accepted device report
+goes into `docs/devices.yaml` (`scripts/gen_compat.py` regenerates the README cards from both).
+
 Scope comes from the design, the device's capabilities and the release flag below, never from the README: it records
 what ships, so its "not X" means not yet. Reword such a line to the real state, and update the README after the work lands.
 
@@ -92,7 +95,7 @@ there, cut the next RC from it, and merge the branch back into `main`.
 - `custom_components/deviceside/actions/`: one module per action
 - `custom_components/deviceside/integrations/<integration>/`: one adapter module per action
 - `tests/{core,actions,integrations,scripts}`: mirror the above
-- `scripts/`: household check, generated docs (compatibility page, README feature table), release checks
+- `scripts/`: household check, generated docs (device cards, device compatibility page, README feature table), release checks
   (coverage, the release flag, record freshness, tags, RC audits)
 - `docs/test-records/<integration>/`: test records, written by the rig. Design detail lives in `docs/design.md`.
 

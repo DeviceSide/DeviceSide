@@ -25,7 +25,7 @@ setup. How the commands work on the wire, and what was measured on real bulbs, i
 ## Shelly
 
 Gen2 and later (Plus, Pro, Gen3, Gen4): relays, whether Home Assistant shows them as a switch or a light, and RGBCCT
-bulbs. The tested models are on the [compatibility page](compatibility.md). Other Shelly
+bulbs. The tested models are on the [device compatibility page](device-compatibility.md). Other Shelly
 lights (dimmers, CCT, RGB and RGBW devices: the Light, CCT, RGB and RGBW components) are Documented: they take the
 same calls, but no rig run has covered one yet. On them, `get_attributes` reports the timer and auto-off/auto-on
 but not brightness or color, and RGB and RGBW devices take brightness but not color yet: a color is left out of the
@@ -166,7 +166,7 @@ off on time; an automation waiting for the light to be on would never fire.
 
 Plugs and lights on the core `matter` integration whose endpoint has the On/Off cluster's Lighting feature, which
 Matter's timer needs; one without it is refused (`no_lt_feature`). Lights are Documented: they take the plug's
-command, but no rig run has covered one yet (see the [compatibility page](compatibility.md)). On/off only: brightness
+command, but no rig run has covered one yet (see the [device compatibility page](device-compatibility.md#matter-lights)). On/off only: brightness
 and color fields are refused on a Matter light until tested.
 
 The timer is read back from the device, so the result is `confirmed` only when it reports both a running timer

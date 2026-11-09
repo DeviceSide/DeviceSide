@@ -209,6 +209,7 @@ async def test_a_report_for_a_supported_light_carries_its_integration_model_and_
         "firmware": "0x01002a00",
         "deviceside_version": (await async_get_integration(hass, DOMAIN)).version,
         "ha_version": HA_VERSION,
+        "experimental_features": "off",
     }
     for private in ("light.kitchen_lamp", "kitchen", "Kitchen", IEEE, "00%3A17"):
         assert private not in url
@@ -300,6 +301,7 @@ async def test_a_bug_report_keeps_its_own_title_and_carries_the_device(hass: Hom
         "firmware": "2.0",
         "deviceside_version": (await async_get_integration(hass, DOMAIN)).version,
         "ha_version": HA_VERSION,
+        "experimental_features": "off",
     }
     assert "desk" not in url
 
@@ -309,7 +311,17 @@ async def test_a_bug_report_without_a_device_carries_only_the_versions(hass: Hom
 
     fields, _ = await report_for(hass, entry, None, "report_bug", "bug_link")
 
-    assert fields.keys() == {"template", "deviceside_version", "ha_version"}
+    assert fields.keys() == {"template", "deviceside_version", "ha_version", "experimental_features"}
+
+
+async def test_a_report_says_whether_experimental_features_was_on(hass: HomeAssistant):
+    """A report on an Experimental item means something else with the option off: it was refused, not tried."""
+    entry = await loaded_entry(hass)
+    get_runtime(hass).experimental_features = True
+
+    device, _ = await report_for(hass, entry, None, "report_bug", "bug_link")
+
+    assert device["experimental_features"] == "on"
 
 
 async def test_a_proposal_carries_the_device_but_not_the_versions(hass: HomeAssistant):

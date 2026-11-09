@@ -1,12 +1,37 @@
-"""scripts/gen_compat.py: levels from the records, models from the Device row, groups, the stale-page check."""
+"""scripts/gen_compat.py: levels from the records, models from the Device row and devices.yaml, the README cards, the
+evidence block, and the stale check."""
 
 from types import SimpleNamespace
 
 import pytest
+import yaml
 
 from custom_components.deviceside.core.scope import AdapterScope, documented, experimental, reported, verified
 from scripts import check_release as cr
 from scripts import gen_compat as gc
+
+URL = gc.PAGE_URL
+DATA = {
+    "integrations": {"zha": {"requires": "Zigbee 3.0"}},
+    "models": [
+        {"name": "Hue lamp", "ids": ["LTA009", "9290024684"], "type": "bulb"},
+        {"name": "Plug", "ids": ["P1"], "type": "plug"},
+    ],
+    "capabilities": {
+        "zha": {
+            "switch": {"phrase": "plugs", "type": "plug", "section": "Zigbee plugs"},
+            "Light": {"phrase": "dimmers", "type": "dimmer", "section": "Dimmers"},
+            "CCT": {"phrase": "CCT controllers", "type": "LED controller", "section": "Dimmers"},
+        }
+    },
+    "doesnt_work": [
+        {"what": "Old plug", "integrations": ["zha"], "type": "plug", "reason": "No timer", "source": "https://x.y/z"}
+    ],
+    "reports": [],
+}
+PROSE = "# Page\n\n" + "".join(
+    f"### {heading}\n\n" for heading in ("Hue lamp", "Plug", "Zigbee plugs", "Dimmers", "Old plug", "Native groups")
+)
 
 
 def record(root, integration, name, *, result="pass", device="Hue lamp (`LTA009`), firmware `1.2.3`"):
@@ -28,8 +53,14 @@ class FakeRegistry:
             yield adapter.action, adapter.integration, adapter
 
 
-def adapter(integration, action, *, experimental=False):
-    return SimpleNamespace(integration=integration, action=action, scope=AdapterScope(experimental=experimental))
+def adapter(integration, action, scope=None, *, experimental=False):
+    return SimpleNamespace(
+        integration=integration, action=action, scope=scope or AdapterScope(experimental=experimental)
+    )
+
+
+def data(registry=None, **changes):
+    return gc.load_raw({**DATA, **changes}, registry or FakeRegistry())
 
 
 @pytest.fixture
@@ -39,7 +70,7 @@ def root(tmp_path, monkeypatch):
     return tmp_path
 
 
-def test_models_are_listed_with_their_firmware_and_groups_are_not_models(root):
+def test_entries_are_model_ids_with_their_firmware_and_groups_are_not_models(root):
     path = record(
         root,
         "hue",
@@ -47,58 +78,90 @@ def test_models_are_listed_with_their_firmware_and_groups_are_not_models(root):
         device="Hue lamp (`LTA009`), firmware `1.2`; LCA016, firmware `0x01`; Zone, firmware `unknown`; "
         "Group, firmware `Zigbee2MQTT 2.1`; a temporary group holding only it",
     )
-    assert gc.models(path) == ["`LTA009`, firmware `1.2`", "`LCA016`, firmware `0x01`", "group", "group", "group"]
+    assert gc.entries(path) == [("LTA009", "1.2"), ("LCA016", "0x01"), "group", "group", "group"]
 
 
 def test_a_record_with_no_device_lists_no_models(root):
-    assert gc.models(record(root, "hue", "set_scene", device="none")) == []
+    assert gc.entries(record(root, "hue", "set_scene", device="none")) == []
 
 
 def test_a_device_row_that_cannot_be_read_is_an_error(root):
     with pytest.raises(SystemExit, match="can't read Device entry"):
-        gc.models(record(root, "hue", "stop", device="a lamp"))
+        gc.entries(record(root, "hue", "stop", device="a lamp"))
     path = record(root, "hue", "lower_hue")
     path.write_text("| Result | pass |\n")
     with pytest.raises(SystemExit, match="no Device row"):
-        gc.models(path)
+        gc.entries(path)
+
+
+def test_a_model_a_record_names_must_be_in_devices_yaml(root):
+    record(root, "zha", "stop", device="Bulb (`NEW1`), firmware `1`")
+    with pytest.raises(SystemExit, match="model 'NEW1' is not in docs/devices.yaml"):
+        gc.row("stop", adapter("zha", "stop"), data())
+
+
+@pytest.mark.parametrize(
+    ("changes", "error"),
+    [
+        ({"models": [{"name": "Lamp", "ids": ["L1"], "type": "lamp"}]}, "type 'lamp' is not one of"),
+        ({"models": [{"name": "Plug", "ids": [8979], "type": "plug"}]}, "must be a string; quote it"),
+        (
+            {"models": [{"name": "A", "ids": ["X"], "type": "plug"}, {"name": "B", "ids": ["X"], "type": "plug"}]},
+            "twice",
+        ),
+        ({"capabilities": {"tuya": {}}}, "no integration 'tuya'"),
+        ({"doesnt_work": [{"what": "X", "integrations": ["zha"], "reason": "", "source": "s"}]}, "needs a reason"),
+        ({"reports": [{"integration": "zha", "model": "P1", "issue": "https://example.com/1"}]}, "issue URL"),
+        ({"reports": [{"integration": "zha", "model": "ZZ", "issue": f"{gc.ISSUE_URL}1"}]}, "'ZZ' is not in"),
+        (
+            {"reports": [{"integration": "zha", "model": "P1", "worked": ["set_scene"], "issue": f"{gc.ISSUE_URL}1"}]},
+            "zha has no set_scene adapter",
+        ),
+        ({"extra": 1}, "unknown key extra"),
+    ],
+)
+def test_devices_yaml_is_validated(changes, error):
+    with pytest.raises(SystemExit, match=error):
+        data(FakeRegistry(adapter("zha", "turn_on_for")), **changes)
 
 
 def test_a_passing_record_on_a_released_adapter_is_verified(root):
     record(root, "zha", "stop")
     record(root, "zha", "stop-predicted_state", device="Zone, firmware `unknown`")
-    line = gc.row("stop", adapter("zha", "stop"))
+    line = gc.row("stop", adapter("zha", "stop"), data())
     assert line.startswith("| `stop` | Verified | `LTA009`, firmware `1.2.3`<br>group |")
     assert "[predicted state](test-records/zha/stop-predicted_state.md)" in line
-    assert "[record](test-records/zha/stop.md)" in line
+    assert line.endswith("[record](test-records/zha/stop.md) | |")
 
 
 def test_an_experimental_adapter_or_a_failing_record_is_experimental(root):
     record(root, "zha", "stop")
     record(root, "hue", "stop", result="fail")
-    assert "| Experimental (in RCs only) |" in gc.row("stop", adapter("zha", "stop", experimental=True))
-    line = gc.row("stop", adapter("hue", "stop"))
-    assert line.startswith("| `stop` | Experimental (in RCs only) | none |  | |")
+    assert "| Experimental (in RCs only) |" in gc.row("stop", adapter("zha", "stop", experimental=True), data())
+    line = gc.row("stop", adapter("hue", "stop"), data())
+    assert line == "| `stop` | Experimental (in RCs only) | none |  | |"
 
 
-def test_documented_domains_get_a_row_of_their_own(root):
-    record(root, "zha", "stop")
-    scope = AdapterScope(domains=verified("switch") | documented("light"))
-    text = gc.generate(FakeRegistry(SimpleNamespace(integration="zha", action="stop", scope=scope)))
-    assert "| `stop` | Verified | `LTA009`, firmware `1.2.3` | [record](test-records/zha/stop.md) | |\n" in text
-    assert "| `stop` | Documented | none (untested: light entities) | | |\n" in text
+def test_reports_fill_the_reports_column_of_their_action(root):
+    issue = f"{gc.ISSUE_URL}12"
+    reports = [{"integration": "zha", "model": "P1", "worked": ["turn_on_for"], "failed": ["stop"], "issue": issue}]
+    loaded = data(FakeRegistry(adapter("zha", "turn_on_for"), adapter("zha", "stop")), reports=reports)
+    assert gc.reports_cell("zha", "turn_on_for", loaded) == f"✅ [#12]({issue}) `P1`"
+    assert gc.reports_cell("zha", "stop", loaded) == f"❌ [#12]({issue}) `P1`"
+    assert gc.reports_cell("hue", "stop", loaded) == ""
 
 
 def test_documented_capabilities_get_a_row_and_are_in_rcs_only_on_an_experimental_adapter(root):
     caps = verified("Switch") | documented("Light", "CCT")
-    released = SimpleNamespace(integration="zha", action="stop", scope=AdapterScope(capabilities=caps))
-    flagged = AdapterScope(experimental=True, capabilities=caps)
+    released = adapter("zha", "stop", AdapterScope(capabilities=caps))
+    flagged = adapter("zha", "stop", AdapterScope(experimental=True, capabilities=caps))
     assert gc.level_rows("stop", released) == ["| `stop` | Documented | none (untested: Light, CCT components) | | |"]
-    [row] = gc.level_rows("stop", SimpleNamespace(scope=flagged))
+    [row] = gc.level_rows("stop", flagged)
     assert row.startswith("| `stop` | Experimental (in RCs only) |")
     assert gc.level_rows("stop", adapter("zha", "stop")) == []
 
 
-def test_reported_documented_and_experimental_items_each_get_a_row_strongest_first(root):
+def test_reported_documented_and_experimental_items_each_get_a_row_strongest_first():
     scope = AdapterScope(
         domains=verified("light") | experimental("switch"),
         capabilities=reported("Light") | documented("CCT") | experimental("RGB"),
@@ -112,40 +175,135 @@ def test_reported_documented_and_experimental_items_each_get_a_row_strongest_fir
     ]
 
 
+def test_the_evidence_groups_by_integration_skips_unsupported_pairs_and_lists_what_doesnt_work(root):
+    record(root, "zha", "stop")
+    registry = FakeRegistry(adapter("zha", "stop"), adapter("hue", "lower_hue"))
+    text = gc.evidence(registry, data(registry))
+    assert text.index("### Hue") < text.index("### ZHA")
+    assert "`lower_hue` | Experimental" in text
+    assert text.count("`stop`") == 1
+    assert "| Old plug | No timer | [source](https://x.y/z) |" in text
+
+
 def test_an_unflagged_adapter_with_no_verified_call_has_only_its_level_rows(root):
-    scope = AdapterScope(domains=experimental("switch"))
-    text = gc.generate(FakeRegistry(SimpleNamespace(integration="zha", action="turn_on_for", scope=scope)))
+    registry = FakeRegistry(adapter("zha", "turn_on_for", AdapterScope(domains=experimental("switch"))))
+    text = gc.evidence(registry, data(registry))
     assert f"`turn_on_for` | {gc.IN_RCS}" not in text
     assert (
-        "| `turn_on_for` | Experimental | none (untested, behind Experimental features: switch entities) | | |\n"
-        in text
+        "| `turn_on_for` | Experimental | none (untested, behind Experimental features: switch entities) | | |" in text
     )
 
 
-def test_the_page_groups_by_integration_title_and_skips_unsupported_pairs(root):
+def zha_card(*adapters, **changes):
+    registry = FakeRegistry(*adapters)
+    return gc.card("zha", registry, list(adapters), data(registry, **changes))
+
+
+def test_a_card_lists_tested_models_once_each_by_their_name_then_native_groups(root):
+    record(root, "zha", "stop", device="Plug (`P1`), firmware `1`; Hue lamp (`LTA009`), firmware `1`")
+    record(root, "zha", "turn_on_for", device="Hue lamp (`9290024684`), firmware `2`; Group, firmware `x`")
+    card = zha_card(adapter("zha", "stop"), adapter("zha", "turn_on_for"))
+    assert card.lines["works"] == [
+        f"[Hue lamp]({URL}#hue-lamp)",  # bulbs before plugs; two ids, one model
+        f"[Plug]({URL}#plug)",
+        f"[native groups]({URL}#native-groups)",
+    ]
+    assert (
+        card.render().splitlines()[1] == "<summary><b>ZHA</b> (Zigbee 3.0): bulbs ✅ · plugs ✅ · groups ✅</summary>"
+    )
+
+
+def test_a_card_leaves_out_flagged_adapters_and_failing_records(root):
     record(root, "zha", "stop")
-    text = gc.generate(FakeRegistry(adapter("zha", "stop"), adapter("hue", "lower_hue")))
-    assert text.index("## Hue") < text.index("## ZHA")
-    assert "`lower_hue` | Experimental" in text
-    assert text.count("`stop`") == 1
+    record(root, "zha", "turn_on_for", result="fail", device="Plug (`P1`), firmware `1`")
+    scope = AdapterScope(experimental=True, domains=verified("light") | documented("switch"))
+    card = zha_card(adapter("zha", "stop", scope), adapter("zha", "turn_on_for"))
+    assert card.lines["works"] == []
+    assert card.lines["should"] == []
 
 
-def test_check_fails_on_a_stale_page_until_it_is_regenerated(root, capsys):
-    path = root / "docs" / "compatibility.md"
-    path.parent.mkdir(parents=True, exist_ok=True)
+def test_a_model_only_users_report_shows_with_a_badge_per_report(root):
+    issue = f"{gc.ISSUE_URL}7"
+    reports = [{"integration": "zha", "model": "P1", "worked": ["turn_on_for"], "issue": issue}]
+    card = zha_card(adapter("zha", "turn_on_for"), reports=reports)
+    assert card.lines["works"] == [f"[Plug]({URL}#plug) [👥]({issue})"]
+    assert "plugs ✅" in card.render()
+
+
+def test_untested_classes_share_an_entry_per_feature_set_and_name_their_features(root):
+    dimming = AdapterScope(capabilities=verified("Switch") | experimental("Light", "CCT"))
+    timer = AdapterScope(domains=verified("light") | documented("switch"), capabilities=documented("Light"))
+    card = zha_card(
+        adapter("zha", "raise_brightness", dimming),
+        adapter("zha", "stop", dimming),
+        adapter("zha", "turn_on_for", timer),
+    )
+    assert card.lines["should"] == [f"[plugs]({URL}#zigbee-plugs), [dimmers]({URL}#dimmers) (turn on with timer)"]
+    # stop rides the smooth move, so it isn't named.
+    assert card.lines["help"] == [f"[dimmers]({URL}#dimmers), [CCT controllers]({URL}#dimmers) (smooth dimming)"]
+    assert card.lines["no"] == [f"[Old plug]({URL}#old-plug)"]
+    # Best outcome per type: plugs are 🟡 though one is ⛔; LED controllers only 🙋.
+    assert "plugs 🟡 · dimmers 🟡 · LED controllers 🙋" in card.render()
+    assert "- 🙋 **Help us test:** " in card.render()
+
+
+def test_stop_alone_is_named():
+    assert gc.features({"stop"}) == ("stop",)
+    assert gc.features({"stop", "lower_brightness", "get_attributes", "custom"}) == (
+        "smooth dimming",
+        "get attributes",
+        "custom",
+    )
+
+
+def test_an_untested_item_without_a_class_is_an_error(root):
+    scope = AdapterScope(capabilities=verified("Switch") | documented("RGB"))
+    with pytest.raises(SystemExit, match="no entry for zha RGB, which a scope holds as Documented"):
+        zha_card(adapter("zha", "turn_on_for", scope))
+
+
+def write_files(root, registry):
+    page, readme, devices = root / "page.md", root / "README.md", root / "devices.yaml"
+    page.write_text(PROSE + "## Evidence\n\n<!-- evidence:start -->\n<!-- evidence:end -->\n")
+    readme.write_text("# R\n\n<!-- devices:start -->\n<!-- devices:end -->\n\nAfter.\n")
+    devices.write_text(yaml.safe_dump(DATA))
+    return lambda argv: gc.main(argv, registry, page, readme, devices)
+
+
+def test_check_fails_on_a_stale_readme_or_page_until_they_are_regenerated(root, capsys):
     registry = FakeRegistry(adapter("zha", "stop"))
     device = record(root, "zha", "stop")
-    assert gc.main(["--check"], registry, path) == 1  # no page yet
-    assert gc.main([], registry, path) == 0
-    assert gc.main(["--check"], registry, path) == 0
+    run = write_files(root, registry)
+    assert run(["--check"]) == 1  # nothing generated yet
+    assert "page.md and README.md out of date" in capsys.readouterr().err
+    assert run([]) == 0
+    assert run(["--check"]) == 0
+    assert (root / "README.md").read_text().endswith("<!-- devices:end -->\n\nAfter.\n")
+    assert (root / "page.md").read_text().startswith(PROSE)
     device.write_text(device.read_text().replace("1.2.3", "9.9.9"))
-    assert gc.main(["--check"], registry, path) == 1
-    assert "out of date" in capsys.readouterr().err
-    assert gc.main([], registry, path) == 0
-    assert "9.9.9" in path.read_text()
-    assert gc.main(["--check"], registry, path) == 0
+    assert run(["--check"]) == 1
+    assert "page.md out of date" in capsys.readouterr().err
+    assert run([]) == 0
+    assert "9.9.9" in (root / "page.md").read_text()
 
 
-def test_the_checked_in_page_matches_the_real_records():
-    """The page is generated from the records: run the real check so local pytest catches a record that drifts it."""
+def test_a_card_linking_to_a_missing_heading_fails(root):
+    run = write_files(root, FakeRegistry(adapter("zha", "stop")))
+    page = root / "page.md"
+    page.write_text(page.read_text().replace("### Dimmers\n", ""))
+    with pytest.raises(SystemExit, match="no heading for Dimmers"):
+        run([])
+
+
+def test_a_heading_inside_the_evidence_block_does_not_count(root):
+    run = write_files(root, FakeRegistry(adapter("zha", "stop")))
+    page = root / "page.md"
+    text = page.read_text().replace("### Old plug\n", "")
+    page.write_text(text.replace("<!-- evidence:start -->\n", "<!-- evidence:start -->\n### Old plug\n"))
+    with pytest.raises(SystemExit, match="no heading for Old plug"):
+        run([])
+
+
+def test_the_checked_in_readme_and_page_match_the_real_records():
+    """Both are generated: run the real check so local pytest catches a record or scope that drifts them."""
     assert gc.main(["--check"]) == 0

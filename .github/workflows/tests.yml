@@ -33,9 +33,9 @@ jobs:
           else
             files=$(git diff --name-only --no-renames "$BASE...$HEAD")
             echo "$files"
-            # Records and the compatibility page are docs, but the page is generated from them: check it.
+            # Records, devices.yaml, the device compatibility page and the README are docs, but generated or generated from: check them.
             if [ -n "$files" ] && grep -qvE '(\.md$|^docs/)' <<<"$files"; then code=true
-            elif grep -qE '^docs/(test-records/|compatibility\.md$)' <<<"$files"; then code=true
+            elif grep -qE '^(docs/(test-records/|device-compatibility\.md$|devices\.yaml$)|README\.md$)' <<<"$files"; then code=true
             else code=false; fi
           fi
           echo "code=$code" | tee -a "$GITHUB_OUTPUT"

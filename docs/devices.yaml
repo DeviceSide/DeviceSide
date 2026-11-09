@@ -1,0 +1,78 @@
+# Curated device data for scripts/gen_compat.py, which writes the README's device cards and the evidence block of
+# docs/device-compatibility.md from it, the test records and the adapters' scopes. The script validates it: a model a
+# record names must be here, every untested scope item needs a class, and every `section` must be a heading on the
+# detail page.
+#
+# `section` is the heading on docs/device-compatibility.md an entry links to; it defaults to the model's `name`.
+# Types: bulb, relay, plug, dimmer, LED controller, group or scene.
+
+# Requirements shown on an integration's card, after its name.
+integrations:
+  hue: {requires: Bridge v2/Pro}
+  shelly: {requires: Gen2+}
+
+# One entry per physical model, with its ids across integrations: a Hue bulb is `LTA009` on Hue and ZHA and
+# `9290024684` on Zigbee2MQTT (zigbee-herdsman-converters, src/devices/philips.ts, maps one to the other).
+models:
+  - name: Hue White Ambiance E27 1100lm
+    ids: [LTA009, "9290024684"]
+    type: bulb
+  - name: Hue Essential White and Color Ambiance A60
+    ids: [LCA016, "8720169392182"]
+    type: bulb
+  - name: Hue White A60 B22
+    ids: [LWA012, "9290018217"]
+    type: bulb
+  - name: Shelly 1 Mini Gen3
+    ids: [S3SW-001X8EU]
+    type: relay
+  - name: Shelly 1 Mini Gen4
+    ids: [S4SW-001X8EU]
+    type: relay
+  - name: Shelly Multicolor Bulb Gen3
+    ids: [S3BL-C010007AEU]
+    type: bulb
+  - name: WiZ Smart Plug
+    ids: ["8979"]
+    type: plug
+
+# Per integration, a phrase for each entity domain or capability (Shelly: RPC component) a scope holds below Verified,
+# for the cards' Should work and Help us test lines.
+capabilities:
+  shelly:
+    Light: {phrase: dimmers, type: dimmer, section: Shelly dimmers}
+    CCT: {phrase: CCT LED controllers, type: LED controller, section: Shelly LED controllers}
+    RGB: {phrase: RGB LED controllers, type: LED controller, section: Shelly LED controllers}
+    RGBW: {phrase: RGBW LED controllers, type: LED controller, section: Shelly LED controllers}
+    RGBCCT: {phrase: multicolor bulbs, type: bulb, section: Shelly multicolor bulbs}
+  matter:
+    light: {phrase: lights, type: bulb, section: Matter lights}
+  zha:
+    switch: {phrase: plugs and switches, type: plug, section: Zigbee plugs and switches}
+  zigbee2mqtt:
+    switch: {phrase: plugs and switches, type: plug, section: Zigbee plugs and switches}
+
+# Known not to work, and why. `type` is left out for what is not a device (a bridge, a kind of scene).
+doesnt_work:
+  - what: Hue Bridge v1
+    integrations: [hue]
+    reason: DeviceSide uses the bridge's v2 API and event stream, which the round v1 bridge lacks
+    source: https://www.home-assistant.io/integrations/hue/#support-for-legacy-v1-hue-bridges
+  - what: Hue smart scenes
+    integrations: [hue]
+    reason: A smart (All-Day) scene changes with the time of day, so it has no fixed settings to write
+    source: https://github.com/jasonmx/DeviceSide/blob/main/docs/integrations.md#set-and-get
+  - what: Shelly Gen1
+    integrations: [shelly]
+    reason: Gen1 devices have the older HTTP API, not the Gen2+ RPC calls DeviceSide sends
+    source: https://shelly-api-docs.shelly.cloud/gen1/
+  - what: Tuya TS011F
+    integrations: [zha, zigbee2mqtt]
+    type: plug
+    reason: It stores the Zigbee timer as a countdown and never switches on
+    source: https://github.com/jasonmx/DeviceSide/blob/main/docs/integrations.md#zigbee-plugs-and-switches
+
+# Accepted device-report issues. Claude adds one when Jason accepts a report; a working report on an Experimental
+# item's call also promotes that item to Level.REPORTED in the same PR. Fields: integration, model (one of a model's
+# ids), firmware, deviceside (version), worked and failed (action names), issue (URL).
+reports: []

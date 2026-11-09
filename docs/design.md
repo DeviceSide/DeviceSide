@@ -105,8 +105,8 @@ experimental.
 
 Out of scope until users ask: turn-on defaults (`OnLevel`), Zigbee plugs and switches beyond `turn_on_for` and
 `get_attributes` (Experimental), Shelly Gen1, Hue bridge v1,
-other domains (cover, valve, lock), and other integrations (Z-Wave JS, Tuya, ESPHome, Tasmota, TP-Link Kasa). What v0.1.0 refuses for want of hardware
-the rig lacks, and which entries a tester could prove: [hardware-the-rig-lacks.md](hardware-the-rig-lacks.md).
+other domains (cover, valve, lock), and other integrations (Z-Wave JS, Tuya, ESPHome, Tasmota, TP-Link Kasa). What each device class can expect, what a tester
+could prove, and what doesn't work: [device-compatibility.md](device-compatibility.md).
 
 ## Architecture
 

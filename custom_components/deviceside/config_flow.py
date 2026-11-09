@@ -61,7 +61,7 @@ class IssueForm:
 
 
 _DEVICE_FIELDS = ("integration", "model", "product", "firmware")
-_VERSION_FIELDS = ("deviceside_version", "ha_version")
+_VERSION_FIELDS = ("deviceside_version", "ha_version", "experimental_features")
 # In the order of GitHub's template chooser, which sorts the forms by file name.
 ISSUE_FORMS = (
     IssueForm(
@@ -105,6 +105,8 @@ async def issue_url(hass: HomeAssistant, form: IssueForm, entity_id: str | None)
         "firmware": device.sw_version if device else "",
         "deviceside_version": str((await async_get_integration(hass, DOMAIN)).version),
         "ha_version": HA_VERSION,
+        # A text field, as GitHub prefills only those: "on" or "off", what the dispatcher let through.
+        "experimental_features": "on" if (runtime := hass.data.get(DATA)) and runtime.experimental_features else "off",
     }
     query = {"template": form.template}
     if form.title is not None:
