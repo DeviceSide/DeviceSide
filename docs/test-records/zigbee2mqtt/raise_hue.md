@@ -3,17 +3,18 @@
 | | |
 |---|---|
 | Result | pass |
-| Date | 2026-11-06 |
-| Source | rig run (`scripts/rig.py`), commit `1600b87` |
+| Date | 2026-11-09 |
+| Source | rig run (`scripts/rig.py`), commit `8cbd97f` |
 | Profile | lab |
-| Home Assistant | 2026.10.2 |
-| Device | Hue Essential White and Color Ambiance A60 (`8720169392182`), firmware `1.164.2`; Group, firmware `Zigbee2MQTT 2.14.2` |
+| Home Assistant | 2026.10.4 |
+| Device | Hue Essential White and Color Ambiance A60 (`8720169392182`), firmware `1.164.2`; Group, firmware `Zigbee2MQTT 2.14.3` |
 
 ## Tests
 
 | Test | Target | Result |
 |---|---|---|
-| `cycles_up_the_wheel[light_color]` | `light` (light_color) | pass |
-| `cycles_up_the_wheel[group_color]` | `light` (group_color) | pass |
 | `hue_stop_raise[light_color]` | `light` (light_color) | pass |
+| `hue_stop_raise[light_color] observed` | `light` (light_color) | not observed |
 | `hue_stop_raise[group_color]` | `light` (group_color) | pass |
+
+Tests marked `not observed` had nobody watching.

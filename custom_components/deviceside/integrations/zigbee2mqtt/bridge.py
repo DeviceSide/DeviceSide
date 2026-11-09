@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import logging
 from collections.abc import Callable
 from typing import Any, Literal
 from uuid import uuid4
@@ -9,7 +10,10 @@ from uuid import uuid4
 from homeassistant.components import mqtt
 from homeassistant.core import HomeAssistant, callback
 
-from .addressing import bridge_topic
+from .addressing import bridge_topic, state_topic
+from ...core.models import Target
+
+_LOGGER = logging.getLogger(__name__)
 
 # Retained topics arrive once HA's debounced subscribe reaches the broker; the reply takes one settings write.
 _RETAINED_TIMEOUT_S = 2.0
@@ -132,3 +136,24 @@ async def wait(future: asyncio.Future[Any], timeout: float, what: str) -> Any:
             return await future
     except TimeoutError:
         raise TimeoutError(what) from None
+
+
+async def state_reply(hass: HomeAssistant, target: Target) -> tuple[asyncio.Future[None] | None, Callable[[], None]]:
+    """A future for Z2M's next state publish for the target, subscribed before the caller publishes, and its
+    unsubscribe; no future when the target has no state topic or the subscribe failed."""
+    if (light_topic := state_topic(target)) is None:
+        return None, lambda: None
+    published: asyncio.Future[None] = hass.loop.create_future()
+
+    @callback
+    def received(msg: mqtt.ReceiveMessage) -> None:
+        # A retained message is old state the broker resends on subscribe, not Z2M's answer.
+        if not msg.retain and not published.done():
+            published.set_result(None)
+
+    try:
+        # HA's own light entity subscribes to this topic, so the subscription is live at once.
+        return published, await mqtt.async_subscribe(hass, light_topic, received)
+    except Exception as err:  # noqa: BLE001 - each caller goes on without the reply
+        _LOGGER.debug("Couldn't subscribe to %s, so Zigbee2MQTT's answer isn't awaited: %s", light_topic, err)
+        return None, lambda: None

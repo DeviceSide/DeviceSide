@@ -73,8 +73,9 @@ class Z2MStop(Adapter[Request]):
                     if cache.tracks(light.entity_id, SATURATION)
                 },
             }
-            # A soft off of ours: with Hue native control on, Z2M sends it as Philips' own command, which a ZCL stop
-            # doesn't end, so the light is also cut with on at its predicted brightness (as on Hue).
+            # A soft off of ours: where hue_native_control couldn't be turned off for the lower, Z2M sent it as
+            # Philips' own command, which a ZCL stop doesn't end, so the light is also cut with on at its predicted
+            # brightness (as on Hue).
             soft_off = [
                 light
                 for light in halting

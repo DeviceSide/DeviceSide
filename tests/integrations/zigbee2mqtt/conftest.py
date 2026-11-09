@@ -1,7 +1,7 @@
 import pytest
 from homeassistant.config_entries import ConfigEntryState
 
-from custom_components.deviceside.integrations.zigbee2mqtt import bridge, read, set_attributes
+from custom_components.deviceside.integrations.zigbee2mqtt import bridge, native_control, read, set_attributes
 from custom_components.deviceside.integrations.zigbee2mqtt.fade import transition_cache
 
 from ...fixtures.z2m import GROUPS, IEEE, INFO, Broker, add_z2m_entity, add_z2m_group, z2m_entry
@@ -27,6 +27,7 @@ def broker(hass, monkeypatch):
     monkeypatch.setattr(bridge, "_RETAINED_TIMEOUT_S", 0.25)
     monkeypatch.setattr(bridge, "_REPLY_TIMEOUT_S", 0.25)
     monkeypatch.setattr(read, "_REPLY_TIMEOUT_S", 0.25)
+    monkeypatch.setattr(native_control, "_REPLY_CAP_S", 0.05)
     monkeypatch.setattr(set_attributes, "_FADE_WAIT_S", 0.0)
     monkeypatch.setattr(set_attributes, "_RETRY_S", 0.0)
     hass.services.async_register("mqtt", "publish", fake.publish)
@@ -68,6 +69,7 @@ def light(
     modes: list[str] | None = None,
     color_hs: bool = True,
     color: dict | None = None,
+    manufacturer: str | None = None,
 ) -> str:
     """A Z2M color light HA lists with xy, whose definition exposes color_hs, answering color reads with COLOR."""
     name = entity_id.split(".")[1]
@@ -76,7 +78,9 @@ def light(
     attributes: dict = {"supported_color_modes": XY if modes is None else modes}
     if state == "on":
         attributes |= {"brightness": brightness, "hs_color": hs}
-    add_z2m_entity(hass, entry, entity_id, ieee=ieee, state=state, attributes=attributes, name=name)
+    add_z2m_entity(
+        hass, entry, entity_id, ieee=ieee, state=state, attributes=attributes, name=name, manufacturer=manufacturer
+    )
     broker.devices[ieee] = (name, {"lightingColorCtrl": {**COLOR, **(color or {})}})
     broker.retained[INFO]["config"]["devices"].setdefault(ieee, {})
     features = [{"name": "state"}, {"name": "brightness"}] + ([{"name": "color_hs"}] if color_hs else [])

@@ -247,10 +247,10 @@ native group of the integration (a Hue zone, a ZHA or Zigbee2MQTT group).
 |---|---|---|---|---|
 | `get_attributes` | Verified | `9290024684`, firmware `1.163.1`<br>`8720169392182`, firmware `1.164.2`<br>`9290018217`, firmware `1.122.2`<br>group | [record](test-records/zigbee2mqtt/get_attributes.md) | |
 | `get_attributes` | Experimental | none (untested, behind Experimental features: switch entities) | | |
-| `lower_brightness` | Verified | `LTA009`, firmware `1.163.1` | [record](test-records/zigbee2mqtt/lower_brightness.md) | |
+| `lower_brightness` | Verified | `9290024684`, firmware `1.163.1`<br>group | [record](test-records/zigbee2mqtt/lower_brightness.md) | |
 | `lower_hue` | Experimental (in RCs only) | `8720169392182`, firmware `1.164.2`<br>group | [record](test-records/zigbee2mqtt/lower_hue.md) | |
 | `lower_saturation` | Verified | `8720169392182`, firmware `1.164.2`<br>group | [record](test-records/zigbee2mqtt/lower_saturation.md) | |
-| `raise_brightness` | Verified | `LTA009`, firmware `1.163.1` | [record](test-records/zigbee2mqtt/raise_brightness.md) | |
+| `raise_brightness` | Verified | `9290024684`, firmware `1.163.1`<br>group | [record](test-records/zigbee2mqtt/raise_brightness.md) | |
 | `raise_hue` | Verified | `8720169392182`, firmware `1.164.2`<br>group | [record](test-records/zigbee2mqtt/raise_hue.md) | |
 | `raise_saturation` | Verified | `8720169392182`, firmware `1.164.2`<br>group | [record](test-records/zigbee2mqtt/raise_saturation.md) | |
 | `set_attributes` | Experimental (in RCs only) | `9290024684`, firmware `1.163.1`<br>`8720169392182`, firmware `1.164.2`<br>group | [record](test-records/zigbee2mqtt/set_attributes.md) | |
