@@ -271,11 +271,11 @@ def test_a_card_lists_tested_models_once_each_by_their_name_then_native_groups(r
     record(root, "zha", "turn_on_for", device="Hue lamp (`9290024684`), firmware `2`; Group, firmware `x`")
     card = zha_card(adapter("zha", "stop"), adapter("zha", "turn_on_for"))
     assert card.lines["works"] == [
-        f"[Hue lamp]({URL}#hue-lamp)",  # bulbs before plugs; two ids, one model
-        f"[Plug]({URL}#plug)",
-        f"[native groups]({URL}#native-groups)",
+        f"[Hue lamp]({URL}#hue-lamp) ✔",  # bulbs before plugs; two ids, one model
+        f"[Plug]({URL}#plug) ✔",
+        f"[native groups]({URL}#native-groups) ✔",
     ]
-    assert card.render().splitlines()[:3] == ["**ZHA** (Zigbee 3.0)", "", f"- ✅ {' · '.join(card.lines['works'])}"]
+    assert card.render().splitlines()[:3] == ["**ZHA** (Zigbee 3.0)", "", f"- 🟢 {' · '.join(card.lines['works'])}"]
 
 
 def test_a_card_leaves_out_flagged_adapters_and_failing_records(root):
@@ -293,7 +293,7 @@ def test_a_model_only_users_report_shows_with_a_badge_per_report(root):
     issue = f"{gc.ISSUE_URL}7"
     reports = [{**REPORT, "worked": ["turn_on_for"], "issue": issue}]
     card = zha_card(adapter("zha", "turn_on_for"), reports=reports)
-    assert card.lines["works"] == [f"[Plug]({URL}#plug) [👥]({issue})"]
+    assert card.lines["works"] == [f"[Plug]({URL}#plug) ([report]({issue}))"]
 
 
 def test_a_report_on_a_flagged_adapter_stays_out_of_the_card(root):
@@ -470,11 +470,11 @@ def test_a_documented_class_on_a_reported_sibling_carries_its_reports(root):
     )
     reports = [{**REPORT, "item": "RGB", "worked": ["turn_on_for"], "issue": issue}]
     card = zha_card(adapter("zha", "turn_on_for", scope), reports=reports)
-    assert card.lines["works"] == [f"[Plug]({URL}#plug) [👥]({issue})"]
+    assert card.lines["works"] == [f"[Plug]({URL}#plug) ([report]({issue}))"]
     # Same features, different support: two entries, the community one marked.
     assert card.lines["should"] == [
         f"[dimmers]({URL}#dimmers): turn on with timer",
-        f"[CCT controllers]({URL}#dimmers): turn on with timer [👥]({issue})",
+        f"[CCT controllers]({URL}#dimmers): turn on with timer ([report]({issue}))",
     ]
 
 
@@ -482,7 +482,12 @@ def test_the_legend_leads_the_cards_and_no_extension_mark_shows(root):
     registry = FakeRegistry(adapter("zha", "turn_on_for"))
     text = gc.cards(registry, data(registry))
     assert text.index(gc.CARDS_LEGEND) < text.index("**ZHA**")
-    assert "👥 user-reported: community-supported" in gc.CARDS_LEGEND
+    assert gc.CARDS_LEGEND == (
+        "🟢 works · ✔ verified on automated rig · 🟡 should work: takes the same call as a tested device · "
+        "🙋 ready for testing · ⛔ doesn't work"
+    )
+    assert "👥" not in text
+    assert text.index("Details per integration are in [docs/integrations.md](") < text.index("</details>")
     assert "🧩" not in text
 
 
@@ -496,7 +501,7 @@ def test_a_class_held_by_actions_of_different_support_never_shares_a_bare_entry_
     )
     assert card.lines["should"] == [
         f"[dimmers]({URL}#dimmers): turn on with timer",
-        f"[dimmers]({URL}#dimmers): turn off with timer [👥]({issue})",
+        f"[dimmers]({URL}#dimmers): turn off with timer ([report]({issue}))",
     ]
 
 

@@ -35,7 +35,8 @@ Who fixes a bug depends on how the feature was proven on your device:
 - **Experimental:** unsupported until it is proven. A report that it doesn't work is still useful: it is how features
   get fixed or left out.
 
-The cards mark community-supported entries 👥, linked to the report behind them; bare entries are maintainer-supported.
+On the cards, ✔ marks what the automated rig verified, so it is maintainer-supported. A user-reported entry links the
+report behind it and is community-supported.
 **Report a bug** in DeviceSide's options fills in which one applies to your device and action.
 
 ## Tested devices

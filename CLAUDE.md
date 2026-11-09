@@ -62,8 +62,7 @@ capability only; `gen_compat.py` refuses a Reported field until then). A record 
 
 **Support follows the proof** (`AdapterScope.support`): Verified, and Documented on a Verified sibling, are
 maintainer-supported; Reported, and Documented on a Reported sibling, community-supported (bugs labelled `community`,
-PRs reviewed, not fixed by the maintainer); Experimental, unsupported. A bug in a community or Experimental item is
-never `severity:high`.
+PRs reviewed, not fixed by the maintainer); Experimental, unsupported.
 
 ## Releasing
 

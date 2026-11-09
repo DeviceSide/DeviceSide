@@ -5,15 +5,15 @@ the adapters' scopes and docs/devices.yaml.
 **Cards.** One collapsed section between the README's devices markers, with a card per integration: its name, then
 a bullet per outcome:
 - Works: the models in the passing records of adapters that ship (Verified), plus native groups, and the models of
-  accepted working reports (👥, linked to the report).
+  accepted working reports (linked to the report). A rig-tested entry ends ✔.
 - Should work: the classes (devices.yaml `capabilities`) the shipping adapters hold as Documented; one whose sibling
-  is Reported, so community-supported, carries 👥, linked to the sibling's reports.
+  is Reported, so community-supported, links the sibling's reports.
 - Help us test: the classes they hold as Experimental, refused until the Experimental features option is on.
 - Doesn't work: devices.yaml `doesnt_work`.
 Each class entry, a bullet of its own, names the features it is at that level for; classes sharing a page section
 share a link. A model or blocker drops the integration's name where it leads, as the card's name already gives it.
 Adapters with the `experimental` flag are left out of the cards: they are in RCs only. The legend leads the section, so
-👥 (user-reported, community-supported) is read before the first card.
+✔ (verified on the automated rig) is read before the first card. The section ends with a link to the integrations page.
 
 **Evidence.** Per integration, every action's level, who supports it (`AdapterScope.support`) and the models its
 passing records tested, with a row per level and support below Verified that its domains, capabilities or fields
@@ -73,17 +73,20 @@ ITEM_LEVELS = (
 TYPES = ("bulb", "relay", "plug", "dimmer", "LED controller")
 # Outcomes, in a card's order: (key, icon, legend).
 OUTCOMES = (
-    ("works", "✅", "works: tested"),
-    ("should", "🟡", "should work: takes the call a tested device takes"),
-    ("help", "🙋", "help us test: built, waiting for a tester; turn on Experimental features to try it"),
+    ("works", "🟢", "works"),
+    ("should", "🟡", "should work: takes the same call as a tested device"),
+    ("help", "🙋", "ready for testing"),
     ("no", "⛔", "doesn't work"),
 )
+VERIFIED = "✔"
 CARDS_LEGEND = " · ".join(
     [
-        *(f"{icon} {legend}" for _, icon, legend in OUTCOMES),
-        "👥 user-reported: community-supported; bare: tested and supported by the maintainer",
+        f"{OUTCOMES[0][1]} {OUTCOMES[0][2]}",
+        f"{VERIFIED} verified on automated rig",
+        *(f"{icon} {legend}" for _, icon, legend in OUTCOMES[1:]),
     ]
 )
+INTEGRATIONS_URL = "https://github.com/jasonmx/DeviceSide/blob/main/docs/integrations.md"
 # The keys each devices.yaml entry may hold, so a typo fails instead of being ignored.
 MODEL_KEYS = {"name", "ids", "type", "section"}
 CLASS_KEYS = {"phrase", "section"}
@@ -292,7 +295,8 @@ def worked_reports(integration: str, action: str, item: str, data: Data) -> list
 
 
 def badges(issues) -> str:
-    return "".join(f" [👥]({issue})" for issue in dict.fromkeys(issues))
+    """The reports behind a user-reported entry, each linked once."""
+    return "".join(f" ([report]({issue}))" for issue in dict.fromkeys(issues))
 
 
 def entries(record: Path) -> list[tuple[str, str] | str]:
@@ -524,8 +528,8 @@ def merged(phrases: list[str], section: str) -> str:
 
 def class_entries(key: str, held: dict[str, dict[str, list[str]]], data: Data) -> list[str]:
     """Classes with the same features and the same reports behind them share one entry: "dimmers, LED controllers
-    (CCT, RGB): turn on with timer", then a 👥 per report when community-supported. A class held by actions of
-    different support is an entry per support, so a bare entry never takes another action's 👥."""
+    (CCT, RGB): turn on with timer", then a link per report when community-supported. A class held by actions of
+    different support is an entry per support, so a bare entry never takes another action's report links."""
     grouped: dict[tuple[tuple[str, ...], tuple[str, ...]], dict[str, list[str]]] = {}
     for item, actions in held.items():
         entry = data.capabilities[key][item]
@@ -543,7 +547,7 @@ def class_entries(key: str, held: dict[str, dict[str, list[str]]], data: Data) -
 
 def works(card: Card, key: str, integration_adapters: list, data: Data) -> list[str]:
     """The models the shipping adapters' records tested, then those only users report, by device type, then first
-    seen, then native groups. A rig-tested model shows bare; a reported one shows 👥, linked to each report."""
+    seen, then native groups. A rig-tested model and the native groups end ✔; a reported one links each report."""
     tested_names: list[str] = []
     groups = False
     shipping = {adapter.action for adapter in integration_adapters if not adapter.scope.experimental}
@@ -563,10 +567,10 @@ def works(card: Card, key: str, integration_adapters: list, data: Data) -> list[
     names = [*tested_names, *(name for name in reported if name not in tested_names)]
     lines = []
     for name in sorted(names, key=lambda name: TYPES.index(by_name[name]["type"])):
-        marks = "" if name in tested_names else badges(reported[name])
+        marks = f" {VERIFIED}" if name in tested_names else badges(reported[name])
         lines.append(anchor(card.short(name), by_name[name]["section"]) + marks)
     if groups:
-        lines.append(anchor(*GROUPS_ENTRY))
+        lines.append(f"{anchor(*GROUPS_ENTRY)} {VERIFIED}")
     return lines
 
 
@@ -596,7 +600,13 @@ def cards(registry: AdapterRegistry, data: Data) -> str:
     ]
     for key, integration_adapters in by_integration(registry).items():
         parts += [card(key, registry, integration_adapters, data).render(), ""]
-    parts += ["</details>", "", CARDS[1]]
+    parts += [
+        f"Details per integration are in [docs/integrations.md]({INTEGRATIONS_URL}).",
+        "",
+        "</details>",
+        "",
+        CARDS[1],
+    ]
     return "\n".join(parts)
 
 
