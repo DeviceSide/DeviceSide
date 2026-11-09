@@ -28,19 +28,26 @@ HA requires it.
   **Experimental**: built and unit-tested, with no proof on a device; it ships in stable releases, refused at runtime
   until the user turns on Experimental features. **Documented**: no record, but the adapter sends it the same call as
   a Verified or Reported item, differing only in addressing, and the vendor or standard documents that call
-  identically; never a field. **Reported**: an accepted working device report on the item's call, with unit tests pinning it; a change to that call
+  identically; never a field. It names that item in `AdapterScope.siblings`, and stands only while the sibling does: a
+  scope whose Documented item rides one below Reported fails to load. **Reported**: an accepted working device report on the item's call, with unit tests pinning it; a change to that call
   makes it Experimental again. **Verified**:
-  a passing record from the rig. Documented, Reported and Verified items ship switched on, and a bug on one is a real
-  bug. A call's level is the weakest among the items it touches: its domain, capability and fields
+  a passing record from the rig. Documented, Reported and Verified items ship switched on. A call's level is the weakest among the items it touches: its domain, capability and fields
   (`AdapterScope.level`).
+- **Support**: who fixes a bug in a call, by the proof behind it (`AdapterScope.support`, with `proof()` giving each
+  item's: its own level, or its sibling's when Documented). **Maintainer**: Verified, or Documented on a Verified
+  sibling; the rig retests the fix. **Community**: Reported, or Documented on a Reported sibling; bugs are accepted
+  and labelled `community`, the maintainer reviews fixes but doesn't write them, and may drop an item that keeps
+  breaking. **Experimental (opt-in)**: unsupported. The README cards mark community items 👥, and the bug form
+  carries the support of the action it is about. Support is per item, not per adapter: an extension's are separate.
 - **Experimental features**: the option (`experimental_features`, off by default) that lets calls touching an
   Experimental item through. Only the dispatcher reads it.
 - **Release flag**: `experimental=True` on an adapter's scope; it keeps the whole adapter in release candidates only.
   When to set and clear it: [CLAUDE.md](../CLAUDE.md#release-flag). Not the Experimental level: an item is gated at
   runtime, the flag at release. A record older than its adapter's code, or one that did not pass, blocks a release
   (`check_release.py --records`) until a rerun.
-- **Device report**: a user's "works" or "doesn't work" for an action on a model. An accepted "works" on an item's
-  call makes it Reported; a "doesn't work" is evidence for a fix or for leaving the item out.
+- **Device report**: a user's "works" or "doesn't work" for an action on a model. In `docs/devices.yaml` each one names
+  the `item` its call reached (the domain, or the capability for an adapter that lists them). An accepted "works" on
+  an item's call makes it Reported; a "doesn't work" is evidence for a fix or for leaving the item out.
 - **Profile**: one test setup on the rig's HA, the entities a run may move by integration and role; a record names the
   one it ran on (`lab`, `house`).
 
@@ -203,8 +210,8 @@ adapter's targets at once, so native group commands stay possible.
   `experimental_off` while the option is off, raising its own message for a named target. A call left nothing to
   send is unchanged, not refused. An item that is not built, or not unit-tested, stays out of scope, so `supports()`
   refuses it. Reported and Experimental items have no record, so `--records` doesn't age them.
-- **Community-maintained adapters (planned).** Who fixes an adapter is a separate axis from its level: an adapter
-  its contributor maintains, on hardware the rig lacks. It needs a route to stable other than the rig, for example
+- **Extensions (planned).** An adapter its contributor maintains, on hardware the rig lacks: who fixes the whole
+  adapter, where Support says who fixes one item. The cards will mark them 🧩, reserved until one exists. It needs a route to stable other than the rig, for example
   the coverage bar plus Reported evidence from someone other than its author. That route is left open.
 - **Tags** come only from the `cut-release-candidate` and `cut-release` workflows (a tag ruleset refuses others).
   `scripts/check_tag.py` refuses a tag that isn't `vX.Y.Z` or `vX.Y.ZrcN`, isn't above the latest release, or

@@ -15,8 +15,7 @@ maintainer owns, so a feature can pass in one of three ways:
   or Reported pass on one device counts for the rest. DeviceSide sends them exactly the call it sends the tested
   device, differing only in which component, endpoint or entity it addresses.
 
-Verified, Reported and Documented features ship in stable releases, and a bug on one is a real bug: please
-[report it](https://github.com/jasonmx/DeviceSide/issues/new?template=report_bug.yml).
+Verified, Reported and Documented features ship in stable releases, switched on.
 
 Anything built and unit-tested but not yet proven on a device is **Experimental**. It ships switched off: DeviceSide
 refuses it until you turn on **Experimental features** in DeviceSide's options (**Configure > Settings**). Whether it
@@ -24,8 +23,20 @@ works or not, please tell us with **Report a device test result** in the same op
 Reported, for everyone. **Experimental (in RCs only)** is a change to tested behavior that waits for a rig run: it is in
 release candidates only, until the rig passes it again.
 
-The cards mark each entry by its evidence, and so by who supports it: bare for rig-tested, supported by the
-maintainer; 👥 for reported by users, linked to the report, and supported by the community.
+## Support
+
+Who fixes a bug depends on how the feature was proven on your device:
+
+- **Maintainer-supported:** Verified, or Documented on a Verified device. The maintainer fixes it and retests it on the
+  rig. Please [report it](https://github.com/jasonmx/DeviceSide/issues/new?template=report_bug.yml).
+- **Community-supported:** Reported, or Documented on a Reported device. Bugs are welcome, and labelled `community`:
+  the maintainer has no such device to test a fix on, so fixes come from users who do, as pull requests the
+  maintainer reviews. A feature that keeps breaking with nobody to fix it may be dropped.
+- **Experimental:** unsupported until it is proven. A report that it doesn't work is still useful: it is how features
+  get fixed or left out.
+
+The cards mark community-supported entries 👥, linked to the report behind them; bare entries are maintainer-supported.
+**Report a bug** in DeviceSide's options fills in which one applies to your device and action.
 
 ## Tested devices
 

@@ -24,8 +24,7 @@ not; CI checks it.
 **Experimental items, not the flag, carry new work** (PR #307). A new action, integration (including ports), domain,
 capability or field ships as `Level.EXPERIMENTAL` once built and unit-tested: in stable releases, refused at runtime
 until the user turns on the Experimental features option. The dispatcher is the only gate: adapters never read the
-option, and turning it on never changes how any other item behaves. A bug in an Experimental item is never
-`severity:high`.
+option, and turning it on never changes how any other item behaves.
 
 **Setting it:** for a behavior change to a Verified item that the rig can't exercise. Leave it off for refactors,
 performance work and fixes to adapters the rig can retest before the next RC. When unsure, ask.
@@ -50,14 +49,20 @@ sends it the same call as a Verified or Reported item, differing only in address
 domain); the vendor or standard documents that call identically for both, and no known class of devices departs from
 it; a failure shows as `rejected` or `sent`, never a wrong device state, nor `confirmed` unless what it confirms is the
 stored setting the call wrote, read back; and unit tests pin the payload.
-Fields are never Documented: a field changes the call. A Documented item stands only while its sibling does: a change
-to its call, or its Reported sibling falling to Experimental, makes it Experimental until a record or a new report on
-the sibling. A record promotes the item to Verified. Anything else untested is Experimental, or out of
-scope and refused, never Documented on a sibling's proof.
+Fields are never Documented: a field changes the call. A change to a Documented item's call alone makes it
+Experimental until a record of it; a change it shares with its sibling rides the sibling's new record or report. It
+falls with its Reported sibling (`AdapterScope.siblings` names the sibling and refuses one below Reported). A record
+promotes the item to Verified. Anything else untested is Experimental, or out of scope and refused, never Documented
+on a sibling's proof.
 
 **Reported.** A scope item ships as `Level.REPORTED` on an accepted working user report of the item's call, when unit
 tests pin the payload. It has no record, so no freshness check; a change to its call makes it Experimental until a
 new report or a record. Fields may be Reported. A record promotes it to Verified.
+
+**Support follows the proof** (`AdapterScope.support`): Verified, and Documented on a Verified sibling, are
+maintainer-supported; Reported, and Documented on a Reported sibling, community-supported (bugs labelled `community`,
+PRs reviewed, not fixed by the maintainer); Experimental, unsupported. A bug in a community or Experimental item is
+never `severity:high`.
 
 ## Releasing
 
