@@ -24,8 +24,8 @@ until the user turns on the Experimental features option. The dispatcher is the 
 option, and turning it on never changes how any other item behaves. A bug in an Experimental item is never
 `severity:high`.
 
-**Setting it:** for a behavior change to a Verified item that the rig can't exercise. Leave it
-off for refactors, performance work and fixes the rig run before each RC covers. When unsure, ask.
+**Setting it:** for a behavior change to a Verified item that the rig can't exercise. Leave it off for refactors,
+performance work and fixes to adapters the rig can retest before the next RC. When unsure, ask.
 
 **Clearing it:** a PR citing a passing test record (`docs/test-records/<integration>/<action>*.md`) that covers the
 adapter's whole scope bar its Documented, Reported and Experimental items: `AdapterScope.domains`, `.capabilities`,
