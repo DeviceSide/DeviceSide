@@ -40,6 +40,7 @@ class MatterGetAttributes(Adapter[Request]):
     scope: ClassVar[AdapterScope] = AdapterScope(
         # Lights carry the same attributes as plugs, behind the same LT check: Documented until a record covers them.
         domains=verified("switch") | documented("light"),
+        siblings={"light": "switch"},
         fields=verified(),
         confirmable=True,
     )

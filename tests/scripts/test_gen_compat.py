@@ -178,8 +178,9 @@ def test_reports_fill_the_reports_column_of_their_action(root):
 
 def test_documented_capabilities_get_a_row_and_are_in_rcs_only_on_an_experimental_adapter(root):
     caps = verified("Switch") | documented("Light", "CCT")
-    released = adapter("zha", "stop", AdapterScope(capabilities=caps))
-    flagged = adapter("zha", "stop", AdapterScope(experimental=True, capabilities=caps))
+    sibs = {"Light": "Switch", "CCT": "Switch"}
+    released = adapter("zha", "stop", AdapterScope(capabilities=caps, siblings=sibs))
+    flagged = adapter("zha", "stop", AdapterScope(experimental=True, capabilities=caps, siblings=sibs))
     assert gc.level_rows("stop", released) == ["| `stop` | Documented | none (untested: Light, CCT components) | | |"]
     [row] = gc.level_rows("stop", flagged)
     assert row.startswith("| `stop` | Experimental (in RCs only) |")
@@ -190,6 +191,7 @@ def test_reported_documented_and_experimental_items_each_get_a_row_strongest_fir
     scope = AdapterScope(
         domains=verified("light") | experimental("switch"),
         capabilities=reported("Light") | documented("CCT") | experimental("RGB"),
+        siblings={"CCT": "Light"},
         fields=verified("brightness") | experimental("transition"),
     )
     assert gc.level_rows("turn_on_for", SimpleNamespace(scope=scope)) == [
@@ -239,7 +241,9 @@ def test_a_card_lists_tested_models_once_each_by_their_name_then_native_groups(r
 def test_a_card_leaves_out_flagged_adapters_and_failing_records(root):
     record(root, "zha", "stop")
     record(root, "zha", "turn_on_for", result="fail", device="Plug (`P1`), firmware `1`")
-    scope = AdapterScope(experimental=True, domains=verified("light") | documented("switch"))
+    scope = AdapterScope(
+        experimental=True, domains=verified("light") | documented("switch"), siblings={"switch": "light"}
+    )
     card = zha_card(adapter("zha", "stop", scope), adapter("zha", "turn_on_for"))
     assert card.lines["works"] == []
     assert card.lines["should"] == []
@@ -260,7 +264,11 @@ def test_a_report_on_a_flagged_adapter_stays_out_of_the_card(root):
 
 def test_untested_classes_share_an_entry_per_feature_set_and_name_their_features(root):
     dimming = AdapterScope(capabilities=verified("Switch") | experimental("Light", "CCT"))
-    timer = AdapterScope(domains=verified("light") | documented("switch"), capabilities=documented("Light"))
+    timer = AdapterScope(
+        domains=verified("light") | documented("switch"),
+        capabilities=verified("Switch") | documented("Light"),
+        siblings={"switch": "light", "Light": "Switch"},
+    )
     card = zha_card(
         adapter("zha", "raise_brightness", dimming),
         adapter("zha", "stop", dimming),
@@ -306,7 +314,7 @@ def test_stop_alone_is_named():
 
 
 def test_an_untested_item_without_a_class_is_an_error(root):
-    scope = AdapterScope(capabilities=verified("Switch") | documented("RGB"))
+    scope = AdapterScope(capabilities=verified("Switch") | documented("RGB"), siblings={"RGB": "Switch"})
     with pytest.raises(SystemExit, match="no entry for zha RGB, which a scope holds as Documented"):
         zha_card(adapter("zha", "turn_on_for", scope))
 

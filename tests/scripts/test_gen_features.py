@@ -55,7 +55,7 @@ def test_domains_show_at_any_level_and_group_follows_native_groups_or_expand_gro
     registry = FakeRegistry(expand={"zha"})
     zha = adapter("zha", "stop", domains=verified("light"))
     z2m = adapter("zigbee2mqtt", "stop", domains=verified("light"), native_groups=True)
-    matter = adapter("matter", "stop", domains=verified("switch") | documented("light"))
+    matter = adapter("matter", "stop", domains=verified("switch") | documented("light"), siblings={"light": "switch"})
     reported_light = adapter("matter", "stop", domains=reported("light"))
     assert gf.keys(zha, registry) == {"light", "group"}
     assert gf.keys(z2m, registry) == {"light", "group"}

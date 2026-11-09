@@ -9,7 +9,7 @@ from typing import ClassVar
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 
-from .addressing import CAPABILITIES, RpcComponent, address, unsupported_reason
+from .addressing import CAPABILITIES, SIBLINGS, RpcComponent, address, unsupported_reason
 from .rpc import get_config, get_status
 from ...core.adapter import Adapter
 from ...core.color import rgb_row
@@ -64,6 +64,7 @@ class ShellyGetAttributes(RpcComponent, Adapter[Request]):
         domains=verified("light", "switch"),
         # A relay shown as a light sends the same Switch.GetStatus.
         capabilities=CAPABILITIES,
+        siblings=SIBLINGS,
         confirmable=True,
     )
 

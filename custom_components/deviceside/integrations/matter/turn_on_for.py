@@ -33,6 +33,7 @@ class MatterTurnOnFor(Adapter[TurnOnForRequest]):
     scope: ClassVar[AdapterScope] = AdapterScope(
         # Lights take the same OnWithTimedOff as plugs, behind the same LT check: Documented until a record covers them.
         domains=verified("switch") | documented("light"),
+        siblings={"light": "switch"},
         duration=_TIMER_LIMITS,
         fields=verified(),
         # capabilities=None covers every endpoint that passes the LT feature check.

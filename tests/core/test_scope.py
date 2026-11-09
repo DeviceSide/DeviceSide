@@ -13,6 +13,7 @@ from custom_components.deviceside.core.registry import AdapterRegistry
 from custom_components.deviceside.core.scope import (
     AdapterScope,
     Level,
+    Support,
     documented,
     experimental,
     reported,
@@ -56,7 +57,9 @@ def test_defaults_are_a_verified_light_with_every_capability():
 )
 def test_level_is_the_weakest_item_touched(domain, capability, level):
     scope = AdapterScope(
-        domains=verified("switch") | documented("light"), capabilities=verified("Switch") | documented("Light")
+        domains=verified("switch") | documented("light"),
+        capabilities=verified("Switch") | documented("Light"),
+        siblings={"light": "switch", "Light": "Switch"},
     )
 
     assert scope.level(domain, capability) is level
@@ -166,3 +169,58 @@ def test_every_move_has_a_stop_at_least_as_strong():
             if not _covers(stop, "capabilities", capability, level):
                 gaps.append(f"{name}: capability {capability} ({level.name})")
     assert gaps == []
+
+
+def test_a_documented_item_names_its_sibling():
+    with pytest.raises(ValueError, match="names no sibling"):
+        AdapterScope(domains=verified("switch") | documented("light"))
+
+
+@pytest.mark.parametrize("helper", [documented, experimental])
+def test_a_sibling_below_reported_is_refused(helper):
+    """A Documented item stands only while its sibling does: its sibling falling is a load-time error."""
+    with pytest.raises(ValueError, match="which is neither Verified nor Reported"):
+        AdapterScope(domains=helper("switch") | documented("light"), siblings={"light": "switch", "switch": "light"})
+
+
+def test_a_sibling_from_the_other_mapping_is_refused():
+    with pytest.raises(ValueError, match="neither Verified nor Reported"):
+        AdapterScope(capabilities=documented("Light"), siblings={"Light": "light"})
+
+
+def test_siblings_name_only_documented_items():
+    with pytest.raises(ValueError, match="not Documented"):
+        AdapterScope(siblings={"light": "switch"})
+
+
+@pytest.mark.parametrize(
+    ("domains", "capability", "fields", "support"),
+    [
+        (verified("light"), None, (), Support.MAINTAINER),
+        (reported("light"), None, (), Support.COMMUNITY),
+        (experimental("light"), None, (), Support.EXPERIMENTAL),
+        (verified("switch") | documented("light"), None, (), Support.MAINTAINER),
+        (reported("switch") | documented("light"), None, (), Support.COMMUNITY),
+        (verified("light"), "Switch", (), Support.MAINTAINER),
+        (verified("light"), "Light", (), Support.MAINTAINER),  # Documented on the Verified RGBCCT
+        (verified("light"), "CCT", (), Support.COMMUNITY),  # Documented on the Reported RGB
+        (verified("light"), "RGB", (), Support.COMMUNITY),
+        (verified("light"), "Unknown", (), Support.EXPERIMENTAL),
+        (verified("light"), None, ("brightness",), Support.COMMUNITY),
+        (verified("light"), None, ("transition",), Support.EXPERIMENTAL),
+    ],
+)
+def test_support_counts_a_documented_item_at_its_siblings_level(domains, capability, fields, support):
+    scope = AdapterScope(
+        domains=domains,
+        capabilities=verified("Switch", "RGBCCT") | reported("RGB") | documented("Light", "CCT"),
+        fields=reported("brightness") | experimental("transition"),
+        siblings={"Light": "RGBCCT", "CCT": "RGB"} | ({"light": "switch"} if "switch" in domains else {}),
+    )
+
+    assert scope.support("light", capability, fields) is support
+
+
+def test_support_leaves_the_adapter_flag_to_its_callers():
+    """No runtime path reads the flag, so the records check can treat it as data (PR #306)."""
+    assert AdapterScope(experimental=True).support("light") is Support.MAINTAINER
