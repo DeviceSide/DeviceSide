@@ -28,8 +28,8 @@ Gen2 and later (Plus, Pro, Gen3, Gen4): relays, whether Home Assistant shows the
 bulbs. The tested models are on the [device compatibility page](device-compatibility.md). Other Shelly
 lights (dimmers, CCT, RGB and RGBW devices: the Light, CCT, RGB and RGBW components) are Documented: they take the
 same calls, but no rig run has covered one yet. On them, `get_attributes` reports the timer and auto-off/auto-on
-but not brightness or color, and RGB and RGBW devices take brightness but not color yet: a color is left out of the
-call, which reports `fields_dropped`. Gen1 isn't built: it has Shelly's older
+but not brightness or color, and CCT, RGB and RGBW devices take brightness but not color or color temperature yet:
+either is left out of the call, which reports `fields_dropped`. Gen1 isn't built: it has Shelly's older
 [HTTP API](https://shelly-api-docs.shelly.cloud/gen1/), not the [Gen2+ RPC calls](https://shelly-api-docs.shelly.cloud/gen2/)
 the adapters send, so it is refused (`gen1_unsupported`).
 

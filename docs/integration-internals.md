@@ -28,12 +28,14 @@ code. Code comments cite the Tested behavior sections.
 
 Through the core integration's RPC connection. The unique ID is `<mac>-<key>`; the key gives the RPC component:
 `switch:N` → `Switch` (a `switch`, or a `light` for a relay set to "light"), `light:N`, `cct:N`, `rgb:N`, `rgbw:N`
-and `rgbcct:N` → `Light`, `CCT`, `RGB`, `RGBW`, `RGBCCT`. Only `Switch` and `RGBCCT` are in scope. Any other key
+and `rgbcct:N` → `Light`, `CCT`, `RGB`, `RGBW`, `RGBCCT`. `Switch` and `RGBCCT` are Verified, the rest Documented
+(`integrations/shelly/addressing.py`). Any other key
 (virtual booleans, scripts) has no timer. Gen1 (CoIoT) has no `toggle_after`.
 
 - **Timers.** One `<Component>.Set` with `on` and `toggle_after` (device range: over 0 s to 604800 s, 0.01 s
   resolution). Light fields ride in the same call, translated as the core Shelly light does: brightness to percent,
-  `transition` to `transition_duration`, and on `RGBCCT` the mode switched to `cct` or `rgb` to match.
+  `transition` to `transition_duration`, and on `RGBCCT` the mode switched to `cct` or `rgb` to match. `CCT`, `RGB`
+  and `RGBW` drop color and color temperature until their calls are ported and recorded.
 - **Read-back.** `<Component>.GetStatus`; `confirmed` when the output matches and `timer_duration` is present.
 - **`get_attributes`.** One `GetStatus`. Time left is `timer_started_at` + `timer_duration` against Home Assistant's
   clock (both SNTP-synced), clamped to 0 to the duration to bound skew. `RGBCCT` adds brightness and the active
