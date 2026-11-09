@@ -19,7 +19,7 @@ to a group reads the group's options, never its members', so a group with a Hue 
 
 import asyncio
 import logging
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 
 from homeassistant.core import HomeAssistant
@@ -84,15 +84,19 @@ async def native_control(hass: HomeAssistant, target: Target, need: bool | None)
         if not changed:
             yield
             return
-        replied, unsubscribe = await state_reply(hass, target)
+        unsubscribe: Callable[[], None] = lambda: None  # noqa: E731
         try:
+            replied, unsubscribe = await state_reply(hass, target)
             yield
-            try:
-                async with asyncio.timeout(_REPLY_CAP_S):
-                    # Without a reply to await, the cap is the margin for Z2M to take the command.
-                    await (replied if replied is not None else asyncio.Event().wait())
-            except TimeoutError:
-                _LOGGER.debug("No state from Zigbee2MQTT for %s in %s s", target.entity_id, _REPLY_CAP_S)
+            if replied is None:
+                # Without a reply to await, the cap is the margin for Z2M to take the command.
+                await asyncio.sleep(_REPLY_CAP_S)
+            else:
+                try:
+                    async with asyncio.timeout(_REPLY_CAP_S):
+                        await replied
+                except TimeoutError:
+                    _LOGGER.debug("No state from Zigbee2MQTT for %s in %s s", target.entity_id, _REPLY_CAP_S)
         finally:
             unsubscribe()
             # Only a value other than need was changed, and an absent option is Z2M's default, off.
