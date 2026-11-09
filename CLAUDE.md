@@ -18,13 +18,18 @@ what ships, so its "not X" means not yet. Reword such a line to the real state, 
 adapter has it (`scripts/check_release.py --release`). Every adapter module needs ≥95% line coverage, experimental or
 not; CI checks it.
 
-**Setting it:** for a new action, field or attribute, or integration (including ports), and for a behavior change to
-a released adapter that the rig can't exercise. Leave it off for refactors, performance work and fixes the rig run
-before each RC covers, and for a Documented item (below). When unsure, ask.
+**Experimental items, not the flag, carry new work** (PR #307). A new action, integration (including ports), domain,
+capability or field ships as `Level.EXPERIMENTAL` once built and unit-tested: in stable releases, refused at runtime
+until the user turns on the Experimental features option. The dispatcher is the only gate: adapters never read the
+option, and turning it on never changes how any other item behaves. A bug in an Experimental item is never
+`severity:high`.
+
+**Setting it:** for a behavior change to a Verified item that the rig can't exercise. Leave it off for refactors,
+performance work and fixes to adapters the rig can retest before the next RC. When unsure, ask.
 
 **Clearing it:** a PR citing a passing test record (`docs/test-records/<integration>/<action>*.md`) that covers the
-adapter's whole scope bar its Documented items: `AdapterScope.domains`, `.capabilities`, `.fields`, and each of
-`.options` on and off.
+adapter's whole scope bar its Documented, Reported and Experimental items: `AdapterScope.domains`, `.capabilities`,
+`.fields`, and each of `.options` on and off.
 
 **Proof follows the call.** A record proves the call an adapter sends and the capability it reaches (Shelly: the RPC
 component), whatever entity domain the target shows: a relay exposed as a `switch` or an on/off `light` rides one
@@ -42,15 +47,21 @@ sends it the same call as a Verified item, differing only in addressing (compone
 vendor or standard documents that call identically for both, and no known class of devices departs from it; a
 failure shows as `rejected` or `sent`, never a wrong device state, nor `confirmed` unless what it confirms is the
 stored setting the call wrote, read back; and unit tests pin the payload.
-Fields are never Documented: a field changes the call. A record promotes the item to Verified. Anything else
-untested stays out of scope and refused, never added on a sibling's proof.
+Fields are never Documented: a field changes the call. A change to a Documented item's call alone makes it
+Experimental until a record. A record promotes the item to Verified. Anything else untested is Experimental, or out of
+scope and refused, never Documented on a sibling's proof.
+
+**Reported.** A scope item ships as `Level.REPORTED` on an accepted working user report of the item's call, when unit
+tests pin the payload. It has no record, so no freshness check; a change to its call makes it Experimental until a
+new report or a record. Fields may be Reported. A record promotes it to Verified.
 
 ## Releasing
 
 Work lands on `main`. RCs are cut from it, and `cut-release` tags the version's latest RC, so what ships is what
 soaked while `main` moves on. The cut workflows enforce the tag rules, green CI, the RC audit (its record comes from
 `/rc-audit`), the release flag, and test records no older than their adapter's code (`check_release.py --records`,
-so each adapter changed since its last rig run needs a new one); see their headers. The steps they don't check:
+so each adapter changed since its last rig run, beyond its `experimental` flag, needs a new one); see their headers.
+The steps they don't check:
 
 1. **Each RC:** install it through HACS (the rig deploys a checkout, not the release); it loads and the log is clean.
 2. Dispatch `cut-release` from `main` with `vX.Y.Z`.
@@ -64,8 +75,11 @@ there, cut the next RC from it, and merge the branch back into `main`.
 - Base: `main`, or a `release/vX.Y.Z` fix branch when one exists for the change.
 - Setup: `uv sync`. Test dependencies live in the `dev` group of `pyproject.toml`; never `uv pip install` into `.venv`, as the next sync removes it.
 - Before each push: `.venv/bin/pytest` and `pre-commit run --all-files` (ruff and the household check).
-- Audits, for PRs that change code (scripts and CI workflows included; a docs- or config-only PR skips them): invoke
-  `audit-code` yourself, in the same turn you reach it. Each audit is a step, not a stopping point: fix its findings
+- Audits, for PRs that change code (scripts and CI workflows included; a docs- or config-only PR skips them): run
+  `audit-code` in the same turn you reach it, delegated as its "As a gate" section says. The binding-rule surface
+  that puts an Opus auditor on the pre-merge gate is the release flag and `AdapterScope`, `Level.DOCUMENTED`,
+  `scripts/check_release.py`, `docs/test-records/`, and rule text in `CLAUDE.md` or `docs/design.md`.
+  Each audit is a step, not a stopping point: fix its findings
   and carry on; stop for Jason only on a big judgment call. Judge each finding by the codebase's long-term health,
   not the PR's convenience: fix it now unless it is genuinely out of scope, and then say where it is tracked.
   - Before opening the PR: on the diff, then open the PR.

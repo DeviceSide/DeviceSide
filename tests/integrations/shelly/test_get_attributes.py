@@ -9,11 +9,12 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util import dt as dt_util
 from homeassistant.util.color import color_RGB_to_hs, color_RGB_to_xy
 
-from custom_components.deviceside.integrations.shelly.get_attributes import config_row, status_row
+from custom_components.deviceside.core.scope import Level
+from custom_components.deviceside.integrations.shelly.get_attributes import ShellyGetAttributes, config_row, status_row
 
 from ...conftest import call, refusal
 from ...fixtures.fake import add_switch_as_x
-from ...fixtures.shelly import DOCUMENTED_COMPONENTS, TIMER_STARTED_AT, add_shelly_entity, failing, shelly_device
+from ...fixtures.shelly import OTHER_LIGHT_COMPONENTS, TIMER_STARTED_AT, add_shelly_entity, failing, shelly_device
 
 pytestmark = pytest.mark.usefixtures("setup_production")
 
@@ -136,7 +137,7 @@ async def test_gen1_and_non_timer_entities_are_refused(hass):
     assert not call_rpc.await_args_list
 
 
-@pytest.mark.parametrize(("key", "component"), DOCUMENTED_COMPONENTS)
+@pytest.mark.parametrize(("key", "component"), OTHER_LIGHT_COMPONENTS)
 async def test_documented_components_report_timer_and_settings_only(hass, key, component):
     # Their light state isn't read yet: status_row has no branch for these components.
     entry, call_rpc = shelly_device(hass, status={"brightness": 40, "ct": 4000, "rgb": [255, 0, 0]})
@@ -210,3 +211,11 @@ async def test_get_config_error_keeps_the_status_row(hass):
 
     # No auto_off or auto_on key: unknown, which a None (disabled) would misstate.
     assert response == {"light.bulb": {"brightness": 40, "color_temp_kelvin": 4000}}
+
+
+def test_scope_is_released():
+    """The record proves Switch on a relay and RGBCCT on a bulb, on both domains."""
+    scope = ShellyGetAttributes.scope
+    assert not scope.experimental
+    assert scope.capabilities.get("Switch") is Level.VERIFIED
+    assert scope.capabilities.get("RGBCCT") is Level.VERIFIED

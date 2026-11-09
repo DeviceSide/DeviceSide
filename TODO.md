@@ -22,7 +22,7 @@ adapter passing its tests, no soak. An RC also needs a rig run since each releas
   `sets_color_while_off`; Z2M `halts_a_lower_to_off`, `hue_cycle_stop`, `saturation_down_stop`,
   `sets_color_while_off`. Unattended alongside: Z2M `lower_hue` `cycles_down_the_wheel[group_color]` (failed twice,
   #222). Then the PR clearing the last flags: every `set_attributes` and `stop`, and Z2M `lower_hue`.
-- [ ] **Persistent auto-off/auto-on**: `set_`/`clear_auto_off`/`_on`, Shelly; records clear the flag.
+- [x] **Persistent auto-off/auto-on** (PR #305): `set_`/`clear_auto_off`/`_on`, Shelly; records clear the flag.
 - [x] **Shelly `set_attributes`** (#284, PR #287): RGBCCT, with `min_brightness`/`max_brightness`; the record clears
   the flag.
 - [x] **Shelly smooth dimming** (PR #289): `raise_brightness`, `lower_brightness` and `stop` on Shelly lights,
@@ -39,6 +39,9 @@ adapter passing its tests, no soak. An RC also needs a rig run since each releas
   report.
 - [x] **Documented support level** (#267): a `Level` per scope item; Shelly Light, CCT, RGB and RGBW components and
   Matter lights ship Documented, and Matter confirms a timer only with OnOff on.
+- [x] **Experimental features option and Reported level** (#307): Experimental scope items ship in stable releases,
+  refused until the option is on; Zigbee switches for `turn_on_for` and `get_attributes`, and Shelly Light, CCT, RGB
+  and RGBW dimming, are Experimental.
 - [ ] **12** v0.1.0: no adapter left `experimental` (`scripts/check_release.py --release`). The release
   steps are in `CLAUDE.md` (Releasing).
 
@@ -54,8 +57,6 @@ adapter passing its tests, no soak. An RC also needs a rig run since each releas
 - [ ] **Shelly RGB and RGBW color**: port core's conversions (`light/helper.py` rgb to rgbw with the white split,
   kelvin to color) so RGB and RGBW take color instead of dropping it, and give `status_row` a branch per component
   so `get_attributes` reads Light, CCT, RGB and RGBW light state.
-- **9b** Remote tester flow, once an adapter needs hardware the rig lacks
-  ([the list](docs/hardware-the-rig-lacks.md)). It includes the Community support level's code, waiting for the
-  first contributor: a maintainer per adapter, reading a record's source, checking the record came from an RC
-  installed through HACS, and the public test checklist. A stale Community record could drop its item to
-  Documented, when the Documented conditions hold, instead of blocking the release.
+- **9b** Community-maintained adapters, once a contributor offers one for hardware the rig lacks: a maintainer per
+  adapter and a route to stable other than the rig, left open in `docs/design.md` (Release gates). Until then, such
+  work ships as Experimental items and earns Reported from user reports.

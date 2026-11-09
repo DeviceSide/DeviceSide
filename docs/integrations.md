@@ -45,8 +45,9 @@ clamp the brightness the bulb has stored, read first, so they work while it is o
 **Smooth dimming.** On a Multicolor Bulb (RGBCCT), `raise_brightness` and `lower_brightness` read the bulb's own
 level, mid-fade included, then send one fade the bulb runs itself; `stop` halts it and reads back where it halted. A
 fade is at least 0.5 s. Lowering to 0% is the bulb's own soft off: it fades out, turns off, and comes back on at its
-old level; a `stop` during it leaves the bulb on. Raising a bulb that is off fades it in from the bottom. No other
-Shelly light takes them until a record covers it.
+old level; a `stop` during it leaves the bulb on. Raising a bulb that is off fades it in from the bottom. On other
+Shelly lights (Light, CCT, RGB and RGBW components) they are Experimental: turn on Experimental features in
+DeviceSide's options to try them, and please report how it went.
 
 **Cancelling.** Any on or off cancels the timer, whoever sends it: Home Assistant, the Shelly app or another
 integration. A wall switch wired to the device's input is untested and may depend on the input mode.
@@ -217,6 +218,7 @@ reconnect mid-fade shows what the bridge reports.
 
 ## Zigbee plugs and switches
 
-Unsupported on Zigbee2MQTT and ZHA. Few honor the Zigbee timer command: IKEA's are moving to Thread, and Sonoff
-and Tuya run their own countdowns (the Tuya TS011F tested never switches on). If you have one that works,
-[open an issue](https://github.com/jasonmx/DeviceSide/issues).
+Experimental on Zigbee2MQTT and ZHA: turn on Experimental features in DeviceSide's options to try `turn_on_for`
+and `get_attributes` on one. Few honor the Zigbee timer command: IKEA's are moving to Thread, and Sonoff and Tuya
+run their own countdowns (the Tuya TS011F tested never switches on). If you have one that works, or one that
+doesn't, [open an issue](https://github.com/jasonmx/DeviceSide/issues).

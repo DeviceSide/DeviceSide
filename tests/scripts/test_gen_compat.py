@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from custom_components.deviceside.core.scope import AdapterScope, documented, verified
+from custom_components.deviceside.core.scope import AdapterScope, documented, experimental, reported, verified
 from scripts import check_release as cr
 from scripts import gen_compat as gc
 
@@ -75,9 +75,9 @@ def test_a_passing_record_on_a_released_adapter_is_verified(root):
 def test_an_experimental_adapter_or_a_failing_record_is_experimental(root):
     record(root, "zha", "stop")
     record(root, "hue", "stop", result="fail")
-    assert "| Experimental |" in gc.row("stop", adapter("zha", "stop", experimental=True))
+    assert "| Experimental (in RCs only) |" in gc.row("stop", adapter("zha", "stop", experimental=True))
     line = gc.row("stop", adapter("hue", "stop"))
-    assert line.startswith("| `stop` | Experimental | none |  | |")
+    assert line.startswith("| `stop` | Experimental (in RCs only) | none |  | |")
 
 
 def test_documented_domains_get_a_row_of_their_own(root):
@@ -88,13 +88,38 @@ def test_documented_domains_get_a_row_of_their_own(root):
     assert "| `stop` | Documented | none (untested: light entities) | | |\n" in text
 
 
-def test_documented_capabilities_get_a_row_and_stay_experimental_on_an_experimental_adapter(root):
+def test_documented_capabilities_get_a_row_and_are_in_rcs_only_on_an_experimental_adapter(root):
     caps = verified("Switch") | documented("Light", "CCT")
     released = SimpleNamespace(integration="zha", action="stop", scope=AdapterScope(capabilities=caps))
-    experimental = AdapterScope(experimental=True, capabilities=caps)
-    assert gc.documented_row("stop", released) == "| `stop` | Documented | none (untested: Light, CCT components) | | |"
-    assert gc.documented_row("stop", SimpleNamespace(scope=experimental)).startswith("| `stop` | Experimental |")
-    assert gc.documented_row("stop", adapter("zha", "stop")) is None
+    flagged = AdapterScope(experimental=True, capabilities=caps)
+    assert gc.level_rows("stop", released) == ["| `stop` | Documented | none (untested: Light, CCT components) | | |"]
+    [row] = gc.level_rows("stop", SimpleNamespace(scope=flagged))
+    assert row.startswith("| `stop` | Experimental (in RCs only) |")
+    assert gc.level_rows("stop", adapter("zha", "stop")) == []
+
+
+def test_reported_documented_and_experimental_items_each_get_a_row_strongest_first(root):
+    scope = AdapterScope(
+        domains=verified("light") | experimental("switch"),
+        capabilities=reported("Light") | documented("CCT") | experimental("RGB"),
+        fields=verified("brightness") | experimental("transition"),
+    )
+    assert gc.level_rows("turn_on_for", SimpleNamespace(scope=scope)) == [
+        "| `turn_on_for` | Reported | none (reported by users: Light components) | | |",
+        "| `turn_on_for` | Documented | none (untested: CCT components) | | |",
+        "| `turn_on_for` | Experimental | none (untested, behind Experimental features: switch entities; "
+        "RGB components; transition fields) | | |",
+    ]
+
+
+def test_an_unflagged_adapter_with_no_verified_call_has_only_its_level_rows(root):
+    scope = AdapterScope(domains=experimental("switch"))
+    text = gc.generate(FakeRegistry(SimpleNamespace(integration="zha", action="turn_on_for", scope=scope)))
+    assert f"`turn_on_for` | {gc.IN_RCS}" not in text
+    assert (
+        "| `turn_on_for` | Experimental | none (untested, behind Experimental features: switch entities) | | |\n"
+        in text
+    )
 
 
 def test_the_page_groups_by_integration_title_and_skips_unsupported_pairs(root):

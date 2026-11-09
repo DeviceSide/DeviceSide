@@ -11,7 +11,7 @@ from custom_components.deviceside.integrations.shelly.auto import ShellyClearAut
 from custom_components.deviceside.integrations.shelly.rpc import AUTO_DELAY_LIMITS
 
 from ...conftest import call, refusal
-from ...fixtures.shelly import DOCUMENTED_COMPONENTS, add_shelly_entity, failing, shelly_device
+from ...fixtures.shelly import OTHER_LIGHT_COMPONENTS, add_shelly_entity, failing, shelly_device
 
 pytestmark = pytest.mark.usefixtures("setup_production")
 
@@ -170,7 +170,7 @@ async def test_out_of_scope_targets_are_refused(hass, action):
 
 
 @pytest.mark.parametrize("which", WHICH)
-@pytest.mark.parametrize(("key", "component"), DOCUMENTED_COMPONENTS)
+@pytest.mark.parametrize(("key", "component"), OTHER_LIGHT_COMPONENTS)
 async def test_documented_components_take_the_same_set_config(hass, which, key, component):
     entry, call_rpc = shelly_device(hass, config={f"auto_{which}": True, f"auto_{which}_delay": 60.0})
     add_shelly_entity(hass, entry, "light.strip", key)
@@ -186,8 +186,10 @@ async def test_documented_components_take_the_same_set_config(hass, which, key, 
 
 
 def test_the_auto_adapters_prove_switch_and_document_the_light_components():
-    """The rig tests auto-off/on on a relay; every light component, RGBCCT included, rides it as Documented."""
+    """The rig tests auto-off/on on a relay, which clears the flag; every light component, RGBCCT included, rides it
+    as Documented."""
     for adapter in (ShellySetAuto, ShellyClearAuto):
+        assert not adapter.scope.experimental
         assert adapter.scope.capabilities == {
             "Switch": Level.VERIFIED,
             **dict.fromkeys(("Light", "CCT", "RGB", "RGBW", "RGBCCT"), Level.DOCUMENTED),

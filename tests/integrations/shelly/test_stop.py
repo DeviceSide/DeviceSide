@@ -5,12 +5,12 @@ from unittest.mock import call as rpc_call
 import pytest
 from homeassistant.exceptions import HomeAssistantError
 
-from custom_components.deviceside.core.scope import Level
+from custom_components.deviceside.integrations.shelly.raise_brightness import ShellyRaiseBrightness
 from custom_components.deviceside.integrations.shelly.stop import ShellyStop
 
 from .conftest import BULB, CONFIRMED, SENT, dimmable_bulb, unchanged
-from ...conftest import call, refusal
-from ...fixtures.shelly import add_shelly_entity, failing, shelly_device
+from ...conftest import allow_experimental, call, refusal
+from ...fixtures.shelly import OTHER_LIGHT_COMPONENTS, add_shelly_entity, failing, shelly_device
 
 STOP = rpc_call("RGBCCT.DimStop", {"id": 0})
 READ = rpc_call("RGBCCT.GetStatus", {"id": 0})
@@ -113,18 +113,31 @@ async def test_a_relay_shown_as_a_light_is_not_dimmable(hass, setup_production):
     assert not call_rpc.await_args_list
 
 
-async def test_gen1_and_other_components_are_refused(hass, setup_production):
+async def test_gen1_is_refused(hass, setup_production):
     gen1, _ = shelly_device(hass, gen1=True, mac="112233445566")
     add_shelly_entity(hass, gen1, "light.old_bulb", "light_0", state="on")
-    entry, _ = shelly_device(hass)
-    add_shelly_entity(hass, entry, "light.dimmer", "light:0", state="on")
 
     assert await refusal(hass, "stop", {"entity_id": "light.old_bulb"}) == "gen1_unsupported"
-    assert await refusal(hass, "stop", {"entity_id": "light.dimmer"}) == "capability_not_tested"
+
+
+@pytest.mark.parametrize(("key", "component"), OTHER_LIGHT_COMPONENTS)
+async def test_other_light_components_are_experimental(hass, setup_production, key, component):
+    entry, call_rpc = shelly_device(hass, status={"output": True, "brightness": 40})
+    add_shelly_entity(hass, entry, "light.lamp", key, state="on")
+
+    assert await refusal(hass, "stop", {"entity_id": "light.lamp"}) == "experimental_off"
+    assert not call_rpc.await_args_list
+
+    allow_experimental(hass)
+    assert await call(hass, "stop", {"entity_id": "light.lamp"}) == {"light.lamp": CONFIRMED}
+    assert call_rpc.await_args_list == [
+        rpc_call(f"{component}.DimStop", {"id": 0}),
+        rpc_call(f"{component}.GetStatus", {"id": 0}),
+    ]
 
 
 def test_scope():
     scope = ShellyStop.scope
     assert not scope.experimental
     assert scope.confirmable
-    assert dict(scope.capabilities) == {"RGBCCT": Level.VERIFIED}
+    assert scope.capabilities == ShellyRaiseBrightness.scope.capabilities

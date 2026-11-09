@@ -32,6 +32,11 @@ class Adapter[RequestT: Request](ABC):
             return "fields_not_tested"
         return None
 
+    def capability(self, hass: HomeAssistant, target: Target) -> str | None:
+        """The device-side capability the call reaches (Shelly: the RPC component), for an adapter whose scope lists
+        capabilities; None otherwise. Called only on a target supports() passed. Sync and cheap: no I/O."""
+        return None
+
     @abstractmethod
     async def execute(self, hass: HomeAssistant, request: RequestT, targets: list[Target]) -> list[EntityResult]:
         """Send the command to every target at once, so an adapter can batch or address a native group."""

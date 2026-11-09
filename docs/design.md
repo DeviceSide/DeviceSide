@@ -18,24 +18,29 @@ HA requires it.
   Zigbee or Matter cluster).
 - **Field**: an action parameter, e.g. `brightness`.
 - **Entity domain**: light, switch. "Domain" alone is fine where unambiguous.
-- **Scope**: the entity domains, capabilities and fields an adapter is known to work with, each at a `Level`
-  (Verified or Documented). Outside it, calls are refused as not yet tested.
+- **Scope**: the entity domains, capabilities and fields an adapter is built for, each at a `Level` (Verified,
+  Reported, Documented or Experimental). Outside it, calls are refused as not yet tested.
 - **Rig**: the maintainer's live Home Assistant and devices, and the private tool that runs DeviceSide's actions on
   them and writes test records. It is kept outside this repo; the records are its output here.
 - **Test record**: the evidence that an adapter works on real hardware, from a rig run:
   `docs/test-records/<integration>/<action>*.md`. Clearing `experimental` cites one.
-- **Support level**: what an adapter's test records prove. **Verified**: a passing record from the rig.
-  **Community**: a passing record from a contributor's release-candidate install through HACS. **Experimental**:
-  `experimental=True`, kept until a passing record covers the adapter's scope bar its Documented items, so it ships
-  in release candidates
-  only. A record older than its adapter's code blocks a release (`check_release.py --records`) until a rerun.
-  **Documented** is a level of a scope item, not of an adapter: a domain or capability with no record that the
-  adapter sends the same call as a Verified item, differing only in addressing, and that the vendor or standard
-  documents identically (conditions: [CLAUDE.md](../CLAUDE.md#release-flag)). Fields are never Documented. It ships
-  in stable releases, and a bug on it is a real bug. A target's level is the weakest among the items its call
-  touches (`AdapterScope.level`).
-- **Device report**: a user's "works" or "doesn't work" for an action on a model that no test record lists. It is
-  evidence for a request or a tester, not a claim, so it changes no support level.
+- **Level**: how well a scope item is proven, weakest first (conditions: [CLAUDE.md](../CLAUDE.md#release-flag)).
+  **Experimental**: built and unit-tested, with no proof on a device; it ships in stable releases, refused at runtime
+  until the user turns on Experimental features. **Documented**: no record, but the adapter sends it the same call as
+  a Verified item, differing only in addressing, and the vendor or standard documents that call identically; never a
+  field. **Reported**: an accepted working device report on the item's call, with unit tests pinning it; a change to that call
+  makes it Experimental again. **Verified**:
+  a passing record from the rig. Documented, Reported and Verified items ship switched on, and a bug on one is a real
+  bug. A call's level is the weakest among the items it touches: its domain, capability and fields
+  (`AdapterScope.level`).
+- **Experimental features**: the option (`experimental_features`, off by default) that lets calls touching an
+  Experimental item through. Only the dispatcher reads it.
+- **Release flag**: `experimental=True` on an adapter's scope; it keeps the whole adapter in release candidates only.
+  When to set and clear it: [CLAUDE.md](../CLAUDE.md#release-flag). Not the Experimental level: an item is gated at
+  runtime, the flag at release. A record older than its adapter's code blocks a release (`check_release.py
+  --records`) until a rerun.
+- **Device report**: a user's "works" or "doesn't work" for an action on a model. An accepted "works" on an item's
+  call makes it Reported; a "doesn't work" is evidence for a fix or for leaving the item out.
 - **Profile**: one test setup on the rig's HA, the entities a run may move by integration and role; a record names the
   one it ran on (`lab`, `house`).
 
@@ -98,7 +103,8 @@ experimental.
 - **`set_scene`**: built for Hue. Zigbee isn't built yet: a Zigbee scene recall turns lights on, so it would follow
   Hue's pattern of writing each light's settings while it's off.
 
-Out of scope until users ask: turn-on defaults (`OnLevel`), Zigbee plugs and switches, Shelly Gen1, Hue bridge v1,
+Out of scope until users ask: turn-on defaults (`OnLevel`), Zigbee plugs and switches beyond `turn_on_for` and
+`get_attributes` (Experimental), Shelly Gen1, Hue bridge v1,
 other domains (cover, valve, lock), and other integrations (Z-Wave JS, Tuya, ESPHome, Tasmota, TP-Link Kasa). What v0.1.0 refuses for want of hardware
 the rig lacks, and which entries a tester could prove: [hardware-the-rig-lacks.md](hardware-the-rig-lacks.md).
 
@@ -186,11 +192,19 @@ adapter's targets at once, so native group commands stay possible.
 - **Release flag.** `experimental=True` keeps an adapter out of a stable release; `cut-release` runs
   `check_release.py --release`, which fails on any. Setting and clearing it: [CLAUDE.md](../CLAUDE.md#release-flag).
 - **Record freshness.** `cut-release-candidate` and `cut-release` run `check_release.py --records`, failing any
-  released adapter with no test record, or one whose code changed after the commit a record cites. An adapter's code
-  is its module, its integration package's `__init__.py` and the package modules it imports, transitively; `core/`
-  and `actions/` are not, as they are unit-tested and shared by every adapter. Experimental adapters are exempt.
-  There is no runtime gate: a capability or field nobody has tested, and that is not Documented, is left out of
-  scope, so `supports()` refuses it.
+  released adapter that has a Verified call and no test record, or one whose code changed, beyond its `experimental` flag, after the
+  commit a record cites. An adapter's code is its module, its integration package's `__init__.py` and the package
+  modules it imports, transitively; `core/` and `actions/` are not, as they are unit-tested and shared by every
+  adapter. Experimental adapters are exempt.
+- **Experimental items** are gated at runtime, not at release. After `supports()` passes a target and fields are
+  dropped, `Dispatcher.run_adapters` takes the call's level from its domain, the capability `Adapter.capability()`
+  names (Shelly: the RPC component) and the fields it still carries; an Experimental one is refused as
+  `experimental_off` while the option is off, raising its own message for a named target. A call left nothing to
+  send is unchanged, not refused. An item that is not built, or not unit-tested, stays out of scope, so `supports()`
+  refuses it. Reported and Experimental items have no record, so `--records` doesn't age them.
+- **Community-maintained adapters (planned).** Who fixes an adapter is a separate axis from its level: an adapter
+  its contributor maintains, on hardware the rig lacks. It needs a route to stable other than the rig, for example
+  the coverage bar plus Reported evidence from someone other than its author. That route is left open.
 - **Tags** come only from the `cut-release-candidate` and `cut-release` workflows (a tag ruleset refuses others).
   `scripts/check_tag.py` refuses a tag that isn't `vX.Y.Z` or `vX.Y.ZrcN`, isn't above the latest release, or
   doesn't match its branch: an RC comes from `main` or `release/vX.Y.Z`, and a release goes on its latest RC's commit,

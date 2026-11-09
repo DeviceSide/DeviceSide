@@ -10,7 +10,11 @@ or not.
 **Documented**: no record yet, but DeviceSide sends it the same call as a Verified row, differing only in which
 component, endpoint or entity it addresses, and the vendor or standard documents that call identically for both. It
 ships in stable releases, and a bug on it is a real bug: please report it.
-**Experimental**: no current record. It may work, and it is not in a stable release.
+**Reported**: no record, but a user reported it working, and unit tests pin the call DeviceSide sends. It ships in
+stable releases.
+**Experimental**: built and unit-tested, not yet proven on a device. It ships switched off: turn on Experimental
+features in DeviceSide's options to try it, and please report the result.
+**Experimental (in RCs only)**: no current record. It may work, and it is in release candidates only.
 
 A group is a native group of the integration (a Hue zone, a ZHA or Zigbee2MQTT group).
 
@@ -23,9 +27,9 @@ A group is a native group of the integration (a Hue zone, a ZHA or Zigbee2MQTT g
 | `lower_saturation` | Verified | `LCA016`, firmware `1.164.2`<br>group | [record](test-records/hue/lower_saturation.md) | |
 | `raise_brightness` | Verified | `LTA009`, firmware `1.163.1`<br>group | [predicted state](test-records/hue/raise_brightness-predicted_state.md), [record](test-records/hue/raise_brightness.md) | |
 | `raise_saturation` | Verified | `LCA016`, firmware `1.164.2`<br>group | [record](test-records/hue/raise_saturation.md) | |
-| `set_attributes` | Experimental | `LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>group | [record](test-records/hue/set_attributes.md) | |
+| `set_attributes` | Experimental (in RCs only) | `LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>group | [record](test-records/hue/set_attributes.md) | |
 | `set_scene` | Verified | group | [record](test-records/hue/set_scene.md) | |
-| `stop` | Experimental | `LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>group | [predicted state](test-records/hue/stop-predicted_state.md), [record](test-records/hue/stop.md) | |
+| `stop` | Experimental (in RCs only) | `LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>group | [predicted state](test-records/hue/stop-predicted_state.md), [record](test-records/hue/stop.md) | |
 
 ## Matter
 
@@ -40,23 +44,26 @@ A group is a native group of the integration (a Hue zone, a ZHA or Zigbee2MQTT g
 
 | Action | Level | Tested models | Records | Reported working |
 |---|---|---|---|---|
-| `clear_auto_off` | Experimental | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/clear_auto_off.md) | |
-| `clear_auto_off` | Experimental | none (untested: Light, CCT, RGB, RGBW, RGBCCT components) | | |
-| `clear_auto_on` | Experimental | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/clear_auto_on.md) | |
-| `clear_auto_on` | Experimental | none (untested: Light, CCT, RGB, RGBW, RGBCCT components) | | |
-| `get_attributes` | Experimental | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943`<br>`S4SW-001X8EU`, firmware `20261026-122156/2.0.3-g4601943`<br>`S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](test-records/shelly/get_attributes.md) | |
-| `get_attributes` | Experimental | none (untested: Light, CCT, RGB, RGBW components) | | |
+| `clear_auto_off` | Verified | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](test-records/shelly/clear_auto_off.md) | |
+| `clear_auto_off` | Documented | none (untested: Light, CCT, RGB, RGBW, RGBCCT components) | | |
+| `clear_auto_on` | Verified | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](test-records/shelly/clear_auto_on.md) | |
+| `clear_auto_on` | Documented | none (untested: Light, CCT, RGB, RGBW, RGBCCT components) | | |
+| `get_attributes` | Verified | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943`<br>`S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](test-records/shelly/get_attributes.md) | |
+| `get_attributes` | Documented | none (untested: Light, CCT, RGB, RGBW components) | | |
 | `lower_brightness` | Verified | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/lower_brightness.md) | |
+| `lower_brightness` | Experimental | none (untested, behind Experimental features: Light, CCT, RGB, RGBW components) | | |
 | `raise_brightness` | Verified | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/raise_brightness.md) | |
+| `raise_brightness` | Experimental | none (untested, behind Experimental features: Light, CCT, RGB, RGBW components) | | |
 | `set_attributes` | Verified | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/set_attributes.md) | |
-| `set_auto_off` | Experimental | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/set_auto_off.md) | |
-| `set_auto_off` | Experimental | none (untested: Light, CCT, RGB, RGBW, RGBCCT components) | | |
-| `set_auto_on` | Experimental | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/set_auto_on.md) | |
-| `set_auto_on` | Experimental | none (untested: Light, CCT, RGB, RGBW, RGBCCT components) | | |
+| `set_auto_off` | Verified | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](test-records/shelly/set_auto_off.md) | |
+| `set_auto_off` | Documented | none (untested: Light, CCT, RGB, RGBW, RGBCCT components) | | |
+| `set_auto_on` | Verified | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](test-records/shelly/set_auto_on.md) | |
+| `set_auto_on` | Documented | none (untested: Light, CCT, RGB, RGBW, RGBCCT components) | | |
 | `stop` | Verified | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/stop.md) | |
-| `turn_off_for` | Verified | `S4SW-001X8EU`, firmware `20261026-122156/2.0.3-g4601943`<br>`S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943`<br>`S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/turn_off_for.md) | |
+| `stop` | Experimental | none (untested, behind Experimental features: Light, CCT, RGB, RGBW components) | | |
+| `turn_off_for` | Verified | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943`<br>`S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/turn_off_for.md) | |
 | `turn_off_for` | Documented | none (untested: Light, CCT, RGB, RGBW components) | | |
-| `turn_on_for` | Verified | `S4SW-001X8EU`, firmware `20261026-122156/2.0.3-g4601943`<br>`S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943`<br>`S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/turn_on_for.md) | |
+| `turn_on_for` | Verified | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943`<br>`S4SW-001X8EU`, firmware `20261026-122156/2.0.3-g4601943`<br>`S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/turn_on_for.md) | |
 | `turn_on_for` | Documented | none (untested: Light, CCT, RGB, RGBW components) | | |
 
 ## ZHA
@@ -64,27 +71,31 @@ A group is a native group of the integration (a Hue zone, a ZHA or Zigbee2MQTT g
 | Action | Level | Tested models | Records | Reported working |
 |---|---|---|---|---|
 | `get_attributes` | Verified | `LTA009`, firmware `0x01002a00`<br>`LCA016`, firmware `0x01001200`<br>`LWA012`, firmware `0x01002502`<br>group | [record](test-records/zha/get_attributes.md) | |
+| `get_attributes` | Experimental | none (untested, behind Experimental features: switch entities) | | |
 | `lower_brightness` | Verified | `LTA009`, firmware `0x01002a00`<br>group | [record](test-records/zha/lower_brightness.md) | |
 | `lower_hue` | Verified | `LCA016`, firmware `0x01001200` | [record](test-records/zha/lower_hue.md) | |
 | `lower_saturation` | Verified | `LCA016`, firmware `0x01001200` | [record](test-records/zha/lower_saturation.md) | |
 | `raise_brightness` | Verified | `LTA009`, firmware `0x01002a00`<br>group | [record](test-records/zha/raise_brightness.md) | |
 | `raise_hue` | Verified | `LCA016`, firmware `0x01001200` | [record](test-records/zha/raise_hue.md) | |
 | `raise_saturation` | Verified | `LCA016`, firmware `0x01001200` | [record](test-records/zha/raise_saturation.md) | |
-| `set_attributes` | Experimental | `LCA016`, firmware `0x01001200` | [record](test-records/zha/set_attributes.md) | |
-| `stop` | Experimental | `LTA009`, firmware `0x01002a00`<br>`LCA016`, firmware `0x01001200`<br>group | [record](test-records/zha/stop.md) | |
+| `set_attributes` | Experimental (in RCs only) | `LCA016`, firmware `0x01001200` | [record](test-records/zha/set_attributes.md) | |
+| `stop` | Experimental (in RCs only) | `LTA009`, firmware `0x01002a00`<br>`LCA016`, firmware `0x01001200`<br>group | [record](test-records/zha/stop.md) | |
 | `turn_on_for` | Verified | `LWA012`, firmware `0x01002502`<br>`LTA009`, firmware `0x01002a00`<br>group | [record](test-records/zha/turn_on_for.md) | |
+| `turn_on_for` | Experimental | none (untested, behind Experimental features: switch entities) | | |
 
 ## Zigbee2MQTT
 
 | Action | Level | Tested models | Records | Reported working |
 |---|---|---|---|---|
 | `get_attributes` | Verified | `9290024684`, firmware `1.163.1`<br>`8720169392182`, firmware `1.164.2`<br>`9290018217`, firmware `1.122.2`<br>group | [record](test-records/zigbee2mqtt/get_attributes.md) | |
+| `get_attributes` | Experimental | none (untested, behind Experimental features: switch entities) | | |
 | `lower_brightness` | Verified | `9290024684`, firmware `1.163.1`<br>group | [record](test-records/zigbee2mqtt/lower_brightness.md) | |
-| `lower_hue` | Experimental | `8720169392182`, firmware `1.164.2`<br>group | [record](test-records/zigbee2mqtt/lower_hue.md) | |
+| `lower_hue` | Experimental (in RCs only) | `8720169392182`, firmware `1.164.2`<br>group | [record](test-records/zigbee2mqtt/lower_hue.md) | |
 | `lower_saturation` | Verified | `8720169392182`, firmware `1.164.2`<br>group | [record](test-records/zigbee2mqtt/lower_saturation.md) | |
 | `raise_brightness` | Verified | `9290024684`, firmware `1.163.1`<br>group | [record](test-records/zigbee2mqtt/raise_brightness.md) | |
 | `raise_hue` | Verified | `8720169392182`, firmware `1.164.2`<br>group | [record](test-records/zigbee2mqtt/raise_hue.md) | |
 | `raise_saturation` | Verified | `8720169392182`, firmware `1.164.2`<br>group | [record](test-records/zigbee2mqtt/raise_saturation.md) | |
-| `set_attributes` | Experimental | `9290024684`, firmware `1.163.1`<br>`8720169392182`, firmware `1.164.2`<br>group | [record](test-records/zigbee2mqtt/set_attributes.md) | |
-| `stop` | Experimental | `9290024684`, firmware `1.163.1`<br>`8720169392182`, firmware `1.164.2`<br>group | [record](test-records/zigbee2mqtt/stop.md) | |
+| `set_attributes` | Experimental (in RCs only) | `9290024684`, firmware `1.163.1`<br>`8720169392182`, firmware `1.164.2`<br>group | [record](test-records/zigbee2mqtt/set_attributes.md) | |
+| `stop` | Experimental (in RCs only) | `9290024684`, firmware `1.163.1`<br>`8720169392182`, firmware `1.164.2`<br>group | [record](test-records/zigbee2mqtt/stop.md) | |
 | `turn_on_for` | Verified | `LWA012`, firmware `1.104.2`<br>`LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2` | [record](test-records/zigbee2mqtt/turn_on_for.md) | |
+| `turn_on_for` | Experimental | none (untested, behind Experimental features: switch entities) | | |

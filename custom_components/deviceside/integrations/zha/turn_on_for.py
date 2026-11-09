@@ -13,7 +13,7 @@ from .addressing import Address, address, unsupported_reason, via_zha_group
 from ...actions.turn_on_for import TurnOnForRequest
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Status, Target
-from ...core.scope import AdapterScope, DurationLimits, verified
+from ...core.scope import AdapterScope, DurationLimits, experimental, verified
 
 # OnWithTimedOff.on_time is a uint16 in tenths of a second; 0xFFFF is reserved, so 65534 tenths is the most.
 _TIMER_LIMITS = DurationLimits(min_s=0.1, max_s=6553.4)
@@ -50,9 +50,9 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
     integration: ClassVar[str] = "zha"
     scope: ClassVar[AdapterScope] = AdapterScope(
         # Zigbee plugs and switches rarely honor OnWithTimedOff (the rig's Tuya TS011F stores OnTime as a countdown
-        # and never switches on), so switch fails the Documented conditions (CLAUDE.md, "Release flag") and stays
-        # out of scope until a record covers it.
-        domains=verified("light"),
+        # and never switches on), so switch fails the Documented conditions (CLAUDE.md, "Release flag"): it takes the
+        # same call, so it is Experimental until a record covers it.
+        domains=verified("light") | experimental("switch"),
         duration=_TIMER_LIMITS,
         fields=verified("brightness", "color_temp_kelvin"),
         max_concurrency=2,

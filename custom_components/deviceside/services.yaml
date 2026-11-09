@@ -3,11 +3,11 @@ turn_on_for:
     entity:
       - domain: [light, switch]
         integration: shelly
-      - domain: light
+      - domain: [light, switch]
         integration: mqtt
       - domain: [light, switch]
         integration: matter
-      - domain: light
+      - domain: [light, switch]
         integration: zha
   fields:
     duration: &duration
@@ -267,11 +267,11 @@ get_attributes:
         integration: hue
       - domain: [light, switch]
         integration: shelly
-      - domain: light
+      - domain: [light, switch]
         integration: mqtt
       - domain: [light, switch]
         integration: matter
-      - domain: light
+      - domain: [light, switch]
         integration: zha
 
 set_scene:

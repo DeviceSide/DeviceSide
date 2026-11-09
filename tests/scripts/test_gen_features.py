@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from custom_components.deviceside.core.scope import AdapterScope, documented, verified
+from custom_components.deviceside.core.scope import AdapterScope, documented, experimental, reported, verified
 from scripts import gen_features as gf
 
 LIGHT = '<img src="https://raw.githubusercontent.com/jasonmx/DeviceSide/main/docs/icons/light.svg"'
@@ -56,9 +56,29 @@ def test_domains_show_at_any_level_and_group_follows_native_groups_or_expand_gro
     zha = adapter("zha", "stop", domains=verified("light"))
     z2m = adapter("zigbee2mqtt", "stop", domains=verified("light"), native_groups=True)
     matter = adapter("matter", "stop", domains=verified("switch") | documented("light"))
+    reported_light = adapter("matter", "stop", domains=reported("light"))
     assert gf.keys(zha, registry) == {"light", "group"}
     assert gf.keys(z2m, registry) == {"light", "group"}
     assert gf.keys(matter, registry) == {"light", "switch"}
+    assert gf.keys(reported_light, registry) == {"light"}
+
+
+def test_an_experimental_domain_shows_no_icon_and_takes_its_group_with_it(no_blockers):
+    """The table shows what works with the Experimental features option off."""
+    registry = FakeRegistry(expand={"zha"})
+    assert gf.keys(adapter("zha", "stop", domains=verified("light") | experimental("switch")), registry) == {
+        "light",
+        "group",
+    }
+    assert gf.keys(adapter("zha", "stop", domains=experimental("light")), registry) == set()
+
+
+def test_capabilities_that_are_all_experimental_show_no_icon(no_blockers):
+    registry = FakeRegistry()
+    assert gf.keys(adapter("shelly", "stop", capabilities=experimental("Light", "CCT")), registry) == set()
+    assert gf.keys(adapter("shelly", "stop", capabilities=verified("RGBCCT") | experimental("Light")), registry) == {
+        "light"
+    }
 
 
 def test_a_group_needs_the_adapter_to_take_lights(no_blockers):

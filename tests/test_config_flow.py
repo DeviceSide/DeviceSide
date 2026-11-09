@@ -14,7 +14,13 @@ from homeassistant.loader import async_get_integration
 from homeassistant.setup import async_set_domains_to_be_loaded, async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry, MockModule, mock_integration
 
-from custom_components.deviceside.const import CONF_PREDICTED_STATE, CONF_Z2M_COLOR_MODES, DOMAIN, NAME
+from custom_components.deviceside.const import (
+    CONF_EXPERIMENTAL,
+    CONF_PREDICTED_STATE,
+    CONF_Z2M_COLOR_MODES,
+    DOMAIN,
+    NAME,
+)
 from custom_components.deviceside.core.resolver import resolve
 from custom_components.deviceside.core.runtime import get_runtime
 
@@ -145,17 +151,29 @@ async def test_saving_the_option_reloads_the_entry_with_it(hass: HomeAssistant):
     assert await hass.config_entries.async_setup(entry.entry_id)
 
     result = await open_settings(hass, entry)
-    assert result["data_schema"]({}) == {CONF_PREDICTED_STATE: True, CONF_Z2M_COLOR_MODES: True}
-    result = await hass.config_entries.options.async_configure(result["flow_id"], {CONF_PREDICTED_STATE: False})
+    assert result["data_schema"]({}) == {
+        CONF_PREDICTED_STATE: True,
+        CONF_Z2M_COLOR_MODES: True,
+        CONF_EXPERIMENTAL: False,
+    }
+    assert get_runtime(hass).experimental_features is False
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {CONF_PREDICTED_STATE: False, CONF_EXPERIMENTAL: True}
+    )
     await hass.async_block_till_done()
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert entry.options == {CONF_PREDICTED_STATE: False, CONF_Z2M_COLOR_MODES: True}
+    assert entry.options == {CONF_PREDICTED_STATE: False, CONF_Z2M_COLOR_MODES: True, CONF_EXPERIMENTAL: True}
     assert entry.state is ConfigEntryState.LOADED
     assert get_runtime(hass).predicted_state is False
+    assert get_runtime(hass).experimental_features is True
 
     result = await open_settings(hass, entry)
-    assert result["data_schema"]({}) == {CONF_PREDICTED_STATE: False, CONF_Z2M_COLOR_MODES: True}
+    assert result["data_schema"]({}) == {
+        CONF_PREDICTED_STATE: False,
+        CONF_Z2M_COLOR_MODES: True,
+        CONF_EXPERIMENTAL: True,
+    }
 
 
 async def test_the_options_menu_offers_settings_and_the_issue_forms(hass: HomeAssistant):

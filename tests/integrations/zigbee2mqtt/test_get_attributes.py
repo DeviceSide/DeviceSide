@@ -11,7 +11,7 @@ from homeassistant.util import dt as dt_util
 
 from custom_components.deviceside.integrations.zigbee2mqtt import read
 
-from ...conftest import call, refusal
+from ...conftest import allow_experimental, call, refusal
 from ...fixtures.z2m import GROUPS, IEEE, INFO, add_z2m_entity, add_z2m_group, z2m_entry
 
 pytestmark = pytest.mark.usefixtures("setup_production")
@@ -430,7 +430,14 @@ async def test_device_without_a_name_is_not_addressable(hass, broker):
     assert await refusal(hass, "get_attributes", {"entity_id": "light.lamp"}) == "not_addressable"
 
 
-async def test_switch_is_out_of_scope(hass, broker):
-    add_z2m_entity(hass, z2m_entry(hass), "switch.plug", state="on", name="plug")
+async def test_switch_is_experimental_and_reads_only_on_off(hass, broker):
+    bulb(hass, broker, "switch.plug", modes=[], genOnOff={"onTime": 50})
 
-    assert await refusal(hass, "get_attributes", {"entity_id": "switch.plug"}) == "domain_not_tested"
+    assert await refusal(hass, "get_attributes", {"entity_id": "switch.plug"}) == "experimental_off"
+    assert not broker.reads()
+
+    allow_experimental(hass)
+    assert await call(hass, "get_attributes", {"entity_id": "switch.plug"}) == {"switch.plug": {"timer": timer(5.0)}}
+    assert broker.reads() == [
+        (SET, {"cluster": "genOnOff", "attributes": ["onOff", "onTime"], "state_property": KEY}),
+    ]
