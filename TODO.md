@@ -42,7 +42,7 @@ adapter passing its tests, no soak. An RC also needs a rig run since each releas
 - [x] **Experimental features option and Reported level** (#307): Experimental scope items ship in stable releases,
   refused until the option is on; Zigbee switches for `turn_on_for` and `get_attributes`, and Shelly Light, CCT, RGB
   and RGBW dimming, are Experimental.
-- [ ] **Device compatibility cards**: a generated card per integration in the README, from the records, scopes
+- [x] **Device compatibility cards** (#309): a generated card per integration in the README, from the records, scopes
   and `docs/devices.yaml`, backed by `docs/device-compatibility.md`, which replaces `docs/compatibility.md` and
   `docs/hardware-the-rig-lacks.md`.
 - [ ] **12** v0.1.0: no adapter left `experimental` (`scripts/check_release.py --release`). The release
