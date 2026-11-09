@@ -24,7 +24,7 @@ until the user turns on the Experimental features option. The dispatcher is the 
 option, and turning it on never changes how any other item behaves. A bug in an Experimental item is never
 `severity:high`.
 
-**Setting it:** for a behavior change to a Verified or Documented item that the rig can't exercise. Leave it
+**Setting it:** for a behavior change to a Verified item that the rig can't exercise. Leave it
 off for refactors, performance work and fixes the rig run before each RC covers. When unsure, ask.
 
 **Clearing it:** a PR citing a passing test record (`docs/test-records/<integration>/<action>*.md`) that covers the
@@ -47,8 +47,9 @@ sends it the same call as a Verified item, differing only in addressing (compone
 vendor or standard documents that call identically for both, and no known class of devices departs from it; a
 failure shows as `rejected` or `sent`, never a wrong device state, nor `confirmed` unless what it confirms is the
 stored setting the call wrote, read back; and unit tests pin the payload.
-Fields are never Documented: a field changes the call. A record promotes the item to Verified. Anything else
-untested is Experimental, or out of scope and refused, never Documented on a sibling's proof.
+Fields are never Documented: a field changes the call. A change to a Documented item's call alone makes it
+Experimental until a record. A record promotes the item to Verified. Anything else untested is Experimental, or out of
+scope and refused, never Documented on a sibling's proof.
 
 **Reported.** A scope item ships as `Level.REPORTED` on an accepted working user report of the item's call, when unit
 tests pin the payload. It has no record, so no freshness check; a change to its call makes it Experimental until a

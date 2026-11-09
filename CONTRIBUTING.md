@@ -6,7 +6,7 @@ help is evidence from devices the maintainer doesn't own: what works, what doesn
 ## Principles
 
 - **Claims follow evidence.** A feature is listed as working on a device only when a test record shows it passing
-  there.
+  there, or an accepted user report says it works.
 - **Requests bring proof.** A device request comes with a YAML call that already works on the device, its model and
   firmware, and a promise to test the release candidate.
 - **A bug means a claim is broken.** A bug report is for a device and feature the [compatibility page](docs/compatibility.md)

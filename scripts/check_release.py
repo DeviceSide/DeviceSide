@@ -9,8 +9,9 @@ Reported and Experimental items have no record to age, so --records weighs only 
 records.
 
 Exits 1 on any adapter module under 95% line coverage (with --coverage), any experimental adapter (with --release),
-or any released adapter whose code changed after the commit one of its test records cites, or that has no record
-(with --records). Setting or clearing `experimental` is not a change to the code: nothing reads it at runtime.
+or any released adapter whose code changed after the commit one of its test records cites, or that has a Verified call
+and no record (with --records). Setting or clearing `experimental` is not a change to the code: nothing reads it at
+runtime.
 
 Usage: scripts/check_release.py [--coverage coverage.json] [--release] [--records]
 """

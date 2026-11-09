@@ -113,14 +113,11 @@ async def test_a_relay_shown_as_a_light_is_not_dimmable(hass, setup_production):
     assert not call_rpc.await_args_list
 
 
-async def test_gen1_and_other_components_are_refused(hass, setup_production):
+async def test_gen1_is_refused(hass, setup_production):
     gen1, _ = shelly_device(hass, gen1=True, mac="112233445566")
     add_shelly_entity(hass, gen1, "light.old_bulb", "light_0", state="on")
-    entry, _ = shelly_device(hass)
-    add_shelly_entity(hass, entry, "light.dimmer", "light:0", state="on")
 
     assert await refusal(hass, "stop", {"entity_id": "light.old_bulb"}) == "gen1_unsupported"
-    assert await refusal(hass, "stop", {"entity_id": "light.dimmer"}) == "experimental_off"
 
 
 @pytest.mark.parametrize(("key", "component"), OTHER_LIGHT_COMPONENTS)

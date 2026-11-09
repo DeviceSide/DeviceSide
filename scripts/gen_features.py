@@ -75,7 +75,11 @@ NO_PATH = {
 def keys(adapter, registry: AdapterRegistry) -> set[str]:
     """The icon keys an adapter covers: its domains at any Level but Experimental (Documented and Reported ship with
     the option off), plus `group` when it takes lights and the dispatcher passes it native groups, natively or expanded
-    to their members (`_expand_native_groups`)."""
+    to their members (`_expand_native_groups`). Empty when the scope lists capabilities and every one is Experimental:
+    then no call works with the option off."""
+    capabilities = adapter.scope.capabilities
+    if capabilities is not None and all(level is Level.EXPERIMENTAL for level in capabilities.values()):
+        return set()
     found = {domain for domain, level in adapter.scope.domains.items() if level is not Level.EXPERIMENTAL}
     groups = adapter.scope.native_groups or registry.integrations[adapter.integration].expand_group is not None
     if groups and "light" in found:

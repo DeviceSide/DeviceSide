@@ -73,6 +73,14 @@ def test_an_experimental_domain_shows_no_icon_and_takes_its_group_with_it(no_blo
     assert gf.keys(adapter("zha", "stop", domains=experimental("light")), registry) == set()
 
 
+def test_capabilities_that_are_all_experimental_show_no_icon(no_blockers):
+    registry = FakeRegistry()
+    assert gf.keys(adapter("shelly", "stop", capabilities=experimental("Light", "CCT")), registry) == set()
+    assert gf.keys(adapter("shelly", "stop", capabilities=verified("RGBCCT") | experimental("Light")), registry) == {
+        "light"
+    }
+
+
 def test_a_group_needs_the_adapter_to_take_lights(no_blockers):
     registry = FakeRegistry(expand={"hue"})
     assert gf.keys(adapter("hue", "set_scene", domains=verified("scene")), registry) == {"scene"}
