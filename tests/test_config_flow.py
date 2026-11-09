@@ -53,7 +53,7 @@ async def report_for(
     result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": step})
     assert result["type"] is FlowResultType.FORM
     if step == "report_device" and isinstance(entity_ids, str):
-        entity_ids = [entity_ids]  # the report form takes several devices; the proposal one
+        entity_ids = [entity_ids]  # the report form takes a list of devices; the proposal form takes one
     result = await hass.config_entries.options.async_configure(result["flow_id"], {"entity_id": entity_ids})
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == link_step
