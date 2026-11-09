@@ -88,13 +88,22 @@ def git(*args: str) -> subprocess.CompletedProcess:
     return subprocess.run(["git", *args], cwd=REPO, capture_output=True, text=True)
 
 
+def is_flag(keyword: ast.keyword) -> bool:
+    """`experimental=True`, `=False`, or a parameter of that name passed straight on."""
+    value = keyword.value
+    return keyword.arg == "experimental" and (
+        (isinstance(value, ast.Constant) and isinstance(value.value, bool))
+        or (isinstance(value, ast.Name) and value.id == "experimental")
+    )
+
+
 def runtime_shape(text: str) -> tuple[str, list[str]]:
-    """The module's syntax tree with every `experimental=` argument dropped, and its comments: what a change must
-    alter to count. Layout is ignored, so a call reflowed by the formatter when the flag goes still matches."""
+    """The module's syntax tree with every flag argument dropped, and its comments: what a change must alter to count.
+    Layout is ignored, so a call reflowed by the formatter when the flag goes still matches."""
     tree = ast.parse(text)
     for node in ast.walk(tree):
         if isinstance(node, ast.Call):
-            node.keywords = [keyword for keyword in node.keywords if keyword.arg != "experimental"]
+            node.keywords = [keyword for keyword in node.keywords if not is_flag(keyword)]
     tokens = tokenize.generate_tokens(io.StringIO(text).readline)
     return ast.dump(tree), [token.string for token in tokens if token.type == tokenize.COMMENT]
 

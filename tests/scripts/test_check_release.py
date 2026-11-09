@@ -193,8 +193,9 @@ def test_a_change_to_the_experimental_flag_alone_leaves_the_record_fresh(tested,
         FLAGGED.replace("experimental=True, ", "").replace("confirmable=True", "confirmable=False"),
         FLAGGED.replace("experimental=True, ", "").replace("# the scope", "# the call"),
         FLAGGED.replace("experimental=True", "verified=True"),
+        FLAGGED.replace("experimental=False", "experimental=load()"),
     ],
-    ids=["another_argument", "a_comment", "a_renamed_keyword"],
+    ids=["another_argument", "a_comment", "a_renamed_keyword", "a_computed_value"],
 )
 def test_a_change_beside_the_flag_is_still_a_change(tested, monkeypatch, after):
     repo, _ = tested
@@ -238,6 +239,7 @@ def flag_reads(tree: ast.AST) -> list[int]:
         for node in ast.walk(tree)
         if (isinstance(node, ast.Attribute) and node.attr == "experimental")
         or (isinstance(node, ast.Constant) and node.value == "experimental")
+        or (isinstance(node, ast.MatchClass) and "experimental" in node.kwd_attrs)
         or (
             isinstance(node, ast.Name)
             and node.id == "experimental"
@@ -248,15 +250,38 @@ def flag_reads(tree: ast.AST) -> list[int]:
 
 
 @pytest.mark.parametrize(
-    "code",
+    ("code", "line"),
     [
-        "scope.experimental",
-        "getattr(scope, 'experimental')",
-        "def ramp(*, experimental):\n    return 1 if experimental else 2",
+        ("scope.experimental", 1),
+        ("getattr(scope, 'experimental')", 1),
+        ("def ramp(*, experimental):\n    return 1 if experimental else 2", 2),
+        ("match scope:\n    case AdapterScope(experimental=True):\n        pass", 2),
     ],
 )
-def test_a_read_of_the_flag_is_found(code):
-    assert flag_reads(ast.parse(code)) == [len(code.splitlines())]
+def test_a_read_of_the_flag_is_found(code, line):
+    assert flag_reads(ast.parse(code)) == [line]
+
+
+def test_the_flag_only_reaches_a_scope():
+    """The check drops `experimental=` as a no-op, so every one under custom_components must go to `AdapterScope` or
+    to an integration helper taking that parameter, never to outside code."""
+    trees = [(path, ast.parse(path.read_text())) for path in (cr.REPO / "custom_components").rglob("*.py")]
+    takers = {"AdapterScope"} | {
+        node.name
+        for _, tree in trees
+        for node in ast.walk(tree)
+        if isinstance(node, ast.FunctionDef)
+        and any(arg.arg == "experimental" for arg in node.args.args + node.args.kwonlyargs)
+    }
+    strays = [
+        f"{path.relative_to(cr.REPO)}:{node.lineno}"
+        for path, tree in trees
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and any(keyword.arg == "experimental" for keyword in node.keywords)
+        and getattr(node.func, "id", getattr(node.func, "attr", None)) not in takers
+    ]
+    assert strays == []
 
 
 def test_nothing_in_the_integration_reads_the_flag():
