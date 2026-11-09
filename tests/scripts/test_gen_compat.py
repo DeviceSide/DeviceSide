@@ -235,9 +235,7 @@ def test_a_card_lists_tested_models_once_each_by_their_name_then_native_groups(r
         f"[Plug]({URL}#plug)",
         f"[native groups]({URL}#native-groups)",
     ]
-    assert (
-        card.render().splitlines()[1] == "<summary><b>ZHA</b> (Zigbee 3.0): bulbs ✅ · plugs ✅ · groups ✅</summary>"
-    )
+    assert card.row().startswith("| **ZHA** (Zigbee 3.0)<br>bulbs ✅ · plugs ✅ · groups ✅ | [Hue lamp]")
 
 
 def test_a_card_leaves_out_flagged_adapters_and_failing_records(root):
@@ -254,7 +252,7 @@ def test_a_model_only_users_report_shows_with_a_badge_per_report(root):
     reports = [{**REPORT, "worked": ["turn_on_for"], "issue": issue}]
     card = zha_card(adapter("zha", "turn_on_for"), reports=reports)
     assert card.lines["works"] == [f"[Plug]({URL}#plug) [👥]({issue})"]
-    assert "plugs ✅" in card.render()
+    assert card.summary() == "plugs ✅"
 
 
 def test_a_report_on_a_flagged_adapter_stays_out_of_the_card(root):
@@ -276,8 +274,9 @@ def test_untested_classes_share_an_entry_per_feature_set_and_name_their_features
     assert card.lines["help"] == [f"[dimmers]({URL}#dimmers), [CCT controllers]({URL}#dimmers) (smooth dimming)"]
     assert card.lines["no"] == [f"[Old plug]({URL}#old-plug)"]
     # Best outcome per type: plugs are 🟡 though one is ⛔; LED controllers only 🙋.
-    assert "plugs 🟡 · dimmers 🟡 · LED controllers 🙋" in card.render()
-    assert "- 🙋 **Help us test:** " in card.render()
+    assert card.summary() == "plugs 🟡 · dimmers 🟡 · LED controllers 🙋"
+    # A column per outcome, in OUTCOMES order: the 🙋 cell sits third after the integration cell.
+    assert card.row().split(" | ")[3] == card.lines["help"][0]
 
 
 def test_stop_alone_is_named():
@@ -346,4 +345,11 @@ def test_a_tested_type_shows_its_best_outcome(root):
     record(root, "zha", "turn_on_for", device="Plug (`P1`), firmware `1`")
     scope = AdapterScope(domains=verified("light") | experimental("switch"))
     card = zha_card(adapter("zha", "turn_on_for"), adapter("zha", "get_attributes", scope))
-    assert ": plugs ✅</summary>" in card.render()  # not 🙋, nor ⛔ from Old plug
+    assert card.summary() == "plugs ✅"  # not 🙋, nor ⛔ from Old plug
+
+
+def test_the_readme_links_to_the_device_table():
+    """The prose's "listed as tested" link is hand-written, so a renamed table title fails here, not as a dead link."""
+    readme = gc.README.read_text()
+    assert f'<a id="{gc.slug(gc.TABLE_TITLE)}"></a>' in readme
+    assert f"(https://github.com/jasonmx/DeviceSide#{gc.slug(gc.TABLE_TITLE)})" in readme
