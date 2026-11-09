@@ -247,8 +247,8 @@ def saturation_fade(cache: TransitionCache, request: RampRequest, target: Target
     """The saturation fade toward the limit at the current hue; off with no lit light in color, at_limit when there is
     none left to make.
 
-    Written as a color, with Z2M's hue_native_control on (native_control.py): the bulb fades in xy and holds its hue,
-    and Z2M publishes the end as xy, which HA takes.
+    Written as a color: the bulb holds its hue as it fades, with Z2M's hue_native_control on (in xy) or off, and Z2M
+    publishes the end, which HA takes.
     """
     if not (movers := [light for light in lit(cache, lights) if hs_color(light) is not None]):
         return "off"

@@ -84,7 +84,7 @@ come with single commands and log at debug:
   own are left alone. Turning **Fix colors of full-color Zigbee2MQTT lights** off in DeviceSide's options puts
   back the modes Zigbee2MQTT announced itself.
 - **`hue_native_control`**, on a Hue bulb, or a group with one, for one command at a time, then put back as you had
-  it. A `turn_on_for` with a color and a saturation move go out with it on: without it, a Hue bulb that is off drops
+  it. A `turn_on_for` with a color goes out with it on: without it, a Hue bulb that is off drops
   the color and lights at its last one first. A brightness move goes out with it off: with it, a Hue bulb runs a
   long fade faster than asked, and reports off at once during a fade to off. DeviceSide sets the option, sends the
   command, and puts your setting back once Zigbee2MQTT answers, within a second. Every other command, DeviceSide's

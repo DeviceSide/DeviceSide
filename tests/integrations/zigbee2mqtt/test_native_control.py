@@ -257,12 +257,12 @@ async def test_brightness_ramp_turns_it_off_for_its_publish(hass, setup_producti
     assert options(broker) == [False, True]
 
 
-async def test_saturation_ramp_turns_it_on_for_its_publish(hass, setup_production, clock, broker):
+async def test_saturation_ramp_leaves_it_alone(hass, setup_production, clock, broker):
     entity_id = light(hass, broker, manufacturer="Philips")
 
     await call(hass, "raise_saturation", {"entity_id": entity_id})
 
-    assert options(broker) == [True, False]
+    assert broker.requests() == []
 
 
 async def test_hue_move_leaves_it_alone(hass, setup_production, clock, broker):

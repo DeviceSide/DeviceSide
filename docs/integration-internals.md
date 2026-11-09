@@ -88,8 +88,8 @@ Only devices Z2M registered through MQTT discovery are found: the device carries
 - **`hue_native_control`** makes Z2M send on, brightness, color and color temperature as one Philips command
   rather than ZCL ones. Each action that needs it one way declares it (`NEED` in `native_control.py`): on for a
   `turn_on_for` with a color or color temperature (a Hue bulb, manufacturer `Philips`, lights in the new color and
-  keeps the timer) and for a saturation fade (it fades in xy and holds its hue); off for a brightness fade (native,
-  a long raise runs about 2.3x faster than its transition, and a soft off reports `onOff: 0` at once). Where the
+  keeps the timer); off for a brightness fade (native, a long raise runs about 2.3x faster than its transition, and
+  a soft off reports `onOff: 0` at once). Other actions, a saturation fade included, leave it alone. Where the
   setting differs, it's set (Z2M's settings read on each call, up to 5 s for Z2M), the command published, and the
   user's value written back after Z2M's next state publish for the target (1 s cap). Z2M reads a command's options
   as it takes it (`lib/extension/publish.ts`), so a fade already sent runs on unchanged. One lock per device or
@@ -145,8 +145,8 @@ one, the longest.
   from it, so it first gets `{"state": "ON", "brightness": 1, "transition": 0}` (one publish to an all-off group,
   else per off member).
 - `lower_brightness` to 0 %: `{"state": "OFF", "transition"}`, Z2M's soft off.
-- Saturation: `{"color": {"hue", "saturation"}, "transition"}`; with `hue_native_control` the bulb fades in xy and
-  holds its hue.
+- Saturation: `{"color": {"hue", "saturation"}, "transition"}`; the bulb holds its hue with `hue_native_control` on
+  (it fades in xy) or off.
 - Hue: `hue_move` at `254 / sweep_time` steps per second (ZCL allows 1 to 254).
 - `stop`: `brightness_move: stop`, `hue_move: stop` for a running hue cycle, and a raw `stopMoveStep` for a
   saturation fade, since `saturation_move: stop` halts the attribute and lets the xy fade drift on. Each is its own
