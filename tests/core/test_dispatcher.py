@@ -610,3 +610,10 @@ async def test_the_actions_for_an_entity_are_its_integrations_sorted(hass, fake)
 
     assert actions == sorted(actions)
     assert {"turn_on_for", "turn_off_for"} <= set(actions)
+
+
+async def test_an_action_whose_integration_has_no_adapter_for_the_entity_has_no_support(hass, fake):
+    add_fake_entity(hass, fake, "light.a")
+
+    # fake has no raise_brightness adapter: the action takes lights, the integration doesn't serve it.
+    assert get_runtime(hass).dispatcher.support("raise_brightness", "light.a") is None

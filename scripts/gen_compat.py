@@ -358,6 +358,11 @@ def reports_cell(integration: str, action: str, data: Data, items: Collection[st
     return "<br>".join(cells)
 
 
+def padded(text: str) -> str:
+    """A table cell's text between its pipes: one space when empty."""
+    return f" {text} " if text else " "
+
+
 def row(action: str, adapter, data: Data) -> str:
     found = passing(adapter.integration, action)
     level = IN_RCS if adapter.scope.experimental else "Verified" if found else NO_RECORD
@@ -365,10 +370,7 @@ def row(action: str, adapter, data: Data) -> str:
     models = [GROUP if item == GROUP else f"`{item[0]}`, firmware `{item[1]}`" for item in tested(adapter, data, found)]
     records_cell = ", ".join(link(record, action) for record in found)
     reports = reports_cell(adapter.integration, action, data)
-    reports_cell_text = f" {reports} " if reports else " "
-    return (
-        f"| `{action}` | {level} | {support} | {'<br>'.join(models) or 'none'} | {records_cell} |{reports_cell_text}|"
-    )
+    return f"| `{action}` | {level} | {support} | {'<br>'.join(models) or 'none'} | {records_cell} |{padded(reports)}|"
 
 
 def cell(text: str) -> str:
@@ -404,10 +406,9 @@ def level_rows(action: str, adapter, data: Data) -> list[str]:
             reports = (
                 reports_cell(adapter.integration, action, data, named[support]) if support is Support.COMMUNITY else ""
             )
-            cell = f" {reports} " if reports else " "
             rows.append(
                 f"| `{action}` | {IN_RCS if scope.experimental else label} | {support} "
-                f"| none ({why}: {'; '.join(held[support])}) | |{cell}|"
+                f"| none ({why}: {'; '.join(held[support])}) | |{padded(reports)}|"
             )
     return rows
 
