@@ -11,9 +11,11 @@ from homeassistant.helpers.selector import EntitySelector, EntitySelectorConfig
 from homeassistant.loader import async_get_integration
 
 from .const import (
+    CONF_EXPERIMENTAL,
     CONF_PREDICTED_STATE,
     CONF_Z2M_COLOR_MODES,
     DOMAIN,
+    EXPERIMENTAL_DEFAULT,
     NAME,
     PREDICTED_STATE_DEFAULT,
     Z2M_COLOR_MODES_DEFAULT,
@@ -175,6 +177,7 @@ class DeviceSideOptionsFlow(config_entries.OptionsFlowWithReload):
                     vol.Required(
                         CONF_Z2M_COLOR_MODES, default=options.get(CONF_Z2M_COLOR_MODES, Z2M_COLOR_MODES_DEFAULT)
                     ): bool,
+                    vol.Required(CONF_EXPERIMENTAL, default=options.get(CONF_EXPERIMENTAL, EXPERIMENTAL_DEFAULT)): bool,
                 }
             ),
         )

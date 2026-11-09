@@ -10,12 +10,14 @@ from homeassistant.helpers import target as target_helpers
 from . import duration, ha_watch
 from .action import Action
 from .adapter import Adapter
-from .errors import TargetNotSupported
+from .errors import EXPERIMENTAL_OFF, TargetNotSupported
 from .fields import lacking
 from .groups import expand_ha_groups
 from .models import FAILED, ActionKind, EntityResult, Request, Status, Target, TimedRequest
 from .registry import AdapterRegistry
 from .resolver import resolve
+from .runtime import get_runtime
+from .scope import Level
 from ..const import ADAPTER_TIMEOUT_S, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -129,9 +131,10 @@ class Dispatcher:
         """Plan every target, then run each adapter once per distinct request, every run concurrently.
 
         Planning buckets targets by adapter, expands native groups an adapter can't address, drops the fields each
-        target lacks and checks supports() on what is left. A named target that can't take the action raises then,
-        before anything is sent. Returns a result per target that ran or was left nothing to do, and an unsupported
-        one per indirect target skipped.
+        target lacks and checks supports() on what is left. A call that would send something touching an Experimental
+        scope item is refused while the Experimental features option is off. A named target that can't take the
+        action raises then, before anything is sent. Returns a result per target that ran or was left nothing to do,
+        and an unsupported one per indirect target skipped.
         """
         results: list[EntityResult] = []
         buckets: dict[str, tuple[Adapter, list[Target]]] = {}
@@ -142,6 +145,7 @@ class Dispatcher:
             buckets.setdefault(target.integration, (adapter, []))[1].append(target)
 
         runs: list[tuple[Adapter, Request, list[Target], frozenset[str]]] = []
+        experimental_on = get_runtime(self.hass).experimental_features
         for adapter, bucket in buckets.values():
             # One execute per set of dropped fields, so every target in a run gets the same request.
             by_dropped: dict[frozenset[str], list[Target]] = {}
@@ -152,6 +156,8 @@ class Dispatcher:
                     results += _skip(target.reported_id, target.named, reason, adapter.integration)
                 elif reduced.nothing_to_do():
                     results.append(adapter.result(target, Status.UNCHANGED, detail="fields_dropped"))
+                elif not experimental_on and self._experimental(adapter, reduced, target):
+                    results += _skip(target.reported_id, target.named, EXPERIMENTAL_OFF, adapter.integration)
                 else:
                     by_dropped.setdefault(dropped, []).append(target)
             runs += [(adapter, request.without(dropped), ready, dropped) for dropped, ready in by_dropped.items()]
@@ -159,6 +165,12 @@ class Dispatcher:
         for adapter_results in await asyncio.gather(*(self._run_adapter(*run) for run in runs)):
             results.extend(adapter_results)
         return results
+
+    def _experimental(self, adapter: Adapter, request: Request, target: Target) -> bool:
+        """Whether the call touches an Experimental item: its domain, capability or a field it carries. The one place
+        the option gates anything; adapters never read it."""
+        capability = adapter.capability(self.hass, target)
+        return adapter.scope.level(target.domain, capability, request.fields_present()) is Level.EXPERIMENTAL
 
     def _expand_native_groups(
         self, adapter: Adapter, bucket: list[Target], results: list[EntityResult]

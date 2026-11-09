@@ -11,8 +11,9 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 MAC = "AABBCCDDEEFF"
 
-# The Documented components, as (RPC key, component) for a parametrize.
-DOCUMENTED_COMPONENTS = [("light:0", "Light"), ("cct:0", "CCT"), ("rgb:0", "RGB"), ("rgbw:0", "RGBW")]
+# The light components other than RGBCCT, as (RPC key, component) for a parametrize: Documented for some actions,
+# Experimental for others.
+OTHER_LIGHT_COMPONENTS = [("light:0", "Light"), ("cct:0", "CCT"), ("rgb:0", "RGB"), ("rgbw:0", "RGBW")]
 
 
 # The light values a Set stores, which GetStatus reports back.

@@ -7,6 +7,7 @@ import pytest
 
 from custom_components.deviceside.core.scope import Level
 from custom_components.deviceside.integrations.shelly.lower_brightness import ShellyLowerBrightness
+from custom_components.deviceside.integrations.shelly.raise_brightness import ShellyRaiseBrightness
 
 from .conftest import BULB, SENT, dimmable_bulb, unchanged
 from ...conftest import call
@@ -62,4 +63,4 @@ def test_scope():
     scope = ShellyLowerBrightness.scope
     assert not scope.experimental
     assert scope.fields == {"brightness": Level.VERIFIED}
-    assert dict(scope.capabilities) == {"RGBCCT": Level.VERIFIED}
+    assert scope.capabilities == ShellyRaiseBrightness.scope.capabilities

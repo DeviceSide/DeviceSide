@@ -4,9 +4,11 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 
 from .const import (
+    CONF_EXPERIMENTAL,
     CONF_PREDICTED_STATE,
     CONF_Z2M_COLOR_MODES,
     DOMAIN,
+    EXPERIMENTAL_DEFAULT,
     PREDICTED_STATE_DEFAULT,
     Z2M_COLOR_MODES_DEFAULT,
 )
@@ -33,6 +35,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     # An entry saved before the option existed has no options: it gets the default.
     runtime = get_runtime(hass)
     runtime.predicted_state = entry.options.get(CONF_PREDICTED_STATE, PREDICTED_STATE_DEFAULT)
+    runtime.experimental_features = entry.options.get(CONF_EXPERIMENTAL, EXPERIMENTAL_DEFAULT)
     # Per entry, not in async_setup: unloading detaches every listener, and a reload runs only this again.
     runtime.listen("ha_watch", hass, lambda: ha_watch.attach(hass, runtime.registry.call_resolvers()))
     enabled = entry.options.get(CONF_Z2M_COLOR_MODES, Z2M_COLOR_MODES_DEFAULT)

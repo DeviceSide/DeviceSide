@@ -3,11 +3,15 @@
 records as new as the code they prove.
 
 `experimental=True` on an adapter's scope means it is not in a stable release yet. It is cleared by a PR citing a
-passing test record that covers the scope.
+passing test record that covers the scope. An Experimental scope item (`Level.EXPERIMENTAL`) is not the flag: it ships
+in a stable release, refused at runtime until the user turns on Experimental features, so --release passes it.
+Reported and Experimental items have no record to age, so --records weighs only the adapter's code against its
+records.
 
 Exits 1 on any adapter module under 95% line coverage (with --coverage), any experimental adapter (with --release),
-or any released adapter whose code changed after the commit one of its test records cites, or that has no record
-(with --records). Setting or clearing `experimental` is not a change to the code: nothing reads it at runtime.
+or any released adapter whose code changed after the commit one of its test records cites, or that has a Verified call
+and no record (with --records). Setting or clearing `experimental` is not a change to the code: nothing reads it at
+runtime.
 
 Usage: scripts/check_release.py [--coverage coverage.json] [--release] [--records]
 """
@@ -28,6 +32,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
 from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
+from custom_components.deviceside.core.scope import Level  # noqa: E402
 
 COVERAGE_BAR = 95.0
 RECORDS = REPO / "docs" / "test-records"
@@ -124,13 +129,22 @@ def changed_code(cited: str, paths: list[str]) -> list[str]:
     return changed
 
 
+def proven(scope) -> bool:
+    """Whether the adapter has a Verified call, which a record must prove: a Verified domain and, when the scope lists
+    capabilities, a Verified one. Reported and Experimental items have no record to age."""
+    if Level.VERIFIED not in scope.domains.values():
+        return False
+    return scope.capabilities is None or Level.VERIFIED in scope.capabilities.values()
+
+
 def record_errors(registry: AdapterRegistry) -> list[str]:
     """A released adapter with no record, a record citing no commit or one git can't find, or code that differs
     between the cited commit and HEAD by more than its `experimental` flag, is an error. Trees are compared, not
-    history, so a record citing a squash-merged branch counts. Experimental adapters are exempt: no release has them."""
+    history, so a record citing a squash-merged branch counts. Experimental adapters are exempt, as no release has
+    them, and so are adapters with no Verified call, as no record proves them."""
     errors = []
     for name, adapter in adapters(registry):
-        if adapter.scope.experimental:
+        if adapter.scope.experimental or not proven(adapter.scope):
             continue
         found = records(adapter.integration, adapter.action)
         if not found:

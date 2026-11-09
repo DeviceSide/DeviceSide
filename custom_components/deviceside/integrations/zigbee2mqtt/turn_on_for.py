@@ -14,7 +14,7 @@ from ...actions.turn_on_for import TurnOnForRequest
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Status, Target
 from ...core.runtime import get_runtime
-from ...core.scope import AdapterScope, DurationLimits, verified
+from ...core.scope import AdapterScope, DurationLimits, experimental, verified
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -53,8 +53,9 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
     integration: ClassVar[str] = "zigbee2mqtt"
     scope: ClassVar[AdapterScope] = AdapterScope(
         # Zigbee plugs and switches rarely honor OnWithTimedOff, and Z2M has no read-back to show it, so switch fails
-        # the Documented conditions (CLAUDE.md, "Release flag") and stays out of scope until a record covers it.
-        domains=verified("light"),
+        # the Documented conditions (CLAUDE.md, "Release flag"): it takes the same call, so it is Experimental until a
+        # record covers it.
+        domains=verified("light") | experimental("switch"),
         duration=_TIMER_LIMITS,
         fields=verified("brightness", "color_temp_kelvin", "hs_color", "rgb_color", "xy_color", "transition"),
         capabilities=None,  # All Z2M devices that accept on_time; no hardware capability to restrict yet.

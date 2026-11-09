@@ -29,11 +29,13 @@
         "title": "DeviceSide options",
         "data": {
           "predicted_state": "Fix Hue Bridge brightness reports while dimming",
-          "z2m_color_modes": "Fix colors of full-color Zigbee2MQTT lights"
+          "z2m_color_modes": "Fix colors of full-color Zigbee2MQTT lights",
+          "experimental_features": "Experimental features"
         },
         "data_description": {
           "predicted_state": "When dimming starts, Hue Bridges report 0% or 100% brightness and only snap back to a light's actual brightness after ~10 s. This setting shows the starting brightness in Home Assistant when dimming starts, and the light's actual brightness when it stops. Disable the setting to get the raw bridge reports.",
-          "z2m_color_modes": "Full color lights use both XY and HS modes, but Zigbee2MQTT announces them as XY mode only. This causes Home Assistant to ignore reports from full color lights in HS mode. This setting overrides Z2M and announces both modes to HA. Turn it off to revert to Z2M's native behavior."
+          "z2m_color_modes": "Full color lights use both XY and HS modes, but Zigbee2MQTT announces them as XY mode only. This causes Home Assistant to ignore reports from full color lights in HS mode. This setting overrides Z2M and announces both modes to HA. Turn it off to revert to Z2M's native behavior.",
+          "experimental_features": "Lets DeviceSide try features not yet proven on your device. Whether they work or not, please tell us with Report a device test result in DeviceSide's options."
         }
       },
       "report_device": {
@@ -80,6 +82,9 @@
     },
     "invalid_duration": {
       "message": "Duration must be greater than zero."
+    },
+    "experimental_off": {
+      "message": "{entity_id}: this is untested on this device. Turn on Experimental features in DeviceSide's options to try it."
     },
     "target_not_supported": {
       "message": "{entity_id} can't take this action ({reason})."

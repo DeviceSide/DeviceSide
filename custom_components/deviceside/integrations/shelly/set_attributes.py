@@ -6,7 +6,7 @@ from typing import Any, ClassVar
 
 from homeassistant.core import HomeAssistant
 
-from .addressing import address, unsupported_reason
+from .addressing import RpcComponent, address, unsupported_reason
 from .rpc import get_status, light_params, set_and_read_back, whole_percent
 from ...actions.set_attributes import SetAttributesRequest
 from ...core.adapter import Adapter
@@ -33,7 +33,7 @@ def _expected(params: dict[str, Any]) -> dict[str, Any]:
     return {name: params[name] for name in ("brightness", "ct", "mode") if name in params}
 
 
-class ShellySetAttributes(Adapter[SetAttributesRequest]):
+class ShellySetAttributes(RpcComponent, Adapter[SetAttributesRequest]):
     """One RGBCCT.Set with brightness, ct or rgb and no `on`, then a GetStatus.
 
     On a Multicolor Bulb Gen3 a Set without `on` leaves the bulb as it is, on or off, and stores the values: the next

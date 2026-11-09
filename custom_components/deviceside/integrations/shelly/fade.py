@@ -5,7 +5,7 @@ from typing import ClassVar
 
 from homeassistant.core import HomeAssistant
 
-from .addressing import DIMMING_CAPABILITIES, unsupported_reason
+from .addressing import DIMMING_CAPABILITIES, RpcComponent, unsupported_reason
 from .rpc import TRANSITION_LIMITS, get_status, set_fade
 from ...actions.ramp import RampRequest
 from ...core.adapter import Adapter
@@ -32,7 +32,7 @@ def fade_seconds(distance: float, sweep_time: float) -> float:
     return round(max(distance / 100 * sweep_time, TRANSITION_LIMITS.min_s), _DURATION_DIGITS)
 
 
-class ShellyFade(Adapter[RampRequest]):
+class ShellyFade(RpcComponent, Adapter[RampRequest]):
     """A GetStatus for the device's level, then one Set to the limit (or range end) with a transition for the distance
     left; the device runs the fade.
 

@@ -3,7 +3,7 @@ from typing import ClassVar
 
 from homeassistant.core import HomeAssistant
 
-from .addressing import CAPABILITIES, COMPONENT_FIELDS, address, unsupported_reason
+from .addressing import CAPABILITIES, COMPONENT_FIELDS, RpcComponent, address, unsupported_reason
 from .rpc import TIMER_LIMITS, light_params, set_with_timer
 from ...actions.turn_on_for import TurnOnForRequest
 from ...core.adapter import Adapter
@@ -11,7 +11,7 @@ from ...core.models import EntityResult, Target
 from ...core.scope import AdapterScope, verified
 
 
-class ShellyTurnOnFor(Adapter[TurnOnForRequest]):
+class ShellyTurnOnFor(RpcComponent, Adapter[TurnOnForRequest]):
     """One <Component>.Set carrying on, the light fields and toggle_after."""
 
     action: ClassVar[str] = "turn_on_for"
