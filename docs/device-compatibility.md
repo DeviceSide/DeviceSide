@@ -109,8 +109,8 @@ attributes reports the timer, auto-off and auto-on, but not brightness. Smooth d
 
 ### Shelly LED controllers
 
-CCT, RGB and RGBW controllers (the `CCT`, `RGB` and `RGBW` components) take the same calls as the dimmers. RGB and
-RGBW take brightness but not color yet: a color is left out of the call, which reports `fields_dropped`
+CCT, RGB and RGBW controllers (the `CCT`, `RGB` and `RGBW` components) take the same calls as the dimmers. They take
+brightness but not color or color temperature yet: either is left out of the call, which reports `fields_dropped`
 ([integrations](integrations.md#shelly)). A record proves one component, so each needs its own.
 
 ### Shelly multicolor bulbs

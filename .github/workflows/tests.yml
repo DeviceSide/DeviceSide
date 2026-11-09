@@ -8,6 +8,9 @@ on:
       - "release/**"
       - "wt/**"
 
+permissions:
+  contents: read
+
 jobs:
   # A change touching only *.md files and docs/ (other than test records and the compatibility page) skips pytest. The skip happens in the job, not the trigger: the
   # ruleset requires the "pytest" check, which a skipped job satisfies and a workflow that never ran leaves pending.

@@ -26,11 +26,12 @@ _COLOR = frozenset({"hs_color", "rgb_color", "xy_color"})
 
 # light.turn_on fields each component takes, as shelly/light.py translates them. A Switch shown as a light is on/off.
 # RGB and RGBW take color too, but core converts it differently for them (rgb to rgbw with a white split, kelvin to
-# color), so their color is dropped until those conversions are ported.
+# color), so their color is dropped until those conversions are ported. CCT takes ct, but as CCT.Set {ct} without the
+# bulb's mode switch: a call no record covers, and fields are never Documented, so it is dropped until one does.
 COMPONENT_FIELDS = {
     "Switch": frozenset(),
     "Light": _DIMMABLE,
-    "CCT": _DIMMABLE | {"color_temp_kelvin"},
+    "CCT": _DIMMABLE,
     "RGB": _DIMMABLE,
     "RGBW": _DIMMABLE,
     "RGBCCT": _DIMMABLE | _COLOR | {"color_temp_kelvin"},

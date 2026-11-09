@@ -36,8 +36,7 @@ async def test_switch_one_set_then_read_back(hass, setup_production):
         # Brightness percent to the device's whole percent, never 0; transition floored at 0.5 s, as shelly/light.py.
         ("light:0", {"brightness": 50, "transition": 0.2}, {"brightness": 50, "transition_duration": 0.5}),
         ("light:0", {"brightness": 0.4}, {"brightness": 1}),
-        ("cct:0", {"brightness": 50, "color_temp_kelvin": 3000}, {"brightness": 50, "ct": 3000}),
-        ("cct:0", {"color_temp_kelvin": 9000}, {"ct": 6500}),  # clamped to the entity's range; no mode on a CCT
+        ("cct:0", {"brightness": 50, "transition": 1}, {"brightness": 50, "transition_duration": 1.0}),
         ("rgb:0", {"brightness": 100, "transition": 2}, {"brightness": 100, "transition_duration": 2.0}),
         ("rgbw:0", {"brightness": 25.4}, {"brightness": 25}),
     ],
@@ -106,6 +105,8 @@ async def test_switch_as_x_light_sends_the_switch_call(hass, setup_production):
     [
         ("light.relay", "switch:0", {"brightness": 10}),  # relay shown as a light is on/off
         ("light.dimmer", "light:0", {"color_temp_kelvin": 3000}),
+        # CCT.Set {ct} differs from the bulb's RGBCCT.Set {mode, ct}: no record covers it yet.
+        ("light.cct", "cct:0", {"color_temp_kelvin": 3000}),
         ("light.cct", "cct:0", {"rgb_color": [1, 2, 3]}),
         ("light.cct", "cct:0", {"hs_color": [30, 50]}),
         # Core converts color differently for RGB and RGBW, so their color is dropped until that is ported.
