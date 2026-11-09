@@ -19,7 +19,6 @@ class ShellySetAuto(Adapter[TimedRequest]):
     integration: ClassVar[str] = "shelly"
     which: ClassVar[Literal["off", "on"]]
     scope: ClassVar[AdapterScope] = AdapterScope(
-        experimental=True,
         domains=_DOMAINS,
         duration=AUTO_DELAY_LIMITS,
         capabilities=AUTO_CAPABILITIES,
@@ -38,9 +37,7 @@ class ShellyClearAuto(Adapter[Request]):
 
     integration: ClassVar[str] = "shelly"
     which: ClassVar[Literal["off", "on"]]
-    scope: ClassVar[AdapterScope] = AdapterScope(
-        experimental=True, domains=_DOMAINS, capabilities=AUTO_CAPABILITIES, confirmable=True
-    )
+    scope: ClassVar[AdapterScope] = AdapterScope(domains=_DOMAINS, capabilities=AUTO_CAPABILITIES, confirmable=True)
 
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:
         return super().supports(hass, request, target) or unsupported_reason(target, self.scope.capabilities)

@@ -9,7 +9,8 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util import dt as dt_util
 from homeassistant.util.color import color_RGB_to_hs, color_RGB_to_xy
 
-from custom_components.deviceside.integrations.shelly.get_attributes import config_row, status_row
+from custom_components.deviceside.core.scope import Level
+from custom_components.deviceside.integrations.shelly.get_attributes import ShellyGetAttributes, config_row, status_row
 
 from ...conftest import call, refusal
 from ...fixtures.fake import add_switch_as_x
@@ -210,3 +211,11 @@ async def test_get_config_error_keeps_the_status_row(hass):
 
     # No auto_off or auto_on key: unknown, which a None (disabled) would misstate.
     assert response == {"light.bulb": {"brightness": 40, "color_temp_kelvin": 4000}}
+
+
+def test_scope_is_released():
+    """The record proves Switch on a relay and RGBCCT on a bulb, on both domains."""
+    scope = ShellyGetAttributes.scope
+    assert not scope.experimental
+    assert scope.capabilities.get("Switch") is Level.VERIFIED
+    assert scope.capabilities.get("RGBCCT") is Level.VERIFIED

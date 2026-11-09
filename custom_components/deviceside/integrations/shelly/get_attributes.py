@@ -65,7 +65,6 @@ class ShellyGetAttributes(Adapter[Request]):
         # A relay shown as a light sends the same Switch.GetStatus.
         capabilities=CAPABILITIES,
         confirmable=True,
-        experimental=True,
     )
 
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:
