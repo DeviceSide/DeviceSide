@@ -262,26 +262,41 @@ def test_a_read_of_the_flag_is_found(code, line):
     assert flag_reads(ast.parse(code)) == [line]
 
 
-def test_the_flag_only_reaches_a_scope():
-    """The check drops `experimental=` as a no-op, so every one under custom_components must go to `AdapterScope` or
-    to an integration helper taking that parameter, never to outside code."""
-    trees = [(path, ast.parse(path.read_text())) for path in (cr.REPO / "custom_components").rglob("*.py")]
+def stray_flags(trees: list[ast.AST]) -> list[int]:
+    """Lines passing `experimental=` to anything but `AdapterScope` or a bare-named helper taking that parameter: the
+    check drops the argument as a no-op, so it must never reach outside code."""
     takers = {"AdapterScope"} | {
         node.name
-        for _, tree in trees
+        for tree in trees
         for node in ast.walk(tree)
         if isinstance(node, ast.FunctionDef)
         and any(arg.arg == "experimental" for arg in node.args.args + node.args.kwonlyargs)
     }
-    strays = [
-        f"{path.relative_to(cr.REPO)}:{node.lineno}"
-        for path, tree in trees
+    return [
+        node.lineno
+        for tree in trees
         for node in ast.walk(tree)
         if isinstance(node, ast.Call)
         and any(keyword.arg == "experimental" for keyword in node.keywords)
-        and getattr(node.func, "id", getattr(node.func, "attr", None)) not in takers
+        and not (isinstance(node.func, ast.Name) and node.func.id in takers)
     ]
-    assert strays == []
+
+
+@pytest.mark.parametrize(
+    ("code", "strays"),
+    [
+        ("AdapterScope(experimental=True)", []),
+        ("def ramp(*, experimental):\n    pass\nramp(experimental=False)", []),
+        ("client.send(x, experimental=True)", [1]),
+        ("def fade_scope(*, experimental):\n    pass\nclient.fade_scope(experimental=True)", [3]),
+    ],
+)
+def test_a_stray_flag_is_found(code, strays):
+    assert stray_flags([ast.parse(code)]) == strays
+
+
+def test_the_flag_only_reaches_a_scope():
+    assert stray_flags([ast.parse(path.read_text()) for path in (cr.REPO / "custom_components").rglob("*.py")]) == []
 
 
 def test_nothing_in_the_integration_reads_the_flag():
