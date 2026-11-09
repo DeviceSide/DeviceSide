@@ -157,7 +157,7 @@ def record_errors(registry: AdapterRegistry) -> list[str]:
         for record in found:
             label = record.relative_to(REPO)
             if (outcome := result(record)) is None:
-                errors.append(f"{name}: {label} has no Result row")
+                errors.append(f"{name}: {label} has no readable Result row")
             elif outcome != "pass":
                 errors.append(f"{name}: {label} did not pass (result: {outcome})")
             if problem := staleness(record, code):

@@ -366,7 +366,9 @@ def test_a_fresh_record_that_did_not_pass_is_an_error(tested, monkeypatch):
         "fake / turn_on_for: docs/test-records/fake/turn_on_for.md did not pass (result: fail)"
     ]
     write_record(repo, "turn_on_for.md", tested_at, result=None)
-    assert cr.record_errors(registry) == ["fake / turn_on_for: docs/test-records/fake/turn_on_for.md has no Result row"]
+    assert cr.record_errors(registry) == [
+        "fake / turn_on_for: docs/test-records/fake/turn_on_for.md has no readable Result row"
+    ]
     write_record(repo, "turn_on_for.md", tested_at)
     assert cr.record_errors(registry) == []
 

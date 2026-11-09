@@ -37,8 +37,8 @@ HA requires it.
   Experimental item through. Only the dispatcher reads it.
 - **Release flag**: `experimental=True` on an adapter's scope; it keeps the whole adapter in release candidates only.
   When to set and clear it: [CLAUDE.md](../CLAUDE.md#release-flag). Not the Experimental level: an item is gated at
-  runtime, the flag at release. A record older than its adapter's code blocks a release (`check_release.py
-  --records`) until a rerun.
+  runtime, the flag at release. A record older than its adapter's code, or one that did not pass, blocks a release
+  (`check_release.py --records`) until a rerun.
 - **Device report**: a user's "works" or "doesn't work" for an action on a model. An accepted "works" on an item's
   call makes it Reported; a "doesn't work" is evidence for a fix or for leaving the item out.
 - **Profile**: one test setup on the rig's HA, the entities a run may move by integration and role; a record names the
@@ -192,8 +192,9 @@ adapter's targets at once, so native group commands stay possible.
 - **Release flag.** `experimental=True` keeps an adapter out of a stable release; `cut-release` runs
   `check_release.py --release`, which fails on any. Setting and clearing it: [CLAUDE.md](../CLAUDE.md#release-flag).
 - **Record freshness.** `cut-release-candidate` and `cut-release` run `check_release.py --records`, failing any
-  released adapter that has a Verified call and no test record, or one whose code changed, beyond its `experimental` flag, after the
-  commit a record cites. An adapter's code is its module, its integration package's `__init__.py` and the package
+  released adapter that has a Verified call and no test record, a record whose Result is not `pass`, or code
+  changed, beyond its `experimental` flag, after the commit a record cites. Each record holds the latest run of its
+  call or option. An adapter's code is its module, its integration package's `__init__.py` and the package
   modules it imports, transitively; `core/` and `actions/` are not, as they are unit-tested and shared by every
   adapter. Experimental adapters are exempt.
 - **Experimental items** are gated at runtime, not at release. After `supports()` passes a target and fields are
