@@ -110,11 +110,14 @@ async def _has_hue_member(hass: HomeAssistant, group: str) -> bool:
 
 
 async def _set(hass: HomeAssistant, target: Target, address: Address, value: bool, restoring: bool = False) -> bool:
-    """Set the option to value where it differs, or regardless for a restore; whether Z2M confirmed a write.
+    """Set the option to value where it differs, or regardless for a restore; whether the option may now be value.
 
-    A restore doesn't compare: Z2M may not have republished bridge/info since the set.
+    It may be when Z2M confirmed the write, or when the request went out and no answer came, as Z2M may have applied
+    it: either way the caller restores. A refused write left the option as it was. A restore doesn't compare: Z2M may
+    not have republished bridge/info since the set.
     """
     written = False
+    requested = False
 
     def confirmed(_z2m_id: str) -> None:
         nonlocal written
@@ -122,7 +125,9 @@ async def _set(hass: HomeAssistant, target: Target, address: Address, value: boo
         _LOGGER.debug("Set Zigbee2MQTT's %s to %s for %s", OPTION, value, target.entity_id)
 
     def wanted(current: dict) -> dict:
-        return {OPTION: value} if restoring or bool(current.get(OPTION)) != value else {}
+        nonlocal requested
+        requested = restoring or bool(current.get(OPTION)) != value
+        return {OPTION: value} if requested else {}
 
     kind, z2m_id = address
     try:
@@ -130,6 +135,7 @@ async def _set(hass: HomeAssistant, target: Target, address: Address, value: boo
     except Exception as err:  # noqa: BLE001 - the command goes out (or went out) as the option stood
         if not restoring:
             _warn_set(target, value, err)
+            return requested and isinstance(err, TimeoutError)
         else:
             _LOGGER.warning(
                 "Couldn't put Zigbee2MQTT's %s back to %s for %s, so it stays %s: %s",
@@ -154,7 +160,7 @@ def _warn_set(target: Target, value: bool, err: Exception) -> None:
 
 async def _state_reply(hass: HomeAssistant, target: Target) -> tuple[asyncio.Future[None], Callable[[], None]]:
     """A future for Z2M's next state publish for the target, subscribed before the body publishes, and its
-    unsubscribe. With no state topic it never resolves, so the restore waits the cap."""
+    unsubscribe. With no state topic, or no subscription, it never resolves, so the restore waits the cap."""
     published: asyncio.Future[None] = hass.loop.create_future()
     if (light_topic := state_topic(target)) is None:
         return published, lambda: None
@@ -165,5 +171,9 @@ async def _state_reply(hass: HomeAssistant, target: Target) -> tuple[asyncio.Fut
         if not msg.retain and not published.done():
             published.set_result(None)
 
-    # HA's own light entity subscribes to this topic, so the subscription is live at once.
-    return published, await mqtt.async_subscribe(hass, light_topic, received)
+    try:
+        # HA's own light entity subscribes to this topic, so the subscription is live at once.
+        return published, await mqtt.async_subscribe(hass, light_topic, received)
+    except Exception as err:  # noqa: BLE001 - the restore still runs, after the cap
+        _LOGGER.debug("Couldn't subscribe to %s, so the restore waits %s s: %s", light_topic, _REPLY_CAP_S, err)
+        return published, lambda: None

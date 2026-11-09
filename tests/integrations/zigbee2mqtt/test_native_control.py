@@ -120,20 +120,31 @@ async def test_without_a_color_nothing_is_read(hass, setup_production, broker, t
 
 
 @pytest.mark.parametrize(
-    ("break_it", "reason"),
+    ("break_it", "reason", "sent"),
     [
-        pytest.param(lambda broker: broker.retained.pop(INFO), "no bridge/info from Zigbee2MQTT", id="no_info"),
-        pytest.param(lambda broker: setattr(broker, "reply", None), "no reply from Zigbee2MQTT", id="no_reply"),
+        pytest.param(lambda broker: broker.retained.pop(INFO), "no bridge/info from Zigbee2MQTT", [], id="no_info"),
+        # Z2M may have applied a write it never answered, so it is put back.
+        pytest.param(
+            lambda broker: setattr(broker, "reply", None), "no reply from Zigbee2MQTT", [True, False], id="no_reply"
+        ),
         pytest.param(
             lambda broker: setattr(broker, "reply", {"status": "error", "error": "Device 'x' does not exist"}),
             "Device 'x' does not exist",
+            [True],
             id="error_reply",
         ),
-        pytest.param(lambda broker: setattr(broker, "reply", {}), "status None", id="no_status"),
-        pytest.param(lambda broker: setattr(broker, "reply", "not json"), "no reply from Zigbee2MQTT", id="unreadable"),
+        pytest.param(lambda broker: setattr(broker, "reply", {}), "status None", [True], id="no_status"),
+        pytest.param(
+            lambda broker: setattr(broker, "reply", "not json"),
+            "no reply from Zigbee2MQTT",
+            [True, False],
+            id="unreadable",
+        ),
     ],
 )
-async def test_failed_set_warns_and_still_sends(hass, setup_production, broker, turn_ons, caplog, break_it, reason):
+async def test_failed_set_warns_and_still_sends(
+    hass, setup_production, broker, turn_ons, caplog, break_it, reason, sent
+):
     hue_bulb(hass)
     break_it(broker)
 
@@ -141,7 +152,7 @@ async def test_failed_set_warns_and_still_sends(hass, setup_production, broker, 
 
     assert response == {"light.lamp": SENT}
     assert len(turn_ons) == 1 and len(broker.timers()) == 1
-    assert len(broker.requests()) <= 1  # no restore after a set Z2M didn't confirm
+    assert options(broker) == sent
     assert (
         "Couldn't set Zigbee2MQTT's hue_native_control to True for light.lamp, so the command goes out as the option "
         f"stands: {reason}"
@@ -344,6 +355,30 @@ async def test_retained_state_doesnt_end_the_wait(hass, setup_production, clock,
 
     assert loop.time() - start >= 0.2
     assert options(broker) == [True, False]
+
+
+async def test_failed_state_subscribe_still_restores_after_the_cap(
+    hass, setup_production, clock, broker, monkeypatch, caplog
+):
+    entity_id = light(hass, broker, manufacturer="Philips")
+    subscribe = nc.mqtt.async_subscribe
+
+    async def refuse_state(hass, topic, *args, **kwargs):
+        if topic == "zigbee2mqtt/lamp":
+            raise RuntimeError("MQTT is not connected")
+        return await subscribe(hass, topic, *args, **kwargs)
+
+    monkeypatch.setattr(nc.mqtt, "async_subscribe", refuse_state)
+    loop = asyncio.get_running_loop()
+
+    start = loop.time()
+    with caplog.at_level(logging.DEBUG, logger=LOGGER):
+        async with nc.native_control(hass, target(hass, entity_id), True):
+            pass
+
+    assert loop.time() - start >= nc._REPLY_CAP_S
+    assert options(broker) == [True, False]
+    assert "Couldn't subscribe to zigbee2mqtt/lamp, so the restore waits" in caplog.text
 
 
 async def test_reply_cap_is_one_second():

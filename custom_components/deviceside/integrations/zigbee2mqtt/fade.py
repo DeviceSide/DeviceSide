@@ -185,7 +185,7 @@ async def start(
     target: Target,
     lights: list[Target],
     outcome: Fade | HueMove,
-    need: bool | None = None,
+    need: bool | None,
 ) -> float | None:
     """Publish the fade, recording it, and schedule its end read-back, or publish the hue move; the clamped
     sweep_time. Z2M's hue_native_control is held at need for the publishes (native_control.py)."""
