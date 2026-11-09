@@ -144,6 +144,7 @@ def test_a_model_a_record_names_must_be_in_devices_yaml(root):
         ),
         ({"reports": [{**REPORT, "issue": f"{gc.ISSUE_URL}1", "firmware": ""}]}, "needs firmware"),
         ({"reports": [{"integration": "zha", "model": "P1", "issue": f"{gc.ISSUE_URL}1"}]}, "needs firmware"),
+        ({"reports": [{**REPORT, "issue": f"{gc.ISSUE_URL}1", "firmware": 1.1}]}, "needs firmware, as a quoted"),
     ],
 )
 def test_devices_yaml_is_validated(changes, error):  # a clean error, never a KeyError
@@ -165,7 +166,7 @@ def test_an_experimental_adapter_or_a_failing_record_is_experimental(root):
     record(root, "hue", "stop", result="fail")
     assert "| Experimental (in RCs only) |" in gc.row("stop", adapter("zha", "stop", experimental=True), data())
     line = gc.row("stop", adapter("hue", "stop"), data())
-    assert line == f"| `stop` | {gc.NO_RECORD} | none |  | |"  # check_release --records blocks the release
+    assert line == f"| `stop` | {gc.NO_RECORD} | none |  | |"
 
 
 def test_reports_fill_the_reports_column_of_their_action(root):

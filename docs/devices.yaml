@@ -74,5 +74,5 @@ doesnt_work:
 
 # Accepted device-report issues. Claude adds one when Jason accepts a report; a working report on an Experimental
 # item's call also promotes that item to Level.REPORTED in the same PR. Fields: integration, model (one of a model's
-# ids), firmware, deviceside (version), worked and failed (action names), issue (URL).
+# ids), firmware and deviceside (version), both quoted, worked and failed (action names), issue (URL).
 reports: []

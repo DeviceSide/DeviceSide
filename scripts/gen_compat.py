@@ -54,7 +54,7 @@ ISSUE = re.compile(rf"^{re.escape(ISSUE_URL)}(\d+)$")
 GROUP_NAMES = {"group", "zone"}
 GROUP = "group"
 IN_RCS = "Experimental (in RCs only)"
-# An unflagged adapter whose Verified call has no passing record: check_release --records blocks a release on it.
+# An unflagged adapter whose Verified call has no passing record, so nothing proves it.
 NO_RECORD = "Unproven: no passing record"
 # The item levels below Verified, as (level, label, why the row has no models), in the page's order.
 ITEM_LEVELS = (
@@ -220,9 +220,8 @@ def load_report(report: dict, known: set[str], actions: set[tuple[str, str]], da
         if (report["integration"], action) not in actions:
             fail(f"{where}: {report['integration']} has no {action} adapter")
     for key in ("firmware", "deviceside"):
-        if report.get(key) in (None, ""):
-            fail(f"{where} needs {key}")
-        report[key] = str(report[key])
+        if not isinstance(report.get(key), str) or not report[key]:  # YAML reads firmware 1.10 as 1.1
+            fail(f"{where} needs {key}, as a quoted string")
     data.reports.append(report)
 
 

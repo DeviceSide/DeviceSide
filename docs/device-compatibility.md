@@ -85,7 +85,7 @@ it sets attributes ([integrations](integrations.md#set-and-get)).
 
 ## Should work
 
-Documented: no device of the class has been tested, but DeviceSide sends it the call a tested device takes, and the
+Documented: no device of the class has been tested, but DeviceSide sends it the call a rig-tested device takes, and the
 maker documents that call identically for both.
 
 ### Shelly dimmers
