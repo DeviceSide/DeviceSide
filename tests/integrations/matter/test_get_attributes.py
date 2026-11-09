@@ -53,7 +53,11 @@ async def test_light_reads_the_same_attributes(hass):
     add_matter_entity(hass, entry, "light.bulb", endpoint_id=EP, state="on")
 
     assert await call(hass, "get_attributes", {"entity_id": "light.bulb"}) == {"light.bulb": {"timer": timer(12.5)}}
-    assert read_attr.await_count == 2
+    # Documented on the switch's proof: the same OnOff reads, pinned.
+    assert read_attr.await_args_list == [
+        mock_call(node_id=NODE_ID, attribute_path=f"{EP}/6/16385"),
+        mock_call(node_id=NODE_ID, attribute_path=f"{EP}/6/0"),
+    ]
 
 
 @pytest.mark.parametrize(

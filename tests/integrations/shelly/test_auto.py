@@ -170,7 +170,7 @@ async def test_out_of_scope_targets_are_refused(hass, action):
 
 
 @pytest.mark.parametrize("which", WHICH)
-@pytest.mark.parametrize(("key", "component"), OTHER_LIGHT_COMPONENTS)
+@pytest.mark.parametrize(("key", "component"), [*OTHER_LIGHT_COMPONENTS, ("rgbcct:0", "RGBCCT")])
 async def test_documented_components_take_the_same_set_config(hass, which, key, component):
     entry, call_rpc = shelly_device(hass, config={f"auto_{which}": True, f"auto_{which}_delay": 60.0})
     add_shelly_entity(hass, entry, "light.strip", key)
