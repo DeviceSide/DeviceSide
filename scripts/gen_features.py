@@ -2,9 +2,9 @@
 """Generate the README feature table: per feature and integration, an icon for each kind of target that is built
 (light, switch, native group, native scene), and one prohibited sign for whatever can't be built, as far as we know.
 
-What is built comes from each adapter's `AdapterScope`, as it works with the Experimental features option off, so an
-Experimental domain shows no icon; only NO_PATH, the known blockers, is kept by hand. A blank cell means possible but
-not built yet, or behind Experimental features.
+What is built comes from each adapter's `AdapterScope`: an amber icon for what works with the Experimental features
+option off, a grey one for what works only with it on. Only NO_PATH, the known blockers, is kept by hand. A blank cell
+means possible but not built yet.
 
 Usage: scripts/gen_features.py [--check]
 
@@ -72,23 +72,30 @@ NO_PATH = {
 }
 
 
-def keys(adapter, registry: AdapterRegistry) -> set[str]:
+def keys(adapter, registry: AdapterRegistry, experimental: bool = False) -> set[str]:
     """The icon keys an adapter covers: its domains at any Level but Experimental (Documented and Reported ship with
     the option off), plus `group` when it takes lights and the dispatcher passes it native groups, natively or expanded
     to their members (`_expand_native_groups`). Empty when the scope lists capabilities and every one is Experimental:
-    then no call works with the option off."""
+    then no call works with the option off. With `experimental`, what it covers with the option on: every domain."""
     capabilities = adapter.scope.capabilities
-    if capabilities is not None and all(level is Level.EXPERIMENTAL for level in capabilities.values()):
+    if (
+        not experimental
+        and capabilities is not None
+        and all(level is Level.EXPERIMENTAL for level in capabilities.values())
+    ):
         return set()
-    found = {domain for domain, level in adapter.scope.domains.items() if level is not Level.EXPERIMENTAL}
+    found = {
+        domain for domain, level in adapter.scope.domains.items() if experimental or level is not Level.EXPERIMENTAL
+    }
     groups = adapter.scope.native_groups or registry.integrations[adapter.integration].expand_group is not None
     if groups and "light" in found:
         found.add("group")
     return found
 
 
-def built(registry: AdapterRegistry) -> dict[tuple[str, str], set[str]]:
-    """(feature label, integration) -> icon keys every one of the row's actions covers."""
+def built(registry: AdapterRegistry, experimental: bool = False) -> dict[tuple[str, str], set[str]]:
+    """(feature label, integration) -> icon keys every one of the row's actions covers, with the Experimental features
+    option on when `experimental`."""
     by_pair = {(adapter.action, adapter.integration): adapter for _, adapter in adapters(registry)}
     actions = {action for action, _ in by_pair}
     extra = sorted({integration for _, integration in by_pair} - set(COLUMNS))
@@ -101,7 +108,7 @@ def built(registry: AdapterRegistry) -> dict[tuple[str, str], set[str]]:
         for integration in COLUMNS:
             found = [by_pair.get((action, integration)) for action in row_actions]
             cells[label, integration] = (
-                set.intersection(*(keys(adapter, registry) for adapter in found)) if all(found) else set()
+                set.intersection(*(keys(adapter, registry, experimental) for adapter in found)) if all(found) else set()
             )
     return cells
 
@@ -110,9 +117,15 @@ def img(name: str, text: str) -> str:
     return f'<img src="{ICON_URL.format(name)}" height="20" alt="{text}" title="{text}">'
 
 
-def cell(have: set[str], blocked: tuple[str, ...]) -> str:
-    """An icon per built key, then one prohibited sign naming every blocked key."""
-    icons = [img(key, ICONS[key][0]) for key in ICONS if key in have]
+def cell(have: set[str], blocked: tuple[str, ...], trial: set[str] = frozenset()) -> str:
+    """An icon per built key, amber, or grey when it works only with the Experimental features option on, then one
+    prohibited sign naming every blocked key."""
+    icons = []
+    for key in ICONS:
+        if key in have:
+            icons.append(img(key, ICONS[key][0]))
+        elif key in trial:
+            icons.append(img(f"{key}-grey", f"{ICONS[key][0]}: Experimental"))
     if blocked:
         icons.append(img("no", f"{', '.join(ICONS[key][0] for key in ICONS if key in blocked)}: not possible"))
     return " ".join(icons)
@@ -120,13 +133,14 @@ def cell(have: set[str], blocked: tuple[str, ...]) -> str:
 
 def generate(registry: AdapterRegistry) -> str:
     cells = built(registry)
+    trial = built(registry, experimental=True)
     labels = {label for label, _, _ in FEATURES}
     for (label, integration), blocked in NO_PATH.items():
         if label not in labels or integration not in COLUMNS:
             raise SystemExit(f"NO_PATH entry ({label!r}, {integration!r}) names no README row or column")
         if unknown := [key for key in blocked if key not in ICONS]:
             raise SystemExit(f"NO_PATH entry ({label!r}, {integration!r}): no icon {', '.join(unknown)}")
-        if stale := [key for key in blocked if key in cells[label, integration]]:
+        if stale := [key for key in blocked if key in trial[label, integration]]:
             raise SystemExit(
                 f"{label} on {COLUMNS[integration]}: {', '.join(stale)} is built, so not blocked; drop it from NO_PATH"
             )
@@ -138,9 +152,13 @@ def generate(registry: AdapterRegistry) -> str:
         f"|:--- |{':---:|' * len(COLUMNS)}",
     ]
     for label, anchor, _ in FEATURES:
-        row = [cell(cells[label, integration], NO_PATH.get((label, integration), ())) for integration in COLUMNS]
+        row = [
+            cell(cells[label, integration], NO_PATH.get((label, integration), ()), trial[label, integration])
+            for integration in COLUMNS
+        ]
         lines.append(f"| [{label}](#{anchor}) | {' | '.join(row)} |")
     legend = [f"{img(key, alt)} {label}" for key, (alt, label) in ICONS.items()]
+    legend.append(f"{img('light-grey', 'Experimental')} grey: Experimental, untested")
     legend.append(f"{img('no', 'not possible')} can't be done, as far as we know")
     lines += ["", " &nbsp; ".join(legend), "", END]
     return "\n".join(lines)
