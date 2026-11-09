@@ -200,6 +200,7 @@ def test_config_row():
 
 def test_config_row_leaves_out_settings_the_component_lacks():
     assert config_row({"name": None}) == {}
+    assert config_row({"auto_off": True, "auto_on": False}) == {"auto_on": None}
 
 
 async def test_get_config_error_keeps_the_status_row(hass):

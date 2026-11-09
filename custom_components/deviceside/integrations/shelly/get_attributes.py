@@ -45,12 +45,14 @@ def status_row(component: str, status: dict, now: datetime) -> dict:
 def config_row(config: dict) -> dict:
     """auto_off and auto_on from one target's GetConfig: {"duration": seconds} when enabled, None when disabled.
 
-    A key the config lacks is left out of the row, as it is when the config can't be read: absent means unknown.
+    A key the config lacks, or an enabled one without its delay, is left out of the row, as it is when the config
+    can't be read: absent means unknown.
     """
     row: dict = {}
     for key in ("auto_off", "auto_on"):
-        if key in config:
-            row[key] = {"duration": config[f"{key}_delay"]} if config[key] else None
+        if key not in config or (config[key] and f"{key}_delay" not in config):
+            continue
+        row[key] = {"duration": config[f"{key}_delay"]} if config[key] else None
     return row
 
 
