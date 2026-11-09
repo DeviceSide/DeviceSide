@@ -14,6 +14,7 @@ from homeassistant.loader import async_get_integration
 from homeassistant.setup import async_set_domains_to_be_loaded, async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry, MockModule, mock_integration
 
+from custom_components.deviceside.config_flow import _FORMS_BY_STEP, issue_url
 from custom_components.deviceside.const import (
     CONF_EXPERIMENTAL,
     CONF_PREDICTED_STATE,
@@ -322,6 +323,13 @@ async def test_a_report_says_whether_experimental_features_was_on(hass: HomeAssi
     device, _ = await report_for(hass, entry, None, "report_bug", "bug_link")
 
     assert device["experimental_features"] == "on"
+
+
+async def test_a_report_leaves_experimental_features_out_when_deviceside_is_not_loaded(hass: HomeAssistant):
+    """Unknown is not "off": a blank field asks the reporter rather than claiming the option was off."""
+    url = await issue_url(hass, _FORMS_BY_STEP["report_bug"], None)
+
+    assert "experimental_features" not in parse_qs(urlparse(url).query)
 
 
 async def test_a_proposal_carries_the_device_but_not_the_versions(hass: HomeAssistant):

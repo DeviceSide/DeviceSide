@@ -12,7 +12,7 @@ maintainer owns, so a feature can pass in one of three ways:
 - **Reported:** manual tests on real hardware by users, through an accepted
   [device test report](https://github.com/jasonmx/DeviceSide/issues/new?template=device_report.yml).
 - **Documented:** where the maker's API docs show that several devices take the same call for a feature, a Verified
-  or Reported pass on one device counts for the rest. DeviceSide sends them exactly the call it sends the tested
+  (rig-tested) pass on one device counts for the rest. DeviceSide sends them exactly the call it sends the tested
   device, differing only in which component, endpoint or entity it addresses.
 
 Verified, Reported and Documented features ship in stable releases, and a bug on one is a real bug: please
@@ -21,8 +21,8 @@ Verified, Reported and Documented features ship in stable releases, and a bug on
 Anything built and unit-tested but not yet proven on a device is **Experimental**. It ships switched off: DeviceSide
 refuses it until you turn on **Experimental features** in DeviceSide's options (**Configure > Settings**). Whether it
 works or not, please tell us with **Report a device test result** in the same options menu: a working report makes it
-Reported, for everyone. **Experimental (in RCs only)** is code changed since its last rig run: it is in release
-candidates only, until the rig passes it again.
+Reported, for everyone. **Experimental (in RCs only)** is a change to tested behavior that waits for a rig run: it is in
+release candidates only, until the rig passes it again.
 
 The cards mark each device by its evidence: bare for rig-tested, 👥 for reported by users, linked to the report.
 

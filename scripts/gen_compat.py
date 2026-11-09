@@ -36,7 +36,7 @@ sys.path.insert(0, str(REPO))
 from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
 from custom_components.deviceside.core.scope import Level  # noqa: E402
 from scripts.check_release import adapters, proven, records  # noqa: E402
-from scripts.gen_features import slug  # noqa: E402
+from scripts.gen_features import anchors, slug  # noqa: E402
 
 PAGE = REPO / "docs" / "device-compatibility.md"
 README = REPO / "README.md"
@@ -54,6 +54,8 @@ ISSUE = re.compile(rf"^{re.escape(ISSUE_URL)}(\d+)$")
 GROUP_NAMES = {"group", "zone"}
 GROUP = "group"
 IN_RCS = "Experimental (in RCs only)"
+# An unflagged adapter whose Verified call has no passing record: check_release --records blocks a release on it.
+NO_RECORD = "Unproven: no passing record"
 # The item levels below Verified, as (level, label, why the row has no models), in the page's order.
 ITEM_LEVELS = (
     (Level.REPORTED, "Reported", "reported by users"),
@@ -217,6 +219,10 @@ def load_report(report: dict, known: set[str], actions: set[tuple[str, str]], da
     for action in [*(report.get("worked") or []), *(report.get("failed") or [])]:
         if (report["integration"], action) not in actions:
             fail(f"{where}: {report['integration']} has no {action} adapter")
+    for key in ("firmware", "deviceside"):
+        if report.get(key) in (None, ""):
+            fail(f"{where} needs {key}")
+        report[key] = str(report[key])
     data.reports.append(report)
 
 
@@ -284,7 +290,7 @@ def reports_cell(integration: str, action: str, data: Data) -> str:
 
 def row(action: str, adapter, data: Data) -> str:
     found = passing(adapter.integration, action)
-    level = "Verified" if found and not adapter.scope.experimental else IN_RCS
+    level = IN_RCS if adapter.scope.experimental else "Verified" if found else NO_RECORD
     models = [GROUP if item == GROUP else f"`{item[0]}`, firmware `{item[1]}`" for item in tested(adapter, data, found)]
     records_cell = ", ".join(link(record, action) for record in found)
     reports = reports_cell(adapter.integration, action, data)
@@ -417,6 +423,7 @@ def works(card: Card, key: str, integration_adapters: list, data: Data) -> list[
     seen, then native groups. A rig-tested model shows bare; a reported one shows 👥, linked to each report."""
     tested_names: list[str] = []
     groups = False
+    shipping = {adapter.action for adapter in integration_adapters if not adapter.scope.experimental}
     for adapter in integration_adapters:
         if adapter.scope.experimental or not proven(adapter.scope):
             continue
@@ -427,7 +434,7 @@ def works(card: Card, key: str, integration_adapters: list, data: Data) -> list[
                 tested_names.append(name)
     reported: dict[str, list[str]] = {}
     for report in data.reports:
-        if report["integration"] == key and report.get("worked"):
+        if report["integration"] == key and shipping.intersection(report.get("worked") or []):
             reported.setdefault(data.models[report["model"]]["name"], []).append(report["issue"])
     by_name = {model["name"]: model for model in data.models.values()}
     names = [*tested_names, *(name for name in reported if name not in tested_names)]
@@ -478,7 +485,7 @@ def check_sections(page: str, data: Data) -> None:
     """Every section a card links to is a heading in the page's prose, so a renamed heading fails here rather than
     leaving a dead link."""
     prose = splice(page, EVIDENCE, "", "the page")
-    headings = {slug(line.lstrip("#")) for line in prose.splitlines() if re.match(r"#{1,6} ", line)}
+    headings = anchors(prose)
     if dead := sorted(section for section in {*data.sections, GROUPS_ENTRY[1]} if slug(section) not in headings):
         raise SystemExit(f"docs/device-compatibility.md has no heading for {', '.join(dead)}; add a section")
 

@@ -33,6 +33,8 @@ PROSE = "# Page\n\n" + "".join(
     f"### {heading}\n\n" for heading in ("Hue lamp", "Plug", "Zigbee plugs", "Dimmers", "Old plug", "Native groups")
 )
 
+REPORT = {"integration": "zha", "model": "P1", "firmware": "1.2", "deviceside": "0.1.0"}
+
 
 def record(root, integration, name, *, result="pass", device="Hue lamp (`LTA009`), firmware `1.2.3`"):
     path = root / "docs" / "test-records" / integration / f"{name}.md"
@@ -140,6 +142,8 @@ def test_a_model_a_record_names_must_be_in_devices_yaml(root):
             {"reports": [{"integration": "zha", "model": "P1", "worked": "x", "issue": f"{gc.ISSUE_URL}1"}]},
             "worked must",
         ),
+        ({"reports": [{**REPORT, "issue": f"{gc.ISSUE_URL}1", "firmware": ""}]}, "needs firmware"),
+        ({"reports": [{"integration": "zha", "model": "P1", "issue": f"{gc.ISSUE_URL}1"}]}, "needs firmware"),
     ],
 )
 def test_devices_yaml_is_validated(changes, error):  # a clean error, never a KeyError
@@ -161,12 +165,12 @@ def test_an_experimental_adapter_or_a_failing_record_is_experimental(root):
     record(root, "hue", "stop", result="fail")
     assert "| Experimental (in RCs only) |" in gc.row("stop", adapter("zha", "stop", experimental=True), data())
     line = gc.row("stop", adapter("hue", "stop"), data())
-    assert line == "| `stop` | Experimental (in RCs only) | none |  | |"
+    assert line == f"| `stop` | {gc.NO_RECORD} | none |  | |"  # check_release --records blocks the release
 
 
 def test_reports_fill_the_reports_column_of_their_action(root):
     issue = f"{gc.ISSUE_URL}12"
-    reports = [{"integration": "zha", "model": "P1", "worked": ["turn_on_for"], "failed": ["stop"], "issue": issue}]
+    reports = [{**REPORT, "worked": ["turn_on_for"], "failed": ["stop"], "issue": issue}]
     loaded = data(FakeRegistry(adapter("zha", "turn_on_for"), adapter("zha", "stop")), reports=reports)
     assert gc.reports_cell("zha", "turn_on_for", loaded) == f"✅ [#12]({issue}) `P1`"
     assert gc.reports_cell("zha", "stop", loaded) == f"❌ [#12]({issue}) `P1`"
@@ -202,7 +206,7 @@ def test_the_evidence_groups_by_integration_skips_unsupported_pairs_and_lists_wh
     registry = FakeRegistry(adapter("zha", "stop"), adapter("hue", "lower_hue"))
     text = gc.evidence(registry, data(registry))
     assert text.index("### Hue") < text.index("### ZHA")
-    assert "`lower_hue` | Experimental" in text
+    assert f"`lower_hue` | {gc.NO_RECORD}" in text
     assert text.count("`stop`") == 1
     assert "| Old plug | No timer | [source](https://x.y/z) |" in text
 
@@ -246,10 +250,16 @@ def test_a_card_leaves_out_flagged_adapters_and_failing_records(root):
 
 def test_a_model_only_users_report_shows_with_a_badge_per_report(root):
     issue = f"{gc.ISSUE_URL}7"
-    reports = [{"integration": "zha", "model": "P1", "worked": ["turn_on_for"], "issue": issue}]
+    reports = [{**REPORT, "worked": ["turn_on_for"], "issue": issue}]
     card = zha_card(adapter("zha", "turn_on_for"), reports=reports)
     assert card.lines["works"] == [f"[Plug]({URL}#plug) [👥]({issue})"]
     assert "plugs ✅" in card.render()
+
+
+def test_a_report_on_a_flagged_adapter_stays_out_of_the_card(root):
+    reports = [{**REPORT, "worked": ["turn_on_for"], "issue": f"{gc.ISSUE_URL}7"}]
+    card = zha_card(adapter("zha", "turn_on_for", experimental=True), reports=reports)
+    assert card.lines["works"] == []
 
 
 def test_untested_classes_share_an_entry_per_feature_set_and_name_their_features(root):

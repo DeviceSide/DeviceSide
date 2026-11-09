@@ -152,10 +152,15 @@ def slug(heading: str) -> str:
     return re.sub(r"[^\w\- ]", "", heading.strip().lower()).replace(" ", "-")
 
 
+def anchors(text: str) -> set[str]:
+    """The anchors of a Markdown text's headings."""
+    return {slug(line.lstrip("#")) for line in text.splitlines() if re.match(r"#{1,6} ", line)}
+
+
 def check_anchors(text: str) -> None:
     """Every row links to a heading the README has, so a renamed heading fails here rather than leaving a dead link."""
-    anchors = {slug(line.lstrip("#")) for line in text.splitlines() if re.match(r"#{1,6} ", line)}
-    if dead := sorted({anchor for _, anchor, _ in FEATURES} - anchors):
+    headings = anchors(text)
+    if dead := sorted({anchor for _, anchor, _ in FEATURES} - headings):
         raise SystemExit(f"README.md has no heading for #{', #'.join(dead)}; fix FEATURES")
 
 
