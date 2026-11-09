@@ -52,20 +52,13 @@ capabilities:
   zigbee2mqtt:
     switch: {phrase: plugs and switches, section: Zigbee plugs and switches}
 
-# Known not to work, and why.
+# Devices that fail the call DeviceSide sends, and why. Not what isn't built: a card's requirements (`integrations`)
+# say what an integration covers.
 doesnt_work:
-  - what: Hue Bridge v1
-    integrations: [hue]
-    reason: DeviceSide uses the bridge's v2 API and event stream, which the round v1 bridge lacks
-    source: https://www.home-assistant.io/integrations/hue/#support-for-legacy-v1-hue-bridges
   - what: Hue smart scenes
     integrations: [hue]
     reason: A smart (All-Day) scene changes with the time of day, so it has no fixed settings to write
     source: https://github.com/jasonmx/DeviceSide/blob/main/docs/integrations.md#set-and-get
-  - what: Shelly Gen1
-    integrations: [shelly]
-    reason: Gen1 devices have the older HTTP API, not the Gen2+ RPC calls DeviceSide sends
-    source: https://shelly-api-docs.shelly.cloud/gen1/
   - what: Tuya TS011F
     integrations: [zha, zigbee2mqtt]
     reason: It stores the Zigbee timer as a countdown and never switches on
@@ -73,5 +66,6 @@ doesnt_work:
 
 # Accepted device-report issues. Claude adds one when Jason accepts a report; a working report on an Experimental
 # item's call also promotes that item to Level.REPORTED in the same PR. Fields: integration, model (one of a model's
-# ids), firmware and deviceside (version), both quoted, worked and failed (action names), issue (URL).
+# ids), item (the entity domain or capability, Shelly: RPC component, the call reached), firmware and deviceside
+# (version), both quoted, worked and failed (action names), issue (URL).
 reports: []

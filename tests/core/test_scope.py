@@ -224,3 +224,20 @@ def test_support_counts_a_documented_item_at_its_siblings_level(domains, capabil
 def test_support_leaves_the_adapter_flag_to_its_callers():
     """No runtime path reads the flag, so the records check can treat it as data (PR #306)."""
     assert AdapterScope(experimental=True).support("light") is Support.MAINTAINER
+
+
+def test_a_name_both_a_domain_and_a_capability_is_refused():
+    with pytest.raises(ValueError, match="both a domain and a capability"):
+        AdapterScope(domains=verified("light"), capabilities=verified("light"))
+
+
+def test_proof_is_an_items_own_level_or_its_siblings():
+    scope = AdapterScope(
+        domains=reported("switch") | documented("light"),
+        capabilities=verified("RGBCCT") | documented("Light"),
+        siblings={"light": "switch", "Light": "RGBCCT"},
+    )
+    assert scope.proof("switch") is Level.REPORTED
+    assert scope.proof("light") is Level.REPORTED
+    assert scope.proof("Light") is Level.VERIFIED
+    assert scope.proof("Unknown") is Level.EXPERIMENTAL

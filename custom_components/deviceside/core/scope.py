@@ -44,12 +44,12 @@ class Support(StrEnum):
     # Unproven on hardware, opt-in: unsupported.
     EXPERIMENTAL = "experimental (opt-in)"
 
-
-_SUPPORT = {
-    Level.VERIFIED: Support.MAINTAINER,
-    Level.REPORTED: Support.COMMUNITY,
-    Level.EXPERIMENTAL: Support.EXPERIMENTAL,
-}
+    @classmethod
+    def of(cls, level: Level) -> Support:
+        """The support a proof gives; a Documented item has none of its own, so it takes its sibling's."""
+        return {Level.VERIFIED: cls.MAINTAINER, Level.REPORTED: cls.COMMUNITY, Level.EXPERIMENTAL: cls.EXPERIMENTAL}[
+            level
+        ]
 
 
 def verified(*items: str) -> dict[str, Level]:
@@ -122,16 +122,21 @@ class AdapterScope:
         """Who supports a call, as level() weighs it but with each Documented item counted at its sibling's level.
         It leaves out the adapter-level flag, which no runtime path reads (scripts/check_release.py, records check):
         a flagged adapter ships in RCs only, and the docs that show it weigh the flag themselves."""
-        levels = [self._proof(self.domains, domain), *(self.fields[name] for name in fields)]
+        levels = [self.proof(domain), *(self.fields[name] for name in fields)]
         if capability is not None and self.capabilities is not None:
-            levels.append(self._proof(self.capabilities, capability))
-        return _SUPPORT[min(levels)]
+            levels.append(self.proof(capability))
+        return Support.of(min(levels))
 
-    def _proof(self, items: Mapping[str, Level], item: str) -> Level:
+    def proof(self, item: str) -> Level:
+        """The level of the proof behind a domain or capability: its own, or its sibling's when Documented. One outside
+        the scope counts as Experimental, as in level()."""
+        items = self.domains if item in self.domains else self.capabilities or {}
         level = items.get(item, Level.EXPERIMENTAL)
         return items[self.siblings[item]] if level is Level.DOCUMENTED else level
 
     def _check_siblings(self) -> None:
+        if shared := set(self.domains) & set(self.capabilities or {}):
+            raise ValueError(f"{sorted(shared)} are both a domain and a capability; siblings can't tell them apart")
         for name in ("domains", "capabilities"):
             items = getattr(self, name) or {}
             for item, level in items.items():

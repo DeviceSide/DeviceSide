@@ -29,7 +29,9 @@ bulbs. The tested models are on the [device compatibility page](device-compatibi
 lights (dimmers, CCT, RGB and RGBW devices: the Light, CCT, RGB and RGBW components) are Documented: they take the
 same calls, but no rig run has covered one yet. On them, `get_attributes` reports the timer and auto-off/auto-on
 but not brightness or color, and RGB and RGBW devices take brightness but not color yet: a color is left out of the
-call, which reports `fields_dropped`. Gen1 is refused (`gen1_unsupported`).
+call, which reports `fields_dropped`. Gen1 isn't built: it has Shelly's older
+[HTTP API](https://shelly-api-docs.shelly.cloud/gen1/), not the [Gen2+ RPC calls](https://shelly-api-docs.shelly.cloud/gen2/)
+the adapters send, so it is refused (`gen1_unsupported`).
 
 **Turn on and turn off with timer.** The device runs the timer and confirms it. A transition is at least 0.5 s. A color
 temperature outside the bulb's range is clamped. `hs_color` and `xy_color` are sent as the RGB color Home
@@ -179,7 +181,10 @@ cancels the timer; a plain `turn_on` doesn't.
 
 ## Hue
 
-A Hue Bridge v2 or Bridge Pro on the core `hue` integration. A v1 bridge is refused (`bridge_v1`). Rooms and zones
+A Hue Bridge v2 or Bridge Pro on the core `hue` integration. The v1 bridge isn't built: it lacks the v2 API and
+event stream DeviceSide uses, and Signify no longer supports it
+([Home Assistant](https://www.home-assistant.io/integrations/hue/#support-for-legacy-v1-hue-bridges)), so it is
+refused (`bridge_v1`). Rooms and zones
 are targets in their own right.
 
 **No `turn_on_for` or `turn_off_for`.** The bridge's own timers keep running through a plain on or off, from Home
