@@ -18,13 +18,18 @@ what ships, so its "not X" means not yet. Reword such a line to the real state, 
 adapter has it (`scripts/check_release.py --release`). Every adapter module needs ≥95% line coverage, experimental or
 not; CI checks it.
 
-**Setting it:** for a new action, field or attribute, or integration (including ports), and for a behavior change to
-a released adapter that the rig can't exercise. Leave it off for refactors, performance work and fixes the rig run
-before each RC covers, and for a Documented item (below). When unsure, ask.
+**Experimental items, not the flag, carry new work** (PR #307). A new action, integration (including ports), domain,
+capability or field ships as `Level.EXPERIMENTAL` once built and unit-tested: in stable releases, refused at runtime
+until the user turns on the Experimental features option. The dispatcher is the only gate: adapters never read the
+option, and turning it on never changes how any other item behaves. A bug in an Experimental item is never
+`severity:high`.
+
+**Setting it:** for a behavior change to a Verified, Reported or Documented item that the rig can't exercise. Leave
+it off for refactors, performance work and fixes the rig run before each RC covers. When unsure, ask.
 
 **Clearing it:** a PR citing a passing test record (`docs/test-records/<integration>/<action>*.md`) that covers the
-adapter's whole scope bar its Documented items: `AdapterScope.domains`, `.capabilities`, `.fields`, and each of
-`.options` on and off.
+adapter's whole scope bar its Documented, Reported and Experimental items: `AdapterScope.domains`, `.capabilities`,
+`.fields`, and each of `.options` on and off.
 
 **Proof follows the call.** A record proves the call an adapter sends and the capability it reaches (Shelly: the RPC
 component), whatever entity domain the target shows: a relay exposed as a `switch` or an on/off `light` rides one
@@ -43,7 +48,11 @@ vendor or standard documents that call identically for both, and no known class 
 failure shows as `rejected` or `sent`, never a wrong device state, nor `confirmed` unless what it confirms is the
 stored setting the call wrote, read back; and unit tests pin the payload.
 Fields are never Documented: a field changes the call. A record promotes the item to Verified. Anything else
-untested stays out of scope and refused, never added on a sibling's proof.
+untested is Experimental, or out of scope and refused, never Documented on a sibling's proof.
+
+**Reported.** A scope item ships as `Level.REPORTED` on an accepted working user report of the item's call, when unit
+tests pin the payload. It has no record, so no freshness check; a change to its call is a behavior change. Fields
+may be Reported. A record promotes it to Verified.
 
 ## Releasing
 
