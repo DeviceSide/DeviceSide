@@ -4,7 +4,7 @@ Will DeviceSide work with your device? The [README's cards](../README.md#will-it
 answer per integration. This page has the detail: what is known about each device and class of device, where that
 comes from, and the evidence behind every claim.
 
-Every feature is tested on real hardware before it ships. DeviceSide is meant to support far more devices than the
+Every feature that is on by default is tested on real hardware before it ships. DeviceSide is meant to support far more devices than the
 maintainer owns, so a feature can pass in one of three ways:
 
 - **Verified:** automated tests on real hardware, run by the test rig. Each run writes a test record, linked from the
@@ -29,7 +29,7 @@ The cards mark each device by its evidence: bare for rig-tested, 👥 for report
 ## Tested devices
 
 A model works on the integrations and features its records cover; the [evidence](#evidence) lists them per action,
-with the firmware tested. Other models of the same kind usually work too: if yours isn't here, please try it and
+with the firmware tested. Other models may work too, but makers implement these features inconsistently: if yours isn't here, please try it and
 [report the result](https://github.com/jasonmx/DeviceSide/issues/new?template=device_report.yml), whether it works or
 not.
 
@@ -46,7 +46,8 @@ timer: see [integrations](integrations.md#hue)).
 A color bulb, rig-tested on Hue, ZHA and Zigbee2MQTT: `LCA016` on Hue and ZHA, `8720169392182` on Zigbee2MQTT
 ([zigbee-herdsman-converters](https://github.com/Koenkk/zigbee-herdsman-converters/blob/master/src/devices/philips.ts)).
 It carries the smooth saturation and hue tests, and Zigbee2MQTT's color mode override
-([record](test-records/zigbee2mqtt/color_modes.md)).
+([record](test-records/zigbee2mqtt/color_modes.md)). Turning that option off is unit-tested only: the rig can't
+cleanly remove the override the option writes.
 
 ### Hue White A60 B22
 
@@ -98,7 +99,7 @@ attributes reports the timer, auto-off and auto-on, but not brightness. Smooth d
 
 CCT, RGB and RGBW controllers (the `CCT`, `RGB` and `RGBW` components) take the same calls as the dimmers. RGB and
 RGBW take brightness but not color yet: a color is left out of the call, which reports `fields_dropped`
-([integrations](integrations.md#shelly)).
+([integrations](integrations.md#shelly)). A record proves one component, so each needs its own.
 
 ### Shelly multicolor bulbs
 

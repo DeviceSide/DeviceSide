@@ -66,7 +66,7 @@ jobs:
       - name: Check coverage
         run: .venv/bin/python scripts/check_release.py --coverage coverage.json
 
-      - name: Check the compatibility page is current
+      - name: Check the device cards and compatibility page are current
         run: .venv/bin/python scripts/gen_compat.py --check
 
       - name: Check the README feature table is current

@@ -130,7 +130,20 @@ def load(path: Path, registry: AdapterRegistry) -> Data:
     return load_raw(yaml.safe_load(path.read_text()) or {}, registry)
 
 
+def need(entry, where: str, strings: tuple[str, ...] = (), lists: tuple[str, ...] = ()) -> None:
+    """A clean error for a wrong shape, instead of a KeyError or a string iterated per character."""
+    if not isinstance(entry, dict):
+        fail(f"{where} must be a mapping")
+    for key in strings:
+        if not isinstance(entry.get(key), str) or not entry[key]:
+            fail(f"{where} needs a {key}")
+    for key in lists:
+        if not isinstance(entry.get(key), list):
+            fail(f"{where}: {key} must be a list")
+
+
 def load_raw(raw: dict, registry: AdapterRegistry) -> Data:
+    need(raw, "the file")
     raw = copy.deepcopy(raw)  # defaults are filled in place
     if extra := set(raw) - {"integrations", "models", "capabilities", "doesnt_work", "reports"}:
         fail(f"unknown key {', '.join(sorted(extra))}")
@@ -138,23 +151,29 @@ def load_raw(raw: dict, registry: AdapterRegistry) -> Data:
     for section in ("integrations", "capabilities"):
         if unknown := set(raw.get(section) or {}) - known:
             fail(f"{section}: no integration {', '.join(repr(key) for key in sorted(unknown))}")
+    for key, entry in (raw.get("integrations") or {}).items():
+        need(entry, f"integrations {key}", ("requires",))
     requires = {key: entry["requires"] for key, entry in (raw.get("integrations") or {}).items()}
     data = Data(requires, {}, raw.get("capabilities") or {}, [], [])
     for model in raw.get("models") or []:
         load_model(model, data)
     for key, items in data.capabilities.items():
         for item, entry in items.items():
+            need(entry, f"capabilities {key} {item}", ("phrase", "section"))
             check_type(entry.get("type"), f"capabilities {key} {item}")
             data.sections.add(entry["section"])
     for entry in raw.get("doesnt_work") or []:
         load_broken(entry, known, data)
     actions = {(integration, action) for action, integration, adapter in registry.matrix() if adapter is not None}
     for report in raw.get("reports") or []:
-        load_report(report, actions, data)
+        load_report(report, known, actions, data)
     return data
 
 
 def load_model(model: dict, data: Data) -> None:
+    need(model, f"model {model.get('name') if isinstance(model, dict) else model!r}", ("name",), ("ids",))
+    if any(other["name"] == model["name"] for other in data.models.values()):
+        fail(f"model name {model['name']!r} is listed twice")
     check_type(model.get("type"), f"model {model.get('name')!r}")
     model.setdefault("section", model["name"])
     for model_id in model["ids"]:
@@ -167,6 +186,9 @@ def load_model(model: dict, data: Data) -> None:
 
 
 def load_broken(entry: dict, known: set[str], data: Data) -> None:
+    need(entry, "a doesnt_work entry", ("what",), ("integrations",))
+    if not str(entry.get("source", "")).startswith("https://"):
+        fail(f"doesnt_work {entry['what']!r}: source must be an https URL")
     check_type(entry.get("type"), f"doesnt_work {entry['what']!r}", optional=True)
     if unknown := set(entry["integrations"]) - known:
         fail(f"doesnt_work {entry['what']!r}: no integration {', '.join(sorted(unknown))}")
@@ -178,8 +200,16 @@ def load_broken(entry: dict, known: set[str], data: Data) -> None:
     data.doesnt_work.append(entry)
 
 
-def load_report(report: dict, actions: set[tuple[str, str]], data: Data) -> None:
-    where = f"report {report.get('issue')}"
+def load_report(report: dict, known: set[str], actions: set[tuple[str, str]], data: Data) -> None:
+    where = f"report {report.get('issue') if isinstance(report, dict) else report}"
+    need(report, where, ("integration",))
+    if report["integration"] not in known:
+        fail(f"{where}: no integration {report['integration']!r}")
+    for key in ("worked", "failed"):
+        if not isinstance(report.get(key) or [], list):
+            fail(f"{where}: {key} must be a list")
+    if "model" not in report:
+        fail(f"{where} needs a model")
     if not ISSUE.match(str(report.get("issue"))):
         fail(f"{where}: issue must be a DeviceSide issue URL")
     report["model"] = str(report["model"])
@@ -215,11 +245,13 @@ def passing(integration: str, action: str) -> list[Path]:
     return [path for path in records(integration, action) if (m := RESULT.search(path.read_text())) and m[1] == "pass"]
 
 
-def tested(adapter, data: Data) -> list[tuple[str, str] | str]:
+def tested(adapter, data: Data, found_records: list[Path] | None = None) -> list[tuple[str, str] | str]:
     """The devices the adapter's passing records tested, each once, single devices first. Every model must be in
     devices.yaml."""
     found: list[tuple[str, str] | str] = []
-    for record in passing(adapter.integration, adapter.action):
+    if found_records is None:
+        found_records = passing(adapter.integration, adapter.action)
+    for record in found_records:
         for item in entries(record):
             if item != GROUP:
                 data.model(item[0], str(record.relative_to(REPO)))
@@ -253,7 +285,7 @@ def reports_cell(integration: str, action: str, data: Data) -> str:
 def row(action: str, adapter, data: Data) -> str:
     found = passing(adapter.integration, action)
     level = "Verified" if found and not adapter.scope.experimental else IN_RCS
-    models = [GROUP if item == GROUP else f"`{item[0]}`, firmware `{item[1]}`" for item in tested(adapter, data)]
+    models = [GROUP if item == GROUP else f"`{item[0]}`, firmware `{item[1]}`" for item in tested(adapter, data, found)]
     records_cell = ", ".join(link(record, action) for record in found)
     reports = reports_cell(adapter.integration, action, data)
     reports_cell_text = f" {reports} " if reports else " "
@@ -464,16 +496,16 @@ def main(
 
     registry = registry or AdapterRegistry.discover()
     data = load(data_path, registry)
-    stale = []
+    # Both are computed before either is written, so a failure leaves neither half-updated.
+    updates = {}
     for path, markers, block in ((page, EVIDENCE, evidence(registry, data)), (readme, CARDS, cards(registry, data))):
         text = path.read_text()
-        new = splice(text, markers, block, path.name)
-        if path == page:
-            check_sections(new, data)
-        if new != text:
-            stale.append(path)
-            if not args.check:
-                path.write_text(new)
+        updates[path] = (text, splice(text, markers, block, path.name))
+    check_sections(updates[page][1], data)
+    stale = [path for path, (text, new) in updates.items() if new != text]
+    if not args.check:
+        for path in stale:
+            path.write_text(updates[path][1])
     if args.check and stale:
         names = " and ".join(path.name for path in stale)
         print(f"error: {names} out of date; run scripts/gen_compat.py", file=sys.stderr)

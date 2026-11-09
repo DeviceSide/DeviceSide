@@ -90,8 +90,9 @@ def _integration(hass: HomeAssistant, entry: er.RegistryEntry, device: dr.Device
 
 
 async def issue_url(hass: HomeAssistant, form: IssueForm, entity_id: str | None) -> str:
-    """A prefilled issue for an entity: its integration, model, product name, firmware and the two versions, as far
-    as the form asks for them, and nothing that identifies the household (no entity ID, name, area or MAC)."""
+    """A prefilled issue for an entity: its integration, model, product name, firmware, the two versions and whether
+    Experimental features was on, as far as the form asks for them, and nothing that identifies the household (no
+    entity ID, name, area or MAC)."""
     entry = er.async_get(hass).async_get(entity_id) if entity_id else None
     device = dr.async_get(hass).async_get(entry.device_id) if entry and entry.device_id else None
     integration = _integration(hass, entry, device) if entry else ""
@@ -105,8 +106,10 @@ async def issue_url(hass: HomeAssistant, form: IssueForm, entity_id: str | None)
         "firmware": device.sw_version if device else "",
         "deviceside_version": str((await async_get_integration(hass, DOMAIN)).version),
         "ha_version": HA_VERSION,
-        # A text field, as GitHub prefills only those: "on" or "off", what the dispatcher let through.
-        "experimental_features": "on" if (runtime := hass.data.get(DATA)) and runtime.experimental_features else "off",
+        # A text field, as GitHub prefills only those. Left out, not "off", when DeviceSide isn't loaded.
+        "experimental_features": ""
+        if (runtime := hass.data.get(DATA)) is None
+        else ("on" if runtime.experimental_features else "off"),
     }
     query = {"template": form.template}
     if form.title is not None:

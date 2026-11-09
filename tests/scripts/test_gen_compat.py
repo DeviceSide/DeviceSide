@@ -110,7 +110,10 @@ def test_a_model_a_record_names_must_be_in_devices_yaml(root):
             "twice",
         ),
         ({"capabilities": {"tuya": {}}}, "no integration 'tuya'"),
-        ({"doesnt_work": [{"what": "X", "integrations": ["zha"], "reason": "", "source": "s"}]}, "needs a reason"),
+        (
+            {"doesnt_work": [{"what": "X", "integrations": ["zha"], "reason": "", "source": "https://s"}]},
+            "needs a reason",
+        ),
         ({"reports": [{"integration": "zha", "model": "P1", "issue": "https://example.com/1"}]}, "issue URL"),
         ({"reports": [{"integration": "zha", "model": "ZZ", "issue": f"{gc.ISSUE_URL}1"}]}, "'ZZ' is not in"),
         (
@@ -118,9 +121,28 @@ def test_a_model_a_record_names_must_be_in_devices_yaml(root):
             "zha has no set_scene adapter",
         ),
         ({"extra": 1}, "unknown key extra"),
+        ({"integrations": {"zha": {}}}, "integrations zha needs a requires"),
+        ({"models": [{"name": "Lamp", "ids": "L1", "type": "bulb"}]}, "ids must be a list"),
+        ({"models": [{"ids": ["L1"], "type": "bulb"}]}, "needs a name"),
+        (
+            {"models": [{"name": "A", "ids": ["X"], "type": "plug"}, {"name": "A", "ids": ["Y"], "type": "plug"}]},
+            "name 'A'",
+        ),
+        ({"capabilities": {"zha": {"switch": {"type": "plug", "section": "S"}}}}, "needs a phrase"),
+        (
+            {"doesnt_work": [{"what": "X", "integrations": "zha", "reason": "r", "source": "https://s"}]},
+            "must be a list",
+        ),
+        ({"doesnt_work": [{"what": "X", "integrations": ["zha"], "reason": "r", "source": "s"}]}, "https URL"),
+        ({"reports": [{"model": "P1", "issue": f"{gc.ISSUE_URL}1"}]}, "needs a integration"),
+        ({"reports": [{"integration": "tuya", "model": "P1", "issue": f"{gc.ISSUE_URL}1"}]}, "no integration 'tuya'"),
+        (
+            {"reports": [{"integration": "zha", "model": "P1", "worked": "x", "issue": f"{gc.ISSUE_URL}1"}]},
+            "worked must",
+        ),
     ],
 )
-def test_devices_yaml_is_validated(changes, error):
+def test_devices_yaml_is_validated(changes, error):  # a clean error, never a KeyError
     with pytest.raises(SystemExit, match=error):
         data(FakeRegistry(adapter("zha", "turn_on_for")), **changes)
 
@@ -307,3 +329,10 @@ def test_a_heading_inside_the_evidence_block_does_not_count(root):
 def test_the_checked_in_readme_and_page_match_the_real_records():
     """Both are generated: run the real check so local pytest catches a record or scope that drifts them."""
     assert gc.main(["--check"]) == 0
+
+
+def test_a_tested_type_shows_its_best_outcome(root):
+    record(root, "zha", "turn_on_for", device="Plug (`P1`), firmware `1`")
+    scope = AdapterScope(domains=verified("light") | experimental("switch"))
+    card = zha_card(adapter("zha", "turn_on_for"), adapter("zha", "get_attributes", scope))
+    assert ": plugs ✅</summary>" in card.render()  # not 🙋, nor ⛔ from Old plug
