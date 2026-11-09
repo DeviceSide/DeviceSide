@@ -21,6 +21,16 @@ body:
       description: As shown on the device page in Home Assistant.
     validations:
       required: true
+  - type: input
+    id: action
+    attributes:
+      label: DeviceSide action
+      description: e.g. turn_on_for, fade. Leave it empty for a bug that isn't in one action.
+  - type: input
+    id: support
+    attributes:
+      label: Support
+      description: "maintainer, community, experimental (opt-in) or not supported: who fixes a bug in this action on this device ([how support works](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#support)). Filled in when you start from DeviceSide's options, Configure > Report a bug."
   - type: checkboxes
     id: qualify
     attributes:

@@ -7,7 +7,13 @@ from homeassistant.const import __version__ as HA_VERSION
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
-from homeassistant.helpers.selector import EntitySelector, EntitySelectorConfig
+from homeassistant.helpers.selector import (
+    EntitySelector,
+    EntitySelectorConfig,
+    SelectSelector,
+    SelectSelectorConfig,
+    SelectSelectorMode,
+)
 from homeassistant.loader import async_get_integration
 
 from .const import (
@@ -25,6 +31,9 @@ from .core.runtime import DATA
 
 REPORT_URL = "https://github.com/jasonmx/DeviceSide/issues/new"
 CONF_ENTITY = "entity_id"
+CONF_ACTION = "action"
+# The support field's text for a call DeviceSide would refuse: no adapter, or the target is out of its scope.
+NOT_SUPPORTED = "not supported"
 
 
 class DeviceSideConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -58,6 +67,8 @@ class IssueForm:
     fields: tuple[str, ...]
     title: str | None  # The prefilled title's prefix; None keeps the template's own title for the reporter to finish.
     entity_required: bool = True
+    # Asks which action the issue is about, once an entity DeviceSide serves is picked.
+    asks_action: bool = False
 
 
 _DEVICE_FIELDS = ("integration", "model", "product", "firmware")
@@ -69,7 +80,13 @@ ISSUE_FORMS = (
     ),
     IssueForm("propose_device", "proposal_link", "propose_device_or_integration.yml", _DEVICE_FIELDS, "Proposal"),
     IssueForm(
-        "report_bug", "bug_link", "report_bug.yml", _DEVICE_FIELDS + _VERSION_FIELDS, None, entity_required=False
+        "report_bug",
+        "bug_link",
+        "report_bug.yml",
+        _DEVICE_FIELDS + ("action", "support") + _VERSION_FIELDS,
+        None,
+        entity_required=False,
+        asks_action=True,
     ),
 )
 _FORMS_BY_STEP = {form.step: form for form in ISSUE_FORMS}
@@ -89,10 +106,18 @@ def _integration(hass: HomeAssistant, entry: er.RegistryEntry, device: dr.Device
     return entry.platform
 
 
-async def issue_url(hass: HomeAssistant, form: IssueForm, entity_id: str | None) -> str:
-    """A prefilled issue for an entity: its integration, model, product name, firmware, the two versions and whether
-    Experimental features was on, as far as the form asks for them, and nothing that identifies the household (no
-    entity ID, name, area or MAC)."""
+def _support(hass: HomeAssistant, action: str | None, entity_id: str | None) -> str:
+    """Who supports the action on the entity, as the dispatcher would resolve the call; blank without both, or when
+    DeviceSide isn't loaded."""
+    if not (action and entity_id) or (runtime := hass.data.get(DATA)) is None:
+        return ""
+    return str(runtime.dispatcher.support(action, entity_id) or NOT_SUPPORTED)
+
+
+async def issue_url(hass: HomeAssistant, form: IssueForm, entity_id: str | None, action: str | None = None) -> str:
+    """A prefilled issue for an entity: its integration, model, product name, firmware, the action and who supports
+    it there, the two versions and whether Experimental features was on, as far as the form asks for them, and nothing
+    that identifies the household (no entity ID, name, area or MAC)."""
     entry = er.async_get(hass).async_get(entity_id) if entity_id else None
     device = dr.async_get(hass).async_get(entry.device_id) if entry and entry.device_id else None
     integration = _integration(hass, entry, device) if entry else ""
@@ -104,6 +129,8 @@ async def issue_url(hass: HomeAssistant, form: IssueForm, entity_id: str | None)
         "model": model_id,
         "product": " ".join(filter(None, [device.manufacturer if device and name else "", name])),
         "firmware": device.sw_version if device else "",
+        "action": action or "",
+        "support": _support(hass, action, entity_id),
         "deviceside_version": str((await async_get_integration(hass, DOMAIN)).version),
         "ha_version": HA_VERSION,
         # A text field, as GitHub prefills only those. Left out, not "off", when DeviceSide isn't loaded.
@@ -125,6 +152,7 @@ class DeviceSideOptionsFlow(config_entries.OptionsFlowWithReload):
     forms, each prefilled from a light or switch."""
 
     _issue_url: str = ""
+    _entity_id: str | None = None
 
     async def async_step_init(self, user_input=None):
         return self.async_show_menu(step_id="init", menu_options=["settings", *_FORMS_BY_STEP])
@@ -138,6 +166,25 @@ class DeviceSideOptionsFlow(config_entries.OptionsFlowWithReload):
     async def async_step_propose_device(self, user_input=None):
         return await self._pick_entity(_FORMS_BY_STEP["propose_device"], user_input)
 
+    async def async_step_bug_action(self, user_input=None):
+        """Which action the bug is about, among those with an adapter for the picked entity; optional."""
+        form = _FORMS_BY_STEP["report_bug"]
+        if user_input is not None:
+            self._issue_url = await issue_url(self.hass, form, self._entity_id, user_input.get(CONF_ACTION))
+            return self._show_link(form.link_step, None)
+        runtime = self.hass.data[DATA]
+        options = runtime.dispatcher.actions_for(self._entity_id)
+        return self.async_show_form(
+            step_id="bug_action",
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(CONF_ACTION): SelectSelector(
+                        SelectSelectorConfig(options=options, mode=SelectSelectorMode.DROPDOWN)
+                    )
+                }
+            ),
+        )
+
     async def async_step_report_link(self, user_input=None):
         return self._show_link("report_link", user_input)
 
@@ -148,9 +195,14 @@ class DeviceSideOptionsFlow(config_entries.OptionsFlowWithReload):
         return self._show_link("proposal_link", user_input)
 
     async def _pick_entity(self, form: IssueForm, user_input):
-        """Pick a light or switch (optional for a bug, which may not be device-specific); go on to the link."""
+        """Pick a light or switch (optional for a bug, which may not be device-specific); go on to the action, when the
+        form asks one and DeviceSide has an adapter for the entity, else to the link."""
         if user_input is not None:
-            self._issue_url = await issue_url(self.hass, form, user_input.get(CONF_ENTITY))
+            self._entity_id = user_input.get(CONF_ENTITY)
+            runtime = self.hass.data.get(DATA)
+            if form.asks_action and self._entity_id and runtime and runtime.dispatcher.actions_for(self._entity_id):
+                return await self.async_step_bug_action()
+            self._issue_url = await issue_url(self.hass, form, self._entity_id)
             return self._show_link(form.link_step, None)
         key = vol.Required(CONF_ENTITY) if form.entity_required else vol.Optional(CONF_ENTITY)
         return self.async_show_form(

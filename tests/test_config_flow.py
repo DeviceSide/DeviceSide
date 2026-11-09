@@ -40,8 +40,10 @@ async def report_for(
     entity_id: str | None,
     step: str = "report_device",
     link_step: str = "report_link",
+    action: str | None = None,
 ) -> tuple[dict, str]:
-    """Run an issue step for an entity (None picks none) and return the prefill fields from its link, and the link."""
+    """Run an issue step for an entity (None picks none), and the bug form's action step when it comes (action None
+    picks none), and return the prefill fields from its link, and the link."""
     options_before = dict(entry.options)
     runtime_before = get_runtime(hass)
     result = await hass.config_entries.options.async_init(entry.entry_id)
@@ -50,6 +52,11 @@ async def report_for(
     picked = {} if entity_id is None else {"entity_id": entity_id}
     result = await hass.config_entries.options.async_configure(result["flow_id"], picked)
     assert result["type"] is FlowResultType.FORM
+    if result["step_id"] == "bug_action":
+        chosen = {} if action is None else {"action": action}
+        result = await hass.config_entries.options.async_configure(result["flow_id"], chosen)
+    else:
+        assert action is None, "the flow asked no action"
     assert result["step_id"] == link_step
     url = result["description_placeholders"]["url"]
     assert url.startswith("https://github.com/jasonmx/DeviceSide/issues/new?")
@@ -354,3 +361,64 @@ async def test_a_device_report_needs_a_device(hass: HomeAssistant):
     result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": "report_device"})
     with pytest.raises(InvalidData):
         await hass.config_entries.options.async_configure(result["flow_id"], {})
+
+
+@pytest.fixture
+def zha(hass: HomeAssistant, request) -> MockConfigEntry:
+    entry = zha_entry(hass)
+    request.addfinalizer(lambda: entry.mock_state(hass, ConfigEntryState.NOT_LOADED))  # HA would import the real zha
+    return entry
+
+
+async def bug_action_options(hass: HomeAssistant, entry: MockConfigEntry, entity_id: str) -> list[str]:
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": "report_bug"})
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {"entity_id": entity_id})
+    assert result["step_id"] == "bug_action"
+    return result["data_schema"].schema["action"].config["options"]
+
+
+async def test_a_bug_on_a_served_device_offers_the_actions_its_integration_has(hass: HomeAssistant, zha):
+    entry = await loaded_entry(hass)
+    add_zha_entity(hass, zha, "light.a")
+    add_zha_entity(hass, zha, "switch.plug", ieee="00:17:88:01:02:03:04:06")
+
+    light, switch = (
+        await bug_action_options(hass, entry, "light.a"),
+        await bug_action_options(hass, entry, "switch.plug"),
+    )
+
+    runtime = get_runtime(hass)
+    assert light == sorted(light) and "turn_on_for" in light and "raise_brightness" in light
+    assert "turn_on_for" in switch and "raise_brightness" not in switch  # dimming takes lights only
+    for entity_id, actions in (("light.a", light), ("switch.plug", switch)):
+        integration = resolve(hass, runtime.registry, entity_id).integration
+        assert all(runtime.registry.adapter(action, integration) for action in actions)
+
+
+@pytest.mark.parametrize(
+    ("entity_id", "unique_id", "support"),
+    [
+        ("light.a", None, "maintainer"),  # Verified
+        ("switch.plug", None, "experimental (opt-in)"),  # Experimental: Zigbee plugs rarely honor OnWithTimedOff
+        ("light.b", "not-an-address", "not supported"),  # supports() refuses it
+    ],
+)
+async def test_a_bug_on_an_action_says_who_supports_it(hass: HomeAssistant, zha, entity_id, unique_id, support):
+    entry = await loaded_entry(hass)
+    add_zha_entity(hass, zha, entity_id, unique_id=unique_id)
+
+    fields, _ = await report_for(hass, entry, entity_id, "report_bug", "bug_link", action="turn_on_for")
+
+    assert (fields["action"], fields["support"]) == ("turn_on_for", support)
+    assert fields["integration"] == "zha"
+
+
+async def test_a_bug_with_no_action_picked_leaves_action_and_support_out(hass: HomeAssistant, zha):
+    entry = await loaded_entry(hass)
+    add_zha_entity(hass, zha, "light.a")
+
+    fields, _ = await report_for(hass, entry, "light.a", "report_bug", "bug_link")
+
+    assert fields["integration"] == "zha"
+    assert not {"action", "support"} & fields.keys()
