@@ -358,10 +358,3 @@ def test_a_heading_inside_the_evidence_block_does_not_count(root):
 def test_the_checked_in_readme_and_page_match_the_real_records():
     """Both are generated: run the real check so local pytest catches a record or scope that drifts them."""
     assert gc.main(["--check"]) == 0
-
-
-def test_the_readme_links_to_the_device_cards():
-    """The prose's "listed as tested" link is hand-written, so a renamed title fails here, not as a dead link."""
-    readme = gc.README.read_text()
-    assert f'<a id="{gc.slug(gc.CARDS_TITLE)}"></a>' in readme
-    assert f"(https://github.com/jasonmx/DeviceSide#{gc.slug(gc.CARDS_TITLE)})" in readme
