@@ -176,11 +176,15 @@ def test_a_documented_item_names_its_sibling():
         AdapterScope(domains=verified("switch") | documented("light"))
 
 
-@pytest.mark.parametrize("helper", [documented, experimental])
-def test_a_sibling_below_reported_is_refused(helper):
+def test_a_sibling_that_is_experimental_is_refused():
     """A Documented item stands only while its sibling does: its sibling falling is a load-time error."""
     with pytest.raises(ValueError, match="which is neither Verified nor Reported"):
-        AdapterScope(domains=helper("switch") | documented("light"), siblings={"light": "switch", "switch": "light"})
+        AdapterScope(domains=experimental("switch") | documented("light"), siblings={"light": "switch"})
+
+
+def test_two_documented_items_cannot_ride_each_other():
+    with pytest.raises(ValueError, match="neither Verified nor Reported"):
+        AdapterScope(domains=documented("switch", "light"), siblings={"light": "switch", "switch": "light"})
 
 
 def test_a_sibling_from_the_other_mapping_is_refused():
@@ -188,9 +192,17 @@ def test_a_sibling_from_the_other_mapping_is_refused():
         AdapterScope(capabilities=documented("Light"), siblings={"Light": "light"})
 
 
-def test_siblings_name_only_documented_items():
+@pytest.mark.parametrize(
+    "scope",
+    [
+        {"siblings": {"light": "switch"}},
+        {"domains": verified("light", "switch"), "siblings": {"light": "switch"}},
+        {"capabilities": verified("Light", "Switch"), "siblings": {"Light": "Switch"}},
+    ],
+)
+def test_siblings_name_only_documented_items(scope):
     with pytest.raises(ValueError, match="not Documented"):
-        AdapterScope(siblings={"light": "switch"})
+        AdapterScope(**scope)
 
 
 @pytest.mark.parametrize(

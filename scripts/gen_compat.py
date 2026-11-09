@@ -30,6 +30,7 @@ import argparse
 import copy
 import re
 import sys
+from collections.abc import Collection
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -151,28 +152,38 @@ def need(
         fail(f"{where}: unknown key {', '.join(sorted(map(str, extra)))}")
     for key in strings:
         if not isinstance(entry.get(key), str) or not entry[key]:
-            fail(f"{where} needs a {key}")
+            fail(f"{where} needs {'an' if key[0] in 'aeiou' else 'a'} {key}")
     for key in lists:
         if not isinstance(entry.get(key), list):
             fail(f"{where}: {key} must be a list")
 
 
+def check_shape(raw: dict, known: set[str]) -> None:
+    """The file's top level: only known keys, a mapping or list where one belongs, and no unknown integration."""
+    if extra := set(raw) - {"integrations", "models", "capabilities", "doesnt_work", "reports"}:
+        fail(f"unknown key {', '.join(sorted(extra))}")
+    for key in ("integrations", "capabilities"):
+        need(raw.get(key) or {}, key)
+        if unknown := set(raw.get(key) or {}) - known:
+            fail(f"{key}: no integration {', '.join(repr(name) for name in sorted(unknown))}")
+    for key in ("models", "doesnt_work", "reports"):
+        if not isinstance(raw.get(key) or [], list):
+            fail(f"{key} must be a list")
+
+
 def load_raw(raw: dict, registry: AdapterRegistry) -> Data:
     need(raw, "the file")
     raw = copy.deepcopy(raw)  # defaults are filled in place
-    if extra := set(raw) - {"integrations", "models", "capabilities", "doesnt_work", "reports"}:
-        fail(f"unknown key {', '.join(sorted(extra))}")
     known = set(registry.integrations)
-    for section in ("integrations", "capabilities"):
-        if unknown := set(raw.get(section) or {}) - known:
-            fail(f"{section}: no integration {', '.join(repr(key) for key in sorted(unknown))}")
+    check_shape(raw, known)
     for key, entry in (raw.get("integrations") or {}).items():
-        need(entry, f"integrations {key}", ("requires",))
+        need(entry, f"integrations {key}", ("requires",), keys={"requires"})
     requires = {key: entry["requires"] for key, entry in (raw.get("integrations") or {}).items()}
     data = Data(requires, {}, raw.get("capabilities") or {}, [], [])
     for model in raw.get("models") or []:
         load_model(model, data)
     for key, items in data.capabilities.items():
+        need(items, f"capabilities {key}")
         for item, entry in items.items():
             need(entry, f"capabilities {key} {item}", ("phrase", "section"), keys=CLASS_KEYS)
             data.sections.add(entry["section"])
@@ -263,6 +274,8 @@ def check_reported(shipped: dict[tuple[str, str], object], data: Data) -> None:
     for (integration, action), adapter in shipped.items():
         if adapter.scope.experimental:
             continue
+        if Level.REPORTED in adapter.scope.fields.values():
+            fail(f"{integration} {action} holds a field as Reported; a report can't name a field yet")
         for items in (adapter.scope.domains, adapter.scope.capabilities or {}):
             for item, level in items.items():
                 if level is Level.REPORTED and not worked_reports(integration, action, item, data):
@@ -332,10 +345,11 @@ def link(record: Path, action: str) -> str:
     return f"[{label}]({record.relative_to(REPO / 'docs').as_posix()})"
 
 
-def reports_cell(integration: str, action: str, data: Data) -> str:
+def reports_cell(integration: str, action: str, data: Data, items: Collection[str] | None = None) -> str:
+    """The reports on the action, as links; only those that name one of `items` when given."""
     cells = []
     for report in data.reports:
-        if report["integration"] != integration:
+        if report["integration"] != integration or (items is not None and report["item"] not in items):
             continue
         number = ISSUE.match(report["issue"])[1]
         for key, mark in (("worked", "✅"), ("failed", "❌")):
@@ -357,14 +371,20 @@ def row(action: str, adapter, data: Data) -> str:
     )
 
 
-def level_rows(action: str, adapter) -> list[str]:
+def cell(text: str) -> str:
+    """Text for a table cell: a pipe would start another column."""
+    return text.replace("|", "\\|")
+
+
+def level_rows(action: str, adapter, data: Data) -> list[str]:
     """A row per level below Verified that the adapter's domains, capabilities or fields hold, and per support within
-    it (a Documented item takes its sibling's), weakest last. They have no record, so no models; an experimental
-    adapter's are in RCs only, as the rest of it is."""
+    it (a Documented item takes its sibling's), weakest last. They have no record, so no models; a community-supported
+    row shows the reports on its items, and an experimental adapter's rows are in RCs only, as the rest of it is."""
     scope = adapter.scope
     rows = []
     for level, label, why in ITEM_LEVELS:
-        by_support: dict[Support, list[str]] = {}
+        held: dict[Support, list[str]] = {}
+        named: dict[Support, list[str]] = {}
         for items, noun in (
             (scope.domains, "entities"),
             (scope.capabilities or {}, "components"),
@@ -373,14 +393,21 @@ def level_rows(action: str, adapter) -> list[str]:
             supports: dict[Support, list[str]] = {}
             for item, item_level in items.items():
                 if item_level is level:
-                    proof = scope.proof(item) if item_level is Level.DOCUMENTED else item_level
-                    supports.setdefault(Support.of(proof), []).append(item)
+                    supports.setdefault(
+                        Support.of(scope.proof(item) if item_level is Level.DOCUMENTED else level), []
+                    ).append(item)
             for support, names in supports.items():
-                by_support.setdefault(support, []).append(f"{', '.join(names)} {noun}")
-        for support, held in sorted(by_support.items(), key=lambda pair: list(Support).index(pair[0])):
+                held.setdefault(support, []).append(f"{', '.join(names)} {noun}")
+                # A Documented item's reports are its sibling's.
+                named.setdefault(support, []).extend(scope.siblings.get(name, name) for name in names)
+        for support in sorted(held, key=list(Support).index):
+            reports = (
+                reports_cell(adapter.integration, action, data, named[support]) if support is Support.COMMUNITY else ""
+            )
+            cell = f" {reports} " if reports else " "
             rows.append(
                 f"| `{action}` | {IN_RCS if scope.experimental else label} | {support} "
-                f"| none ({why}: {'; '.join(held)}) | | |"
+                f"| none ({why}: {'; '.join(held[support])}) | |{cell}|"
             )
     return rows
 
@@ -413,10 +440,12 @@ def evidence(registry: AdapterRegistry, data: Data) -> str:
             # An unflagged adapter with no Verified call ships its items behind the option: level_rows lists them.
             if adapter.scope.experimental or proven(adapter.scope):
                 parts.append(row(adapter.action, adapter, data))
-            parts += level_rows(adapter.action, adapter)
+            parts += level_rows(adapter.action, adapter, data)
         if broken := [entry for entry in data.doesnt_work if key in entry["integrations"]]:
             parts += ["", "| Doesn't work | Why | Source |", "|---|---|---|"]
-            parts += [f"| {entry['what']} | {entry['reason']} | [source]({entry['source']}) |" for entry in broken]
+            parts += [
+                f"| {cell(entry['what'])} | {cell(entry['reason'])} | [source]({entry['source']}) |" for entry in broken
+            ]
         parts.append("")
     parts.append(EVIDENCE[1])
     return "\n".join(parts)
@@ -494,14 +523,16 @@ def merged(phrases: list[str], section: str) -> str:
 
 def class_entries(key: str, held: dict[str, dict[str, list[str]]], data: Data) -> list[str]:
     """Classes with the same features and the same reports behind them share one entry: "dimmers, LED controllers
-    (CCT, RGB): turn on with timer", then a 👥 per report when community-supported."""
+    (CCT, RGB): turn on with timer", then a 👥 per report when community-supported. A class held by actions of
+    different support is an entry per support, so a bare entry never takes another action's 👥."""
     grouped: dict[tuple[tuple[str, ...], tuple[str, ...]], dict[str, list[str]]] = {}
     for item, actions in held.items():
         entry = data.capabilities[key][item]
-        issues = tuple(dict.fromkeys(issue for found in actions.values() for issue in found))
-        grouped.setdefault((features(set(actions)), issues), {}).setdefault(entry["section"], []).append(
-            entry["phrase"]
-        )
+        by_issues: dict[tuple[str, ...], set[str]] = {}
+        for action, found in actions.items():
+            by_issues.setdefault(tuple(dict.fromkeys(found)), set()).add(action)
+        for issues, group in by_issues.items():
+            grouped.setdefault((features(group), issues), {}).setdefault(entry["section"], []).append(entry["phrase"])
     return [
         f"{', '.join(merged(phrases, section) for section, phrases in sections.items())}: {', '.join(names)}"
         + badges(issues)

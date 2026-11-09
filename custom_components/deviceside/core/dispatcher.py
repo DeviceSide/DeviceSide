@@ -180,7 +180,8 @@ class Dispatcher:
     def support(self, action_key: str, entity_id: str) -> Support | None:
         """Who supports the action on the entity, weighed as run_adapters plans a call that carries no fields: the
         same resolution, adapter and supports() checks, then the scope's support for the domain and capability it
-        reaches. None when the call would be refused (out of scope)."""
+        reaches. The entity is taken as picked, not expanded to a group's members. None when the call would be refused
+        (out of scope)."""
         action = self.registry.actions[action_key]
         target = resolve(self.hass, self.registry, entity_id)
         if isinstance(target, str) or target.domain not in action.domains:

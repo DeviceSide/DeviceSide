@@ -40,6 +40,10 @@ REPORT = {
 }
 
 
+def report(**over):
+    return {**REPORT, "issue": f"{gc.ISSUE_URL}1", **over}
+
+
 def record(root, integration, name, *, result="pass", device="Hue lamp (`LTA009`), firmware `1.2.3`"):
     path = root / "docs" / "test-records" / integration / f"{name}.md"
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -156,7 +160,7 @@ def test_a_model_a_record_names_must_be_in_devices_yaml(root):
             "must be a list",
         ),
         ({"doesnt_work": [{"what": "X", "integrations": ["zha"], "reason": "r", "source": "s"}]}, "https URL"),
-        ({"reports": [{"model": "P1", "item": "light", "issue": f"{gc.ISSUE_URL}1"}]}, "needs a integration"),
+        ({"reports": [{"model": "P1", "item": "light", "issue": f"{gc.ISSUE_URL}1"}]}, "needs an integration"),
         (
             {"reports": [{"integration": "tuya", "model": "P1", "item": "light", "issue": f"{gc.ISSUE_URL}1"}]},
             "no integration 'tuya'",
@@ -213,12 +217,12 @@ def test_documented_capabilities_get_a_row_and_are_in_rcs_only_on_an_experimenta
     sibs = {"Light": "Switch", "CCT": "Switch"}
     released = adapter("zha", "stop", AdapterScope(capabilities=caps, siblings=sibs))
     flagged = adapter("zha", "stop", AdapterScope(experimental=True, capabilities=caps, siblings=sibs))
-    assert gc.level_rows("stop", released) == [
+    assert gc.level_rows("stop", released, data()) == [
         "| `stop` | Documented | maintainer | none (untested: Light, CCT components) | | |"
     ]
-    [row] = gc.level_rows("stop", flagged)
+    [row] = gc.level_rows("stop", flagged, data())
     assert row.startswith("| `stop` | Experimental (in RCs only) |")
-    assert gc.level_rows("stop", adapter("zha", "stop")) == []
+    assert gc.level_rows("stop", adapter("zha", "stop"), data()) == []
 
 
 def test_reported_documented_and_experimental_items_each_get_a_row_strongest_first():
@@ -228,7 +232,7 @@ def test_reported_documented_and_experimental_items_each_get_a_row_strongest_fir
         siblings={"CCT": "Light"},
         fields=verified("brightness") | experimental("transition"),
     )
-    assert gc.level_rows("turn_on_for", SimpleNamespace(scope=scope)) == [
+    assert gc.level_rows("turn_on_for", adapter("zha", "turn_on_for", scope), data()) == [
         "| `turn_on_for` | Reported | community | none (reported by users: Light components) | | |",
         "| `turn_on_for` | Documented | community | none (untested: CCT components) | | |",
         "| `turn_on_for` | Experimental | experimental (opt-in) | none (untested, behind Experimental features: "
@@ -451,7 +455,7 @@ def test_a_documented_row_splits_by_its_siblings_support():
         capabilities=verified("Switch") | reported("RGB") | documented("Light", "CCT"),
         siblings={"Light": "Switch", "CCT": "RGB"},
     )
-    assert gc.level_rows("stop", SimpleNamespace(scope=scope)) == [
+    assert gc.level_rows("stop", adapter("zha", "stop", scope), data()) == [
         "| `stop` | Reported | community | none (reported by users: RGB components) | | |",
         "| `stop` | Documented | maintainer | none (untested: Light components) | | |",
         "| `stop` | Documented | community | none (untested: CCT components) | | |",
@@ -480,3 +484,62 @@ def test_the_legend_leads_the_cards_and_no_extension_mark_shows(root):
     assert text.index(gc.CARDS_LEGEND) < text.index("**ZHA**")
     assert "👥 user-reported: community-supported" in gc.CARDS_LEGEND
     assert "🧩" not in text
+
+
+def test_a_class_held_by_actions_of_different_support_never_shares_a_bare_entry_with_a_report(root):
+    issue = f"{gc.ISSUE_URL}9"
+    on_verified = AdapterScope(capabilities=verified("Switch") | documented("Light"), siblings={"Light": "Switch"})
+    on_reported = AdapterScope(capabilities=reported("RGB") | documented("Light"), siblings={"Light": "RGB"})
+    reports = [report(item="RGB", worked=["turn_off_for"], issue=issue)]
+    card = zha_card(
+        adapter("zha", "turn_on_for", on_verified), adapter("zha", "turn_off_for", on_reported), reports=reports
+    )
+    assert card.lines["should"] == [
+        f"[dimmers]({URL}#dimmers): turn on with timer",
+        f"[dimmers]({URL}#dimmers): turn off with timer [👥]({issue})",
+    ]
+
+
+def test_a_community_row_shows_the_reports_on_its_items_only():
+    issue, other = f"{gc.ISSUE_URL}9", f"{gc.ISSUE_URL}10"
+    scope = AdapterScope(
+        capabilities=reported("RGB", "CCT") | verified("Switch") | documented("Light"),
+        siblings={"Light": "RGB"},
+    )
+    reports = [
+        report(item="RGB", worked=["stop"], issue=issue),
+        report(item="CCT", worked=["stop"], issue=other),
+        report(item="Switch", failed=["stop"], issue=f"{gc.ISSUE_URL}11"),
+    ]
+    registry = FakeRegistry(adapter("zha", "stop", scope))
+    rows = gc.level_rows("stop", registry._adapters[0], data(registry, reports=reports))
+    assert rows[0].endswith(f"| | ✅ [#9]({issue}) `P1`<br>✅ [#10]({other}) `P1` |")
+    assert rows[1].endswith(f"| | ✅ [#9]({issue}) `P1` |")  # Light rides RGB
+
+
+def test_a_reported_field_is_refused_until_a_report_can_name_one():
+    scope = AdapterScope(domains=verified("light"), fields=reported("brightness"))
+    with pytest.raises(SystemExit, match="field as Reported"):
+        data(FakeRegistry(adapter("zha", "turn_on_for", scope)))
+
+
+@pytest.mark.parametrize(
+    ("changes", "error"),
+    [
+        ({"integrations": {"zha": {"requires": "x", "extra": 1}}}, "unknown key extra"),
+        ({"capabilities": {"zha": None}}, "capabilities zha must be a mapping"),
+        ({"capabilities": {"zha": ["switch"]}}, "capabilities zha must be a mapping"),
+        ({"capabilities": ["zha"]}, "capabilities must be a mapping"),
+        ({"models": {"a": 1}}, "models must be a list"),
+        ({"capabilities": {"zha": {"switch": {"phrase": "p", "section": "S", "type": "plug"}}}}, "unknown key type"),
+    ],
+)
+def test_devices_yaml_shapes_and_unknown_keys_fail_cleanly(changes, error):
+    with pytest.raises(SystemExit, match=error):
+        data(**changes)
+
+
+def test_a_pipe_in_a_doesnt_work_entry_stays_in_its_cell(root):
+    broken = [{"what": "A | B", "integrations": ["zha"], "reason": "x | y", "source": "https://x.y/z"}]
+    registry = FakeRegistry(adapter("zha", "stop"))
+    assert "| A \\| B | x \\| y | [source]" in gc.evidence(registry, data(registry, doesnt_work=broken))
