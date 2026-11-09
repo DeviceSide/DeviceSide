@@ -22,7 +22,7 @@ adapter passing its tests, no soak. An RC also needs a rig run since each releas
   `sets_color_while_off`; Z2M `halts_a_lower_to_off`, `hue_cycle_stop`, `saturation_down_stop`,
   `sets_color_while_off`. Unattended alongside: Z2M `lower_hue` `cycles_down_the_wheel[group_color]` (failed twice,
   #222). Then the PR clearing the last flags: every `set_attributes` and `stop`, and Z2M `lower_hue`.
-- [ ] **Persistent auto-off/auto-on**: `set_`/`clear_auto_off`/`_on`, Shelly; records clear the flag.
+- [x] **Persistent auto-off/auto-on** (PR #305): `set_`/`clear_auto_off`/`_on`, Shelly; records clear the flag.
 - [x] **Shelly `set_attributes`** (#284, PR #287): RGBCCT, with `min_brightness`/`max_brightness`; the record clears
   the flag.
 - [x] **Shelly smooth dimming** (PR #289): `raise_brightness`, `lower_brightness` and `stop` on Shelly lights,

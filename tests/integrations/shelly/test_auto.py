@@ -186,8 +186,10 @@ async def test_documented_components_take_the_same_set_config(hass, which, key, 
 
 
 def test_the_auto_adapters_prove_switch_and_document_the_light_components():
-    """The rig tests auto-off/on on a relay; every light component, RGBCCT included, rides it as Documented."""
+    """The rig tests auto-off/on on a relay, which clears the flag; every light component, RGBCCT included, rides it
+    as Documented."""
     for adapter in (ShellySetAuto, ShellyClearAuto):
+        assert not adapter.scope.experimental
         assert adapter.scope.capabilities == {
             "Switch": Level.VERIFIED,
             **dict.fromkeys(("Light", "CCT", "RGB", "RGBW", "RGBCCT"), Level.DOCUMENTED),
