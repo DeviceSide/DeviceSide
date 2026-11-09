@@ -186,9 +186,10 @@ adapter's targets at once, so native group commands stay possible.
 - **Release flag.** `experimental=True` keeps an adapter out of a stable release; `cut-release` runs
   `check_release.py --release`, which fails on any. Setting and clearing it: [CLAUDE.md](../CLAUDE.md#release-flag).
 - **Record freshness.** `cut-release-candidate` and `cut-release` run `check_release.py --records`, failing any
-  released adapter with no test record, or one whose code changed after the commit a record cites. An adapter's code
-  is its module, its integration package's `__init__.py` and the package modules it imports, transitively; `core/`
-  and `actions/` are not, as they are unit-tested and shared by every adapter. Experimental adapters are exempt.
+  released adapter with no test record, or one whose code changed, beyond its `experimental` flag, after the
+  commit a record cites. An adapter's code is its module, its integration package's `__init__.py` and the package
+  modules it imports, transitively; `core/` and `actions/` are not, as they are unit-tested and shared by every
+  adapter. Experimental adapters are exempt.
   There is no runtime gate: a capability or field nobody has tested, and that is not Documented, is left out of
   scope, so `supports()` refuses it.
 - **Tags** come only from the `cut-release-candidate` and `cut-release` workflows (a tag ruleset refuses others).

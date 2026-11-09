@@ -7,7 +7,7 @@ passing test record that covers the scope.
 
 Exits 1 on any adapter module under 95% line coverage (with --coverage), any experimental adapter (with --release),
 or any released adapter whose code changed after the commit one of its test records cites, or that has no record
-(with --records).
+(with --records). Setting or clearing `experimental` is not a change to the code: nothing reads it at runtime.
 
 Usage: scripts/check_release.py [--coverage coverage.json] [--release] [--records]
 """
@@ -15,11 +15,13 @@ Usage: scripts/check_release.py [--coverage coverage.json] [--release] [--record
 import argparse
 import ast
 import inspect
+import io
 import json
 import os
 import re
 import subprocess
 import sys
+import tokenize
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
@@ -86,10 +88,46 @@ def git(*args: str) -> subprocess.CompletedProcess:
     return subprocess.run(["git", *args], cwd=REPO, capture_output=True, text=True)
 
 
+def is_flag(keyword: ast.keyword) -> bool:
+    """`experimental=True`, `=False`, or a parameter of that name passed straight on."""
+    value = keyword.value
+    return keyword.arg == "experimental" and (
+        (isinstance(value, ast.Constant) and isinstance(value.value, bool))
+        or (isinstance(value, ast.Name) and value.id == "experimental")
+    )
+
+
+def runtime_shape(text: str) -> tuple[str, list[str]]:
+    """The module's syntax tree with every flag argument dropped, and its comments: what a change must alter to count.
+    Layout is ignored, so a call reflowed by the formatter when the flag goes still matches."""
+    tree = ast.parse(text)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call):
+            node.keywords = [keyword for keyword in node.keywords if not is_flag(keyword)]
+    tokens = tokenize.generate_tokens(io.StringIO(text).readline)
+    return ast.dump(tree), [token.string for token in tokens if token.type == tokenize.COMMENT]
+
+
+def changed_code(cited: str, paths: list[str]) -> list[str]:
+    """Of the paths that differ between the cited commit and HEAD, those whose change is more than the flag."""
+    changed = []
+    for path in paths:
+        before, after = git("show", f"{cited}:{path}"), git("show", f"HEAD:{path}")
+        try:
+            same = not (before.returncode or after.returncode) and runtime_shape(before.stdout) == runtime_shape(
+                after.stdout
+            )
+        except SyntaxError, tokenize.TokenError:
+            same = False
+        if not same:
+            changed.append(path)
+    return changed
+
+
 def record_errors(registry: AdapterRegistry) -> list[str]:
     """A released adapter with no record, a record citing no commit or one git can't find, or code that differs
-    between the cited commit and the checkout, is an error. Trees are compared, not history, so a record citing a
-    squash-merged branch counts. Experimental adapters are exempt: no release has them."""
+    between the cited commit and HEAD by more than its `experimental` flag, is an error. Trees are compared, not
+    history, so a record citing a squash-merged branch counts. Experimental adapters are exempt: no release has them."""
     errors = []
     for name, adapter in adapters(registry):
         if adapter.scope.experimental:
@@ -106,7 +144,7 @@ def record_errors(registry: AdapterRegistry) -> list[str]:
                 errors.append(f"{name}: {label} cites commit {cited[1]}, which git can't find")
             elif (diff := git("diff", "--name-only", cited[1], "HEAD", "--", *code)).returncode:
                 raise SystemExit(f"git diff {cited[1]} HEAD failed: {diff.stderr.strip()}")
-            elif changed := diff.stdout.split():
+            elif changed := changed_code(cited[1], diff.stdout.split()):
                 errors.append(f"{name}: {label} cites {cited[1]}; changed since: {', '.join(changed)}")
     return errors
 
