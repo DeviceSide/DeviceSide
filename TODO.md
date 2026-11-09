@@ -45,6 +45,8 @@ adapter passing its tests, no soak. An RC also needs a rig run since each releas
 - [x] **Device compatibility cards** (#309): a generated card per integration in the README, from the records, scopes
   and `docs/devices.yaml`, backed by `docs/device-compatibility.md`, which replaces `docs/compatibility.md` and
   `docs/hardware-the-rig-lacks.md`.
+- [x] **Single report form** (#313): one device report form for results and bugs, several devices per report; the Support
+  field and the options flow's action step are gone.
 - [ ] **12** v0.1.0: no adapter left `experimental` (`scripts/check_release.py --release`). The release
   steps are in `CLAUDE.md` (Releasing).
 

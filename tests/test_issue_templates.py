@@ -71,8 +71,7 @@ def test_the_menu_prefills_only_fields_its_form_has(form):
     template = load(TEMPLATES / form.template)
     fields = {element["id"] for element in template["body"] if element["type"] in ("input", "textarea")}
     assert set(form.fields) <= fields
-    if form.title is not None:
-        assert template["title"] == f"{form.title}: "
+    assert template["title"] == f"{form.title}: "
 
 
 def test_the_menu_lists_the_forms_in_the_chooser_s_order():

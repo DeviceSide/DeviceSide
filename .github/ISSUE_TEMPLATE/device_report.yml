@@ -1,24 +1,14 @@
-name: Report a device test result
-description: Tell us about a device you tried on DeviceSide.
-title: "Device test result: "
+name: Report a device test result or bug
+description: Tell us how DeviceSide worked on your device, or report a problem with it.
+title: "Device report: "
 labels: ["device-report"]
 body:
-  - type: input
-    id: integration
+  - type: textarea
+    id: devices
     attributes:
-      label: Home Assistant integration
-      description: e.g. zha, zigbee2mqtt, shelly.
-    validations:
-      required: true
-  - type: input
-    id: product
-    attributes:
-      label: Device product name
-  - type: input
-    id: model
-    attributes:
-      label: Device model
-      description: As shown on the device page in Home Assistant.
+      label: Devices
+      description: One line per device you tested, as shown on its device page in Home Assistant. Filled in when you start from DeviceSide's options.
+      placeholder: integration · product name · model · firmware
     validations:
       required: true
   - type: checkboxes
@@ -58,17 +48,13 @@ body:
   - type: textarea
     id: notes
     attributes:
-      label: Notes on failed tests
+      label: Notes on failed tests and bugs
       description: Consider redacting private information before sharing logs (e.g. devices named after people, MAC addresses).
       placeholder: |
         1. What I expected to happen:
         1. What actually happened:
         1. Steps to reproduce:
         1. YAML and/or logs (if relevant):
-  - type: input
-    id: firmware
-    attributes:
-      label: Firmware version
   - type: input
     id: experimental_features
     attributes:

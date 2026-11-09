@@ -37,8 +37,7 @@ HA requires it.
   item's: its own level, or its sibling's when Documented). **Maintainer**: Verified, or Documented on a Verified
   sibling; the rig retests the fix. **Community**: Reported, or Documented on a Reported sibling; bugs are accepted
   and labelled `community`, the maintainer reviews fixes but doesn't write them, and may drop an item that keeps
-  breaking. **Experimental (opt-in)**: unsupported. The README cards mark rig-verified entries ✔ and link the report behind a community item, and the bug form
-  carries the support of the action it is about. Support is per item, not per adapter: an extension's are separate.
+  breaking. **Experimental (opt-in)**: unsupported. The README cards mark rig-verified entries ✔ and link the report behind a community item. Support is per item, not per adapter: an extension's are separate.
 - **Experimental features**: the option (`experimental_features`, off by default) that lets calls touching an
   Experimental item through. Only the dispatcher reads it.
 - **Release flag**: `experimental=True` on an adapter's scope; it keeps the whole adapter in release candidates only.

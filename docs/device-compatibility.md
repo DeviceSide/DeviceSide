@@ -19,7 +19,7 @@ Verified, Reported and Documented features ship in stable releases, switched on.
 
 Anything built and unit-tested but not yet proven on a device is **Experimental**. It ships switched off: DeviceSide
 refuses it until you turn on **Experimental features** in DeviceSide's options (**Configure > Settings**). Whether it
-works or not, please tell us with **Report a device test result** in the same options menu: a working report makes it
+works or not, please tell us with **Report a device test result or bug** in the same options menu: a working report makes it
 Reported, for everyone. **Experimental (in RCs only)** is a change to tested behavior that waits for a rig run: it is in
 release candidates only, until the rig passes it again.
 
@@ -28,7 +28,7 @@ release candidates only, until the rig passes it again.
 Who fixes a bug depends on how the feature was proven on your device:
 
 - **Maintainer-supported:** Verified, or Documented on a Verified device. The maintainer fixes it and retests it on the
-  rig. Please [report it](https://github.com/jasonmx/DeviceSide/issues/new?template=report_bug.yml).
+  rig. Please [report it](https://github.com/jasonmx/DeviceSide/issues/new?template=device_report.yml).
 - **Community-supported:** Reported, or Documented on a Reported device. Bugs are welcome, and labelled `community`:
   the maintainer has no such device to test a fix on, so fixes come from users who do, as pull requests the
   maintainer reviews. A feature that keeps breaking with nobody to fix it may be dropped.
@@ -37,7 +37,6 @@ Who fixes a bug depends on how the feature was proven on your device:
 
 On the cards, ✔ marks what the automated rig verified, so it is maintainer-supported. A model with a report link and
 no ✔ was reported by users and is community-supported.
-**Report a bug** in DeviceSide's options fills in which one applies to your device and action.
 
 ## Tested devices
 
