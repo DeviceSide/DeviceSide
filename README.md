@@ -45,19 +45,19 @@ Maybe. A key reason these features aren't supported in HA core is that device ma
 <details>
 <summary><b>Device compatibility by integration</b></summary>
 
-🟢 works · ✔ verified on automated rig · 🟡 should work: takes the same call as a tested device · 🙋 ready for testing · ⛔ doesn't work
+🟢 works · ✔ verified on automated rig · 🟡 should work: takes the same call as a tested device · 🙋 ready for testing · 🔴 doesn't work
 
 **ZHA**
 
 - 🟢 [Hue White Ambiance E27 1100lm](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#hue-white-ambiance-e27-1100lm) ✔ · [Hue Essential White and Color Ambiance A60](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#hue-essential-white-and-color-ambiance-a60) ✔ · [Hue White A60 B22](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#hue-white-a60-b22) ✔ · [native groups](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#native-groups) ✔
 - 🙋 [plugs and switches](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#zigbee-plugs-and-switches): turn on with timer, get attributes
-- ⛔ [Tuya TS011F](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#tuya-ts011f)
+- 🔴 [Tuya TS011F](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#tuya-ts011f)
 
 **Zigbee2MQTT**
 
 - 🟢 [Hue White Ambiance E27 1100lm](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#hue-white-ambiance-e27-1100lm) ✔ · [Hue Essential White and Color Ambiance A60](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#hue-essential-white-and-color-ambiance-a60) ✔ · [Hue White A60 B22](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#hue-white-a60-b22) ✔ · [native groups](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#native-groups) ✔
 - 🙋 [plugs and switches](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#zigbee-plugs-and-switches): turn on with timer, get attributes
-- ⛔ [Tuya TS011F](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#tuya-ts011f)
+- 🔴 [Tuya TS011F](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#tuya-ts011f)
 
 **Shelly** (Gen2+)
 
@@ -69,7 +69,7 @@ Maybe. A key reason these features aren't supported in HA core is that device ma
 **Hue** (Bridge v2/Pro)
 
 - 🟢 [White Ambiance E27 1100lm](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#hue-white-ambiance-e27-1100lm) ✔ · [Essential White and Color Ambiance A60](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#hue-essential-white-and-color-ambiance-a60) ✔ · [native groups](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#native-groups) ✔
-- ⛔ [smart scenes](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#hue-smart-scenes)
+- 🔴 [smart scenes](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#hue-smart-scenes)
 
 **Matter**
 

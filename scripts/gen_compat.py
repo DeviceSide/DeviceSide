@@ -76,7 +76,7 @@ OUTCOMES = (
     ("works", "🟢", "works"),
     ("should", "🟡", "should work: takes the same call as a tested device"),
     ("help", "🙋", "ready for testing"),
-    ("no", "⛔", "doesn't work"),
+    ("no", "🔴", "doesn't work"),
 )
 VERIFIED = "✔"
 CARDS_LEGEND = " · ".join(

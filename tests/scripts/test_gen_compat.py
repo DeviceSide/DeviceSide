@@ -322,7 +322,7 @@ def test_untested_classes_share_an_entry_per_feature_set_and_name_their_features
     assert card.render().splitlines()[2:] == [
         f"- 🟡 {card.lines['should'][0]}",
         f"- 🙋 {card.lines['help'][0]}",
-        f"- ⛔ {card.lines['no'][0]}",
+        f"- 🔴 {card.lines['no'][0]}",
     ]
 
 
@@ -484,7 +484,7 @@ def test_the_legend_leads_the_cards_and_no_extension_mark_shows(root):
     assert text.index(gc.CARDS_LEGEND) < text.index("**ZHA**")
     assert gc.CARDS_LEGEND == (
         "🟢 works · ✔ verified on automated rig · 🟡 should work: takes the same call as a tested device · "
-        "🙋 ready for testing · ⛔ doesn't work"
+        "🙋 ready for testing · 🔴 doesn't work"
     )
     assert "👥" not in text
     assert text.index("Details per integration are in [docs/integrations.md](") < text.index("</details>")
