@@ -2,8 +2,9 @@
 """Generate the README feature table: per feature and integration, an icon for each kind of target that is built
 (light, switch, native group, native scene), and one prohibited sign for whatever can't be built, as far as we know.
 
-What is built comes from each adapter's `AdapterScope`; only NO_PATH, the known blockers, is kept by hand. A blank
-cell means possible but not built yet.
+What is built comes from each adapter's `AdapterScope`, as it works with the Experimental features option off, so an
+Experimental domain shows no icon; only NO_PATH, the known blockers, is kept by hand. A blank cell means possible but
+not built yet, or behind Experimental features.
 
 Usage: scripts/gen_features.py [--check]
 
@@ -19,6 +20,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
 from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
+from custom_components.deviceside.core.scope import Level  # noqa: E402
 from scripts.check_release import adapters  # noqa: E402
 
 README = REPO / "README.md"
@@ -71,9 +73,10 @@ NO_PATH = {
 
 
 def keys(adapter, registry: AdapterRegistry) -> set[str]:
-    """The icon keys an adapter covers: its domains at any Level (Documented ships), plus `group` when it takes lights
-    and the dispatcher passes it native groups, natively or expanded to their members (`_expand_native_groups`)."""
-    found = set(adapter.scope.domains)
+    """The icon keys an adapter covers: its domains at any Level but Experimental (Documented and Reported ship with
+    the option off), plus `group` when it takes lights and the dispatcher passes it native groups, natively or expanded
+    to their members (`_expand_native_groups`)."""
+    found = {domain for domain, level in adapter.scope.domains.items() if level is not Level.EXPERIMENTAL}
     groups = adapter.scope.native_groups or registry.integrations[adapter.integration].expand_group is not None
     if groups and "light" in found:
         found.add("group")
@@ -135,6 +138,7 @@ def generate(registry: AdapterRegistry) -> str:
         lines.append(f"| [{label}](#{anchor}) | {' | '.join(row)} |")
     legend = [f"{img(key, alt)} {label}" for key, (alt, label) in ICONS.items()]
     legend.append(f"{img('no', 'not possible')} can't be done, as far as we know")
+    legend.append("blank: not built yet, or behind Experimental features")
     lines += ["", " &nbsp; ".join(legend), "", END]
     return "\n".join(lines)
 

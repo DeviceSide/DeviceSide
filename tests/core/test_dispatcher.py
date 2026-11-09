@@ -12,18 +12,118 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
 from custom_components.deviceside.core.models import EntityResult, Status, TimedRequest
-from custom_components.deviceside.core.scope import AdapterScope, verified
+from custom_components.deviceside.core.scope import AdapterScope, experimental, verified
 
-from ..conftest import call, refusal
-from ..fakes.fake_integration import LIMITS, FakeTurnOnFor
+from ..conftest import allow_experimental, call, refusal
+from ..fakes.fake_integration import LIMITS, FakeSetAttributes, FakeTurnOnFor
 from ..fixtures.fake import add_fake_entity, add_fake_native_group, add_ha_group, add_switch_as_x, fake_config_entry
 
 pytestmark = pytest.mark.usefixtures("setup_integration")
 
 
+@pytest.fixture(autouse=True, params=[False, True], ids=["experimental_off", "experimental_on"])
+def experimental_option(request, hass, setup_integration):
+    """Every test runs with the Experimental features option off and on: no fake adapter has an Experimental item,
+    so the option must change nothing. The tests of the gate set it themselves."""
+    allow_experimental(hass, request.param)
+
+
 @pytest.fixture
 def fake(hass):
     return fake_config_entry(hass)
+
+
+SWITCH_EXPERIMENTAL = AdapterScope(domains=verified("light") | experimental("switch"), duration=LIMITS)
+
+
+@pytest.mark.parametrize("on", [False, True])
+async def test_a_named_target_on_an_experimental_domain_raises_unless_the_option_is_on(hass, fake, reset_script, on):
+    add_fake_entity(hass, fake, "light.a")
+    add_fake_entity(hass, fake, "switch.s")
+    allow_experimental(hass, on)
+    data = {"entity_id": ["light.a", "switch.s"], "duration": 5}
+
+    with patch.object(FakeTurnOnFor, "scope", SWITCH_EXPERIMENTAL):
+        if on:
+            assert await call(hass, "turn_on_for", data) == {
+                "light.a": {"status": "sent", "integration": "fake"},
+                "switch.s": {"status": "sent", "integration": "fake"},
+            }
+            return
+        with pytest.raises(ServiceNotSupported) as err:
+            await call(hass, "turn_on_for", data)
+
+    assert err.value.translation_key == "experimental_off"
+    assert err.value.translation_placeholders == {"entity_id": "switch.s", "reason": "experimental_off"}
+    assert reset_script.calls == []
+
+
+async def test_an_indirect_target_on_an_experimental_domain_is_skipped_and_logged(hass, fake, reset_script, caplog):
+    add_fake_entity(hass, fake, "light.a")
+    add_fake_entity(hass, fake, "switch.s")
+    area_id = in_area(hass, "Den", "light.a", "switch.s")
+    allow_experimental(hass, False)
+
+    with patch.object(FakeTurnOnFor, "scope", SWITCH_EXPERIMENTAL):
+        response = await call(hass, "turn_on_for", {"area_id": area_id, "duration": 5})
+
+    assert response == {"light.a": {"status": "sent", "integration": "fake"}}
+    assert "turn_on_for skipped targets that can't take it: switch.s (experimental_off)" in caplog.text
+
+
+async def test_an_experimental_field_is_gated_only_when_the_call_carries_it(hass, fake, reset_script):
+    add_fake_entity(hass, fake, "light.full", attributes=FULL)
+    add_fake_entity(hass, fake, "light.no_fade", attributes=FULL | NO_FEATURES)
+    scope = AdapterScope(duration=LIMITS, fields=verified("brightness") | experimental("transition"))
+    allow_experimental(hass, False)
+    data = {"duration": 5, "brightness": 9, "transition": 1}
+
+    with patch.object(FakeTurnOnFor, "scope", scope):
+        assert await refusal(hass, "turn_on_for", {"entity_id": "light.full", **data}) == "experimental_off"
+        # A light that lacks transition has it dropped first, so its call touches nothing Experimental.
+        assert await call(hass, "turn_on_for", {"entity_id": "light.no_fade", **data}) == {
+            "light.no_fade": {"status": "sent", "integration": "fake", "detail": "fields_dropped"}
+        }
+        assert await call(hass, "turn_on_for", {"entity_id": "light.full", "duration": 5, "brightness": 9}) == {
+            "light.full": {"status": "sent", "integration": "fake"}
+        }
+        allow_experimental(hass, True)
+        assert await call(hass, "turn_on_for", {"entity_id": "light.full", **data}) == {
+            "light.full": {"status": "sent", "integration": "fake"}
+        }
+
+
+async def test_an_experimental_capability_is_gated_by_the_one_the_adapter_names(hass, fake, reset_script):
+    add_fake_entity(hass, fake, "light.a")
+    add_fake_entity(hass, fake, "light.b")
+    scope = AdapterScope(duration=LIMITS, capabilities=verified("A") | experimental("B"))
+    allow_experimental(hass, False)
+
+    def capability(self, hass, target):
+        return target.entity_id.removeprefix("light.").upper()
+
+    with patch.object(FakeTurnOnFor, "scope", scope), patch.object(FakeTurnOnFor, "capability", capability):
+        assert await call(hass, "turn_on_for", {"entity_id": "light.a", "duration": 5}) == {
+            "light.a": {"status": "sent", "integration": "fake"}
+        }
+        assert await refusal(hass, "turn_on_for", {"entity_id": "light.b", "duration": 5}) == "experimental_off"
+        allow_experimental(hass, True)
+        assert await call(hass, "turn_on_for", {"entity_id": "light.b", "duration": 5}) == {
+            "light.b": {"status": "sent", "integration": "fake"}
+        }
+
+
+async def test_an_experimental_call_left_nothing_to_send_is_unchanged_not_refused(hass, fake, reset_script):
+    add_fake_entity(hass, fake, "light.onoff", attributes={"supported_color_modes": [ColorMode.ONOFF]})
+    allow_experimental(hass, False)
+
+    with patch.object(
+        FakeSetAttributes, "scope", AdapterScope(domains=experimental("light"), fields=verified("brightness"))
+    ):
+        response = await call(hass, "set_attributes", {"entity_id": "light.onoff", "brightness": 50})
+
+    assert response == {"light.onoff": {"status": "unchanged", "integration": "fake", "detail": "fields_dropped"}}
+    assert reset_script.calls == []
 
 
 async def test_response_shape(hass, fake, reset_script):

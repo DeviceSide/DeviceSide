@@ -3,7 +3,10 @@
 records as new as the code they prove.
 
 `experimental=True` on an adapter's scope means it is not in a stable release yet. It is cleared by a PR citing a
-passing test record that covers the scope.
+passing test record that covers the scope. An Experimental scope item (`Level.EXPERIMENTAL`) is not the flag: it ships
+in a stable release, refused at runtime until the user turns on Experimental features, so --release passes it.
+Reported and Experimental items have no record to age, so --records weighs only the adapter's code against its
+records.
 
 Exits 1 on any adapter module under 95% line coverage (with --coverage), any experimental adapter (with --release),
 or any released adapter whose code changed after the commit one of its test records cites, or that has no record

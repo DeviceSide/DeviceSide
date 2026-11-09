@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from custom_components.deviceside.core.scope import AdapterScope
+from custom_components.deviceside.core.scope import AdapterScope, experimental, verified
 from scripts import check_release as cr
 
 # Every fake adapter is defined here, so this file is each one's module.
@@ -72,6 +72,13 @@ def test_release_fails_on_an_experimental_adapter(tmp_path, monkeypatch, capsys)
     assert "matter / turn_on_for is experimental" in capsys.readouterr().err
     assert cr.main(["--release"], FakeRegistry({("turn_on_for", "shelly"): AdapterScope()})) == 0
     assert cr.main(["--coverage", str(coverage(tmp_path, 50))], REGISTRY) == 1
+
+
+def test_release_passes_experimental_scope_items(monkeypatch):
+    """Items behind the Experimental features option ship; only the adapter-level flag keeps code out."""
+    monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
+    scope = AdapterScope(domains=verified("light") | experimental("switch"), capabilities=experimental("Light"))
+    assert cr.main(["--release"], FakeRegistry({("turn_on_for", "shelly"): scope})) == 0
 
 
 def test_main_reads_the_real_registry(monkeypatch, capsys):

@@ -2,8 +2,9 @@
 """Generate docs/compatibility.md: every action on every integration, its support level and the models its test
 records tested.
 
-A level comes from the records, never from a label: Verified when a passing record exists and the adapter is not
-experimental, otherwise Experimental. An adapter's Documented domains and capabilities get a row of their own.
+An adapter's level comes from the records, never from a label: Verified when a passing record exists and the adapter
+is not experimental, otherwise Experimental (in RCs only). Its Documented, Reported and Experimental domains,
+capabilities and fields get a row per level of their own; on an experimental adapter they are all in RCs only.
 Models come from each passing record's `| Device |` row. A group (a row with no firmware, firmware `unknown`, or
 named Group or Zone) shows as "group", not as a model.
 
@@ -29,6 +30,13 @@ RESULT = re.compile(r"^\| Result \| (\S+) \|", re.MULTILINE)
 DEVICE = re.compile(r"^\| Device \| (.*) \|$", re.MULTILINE)
 ENTRY = re.compile(r"^(?P<name>.*?)(?: \(`(?P<model>[^`]+)`\))?, firmware `(?P<firmware>[^`]+)`$")
 GROUP_NAMES = {"group", "zone"}
+IN_RCS = "Experimental (in RCs only)"
+# The item levels below Verified, as (level, label, why the row has no models), in the page's order.
+ITEM_LEVELS = (
+    (Level.REPORTED, "Reported", "reported by users"),
+    (Level.DOCUMENTED, "Documented", "untested"),
+    (Level.EXPERIMENTAL, "Experimental", "untested, behind Experimental features"),
+)
 
 HEADER = """\
 # Compatibility
@@ -43,7 +51,11 @@ or not.
 **Documented**: no record yet, but DeviceSide sends it the same call as a Verified row, differing only in which
 component, endpoint or entity it addresses, and the vendor or standard documents that call identically for both. It
 ships in stable releases, and a bug on it is a real bug: please report it.
-**Experimental**: no current record. It may work, and it is not in a stable release.
+**Reported**: no record, but a user reported it working, and unit tests pin the call DeviceSide sends. It ships in
+stable releases.
+**Experimental**: built and unit-tested, not yet proven on a device. It ships switched off: turn on Experimental
+features in DeviceSide's options to try it, and please report the result.
+**Experimental (in RCs only)**: no current record. It may work, and it is in release candidates only.
 
 A group is a native group of the integration (a Hue zone, a ZHA or Zigbee2MQTT group).
 """
@@ -82,7 +94,7 @@ def link(record: Path, action: str) -> str:
 
 def row(action: str, adapter) -> str:
     found = passing(adapter.integration, action)
-    level = "Verified" if found and not adapter.scope.experimental else "Experimental"
+    level = "Verified" if found and not adapter.scope.experimental else IN_RCS
     tested: list[str] = []
     for record in found:
         for item in models(record):
@@ -94,18 +106,25 @@ def row(action: str, adapter) -> str:
     return f"| `{action}` | {level} | {'<br>'.join(tested) or 'none'} | {records_cell} | |"
 
 
-def documented_row(action: str, adapter) -> str | None:
-    """The adapter's Documented domains and capabilities as one more row, or None when it has none. They have no
-    record, so no models; an experimental adapter's stay Experimental, as the rest of it is."""
+def level_rows(action: str, adapter) -> list[str]:
+    """A row per level below Verified that the adapter's domains, capabilities or fields hold, weakest last. They have
+    no record, so no models; an experimental adapter's are in RCs only, as the rest of it is."""
     scope = adapter.scope
-    untested = []
-    for items, noun in ((scope.domains, "entities"), (scope.capabilities or {}, "components")):
-        if documented := [item for item, level in items.items() if level is Level.DOCUMENTED]:
-            untested.append(f"{', '.join(documented)} {noun}")
-    if not untested:
-        return None
-    level = "Experimental" if scope.experimental else "Documented"
-    return f"| `{action}` | {level} | none (untested: {'; '.join(untested)}) | | |"
+    rows = []
+    for level, label, why in ITEM_LEVELS:
+        held = []
+        for items, noun in (
+            (scope.domains, "entities"),
+            (scope.capabilities or {}, "components"),
+            (scope.fields, "fields"),
+        ):
+            if names := [item for item, item_level in items.items() if item_level is level]:
+                held.append(f"{', '.join(names)} {noun}")
+        if held:
+            rows.append(
+                f"| `{action}` | {IN_RCS if scope.experimental else label} | none ({why}: {'; '.join(held)}) | | |"
+            )
+    return rows
 
 
 def generate(registry: AdapterRegistry) -> str:
@@ -119,8 +138,7 @@ def generate(registry: AdapterRegistry) -> str:
         parts.append("|---|---|---|---|---|")
         for adapter in sorted(by_integration[key], key=lambda a: a.action):
             parts.append(row(adapter.action, adapter))
-            if documented := documented_row(adapter.action, adapter):
-                parts.append(documented)
+            parts += level_rows(adapter.action, adapter)
         parts.append("")
     return "\n".join(parts)
 
