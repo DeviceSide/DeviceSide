@@ -17,15 +17,17 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.14"
 
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
         with:
-          enable-cache: true
+          enable-cache: true # zizmor: ignore[cache-poisoning] publishes no artifacts, releases come from cut-release*
 
       - name: Install pre-commit
         run: uv pip install --system pre-commit
@@ -45,9 +47,10 @@ jobs:
       BETTERLEAKS_SHA256: "9d9ad503cd5d80d18a939352266c3fcca52f10da9b83cd5cfe646989b13940fe"
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Check the hook pins the same betterleaks
         run: |
@@ -60,7 +63,7 @@ jobs:
       # cache miss, and GitHub's release CDN sometimes answers 504.
       - name: Cache betterleaks
         id: cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0 # zizmor: ignore[cache-poisoning] publishes no artifacts, binary is sha256-checked
         with:
           path: ~/betterleaks-bin
           key: betterleaks-${{ env.BETTERLEAKS_VERSION }}-${{ env.BETTERLEAKS_SHA256 }}

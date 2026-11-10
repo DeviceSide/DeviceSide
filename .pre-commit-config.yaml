@@ -52,6 +52,27 @@ repos:
       - id: betterleaks
 
   # -------------------------
+  # GitHub workflows (correctness, then security)
+  # -------------------------
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.12
+    hooks:
+      - id: actionlint
+
+  - repo: https://github.com/zizmorcore/zizmor-pre-commit
+    rev: v1.32.0
+    hooks:
+      - id: zizmor
+
+  # -------------------------
+  # Shell scripts (actionlint only checks `run:` blocks)
+  # -------------------------
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.11.0.1
+    hooks:
+      - id: shellcheck
+
+  # -------------------------
   # Household details (terms from gitignored files; a no-op without them)
   # -------------------------
   - repo: local
