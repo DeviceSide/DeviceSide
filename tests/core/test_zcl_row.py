@@ -53,6 +53,18 @@ def test_hs_mode_without_hue_and_saturation_reports_xy():
     assert zcl_row(attributes, NOW) == xy_row(0.1714, 0.4097)
 
 
+def test_xy_first_prefers_the_bulbs_xy_in_a_hue_mode():
+    attributes = {"colorMode": 0, "currentHue": 127, "currentSaturation": 254, "currentX": 11233, "currentY": 26852}
+
+    assert zcl_row(attributes, NOW, xy_first=True) == xy_row(0.1714, 0.4097)
+
+
+def test_enhanced_color_mode_reads_enhanced_hue():
+    attributes = {"colorMode": 0, "enhancedColorMode": 3, "enhancedCurrentHue": 32768, "currentSaturation": 127}
+
+    assert zcl_row(attributes, NOW)["hs_color"] == [round(32768 * 360 / 65535, 3), 50.0]
+
+
 @pytest.mark.parametrize(
     "attributes",
     [
