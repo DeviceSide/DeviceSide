@@ -490,8 +490,8 @@ def test_the_legend_leads_the_cards_and_no_extension_mark_shows(root):
     text = gc.cards(registry, data(registry))
     assert text.index(gc.CARDS_LEGEND) < text.index("**ZHA**")
     assert gc.CARDS_LEGEND == (
-        "🟢 works · ✔ verified on automated rig · 🟡 should work: takes the same call as a tested device · "
-        "🙋 ready for testing · 🔴 doesn't work"
+        "🟢 works · ✔ verified on automated rig · 🟡 should work: same call pattern as a tested device · "
+        "🙋 testers wanted · 🔴 doesn't work"
     )
     assert "👥" not in text
     assert text.index("Details per integration are in [docs/integrations.md](") < text.index("</details>")

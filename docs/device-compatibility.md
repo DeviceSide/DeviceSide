@@ -4,24 +4,18 @@ Will DeviceSide work with your device? The [README's cards](../README.md#will-it
 answer per integration. This page has the detail: what is known about each device and class of device, where that
 comes from, and the evidence behind every claim.
 
-Every feature that is on by default has passed on real hardware before it ships, on that device or one that takes the same call. DeviceSide is meant to support far more devices than the
-maintainer owns, so a feature can pass in one of three ways:
+## Levels of proof
 
-- **Verified:** automated tests on real hardware, run by the test rig. Each run writes a test record, linked from the
-  [evidence](#evidence) below.
-- **Reported:** manual tests on real hardware by users, through an accepted
-  [device test report](https://github.com/jasonmx/DeviceSide/issues/new?template=device_report.yml).
-- **Documented:** where the maker's API docs show that several devices take the same call for a feature, a Verified
-  or Reported pass on one device counts for the rest. DeviceSide sends them exactly the call it sends the tested
-  device, differing only in which component, endpoint or entity it addresses.
+Aligned to our core tenet that claims follow evidence, we classify feature claims into four levels of proof:
 
-Verified, Reported and Documented features ship in stable releases, switched on.
+- **Verified:** proven via automated tests on real hardware.
+- **Reported:** reported as working by a user.
+- **Documented:** uses the same call pattern as a Verified or Reported device.
+- **Experimental:** untested call pattern.
 
-Anything built and unit-tested but not yet proven on a device is **Experimental**. It ships switched off: DeviceSide
-refuses it until you turn on **Experimental features** in DeviceSide's options (**Configure > Settings**). Whether it
-works or not, please tell us with **Report a device test result or bug** in the same options menu: a working report makes it
-Reported, for everyone. **Experimental (in RCs only)** is a change to tested behavior that waits for a rig run: it is in
-release candidates only, until the rig passes it again.
+Experimental features stay off until you turn on **Experimental features** in **Configure > Settings**. Whether they
+work or not, please tell us with **Report a device test result or bug** in the same menu: a working report makes a
+feature Reported, for everyone.
 
 ## Support
 

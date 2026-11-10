@@ -74,8 +74,8 @@ TYPES = ("bulb", "relay", "plug", "dimmer", "LED controller")
 # Outcomes, in a card's order: (key, icon, legend).
 OUTCOMES = (
     ("works", "🟢", "works"),
-    ("should", "🟡", "should work: takes the same call as a tested device"),
-    ("help", "🙋", "ready for testing"),
+    ("should", "🟡", "should work: same call pattern as a tested device"),
+    ("help", "🙋", "testers wanted"),
     ("no", "🔴", "doesn't work"),
 )
 VERIFIED = "✔"

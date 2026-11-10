@@ -55,7 +55,7 @@ HA requires it.
 - **On the device.** Once the command is sent, the behavior completes (or degrades to plain device behavior) with
   HA offline. No HA-side timers, polling or emulation; docs show how to build emulation with `set_attributes` and an
   automation instead.
-- **What gets built:** see [CONTRIBUTING.md](../CONTRIBUTING.md#what-gets-built).
+- **What gets built:** see [CONTRIBUTING.md](../CONTRIBUTING.md#development-principles).
 - **One action per user intent, not per protocol primitive.** Zigbee has move, step and move-to; DeviceSide has one
   raise and one lower per attribute, and the adapter picks the command.
 - **Human terms.** Fields describe what the light should do, never how the device does it: no rates, steps, mireds
