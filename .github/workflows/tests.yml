@@ -12,8 +12,10 @@ permissions:
   contents: read
 
 jobs:
-  # A change touching only *.md files and docs/ (other than test records and the compatibility page) skips pytest. The skip happens in the job, not the trigger: the
-  # ruleset requires the "pytest" check, which a skipped job satisfies and a workflow that never ran leaves pending.
+  # A pull request touching only *.md files and docs/ (other than what the generators read) skips pytest. A push never
+  # does: release gates read a push's runs, and a skipped job concludes success. The skip happens in the job, not the
+  # trigger: the ruleset requires the "pytest" check, which a skipped job satisfies and a workflow that never ran
+  # leaves pending.
   changes:
     runs-on: ubuntu-latest
     outputs:
@@ -27,18 +29,22 @@ jobs:
       - name: Look for changes outside docs
         id: diff
         env:
-          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
-          HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
-          # A new branch's push has an all-zero base, and a force push's may be gone: test those.
-          if ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+          if [ "$EVENT" != pull_request ]; then
+            code=true
+          # A base that is gone (a force push) is tested.
+          elif ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
             code=true
           else
             files=$(git diff --name-only --no-renames "$BASE...$HEAD")
             echo "$files"
-            # Records, icons, devices.yaml, the device compatibility page and the README are docs, but generated or generated from: check them.
+            # Records, icons, devices.yaml, the device compatibility and integrations pages and the README are docs, but
+            # generated or generated from: check them.
             if [ -n "$files" ] && grep -qvE '(\.md$|^docs/)' <<<"$files"; then code=true
-            elif grep -qE '^(docs/(test-records/|icons/|device-compatibility\.md$|devices\.yaml$)|README\.md$)' <<<"$files"; then code=true
+            elif grep -qE '^(docs/(test-records/|icons/|device-compatibility\.md$|integrations\.md$|devices\.yaml$)|README\.md$)' <<<"$files"; then code=true
             else code=false; fi
           fi
           echo "code=$code" | tee -a "$GITHUB_OUTPUT"
