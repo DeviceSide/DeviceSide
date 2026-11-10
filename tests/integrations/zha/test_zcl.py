@@ -231,4 +231,4 @@ async def test_hue_turn_on_is_traced_with_its_payload(hass, gateway, cluster, wi
 
     await HUE_TURN_ON(hass, ADDR, 1, None, entity_id="light.lamp")
 
-    assert traced(wire) == [("light.lamp", "zcl", "0xfc03/0x00", {"data": "1300010100" + "00"})]
+    assert traced(wire) == [("light.lamp", "zcl", "0xfc03/0x00", {"data": "130001010000"})]

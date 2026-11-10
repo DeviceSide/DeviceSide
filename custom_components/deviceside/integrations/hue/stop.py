@@ -71,7 +71,7 @@ class HueStop(Adapter[Request]):
             fading = [light for light in lights if light.color is not None and cache.running(light.id, SATURATION)]
             saturation = {light.id: cache.value(light.id, SATURATION, 0.0) for light in fading}
             xys = {light.id: light_xy(cache, light) for light in fading}
-            write = stop_write(hass, cache, api, writer, rid, brightness, xys)
+            write = stop_write(hass, cache, api, writer, rid, brightness, xys, target.reported_id)
             keys = [(light_id, BRIGHTNESS) for light_id in brightness] + [(light_id, SATURATION) for light_id in xys]
             async with cache.recording(keys):
                 for light_id, value in brightness.items():
@@ -94,19 +94,25 @@ def stop_write(
     rid: str,
     brightness: dict[str, float],
     xys: dict[str, XY],
+    entity_id: str | None = None,
 ) -> Awaitable:
     """One write to the light or room, or one per light while any is in our soft off, which the bridge refuses a
     dimming stop for (on: true at its predicted brightness ends it there instead), or in a saturation fade of ours,
-    halted at its own predicted xy."""
+    halted at its own predicted xy. A write to rid itself is traced as entity_id, the caller's target."""
     fading_off = {light_id for light_id in brightness if in_soft_off(cache, light_id)}
     if not fading_off and not xys:
-        return put(hass, api, writer, rid, stops([BRIGHTNESS]))
+        return put(hass, api, writer, rid, stops([BRIGHTNESS]), entity_id)
 
     def body(light_id: str) -> dict:
         halt = cut(brightness[light_id]) if light_id in fading_off else stops([BRIGHTNESS])
         return halt | (xy_halt(xys[light_id]) if light_id in xys else {})
 
-    return asyncio.gather(*(put(hass, api, api.lights, light_id, body(light_id)) for light_id in brightness))
+    return asyncio.gather(
+        *(
+            put(hass, api, api.lights, light_id, body(light_id), entity_id if light_id == rid else None)
+            for light_id in brightness
+        )
+    )
 
 
 def cut(brightness: float) -> dict:

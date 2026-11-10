@@ -64,6 +64,17 @@ async def test_off_the_trace_skips_the_entity_lookup(hass, monkeypatch):
     assert looked_up == []
 
 
+async def test_a_hue_write_to_the_callers_target_is_traced_under_it(hass, monkeypatch, wire):
+    """A switch_as_x wrapper of a Hue light is traced under the wrapper the caller named, not the registry's light."""
+    looked_up = []
+    monkeypatch.setattr(er.EntityRegistry, "async_get_entity_id", lambda self, *args: looked_up.append(args))
+    bridge.trace(hass, SimpleNamespace(item_type=SimpleNamespace(value="light")), "light-1", "put", {}, "switch.lamp")
+    await hass.async_block_till_done()
+
+    assert traced(wire) == [("switch.lamp", "clip", "light.put", {})]
+    assert looked_up == []
+
+
 def test_the_logger_sits_under_the_integrations_own():
     """So raising custom_components.deviceside to DEBUG, as a debug log does, turns the trace on too."""
     assert WIRE_LOGGER.name == "custom_components.deviceside.wire"

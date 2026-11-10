@@ -121,7 +121,9 @@ class HueFade(Adapter[RampRequest]):
                 return self.result(target, Status.REJECTED, detail="not_on_bridge")
             if isinstance(fade := plan(cache, request, target, api, resource), str):
                 return self.result(target, Status.UNCHANGED, detail=fade)
-            write = set_state(hass, writer, rid, **fade.write, transition_time=round(fade.duration * 1000))
+            write = set_state(
+                hass, writer, rid, target.reported_id, **fade.write, transition_time=round(fade.duration * 1000)
+            )
             async with cache.recording((light_id, fade.attribute) for light_id in fade.starts):
                 for light_id, start in fade.starts.items():
                     recorded = cache.moving(light_id, fade.attribute, start, fade.ends[light_id], fade.duration)

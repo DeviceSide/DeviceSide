@@ -59,19 +59,31 @@ def expand_group(hass: HomeAssistant, target: Target) -> list[Target]:
     return resolve_members(hass, get_runtime(hass).registry, target, "hue", (light.id for light in lights))
 
 
-def trace(hass: HomeAssistant, writer: LightsController | GroupedLightController, rid: str, command: str, params: dict):
-    """The wire trace of one write to the light or grouped_light, naming its light entity, not its resource id."""
+def trace(
+    hass: HomeAssistant,
+    writer: LightsController | GroupedLightController,
+    rid: str,
+    command: str,
+    params: dict,
+    entity_id: str | None = None,
+):
+    """The wire trace of one write to the light or grouped_light, naming an entity, not its resource id: the caller's
+    target (entity_id) when the write is to it, else the light entity the registry has for the resource."""
     if not wire_enabled():
         return
-    entity_id = er.async_get(hass).async_get_entity_id("light", "hue", rid)
+    entity_id = entity_id or er.async_get(hass).async_get_entity_id("light", "hue", rid)
     wire_trace(hass, entity_id, "clip", f"{writer.item_type.value}.{command}", params)
 
 
 async def set_state(
-    hass: HomeAssistant, writer: LightsController | GroupedLightController, rid: str, **state: Any
+    hass: HomeAssistant,
+    writer: LightsController | GroupedLightController,
+    rid: str,
+    entity_id: str | None = None,
+    **state: Any,
 ) -> None:
-    """aiohue's set_state on the light or grouped_light, traced. Raises on failure."""
-    trace(hass, writer, rid, "set_state", {key: value for key, value in state.items() if value is not None})
+    """aiohue's set_state on the light or grouped_light, traced as trace() names it. Raises on failure."""
+    trace(hass, writer, rid, "set_state", {key: value for key, value in state.items() if value is not None}, entity_id)
     await writer.set_state(rid, **state)
 
 
@@ -84,10 +96,18 @@ async def write_light(
     brightness: float | None = None,
     color_temp_mirek: int | None = None,
     color_xy: tuple[float, float] | None = None,
+    entity_id: str | None = None,
 ) -> None:
     """One PUT to one light; the bridge stores what it is sent whether the light is on or off. Raises on failure."""
     await set_state(
-        hass, api.lights, light_id, on=on, brightness=brightness, color_temp=color_temp_mirek, color_xy=color_xy
+        hass,
+        api.lights,
+        light_id,
+        entity_id,
+        on=on,
+        brightness=brightness,
+        color_temp=color_temp_mirek,
+        color_xy=color_xy,
     )
 
 
@@ -104,8 +124,14 @@ def xy_halt(xy: tuple[float, float]) -> dict:
 
 
 async def put(
-    hass: HomeAssistant, api: HueBridgeV2, writer: LightsController | GroupedLightController, rid: str, body: dict
+    hass: HomeAssistant,
+    api: HueBridgeV2,
+    writer: LightsController | GroupedLightController,
+    rid: str,
+    body: dict,
+    entity_id: str | None = None,
 ) -> None:
-    """One raw CLIP v2 PUT to the light or grouped_light, its body as given. Raises on failure."""
-    trace(hass, writer, rid, "put", body)
+    """One raw CLIP v2 PUT to the light or grouped_light, its body as given, traced as trace() names it. Raises on
+    failure."""
+    trace(hass, writer, rid, "put", body, entity_id)
     await api.request("put", f"clip/v2/resource/{writer.item_type.value}/{rid}", json=body)
