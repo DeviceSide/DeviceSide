@@ -36,6 +36,7 @@ def publish_via_service(monkeypatch):
 def broker(hass, monkeypatch):
     fake = Broker()
     fake.retained[INFO] = {"config": {"devices": {IEEE: {"friendly_name": "bulb"}}, "groups": {}}}
+    fake.retained["zigbee2mqtt/bridge/state"] = {"state": "online"}
     monkeypatch.setattr(bridge.mqtt, "async_subscribe", fake.subscribe)
     monkeypatch.setattr(bridge, "_RETAINED_TIMEOUT_S", 0.25)
     monkeypatch.setattr(bridge, "_REPLY_TIMEOUT_S", 0.25)

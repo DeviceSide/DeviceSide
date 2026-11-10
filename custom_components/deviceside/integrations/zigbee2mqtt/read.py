@@ -20,7 +20,7 @@ from homeassistant.components.light import ColorMode, brightness_supported
 from homeassistant.core import HomeAssistant, callback
 
 from .addressing import bridge_topic, state_topic, topic, z2m_address
-from .bridge import ensure_options, publish, wait
+from .bridge import ensure_options, first_retained, publish, wait
 from ...core.models import Target
 
 _LOGGER = logging.getLogger(__name__)
@@ -176,10 +176,13 @@ async def reader(hass: HomeAssistant, devices: list[Target]) -> AsyncIterator[Re
     The key goes into each device's filtered_cache, after the user's own entries.
     """
     reading = Reader(hass)
-    # Subscribed before ensure_options subscribes to bridge/info, so both reach the broker in one batch: the retained
-    # bridge/info arriving shows the log is subscribed too, before the first read.
+    # HA debounces subscribes, so the log's subscription isn't live when async_subscribe returns. The retained
+    # bridge/state, subscribed next, reaches the broker in the same batch or a later one: its arrival shows the log is
+    # subscribed, before the first read. ensure_options may subscribe to nothing (the bridge cache), so it can't be the
+    # barrier. A read pays this one subscribe; reads aren't hold-to-dim.
     unsubscribe = await mqtt.async_subscribe(hass, bridge_topic("logging"), reading._on_log)
     try:
+        await first_retained(hass, "state")
         by_address = {z2m_address(device.device): device for device in devices}
 
         def added(address: str) -> None:

@@ -77,10 +77,12 @@ Only devices Z2M registered through MQTT discovery are found: the device carries
   (`1221051039810110150109113116116` for `zigbee2mqtt`; `getEncodedBaseTopic` in Z2M's
   `lib/extension/homeassistant.ts`), and topic `zigbee2mqtt/<group ID>/set`. `resolveEntity` falls back to the
   ID-keyed `groups` map, so a rename doesn't break it either, but a device whose friendly name is that number wins.
-  Members come from `zigbee2mqtt/bridge/groups`, features from `zigbee2mqtt/bridge/devices`. Both are held for the
-  entry's life (`bridge_cache.py`): subscribed once MQTT is up, kept as Z2M republishes them on a device or group
-  change, and read fresh only while nothing has arrived since the last connect. Z2M's settings (`bridge/info`) are
-  always read fresh.
+  Members come from `zigbee2mqtt/bridge/groups`, features from `zigbee2mqtt/bridge/devices`, and each entity's
+  options from Z2M's settings (`bridge/info`). All three are held for the entry's life (`bridge_cache.py`):
+  subscribed once MQTT is up, kept as Z2M republishes them (devices and groups on a device or group change, settings
+  on every settings change and on start; Tested behavior), and read fresh only while nothing has arrived since the
+  last connect. Options DeviceSide sets are written through to the held settings once Z2M confirms them, until its
+  next `bridge/info`.
 - **Both assume the default base topic.** A group's identifier carries it, so another is refused; a device's
   doesn't, so its publish goes nowhere.
 
@@ -182,6 +184,11 @@ Measured 2026-10-28 on Z2M 2.14.2 with Hue bulbs (a CT bulb and the A60), Home A
   stop jumps, whichever command halts it, the Hue bridge's own included. With brightness and color temperature in
   one fade, a brightness stop leaves the color temperature fading on to its end. `saturation_move: stop` lets an xy
   fade drift on for about 3 s; a raw `stopMoveStep` holds it.
+- **bridge/info is republished on every settings change** (measured 2026-11-10 on Z2M 2.14.3, Home Assistant
+  2026.10.4), to a subscriber that stays subscribed: after an options request over MQTT, for a device and for a
+  group; after a change in Z2M's frontend; and after a Z2M restart, 0.02 s after `bridge/state` goes online, with the
+  values kept. On an options request it arrives 0.03 to 0.10 s after the request and microseconds before the reply
+  (seven group flips). The reply's `data.to` holds the entity's options after the write, without `friendly_name`.
 - **After an xy stop,** Z2M's read-back carries its cached end-point x/y, not where the bulb halted; a
   `{"color": ""}` get publishes the halted x/y.
 

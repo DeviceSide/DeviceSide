@@ -112,6 +112,8 @@ async def ensure_color_modes(hass: HomeAssistant, enabled: bool) -> None:
     try:
         devices = await retained(hass, "devices")
         groups = await retained(hass, "groups")
+        # The held bridge/info, without options confirmed since Z2M last published it: this only picks the entities to
+        # check, and ensure_options checks each again with them.
         settings = (await retained(hass, "info")).get("config", {})
         entities = _entities(devices, groups)
     except TimeoutError as err:
