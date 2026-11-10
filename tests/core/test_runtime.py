@@ -63,6 +63,32 @@ async def test_cancel_pending_cancels_every_key(hass):
     assert runtime.pending == {}
 
 
+async def test_cancel_pending_leaves_must_run_jobs_to_run_at_their_time(hass):
+    runtime, ran, start = _runtime(), [], wall_clock_now()
+    runtime.schedule(hass, "restore", [(1, _recorder(ran, "restore"))], must_run=True)
+    runtime.schedule(hass, "refresh", [(1, _recorder(ran, "refresh"))])
+
+    runtime.cancel_pending()
+    assert ran == []
+    await advance(hass, start, 2)
+
+    assert ran == ["restore"]
+    assert runtime.pending == {}
+    assert runtime.must_run == set()
+
+
+async def test_a_plain_reschedule_replaces_a_must_run_job(hass):
+    runtime, ran, start = _runtime(), [], wall_clock_now()
+    runtime.schedule(hass, "k", [(1, _recorder(ran, "restore"))], must_run=True)
+    runtime.schedule(hass, "k", [])  # a stop cancels the restore
+
+    runtime.cancel_pending()
+    await advance(hass, start, 2)
+
+    assert ran == []
+    assert runtime.must_run == set()
+
+
 def test_listen_attaches_once_per_owner_and_replaces_a_new_owners():
     runtime = _runtime()
     detached: list[str] = []

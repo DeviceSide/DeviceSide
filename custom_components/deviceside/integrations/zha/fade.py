@@ -303,7 +303,12 @@ async def start(
         restore = outcome.starts if light.entity_id in outcome.restores else None
         job = end_job(hass, light, restore, context)
         # Replaces the attribute's pending refresh and restore: those of the light's other attribute run on.
-        get_runtime(hass).schedule(hass, end_key(light, outcome.attribute), [(outcome.duration + END_REFRESH_S, job)])
+        get_runtime(hass).schedule(
+            hass,
+            end_key(light, outcome.attribute),
+            [(outcome.duration + END_REFRESH_S, job)],
+            must_run=restore is not None,
+        )
     return None
 
 

@@ -28,6 +28,8 @@ class DeviceSideData:
     integration_state: dict[str, Any] = field(default_factory=dict)
     # Delayed jobs not yet run, by the caller's key (the Z2M read-backs after a timer).
     pending: dict[str, list[CALLBACK_TYPE]] = field(default_factory=dict)
+    # The keys in pending whose jobs put a device back (ZHA's soft-off restore): an unload leaves them to run.
+    must_run: set[str] = field(default_factory=set)
     # Listeners attached on first use, by the caller's key, with what they were attached for (the Hue report filters).
     listeners: dict[str, tuple[object, CALLBACK_TYPE]] = field(default_factory=dict)
     # The entry's predicted_state option: Hue fades show DeviceSide's predictions in HA.
@@ -40,21 +42,31 @@ class DeviceSideData:
             semaphore = self.semaphores[key] = asyncio.Semaphore(limit)
         return semaphore
 
-    def schedule(self, hass: HomeAssistant, key: str, jobs: Iterable[tuple[float, Job]]) -> None:
-        """Run each job after its delay in seconds, cancelling whatever was still pending under key."""
+    def schedule(
+        self, hass: HomeAssistant, key: str, jobs: Iterable[tuple[float, Job]], must_run: bool = False
+    ) -> None:
+        """Run each job after its delay in seconds, cancelling whatever was still pending under key.
+
+        must_run: the jobs put a device back, so an unload leaves them to run at their time rather than cancelling
+        them (run early, a restore would cut short the fade it follows). A later schedule under key still replaces them.
+        """
         for unsub in self.pending.pop(key, []):
             unsub()
+        self.must_run.discard(key)
         handles: list[CALLBACK_TYPE] = []
         for delay, job in jobs:
             handles.append(self._call_later(hass, key, handles, delay, job))
         if handles:
             self.pending[key] = handles
+            if must_run:
+                self.must_run.add(key)
 
-    def cancel_pending(self) -> None:
-        for handles in self.pending.values():
-            for unsub in handles:
+    def cancel_pending(self, must_run: bool = False) -> None:
+        """Cancel every pending job but the must-run ones, which stay pending unless must_run (HA stopping)."""
+        for key in list(self.pending if must_run else self.pending.keys() - self.must_run):
+            for unsub in self.pending.pop(key):
                 unsub()
-        self.pending.clear()
+            self.must_run.discard(key)
 
     def listen(self, key: str, owner: object, attach: Callable[[], CALLBACK_TYPE]) -> None:
         """Attach once per owner under key: a new owner (a reloaded bridge) detaches the old one's listeners first."""
@@ -77,6 +89,7 @@ class DeviceSideData:
             # A reschedule may have replaced this list since the timer fired; leave the new one alone.
             if not handles and self.pending.get(key) is handles:
                 del self.pending[key]
+                self.must_run.discard(key)
             await job()
 
         unsub = async_call_later(hass, delay, fire)
