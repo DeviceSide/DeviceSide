@@ -195,6 +195,17 @@ def test_a_sibling_adapter_the_adapter_imports_is_its_code(tested):
     assert "other.py" in [path.name for path in cr.adapter_code(repo.path / ADAPTER)]
 
 
+@pytest.mark.parametrize(
+    ("path", "text", "name"),
+    [(ADAPTER, "from .missing import thing\n", "missing"), (f"{PACKAGE}/groups.py", "from . import gone\n", "gone")],
+)
+def test_an_import_adapter_code_cannot_resolve_raises_naming_it(tested, path, text, name):
+    repo, _ = tested
+    repo.commit(path, text)
+    with pytest.raises(ValueError, match=rf"{path.rpartition('/')[2]}: can't resolve `from \.{name}`"):
+        cr.adapter_code(repo.path / ADAPTER)
+
+
 def test_a_change_to_the_packages_group_helper_stales_the_record(tested, monkeypatch):
     repo, _ = tested
     repo.commit(f"{PACKAGE}/members.py", "MEMBERS = 1\n")
@@ -426,7 +437,20 @@ def test_a_missing_unciting_or_unknown_record_is_an_error(tested, monkeypatch):
         "fake / turn_on_for: docs/test-records/fake/turn_on_for.md cites commit 0000000, which git can't find"
     ]
     repo.git("rm", "-q", "docs/test-records/fake/turn_on_for.md")
-    assert cr.record_errors(registry) == ["fake / turn_on_for: no test record in docs/test-records/fake/"]
+    assert cr.record_errors(registry) == ["fake / turn_on_for: no test record docs/test-records/fake/turn_on_for.md"]
+
+
+def test_each_option_of_the_scope_needs_its_record(tested, monkeypatch):
+    repo, sha = tested
+    registry = FakeRecordsRegistry(repo, monkeypatch)
+    registry.adapter.scope = AdapterScope(options=frozenset({"predicted_state", "soft_off"}))
+    write_record(repo, "turn_on_for-soft_off.md", sha)
+    assert cr.record_errors(registry) == [
+        "fake / turn_on_for: no test record docs/test-records/fake/turn_on_for-predicted_state.md"
+    ]
+    write_record(repo, "turn_on_for-predicted_state.md", sha)
+    repo.git("rm", "-q", "docs/test-records/fake/turn_on_for.md")
+    assert cr.record_errors(registry) == ["fake / turn_on_for: no test record docs/test-records/fake/turn_on_for.md"]
 
 
 def test_a_fresh_record_that_did_not_pass_is_an_error(tested, monkeypatch):
@@ -479,7 +503,7 @@ def test_an_adapter_with_no_verified_call_needs_no_record(tested, monkeypatch, s
     repo, _ = tested
     registry = FakeRecordsRegistry(repo, monkeypatch)
     repo.git("rm", "-q", "docs/test-records/fake/turn_on_for.md")
-    assert cr.record_errors(registry) == ["fake / turn_on_for: no test record in docs/test-records/fake/"]
+    assert cr.record_errors(registry) == ["fake / turn_on_for: no test record docs/test-records/fake/turn_on_for.md"]
     registry.adapter.scope = scope
     assert cr.record_errors(registry) == []
 

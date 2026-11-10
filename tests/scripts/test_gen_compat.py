@@ -87,9 +87,9 @@ def test_entries_are_model_ids_with_their_firmware_and_groups_are_not_models(roo
         "hue",
         "stop",
         device="Hue lamp (`LTA009`), firmware `1.2`; LCA016, firmware `0x01`; Zone, firmware `unknown`; "
-        "Group, firmware `Zigbee2MQTT 2.1`; a temporary group holding only it",
+        "Group, firmware `Zigbee2MQTT 2.1`",
     )
-    assert gc.entries(path) == [("LTA009", "1.2"), ("LCA016", "0x01"), "group", "group", "group"]
+    assert gc.entries(path) == [("LTA009", "1.2"), ("LCA016", "0x01"), "group", "group"]
 
 
 def test_a_record_with_no_device_lists_no_models(root):
@@ -97,8 +97,9 @@ def test_a_record_with_no_device_lists_no_models(root):
 
 
 def test_a_device_row_that_cannot_be_read_is_an_error(root):
-    with pytest.raises(SystemExit, match="can't read Device entry"):
-        gc.entries(record(root, "hue", "stop", device="a lamp"))
+    for device in ("a lamp", "a temporary group holding only it"):
+        with pytest.raises(SystemExit, match="can't read Device entry"):
+            gc.entries(record(root, "hue", "stop", device=device))
     path = record(root, "hue", "lower_hue")
     path.write_text("| Result | pass |\n")
     with pytest.raises(SystemExit, match="no Device row"):

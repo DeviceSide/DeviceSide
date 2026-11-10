@@ -17,9 +17,9 @@ Adapters with the `experimental` flag are left out of the cards: they are in RCs
 
 **Evidence.** Per integration, every action's level, who supports it (`AdapterScope.support`) and the models its
 passing records tested, with a row per level and support below Verified that its domains, capabilities or fields
-hold, and the reports on it. A group (a Device entry with no
-firmware, firmware `unknown`, or named Group or Zone) shows as "group", not as a model. The prose outside the
-evidence markers is kept as written; every heading a card links to must be in it.
+hold, and the reports on it. A group (a Device entry with firmware `unknown`, or named Group or Zone) shows as
+"group", not as a model; any other entry the record format can't read is an error. The prose outside the evidence
+markers is kept as written; every heading a card links to must be in it.
 
 Usage: scripts/gen_compat.py [--check]
 
@@ -309,8 +309,6 @@ def entries(record: Path) -> list[tuple[str, str] | str]:
                 found.append(GROUP)
             else:
                 found.append((entry["model"] or entry["name"], entry["firmware"]))
-        elif "group" in item.lower():
-            found.append(GROUP)
         else:
             raise SystemExit(f"{record.relative_to(REPO)}: can't read Device entry {item!r}")
     return found

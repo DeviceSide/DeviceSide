@@ -10,8 +10,9 @@ records.
 
 Exits 1 on any integration that failed to import, whatever the options; with --coverage, any module of an adapter's
 code (`adapter_code`, bar `__init__.py`) under 95% line coverage; with --release, any experimental adapter; with
---records, any released adapter with a Verified call that has no record, a record whose Result is not `pass`, or code
-changed after the commit one of its records cites. Each record holds the latest run of its call or option. Setting or
+--records, any released adapter with a Verified call that lacks `<action>.md` or an `<action>-<option>.md` for one
+of its scope's options, a record whose Result is not `pass`, or code changed after the commit one of its records
+cites. Each record holds the latest run of its call or option. Setting or
 clearing `experimental` is not a change to the code: nothing reads it at runtime.
 
 Usage: scripts/check_release.py [--coverage coverage.json] [--release] [--records]
@@ -97,19 +98,34 @@ def adapter_code(module: Path) -> list[Path]:
     """The adapter's module, its integration package's `__init__.py`, and every module of that package either imports,
     directly or through another: the code behind the call it sends, the group expansion and call resolver included.
     The sibling adapter modules `__init__.py` imports for `ADAPTERS` are left out, unless the adapter's own code
-    reaches them. `core/` and `actions/` are left out."""
+    reaches them. `core/` and `actions/` are left out. Raises ValueError on a relative import that names no module of
+    the package, which would otherwise drop code from the check unseen."""
     package = module.parent
     init = package / "__init__.py"
     adapters = adapter_names(init)
-    seeds = [name for name, names in relative_imports(init) if not adapters.intersection(names)]
+
+    def modules(path: Path, names: list[str]) -> list[Path]:
+        for name in names:
+            if not (package / f"{name}.py").is_file():
+                raise ValueError(f"{path}: can't resolve `from .{name}` to a module of {package}")
+        return [package / f"{name}.py" for name in names]
+
     found: set[Path] = {init}
-    todo = [module, *(package / f"{name}.py" for name in seeds)]
+    todo = [
+        module,
+        *modules(init, [name for name, names in relative_imports(init) if not adapters.intersection(names)]),
+    ]
     while todo:
-        if (path := todo.pop()) in found or not path.is_file():
+        if (path := todo.pop()) in found:
             continue
         found.add(path)
-        todo += [package / f"{name}.py" for name, _ in relative_imports(path)]
+        todo += modules(path, [name for name, _ in relative_imports(path)])
     return sorted(found)
+
+
+def code_of(adapter) -> list[str]:
+    """The adapter's code (`adapter_code`), as paths relative to the repository."""
+    return [str(path.relative_to(REPO)) for path in adapter_code(Path(inspect.getsourcefile(type(adapter))))]
 
 
 def records(integration: str, action: str) -> list[Path]:
@@ -172,16 +188,25 @@ def result(record: Path) -> str | None:
 
 
 def record_errors(registry: AdapterRegistry) -> list[str]:
-    """A released adapter with no record, or a record that did not pass or is stale, is an error. Experimental adapters
-    are exempt, as no release has them, and so are adapters with no Verified call, as no record proves them."""
+    """A released adapter missing its base record or one of its options' records, or with a record that did not pass
+    or is stale, is an error. Experimental adapters are exempt, as no release has them, and so are adapters with no
+    Verified call, as no record proves them."""
     errors = []
     for name, adapter in adapters(registry):
         if adapter.scope.experimental or not proven(adapter.scope):
             continue
         found = records(adapter.integration, adapter.action)
-        if not found:
-            errors.append(f"{name}: no test record in {RECORDS.relative_to(REPO)}/{adapter.integration}/")
-        code = [str(path.relative_to(REPO)) for path in adapter_code(Path(inspect.getsourcefile(type(adapter))))]
+        expected = [
+            f"{adapter.action}.md",
+            *(f"{adapter.action}-{option}.md" for option in sorted(adapter.scope.options)),
+        ]
+        folder = (RECORDS / adapter.integration).relative_to(REPO)
+        errors += [
+            f"{name}: no test record {folder}/{file}"
+            for file in expected
+            if not (RECORDS / adapter.integration / file).is_file()
+        ]
+        code = code_of(adapter)
         for record in found:
             label = record.relative_to(REPO)
             if (outcome := result(record)) is None:
