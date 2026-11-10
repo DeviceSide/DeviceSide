@@ -30,6 +30,7 @@ from homeassistant.helpers import device_registry as dr
 
 from .addressing import group_id, options_address, z2m_address
 from .bridge import OPTION, ensure_options, group_members, state_reply
+from .restore_journal import journal
 from ...core.models import Target
 from ...core.runtime import get_runtime
 
@@ -115,6 +116,7 @@ async def native_control(hass: HomeAssistant, target: Target, need: bool | None)
         if not changed:
             yield
             return
+        await _owe(hass, address, not need)
         replied: asyncio.Future[None] | None = None
         unsubscribe: Callable[[], None] = lambda: None  # noqa: E731
         try:
@@ -163,7 +165,7 @@ async def _restore(
         finally:
             unsubscribe()
             # Only a value other than need was changed, and an absent option is Z2M's default, off.
-            restoring = asyncio.ensure_future(_set(hass, target, address, not need, restoring=True))
+            restoring = asyncio.ensure_future(_put_back(hass, target, address, not need))
             try:
                 await asyncio.shield(restoring)
             except asyncio.CancelledError:
@@ -171,6 +173,23 @@ async def _restore(
                 raise
     finally:
         lock.release()
+
+
+async def _owe(hass: HomeAssistant, address: Address, value: bool) -> None:
+    """Journal the user's value as owed, so a restart before the restore doesn't leave the option flipped."""
+    try:
+        await (await journal(hass)).add(*address, value)
+    except Exception as err:  # noqa: BLE001 - the journal is a safety net; the action goes on without it
+        _LOGGER.warning("Couldn't journal the pending %s restore for %s: %s", OPTION, address, err)
+
+
+async def _put_back(hass: HomeAssistant, target: Target, address: Address, value: bool) -> None:
+    """Restore the user's value, and strike it off the journal once Z2M confirmed it."""
+    if await _set(hass, target, address, value, restoring=True):
+        try:
+            await (await journal(hass)).strike(*address, value)
+        except Exception as err:  # noqa: BLE001 - a stale entry is replayed harmlessly at the next start
+            _LOGGER.warning("Couldn't strike the %s restore for %s off the journal: %s", OPTION, address, err)
 
 
 async def _reply(target: Target, replied: asyncio.Future[None] | None) -> None:
@@ -190,7 +209,7 @@ async def _hue_address(hass: HomeAssistant, target: Target) -> Address | None:
     if (group := group_id(target)) is not None:
         return ("group", group) if await _has_hue_member(hass, group) else None
     if target.device is not None and target.device.manufacturer == _HUE_MANUFACTURER:
-        return "device", z2m_address(target.device)
+        return ("device", ieee) if (ieee := z2m_address(target.device)) is not None else None
     return None
 
 
