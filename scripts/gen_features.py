@@ -67,6 +67,8 @@ NO_PATH = {
     # Hue bridge timers ignore a manual on or off, so they can't be cancelled the way users expect.
     ("Turn off with timer", "hue"): ("light", "group"),
     ("Turn on with timer", "hue"): ("light", "group"),
+    # CLIP v2 has no rule engine, so the bridge can't store "off N seconds after any turn-on".
+    ("Auto-off/on (aka inching)", "hue"): ("light", "group"),
     # A hue rotation isn't a straight line in xy, so it can't be one bridge command.
     ("Smooth hue change", "hue"): ("light", "group"),
 }
