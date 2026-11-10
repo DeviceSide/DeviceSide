@@ -141,10 +141,10 @@ runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, 
   with `group_not_supported` when there is none.
 - **Dispatcher.** Buckets targets by adapter, drops fields a target lacks, checks `supports()` (domain, fields and
   capabilities in scope), clamps durations to `AdapterScope.duration`, then runs every adapter concurrently under
-  `ADAPTER_TIMEOUT_S`: `Adapter.slot` (which `gather` runs each target in) rejects with `timeout` only the targets not done by then, so those that
-  finished keep their results. An adapter exception rejects its targets. A named target that can never take the
-  action raises before anything is sent; an indirect one is skipped and logged; a device failure raises once every
-  target has run.
+  `ADAPTER_TIMEOUT_S`: `Adapter.slot` (which `gather` runs each target in) rejects with `timeout` only the targets
+  not done by then, so those that finished keep their results. An adapter exception rejects its targets. A named
+  target that can never take the action raises before anything is sent; an indirect one is skipped and logged; a
+  device failure raises once every target has run.
 - **Experimental items** are gated here, at runtime. After `supports()` passes a target and fields are dropped,
   `Dispatcher.run_adapters` takes the call's level from its domain, the capability `Adapter.capability()` names
   (Shelly: the RPC component; one it can't name counts as Experimental) and the fields it still carries. An
