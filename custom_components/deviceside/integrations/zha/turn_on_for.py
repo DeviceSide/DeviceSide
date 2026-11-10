@@ -88,18 +88,15 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
         addr = address(target.entry.unique_id)  # supports() refused the targets it can't address
         if request.light.present():
             await self._turn_on(hass, request, target.entity_id, traced_as=target.reported_id)
-        try:
-            await zcl.command(
-                hass,
-                addr,
-                zcl.ON_OFF_CLUSTER,
-                _ON_WITH_TIMED_OFF,
-                {"on_off_control": 0, "on_time": on_time, "off_wait_time": 0},
-                request.context,
-                entity_id=target.reported_id,
-            )
-        except Unauthorized:
-            return self.result(target, Status.REJECTED, detail="admin_required")
+        await zcl.command(
+            hass,
+            addr,
+            zcl.ON_OFF_CLUSTER,
+            _ON_WITH_TIMED_OFF,
+            {"on_off_control": 0, "on_time": on_time, "off_wait_time": 0},
+            request.context,
+            entity_id=target.reported_id,
+        )
         return await self._read_back(hass, target, addr, on_time)
 
     async def _groupcast(

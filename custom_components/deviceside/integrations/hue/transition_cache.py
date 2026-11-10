@@ -47,14 +47,15 @@ class HueTransitionCache(transition.TransitionCache):
 
     @asynccontextmanager
     async def recording(self, keys: Iterable[tuple[str, str]]) -> AsyncIterator[dict[tuple[str, str], Transition]]:
-        """The core recording, with each saturation key's xy path put back too on a refusal, where it is still the path
-        of the transition this block recorded."""
+        """The core recording, with each saturation key's xy path put back too on a refusal or a cancel, where it is
+        still the path of the transition this block recorded."""
         keys = list(keys)
         before = {light_id: self._paths.get(light_id) for light_id, attribute in keys if attribute == SATURATION}
+        recorded: dict[tuple[str, str], Transition] = {}
         try:
             async with super().recording(keys) as recorded:
                 yield recorded
-        except Exception:
+        except BaseException:
             for light_id, path in before.items():
                 if (mine := recorded.get((light_id, SATURATION))) is None or (
                     (current := self._paths.get(light_id)) is not None and current[0] is not mine

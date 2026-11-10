@@ -5,7 +5,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
-from .addressing import group_id, state_topic
+from .addressing import device_identifier, group_id, state_topic
 from .bridge import group_members
 from ...core.models import Target
 from ...core.resolver import resolve_members
@@ -22,7 +22,7 @@ async def member_lights(hass: HomeAssistant, group: Target) -> list[Target]:
     entities = er.async_get(hass)
     unique_ids = []
     for address in await group_members(hass, group_id(group)):
-        if (device := devices.async_get_device(identifiers={("mqtt", f"zigbee2mqtt_{address}")})) is None:
+        if (device := devices.async_get_device(identifiers={device_identifier(address)})) is None:
             continue
         lights = [e for e in er.async_entries_for_device(entities, device.id) if e.domain == group.domain]
         unique_ids += [lights[0].unique_id] if lights else []

@@ -2,6 +2,7 @@
 the bridge runs alone. Each action's adapter is a HueFade."""
 
 from dataclasses import dataclass, field
+from functools import partial
 from statistics import mean
 from typing import TYPE_CHECKING, Any, ClassVar
 
@@ -14,6 +15,7 @@ from .report_filter import report_filter
 from .transition_cache import MIN_BRIGHTNESS_STEP, XY, HueTransitionCache, transition_cache
 from ...actions.ramp import RampRequest
 from ...core.adapter import Adapter
+from ...core.errors import Reason
 from ...core.models import EntityResult, Status, Target
 from ...core.scope import AdapterScope, verified
 from ...core.transition import BRIGHTNESS, SATURATION, TransitionCache, lit_where, reported_brightness
@@ -29,7 +31,7 @@ def room_lights(api: HueBridgeV2, target: Target) -> list[Light]:
     return [light for light in api.groups.grouped_light.get_lights(resource_id(target)) if light.dimming]
 
 
-def light_brightness(cache: TransitionCache, light: Light) -> float:
+def predicted_brightness(cache: TransitionCache, light: Light) -> float:
     """A room light's predicted brightness in percent, 0 while off."""
     return cache.value(light.id, BRIGHTNESS, light.dimming.brightness if light.on.on else 0.0)
 
@@ -99,8 +101,10 @@ class HueFade(Adapter[RampRequest]):
     def supports(self, hass: HomeAssistant, request: RampRequest, target: Target) -> str | None:
         if (reason := super().supports(hass, request, target)) is not None:
             return reason
-        if bridge_api(target) is None:
+        if (api := bridge_api(target)) is None:
             return "bridge_v1"
+        if target.is_group and not api.groups.grouped_light.get_lights(resource_id(target)):
+            return Reason.EMPTY_GROUP
         return None
 
     async def execute(self, hass: HomeAssistant, request: RampRequest, targets: list[Target]) -> list[EntityResult]:
@@ -117,16 +121,26 @@ class HueFade(Adapter[RampRequest]):
                 return self.result(target, Status.UNCHANGED, detail=fade)
             # Before the write, as stop does: the bridge may report the fade's end before the write returns.
             reports = report_filter(hass, target)
-            write = set_state(
-                hass, writer, rid, target.reported_id, **fade.write, transition_time=round(fade.duration * 1000)
+            write = partial(
+                set_state,
+                hass,
+                writer,
+                rid,
+                target.reported_id,
+                **fade.write,
+                transition_time=round(fade.duration * 1000),
             )
-            async with cache.recording((light_id, fade.attribute) for light_id in fade.starts):
+            async with cache.recording((light_id, fade.attribute) for light_id in fade.starts) as recorded:
                 for light_id, start in fade.starts.items():
-                    recorded = cache.moving(light_id, fade.attribute, start, fade.ends[light_id], fade.duration)
+                    moving = cache.moving(light_id, fade.attribute, start, fade.ends[light_id], fade.duration)
                     if (path := fade.paths.get(light_id)) is not None:
-                        cache.path(light_id, recorded, *path)
-                await write
-            reports.fading(fade.attribute, fade.ends, fade.duration)
+                        cache.path(light_id, moving, *path)
+                await write()
+            # A stop that landed during the PUT owns the lights now: nothing is left to end.
+            if all(
+                cache.live(light_id, fade.attribute) is recorded[(light_id, fade.attribute)] for light_id in fade.starts
+            ):
+                reports.fading(fade.attribute, fade.ends, fade.duration)
             return self.result(target, Status.SENT)
 
         return await self.gather(hass, targets, send)
@@ -142,7 +156,7 @@ def brightness_fade(
     up, limit = request.up, request.end()
     if target.is_group:
         lights = room_lights(api, target)
-        starts = {light.id: light_brightness(cache, light) for light in lights}
+        starts = {light.id: predicted_brightness(cache, light) for light in lights}
         # Raising turns every light on, so the off ones fade in from the bottom; lowering passes them by.
         lit_lights = lit(cache, lights)
         moving = [light.id for light in (lights if up else lit_lights)]

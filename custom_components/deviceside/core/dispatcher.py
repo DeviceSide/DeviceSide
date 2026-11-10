@@ -2,9 +2,9 @@ import asyncio
 import logging
 from dataclasses import replace
 
-from homeassistant.const import STATE_UNAVAILABLE
+from homeassistant.const import ATTR_ENTITY_ID, ENTITY_MATCH_ALL, STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, State, split_entity_id
-from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import target as target_helpers
 
 from . import duration, ha_watch
@@ -48,11 +48,18 @@ class Dispatcher:
         Unavailable targets are skipped. A device failure raises once every target has run.
         """
         request = replace(action.parse(self.hass, call), context=call.context)
-        selection = target_helpers.TargetSelection(call.data)
-        if not selection.has_any_target:
-            raise ServiceValidationError(translation_domain=DOMAIN, translation_key="no_targets")
-        # expand_group=False: we expand group.* ourselves so members remember which group they came from.
-        selected = target_helpers.async_extract_referenced_entity_ids(self.hass, selection, expand_group=False)
+        if call.data.get(ATTR_ENTITY_ID) == ENTITY_MATCH_ALL:
+            # Core passes referenced=None for "all": every entity of the domains is indirect, so none raises or logs.
+            selected = target_helpers.SelectedEntities(
+                indirectly_referenced=set(self.hass.states.async_entity_ids(action.domains))
+            )
+        else:
+            selection = target_helpers.TargetSelection(call.data)
+            if not selection.has_any_target:
+                # Core returns here, and raises no_entities_matched only when the caller asked for a response.
+                return self._respond(action, call, [])
+            # expand_group=False: we expand group.* ourselves so members remember which group they came from.
+            selected = target_helpers.async_extract_referenced_entity_ids(self.hass, selection, expand_group=False)
         members, _ = expand_ha_groups(self.hass, sorted(selected.referenced | selected.indirectly_referenced))
 
         results, targets = self._resolve(action, selected, members)

@@ -6,8 +6,10 @@ from unittest.mock import call as rpc_call
 import pytest
 from homeassistant.exceptions import HomeAssistantError
 
+from custom_components.deviceside.core.models import LightFields
 from custom_components.deviceside.core.scope import Level, verified
 from custom_components.deviceside.integrations.shelly.addressing import COMPONENTS
+from custom_components.deviceside.integrations.shelly.rpc import light_params
 from custom_components.deviceside.integrations.shelly.turn_on_for import ShellyTurnOnFor
 
 from ...conftest import call, refusal
@@ -220,3 +222,8 @@ async def test_duration_under_50ms_is_floored_and_reported(hass, setup_productio
 )
 def test_component_levels(component, level):
     assert ShellyTurnOnFor.scope.level("light", component) is level
+
+
+@pytest.mark.parametrize(("transition", "sent"), [(0.2, 0.5), (3, 3), (20000, 10800)])
+def test_transition_is_held_to_the_devices_bounds(transition, sent):
+    assert light_params(LightFields(transition=transition), "RGBCCT", None) == {"transition_duration": sent}
