@@ -12,12 +12,16 @@ can't be trusted.
 import time
 from collections.abc import AsyncIterator, Callable, Iterable
 from contextlib import asynccontextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
 
 from homeassistant.core import HomeAssistant
 
 from .models import Target
 from .runtime import get_runtime
+
+# What the recording() block running in this task has recorded so far, by (resource_id, attribute).
+_RECORDED: ContextVar[dict[tuple[str, str], Transition] | None] = ContextVar("transition_recorded", default=None)
 
 BRIGHTNESS = "brightness"  # in percent
 SATURATION = "saturation"  # in percent
@@ -96,19 +100,26 @@ class TransitionCache:
         self._transitions.update(transitions)
 
     @asynccontextmanager
-    async def recording(self, keys: Iterable[tuple[str, str]]) -> AsyncIterator[None]:
+    async def recording(self, keys: Iterable[tuple[str, str]]) -> AsyncIterator[dict[tuple[str, str], Transition]]:
         """Around a write and the transitions it makes, recorded first: the integration may report before the write
-        returns. A refusal puts back what each (resource_id, attribute) held before."""
+        returns. Yields what this block records. A refusal puts back what each (resource_id, attribute) held before,
+        but only where the entry is still the one this block recorded: a move that overlapped it owns the key now."""
         before = {key: self._transitions.get(key) for key in keys}
+        recorded: dict[tuple[str, str], Transition] = {}
+        token = _RECORDED.set(recorded)
         try:
-            yield
+            yield recorded
         except Exception:
             for key, transition in before.items():
+                if key not in recorded or self._transitions.get(key) is not recorded[key]:
+                    continue
                 if transition is None:
                     self._transitions.pop(key, None)
                 else:
                     self._transitions[key] = transition
             raise
+        finally:
+            _RECORDED.reset(token)
 
     def live(self, resource_id: str, attribute: str) -> Transition | None:
         """The entry inside its guard window, pruning it once expired."""
@@ -133,6 +144,8 @@ class TransitionCache:
         already running."""
         transition = Transition(start, target, duration, self.clock() if started_at is None else started_at)
         self._transitions[(resource_id, attribute)] = transition
+        if (recorded := _RECORDED.get()) is not None:
+            recorded[(resource_id, attribute)] = transition
         return transition
 
     def stopped(self, resource_id: str, attribute: str, value: float) -> Transition:
@@ -158,13 +171,18 @@ def light_brightness(cache: TransitionCache, light: Target) -> float:
     return cache.value(light.entity_id, BRIGHTNESS, reported_brightness(light))
 
 
+def lit_where[L](
+    cache: TransitionCache, lights: list[L], key: Callable[[L], str], is_on: Callable[[L], bool]
+) -> list[L]:
+    """The lights that are on, or predicted above 0 %: a soft off may report off before its fade has run. key names
+    the light's cache entry; an integration's own light type passes how it reads those."""
+    return [light for light in lights if is_on(light) or cache.value(key(light), BRIGHTNESS, 0.0) > 0]
+
+
 def lit(cache: TransitionCache, lights: list[Target]) -> list[Target]:
-    """The lights that are on, or predicted above 0 %: a soft off may report off before its fade has run."""
-    return [
-        light
-        for light in lights
-        if (light.state and light.state.state == "on") or cache.value(light.entity_id, BRIGHTNESS, 0.0) > 0
-    ]
+    return lit_where(
+        cache, lights, lambda light: light.entity_id, lambda light: bool(light.state and light.state.state == "on")
+    )
 
 
 def hs_color(light: Target) -> tuple[float, float] | None:

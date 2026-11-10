@@ -295,3 +295,34 @@ async def test_an_aiohue_that_applies_events_at_once_falls_back_to_the_bridge(ha
 
     assert "Hue fades show what the bridge reports" in caplog.text
     assert shown(bridge, "one") == (True, 100.0)
+
+
+async def test_the_first_move_hides_the_end_the_bridge_reports_during_the_write(hass, bridge, clock, monkeypatch):
+    await setup_room(hass, bridge)  # no filter yet: the first move attaches it
+    put = bridge.api.request
+
+    async def report_during_put(method, path, json=None, **kwargs):
+        if method == "put":
+            report(bridge, light_event("one", brightness=100.0))  # the bridge's end value, before the write returns
+        return await put(method, path, json=json, **kwargs)
+
+    monkeypatch.setattr(bridge.api, "request", report_during_put)
+
+    await raise_one(hass)
+    await settle(hass)
+
+    assert shown(bridge, "one") == (True, 20.0)
+
+
+async def test_detaching_drops_the_bridges_filter_but_not_a_newer_one(hass, bridge, clock):
+    await setup_room(hass, bridge)
+    await raise_one(hass)
+    filters = get_runtime(hass).integration_state["hue_filters"]
+    ((entry_id, reports),) = filters.items()
+
+    reports.attach()()  # a second subscription of the same filter, detached
+    assert entry_id not in filters
+
+    filters[entry_id] = newer = object()
+    reports.attach()()
+    assert filters[entry_id] is newer

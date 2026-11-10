@@ -16,18 +16,12 @@ from ...actions.ramp import RampRequest
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Status, Target
 from ...core.scope import AdapterScope, verified
-from ...core.transition import BRIGHTNESS, SATURATION, TransitionCache
+from ...core.transition import BRIGHTNESS, SATURATION, TransitionCache, lit_where, reported_brightness
 
 if TYPE_CHECKING:
     from aiohue.v2 import HueBridgeV2
     from aiohue.v2.models.grouped_light import GroupedLight
     from aiohue.v2.models.light import Light
-
-
-def reported_brightness(target: Target) -> float:
-    """HA's brightness for the target in percent, 0 while off: a move from off starts at the bottom."""
-    brightness = target.state.attributes.get("brightness") if target.state else None
-    return brightness / 255 * 100 if brightness is not None else 0.0
 
 
 def room_lights(api: HueBridgeV2, target: Target) -> list[Light]:
@@ -48,7 +42,7 @@ def light_xy(cache: HueTransitionCache, light: Light) -> XY:
 def lit(cache: TransitionCache, lights: list[Light]) -> list[Light]:
     """The lights that are on, or predicted above 0 %: aiohue hears a light turn on late, and a soft off reports off
     at its start."""
-    return [light for light in lights if light.on.on or cache.value(light.id, BRIGHTNESS, 0.0) > 0]
+    return lit_where(cache, lights, lambda light: light.id, lambda light: light.on.on)
 
 
 def in_soft_off(cache: TransitionCache, light_id: str) -> bool:
@@ -121,6 +115,8 @@ class HueFade(Adapter[RampRequest]):
                 return self.result(target, Status.REJECTED, detail="not_on_bridge")
             if isinstance(fade := plan(cache, request, target, api, resource), str):
                 return self.result(target, Status.UNCHANGED, detail=fade)
+            # Before the write, as stop does: the bridge may report the fade's end before the write returns.
+            reports = report_filter(hass, target)
             write = set_state(
                 hass, writer, rid, target.reported_id, **fade.write, transition_time=round(fade.duration * 1000)
             )
@@ -130,7 +126,7 @@ class HueFade(Adapter[RampRequest]):
                     if (path := fade.paths.get(light_id)) is not None:
                         cache.path(light_id, recorded, *path)
                 await write
-            report_filter(hass, target).fading(fade.attribute, fade.ends, fade.duration)
+            reports.fading(fade.attribute, fade.ends, fade.duration)
             return self.result(target, Status.SENT)
 
         return await self.gather(hass, targets, send)
