@@ -6,6 +6,7 @@ import yaml
 from scripts import check_audit
 
 RC = "v0.0.2rc1"
+HINT = "; was the audit PR squashed or rebased? Merge it with a merge commit"
 
 
 @pytest.fixture
@@ -118,7 +119,7 @@ def test_passes_must_chain_and_end_under_the_head(audited):
     elsewhere = repo.commit("other.py")
     repo.git("checkout", "-q", "main")
     head = record(repo, base=base, passes=[(base, elsewhere)])
-    assert f"pass 1 ends at {elsewhere!r}, not an ancestor of the head" in errors(repo, head)
+    assert f"pass 1 ends at {elsewhere!r}, not an ancestor of the head{HINT}" in errors(repo, head)
 
 
 def test_code_after_the_last_pass_is_refused(audited):
@@ -149,6 +150,21 @@ def test_a_fix_inside_the_first_pass_is_not_a_fix(audited):
     finding = {"id": "H1", "severity": "high", "status": "fixed", "fixed_in": end}
     head = record(repo, base=base, passes=[(base, end), (end, fix)], findings=[finding])
     assert errors(repo, head) == [f"finding H1: fixed_in {end!r} is not inside a pass after the first"]
+
+
+def test_a_squashed_audit_pr_is_named_as_the_cause(audited):
+    repo, base, end = audited
+    repo.git("checkout", "-q", "-b", "audit", end)
+    fix = repo.commit("fix.py")
+    repo.git("checkout", "-q", "main")
+    squashed = repo.commit("fix.py", "squashed\n")  # the squash merge: a new commit, so `fix` is not under main
+    finding = {"id": "H1", "severity": "high", "status": "fixed", "fixed_in": fix}
+    head = record(repo, base=base, passes=[(base, end), (end, fix)], findings=[finding])
+    assert errors(repo, head) == [f"pass 2 ends at {fix!r}, not an ancestor of the head{HINT}"]
+
+    # The pass is re-recorded at the squash commit, but the finding still cites the branch's fix.
+    head = record(repo, base=base, passes=[(base, end), (end, squashed)], findings=[finding])
+    assert errors(repo, head) == [f"finding H1: fixed_in {fix!r} is not inside a pass after the first{HINT}"]
 
 
 def test_main(audited, capsys):
