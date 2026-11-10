@@ -175,6 +175,7 @@ class ReportFilter:
                         forget(self.hass, light_id)
                 return
             report = classify(self.cache, self.api, data)
+            _LOGGER.debug("Bridge %s %s %s: %s", data.get("type"), data.get("id"), reported_values(data), report)
             if self.hiding and report is Report.OURS:
                 self._hide(data)
             if data.get("type") == ResourceTypes.LIGHT.value:
@@ -228,6 +229,7 @@ class ReportFilter:
                     dimmed := [light.dimming.brightness for light in lit if light.dimming]
                 ):
                     event["dimming"] = {"brightness": mean(dimmed)}
+                _LOGGER.debug("Showing room %s: %s", grouped_light_id, event)
                 self.api.events.emit(EventType.RESOURCE_UPDATED, event)
         except Exception:
             _LOGGER.exception("Hue report filter failed showing rooms %s", grouped_light_ids)
