@@ -1,6 +1,7 @@
 """Extract the Z2M device or group address from the HA device registry."""
 
 import re
+from typing import Literal
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
@@ -74,6 +75,16 @@ def group_id(target: Target) -> str | None:
     if (group := _GROUP_ADDRESS.match(addr)) is None or group.group(1) != _ENCODED_BASE_TOPIC:
         return None
     return group.group(2)
+
+
+def options_address(target: Target) -> tuple[Literal["device", "group"], str] | None:
+    """Where the target's Z2M options live: its kind and ID there ("group" for a group on the default base topic,
+    else "device" by IEEE), or None when it cannot be addressed. Asks Z2M nothing."""
+    if (group := group_id(target)) is not None:
+        return "group", group
+    if target.device is not None and (address := z2m_address(target.device)) is not None:
+        return "device", address
+    return None
 
 
 def bridge_topic(suffix: str) -> str:

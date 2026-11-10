@@ -1,6 +1,7 @@
 """Zigbee2MQTT hue_native_control: set as an action needs it for its own publish, then the user's value put back."""
 
 import asyncio
+import json
 import logging
 
 import pytest
@@ -9,7 +10,8 @@ from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import async_mock_service
 
 from custom_components.deviceside.core.models import Target
-from custom_components.deviceside.integrations.zigbee2mqtt import bridge
+from custom_components.deviceside.core.runtime import DATA
+from custom_components.deviceside.integrations.zigbee2mqtt import bridge, bridge_cache
 from custom_components.deviceside.integrations.zigbee2mqtt import native_control as nc
 
 from .conftest import SET, light
@@ -546,3 +548,86 @@ async def test_no_need_writes_nothing(hass, setup_production, broker):
         pass
 
     assert broker.topics == []
+
+
+# The wire trace stamps the option's value on each set
+
+
+def hold_info(hass, broker) -> None:
+    """The bridge cache holding the broker's bridge/info as it stands, as it does once MQTT is up."""
+    cache = bridge_cache.BridgeCache()
+    cache._payloads["info"] = json.dumps(broker.retained[INFO])
+    hass.data[DATA].integration_state[bridge_cache._KEY] = cache
+
+
+def stamps(wire) -> list:
+    return [event.data["options"][nc.OPTION] for event in wire if event.data["command"] in ("set", "light.turn_on")]
+
+
+@pytest.mark.parametrize(
+    "info, stamp", [({"hue_native_control": True}, True), ({"hue_native_control": False}, False), ({}, False)]
+)
+async def test_a_set_is_stamped_with_the_option_from_bridge_info(hass, setup_production, broker, wire, info, stamp):
+    entity_id = light(hass, broker)
+    broker.retained[INFO]["config"]["devices"][IEEE] = info
+    hold_info(hass, broker)
+
+    await call(hass, "stop", {"entity_id": entity_id})
+
+    assert stamps(wire) == [stamp]
+    assert wire[0].data["params"] == {"brightness_move": "stop"}  # params stays the published payload
+
+
+async def test_a_confirmed_write_shows_in_the_stamp_then_the_users_value_returns(
+    hass, setup_production, clock, broker, wire
+):
+    entity_id = light(hass, broker, manufacturer="Philips")
+    broker.retained[INFO]["config"]["devices"][IEEE]["hue_native_control"] = True
+    hold_info(hass, broker)
+
+    await call(hass, "raise_brightness", {"entity_id": entity_id})
+    await hass.async_block_till_done()  # the restore
+    await call(hass, "stop", {"entity_id": entity_id})
+
+    assert stamps(wire) == [False, True]
+
+
+async def test_the_turn_on_inside_a_flip_is_stamped_on(hass, setup_production, broker, turn_ons, wire):
+    hue_bulb(hass)
+    hold_info(hass, broker)
+
+    await call(hass, "turn_on_for", RED)
+
+    # The HA light.turn_on inside the flip; the timer waits for the restore, so it carries the user's value.
+    assert stamps(wire) == [True, False]
+
+
+async def test_a_group_is_stamped_from_the_group_section(hass, setup_production, broker):
+    group_with_member(hass, "Philips")
+    broker.retained[GROUPS] = BRIDGE_GROUPS
+    broker.retained[INFO]["config"]["groups"]["7"] = {"hue_native_control": True}
+    broker.retained[INFO]["config"]["devices"][MEMBER] = {"hue_native_control": False}
+    hold_info(hass, broker)
+
+    assert bridge.traced_options(hass, target(hass, "light.downstairs")) == {nc.OPTION: True}
+
+
+async def test_the_stamp_is_unknown_without_the_bridge_cache(hass, setup_production, broker, wire):
+    entity_id = light(hass, broker)
+
+    await call(hass, "stop", {"entity_id": entity_id})
+
+    assert stamps(wire) == [None]
+
+
+async def test_the_stamp_is_unknown_without_an_address(hass, setup_production):
+    assert bridge.traced_options(hass, Target("light.x", "light", "zigbee2mqtt", None, None, None, None)) == {
+        nc.OPTION: None
+    }
+
+
+async def test_nothing_is_computed_while_the_trace_is_off(hass, setup_production, broker, monkeypatch):
+    entity_id = light(hass, broker)
+    monkeypatch.setattr(bridge, "traced_options", lambda *args: pytest.fail("looked up with the trace off"))
+
+    await call(hass, "stop", {"entity_id": entity_id})

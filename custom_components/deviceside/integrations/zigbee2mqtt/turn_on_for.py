@@ -7,14 +7,14 @@ from typing import ClassVar
 from homeassistant.core import HomeAssistant
 
 from .addressing import topic
-from .bridge import publish, publish_set, state_reply
+from .bridge import publish, publish_set, state_reply, traced_options
 from .native_control import COLOR_FIELDS, NEED, native_control, settled
 from ...actions.turn_on_for import TurnOnForRequest
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Status, Target
 from ...core.runtime import get_runtime
 from ...core.scope import AdapterScope, DurationLimits, experimental, verified
-from ...core.wire import wire_trace
+from ...core.wire import wire_enabled, wire_trace
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -100,7 +100,8 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
         service_data = {"entity_id": target.entity_id, **data}
         published, unsubscribe = await state_reply(hass, target)
         try:
-            wire_trace(hass, target.reported_id, "ha", "light.turn_on", data)
+            if wire_enabled():
+                wire_trace(hass, target.reported_id, "ha", "light.turn_on", data, options=traced_options(hass, target))
             await hass.services.async_call("light", "turn_on", service_data, blocking=True)
             if published is None:
                 return
