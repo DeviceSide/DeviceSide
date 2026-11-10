@@ -5,8 +5,7 @@ goes on the wire, and what was measured on real devices, is in [integration-inte
 
 ## Glossary
 
-Code and docs use these terms. "Platform", "backing" and "claim" are retired; `services.yaml` keeps its name because
-HA requires it.
+Code and docs use these terms.
 
 - **Action**: what the user calls, e.g. `deviceside.turn_on_for`.
 - **Feature**: the user experience one or more actions deliver (turn on with timer, smooth dimming). Prose only.
@@ -18,32 +17,23 @@ HA requires it.
   Zigbee or Matter cluster).
 - **Field**: an action parameter, e.g. `brightness`.
 - **Entity domain**: light, switch. "Domain" alone is fine where unambiguous.
-- **Scope**: the entity domains, capabilities and fields an adapter is built for, each at a `Level` (Verified,
-  Reported, Documented or Experimental). Outside it, calls are refused as not yet tested.
+- **Scope**: the entity domains, capabilities and fields an adapter is built for, each at a Level. Outside it, calls
+  are refused as not yet tested.
+- **Level**: how well a scope item is proven: Verified, Reported, Documented or Experimental. A call's level is the
+  weakest among the items it touches (`AdapterScope.level`); a Documented item names its sibling in
+  `AdapterScope.siblings`. Rules: [CLAUDE.md](../CLAUDE.md#release-flag). User wording:
+  [device-compatibility.md](device-compatibility.md#levels-of-proof).
+- **Support**: who fixes a bug in a call (maintainer, community, or nobody while Experimental), from the proof behind
+  each item it touches (`AdapterScope.support`, `proof()`). Per item, not per adapter:
+  [device-compatibility.md](device-compatibility.md#support).
+- **Experimental features**: the option (`experimental_features`, off by default) that lets calls touching an
+  Experimental item through. Only the dispatcher reads it.
+- **Release flag**: `experimental=True` on an adapter's scope keeps the whole adapter in release candidates only. Not
+  the Experimental level, which gates an item at runtime. Rules: [CLAUDE.md](../CLAUDE.md#release-flag).
 - **Rig**: the maintainer's live Home Assistant and devices, and the private tool that runs DeviceSide's actions on
   them and writes test records. It is kept outside this repo; the records are its output here.
 - **Test record**: the evidence that an adapter works on real hardware, from a rig run:
   `docs/test-records/<integration>/<action>*.md`. Clearing `experimental` cites one.
-- **Level**: how well a scope item is proven, weakest first (conditions: [CLAUDE.md](../CLAUDE.md#release-flag)).
-  **Experimental**: built and unit-tested, with no proof on a device; it ships in stable releases, refused at runtime
-  until the user turns on Experimental features. **Documented**: no record, but the adapter sends it the same call as
-  a Verified or Reported item, differing only in addressing, and the vendor or standard documents that call
-  identically; never a field. It names that item in `AdapterScope.siblings`, and stands only while the sibling does: a
-  scope whose Documented item rides one below Reported fails to load. **Reported**: an accepted working device report on the item's call, with unit tests pinning it; a change to that call
-  makes it Experimental again. **Verified**:
-  a passing record from the rig. Documented, Reported and Verified items ship switched on. A call's level is the weakest among the items it touches: its domain, capability and fields
-  (`AdapterScope.level`).
-- **Support**: who fixes a bug in a call, by the proof behind it (`AdapterScope.support`, with `proof()` giving each
-  item's: its own level, or its sibling's when Documented). **Maintainer**: Verified, or Documented on a Verified
-  sibling; the rig retests the fix. **Community**: Reported, or Documented on a Reported sibling; bugs are accepted
-  and labelled `community`, the maintainer reviews fixes but doesn't write them, and may drop an item that keeps
-  breaking. **Experimental (opt-in)**: unsupported. The README cards mark rig-verified entries ✔ and link the report behind a community item. Support is per item, not per adapter: an extension's are separate.
-- **Experimental features**: the option (`experimental_features`, off by default) that lets calls touching an
-  Experimental item through. Only the dispatcher reads it.
-- **Release flag**: `experimental=True` on an adapter's scope; it keeps the whole adapter in release candidates only.
-  When to set and clear it: [CLAUDE.md](../CLAUDE.md#release-flag). Not the Experimental level: an item is gated at
-  runtime, the flag at release. A record older than its adapter's code, or one that did not pass, blocks a release
-  (`check_release.py --records`) until a rerun.
 - **Device report**: a user's "works" or "doesn't work" for an action on a model. In `docs/devices.yaml` each one names
   the `item` its call reached (the domain, or the capability for an adapter that lists them). An accepted "works" on
   an item's call makes it Reported; a "doesn't work" is evidence for a fix or for leaving the item out.
@@ -52,18 +42,18 @@ HA requires it.
 
 ## Principles
 
+What gets built, and the evidence it needs: [CONTRIBUTING.md](../CONTRIBUTING.md#development-principles). How it is
+built:
+
 - **On the device.** Once the command is sent, the behavior completes (or degrades to plain device behavior) with
-  HA offline. No HA-side timers, polling or emulation; docs show how to build emulation with `set_attributes` and an
-  automation instead.
-- **What gets built:** see [CONTRIBUTING.md](../CONTRIBUTING.md#development-principles).
+  HA offline.
 - **One action per user intent, not per protocol primitive.** Zigbee has move, step and move-to; DeviceSide has one
   raise and one lower per attribute, and the adapter picks the command.
 - **Human terms.** Fields describe what the light should do, never how the device does it: no rates, steps, mireds
   or cluster vocabulary. The adapter converts.
 - **Behave as core does.** When to raise, what to skip and what a response holds follow HA core's own actions:
   [action-behavior.md](action-behavior.md).
-- **Drop-in for Hue Smooth Dimming.** `set_attributes`, `get_attributes` and `set_scene` take its field names,
-  units (brightness in percent) and response shape; its `raise`/`lower` are `raise_brightness`/`lower_brightness`.
+- **Drop-in for Hue Smooth Dimming:** [action-behavior.md](action-behavior.md#replacing-hue_dimmer).
 - **Highest aggregation the device accepts.** A group goes to the device as one command where the integration has
   a native group, to cut radio traffic and popcorning.
 
@@ -82,37 +72,27 @@ HA requires it.
 
 ## Scope
 
-Integrations: Zigbee2MQTT (via `mqtt`), ZHA, Matter, Shelly Gen2+ and Hue (CLIP v2). Which adapter exists, and its
-scope, is in each adapter's `AdapterScope`; `scripts/check_release.py` lists every adapter and whether it is
-experimental.
+Integrations: Zigbee2MQTT (via `mqtt`), ZHA, Matter, Shelly Gen2+ and Hue (CLIP v2). Each adapter's `AdapterScope`
+says what it covers, and `scripts/check_release.py` lists every adapter. Per integration:
+[integrations.md](integrations.md). What can't be built where, and why: `NO_PATH` in `scripts/gen_features.py`, the
+README's prohibited signs.
 
-- **`turn_on_for`, `turn_off_for`** (turn on with timer, turn off with timer): on, then off after `duration` (or
-  the reverse), timed on the device. `turn_off_for` is Shelly only: Zigbee and Matter `OnWithTimedOff` is on-then-off only.
-  `turn_on_for` accepts the `light.turn_on` fields; Shelly sends them in one RPC, the others send a `light.turn_on`
-  first. What cancels a timer differs by integration ([integrations.md](integrations.md)). Hue has neither: its bridge
-  timers ignore manual on/off, so they can't be cancelled the way users expect. These blockers, and Hue's hue moves
-  below, are the prohibited signs in the README feature table (`NO_PATH` in `scripts/gen_features.py`).
-- **`set_auto_off`, `set_auto_on`, `clear_auto_off`, `clear_auto_on`** (auto-off and auto-on): built for Shelly,
-  not yet for the others. A persistent setting stored on the device, applied after every turn-on (or turn-off) from
-  any source: button, app, schedule or Home Assistant. Core's Shelly integration doesn't expose it. A call that
-  changes nothing sends nothing and returns `unchanged`; one that does writes flash and makes core reload the Shelly
-  entry about a minute later ([integrations.md](integrations.md)).
+- **`turn_on_for`, `turn_off_for`**: on, then off after `duration` (or the reverse), timed on the device.
+  `turn_on_for` takes the `light.turn_on` fields.
+- **`set_auto_off`, `set_auto_on`, `clear_auto_off`, `clear_auto_on`**: a setting stored on the device, applied after
+  every turn-on (or turn-off) from any source. A call that changes nothing sends nothing.
 - **`raise_*`, `lower_*`, `stop`**: one action per attribute (brightness, saturation, hue) and direction, as HA names
-  its direction actions (`cover.open_cover`, `fan.increase_speed`). `sweep_time` is how long a full range takes, so
-  the speed is the same wherever the move starts; `limit` ends the move early. A call already at or past its limit
-  returns `unchanged`. `stop` halts every move in flight on the target. There is no hue limit, and no color
-  temperature move: every stop of a Hue bulb's color temperature fade jumps visibly. Hue has no hue moves: a hue
-  rotation isn't a straight line in xy, so it can't be one bridge command.
-- **`set_attributes`, `get_attributes`**: write brightness, color or color temperature to a light without turning
-  it on, and read what HA doesn't show (attributes while off, a running timer, Shelly's auto-off and auto-on).
-  Every timed or set-while-off adapter needs a matching `get_attributes` on its integration.
-- **`set_scene`**: built for Hue. Zigbee isn't built yet: a Zigbee scene recall turns lights on, so it would follow
-  Hue's pattern of writing each light's settings while it's off.
+  its direction actions (`cover.open_cover`). `sweep_time` is how long a full range takes, `limit` ends the move
+  early, and `stop` halts every move on the target. No color temperature move: every stop of a Hue fade jumps visibly.
+- **`set_attributes`, `get_attributes`**: write brightness, color or color temperature without turning on, and read
+  what HA doesn't show. Every timed or set-while-off adapter needs a matching `get_attributes` on its integration.
+- **`set_scene`**: a scene's settings, written to each light while it's off. A Zigbee scene recall turns lights on, so
+  Zigbee would follow the same pattern.
 
-Out of scope until users ask: turn-on defaults (`OnLevel`), Zigbee plugs and switches beyond `turn_on_for` and
-`get_attributes` (Experimental), Shelly Gen1, Hue bridge v1,
-other domains (cover, valve, lock), and other integrations (Z-Wave JS, Tuya, ESPHome, Tasmota, TP-Link Kasa). What each device class can expect, what a tester
-could prove, and what doesn't work: [device-compatibility.md](device-compatibility.md).
+Not built yet: turn-on defaults (`OnLevel`), Shelly Gen1, Hue bridge v1, other domains (cover, valve, lock) and other
+integrations (Z-Wave JS, Tuya, ESPHome, Tasmota, TP-Link Kasa). Each is weighed against the broad-appeal principle
+in [CONTRIBUTING.md](../CONTRIBUTING.md#development-principles). Per device class:
+[device-compatibility.md](device-compatibility.md).
 
 ## Architecture
 
@@ -128,27 +108,20 @@ Facts from HA core this rests on:
   it calls `light.turn_on`, never to 0, and never as `brightness_pct`, which core (`light/helper.py`) rounds to 0
   below 0.2%.
 
-### Layout
+### core/
 
 ```
-custom_components/deviceside/
-  __init__.py, config_flow.py, const.py, manifest.json, services.yaml, strings.json, icons.json, translations/
-  core/
-    models.py        Status, ActionKind, Request, Target, EntityResult, LightFields
-    scope.py         AdapterScope, IntegrationInfo, DurationLimits
-    action.py        Action base class
-    adapter.py       Adapter base class; gather() runs sends under the concurrency limits
-    registry.py      AdapterRegistry: discovery, guarded import, lookup, matrix
-    resolver.py      entity_id -> Target, or the reason it can't be served
-    groups.py        HA group expansion, any domain
-    dispatcher.py    parse, extract, expand, resolve, plan, run, raise rule, response
-    ha_watch.py      drops predictions a light or scene call from HA leaves stale
-    transition.py    a move's predicted value, per integration
-    runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, integration state
-  actions/           one module per action, each exporting ACTION
-  integrations/<integration>/   INTEGRATION, ADAPTERS, one module per adapter, shared helpers
-scripts/             release, tag and audit checks, household check
-tests/{core,actions,integrations,scripts}   unit tests, mirroring the code; tests/fakes holds a fake integration
+models.py        Status, ActionKind, Request, Target, EntityResult, LightFields
+scope.py         AdapterScope, IntegrationInfo, DurationLimits
+action.py        Action base class
+adapter.py       Adapter base class; gather() runs sends under the concurrency limits
+registry.py      AdapterRegistry: discovery, guarded import, lookup, matrix
+resolver.py      entity_id -> Target, or the reason it can't be served
+groups.py        HA group expansion, any domain
+dispatcher.py    parse, extract, expand, resolve, plan, run, raise rule, response
+ha_watch.py      drops predictions a light or scene call from HA leaves stale
+transition.py    a move's predicted value, per integration
+runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, integration state
 ```
 
 ### Core contract
@@ -170,6 +143,11 @@ tests/{core,actions,integrations,scripts}   unit tests, mirroring the code; test
   `ADAPTER_TIMEOUT_S`. An adapter exception rejects its targets. A named target that can never take the action
   raises before anything is sent; an indirect one is skipped and logged; a device failure raises once every target
   has run.
+- **Experimental items** are gated here, at runtime. After `supports()` passes a target and fields are dropped,
+  `Dispatcher.run_adapters` takes the call's level from its domain, the capability `Adapter.capability()` names
+  (Shelly: the RPC component) and the fields it still carries. An Experimental one is refused as `experimental_off`
+  while the option is off, raising its own message for a named target. A call left nothing to send is unchanged, not
+  refused.
 - **Results.** Commands answer optionally, per entity: `{status, integration, clamped_to?, detail?}`, where status is
   `sent`, `confirmed` (read back from the device) or `unchanged` (nothing to send). Queries answer only, in core's
   shape: each target's data under its entity_id, as `weather.get_forecasts` does.
@@ -194,28 +172,16 @@ adapter's targets at once, so native group commands stay possible.
 
 ## Release gates
 
-- **Coverage.** CI runs `scripts/check_release.py --coverage`, failing any adapter module under 95% line coverage.
-- **Release flag.** `experimental=True` keeps an adapter out of a stable release; `cut-release` runs
-  `check_release.py --release`, which fails on any. Setting and clearing it: [CLAUDE.md](../CLAUDE.md#release-flag).
-- **Record freshness.** `cut-release-candidate` and `cut-release` run `check_release.py --records`, failing any
-  released adapter that has a Verified call and no test record, a record whose Result is not `pass`, or code
-  changed, beyond its `experimental` flag, after the commit a record cites. Each record holds the latest run of its
-  call or option. An adapter's code is its module, its integration package's `__init__.py` and the package
-  modules it imports, transitively; `core/` and `actions/` are not, as they are unit-tested and shared by every
-  adapter. Experimental adapters are exempt.
-- **Experimental items** are gated at runtime, not at release. After `supports()` passes a target and fields are
-  dropped, `Dispatcher.run_adapters` takes the call's level from its domain, the capability `Adapter.capability()`
-  names (Shelly: the RPC component) and the fields it still carries; an Experimental one is refused as
-  `experimental_off` while the option is off, raising its own message for a named target. A call left nothing to
-  send is unchanged, not refused. An item that is not built, or not unit-tested, stays out of scope, so `supports()`
-  refuses it. Reported and Experimental items have no record, so `--records` doesn't age them.
-- **Extensions (planned).** An adapter its contributor maintains, on hardware the rig lacks: who fixes the whole
-  adapter, where Support says who fixes one item. The cards will mark them 🧩, reserved until one exists. It needs a route to stable other than the rig, for example
-  the coverage bar plus Reported evidence from someone other than its author. That route is left open.
-- **Tags** come only from the `cut-release-candidate` and `cut-release` workflows (a tag ruleset refuses others).
-  `scripts/check_tag.py` refuses a tag that isn't `vX.Y.Z` or `vX.Y.ZrcN`, isn't above the latest release, or
-  doesn't match its branch: an RC comes from `main` or `release/vX.Y.Z`, and a release goes on its latest RC's commit,
-  so what ships is what soaked. An RC needs its audit record (`scripts/check_audit.py`).
-- **Testing.** Unit tests mock each integration at its boundary (`mqtt.publish`, the ZHA service, the Shelly RPC,
-  the Matter client, aiohue) against a real `hass`. The rig runs step files against a live HA and writes the test
-  records.
+Each gate's rules are in the header of the script or workflow named.
+
+- **Coverage:** `scripts/check_release.py --coverage`, in CI.
+- **Release flag:** `check_release.py --release`, in `cut-release`.
+- **Record freshness:** `check_release.py --records`, in both cut workflows.
+- **Tags:** `scripts/check_tag.py`, in `.github/workflows/cut-release-candidate.yml` and `cut-release.yml`, the only
+  way a tag is made.
+- **RC audit:** `scripts/check_audit.py`, in `cut-release-candidate`.
+- **Testing:** unit tests mock each integration at its boundary (`mqtt.publish`, the ZHA service, the Shelly RPC, the
+  Matter client, aiohue) against a real `hass`. The rig runs against a live HA and writes the test records.
+
+**Extensions (planned):** an adapter its contributor maintains, on hardware the rig lacks, marked 🧩 on the cards.
+Its route to stable, other than the rig, is left open.
