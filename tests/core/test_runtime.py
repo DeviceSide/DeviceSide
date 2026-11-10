@@ -153,3 +153,14 @@ async def test_a_job_runs_outside_the_deadline_of_the_run_that_scheduled_it(hass
     await advance(hass, start, 1.5)
 
     assert seen == [None]
+
+
+async def test_unloading_the_entry_leaves_a_must_run_job_to_run(hass, setup_production):
+    runtime, ran, start = get_runtime(hass), [], wall_clock_now()
+    runtime.schedule(hass, "restore", [(1, _recorder(ran, "restore"))], must_run=True)
+
+    assert await hass.config_entries.async_unload(setup_production.entry_id)
+    await advance(hass, start, 2)
+
+    assert ran == ["restore"]
+    assert runtime.pending == {}

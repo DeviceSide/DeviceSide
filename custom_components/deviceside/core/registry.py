@@ -47,6 +47,13 @@ class AdapterRegistry:
                     key=key, title=key, ha_domain=key, available=False, unavailable_reason=str(err)
                 )
                 return
+            except Exception as err:  # noqa: BLE001 - one integration's broken import must not take the rest down
+                key = name.rpartition(".")[2]
+                _LOGGER.warning("Integration %s unavailable: %r", key, err, exc_info=True)
+                self.integrations[key] = IntegrationInfo(
+                    key=key, title=key, ha_domain=key, available=False, unavailable_reason=repr(err)
+                )
+                return
         info: IntegrationInfo = module.INTEGRATION
         self.integrations[info.key] = info
         for cls in module.ADAPTERS:

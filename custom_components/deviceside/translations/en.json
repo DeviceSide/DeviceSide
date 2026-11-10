@@ -65,9 +65,6 @@
     "not_loaded": {
       "message": "DeviceSide is not loaded. Check the integration is set up and enabled."
     },
-    "no_targets": {
-      "message": "No entities were targeted. Choose at least one."
-    },
     "invalid_duration": {
       "message": "Duration must be greater than zero."
     },
