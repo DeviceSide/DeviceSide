@@ -34,6 +34,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 
 from .addressing import bridge_topic
+from .restore_journal import replay
 from ...core.runtime import DATA
 
 _LOGGER = logging.getLogger(__name__)
@@ -167,3 +168,4 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry) -> None:
         cache.stop()
         return
     state[_KEY] = cache
+    await replay(hass)

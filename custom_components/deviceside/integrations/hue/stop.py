@@ -1,21 +1,25 @@
 """Hue stop: halt the bridge's fades and remember where they halted, which the bridge reports late or never."""
 
 import asyncio
+import logging
+from functools import partial
 from typing import TYPE_CHECKING, ClassVar
 
 from homeassistant.core import HomeAssistant
 
 from .bridge import bridge_api, controller, put, resource_id, stops, xy_halt
-from .fade import in_soft_off, light_brightness, light_xy, lit, reported_brightness, room_lights
+from .fade import in_soft_off, light_brightness, light_xy, lit, room_lights
 from .report_filter import report_filter
 from .transition_cache import XY, transition_cache
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Request, Status, Target
 from ...core.scope import AdapterScope
-from ...core.transition import BRIGHTNESS, SATURATION, TransitionCache
+from ...core.transition import BRIGHTNESS, SATURATION, TransitionCache, reported_brightness
+
+_LOGGER = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from collections.abc import Awaitable
+    from collections.abc import Awaitable, Callable
 
     from aiohue.v2 import HueBridgeV2
     from aiohue.v2.controllers.groups import GroupedLightController
@@ -71,22 +75,56 @@ class HueStop(Adapter[Request]):
             fading = [light for light in lights if light.color is not None and cache.running(light.id, SATURATION)]
             saturation = {light.id: cache.value(light.id, SATURATION, 0.0) for light in fading}
             xys = {light.id: light_xy(cache, light) for light in fading}
-            write = stop_write(hass, cache, api, writer, rid, brightness, xys, target.reported_id)
-            keys = [(light_id, BRIGHTNESS) for light_id in brightness] + [(light_id, SATURATION) for light_id in xys]
-            async with cache.recording(keys):
-                for light_id, value in brightness.items():
-                    cache.stopped(light_id, BRIGHTNESS, value)
-                for light_id, value in saturation.items():
-                    cache.path(light_id, cache.stopped(light_id, SATURATION, value), xys[light_id], xys[light_id])
-                await write
-            reports.halted(BRIGHTNESS, brightness)
-            reports.halted(SATURATION, saturation)
+            writes = stop_writes(hass, cache, api, writer, rid, brightness, xys, target.reported_id)
+
+            failures = await asyncio.gather(
+                *(halt(cache, light_ids, write, brightness, saturation, xys) for light_ids, write in writes)
+            )
+            if all(failures):
+                raise failures[0]
+            halted = [
+                light_id
+                for (light_ids, _), failure in zip(writes, failures, strict=True)
+                if failure is None
+                for light_id in light_ids
+            ]
+            if halted != list(brightness):
+                _LOGGER.warning("hue stop on %s failed for lights %s", target.entity_id, set(brightness) - set(halted))
+            reports.halted(BRIGHTNESS, {light_id: brightness[light_id] for light_id in halted})
+            reports.halted(
+                SATURATION, {light_id: value for light_id, value in saturation.items() if light_id in halted}
+            )
             return self.result(target, Status.SENT)
 
         return await self.gather(hass, targets, send)
 
 
-def stop_write(
+async def halt(
+    cache: TransitionCache,
+    light_ids: list[str],
+    write: Callable[[], Awaitable],
+    brightness: dict[str, float],
+    saturation: dict[str, float],
+    xys: dict[str, XY],
+) -> Exception | None:
+    """Record where these lights halt and write it. A refusal puts back only these lights' predictions, and is
+    returned, as another light's halt still stands."""
+    keys = [(light_id, BRIGHTNESS) for light_id in light_ids]
+    keys += [(light_id, SATURATION) for light_id in light_ids if light_id in xys]
+    try:
+        async with cache.recording(keys):
+            for light_id in light_ids:
+                cache.stopped(light_id, BRIGHTNESS, brightness[light_id])
+                if light_id in saturation:
+                    path = cache.stopped(light_id, SATURATION, saturation[light_id])
+                    cache.path(light_id, path, xys[light_id], xys[light_id])
+            await write()
+    except Exception as err:  # noqa: BLE001
+        return err
+    return None
+
+
+def stop_writes(
     hass: HomeAssistant,
     cache: TransitionCache,
     api: HueBridgeV2,
@@ -95,24 +133,26 @@ def stop_write(
     brightness: dict[str, float],
     xys: dict[str, XY],
     entity_id: str | None = None,
-) -> Awaitable:
-    """One write to the light or room, or one per light while any is in our soft off, which the bridge refuses a
-    dimming stop for (on: true at its predicted brightness ends it there instead), or in a saturation fade of ours,
-    halted at its own predicted xy. A write to rid itself is traced as entity_id, the caller's target."""
+) -> list[tuple[list[str], Callable[[], Awaitable]]]:
+    """The writes that halt the lights, each with the lights it covers: one to the light or room, or one per light
+    while any is in our soft off, which the bridge refuses a dimming stop for (on: true at its predicted brightness
+    ends it there instead), or in a saturation fade of ours, halted at its own predicted xy. A write to rid itself is
+    traced as entity_id, the caller's target."""
     fading_off = {light_id for light_id in brightness if in_soft_off(cache, light_id)}
     if not fading_off and not xys:
-        return put(hass, api, writer, rid, stops([BRIGHTNESS]), entity_id)
+        return [(list(brightness), lambda: put(hass, api, writer, rid, stops([BRIGHTNESS]), entity_id))]
 
     def body(light_id: str) -> dict:
         halt = cut(brightness[light_id]) if light_id in fading_off else stops([BRIGHTNESS])
         return halt | (xy_halt(xys[light_id]) if light_id in xys else {})
 
-    return asyncio.gather(
-        *(
-            put(hass, api, api.lights, light_id, body(light_id), entity_id if light_id == rid else None)
-            for light_id in brightness
+    return [
+        (
+            [light_id],
+            partial(put, hass, api, api.lights, light_id, body(light_id), entity_id if light_id == rid else None),
         )
-    )
+        for light_id in brightness
+    ]
 
 
 def cut(brightness: float) -> dict:

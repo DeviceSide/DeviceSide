@@ -38,7 +38,9 @@ Any other key (virtual booleans, scripts) has no timer. Gen1 (CoIoT) has no `tog
   resolution). Light fields ride in the same call, translated as the core Shelly light does: brightness to percent,
   `transition` to `transition_duration`, and on `RGBCCT` the mode switched to `cct` or `rgb` to match. `CCT`, `RGB`
   and `RGBW` drop color and color temperature until their calls are ported and recorded.
-- **Read-back.** `<Component>.GetStatus`; `confirmed` when the output matches and `timer_duration` is present.
+- **Read-back.** `<Component>.GetStatus`; `confirmed` when the output matches and `timer_duration` equals the
+  `toggle_after` sent, to 0.01 s. `timer_duration` is the timer's full duration, not the time left, so another
+  timer's reads back different.
 - **`get_attributes`.** One `GetStatus`. Time left is `timer_started_at` + `timer_duration` against Home Assistant's
   clock (both SNTP-synced), clamped to 0 to the duration to bound skew. `RGBCCT` adds brightness and the active
   mode's color, the others derived from it. A `<Component>.GetConfig` runs alongside for `auto_off` and `auto_on`;
@@ -214,9 +216,12 @@ Sengled) can read `not_on` before it takes the group's `light.turn_on` (Tested b
 Commands go one after another: `brightness` as a percent of level 254 (`0` sends level 1), color temperature as
 mireds clamped to the light's range, color as `MoveToColor`, or `MoveToHueAndSaturation` on a light without xy. A
 color light without color temperature takes one as a color, as core does. `min_brightness`/`max_brightness` read
-CurrentLevel live. Then `homeassistant.update_entity`, since ZHA never applies a color temperature report; ZHA skips
+CurrentLevel live. Then, once every light's commands are sent and outside the concurrency slots, each light at least
+one command reached gets `homeassistant.update_entity`, since ZHA never applies a color temperature report; ZHA skips
 it while the light is transitioning (1.5 s after a plain off), so DeviceSide waits up to 3 s, and after a longer
-off fade refreshes again when it ends. Models in `zcl.DROPS_WHILE_OFF` are refused.
+off fade refreshes again when it ends. Models in `zcl.DROPS_WHILE_OFF` are refused. The wait reads zha's private
+`entity_data.entity` and its `is_transitioning`; a zha release without them is logged once, and the refresh then
+goes ahead without waiting.
 
 ### `get_attributes`
 
@@ -233,9 +238,12 @@ light reads on, as a TS011F counts OnTime down while off.
 - `lower_brightness`: `MoveToLevel` to a limit; to 0 %, `MoveToLevelWithOnOff`, which leaves the bulb at level 1.
   1 s after the fade should end, OnOff is read and an off light gets `MoveToLevel` back to its starting level with
   `ExecuteIfOff`. A stop or a new brightness call cancels that restore.
-- Saturation: `MoveToColor` to the xy of the current hue at the end saturation.
+- Saturation: `MoveToColor` to the xy of each light's current hue at the end saturation. Group members at different
+  hues get one command each, so none takes another's hue; members at one hue share a groupcast. Hue instead fades
+  a room at the room's hue, as its `grouped_light` write carries one color.
 - Hue: `EnhancedMoveHue` at `65535 / sweep_time` steps per second; a light without enhanced hue in
-  ColorCapabilities (zigpy's cache, else one live read) gets `fields_dropped`.
+  ColorCapabilities (zigpy's cache, else one live read) gets `fields_dropped`, and a read that fails rejects the
+  move with `error`.
 - `stop`: `StopMoveStep` where a color move runs, then Level `Stop`.
 
 A transition longer than ZCL's 6553.4 s runs at that. The bulb reports brightness during a fade, never color, so
@@ -250,6 +258,10 @@ call the remembered value says is `at_limit` or `off` is replanned from Home Ass
 A group gets one command when every light in it moves; otherwise, such as a soft off with a member off, each moving
 member gets its own, since a group soft off would drop an off member's stored level. The bottom level and the
 restore are always per member.
+
+A failed command rejects only the lights it was for, each keeping the remembered position and soft off restore it
+had; the rest fade on. A groupcast that fails rejects every member it was for. A member whose bottom level failed
+gets no fade, and the rest get one command each, as a groupcast would reach it.
 
 ### Tested behavior
 
@@ -287,8 +299,9 @@ FeatureMap bit 0 from the node data (`node_data.attributes["{endpoint}/6/65532"]
 that `MatterEndpoint.get_attribute_value` would need.
 
 - **Turn on with timer.** `OnOff.Commands.OnWithTimedOff(onOffControl=0, onTime=<tenths>, offWaitTime=0)`, then
-  reads of `OnOff.OnTime` and `OnOff.OnOff`, one path per `read_attribute`: `confirmed` when OnTime is non-zero and
-  OnOff is on. OnTime alone is not proof: a device can hold a stale OnTime while off.
+  reads of `OnOff.OnTime` and `OnOff.OnOff`, one path per `read_attribute`: `confirmed` when OnOff is on and OnTime
+  is at most the time sent and no more than 3 s under it, as on ZHA. OnTime alone is not proof: a device can hold a
+  stale OnTime while off.
 - **`get_attributes`.** Live reads of `OnTime` and `OnOff`, as the plug tested never reports OnTime on its
   subscription, so the node cache reads 0 mid-timer (Tested behavior). A timer is reported only while OnOff is on.
   `turns` is always `off`.

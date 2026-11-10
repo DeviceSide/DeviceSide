@@ -7,7 +7,7 @@ from typing import ClassVar
 
 from homeassistant.core import HomeAssistant
 
-from .addressing import state_topic, topic
+from .addressing import not_addressable
 from .bridge import publish_set
 from .members import member_lights
 from .read import Reader, reader
@@ -146,8 +146,8 @@ class Z2MSetAttributes(Adapter[SetAttributesRequest]):
     def supports(self, hass: HomeAssistant, request: SetAttributesRequest, target: Target) -> str | None:
         if (reason := super().supports(hass, request, target)) is not None:
             return reason
-        if topic(target, "set") is None or (not target.is_group and state_topic(target) is None):
-            return Reason.NOT_ADDRESSABLE
+        if (reason := not_addressable(target, reads_state=True)) is not None:
+            return reason
         return None
 
     async def execute(

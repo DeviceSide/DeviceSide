@@ -9,7 +9,7 @@ from typing import ClassVar
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 
-from .addressing import state_topic, topic
+from .addressing import not_addressable
 from .members import member_lights
 from .read import Reader, reader
 from ...core.adapter import Adapter
@@ -39,8 +39,8 @@ class Z2MGetAttributes(Adapter[Request]):
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:
         if (reason := super().supports(hass, request, target)) is not None:
             return reason
-        if topic(target, "set") is None or (not target.is_group and state_topic(target) is None):
-            return Reason.NOT_ADDRESSABLE
+        if (reason := not_addressable(target, reads_state=True)) is not None:
+            return reason
         return None
 
     async def execute(self, hass: HomeAssistant, request: Request, targets: list[Target]) -> list[EntityResult]:
