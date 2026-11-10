@@ -247,8 +247,9 @@ options to see the bridge's own reports.
 
 ### Smooth color changes
 
-There are no hue moves ([why](#what-cant-be-done-and-why)). Saturation keeps each light's current hue, so a white deepens toward its own tint (a warm white toward amber). 100 % saturation
-is the edge of Home Assistant's color space, a little short of the deepest colors the Hue app can reach.
+There are no hue moves ([why](#what-cant-be-done-and-why)). Saturation keeps each light's current hue, so a white
+deepens toward its own tint (a warm white toward amber). 100 % saturation is the edge of Home Assistant's color
+space, a little short of the deepest colors the Hue app can reach.
 
 ### Flash-free turn-on
 
