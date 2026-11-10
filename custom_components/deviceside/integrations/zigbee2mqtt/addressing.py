@@ -15,17 +15,21 @@ _Z2M_BASE_TOPIC = "zigbee2mqtt"
 _ENCODED_BASE_TOPIC = "".join(str(ord(c)) for c in _Z2M_BASE_TOPIC)
 # A group's address is <encoded base topic>_<group ID>; a device's is its IEEE, which starts with 0x.
 _GROUP_ADDRESS = re.compile(r"^(\d+)_(\d+)$")
+_IEEE_ADDRESS = re.compile(r"^0x[0-9a-fA-F]+$")
 
 
 def z2m_address(device: dr.DeviceEntry) -> str | None:
     """The address after "zigbee2mqtt_" in the device identifier, or None.
 
     Z2M registers devices with identifier ("mqtt", "zigbee2mqtt_<ieee>") and groups with
-    ("mqtt", "zigbee2mqtt_<encoded base topic>_<group ID>").
+    ("mqtt", "zigbee2mqtt_<encoded base topic>_<group ID>"). Anything else with the prefix (the bridge's own
+    device, say) is not addressable and gives None.
     """
     for itype, ident in device.identifiers:
         if itype == "mqtt" and ident.startswith(_Z2M_PREFIX):
-            return ident[len(_Z2M_PREFIX) :]
+            addr = ident[len(_Z2M_PREFIX) :]
+            if _IEEE_ADDRESS.match(addr) or _GROUP_ADDRESS.match(addr):
+                return addr
     return None
 
 
@@ -55,6 +59,14 @@ def topic(target: Target, suffix: str) -> str | None:
             return None
         return f"{_Z2M_BASE_TOPIC}/{group_id}/{suffix}"
     return f"{_Z2M_BASE_TOPIC}/{addr}/{suffix}"
+
+
+def not_addressable(target: Target, *, reads_state: bool = False) -> str | None:
+    """The unsupported reason when no set topic reaches the target, else None. With reads_state, a device also needs
+    a state topic, which an action reading its state back relies on."""
+    if topic(target, "set") is None or (reads_state and not target.is_group and state_topic(target) is None):
+        return "not_addressable"
+    return None
 
 
 def state_topic(target: Target) -> str | None:
