@@ -35,24 +35,19 @@ class AdapterRegistry:
     def _add_integration(self, module: str | ModuleType) -> None:
         if isinstance(module, str):
             name = module
+            key = name.rpartition(".")[2]
             try:
                 module = importlib.import_module(module)
             except ImportError as err:
                 # The integration's library is absent, which is routine: debug. A missing HA or DeviceSide module is
                 # our code out of step with HA (a rename), which would hide every adapter of it: warn.
-                key = name.rpartition(".")[2]
                 ours = (err.name or "").startswith(("homeassistant", "custom_components"))
                 (_LOGGER.warning if ours else _LOGGER.debug)("Integration %s unavailable: %s", key, err)
-                self.integrations[key] = IntegrationInfo(
-                    key=key, title=key, ha_domain=key, available=False, unavailable_reason=str(err)
-                )
+                self._add_unavailable(key, str(err))
                 return
             except Exception as err:  # noqa: BLE001 - one integration's broken import must not take the rest down
-                key = name.rpartition(".")[2]
                 _LOGGER.warning("Integration %s unavailable: %r", key, err, exc_info=True)
-                self.integrations[key] = IntegrationInfo(
-                    key=key, title=key, ha_domain=key, available=False, unavailable_reason=repr(err)
-                )
+                self._add_unavailable(key, repr(err))
                 return
         info: IntegrationInfo = module.INTEGRATION
         self.integrations[info.key] = info
@@ -62,6 +57,11 @@ class AdapterRegistry:
             if cls.action not in self.actions:
                 raise ValueError(f"{cls.__name__} serves unknown action {cls.action}")
             self._adapters[(cls.action, info.key)] = cls()
+
+    def _add_unavailable(self, key: str, reason: str) -> None:
+        self.integrations[key] = IntegrationInfo(
+            key=key, title=key, ha_domain=key, available=False, unavailable_reason=reason
+        )
 
     def adapter(self, action: str, integration: str) -> Adapter | None:
         return self._adapters.get((action, integration))
