@@ -3,9 +3,10 @@
 | | |
 |---|---|
 | Result | pass |
-| Date | 2026-10-27 |
-| Source | rig run (`scripts/rig.py`), commit `c149390` |
-| Home Assistant | 2026.10.2 |
+| Date | 2026-11-10 |
+| Source | rig run (`scripts/rig.py`), commit `c2916f1` |
+| Profile | lab_matter |
+| Home Assistant | 2026.10.4 |
 | Device | WiZ Smart Plug (`8979`), firmware `v1.4` |
 
 ## Tests
@@ -13,7 +14,5 @@
 | Test | Target | Result |
 |---|---|---|
 | `on_then_off[switch_plug]` | `switch` (switch_plug) | pass |
-| `on_then_off[light_onoff]` | light_onoff: none in inventory | skipped |
-| `on_then_off[light_wrapped]` | light_wrapped: none in inventory | skipped |
-| `drops_brightness_on_a_wrapper[light_wrapped]` | light_wrapped: none in inventory | skipped |
-| `bulb_on_then_off[light_dimmable]` | light_dimmable: none in inventory | skipped |
+| `drops_brightness_on_a_wrapper[light_wrapped]` | light_wrapped: none in the profile | skipped |
+| `bulb_on_then_off[light_dimmable]` | light_dimmable: none in the profile | skipped |
