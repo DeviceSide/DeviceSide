@@ -10,7 +10,7 @@ from homeassistant.exceptions import Unauthorized
 
 from . import zcl
 from .addressing import unsupported_reason
-from .fade import end_key, has_color, hue_moves, refresh, send, soft_off_restores, transition_cache, units
+from .fade import end_key, has_color, hue_moves, refresh, send_each, soft_off_restores, transition_cache, units
 from ...core.adapter import Adapter, DeadlinePassed
 from ...core.models import EntityResult, Request, Status, Target
 from ...core.runtime import get_runtime
@@ -74,30 +74,59 @@ class ZHAStop(Adapter[Request]):
             for light in halting
             if has_color(light) and (light.entity_id in halts[SATURATION] or light.entity_id in cycling)
         ]
+        failed: dict[str, Exception] = {}
         try:
             async with self.slot(hass):
                 async with cache.recording(
                     (light_id, attribute) for attribute, values in halts.items() for light_id in values
                 ):
-                    for attribute, values in halts.items():
-                        for light_id, value in values.items():
-                            cache.stopped(light_id, attribute, value)
+                    before = {
+                        (light_id, attribute): cache.forget(light_id, attribute)
+                        for attribute, values in halts.items()
+                        for light_id in values
+                    }
+                    recorded = {
+                        (light_id, attribute): cache.stopped(light_id, attribute, value)
+                        for attribute, values in halts.items()
+                        for light_id, value in values.items()
+                    }
                     if color:
-                        await send(hass, gid, color, _STOP_MOVE_STEP, request.context)
-                    await send(hass, gid, halting, _LEVEL_STOP, request.context)
-        except Unauthorized:
-            return [*off, *(self.result(light, Status.REJECTED, detail="admin_required") for light in halting)]
+                        failed |= await send_each(
+                            hass,
+                            gid,
+                            color,
+                            dict.fromkeys((light.entity_id for light in color), _STOP_MOVE_STEP),
+                            request.context,
+                        )
+                    failed |= await send_each(
+                        hass, gid, halting, dict.fromkeys(halting_ids, _LEVEL_STOP), request.context
+                    )
+                    # A light that didn't halt keeps what it had, unless a move or stop since owns the entry.
+                    for (light_id, attribute), transition in recorded.items():
+                        if light_id in failed and cache.live(light_id, attribute) is transition:
+                            cache.forget(light_id, attribute)
+                            cache.restore(before[(light_id, attribute)])
         except DeadlinePassed:
             _LOGGER.warning("stop on zha timed out for %s", ", ".join(sorted(halting_ids)))
             return [*off, *(self.result(light, Status.REJECTED, detail="timeout") for light in halting)]
-        except Exception as err:  # noqa: BLE001 - as in gather(): one group's failure must not abort the room
-            _LOGGER.warning("stop on zha failed for %s: %r", ", ".join(sorted(halting_ids)), err)
-            return [*off, *(self.result(light, Status.REJECTED, detail="error") for light in halting)]
-        cycling.difference_update(halting_ids)
-        soft_off_restores(hass).difference_update(halting_ids)
+        if errors := {light_id: err for light_id, err in failed.items() if not isinstance(err, Unauthorized)}:
+            _LOGGER.warning(
+                "stop on zha failed for %s", ", ".join(f"{light_id}: {err!r}" for light_id, err in errors.items())
+            )
+        halted = [light for light in halting if light.entity_id not in failed]
+        halted_ids = {light.entity_id for light in halted}
+        cycling.difference_update(halted_ids)
+        soft_off_restores(hass).difference_update(halted_ids)
         runtime = get_runtime(hass)
-        for light in halting:
+        for light in halted:
             for attribute in (BRIGHTNESS, SATURATION):
                 runtime.schedule(hass, end_key(light, attribute), [])  # cancels the fades' end refreshes and restore
-        await asyncio.gather(*(refresh(hass, light, request.context) for light in halting))
-        return [*off, *(self.result(light, Status.SENT) for light in halting)]
+        await asyncio.gather(*(refresh(hass, light, request.context) for light in halted))
+        return [*off, *(self._result(light, failed) for light in halting)]
+
+    def _result(self, light: Target, failed: dict[str, Exception]) -> EntityResult:
+        if (err := failed.get(light.entity_id)) is None:
+            return self.result(light, Status.SENT)
+        return self.result(
+            light, Status.REJECTED, detail="admin_required" if isinstance(err, Unauthorized) else "error"
+        )
