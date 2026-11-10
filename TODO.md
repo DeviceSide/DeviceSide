@@ -19,16 +19,17 @@ flag-only, docs, `scripts/` and rig step-file changes land. The items below run 
 
 - [x] **RC audit**: `/rc-audit v0.1.0rc1` over `967bec0..HEAD` (rc1 was never tagged), fixes landed (#316). A second
   pass before the RC covers what lands after it.
-- [ ] **Docs sign-off** by Jason, before the freeze, as it may change the design: README, `CONTRIBUTING.md`,
+- [x] **Docs sign-off** by Jason, before the freeze, as it may change the design: README, `CONTRIBUTING.md`,
   `docs/device-compatibility.md` and its "Help us test", `docs/integrations.md`, `docs/design.md`,
   `docs/action-behavior.md`; the GitHub issue flows end to end (`.github/ISSUE_TEMPLATE/`, and the options flow's
-  "Report a device" step as a user meets it in HA); the forum draft; hand-written v0.1.0 release notes. Each design
-  change it raises lands before the freeze.
+  "Report a device" step as a user meets it in HA); the forum draft (#319–#322). Each design change it raised
+  landed before the freeze.
 - [x] **Z2M `turn_on_for` late off**: `bulb_transition_then_off[light_dimmable]` was a step-file timing bug (the off
   window closed before DeviceSide's end read), not the bulb or DeviceSide; fixed in ha-rig #47.
-- [ ] **Freeze**, then the rig runs below. Rig runs come from ha-rig `main`.
-- [ ] **Stale records rerun**: the Shelly profile (with a watched `set_attributes` `sets_color_while_off`), Matter
-  `turn_on_for` and `get_attributes`, and ZHA and Z2M `turn_on_for` and `get_attributes`.
+- [x] **Freeze** at `075895f`, then the rig runs below. Rig runs come from ha-rig `main`.
+- [ ] **Stale records rerun**: every record `check_release.py --records` names (36 at the freeze: the wire trace,
+  #329, touched each transport). Every profile: Shelly (with a watched `set_attributes` `sets_color_while_off`),
+  Matter, Hue, ZHA and Z2M, and the house run for the Z2M group cases deferred from #330.
 - [ ] **Watched lab session**, `--profile lab`, the A60 visiting each network: Hue `saturation_down_stop`,
   `halts_brightness_and_saturation`, `sets_color_while_off`; ZHA `hue_cycle_stop`, `saturation_down_stop`,
   `sets_color_while_off`; Z2M `halts_a_lower_to_off`, `hue_cycle_stop`, `saturation_down_stop`,
@@ -38,6 +39,8 @@ flag-only, docs, `scripts/` and rig step-file changes land. The items below run 
   committed code.
 - [ ] **#314**: link each rig-verified model on the device cards to its records. Any time before the RC: it touches
   `scripts/gen_compat.py` only.
+- [ ] **Release notes**: hand-written v0.1.0 notes in `notes/`, signed off by Jason, after the RC installs cleanly
+  and before `cut-release`, so they describe what the RC ships.
 - [ ] **12** v0.1.0: no adapter left `experimental` (`scripts/check_release.py --release`). The release
   steps are in `CLAUDE.md` (Releasing); the release body gets the signed-off notes.
 - [x] **Raise/lower rig run**: the six actions and `stop` on Hue and Z2M, rerun in the lab reruns (#297, #299).
