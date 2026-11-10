@@ -1,3 +1,5 @@
+from functools import partial
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import Event, HomeAssistant, callback
@@ -47,7 +49,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     # Per entry, not in async_setup: unloading detaches every listener, and a reload runs only this again.
     runtime.listen("ha_watch", hass, lambda: ha_watch.attach(hass, runtime.registry.call_resolvers()))
     # Z2M's online pays any hue_native_control restore left owed, so a Z2M offline at startup is paid when it's back.
-    replay = lambda: restore_journal.request_replay(hass)  # noqa: E731
+    replay = partial(restore_journal.request_replay, hass)
     entry.async_create_background_task(hass, bridge_cache.async_setup(hass, entry, replay), "z2m bridge cache")
     enabled = entry.options.get(CONF_Z2M_COLOR_MODES, Z2M_COLOR_MODES_DEFAULT)
     entry.async_create_background_task(hass, color_modes.async_setup(hass, entry, enabled), "z2m color modes")

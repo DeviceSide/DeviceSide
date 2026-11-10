@@ -23,7 +23,7 @@ to a group reads the group's options, never its members', so a group with a Hue 
 
 import asyncio
 import logging
-from collections.abc import AsyncIterator, Callable, Coroutine
+from collections.abc import AsyncIterator, Awaitable, Callable, Coroutine
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -261,7 +261,7 @@ async def _set(
     address: Address,
     value: bool,
     restoring: bool = False,
-    ahead: Callable[[str, dict], Coroutine[Any, Any, None]] | None = None,
+    ahead: Callable[[str, dict], Awaitable[None]] | None = None,
 ) -> bool:
     """Set the option to value where it differs, or regardless for a restore; whether the option may now be value.
     Awaits ahead before the request goes out, only when one does.

@@ -87,6 +87,8 @@ async def journal(hass: HomeAssistant) -> Journal:
     first callers share one Journal. A load that failed or was cancelled is retried by the next caller."""
     state = get_runtime(hass).integration_state
     loading: asyncio.Task[Journal] | None = state.get(_KEY)
+    if loading is not None and loading.done() and not loading.cancelled() and loading.exception() is None:
+        return loading.result()  # loaded: no await on the publish path
     if loading is None or (loading.done() and (loading.cancelled() or loading.exception() is not None)):
         loading = state[_KEY] = hass.async_create_task(_load(hass), "zigbee2mqtt restore journal load")
     # Shielded, so one caller's cancel doesn't cancel the load the others await.
