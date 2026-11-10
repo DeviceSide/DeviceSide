@@ -43,8 +43,7 @@ async def test_switch_one_set_then_read_back(hass, setup_production):
 )
 async def test_documented_components_take_the_same_set(hass, setup_production, key, data, expected):
     entry, call_rpc = shelly_device(hass)
-    kelvin_range = {"min_color_temp_kelvin": 2700, "max_color_temp_kelvin": 6500}
-    add_shelly_entity(hass, entry, "light.lamp", key, attributes=kelvin_range)
+    add_shelly_entity(hass, entry, "light.lamp", key)
 
     response = await call(hass, "turn_on_for", {"entity_id": "light.lamp", "duration": 5, **data})
 
@@ -117,7 +116,7 @@ async def test_switch_as_x_light_sends_the_switch_call(hass, setup_production):
     ],
 )
 async def test_component_fields_not_in_component_are_dropped(hass, setup_production, entity_id, key, data):
-    # A field the component can't take is dropped by the adapter; the timer still runs.
+    # A field the component can't take, or one not yet ported or recorded for it, is dropped; the timer still runs.
     entry, call_rpc = shelly_device(hass)
     add_shelly_entity(hass, entry, entity_id, key)
 

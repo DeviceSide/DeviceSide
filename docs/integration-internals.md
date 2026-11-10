@@ -28,9 +28,11 @@ code. Code comments cite the Tested behavior sections.
 
 Through the core integration's RPC connection. The unique ID is `<mac>-<key>`; the key gives the RPC component:
 `switch:N` → `Switch` (a `switch`, or a `light` for a relay set to "light"), `light:N`, `cct:N`, `rgb:N`, `rgbw:N`
-and `rgbcct:N` → `Light`, `CCT`, `RGB`, `RGBW`, `RGBCCT`. `Switch` and `RGBCCT` are Verified, the rest Documented
-(`integrations/shelly/addressing.py`). Any other key
-(virtual booleans, scripts) has no timer. Gen1 (CoIoT) has no `toggle_after`.
+and `rgbcct:N` → `Light`, `CCT`, `RGB`, `RGBW`, `RGBCCT`. Each adapter's level per component is in
+`integrations/shelly/addressing.py`: for timers and `get_attributes`, `Switch` and `RGBCCT` are Verified and the rest
+Documented (`CAPABILITIES`); for auto-off and auto-on, only `Switch` is Verified (`AUTO_CAPABILITIES`); for dimming,
+only `RGBCCT` is Verified and the rest Experimental (`DIMMING_CAPABILITIES`); `set_attributes` takes `RGBCCT` alone.
+Any other key (virtual booleans, scripts) has no timer. Gen1 (CoIoT) has no `toggle_after`.
 
 - **Timers.** One `<Component>.Set` with `on` and `toggle_after` (device range: over 0 s to 604800 s, 0.01 s
   resolution). Light fields ride in the same call, translated as the core Shelly light does: brightness to percent,
@@ -47,7 +49,8 @@ and `rgbcct:N` → `Light`, `CCT`, `RGB`, `RGBW`, `RGBCCT`. `Switch` and `RGBCCT
   compared until a probe has shown the device returns it unrounded. A failed read-back reports `sent`.
   `min_brightness`/`max_brightness` first read `GetStatus` `brightness` (kept while off), clamp it to whole percent,
   and send nothing when it is already within them; an explicit `brightness` wins.
-- **`raise_brightness`, `lower_brightness`, `stop`.** `RGBCCT` only (`DIMMING_CAPABILITIES`). A move reads
+- **`raise_brightness`, `lower_brightness`, `stop`.** `RGBCCT`; `Light`, `CCT`, `RGB` and `RGBW` take the same
+  calls as Experimental (`DIMMING_CAPABILITIES`). A move reads
   `GetStatus` first: the device reports its level exactly mid-fade (rig, 8 Nov), so no transition cache is kept and
   no call resolver is needed. Then one `<Component>.Set {on: true, brightness, transition_duration}` for the distance
   left at the `sweep_time`'s speed, at least 0.5 s (`TRANSITION_LIMITS`, the device's 0.5 to 10800 s); to 0 it is
