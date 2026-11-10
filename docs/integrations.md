@@ -222,7 +222,7 @@ refused (`bridge_v1`). Rooms and zones are targets in their own right.
 Assistant, the Hue app or a dimmer switch, and the Hue app doesn't show them. To time Hue bulbs, pair them with ZHA,
 Zigbee2MQTT or Matter.
 
-**No auto-off or auto-on.** Neither a light nor a room stores one in the CLIP v2 API, and v2 has no rule engine to
+**No auto-off or auto-on.** Neither a light nor a room stores one in the CLIP v2 API, and v2 has no programmable rule engine to
 build one from. The v1 rule engine could, but Signify advises against it as "it will not be available long term"
 ([Hue API V2](https://developers.meethue.com/develop/hue-api-v2/)). A timer kept by Home Assistant wouldn't survive
 it going offline, which is the point of auto-off.
