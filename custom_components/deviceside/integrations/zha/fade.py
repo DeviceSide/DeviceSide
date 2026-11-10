@@ -349,9 +349,10 @@ async def start(
         commands = {light.entity_id: outcome.command for light in outcome.movers}
         # Tracked before the send: a cancel mid-send can leave a cycle running, and a stray StopMoveStep is harmless.
         cycling = hue_moves(hass)
+        already = set(cycling)  # a failed move leaves the cycle an earlier one started running
         cycling.update(commands)
         failed = await send_each(hass, gid, outcome.movers, commands, context)
-        cycling.difference_update(failed)
+        cycling.difference_update(light_id for light_id in failed if light_id not in already)
         return outcome.clamped_to, failed
     marks = Marks.take(hass, cache, outcome)
     try:

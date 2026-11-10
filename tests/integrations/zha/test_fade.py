@@ -459,6 +459,18 @@ async def test_an_unread_color_capabilities_rejects_a_hue_move(hass, commands, m
     assert "ColorCapabilities not read" in caplog.text
 
 
+async def test_a_failed_hue_move_keeps_the_cycle_an_earlier_one_started(hass):
+    failing_for(hass, B)
+    bulb(hass, "light.a", A)
+    bulb(hass, "light.b", B)
+    hue_moves(hass).add("light.b")
+
+    with pytest.raises(HomeAssistantError):
+        await call(hass, "raise_hue", {"entity_id": ["light.a", "light.b"]})
+
+    assert hue_moves(hass) == {"light.a", "light.b"}
+
+
 async def test_a_cancel_mid_send_leaves_the_hue_cycle_tracked(hass, monkeypatch):
     """A cycle the bulb may have started must stay tracked, so a stop sends it StopMoveStep."""
     bulb(hass, "light.a", A)
