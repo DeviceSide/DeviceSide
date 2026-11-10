@@ -17,7 +17,7 @@ from custom_components.deviceside.const import ADAPTER_BACKSTOP_S, DOMAIN
 from custom_components.deviceside.integrations.zha import set_attributes as adapter
 from custom_components.deviceside.integrations.zha import zcl
 
-from ...conftest import advance, call, refusal, wall_clock_now
+from ...conftest import advance, call, refusal, result, wall_clock_now
 from ...fixtures.zha import IEEE, add_zha_entity, zha_entry, zha_group
 
 pytestmark = pytest.mark.usefixtures("setup_production")
@@ -123,7 +123,7 @@ async def test_within_limits_sends_nothing(hass, commands, refreshes):
     data = {"entity_id": "light.bulb", "min_brightness": 20, "max_brightness": 80}
     response = await call(hass, "set_attributes", data)
 
-    assert response == {"light.bulb": {"status": "unchanged", "integration": "zha", "detail": "within_limits"}}
+    assert response == {"light.bulb": result("zha", "unchanged", detail="within_limits")}
     assert not commands
     assert not refreshes
 
@@ -149,7 +149,7 @@ async def test_a_light_that_takes_no_field_is_unchanged(hass, commands, refreshe
 
     response = await call(hass, "set_attributes", {"entity_id": "light.bulb", **data})
 
-    assert response == {"light.bulb": {"status": "unchanged", "integration": "zha", "detail": "fields_dropped"}}
+    assert response == {"light.bulb": result("zha", "unchanged", detail="fields_dropped")}
     assert not commands
     level_read.assert_not_awaited()
 

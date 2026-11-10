@@ -3,7 +3,7 @@
 import pytest
 
 from .conftest import SENT, fade_put, lamp, mixed_room, room
-from ...conftest import call
+from ...conftest import call, result
 
 pytestmark = pytest.mark.usefixtures("setup_production")
 
@@ -48,7 +48,7 @@ async def test_at_the_limit_nothing_is_sent(hass, bridge, brightness_pct, data):
 
     response = await call(hass, "raise_brightness", {"entity_id": entity_id, **data})
 
-    assert response == {entity_id: {"status": "unchanged", "integration": "hue", "detail": "at_limit"}}
+    assert response == {entity_id: result("hue", "unchanged", detail="at_limit")}
     assert bridge.puts == []
 
 

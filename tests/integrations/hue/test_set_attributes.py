@@ -12,7 +12,7 @@ from homeassistant.util.color import color_hs_to_xy, color_RGB_to_xy
 
 from custom_components.deviceside.integrations.hue import set_attributes as adapter
 
-from ...conftest import call, refusal, traced
+from ...conftest import call, refusal, result, traced
 from ...fixtures.hue import add_hue_entity, add_hue_group, hue_entry
 
 pytestmark = pytest.mark.usefixtures("setup_production")
@@ -102,7 +102,7 @@ async def test_nothing_the_light_can_take_is_unchanged_with_fields_dropped(hass,
 
     response = await call(hass, "set_attributes", {"entity_id": "light.lamp", **data})
 
-    assert response == {"light.lamp": {"status": "unchanged", "integration": "hue", "detail": "fields_dropped"}}
+    assert response == {"light.lamp": result("hue", "unchanged", detail="fields_dropped")}
     assert bridge.puts == []
 
 
@@ -193,7 +193,7 @@ async def test_brightness_already_within_limits_writes_nothing(hass, bridge):
 
     response = await call(hass, "set_attributes", {"entity_id": "light.lamp", "min_brightness": 50})
 
-    assert response == {"light.lamp": {"status": "unchanged", "integration": "hue", "detail": "within_limits"}}
+    assert response == {"light.lamp": result("hue", "unchanged", detail="within_limits")}
     assert bridge.puts == []
 
 

@@ -7,7 +7,7 @@ from custom_components.deviceside.core.transition import SATURATION
 from custom_components.deviceside.integrations.hue.transition_cache import transition_cache
 
 from .conftest import SENT, color_lamp, color_room, hs_xy, xy_put
-from ...conftest import call
+from ...conftest import call, result
 
 pytestmark = pytest.mark.usefixtures("setup_production")
 
@@ -51,7 +51,7 @@ async def test_nothing_to_make_sends_nothing(hass, bridge, light, detail):
 
     response = await call(hass, "raise_saturation", {"entity_id": entity_id})
 
-    assert response == {entity_id: {"status": "unchanged", "integration": "hue", "detail": detail}}
+    assert response == {entity_id: result("hue", "unchanged", detail=detail)}
     assert bridge.puts == []
 
 
@@ -62,7 +62,7 @@ async def test_a_light_without_color_drops_saturation(hass, bridge):
 
     response = await call(hass, "raise_saturation", {"entity_id": entity_id})
 
-    assert response == {entity_id: {"status": "unchanged", "integration": "hue", "detail": "fields_dropped"}}
+    assert response == {entity_id: result("hue", "unchanged", detail="fields_dropped")}
     assert bridge.puts == []
 
 
@@ -105,5 +105,5 @@ async def test_a_room_with_no_lit_color_light_sends_nothing(hass, bridge, colors
 
     response = await call(hass, "raise_saturation", {"entity_id": entity_id})
 
-    assert response == {entity_id: {"status": "unchanged", "integration": "hue", "detail": detail}}
+    assert response == {entity_id: result("hue", "unchanged", detail=detail)}
     assert bridge.puts == []
