@@ -84,6 +84,7 @@ async def test_reads_each_cluster_and_returns_the_row(hass, broker):
         topic: []
         for topic in (
             "zigbee2mqtt/bridge/logging",
+            "zigbee2mqtt/bridge/state",
             "zigbee2mqtt/bridge/response/device/options",
             INFO,
             "zigbee2mqtt/lamp",
@@ -192,6 +193,27 @@ async def test_read_key_already_filtered_sends_no_request(hass, broker):
     await call(hass, "get_attributes", {"entity_id": "light.lamp"})
 
     assert broker.requests() == []
+
+
+async def test_waits_for_bridge_state_after_subscribing_to_the_log(hass, broker):
+    bulb(hass, broker)
+
+    await call(hass, "get_attributes", {"entity_id": "light.lamp"})
+
+    assert broker.topics[:2] == ["zigbee2mqtt/bridge/logging", "zigbee2mqtt/bridge/state"]
+
+
+async def test_no_bridge_state_raises_without_reading(hass, broker, caplog):
+    bulb(hass, broker)
+    del broker.retained["zigbee2mqtt/bridge/state"]
+
+    with pytest.raises(HomeAssistantError) as raised:
+        await call(hass, "get_attributes", {"entity_id": "light.lamp"})
+
+    assert raised.value.translation_key == "targets_failed"
+    assert "no bridge/state from Zigbee2MQTT" in caplog.text
+    assert broker.requests() == [] and broker.reads() == []
+    assert not broker.listening("zigbee2mqtt/bridge/state") and not broker.listening("zigbee2mqtt/bridge/logging")
 
 
 async def test_no_filtered_cache_raises_without_reading(hass, broker):

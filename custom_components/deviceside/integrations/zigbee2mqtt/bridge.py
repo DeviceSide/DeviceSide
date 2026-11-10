@@ -49,8 +49,9 @@ def _exposes(name: str, features: list[dict]) -> bool:
 async def retained(hass: HomeAssistant, suffix: str) -> Any:
     """The parsed retained message on bridge/<suffix>; raises TimeoutError when Z2M hasn't published one.
 
-    bridge/devices and bridge/groups come from the bridge cache when it holds them (bridge_cache.py), else from a fresh
-    subscription, as bridge/info always does. A cached result is shared by every caller: read it, never change it.
+    bridge/devices, bridge/groups and bridge/info come from the bridge cache when it holds them (bridge_cache.py), else
+    from a fresh subscription. A cached result is shared by every caller: read it, never change it. A held bridge/info
+    doesn't yet show options confirmed since Z2M last published it; `ensure_options` reads those too.
     """
     if (
         suffix in bridge_cache.HELD
@@ -58,10 +59,18 @@ async def retained(hass: HomeAssistant, suffix: str) -> Any:
         and (held := cache.parsed(suffix)) is not None
     ):
         return held
+    return json.loads(await first_retained(hass, suffix))
+
+
+async def first_retained(hass: HomeAssistant, suffix: str) -> str:
+    """The raw retained message on bridge/<suffix>, from a fresh subscription; raises TimeoutError when none comes.
+
+    Its arrival shows that subscriptions queued before it have reached the broker too.
+    """
     payload: asyncio.Future[str] = hass.loop.create_future()
     unsubscribe = await mqtt.async_subscribe(hass, bridge_topic(suffix), first_payload(payload))
     try:
-        return json.loads(await wait(payload, _RETAINED_TIMEOUT_S, f"no bridge/{suffix} from Zigbee2MQTT"))
+        return await wait(payload, _RETAINED_TIMEOUT_S, f"no bridge/{suffix} from Zigbee2MQTT")
     finally:
         unsubscribe()
 
@@ -75,32 +84,23 @@ async def ensure_options(
 ) -> None:
     """Set each entity's options to what `wanted` returns from its current ones, where that is anything.
 
-    Reads Z2M's settings on every call rather than caching them, so a user who changes an option is seen. Calls
-    `changed` with each ID as Z2M confirms its options, so one set before a later failure is still reported; raises
-    when bridge/info or a reply doesn't come, or a reply is an error.
+    With the bridge cache's reply topics live and bridge/info held, the current options come from the cache, with this
+    and earlier calls' confirmed writes over them, and the call subscribes to nothing: a user's change reaches the
+    cache through Z2M's republish of bridge/info. Otherwise it reads bridge/info fresh. Calls `changed` with each ID
+    as Z2M confirms its options, so one set before a later failure is still reported; raises when bridge/info or a
+    reply doesn't come, or a reply is an error.
     """
     section = f"{kind}s"
-    # With the bridge cache's response subscriptions live, the reply is routed to its pending futures; otherwise this
-    # call subscribes for its own.
     cache = bridge_cache.get(hass)
     shared = cache is not None and cache.replies_live
     pending: dict[str, asyncio.Future[dict]] = cache.pending if shared else {}
     transactions: list[str] = []
-
-    info: asyncio.Future[str] = hass.loop.create_future()
-    # HA debounces subscribes, so async_subscribe returns before the broker has them. Queued together, the two
-    # reach the broker in one batch: the retained bridge/info arriving shows the reply topic is subscribed too,
-    # before a request goes out. bridge/info is subscribed fresh even when the reply topic is the cache's, as its
-    # values must be fresh and read.reader() relies on its arrival for the subscription it queues just before.
-    unsubscribes = []
-    if not shared:
-        reply_topic = bridge_topic(f"response/{kind}/options")
-        unsubscribes.append(await mqtt.async_subscribe(hass, reply_topic, bridge_cache.reply_router(pending)))
-    unsubscribes.append(await mqtt.async_subscribe(hass, bridge_topic("info"), first_payload(info)))
+    unsubscribes: list[Callable[[], None]] = []
     try:
-        settings = json.loads(await wait(info, _RETAINED_TIMEOUT_S, "no bridge/info from Zigbee2MQTT"))
+        current = await _options_source(hass, cache, kind, pending, unsubscribes)
         for z2m_id in z2m_ids:
-            if not (options := wanted(settings.get("config", {}).get(section, {}).get(z2m_id, {}))):
+            before = current(z2m_id)
+            if not (options := wanted(before)):
                 continue
             transaction = uuid4().hex
             transactions.append(transaction)
@@ -113,12 +113,47 @@ async def ensure_options(
             answer = await wait(pending[transaction], _REPLY_TIMEOUT_S, "no reply from Zigbee2MQTT")
             if answer.get("status") != "ok":
                 raise RuntimeError(answer.get("error") or f"status {answer.get('status')}")
+            if cache is not None:
+                cache.confirmed[(section, z2m_id)] = _after(answer, before, options)
             changed(z2m_id)
     finally:
         for unsubscribe in unsubscribes:
             unsubscribe()
         for transaction in transactions:
             pending.pop(transaction, None)
+
+
+async def _options_source(
+    hass: HomeAssistant,
+    cache: bridge_cache.BridgeCache | None,
+    kind: str,
+    pending: dict[str, asyncio.Future[dict]],
+    unsubscribes: list[Callable[[], None]],
+) -> Callable[[str], dict]:
+    """Each entity's current options: from the cache when its reply topics are live and it holds bridge/info, else
+    from a fresh bridge/info, subscribing for the replies too when the cache's aren't live (into `unsubscribes`)."""
+    section = f"{kind}s"
+    shared = cache is not None and cache.replies_live
+    if shared and cache.parsed("info") is not None:
+        return lambda z2m_id: cache.settings(section, z2m_id) or {}
+    info: asyncio.Future[str] = hass.loop.create_future()
+    # HA debounces subscribes, so async_subscribe returns before the broker has them. Queued together, the two reach
+    # the broker in one batch: the retained bridge/info arriving shows the reply topic is subscribed too, before a
+    # request goes out. With the cache's reply topics live, bridge/info alone is read.
+    if not shared:
+        reply_topic = bridge_topic(f"response/{kind}/options")
+        unsubscribes.append(await mqtt.async_subscribe(hass, reply_topic, bridge_cache.reply_router(pending)))
+    unsubscribes.append(await mqtt.async_subscribe(hass, bridge_topic("info"), first_payload(info)))
+    fresh = json.loads(await wait(info, _RETAINED_TIMEOUT_S, "no bridge/info from Zigbee2MQTT"))
+    return lambda z2m_id: fresh.get("config", {}).get(section, {}).get(z2m_id, {})
+
+
+def _after(answer: dict, before: dict, sent: dict) -> dict:
+    """The entity's options after a confirmed write: Z2M's own (its reply's data.to), else what was sent over before."""
+    data = answer.get("data")
+    if isinstance(data, dict) and isinstance(to := data.get("to"), dict):
+        return to
+    return {**before, **sent}
 
 
 async def publish_set(hass: HomeAssistant, target: Target, payload: dict) -> None:
