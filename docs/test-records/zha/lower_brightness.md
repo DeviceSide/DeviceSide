@@ -3,8 +3,8 @@
 | | |
 |---|---|
 | Result | pass |
-| Date | 2026-11-08 |
-| Source | rig run (`scripts/rig.py`), commit `8aae106` |
+| Date | 2026-11-10 |
+| Source | rig run (`scripts/rig.py`), commit `c2916f1` |
 | Profile | lab |
 | Home Assistant | 2026.10.4 |
 | Device | LTA009, firmware `0x01002a00`; ZBDongle-E, firmware `unknown` |
@@ -15,10 +15,10 @@
 |---|---|---|
 | `lower_to_off[light_ct]` | `light` (light_ct) | pass |
 | `lower_to_off[group]` | `light` (group) | pass |
-| `soft_off_keeps_level[light_ct]` | `light` (light_ct) | pass |
-| `soft_off_keeps_level[group]` | `light` (group) | pass |
+| `soft_off_keeps_level[light_ct]` | `light` (light_ct) | pass (firmware fact) |
+| `soft_off_keeps_level[group]` | `light` (group) | pass (firmware fact) |
 | `lower_to_a_limit[light_ct]` | `light` (light_ct) | pass |
 | `lower_to_a_limit[group]` | `light` (group) | pass |
-| `lower_stop_lower[light_ct]` | `light` (light_ct) | pass |
-| `lower_stop_lower[group]` | `light` (group) | pass |
 | `light_raised_mid_room_lower[group]` | `light` (group) | pass |
+
+A firmware fact proves the device's behavior, not the adapter's code: its pass stands at the firmware listed under Device, and may come from an earlier commit at that firmware.
