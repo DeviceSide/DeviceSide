@@ -1,5 +1,7 @@
 """TransitionCache: the predicted value inside the guard window, the reported one after; ported from hue_dimmer."""
 
+import asyncio
+
 import pytest
 
 from custom_components.deviceside.core.transition import TransitionCache, transition_cache
@@ -139,3 +141,23 @@ async def test_a_refused_write_leaves_the_entry_a_later_move_recorded(cache):
 
     assert cache.value("light-1", "brightness", 13.0) == 0.0
     assert cache.running("light-1", "brightness").target == 50.0
+
+
+async def test_a_write_cancelled_mid_flight_puts_back_what_each_key_held(cache):
+    cache.stopped("light-1", "brightness", 42.0)
+    started = asyncio.Event()
+
+    async def write():
+        async with cache.recording([("light-1", "brightness")]):
+            cache.moving("light-1", "brightness", 42.0, 100.0, 5.0)
+            started.set()
+            await asyncio.sleep(60)
+
+    task = asyncio.ensure_future(write())
+    await started.wait()
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    assert cache.halted("light-1", "brightness")
+    assert cache.value("light-1", "brightness", 13.0) == 42.0

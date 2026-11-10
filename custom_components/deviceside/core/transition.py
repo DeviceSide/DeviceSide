@@ -109,7 +109,8 @@ class TransitionCache:
         token = _RECORDED.set(recorded)
         try:
             yield recorded
-        except Exception:
+        except BaseException:
+            # BaseException: the deadline's cancel delivered mid-write leaves the same stale prediction a refusal does.
             for key, transition in before.items():
                 if key not in recorded or self._transitions.get(key) is not recorded[key]:
                     continue

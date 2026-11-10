@@ -6,7 +6,6 @@ import logging
 from typing import Any, ClassVar
 
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import Unauthorized
 from homeassistant.helpers import entity_registry as er
 
 from . import zcl
@@ -39,6 +38,8 @@ TRANSITION_POLL_S = 0.1
 LATE_REFRESH_POLL_S = 0.5
 FADE_WAIT_S = 0.6  # the commands' 0.4 s fade plus margin: a read sooner sees a mid-fade color temperature
 SETTLE_REFRESH_S = 1.0  # a second read after the first, for a fade that ran slow
+# The refreshes' share of the adapter's time: they run past the concurrency slots, so nothing else bounds them.
+REFRESH_BUDGET_S = 4.0
 LATE_REFRESH_LIMIT_S = 60.0  # past the longest off fade anyone sets; a flag stuck longer is zha's fault
 
 
@@ -177,22 +178,27 @@ class ZHASetAttributes(Adapter[SetAttributesRequest]):
             detail = "fields_dropped" if dropped else None
             if not sent:
                 return self.result(target, Status.UNCHANGED, detail=detail or "within_limits")
-            try:
-                for cluster_id, command_id, params in map(_wire, sent):
-                    await zcl.command(
-                        hass, addr, cluster_id, command_id, params, request.context, entity_id=target.reported_id
-                    )
-                    landed[target.entity_id] = None  # a later command failing still leaves this one landed
-                # Before the refresh, which can wait seconds: a plain on meanwhile must not send the old level.
-                if (level := next((c.level for c in sent if isinstance(c, MoveToLevel)), None)) is not None:
-                    _keep_level(hass, target, level, request.brightness)
-            except Unauthorized:
-                return self.result(target, Status.REJECTED, detail="admin_required")
+            for command in sent:
+                cluster_id, command_id, params = _wire(command)
+                await zcl.command(
+                    hass, addr, cluster_id, command_id, params, request.context, entity_id=target.reported_id
+                )
+                landed[target.entity_id] = None  # a later command failing still leaves this one landed
+                if isinstance(command, MoveToLevel):
+                    # As soon as the level landed, whatever the color commands do after, and before the refresh,
+                    # which can wait seconds: a plain on meanwhile must not send the old level.
+                    _keep_level(hass, target, command.level, request.brightness)
             return self.result(target, Status.SENT, detail=detail)
 
         results = await self.gather(hass, targets, send)
         # Outside the concurrency slots: a refresh waits seconds, and would hold back the next light's commands.
-        await asyncio.gather(*(self._refresh(hass, request, entity_id) for entity_id in landed))
+        try:
+            async with asyncio.timeout(REFRESH_BUDGET_S):
+                await asyncio.gather(*(self._refresh(hass, request, entity_id) for entity_id in landed))
+        except TimeoutError:
+            _LOGGER.warning(
+                "The refresh after %s on zha ran past %s s; HA may show the old values", self.action, REFRESH_BUDGET_S
+            )
         return results
 
     async def _refresh(self, hass: HomeAssistant, request: SetAttributesRequest, entity_id: str) -> None:

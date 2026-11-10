@@ -46,7 +46,7 @@ def light_params(light: LightFields, component: str, state: State | None) -> dic
     if light.brightness is not None:
         params["brightness"] = whole_percent(light.brightness)
     if light.transition is not None:
-        params["transition_duration"] = max(light.transition, TRANSITION_LIMITS.min_s)
+        params["transition_duration"] = min(max(light.transition, TRANSITION_LIMITS.min_s), TRANSITION_LIMITS.max_s)
     if light.color_temp_kelvin is not None:
         kelvin = light.color_temp_kelvin
         if state is not None:
