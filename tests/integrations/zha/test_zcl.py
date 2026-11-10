@@ -1,6 +1,7 @@
 """zcl.command against a mock service, and zcl.read_attributes against a fake zha gateway, since the zha library
 isn't a dev dependency."""
 
+import json
 import sys
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
@@ -8,11 +9,13 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from homeassistant.core import Context
 from homeassistant.exceptions import HomeAssistantError, Unauthorized, UnknownUser
+from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import async_mock_service
 
 from custom_components.deviceside.integrations.zha import zcl
 from custom_components.deviceside.integrations.zha.addressing import Address
 
+from ...conftest import traced
 from ...fixtures.zha import IEEE
 
 ADDR = Address(IEEE, 11)
@@ -94,7 +97,7 @@ async def test_command_issues_a_server_command_to_the_in_cluster_with_the_caller
     commands = async_mock_service(hass, "zha", "issue_zigbee_cluster_command")
     context = Context()
 
-    await zcl.command(hass, ADDR, zcl.LEVEL_CLUSTER, zcl.MOVE_TO_LEVEL, {"level": 40}, context)
+    await zcl.command(hass, ADDR, zcl.LEVEL_CLUSTER, zcl.MOVE_TO_LEVEL, {"level": 40}, context, entity_id="light.lamp")
 
     assert commands[0].data == {
         "ieee": IEEE,
@@ -152,7 +155,7 @@ async def test_hue_turn_on_sends_multicolor_on_at_the_level_with_no_fade(hass, g
     """Flags 0x0013 (on, brightness, fade time), then on, the level and a fade of 0, as Z2M's hue_native_control."""
     cluster.request = AsyncMock(return_value=SimpleNamespace(status=0))
 
-    assert await HUE_TURN_ON(hass, ADDR, 1, Context()) is True
+    assert await HUE_TURN_ON(hass, ADDR, 1, Context(), entity_id="light.lamp") is True
 
     gateway.get_device.return_value.async_get_cluster.assert_called_once_with(11, 0xFC03, cluster_type="in")
     general, command_id, _schema, payload = cluster.request.await_args.args
@@ -164,7 +167,7 @@ async def test_hue_turn_on_without_hues_cluster_sends_nothing(hass, gateway, clu
     gateway.get_device.return_value.async_get_cluster.side_effect = KeyError(0xFC03)
     cluster.request = AsyncMock()
 
-    assert await HUE_TURN_ON(hass, ADDR, 1, Context()) is False
+    assert await HUE_TURN_ON(hass, ADDR, 1, Context(), entity_id="light.lamp") is False
     cluster.request.assert_not_awaited()
 
 
@@ -172,7 +175,7 @@ async def test_hue_turn_on_failed_status_raises(hass, gateway, cluster):
     cluster.request = AsyncMock(return_value=SimpleNamespace(status=0x81))
 
     with pytest.raises(HomeAssistantError, match="answered 129"):
-        await HUE_TURN_ON(hass, ADDR, 1, Context())
+        await HUE_TURN_ON(hass, ADDR, 1, Context(), entity_id="light.lamp")
 
 
 async def test_hue_turn_on_refuses_a_non_admin_as_zha_does(hass, gateway, cluster, hass_read_only_user):
@@ -180,7 +183,7 @@ async def test_hue_turn_on_refuses_a_non_admin_as_zha_does(hass, gateway, cluste
     cluster.request = AsyncMock()
 
     with pytest.raises(Unauthorized):
-        await HUE_TURN_ON(hass, ADDR, 1, Context(user_id=hass_read_only_user.id))
+        await HUE_TURN_ON(hass, ADDR, 1, Context(user_id=hass_read_only_user.id), entity_id="light.lamp")
     cluster.request.assert_not_awaited()
 
 
@@ -188,7 +191,7 @@ async def test_hue_turn_on_refuses_an_unknown_user(hass, gateway, cluster):
     cluster.request = AsyncMock()
 
     with pytest.raises(UnknownUser):
-        await HUE_TURN_ON(hass, ADDR, 1, Context(user_id="no-such-user"))
+        await HUE_TURN_ON(hass, ADDR, 1, Context(user_id="no-such-user"), entity_id="light.lamp")
     cluster.request.assert_not_awaited()
 
 
@@ -196,10 +199,36 @@ async def test_hue_turn_on_without_the_device_raises(hass, gateway):
     gateway.get_device.return_value = None
 
     with pytest.raises(LookupError, match="not found"):
-        await HUE_TURN_ON(hass, ADDR, 1, None)
+        await HUE_TURN_ON(hass, ADDR, 1, None, entity_id="light.lamp")
 
 
 async def test_hue_turn_on_lets_an_admin_through(hass, gateway, cluster, hass_admin_user):
     cluster.request = AsyncMock(return_value=SimpleNamespace(status=0))
 
-    assert await HUE_TURN_ON(hass, ADDR, 1, Context(user_id=hass_admin_user.id)) is True
+    assert await HUE_TURN_ON(hass, ADDR, 1, Context(user_id=hass_admin_user.id), entity_id="light.lamp") is True
+
+
+async def test_command_is_traced_by_entity_without_the_address(hass, wire):
+    async_mock_service(hass, "zha", "issue_zigbee_cluster_command")
+
+    await zcl.command(hass, ADDR, zcl.LEVEL_CLUSTER, zcl.MOVE_TO_LEVEL, {"level": 40}, None, entity_id="light.lamp")
+
+    assert traced(wire) == [("light.lamp", "zcl", "0x0008/0x00", {"level": 40})]
+    assert IEEE not in json.dumps(wire[0].data)
+
+
+async def test_group_command_is_traced_on_the_groups_light(hass, wire):
+    async_mock_service(hass, "zha", "issue_zigbee_group_command")
+    er.async_get(hass).async_get_or_create("light", "zha", "light_zha_group_0x0002", suggested_object_id="room")
+
+    await zcl.group_command(hass, 2, zcl.LEVEL_CLUSTER, zcl.STOP, [], None)
+
+    assert traced(wire) == [("light.room", "zcl", "0x0008/0x03", {"args": []})]
+
+
+async def test_hue_turn_on_is_traced_with_its_payload(hass, gateway, cluster, wire):
+    cluster.request = AsyncMock(return_value=SimpleNamespace(status=0))
+
+    await HUE_TURN_ON(hass, ADDR, 1, None, entity_id="light.lamp")
+
+    assert traced(wire) == [("light.lamp", "zcl", "0xfc03/0x00", {"data": "130001010000"})]

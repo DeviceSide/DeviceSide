@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from custom_components.deviceside.actions import discover
 from custom_components.deviceside.core.scope import AdapterScope, experimental, reported, verified
 from scripts import check_release as cr
 
@@ -147,6 +148,16 @@ def test_records_are_the_action_and_its_options(tested):
         write_record(repo, name, sha)
     names = [path.name for path in cr.records("fake", "turn_on_for")]
     assert names == ["turn_on_for-predicted_state.md", "turn_on_for.md"]
+
+
+def test_the_observed_calls_file_is_never_a_record(tested):
+    """The rig keeps each integration's observed results in `_observed.md`, beside the records: no action's record
+    check may read it, as no action is named with a leading underscore."""
+    repo, sha = tested
+    write_record(repo, "_observed.md", sha)
+    actions = [action.key for action in discover()]
+    assert actions
+    assert "_observed.md" not in [path.name for name in actions for path in cr.records("fake", name)]
 
 
 def test_a_record_as_new_as_the_code_passes(tested, monkeypatch):

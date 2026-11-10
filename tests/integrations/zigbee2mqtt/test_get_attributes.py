@@ -176,6 +176,16 @@ async def test_adds_the_read_key_to_filtered_cache_first_keeping_the_users(hass,
     assert f"Added {KEY} to Zigbee2MQTT's filtered_cache for light.lamp" in caplog.text
 
 
+async def test_reads_and_the_options_request_are_not_traced(hass, broker, wire):
+    bulb(hass, broker)
+    broker.retained[INFO]["config"]["devices"][IEEE] = {"filtered_cache": ["linkquality"]}
+
+    await call(hass, "get_attributes", {"entity_id": "light.lamp"})
+
+    assert broker.requests() and broker.reads()
+    assert wire == []
+
+
 async def test_read_key_already_filtered_sends_no_request(hass, broker):
     bulb(hass, broker)
     broker.retained[INFO]["config"]["devices"][IEEE] = {"filtered_cache": [KEY]}

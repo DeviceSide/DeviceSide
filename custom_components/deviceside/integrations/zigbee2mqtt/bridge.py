@@ -11,8 +11,9 @@ from homeassistant.components import mqtt
 from homeassistant.core import HomeAssistant, callback
 
 from . import bridge_cache
-from .addressing import bridge_topic, state_topic
+from .addressing import bridge_topic, state_topic, topic
 from ...core.models import Target
+from ...core.wire import wire_trace
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -153,6 +154,12 @@ def _after(answer: dict, before: dict, sent: dict) -> dict:
     if isinstance(data, dict) and isinstance(to := data.get("to"), dict):
         return to
     return {**before, **sent}
+
+
+async def publish_set(hass: HomeAssistant, target: Target, payload: dict) -> None:
+    """Publish a command to the target's set topic, traced. A read, sent on the same topic, goes through publish()."""
+    wire_trace(hass, target.reported_id, "mqtt", "set", payload)
+    await publish(hass, topic(target, "set"), payload)
 
 
 async def publish(hass: HomeAssistant, mqtt_topic: str, payload: dict) -> None:

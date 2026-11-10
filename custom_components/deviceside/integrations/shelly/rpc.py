@@ -5,13 +5,14 @@ import logging
 from collections.abc import Awaitable, Callable
 from typing import Any, Literal
 
-from homeassistant.core import State
+from homeassistant.core import HomeAssistant, State
 from homeassistant.util.color import color_hs_to_RGB, color_xy_to_RGB
 
 from .addressing import address, rpc_device
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, LightFields, Status, Target
 from ...core.scope import DurationLimits
+from ...core.wire import wire_trace
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -66,6 +67,13 @@ def light_params(light: LightFields, component: str, state: State | None) -> dic
     return params
 
 
+async def send(hass: HomeAssistant, target: Target, method: str, params: dict[str, Any]) -> None:
+    """One write RPC, <Component>.<method>, to the target's component, traced; an error propagates."""
+    rpc, device = address(target), rpc_device(target)
+    wire_trace(hass, target.reported_id, "rpc", f"{rpc.component}.{method}", params)
+    await device.call_rpc(f"{rpc.component}.{method}", {"id": rpc.id, **params})
+
+
 async def get_status(target: Target) -> dict[str, Any]:
     """The target's <Component>.GetStatus; an error propagates."""
     rpc = address(target)
@@ -91,15 +99,18 @@ async def read_back(
 
 
 async def set_and_read_back(
-    adapter: Adapter, target: Target, params: dict[str, Any], judge: Callable[[dict[str, Any]], EntityResult]
+    hass: HomeAssistant,
+    adapter: Adapter,
+    target: Target,
+    params: dict[str, Any],
+    judge: Callable[[dict[str, Any]], EntityResult],
 ) -> EntityResult:
     """Send the Set (an error propagates, so gather() reports it rejected), then GetStatus and let `judge` rule."""
-    device, rpc = rpc_device(target), address(target)
-    await device.call_rpc(f"{rpc.component}.Set", {"id": rpc.id, **params})
+    await send(hass, target, "Set", params)
     return await read_back(adapter, target, get_status, judge)
 
 
-async def set_with_timer(adapter: Adapter, target: Target, params: dict[str, Any]) -> EntityResult:
+async def set_with_timer(hass: HomeAssistant, adapter: Adapter, target: Target, params: dict[str, Any]) -> EntityResult:
     """Send the Set, then confirm the timer is running."""
 
     def judge(status: dict[str, Any]) -> EntityResult:
@@ -107,10 +118,10 @@ async def set_with_timer(adapter: Adapter, target: Target, params: dict[str, Any
             return adapter.result(target, Status.CONFIRMED)
         return adapter.result(target, Status.SENT, detail="timer_not_reported")
 
-    return await set_and_read_back(adapter, target, params, judge)
+    return await set_and_read_back(hass, adapter, target, params, judge)
 
 
-async def set_fade(target: Target, brightness: float, duration_s: float) -> None:
+async def set_fade(hass: HomeAssistant, target: Target, brightness: float, duration_s: float) -> None:
     """One <Component>.Set fading to `brightness` percent over `duration_s`; an error propagates.
 
     The device runs the fade from its current level, mid-fade included, and from 1 % when off. Fading to 0 is
@@ -118,16 +129,14 @@ async def set_fade(target: Target, brightness: float, duration_s: float) -> None
     (brightness 0 would leave it on at 0 %). Brightness always goes with on: true, or the device restores its stored
     level. Rig, 8 Nov.
     """
-    device, rpc = rpc_device(target), address(target)
     params = {"on": False} if brightness == 0 else {"on": True, "brightness": whole_percent(brightness)}
-    await device.call_rpc(f"{rpc.component}.Set", {"id": rpc.id, **params, "transition_duration": duration_s})
+    await send(hass, target, "Set", {**params, "transition_duration": duration_s})
 
 
-async def dim_stop(target: Target) -> None:
+async def dim_stop(hass: HomeAssistant, target: Target) -> None:
     """<Component>.DimStop: halts a Set's fade as well as a DimUp/DimDown ramp, within ~0.1 s, and changes nothing
     when no fade runs (rig, 8 Nov). An error propagates."""
-    device, rpc = rpc_device(target), address(target)
-    await device.call_rpc(f"{rpc.component}.DimStop", {"id": rpc.id})
+    await send(hass, target, "DimStop", {})
 
 
 async def get_config(target: Target) -> dict[str, Any]:
@@ -156,7 +165,7 @@ def _auto_matches(config: dict[str, Any], wanted: dict[str, Any]) -> bool:
 
 
 async def write_auto(
-    adapter: Adapter, target: Target, which: Literal["off", "on"], duration_s: float | None
+    hass: HomeAssistant, adapter: Adapter, target: Target, which: Literal["off", "on"], duration_s: float | None
 ) -> EntityResult:
     """Set (a duration) or clear (None) the persistent auto-off or auto-on, writing only on a difference.
 
@@ -167,8 +176,7 @@ async def write_auto(
     wanted = _auto_config(which, duration_s)
     if _auto_matches(await get_config(target), wanted):
         return adapter.result(target, Status.UNCHANGED, detail="already_clear" if duration_s is None else "already_set")
-    device, rpc = rpc_device(target), address(target)
-    await device.call_rpc(f"{rpc.component}.SetConfig", {"id": rpc.id, "config": wanted})
+    await send(hass, target, "SetConfig", {"config": wanted})
 
     def judge(config: dict[str, Any]) -> EntityResult:
         if _auto_matches(config, wanted):

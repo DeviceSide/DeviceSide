@@ -130,7 +130,9 @@ async def send(
         await zcl.group_command(hass, gid, cluster_id, command_id, list(params.values()), context)
         return
     for light in movers:
-        await zcl.command(hass, address(light.entry.unique_id), cluster_id, command_id, params, context)
+        await zcl.command(
+            hass, address(light.entry.unique_id), cluster_id, command_id, params, context, entity_id=light.reported_id
+        )
 
 
 async def refresh(hass: HomeAssistant, light: Target, context: Context | None) -> None:
@@ -275,9 +277,11 @@ async def start(
         # Unicast: each concerns one light's own stored level.
         for light in outcome.presets:
             addr = address(light.entry.unique_id)
-            if not await zcl.hue_turn_on(hass, addr, 1, context):
+            if not await zcl.hue_turn_on(hass, addr, 1, context, entity_id=light.reported_id):
                 bottom = {"level": 1, **zcl.execute_if_off(0)}
-                await zcl.command(hass, addr, zcl.LEVEL_CLUSTER, zcl.MOVE_TO_LEVEL, bottom, context)
+                await zcl.command(
+                    hass, addr, zcl.LEVEL_CLUSTER, zcl.MOVE_TO_LEVEL, bottom, context, entity_id=light.reported_id
+                )
         pending = soft_off_restores(hass)
         kept: set[str] = set()
         if outcome.attribute == BRIGHTNESS:
@@ -453,7 +457,9 @@ def end_job(hass: HomeAssistant, light: Target, restore: dict[str, float] | None
                 if not read[zcl.ON_OFF]:
                     _LOGGER.debug("Restoring %s to %.1f %% after a soft off", light.entity_id, restore[light.entity_id])
                     params = {"level": zcl.level(restore[light.entity_id]), **zcl.execute_if_off(0)}
-                    await zcl.command(hass, addr, zcl.LEVEL_CLUSTER, zcl.MOVE_TO_LEVEL, params, context)
+                    await zcl.command(
+                        hass, addr, zcl.LEVEL_CLUSTER, zcl.MOVE_TO_LEVEL, params, context, entity_id=light.reported_id
+                    )
             except Exception as err:  # noqa: BLE001 - the light stays off, and comes back on dim
                 _LOGGER.warning("Restoring %s's level after a soft off failed: %r", light.entity_id, err)
         await refresh(hass, light, context)

@@ -1,16 +1,18 @@
+import logging
 import time
 from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 import pytest
 from homeassistant.core import HomeAssistant
-from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed
+from pytest_homeassistant_custom_component.common import MockConfigEntry, async_capture_events, async_fire_time_changed
 
 from custom_components.deviceside import actions
 from custom_components.deviceside.const import DOMAIN
 from custom_components.deviceside.core.errors import TargetNotSupported
 from custom_components.deviceside.core.registry import AdapterRegistry
 from custom_components.deviceside.core.runtime import get_runtime
+from custom_components.deviceside.core.wire import WIRE_EVENT, WIRE_LOGGER
 
 from .fakes.scripted import SCRIPT
 
@@ -26,6 +28,21 @@ def auto_enable_custom_integrations(enable_custom_integrations):
 def reset_script():
     SCRIPT.reset()
     yield SCRIPT
+
+
+@pytest.fixture
+async def wire(hass: HomeAssistant):
+    """The wire trace, on as a rig turns it on (its logger at DEBUG): the deviceside_wire events fired."""
+    events = async_capture_events(hass, WIRE_EVENT)
+    level = WIRE_LOGGER.level
+    WIRE_LOGGER.setLevel(logging.DEBUG)
+    yield events
+    WIRE_LOGGER.setLevel(level)
+
+
+def traced(events) -> list[tuple]:
+    """Each traced call as (entity_id, transport, command, params)."""
+    return [(e.data["entity_id"], e.data["transport"], e.data["command"], e.data["params"]) for e in events]
 
 
 @pytest.fixture

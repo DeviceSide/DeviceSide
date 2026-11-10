@@ -8,7 +8,7 @@ from typing import ClassVar
 from homeassistant.core import HomeAssistant
 
 from .addressing import state_topic, topic
-from .bridge import publish
+from .bridge import publish_set
 from .members import member_lights
 from .read import Reader, reader
 from ...actions.set_attributes import SetAttributesRequest
@@ -193,7 +193,7 @@ class Z2MSetAttributes(Adapter[SetAttributesRequest]):
             raise LookupError(f"Zigbee2MQTT has no brightness for {to.entity_id}")
         sent, dropped = commands(request, modes, _attrs(to), current_level)
         for command in sent:
-            await publish(hass, topic(to, "set"), _wire(command))
+            await publish_set(hass, to, _wire(command))
         if (level := next((c.level for c in sent if isinstance(c, MoveToLevel)), None)) is not None:
-            await publish(hass, topic(to, "set"), _kept_level(level))
+            await publish_set(hass, to, _kept_level(level))
         return sent, dropped

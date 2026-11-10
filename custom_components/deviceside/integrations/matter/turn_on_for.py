@@ -18,6 +18,7 @@ from ...actions.turn_on_for import TurnOnForRequest
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Status, Target
 from ...core.scope import AdapterScope, DurationLimits, documented, verified
+from ...core.wire import wire_trace
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -52,7 +53,9 @@ class MatterTurnOnFor(Adapter[TurnOnForRequest]):
             client = matter_client(hass, target.entry.config_entry_id)  # supports() refused the targets without one
 
             on_time = round(request.duration_s * 10)
-            command = make_on_with_timed_off(on_off_control=0, on_time=on_time, off_wait_time=0)
+            params = {"on_off_control": 0, "on_time": on_time, "off_wait_time": 0}
+            command = make_on_with_timed_off(**params)
+            wire_trace(hass, target.reported_id, "matter", "OnOff.OnWithTimedOff", params)
             await client.send_device_command(
                 node_id=node_id,
                 endpoint_id=ep_id,

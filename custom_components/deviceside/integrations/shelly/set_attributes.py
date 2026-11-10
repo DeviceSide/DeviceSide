@@ -78,6 +78,6 @@ class ShellySetAttributes(RpcComponent, Adapter[SetAttributesRequest]):
                     return self.result(target, Status.REJECTED, detail=NOT_STORED)
                 return self.result(target, Status.CONFIRMED)
 
-            return await set_and_read_back(self, target, params, judge)
+            return await set_and_read_back(hass, self, target, params, judge)
 
         return await self.gather(hass, targets, write)

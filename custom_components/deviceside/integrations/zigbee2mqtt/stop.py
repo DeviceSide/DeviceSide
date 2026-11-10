@@ -5,7 +5,7 @@ from typing import ClassVar
 from homeassistant.core import HomeAssistant
 
 from .addressing import topic
-from .bridge import publish
+from .bridge import publish_set
 from .color_refresh import DELAY_S, refresh_color
 from .fade import hue_moves, lights_of, read_back_key, transition_cache
 from ...core.adapter import Adapter
@@ -84,7 +84,6 @@ class Z2MStop(Adapter[Request]):
                 and running.target == 0
             ]
             hue = [light.entity_id for light in halting if light.entity_id in cycling]
-            set_topic = topic(target, "set")
             async with cache.recording(
                 (light_id, attribute) for attribute, values in halts.items() for light_id in values
             ):
@@ -92,12 +91,12 @@ class Z2MStop(Adapter[Request]):
                     for light_id, value in values.items():
                         cache.stopped(light_id, attribute, value)
                 if hue:
-                    await publish(hass, set_topic, {"hue_move": "stop"})
+                    await publish_set(hass, target, {"hue_move": "stop"})
                 if halts[SATURATION]:
-                    await publish(hass, set_topic, _STOP_MOVE_STEP)
-                await publish(hass, set_topic, {"brightness_move": "stop"})
+                    await publish_set(hass, target, _STOP_MOVE_STEP)
+                await publish_set(hass, target, {"brightness_move": "stop"})
                 for light in soft_off:
-                    await publish(hass, topic(light, "set"), _cut(halts[BRIGHTNESS][light.entity_id]))
+                    await publish_set(hass, light, _cut(halts[BRIGHTNESS][light.entity_id]))
             cycling.difference_update(hue)
 
             async def refresh() -> None:

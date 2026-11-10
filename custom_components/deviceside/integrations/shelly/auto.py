@@ -30,7 +30,9 @@ class ShellySetAuto(RpcComponent, Adapter[TimedRequest]):
         return super().supports(hass, request, target) or unsupported_reason(target, self.scope.capabilities)
 
     async def execute(self, hass: HomeAssistant, request: TimedRequest, targets: list[Target]) -> list[EntityResult]:
-        return await self.gather(hass, targets, lambda target: write_auto(self, target, self.which, request.duration_s))
+        return await self.gather(
+            hass, targets, lambda target: write_auto(hass, self, target, self.which, request.duration_s)
+        )
 
 
 class ShellyClearAuto(RpcComponent, Adapter[Request]):
@@ -46,4 +48,4 @@ class ShellyClearAuto(RpcComponent, Adapter[Request]):
         return super().supports(hass, request, target) or unsupported_reason(target, self.scope.capabilities)
 
     async def execute(self, hass: HomeAssistant, request: Request, targets: list[Target]) -> list[EntityResult]:
-        return await self.gather(hass, targets, lambda target: write_auto(self, target, self.which, None))
+        return await self.gather(hass, targets, lambda target: write_auto(hass, self, target, self.which, None))

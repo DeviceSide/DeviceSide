@@ -36,7 +36,7 @@ class ShellyStop(RpcComponent, Adapter[Request]):
 
     async def execute(self, hass: HomeAssistant, request: Request, targets: list[Target]) -> list[EntityResult]:
         async def halt(target: Target) -> EntityResult:
-            await dim_stop(target)
+            await dim_stop(hass, target)
 
             def judge(status: dict[str, Any]) -> EntityResult:
                 if not status.get("output"):
