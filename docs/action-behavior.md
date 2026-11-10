@@ -1,13 +1,13 @@
 # How actions behave
 
-When to stop an automation, what to skip, and what a response looks like follow Home Assistant core's own
-actions. Users already know how core behaves, and blueprints and templates are written against it. When a
-question here isn't covered, read core's code and match it rather than inventing a rule; DeviceSide's own
-habits are not precedents.
+When an action stops an automation, what it skips and what its response holds all match Home Assistant core,
+since users, blueprints and templates already expect core's behavior. For a case not covered here, read core's code
+and match it; DeviceSide's own habits are not precedents.
 
 The facts below were read from HA 2026.10.2: `helpers/service.py` (`entity_service_call` and the functions it
 calls), `helpers/target.py` (`async_extract_referenced_entity_ids`), `components/light/helper.py`
-(`filter_turn_on_params`) and `helpers/template/extensions/functional.py` (`merge_response`). Re-read them when HA changes; `.venv` holds the version CI runs.
+(`filter_turn_on_params`) and `helpers/template/extensions/functional.py` (`merge_response`). Re-read them when HA
+changes; `.venv` holds the version CI runs.
 
 ## When to stop an automation
 
@@ -35,11 +35,12 @@ the dispatcher expanded. Core treats a `group.*` member as named; DeviceSide doe
 deliberately mixed set. An indirect entity outside the action's domains is never a target, as in core.
 
 **Can never support** is any reason that holds whatever the device's state: no adapter, a domain, capability
-or option nobody has tested, an entity the integration can't address. A field nobody has tested is in this
-class too: it is refused, never dropped. **Lacks a field** comes from the target's state, read as
-`filter_turn_on_params` reads it (a color is lacked only without any color mode, color temperature only without
-that or a color mode, since core converts between them first), and from the adapter where only it knows (Hue's
-gamut, a Shelly component's fields, `AdapterScope.drops`). A `switch`, or a `switch_as_x` light, lacks every
+or option nobody has tested, an entity the integration can't address. A field the adapter has never been
+tested with is in this class too: it is refused, never dropped. **Lacks a field** comes from the target's state, read
+as `filter_turn_on_params` reads it (a color is lacked only without any color mode, color temperature only without
+that or a color mode, since core converts between them first), and from the adapter where only it knows: Hue's
+gamut, `AdapterScope.drops`, and a Shelly component's fields. A field tested on one Shelly component but not yet
+ported or recorded for another is dropped there, not refused (`color_temp_kelvin` on a `CCT` light). A `switch`, or a `switch_as_x` light, lacks every
 light field, so a timed call still runs its timer. A call left nothing to do by dropping is `unchanged` with
 `fields_dropped`. An empty group is skipped silently, as core's group expansion yields nothing for one.
 
@@ -77,10 +78,10 @@ raises or the entity is skipped.
 
 ## Replacing hue_dimmer
 
-`set_attributes`, `get_attributes` and `set_scene` are drop-in replacements for hue_dimmer's: a user changes
-only the domain. Same field names and units (brightness in percent), names and descriptions in the UI, the
-same response shape, and hue_dimmer's input habits: `0` leaves `min_brightness`, `max_brightness` or
-`color_temp_kelvin` unset, and given several colors, `rgb_color` wins, then `hs_color`, then `xy_color`.
-Before changing any of these, check hue_dimmer
-([jasonmx/hue-smooth-dimming](https://github.com/jasonmx/hue-smooth-dimming)) and say what breaks for its
-users. hue_dimmer's `raise`/`lower` are `raise_brightness`/`lower_brightness` here, with the same fields.
+DeviceSide's actions are drop-in replacements for those of Hue Smooth Dimming (`hue_dimmer`,
+[jasonmx/hue-smooth-dimming](https://github.com/jasonmx/hue-smooth-dimming)): a user changes only the domain, and
+renames `raise`/`lower` to `raise_brightness`/`lower_brightness`, which take the same fields. That means the same
+field names and units (brightness in percent), names and descriptions in the UI, the same response shape, and
+hue_dimmer's input habits: `0` leaves `min_brightness`, `max_brightness` or `color_temp_kelvin` unset, and given
+several colors, `rgb_color` wins, then `hs_color`, then `xy_color`. Before changing any of these, check hue_dimmer
+and say what breaks for its users. README's migration box is the user-facing version of this section.
