@@ -16,10 +16,11 @@ arrival shows they are subscribed (PR #69's barrier, made once per connection ra
 clears everything until the resubscribe brings it back, so a cache whose subscriptions died with the MQTT client reads
 fresh, as before.
 
-Z2M replies to an options request before it republishes bridge/info (0.08 s later on the rig), so a call landing in
-between would read the old value. `ensure_options` writes each confirmed entity's options through to `confirmed`,
-which `settings` reads over bridge/info's. Z2M writes the setting before it replies, so any bridge/info arriving after
-the reply already holds it: each new one drops the overlay.
+Z2M republishes bridge/info just before it answers an options request (microseconds apart on the rig), so the held
+bridge/info usually has the new value by the time the reply arrives. Nothing promises that order, so `ensure_options`
+also writes each confirmed entity's options through to `confirmed` (the reply's `data.to`, else what it sent over the
+options before), which `settings` reads over bridge/info's. Z2M writes the setting before it publishes either, so any
+bridge/info arriving later holds it too: each new one drops the overlay.
 """
 
 import asyncio
