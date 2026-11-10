@@ -797,3 +797,31 @@ async def test_an_unreadable_journal_runs_as_if_none_were_owed(hass, setup_produ
 
     assert options(broker) == [True, False]
     assert "Couldn't read the hue_native_control restore journal" in caplog.text
+
+
+async def test_a_cancelled_set_that_was_refused_strikes_its_entry(hass, setup_production, broker, monkeypatch):
+    hue_bulb(hass)
+    broker.reply = {"status": "error", "error": "refused"}
+    answered = asyncio.Event()
+    ensure = nc.ensure_options
+
+    async def slow_refusal(*args, **kwargs):
+        await answered.wait()
+        await ensure(*args, **kwargs)
+
+    monkeypatch.setattr(nc, "ensure_options", slow_refusal)
+
+    async def body() -> None:
+        async with nc.native_control(hass, target(hass, "light.lamp"), True):
+            pytest.fail("a cancelled set runs no body")
+
+    task = asyncio.create_task(body())
+    await asyncio.sleep(0)
+    task.cancel()
+    await asyncio.sleep(0)
+    answered.set()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    assert options(broker) == [True]
+    assert (await journal(hass)).owed == {}
