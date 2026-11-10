@@ -75,7 +75,8 @@ built:
 Integrations: Zigbee2MQTT (via `mqtt`), ZHA, Matter, Shelly Gen2+ and Hue (CLIP v2). Each adapter's `AdapterScope`
 says what it covers, and `scripts/check_release.py` lists every adapter. Per integration:
 [integrations.md](integrations.md). What can't be built where, and why: `NO_PATH` in `scripts/gen_features.py`, the
-README's prohibited signs.
+README's prohibited signs, explained to users in
+[integrations.md](integrations.md#what-cant-be-done-and-why).
 
 - **`turn_on_for`, `turn_off_for`**: on, then off after `duration` (or the reverse), timed on the device.
   `turn_on_for` takes the `light.turn_on` fields.
