@@ -24,6 +24,19 @@ commands work on the wire, and what was measured on real bulbs, is in
 - **Dimming to 0 % is a soft off.** The light fades out and keeps its level, so a plain turn on brings it back
   there. Raising brightness on a light that is off fades in from the bottom.
 
+## What can't be done, and why
+
+The README's prohibited signs mark these. Each is a limit of the device protocol or the bridge, not a feature
+waiting to be built.
+
+- **Turn off with timer on ZHA, Zigbee2MQTT and Matter.** The Zigbee and Matter timer command (`OnWithTimedOff`)
+  turns a device on, then off. There is no command for off, then on.
+- **Turn on or off with timer on Hue.** The bridge's own timers keep running through a plain on or off, from Home
+  Assistant, the Hue app or a dimmer switch, and the Hue app doesn't show them. To time Hue bulbs, pair them with
+  ZHA, Zigbee2MQTT or Matter.
+- **Smooth hue change on Hue.** A trip around the color wheel isn't a straight line the bridge can fade along.
+  Smooth saturation changes work.
+
 ## Shelly
 
 Gen2 and later (Plus, Pro, Gen3, Gen4): relays, whether Home Assistant shows them as a switch or a light, RGBCCT
@@ -218,9 +231,7 @@ event stream DeviceSide uses, and Signify no longer supports it
 ([Home Assistant](https://www.home-assistant.io/integrations/hue/#support-for-legacy-v1-hue-bridges)), so it is
 refused (`bridge_v1`). Rooms and zones are targets in their own right.
 
-**No `turn_on_for` or `turn_off_for`.** The bridge's own timers keep running through a plain on or off, from Home
-Assistant, the Hue app or a dimmer switch, and the Hue app doesn't show them. To time Hue bulbs, pair them with ZHA,
-Zigbee2MQTT or Matter.
+**No `turn_on_for` or `turn_off_for`**: see [what can't be done](#what-cant-be-done-and-why).
 
 **No auto-off or auto-on.** Neither a light nor a room stores one in the CLIP v2 API, and v2 has no programmable rule engine to
 build one from. The v1 rule engine could, but Signify advises against it as "it will not be available long term"
@@ -241,9 +252,9 @@ options to see the bridge's own reports.
 
 ### Smooth color changes
 
-There are no hue moves, as a trip around the color wheel isn't a straight line the bridge can fade along. Saturation
-keeps each light's current hue, so a white deepens toward its own tint (a warm white toward amber). 100 % saturation
-is the edge of Home Assistant's color space, a little short of the deepest colors the Hue app can reach.
+There are no hue moves ([why](#what-cant-be-done-and-why)). Saturation keeps each light's current hue, so a white
+deepens toward its own tint (a warm white toward amber). 100 % saturation is the edge of Home Assistant's color
+space, a little short of the deepest colors the Hue app can reach.
 
 ### Flash-free turn-on
 
