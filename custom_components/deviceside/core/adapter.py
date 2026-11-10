@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from typing import ClassVar
 
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import Unauthorized
 
 from .models import EntityResult, Request, Status, Target
 from .runtime import DEADLINE, get_runtime
@@ -103,6 +104,9 @@ class Adapter[RequestT: Request](ABC):
             except DeadlinePassed:
                 _LOGGER.warning("%s on %s timed out for %s", self.action, self.integration, target.entity_id)
                 return self.result(target, Status.REJECTED, detail="timeout")
+            except Unauthorized:
+                _LOGGER.warning("%s on %s: %s needs an admin user", self.action, self.integration, target.entity_id)
+                return self.result(target, Status.REJECTED, detail="admin_required")
             except Exception as err:  # noqa: BLE001 - one device's failure must not abort the room
                 # repr, not str: a timeout's message is empty, and only its type says what went wrong
                 _LOGGER.warning("%s on %s failed for %s: %r", self.action, self.integration, target.entity_id, err)

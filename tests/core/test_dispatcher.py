@@ -6,10 +6,12 @@ from unittest.mock import patch
 import pytest
 from homeassistant.components.light import ColorMode, LightEntityFeature
 from homeassistant.config_entries import ConfigEntryState
-from homeassistant.exceptions import HomeAssistantError, ServiceNotSupported, ServiceValidationError
+from homeassistant.exceptions import HomeAssistantError, ServiceNotSupported, ServiceValidationError, Unauthorized
 from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import floor_registry as fr
+from homeassistant.helpers import label_registry as lr
 
 from custom_components.deviceside.core.models import EntityResult, Status, TimedRequest
 from custom_components.deviceside.core.scope import (
@@ -229,6 +231,19 @@ async def test_a_device_failure_raises_once_every_target_has_run(hass, fake, res
     assert reset_script.calls[0][3] == ["light.a", "light.b", "light.c"]
 
 
+async def test_an_unauthorized_target_is_rejected_as_admin_required_and_the_rest_run(hass, fake, reset_script):
+    for entity_id in ("light.a", "light.b"):
+        add_fake_entity(hass, fake, entity_id)
+    reset_script.outcomes["light.a"] = Unauthorized()
+
+    with pytest.raises(HomeAssistantError) as err:
+        await call(hass, "turn_on_for", {"entity_id": ["light.a", "light.b"], "duration": 5})
+
+    assert err.value.translation_key == "targets_failed"
+    assert err.value.translation_placeholders == {"summary": "light.a: admin_required"}
+    assert reset_script.calls[0][3] == ["light.a", "light.b"]
+
+
 async def test_a_named_target_that_cant_take_the_action_raises_before_anything_is_sent(hass, fake, reset_script):
     add_fake_entity(hass, fake, "light.a")
     add_fake_entity(hass, fake, "light.b")
@@ -301,16 +316,65 @@ async def test_no_targets_left_returns_or_raises_by_response_mode(hass, fake, re
     assert reset_script.calls == []
 
 
+async def test_an_empty_selection_returns_or_raises_by_response_mode(hass, fake, reset_script):
+    add_fake_entity(hass, fake, "light.a")
+
+    assert await call(hass, "turn_on_for", {"entity_id": [], "duration": 5}, return_response=False) is None
+    with pytest.raises(HomeAssistantError) as err:
+        await call(hass, "turn_on_for", {"entity_id": [], "duration": 5})
+    assert err.value.translation_key == "no_entities_matched"
+    assert reset_script.calls == []
+
+
 async def test_invalid_input(hass, fake):
     add_fake_entity(hass, fake, "light.a")
 
     with pytest.raises(ServiceValidationError) as err:
-        await call(hass, "turn_on_for", {"entity_id": [], "duration": 5})
-    assert err.value.translation_key == "no_targets"
-
-    with pytest.raises(ServiceValidationError) as err:
         await call(hass, "turn_on_for", {"entity_id": "light.a", "duration": 0})
     assert err.value.translation_key == "invalid_duration"
+
+
+async def test_entity_id_all_acts_on_every_supported_light_and_skips_the_rest_quietly(hass, fake, reset_script, caplog):
+    add_fake_entity(hass, fake, "light.a")
+    add_fake_entity(hass, fake, "light.b")
+    hass.states.async_set("light.yaml_only", "off")  # no registry entry, so no integration to hand it to
+    add_fake_entity(hass, fake, "light.down", state="unavailable")
+    add_fake_entity(hass, fake, "cover.blind")
+
+    response = await call(hass, "turn_on_for", {"entity_id": "all", "duration": 5})
+
+    assert list(response) == ["light.a", "light.b"]
+    assert reset_script.calls[0][3] == ["light.a", "light.b"]
+    # Nothing is named: the unsupported light is skipped with the one warning rather than raised, and the
+    # unavailable one is skipped without a word, as core does for "all".
+    assert "turn_on_for skipped targets that can't take it: light.yaml_only (not_in_registry)" in caplog.text
+    ours = [r.getMessage() for r in caplog.records if r.name.startswith("custom_components.deviceside")]
+    assert ours == ["turn_on_for skipped targets that can't take it: light.yaml_only (not_in_registry)"]
+
+
+async def test_a_label_target_resolves_to_its_lights(hass, fake, reset_script):
+    add_fake_entity(hass, fake, "light.a")
+    add_fake_entity(hass, fake, "light.b")
+    label = lr.async_get(hass).async_create("Evening")
+    er.async_get(hass).async_update_entity("light.a", labels={label.label_id})
+
+    response = await call(hass, "turn_on_for", {"label_id": label.label_id, "duration": 5})
+
+    assert list(response) == ["light.a"]
+    assert reset_script.calls[0][3] == ["light.a"]
+
+
+async def test_a_floor_target_resolves_to_the_lights_in_its_areas(hass, fake, reset_script):
+    add_fake_entity(hass, fake, "light.a")
+    add_fake_entity(hass, fake, "light.b")
+    floor = fr.async_get(hass).async_create("Upstairs")
+    area_id = in_area(hass, "Landing", "light.a")
+    ar.async_get(hass).async_update(area_id, floor_id=floor.floor_id)
+
+    response = await call(hass, "turn_on_for", {"floor_id": floor.floor_id, "duration": 5})
+
+    assert list(response) == ["light.a"]
+    assert reset_script.calls[0][3] == ["light.a"]
 
 
 async def test_ha_groups_expand_for_light_and_switch(hass, fake, reset_script):
