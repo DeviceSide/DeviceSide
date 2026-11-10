@@ -77,10 +77,12 @@ Only devices Z2M registered through MQTT discovery are found: the device carries
   (`1221051039810110150109113116116` for `zigbee2mqtt`; `getEncodedBaseTopic` in Z2M's
   `lib/extension/homeassistant.ts`), and topic `zigbee2mqtt/<group ID>/set`. `resolveEntity` falls back to the
   ID-keyed `groups` map, so a rename doesn't break it either, but a device whose friendly name is that number wins.
-  Members come from `zigbee2mqtt/bridge/groups`, features from `zigbee2mqtt/bridge/devices`. Both are held for the
-  entry's life (`bridge_cache.py`): subscribed once MQTT is up, kept as Z2M republishes them on a device or group
-  change, and read fresh only while nothing has arrived since the last connect. Z2M's settings (`bridge/info`) are
-  always read fresh.
+  Members come from `zigbee2mqtt/bridge/groups`, features from `zigbee2mqtt/bridge/devices`, and each entity's
+  options from Z2M's settings (`bridge/info`). All three are held for the entry's life (`bridge_cache.py`):
+  subscribed once MQTT is up, kept as Z2M republishes them (devices and groups on a device or group change, settings
+  on every settings change and on start; Tested behavior), and read fresh only while nothing has arrived since the
+  last connect. Options DeviceSide sets are written through to the held settings once Z2M confirms them, until its
+  next `bridge/info`.
 - **Both assume the default base topic.** A group's identifier carries it, so another is refused; a device's
   doesn't, so its publish goes nowhere.
 

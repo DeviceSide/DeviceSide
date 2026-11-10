@@ -1,4 +1,4 @@
-"""Zigbee2MQTT bridge cache: bridge/devices and bridge/groups held, and options replies routed, for the entry's life."""
+"""Zigbee2MQTT bridge cache: bridge/devices, groups and info held, and options replies routed, for the entry's life."""
 
 import asyncio
 import json
@@ -15,7 +15,7 @@ DEVICES = "zigbee2mqtt/bridge/devices"
 STATE = "zigbee2mqtt/bridge/state"
 DEVICE_RESPONSE = "zigbee2mqtt/bridge/response/device/options"
 GROUP_RESPONSE = "zigbee2mqtt/bridge/response/group/options"
-HELD_TOPICS = [DEVICE_RESPONSE, GROUP_RESPONSE, DEVICES, GROUPS, STATE]
+HELD_TOPICS = [DEVICE_RESPONSE, GROUP_RESPONSE, DEVICES, GROUPS, INFO, STATE]
 ROOM = [{"id": 7, "members": [{"ieee_address": "0x01"}]}]
 
 
@@ -78,7 +78,7 @@ def wanted_on(current: dict) -> dict:
     return {} if current.get("x") else {"x": True}
 
 
-# Holding devices and groups
+# Holding devices, groups and info
 
 
 async def test_subscribes_the_response_topics_before_the_barrier(hass, setup_production, online, connection, mqtt_up):
@@ -110,14 +110,13 @@ async def test_each_payload_is_parsed_once(hass, setup_production, online, conne
     assert await bridge.retained(hass, "groups") is second
 
 
-async def test_info_is_always_read_fresh(hass, setup_production, online, connection, mqtt_up):
+async def test_info_comes_from_the_cache(hass, setup_production, online, connection, mqtt_up):
     await start(hass, setup_production)
     online.topics.clear()
 
-    await bridge.retained(hass, "info")
-    await bridge.retained(hass, "info")
-
-    assert online.topics == [INFO, INFO]
+    first = await bridge.retained(hass, "info")
+    assert await bridge.retained(hass, "info") is first
+    assert online.topics == []
 
 
 async def test_an_empty_cache_reads_fresh(hass, setup_production, broker, connection, mqtt_up):
@@ -160,8 +159,9 @@ async def test_live_replies_reach_the_call_without_its_own_subscription(
     await bridge.ensure_options(hass, "device", ["0x01"], wanted_on, confirmed.append)
     await bridge.ensure_options(hass, "device", ["0x01"], wanted_on, confirmed.append)
 
-    assert confirmed == ["0x01", "0x01"]
-    assert online.topics == [INFO, INFO]  # bridge/info fresh on each call, never the reply topic
+    assert confirmed == ["0x01"]  # the second call sees the first's write, before Z2M republishes bridge/info
+    assert online.topics == []  # neither bridge/info nor the reply topic
+    assert len(online.requests()) == 1
     assert cache.pending == {}
 
 
@@ -177,7 +177,8 @@ async def test_a_refused_live_reply_still_raises(hass, setup_production, online,
 async def test_without_the_barrier_each_call_subscribes_for_its_reply(
     hass, setup_production, broker, connection, mqtt_up
 ):
-    cache = await start(hass, setup_production)  # no retained bridge/state
+    del broker.retained[STATE]
+    cache = await start(hass, setup_production)
     assert not cache.replies_live
     broker.topics.clear()
     confirmed: list[str] = []
@@ -194,7 +195,7 @@ async def test_a_disconnect_clears_it_until_the_resubscribe(hass, setup_producti
     connection.lost()
 
     assert not cache.replies_live
-    assert cache.parsed("groups") is None and cache.parsed("devices") is None
+    assert cache.parsed("groups") is None and cache.parsed("devices") is None and cache.parsed("info") is None
     online.topics.clear()
     await bridge.ensure_options(hass, "device", ["0x01"], wanted_on, lambda _id: None)
     assert online.topics == [DEVICE_RESPONSE, INFO]
@@ -205,6 +206,77 @@ async def test_a_disconnect_clears_it_until_the_resubscribe(hass, setup_producti
     online.deliver(STATE, json.dumps({"state": "online"}))
     assert cache.replies_live
     assert await bridge.retained(hass, "groups") == ROOM
+
+
+async def test_live_replies_without_info_read_it_fresh(hass, setup_production, online, connection, mqtt_up):
+    cache = await start(hass, setup_production)
+    online.deliver(INFO, "")  # bridge/info cleared
+    assert cache.replies_live and cache.parsed("info") is None
+    online.topics.clear()
+
+    await bridge.ensure_options(hass, "device", ["0x01"], wanted_on, lambda _id: None)
+
+    assert online.topics == [INFO]
+
+
+# Confirmed options, written through
+
+
+def info(devices: dict) -> str:
+    return json.dumps({"config": {"devices": devices, "groups": {}}})
+
+
+async def test_a_confirmed_write_shows_until_the_next_info(hass, setup_production, online, connection, mqtt_up):
+    online.retained[INFO] = {"config": {"devices": {"0x01": {"y": 1}}, "groups": {}}}
+    cache = await start(hass, setup_production)
+
+    await bridge.ensure_options(hass, "device", ["0x01"], wanted_on, lambda _id: None)
+
+    # No data.to in the reply: what was sent, over the options before.
+    assert cache.settings("devices", "0x01") == {"y": 1, "x": True}
+    assert (await bridge.retained(hass, "info"))["config"]["devices"]["0x01"] == {"y": 1}  # never changed in place
+
+    online.deliver(INFO, info({"0x01": {"y": 2}}))  # Z2M's republish
+    assert cache.confirmed == {}
+    assert cache.settings("devices", "0x01") == {"y": 2}
+
+
+async def test_a_confirmed_write_takes_z2m_s_own_options(hass, setup_production, online, connection, mqtt_up):
+    cache = await start(hass, setup_production)
+    online.reply = {"status": "ok", "data": {"from": {}, "to": {"x": True, "z": 3}}}
+
+    await bridge.ensure_options(hass, "device", ["0x01"], wanted_on, lambda _id: None)
+
+    assert cache.settings("devices", "0x01") == {"x": True, "z": 3}
+
+
+async def test_settings_without_info(hass, setup_production, online, connection, mqtt_up):
+    cache = await start(hass, setup_production)
+    assert cache.settings("devices", "0x99") == {}  # held, but no options for it
+
+    online.deliver(INFO, "")
+
+    assert cache.settings("devices", "0x01") is None
+
+
+async def test_a_disconnect_drops_confirmed_writes(hass, setup_production, online, connection, mqtt_up):
+    cache = await start(hass, setup_production)
+    await bridge.ensure_options(hass, "device", ["0x01"], wanted_on, lambda _id: None)
+    assert cache.confirmed
+
+    connection.lost()
+
+    assert cache.confirmed == {}
+
+
+async def test_a_refused_write_writes_nothing_through(hass, setup_production, online, connection, mqtt_up):
+    cache = await start(hass, setup_production)
+    online.refused.add("0x01")
+
+    with pytest.raises(RuntimeError):
+        await bridge.ensure_options(hass, "device", ["0x01"], wanted_on, lambda _id: None)
+
+    assert cache.confirmed == {}
 
 
 # Lifecycle

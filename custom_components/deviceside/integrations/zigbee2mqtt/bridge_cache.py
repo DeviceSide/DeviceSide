@@ -3,8 +3,10 @@
 Each fresh subscription costs a call HA's subscribe cooldown (0.1 s) plus a broker round trip, and a group action
 read bridge/groups two or three times in series. Held here instead:
 
-- bridge/devices and bridge/groups, the latest of each as Z2M publishes it (retained, and republished whenever a
-  device or group changes, lib/extension/bridge.ts), parsed once per payload.
+- bridge/devices, bridge/groups and bridge/info, the latest of each as Z2M publishes it, parsed once per payload. All
+  three are retained; Z2M republishes devices and groups whenever a device or group changes (lib/extension/bridge.ts),
+  and info on every settings change and on start, so a user's change of an option reaches the cache (probe in
+  docs/integration-internals.md, Tested behavior).
 - The options response topics, routed to whichever `ensure_options` call is waiting on the reply's transaction.
 
 The response topics carry no retained message, so nothing shows they are live; the retained bridge/state, subscribed
@@ -14,7 +16,10 @@ arrival shows they are subscribed (PR #69's barrier, made once per connection ra
 clears everything until the resubscribe brings it back, so a cache whose subscriptions died with the MQTT client reads
 fresh, as before.
 
-bridge/info is never held: its values must be fresh, and its arrival is each call's barrier for its own subscriptions.
+Z2M replies to an options request before it republishes bridge/info (0.08 s later on the rig), so a call landing in
+between would read the old value. `ensure_options` writes each confirmed entity's options through to `confirmed`,
+which `settings` reads over bridge/info's. Z2M writes the setting before it replies, so any bridge/info arriving after
+the reply already holds it: each new one drops the overlay.
 """
 
 import asyncio
@@ -33,7 +38,7 @@ from ...core.runtime import DATA
 _LOGGER = logging.getLogger(__name__)
 
 _KEY = "zigbee2mqtt_bridge_cache"
-HELD = ("devices", "groups")
+HELD = ("devices", "groups", "info")
 KINDS = ("device", "group")
 # Retained by Z2M ("online"), and after the response topics in both subscribe orders.
 _BARRIER = "state"
@@ -46,6 +51,8 @@ class BridgeCache:
         self._payloads: dict[str, str] = {}
         self._parsed: dict[str, tuple[str, Any]] = {}
         self.pending: dict[str, asyncio.Future[dict]] = {}
+        # Options Z2M confirmed since its last bridge/info, by (section, Z2M ID): Z2M's whole options after the write.
+        self.confirmed: dict[tuple[str, str], dict] = {}
         # Whether the response topics are subscribed, so a request's reply reaches `pending`.
         self.replies_live = False
         self._unsubscribes: list[Callable[[], None]] = []
@@ -59,6 +66,15 @@ class BridgeCache:
             memo = self._parsed[suffix] = (payload, json.loads(payload))
         return memo[1]
 
+    def settings(self, section: str, z2m_id: str) -> dict | None:
+        """An entity's options: confirmed since the last bridge/info, else bridge/info's own; None when no bridge/info
+        is held. Shared with every caller: read it, never change it."""
+        if (info := self.parsed("info")) is None:
+            return None
+        if (options := self.confirmed.get((section, z2m_id))) is not None:
+            return options
+        return info.get("config", {}).get(section, {}).get(z2m_id, {})
+
     def _keeper(self, suffix: str) -> Callable[[mqtt.ReceiveMessage], None]:
         @callback
         def received(msg: mqtt.ReceiveMessage) -> None:
@@ -67,6 +83,8 @@ class BridgeCache:
                 self._payloads[suffix] = msg.payload
             else:
                 self._payloads.pop(suffix, None)
+            if suffix == "info":
+                self.confirmed.clear()
 
         return received
 
@@ -77,18 +95,20 @@ class BridgeCache:
     @callback
     def _on_connection(self, connected: bool) -> None:
         if not connected:
-            self.replies_live = False
-            self._payloads.clear()
-            self._parsed.clear()
+            self._clear()
 
     @callback
     def stop(self) -> None:
         for unsubscribe in self._unsubscribes:
             unsubscribe()
         self._unsubscribes.clear()
+        self._clear()
+
+    def _clear(self) -> None:
         self.replies_live = False
         self._payloads.clear()
         self._parsed.clear()
+        self.confirmed.clear()
 
     async def subscribe(self, hass: HomeAssistant) -> None:
         # In this order, so the barrier follows the response topics in HA's batch.

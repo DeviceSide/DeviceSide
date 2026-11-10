@@ -88,7 +88,8 @@ async def settled(hass: HomeAssistant, target: Target) -> None:
 async def native_control(hass: HomeAssistant, target: Target, need: bool | None) -> AsyncIterator[None]:
     """Hold the option at `need` around the body's publish to a Hue device, or a group with a Hue member.
 
-    Reads Z2M's settings on each call rather than caching them, so a user who changes the option is seen. A need of
+    Reads the option on each call (from the bridge cache when it holds bridge/info, which Z2M republishes on every
+    change), so a user who changes it is seen. A need of
     None, a non-Hue target or the option already right costs no writes, and a non-Hue device reads nothing. One lock
     per device or group, held from the set to the restore, keeps actions with opposite needs apart.
 
@@ -216,8 +217,9 @@ async def _set(hass: HomeAssistant, target: Target, address: Address, value: boo
     """Set the option to value where it differs, or regardless for a restore; whether the option may now be value.
 
     It may be when Z2M confirmed the write, or when the request went out and no answer came, as Z2M may have applied
-    it: either way the caller restores. A refused write left the option as it was. A restore doesn't compare: Z2M may
-    not have republished bridge/info since the set.
+    it: either way the caller restores. A refused write left the option as it was. A restore doesn't compare: the
+    cache's write-through would show our own confirmed set, but a set that timed out left no confirmation, so writing
+    regardless is the safe default.
     """
     written = False
     requested = False
