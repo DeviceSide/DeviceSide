@@ -10,7 +10,7 @@ from typing import Any, ClassVar
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
-from .addressing import topic, z2m_address
+from .addressing import not_addressable, topic, z2m_address
 from .bridge import has_feature, publish, publish_set
 from .color_refresh import refresh_color
 from .members import member_lights
@@ -147,8 +147,8 @@ class Z2MRamp(Adapter[RampRequest]):
     def supports(self, hass: HomeAssistant, request: RampRequest, target: Target) -> str | None:
         if (reason := super().supports(hass, request, target)) is not None:
             return reason
-        if topic(target, "set") is None:
-            return "not_addressable"
+        if (reason := not_addressable(target)) is not None:
+            return reason
         return None
 
     async def execute(self, hass: HomeAssistant, request: RampRequest, targets: list[Target]) -> list[EntityResult]:
@@ -195,8 +195,6 @@ async def start(
             await publish_set(hass, target, {"hue_move": rate})
             hue_moves(hass).update(light.entity_id for light in lights)
             return clamped_to
-        if outcome.attribute == SATURATION:
-            hue_moves(hass).difference_update(outcome.starts)  # a color write ends the bulb's hue cycle
         # Inside the option's window, so the prediction starts at the publish, not before the settings writes.
         async with cache.recording((light_id, outcome.attribute) for light_id in outcome.starts):
             for light_id, begin in outcome.starts.items():
@@ -204,6 +202,8 @@ async def start(
             for light, payload in outcome.before:
                 await publish_set(hass, light, payload)
             await publish_set(hass, target, outcome.payload)
+        if outcome.attribute == SATURATION:
+            hue_moves(hass).difference_update(outcome.starts)  # a color write ends the bulb's hue cycle
     read = end_read(hass, target, lights, outcome.attribute)
     get_runtime(hass).schedule(hass, read_back_key(target, outcome.attribute), [(outcome.duration + END_READ_S, read)])
     return None

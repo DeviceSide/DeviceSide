@@ -6,7 +6,7 @@ from typing import ClassVar
 
 from homeassistant.core import HomeAssistant
 
-from .addressing import topic
+from .addressing import not_addressable, topic
 from .bridge import publish, publish_set, state_reply, traced_options
 from .native_control import COLOR_FIELDS, NEED, native_control, settled
 from ...actions.turn_on_for import TurnOnForRequest
@@ -66,8 +66,8 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
     def supports(self, hass: HomeAssistant, request: TurnOnForRequest, target: Target) -> str | None:
         if (reason := super().supports(hass, request, target)) is not None:
             return reason
-        if topic(target, "set") is None:
-            return "not_addressable"
+        if (reason := not_addressable(target)) is not None:
+            return reason
         return None
 
     async def execute(
