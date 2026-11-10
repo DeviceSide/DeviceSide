@@ -459,6 +459,49 @@ async def test_an_unread_color_capabilities_rejects_a_hue_move(hass, commands, m
     assert "ColorCapabilities not read" in caplog.text
 
 
+async def test_a_cancel_mid_send_leaves_the_hue_cycle_tracked(hass, monkeypatch):
+    """A cycle the bulb may have started must stay tracked, so a stop sends it StopMoveStep."""
+    bulb(hass, "light.a", A)
+    bulb(hass, "light.b", B)
+
+    async def cancelled(*args, **kwargs):
+        raise asyncio.CancelledError
+
+    monkeypatch.setattr(zcl, "command", cancelled)
+
+    with pytest.raises(asyncio.CancelledError):
+        await call(hass, "raise_hue", {"entity_id": ["light.a", "light.b"]})
+
+    assert hue_moves(hass) == {"light.a", "light.b"}
+
+
+async def test_an_overlapping_soft_off_keeps_its_restore_when_the_first_fails(hass):
+    """The first soft off's failure must not take back what the second, which replaced it, owns."""
+    bulb(hass, "light.a", A)
+    gate = asyncio.Event()
+    seen = 0
+
+    async def handler(service: ServiceCall) -> None:
+        nonlocal seen
+        seen += 1
+        if seen == 1:
+            await gate.wait()
+            raise HomeAssistantError("no route")
+
+    hass.services.async_register("zha", "issue_zigbee_cluster_command", handler)
+    first = asyncio.create_task(call(hass, "lower_brightness", {"entity_id": "light.a"}))
+    while not seen:
+        await asyncio.sleep(0)
+
+    await call(hass, "lower_brightness", {"entity_id": "light.a"})
+    gate.set()
+    with pytest.raises(HomeAssistantError):
+        await first
+
+    assert soft_off_restores(hass) == {"light.a"}
+    assert transition_cache(hass).tracks("light.a", BRIGHTNESS)
+
+
 async def test_a_cancel_puts_every_light_back(hass, monkeypatch):
     bulb(hass, "light.a", A)
     bulb(hass, "light.b", B)

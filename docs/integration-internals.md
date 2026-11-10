@@ -244,7 +244,11 @@ light reads on, as a TS011F counts OnTime down while off.
 - Hue: `EnhancedMoveHue` at `65535 / sweep_time` steps per second; a light without enhanced hue in
   ColorCapabilities (zigpy's cache, else one live read) gets `fields_dropped`, and a read that fails rejects the
   move with `error`.
-- `stop`: `StopMoveStep` where a color move runs, then Level `Stop`.
+- `stop`: `StopMoveStep` where a color move runs, then Level `Stop`, each sent per light (one groupcast where the
+  lights are a whole group). A light either command fails for is rejected (`admin_required`, else `error`) and keeps
+  its move, hue cycle and soft-off restore; the lights that halted record the halt and drop theirs.
+- A hue move marks its lights as cycling before the send, so a cancel mid-send still leaves them to a later stop; the
+  lights it failed for are unmarked after.
 
 A transition longer than ZCL's 6553.4 s runs at that. The bulb reports brightness during a fade, never color, so
 DeviceSide calls `homeassistant.update_entity` 1 s after a fade should end and straight after a stop; raw commands

@@ -137,16 +137,47 @@ async def test_gen1_and_non_timer_entities_are_refused(hass):
     assert not call_rpc.await_args_list
 
 
+RED = {
+    "rgb_color": [255, 0, 0],
+    "hs_color": list(color_RGB_to_hs(255, 0, 0)),
+    "xy_color": list(color_RGB_to_xy(255, 0, 0)),
+}
+# The rows each profile's status carries.
+PROFILE_ROWS = {
+    "Light": {"brightness": 40},
+    "CCT": {"brightness": 40, "color_temp_kelvin": 4000},
+    "RGB": {"brightness": 40, **RED},
+    "RGBW": {"brightness": 40, **RED},
+}
+
+
+@pytest.mark.parametrize("component", ["Light", "CCT", "RGB", "RGBW", "RGBCCT"])
+def test_a_status_without_a_field_leaves_its_row_out(component):
+    assert status_row(component, {}, NOW) == {}
+    assert status_row(component, {"mode": "cct"}, NOW) == {}
+    assert status_row(component, {"mode": "rgb"}, NOW) == {}
+
+
+async def test_a_target_that_yields_no_row_is_not_confirmed(hass):
+    entry, call_rpc = shelly_device(hass, status={})
+    add_shelly_entity(hass, entry, "light.lamp", "light:0")
+    failing(call_rpc, "GetConfig")
+
+    with pytest.raises(HomeAssistantError) as raised:
+        await call(hass, "get_attributes", {"entity_id": "light.lamp"})
+
+    assert raised.value.translation_key == "targets_failed"
+
+
 @pytest.mark.parametrize(("key", "component"), OTHER_LIGHT_COMPONENTS)
-async def test_documented_components_report_timer_and_settings_only(hass, key, component):
-    # Their light state isn't read yet: status_row has no branch for these components.
+async def test_each_profile_reports_the_rows_it_has(hass, key, component):
     entry, call_rpc = shelly_device(hass, status={"brightness": 40, "ct": 4000, "rgb": [255, 0, 0]})
     add_shelly_entity(hass, entry, "light.lamp", key)
     await call(hass, "turn_on_for", {"entity_id": "light.lamp", "duration": 5})
 
     response = await call(hass, "get_attributes", {"entity_id": "light.lamp"})
 
-    assert response == {"light.lamp": {"timer": timer("off", 3.0), **NO_AUTO}}
+    assert response == {"light.lamp": {**PROFILE_ROWS[component], "timer": timer("off", 3.0), **NO_AUTO}}
     assert call_rpc.await_args_list[-2:] == [
         rpc_call(f"{component}.GetStatus", {"id": 0}),
         rpc_call(f"{component}.GetConfig", {"id": 0}),
