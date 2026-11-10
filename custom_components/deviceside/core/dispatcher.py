@@ -9,14 +9,14 @@ from homeassistant.helpers import target as target_helpers
 
 from . import duration, ha_watch
 from .action import Action
-from .adapter import DEADLINE, Adapter
+from .adapter import Adapter
 from .errors import EXPERIMENTAL_OFF, Reason, TargetNotSupported
 from .fields import lacking
 from .groups import expand_ha_groups
 from .models import FAILED, ActionKind, EntityResult, Request, Status, Target, TimedRequest
 from .registry import AdapterRegistry
 from .resolver import resolve
-from .runtime import get_runtime
+from .runtime import DEADLINE, get_runtime
 from .scope import Level
 from ..const import ADAPTER_BACKSTOP_S, ADAPTER_TIMEOUT_S, DOMAIN
 
@@ -195,11 +195,16 @@ class Dispatcher:
         deadline = asyncio.get_running_loop().time() + ADAPTER_TIMEOUT_S
         DEADLINE.set(deadline)
         try:
-            # Adapter.gather holds each target to the deadline; this catches an execute still busy outside it.
+            # Adapter.slot holds each command to the deadline; this catches an execute still busy outside it.
             async with asyncio.timeout_at(deadline + ADAPTER_BACKSTOP_S):
                 raw = await adapter.execute(self.hass, request, targets)
         except TimeoutError:
-            _LOGGER.warning("%s on %s timed out after %ss", adapter.action, adapter.integration, ADAPTER_TIMEOUT_S)
+            _LOGGER.warning(
+                "%s on %s timed out after %ss",
+                adapter.action,
+                adapter.integration,
+                ADAPTER_TIMEOUT_S + ADAPTER_BACKSTOP_S,
+            )
             return [adapter.result(target, Status.REJECTED, detail="timeout") for target in targets]
         except Exception:
             _LOGGER.exception("%s on %s failed", adapter.action, adapter.integration)

@@ -17,7 +17,7 @@ from .addressing import address, group_id, unsupported_reason, via_zha_group
 from .groups import light_members
 from ...actions.ramp import HUE, RampRequest
 from ...core import transition
-from ...core.adapter import Adapter
+from ...core.adapter import Adapter, DeadlinePassed
 from ...core.ha_watch import ALL, Call, Entries
 from ...core.models import EntityResult, Status, Target
 from ...core.runtime import Job, get_runtime
@@ -230,12 +230,14 @@ class ZHARamp(Adapter[RampRequest]):
             outcome = plan(cache, request, lights)
         if isinstance(outcome, str):
             return each(Status.UNCHANGED, detail=outcome)
-        integration_limit, adapter_limit = self.limits(hass)
         try:
-            async with integration_limit, adapter_limit:
+            async with self.slot(hass):
                 clamped_to = await start(hass, request.context, cache, gid, outcome)
         except Unauthorized:
             return each(Status.REJECTED, detail="admin_required")
+        except DeadlinePassed:
+            _LOGGER.warning("%s on zha timed out for %s", self.action, ", ".join(light.entity_id for light in lights))
+            return each(Status.REJECTED, detail="timeout")
         except Exception as err:  # noqa: BLE001 - as in gather(): one group's failure must not abort the room
             names = ", ".join(light.entity_id for light in lights)
             _LOGGER.warning("%s on zha failed for %s: %r", self.action, names, err)

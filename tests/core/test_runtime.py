@@ -2,7 +2,9 @@
 
 from unittest.mock import MagicMock
 
-from custom_components.deviceside.core.runtime import DeviceSideData
+from homeassistant.const import EVENT_HOMEASSISTANT_STOP
+
+from custom_components.deviceside.core.runtime import DEADLINE, DeviceSideData, get_runtime
 
 from ..conftest import advance, wall_clock_now
 
@@ -111,3 +113,43 @@ def test_listen_attaches_once_per_owner_and_replaces_a_new_owners():
     assert attached == ["first", "second", "other"]
     assert detached == ["first", "second", "other"]
     assert runtime.listeners == {}
+
+
+async def test_cancel_pending_with_must_run_takes_the_restores_too(hass):
+    runtime, ran, start = _runtime(), [], wall_clock_now()
+    runtime.schedule(hass, "restore", [(1, _recorder(ran, "restore"))], must_run=True)
+
+    runtime.cancel_pending(must_run=True)
+    await advance(hass, start, 2)
+
+    assert ran == []
+    assert runtime.pending == {}
+    assert runtime.must_run == set()
+
+
+async def test_ha_stopping_cancels_the_must_run_jobs(hass, setup_production):
+    runtime, ran, start = get_runtime(hass), [], wall_clock_now()
+    runtime.schedule(hass, "restore", [(1, _recorder(ran, "restore"))], must_run=True)
+
+    hass.bus.async_fire(EVENT_HOMEASSISTANT_STOP)
+    await hass.async_block_till_done()
+    await advance(hass, start, 2)
+
+    assert ran == []
+    assert runtime.pending == {}
+
+
+async def test_a_job_runs_outside_the_deadline_of_the_run_that_scheduled_it(hass):
+    runtime, seen, start = _runtime(), [], wall_clock_now()
+
+    async def job() -> None:
+        seen.append(DEADLINE.get())
+
+    token = DEADLINE.set(1.0)
+    try:
+        runtime.schedule(hass, "k", [(1, job)])
+    finally:
+        DEADLINE.reset(token)
+    await advance(hass, start, 1.5)
+
+    assert seen == [None]

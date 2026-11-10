@@ -1,20 +1,21 @@
 import asyncio
 import logging
 from abc import ABC, abstractmethod
-from collections.abc import Awaitable, Callable
-from contextvars import ContextVar
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import asynccontextmanager
 from typing import ClassVar
 
 from homeassistant.core import HomeAssistant
 
 from .models import EntityResult, Request, Status, Target
-from .runtime import get_runtime
+from .runtime import DEADLINE, get_runtime
 from .scope import AdapterScope
 
 _LOGGER = logging.getLogger(__name__)
 
-# The loop time the dispatcher gives a run's targets to finish by, set around each execute(); None outside one.
-DEADLINE: ContextVar[float | None] = ContextVar("deviceside_adapter_deadline", default=None)
+
+class DeadlinePassed(Exception):
+    """The run's deadline passed before a slot's work was done, waiting for the slot included."""
 
 
 class Adapter[RequestT: Request](ABC):
@@ -67,27 +68,42 @@ class Adapter[RequestT: Request](ABC):
             runtime.semaphore(f"adapter:{self.action}:{self.integration}", self.scope.max_concurrency),
         )
 
+    @asynccontextmanager
+    async def slot(self, hass: HomeAssistant) -> AsyncIterator[None]:
+        """A slot under the integration's and this adapter's concurrency limits, held to the dispatcher's deadline.
+
+        Every command to a device runs in one. Past the deadline, waiting for the slot included, it raises
+        DeadlinePassed, which the caller reports as REJECTED with timeout for the targets it held; a send's own
+        TimeoutError propagates as itself.
+        """
+        integration_limit, adapter_limit = self.limits(hass)
+        budget = asyncio.timeout_at(DEADLINE.get())
+        try:
+            async with budget, integration_limit, adapter_limit:
+                yield
+        except TimeoutError as err:
+            if budget.expired():
+                raise DeadlinePassed from err
+            raise
+
     async def gather(
         self, hass: HomeAssistant, targets: list[Target], send: Callable[[Target], Awaitable[EntityResult]]
     ) -> list[EntityResult]:
-        """Run send() per target under the integration's and this adapter's concurrency limits.
+        """Run send() per target, each in its own slot().
 
         An exception from one target becomes that target's REJECTED result and does not affect the others. A target
-        not done by the dispatcher's deadline, waiting for a slot included, is REJECTED with timeout, so a large room
-        cut short still reports the lights that changed.
+        not done by the dispatcher's deadline is REJECTED with timeout, so a large room cut short still reports the
+        lights that changed.
         """
-        integration_limit, adapter_limit = self.limits(hass)
-        deadline = DEADLINE.get()
 
         async def _one(target: Target) -> EntityResult:
-            budget = asyncio.timeout_at(deadline)
             try:
-                async with budget, integration_limit, adapter_limit:
+                async with self.slot(hass):
                     return await send(target)
+            except DeadlinePassed:
+                _LOGGER.warning("%s on %s timed out for %s", self.action, self.integration, target.entity_id)
+                return self.result(target, Status.REJECTED, detail="timeout")
             except Exception as err:  # noqa: BLE001 - one device's failure must not abort the room
-                if budget.expired():
-                    _LOGGER.warning("%s on %s timed out for %s", self.action, self.integration, target.entity_id)
-                    return self.result(target, Status.REJECTED, detail="timeout")
                 # repr, not str: a timeout's message is empty, and only its type says what went wrong
                 _LOGGER.warning("%s on %s failed for %s: %r", self.action, self.integration, target.entity_id, err)
                 return self.result(target, Status.REJECTED, detail="error")

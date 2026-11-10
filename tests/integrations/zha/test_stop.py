@@ -1,6 +1,9 @@
 """ZHA stop: level Stop to each lit light, StopMoveStep where a color move of ours runs, the halt recorded, and a
 refresh at once."""
 
+import asyncio
+from unittest.mock import patch
+
 import probatio
 import pytest
 from homeassistant.core import Context, ServiceCall
@@ -11,8 +14,10 @@ from custom_components.deviceside.const import DOMAIN
 from custom_components.deviceside.core.transition import BRIGHTNESS, SATURATION
 from custom_components.deviceside.integrations.zha.fade import hue_moves, transition_cache
 
-from .conftest import SENT, A, B, bulb, sent, unchanged
+from .conftest import IEEE, SENT, A, B, bulb, sent, unchanged
 from ...conftest import advance, call, wall_clock_now
+
+DISPATCHER = "custom_components.deviceside.core.dispatcher"
 
 pytestmark = pytest.mark.usefixtures("setup_production", "clock")
 
@@ -171,3 +176,20 @@ async def test_a_failed_stop_rejects_and_keeps_the_move(hass, commands, clock):
 
     assert raised.value.translation_placeholders["summary"] == "light.bulb: error"
     assert transition_cache(hass).running("light.bulb", BRIGHTNESS) is not None
+
+
+async def test_a_slow_groupcast_times_out_its_members_and_keeps_the_others(hass, two_light_group, commands):
+    """The run's deadline holds a groupcast as gather() holds a unicast: the lights already stopped keep SENT."""
+    bulb(hass, "light.a", A)
+    bulb(hass, "light.b", B)
+    bulb(hass)
+
+    async def hang(call: ServiceCall) -> None:
+        await asyncio.sleep(1)
+
+    hass.services.async_register("zha", "issue_zigbee_group_command", hang)
+    with patch(f"{DISPATCHER}.ADAPTER_TIMEOUT_S", 0.05), pytest.raises(HomeAssistantError) as raised:
+        await call(hass, "stop", {"entity_id": ["light.zha_group", "light.bulb"]})
+
+    assert raised.value.translation_placeholders["summary"] == "light.a: timeout, light.b: timeout"
+    assert [command.data["ieee"] for command in commands] == [IEEE]

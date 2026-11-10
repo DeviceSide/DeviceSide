@@ -1,5 +1,6 @@
 import asyncio
 from collections.abc import Awaitable, Callable, Iterable
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -16,6 +17,11 @@ if TYPE_CHECKING:
 DATA: HassKey[DeviceSideData] = HassKey(DOMAIN)
 
 type Job = Callable[[], Awaitable[None]]
+
+# The loop time the dispatcher gives a run's targets to finish by, set around each execute(); None outside one.
+# Tasks and timers an execute() starts copy it: schedule() clears it for its jobs, and a task an execute() creates
+# sends nothing through Adapter.slot.
+DEADLINE: ContextVar[float | None] = ContextVar("deviceside_adapter_deadline", default=None)
 
 
 @dataclass(slots=True)
@@ -90,6 +96,8 @@ class DeviceSideData:
             if not handles and self.pending.get(key) is handles:
                 del self.pending[key]
                 self.must_run.discard(key)
+            # The timer copied the context of the run that scheduled it, whose deadline has passed by now.
+            DEADLINE.set(None)
             await job()
 
         unsub = async_call_later(hass, delay, fire)
