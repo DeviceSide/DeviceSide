@@ -43,6 +43,7 @@ from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: 
 from custom_components.deviceside.core.scope import Level, Support  # noqa: E402
 from scripts.check_release import adapters, proven, records, result  # noqa: E402
 from scripts.gen_features import COLUMNS, anchors, slug  # noqa: E402
+from scripts.gen_features import FEATURES as TABLE_FEATURES  # noqa: E402
 
 PAGE = REPO / "docs" / "device-compatibility.md"
 README = REPO / "README.md"
@@ -93,26 +94,19 @@ CLASS_KEYS = {"phrase", "section"}
 BROKEN_KEYS = {"what", "integrations", "reason", "source", "section"}
 REPORT_KEYS = {"integration", "model", "item", "firmware", "deviceside", "worked", "failed", "issue"}
 GROUPS_ENTRY = ("native groups", "Native groups")  # (phrase, section) for the groups a record tested
-# Each action's feature, as a card names it, in the README feature table's order. `stop` rides a smooth move, so it
-# is named only when nothing else is.
-FEATURES = {
-    "turn_on_for": "turn on with timer",
-    "turn_off_for": "turn off with timer",
-    "set_auto_off": "auto-off/on",
-    "set_auto_on": "auto-off/on",
-    "clear_auto_off": "auto-off/on",
-    "clear_auto_on": "auto-off/on",
-    "raise_brightness": "smooth dimming",
-    "lower_brightness": "smooth dimming",
-    "raise_saturation": "smooth saturation",
-    "lower_saturation": "smooth saturation",
-    "raise_hue": "smooth hue",
-    "lower_hue": "smooth hue",
-    "set_attributes": "set without turning on",
-    "set_scene": "scenes",
-    "get_attributes": "get attributes",
-    "stop": "stop",
-}
+
+
+def card_features() -> dict[str, str]:
+    """Each action's feature, as a card names it, in the README feature table's order (gen_features.FEATURES). An
+    action in more than one row (`stop`, riding every smooth move) is named by itself, last, so a card names it only
+    when nothing else is."""
+    rows = [action for *_, actions in TABLE_FEATURES for action in actions]
+    shared = sorted({action for action in rows if rows.count(action) > 1})
+    names = {action: card for *_, card, actions in TABLE_FEATURES for action in actions if action not in shared}
+    return names | {action: action for action in shared}
+
+
+FEATURES = card_features()
 
 
 @dataclass

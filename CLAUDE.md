@@ -18,8 +18,8 @@ what ships, so its "not X" means not yet. Reword such a line to the real state, 
 ## Release flag
 
 `experimental=True` on an adapter's `AdapterScope` keeps it out of a stable release: `cut-release` fails while any
-adapter has it (`scripts/check_release.py --release`). Every adapter module needs ≥95% line coverage, experimental or
-not; CI checks it.
+adapter has it (`scripts/check_release.py --release`). Every module of an adapter's code (`adapter_code` in that script,
+bar `__init__.py`) needs ≥95% line coverage, experimental or not; CI checks it.
 
 **Experimental items, not the flag, carry new work** (PR #307). A new action, integration (including ports), domain,
 capability or field ships as `Level.EXPERIMENTAL` once built and unit-tested: in stable releases, refused at runtime
