@@ -57,7 +57,8 @@ Core's entity actions return `{entity_id: <that entity's data>}`, one entry per 
 raises or the entity is skipped.
 
 - **Queries** (`get_attributes`) return that shape: each target's data under its entity ID, nothing else, and
-  a target that couldn't be read is left out. Templates read `response['light.desk'].brightness`.
+  a target that couldn't be read raises `targets_failed` once every target has run, as any device failure does.
+  Templates read `response['light.desk'].brightness`.
 - **Timers.** `get_attributes` takes lights and switches. A target with an on/off timer running (from
   `turn_on_for`, `turn_off_for` or the device's own) carries `timer: {turns, ends_at, remaining_s}`: `turns`
   is `on` or `off`, the state the timer leaves it in; `ends_at` is UTC ISO 8601; `remaining_s` is seconds, to
