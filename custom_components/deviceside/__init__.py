@@ -1,5 +1,6 @@
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.const import EVENT_HOMEASSISTANT_STOP
+from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 
@@ -25,7 +26,14 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 async def async_setup(hass: HomeAssistant, config: ConfigType):
     # Discovery imports every integration module, so it runs in the import executor rather than the event loop.
     registry = await hass.async_add_import_executor_job(AdapterRegistry.discover)
-    hass.data[DATA] = DeviceSideData(registry=registry, dispatcher=Dispatcher(hass, registry))
+    hass.data[DATA] = runtime = DeviceSideData(registry=registry, dispatcher=Dispatcher(hass, registry))
+
+    @callback
+    def stopping(_event: Event) -> None:
+        # An unload leaves the must-run jobs to run; HA stopping takes them too, as it takes every timer.
+        runtime.cancel_pending(must_run=True)
+
+    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, stopping)
     # Services are registered once per HA run, not per entry; handlers refuse calls until the entry loads.
     async_setup_services(hass)
     return True
@@ -48,6 +56,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     runtime = get_runtime(hass)
     runtime.cancel_pending()
     runtime.detach_all()
+    # integration_state stays: it describes the devices (fades still running, a soft off's restore, Z2M's option
+    # locks and restores), which an options save doesn't change, and the must-run jobs left to run still read it.
     return True
 
 

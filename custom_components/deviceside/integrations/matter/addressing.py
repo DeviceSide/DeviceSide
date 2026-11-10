@@ -9,6 +9,7 @@ helper function (make_on_with_timed_off).
 
 from homeassistant.core import HomeAssistant
 
+from ...core.errors import Reason
 from ...core.models import Target
 
 _MATTER_DOMAIN = "matter"
@@ -96,19 +97,19 @@ def unsupported_reason(hass: HomeAssistant, target: Target) -> str | None:
     node_id = node_id_from_unique_id(target.entry.unique_id)
     ep_id = endpoint_id_from_unique_id(target.entry.unique_id)
     if node_id is None or ep_id is None:
-        return "not_addressable"
+        return Reason.NOT_ADDRESSABLE
 
     client = matter_client(hass, target.entry.config_entry_id)
     if client is None:
-        return "not_addressable"
+        return Reason.NOT_ADDRESSABLE
 
     try:
         node = client.get_node(node_id)
     except Exception:  # noqa: BLE001 - node lookup can raise if the node no longer exists
-        return "not_addressable"
+        return Reason.NOT_ADDRESSABLE
 
     if node is None:
-        return "not_addressable"
+        return Reason.NOT_ADDRESSABLE
 
     if not lt_feature(node, ep_id):
         return "no_lt_feature"

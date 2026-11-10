@@ -1,20 +1,10 @@
 import pytest
-from homeassistant.config_entries import ConfigEntryState
 from homeassistant.util.color import color_hs_to_xy
 
 from custom_components.deviceside.integrations.hue.transition_cache import transition_cache
 
+from ...conftest import Clock, unload_mock_entries
 from ...fixtures.hue import HueBridge, add_hue_entity, add_hue_group, hue_entry, light_action
-
-
-class Clock:
-    """A transition cache clock the test moves by hand."""
-
-    def __init__(self) -> None:
-        self.now = 1000.0
-
-    def __call__(self) -> float:
-        return self.now
 
 
 @pytest.fixture
@@ -29,12 +19,7 @@ def bridge() -> HueBridge:
     return HueBridge()
 
 
-@pytest.fixture(autouse=True)
-async def unload_mock_hue_entries(hass):
-    """Mark mocked hue entries not loaded before teardown, so HA doesn't run the real hue unload on them."""
-    yield
-    for entry in hass.config_entries.async_entries("hue"):
-        entry.mock_state(hass, ConfigEntryState.NOT_LOADED)
+unload_mock_hue_entries = unload_mock_entries("hue")
 
 
 async def setup_room(hass, bridge):

@@ -111,10 +111,10 @@ class AdapterScope:
     def level(self, domain: str, capability: str | None = None, fields: Collection[str] = ()) -> Level:
         """The weakest level among the in-scope items a call touches: its domain, its capability (when the scope
         lists capabilities) and the fields it carries. Domain and fields must be in scope, as supports() has checked;
-        a capability outside the scope counts as Experimental, so a call supports() let past on another ground (one
-        with nothing to do) fails safe instead of raising."""
+        a capability outside the scope, or none (one the adapter couldn't name), counts as Experimental, so a call
+        supports() let past on another ground (one with nothing to do) fails safe instead of raising."""
         levels = [self.domains[domain], *(self.fields[name] for name in fields)]
-        if capability is not None and self.capabilities is not None:
+        if self.capabilities is not None:
             levels.append(self.capabilities.get(capability, Level.EXPERIMENTAL))
         return min(levels)
 

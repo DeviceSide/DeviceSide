@@ -13,7 +13,7 @@ from .members import member_lights
 from .read import Reader, reader
 from ...actions.set_attributes import SetAttributesRequest
 from ...core.adapter import Adapter
-from ...core.dispatcher import EMPTY_GROUP
+from ...core.errors import Reason
 from ...core.models import EntityResult, Status, Target
 from ...core.scope import AdapterScope, verified
 from ...core.zcl_write import (
@@ -156,7 +156,7 @@ class Z2MSetAttributes(Adapter[SetAttributesRequest]):
         async def write(target: Target) -> EntityResult:
             lights = await member_lights(hass, target) if target.is_group else [target]
             if not lights:
-                return self.result(target, Status.UNSUPPORTED, detail=EMPTY_GROUP)
+                return self.result(target, Status.UNSUPPORTED, detail=Reason.EMPTY_GROUP)
             if target.is_group and wants_level(request, _modes(target)):
                 plan = [(light, [light]) for light in lights]
             else:

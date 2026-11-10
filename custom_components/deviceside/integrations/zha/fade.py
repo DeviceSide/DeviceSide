@@ -18,7 +18,7 @@ from .addressing import address, group_id, unsupported_reason, via_zha_group
 from .groups import light_members
 from ...actions.ramp import HUE, RampRequest
 from ...core import transition
-from ...core.adapter import Adapter
+from ...core.adapter import Adapter, DeadlinePassed
 from ...core.ha_watch import ALL, Call, Entries
 from ...core.models import EntityResult, Status, Target
 from ...core.runtime import Job, get_runtime
@@ -296,10 +296,12 @@ class ZHARamp(Adapter[RampRequest]):
             outcome = plan(cache, request, lights)
         if isinstance(outcome, str):
             return each(Status.UNCHANGED, detail=outcome)
-        integration_limit, adapter_limit = self.limits(hass)
         try:
-            async with integration_limit, adapter_limit:
+            async with self.slot(hass):
                 clamped_to, failed = await start(hass, request.context, cache, gid, outcome)
+        except DeadlinePassed:
+            _LOGGER.warning("%s on zha timed out for %s", self.action, names(lights))
+            return each(Status.REJECTED, detail="timeout")
         except Exception as err:  # noqa: BLE001 - as in gather(): one group's failure must not abort the room
             _LOGGER.warning("%s on zha failed for %s: %r", self.action, names(lights), err)
             return each(Status.REJECTED, detail="error")
@@ -425,7 +427,9 @@ def run_on(
     restore = fade.starts if light.entity_id in fade.restores else None
     job = end_job(hass, light, restore, context)
     # Replaces the attribute's pending refresh and restore: those of the light's other attribute run on.
-    get_runtime(hass).schedule(hass, end_key(light, fade.attribute), [(fade.duration + END_REFRESH_S, job)])
+    get_runtime(hass).schedule(
+        hass, end_key(light, fade.attribute), [(fade.duration + END_REFRESH_S, job)], must_run=restore is not None
+    )
 
 
 async def lacks_hue(hass: HomeAssistant, request: RampRequest, lights: list[Target]) -> bool:

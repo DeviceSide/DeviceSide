@@ -11,7 +11,6 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.service import async_register_admin_service
 from homeassistant.util.color import color_xy_to_hs
-from pytest_homeassistant_custom_component.common import async_mock_service
 
 from custom_components.deviceside.const import DOMAIN
 from custom_components.deviceside.integrations.zha import set_attributes as adapter
@@ -43,16 +42,6 @@ def level_read(monkeypatch):
 def no_fade_wait(monkeypatch):
     """The refresh's wait for the commands' fade, off so tests don't sleep; the tests of it set their own."""
     monkeypatch.setattr(adapter, "FADE_WAIT_S", 0.0)
-
-
-@pytest.fixture
-def commands(hass):
-    return async_mock_service(hass, "zha", "issue_zigbee_cluster_command")
-
-
-@pytest.fixture
-def refreshes(hass):
-    return async_mock_service(hass, "homeassistant", "update_entity")
 
 
 def sent(commands) -> list[tuple[int, int, dict]]:

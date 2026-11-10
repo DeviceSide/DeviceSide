@@ -11,7 +11,7 @@ from homeassistant.exceptions import Unauthorized
 from . import zcl
 from .addressing import Address, address, unsupported_reason, via_zha_group
 from ...actions.turn_on_for import TurnOnForRequest
-from ...core.adapter import Adapter
+from ...core.adapter import Adapter, DeadlinePassed
 from ...core.models import EntityResult, Status, Target
 from ...core.scope import AdapterScope, DurationLimits, experimental, verified
 from ...core.wire import wire_trace
@@ -112,9 +112,8 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
         on_time: int,
     ) -> list[EntityResult]:
         # Under the same limits as a unicast, held for the commands only: the read-backs take them again.
-        integration_limit, adapter_limit = self.limits(hass)
         try:
-            async with integration_limit, adapter_limit:
+            async with self.slot(hass):
                 if request.light.present():
                     await self._turn_on(hass, request, group_entity)
                 # Positional only: on/off control, on time, off wait time.
@@ -123,6 +122,9 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
                 )
         except Unauthorized:
             return [self.result(target, Status.REJECTED, detail="admin_required") for target in members]
+        except DeadlinePassed:
+            _LOGGER.warning("%s on %s timed out for %s", self.action, self.integration, group_entity)
+            return [self.result(target, Status.REJECTED, detail="timeout") for target in members]
         except Exception as err:  # noqa: BLE001 - as in gather(): one group's failure must not abort the room
             _LOGGER.warning("%s on %s failed for %s: %r", self.action, self.integration, group_entity, err)
             return [self.result(target, Status.REJECTED, detail="error") for target in members]

@@ -65,6 +65,21 @@ async def test_soft_off_restores_the_start_level_once_the_light_reads_off(hass, 
     assert [refresh.data for refresh in refreshes] == [{"entity_id": "light.bulb"}]
 
 
+async def test_an_options_save_mid_soft_off_still_restores_the_start_level(
+    hass, setup_production, commands, refreshes, on_off_read
+):
+    """A reload cancels the other pending jobs; the restore puts the bulb back, so it runs at its time."""
+    bulb(hass)
+    start = wall_clock_now()
+
+    await call(hass, "lower_brightness", {"entity_id": "light.bulb"})
+    assert await hass.config_entries.async_reload(setup_production.entry_id)
+    await advance(hass, start, 4.5)
+
+    assert sent(commands)[1:] == [RESTORE_60]
+    assert not soft_off_restores(hass)
+
+
 async def test_no_restore_when_the_light_still_reads_on(hass, commands, refreshes, bulbs):
     bulbs.on = True
     bulb(hass)

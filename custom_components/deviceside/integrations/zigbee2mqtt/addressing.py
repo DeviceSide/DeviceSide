@@ -6,6 +6,7 @@ from typing import Literal
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
+from ...core.errors import Reason
 from ...core.models import Target
 
 _Z2M_PREFIX = "zigbee2mqtt_"
@@ -65,7 +66,7 @@ def not_addressable(target: Target, *, reads_state: bool = False) -> str | None:
     """The unsupported reason when no set topic reaches the target, else None. With reads_state, a device also needs
     a state topic, which an action reading its state back relies on."""
     if topic(target, "set") is None or (reads_state and not target.is_group and state_topic(target) is None):
-        return "not_addressable"
+        return Reason.NOT_ADDRESSABLE
     return None
 
 

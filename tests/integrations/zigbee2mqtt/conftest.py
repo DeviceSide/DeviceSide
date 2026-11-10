@@ -1,22 +1,12 @@
 import pytest
-from homeassistant.config_entries import ConfigEntryState
 
 from custom_components.deviceside.integrations.zigbee2mqtt import bridge, native_control, read, set_attributes
 from custom_components.deviceside.integrations.zigbee2mqtt.fade import transition_cache
 
+from ...conftest import Clock, unload_mock_entries
 from ...fixtures.z2m import GROUPS, IEEE, INFO, Broker, add_z2m_entity, add_z2m_group, z2m_entry
 
-
-@pytest.fixture(autouse=True)
-async def unload_mock_mqtt_entries(hass):
-    """Mark mocked MQTT entries not loaded before teardown.
-
-    Prevents HA from trying to import the real mqtt integration to unload them; the real
-    integration is not set up in unit tests (no broker etc.).
-    """
-    yield
-    for entry in hass.config_entries.async_entries("mqtt"):
-        entry.mock_state(hass, ConfigEntryState.NOT_LOADED)
+unload_mock_mqtt_entries = unload_mock_entries("mqtt")
 
 
 @pytest.fixture(autouse=True)
@@ -52,16 +42,6 @@ DEVICES = "zigbee2mqtt/bridge/devices"
 XY = ["color_temp", "xy"]
 # A light's color cluster mid-hue-cycle: in hs mode (0), at x 0.3 and y 0.4.
 COLOR = {"colorMode": 0, "currentX": 19661, "currentY": 26214}
-
-
-class Clock:
-    """A transition cache clock the test moves by hand."""
-
-    def __init__(self) -> None:
-        self.now = 1000.0
-
-    def __call__(self) -> float:
-        return self.now
 
 
 @pytest.fixture

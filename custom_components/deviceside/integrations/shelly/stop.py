@@ -28,11 +28,10 @@ class ShellyStop(RpcComponent, Adapter[Request]):
     )
 
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:
-        if (reason := super().supports(hass, request, target) or unsupported_reason(target)) is not None:
-            return reason
-        if address(target).component == "Switch":
+        # Ahead of the capability check, which would refuse a relay as untested rather than say why.
+        if (rpc := address(target)) is not None and rpc.component == "Switch":
             return "not_dimmable"
-        return unsupported_reason(target, self.scope.capabilities)
+        return super().supports(hass, request, target) or unsupported_reason(target)
 
     async def execute(self, hass: HomeAssistant, request: Request, targets: list[Target]) -> list[EntityResult]:
         async def halt(target: Target) -> EntityResult:

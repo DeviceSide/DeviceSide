@@ -14,7 +14,9 @@ from homeassistant.helpers import entity_registry as er
 from custom_components.deviceside.core.models import EntityResult, Status, TimedRequest
 from custom_components.deviceside.core.scope import (
     AdapterScope,
+    documented,
     experimental,
+    reported,
     verified,
 )
 
@@ -23,6 +25,8 @@ from ..fakes.fake_integration import LIMITS, FakeSetAttributes, FakeTurnOnFor
 from ..fixtures.fake import add_fake_entity, add_fake_native_group, add_ha_group, add_switch_as_x, fake_config_entry
 
 pytestmark = pytest.mark.usefixtures("setup_integration")
+
+DISPATCHER = "custom_components.deviceside.core.dispatcher"
 
 
 @pytest.fixture(autouse=True, params=[False, True], ids=["experimental_off", "experimental_on"])
@@ -62,6 +66,24 @@ async def test_a_named_target_on_an_experimental_domain_raises_unless_the_option
     assert err.value.translation_key == "experimental_off"
     assert err.value.translation_placeholders == {"entity_id": "switch.s", "reason": "experimental_off"}
     assert reset_script.calls == []
+
+
+@pytest.mark.parametrize(
+    ("domains", "siblings"),
+    [
+        pytest.param(verified("light") | documented("switch"), {"switch": "light"}, id="documented"),
+        pytest.param(verified("light") | reported("switch"), {}, id="reported"),
+        pytest.param(verified("light", "switch"), {}, id="verified"),
+    ],
+)
+async def test_every_level_above_experimental_passes_with_the_option_off(hass, fake, reset_script, domains, siblings):
+    add_fake_entity(hass, fake, "switch.s")
+    allow_experimental(hass, False)
+
+    with patch.object(FakeTurnOnFor, "scope", AdapterScope(domains=domains, siblings=siblings, duration=LIMITS)):
+        assert await call(hass, "turn_on_for", {"entity_id": "switch.s", "duration": 5}) == {
+            "switch.s": {"status": "sent", "integration": "fake"}
+        }
 
 
 async def test_an_indirect_target_on_an_experimental_domain_is_skipped_and_logged(hass, fake, reset_script, caplog):
@@ -117,6 +139,23 @@ async def test_an_experimental_capability_is_gated_by_the_one_the_adapter_names(
         assert await call(hass, "turn_on_for", {"entity_id": "light.b", "duration": 5}) == {
             "light.b": {"status": "sent", "integration": "fake"}
         }
+
+
+async def test_a_capability_outside_the_scope_is_refused_and_none_is_gated_as_experimental(hass, fake, reset_script):
+    add_fake_entity(hass, fake, "light.c")
+    add_fake_entity(hass, fake, "light.unknown")
+    scope = AdapterScope(duration=LIMITS, capabilities=verified("A"))
+    allow_experimental(hass, False)
+
+    def capability(self, hass, target):
+        return None if target.entity_id == "light.unknown" else "C"
+
+    with patch.object(FakeTurnOnFor, "scope", scope), patch.object(FakeTurnOnFor, "capability", capability):
+        # The default supports() refuses an untested capability, so no adapter re-implements the check.
+        assert await refusal(hass, "turn_on_for", {"entity_id": "light.c", "duration": 5}) == "capability_not_tested"
+        # One the adapter can't name passes supports() but fails safe at the gate.
+        assert await refusal(hass, "turn_on_for", {"entity_id": "light.unknown", "duration": 5}) == "experimental_off"
+    assert reset_script.calls == []
 
 
 async def test_an_experimental_call_left_nothing_to_send_is_unchanged_not_refused(hass, fake, reset_script):
@@ -497,19 +536,48 @@ async def test_a_request_left_nothing_to_do_is_unchanged_and_sends_nothing(hass,
 async def test_adapter_exception_and_timeout_reject_every_target(hass, fake, reset_script):
     add_fake_entity(hass, fake, "light.a")
     add_fake_entity(hass, fake, "switch.b")
+    data = {"entity_id": ["light.a", "switch.b"], "duration": 5}
     reset_script.execute_error = RuntimeError("bridge gone")
 
-    with pytest.raises(HomeAssistantError):
-        await call(hass, "turn_on_for", {"entity_id": ["light.a", "switch.b"], "duration": 5})
+    with pytest.raises(HomeAssistantError) as err:
+        await call(hass, "turn_on_for", data)
+    assert err.value.translation_placeholders == {"summary": "light.a: error, switch.b: error"}
 
     reset_script.execute_error = None
     reset_script.delay = 1
+    with patch(f"{DISPATCHER}.ADAPTER_TIMEOUT_S", 0.01), pytest.raises(HomeAssistantError) as err:
+        await call(hass, "turn_on_for", data)
+    assert err.value.translation_placeholders == {"summary": "light.a: timeout, switch.b: timeout"}
+
+
+async def test_a_timeout_keeps_the_results_of_the_targets_that_finished(hass, fake, reset_script):
+    add_fake_entity(hass, fake, "light.fast")
+    add_fake_entity(hass, fake, "light.slow")
+    reset_script.delays = {"light.slow": 1}
+
+    with patch(f"{DISPATCHER}.ADAPTER_TIMEOUT_S", 0.05), pytest.raises(HomeAssistantError) as err:
+        await call(hass, "turn_on_for", {"entity_id": ["light.fast", "light.slow"], "duration": 5})
+
+    # light.fast was sent and isn't reported failed: only the light still going when time ran out is.
+    assert err.value.translation_placeholders == {"summary": "light.slow: timeout"}
+
+
+async def test_an_execute_busy_outside_gather_past_the_backstop_times_out_every_target(hass, fake):
+    add_fake_entity(hass, fake, "light.a")
+    add_fake_entity(hass, fake, "light.b")
+
+    async def execute(self, hass, request, targets):
+        await asyncio.sleep(1)
+
     with (
-        patch("custom_components.deviceside.core.dispatcher.ADAPTER_TIMEOUT_S", 0.01),
+        patch("tests.fakes.fake_integration.FakeTurnOnFor.execute", execute),
+        patch(f"{DISPATCHER}.ADAPTER_TIMEOUT_S", 0.01),
+        patch(f"{DISPATCHER}.ADAPTER_BACKSTOP_S", 0.01),
         pytest.raises(HomeAssistantError) as err,
     ):
-        await call(hass, "turn_on_for", {"entity_id": "light.a", "duration": 5})
-    assert err.value.translation_placeholders == {"summary": "light.a: timeout"}
+        await call(hass, "turn_on_for", {"entity_id": ["light.a", "light.b"], "duration": 5})
+
+    assert err.value.translation_placeholders == {"summary": "light.a: timeout, light.b: timeout"}
 
 
 async def test_missing_and_stray_results_are_reconciled(hass, fake):

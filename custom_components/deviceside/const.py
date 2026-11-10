@@ -4,8 +4,11 @@ NAME = "DeviceSide"
 # The light.turn_on fields a action may accept, under their light.turn_on names.
 LIGHT_FIELDS = ("brightness", "color_temp_kelvin", "hs_color", "rgb_color", "xy_color", "transition")
 
-# Whole-call ceiling for one adapter's execute(); an adapter still running after this is reported rejected.
+# Ceiling for one adapter's execute(): a target whose Adapter.slot() hasn't finished by then is rejected with timeout,
+# and those that finished keep their results.
 ADAPTER_TIMEOUT_S = 30
+# Past the ceiling, the backstop for an execute() still running (work outside a slot): every target gets timeout.
+ADAPTER_BACKSTOP_S = 5
 
 # Hue fades: hide the bridge's end-value and late reports from HA and show DeviceSide's predictions instead.
 CONF_PREDICTED_STATE = "predicted_state"

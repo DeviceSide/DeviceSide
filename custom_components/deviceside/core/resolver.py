@@ -6,6 +6,7 @@ from homeassistant.core import HomeAssistant, split_entity_id
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
+from .errors import Reason
 from .models import Target
 from .registry import AdapterRegistry
 
@@ -31,7 +32,7 @@ def resolve(
         return "integration_not_supported"
     config_entry = hass.config_entries.async_get_entry(entry.config_entry_id) if entry.config_entry_id else None
     if config_entry is None or config_entry.state is not ConfigEntryState.LOADED:
-        return "integration_not_loaded"
+        return Reason.INTEGRATION_NOT_LOADED
     device = dr.async_get(hass).async_get(entry.device_id) if entry.device_id else None
 
     detected = [info for info in candidates if info.detect is not None and info.detect(hass, entry, device)]
@@ -82,6 +83,6 @@ def _resolve_wrapper(
     if wrapped is None:
         return "not_in_registry"
     if wrapped.platform == SWITCH_AS_X:
-        return "not_addressable"
+        return Reason.NOT_ADDRESSABLE
     target = resolve(hass, registry, wrapped.entity_id, via_group)
     return target if isinstance(target, str) else replace(target, via_wrapper=entry.entity_id)

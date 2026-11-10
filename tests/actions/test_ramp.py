@@ -61,3 +61,33 @@ def test_a_lacked_attribute_is_dropped_and_leaves_nothing_to_do():
     assert dropped.fields_present() == frozenset()
     assert dropped.nothing_to_do()
     assert not request.nothing_to_do()
+
+
+# Each ramp's limit range. Raising never ends at 0 % (that's off); lowering to 100 % could never move; a hue cycle has
+# no end, so no limit.
+LIMITS = {
+    "raise_brightness": (1, 100),
+    "lower_brightness": (0, 99),
+    "raise_saturation": (0, 100),
+    "lower_saturation": (0, 100),
+    "raise_hue": None,
+    "lower_hue": None,
+}
+
+
+@pytest.mark.parametrize("action", RAMPS, ids=lambda action: action.key)
+def test_the_limit_takes_its_range_and_refuses_past_either_edge(action):
+    def parse(limit):
+        return action.schema()({"entity_id": "light.a", "limit": limit})
+
+    assert LIMITS.keys() == {ramp.key for ramp in RAMPS}
+    if (bounds := LIMITS[action.key]) is None:
+        with pytest.raises(probatio.Invalid):
+            parse(50)
+        return
+    low, high = bounds
+    assert parse(low)["limit"] == low
+    assert parse(high)["limit"] == high
+    for outside in (low - 1, high + 1):
+        with pytest.raises(probatio.Invalid):
+            parse(outside)

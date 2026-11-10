@@ -4,15 +4,9 @@ import pytest
 
 from custom_components.deviceside.core.transition import TransitionCache, transition_cache
 
+from ..conftest import Clock
+
 SETTLE_SECONDS = 15.0
-
-
-class Clock:
-    def __init__(self) -> None:
-        self.now = 1000.0
-
-    def __call__(self) -> float:
-        return self.now
 
 
 @pytest.fixture
