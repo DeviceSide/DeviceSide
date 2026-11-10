@@ -18,7 +18,7 @@ from .native_control import NEED, native_control
 from ...actions.ramp import RampRequest
 from ...core import transition
 from ...core.adapter import Adapter
-from ...core.dispatcher import EMPTY_GROUP
+from ...core.errors import Reason
 from ...core.ha_watch import ALL, Call, Entries
 from ...core.models import EntityResult, Status, Target
 from ...core.resolver import resolve
@@ -148,7 +148,7 @@ class Z2MRamp(Adapter[RampRequest]):
         if (reason := super().supports(hass, request, target)) is not None:
             return reason
         if topic(target, "set") is None:
-            return "not_addressable"
+            return Reason.NOT_ADDRESSABLE
         return None
 
     async def execute(self, hass: HomeAssistant, request: RampRequest, targets: list[Target]) -> list[EntityResult]:
@@ -156,7 +156,7 @@ class Z2MRamp(Adapter[RampRequest]):
 
         async def send(target: Target) -> EntityResult:
             if not (lights := await lights_of(hass, target)):
-                return self.result(target, Status.UNSUPPORTED, detail=EMPTY_GROUP)
+                return self.result(target, Status.UNSUPPORTED, detail=Reason.EMPTY_GROUP)
             if await lacks_color(hass, request, lights):
                 return self.result(target, Status.UNCHANGED, detail="fields_dropped")
             if isinstance(outcome := plan(cache, request, target, lights), str):

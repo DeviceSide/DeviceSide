@@ -5,6 +5,7 @@ from typing import NamedTuple
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
+from ...core.errors import Reason
 from ...core.models import Target
 
 # ZHA group entities are "{platform}_zha_group_0x{group_id:04x}" (zha library, GroupEntity).
@@ -56,7 +57,7 @@ def via_zha_group(hass: HomeAssistant, target: Target) -> int | None:
 
 def unsupported_reason(target: Target) -> str | None:
     """Why this entity can't be addressed, or None."""
-    return "not_addressable" if address(target.entry.unique_id) is None else None
+    return Reason.NOT_ADDRESSABLE if address(target.entry.unique_id) is None else None
 
 
 def is_zha_group(hass: HomeAssistant, target: Target) -> bool:

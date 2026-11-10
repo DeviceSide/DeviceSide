@@ -11,6 +11,7 @@ from .bridge import publish, publish_set, state_reply, traced_options
 from .native_control import COLOR_FIELDS, NEED, native_control, settled
 from ...actions.turn_on_for import TurnOnForRequest
 from ...core.adapter import Adapter
+from ...core.errors import Reason
 from ...core.models import EntityResult, Status, Target
 from ...core.runtime import get_runtime
 from ...core.scope import AdapterScope, DurationLimits, experimental, verified
@@ -67,7 +68,7 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
         if (reason := super().supports(hass, request, target)) is not None:
             return reason
         if topic(target, "set") is None:
-            return "not_addressable"
+            return Reason.NOT_ADDRESSABLE
         return None
 
     async def execute(

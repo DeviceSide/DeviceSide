@@ -11,6 +11,7 @@ from typing import Any
 
 from homeassistant.core import HomeAssistant
 
+from ...core.errors import Reason
 from ...core.models import Target
 from ...core.scope import documented, experimental, verified
 
@@ -88,7 +89,7 @@ def unsupported_reason(target: Target, capabilities: Collection[str] | None = No
     if rpc_device(target) is None:
         return "gen1_unsupported"
     if (rpc := address(target)) is None:
-        return "not_addressable"
+        return Reason.NOT_ADDRESSABLE
     if capabilities is not None and rpc.component not in capabilities:
         return "capability_not_tested"
     return None
