@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Generate the README feature table: per feature and integration, an icon for each kind of target that is built
-(light, switch, native group, native scene), and one prohibited sign for whatever can't be built, as far as we know.
+(light, switch, native group, native scene), and one prohibited sign for whatever appears impossible.
 
 What is built comes from each adapter's `AdapterScope`: an amber icon for what works with the Experimental features
 option off, a grey one for what works only with it on. Only NO_PATH, the known blockers, is kept by hand. A blank cell
@@ -158,8 +158,8 @@ def generate(registry: AdapterRegistry) -> str:
         ]
         lines.append(f"| [{label}](#{anchor}) | {' | '.join(row)} |")
     legend = [f"{img(key, alt)} {label}" for key, (alt, label) in ICONS.items()]
-    legend.append(f"{img('light-grey', 'Experimental')} grey: experimental")
-    legend.append(f"{img('no', 'not possible')} can't be done, as far as we know")
+    legend.append(f"{img('devices-grey', 'Experimental')} experimental")
+    legend.append(f"{img('no', 'not possible')} appears impossible")
     lines += ["", " &nbsp; ".join(legend), "", END]
     return "\n".join(lines)
 
