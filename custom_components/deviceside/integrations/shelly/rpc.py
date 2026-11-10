@@ -69,9 +69,9 @@ def light_params(light: LightFields, component: str, state: State | None) -> dic
 
 async def send(hass: HomeAssistant, target: Target, method: str, params: dict[str, Any]) -> None:
     """One write RPC, <Component>.<method>, to the target's component, traced; an error propagates."""
-    rpc = address(target)
+    rpc, device = address(target), rpc_device(target)
     wire_trace(hass, target.reported_id, "rpc", f"{rpc.component}.{method}", params)
-    await rpc_device(target).call_rpc(f"{rpc.component}.{method}", {"id": rpc.id, **params})
+    await device.call_rpc(f"{rpc.component}.{method}", {"id": rpc.id, **params})
 
 
 async def get_status(target: Target) -> dict[str, Any]:

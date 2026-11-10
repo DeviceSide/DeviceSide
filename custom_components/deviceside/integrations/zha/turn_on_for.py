@@ -87,7 +87,7 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
     ) -> EntityResult:
         addr = address(target.entry.unique_id)  # supports() refused the targets it can't address
         if request.light.present():
-            await self._turn_on(hass, request, target.entity_id)
+            await self._turn_on(hass, request, target.entity_id, traced_as=target.reported_id)
         try:
             await zcl.command(
                 hass,
@@ -133,9 +133,12 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
 
         return await self.gather(hass, members, read_back)
 
-    async def _turn_on(self, hass: HomeAssistant, request: TurnOnForRequest, entity_id: str) -> None:
+    async def _turn_on(
+        self, hass: HomeAssistant, request: TurnOnForRequest, entity_id: str, traced_as: str | None = None
+    ) -> None:
+        """light.turn_on on entity_id, traced as the caller's target (traced_as) when that differs."""
         data = request.light.as_turn_on_data()
-        wire_trace(hass, entity_id, "ha", "light.turn_on", data)
+        wire_trace(hass, traced_as or entity_id, "ha", "light.turn_on", data)
         await hass.services.async_call(
             "light", "turn_on", {"entity_id": entity_id, **data}, blocking=True, context=request.context
         )

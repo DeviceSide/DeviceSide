@@ -38,8 +38,8 @@ component), whatever entity domain the target shows: a relay exposed as a `switc
 record. A native group path is proven once any action of the same adapter class has passed through it and the command has
 passed on one device (PR #204). An observed pass in `docs/test-records/<integration>/_observed.md` proves that a
 maker's devices, started from that state, respond as seen to that call sequence and to any sequence it begins with,
-across firmware, HA and code; an observed failure on a model blocks lends to that model for sequences that begin with
-the failed one.
+across firmware (an exception to once per firmware version), HA and code; an observed failure on a model, newer than
+that model's latest pass of the sequence, blocks lends to that model for sequences that begin with the failed one.
 
 **Default to Documented.** A rig case earns its place only by catching what nothing else can: a call shape, a
 branch the adapter takes on a live reply, or a device behavior that DeviceSide or its docs rely on. One Verified

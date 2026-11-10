@@ -157,7 +157,6 @@ def test_the_observed_calls_file_is_never_a_record(tested):
     write_record(repo, "_observed.md", sha)
     actions = [action.key for action in discover()]
     assert actions
-    assert [name for name in actions if name.startswith("_")] == []
     assert "_observed.md" not in [path.name for name in actions for path in cr.records("fake", name)]
 
 

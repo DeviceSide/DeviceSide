@@ -6,6 +6,7 @@ IEEE, a Hue resource ID, a Shelly component ID, an MQTT device topic), so a trac
 Reads are not traced.
 """
 
+import copy
 import logging
 from typing import Any
 
@@ -28,6 +29,7 @@ def wire_trace(hass: HomeAssistant, entity_id: str | None, transport: str, comma
     """
     if entity_id is None or not wire_enabled():
         return
-    data = {"entity_id": entity_id, "transport": transport, "command": command, "params": params}
+    # A copy: an adapter may pass a shared constant, which a listener must not be able to change.
+    data = {"entity_id": entity_id, "transport": transport, "command": command, "params": copy.deepcopy(params)}
     WIRE_LOGGER.debug("%s", data)
     hass.bus.async_fire(WIRE_EVENT, data)
