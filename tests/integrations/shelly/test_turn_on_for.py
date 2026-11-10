@@ -170,6 +170,8 @@ async def test_set_error_rejects_only_that_target(hass, setup_production):
         (ConnectionError("gone"), "readback_failed"),
         ({"id": 0, "output": True}, "timer_not_reported"),  # timer fields absent
         ({"id": 0, "output": False, "timer_duration": 5.0}, "timer_not_reported"),  # output not what we sent
+        ({"id": 0, "output": True, "timer_duration": 3.0}, "timer_not_reported"),  # another timer's duration
+        ({"id": 0, "output": True, "timer_duration": 5.02}, "timer_not_reported"),  # off by more than 0.01 s
     ],
 )
 async def test_inconclusive_read_back_reports_sent(hass, setup_production, status, detail):

@@ -4,6 +4,7 @@ action's adapter is a ZHARamp."""
 
 import asyncio
 import logging
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from statistics import mean
 from typing import Any, ClassVar
@@ -135,6 +136,61 @@ async def send(
         )
 
 
+async def send_each(
+    hass: HomeAssistant, gid: int | None, movers: list[Target], commands: dict[str, Command], context: Context | None
+) -> dict[str, Exception]:
+    """send() for a fade, which can fail one light and run on the rest: each mover's command, keyed by entity ID, and
+    the movers it failed for, with why.
+
+    One groupcast when the movers are every light the group holds and all get the same command, failing them all if it
+    fails; else one command each, sent together. A cancel or other BaseException is raised.
+    """
+    shared = next(iter(commands.values()))
+    if (
+        gid is not None
+        and all(command == shared for command in commands.values())
+        and light_members(hass, gid) <= {light.entity_id for light in movers}
+    ):
+        cluster_id, command_id, params = shared
+        try:
+            await zcl.group_command(hass, gid, cluster_id, command_id, list(params.values()), context)
+        except Exception as err:  # noqa: BLE001 - the callers report it per light
+            return dict.fromkeys(commands, err)
+        return {}
+
+    async def one(light: Target) -> None:
+        cluster_id, command_id, params = commands[light.entity_id]
+        await zcl.command(
+            hass, address(light.entry.unique_id), cluster_id, command_id, params, context, entity_id=light.reported_id
+        )
+
+    return failures(movers, await asyncio.gather(*(one(light) for light in movers), return_exceptions=True))
+
+
+async def preset_each(hass: HomeAssistant, presets: list[Target], context: Context | None) -> dict[str, Exception]:
+    """Put each light that is off at the bottom before a raise turns it on, unicast as each concerns one light's own
+    stored level: a Hue bulb turned on there by Hue's own command, any other set there with ExecuteIfOff. The lights
+    it failed for, with why."""
+
+    async def one(light: Target) -> None:
+        addr = address(light.entry.unique_id)
+        if not await zcl.hue_turn_on(hass, addr, 1, context, entity_id=light.reported_id):
+            bottom = {"level": 1, **zcl.execute_if_off(0)}
+            await zcl.command(
+                hass, addr, zcl.LEVEL_CLUSTER, zcl.MOVE_TO_LEVEL, bottom, context, entity_id=light.reported_id
+            )
+
+    return failures(presets, await asyncio.gather(*(one(light) for light in presets), return_exceptions=True))
+
+
+def failures(lights: list[Target], outcomes: list[Any]) -> dict[str, Exception]:
+    """The lights whose gathered send raised, with why; a cancel or other BaseException is raised."""
+    for outcome in outcomes:
+        if isinstance(outcome, BaseException) and not isinstance(outcome, Exception):
+            raise outcome
+    return {light.entity_id: err for light, err in zip(lights, outcomes, strict=True) if isinstance(err, Exception)}
+
+
 async def refresh(hass: HomeAssistant, light: Target, context: Context | None) -> None:
     try:
         await hass.services.async_call(
@@ -146,11 +202,11 @@ async def refresh(hass: HomeAssistant, light: Target, context: Context | None) -
 
 @dataclass(frozen=True, slots=True)
 class Fade:
-    """One attribute's fade: the command, each moving light's start and end, and how long it runs; the lights to put at
+    """One attribute's fade: each moving light's command, start and end, and how long it runs; the lights to put at
     the bottom first, and the level each soft-off light gets back once it reads off."""
 
     attribute: str
-    command: Command
+    commands: dict[str, Command]
     movers: list[Target]
     starts: dict[str, float]
     ends: dict[str, float]
@@ -189,11 +245,16 @@ class ZHARamp(Adapter[RampRequest]):
     on Hue. Models that drop a level while off (zcl.DROPS_WHILE_OFF) get neither: they start a raise at their stored
     level, and come back on dim.
 
-    Saturation is MoveToColor, the xy of the light's current hue at the end saturation, on lit lights in color. Hue is
+    Saturation is MoveToColor, the xy of each light's current hue at the end saturation, on lit lights in color: group
+    members at different hues each get their own, so the group's lights are sent one each. Hue is
     EnhancedMoveHue, a cycle the bulb runs until a stop, on lit lights whose ColorCapabilities report enhanced hue; a
     sweep_time outside 1-65535 s is clamped, with clamped_to. A group is unchanged with fields_dropped for hue if any
     member lacks it. A move with nothing left to make is unchanged with at_limit; one with only lights that are off to
-    move is unchanged with off.
+    move is unchanged with off. A hue move whose ColorCapabilities read fails is rejected with error.
+
+    A command that fails rejects only the lights it was for (admin_required, or error), each keeping the prediction
+    and soft off restore it had; the rest run on. A light whose bottom preset failed gets no fade, so a groupcast
+    becomes one command each for the rest.
 
     Once a fade has run, each light is refreshed with update_entity: ZHA applies the bulb's brightness reports but never
     its color ones.
@@ -215,7 +276,12 @@ class ZHARamp(Adapter[RampRequest]):
         def each(status: Status, **kwargs) -> list[EntityResult]:
             return [self.result(light, status, **kwargs) for light in lights]
 
-        if await lacks_hue(hass, request, lights):
+        try:
+            lacking = await lacks_hue(hass, request, lights)
+        except Exception as err:  # noqa: BLE001 - zha and zigpy errors can't be imported here; read_attributes says why
+            _LOGGER.warning("%s on zha failed for %s: ColorCapabilities not read: %r", self.action, names(lights), err)
+            return each(Status.REJECTED, detail="error")
+        if lacking:
             return each(Status.UNCHANGED, detail="fields_dropped")
         outcome = plan(cache, request, lights)
         if (
@@ -233,20 +299,30 @@ class ZHARamp(Adapter[RampRequest]):
         integration_limit, adapter_limit = self.limits(hass)
         try:
             async with integration_limit, adapter_limit:
-                clamped_to = await start(hass, request.context, cache, gid, outcome)
-        except Unauthorized:
-            return each(Status.REJECTED, detail="admin_required")
+                clamped_to, failed = await start(hass, request.context, cache, gid, outcome)
         except Exception as err:  # noqa: BLE001 - as in gather(): one group's failure must not abort the room
-            names = ", ".join(light.entity_id for light in lights)
-            _LOGGER.warning("%s on zha failed for %s: %r", self.action, names, err)
+            _LOGGER.warning("%s on zha failed for %s: %r", self.action, names(lights), err)
             return each(Status.REJECTED, detail="error")
+        if errors := {light_id: err for light_id, err in failed.items() if not isinstance(err, Unauthorized)}:
+            why = ", ".join(f"{light_id}: {err!r}" for light_id, err in errors.items())
+            _LOGGER.warning("%s on zha failed for %s", self.action, why)
         moved = {light.entity_id for light in outcome.movers}
-        return [
-            self.result(light, Status.SENT, clamped_to=clamped_to)
-            if light.entity_id in moved
-            else self.result(light, Status.UNCHANGED, detail="off")
-            for light in lights
-        ]
+        return [self._result(light, moved, failed, clamped_to) for light in lights]
+
+    def _result(
+        self, light: Target, moved: set[str], failed: dict[str, Exception], clamped_to: float | None
+    ) -> EntityResult:
+        if (err := failed.get(light.entity_id)) is not None:
+            return self.result(
+                light, Status.REJECTED, detail="admin_required" if isinstance(err, Unauthorized) else "error"
+            )
+        if light.entity_id in moved:
+            return self.result(light, Status.SENT, clamped_to=clamped_to)
+        return self.result(light, Status.UNCHANGED, detail="off")
+
+
+def names(lights: list[Target]) -> str:
+    return ", ".join(light.entity_id for light in lights)
 
 
 def plan(cache: TransitionCache, request: RampRequest, lights: list[Target]) -> Fade | HueMove | str:
@@ -260,62 +336,105 @@ def plan(cache: TransitionCache, request: RampRequest, lights: list[Target]) -> 
 
 async def start(
     hass: HomeAssistant, context: Context | None, cache: TransitionCache, gid: int | None, outcome: Fade | HueMove
-) -> float | None:
+) -> tuple[float | None, dict[str, Exception]]:
     """Send the fade, recording it, and schedule each light's end refresh, or send the hue move; the clamped
-    sweep_time."""
+    sweep_time, and the lights it failed for, with why.
+
+    A light that fails gets back the prediction and soft off restore it had, and no end job; the rest run on. A cancel
+    puts every light back and is raised.
+    """
     if isinstance(outcome, HueMove):
-        await send(hass, gid, outcome.movers, outcome.command, context)
-        hue_moves(hass).update(light.entity_id for light in outcome.movers)
-        return outcome.clamped_to
-    if outcome.attribute == SATURATION:
-        hue_moves(hass).difference_update(outcome.starts)  # a color write ends the bulb's hue cycle
-    async with cache.recording((light_id, outcome.attribute) for light_id in outcome.starts):
-        recorded = {
-            light_id: cache.moving(light_id, outcome.attribute, begin, outcome.ends[light_id], outcome.duration)
-            for light_id, begin in outcome.starts.items()
-        }
-        # Unicast: each concerns one light's own stored level.
-        for light in outcome.presets:
-            addr = address(light.entry.unique_id)
-            if not await zcl.hue_turn_on(hass, addr, 1, context, entity_id=light.reported_id):
-                bottom = {"level": 1, **zcl.execute_if_off(0)}
-                await zcl.command(
-                    hass, addr, zcl.LEVEL_CLUSTER, zcl.MOVE_TO_LEVEL, bottom, context, entity_id=light.reported_id
-                )
-        pending = soft_off_restores(hass)
-        kept: set[str] = set()
-        if outcome.attribute == BRIGHTNESS:
-            # Before the send, so a light call from HA during it cancels the restore. This fade's end jobs replace
-            # the movers' earlier ones, restores included. A refused send schedules none and replaces nothing, so its
-            # marks are taken back and an earlier soft off's are put back for that one's end job.
-            kept = pending & outcome.starts.keys()
-            pending.difference_update(outcome.starts)
-            pending.update(outcome.restores)
-        try:
-            await send(hass, gid, outcome.movers, outcome.command, context)
-        except BaseException:
-            pending.difference_update(outcome.restores)
-            pending.update(kept)
-            raise
+        commands = {light.entity_id: outcome.command for light in outcome.movers}
+        failed = await send_each(hass, gid, outcome.movers, commands, context)
+        hue_moves(hass).update(light_id for light_id in commands if light_id not in failed)
+        return outcome.clamped_to, failed
+    marks = Marks.take(hass, cache, outcome)
+    try:
+        failed = await preset_each(hass, outcome.presets, context)
+        if movers := [light for light in outcome.movers if light.entity_id not in failed]:
+            # A light whose preset failed drops out, so a groupcast, which would reach it, gives way to unicasts.
+            commands = {light.entity_id: outcome.commands[light.entity_id] for light in movers}
+            failed |= await send_each(hass, gid, movers, commands, context)
+    except BaseException:
+        marks.put_back(outcome.starts)
+        raise
+    marks.put_back(failed)
     for light in outcome.movers:
-        if outcome.attribute == BRIGHTNESS:
-            hass.async_create_task(sync_to_bulb(hass, cache, light, outcome, recorded[light.entity_id]))
-        restore = outcome.starts if light.entity_id in outcome.restores else None
-        job = end_job(hass, light, restore, context)
-        # Replaces the attribute's pending refresh and restore: those of the light's other attribute run on.
-        get_runtime(hass).schedule(hass, end_key(light, outcome.attribute), [(outcome.duration + END_REFRESH_S, job)])
-    return None
+        if light.entity_id not in failed:
+            run_on(hass, cache, context, outcome, light, marks.recorded[light.entity_id])
+    return None, failed
+
+
+@dataclass(frozen=True, slots=True)
+class Marks:
+    """What a fade records before its send, and what each light held before it, to put back for one the send fails.
+
+    The soft off marks go on before the send, so a light call from HA during it cancels the restore. This fade's end
+    jobs replace the movers' earlier ones, restores included. A light the send fails for schedules none and replaces
+    nothing, so its mark is taken back and an earlier soft off's (in kept) is put back for that one's end job.
+    """
+
+    cache: TransitionCache
+    pending: set[str]
+    fade: Fade
+    before: dict[str, dict[tuple[str, str], transition.Transition]]
+    recorded: dict[str, transition.Transition]
+    kept: frozenset[str]
+
+    @classmethod
+    def take(cls, hass: HomeAssistant, cache: TransitionCache, fade: Fade) -> Marks:
+        before = {light_id: cache.forget(light_id, fade.attribute) for light_id in fade.starts}
+        recorded = {
+            light_id: cache.moving(light_id, fade.attribute, begin, fade.ends[light_id], fade.duration)
+            for light_id, begin in fade.starts.items()
+        }
+        pending = soft_off_restores(hass)
+        kept: frozenset[str] = frozenset()
+        if fade.attribute == BRIGHTNESS:
+            kept = frozenset(pending & fade.starts.keys())
+            pending.difference_update(fade.starts)
+            pending.update(fade.restores)
+        return cls(cache, pending, fade, before, recorded, kept)
+
+    def put_back(self, light_ids: Iterable[str]) -> None:
+        attribute = self.fade.attribute
+        for light_id in light_ids:
+            if self.cache.live(light_id, attribute) is self.recorded[light_id]:
+                self.cache.forget(light_id, attribute)
+                self.cache.restore(self.before[light_id])
+            if light_id in self.fade.restores:
+                self.pending.discard(light_id)
+            if light_id in self.kept:
+                self.pending.add(light_id)
+
+
+def run_on(
+    hass: HomeAssistant,
+    cache: TransitionCache,
+    context: Context | None,
+    fade: Fade,
+    light: Target,
+    recorded: transition.Transition,
+) -> None:
+    """After a light's fade was sent: end its hue cycle for a color write, or fit its ramp for brightness, and
+    schedule its end job."""
+    if fade.attribute == SATURATION:
+        hue_moves(hass).discard(light.entity_id)  # a color write ends the bulb's hue cycle
+    else:
+        hass.async_create_task(sync_to_bulb(hass, cache, light, fade, recorded))
+    restore = fade.starts if light.entity_id in fade.restores else None
+    job = end_job(hass, light, restore, context)
+    # Replaces the attribute's pending refresh and restore: those of the light's other attribute run on.
+    get_runtime(hass).schedule(hass, end_key(light, fade.attribute), [(fade.duration + END_REFRESH_S, job)])
 
 
 async def lacks_hue(hass: HomeAssistant, request: RampRequest, lights: list[Target]) -> bool:
-    """Whether a hue move meets a light whose ColorCapabilities lack enhanced hue. The dispatcher already dropped
-    saturation and hue from lights without color."""
+    """Whether a hue move meets a light whose ColorCapabilities lack enhanced hue; raises when one isn't read. The
+    dispatcher already dropped saturation and hue from lights without color."""
     if request.attribute != HUE:
         return False
-    for light in lights:
-        if not await zcl.enhanced_hue(hass, address(light.entry.unique_id)):
-            return True
-    return False
+    reads = await asyncio.gather(*(zcl.enhanced_hue(hass, address(light.entry.unique_id)) for light in lights))
+    return not all(reads)
 
 
 def fade_seconds(distance: float, sweep_time: float) -> float:
@@ -356,13 +475,21 @@ def brightness_fade(cache: TransitionCache, request: RampRequest, lights: list[T
     command = (zcl.LEVEL_CLUSTER, command_id, {"level": level, "transition_time": tenths})
     moving_starts = {light.entity_id: starts[light.entity_id] for light in movers}
     return Fade(
-        BRIGHTNESS, command, movers, moving_starts, dict.fromkeys(moving_starts, limit), duration, presets, restores
+        BRIGHTNESS,
+        dict.fromkeys(moving_starts, command),
+        movers,
+        moving_starts,
+        dict.fromkeys(moving_starts, limit),
+        duration,
+        presets,
+        restores,
     )
 
 
 def saturation_fade(cache: TransitionCache, request: RampRequest, lights: list[Target]) -> Fade | str:
-    """The saturation fade toward the limit at the current hue, as an xy fade; off with no lit light in color, at_limit
-    when there is none left to make."""
+    """The saturation fade toward the limit at each light's own hue, as an xy fade; off with no lit light in color,
+    at_limit when there is none left to make. Group members at different hues each get their own command, so none
+    takes another's hue; members at one hue share one, which a groupcast can carry."""
     if not (movers := [light for light in lit(cache, lights) if hs_color(light) is not None]):
         return "off"
     up, limit = request.up, request.end()
@@ -370,11 +497,15 @@ def saturation_fade(cache: TransitionCache, request: RampRequest, lights: list[T
     current = mean(starts.values())
     if (limit - current if up else current - limit) < MIN_STEP:
         return "at_limit"
-    x, y = color_hs_to_xy(hs_color(movers[0])[0], limit)
     duration = fade_seconds(abs(limit - current), request.sweep_time)
-    params = {"color_x": round(x * 65535), "color_y": round(y * 65535), "transition_time": transition_tenths(duration)}
-    command = (zcl.COLOR_CLUSTER, zcl.MOVE_TO_COLOR, params)
-    return Fade(SATURATION, command, movers, starts, dict.fromkeys(starts, limit), duration)
+
+    def command(light: Target) -> Command:
+        x, y = color_hs_to_xy(hs_color(light)[0], limit)
+        params = {"color_x": round(x * 65535), "color_y": round(y * 65535)}
+        return zcl.COLOR_CLUSTER, zcl.MOVE_TO_COLOR, params | {"transition_time": transition_tenths(duration)}
+
+    commands = {light.entity_id: command(light) for light in movers}
+    return Fade(SATURATION, commands, movers, starts, dict.fromkeys(starts, limit), duration)
 
 
 def hue_move(request: RampRequest, movers: list[Target]) -> HueMove:

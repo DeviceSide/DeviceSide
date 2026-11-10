@@ -1,6 +1,8 @@
 """ZHA raise and lower share their fade: separate fades per attribute, failures, and the ramp fitted to a Level read."""
 
+import asyncio
 import logging
+from unittest.mock import AsyncMock
 
 import probatio
 import pytest
@@ -12,9 +14,10 @@ from pytest_homeassistant_custom_component.common import async_mock_service
 
 from custom_components.deviceside.const import DOMAIN
 from custom_components.deviceside.core.transition import BRIGHTNESS, SATURATION
+from custom_components.deviceside.integrations.zha import zcl
 from custom_components.deviceside.integrations.zha.fade import hue_moves, soft_off_restores, transition_cache
 
-from .conftest import BOTTOM, RESTORE_60, SENT, A, B, bulb, on_off_reads, sent
+from .conftest import BOTTOM, RESTORE_60, SENT, A, B, bulb, on_off_reads, sent, xy
 from ...conftest import advance, call, wall_clock_now
 from ...fixtures.zha import IEEE
 
@@ -324,3 +327,152 @@ async def test_a_raise_after_ha_turned_the_light_off_mid_fade_starts_from_the_bo
     await call(hass, "raise_brightness", {"entity_id": "light.bulb", "sweep_time": 5})
 
     assert sent(commands)[-2:] == [BOTTOM, (0x0008, 0x04, {"level": 254, "transition_time": 50})]
+
+
+C = "00:00:00:00:00:00:00:0c"
+
+
+def failing_for(hass, ieee: str, command: int | None = None) -> list[ServiceCall]:
+    """zha's cluster command action, failing for one light (and one command, if given); the calls that went through."""
+    calls: list[ServiceCall] = []
+
+    async def handler(service: ServiceCall) -> None:
+        if service.data["ieee"] == ieee and command in (None, service.data["command"]):
+            raise HomeAssistantError("no route")
+        calls.append(service)
+
+    hass.services.async_register("zha", "issue_zigbee_cluster_command", handler)
+    return calls
+
+
+async def test_one_light_failing_rejects_only_it(hass, refreshes, caplog):
+    """Light 2 of 3 fails: 1 and 3 fade with their end jobs; 2 is rejected and gets back the prediction it had."""
+    calls = failing_for(hass, B)
+    for entity_id, ieee in (("light.a", A), ("light.b", B), ("light.c", C)):
+        bulb(hass, entity_id, ieee)
+    cache = transition_cache(hass)
+    earlier = cache.stopped("light.b", BRIGHTNESS, 55.0)
+    start = wall_clock_now()
+
+    with pytest.raises(HomeAssistantError) as raised:
+        await call(hass, "raise_brightness", {"entity_id": ["light.a", "light.b", "light.c"]})
+
+    assert raised.value.translation_placeholders["summary"] == "light.b: error"
+    assert sorted(service.data["ieee"] for service in calls) == [A, C]
+    assert cache.live("light.b", BRIGHTNESS) is earlier
+    assert cache.tracks("light.a", BRIGHTNESS) and cache.tracks("light.c", BRIGHTNESS)
+    assert "light.b: HomeAssistantError('no route')" in caplog.text
+    await advance(hass, start, 3.5)
+    assert sorted(service.data["entity_id"] for service in refreshes) == ["light.a", "light.c"]
+
+
+async def test_a_failed_soft_off_takes_back_only_its_restore(hass):
+    failing_for(hass, B)
+    bulb(hass, "light.a", A)
+    bulb(hass, "light.b", B)
+    soft_off_restores(hass).add("light.b")  # an earlier soft off's, whose end job still runs
+
+    with pytest.raises(HomeAssistantError):
+        await call(hass, "lower_brightness", {"entity_id": ["light.a", "light.b"]})
+
+    assert soft_off_restores(hass) == {"light.a", "light.b"}
+    assert not transition_cache(hass).tracks("light.b", BRIGHTNESS)
+
+
+async def test_a_failed_preset_drops_its_light_and_the_rest_go_unicast(hass, two_light_group, group_commands):
+    """The groupcast would reach the light that wasn't put at the bottom, so the lit member gets its own command."""
+    calls = failing_for(hass, B, zcl.MOVE_TO_LEVEL)
+    bulb(hass, "light.a", A)
+    bulb(hass, "light.b", B, state="off")
+
+    with pytest.raises(HomeAssistantError) as raised:
+        await call(hass, "raise_brightness", {"entity_id": "light.zha_group"})
+
+    assert raised.value.translation_placeholders["summary"] == "light.b: error"
+    assert not group_commands
+    assert [(service.data["ieee"], service.data["command"]) for service in calls] == [(A, 0x04)]
+    assert not transition_cache(hass).tracks("light.b", BRIGHTNESS)
+
+
+async def test_a_failed_groupcast_keeps_no_prediction(hass, two_light_group):
+    async def fail(call: ServiceCall) -> None:
+        raise HomeAssistantError("no route")
+
+    hass.services.async_register("zha", "issue_zigbee_group_command", fail)
+    bulb(hass, "light.a", A)
+    bulb(hass, "light.b", B)
+
+    with pytest.raises(HomeAssistantError):
+        await call(hass, "raise_saturation", {"entity_id": "light.zha_group"})
+
+    cache = transition_cache(hass)
+    assert not cache.tracks("light.a", SATURATION) and not cache.tracks("light.b", SATURATION)
+
+
+async def test_a_failed_hue_move_marks_no_cycle(hass):
+    failing_for(hass, B)
+    bulb(hass, "light.a", A)
+    bulb(hass, "light.b", B)
+
+    with pytest.raises(HomeAssistantError):
+        await call(hass, "raise_hue", {"entity_id": ["light.a", "light.b"]})
+
+    assert hue_moves(hass) == {"light.a"}
+
+
+async def test_mixed_hues_in_a_group_each_fade_at_their_own(hass, two_light_group, commands, group_commands):
+    bulb(hass, "light.a", A, hs=(200.0, 60.0))
+    bulb(hass, "light.b", B, hs=(100.0, 60.0))
+
+    assert await call(hass, "raise_saturation", {"entity_id": "light.zha_group"}) == {
+        "light.a": SENT,
+        "light.b": SENT,
+    }
+    assert not group_commands
+    assert {(service.data["ieee"], service.data["params"]["color_x"]) for service in commands} == {
+        (A, xy(200, 100)["color_x"]),
+        (B, xy(100, 100)["color_x"]),
+    }
+
+
+async def test_one_hue_in_a_group_fades_by_groupcast(hass, two_light_group, commands, group_commands):
+    bulb(hass, "light.a", A)
+    bulb(hass, "light.b", B)
+
+    await call(hass, "raise_saturation", {"entity_id": "light.zha_group"})
+
+    assert not commands
+    point = xy(200, 100)
+    assert [service.data["args"] for service in group_commands] == [[point["color_x"], point["color_y"], 20]]
+
+
+async def test_an_unread_color_capabilities_rejects_a_hue_move(hass, commands, monkeypatch, caplog):
+    """#10: a light that didn't answer may have enhanced hue, so the move is rejected rather than dropped."""
+    monkeypatch.setattr(zcl, "enhanced_hue", AsyncMock(side_effect=LookupError("no answer")))
+    bulb(hass)
+
+    with pytest.raises(HomeAssistantError) as raised:
+        await call(hass, "raise_hue", {"entity_id": "light.bulb"})
+
+    assert raised.value.translation_placeholders["summary"] == "light.bulb: error"
+    assert not commands
+    assert "ColorCapabilities not read" in caplog.text
+
+
+async def test_a_cancel_puts_every_light_back(hass, monkeypatch):
+    bulb(hass, "light.a", A)
+    bulb(hass, "light.b", B)
+    cache = transition_cache(hass)
+    earlier = cache.stopped("light.a", BRIGHTNESS, 55.0)
+
+    async def cancelled(*args, **kwargs):
+        raise asyncio.CancelledError
+
+    monkeypatch.setattr(zcl, "command", cancelled)
+
+    with pytest.raises(asyncio.CancelledError):
+        await call(hass, "lower_brightness", {"entity_id": ["light.a", "light.b"]})
+
+    assert cache.live("light.a", BRIGHTNESS) is earlier
+    assert not cache.tracks("light.b", BRIGHTNESS)
+    assert soft_off_restores(hass) == set()
