@@ -8,7 +8,7 @@ from homeassistant.core import HomeAssistant
 
 from .addressing import topic
 from .bridge import publish, state_reply
-from .native_control import COLOR_FIELDS, NEED, native_control
+from .native_control import COLOR_FIELDS, NEED, native_control, settled
 from ...actions.turn_on_for import TurnOnForRequest
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Status, Target
@@ -77,10 +77,11 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
 
             if request.light.present():
                 need = NEED[self.action] if request.light.present() & COLOR_FIELDS else None
-                async with native_control(hass, target, need) as window:
+                async with native_control(hass, target, need):
                     await self._turn_on(hass, target, request.light.as_turn_on_data())
-                # The timer goes out as the user's option has it, as it always has.
-                await window.settled()
+
+            # The timer goes out as the user's option has it, after this call's restore or an earlier action's.
+            await settled(hass, target)
 
             on_time = round(request.duration_s, 1)
             await publish(hass, set_topic, {"state": "ON", "on_time": on_time})

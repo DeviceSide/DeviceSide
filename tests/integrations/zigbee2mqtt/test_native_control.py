@@ -40,6 +40,10 @@ def options(broker) -> list[bool]:
     return [request["payload"]["options"][nc.OPTION] for request in broker.requests()]
 
 
+def timers(broker) -> list[dict]:
+    return [p["payload"] for p in broker.published if p["topic"] == SET and "on_time" in p["payload"]]
+
+
 def target(hass, entity_id: str) -> Target:
     entry = er.async_get(hass).async_get(entity_id)
     device = dr.async_get(hass).async_get(entry.device_id)
@@ -282,10 +286,10 @@ async def test_restore_runs_when_the_body_raises(hass, setup_production, broker)
     hue_bulb(hass)
 
     with pytest.raises(RuntimeError, match="publish failed"):
-        async with nc.native_control(hass, target(hass, "light.lamp"), True) as window:
+        async with nc.native_control(hass, target(hass, "light.lamp"), True):
             assert options(broker) == [True]
             raise RuntimeError("publish failed")
-    await window.settled()
+    await nc.settled(hass, target(hass, "light.lamp"))
 
     assert options(broker) == [True, False]
 
@@ -372,9 +376,9 @@ async def test_state_reply_ends_the_wait(hass, setup_production, clock, broker, 
     loop = asyncio.get_running_loop()
 
     start = loop.time()
-    async with nc.native_control(hass, target(hass, entity_id), True) as window:
+    async with nc.native_control(hass, target(hass, entity_id), True):
         broker.deliver("zigbee2mqtt/lamp", '{"state": "ON"}')
-    await window.settled()
+    await nc.settled(hass, target(hass, entity_id))
 
     assert loop.time() - start < 1
     assert options(broker) == [True, False]
@@ -388,9 +392,9 @@ async def test_retained_state_doesnt_end_the_wait(hass, setup_production, clock,
     loop = asyncio.get_running_loop()
 
     start = loop.time()
-    async with nc.native_control(hass, target(hass, entity_id), True) as window:
+    async with nc.native_control(hass, target(hass, entity_id), True):
         pass
-    await window.settled()
+    await nc.settled(hass, target(hass, entity_id))
 
     assert loop.time() - start >= 0.2
     assert options(broker) == [True, False]
@@ -412,9 +416,9 @@ async def test_failed_state_subscribe_still_restores_after_the_cap(
 
     start = loop.time()
     with caplog.at_level(logging.DEBUG, logger=LOGGER):
-        async with nc.native_control(hass, target(hass, entity_id), True) as window:
+        async with nc.native_control(hass, target(hass, entity_id), True):
             pass
-        await window.settled()
+        await nc.settled(hass, target(hass, entity_id))
 
     assert loop.time() - start >= nc._REPLY_CAP_S
     assert options(broker) == [True, False]
@@ -466,12 +470,11 @@ async def test_shutdown_during_the_reply_wait_still_restores(hass, setup_product
     monkeypatch.setattr(nc, "_REPLY_CAP_S", 5.0)
     entity_id = light(hass, broker, manufacturer="Philips")
 
-    async with nc.native_control(hass, target(hass, entity_id), True) as window:
+    async with nc.native_control(hass, target(hass, entity_id), True):
         pass
     await asyncio.sleep(0)
-    window._restore.cancel()
-    with pytest.raises(asyncio.CancelledError):
-        await window.settled()
+    nc._restores(hass)[("device", IEEE)].cancel()
+    await nc.settled(hass, target(hass, entity_id))  # ends the wait rather than raising into the caller
 
     assert options(broker) == [True, False]
     assert not nc._locks(hass)[("device", IEEE)].locked()
@@ -480,11 +483,9 @@ async def test_shutdown_during_the_reply_wait_still_restores(hass, setup_product
 async def test_caller_cancelled_in_the_body_still_restores(hass, setup_production, broker):
     hue_bulb(hass)
     inside = asyncio.Event()
-    windows: list[nc.Window] = []
 
     async def body() -> None:
-        async with nc.native_control(hass, target(hass, "light.lamp"), True) as window:
-            windows.append(window)
+        async with nc.native_control(hass, target(hass, "light.lamp"), True):
             inside.set()
             await asyncio.Event().wait()
 
@@ -493,7 +494,7 @@ async def test_caller_cancelled_in_the_body_still_restores(hass, setup_productio
     task.cancel()
     with pytest.raises(asyncio.CancelledError):
         await task
-    await windows[0].settled()
+    await nc.settled(hass, target(hass, "light.lamp"))
 
     assert options(broker) == [True, False]
 
@@ -502,12 +503,36 @@ async def test_settled_is_immediate_without_a_change(hass, setup_production, bro
     hue_bulb(hass)
     broker.retained[INFO]["config"]["devices"][IEEE]["hue_native_control"] = True
 
-    async with nc.native_control(hass, target(hass, "light.lamp"), True) as window:
+    async with nc.native_control(hass, target(hass, "light.lamp"), True):
         pass
-    await window.settled()
+    await nc.settled(hass, target(hass, "light.lamp"))
 
     assert broker.requests() == []
     assert not nc._locks(hass)[("device", IEEE)].locked()
+
+
+async def test_a_timer_after_a_brightness_fade_waits_for_its_restore(
+    hass, setup_production, clock, broker, monkeypatch
+):
+    monkeypatch.setattr(nc, "_REPLY_CAP_S", 5.0)
+    entity_id = light(hass, broker, manufacturer="Philips")
+    broker.retained[INFO]["config"]["devices"][IEEE]["hue_native_control"] = True
+
+    await call(hass, "raise_brightness", {"entity_id": entity_id})
+    timer = hass.async_create_task(call(hass, "turn_on_for", {"entity_id": entity_id, "duration": 6}))
+    for _ in range(10):
+        await asyncio.sleep(0)
+    assert timers(broker) == []  # the option is still the fade's
+
+    broker.deliver("zigbee2mqtt/lamp", '{"state": "ON"}')
+    async with asyncio.timeout(1):
+        await timer
+    assert options(broker) == [False, True]
+    assert timers(broker) == [{"state": "ON", "on_time": 6}]
+
+
+async def test_settled_without_an_address_returns(hass):
+    await nc.settled(hass, Target("light.x", "light", "zigbee2mqtt", None, None, None, None))
 
 
 async def test_reply_cap_is_one_second():

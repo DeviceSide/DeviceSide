@@ -90,7 +90,7 @@ class BridgeCache:
         self._payloads.clear()
         self._parsed.clear()
 
-    async def _subscribe(self, hass: HomeAssistant) -> None:
+    async def subscribe(self, hass: HomeAssistant) -> None:
         # In this order, so the barrier follows the response topics in HA's batch.
         for kind in KINDS:
             self._unsubscribes.append(
@@ -140,7 +140,7 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry) -> None:
     # Before subscribing, so an unload mid-way still drops what was subscribed.
     entry.async_on_unload(unload)
     try:
-        await cache._subscribe(hass)
+        await cache.subscribe(hass)
     except Exception as err:  # noqa: BLE001 - each caller reads fresh, as without the cache
         _LOGGER.warning("Couldn't subscribe to Zigbee2MQTT's bridge, so each action reads it fresh: %s", err)
         cache.stop()

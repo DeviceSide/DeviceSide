@@ -49,7 +49,7 @@ async def retained(hass: HomeAssistant, suffix: str) -> Any:
     """The parsed retained message on bridge/<suffix>; raises TimeoutError when Z2M hasn't published one.
 
     bridge/devices and bridge/groups come from the bridge cache when it holds them (bridge_cache.py), else from a fresh
-    subscription, as bridge/info always does.
+    subscription, as bridge/info always does. A cached result is shared by every caller: read it, never change it.
     """
     if (
         suffix in bridge_cache.HELD
