@@ -232,8 +232,25 @@ def test_a_cells_icons_link_to_the_features_subsection_or_else_the_integrations_
     matter = cells(text, "Get attributes")[4]
     assert f'href="{DOCS}integrations.md#get-attributes-' in matter
     blocked = cells(text, "Turn off with timer")[0]
-    assert blocked == f'<a href="{DOCS}integrations.md#zha">' + blocked.split(">", 1)[1]
+    assert blocked.startswith(f'<a href="{DOCS}integrations.md#what-cant-be-done-and-why"><img ')
     assert "/no.svg" in blocked
+
+
+def test_a_prohibited_sign_links_to_why_while_the_cells_other_icons_link_to_the_feature(monkeypatch):
+    monkeypatch.setattr(gf, "NO_PATH", {("Smooth dimming", "shelly"): ("switch",)})
+    cell = cells(gf.generate(FakeRegistry(*every_row(domains=verified("light")))), "Smooth dimming")[2]
+    feature, why = (
+        f'href="{DOCS}integrations.md#smooth-dimming"',
+        f'href="{DOCS}integrations.md#what-cant-be-done-and-why"',
+    )
+    assert cell.index(feature) < cell.index("/light.svg") < cell.index(why) < cell.index("/no.svg")
+    assert cell.count(why) == 1
+
+
+def test_a_missing_why_section_fails(monkeypatch, no_blockers):
+    monkeypatch.setattr(gf, "IMPOSSIBLE", "nowhere")
+    with pytest.raises(SystemExit, match="no heading for #nowhere; fix IMPOSSIBLE"):
+        gf.generate(FakeRegistry(*every_row()))
 
 
 def test_an_integration_missing_from_the_integrations_doc_fails(monkeypatch, no_blockers):

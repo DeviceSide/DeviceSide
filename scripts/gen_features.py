@@ -3,7 +3,8 @@
 (light, switch, native group, native scene), and one prohibited sign for whatever appears impossible.
 
 Each icon links to the docs: a cell's to its integration's section in docs/integrations.md (the feature's subsection
-when it has one), a legend entry's to the heading that explains it.
+when it has one), a prohibited sign's to the section there that says why, a legend entry's to the heading that
+explains it.
 
 What is built comes from each adapter's `AdapterScope`: an amber icon for what works with the Experimental features
 option off, a grey one for what works only with it on. Only NO_PATH, the known blockers, is kept by hand. A blank cell
@@ -35,6 +36,8 @@ ICON_URL = "https://raw.githubusercontent.com/jasonmx/DeviceSide/main/docs/icons
 # Absolute for the same reason. Without a link of its own, GitHub links each icon to its SVG file.
 DOC_URL = "https://github.com/jasonmx/DeviceSide/blob/main/{}#{}"
 INTEGRATIONS = "docs/integrations.md"
+# The integrations.md section explaining every NO_PATH entry to users; keep the two in step.
+IMPOSSIBLE = "what-cant-be-done-and-why"
 
 # Icon key -> alt text in a cell, in the order a cell shows them.
 ICONS = {"light": "light", "switch": "switch", "group": "native group", "scene": "native scene"}
@@ -79,9 +82,10 @@ LEGEND = (
     ("scene", "native scene", "scene", "README.md", "set-scene-without-turning-on"),
     ("devices", "Released", "released", "docs/device-compatibility.md", "levels-of-proof"),
     ("devices-grey", "Experimental", "experimental", "docs/device-compatibility.md", "levels-of-proof"),
-    ("no", "not possible", "appears impossible", "docs/design.md", "scope"),
+    ("no", "not possible", "appears impossible", INTEGRATIONS, IMPOSSIBLE),
 )
-# (feature label, integration) -> icon keys with a known blocker, so never "not built yet". See docs/design.md "Scope".
+# (feature label, integration) -> icon keys with a known blocker, so never "not built yet". Users read why in
+# docs/integrations.md, at IMPOSSIBLE.
 NO_PATH = {
     # Zigbee and Matter `OnWithTimedOff` is on-then-off only: there is no off-then-on timer to send.
     ("Turn off with timer", "zha"): ("light", "switch", "group"),
@@ -144,9 +148,9 @@ def href(file: str, anchor: str) -> str:
     return f"#{anchor}" if file == "README.md" else DOC_URL.format(file, anchor)
 
 
-def cell(have: set[str], blocked: tuple[str, ...], trial: set[str] = frozenset(), link: str = "") -> str:
-    """An icon per built key, amber, or grey when it works only with the Experimental features option on, then one
-    prohibited sign naming every blocked key; each links to `link`."""
+def cell(have: set[str], blocked: tuple[str, ...], trial: set[str] = frozenset(), link: str = "", why: str = "") -> str:
+    """An icon per built key, amber, or grey when it works only with the Experimental features option on, linking to
+    `link`, then one prohibited sign naming every blocked key, linking to `why`."""
     icons = []
     for key in ICONS:
         if key in have:
@@ -154,7 +158,7 @@ def cell(have: set[str], blocked: tuple[str, ...], trial: set[str] = frozenset()
         elif key in trial:
             icons.append(img(f"{key}-grey", f"{ICONS[key]}: Experimental", link))
     if blocked:
-        icons.append(img("no", f"{', '.join(ICONS[key] for key in ICONS if key in blocked)}: not possible", link))
+        icons.append(img("no", f"{', '.join(ICONS[key] for key in ICONS if key in blocked)}: not possible", why))
     return " ".join(icons)
 
 
@@ -167,7 +171,11 @@ def cell_link(sections: dict[str, dict[str, str]], integration: str, topic: str)
 
 
 def generate(registry: AdapterRegistry) -> str:
-    sections = headings((REPO / INTEGRATIONS).read_text())
+    doc = (REPO / INTEGRATIONS).read_text()
+    sections = headings(doc)
+    if IMPOSSIBLE not in anchors(doc):
+        raise SystemExit(f"{INTEGRATIONS} has no heading for #{IMPOSSIBLE}; fix IMPOSSIBLE")
+    why = href(INTEGRATIONS, IMPOSSIBLE)
     cells = built(registry)
     trial = built(registry, experimental=True)
     labels = {label for label, _, _, _ in FEATURES}
@@ -194,6 +202,7 @@ def generate(registry: AdapterRegistry) -> str:
                 NO_PATH.get((label, integration), ()),
                 trial[label, integration],
                 cell_link(sections, integration, topic),
+                why,
             )
             for integration in COLUMNS
         ]
