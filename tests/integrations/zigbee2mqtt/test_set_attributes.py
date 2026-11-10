@@ -6,7 +6,7 @@ from homeassistant.util.color import color_RGB_to_xy, color_xy_to_hs
 
 from custom_components.deviceside.integrations.zigbee2mqtt import set_attributes
 
-from ...conftest import call, refusal
+from ...conftest import call, refusal, result
 from ...fixtures.z2m import GROUPS, IEEE, INFO, add_z2m_entity, add_z2m_group, z2m_entry
 
 pytestmark = pytest.mark.usefixtures("setup_production")
@@ -213,7 +213,7 @@ async def test_within_limits_sends_nothing(hass, broker):
         hass, "set_attributes", {"entity_id": "light.lamp", "min_brightness": 20, "max_brightness": 80}
     )
 
-    assert response == {"light.lamp": {"status": "unchanged", "integration": "zigbee2mqtt", "detail": "within_limits"}}
+    assert response == {"light.lamp": result("zigbee2mqtt", "unchanged", detail="within_limits")}
     assert sent(broker) == []
 
 
@@ -238,7 +238,7 @@ async def test_a_light_that_takes_no_field_is_unchanged(hass, broker, modes, dat
 
     response = await call(hass, "set_attributes", {"entity_id": "light.lamp", **data})
 
-    assert response == {"light.lamp": {"status": "unchanged", "integration": "zigbee2mqtt", "detail": "fields_dropped"}}
+    assert response == {"light.lamp": result("zigbee2mqtt", "unchanged", detail="fields_dropped")}
     assert sent(broker) == []
     assert reads(broker) == []
 
@@ -275,8 +275,8 @@ async def test_the_read_waits_out_the_write_fade(hass, broker, monkeypatch):
 
 async def test_a_read_still_mid_fade_is_repeated_before_the_write_counts_as_ignored(hass, broker, monkeypatch):
     bulb(hass, broker, modes=DIMMABLE)
-    broker.fade_s = 0.05
-    monkeypatch.setattr(set_attributes, "_RETRY_S", 0.06)
+    broker.fade_reads = 1  # counted in reads, so no wait has to outlast a real-clock fade
+    monkeypatch.setattr(set_attributes, "_RETRY_S", 0)
 
     response = await call(hass, "set_attributes", {"entity_id": "light.lamp", "brightness": 40})
 
@@ -363,7 +363,7 @@ async def test_a_group_whose_members_are_all_within_limits_is_unchanged(hass, br
 
     response = await call(hass, "set_attributes", {"entity_id": "light.room", "min_brightness": 10})
 
-    assert response == {"light.room": {"status": "unchanged", "integration": "zigbee2mqtt", "detail": "within_limits"}}
+    assert response == {"light.room": result("zigbee2mqtt", "unchanged", detail="within_limits")}
     assert sent(broker) == []
 
 

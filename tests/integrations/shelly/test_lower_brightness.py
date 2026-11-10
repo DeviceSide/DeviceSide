@@ -9,8 +9,8 @@ from custom_components.deviceside.core.scope import Level
 from custom_components.deviceside.integrations.shelly.lower_brightness import ShellyLowerBrightness
 from custom_components.deviceside.integrations.shelly.raise_brightness import ShellyRaiseBrightness
 
-from .conftest import BULB, SENT, dimmable_bulb, unchanged
-from ...conftest import call
+from .conftest import BULB, SENT, dimmable_bulb
+from ...conftest import call, result
 
 READ = rpc_call("RGBCCT.GetStatus", {"id": 0})
 
@@ -38,7 +38,7 @@ async def test_to_a_limit_stays_on(hass, setup_production):
 async def test_an_off_light_is_unchanged(hass, setup_production):
     call_rpc = dimmable_bulb(hass, brightness=60, on=False)
 
-    assert await call(hass, "lower_brightness", BULB) == {"light.bulb": unchanged("off")}
+    assert await call(hass, "lower_brightness", BULB) == {"light.bulb": result("shelly", "unchanged", detail="off")}
     assert call_rpc.await_args_list == [READ]
 
 
@@ -48,7 +48,7 @@ async def test_nothing_left_to_lower_is_unchanged(hass, setup_production, bright
 
     response = await call(hass, "lower_brightness", {**BULB, "limit": limit})
 
-    assert response == {"light.bulb": unchanged("at_limit")}
+    assert response == {"light.bulb": result("shelly", "unchanged", detail="at_limit")}
     assert call_rpc.await_args_list == [READ]
 
 

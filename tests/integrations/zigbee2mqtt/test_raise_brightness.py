@@ -5,8 +5,8 @@ import pytest
 from custom_components.deviceside.core.transition import BRIGHTNESS
 from custom_components.deviceside.integrations.zigbee2mqtt.fade import transition_cache
 
-from .conftest import BOTTOM, GET, SENT, SET, commands, group, light, unchanged
-from ...conftest import advance, call, wall_clock_now
+from .conftest import BOTTOM, GET, SENT, SET, commands, group, light
+from ...conftest import advance, call, result, wall_clock_now
 
 pytestmark = pytest.mark.usefixtures("setup_production", "clock")
 
@@ -33,7 +33,7 @@ async def test_at_the_top_is_unchanged(hass, broker):
 
     response = await call(hass, "raise_brightness", {"entity_id": entity_id})
 
-    assert response == {entity_id: unchanged("at_limit")}
+    assert response == {entity_id: result("zigbee2mqtt", "unchanged", detail="at_limit")}
     assert commands(broker) == []
 
 

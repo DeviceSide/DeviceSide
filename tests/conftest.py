@@ -30,6 +30,11 @@ class Clock:
         return self.now
 
 
+def result(integration: str, status: str, **extra) -> dict:
+    """One target's expected response entry: result("zha", "unchanged", detail="off")."""
+    return {"status": status, "integration": integration, **extra}
+
+
 def unload_mock_entries(domain: str):
     """An autouse fixture, for an integration's conftest: mark its mocked config entries not loaded before teardown,
     so HA doesn't import the real integration (or run its unload) on them."""

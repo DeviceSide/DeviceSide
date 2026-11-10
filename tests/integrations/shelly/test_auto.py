@@ -10,7 +10,7 @@ from custom_components.deviceside.core.scope import Level
 from custom_components.deviceside.integrations.shelly.auto import ShellyClearAuto, ShellySetAuto
 from custom_components.deviceside.integrations.shelly.rpc import AUTO_DELAY_LIMITS
 
-from ...conftest import call, refusal
+from ...conftest import call, refusal, result
 from ...fixtures.shelly import OTHER_LIGHT_COMPONENTS, add_shelly_entity, failing, shelly_device
 
 pytestmark = pytest.mark.usefixtures("setup_production")
@@ -50,7 +50,7 @@ async def test_set_to_the_held_delay_sends_nothing(hass, which):
 
     response = await call(hass, f"set_auto_{which}", {"entity_id": "switch.gate", "duration": 5})
 
-    assert response == {"switch.gate": {"status": "unchanged", "integration": "shelly", "detail": "already_set"}}
+    assert response == {"switch.gate": result("shelly", "unchanged", detail="already_set")}
     assert not set_configs(call_rpc)
 
 
@@ -80,7 +80,7 @@ async def test_clear_when_already_clear_sends_nothing(hass, which):
 
     response = await call(hass, f"clear_auto_{which}", {"entity_id": "switch.gate"})
 
-    assert response == {"switch.gate": {"status": "unchanged", "integration": "shelly", "detail": "already_clear"}}
+    assert response == {"switch.gate": result("shelly", "unchanged", detail="already_clear")}
     assert not set_configs(call_rpc)
 
 

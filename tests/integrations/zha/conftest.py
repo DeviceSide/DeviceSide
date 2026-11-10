@@ -22,10 +22,6 @@ BOTTOM = (0x0008, 0x00, {"level": 1, "transition_time": 0, "options_mask": 1, "o
 RESTORE_60 = (0x0008, 0x00, {"level": 152, "transition_time": 0, "options_mask": 1, "options_override": 1})
 
 
-def unchanged(detail: str) -> dict:
-    return {"status": "unchanged", "integration": "zha", "detail": detail}
-
-
 unload_mock_zha_entries = unload_mock_entries("zha")
 
 
