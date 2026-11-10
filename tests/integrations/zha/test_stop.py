@@ -14,8 +14,8 @@ from custom_components.deviceside.const import DOMAIN
 from custom_components.deviceside.core.transition import BRIGHTNESS, SATURATION
 from custom_components.deviceside.integrations.zha.fade import hue_moves, transition_cache
 
-from .conftest import IEEE, SENT, A, B, bulb, sent, unchanged
-from ...conftest import advance, call, wall_clock_now
+from .conftest import IEEE, SENT, A, B, bulb, sent
+from ...conftest import advance, call, result, wall_clock_now
 
 DISPATCHER = "custom_components.deviceside.core.dispatcher"
 
@@ -111,7 +111,9 @@ async def test_cancels_each_attributes_end_refresh(hass, commands, refreshes):
 async def test_an_off_light_is_unchanged(hass, commands, refreshes):
     bulb(hass, state="off")
 
-    assert await call(hass, "stop", {"entity_id": "light.bulb"}) == {"light.bulb": unchanged("off")}
+    assert await call(hass, "stop", {"entity_id": "light.bulb"}) == {
+        "light.bulb": result("zha", "unchanged", detail="off")
+    }
     assert not commands
     assert not refreshes
 
@@ -133,7 +135,7 @@ async def test_a_group_with_an_off_member_stops_each_lit_one(hass, two_light_gro
 
     response = await call(hass, "stop", {"entity_id": "light.zha_group"})
 
-    assert response == {"light.a": SENT, "light.b": unchanged("off")}
+    assert response == {"light.a": SENT, "light.b": result("zha", "unchanged", detail="off")}
     assert [command.data["ieee"] for command in commands] == [A]
     assert not group_commands
 

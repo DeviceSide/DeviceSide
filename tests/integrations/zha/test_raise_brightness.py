@@ -7,8 +7,8 @@ from custom_components.deviceside.core.transition import BRIGHTNESS
 from custom_components.deviceside.integrations.zha.addressing import Address
 from custom_components.deviceside.integrations.zha.fade import transition_cache
 
-from .conftest import BOTTOM, SENT, A, B, bulb, sent, to, unchanged
-from ...conftest import call
+from .conftest import BOTTOM, SENT, A, B, bulb, sent, to
+from ...conftest import call, result
 from ...fixtures.zha import IEEE
 
 pytestmark = pytest.mark.usefixtures("setup_production", "clock", "bulbs")
@@ -71,7 +71,9 @@ async def test_from_off_on_a_model_that_drops_levels_while_off_skips_the_bottom(
 async def test_at_the_top_is_unchanged(hass, commands):
     bulb(hass, brightness=255)
 
-    assert await call(hass, "raise_brightness", {"entity_id": "light.bulb"}) == {"light.bulb": unchanged("at_limit")}
+    assert await call(hass, "raise_brightness", {"entity_id": "light.bulb"}) == {
+        "light.bulb": result("zha", "unchanged", detail="at_limit")
+    }
     assert not commands
 
 

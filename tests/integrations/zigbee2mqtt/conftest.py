@@ -107,7 +107,3 @@ SET = f"zigbee2mqtt/{IEEE}/set"
 GET = f"zigbee2mqtt/{IEEE}/get"
 # An off light is put here first, so a fade from off starts at the bottom, not the level it kept.
 BOTTOM = {"state": "ON", "brightness": 1, "transition": 0}
-
-
-def unchanged(detail: str) -> dict:
-    return {"status": "unchanged", "integration": "zigbee2mqtt", "detail": detail}

@@ -13,7 +13,7 @@ from custom_components.deviceside.integrations.hue.raise_saturation import HueRa
 from custom_components.deviceside.integrations.hue.transition_cache import transition_cache
 
 from .conftest import fade_put, lamp, mixed_room, percent, room
-from ...conftest import call, refusal
+from ...conftest import call, refusal, result
 from ...fixtures.hue import add_hue_entity, hue_entry
 
 pytestmark = pytest.mark.usefixtures("setup_production")
@@ -55,7 +55,7 @@ async def test_light_without_dimming_drops_brightness_fields(hass, bridge):
     response = await call(hass, "raise_brightness", {"entity_id": entity_id})
 
     # The adapter drops brightness for a non-dimmable light; nothing is sent.
-    assert response == {entity_id: {"status": "unchanged", "integration": "hue", "detail": "fields_dropped"}}
+    assert response == {entity_id: result("hue", "unchanged", detail="fields_dropped")}
     assert bridge.puts == []
 
 

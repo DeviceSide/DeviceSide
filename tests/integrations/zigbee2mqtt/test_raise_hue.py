@@ -2,8 +2,8 @@
 
 import pytest
 
-from .conftest import SENT, SET, commands, light, unchanged
-from ...conftest import call
+from .conftest import SENT, SET, commands, light
+from ...conftest import call, result
 
 pytestmark = pytest.mark.usefixtures("setup_production", "clock")
 
@@ -22,7 +22,7 @@ async def test_an_off_light_is_unchanged(hass, broker):
 
     response = await call(hass, "raise_hue", {"entity_id": entity_id})
 
-    assert response == {entity_id: unchanged("off")}
+    assert response == {entity_id: result("zigbee2mqtt", "unchanged", detail="off")}
     assert commands(broker) == []
 
 

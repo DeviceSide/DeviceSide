@@ -8,8 +8,8 @@ from homeassistant.exceptions import HomeAssistantError
 from custom_components.deviceside.integrations.shelly.raise_brightness import ShellyRaiseBrightness
 from custom_components.deviceside.integrations.shelly.stop import ShellyStop
 
-from .conftest import BULB, CONFIRMED, SENT, dimmable_bulb, unchanged
-from ...conftest import allow_experimental, call, refusal, traced
+from .conftest import BULB, CONFIRMED, SENT, dimmable_bulb
+from ...conftest import allow_experimental, call, refusal, result, traced
 from ...fixtures.shelly import OTHER_LIGHT_COMPONENTS, add_shelly_entity, failing, shelly_device
 
 STOP = rpc_call("RGBCCT.DimStop", {"id": 0})
@@ -36,7 +36,7 @@ async def test_a_lit_light_with_no_fade_is_confirmed(hass, setup_production):
 async def test_an_off_light_is_unchanged(hass, setup_production):
     dimmable_bulb(hass, on=False)
 
-    assert await call(hass, "stop", BULB) == {"light.bulb": unchanged("off")}
+    assert await call(hass, "stop", BULB) == {"light.bulb": result("shelly", "unchanged", detail="off")}
 
 
 async def test_a_halted_soft_off_stays_on(hass, setup_production):

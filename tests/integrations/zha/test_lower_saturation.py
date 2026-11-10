@@ -2,8 +2,8 @@
 
 import pytest
 
-from .conftest import SENT, bulb, sent, unchanged, xy
-from ...conftest import call
+from .conftest import SENT, bulb, sent, xy
+from ...conftest import call, result
 
 pytestmark = pytest.mark.usefixtures("setup_production", "clock", "bulbs")
 
@@ -20,12 +20,16 @@ async def test_sends_the_end_point_at_the_current_hue(hass, commands):
 async def test_at_white_is_unchanged(hass, commands):
     bulb(hass, hs=(200.0, 0.0))
 
-    assert await call(hass, "lower_saturation", {"entity_id": "light.bulb"}) == {"light.bulb": unchanged("at_limit")}
+    assert await call(hass, "lower_saturation", {"entity_id": "light.bulb"}) == {
+        "light.bulb": result("zha", "unchanged", detail="at_limit")
+    }
     assert not commands
 
 
 async def test_an_off_light_is_unchanged(hass, commands):
     bulb(hass, state="off")
 
-    assert await call(hass, "lower_saturation", {"entity_id": "light.bulb"}) == {"light.bulb": unchanged("off")}
+    assert await call(hass, "lower_saturation", {"entity_id": "light.bulb"}) == {
+        "light.bulb": result("zha", "unchanged", detail="off")
+    }
     assert not commands

@@ -10,7 +10,7 @@ from custom_components.deviceside.core.transition import BRIGHTNESS, SATURATION
 from custom_components.deviceside.integrations.hue.transition_cache import transition_cache
 
 from .conftest import SENT, STOP, color_lamp, color_room, hs_xy, lamp, mixed_room, report_off, room, xy_halt
-from ...conftest import call, refusal, traced
+from ...conftest import call, refusal, result, traced
 
 pytestmark = pytest.mark.usefixtures("setup_production")
 
@@ -103,7 +103,7 @@ async def test_stop_on_an_off_light_sends_nothing(hass, bridge, target):
 
     response = await call(hass, "stop", {"entity_id": entity_id})
 
-    assert response == {entity_id: {"status": "unchanged", "integration": "hue", "detail": "off"}}
+    assert response == {entity_id: result("hue", "unchanged", detail="off")}
     assert bridge.puts == []
 
 

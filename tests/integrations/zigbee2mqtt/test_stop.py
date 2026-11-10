@@ -6,7 +6,7 @@ from custom_components.deviceside.core.transition import BRIGHTNESS, SATURATION
 from custom_components.deviceside.integrations.zigbee2mqtt.fade import hue_moves, transition_cache
 
 from .conftest import GET, SENT, SET, commands, group, light
-from ...conftest import advance, call, traced, wall_clock_now
+from ...conftest import advance, call, result, traced, wall_clock_now
 
 pytestmark = pytest.mark.usefixtures("setup_production", "clock")
 
@@ -36,7 +36,7 @@ async def test_an_off_light_is_unchanged(hass, broker):
 
     response = await call(hass, "stop", {"entity_id": entity_id})
 
-    assert response == {entity_id: {"status": "unchanged", "integration": "zigbee2mqtt", "detail": "off"}}
+    assert response == {entity_id: result("zigbee2mqtt", "unchanged", detail="off")}
     assert commands(broker) == []
 
 
@@ -141,7 +141,7 @@ async def test_a_group_with_nothing_lit_is_unchanged(hass, broker):
 
     response = await call(hass, "stop", {"entity_id": room})
 
-    assert response == {room: {"status": "unchanged", "integration": "zigbee2mqtt", "detail": "off"}}
+    assert response == {room: result("zigbee2mqtt", "unchanged", detail="off")}
 
 
 async def test_a_stop_cancels_the_moves_end_read_back(hass, broker):

@@ -9,8 +9,8 @@ from homeassistant.exceptions import HomeAssistantError
 from custom_components.deviceside.core.scope import Level
 from custom_components.deviceside.integrations.shelly.raise_brightness import ShellyRaiseBrightness
 
-from .conftest import BULB, SENT, dimmable_bulb, unchanged
-from ...conftest import allow_experimental, call, refusal
+from .conftest import BULB, SENT, dimmable_bulb
+from ...conftest import allow_experimental, call, refusal, result
 from ...fixtures.shelly import OTHER_LIGHT_COMPONENTS, add_shelly_entity, failing, shelly_device
 
 READ = rpc_call("RGBCCT.GetStatus", {"id": 0})
@@ -52,7 +52,9 @@ async def test_nothing_left_to_raise_is_unchanged(hass, setup_production, bright
     call_rpc = dimmable_bulb(hass, brightness=brightness)
     data = {} if limit is None else {"limit": limit}
 
-    assert await call(hass, "raise_brightness", {**BULB, **data}) == {"light.bulb": unchanged("at_limit")}
+    assert await call(hass, "raise_brightness", {**BULB, **data}) == {
+        "light.bulb": result("shelly", "unchanged", detail="at_limit")
+    }
     assert call_rpc.await_args_list == [READ]
 
 
@@ -79,7 +81,7 @@ async def test_a_relay_shown_as_a_light_drops_brightness(hass, setup_production)
     )
 
     assert await call(hass, "raise_brightness", {"entity_id": "light.relay"}) == {
-        "light.relay": unchanged("fields_dropped")
+        "light.relay": result("shelly", "unchanged", detail="fields_dropped")
     }
     assert not call_rpc.await_args_list
 
