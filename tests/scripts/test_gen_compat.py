@@ -78,8 +78,9 @@ def data(registry=None, **changes):
 def root(tmp_path, monkeypatch):
     monkeypatch.setattr(gc, "REPO", tmp_path)
     monkeypatch.setattr(cr, "RECORDS", tmp_path / "docs" / "test-records")
-    # Freshness needs git history; tests that weigh it set their own.
-    monkeypatch.setattr(gc, "fresh", lambda record, adapter: True)
+    # Freshness needs git history and an adapter's source: every record is fresh unless a test says otherwise.
+    monkeypatch.setattr(gc, "code_of", lambda adapter: [])
+    monkeypatch.setattr(gc, "staleness", lambda record, code: None)
     return tmp_path
 
 
@@ -98,10 +99,13 @@ def test_a_record_with_no_device_lists_no_models(root):
     assert gc.entries(record(root, "hue", "set_scene", device="none")) == []
 
 
-def test_a_device_row_that_cannot_be_read_is_an_error(root):
-    for device in ("a lamp", "a temporary group holding only it"):
-        with pytest.raises(SystemExit, match="can't read Device entry"):
-            gc.entries(record(root, "hue", "stop", device=device))
+@pytest.mark.parametrize("device", ["a lamp", "a temporary group holding only it"])
+def test_a_device_entry_that_cannot_be_read_is_an_error(root, device):
+    with pytest.raises(SystemExit, match="can't read Device entry"):
+        gc.entries(record(root, "hue", "stop", device=device))
+
+
+def test_a_missing_device_row_is_an_error(root):
     path = record(root, "hue", "lower_hue")
     path.write_text("| Result | pass |\n")
     with pytest.raises(SystemExit, match="no Device row"):
@@ -212,16 +216,8 @@ def test_only_a_fresh_passing_base_record_is_verified(root, monkeypatch):
     line = gc.row("stop", adapter("zha", "stop"), data())
     assert line.startswith(f"| `stop` | {gc.NO_RECORD} |  | `LTA009`")
     base = record(root, "zha", "stop")
-    monkeypatch.setattr(gc, "fresh", lambda record, adapter: record != base)
+    monkeypatch.setattr(gc, "staleness", lambda record, code: "changed since: x.py" if record == base else None)
     assert gc.row("stop", adapter("zha", "stop"), data()).startswith(f"| `stop` | {gc.STALE} |  | `LTA009`")
-
-
-def test_freshness_is_check_releases(monkeypatch):
-    calls = []
-    monkeypatch.setattr(gc, "code_of", lambda adapter: ["code.py"])
-    monkeypatch.setattr(gc, "staleness", lambda record, code: calls.append((record, code)) or "changed since: code.py")
-    assert gc.fresh("stop.md", object()) is False
-    assert calls == [("stop.md", ["code.py"])]
 
 
 def test_reports_fill_the_reports_column_of_their_action(root):

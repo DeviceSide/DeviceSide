@@ -28,6 +28,7 @@ import re
 import subprocess
 import sys
 import tokenize
+from collections.abc import Collection
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
@@ -104,11 +105,12 @@ def adapter_code(module: Path) -> list[Path]:
     init = package / "__init__.py"
     adapters = adapter_names(init)
 
-    def modules(path: Path, names: list[str]) -> list[Path]:
-        for name in names:
-            if not (package / f"{name}.py").is_file():
-                raise ValueError(f"{path}: can't resolve `from .{name}` to a module of {package}")
-        return [package / f"{name}.py" for name in names]
+    def modules(importer: Path, names: list[str]) -> list[Path]:
+        paths = [package / f"{name}.py" for name in names]
+        for name, path in zip(names, paths, strict=True):
+            if not path.is_file():
+                raise ValueError(f"{importer}: can't resolve `from .{name}` to a module of {package}")
+        return paths
 
     found: set[Path] = {init}
     todo = [
@@ -132,6 +134,12 @@ def records(integration: str, action: str) -> list[Path]:
     """The adapter's test records: `<action>.md`, and `<action>-<option>.md` for a run with an option set."""
     pattern = re.compile(rf"{re.escape(action)}(-[^.]+)?\.md")
     return sorted(path for path in (RECORDS / integration).glob("*.md") if pattern.fullmatch(path.name))
+
+
+def record_names(action: str, options: Collection[str] = ()) -> list[str]:
+    """The records an adapter needs: `<action>.md`, then `<action>-<option>.md` for each option, as `records` names
+    them."""
+    return [f"{action}.md", *(f"{action}-{option}.md" for option in sorted(options))]
 
 
 def git(*args: str) -> subprocess.CompletedProcess:
@@ -196,15 +204,12 @@ def record_errors(registry: AdapterRegistry) -> list[str]:
         if adapter.scope.experimental or not proven(adapter.scope):
             continue
         found = records(adapter.integration, adapter.action)
-        expected = [
-            f"{adapter.action}.md",
-            *(f"{adapter.action}-{option}.md" for option in sorted(adapter.scope.options)),
-        ]
+        have = {record.name for record in found}
         folder = (RECORDS / adapter.integration).relative_to(REPO)
         errors += [
             f"{name}: no test record {folder}/{file}"
-            for file in expected
-            if not (RECORDS / adapter.integration / file).is_file()
+            for file in record_names(adapter.action, adapter.scope.options)
+            if file not in have
         ]
         code = code_of(adapter)
         for record in found:

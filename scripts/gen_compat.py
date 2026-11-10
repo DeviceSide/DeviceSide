@@ -43,7 +43,7 @@ sys.path.insert(0, str(REPO))
 
 from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
 from custom_components.deviceside.core.scope import Level, Support  # noqa: E402
-from scripts.check_release import adapters, code_of, proven, records, result, staleness  # noqa: E402
+from scripts.check_release import adapters, code_of, proven, record_names, records, result, staleness  # noqa: E402
 from scripts.gen_features import COLUMNS, anchors, slug  # noqa: E402
 from scripts.gen_features import FEATURES as TABLE_FEATURES  # noqa: E402
 
@@ -365,15 +365,10 @@ def padded(text: str) -> str:
     return f" {text} " if text else " "
 
 
-def fresh(record: Path, adapter) -> bool:
-    """Whether the record is as new as the adapter's code, by check_release's freshness check."""
-    return staleness(record, code_of(adapter)) is None
-
-
 def row(action: str, adapter, data: Data) -> str:
     found = passing(adapter.integration, action)
-    base = [record for record in found if record.name == f"{action}.md"]
-    verified = bool(base) and fresh(base[0], adapter)
+    base = [record for record in found if record.name == record_names(action)[0]]
+    verified = bool(base) and staleness(base[0], code_of(adapter)) is None
     level = IN_RCS if adapter.scope.experimental else "Verified" if verified else STALE if base else NO_RECORD
     support = Support.MAINTAINER if verified else ""
     models = [GROUP if item == GROUP else f"`{item[0]}`, firmware `{item[1]}`" for item in tested(adapter, data, found)]
