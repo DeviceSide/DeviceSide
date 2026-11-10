@@ -671,3 +671,23 @@ async def test_a_later_owe_keeps_the_users_value_owed(hass, setup_production):
     assert held.owed == {f"device/{IEEE}": False}
     await held.strike("device", IEEE, False)
     assert held.owed == {}
+
+
+@pytest.mark.parametrize("failing", ["add", "strike"])
+async def test_a_failing_journal_warns_and_the_restore_still_runs(
+    hass, setup_production, broker, turn_ons, monkeypatch, caplog, failing
+):
+    """The journal is a safety net: a store that can't write is logged, and the call and the restore go on."""
+    hue_bulb(hass)
+    held = await journal(hass)
+
+    async def broken(*args):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(held, failing, broken)
+
+    with caplog.at_level(logging.WARNING):
+        await call(hass, "turn_on_for", RED)
+
+    assert "disk full" in caplog.text
+    assert options(broker) == [True, False]
