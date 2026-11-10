@@ -13,7 +13,7 @@ from contextlib import asynccontextmanager
 from homeassistant.core import HomeAssistant
 
 from ...core import transition
-from ...core.transition import SATURATION
+from ...core.transition import SATURATION, Transition
 
 # How long after a move ends (or a stop) the bridge's report still can't be trusted.
 API_SETTLE_SECONDS = 15
@@ -46,15 +46,20 @@ class HueTransitionCache(transition.TransitionCache):
         return self._hidden.pop(resource_id, {})
 
     @asynccontextmanager
-    async def recording(self, keys: Iterable[tuple[str, str]]) -> AsyncIterator[None]:
-        """The core recording, with each saturation key's xy path put back too on a refusal."""
+    async def recording(self, keys: Iterable[tuple[str, str]]) -> AsyncIterator[dict[tuple[str, str], Transition]]:
+        """The core recording, with each saturation key's xy path put back too on a refusal, where it is still the path
+        of the transition this block recorded."""
         keys = list(keys)
         before = {light_id: self._paths.get(light_id) for light_id, attribute in keys if attribute == SATURATION}
         try:
-            async with super().recording(keys):
-                yield
+            async with super().recording(keys) as recorded:
+                yield recorded
         except Exception:
             for light_id, path in before.items():
+                if (mine := recorded.get((light_id, SATURATION))) is None or (
+                    (current := self._paths.get(light_id)) is not None and current[0] is not mine
+                ):
+                    continue
                 if path is None:
                     self._paths.pop(light_id, None)
                 else:
