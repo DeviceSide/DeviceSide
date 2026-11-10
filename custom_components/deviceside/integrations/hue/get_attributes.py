@@ -12,6 +12,7 @@ from .fade import light_xy, lit
 from .transition_cache import HueTransitionCache, transition_cache
 from ...core.adapter import Adapter
 from ...core.color import xy_row
+from ...core.errors import Reason
 from ...core.models import EntityResult, Request, Status, Target
 from ...core.scope import AdapterScope
 from ...core.transition import BRIGHTNESS
@@ -76,7 +77,7 @@ class HueGetAttributes(Adapter[Request]):
         if (api := bridge_api(target)) is None:
             return "bridge_v1"
         if target.is_group and not api.groups.grouped_light.get_lights(resource_id(target)):
-            return "empty_group"
+            return Reason.EMPTY_GROUP
         return None
 
     async def execute(self, hass: HomeAssistant, request: Request, targets: list[Target]) -> list[EntityResult]:

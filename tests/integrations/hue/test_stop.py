@@ -1,6 +1,7 @@
 """Hue stop: a dimming stop to the light or room, or a cut where our soft off runs, recorded where it halted."""
 
 import pytest
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util.color import color_hs_to_xy, color_xy_to_hs
 
 from .conftest import SENT, STOP, color_lamp, color_room, hs_xy, lamp, mixed_room, report_off, room, xy_halt
@@ -182,3 +183,29 @@ async def test_a_room_stop_is_traced_on_the_rooms_light_without_its_resource_id(
     await call(hass, "stop", {"entity_id": entity_id})
 
     assert traced(wire) == [(entity_id, "clip", "grouped_light.put", {"dimming_delta": {"action": "stop"}})]
+
+
+async def test_a_failed_light_in_a_room_cut_rolls_back_only_its_own_prediction(hass, bridge, clock, caplog):
+    entity_id = await mixed_room(hass, bridge, 100.0, 100.0)
+    await call(hass, "lower_brightness", {"entity_id": entity_id, "sweep_time": 10})
+    report_off(bridge, "one", "two")
+    clock.now += 4
+    bridge.failing.add("two")
+
+    response = await call(hass, "stop", {"entity_id": entity_id})
+    read = await call(hass, "get_attributes", {"entity_id": ["light.one", "light.two"]})
+
+    assert response == {entity_id: SENT}
+    assert read["light.one"]["brightness"] == pytest.approx(60.0)  # halted where it was
+    assert read["light.two"]["brightness"] == pytest.approx(60.0)  # the soft off's own prediction still stands, 4 s in
+    assert "failed for lights {'two'}" in caplog.text
+
+
+async def test_a_room_stop_where_every_light_fails_is_rejected(hass, bridge, clock):
+    entity_id = await mixed_room(hass, bridge, 100.0, 100.0)
+    await call(hass, "lower_brightness", {"entity_id": entity_id, "sweep_time": 10})
+    report_off(bridge, "one", "two")
+    bridge.failing.update({"one", "two"})
+
+    with pytest.raises(HomeAssistantError):
+        await call(hass, "stop", {"entity_id": entity_id})

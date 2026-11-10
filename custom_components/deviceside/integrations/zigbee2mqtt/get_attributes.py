@@ -9,11 +9,11 @@ from typing import ClassVar
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 
-from .addressing import state_topic, topic
+from .addressing import not_addressable
 from .members import member_lights
 from .read import Reader, reader
 from ...core.adapter import Adapter
-from ...core.dispatcher import EMPTY_GROUP
+from ...core.errors import Reason
 from ...core.models import EntityResult, Request, Status, Target
 from ...core.scope import AdapterScope, experimental, verified
 from ...core.zcl_row import average, zcl_row
@@ -39,8 +39,8 @@ class Z2MGetAttributes(Adapter[Request]):
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:
         if (reason := super().supports(hass, request, target)) is not None:
             return reason
-        if topic(target, "set") is None or (not target.is_group and state_topic(target) is None):
-            return "not_addressable"
+        if (reason := not_addressable(target, reads_state=True)) is not None:
+            return reason
         return None
 
     async def execute(self, hass: HomeAssistant, request: Request, targets: list[Target]) -> list[EntityResult]:
@@ -50,7 +50,7 @@ class Z2MGetAttributes(Adapter[Request]):
                     return self.result(target, Status.CONFIRMED, data=zcl_row(*await _read(reading, target)))
             members = await member_lights(hass, target)
             if not members:
-                return self.result(target, Status.UNSUPPORTED, detail=EMPTY_GROUP)
+                return self.result(target, Status.UNSUPPORTED, detail=Reason.EMPTY_GROUP)
             # One after another inside the group's own task: gathering them would nest the concurrency limits.
             async with reader(hass, members) as reading:
                 reads = [await _read(reading, member) for member in members]

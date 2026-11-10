@@ -7,13 +7,13 @@ from typing import ClassVar
 
 from homeassistant.core import HomeAssistant
 
-from .addressing import state_topic, topic
+from .addressing import not_addressable
 from .bridge import publish_set
 from .members import member_lights
 from .read import Reader, reader
 from ...actions.set_attributes import SetAttributesRequest
 from ...core.adapter import Adapter
-from ...core.dispatcher import EMPTY_GROUP
+from ...core.errors import Reason
 from ...core.models import EntityResult, Status, Target
 from ...core.scope import AdapterScope, verified
 from ...core.zcl_write import (
@@ -146,8 +146,8 @@ class Z2MSetAttributes(Adapter[SetAttributesRequest]):
     def supports(self, hass: HomeAssistant, request: SetAttributesRequest, target: Target) -> str | None:
         if (reason := super().supports(hass, request, target)) is not None:
             return reason
-        if topic(target, "set") is None or (not target.is_group and state_topic(target) is None):
-            return "not_addressable"
+        if (reason := not_addressable(target, reads_state=True)) is not None:
+            return reason
         return None
 
     async def execute(
@@ -156,7 +156,7 @@ class Z2MSetAttributes(Adapter[SetAttributesRequest]):
         async def write(target: Target) -> EntityResult:
             lights = await member_lights(hass, target) if target.is_group else [target]
             if not lights:
-                return self.result(target, Status.UNSUPPORTED, detail=EMPTY_GROUP)
+                return self.result(target, Status.UNSUPPORTED, detail=Reason.EMPTY_GROUP)
             if target.is_group and wants_level(request, _modes(target)):
                 plan = [(light, [light]) for light in lights]
             else:

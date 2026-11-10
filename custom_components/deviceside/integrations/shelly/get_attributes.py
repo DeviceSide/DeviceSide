@@ -71,7 +71,7 @@ class ShellyGetAttributes(RpcComponent, Adapter[Request]):
     )
 
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:
-        return super().supports(hass, request, target) or unsupported_reason(target, self.scope.capabilities)
+        return super().supports(hass, request, target) or unsupported_reason(target)
 
     async def execute(self, hass: HomeAssistant, request: Request, targets: list[Target]) -> list[EntityResult]:
         async def read(target: Target) -> EntityResult:

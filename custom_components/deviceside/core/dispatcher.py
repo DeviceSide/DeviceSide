@@ -10,22 +10,17 @@ from homeassistant.helpers import target as target_helpers
 from . import duration, ha_watch
 from .action import Action
 from .adapter import Adapter
-from .errors import EXPERIMENTAL_OFF, TargetNotSupported
+from .errors import EXPERIMENTAL_OFF, Reason, TargetNotSupported
 from .fields import lacking
 from .groups import expand_ha_groups
 from .models import FAILED, ActionKind, EntityResult, Request, Status, Target, TimedRequest
 from .registry import AdapterRegistry
 from .resolver import resolve
-from .runtime import get_runtime
+from .runtime import DEADLINE, get_runtime
 from .scope import Level
-from ..const import ADAPTER_TIMEOUT_S, DOMAIN
+from ..const import ADAPTER_BACKSTOP_S, ADAPTER_TIMEOUT_S, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
-
-# A group with no members holds nothing to act on, which is not a reason it can't: it is skipped, never raised.
-EMPTY_GROUP = "empty_group"
-# The config entry behind the target isn't loaded: unavailable, as core treats an entity whose integration isn't up.
-NOT_LOADED = "integration_not_loaded"
 
 
 def _available(state: State | None) -> bool:
@@ -34,7 +29,7 @@ def _available(state: State | None) -> bool:
 
 def _skip(entity_id: str, named: bool, reason: str, integration: str | None = None) -> list[EntityResult]:
     """A target that can never take the action: raise if the caller named it, else the result that skips it."""
-    if reason == EMPTY_GROUP:
+    if reason == Reason.EMPTY_GROUP:
         return []
     if named:
         raise TargetNotSupported(entity_id, reason)
@@ -87,7 +82,7 @@ class Dispatcher:
                 missing.add(entity_id)
                 continue
             target = resolve(self.hass, self.registry, entity_id, via_group)
-            if target == NOT_LOADED:
+            if target == Reason.INTEGRATION_NOT_LOADED:
                 missing.add(entity_id)
             elif isinstance(target, str):
                 results += _skip(entity_id, named, target)
@@ -102,7 +97,7 @@ class Dispatcher:
     def _respond(action: type[Action], call: ServiceCall, results: list[EntityResult]) -> ServiceResponse:
         """Log the skipped targets, raise on a device failure or an empty response, else answer for those that ran."""
         # An empty group is skipped silently, whether planning found it so or an adapter that reads membership did.
-        if skipped := [r for r in results if r.status is Status.UNSUPPORTED and r.detail != EMPTY_GROUP]:
+        if skipped := [r for r in results if r.status is Status.UNSUPPORTED and r.detail != Reason.EMPTY_GROUP]:
             _LOGGER.warning(
                 "%s skipped targets that can't take it: %s",
                 action.key,
@@ -196,11 +191,20 @@ class Dispatcher:
         clamped_to = None
         if isinstance(request, TimedRequest):
             request, clamped_to = duration.clamp(request, adapter.scope.duration)
+        # Each run is its own task (run_adapters gathers them), so the deadline set here is this run's alone.
+        deadline = asyncio.get_running_loop().time() + ADAPTER_TIMEOUT_S
+        DEADLINE.set(deadline)
         try:
-            async with asyncio.timeout(ADAPTER_TIMEOUT_S):
+            # Adapter.slot holds each command to the deadline; this catches an execute still busy outside it.
+            async with asyncio.timeout_at(deadline + ADAPTER_BACKSTOP_S):
                 raw = await adapter.execute(self.hass, request, targets)
         except TimeoutError:
-            _LOGGER.warning("%s on %s timed out after %ss", adapter.action, adapter.integration, ADAPTER_TIMEOUT_S)
+            _LOGGER.warning(
+                "%s on %s timed out after %ss",
+                adapter.action,
+                adapter.integration,
+                ADAPTER_TIMEOUT_S + ADAPTER_BACKSTOP_S,
+            )
             return [adapter.result(target, Status.REJECTED, detail="timeout") for target in targets]
         except Exception:
             _LOGGER.exception("%s on %s failed", adapter.action, adapter.integration)

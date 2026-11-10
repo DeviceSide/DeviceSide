@@ -1,9 +1,23 @@
+from enum import StrEnum
+
 from homeassistant.exceptions import ServiceNotSupported, ServiceValidationError
 
 from ..const import DOMAIN
 
 # The call touches an Experimental scope item and the Experimental features option is off.
 EXPERIMENTAL_OFF = "experimental_off"
+
+
+class Reason(StrEnum):
+    """Reason keys that core and adapters both return or test for, defined once: the dispatcher's skip-vs-raise
+    turns on the first two (docs/action-behavior.md), so a copy that drifted would change it."""
+
+    # The config entry behind the target isn't loaded: unavailable, as core treats an entity whose integration isn't up.
+    INTEGRATION_NOT_LOADED = "integration_not_loaded"
+    # A group with no members holds nothing to act on, which is not a reason it can't: it is skipped, never raised.
+    EMPTY_GROUP = "empty_group"
+    # The integration can't address the target (no device address, a nested wrapper): raised if named, else skipped.
+    NOT_ADDRESSABLE = "not_addressable"
 
 
 class TargetNotSupported(ServiceNotSupported):

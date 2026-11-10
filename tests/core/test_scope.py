@@ -49,7 +49,7 @@ def test_defaults_are_a_verified_light_with_every_capability():
 @pytest.mark.parametrize(
     ("domain", "capability", "level"),
     [
-        ("switch", None, Level.VERIFIED),
+        ("switch", None, Level.EXPERIMENTAL),  # a capability the adapter couldn't name fails safe
         ("switch", "Switch", Level.VERIFIED),
         ("switch", "Light", Level.DOCUMENTED),  # the weaker capability lowers a Verified domain
         ("light", "Switch", Level.DOCUMENTED),  # and a Documented domain lowers a Verified capability

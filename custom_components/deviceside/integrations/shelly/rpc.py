@@ -111,10 +111,11 @@ async def set_and_read_back(
 
 
 async def set_with_timer(hass: HomeAssistant, adapter: Adapter, target: Target, params: dict[str, Any]) -> EntityResult:
-    """Send the Set, then confirm the timer is running."""
+    """Send the Set, then confirm the timer is running for the duration asked: timer_duration is the full duration,
+    not the time left, so it reads back the toggle_after sent."""
 
     def judge(status: dict[str, Any]) -> EntityResult:
-        if status.get("output") == params["on"] and "timer_duration" in status:
+        if status.get("output") == params["on"] and same_delay(status.get("timer_duration"), params["toggle_after"]):
             return adapter.result(target, Status.CONFIRMED)
         return adapter.result(target, Status.SENT, detail="timer_not_reported")
 
@@ -152,14 +153,23 @@ def _auto_config(which: Literal["off", "on"], duration_s: float | None) -> dict[
     return {f"auto_{which}": True, f"auto_{which}_delay": duration_s}
 
 
+def same_delay(held: Any, value: float) -> bool:
+    """Whether a delay the device reports is the one sent: it may come back as an int (the clamp's ceiling is one) and
+    is kept to 0.01 s."""
+    return (
+        isinstance(held, int | float)
+        and not isinstance(held, bool)
+        and round(held, _DELAY_DIGITS) == round(value, _DELAY_DIGITS)
+    )
+
+
 def _auto_matches(config: dict[str, Any], wanted: dict[str, Any]) -> bool:
     for key, value in wanted.items():
         held = config.get(key)
         if isinstance(value, bool):
             if held is not value:
                 return False
-        # The delay may come back as an int (the clamp's ceiling is one) and is stored to 0.01 s.
-        elif not isinstance(held, int | float) or round(held, _DELAY_DIGITS) != round(value, _DELAY_DIGITS):
+        elif not same_delay(held, value):
             return False
     return True
 

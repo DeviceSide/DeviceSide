@@ -38,9 +38,11 @@ class AdapterRegistry:
             try:
                 module = importlib.import_module(module)
             except ImportError as err:
-                # The core integration (and so its library) is absent; the other integrations still load.
+                # The integration's library is absent, which is routine: debug. A missing HA or DeviceSide module is
+                # our code out of step with HA (a rename), which would hide every adapter of it: warn.
                 key = name.rpartition(".")[2]
-                _LOGGER.debug("Integration %s unavailable: %s", key, err)
+                ours = (err.name or "").startswith(("homeassistant", "custom_components"))
+                (_LOGGER.warning if ours else _LOGGER.debug)("Integration %s unavailable: %s", key, err)
                 self.integrations[key] = IntegrationInfo(
                     key=key, title=key, ha_domain=key, available=False, unavailable_reason=str(err)
                 )

@@ -13,6 +13,7 @@ from custom_components.deviceside.core.models import Target
 from custom_components.deviceside.core.runtime import DATA
 from custom_components.deviceside.integrations.zigbee2mqtt import bridge, bridge_cache
 from custom_components.deviceside.integrations.zigbee2mqtt import native_control as nc
+from custom_components.deviceside.integrations.zigbee2mqtt.restore_journal import journal
 
 from .conftest import SET, light
 from ...conftest import call
@@ -631,3 +632,62 @@ async def test_nothing_is_computed_while_the_trace_is_off(hass, setup_production
     monkeypatch.setattr(bridge, "traced_options", lambda *args: pytest.fail("looked up with the trace off"))
 
     await call(hass, "stop", {"entity_id": entity_id})
+
+
+# The restore journal: owed until Z2M confirms the user's value is back
+
+
+async def test_a_confirmed_restore_leaves_nothing_owed(hass, setup_production, broker, turn_ons):
+    hue_bulb(hass)
+
+    await call(hass, "turn_on_for", RED)
+
+    assert (await journal(hass)).owed == {}
+
+
+async def test_a_failed_restore_stays_owed(hass, setup_production, broker, turn_ons):
+    hue_bulb(hass)
+    publish = broker.publish
+
+    def refuse_after_the_first(service):
+        if broker.requests():
+            broker.reply = {"status": "error", "error": "refused"}
+        publish(service)
+
+    hass.services.async_register("mqtt", "publish", refuse_after_the_first)
+
+    await call(hass, "turn_on_for", RED)
+
+    assert (await journal(hass)).owed == {f"device/{IEEE}": False}
+
+
+async def test_a_later_owe_keeps_the_users_value_owed(hass, setup_production):
+    held = await journal(hass)
+
+    await held.add("device", IEEE, False)
+    await held.add("device", IEEE, True)
+    await held.strike("device", IEEE, True)
+
+    assert held.owed == {f"device/{IEEE}": False}
+    await held.strike("device", IEEE, False)
+    assert held.owed == {}
+
+
+@pytest.mark.parametrize("failing", ["add", "strike"])
+async def test_a_failing_journal_warns_and_the_restore_still_runs(
+    hass, setup_production, broker, turn_ons, monkeypatch, caplog, failing
+):
+    """The journal is a safety net: a store that can't write is logged, and the call and the restore go on."""
+    hue_bulb(hass)
+    held = await journal(hass)
+
+    async def broken(*args):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(held, failing, broken)
+
+    with caplog.at_level(logging.WARNING):
+        await call(hass, "turn_on_for", RED)
+
+    assert "disk full" in caplog.text
+    assert options(broker) == [True, False]

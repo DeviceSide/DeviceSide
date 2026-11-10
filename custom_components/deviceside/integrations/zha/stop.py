@@ -11,7 +11,7 @@ from homeassistant.exceptions import Unauthorized
 from . import zcl
 from .addressing import unsupported_reason
 from .fade import end_key, has_color, hue_moves, refresh, send, soft_off_restores, transition_cache, units
-from ...core.adapter import Adapter
+from ...core.adapter import Adapter, DeadlinePassed
 from ...core.models import EntityResult, Request, Status, Target
 from ...core.runtime import get_runtime
 from ...core.scope import AdapterScope, verified
@@ -74,9 +74,8 @@ class ZHAStop(Adapter[Request]):
             for light in halting
             if has_color(light) and (light.entity_id in halts[SATURATION] or light.entity_id in cycling)
         ]
-        integration_limit, adapter_limit = self.limits(hass)
         try:
-            async with integration_limit, adapter_limit:
+            async with self.slot(hass):
                 async with cache.recording(
                     (light_id, attribute) for attribute, values in halts.items() for light_id in values
                 ):
@@ -88,6 +87,9 @@ class ZHAStop(Adapter[Request]):
                     await send(hass, gid, halting, _LEVEL_STOP, request.context)
         except Unauthorized:
             return [*off, *(self.result(light, Status.REJECTED, detail="admin_required") for light in halting)]
+        except DeadlinePassed:
+            _LOGGER.warning("stop on zha timed out for %s", ", ".join(sorted(halting_ids)))
+            return [*off, *(self.result(light, Status.REJECTED, detail="timeout") for light in halting)]
         except Exception as err:  # noqa: BLE001 - as in gather(): one group's failure must not abort the room
             _LOGGER.warning("stop on zha failed for %s: %r", ", ".join(sorted(halting_ids)), err)
             return [*off, *(self.result(light, Status.REJECTED, detail="error") for light in halting)]

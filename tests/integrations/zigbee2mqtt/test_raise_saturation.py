@@ -1,9 +1,10 @@
 """Zigbee2MQTT raise_saturation: a color at the current hue with the end saturation, and its color brought in line."""
 
 import pytest
+from homeassistant.exceptions import HomeAssistantError
 
 from custom_components.deviceside.core.transition import SATURATION
-from custom_components.deviceside.integrations.zigbee2mqtt.fade import transition_cache
+from custom_components.deviceside.integrations.zigbee2mqtt.fade import hue_moves, transition_cache
 
 from .conftest import GET, SENT, SET, commands, group, light, unchanged
 from ...conftest import advance, call, wall_clock_now
@@ -55,8 +56,21 @@ async def test_a_group_records_each_lit_member(hass, broker, clock):
 async def test_the_color_is_brought_in_line_at_its_end(hass, broker):
     entity_id = light(hass, broker, color={"colorMode": 1})
     start = wall_clock_now()
-
     await call(hass, "raise_saturation", {"entity_id": entity_id})
 
     await advance(hass, start, 3.5)
     assert commands(broker)[1:] == [(GET, {"color": ""})]
+
+
+async def test_a_failed_publish_leaves_the_hue_cycle_running(hass, broker):
+    entity_id = light(hass, broker)
+    hue_moves(hass).add(entity_id)
+
+    def refuse(service):
+        raise RuntimeError("broker gone")
+
+    hass.services.async_register("mqtt", "publish", refuse)
+    with pytest.raises(HomeAssistantError):
+        await call(hass, "raise_saturation", {"entity_id": entity_id})
+
+    assert hue_moves(hass) == {entity_id}

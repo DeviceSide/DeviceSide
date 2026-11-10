@@ -50,7 +50,7 @@ class ShellyFade(RpcComponent, Adapter[RampRequest]):
         if (reason := super().supports(hass, request, target)) is not None:
             return reason
         # Nothing left to send: the dispatcher reports it unchanged with fields_dropped, whatever the component.
-        return None if request.nothing_to_do() else unsupported_reason(target, self.scope.capabilities)
+        return None if request.nothing_to_do() else unsupported_reason(target)
 
     async def execute(self, hass: HomeAssistant, request: RampRequest, targets: list[Target]) -> list[EntityResult]:
         sweep_time = min(max(request.sweep_time, TRANSITION_LIMITS.min_s), TRANSITION_LIMITS.max_s)

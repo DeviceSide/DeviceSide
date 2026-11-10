@@ -11,7 +11,7 @@ from .addressing import (
     matter_client,
     node_id_from_unique_id,
     read_timer,
-    timer_running,
+    timer_matches,
     unsupported_reason,
 )
 from ...actions.turn_on_for import TurnOnForRequest
@@ -27,7 +27,8 @@ _TIMER_LIMITS = DurationLimits(min_s=0.1, max_s=6553.4)
 
 
 class MatterTurnOnFor(Adapter[TurnOnForRequest]):
-    """Send OnWithTimedOff on the OnOff cluster."""
+    """Send OnWithTimedOff on the OnOff cluster; CONFIRMED when OnOff reads on and OnTime within
+    READBACK_SLACK_TENTHS under the time sent, else SENT with a detail."""
 
     action: ClassVar[str] = "turn_on_for"
     integration: ClassVar[str] = "matter"
@@ -63,12 +64,12 @@ class MatterTurnOnFor(Adapter[TurnOnForRequest]):
             )
 
             try:
-                on_time, on_off = await read_timer(client, node_id, ep_id)
+                read_on_time, on_off = await read_timer(client, node_id, ep_id)
             except Exception as err:  # noqa: BLE001
                 _LOGGER.debug("turn_on_for matter read-back failed for %s: %s", target.entity_id, err)
                 return self.result(target, Status.SENT, detail="readback_failed")
 
-            if timer_running(on_time, on_off):
+            if timer_matches(read_on_time, on_off, on_time):
                 return self.result(target, Status.CONFIRMED)
             return self.result(target, Status.SENT, detail="timer_not_reported")
 

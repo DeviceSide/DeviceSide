@@ -1,5 +1,7 @@
 """Registry building: guarded integration import, adapter validation, matrix iteration."""
 
+import importlib
+import logging
 from dataclasses import replace
 
 import pytest
@@ -18,6 +20,23 @@ def test_broken_integration_is_recorded_unavailable_and_others_load():
     assert "fakelib" in broken.unavailable_reason
     assert [info.key for info in registry.available_integrations()] == ["fake", "fake_special"]
     assert registry.adapter("turn_on_for", "fake").integration == "fake"
+
+
+@pytest.mark.parametrize(
+    ("missing", "level"),
+    [("fakelib", logging.DEBUG), ("homeassistant.components.fake.gone", logging.WARNING), (None, logging.DEBUG)],
+)
+def test_import_failure_warns_only_when_our_code_is_out_of_step(monkeypatch, caplog, missing, level):
+    def fail(module):
+        raise ImportError(f"no {missing}", name=missing)
+
+    discovered = actions.discover()
+    monkeypatch.setattr(importlib, "import_module", fail)
+    with caplog.at_level(logging.DEBUG, logger="custom_components.deviceside.core.registry"):
+        registry = AdapterRegistry(discovered, ["custom_components.deviceside.integrations.fake"])
+
+    assert not registry.integrations["fake"].available
+    assert [record.levelno for record in caplog.records] == [level]
 
 
 def test_matrix_lists_every_pair_sorted():

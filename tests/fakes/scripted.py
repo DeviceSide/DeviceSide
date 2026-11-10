@@ -13,6 +13,8 @@ class Script:
     calls: list[tuple[str, str, object, list[str]]] = field(default_factory=list)
     execute_error: Exception | None = None
     delay: float = 0
+    # Per entity, over delay.
+    delays: dict[str, float] = field(default_factory=dict)
     active: int = 0
     max_active: int = 0
 
@@ -33,7 +35,7 @@ class ScriptedAdapter(Adapter):
             SCRIPT.active += 1
             SCRIPT.max_active = max(SCRIPT.max_active, SCRIPT.active)
             try:
-                await asyncio.sleep(SCRIPT.delay)
+                await asyncio.sleep(SCRIPT.delays.get(target.entity_id, SCRIPT.delay))
                 outcome = SCRIPT.outcomes.get(target.entity_id, Status.SENT)
                 if isinstance(outcome, Exception):
                     raise outcome

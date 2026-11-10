@@ -9,6 +9,7 @@ helper function (make_on_with_timed_off).
 
 from homeassistant.core import HomeAssistant
 
+from ...core.errors import Reason
 from ...core.models import Target
 
 _MATTER_DOMAIN = "matter"
@@ -96,19 +97,19 @@ def unsupported_reason(hass: HomeAssistant, target: Target) -> str | None:
     node_id = node_id_from_unique_id(target.entry.unique_id)
     ep_id = endpoint_id_from_unique_id(target.entry.unique_id)
     if node_id is None or ep_id is None:
-        return "not_addressable"
+        return Reason.NOT_ADDRESSABLE
 
     client = matter_client(hass, target.entry.config_entry_id)
     if client is None:
-        return "not_addressable"
+        return Reason.NOT_ADDRESSABLE
 
     try:
         node = client.get_node(node_id)
     except Exception:  # noqa: BLE001 - node lookup can raise if the node no longer exists
-        return "not_addressable"
+        return Reason.NOT_ADDRESSABLE
 
     if node is None:
-        return "not_addressable"
+        return Reason.NOT_ADDRESSABLE
 
     if not lt_feature(node, ep_id):
         return "no_lt_feature"
@@ -141,6 +142,16 @@ async def read_timer(client, node_id: int, endpoint_id: int) -> tuple[object, ob
 
 def timer_running(on_time: object, on_off: object) -> bool:
     return isinstance(on_time, int) and on_time > 0 and on_off is True
+
+
+# OnTime counts down live, so the read-back lands a little under the request: the slack ZHA's read-back allows, 3 s.
+READBACK_SLACK_TENTHS = 30
+
+
+def timer_matches(read_on_time: object, on_off: object, on_time: int) -> bool:
+    """Whether the timer running is the one just sent for `on_time` tenths: a new timer replaces a running one, so
+    OnTime read straight back lies within READBACK_SLACK_TENTHS under it."""
+    return timer_running(read_on_time, on_off) and on_time - READBACK_SLACK_TENTHS <= read_on_time <= on_time
 
 
 def make_on_with_timed_off(on_off_control: int, on_time: int, off_wait_time: int):

@@ -2,7 +2,6 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
-from homeassistant.config_entries import ConfigEntryState
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.util.color import color_hs_to_xy
@@ -11,6 +10,7 @@ from pytest_homeassistant_custom_component.common import async_mock_service
 from custom_components.deviceside.integrations.zha import zcl
 from custom_components.deviceside.integrations.zha.fade import transition_cache
 
+from ...conftest import Clock, unload_mock_entries
 from ...fixtures.zha import IEEE, add_zha_entity, zha_entry, zha_group
 
 SENT = {"status": "sent", "integration": "zha"}
@@ -26,12 +26,7 @@ def unchanged(detail: str) -> dict:
     return {"status": "unchanged", "integration": "zha", "detail": detail}
 
 
-@pytest.fixture(autouse=True)
-async def unload_mock_zha_entries(hass):
-    """Mark mocked ZHA entries not loaded before teardown, so HA doesn't import the real zha to unload them."""
-    yield
-    for entry in hass.config_entries.async_entries("zha"):
-        entry.mock_state(hass, ConfigEntryState.NOT_LOADED)
+unload_mock_zha_entries = unload_mock_entries("zha")
 
 
 @pytest.fixture(autouse=True)
@@ -48,16 +43,6 @@ def zha_groups(monkeypatch) -> dict:
     groups: dict = {}
     monkeypatch.setattr(zcl, "gateway", lambda hass: SimpleNamespace(get_group=groups.get))
     return groups
-
-
-class Clock:
-    """A transition cache clock the test moves by hand."""
-
-    def __init__(self) -> None:
-        self.now = 1000.0
-
-    def __call__(self) -> float:
-        return self.now
 
 
 @pytest.fixture

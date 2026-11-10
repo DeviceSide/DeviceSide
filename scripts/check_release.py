@@ -8,10 +8,11 @@ in a stable release, refused at runtime until the user turns on Experimental fea
 Reported and Experimental items have no record to age, so --records weighs only the adapter's code against its
 records.
 
-Exits 1 on any adapter module under 95% line coverage (with --coverage), any experimental adapter (with --release),
-or any released adapter with a Verified call that has no record, a record whose Result is not `pass`, or code changed
-after the commit one of its records cites (with --records). Each record holds the latest run of its call or option.
-Setting or clearing `experimental` is not a change to the code: nothing reads it at runtime.
+Exits 1 on any integration that failed to import, whatever the options; with --coverage, any module of an adapter's
+code (`adapter_code`, bar `__init__.py`) under 95% line coverage; with --release, any experimental adapter; with
+--records, any released adapter with a Verified call that has no record, a record whose Result is not `pass`, or code
+changed after the commit one of its records cites. Each record holds the latest run of its call or option. Setting or
+clearing `experimental` is not a change to the code: nothing reads it at runtime.
 
 Usage: scripts/check_release.py [--coverage coverage.json] [--release] [--records]
 """
@@ -50,38 +51,65 @@ def adapters(registry: AdapterRegistry) -> list[tuple[str, object]]:
 
 
 def coverage_errors(registry: AdapterRegistry, coverage: dict) -> list[str]:
-    """An adapter module under the bar, or absent from the report, is an error."""
+    """A module of any adapter's code, bar the package's `__init__.py`, under the bar or absent from the report is an
+    error, once per module, naming the adapters whose code it is."""
     percent = {}
     for name, entry in coverage["files"].items():
         summary = entry["summary"]
         statements = summary["num_statements"]
         percent[(REPO / name).resolve()] = 100.0 * summary["covered_lines"] / statements if statements else 100.0
-    errors = []
+    users: dict[Path, list[str]] = {}
     for name, adapter in adapters(registry):
-        path = Path(inspect.getsourcefile(type(adapter))).resolve()
-        covered = percent.get(path, 0.0)
-        if covered < COVERAGE_BAR:
+        for path in adapter_code(Path(inspect.getsourcefile(type(adapter)))):
+            if path.name != "__init__.py":
+                users.setdefault(path.resolve(), []).append(name)
+    errors = []
+    for path, names in sorted(users.items()):
+        if (covered := percent.get(path, 0.0)) < COVERAGE_BAR:
             errors.append(
-                f"{name}: {covered:.1f}% line coverage of {path.relative_to(REPO)}, under {COVERAGE_BAR:.0f}%"
+                f"{path.relative_to(REPO)}: {covered:.1f}% line coverage, under {COVERAGE_BAR:.0f}%"
+                f" (code of {', '.join(names)})"
             )
     return errors
 
 
+def relative_imports(path: Path) -> list[tuple[str, list[str]]]:
+    """Each `from .x import a, b` in the module, as `("x", ["a", "b"])`, and each `from . import x` as `("x", [])`."""
+    imports = []
+    for node in ast.walk(ast.parse(path.read_text(), str(path))):
+        if isinstance(node, ast.ImportFrom) and node.level == 1:
+            if node.module:
+                imports.append((node.module.partition(".")[0], [alias.name for alias in node.names]))
+            else:
+                imports += [(alias.name, []) for alias in node.names]
+    return imports
+
+
+def adapter_names(init: Path) -> set[str]:
+    """The names the package's `ADAPTERS = [...]` lists."""
+    for node in ast.walk(ast.parse(init.read_text(), str(init))):
+        if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "ADAPTERS" for t in node.targets):
+            return {element.id for element in getattr(node.value, "elts", []) if isinstance(element, ast.Name)}
+    return set()
+
+
 def adapter_code(module: Path) -> list[Path]:
-    """The adapter's module, its integration package's `__init__.py`, and every module of that package it imports,
-    directly or through another: the code behind the call it sends. `core/` and `actions/` are left out."""
+    """The adapter's module, its integration package's `__init__.py`, and every module of that package either imports,
+    directly or through another: the code behind the call it sends, the group expansion and call resolver included.
+    The sibling adapter modules `__init__.py` imports for `ADAPTERS` are left out, unless the adapter's own code
+    reaches them. `core/` and `actions/` are left out."""
     package = module.parent
-    found: set[Path] = set()
-    todo = [module]
+    init = package / "__init__.py"
+    adapters = adapter_names(init)
+    seeds = [name for name, names in relative_imports(init) if not adapters.intersection(names)]
+    found: set[Path] = {init}
+    todo = [module, *(package / f"{name}.py" for name in seeds)]
     while todo:
-        if (path := todo.pop()) in found:
+        if (path := todo.pop()) in found or not path.is_file():
             continue
         found.add(path)
-        for node in ast.walk(ast.parse(path.read_text(), str(path))):
-            if isinstance(node, ast.ImportFrom) and node.level == 1:
-                names = [node.module.partition(".")[0]] if node.module else [alias.name for alias in node.names]
-                todo += [package / f"{name}.py" for name in names if (package / f"{name}.py").is_file()]
-    return sorted(found | {package / "__init__.py"})
+        todo += [package / f"{name}.py" for name, _ in relative_imports(path)]
+    return sorted(found)
 
 
 def records(integration: str, action: str) -> list[Path]:
@@ -193,7 +221,14 @@ def main(argv: list[str] | None = None, registry: AdapterRegistry | None = None)
 
     registry = registry or AdapterRegistry.discover()
     found = adapters(registry)
-    errors = coverage_errors(registry, json.loads(args.coverage.read_text())) if args.coverage else []
+    # An integration that failed to import has no adapters to check, so every gate would pass it unseen.
+    errors = [
+        f"{key}: failed to import ({info.unavailable_reason})"
+        for key, info in registry.integrations.items()
+        if not info.available
+    ]
+    if args.coverage:
+        errors += coverage_errors(registry, json.loads(args.coverage.read_text()))
     if args.release:
         errors += [
             f"{name} is experimental; a release has none" for name, adapter in found if adapter.scope.experimental

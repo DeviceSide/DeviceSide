@@ -44,34 +44,50 @@ ICONS = {"light": "light", "switch": "switch", "group": "native group", "scene":
 # Integration -> (README column, its section's heading in docs/integrations.md).
 COLUMNS = {"zha": "ZHA", "zigbee2mqtt": "Z2M", "shelly": "Shelly", "hue": "Hue Bridge", "matter": "Matter"}
 SECTIONS = {"zha": "ZHA", "zigbee2mqtt": "Zigbee2MQTT", "shelly": "Shelly", "hue": "Hue", "matter": "Matter"}
-# (label, README anchor, integrations.md subsection, actions): a cell is built only for what every one of the row's
-# actions takes. A smooth move is unusable without `stop`, so its rows include it. A cell's icons link to the
-# subsection under the integration's section, or to the section when it has none.
+# (label, README anchor, integrations.md subsection, device cards' name, actions): a cell is built only for what every
+# one of the row's actions takes. A smooth move is unusable without `stop`, so its rows include it. A cell's icons link
+# to the subsection under the integration's section, or to the section when it has none. The device cards
+# (gen_compat) name each action's feature by its row's card name.
 FEATURES = (
-    ("Turn on with timer", "turn-on-with-timer", "Turn on with timer", ("turn_on_for",)),
-    ("Turn off with timer", "turn-off-with-timer", "Turn off with timer", ("turn_off_for",)),
+    ("Turn on with timer", "turn-on-with-timer", "Turn on with timer", "turn on with timer", ("turn_on_for",)),
+    ("Turn off with timer", "turn-off-with-timer", "Turn off with timer", "turn off with timer", ("turn_off_for",)),
     (
         "Auto-off/on (aka inching)",
         "auto-off-aka-inching-and-auto-on",
         "Auto-off/on",
+        "auto-off/on",
         ("set_auto_off", "set_auto_on", "clear_auto_off", "clear_auto_on"),
     ),
-    ("Smooth dimming", "smooth-dimming", "Smooth dimming", ("raise_brightness", "lower_brightness", "stop")),
+    (
+        "Smooth dimming",
+        "smooth-dimming",
+        "Smooth dimming",
+        "smooth dimming",
+        ("raise_brightness", "lower_brightness", "stop"),
+    ),
     (
         "Smooth saturation change",
         "smooth-color-changes",
         "Smooth color changes",
+        "smooth saturation",
         ("raise_saturation", "lower_saturation", "stop"),
     ),
-    ("Smooth hue change", "smooth-color-changes", "Smooth color changes", ("raise_hue", "lower_hue", "stop")),
+    (
+        "Smooth hue change",
+        "smooth-color-changes",
+        "Smooth color changes",
+        "smooth hue",
+        ("raise_hue", "lower_hue", "stop"),
+    ),
     (
         "Set brightness, color or CT<br>without turning on",
         "set-brightness-color-temperature-or-color-without-turning-on",
         "Flash-free turn-on",
+        "set without turning on",
         ("set_attributes",),
     ),
-    ("Set scene without turning on", "set-scene-without-turning-on", "Flash-free turn-on", ("set_scene",)),
-    ("Get attributes", "get-attributes", "Get attributes", ("get_attributes",)),
+    ("Set scene without turning on", "set-scene-without-turning-on", "Flash-free turn-on", "scenes", ("set_scene",)),
+    ("Get attributes", "get-attributes", "Get attributes", "get attributes", ("get_attributes",)),
 )
 # (icon, alt text, label, file, anchor): the legend, in order. Each icon links to the heading that explains it; a
 # README heading links within the page.
@@ -131,7 +147,7 @@ def built(registry: AdapterRegistry, experimental: bool = False) -> dict[tuple[s
     if extra:
         raise SystemExit(f"no README column for integration {', '.join(extra)}; add it to COLUMNS")
     cells = {}
-    for label, _, _, row_actions in FEATURES:
+    for label, _, _, _, row_actions in FEATURES:
         if missing := [action for action in row_actions if action not in actions]:
             raise SystemExit(f"{label}: no adapter anywhere for {', '.join(missing)}; was it renamed?")
         for integration in COLUMNS:
@@ -180,7 +196,7 @@ def generate(registry: AdapterRegistry) -> str:
     why = href(INTEGRATIONS, IMPOSSIBLE)
     cells = built(registry)
     trial = built(registry, experimental=True)
-    labels = {label for label, _, _, _ in FEATURES}
+    labels = {label for label, *_ in FEATURES}
     for (label, integration), blocked in NO_PATH.items():
         if label not in labels or integration not in COLUMNS:
             raise SystemExit(f"NO_PATH entry ({label!r}, {integration!r}) names no README row or column")
@@ -197,7 +213,7 @@ def generate(registry: AdapterRegistry) -> str:
         f"| Feature by Integration | {' | '.join(COLUMNS.values())} |",
         f"|:--- |{':---:|' * len(COLUMNS)}",
     ]
-    for label, anchor, topic, _ in FEATURES:
+    for label, anchor, topic, *_ in FEATURES:
         row = [
             cell(
                 cells[label, integration],
@@ -249,7 +265,7 @@ def anchors(text: str) -> set[str]:
 def check_anchors(text: str) -> None:
     """Every row and legend entry links to a heading that exists, so a renamed heading fails here rather than leaving
     a dead link."""
-    if dead := sorted({anchor for _, anchor, _, _ in FEATURES} - anchors(text)):
+    if dead := sorted({anchor for _, anchor, *_ in FEATURES} - anchors(text)):
         raise SystemExit(f"README.md has no heading for #{', #'.join(dead)}; fix FEATURES")
     for _, _, _, file, anchor in LEGEND:
         if anchor not in anchors(text if file == "README.md" else (REPO / file).read_text()):

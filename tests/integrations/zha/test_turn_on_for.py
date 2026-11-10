@@ -34,11 +34,6 @@ def readback(monkeypatch):
 
 
 @pytest.fixture
-def commands(hass):
-    return async_mock_service(hass, "zha", "issue_zigbee_cluster_command")
-
-
-@pytest.fixture
 def turn_ons(hass):
     return async_mock_service(hass, "light", "turn_on")
 

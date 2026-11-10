@@ -9,7 +9,8 @@ from pathlib import Path
 import pytest
 
 from custom_components.deviceside.actions import discover
-from custom_components.deviceside.core.scope import AdapterScope, experimental, reported, verified
+from custom_components.deviceside.core.registry import AdapterRegistry
+from custom_components.deviceside.core.scope import AdapterScope, IntegrationInfo, experimental, reported, verified
 from scripts import check_release as cr
 
 # Every fake adapter is defined here, so this file is each one's module.
@@ -22,8 +23,9 @@ class FakeAdapter:
 
 
 class FakeRegistry:
-    def __init__(self, adapters: dict[tuple[str, str], AdapterScope]):
+    def __init__(self, adapters: dict[tuple[str, str], AdapterScope], integrations=()):
         self._adapters = {key: FakeAdapter(scope) for key, scope in adapters.items()}
+        self.integrations = {info.key: info for info in integrations}
 
     def matrix(self):
         yield "turn_off_for", "shelly", None
@@ -46,8 +48,7 @@ def coverage(tmp_path: Path, covered: int, statements: int = 100) -> Path:
 def test_coverage_under_the_bar_is_an_error_experimental_or_not(tmp_path):
     data = json.loads(coverage(tmp_path, 94).read_text())
     assert cr.coverage_errors(REGISTRY, data) == [
-        f"matter / turn_on_for: 94.0% line coverage of {THIS_FILE}, under 95%",
-        f"shelly / turn_on_for: 94.0% line coverage of {THIS_FILE}, under 95%",
+        f"{THIS_FILE}: 94.0% line coverage, under 95% (code of matter / turn_on_for, shelly / turn_on_for)",
     ]
     assert cr.coverage_errors(REGISTRY, json.loads(coverage(tmp_path, 95).read_text())) == []
     assert cr.coverage_errors(REGISTRY, json.loads(coverage(tmp_path, 0, statements=0).read_text())) == []
@@ -82,6 +83,24 @@ def test_release_passes_experimental_scope_items(monkeypatch):
     assert cr.main(["--release"], FakeRegistry({("turn_on_for", "shelly"): scope})) == 0
 
 
+@pytest.mark.parametrize("argv", [[], ["--release"], ["--records"]])
+def test_an_integration_that_failed_to_import_is_an_error(monkeypatch, capsys, argv):
+    """Its adapters are missing from the registry, so no gate would see them."""
+    monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
+    broken = IntegrationInfo(key="zha", title="zha", ha_domain="zha", available=False, unavailable_reason="No module")
+    registry = FakeRegistry({("turn_on_for", "shelly"): AdapterScope(experimental=True)}, [broken])
+    monkeypatch.setattr(cr, "record_errors", lambda registry: [])
+    assert cr.main(argv, registry) == 1
+    assert "error: zha: failed to import (No module)" in capsys.readouterr().err.splitlines()
+
+
+def test_a_real_import_failure_reaches_the_gate(monkeypatch, capsys):
+    monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
+    registry = AdapterRegistry(discover(), ["custom_components.deviceside.integrations.missing"])
+    assert cr.main([], registry) == 1
+    assert "error: missing: failed to import" in capsys.readouterr().err
+
+
 def test_main_reads_the_real_registry(monkeypatch, capsys):
     monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
     assert cr.main([]) == 0
@@ -102,6 +121,7 @@ class FakeRecordsRegistry:
         cls = type("FakeTurnOnFor", (FakeAdapter,), {"__module__": module.__name__})
         self.adapter = cls(AdapterScope(experimental=experimental))
         self.adapter.action, self.adapter.integration = "turn_on_for", "fake"
+        self.integrations = {}
 
     def matrix(self):
         yield "turn_on_for", "fake", self.adapter
@@ -118,16 +138,24 @@ def write_record(repo, name: str, commit: str | None, result: str | None = "pass
 
 @pytest.fixture
 def tested(repo, monkeypatch):
-    """The fake integration: its adapter, the helpers it imports, an unrelated module and a core one, with a record
-    citing them. Returns (repo, the commit the record cites)."""
+    """The fake integration: its adapter, the helpers it imports, the group helper its package imports, a sibling
+    adapter, an unrelated module and a core one, with a record citing them. Returns (repo, the commit the record
+    cites)."""
     monkeypatch.setattr(cr, "REPO", repo.path)
     monkeypatch.setattr(cr, "RECORDS", repo.path / "docs" / "test-records")
+    init = (
+        "from .groups import expand_group\nfrom .other import Other\nfrom .turn_on_for import FakeTurnOnFor\n"
+        "from ...core.scope import IntegrationInfo\n\nADAPTERS = [FakeTurnOnFor, Other]\n"
+    )
     for path, text in [
-        (f"{PACKAGE}/__init__.py", "from .turn_on_for import FakeTurnOnFor\nfrom .other import Other\n"),
+        (f"{PACKAGE}/__init__.py", init),
+        (f"{PACKAGE}/groups.py", "from .members import members\n"),
+        (f"{PACKAGE}/members.py", ""),
         (f"{PACKAGE}/shared.py", "from . import nested\n"),
         (f"{PACKAGE}/nested.py", ""),
         (f"{PACKAGE}/addressing.py", "from ...core import scope\n"),
-        (f"{PACKAGE}/other.py", ""),
+        (f"{PACKAGE}/other.py", "from .unrelated import thing\n"),
+        (f"{PACKAGE}/unrelated.py", ""),
         ("custom_components/deviceside/core/scope.py", ""),
         (ADAPTER, "from . import shared\nfrom .addressing import address\nfrom ..zha import zcl\n"),
     ]:
@@ -136,10 +164,42 @@ def tested(repo, monkeypatch):
     return repo, tested_at
 
 
-def test_adapter_code_is_the_module_and_what_it_imports_from_its_package(tested):
+def test_adapter_code_is_the_module_and_what_it_or_its_package_imports_bar_sibling_adapters(tested):
     repo, _ = tested
     code = cr.adapter_code(repo.path / ADAPTER)
-    assert [path.name for path in code] == ["__init__.py", "addressing.py", "nested.py", "shared.py", "turn_on_for.py"]
+    assert [path.name for path in code] == [
+        "__init__.py",
+        "addressing.py",
+        "groups.py",
+        "members.py",
+        "nested.py",
+        "shared.py",
+        "turn_on_for.py",
+    ]
+
+
+def test_the_bar_covers_every_module_of_the_adapters_code_bar_init(tested, monkeypatch):
+    repo, _ = tested
+    registry = FakeRecordsRegistry(repo, monkeypatch)
+    files = {str(path.relative_to(repo.path)): 100 for path in cr.adapter_code(repo.path / ADAPTER)}
+    files |= {f"{PACKAGE}/__init__.py": 0, f"{PACKAGE}/members.py": 90}
+    report = {"files": {name: {"summary": {"covered_lines": n, "num_statements": 100}} for name, n in files.items()}}
+    assert cr.coverage_errors(registry, report) == [
+        f"{PACKAGE}/members.py: 90.0% line coverage, under 95% (code of fake / turn_on_for)"
+    ]
+
+
+def test_a_sibling_adapter_the_adapter_imports_is_its_code(tested):
+    repo, _ = tested
+    repo.commit(ADAPTER, "from .other import Other\n")
+    assert "other.py" in [path.name for path in cr.adapter_code(repo.path / ADAPTER)]
+
+
+def test_a_change_to_the_packages_group_helper_stales_the_record(tested, monkeypatch):
+    repo, _ = tested
+    repo.commit(f"{PACKAGE}/members.py", "MEMBERS = 1\n")
+    [error] = cr.record_errors(FakeRecordsRegistry(repo, monkeypatch))
+    assert error.endswith(f"changed since: {PACKAGE}/members.py")
 
 
 def test_records_are_the_action_and_its_options(tested):

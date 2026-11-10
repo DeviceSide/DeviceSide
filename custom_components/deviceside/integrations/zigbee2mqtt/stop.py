@@ -4,12 +4,12 @@ from typing import ClassVar
 
 from homeassistant.core import HomeAssistant
 
-from .addressing import topic
+from .addressing import not_addressable
 from .bridge import publish_set
 from .color_refresh import DELAY_S, refresh_color
 from .fade import hue_moves, lights_of, read_back_key, transition_cache
 from ...core.adapter import Adapter
-from ...core.dispatcher import EMPTY_GROUP
+from ...core.errors import Reason
 from ...core.models import EntityResult, Request, Status, Target
 from ...core.runtime import get_runtime
 from ...core.scope import AdapterScope, verified
@@ -47,8 +47,8 @@ class Z2MStop(Adapter[Request]):
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:
         if (reason := super().supports(hass, request, target)) is not None:
             return reason
-        if topic(target, "set") is None:
-            return "not_addressable"
+        if (reason := not_addressable(target)) is not None:
+            return reason
         return None
 
     async def execute(self, hass: HomeAssistant, request: Request, targets: list[Target]) -> list[EntityResult]:
@@ -57,7 +57,7 @@ class Z2MStop(Adapter[Request]):
 
         async def send(target: Target) -> EntityResult:
             if not (lights := await lights_of(hass, target)):
-                return self.result(target, Status.UNSUPPORTED, detail=EMPTY_GROUP)
+                return self.result(target, Status.UNSUPPORTED, detail=Reason.EMPTY_GROUP)
             if not (halting := lit(cache, lights)):
                 return self.result(target, Status.UNCHANGED, detail="off")
             # A halt is predicted only where a move of ours ran: elsewhere Z2M's read-back is right at once.

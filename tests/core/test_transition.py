@@ -4,15 +4,9 @@ import pytest
 
 from custom_components.deviceside.core.transition import TransitionCache, transition_cache
 
+from ..conftest import Clock
+
 SETTLE_SECONDS = 15.0
-
-
-class Clock:
-    def __init__(self) -> None:
-        self.now = 1000.0
-
-    def __call__(self) -> float:
-        return self.now
 
 
 @pytest.fixture
@@ -132,3 +126,16 @@ def test_a_finished_move_is_not_running_but_still_tracked(cache, clock):
 
     assert cache.running("light-1", "brightness") is None
     assert cache.tracks("light-1", "brightness")
+
+
+async def test_a_refused_write_leaves_the_entry_a_later_move_recorded(cache):
+    # Two moves overlap on one light: the first's refusal must not undo the second's prediction.
+    with pytest.raises(RuntimeError):
+        async with cache.recording([("light-1", "brightness")]):
+            cache.moving("light-1", "brightness", 0.0, 100.0, 5.0)
+            async with cache.recording([("light-1", "brightness")]):
+                cache.moving("light-1", "brightness", 0.0, 50.0, 5.0)
+            raise RuntimeError("refused")
+
+    assert cache.value("light-1", "brightness", 13.0) == 0.0
+    assert cache.running("light-1", "brightness").target == 50.0

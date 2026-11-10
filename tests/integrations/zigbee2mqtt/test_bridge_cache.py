@@ -8,6 +8,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.deviceside.const import CONF_Z2M_COLOR_MODES, DOMAIN
 from custom_components.deviceside.integrations.zigbee2mqtt import bridge, bridge_cache
+from custom_components.deviceside.integrations.zigbee2mqtt.restore_journal import journal
 
 from ...fixtures.z2m import GROUPS, INFO
 
@@ -332,3 +333,33 @@ async def test_setup_entry_starts_it_once_mqtt_is_up(hass, broker, connection, m
 
     assert bridge_cache.get(hass) is not None
     assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+# A restore a previous run left owed
+
+
+async def test_setup_pays_a_restore_left_owed(hass, setup_production, online, connection, mqtt_up, hass_storage):
+    hass_storage["deviceside.zigbee2mqtt_restore_journal"] = {
+        "version": 1,
+        "key": "deviceside.zigbee2mqtt_restore_journal",
+        "data": {"device/0x01": False},
+    }
+
+    await start(hass, setup_production)
+
+    request = online.requests()[0]["payload"]
+    assert (request["id"], request["options"]) == ("0x01", {"hue_native_control": False})
+    assert (await journal(hass)).owed == {}
+
+
+async def test_setup_keeps_a_restore_it_cannot_pay(hass, setup_production, online, connection, mqtt_up, hass_storage):
+    hass_storage["deviceside.zigbee2mqtt_restore_journal"] = {
+        "version": 1,
+        "key": "deviceside.zigbee2mqtt_restore_journal",
+        "data": {"group/7": True},
+    }
+    online.reply = {"status": "error", "error": "refused"}
+
+    await start(hass, setup_production)
+
+    assert (await journal(hass)).owed == {"group/7": True}

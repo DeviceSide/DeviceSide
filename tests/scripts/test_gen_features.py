@@ -41,7 +41,7 @@ def no_blockers(monkeypatch):
 
 def headings():
     """A heading for every row's anchor, so a test README passes the anchor check."""
-    return "".join(f"## {anchor.replace('-', ' ')}\n" for _, anchor, _, _ in gf.FEATURES)
+    return "".join(f"## {anchor.replace('-', ' ')}\n" for _, anchor, *_ in gf.FEATURES)
 
 
 def row(text, label):

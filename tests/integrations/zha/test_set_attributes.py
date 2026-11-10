@@ -11,7 +11,6 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.service import async_register_admin_service
 from homeassistant.util.color import color_xy_to_hs
-from pytest_homeassistant_custom_component.common import async_mock_service
 
 from custom_components.deviceside.const import DOMAIN
 from custom_components.deviceside.integrations.zha import set_attributes as adapter
@@ -43,16 +42,6 @@ def level_read(monkeypatch):
 def no_fade_wait(monkeypatch):
     """The refresh's wait for the commands' fade, off so tests don't sleep; the tests of it set their own."""
     monkeypatch.setattr(adapter, "FADE_WAIT_S", 0.0)
-
-
-@pytest.fixture
-def commands(hass):
-    return async_mock_service(hass, "zha", "issue_zigbee_cluster_command")
-
-
-@pytest.fixture
-def refreshes(hass):
-    return async_mock_service(hass, "homeassistant", "update_entity")
 
 
 def sent(commands) -> list[tuple[int, int, dict]]:
@@ -192,7 +181,44 @@ async def test_a_command_error_rejects_that_light(hass, refreshes):
 
     assert raised.value.translation_key == "targets_failed"
     assert raised.value.translation_placeholders["summary"] == "light.gone: error"
-    assert sorted(refresh.data["entity_id"] for refresh in refreshes) == ["light.bulb", "light.gone"]
+    # Its first command failed, so nothing landed to refresh.
+    assert [refresh.data["entity_id"] for refresh in refreshes] == ["light.bulb"]
+
+
+async def test_a_later_command_failing_still_refreshes_the_light(hass, refreshes):
+    bulb(hass, COLOR)
+
+    async def handler(service: ServiceCall) -> None:
+        if service.data["command"] == zcl.MOVE_TO_COLOR_TEMP:
+            raise ValueError("no answer")
+
+    hass.services.async_register("zha", "issue_zigbee_cluster_command", handler)
+
+    with pytest.raises(HomeAssistantError):
+        await call(hass, "set_attributes", {"entity_id": "light.bulb", "brightness": 40, "color_temp_kelvin": 2700})
+
+    assert [refresh.data["entity_id"] for refresh in refreshes] == ["light.bulb"]
+
+
+async def test_the_refreshes_wait_outside_the_concurrency_slots(hass):
+    """Three lights under max_concurrency=2: every light's commands go before any refresh's wait holds a slot."""
+    entry = zha_entry(hass)
+    events: list[str] = []
+    for n in range(3):
+        add_zha_entity(hass, entry, f"light.l{n}", ieee=f"00:00:00:00:00:00:00:0{n}", attributes=DIMMABLE)
+
+    async def command(service: ServiceCall) -> None:
+        events.append("command")
+
+    async def update(service: ServiceCall) -> None:
+        events.append("refresh")
+
+    hass.services.async_register("zha", "issue_zigbee_cluster_command", command)
+    hass.services.async_register("homeassistant", "update_entity", update)
+
+    await call(hass, "set_attributes", {"entity_id": ["light.l0", "light.l1", "light.l2"], "brightness": 40})
+
+    assert events == ["command"] * 3 + ["refresh"] * 3
 
 
 async def test_a_failed_level_read_rejects_that_light(hass, commands, level_read):
@@ -472,3 +498,44 @@ async def test_a_second_refresh_follows_and_a_later_call_replaces_it(hass, comma
     await advance(hass, start, 4)
 
     assert len(refreshes) == 5  # only one second refresh ran for the two calls
+
+
+@pytest.fixture
+def missing(monkeypatch) -> set[str]:
+    """The adapter's warned-once set, fresh for the test."""
+    fresh: set[str] = set()
+    monkeypatch.setattr(adapter, "_missing", fresh)
+    return fresh
+
+
+async def test_an_entity_without_zhas_library_light_is_warned_about_once(
+    hass, commands, refreshes, monkeypatch, missing, caplog
+):
+    monkeypatch.setattr(adapter, "ha_entity", lambda hass, entity_id: SimpleNamespace())
+    bulb(hass, DIMMABLE)
+
+    for _ in range(2):
+        await call(hass, "set_attributes", {"entity_id": "light.bulb", "brightness": 40})
+
+    assert caplog.text.count("entity_data.entity is missing") == 1
+
+
+async def test_a_library_light_without_the_transition_flag_is_warned_about_once(
+    hass, commands, refreshes, zha_lights, missing, caplog
+):
+    bulb(hass, DIMMABLE)
+    zha_lights["light.bulb"] = SimpleNamespace(_off_brightness=None)
+
+    for _ in range(2):
+        await call(hass, "set_attributes", {"entity_id": "light.bulb", "brightness": 40})
+
+    assert caplog.text.count("SimpleNamespace.is_transitioning is missing") == 1
+    assert len(refreshes) == 2
+
+
+async def test_an_unloaded_entity_is_not_warned_about(hass, commands, refreshes, zha_lights, missing, caplog):
+    bulb(hass, DIMMABLE)
+
+    await call(hass, "set_attributes", {"entity_id": "light.bulb", "brightness": 40})
+
+    assert "is missing" not in caplog.text
