@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, ClassVar
 from homeassistant.core import HomeAssistant
 
 from .bridge import bridge_api, controller, put, resource_id, stops, xy_halt
-from .fade import in_soft_off, light_brightness, light_xy, lit, room_lights
+from .fade import in_soft_off, light_xy, lit, predicted_brightness, room_lights
 from .report_filter import report_filter
 from .transition_cache import XY, transition_cache
 from ...core.adapter import Adapter
@@ -65,7 +65,7 @@ class HueStop(Adapter[Request]):
             reports = report_filter(hass, target)
             if target.is_group:
                 lights = lit(cache, room_lights(api, target))
-                brightness = {light.id: light_brightness(cache, light) for light in lights}
+                brightness = {light.id: predicted_brightness(cache, light) for light in lights}
             else:
                 lights = lit(cache, [resource])
                 brightness = {rid: cache.value(rid, BRIGHTNESS, reported_brightness(target))} if lights else {}
@@ -88,12 +88,13 @@ class HueStop(Adapter[Request]):
                 if failure is None
                 for light_id in light_ids
             ]
-            if halted != list(brightness):
-                _LOGGER.warning("hue stop on %s failed for lights %s", target.entity_id, set(brightness) - set(halted))
             reports.halted(BRIGHTNESS, {light_id: brightness[light_id] for light_id in halted})
             reports.halted(
                 SATURATION, {light_id: value for light_id, value in saturation.items() if light_id in halted}
             )
+            if set(halted) != set(brightness):
+                _LOGGER.warning("hue stop on %s failed for lights %s", target.entity_id, set(brightness) - set(halted))
+                return self.result(target, Status.REJECTED, detail="some_lights_failed")
             return self.result(target, Status.SENT)
 
         return await self.gather(hass, targets, send)
@@ -108,7 +109,7 @@ async def halt(
     xys: dict[str, XY],
 ) -> Exception | None:
     """Record where these lights halt and write it. A refusal puts back only these lights' predictions, and is
-    returned, as another light's halt still stands."""
+    returned, as another light's halt still stands. A cancel puts them back too and propagates."""
     keys = [(light_id, BRIGHTNESS) for light_id in light_ids]
     keys += [(light_id, SATURATION) for light_id in light_ids if light_id in xys]
     try:
