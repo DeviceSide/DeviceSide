@@ -9,8 +9,8 @@ from custom_components.deviceside.core import ha_watch
 from custom_components.deviceside.integrations.zigbee2mqtt import bridge, members
 from custom_components.deviceside.integrations.zigbee2mqtt.fade import hue_moves, transition_cache
 
-from .conftest import GET, SENT, SET, commands, group, light, unchanged
-from ...conftest import advance, call, refusal, wall_clock_now
+from .conftest import GET, SENT, SET, commands, group, light
+from ...conftest import advance, call, refusal, result, wall_clock_now
 from ...fixtures.z2m import add_z2m_group, z2m_entry
 
 pytestmark = pytest.mark.usefixtures("setup_production", "clock")
@@ -24,7 +24,7 @@ async def test_color_is_dropped_without_color_hs(hass, broker, action):
 
     response = await call(hass, action, {"entity_id": entity_id})
 
-    assert response == {entity_id: unchanged("fields_dropped")}
+    assert response == {entity_id: result("zigbee2mqtt", "unchanged", detail="fields_dropped")}
     assert commands(broker) == []
 
 
@@ -43,7 +43,7 @@ async def test_a_group_with_a_member_without_color_hs_drops_hue(hass, broker):
 
     response = await call(hass, "raise_hue", {"entity_id": room})
 
-    assert response == {room: unchanged("fields_dropped")}
+    assert response == {room: result("zigbee2mqtt", "unchanged", detail="fields_dropped")}
     assert commands(broker) == []
 
 

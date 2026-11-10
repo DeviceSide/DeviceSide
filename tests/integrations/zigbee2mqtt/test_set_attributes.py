@@ -275,8 +275,8 @@ async def test_the_read_waits_out_the_write_fade(hass, broker, monkeypatch):
 
 async def test_a_read_still_mid_fade_is_repeated_before_the_write_counts_as_ignored(hass, broker, monkeypatch):
     bulb(hass, broker, modes=DIMMABLE)
-    broker.fade_s = 0.05
-    monkeypatch.setattr(set_attributes, "_RETRY_S", 0.06)
+    broker.fade_reads = 1  # counted in reads, so no wait has to outlast a real-clock fade
+    monkeypatch.setattr(set_attributes, "_RETRY_S", 0)
 
     response = await call(hass, "set_attributes", {"entity_id": "light.lamp", "brightness": 40})
 

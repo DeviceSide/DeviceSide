@@ -101,6 +101,8 @@ class Broker:
         self.ignores_override: set[str] = set()  # IEEEs whose bulbs drop a MoveTo command, as without the override
         self.fade_s = 0.0  # seconds a lit bulb takes to reach a stored level, answering the old one until then
         self.fading: dict[str, tuple[int, float]] = {}  # IEEE -> (level before the write, when the fade ends)
+        self.fade_reads = 0  # reads, not seconds: a lit bulb answers the old level to this many reads after a write
+        self.fading_reads: dict[str, list[int]] = {}  # IEEE -> [level before the write, reads left to answer it]
 
     async def subscribe(self, hass, topic, msg_callback):
         self.topics.append(topic)
@@ -178,6 +180,9 @@ class Broker:
             and asyncio.get_running_loop().time() < fade[1]
         ):
             reply["currentLevel"] = fade[0]
+        elif (counted := self.fading_reads.get(ieee)) and cluster == "genLevelCtrl" and counted[1] > 0:
+            counted[1] -= 1
+            reply["currentLevel"] = counted[0]
         state = self.states.setdefault(ieee, {"state": "ON"})
         if "currentLevel" in reply:
             state["brightness"] = reply["currentLevel"]
@@ -212,6 +217,8 @@ class Broker:
                 if cluster == "genLevelCtrl" and clusters.get("genOnOff", {}).get("onOff") and self.fade_s:
                     before = clusters[cluster]["currentLevel"]
                     self.fading[ieee] = (before, asyncio.get_running_loop().time() + self.fade_s)
+                if cluster == "genLevelCtrl" and clusters.get("genOnOff", {}).get("onOff") and self.fade_reads:
+                    self.fading_reads[ieee] = [clusters[cluster]["currentLevel"], self.fade_reads]
                 self.devices[ieee][1].setdefault(cluster, {}).update(values)
 
     def reads(self) -> list[tuple[str, dict]]:

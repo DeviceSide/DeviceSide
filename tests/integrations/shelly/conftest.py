@@ -10,10 +10,6 @@ SENT = {"status": "sent", "integration": "shelly"}
 CONFIRMED = {"status": "confirmed", "integration": "shelly"}
 
 
-def unchanged(detail: str) -> dict:
-    return {"status": "unchanged", "integration": "shelly", "detail": detail}
-
-
 def dimmable_bulb(hass, brightness: int = 40, on: bool = True, halt: dict | None = None):
     """light.bulb, an RGBCCT bulb at `brightness` percent, on or off, whose DimStop halts at `halt`; its call_rpc.
 

@@ -398,11 +398,34 @@ async def test_a_group_clamp_leaves_the_groups_kept_level(hass, zha_groups, comm
     assert zha_lights["light.a"]._off_brightness == 102  # clamped from the CurrentLevel read of 127
 
 
+class FlaggedLight:
+    """A zha light whose transition flag is up until set down, or until `up_for_reads` looks at it have passed."""
+
+    _off_brightness = None
+
+    def __init__(self) -> None:
+        self.flag = True
+        self.up_for_reads: int | None = None
+
+    @property
+    def is_transitioning(self) -> bool:
+        if self.up_for_reads is not None:
+            if self.up_for_reads <= 0:
+                self.flag = False
+            self.up_for_reads -= 1
+        return self.flag
+
+    @is_transitioning.setter
+    def is_transitioning(self, value: bool) -> None:
+        self.flag = value
+        self.up_for_reads = None
+
+
 @pytest.fixture
 def flagged_refreshes(hass):
     """update_entity calls, each recording whether zha's transition flag was up on light.bulb when it ran."""
     seen: list[bool] = []
-    light = SimpleNamespace(_off_brightness=None, is_transitioning=True)
+    light = FlaggedLight()
 
     async def handler(service: ServiceCall) -> None:
         seen.append(light.is_transitioning)
@@ -413,11 +436,11 @@ def flagged_refreshes(hass):
 
 async def test_the_refresh_waits_for_zhas_transition_flag(hass, monkeypatch, commands, zha_lights, flagged_refreshes):
     """After an HA turn_off, zha skips update_entity until its flag clears; refreshing sooner leaves HA's color old."""
-    monkeypatch.setattr(adapter, "TRANSITION_POLL_S", 0.01)
+    monkeypatch.setattr(adapter, "TRANSITION_POLL_S", 0)
     light, seen = flagged_refreshes
     bulb(hass, CT)
     zha_lights["light.bulb"] = light
-    hass.loop.call_later(0.05, setattr, light, "is_transitioning", False)
+    light.up_for_reads = 5  # clears itself after five looks, with no clock involved
 
     response = await call(hass, "set_attributes", {"entity_id": "light.bulb", "color_temp_kelvin": 2700})
 
@@ -429,8 +452,7 @@ async def test_a_flag_past_the_wait_refreshes_again_once_it_clears(
     hass, monkeypatch, commands, zha_lights, flagged_refreshes
 ):
     """A long off fade keeps the flag up past the wait: refresh then anyway, and again once the flag clears."""
-    monkeypatch.setattr(adapter, "TRANSITION_WAIT_S", 0.02)
-    monkeypatch.setattr(adapter, "TRANSITION_POLL_S", 0.01)
+    monkeypatch.setattr(adapter, "TRANSITION_WAIT_S", 0)  # gives up at its first look, whatever the clock says
     light, seen = flagged_refreshes
     bulb(hass, CT)
     zha_lights["light.bulb"] = light
@@ -448,8 +470,7 @@ async def test_a_flag_past_the_wait_refreshes_again_once_it_clears(
 async def test_the_late_refresh_gives_up_waiting_at_its_limit(
     hass, monkeypatch, commands, zha_lights, flagged_refreshes
 ):
-    monkeypatch.setattr(adapter, "TRANSITION_WAIT_S", 0.02)
-    monkeypatch.setattr(adapter, "TRANSITION_POLL_S", 0.01)
+    monkeypatch.setattr(adapter, "TRANSITION_WAIT_S", 0)  # gives up at its first look, whatever the clock says
     monkeypatch.setattr(adapter, "LATE_REFRESH_LIMIT_S", 0.0)
     light, seen = flagged_refreshes
     bulb(hass, CT)
@@ -511,12 +532,20 @@ async def test_the_flag_wait_counts_toward_the_fade_wait(
     light, _seen = flagged_refreshes
     bulb(hass, CT)
     zha_lights["light.bulb"] = light
-    hass.loop.call_later(0.08, setattr, light, "is_transitioning", False)
-    start = hass.loop.time()
+    light.up_for_reads = 12  # 12 polls of 10 ms, however slow the loop: past the 50 ms fade wait
+    sleeps: list[float] = []
+    real_sleep = asyncio.sleep
+
+    async def spy(delay, *args):
+        sleeps.append(delay)
+        await real_sleep(delay, *args)
+
+    monkeypatch.setattr(asyncio, "sleep", spy)
 
     await call(hass, "set_attributes", {"entity_id": "light.bulb", "color_temp_kelvin": 2700})
 
-    assert 0.08 <= timed_refreshes[0] - start < 0.13
+    assert len(timed_refreshes) >= 1
+    assert set(sleeps) == {0.01}  # only polls: no further sleep for the fade
 
 
 async def test_a_second_refresh_follows_and_a_later_call_replaces_it(hass, commands, refreshes):

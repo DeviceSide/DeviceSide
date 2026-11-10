@@ -6,8 +6,8 @@ from homeassistant.exceptions import HomeAssistantError
 from custom_components.deviceside.core.transition import SATURATION
 from custom_components.deviceside.integrations.zigbee2mqtt.fade import hue_moves, transition_cache
 
-from .conftest import GET, SENT, SET, commands, group, light, unchanged
-from ...conftest import advance, call, wall_clock_now
+from .conftest import GET, SENT, SET, commands, group, light
+from ...conftest import advance, call, result, wall_clock_now
 
 pytestmark = pytest.mark.usefixtures("setup_production", "clock")
 
@@ -37,7 +37,7 @@ async def test_an_off_light_is_unchanged(hass, broker):
 
     response = await call(hass, "raise_saturation", {"entity_id": entity_id})
 
-    assert response == {entity_id: unchanged("off")}
+    assert response == {entity_id: result("zigbee2mqtt", "unchanged", detail="off")}
     assert commands(broker) == []
 
 
