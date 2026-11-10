@@ -58,7 +58,7 @@ doesnt_work:
   - what: Hue smart scenes
     integrations: [hue]
     reason: A smart (All-Day) scene changes with the time of day, so it has no fixed settings to write
-    source: https://github.com/jasonmx/DeviceSide/blob/main/docs/integrations.md#set-and-get
+    source: https://github.com/jasonmx/DeviceSide/blob/main/docs/integrations.md#hue
   - what: Tuya TS011F
     integrations: [zha, zigbee2mqtt]
     reason: It stores the Zigbee timer as a countdown and never switches on
