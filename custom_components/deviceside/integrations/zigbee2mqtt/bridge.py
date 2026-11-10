@@ -11,13 +11,14 @@ from homeassistant.components import mqtt
 from homeassistant.core import HomeAssistant, callback
 
 from . import bridge_cache
-from .addressing import bridge_topic, state_topic, topic
+from .addressing import bridge_topic, options_address, state_topic, topic
 from ...core.models import Target
-from ...core.wire import wire_trace
+from ...core.wire import wire_enabled, wire_trace
 
 _LOGGER = logging.getLogger(__name__)
 
 # Retained topics arrive once HA's debounced subscribe reaches the broker; the reply takes one settings write.
+OPTION = "hue_native_control"  # the entity option that changes the Zigbee commands a Hue light gets
 _RETAINED_TIMEOUT_S = 2.0
 _REPLY_TIMEOUT_S = 5.0
 
@@ -156,9 +157,27 @@ def _after(answer: dict, before: dict, sent: dict) -> dict:
     return {**before, **sent}
 
 
+def traced_options(hass: HomeAssistant, target: Target) -> dict:
+    """The option that changes how Z2M encodes a set, for the wire trace: hue_native_control as of this publish.
+
+    Read from the bridge cache, which lays confirmed writes over bridge/info (an absent option is Z2M's default, off).
+    None when it can't be known: no cache, no bridge/info held, or no address. Stamped for every target, Hue or not,
+    so no Hue lookup sits on the publish path; Z2M ignores the option on other devices, so their stamp stays false.
+    Call only while the trace is on.
+
+    Known limit: a set whose write timed out is not in the cache, so the stamp shows the prior value (that path logs
+    a warning).
+    """
+    cache = bridge_cache.get(hass)
+    address = options_address(target)
+    settings = cache.settings(f"{address[0]}s", address[1]) if cache is not None and address is not None else None
+    return {OPTION: None if settings is None else bool(settings.get(OPTION))}
+
+
 async def publish_set(hass: HomeAssistant, target: Target, payload: dict) -> None:
     """Publish a command to the target's set topic, traced. A read, sent on the same topic, goes through publish()."""
-    wire_trace(hass, target.reported_id, "mqtt", "set", payload)
+    if wire_enabled():
+        wire_trace(hass, target.reported_id, "mqtt", "set", payload, options=traced_options(hass, target))
     await publish(hass, topic(target, "set"), payload)
 
 

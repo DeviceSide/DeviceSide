@@ -43,6 +43,18 @@ async def test_a_listener_cannot_change_the_payload_it_was_sent(hass, wire):
     assert payload == {"dimming_delta": {"action": "stop"}}
 
 
+async def test_options_ride_the_event_only_when_given_and_are_copied(hass, wire):
+    options = {"hue_native_control": True}
+    wire_trace(hass, "light.lamp", "mqtt", "set", {}, options=options)
+    wire_trace(hass, "light.lamp", "mqtt", "set", {})
+    await hass.async_block_till_done()
+
+    wire[0].data["options"]["hue_native_control"] = False
+    assert options == {"hue_native_control": True}
+    assert "options" not in wire[1].data
+    json.dumps(wire[0].data)
+
+
 async def test_a_device_with_no_entity_is_not_traced(hass, wire):
     wire_trace(hass, None, "clip", "light.put", {})
     await hass.async_block_till_done()

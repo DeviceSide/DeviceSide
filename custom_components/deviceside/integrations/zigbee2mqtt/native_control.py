@@ -28,14 +28,13 @@ from typing import Any
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
-from .addressing import group_id, z2m_address
-from .bridge import ensure_options, group_members, state_reply
+from .addressing import group_id, options_address, z2m_address
+from .bridge import OPTION, ensure_options, group_members, state_reply
 from ...core.models import Target
 from ...core.runtime import get_runtime
 
 _LOGGER = logging.getLogger(__name__)
 
-OPTION = "hue_native_control"
 # The fields Z2M sends as a separate command after on; brightness rides moveToLevelWithOnOff with it.
 COLOR_FIELDS = frozenset({"color_temp_kelvin", "hs_color", "rgb_color", "xy_color"})
 # Each action's need: True on, False off. An action left out works either way and leaves the option alone.
@@ -58,22 +57,13 @@ def _restores(hass: HomeAssistant) -> dict[Address, asyncio.Task[None]]:
     return get_runtime(hass).integration_state.setdefault("zigbee2mqtt_native_control_restores", {})
 
 
-def _address(target: Target) -> Address | None:
-    """Where the target's options would live, without asking Z2M whether it is Hue."""
-    if (group := group_id(target)) is not None:
-        return "group", group
-    if target.device is not None and (address := z2m_address(target.device)) is not None:
-        return "device", address
-    return None
-
-
 async def settled(hass: HomeAssistant, target: Target) -> None:
     """Wait for a pending restore of the target's option, from this call or an earlier one.
 
     For a publish that must go out with the user's value, whatever action ran on the target just before. A cancel of
     the waiter leaves the restore running; a restore cancelled at shutdown ends the wait.
     """
-    if (address := _address(target)) is None or (restore := _restores(hass).get(address)) is None:
+    if (address := options_address(target)) is None or (restore := _restores(hass).get(address)) is None:
         return
     try:
         await asyncio.shield(restore)

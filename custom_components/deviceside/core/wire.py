@@ -3,7 +3,9 @@
 
 The event's data names the target by its entity_id and carries the payload alone: never the device's addressing (an
 IEEE, a Hue resource ID, a Shelly component ID, an MQTT device topic), so a trace reads the same on any household.
-Reads are not traced.
+A transport setting that changes how the call is encoded rides the event as `options`, apart from `params`; addressing
+never does. Z2M stamps its `hue_native_control` this way on every set, since the same payload sends different Zigbee
+commands with it on and off, and a rig comparing traces must not read two such runs as one. Reads are not traced.
 """
 
 import copy
@@ -21,15 +23,28 @@ def wire_enabled() -> bool:
     return WIRE_LOGGER.isEnabledFor(logging.DEBUG)
 
 
-def wire_trace(hass: HomeAssistant, entity_id: str | None, transport: str, command: str, params: Any) -> None:
+def wire_trace(
+    hass: HomeAssistant,
+    entity_id: str | None,
+    transport: str,
+    command: str,
+    params: Any,
+    options: dict | None = None,
+) -> None:
     """Fire the trace of one call, before it is sent, when the wire logger is at DEBUG; else do nothing.
 
     `transport` is the wire (zcl, clip, rpc, mqtt, matter, or ha for an HA action an adapter calls), `command` the
     call within it, and `params` its JSON-serializable payload. A call to a device with no entity is not traced.
+
+    `options` is the transport's own settings that change how it encodes this call (Z2M entity options), never
+    addressing; the event gains an `options` key when given. Other transports pass nothing, and their events are
+    unchanged.
     """
     if entity_id is None or not wire_enabled():
         return
     # A copy: an adapter may pass a shared constant, which a listener must not be able to change.
     data = {"entity_id": entity_id, "transport": transport, "command": command, "params": copy.deepcopy(params)}
+    if options is not None:
+        data["options"] = copy.deepcopy(options)
     WIRE_LOGGER.debug("%s", data)
     hass.bus.async_fire(WIRE_EVENT, data)
