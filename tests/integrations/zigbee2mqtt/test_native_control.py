@@ -13,7 +13,7 @@ from custom_components.deviceside.core.models import Target
 from custom_components.deviceside.core.runtime import DATA
 from custom_components.deviceside.integrations.zigbee2mqtt import bridge, bridge_cache
 from custom_components.deviceside.integrations.zigbee2mqtt import native_control as nc
-from custom_components.deviceside.integrations.zigbee2mqtt.restore_journal import journal
+from custom_components.deviceside.integrations.zigbee2mqtt.restore_journal import journal, locks
 
 from .conftest import SET, light
 from ...conftest import call
@@ -480,7 +480,7 @@ async def test_shutdown_during_the_reply_wait_still_restores(hass, setup_product
     await nc.settled(hass, target(hass, entity_id))  # ends the wait rather than raising into the caller
 
     assert options(broker) == [True, False]
-    assert not nc._locks(hass)[("device", IEEE)].locked()
+    assert not locks(hass)[("device", IEEE)].locked()
 
 
 async def test_caller_cancelled_in_the_body_still_restores(hass, setup_production, broker):
@@ -511,7 +511,7 @@ async def test_settled_is_immediate_without_a_change(hass, setup_production, bro
     await nc.settled(hass, target(hass, "light.lamp"))
 
     assert broker.requests() == []
-    assert not nc._locks(hass)[("device", IEEE)].locked()
+    assert not locks(hass)[("device", IEEE)].locked()
 
 
 async def test_a_timer_after_a_brightness_fade_waits_for_its_restore(
@@ -664,12 +664,12 @@ async def test_a_failed_restore_stays_owed(hass, setup_production, broker, turn_
 async def test_a_later_owe_keeps_the_users_value_owed(hass, setup_production):
     held = await journal(hass)
 
-    await held.add("device", IEEE, False)
-    await held.add("device", IEEE, True)
-    await held.strike("device", IEEE, True)
+    assert await held.add(("device", IEEE), False)
+    assert not await held.add(("device", IEEE), True)
+    await held.strike(("device", IEEE), True)
 
     assert held.owed == {f"device/{IEEE}": False}
-    await held.strike("device", IEEE, False)
+    await held.strike(("device", IEEE), False)
     assert held.owed == {}
 
 
@@ -691,3 +691,109 @@ async def test_a_failing_journal_warns_and_the_restore_still_runs(
 
     assert "disk full" in caplog.text
     assert options(broker) == [True, False]
+
+
+async def test_a_cancel_during_the_journal_save_still_restores(hass, setup_production, broker, monkeypatch):
+    """The save runs inside the shielded set, as its request goes out: a cancel there lets the set finish, then
+    puts the option back and strikes the entry."""
+    hue_bulb(hass)
+    held = await journal(hass)
+    saving, release = asyncio.Event(), asyncio.Event()
+    save = held._store.async_save
+
+    async def slow_save(data):
+        saving.set()
+        await release.wait()
+        await save(data)
+
+    monkeypatch.setattr(held._store, "async_save", slow_save)
+
+    async def body() -> None:
+        async with nc.native_control(hass, target(hass, "light.lamp"), True):
+            pytest.fail("a cancelled set runs no body")
+
+    task = asyncio.create_task(body())
+    await saving.wait()
+    assert broker.requests() == []  # journaled before the request goes out
+    task.cancel()
+    await asyncio.sleep(0)
+    release.set()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    assert options(broker) == [True, False]
+    assert held.owed == {}
+
+
+async def test_an_option_already_right_journals_nothing(hass, setup_production, broker, monkeypatch):
+    hue_bulb(hass)
+    held = await journal(hass)
+    saves: list[dict] = []
+
+    async def counted(data):
+        saves.append(dict(data))
+
+    monkeypatch.setattr(held._store, "async_save", counted)
+
+    async with nc.native_control(hass, target(hass, "light.lamp"), False):
+        pass
+
+    assert (broker.requests(), saves) == ([], [])
+
+
+async def test_a_refused_set_strikes_its_entry(hass, setup_production, broker):
+    hue_bulb(hass)
+    broker.reply = {"status": "error", "error": "refused"}
+
+    async with nc.native_control(hass, target(hass, "light.lamp"), True):
+        pass
+    await nc.settled(hass, target(hass, "light.lamp"))
+
+    assert options(broker) == [True]
+    assert (await journal(hass)).owed == {}
+
+
+async def test_a_same_need_call_pays_a_restore_still_owed(hass, setup_production, broker):
+    """An earlier restore failed, leaving the option at this call's need: the call runs on it, then writes the
+    user's value back."""
+    hue_bulb(hass)
+    broker.retained[INFO]["config"]["devices"][IEEE][nc.OPTION] = True
+    await (await journal(hass)).add(("device", IEEE), False)
+
+    async with nc.native_control(hass, target(hass, "light.lamp"), True):
+        assert options(broker) == []
+    await nc.settled(hass, target(hass, "light.lamp"))
+
+    assert options(broker) == [False]
+    assert (await journal(hass)).owed == {}
+
+
+async def test_an_opposite_need_call_restores_the_owed_value(hass, setup_production, broker):
+    """The user's value is off; an earlier restore failed and left it on. A call needing it off sets it off, and the
+    restore writes the owed off, not the on it found."""
+    hue_bulb(hass)
+    broker.retained[INFO]["config"]["devices"][IEEE][nc.OPTION] = True
+    await (await journal(hass)).add(("device", IEEE), False)
+
+    async with nc.native_control(hass, target(hass, "light.lamp"), False):
+        assert options(broker) == [False]
+    await nc.settled(hass, target(hass, "light.lamp"))
+
+    assert options(broker) == [False, False]
+    assert (await journal(hass)).owed == {}
+
+
+async def test_an_unreadable_journal_runs_as_if_none_were_owed(hass, setup_production, broker, monkeypatch, caplog):
+    hue_bulb(hass)
+
+    async def unreadable(hass):
+        raise OSError("unreadable")
+
+    monkeypatch.setattr(nc, "journal", unreadable)
+
+    async with nc.native_control(hass, target(hass, "light.lamp"), True):
+        pass
+    await nc.settled(hass, target(hass, "light.lamp"))
+
+    assert options(broker) == [True, False]
+    assert "Couldn't read the hue_native_control restore journal" in caplog.text

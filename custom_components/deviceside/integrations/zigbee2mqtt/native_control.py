@@ -12,7 +12,9 @@ The rest work either way and leave it alone: a saturation fade holds its hue, an
 write of settings pass on the rig with the option on and off.
 
 The option belongs to the user. An action that needs it the other way sets it, publishes, and puts the user's value
-back once Z2M has published the target's state in reply (1 s cap), so nothing outlasts the publish. The call returns
+back once Z2M has published the target's state in reply (1 s cap), so nothing outlasts the publish. The user's value
+is journaled as the set goes out (restore_journal.py) and written back from there, so a restore that failed earlier
+is paid by the next action on the target, whatever its need. The call returns
 once its command is out; the restore runs in a task of its own, still under the target's lock. An action that works
 either way may publish before it lands; turn_on_for's timer waits for it (`settled`). Z2M reads an
 entity's options as it takes a command (lib/extension/publish.ts), so a fade already sent runs on unchanged. A command
@@ -28,9 +30,9 @@ from typing import Any
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
-from .addressing import group_id, options_address, z2m_address
+from .addressing import device_identifier, group_id, options_address, z2m_address
 from .bridge import OPTION, ensure_options, group_members, state_reply
-from .restore_journal import journal
+from .restore_journal import Address, journal, locks
 from ...core.models import Target
 from ...core.runtime import get_runtime
 
@@ -46,12 +48,6 @@ NEED: dict[str, bool] = {
 }
 _HUE_MANUFACTURER = "Philips"  # Z2M's vendor string for Hue, which HA's device registry shows
 _REPLY_CAP_S = 1.0
-
-type Address = tuple[str, str]  # Z2M's options section ("device" or "group") and the ID in it
-
-
-def _locks(hass: HomeAssistant) -> dict[Address, asyncio.Lock]:
-    return get_runtime(hass).integration_state.setdefault("zigbee2mqtt_native_control_locks", {})
 
 
 def _restores(hass: HomeAssistant) -> dict[Address, asyncio.Task[None]]:
@@ -81,8 +77,9 @@ async def native_control(hass: HomeAssistant, target: Target, need: bool | None)
 
     Reads the option on each call (from the bridge cache when it holds bridge/info, which Z2M republishes on every
     change), so a user who changes it is seen. A need of None, a non-Hue target or the option already right costs no
-    writes, and a non-Hue device reads nothing. One lock per device or group, held from the set to the restore, keeps
-    actions with opposite needs apart.
+    writes, and a non-Hue device reads nothing, unless a restore is still owed for the target (an earlier one failed):
+    then the body runs and the owed value is written back after, as for a set. One lock per device or group, held
+    from the set to the restore, keeps actions with opposite needs apart, and a replay of the journal out.
 
     Returns once the body has, without waiting on Z2M's reply: the option is put back after Z2M answers (1 s cap), in a
     task that holds the lock until then, so the next call on the target waits for it instead. A publish that must go
@@ -101,22 +98,13 @@ async def native_control(hass: HomeAssistant, target: Target, need: bool | None)
     if address is None:
         yield
         return
-    lock = _locks(hass).setdefault(address, asyncio.Lock())
+    lock = locks(hass).setdefault(address, asyncio.Lock())
     await lock.acquire()
     handed_off = False
     try:
-        # Shielded so that a cancel mid-set (HA stopping) still learns whether the option changed, and puts it back.
-        setting = asyncio.ensure_future(_set(hass, target, address, need))
-        try:
-            changed = await asyncio.shield(setting)
-        except asyncio.CancelledError:
-            if await setting:
-                await _set(hass, target, address, not need, restoring=True)
-            raise
-        if not changed:
+        if not await _take(hass, target, address, need):
             yield
             return
-        await _owe(hass, address, not need)
         replied: asyncio.Future[None] | None = None
         unsubscribe: Callable[[], None] = lambda: None  # noqa: E731
         try:
@@ -134,6 +122,34 @@ async def native_control(hass: HomeAssistant, target: Target, need: bool | None)
     finally:
         if not handed_off:
             lock.release()
+
+
+async def _take(hass: HomeAssistant, target: Target, address: Address, need: bool) -> bool:
+    """Set the option to need, under the address's lock; whether a restore is due after the body: the option may
+    have changed, or a restore is still owed from before."""
+    journaled = False
+
+    async def owe(_z2m_id: str, _options: dict) -> None:
+        # As the request goes out, not after: a restart before Z2M answers still finds the user's value owed.
+        nonlocal journaled
+        journaled = await _owe(hass, address, not need)
+
+    # Shielded so that a cancel mid-set (HA stopping), the journal's save included, still learns whether the option
+    # changed, and puts it back.
+    setting = asyncio.ensure_future(_set(hass, target, address, need, ahead=owe))
+    try:
+        changed = await asyncio.shield(setting)
+    except asyncio.CancelledError:
+        if await setting:
+            await _put_back(hass, target, address, not need)
+        elif journaled:
+            await _strike(hass, address, not need)
+        raise
+    if changed:
+        return True
+    if journaled:
+        await _strike(hass, address, not need)  # refused: the option stands as it was
+    return await _owed(hass, address) is not None
 
 
 def _restore_task(hass: HomeAssistant, address: Address, restore: Coroutine[Any, Any, None]) -> None:
@@ -175,21 +191,38 @@ async def _restore(
         lock.release()
 
 
-async def _owe(hass: HomeAssistant, address: Address, value: bool) -> None:
-    """Journal the user's value as owed, so a restart before the restore doesn't leave the option flipped."""
+async def _owe(hass: HomeAssistant, address: Address, value: bool) -> bool:
+    """Journal the user's value as owed, so a restart before the restore doesn't leave the option flipped; whether
+    this call added the entry (an earlier one still owed is kept)."""
     try:
-        await (await journal(hass)).add(*address, value)
+        return await (await journal(hass)).add(address, value)
     except Exception as err:  # noqa: BLE001 - the journal is a safety net; the action goes on without it
         _LOGGER.warning("Couldn't journal the pending %s restore for %s: %s", OPTION, address, err)
+        return False
 
 
-async def _put_back(hass: HomeAssistant, target: Target, address: Address, value: bool) -> None:
-    """Restore the user's value, and strike it off the journal once Z2M confirmed it."""
+async def _owed(hass: HomeAssistant, address: Address) -> bool | None:
+    """The value the journal owes back at the address, or None (none owed, or the journal unreadable)."""
+    try:
+        return (await journal(hass)).owes(address)
+    except Exception as err:  # noqa: BLE001 - as if none were owed
+        _LOGGER.warning("Couldn't read the %s restore journal for %s: %s", OPTION, address, err)
+        return None
+
+
+async def _strike(hass: HomeAssistant, address: Address, value: bool) -> None:
+    try:
+        await (await journal(hass)).strike(address, value)
+    except Exception as err:  # noqa: BLE001 - a stale entry is replayed harmlessly at the next online
+        _LOGGER.warning("Couldn't strike the %s restore for %s off the journal: %s", OPTION, address, err)
+
+
+async def _put_back(hass: HomeAssistant, target: Target, address: Address, fallback: bool) -> None:
+    """Restore the user's value, the one the journal owes (fallback when none is), and strike it off once Z2M
+    confirmed it."""
+    value = owed if (owed := await _owed(hass, address)) is not None else fallback
     if await _set(hass, target, address, value, restoring=True):
-        try:
-            await (await journal(hass)).strike(*address, value)
-        except Exception as err:  # noqa: BLE001 - a stale entry is replayed harmlessly at the next start
-            _LOGGER.warning("Couldn't strike the %s restore for %s off the journal: %s", OPTION, address, err)
+        await _strike(hass, address, value)
 
 
 async def _reply(target: Target, replied: asyncio.Future[None] | None) -> None:
@@ -216,14 +249,22 @@ async def _hue_address(hass: HomeAssistant, target: Target) -> Address | None:
 async def _has_hue_member(hass: HomeAssistant, group: str) -> bool:
     registry = dr.async_get(hass)
     for ieee in await group_members(hass, group):
-        device = registry.async_get_device(identifiers={("mqtt", f"zigbee2mqtt_{ieee}")})
+        device = registry.async_get_device(identifiers={device_identifier(ieee)})
         if device is not None and device.manufacturer == _HUE_MANUFACTURER:
             return True
     return False
 
 
-async def _set(hass: HomeAssistant, target: Target, address: Address, value: bool, restoring: bool = False) -> bool:
+async def _set(
+    hass: HomeAssistant,
+    target: Target,
+    address: Address,
+    value: bool,
+    restoring: bool = False,
+    ahead: Callable[[str, dict], Coroutine[Any, Any, None]] | None = None,
+) -> bool:
     """Set the option to value where it differs, or regardless for a restore; whether the option may now be value.
+    Awaits ahead before the request goes out, only when one does.
 
     It may be when Z2M confirmed the write, or when the request went out and no answer came, as Z2M may have applied
     it: either way the caller restores. A refused write left the option as it was. A restore doesn't compare: the
@@ -245,7 +286,7 @@ async def _set(hass: HomeAssistant, target: Target, address: Address, value: boo
 
     kind, z2m_id = address
     try:
-        await ensure_options(hass, kind, [z2m_id], wanted, confirmed)
+        await ensure_options(hass, kind, [z2m_id], wanted, confirmed, ahead)
     except Exception as err:  # noqa: BLE001 - the command goes out (or went out) as the option stood
         if not restoring:
             _warn_set(target, value, err)
