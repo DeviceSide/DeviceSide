@@ -1,8 +1,13 @@
 """Hue stop: a dimming stop to the light or room, or a cut where our soft off runs, recorded where it halted."""
 
+import asyncio
+
 import pytest
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util.color import color_hs_to_xy, color_xy_to_hs
+
+from custom_components.deviceside.core.transition import BRIGHTNESS, SATURATION
+from custom_components.deviceside.integrations.hue.transition_cache import transition_cache
 
 from .conftest import SENT, STOP, color_lamp, color_room, hs_xy, lamp, mixed_room, report_off, room, xy_halt
 from ...conftest import call, refusal, result, traced
@@ -192,10 +197,11 @@ async def test_a_failed_light_in_a_room_cut_rolls_back_only_its_own_prediction(h
     clock.now += 4
     bridge.failing.add("two")
 
-    response = await call(hass, "stop", {"entity_id": entity_id})
+    with pytest.raises(HomeAssistantError) as raised:
+        await call(hass, "stop", {"entity_id": entity_id})
     read = await call(hass, "get_attributes", {"entity_id": ["light.one", "light.two"]})
 
-    assert response == {entity_id: SENT}
+    assert raised.value.translation_placeholders["summary"] == f"{entity_id}: some_lights_failed"
     assert read["light.one"]["brightness"] == pytest.approx(60.0)  # halted where it was
     assert read["light.two"]["brightness"] == pytest.approx(60.0)  # the soft off's own prediction still stands, 4 s in
     assert "failed for lights {'two'}" in caplog.text
@@ -209,3 +215,28 @@ async def test_a_room_stop_where_every_light_fails_is_rejected(hass, bridge, clo
 
     with pytest.raises(HomeAssistantError):
         await call(hass, "stop", {"entity_id": entity_id})
+
+
+async def test_a_stop_cancelled_mid_write_leaves_the_predictions_it_found(hass, bridge, clock):
+    entity_id = await color_lamp(hass, bridge, (200.0, 90.0), brightness_pct=20.0)
+    await call(hass, "raise_brightness", {"entity_id": entity_id, "sweep_time": 10})
+    await call(hass, "lower_saturation", {"entity_id": entity_id, "sweep_time": 10, "limit": 0})
+    cache = transition_cache(hass)
+    before = {attribute: cache.live("light-1", attribute) for attribute in (BRIGHTNESS, SATURATION)}
+    path = cache._paths["light-1"]
+    clock.now += 2
+    sent = asyncio.Event()
+
+    async def hang(*args, **kwargs):
+        sent.set()
+        await asyncio.Event().wait()
+
+    bridge.api.request = hang
+    task = asyncio.create_task(call(hass, "stop", {"entity_id": entity_id}))
+    await sent.wait()
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    assert all(before[attribute] is cache.live("light-1", attribute) for attribute in before)
+    assert cache._paths["light-1"] is path

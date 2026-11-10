@@ -202,3 +202,17 @@ def test_predicted_state_is_in_the_brightness_scopes_only():
     """HA is shown the bridge's xy for saturation with the option on or off, so it is no part of that scope."""
     assert HueRaiseBrightness.scope.options == HueLowerBrightness.scope.options == {"predicted_state"}
     assert HueRaiseSaturation.scope.options == HueLowerSaturation.scope.options == frozenset()
+
+
+@pytest.mark.parametrize("action", ["raise_brightness", "lower_brightness", "raise_saturation", "lower_saturation"])
+async def test_an_empty_room_is_skipped_silently(hass, bridge, action):
+    bridge.room("grouped-1", [], brightness=50.0)
+    entry = await hue_entry(hass, bridge)
+    add_hue_entity(
+        hass, entry, "light.room", "grouped-1", state="on", attributes={"is_hue_group": True, "entity_id": []}
+    )
+
+    with pytest.raises(HomeAssistantError, match="No targeted entity could return a response"):
+        await call(hass, action, {"entity_id": "light.room"})
+
+    assert bridge.puts == []

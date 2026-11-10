@@ -2,13 +2,15 @@
 
 import asyncio
 import logging
+from contextvars import Context
 
 import pytest
 from aiohue.v2.controllers.events import EventType
 from pytest_homeassistant_custom_component.common import async_mock_service
 
 from custom_components.deviceside.core.runtime import get_runtime
-from custom_components.deviceside.integrations.hue.transition_cache import MIN_BRIGHTNESS_STEP
+from custom_components.deviceside.integrations.hue.report_filter import _END_PREFIX
+from custom_components.deviceside.integrations.hue.transition_cache import MIN_BRIGHTNESS_STEP, transition_cache
 
 from .conftest import light_event, setup_room
 from ...conftest import advance, call, wall_clock_now
@@ -326,3 +328,19 @@ async def test_detaching_drops_the_bridges_filter_but_not_a_newer_one(hass, brid
     filters[entry_id] = newer = object()
     reports.attach()()
     assert filters[entry_id] is newer
+
+
+async def test_a_stop_landing_during_the_fades_write_leaves_no_end_job(hass, bridge, clock):
+    await setup_room(hass, bridge)
+    cache = transition_cache(hass)
+    request = bridge.api.request
+
+    async def stop_lands(*args, **kwargs):
+        # A stop is its own call, so it records outside the fade's recording block.
+        Context().run(cache.stopped, "one", "brightness", 50.0)
+        return await request(*args, **kwargs)
+
+    bridge.api.request = stop_lands
+    await raise_one(hass)
+
+    assert not [key for key in get_runtime(hass).pending if key.startswith(_END_PREFIX)]
