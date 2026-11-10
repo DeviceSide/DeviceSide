@@ -294,6 +294,8 @@ a light entity. Reads come from aiohue's copy of the bridge's state, kept curren
 
 - **No timer adapter.** The bridge's timers survive a plain on or off and can only be removed on the bridge, and a
   bulb without power when one fires misses it, with no retry.
+- **No auto-off or auto-on adapter.** CLIP v2 stores neither on a light or `grouped_light`, and lacks the v1 rule
+  engine that could build one, which Signify is retiring.
 - **`set_attributes`** writes each light without `on`; a `grouped_light` write misses lights that are off. Colors
   convert to xy; `rgb_color` wins over `hs_color` over `xy_color`. `min_brightness`/`max_brightness` move the
   stored brightness. A `0` leaves `min_brightness`, `max_brightness` or `color_temp_kelvin` unset, as hue_dimmer did.
