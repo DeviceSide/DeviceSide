@@ -143,6 +143,16 @@ def timer_running(on_time: object, on_off: object) -> bool:
     return isinstance(on_time, int) and on_time > 0 and on_off is True
 
 
+# OnTime counts down live, so the read-back lands a little under the request: the slack ZHA's read-back allows, 3 s.
+READBACK_SLACK_TENTHS = 30
+
+
+def timer_matches(read_on_time: object, on_off: object, on_time: int) -> bool:
+    """Whether the timer running is the one just sent for `on_time` tenths: a new timer replaces a running one, so
+    OnTime read straight back lies within READBACK_SLACK_TENTHS under it."""
+    return timer_running(read_on_time, on_off) and on_time - READBACK_SLACK_TENTHS <= read_on_time <= on_time
+
+
 def make_on_with_timed_off(on_off_control: int, on_time: int, off_wait_time: int):
     """Create an OnOff.Commands.OnWithTimedOff command object.
 

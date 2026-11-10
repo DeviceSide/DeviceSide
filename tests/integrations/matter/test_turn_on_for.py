@@ -170,6 +170,22 @@ async def test_readback_fails_returns_sent(setup_matter, hass):
     assert response == {"switch.bulb": {"status": "sent", "integration": "matter", "detail": "readback_failed"}}
 
 
+@pytest.mark.parametrize(
+    ("read_on_time", "status"),
+    [(50, "confirmed"), (20, "confirmed"), (19, "sent"), (51, "sent"), (600, "sent")],
+    ids=["as_sent", "3_s_counted_down", "older_than_the_slack", "over_the_request", "another_timer"],
+)
+async def test_confirms_only_the_timer_sent(setup_matter, hass, read_on_time, status):
+    """OnTime counts down from the 50 tenths sent: within 3 s under it is ours, anything else another timer."""
+    entry, send_cmd, read_attr = matter_device(hass, endpoint_id=EP, feature_map=0x0001)
+    read_attr.side_effect = on_time_reads(read_on_time).side_effect
+    add_matter_entity(hass, entry, "switch.bulb", endpoint_id=EP)
+
+    response = await call(hass, "turn_on_for", {"entity_id": "switch.bulb", "duration": 5})
+
+    assert response["switch.bulb"]["status"] == status
+
+
 async def test_readback_returns_zero_reports_timer_not_running(setup_matter, hass):
     """If read_attribute returns 0 (or falsy), the timer did not start -> timer_not_reported."""
     entry, send_cmd, read_attr = matter_device(hass, endpoint_id=EP, feature_map=0x0001)

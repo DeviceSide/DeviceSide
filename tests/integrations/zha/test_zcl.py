@@ -136,6 +136,22 @@ async def test_no_color_cluster_is_no_enhanced_hue(hass, gateway):
     assert await zcl.enhanced_hue(hass, ADDR) is False
 
 
+async def test_enhanced_hue_read_error_raises(hass, gateway, cluster):
+    """A light that didn't answer may have enhanced hue, so it isn't taken to lack it."""
+    cluster.get = MagicMock(return_value=None)
+    cluster.read_attributes.return_value = ({}, {zcl.COLOR_CAPABILITIES: "TIMEOUT"})
+
+    with pytest.raises(LookupError, match="0x400a not read: TIMEOUT"):
+        await zcl.enhanced_hue(hass, ADDR)
+
+
+async def test_enhanced_hue_missing_device_raises(hass, gateway):
+    gateway.get_device.return_value = None
+
+    with pytest.raises(LookupError, match="not found"):
+        await zcl.enhanced_hue(hass, ADDR)
+
+
 async def test_group_command_sends_positional_args(hass):
     calls = async_mock_service(hass, "zha", "issue_zigbee_group_command")
     context = Context()

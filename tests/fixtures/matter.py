@@ -9,7 +9,8 @@ follows what the adapter reads at runtime:
             .get_node(node_id) -> mock_node
                 .node_data.attributes["{endpoint_id}/6/65532"] -> int feature_map
             .send_device_command(node_id, endpoint_id, command) -> None  (AsyncMock)
-            .read_attribute(node_id, attribute_path) -> {attribute_path: value}  (AsyncMock; OnTime 1, OnOff on)
+            .read_attribute(node_id, attribute_path) -> {attribute_path: value}  (AsyncMock; OnOff on, OnTime the
+                last command's onTime, else 1)
 """
 
 import sys
@@ -60,7 +61,13 @@ def matter_device(
     Returns (entry, send_device_command mock, read_attribute mock).
     """
     send_cmd = AsyncMock(return_value=None)
-    read_attr = on_time_reads(1)  # non-zero = timer running
+
+    def read(node_id: int, attribute_path: str) -> dict:
+        """The timer just sent, running, as OnTime reads straight after the command; 1 before any."""
+        on_time = send_cmd.call_args.kwargs["command"].onTime if send_cmd.call_args else 1
+        return {attribute_path: on_off_or(attribute_path, True, on_time)}
+
+    read_attr = AsyncMock(side_effect=read)
 
     node_mock = make_node_mock(endpoint_id, feature_map)
 

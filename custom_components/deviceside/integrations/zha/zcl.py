@@ -203,18 +203,19 @@ async def hue_turn_on(
 
 async def enhanced_hue(hass: HomeAssistant, addr: Address) -> bool:
     """Whether the light's ColorCapabilities report enhanced hue, so it takes EnhancedMoveHue; False without a Color
-    cluster or an answer.
+    cluster.
 
-    Read from zigpy's attribute cache, as it never changes, else once off the device.
+    Read from zigpy's attribute cache, as it never changes, else once off the device. A read that fails raises, as
+    read_attributes does: a light that didn't answer may still have enhanced hue, so it isn't taken to lack it.
     """
     from zigpy.types import EUI64
 
+    if (device := gateway(hass).get_device(EUI64.convert(addr.ieee))) is None:
+        raise LookupError(f"ZHA device {addr.ieee} not found")
     try:
-        device = gateway(hass).get_device(EUI64.convert(addr.ieee))
         cluster = device.async_get_cluster(addr.endpoint_id, COLOR_CLUSTER, cluster_type="in")
-        if (capabilities := cluster.get(COLOR_CAPABILITIES)) is None:
-            capabilities = (await read_attributes(hass, addr, COLOR_CLUSTER, (COLOR_CAPABILITIES,)))[COLOR_CAPABILITIES]
-    except Exception as err:  # noqa: BLE001 - zha and zigpy errors can't be imported here; read_attributes says why
-        _LOGGER.debug("ColorCapabilities of %s not read: %s", addr.ieee, err)
+    except KeyError:
         return False
+    if (capabilities := cluster.get(COLOR_CAPABILITIES)) is None:
+        capabilities = (await read_attributes(hass, addr, COLOR_CLUSTER, (COLOR_CAPABILITIES,)))[COLOR_CAPABILITIES]
     return bool(capabilities & ENHANCED_HUE)
