@@ -87,7 +87,7 @@ so DeviceSide reads it back ([integrations](integrations.md#matter)).
 A Hue room or zone, a ZHA group or a Zigbee2MQTT group, commanded as one, as the integration does it. The features a
 group takes are in the README's feature table. A ZHA group command gives no delivery feedback, as is the way of a
 Zigbee groupcast, and a Hue room write misses lights that are off, so DeviceSide writes a Hue room light by light when
-it sets attributes ([integrations](integrations.md#set-and-get)).
+it sets attributes ([integrations](integrations.md#hue)).
 
 ## Should work
 
@@ -143,7 +143,7 @@ Zigbee timed-on command, and few do: Sonoff and Tuya plugs often run their own c
 ### Hue smart scenes
 
 A smart (All-Day) scene switches between scenes by time of day, so it has no fixed settings to write. Set scene
-refuses it (`smart_scene`) ([integrations](integrations.md#set-and-get)).
+refuses it (`smart_scene`) ([integrations](integrations.md#hue)).
 
 ### Tuya TS011F
 
@@ -242,7 +242,7 @@ native group of the integration (a Hue zone, a ZHA or Zigbee2MQTT group).
 
 | Doesn't work | Why | Source |
 |---|---|---|
-| Hue smart scenes | A smart (All-Day) scene changes with the time of day, so it has no fixed settings to write | [source](https://github.com/jasonmx/DeviceSide/blob/main/docs/integrations.md#set-and-get) |
+| Hue smart scenes | A smart (All-Day) scene changes with the time of day, so it has no fixed settings to write | [source](https://github.com/jasonmx/DeviceSide/blob/main/docs/integrations.md#hue) |
 
 ### Matter
 
