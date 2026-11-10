@@ -145,3 +145,19 @@ def test_two_call_resolvers_for_one_ha_domain_are_refused():
 
     with pytest.raises(ValueError, match="ha_domain shared"):
         registry.call_resolvers()
+
+
+def test_an_import_that_raises_anything_marks_the_integration_unavailable_and_logs_it(monkeypatch, caplog):
+    def fail(module):
+        raise AttributeError("module 'homeassistant.components.fake' has no attribute 'gone'")
+
+    discovered = actions.discover()
+    monkeypatch.setattr(importlib, "import_module", fail)
+    with caplog.at_level(logging.DEBUG, logger="custom_components.deviceside.core.registry"):
+        registry = AdapterRegistry(discovered, ["custom_components.deviceside.integrations.fake"])
+
+    info = registry.integrations["fake"]
+    assert not info.available
+    assert "AttributeError" in info.unavailable_reason
+    assert [record.levelno for record in caplog.records] == [logging.WARNING]
+    assert caplog.records[0].exc_info is not None

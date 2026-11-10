@@ -34,7 +34,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 
 from .addressing import bridge_topic
-from .restore_journal import replay
 from ...core.runtime import DATA
 
 _LOGGER = logging.getLogger(__name__)
@@ -49,7 +48,8 @@ _BARRIER = "state"
 class BridgeCache:
     """The held bridge topics, and the options replies awaited by transaction."""
 
-    def __init__(self) -> None:
+    def __init__(self, on_online: Callable[[], None] = lambda: None) -> None:
+        self._on_online = on_online
         self._payloads: dict[str, str] = {}
         self._parsed: dict[str, tuple[str, Any]] = {}
         self.pending: dict[str, asyncio.Future[dict]] = {}
@@ -60,12 +60,18 @@ class BridgeCache:
         self._unsubscribes: list[Callable[[], None]] = []
 
     def parsed(self, suffix: str) -> Any | None:
-        """The latest bridge/<suffix>, parsed once per payload; None when none has arrived since the last connect."""
+        """The latest bridge/<suffix>, parsed once per payload; None when none has arrived since the last connect, or
+        the latest doesn't parse (the caller reads fresh, which raises TimeoutError on it as on no message)."""
         if (payload := self._payloads.get(suffix)) is None:
             return None
         memo = self._parsed.get(suffix)
         if memo is None or memo[0] is not payload:
-            memo = self._parsed[suffix] = (payload, json.loads(payload))
+            try:
+                parsed = json.loads(payload)
+            except ValueError:
+                _LOGGER.debug("Zigbee2MQTT's bridge/%s doesn't parse: %.80s", suffix, payload)
+                parsed = None
+            memo = self._parsed[suffix] = (payload, parsed)
         return memo[1]
 
     def settings(self, section: str, z2m_id: str) -> dict | None:
@@ -91,8 +97,10 @@ class BridgeCache:
         return received
 
     @callback
-    def _on_barrier(self, _msg: mqtt.ReceiveMessage) -> None:
+    def _on_barrier(self, msg: mqtt.ReceiveMessage) -> None:
         self.replies_live = True
+        if _says_online(msg.payload):
+            self._on_online()
 
     @callback
     def _on_connection(self, connected: bool) -> None:
@@ -124,6 +132,17 @@ class BridgeCache:
         self._unsubscribes.append(mqtt.async_subscribe_connection_status(hass, self._on_connection))
 
 
+def _says_online(payload: str) -> bool:
+    """Whether a bridge/state payload says online: JSON `{"state": "online"}`, or the bare string of older Z2M."""
+    if payload == "online":
+        return True
+    try:
+        state = json.loads(payload)
+    except ValueError:
+        return False
+    return isinstance(state, dict) and state.get("state") == "online"
+
+
 def reply_router(pending: dict[str, asyncio.Future[dict]]) -> Callable[[mqtt.ReceiveMessage], None]:
     """A response-topic callback resolving the pending future of the reply's transaction; others are ignored."""
 
@@ -146,11 +165,15 @@ def get(hass: HomeAssistant) -> BridgeCache | None:
     return runtime.integration_state.get(_KEY)
 
 
-async def async_setup(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Hold the bridge topics once MQTT is set up, until the entry unloads. Runs as the entry's background task."""
+async def async_setup(hass: HomeAssistant, entry: ConfigEntry, on_online: Callable[[], None] = lambda: None) -> None:
+    """Hold the bridge topics once MQTT is set up, until the entry unloads. Runs as the entry's background task.
+
+    Calls on_online each time bridge/state says online, its retained message included, so at startup and whenever
+    Z2M comes back.
+    """
     if not await mqtt.async_wait_for_mqtt_client(hass):
         return
-    cache = BridgeCache()
+    cache = BridgeCache(on_online)
     state = hass.data[DATA].integration_state
 
     @callback
@@ -168,4 +191,3 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry) -> None:
         cache.stop()
         return
     state[_KEY] = cache
-    await replay(hass)

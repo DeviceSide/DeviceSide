@@ -9,7 +9,7 @@ from homeassistant.helpers import device_registry as dr
 from ...core.errors import Reason
 from ...core.models import Target
 
-_Z2M_PREFIX = "zigbee2mqtt_"
+IDENTIFIER_PREFIX = "zigbee2mqtt_"  # of the identifier Z2M registers each device and group under
 _Z2M_BASE_TOPIC = "zigbee2mqtt"
 # Z2M encodes the base topic in a group's identifier as character codes joined with no separator
 # (getEncodedBaseTopic in lib/extension/homeassistant.ts).
@@ -17,6 +17,11 @@ _ENCODED_BASE_TOPIC = "".join(str(ord(c)) for c in _Z2M_BASE_TOPIC)
 # A group's address is <encoded base topic>_<group ID>; a device's is its IEEE, which starts with 0x.
 _GROUP_ADDRESS = re.compile(r"^(\d+)_(\d+)$")
 _IEEE_ADDRESS = re.compile(r"^0x[0-9a-fA-F]+$")
+
+
+def device_identifier(address: str) -> tuple[str, str]:
+    """The device-registry identifier Z2M registers the device or group at this address under."""
+    return ("mqtt", f"{IDENTIFIER_PREFIX}{address}")
 
 
 def z2m_address(device: dr.DeviceEntry) -> str | None:
@@ -27,8 +32,8 @@ def z2m_address(device: dr.DeviceEntry) -> str | None:
     device, say) is not addressable and gives None.
     """
     for itype, ident in device.identifiers:
-        if itype == "mqtt" and ident.startswith(_Z2M_PREFIX):
-            addr = ident[len(_Z2M_PREFIX) :]
+        if itype == "mqtt" and ident.startswith(IDENTIFIER_PREFIX):
+            addr = ident[len(IDENTIFIER_PREFIX) :]
             if _IEEE_ADDRESS.match(addr) or _GROUP_ADDRESS.match(addr):
                 return addr
     return None

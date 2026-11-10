@@ -8,7 +8,6 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.deviceside.const import CONF_Z2M_COLOR_MODES, DOMAIN
 from custom_components.deviceside.integrations.zigbee2mqtt import bridge, bridge_cache
-from custom_components.deviceside.integrations.zigbee2mqtt.restore_journal import journal
 
 from ...fixtures.z2m import GROUPS, INFO
 
@@ -335,31 +334,48 @@ async def test_setup_entry_starts_it_once_mqtt_is_up(hass, broker, connection, m
     assert await hass.config_entries.async_unload(entry.entry_id)
 
 
-# A restore a previous run left owed
+# Z2M saying online, for the restore journal's replay
 
 
-async def test_setup_pays_a_restore_left_owed(hass, setup_production, online, connection, mqtt_up, hass_storage):
-    hass_storage["deviceside.zigbee2mqtt_restore_journal"] = {
-        "version": 1,
-        "key": "deviceside.zigbee2mqtt_restore_journal",
-        "data": {"device/0x01": False},
-    }
-
-    await start(hass, setup_production)
-
-    request = online.requests()[0]["payload"]
-    assert (request["id"], request["options"]) == ("0x01", {"hue_native_control": False})
-    assert (await journal(hass)).owed == {}
+async def onlines(hass, entry) -> list[None]:
+    seen: list[None] = []
+    await bridge_cache.async_setup(hass, entry, lambda: seen.append(None))
+    await settle()
+    return seen
 
 
-async def test_setup_keeps_a_restore_it_cannot_pay(hass, setup_production, online, connection, mqtt_up, hass_storage):
-    hass_storage["deviceside.zigbee2mqtt_restore_journal"] = {
-        "version": 1,
-        "key": "deviceside.zigbee2mqtt_restore_journal",
-        "data": {"group/7": True},
-    }
-    online.reply = {"status": "error", "error": "refused"}
+async def test_the_retained_online_calls_on_online(hass, setup_production, online, connection, mqtt_up):
+    assert await onlines(hass, setup_production) == [None]
 
-    await start(hass, setup_production)
 
-    assert (await journal(hass)).owed == {"group/7": True}
+@pytest.mark.parametrize(("payload", "calls"), [("online", 1), ("offline", 0), ('{"state": "offline"}', 0), ("{", 0)])
+async def test_each_online_calls_on_online(hass, setup_production, broker, connection, mqtt_up, payload, calls):
+    """Z2M publishes JSON; older versions, and its last will, a bare string. Anything else isn't online."""
+    broker.retained[STATE] = {"state": "offline"}
+    seen = await onlines(hass, setup_production)
+
+    broker.deliver(STATE, payload)
+
+    assert len(seen) == calls
+    assert bridge_cache.get(hass).replies_live
+
+
+async def test_a_malformed_payload_counts_as_none(hass, setup_production, online, connection, mqtt_up):
+    """A retained bridge/info that doesn't parse is no bridge/info: read fresh, which times out on it too."""
+    cache = await start(hass, setup_production)
+    online.retained.pop(INFO)
+    online.deliver(INFO, "{not json")
+
+    assert cache.parsed("info") is None
+    with pytest.raises(TimeoutError, match="no bridge/info"):
+        await bridge.ensure_options(hass, "device", ["0x01"], wanted_on, lambda _id: None)
+
+
+async def test_a_malformed_fresh_payload_raises_timeout(hass, broker, monkeypatch):
+    async def malformed(hass, suffix):
+        return "{not json"
+
+    monkeypatch.setattr(bridge, "first_retained", malformed)
+
+    with pytest.raises(TimeoutError, match="no parseable bridge/groups"):
+        await bridge.retained(hass, "groups")
