@@ -59,16 +59,42 @@ def _wire(command: Command) -> Wire:
 
 _LOGGER = logging.getLogger(__name__)
 
+# The private zha internals found missing, each warned about once: a zha release that renames one turns the
+# refresh's flag wait and _keep_level off without failing anything, so the log is the only canary.
+_missing: set[str] = set()
+
+
+def _warn_missing(internal: str, effect: str) -> None:
+    if internal not in _missing:
+        _missing.add(internal)
+        _LOGGER.warning("The zha integration's %s is missing, so %s", internal, effect)
+
 
 def _zha_light(hass: HomeAssistant, entity_id: str) -> Any:
-    """The zha library's light behind HA's ZHA entity, or None."""
-    return getattr(getattr(ha_entity(hass, entity_id), "entity_data", None), "entity", None)
+    """The zha library's light behind HA's ZHA entity, or None; silent when the entity isn't loaded, warned about once
+    when it is but zha's entity_data.entity can't be reached."""
+    if (entity := ha_entity(hass, entity_id)) is None:
+        return None
+    if (light := getattr(getattr(entity, "entity_data", None), "entity", None)) is None:
+        _warn_missing(
+            "entity_data.entity",
+            "set_attributes can't wait out a transition or keep the level written for the next plain turn_on",
+        )
+    return light
 
 
 def _transitioning(hass: HomeAssistant, entity_id: str) -> bool:
     """Whether zha's transition flag is up on the light, so its update_entity would read nothing; False when the
-    library's light, or its flag, can't be reached."""
-    return bool(getattr(_zha_light(hass, entity_id), "is_transitioning", False))
+    library's light, or its flag, can't be reached (the flag warned about once)."""
+    if (light := _zha_light(hass, entity_id)) is None:
+        return False
+    if not hasattr(light, "is_transitioning"):
+        _warn_missing(
+            f"{type(light).__qualname__}.is_transitioning",
+            "set_attributes refreshes without waiting out a transition and may leave HA showing the old color",
+        )
+        return False
+    return bool(light.is_transitioning)
 
 
 async def _transition_over(hass: HomeAssistant, entity_id: str, wait: float) -> bool:
@@ -109,9 +135,10 @@ class ZHASetAttributes(Adapter[SetAttributesRequest]):
     zha's update_entity does nothing while its transition flag is up, as it is for 1.5 s after an HA turn_off, and ZHA
     applies no color reports: a refresh then would leave HA showing the old color after the next plain on. So the
     refresh waits for the flag (TRANSITION_WAIT_S), and after a longer off fade refreshes once more when it clears.
-    The read is also held until FADE_WAIT_S after the last command, as the commands fade the light over 0.4 s and a
-    read inside the fade would keep a mid-fade color temperature; a second read follows SETTLE_REFRESH_S later, for a
-    fade that ran slow.
+    The refreshes run once every light's commands are sent, outside the concurrency slots, for each light at least
+    one command reached. The read is also held until FADE_WAIT_S after the light's last command, as the commands fade
+    the light over 0.4 s and a read inside the fade would keep a mid-fade color temperature; a second read follows
+    SETTLE_REFRESH_S later, for a fade that ran slow.
     """
 
     action: ClassVar[str] = "set_attributes"
@@ -135,6 +162,8 @@ class ZHASetAttributes(Adapter[SetAttributesRequest]):
     async def execute(
         self, hass: HomeAssistant, request: SetAttributesRequest, targets: list[Target]
     ) -> list[EntityResult]:
+        landed: dict[str, None] = {}  # the lights at least one command reached, in order
+
         async def send(target: Target) -> EntityResult:
             addr = address(target.entry.unique_id)  # supports() refused the targets it can't address
             # supported_color_modes stays in the state while the light is off.
@@ -153,16 +182,18 @@ class ZHASetAttributes(Adapter[SetAttributesRequest]):
                     await zcl.command(
                         hass, addr, cluster_id, command_id, params, request.context, entity_id=target.reported_id
                     )
+                    landed[target.entity_id] = None  # a later command failing still leaves this one landed
                 # Before the refresh, which can wait seconds: a plain on meanwhile must not send the old level.
                 if (level := next((c.level for c in sent if isinstance(c, MoveToLevel)), None)) is not None:
                     _keep_level(hass, target, level, request.brightness)
             except Unauthorized:
                 return self.result(target, Status.REJECTED, detail="admin_required")
-            finally:  # a later command failing still leaves the earlier ones landed
-                await self._refresh(hass, request, target.entity_id)
             return self.result(target, Status.SENT, detail=detail)
 
-        return await self.gather(hass, targets, send)
+        results = await self.gather(hass, targets, send)
+        # Outside the concurrency slots: a refresh waits seconds, and would hold back the next light's commands.
+        await asyncio.gather(*(self._refresh(hass, request, entity_id) for entity_id in landed))
+        return results
 
     async def _refresh(self, hass: HomeAssistant, request: SetAttributesRequest, entity_id: str) -> None:
         sent_at = hass.loop.time()
