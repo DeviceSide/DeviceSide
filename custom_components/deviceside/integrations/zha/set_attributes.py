@@ -6,7 +6,6 @@ import logging
 from typing import Any, ClassVar
 
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import Unauthorized
 from homeassistant.helpers import entity_registry as er
 
 from . import zcl
@@ -179,19 +178,16 @@ class ZHASetAttributes(Adapter[SetAttributesRequest]):
             detail = "fields_dropped" if dropped else None
             if not sent:
                 return self.result(target, Status.UNCHANGED, detail=detail or "within_limits")
-            try:
-                for command in sent:
-                    cluster_id, command_id, params = _wire(command)
-                    await zcl.command(
-                        hass, addr, cluster_id, command_id, params, request.context, entity_id=target.reported_id
-                    )
-                    landed[target.entity_id] = None  # a later command failing still leaves this one landed
-                    if isinstance(command, MoveToLevel):
-                        # As soon as the level landed, whatever the color commands do after, and before the refresh,
-                        # which can wait seconds: a plain on meanwhile must not send the old level.
-                        _keep_level(hass, target, command.level, request.brightness)
-            except Unauthorized:
-                return self.result(target, Status.REJECTED, detail="admin_required")
+            for command in sent:
+                cluster_id, command_id, params = _wire(command)
+                await zcl.command(
+                    hass, addr, cluster_id, command_id, params, request.context, entity_id=target.reported_id
+                )
+                landed[target.entity_id] = None  # a later command failing still leaves this one landed
+                if isinstance(command, MoveToLevel):
+                    # As soon as the level landed, whatever the color commands do after, and before the refresh,
+                    # which can wait seconds: a plain on meanwhile must not send the old level.
+                    _keep_level(hass, target, command.level, request.brightness)
             return self.result(target, Status.SENT, detail=detail)
 
         results = await self.gather(hass, targets, send)
