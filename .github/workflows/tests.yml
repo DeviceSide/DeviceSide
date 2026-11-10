@@ -56,7 +56,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Full history: the compatibility page is Verified only on records as new as their code, so its check (and the
+      # test pinning the checked-in page) diffs each record's cited commit against HEAD.
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # A record cites the commit its rig run deployed, often on a PR branch since squash-merged and deleted.
+      - name: Fetch the commits test records cite
+        run: git fetch --quiet origin '+refs/pull/*/head:refs/remotes/pull/*'
 
       - uses: actions/setup-python@v7
         with:

@@ -16,10 +16,12 @@ Adapters with the `experimental` flag are left out of the cards: they are in RCs
 ✔ (verified on the automated rig) is read before the first card. The section ends with a link to the integrations page.
 
 **Evidence.** Per integration, every action's level, who supports it (`AdapterScope.support`) and the models its
-passing records tested, with a row per level and support below Verified that its domains, capabilities or fields
-hold, and the reports on it. A group (a Device entry with firmware `unknown`, or named Group or Zone) shows as
-"group", not as a model; any other entry the record format can't read is an error. The prose outside the evidence
-markers is kept as written; every heading a card links to must be in it.
+passing records tested, with a row per level and support below Verified that its domains, capabilities or fields hold,
+and the reports on it. Its level is Verified, and its support the maintainer's, only on a passing record of the base
+action (`<action>.md`) as new as the adapter's code (check_release's freshness check). A group (a Device entry with
+firmware `unknown`, or named Group or Zone) shows as "group", not as a model; any other entry the record format can't
+read is an error. The prose outside the evidence markers is kept as written; every heading a card links to must be in
+it.
 
 Usage: scripts/gen_compat.py [--check]
 
@@ -41,7 +43,7 @@ sys.path.insert(0, str(REPO))
 
 from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
 from custom_components.deviceside.core.scope import Level, Support  # noqa: E402
-from scripts.check_release import adapters, proven, records, result  # noqa: E402
+from scripts.check_release import adapters, code_of, proven, records, result, staleness  # noqa: E402
 from scripts.gen_features import COLUMNS, anchors, slug  # noqa: E402
 from scripts.gen_features import FEATURES as TABLE_FEATURES  # noqa: E402
 
@@ -61,8 +63,10 @@ ISSUE = re.compile(rf"^{re.escape(ISSUE_URL)}(\d+)$")
 GROUP_NAMES = {"group", "zone"}
 GROUP = "group"
 IN_RCS = "Experimental (in RCs only)"
-# An unflagged adapter whose Verified call has no passing record, so nothing proves it.
+# An unflagged adapter whose Verified call has no passing record of the base action, so nothing proves it, or only one
+# older than its code, so nothing proves it as it stands.
 NO_RECORD = "Unproven: no passing record"
+STALE = "Unproven: record older than its code"
 # The item levels below Verified, as (level, label, why the row has no models), in the page's order.
 ITEM_LEVELS = (
     (Level.REPORTED, "Reported", "reported by users"),
@@ -361,10 +365,17 @@ def padded(text: str) -> str:
     return f" {text} " if text else " "
 
 
+def fresh(record: Path, adapter) -> bool:
+    """Whether the record is as new as the adapter's code, by check_release's freshness check."""
+    return staleness(record, code_of(adapter)) is None
+
+
 def row(action: str, adapter, data: Data) -> str:
     found = passing(adapter.integration, action)
-    level = IN_RCS if adapter.scope.experimental else "Verified" if found else NO_RECORD
-    support = Support.MAINTAINER if found else ""
+    base = [record for record in found if record.name == f"{action}.md"]
+    verified = bool(base) and fresh(base[0], adapter)
+    level = IN_RCS if adapter.scope.experimental else "Verified" if verified else STALE if base else NO_RECORD
+    support = Support.MAINTAINER if verified else ""
     models = [GROUP if item == GROUP else f"`{item[0]}`, firmware `{item[1]}`" for item in tested(adapter, data, found)]
     records_cell = ", ".join(link(record, action) for record in found)
     reports = reports_cell(adapter.integration, action, data)

@@ -78,6 +78,8 @@ def data(registry=None, **changes):
 def root(tmp_path, monkeypatch):
     monkeypatch.setattr(gc, "REPO", tmp_path)
     monkeypatch.setattr(cr, "RECORDS", tmp_path / "docs" / "test-records")
+    # Freshness needs git history; tests that weigh it set their own.
+    monkeypatch.setattr(gc, "fresh", lambda record, adapter: True)
     return tmp_path
 
 
@@ -203,6 +205,23 @@ def test_an_experimental_adapter_or_a_failing_record_is_experimental(root):
     assert "| Experimental (in RCs only) |" in gc.row("stop", adapter("zha", "stop", experimental=True), data())
     line = gc.row("stop", adapter("hue", "stop"), data())
     assert line == f"| `stop` | {gc.NO_RECORD} |  | none |  | |"
+
+
+def test_only_a_fresh_passing_base_record_is_verified(root, monkeypatch):
+    record(root, "zha", "stop-predicted_state")
+    line = gc.row("stop", adapter("zha", "stop"), data())
+    assert line.startswith(f"| `stop` | {gc.NO_RECORD} |  | `LTA009`")
+    base = record(root, "zha", "stop")
+    monkeypatch.setattr(gc, "fresh", lambda record, adapter: record != base)
+    assert gc.row("stop", adapter("zha", "stop"), data()).startswith(f"| `stop` | {gc.STALE} |  | `LTA009`")
+
+
+def test_freshness_is_check_releases(monkeypatch):
+    calls = []
+    monkeypatch.setattr(gc, "code_of", lambda adapter: ["code.py"])
+    monkeypatch.setattr(gc, "staleness", lambda record, code: calls.append((record, code)) or "changed since: code.py")
+    assert gc.fresh("stop.md", object()) is False
+    assert calls == [("stop.md", ["code.py"])]
 
 
 def test_reports_fill_the_reports_column_of_their_action(root):
