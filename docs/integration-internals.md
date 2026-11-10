@@ -110,6 +110,19 @@ Only devices Z2M registered through MQTT discovery are found: the device carries
   set to the restore, so the next action that sets it waits for the write-back. A group uses its own options, not its
   members', so it's set on the group when any member is a Hue bulb. A failed set or restore logs a warning, and the
   command goes out anyway.
+- **The restore journal** (`restore_journal.py`, HA storage `deviceside.zigbee2mqtt_restore_journal`) keeps the
+  user's value owed, by device or group, from just before the set's request goes out until Z2M confirms it written
+  back, so a restart or a failed restore can't leave the option flipped for good. An earlier entry is never
+  replaced: it holds the user's own value, where a later set may start from a flipped one. A set Z2M refused strikes
+  its entry. Every write-back writes the owed value, not the opposite of the action's need, and an action on an
+  address with a value still owed writes it back after its own publish even when its need already matched.
+  Each time `bridge/state` says online (its retained message at startup included, and after a Z2M that was offline
+  comes back), the replay pays what's owed: for each entry, under the same per-address lock the actions take, it
+  writes the value only if the option still holds the flipped one (one the user set back in Z2M's UI is left), and
+  strikes it once Z2M has it. An entry an action paid while the replay waited for its lock is skipped. One replay
+  runs at a time; an online that arrives during it runs it once more after, since its failures may date from Z2M
+  going down. An entry that fails again stays owed, for the next online, the next start or the next action on the
+  address. A malformed entry on disk is dropped with a warning; the rest replay.
 - **`filtered_cache`** gets `deviceside_read` appended. Z2M deep-merges a read's answer into the cached state that
   every later message carries, so an unfiltered answer would look fresh forever. If it can't be set, the read
   raises.

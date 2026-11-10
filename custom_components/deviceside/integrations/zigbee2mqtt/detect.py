@@ -4,7 +4,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
-_Z2M_IDENTIFIER_PREFIX = "zigbee2mqtt_"
+from .addressing import IDENTIFIER_PREFIX
 
 
 def detect(hass: HomeAssistant, entry: er.RegistryEntry, device: dr.DeviceEntry | None) -> bool:
@@ -15,4 +15,4 @@ def detect(hass: HomeAssistant, entry: er.RegistryEntry, device: dr.DeviceEntry 
     """
     if device is None:
         return False
-    return any(itype == "mqtt" and ident.startswith(_Z2M_IDENTIFIER_PREFIX) for itype, ident in device.identifiers)
+    return any(itype == "mqtt" and ident.startswith(IDENTIFIER_PREFIX) for itype, ident in device.identifiers)

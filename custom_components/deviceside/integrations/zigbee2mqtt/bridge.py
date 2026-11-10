@@ -3,7 +3,7 @@
 import asyncio
 import json
 import logging
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from typing import Any, Literal
 from uuid import uuid4
 
@@ -48,7 +48,8 @@ def _exposes(name: str, features: list[dict]) -> bool:
 
 
 async def retained(hass: HomeAssistant, suffix: str) -> Any:
-    """The parsed retained message on bridge/<suffix>; raises TimeoutError when Z2M hasn't published one.
+    """The parsed retained message on bridge/<suffix>; raises TimeoutError when Z2M hasn't published one, or published
+    one that doesn't parse.
 
     bridge/devices, bridge/groups and bridge/info come from the bridge cache when it holds them (bridge_cache.py), else
     from a fresh subscription. A cached result is shared by every caller: read it, never change it. A held bridge/info
@@ -60,7 +61,15 @@ async def retained(hass: HomeAssistant, suffix: str) -> Any:
         and (held := cache.parsed(suffix)) is not None
     ):
         return held
-    return json.loads(await first_retained(hass, suffix))
+    return parse(await first_retained(hass, suffix), f"bridge/{suffix}")
+
+
+def parse(payload: str, what: str) -> Any:
+    """A retained payload, parsed; TimeoutError when it doesn't parse, as a malformed message counts as none."""
+    try:
+        return json.loads(payload)
+    except ValueError:
+        raise TimeoutError(f"no parseable {what} from Zigbee2MQTT") from None
 
 
 async def first_retained(hass: HomeAssistant, suffix: str) -> str:
@@ -82,6 +91,7 @@ async def ensure_options(
     z2m_ids: list[str],
     wanted: Callable[[dict], dict],
     changed: Callable[[str], None],
+    ahead: Callable[[str, dict], Awaitable[None]] | None = None,
 ) -> None:
     """Set each entity's options to what `wanted` returns from its current ones, where that is anything.
 
@@ -89,7 +99,7 @@ async def ensure_options(
     and earlier calls' confirmed writes over them, and the call subscribes to nothing: a user's change reaches the
     cache through Z2M's republish of bridge/info. Otherwise it reads bridge/info fresh. Calls `changed` with each ID
     as Z2M confirms its options, so one set before a later failure is still reported; raises when bridge/info or a
-    reply doesn't come, or a reply is an error.
+    reply doesn't come, or a reply is an error. Awaits `ahead` with each ID and its options before its request goes out.
     """
     section = f"{kind}s"
     cache = bridge_cache.get(hass)
@@ -103,6 +113,8 @@ async def ensure_options(
             before = current(z2m_id)
             if not (options := wanted(before)):
                 continue
+            if ahead is not None:
+                await ahead(z2m_id, options)
             transaction = uuid4().hex
             transactions.append(transaction)
             pending[transaction] = hass.loop.create_future()
@@ -145,7 +157,7 @@ async def _options_source(
         reply_topic = bridge_topic(f"response/{kind}/options")
         unsubscribes.append(await mqtt.async_subscribe(hass, reply_topic, bridge_cache.reply_router(pending)))
     unsubscribes.append(await mqtt.async_subscribe(hass, bridge_topic("info"), first_payload(info)))
-    fresh = json.loads(await wait(info, _RETAINED_TIMEOUT_S, "no bridge/info from Zigbee2MQTT"))
+    fresh = parse(await wait(info, _RETAINED_TIMEOUT_S, "no bridge/info from Zigbee2MQTT"), "bridge/info")
     return lambda z2m_id: fresh.get("config", {}).get(section, {}).get(z2m_id, {})
 
 
