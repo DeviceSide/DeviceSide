@@ -62,9 +62,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      # A record cites the commit its rig run deployed, often on a PR branch since squash-merged and deleted.
+      # A record cites the commit its rig run deployed, often on a PR branch since squash-merged and deleted. Not under
+      # refs/remotes/pull/: on a pull_request run, checkout already holds refs/remotes/pull/<n>/merge there.
       - name: Fetch the commits test records cite
-        run: git fetch --quiet origin '+refs/pull/*/head:refs/remotes/pull/*'
+        run: git fetch --quiet origin '+refs/pull/*/head:refs/remotes/pr/*'
 
       - uses: actions/setup-python@v7
         with:
