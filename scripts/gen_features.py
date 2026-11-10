@@ -33,8 +33,8 @@ ICON_URL = "https://raw.githubusercontent.com/jasonmx/DeviceSide/main/docs/icons
 ICONS = {
     "light": ("light", "lights"),
     "switch": ("switch", "switches"),
-    "group": ("native group", "native groups"),
-    "scene": ("native scene", "native scene"),
+    "group": ("native group", "groups"),
+    "scene": ("native scene", "scene"),
 }
 COLUMNS = {"zha": "ZHA", "zigbee2mqtt": "Z2M", "shelly": "Shelly", "hue": "Hue Bridge", "matter": "Matter"}
 # (label, README anchor, actions): a cell is built only for what every one of the row's actions takes. A smooth move
@@ -158,6 +158,7 @@ def generate(registry: AdapterRegistry) -> str:
         ]
         lines.append(f"| [{label}](#{anchor}) | {' | '.join(row)} |")
     legend = [f"{img(key, alt)} {label}" for key, (alt, label) in ICONS.items()]
+    legend.append(f"{img('devices', 'Released')} released")
     legend.append(f"{img('devices-grey', 'Experimental')} experimental")
     legend.append(f"{img('no', 'not possible')} appears impossible")
     lines += ["", " &nbsp; ".join(legend), "", END]
