@@ -58,10 +58,18 @@ async def retained(hass: HomeAssistant, suffix: str) -> Any:
         and (held := cache.parsed(suffix)) is not None
     ):
         return held
+    return json.loads(await first_retained(hass, suffix))
+
+
+async def first_retained(hass: HomeAssistant, suffix: str) -> str:
+    """The raw retained message on bridge/<suffix>, from a fresh subscription; raises TimeoutError when none comes.
+
+    Its arrival shows that subscriptions queued before it have reached the broker too.
+    """
     payload: asyncio.Future[str] = hass.loop.create_future()
     unsubscribe = await mqtt.async_subscribe(hass, bridge_topic(suffix), first_payload(payload))
     try:
-        return json.loads(await wait(payload, _RETAINED_TIMEOUT_S, f"no bridge/{suffix} from Zigbee2MQTT"))
+        return await wait(payload, _RETAINED_TIMEOUT_S, f"no bridge/{suffix} from Zigbee2MQTT")
     finally:
         unsubscribe()
 

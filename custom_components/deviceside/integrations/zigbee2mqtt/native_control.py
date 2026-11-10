@@ -89,9 +89,9 @@ async def native_control(hass: HomeAssistant, target: Target, need: bool | None)
     """Hold the option at `need` around the body's publish to a Hue device, or a group with a Hue member.
 
     Reads the option on each call (from the bridge cache when it holds bridge/info, which Z2M republishes on every
-    change), so a user who changes it is seen. A need of
-    None, a non-Hue target or the option already right costs no writes, and a non-Hue device reads nothing. One lock
-    per device or group, held from the set to the restore, keeps actions with opposite needs apart.
+    change), so a user who changes it is seen. A need of None, a non-Hue target or the option already right costs no
+    writes, and a non-Hue device reads nothing. One lock per device or group, held from the set to the restore, keeps
+    actions with opposite needs apart.
 
     Returns once the body has, without waiting on Z2M's reply: the option is put back after Z2M answers (1 s cap), in a
     task that holds the lock until then, so the next call on the target waits for it instead. A publish that must go

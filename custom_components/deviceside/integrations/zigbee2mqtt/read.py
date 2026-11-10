@@ -19,9 +19,8 @@ from homeassistant.components import mqtt
 from homeassistant.components.light import ColorMode, brightness_supported
 from homeassistant.core import HomeAssistant, callback
 
-from . import bridge
 from .addressing import bridge_topic, state_topic, topic, z2m_address
-from .bridge import ensure_options, first_payload, publish, wait
+from .bridge import ensure_options, first_retained, publish, wait
 from ...core.models import Target
 
 _LOGGER = logging.getLogger(__name__)
@@ -183,12 +182,7 @@ async def reader(hass: HomeAssistant, devices: list[Target]) -> AsyncIterator[Re
     # barrier. A read pays this one subscribe; reads aren't hold-to-dim.
     unsubscribe = await mqtt.async_subscribe(hass, bridge_topic("logging"), reading._on_log)
     try:
-        online: asyncio.Future[str] = hass.loop.create_future()
-        unsubscribe_state = await mqtt.async_subscribe(hass, bridge_topic("state"), first_payload(online))
-        try:
-            await wait(online, bridge._RETAINED_TIMEOUT_S, "no bridge/state from Zigbee2MQTT")
-        finally:
-            unsubscribe_state()
+        await first_retained(hass, "state")
         by_address = {z2m_address(device.device): device for device in devices}
 
         def added(address: str) -> None:
