@@ -14,7 +14,9 @@ from homeassistant.helpers import entity_registry as er
 from custom_components.deviceside.core.models import EntityResult, Status, TimedRequest
 from custom_components.deviceside.core.scope import (
     AdapterScope,
+    documented,
     experimental,
+    reported,
     verified,
 )
 
@@ -64,6 +66,24 @@ async def test_a_named_target_on_an_experimental_domain_raises_unless_the_option
     assert err.value.translation_key == "experimental_off"
     assert err.value.translation_placeholders == {"entity_id": "switch.s", "reason": "experimental_off"}
     assert reset_script.calls == []
+
+
+@pytest.mark.parametrize(
+    ("domains", "siblings"),
+    [
+        pytest.param(verified("light") | documented("switch"), {"switch": "light"}, id="documented"),
+        pytest.param(verified("light") | reported("switch"), {}, id="reported"),
+        pytest.param(verified("light", "switch"), {}, id="verified"),
+    ],
+)
+async def test_every_level_above_experimental_passes_with_the_option_off(hass, fake, reset_script, domains, siblings):
+    add_fake_entity(hass, fake, "switch.s")
+    allow_experimental(hass, False)
+
+    with patch.object(FakeTurnOnFor, "scope", AdapterScope(domains=domains, siblings=siblings, duration=LIMITS)):
+        assert await call(hass, "turn_on_for", {"entity_id": "switch.s", "duration": 5}) == {
+            "switch.s": {"status": "sent", "integration": "fake"}
+        }
 
 
 async def test_an_indirect_target_on_an_experimental_domain_is_skipped_and_logged(hass, fake, reset_script, caplog):
