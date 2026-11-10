@@ -14,6 +14,7 @@ from ...actions.turn_on_for import TurnOnForRequest
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Status, Target
 from ...core.scope import AdapterScope, DurationLimits, experimental, verified
+from ...core.wire import wire_trace
 
 # OnWithTimedOff.on_time is a uint16 in tenths of a second; 0xFFFF is reserved, so 65534 tenths is the most.
 _TIMER_LIMITS = DurationLimits(min_s=0.1, max_s=6553.4)
@@ -95,6 +96,7 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
                 _ON_WITH_TIMED_OFF,
                 {"on_off_control": 0, "on_time": on_time, "off_wait_time": 0},
                 request.context,
+                entity_id=target.reported_id,
             )
         except Unauthorized:
             return self.result(target, Status.REJECTED, detail="admin_required")
@@ -132,12 +134,10 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
         return await self.gather(hass, members, read_back)
 
     async def _turn_on(self, hass: HomeAssistant, request: TurnOnForRequest, entity_id: str) -> None:
+        data = request.light.as_turn_on_data()
+        wire_trace(hass, entity_id, "ha", "light.turn_on", data)
         await hass.services.async_call(
-            "light",
-            "turn_on",
-            {"entity_id": entity_id, **request.light.as_turn_on_data()},
-            blocking=True,
-            context=request.context,
+            "light", "turn_on", {"entity_id": entity_id, **data}, blocking=True, context=request.context
         )
 
     async def _read_back(self, hass: HomeAssistant, target: Target, addr: Address, on_time: int) -> EntityResult:

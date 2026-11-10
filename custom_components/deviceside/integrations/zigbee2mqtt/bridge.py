@@ -10,8 +10,9 @@ from uuid import uuid4
 from homeassistant.components import mqtt
 from homeassistant.core import HomeAssistant, callback
 
-from .addressing import bridge_topic, state_topic
+from .addressing import bridge_topic, state_topic, topic
 from ...core.models import Target
+from ...core.wire import wire_trace
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -110,6 +111,12 @@ async def ensure_options(
     finally:
         for unsubscribe in unsubscribes:
             unsubscribe()
+
+
+async def publish_set(hass: HomeAssistant, target: Target, payload: dict) -> None:
+    """Publish a command to the target's set topic, traced. A read, sent on the same topic, goes through publish()."""
+    wire_trace(hass, target.reported_id, "mqtt", "set", payload)
+    await publish(hass, topic(target, "set"), payload)
 
 
 async def publish(hass: HomeAssistant, mqtt_topic: str, payload: dict) -> None:

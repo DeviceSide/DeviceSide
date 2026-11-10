@@ -36,7 +36,10 @@ adapter's whole scope bar its Documented, Reported and Experimental items: `Adap
 **Proof follows the call.** A record proves the call an adapter sends and the capability it reaches (Shelly: the RPC
 component), whatever entity domain the target shows: a relay exposed as a `switch` or an on/off `light` rides one
 record. A native group path is proven once any action of the same adapter class has passed through it and the command has
-passed on one light (PR #204).
+passed on one light (PR #204). An observed pass in `docs/test-records/<integration>/_observed.md` proves that a
+maker's devices, started from that state, respond as seen to that call sequence and to any sequence it begins with,
+across firmware, HA and code; an observed failure on a model blocks lends to that model for sequences that begin with
+the failed one.
 
 **Default to Documented.** A rig case earns its place only by catching what nothing else can: a call shape, a
 branch the adapter takes on a live reply, or a device behavior that DeviceSide or its docs rely on. One Verified

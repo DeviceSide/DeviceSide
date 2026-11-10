@@ -38,7 +38,7 @@ class ShellyTurnOnFor(RpcComponent, Adapter[TurnOnForRequest]):
             dropped = request.light.present() - COMPONENT_FIELDS[component]
             params = {"on": True, "toggle_after": request.duration_s}
             params |= light_params(request.light.without(dropped), component, target.state)
-            result = await set_with_timer(self, target, params)
+            result = await set_with_timer(hass, self, target, params)
             return replace(result, detail="fields_dropped") if dropped and result.detail is None else result
 
         return await self.gather(hass, targets, send)

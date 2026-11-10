@@ -74,7 +74,7 @@ class HueSetScene(Adapter[Request]):
             failed = 0
             for light_id, write in writes:
                 try:
-                    await write_forgetting(hass, light_id, write_light(api, light_id, **write))
+                    await write_forgetting(hass, light_id, write_light(hass, api, light_id, **write))
                 except Exception as err:  # noqa: BLE001 - one light's failure must not stop the rest of the scene
                     failed += 1
                     _LOGGER.warning("set_scene %s: write to light %s failed: %s", target.entity_id, light_id, err)

@@ -28,6 +28,6 @@ class ShellyTurnOffFor(RpcComponent, Adapter[TimedRequest]):
 
     async def execute(self, hass: HomeAssistant, request: TimedRequest, targets: list[Target]) -> list[EntityResult]:
         async def send(target: Target) -> EntityResult:
-            return await set_with_timer(self, target, {"on": False, "toggle_after": request.duration_s})
+            return await set_with_timer(hass, self, target, {"on": False, "toggle_after": request.duration_s})
 
         return await self.gather(hass, targets, send)

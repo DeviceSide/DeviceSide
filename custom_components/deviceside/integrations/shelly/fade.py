@@ -65,7 +65,7 @@ class ShellyFade(RpcComponent, Adapter[RampRequest]):
             end = request.end()
             if (end - current if request.up else current - end) < MIN_STEP:
                 return self.result(target, Status.UNCHANGED, detail="at_limit")
-            await set_fade(target, end, fade_seconds(abs(end - current), sweep_time))
+            await set_fade(hass, target, end, fade_seconds(abs(end - current), sweep_time))
             return self.result(target, Status.SENT, clamped_to=clamped_to)
 
         return await self.gather(hass, targets, move)

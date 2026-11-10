@@ -107,7 +107,7 @@ class HueSetAttributes(Adapter[SetAttributesRequest]):
             write, dropped = _write_for(light, request)
             if not write:
                 return self.result(target, Status.UNCHANGED, detail="fields_dropped" if dropped else "within_limits")
-            await write_forgetting(hass, light.id, write_light(api, light.id, **write))
+            await write_forgetting(hass, light.id, write_light(hass, api, light.id, **write))
             if "brightness" in write:
                 _keep_level(hass, target, write["brightness"], request.brightness)
             return self.result(target, Status.SENT, detail="fields_dropped" if dropped else None)

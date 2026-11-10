@@ -4,7 +4,7 @@ import pytest
 from homeassistant.util.color import color_hs_to_xy, color_xy_to_hs
 
 from .conftest import SENT, STOP, color_lamp, color_room, hs_xy, lamp, mixed_room, report_off, room, xy_halt
-from ...conftest import call, refusal
+from ...conftest import call, refusal, traced
 
 pytestmark = pytest.mark.usefixtures("setup_production")
 
@@ -174,3 +174,11 @@ async def test_stop_halts_brightness_and_saturation_in_one_write(hass, bridge, c
 
     hue = color_xy_to_hs(*hs_xy(200.0, 90.0))[0]
     assert bridge.puts[2] == ("light/light-1", STOP | xy_halt(along(hs_xy(200.0, 90.0), color_hs_to_xy(hue, 0), 0.5)))
+
+
+async def test_a_room_stop_is_traced_on_the_rooms_light_without_its_resource_id(hass, bridge, wire):
+    entity_id = await room(hass, bridge)
+
+    await call(hass, "stop", {"entity_id": entity_id})
+
+    assert traced(wire) == [(entity_id, "clip", "grouped_light.put", {"dimming_delta": {"action": "stop"}})]

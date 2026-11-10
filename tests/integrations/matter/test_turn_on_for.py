@@ -6,7 +6,7 @@ from homeassistant.exceptions import HomeAssistantError
 from custom_components.deviceside.core.scope import Level
 from custom_components.deviceside.integrations.matter.turn_on_for import MatterTurnOnFor
 
-from ...conftest import call, refusal
+from ...conftest import call, refusal, traced
 from ...fixtures.matter import (
     NODE_ID,
     add_matter_entity,
@@ -211,3 +211,14 @@ async def test_not_addressable_when_unique_id_unparseable(setup_matter, hass):
     add_matter_entity(hass, entry, "switch.broken", unique_id="bad-uid")
 
     assert await refusal(hass, "turn_on_for", {"entity_id": "switch.broken", "duration": 5}) == "not_addressable"
+
+
+async def test_the_command_is_traced_without_the_node(setup_matter, hass, wire):
+    entry, _, _ = matter_device(hass, endpoint_id=EP, feature_map=0x0001)
+    add_matter_entity(hass, entry, "switch.bulb", endpoint_id=EP)
+
+    await call(hass, "turn_on_for", {"entity_id": "switch.bulb", "duration": 5})
+
+    assert traced(wire) == [
+        ("switch.bulb", "matter", "OnOff.OnWithTimedOff", {"on_off_control": 0, "on_time": 50, "off_wait_time": 0})
+    ]

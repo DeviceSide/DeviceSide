@@ -12,7 +12,7 @@ from homeassistant.util.color import color_hs_to_xy, color_RGB_to_xy
 
 from custom_components.deviceside.integrations.hue import set_attributes as adapter
 
-from ...conftest import call, refusal
+from ...conftest import call, refusal, traced
 from ...fixtures.hue import add_hue_entity, add_hue_group, hue_entry
 
 pytestmark = pytest.mark.usefixtures("setup_production")
@@ -380,3 +380,11 @@ async def test_a_room_clamp_leaves_the_rooms_kept_level(hass, bridge, entities):
     await call(hass, "set_attributes", {"entity_id": "light.room", "max_brightness": 50})
 
     assert entities["light.room"]._restore_brightness == 100.0
+
+
+async def test_a_write_is_traced_on_the_light(hass, bridge, wire):
+    await lamp(hass, bridge, on=False)
+
+    await call(hass, "set_attributes", {"entity_id": "light.lamp", "brightness": 100})
+
+    assert traced(wire) == [("light.lamp", "clip", "light.set_state", {"brightness": 100})]

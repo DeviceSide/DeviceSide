@@ -11,7 +11,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
 from .addressing import topic, z2m_address
-from .bridge import has_feature, publish
+from .bridge import has_feature, publish, publish_set
 from .color_refresh import refresh_color
 from .members import member_lights
 from .native_control import NEED, native_control
@@ -114,7 +114,7 @@ class Fade:
     starts: dict[str, float]
     ends: dict[str, float]
     duration: float
-    before: tuple[tuple[str, dict], ...] = ()
+    before: tuple[tuple[Target, dict], ...] = ()
 
 
 def ramp_scope(attribute: str, *, experimental: bool) -> AdapterScope:
@@ -189,11 +189,10 @@ async def start(
 ) -> float | None:
     """Publish the fade, recording it, and schedule its end read-back, or publish the hue move; the clamped
     sweep_time. Z2M's hue_native_control is held at need for the publishes (native_control.py)."""
-    set_topic = topic(target, "set")
     async with native_control(hass, target, need):
         if not isinstance(outcome, Fade):
             rate, clamped_to = outcome
-            await publish(hass, set_topic, {"hue_move": rate})
+            await publish_set(hass, target, {"hue_move": rate})
             hue_moves(hass).update(light.entity_id for light in lights)
             return clamped_to
         if outcome.attribute == SATURATION:
@@ -202,9 +201,9 @@ async def start(
         async with cache.recording((light_id, outcome.attribute) for light_id in outcome.starts):
             for light_id, begin in outcome.starts.items():
                 cache.moving(light_id, outcome.attribute, begin, outcome.ends[light_id], outcome.duration)
-            for mqtt_topic, payload in outcome.before:
-                await publish(hass, mqtt_topic, payload)
-            await publish(hass, set_topic, outcome.payload)
+            for light, payload in outcome.before:
+                await publish_set(hass, light, payload)
+            await publish_set(hass, target, outcome.payload)
     read = end_read(hass, target, lights, outcome.attribute)
     get_runtime(hass).schedule(hass, read_back_key(target, outcome.attribute), [(outcome.duration + END_READ_S, read)])
     return None
@@ -238,7 +237,7 @@ def brightness_fade(cache: TransitionCache, request: RampRequest, target: Target
         payload = {"state": "ON", **payload} if up else payload
     off = [light for light in lights if light not in lit_lights] if up else []
     # One publish to the group when it is all off, so its members light together; else each off member's own.
-    before = tuple((topic(light, "set"), AT_THE_BOTTOM) for light in ([target] if off == lights else off))
+    before = tuple((light, AT_THE_BOTTOM) for light in ([target] if off == lights else off))
     moving_starts = {light_id: starts[light_id] for light_id in moving}
     return Fade(BRIGHTNESS, payload, moving_starts, dict.fromkeys(moving, limit), duration, before)
 

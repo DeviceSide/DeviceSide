@@ -42,6 +42,11 @@ def group_id(unique_id: str) -> int | None:
         return None
 
 
+def group_entity_id(hass: HomeAssistant, gid: int) -> str | None:
+    """The light entity of the ZHA group with this Zigbee group ID, or None."""
+    return er.async_get(hass).async_get_entity_id("light", "zha", f"light{_GROUP_MARKER}{gid:04x}")
+
+
 def via_zha_group(hass: HomeAssistant, target: Target) -> int | None:
     """The Zigbee group ID of the ZHA group the target was expanded from, or None."""
     if target.via_group is None or (entry := er.async_get(hass).async_get(target.via_group)) is None:

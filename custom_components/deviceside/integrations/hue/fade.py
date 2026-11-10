@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from homeassistant.core import HomeAssistant
 from homeassistant.util.color import color_hs_to_xy, color_xy_to_hs
 
-from .bridge import bridge_api, controller, resource_id
+from .bridge import bridge_api, controller, resource_id, set_state
 from .colors import clamp_to_gamut
 from .report_filter import report_filter
 from .transition_cache import MIN_BRIGHTNESS_STEP, XY, HueTransitionCache, transition_cache
@@ -121,7 +121,7 @@ class HueFade(Adapter[RampRequest]):
                 return self.result(target, Status.REJECTED, detail="not_on_bridge")
             if isinstance(fade := plan(cache, request, target, api, resource), str):
                 return self.result(target, Status.UNCHANGED, detail=fade)
-            write = writer.set_state(rid, **fade.write, transition_time=round(fade.duration * 1000))
+            write = set_state(hass, writer, rid, **fade.write, transition_time=round(fade.duration * 1000))
             async with cache.recording((light_id, fade.attribute) for light_id in fade.starts):
                 for light_id, start in fade.starts.items():
                     recorded = cache.moving(light_id, fade.attribute, start, fade.ends[light_id], fade.duration)

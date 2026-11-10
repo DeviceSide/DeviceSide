@@ -150,7 +150,9 @@ class ZHASetAttributes(Adapter[SetAttributesRequest]):
                 return self.result(target, Status.UNCHANGED, detail=detail or "within_limits")
             try:
                 for cluster_id, command_id, params in map(_wire, sent):
-                    await zcl.command(hass, addr, cluster_id, command_id, params, request.context)
+                    await zcl.command(
+                        hass, addr, cluster_id, command_id, params, request.context, entity_id=target.reported_id
+                    )
                 # Before the refresh, which can wait seconds: a plain on meanwhile must not send the old level.
                 if (level := next((c.level for c in sent if isinstance(c, MoveToLevel)), None)) is not None:
                     _keep_level(hass, target, level, request.brightness)

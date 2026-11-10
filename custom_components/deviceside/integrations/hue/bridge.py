@@ -1,14 +1,16 @@
 """The core hue integration's bridge, through aiohue's v2 API: the bridge behind a target, group members, writes."""
 
 from collections.abc import Iterable
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 
 from ...core.models import Target
 from ...core.resolver import resolve_members
 from ...core.runtime import get_runtime
 from ...core.transition import BRIGHTNESS
+from ...core.wire import wire_enabled, wire_trace
 
 if TYPE_CHECKING:
     from aiohue.v2 import HueBridgeV2
@@ -57,7 +59,24 @@ def expand_group(hass: HomeAssistant, target: Target) -> list[Target]:
     return resolve_members(hass, get_runtime(hass).registry, target, "hue", (light.id for light in lights))
 
 
+def trace(hass: HomeAssistant, writer: LightsController | GroupedLightController, rid: str, command: str, params: dict):
+    """The wire trace of one write to the light or grouped_light, naming its light entity, not its resource id."""
+    if not wire_enabled():
+        return
+    entity_id = er.async_get(hass).async_get_entity_id("light", "hue", rid)
+    wire_trace(hass, entity_id, "clip", f"{writer.item_type.value}.{command}", params)
+
+
+async def set_state(
+    hass: HomeAssistant, writer: LightsController | GroupedLightController, rid: str, **state: Any
+) -> None:
+    """aiohue's set_state on the light or grouped_light, traced. Raises on failure."""
+    trace(hass, writer, rid, "set_state", {key: value for key, value in state.items() if value is not None})
+    await writer.set_state(rid, **state)
+
+
 async def write_light(
+    hass: HomeAssistant,
     api: HueBridgeV2,
     light_id: str,
     *,
@@ -67,7 +86,9 @@ async def write_light(
     color_xy: tuple[float, float] | None = None,
 ) -> None:
     """One PUT to one light; the bridge stores what it is sent whether the light is on or off. Raises on failure."""
-    await api.lights.set_state(light_id, on=on, brightness=brightness, color_temp=color_temp_mirek, color_xy=color_xy)
+    await set_state(
+        hass, api.lights, light_id, on=on, brightness=brightness, color_temp=color_temp_mirek, color_xy=color_xy
+    )
 
 
 def stops(attributes: Iterable[str]) -> dict:
@@ -82,6 +103,9 @@ def xy_halt(xy: tuple[float, float]) -> dict:
     return {"color": {"xy": {"x": xy[0], "y": xy[1]}}, "dynamics": {"duration": 0}}
 
 
-async def put(api: HueBridgeV2, writer: LightsController | GroupedLightController, rid: str, body: dict) -> None:
+async def put(
+    hass: HomeAssistant, api: HueBridgeV2, writer: LightsController | GroupedLightController, rid: str, body: dict
+) -> None:
     """One raw CLIP v2 PUT to the light or grouped_light, its body as given. Raises on failure."""
+    trace(hass, writer, rid, "put", body)
     await api.request("put", f"clip/v2/resource/{writer.item_type.value}/{rid}", json=body)

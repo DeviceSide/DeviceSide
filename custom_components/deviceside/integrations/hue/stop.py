@@ -71,7 +71,7 @@ class HueStop(Adapter[Request]):
             fading = [light for light in lights if light.color is not None and cache.running(light.id, SATURATION)]
             saturation = {light.id: cache.value(light.id, SATURATION, 0.0) for light in fading}
             xys = {light.id: light_xy(cache, light) for light in fading}
-            write = stop_write(cache, api, writer, rid, brightness, xys)
+            write = stop_write(hass, cache, api, writer, rid, brightness, xys)
             keys = [(light_id, BRIGHTNESS) for light_id in brightness] + [(light_id, SATURATION) for light_id in xys]
             async with cache.recording(keys):
                 for light_id, value in brightness.items():
@@ -87,6 +87,7 @@ class HueStop(Adapter[Request]):
 
 
 def stop_write(
+    hass: HomeAssistant,
     cache: TransitionCache,
     api: HueBridgeV2,
     writer: LightsController | GroupedLightController,
@@ -99,13 +100,13 @@ def stop_write(
     halted at its own predicted xy."""
     fading_off = {light_id for light_id in brightness if in_soft_off(cache, light_id)}
     if not fading_off and not xys:
-        return put(api, writer, rid, stops([BRIGHTNESS]))
+        return put(hass, api, writer, rid, stops([BRIGHTNESS]))
 
     def body(light_id: str) -> dict:
         halt = cut(brightness[light_id]) if light_id in fading_off else stops([BRIGHTNESS])
         return halt | (xy_halt(xys[light_id]) if light_id in xys else {})
 
-    return asyncio.gather(*(put(api, api.lights, light_id, body(light_id)) for light_id in brightness))
+    return asyncio.gather(*(put(hass, api, api.lights, light_id, body(light_id)) for light_id in brightness))
 
 
 def cut(brightness: float) -> dict:
