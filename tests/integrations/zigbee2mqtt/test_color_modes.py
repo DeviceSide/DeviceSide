@@ -322,7 +322,7 @@ async def test_saving_the_option_off_puts_back_z2m_defaults(hass, z2m, mqtt_read
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert sent(z2m) == {("device", IEEE): OFF}
-    assert not z2m.subscribers.get(DEVICES)
+    assert len(z2m.subscribers[DEVICES]) == 1  # the reloaded entry's bridge cache; the watch is gone
 
 
 async def test_deleting_deviceside_puts_back_z2m_defaults(hass, z2m, mqtt_ready):

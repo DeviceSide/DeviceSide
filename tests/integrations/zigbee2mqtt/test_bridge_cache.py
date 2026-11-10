@@ -1,0 +1,262 @@
+"""Zigbee2MQTT bridge cache: bridge/devices and bridge/groups held, and options replies routed, for the entry's life."""
+
+import asyncio
+import json
+
+import pytest
+from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+from custom_components.deviceside.const import CONF_Z2M_COLOR_MODES, DOMAIN
+from custom_components.deviceside.integrations.zigbee2mqtt import bridge, bridge_cache
+
+from ...fixtures.z2m import GROUPS, INFO
+
+DEVICES = "zigbee2mqtt/bridge/devices"
+STATE = "zigbee2mqtt/bridge/state"
+DEVICE_RESPONSE = "zigbee2mqtt/bridge/response/device/options"
+GROUP_RESPONSE = "zigbee2mqtt/bridge/response/group/options"
+HELD_TOPICS = [DEVICE_RESPONSE, GROUP_RESPONSE, DEVICES, GROUPS, STATE]
+ROOM = [{"id": 7, "members": [{"ieee_address": "0x01"}]}]
+
+
+class Connection:
+    """HA's MQTT connection status, as the cache subscribes to it."""
+
+    def __init__(self) -> None:
+        self.callbacks: list = []
+
+    def subscribe(self, hass, status_callback):
+        self.callbacks.append(status_callback)
+        return lambda: self.callbacks.remove(status_callback)
+
+    def lost(self) -> None:
+        for status_callback in list(self.callbacks):
+            status_callback(False)
+
+    def back(self) -> None:
+        for status_callback in list(self.callbacks):
+            status_callback(True)
+
+
+@pytest.fixture
+def connection(monkeypatch) -> Connection:
+    fake = Connection()
+    monkeypatch.setattr(bridge_cache.mqtt, "async_subscribe_connection_status", fake.subscribe)
+    return fake
+
+
+@pytest.fixture
+def mqtt_up(monkeypatch):
+    async def ready(hass):
+        return True
+
+    monkeypatch.setattr(bridge_cache.mqtt, "async_wait_for_mqtt_client", ready)
+
+
+async def settle() -> None:
+    for _ in range(3):
+        await asyncio.sleep(0)
+
+
+async def start(hass, entry) -> bridge_cache.BridgeCache:
+    await bridge_cache.async_setup(hass, entry)
+    await settle()  # the retained messages
+    cache = bridge_cache.get(hass)
+    assert cache is not None
+    return cache
+
+
+@pytest.fixture
+def online(broker):
+    broker.retained[STATE] = {"state": "online"}
+    broker.retained[GROUPS] = ROOM
+    broker.retained[DEVICES] = [{"ieee_address": "0x01"}]
+    return broker
+
+
+def wanted_on(current: dict) -> dict:
+    return {} if current.get("x") else {"x": True}
+
+
+# Holding devices and groups
+
+
+async def test_subscribes_the_response_topics_before_the_barrier(hass, setup_production, online, connection, mqtt_up):
+    await start(hass, setup_production)
+
+    assert online.topics == HELD_TOPICS
+    assert len(connection.callbacks) == 1
+
+
+async def test_groups_and_devices_come_from_the_cache(hass, setup_production, online, connection, mqtt_up):
+    await start(hass, setup_production)
+    online.topics.clear()
+
+    assert await bridge.group_members(hass, "7") == ["0x01"]
+    assert await bridge.has_feature(hass, ["0x01"], "color_hs") is False
+    assert online.topics == []
+
+
+async def test_each_payload_is_parsed_once(hass, setup_production, online, connection, mqtt_up):
+    await start(hass, setup_production)
+
+    first = await bridge.retained(hass, "groups")
+    assert await bridge.retained(hass, "groups") is first
+
+    online.deliver(GROUPS, json.dumps([{"id": 8, "members": []}]))
+    second = await bridge.retained(hass, "groups")
+    assert second is not first
+    assert second == [{"id": 8, "members": []}]
+    assert await bridge.retained(hass, "groups") is second
+
+
+async def test_info_is_always_read_fresh(hass, setup_production, online, connection, mqtt_up):
+    await start(hass, setup_production)
+    online.topics.clear()
+
+    await bridge.retained(hass, "info")
+    await bridge.retained(hass, "info")
+
+    assert online.topics == [INFO, INFO]
+
+
+async def test_an_empty_cache_reads_fresh(hass, setup_production, broker, connection, mqtt_up):
+    cache = await start(hass, setup_production)  # Z2M has published no groups yet
+    assert cache.parsed("groups") is None
+    broker.topics.clear()
+
+    with pytest.raises(TimeoutError, match="no bridge/groups from Zigbee2MQTT"):
+        await bridge.retained(hass, "groups")
+    assert broker.topics == [GROUPS]
+
+
+async def test_an_empty_payload_clears_the_topic(hass, setup_production, online, connection, mqtt_up):
+    cache = await start(hass, setup_production)
+
+    online.deliver(GROUPS, "")
+
+    assert cache.parsed("groups") is None
+
+
+async def test_without_a_cache_everything_reads_fresh(hass, broker):
+    broker.retained[GROUPS] = ROOM
+
+    assert bridge_cache.get(hass) is None
+    assert await bridge.group_members(hass, "7") == ["0x01"]
+    assert broker.topics == [GROUPS]
+
+
+# Replies
+
+
+async def test_live_replies_reach_the_call_without_its_own_subscription(
+    hass, setup_production, online, connection, mqtt_up
+):
+    cache = await start(hass, setup_production)
+    assert cache.replies_live
+    online.topics.clear()
+    confirmed: list[str] = []
+
+    await bridge.ensure_options(hass, "device", ["0x01"], wanted_on, confirmed.append)
+    await bridge.ensure_options(hass, "device", ["0x01"], wanted_on, confirmed.append)
+
+    assert confirmed == ["0x01", "0x01"]
+    assert online.topics == [INFO, INFO]  # bridge/info fresh on each call, never the reply topic
+    assert cache.pending == {}
+
+
+async def test_a_refused_live_reply_still_raises(hass, setup_production, online, connection, mqtt_up):
+    cache = await start(hass, setup_production)
+    online.refused.add("0x01")
+
+    with pytest.raises(RuntimeError, match="refused"):
+        await bridge.ensure_options(hass, "device", ["0x01"], wanted_on, lambda _id: None)
+    assert cache.pending == {}
+
+
+async def test_without_the_barrier_each_call_subscribes_for_its_reply(
+    hass, setup_production, broker, connection, mqtt_up
+):
+    cache = await start(hass, setup_production)  # no retained bridge/state
+    assert not cache.replies_live
+    broker.topics.clear()
+    confirmed: list[str] = []
+
+    await bridge.ensure_options(hass, "group", ["7"], wanted_on, confirmed.append)
+
+    assert confirmed == ["7"]
+    assert broker.topics == [GROUP_RESPONSE, INFO]
+
+
+async def test_a_disconnect_clears_it_until_the_resubscribe(hass, setup_production, online, connection, mqtt_up):
+    cache = await start(hass, setup_production)
+
+    connection.lost()
+
+    assert not cache.replies_live
+    assert cache.parsed("groups") is None and cache.parsed("devices") is None
+    online.topics.clear()
+    await bridge.ensure_options(hass, "device", ["0x01"], wanted_on, lambda _id: None)
+    assert online.topics == [DEVICE_RESPONSE, INFO]
+
+    connection.back()  # connected again, but nothing is resubscribed yet
+    assert not cache.replies_live
+    online.deliver(GROUPS, json.dumps(ROOM))  # HA's resubscribe, in topic order
+    online.deliver(STATE, json.dumps({"state": "online"}))
+    assert cache.replies_live
+    assert await bridge.retained(hass, "groups") == ROOM
+
+
+# Lifecycle
+
+
+async def test_unload_unsubscribes_everything(hass, setup_production, online, connection, mqtt_up):
+    await start(hass, setup_production)
+
+    assert await hass.config_entries.async_unload(setup_production.entry_id)
+
+    assert bridge_cache.get(hass) is None
+    assert not any(online.listening(topic) for topic in HELD_TOPICS)
+    assert connection.callbacks == []
+
+
+async def test_without_mqtt_nothing_is_held(hass, setup_production, broker, monkeypatch):
+    async def no_client(hass):
+        return False
+
+    monkeypatch.setattr(bridge_cache.mqtt, "async_wait_for_mqtt_client", no_client)
+
+    await bridge_cache.async_setup(hass, setup_production)
+
+    assert bridge_cache.get(hass) is None
+    assert broker.topics == []
+
+
+async def test_a_failed_subscribe_warns_and_holds_nothing(
+    hass, setup_production, broker, connection, mqtt_up, monkeypatch, caplog
+):
+    subscribe = bridge.mqtt.async_subscribe
+
+    async def refuse_state(hass, topic, *args, **kwargs):
+        if topic == STATE:
+            raise RuntimeError("MQTT is not connected")
+        return await subscribe(hass, topic, *args, **kwargs)
+
+    monkeypatch.setattr(bridge.mqtt, "async_subscribe", refuse_state)
+
+    await bridge_cache.async_setup(hass, setup_production)
+    await settle()
+
+    assert bridge_cache.get(hass) is None
+    assert not any(broker.listening(topic) for topic in HELD_TOPICS)
+    assert "Couldn't subscribe to Zigbee2MQTT's bridge, so each action reads it fresh" in caplog.text
+
+
+async def test_setup_entry_starts_it_once_mqtt_is_up(hass, broker, connection, mqtt_up):
+    entry = MockConfigEntry(domain=DOMAIN, options={CONF_Z2M_COLOR_MODES: False})
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert bridge_cache.get(hass) is not None
+    assert await hass.config_entries.async_unload(entry.entry_id)

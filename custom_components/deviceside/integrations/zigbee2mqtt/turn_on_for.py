@@ -1,14 +1,13 @@
-"""Zigbee2MQTT turn_on_for: optional light.turn_on, mqtt.publish with on_time, then state read-backs."""
+"""Zigbee2MQTT turn_on_for: optional light.turn_on, a publish with on_time, then state read-backs."""
 
 import asyncio
-import json
 import logging
 from typing import ClassVar
 
 from homeassistant.core import HomeAssistant
 
 from .addressing import topic
-from .bridge import state_reply
+from .bridge import publish, state_reply
 from .native_control import COLOR_FIELDS, NEED, native_control
 from ...actions.turn_on_for import TurnOnForRequest
 from ...core.adapter import Adapter
@@ -78,16 +77,13 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
 
             if request.light.present():
                 need = NEED[self.action] if request.light.present() & COLOR_FIELDS else None
-                async with native_control(hass, target, need):
+                async with native_control(hass, target, need) as window:
                     await self._turn_on(hass, target, request.light.as_turn_on_data())
+                # The timer goes out as the user's option has it, as it always has.
+                await window.settled()
 
             on_time = round(request.duration_s, 1)
-            await hass.services.async_call(
-                "mqtt",
-                "publish",
-                {"topic": set_topic, "payload": json.dumps({"state": "ON", "on_time": on_time})},
-                blocking=True,
-            )
+            await publish(hass, set_topic, {"state": "ON", "on_time": on_time})
             self._schedule_reads(hass, target, on_time, read_on=not request.light.present())
             return self.result(target, Status.SENT)
 
@@ -124,10 +120,8 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
 
         async def read() -> None:
             try:
-                # Blocking, so a failure lands here rather than in HA's error log; the read runs in its own task.
-                await hass.services.async_call(
-                    "mqtt", "publish", {"topic": get_topic, "payload": json.dumps({"state": ""})}, blocking=True
-                )
+                # A failure lands here rather than in HA's error log; the read runs in its own task.
+                await publish(hass, get_topic, {"state": ""})
             except Exception as err:  # noqa: BLE001 - a failed read leaves HA's state stale, nothing more
                 _LOGGER.debug("State read for %s failed: %s", target.entity_id, err)
 

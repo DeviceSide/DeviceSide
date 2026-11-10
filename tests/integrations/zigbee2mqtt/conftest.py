@@ -19,6 +19,19 @@ async def unload_mock_mqtt_entries(hass):
         entry.mock_state(hass, ConfigEntryState.NOT_LOADED)
 
 
+@pytest.fixture(autouse=True)
+def publish_via_service(monkeypatch):
+    """Route mqtt.async_publish to an mqtt.publish service, which the tests register as the broker (or a failure).
+
+    The real mqtt integration isn't set up in unit tests, so its async_publish would refuse every publish.
+    """
+
+    async def async_publish(hass, topic: str, payload: str, *args, **kwargs) -> None:
+        await hass.services.async_call("mqtt", "publish", {"topic": topic, "payload": payload}, blocking=True)
+
+    monkeypatch.setattr(bridge.mqtt, "async_publish", async_publish)
+
+
 @pytest.fixture
 def broker(hass, monkeypatch):
     fake = Broker()

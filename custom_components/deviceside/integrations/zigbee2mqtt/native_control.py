@@ -12,15 +12,17 @@ The rest work either way and leave it alone: a saturation fade holds its hue, an
 write of settings pass on the rig with the option on and off.
 
 The option belongs to the user. An action that needs it the other way sets it, publishes, and puts the user's value
-back once Z2M has published the target's state in reply (1 s cap), so nothing outlasts the publish. Z2M reads an
+back once Z2M has published the target's state in reply (1 s cap), so nothing outlasts the publish. The call returns
+once its command is out; the restore runs in a task of its own, still under the target's lock. Z2M reads an
 entity's options as it takes a command (lib/extension/publish.ts), so a fade already sent runs on unchanged. A command
 to a group reads the group's options, never its members', so a group with a Hue member is set itself.
 """
 
 import asyncio
 import logging
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Callable, Coroutine
 from contextlib import asynccontextmanager
+from typing import Any
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
@@ -51,18 +53,37 @@ def _locks(hass: HomeAssistant) -> dict[Address, asyncio.Lock]:
     return get_runtime(hass).integration_state.setdefault("zigbee2mqtt_native_control_locks", {})
 
 
+class Window:
+    """What native_control yields: once the body is done, `settled()` waits for the user's option to be back."""
+
+    __slots__ = ("_restore",)
+
+    def __init__(self) -> None:
+        self._restore: asyncio.Task[None] | None = None
+
+    async def settled(self) -> None:
+        """Wait for the restore, if the option was changed; a cancel of the waiter leaves the restore running."""
+        if self._restore is not None:
+            await asyncio.shield(self._restore)
+
+
 @asynccontextmanager
-async def native_control(hass: HomeAssistant, target: Target, need: bool | None) -> AsyncIterator[None]:
+async def native_control(hass: HomeAssistant, target: Target, need: bool | None) -> AsyncIterator[Window]:
     """Hold the option at `need` around the body's publish to a Hue device, or a group with a Hue member.
 
     Reads Z2M's settings on each call rather than caching them, so a user who changes the option is seen. A need of
     None, a non-Hue target or the option already right costs no writes, and a non-Hue device reads nothing. One lock
     per device or group, held from the set to the restore, keeps actions with opposite needs apart.
 
+    Returns once the body has, without waiting on Z2M's reply: the option is put back after Z2M answers (1 s cap), in a
+    task that holds the lock until then, so the next call on the target waits for it instead. A caller whose next
+    publish must go out with the user's value awaits the yielded window's `settled()`.
+
     Never raises of its own: a failed check, set or restore logs a warning, and the body runs (or has run) anyway.
     """
+    window = Window()
     if need is None:
-        yield
+        yield window
         return
     try:
         address = await _hue_address(hass, target)
@@ -70,9 +91,12 @@ async def native_control(hass: HomeAssistant, target: Target, need: bool | None)
         _warn_set(target, need, err)
         address = None
     if address is None:
-        yield
+        yield window
         return
-    async with _locks(hass).setdefault(address, asyncio.Lock()):
+    lock = _locks(hass).setdefault(address, asyncio.Lock())
+    await lock.acquire()
+    handed_off = False
+    try:
         # Shielded so that a cancel mid-set (HA stopping) still learns whether the option changed, and puts it back.
         setting = asyncio.ensure_future(_set(hass, target, address, need))
         try:
@@ -82,25 +106,73 @@ async def native_control(hass: HomeAssistant, target: Target, need: bool | None)
                 await _set(hass, target, address, not need, restoring=True)
             raise
         if not changed:
-            yield
+            yield window
             return
+        replied: asyncio.Future[None] | None = None
         unsubscribe: Callable[[], None] = lambda: None  # noqa: E731
         try:
             replied, unsubscribe = await state_reply(hass, target)
-            yield
-            if replied is None:
-                # Without a reply to await, the cap is the margin for Z2M to take the command.
-                await asyncio.sleep(_REPLY_CAP_S)
-            else:
-                try:
-                    async with asyncio.timeout(_REPLY_CAP_S):
-                        await replied
-                except TimeoutError:
-                    _LOGGER.debug("No state from Zigbee2MQTT for %s in %s s", target.entity_id, _REPLY_CAP_S)
+            yield window
+        except BaseException:
+            # The body raised, or the call was cancelled: no reply to wait for, but the option still goes back.
+            window._restore = _restore_task(hass, _restore(hass, target, address, need, None, unsubscribe, lock))
+            handed_off = True
+            raise
+        window._restore = _restore_task(
+            hass, _restore(hass, target, address, need, replied, unsubscribe, lock, wait_for_reply=True)
+        )
+        handed_off = True
+    finally:
+        if not handed_off:
+            lock.release()
+
+
+def _restore_task(hass: HomeAssistant, restore: Coroutine[Any, Any, None]) -> asyncio.Task[None]:
+    # Tracked, so HA's shutdown waits for the restore rather than cancelling it.
+    return hass.async_create_task(restore, "zigbee2mqtt hue_native_control restore")
+
+
+async def _restore(
+    hass: HomeAssistant,
+    target: Target,
+    address: Address,
+    need: bool,
+    replied: asyncio.Future[None] | None,
+    unsubscribe: Callable[[], None],
+    lock: asyncio.Lock,
+    wait_for_reply: bool = False,
+) -> None:
+    """Put the user's value back, after Z2M's reply to the body's publish when wait_for_reply, then free the lock.
+
+    The restore itself is shielded: cancelled while it runs, it still finishes before the lock is freed.
+    """
+    try:
+        try:
+            if wait_for_reply:
+                await _reply(target, replied)
         finally:
             unsubscribe()
             # Only a value other than need was changed, and an absent option is Z2M's default, off.
-            await _set(hass, target, address, not need, restoring=True)
+            restoring = asyncio.ensure_future(_set(hass, target, address, not need, restoring=True))
+            try:
+                await asyncio.shield(restoring)
+            except asyncio.CancelledError:
+                await restoring
+                raise
+    finally:
+        lock.release()
+
+
+async def _reply(target: Target, replied: asyncio.Future[None] | None) -> None:
+    if replied is None:
+        # Without a reply to await, the cap is the margin for Z2M to take the command.
+        await asyncio.sleep(_REPLY_CAP_S)
+        return
+    try:
+        async with asyncio.timeout(_REPLY_CAP_S):
+            await replied
+    except TimeoutError:
+        _LOGGER.debug("No state from Zigbee2MQTT for %s in %s s", target.entity_id, _REPLY_CAP_S)
 
 
 async def _hue_address(hass: HomeAssistant, target: Target) -> Address | None:
