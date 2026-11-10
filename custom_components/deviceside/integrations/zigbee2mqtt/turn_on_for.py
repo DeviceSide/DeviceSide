@@ -1,15 +1,14 @@
-"""Zigbee2MQTT turn_on_for: optional light.turn_on, mqtt.publish with on_time, then state read-backs."""
+"""Zigbee2MQTT turn_on_for: optional light.turn_on, a publish with on_time, then state read-backs."""
 
 import asyncio
-import json
 import logging
 from typing import ClassVar
 
 from homeassistant.core import HomeAssistant
 
 from .addressing import topic
-from .bridge import publish_set, state_reply
-from .native_control import COLOR_FIELDS, NEED, native_control
+from .bridge import publish, publish_set, state_reply
+from .native_control import COLOR_FIELDS, NEED, native_control, settled
 from ...actions.turn_on_for import TurnOnForRequest
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Status, Target
@@ -80,6 +79,9 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
                 async with native_control(hass, target, need):
                     await self._turn_on(hass, target, request.light.as_turn_on_data())
 
+            # The timer goes out as the user's option has it, after this call's restore or an earlier action's.
+            await settled(hass, target)
+
             on_time = round(request.duration_s, 1)
             # supports() refused the targets it can't address.
             await publish_set(hass, target, {"state": "ON", "on_time": on_time})
@@ -120,10 +122,8 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
 
         async def read() -> None:
             try:
-                # Blocking, so a failure lands here rather than in HA's error log; the read runs in its own task.
-                await hass.services.async_call(
-                    "mqtt", "publish", {"topic": get_topic, "payload": json.dumps({"state": ""})}, blocking=True
-                )
+                # A failure lands here rather than in HA's error log; the read runs in its own task.
+                await publish(hass, get_topic, {"state": ""})
             except Exception as err:  # noqa: BLE001 - a failed read leaves HA's state stale, nothing more
                 _LOGGER.debug("State read for %s failed: %s", target.entity_id, err)
 

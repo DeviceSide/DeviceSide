@@ -26,6 +26,8 @@ from scripts.check_tag import RC, git, name, releases  # noqa: E402
 
 AUDITS = Path("docs") / "audits"
 SEVERITIES = frozenset({"critical", "high"})
+# A squash or rebase merge replaces the commits a record cites, so they are no longer under the head.
+REWRITTEN = "; was the audit PR squashed or rebased? Merge it with a merge commit"
 
 
 def sha(repo: Path, rev: str) -> str | None:
@@ -92,7 +94,7 @@ def errors(repo: Path, rc: str, head: str) -> list[str]:
         problems.append(f"changed after the last pass: {', '.join(code)}; run /rc-audit {rc} --fix-pass")
 
     for finding in record.get("findings") or []:
-        problems += finding_errors(repo, finding, ranges[1:])
+        problems += finding_errors(repo, finding, ranges[1:], head)
     return problems
 
 
@@ -113,13 +115,13 @@ def pass_ranges(repo: Path, passes: list[dict], base: str, head: str, problems: 
         if start != previous:
             problems.append(f"pass {index} starts at {audit_pass.get('from')!r}, not {(previous or '?')[:7]}")
         if end is None or not is_ancestor(repo, end, head):
-            problems.append(f"pass {index} ends at {audit_pass.get('to')!r}, not an ancestor of the head")
+            problems.append(f"pass {index} ends at {audit_pass.get('to')!r}, not an ancestor of the head{REWRITTEN}")
         ranges.append((start, end))
         previous = end
     return ranges
 
 
-def finding_errors(repo: Path, finding: dict, later: list[tuple[str | None, str | None]]) -> list[str]:
+def finding_errors(repo: Path, finding: dict, later: list[tuple[str | None, str | None]], head: str) -> list[str]:
     label = f"finding {finding.get('id', '?')}"
     severity, status = finding.get("severity"), finding.get("status")
     if severity not in SEVERITIES:
@@ -135,7 +137,11 @@ def finding_errors(repo: Path, finding: dict, later: list[tuple[str | None, str 
         start and end and fixed_in != start and is_ancestor(repo, start, fixed_in) and is_ancestor(repo, fixed_in, end)
         for start, end in later
     )
-    return [] if inside else [f"{label}: fixed_in {finding.get('fixed_in')!r} is not inside a pass after the first"]
+    if inside:
+        return []
+    rewritten = finding.get("fixed_in") and (fixed_in is None or not is_ancestor(repo, fixed_in, head))
+    error = f"{label}: fixed_in {finding.get('fixed_in')!r} is not inside a pass after the first"
+    return [error + (REWRITTEN if rewritten else "")]
 
 
 def main(argv: list[str] | None = None, repo: Path = REPO) -> int:

@@ -17,7 +17,7 @@ from .core.actions import async_setup_services
 from .core.dispatcher import Dispatcher
 from .core.registry import AdapterRegistry
 from .core.runtime import DATA, DeviceSideData, get_runtime
-from .integrations.zigbee2mqtt import color_modes
+from .integrations.zigbee2mqtt import bridge_cache, color_modes
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
@@ -38,6 +38,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     runtime.experimental_features = entry.options.get(CONF_EXPERIMENTAL, EXPERIMENTAL_DEFAULT)
     # Per entry, not in async_setup: unloading detaches every listener, and a reload runs only this again.
     runtime.listen("ha_watch", hass, lambda: ha_watch.attach(hass, runtime.registry.call_resolvers()))
+    entry.async_create_background_task(hass, bridge_cache.async_setup(hass, entry), "z2m bridge cache")
     enabled = entry.options.get(CONF_Z2M_COLOR_MODES, Z2M_COLOR_MODES_DEFAULT)
     entry.async_create_background_task(hass, color_modes.async_setup(hass, entry, enabled), "z2m color modes")
     return True

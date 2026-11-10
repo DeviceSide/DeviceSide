@@ -10,6 +10,7 @@ from uuid import uuid4
 from homeassistant.components import mqtt
 from homeassistant.core import HomeAssistant, callback
 
+from . import bridge_cache
 from .addressing import bridge_topic, state_topic, topic
 from ...core.models import Target
 from ...core.wire import wire_trace
@@ -46,7 +47,17 @@ def _exposes(name: str, features: list[dict]) -> bool:
 
 
 async def retained(hass: HomeAssistant, suffix: str) -> Any:
-    """The parsed retained message on bridge/<suffix>; raises TimeoutError when Z2M hasn't published one."""
+    """The parsed retained message on bridge/<suffix>; raises TimeoutError when Z2M hasn't published one.
+
+    bridge/devices and bridge/groups come from the bridge cache when it holds them (bridge_cache.py), else from a fresh
+    subscription, as bridge/info always does. A cached result is shared by every caller: read it, never change it.
+    """
+    if (
+        suffix in bridge_cache.HELD
+        and (cache := bridge_cache.get(hass)) is not None
+        and (held := cache.parsed(suffix)) is not None
+    ):
+        return held
     payload: asyncio.Future[str] = hass.loop.create_future()
     unsubscribe = await mqtt.async_subscribe(hass, bridge_topic(suffix), first_payload(payload))
     try:
@@ -69,40 +80,35 @@ async def ensure_options(
     when bridge/info or a reply doesn't come, or a reply is an error.
     """
     section = f"{kind}s"
-    pending: dict[str, asyncio.Future[dict]] = {}
-
-    @callback
-    def on_reply(msg: mqtt.ReceiveMessage) -> None:
-        try:
-            answer = json.loads(msg.payload)
-        except ValueError:
-            return
-        if isinstance(answer, dict) and (reply := pending.get(answer.get("transaction"))) and not reply.done():
-            reply.set_result(answer)
+    # With the bridge cache's response subscriptions live, the reply is routed to its pending futures; otherwise this
+    # call subscribes for its own.
+    cache = bridge_cache.get(hass)
+    shared = cache is not None and cache.replies_live
+    pending: dict[str, asyncio.Future[dict]] = cache.pending if shared else {}
+    transactions: list[str] = []
 
     info: asyncio.Future[str] = hass.loop.create_future()
     # HA debounces subscribes, so async_subscribe returns before the broker has them. Queued together, the two
     # reach the broker in one batch: the retained bridge/info arriving shows the reply topic is subscribed too,
-    # before a request goes out.
-    unsubscribes = [
-        await mqtt.async_subscribe(hass, bridge_topic(f"response/{kind}/options"), on_reply),
-        await mqtt.async_subscribe(hass, bridge_topic("info"), first_payload(info)),
-    ]
+    # before a request goes out. bridge/info is subscribed fresh even when the reply topic is the cache's, as its
+    # values must be fresh and read.reader() relies on its arrival for the subscription it queues just before.
+    unsubscribes = []
+    if not shared:
+        reply_topic = bridge_topic(f"response/{kind}/options")
+        unsubscribes.append(await mqtt.async_subscribe(hass, reply_topic, bridge_cache.reply_router(pending)))
+    unsubscribes.append(await mqtt.async_subscribe(hass, bridge_topic("info"), first_payload(info)))
     try:
         settings = json.loads(await wait(info, _RETAINED_TIMEOUT_S, "no bridge/info from Zigbee2MQTT"))
         for z2m_id in z2m_ids:
             if not (options := wanted(settings.get("config", {}).get(section, {}).get(z2m_id, {}))):
                 continue
             transaction = uuid4().hex
+            transactions.append(transaction)
             pending[transaction] = hass.loop.create_future()
-            await hass.services.async_call(
-                "mqtt",
-                "publish",
-                {
-                    "topic": bridge_topic(f"request/{kind}/options"),
-                    "payload": json.dumps({"id": z2m_id, "options": options, "transaction": transaction}),
-                },
-                blocking=True,
+            await publish(
+                hass,
+                bridge_topic(f"request/{kind}/options"),
+                {"id": z2m_id, "options": options, "transaction": transaction},
             )
             answer = await wait(pending[transaction], _REPLY_TIMEOUT_S, "no reply from Zigbee2MQTT")
             if answer.get("status") != "ok":
@@ -111,6 +117,8 @@ async def ensure_options(
     finally:
         for unsubscribe in unsubscribes:
             unsubscribe()
+        for transaction in transactions:
+            pending.pop(transaction, None)
 
 
 async def publish_set(hass: HomeAssistant, target: Target, payload: dict) -> None:
@@ -120,9 +128,7 @@ async def publish_set(hass: HomeAssistant, target: Target, payload: dict) -> Non
 
 
 async def publish(hass: HomeAssistant, mqtt_topic: str, payload: dict) -> None:
-    await hass.services.async_call(
-        "mqtt", "publish", {"topic": mqtt_topic, "payload": json.dumps(payload)}, blocking=True
-    )
+    await mqtt.async_publish(hass, mqtt_topic, json.dumps(payload))
 
 
 def first_payload(future: asyncio.Future[str]) -> Callable[[mqtt.ReceiveMessage], None]:
