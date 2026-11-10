@@ -1,4 +1,5 @@
-"""scripts/gen_features.py: icons from scopes, groups, the row intersection, NO_PATH, its failures, the stale check."""
+"""scripts/gen_features.py: icons from scopes, groups, the row intersection, NO_PATH, icon links, its failures, the
+stale check."""
 
 from types import SimpleNamespace
 
@@ -29,7 +30,7 @@ def adapter(integration, action, **scope):
 
 def every_row(integration="shelly", **scope):
     """An adapter for every action the table names, so no row fails as renamed."""
-    actions = {action for _, _, row in gf.FEATURES for action in row}
+    actions = {action for *_, row in gf.FEATURES for action in row}
     return [adapter(integration, action, **scope) for action in sorted(actions)]
 
 
@@ -40,7 +41,7 @@ def no_blockers(monkeypatch):
 
 def headings():
     """A heading for every row's anchor, so a test README passes the anchor check."""
-    return "".join(f"## {anchor.replace('-', ' ')}\n" for _, anchor, _ in gf.FEATURES)
+    return "".join(f"## {anchor.replace('-', ' ')}\n" for _, anchor, _, _ in gf.FEATURES)
 
 
 def row(text, label):
@@ -208,3 +209,49 @@ def test_a_blocked_key_that_is_built_only_with_experimental_on_fails(monkeypatch
     monkeypatch.setattr(gf, "NO_PATH", {("Get attributes", "shelly"): ("switch",)})
     with pytest.raises(SystemExit, match="is built, so not blocked"):
         gf.generate(FakeRegistry(*every_row(domains=verified("light") | experimental("switch"))))
+
+
+DOCS = "https://github.com/jasonmx/DeviceSide/blob/main/docs/"
+
+
+def test_repeated_headings_get_githubs_numbered_anchors():
+    text = "# Doc\n## Shelly\n### Get attributes\n## ZHA\n### Get attributes\n### Auto-off/on\n"
+    found = gf.headings(text)
+    assert found["Shelly"] == {"Shelly": "shelly", "Get attributes": "get-attributes"}
+    assert found["ZHA"] == {"ZHA": "zha", "Get attributes": "get-attributes-1", "Auto-off/on": "auto-offon"}
+    assert found[""] == {"Doc": "doc"}
+
+
+def test_a_cells_icons_link_to_the_features_subsection_or_else_the_integrations_section(monkeypatch):
+    monkeypatch.setattr(gf, "NO_PATH", {("Turn off with timer", "zha"): ("light",)})
+    text = gf.generate(
+        FakeRegistry(*every_row(domains=verified("light")), *every_row("matter", domains=verified("light")))
+    )
+    shelly = cells(text, "Get attributes")[2]
+    assert shelly.startswith(f'<a href="{DOCS}integrations.md#get-attributes"><img ')
+    matter = cells(text, "Get attributes")[4]
+    assert f'href="{DOCS}integrations.md#get-attributes-' in matter
+    blocked = cells(text, "Turn off with timer")[0]
+    assert blocked == f'<a href="{DOCS}integrations.md#zha">' + blocked.split(">", 1)[1]
+    assert "/no.svg" in blocked
+
+
+def test_an_integration_missing_from_the_integrations_doc_fails(monkeypatch, no_blockers):
+    monkeypatch.setattr(gf, "SECTIONS", {**gf.SECTIONS, "hue": "Philips"})
+    with pytest.raises(SystemExit, match="no section for hue"):
+        gf.generate(FakeRegistry(*every_row()))
+
+
+def test_every_legend_icon_links_to_its_heading(no_blockers):
+    legend = gf.generate(FakeRegistry(*every_row())).split("\n")[-3]
+    assert legend.count("<a href=") == len(gf.LEGEND)
+    assert f'<a href="{DOCS}device-compatibility.md#levels-of-proof">' in legend
+    assert '<a href="#set-scene-without-turning-on">' in legend
+
+
+def test_a_legend_link_to_no_heading_fails(tmp_path, monkeypatch, no_blockers):
+    monkeypatch.setattr(gf, "LEGEND", (("no", "not possible", "x", "docs/design.md", "nowhere"),))
+    readme = tmp_path / "README.md"
+    readme.write_text(f"# x\n\n{gf.START}\n{gf.END}\n{headings()}")
+    with pytest.raises(SystemExit, match="docs/design.md has no heading for #nowhere"):
+        gf.main(["--check"], FakeRegistry(*every_row()), readme)
