@@ -181,8 +181,9 @@ Each gate's rules are in the header of the script or workflow named.
 - **Tags:** `scripts/check_tag.py`, in `.github/workflows/cut-release-candidate.yml` and `cut-release.yml`, the only
   way a tag is made.
 - **RC audit:** `scripts/check_audit.py`, in `cut-release-candidate`.
-- **Testing:** unit tests mock each integration at its boundary (`mqtt.publish`, the ZHA service, the Shelly RPC, the
-  Matter client, aiohue) against a real `hass`. The rig runs against a live HA and writes the test records.
+- **Testing:** unit tests mock each integration at its boundary (MQTT's publish and subscribe, the ZHA service, the
+  Shelly RPC, the Matter client, aiohue) against a real `hass`. The rig runs against a live HA and writes the test
+  records.
 
 **Extensions (planned):** an adapter its contributor maintains, on hardware the rig lacks, marked 🧩 on the cards.
 Its route to stable, other than the rig, is left open.

@@ -77,7 +77,10 @@ Only devices Z2M registered through MQTT discovery are found: the device carries
   (`1221051039810110150109113116116` for `zigbee2mqtt`; `getEncodedBaseTopic` in Z2M's
   `lib/extension/homeassistant.ts`), and topic `zigbee2mqtt/<group ID>/set`. `resolveEntity` falls back to the
   ID-keyed `groups` map, so a rename doesn't break it either, but a device whose friendly name is that number wins.
-  Members come from `zigbee2mqtt/bridge/groups`, features from `zigbee2mqtt/bridge/devices`.
+  Members come from `zigbee2mqtt/bridge/groups`, features from `zigbee2mqtt/bridge/devices`. Both are held for the
+  entry's life (`bridge_cache.py`): subscribed once MQTT is up, kept as Z2M republishes them on a device or group
+  change, and read fresh only while nothing has arrived since the last connect. Z2M's settings (`bridge/info`) are
+  always read fresh.
 - **Both assume the default base topic.** A group's identifier carries it, so another is refused; a device's
   doesn't, so its publish goes nowhere.
 
@@ -96,10 +99,13 @@ Only devices Z2M registered through MQTT discovery are found: the device carries
   keeps the timer); off for a brightness fade (native, a long raise runs about 2.3x faster than its transition, and
   a soft off reports `onOff: 0` at once). Other actions, a saturation fade included, leave it alone. Where the
   setting differs, it's set (Z2M's settings read on each call, up to 5 s for Z2M), the command published, and the
-  user's value written back after Z2M's next state publish for the target (1 s cap). Z2M reads a command's options
-  as it takes it (`lib/extension/publish.ts`), so a fade already sent runs on unchanged. One lock per device or
-  group holds from the set to the restore. A group uses its own options, not its members', so it's set on the
-  group when any member is a Hue bulb. A failed set or restore logs a warning, and the command goes out anyway.
+  user's value written back after Z2M's next state publish for the target (1 s cap). The action returns once its
+  command is out; the write-back runs after it, and a `turn_on_for` waits for any pending one on its target before
+  its timer, its own or an earlier action's. Z2M reads a command's options as it takes it
+  (`lib/extension/publish.ts`), so a fade already sent runs on unchanged. One lock per device or group holds from the
+  set to the restore, so the next action that sets it waits for the write-back. A group uses its own options, not its
+  members', so it's set on the group when any member is a Hue bulb. A failed set or restore logs a warning, and the
+  command goes out anyway.
 - **`filtered_cache`** gets `deviceside_read` appended. Z2M deep-merges a read's answer into the cached state that
   every later message carries, so an unfiltered answer would look fresh forever. If it can't be set, the read
   raises.
