@@ -111,6 +111,9 @@ class ReportFilter:
 
         def detach() -> None:
             unsubscribe()
+            filters = get_runtime(self.hass).integration_state.get(FILTERS, {})
+            if filters.get(self.entry_id) is self:
+                del filters[self.entry_id]
             # Nothing will show a running fade's end now: hand HA back to the bridge.
             for light in self.api.lights:
                 if _running(self.cache, light.id):
