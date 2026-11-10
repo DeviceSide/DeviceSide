@@ -17,16 +17,15 @@ flag-only, docs, `scripts/` and rig step-file changes land. The items below run 
 
 ## To go
 
-- [ ] **RC audit**: `/rc-audit v0.1.0rc1` over `967bec0..HEAD` (rc1 was never tagged), fixes landed. A second pass
-  before the RC covers what lands after it.
+- [x] **RC audit**: `/rc-audit v0.1.0rc1` over `967bec0..HEAD` (rc1 was never tagged), fixes landed (#316). A second
+  pass before the RC covers what lands after it.
 - [ ] **Docs sign-off** by Jason, before the freeze, as it may change the design: README, `CONTRIBUTING.md`,
   `docs/device-compatibility.md` and its "Help us test", `docs/integrations.md`, `docs/design.md`,
   `docs/action-behavior.md`; the GitHub issue flows end to end (`.github/ISSUE_TEMPLATE/`, and the options flow's
   "Report a device" step as a user meets it in HA); the forum draft; hand-written v0.1.0 release notes. Each design
   change it raises lands before the freeze.
-- [ ] **Z2M `turn_on_for` late off**: `bulb_transition_then_off[light_dimmable]` intermittently turns off late, also
-  after #302. Diagnose with `--debug-logs`; a bulb cause goes in `docs/device-compatibility.md`, a DeviceSide cause
-  is fixed before the freeze.
+- [x] **Z2M `turn_on_for` late off**: `bulb_transition_then_off[light_dimmable]` was a step-file timing bug (the off
+  window closed before DeviceSide's end read), not the bulb or DeviceSide; fixed in ha-rig #47.
 - [ ] **Freeze**, then the rig runs below. Rig runs come from ha-rig `main`.
 - [ ] **Stale records rerun**: the Shelly profile (with a watched `set_attributes` `sets_color_while_off`), Matter
   `turn_on_for` and `get_attributes`, and ZHA and Z2M `turn_on_for` and `get_attributes`.
@@ -35,7 +34,8 @@ flag-only, docs, `scripts/` and rig step-file changes land. The items below run 
   `sets_color_while_off`; Z2M `halts_a_lower_to_off`, `hue_cycle_stop`, `saturation_down_stop`,
   `sets_color_while_off`. Unattended alongside: Z2M `lower_hue` `cycles_down_the_wheel[group_color]` (failed twice,
   #222). Then the PR clearing the last flags: every `set_attributes` and `stop`, and Z2M `lower_hue`.
-- [ ] **9d** Rig coverage sweep: `rig.py --coverage` full, and `check_release.py --records` clean.
+- [ ] **9d** Final sweep, after the runs above: `rig.py --coverage` full, and `check_release.py --records` clean on
+  committed code.
 - [ ] **#314**: link each rig-verified model on the device cards to its records. Any time before the RC: it touches
   `scripts/gen_compat.py` only.
 - [ ] **12** v0.1.0: no adapter left `experimental` (`scripts/check_release.py --release`). The release
