@@ -6,6 +6,7 @@ from types import SimpleNamespace
 import pytest
 import yaml
 
+from custom_components.deviceside.actions import discover
 from custom_components.deviceside.core.scope import AdapterScope, documented, experimental, reported, verified
 from scripts import check_release as cr
 from scripts import gen_compat as gc
@@ -555,3 +556,10 @@ def test_a_pipe_in_a_doesnt_work_entry_stays_in_its_cell(root):
     broken = [{"what": "A | B", "integrations": ["zha"], "reason": "x | y", "source": "https://x.y/z"}]
     registry = FakeRegistry(adapter("zha", "stop"))
     assert "| A \\| B | x \\| y | [source]" in gc.evidence(registry, data(registry, doesnt_work=broken))
+
+
+def test_every_action_has_a_card_name_from_the_feature_table():
+    """The cards' names come from the README table's rows, so an action can't be named on one and not the other."""
+    assert set(gc.FEATURES) == {action.key for action in discover()}
+    assert gc.FEATURES["raise_hue"] == "smooth hue"
+    assert list(gc.FEATURES)[-1] == "stop" == gc.FEATURES["stop"]
