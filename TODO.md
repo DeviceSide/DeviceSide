@@ -26,10 +26,12 @@ flag-only, docs, `scripts/` and rig step-file changes land. The items below run 
   landed before the freeze.
 - [x] **Z2M `turn_on_for` late off**: `bulb_transition_then_off[light_dimmable]` was a step-file timing bug (the off
   window closed before DeviceSide's end read), not the bulb or DeviceSide; fixed in ha-rig #47.
-- [x] **Freeze** at `075895f`, then the rig runs below. Rig runs come from ha-rig `main`.
-- [ ] **Stale records rerun**: every record `check_release.py --records` names (36 at the freeze: the wire trace,
-  #329, touched each transport). Every profile: Shelly (with a watched `set_attributes` `sets_color_while_off`),
-  Matter, Hue, ZHA and Z2M, and the house run for the Z2M group cases deferred from #330.
+- [x] **Freeze** at `e8b6a50` (after the audit fixes, #336–#341), then the rig runs below. Rig runs come from
+  ha-rig `main`.
+- [ ] **Stale records rerun**: every record `check_release.py --records` names (41 at the freeze: the wire trace,
+  #329, touched each transport, and the audit fixes each adapter). Every profile: Shelly (with a watched
+  `set_attributes` `sets_color_while_off`), Matter, Hue, ZHA and Z2M, and the house run for the Z2M group cases
+  deferred from #330.
 - [ ] **Watched lab session**, `--profile lab`, the A60 visiting each network: Hue `saturation_down_stop`,
   `halts_brightness_and_saturation`, `sets_color_while_off`; ZHA `hue_cycle_stop`, `saturation_down_stop`,
   `sets_color_while_off`; Z2M `halts_a_lower_to_off`, `hue_cycle_stop`, `saturation_down_stop`,
