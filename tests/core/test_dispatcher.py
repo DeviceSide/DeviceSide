@@ -119,6 +119,23 @@ async def test_an_experimental_capability_is_gated_by_the_one_the_adapter_names(
         }
 
 
+async def test_a_capability_outside_the_scope_is_refused_and_none_is_gated_as_experimental(hass, fake, reset_script):
+    add_fake_entity(hass, fake, "light.c")
+    add_fake_entity(hass, fake, "light.unknown")
+    scope = AdapterScope(duration=LIMITS, capabilities=verified("A"))
+    allow_experimental(hass, False)
+
+    def capability(self, hass, target):
+        return None if target.entity_id == "light.unknown" else "C"
+
+    with patch.object(FakeTurnOnFor, "scope", scope), patch.object(FakeTurnOnFor, "capability", capability):
+        # The default supports() refuses an untested capability, so no adapter re-implements the check.
+        assert await refusal(hass, "turn_on_for", {"entity_id": "light.c", "duration": 5}) == "capability_not_tested"
+        # One the adapter can't name passes supports() but fails safe at the gate.
+        assert await refusal(hass, "turn_on_for", {"entity_id": "light.unknown", "duration": 5}) == "experimental_off"
+    assert reset_script.calls == []
+
+
 async def test_an_experimental_call_left_nothing_to_send_is_unchanged_not_refused(hass, fake, reset_script):
     add_fake_entity(hass, fake, "light.onoff", attributes={"supported_color_modes": [ColorMode.ONOFF]})
     allow_experimental(hass, False)

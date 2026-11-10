@@ -27,7 +27,7 @@ class ShellyTurnOnFor(RpcComponent, Adapter[TurnOnForRequest]):
     )
 
     def supports(self, hass: HomeAssistant, request: TurnOnForRequest, target: Target) -> str | None:
-        return super().supports(hass, request, target) or unsupported_reason(target, self.scope.capabilities)
+        return super().supports(hass, request, target) or unsupported_reason(target)
 
     async def execute(
         self, hass: HomeAssistant, request: TurnOnForRequest, targets: list[Target]

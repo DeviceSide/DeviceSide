@@ -5,7 +5,6 @@ homeassistant.components.shelly, which does) would make this adapter module unav
 """
 
 import re
-from collections.abc import Collection
 from dataclasses import dataclass
 from typing import Any
 
@@ -84,12 +83,10 @@ def address(target: Target) -> RpcAddress | None:
     return RpcAddress(COMPONENTS[match["key"]], int(match["id"]))
 
 
-def unsupported_reason(target: Target, capabilities: Collection[str] | None = None) -> str | None:
-    """Why this entity can't take a timed Set within the capabilities in scope, or None."""
+def unsupported_reason(target: Target) -> str | None:
+    """Why this entity can't take an RPC call at all, or None. Adapter.supports checks the capability in scope."""
     if rpc_device(target) is None:
         return "gen1_unsupported"
-    if (rpc := address(target)) is None:
+    if address(target) is None:
         return Reason.NOT_ADDRESSABLE
-    if capabilities is not None and rpc.component not in capabilities:
-        return "capability_not_tested"
     return None
