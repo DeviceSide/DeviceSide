@@ -659,3 +659,15 @@ async def test_a_failed_restore_stays_owed(hass, setup_production, broker, turn_
     await call(hass, "turn_on_for", RED)
 
     assert (await journal(hass)).owed == {f"device/{IEEE}": False}
+
+
+async def test_a_later_owe_keeps_the_users_value_owed(hass, setup_production):
+    held = await journal(hass)
+
+    await held.add("device", IEEE, False)
+    await held.add("device", IEEE, True)
+    await held.strike("device", IEEE, True)
+
+    assert held.owed == {f"device/{IEEE}": False}
+    await held.strike("device", IEEE, False)
+    assert held.owed == {}

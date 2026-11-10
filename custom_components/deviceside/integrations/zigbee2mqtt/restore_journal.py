@@ -29,11 +29,16 @@ class Journal:
         self.owed = await self._store.async_load() or {}
 
     async def add(self, kind: str, z2m_id: str, value: bool) -> None:
-        self.owed[f"{kind}/{z2m_id}"] = value
-        await self._store.async_save(self.owed)
+        """Owe value, unless an earlier restore is still owed: that one holds the user's own value, where this one
+        may be an action's flipped value."""
+        if (key := f"{kind}/{z2m_id}") not in self.owed:
+            self.owed[key] = value
+            await self._store.async_save(self.owed)
 
-    async def strike(self, kind: str, z2m_id: str) -> None:
-        if self.owed.pop(f"{kind}/{z2m_id}", None) is not None:
+    async def strike(self, kind: str, z2m_id: str, value: bool) -> None:
+        """Strike the entry once value, the one written back, is what it owes; another value leaves it owed."""
+        if self.owed.get(key := f"{kind}/{z2m_id}") == value:
+            del self.owed[key]
             await self._store.async_save(self.owed)
 
 
@@ -48,8 +53,8 @@ async def journal(hass: HomeAssistant) -> Journal:
 
 
 async def replay(hass: HomeAssistant) -> None:
-    """Write back every value a previous run left owed, striking each off once Z2M confirms it. Never raises: what
-    can't be paid now (Z2M offline) stays journaled for the next start."""
+    """Write back every value a previous run left owed, striking each off once Z2M confirms it. Failing to pay
+    an entry (Z2M offline) leaves it journaled for the next start."""
     from .bridge import OPTION, ensure_options  # noqa: PLC0415 - bridge imports bridge_cache, which calls this
 
     held = await journal(hass)
@@ -60,5 +65,5 @@ async def replay(hass: HomeAssistant) -> None:
         except Exception as err:  # noqa: BLE001 - kept for the next start
             _LOGGER.warning("Couldn't put Zigbee2MQTT's %s back to %s for %s: %s", OPTION, value, key, err)
             continue
-        await held.strike(kind, z2m_id)
+        await held.strike(kind, z2m_id, value)
         _LOGGER.info("Put Zigbee2MQTT's %s back to %s for %s, left over from before a restart", OPTION, value, key)

@@ -187,7 +187,7 @@ async def _put_back(hass: HomeAssistant, target: Target, address: Address, value
     """Restore the user's value, and strike it off the journal once Z2M confirmed it."""
     if await _set(hass, target, address, value, restoring=True):
         try:
-            await (await journal(hass)).strike(*address)
+            await (await journal(hass)).strike(*address, value)
         except Exception as err:  # noqa: BLE001 - a stale entry is replayed harmlessly at the next start
             _LOGGER.warning("Couldn't strike the %s restore for %s off the journal: %s", OPTION, address, err)
 
@@ -209,7 +209,7 @@ async def _hue_address(hass: HomeAssistant, target: Target) -> Address | None:
     if (group := group_id(target)) is not None:
         return ("group", group) if await _has_hue_member(hass, group) else None
     if target.device is not None and target.device.manufacturer == _HUE_MANUFACTURER:
-        return "device", z2m_address(target.device)
+        return ("device", ieee) if (ieee := z2m_address(target.device)) is not None else None
     return None
 
 
