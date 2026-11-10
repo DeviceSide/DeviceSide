@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Proposals for new devices and integrations are accepted only from contributors who've already got them working in their homes, and can share their working YAML. Please don't submit YAML that you haven't tested yourself on a live Home Assistant instance.
+        Proposals are accepted only for devices and integrations where a known YAML solution already exists. Please only submit a proposal if you have the feature running stably on your Home Assistant instance and are willing to share the YAML. Speculative feature requests belong in the community forum.
   - type: input
     id: integration
     attributes:
@@ -51,21 +51,21 @@ body:
     attributes:
       label: Checklist
       options:
-        - label: I have searched the [existing issues](https://github.com/jasonmx/DeviceSide/issues/) to see if an issue for this already exists.
+        - label: I have searched the [existing issues](https://github.com/jasonmx/DeviceSide/issues/) to see if my proposal already exists.
           required: true
-        - label: I've got the checked features above working in my home for the proposed device/integration.
+        - label: I've got the feature(s) working in my home for the proposed device/integration.
           required: true
-        - label: The features run natively on the device (e.g. turn-off delays use on-device timers).
+        - label: The feature runs natively on the device (e.g. turn-off delays use on-device timers).
           required: true
-        - label: The features work smoothly, with no unwanted jumps, flashes, lags or freezes.
+        - label: The feature works smoothly, with no unwanted jumps, flashes, lags or freezes.
           required: true
-        - label: If my proposal gets built in DeviceSide, I will test it on my device(s).
+        - label: If my proposal gets implemented, I'm happy to test the DeviceSide release candidate on my device(s).
           required: true
   - type: textarea
     id: yaml
     attributes:
       label: Working YAML
-      description: Paste the action calls that you've got working in Home Assistant.
+      description: Paste the YAML action calls that you've got working in Home Assistant.
       render: yaml
     validations:
       required: true

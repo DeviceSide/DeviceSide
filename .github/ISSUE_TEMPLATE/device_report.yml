@@ -1,5 +1,5 @@
 name: Report a device test result or bug
-description: Tell us how DeviceSide worked on your device, or report a problem with it.
+description: Tell us how DeviceSide worked on your device(s), or report a problem with them.
 title: "Device report: "
 labels: ["device-report"]
 body:
@@ -15,7 +15,7 @@ body:
     id: worked
     attributes:
       label: Features that worked
-      description: Mark features you tested that worked as expected.
+      description: Features you tested that worked as expected.
       options:
         - label: turn_on_for
         - label: turn_off_for
@@ -32,7 +32,7 @@ body:
     id: failed
     attributes:
       label: Features that didn't work
-      description: Mark features you tested that didn't work as expected. Say what happened in the notes.
+      description: Features you tested that didn't work as expected. Say what happened in the notes.
       options:
         - label: turn_on_for
         - label: turn_off_for
