@@ -18,8 +18,10 @@ when the call is wrong or a device failed, never because some targets didn't app
 |---|---|---|
 | Invalid input (out of range, wrong type) | Raises at the schema | Raise at the schema |
 | A target is unavailable or missing | Skips it, logs "Referenced entities ... are missing or not currently available" | Skip and log alike |
+| No target given (an empty selection) | Returns, nothing raised | Return |
 | No targets left after skipping | Returns, nothing raised | Return |
 | The same, when the caller asked for a response | Raises: no entity matched | Raise `no_entities_matched` |
+| `entity_id: all` | Targets every entity of the domain, none named, so none raises or logs as missing | Same: every light and switch is indirect, so one that can't take the action is skipped with the warning |
 | A target the caller named can never support the action | Raises `ServiceNotSupported` | Raise `target_not_supported`, before anything is sent |
 | The same target reached indirectly | Skips it silently | Skip it, with one warning per call listing each target and why |
 | A light can't take one field (color on a white bulb) | Drops the field silently and acts on the rest | Drop it, act on the rest, `detail: fields_dropped` |

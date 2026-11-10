@@ -1,5 +1,6 @@
 """ZHA set_attributes: MoveTo commands with the ExecuteIfOff override, one light at a time, then update_entity."""
 
+import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -12,7 +13,7 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.service import async_register_admin_service
 from homeassistant.util.color import color_xy_to_hs
 
-from custom_components.deviceside.const import DOMAIN
+from custom_components.deviceside.const import ADAPTER_BACKSTOP_S, DOMAIN
 from custom_components.deviceside.integrations.zha import set_attributes as adapter
 from custom_components.deviceside.integrations.zha import zcl
 
@@ -200,6 +201,25 @@ async def test_a_later_command_failing_still_refreshes_the_light(hass, refreshes
     assert [refresh.data["entity_id"] for refresh in refreshes] == ["light.bulb"]
 
 
+def test_the_refresh_budget_is_inside_the_adapters_backstop():
+    assert adapter.REFRESH_BUDGET_S < ADAPTER_BACKSTOP_S
+
+
+async def test_a_refresh_past_its_budget_is_given_up_and_the_results_kept(hass, commands, monkeypatch, caplog):
+    monkeypatch.setattr(adapter, "REFRESH_BUDGET_S", 0.05)
+    bulb(hass, DIMMABLE)
+
+    async def hang(service: ServiceCall) -> None:
+        await asyncio.sleep(10)
+
+    hass.services.async_register("homeassistant", "update_entity", hang)
+
+    response = await call(hass, "set_attributes", {"entity_id": "light.bulb", "brightness": 40})
+
+    assert response["light.bulb"]["status"] == "sent"
+    assert "ran past" in caplog.text
+
+
 async def test_the_refreshes_wait_outside_the_concurrency_slots(hass):
     """Three lights under max_concurrency=2: every light's commands go before any refresh's wait holds a slot."""
     entry = zha_entry(hass)
@@ -303,6 +323,22 @@ async def test_a_level_write_replaces_the_level_zha_kept_for_the_next_on(hass, c
     zha_lights["light.bulb"] = SimpleNamespace(_off_brightness=254)
 
     await call(hass, "set_attributes", {"entity_id": "light.bulb", "brightness": 40})
+
+    assert zha_lights["light.bulb"]._off_brightness == 102
+
+
+async def test_the_level_is_kept_when_a_later_color_command_fails(hass, refreshes, zha_lights):
+    bulb(hass, COLOR)
+    zha_lights["light.bulb"] = SimpleNamespace(_off_brightness=254)
+
+    async def handler(service: ServiceCall) -> None:
+        if service.data["command"] == zcl.MOVE_TO_COLOR_TEMP:
+            raise ValueError("no answer")
+
+    hass.services.async_register("zha", "issue_zigbee_cluster_command", handler)
+
+    with pytest.raises(HomeAssistantError):
+        await call(hass, "set_attributes", {"entity_id": "light.bulb", "brightness": 40, "color_temp_kelvin": 2700})
 
     assert zha_lights["light.bulb"]._off_brightness == 102
 

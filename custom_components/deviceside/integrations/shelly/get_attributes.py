@@ -20,6 +20,9 @@ from ...core.timer import timer_row
 _LOGGER = logging.getLogger(__name__)
 
 
+_DIMMABLE = frozenset({"Light", "CCT", "RGB", "RGBW", "RGBCCT"})
+
+
 def status_row(component: str, status: dict, now: datetime) -> dict:
     """One target's row from its GetStatus. The bulb keeps brightness, ct and rgb while off, so they read then too.
 
@@ -27,14 +30,20 @@ def status_row(component: str, status: dict, now: datetime) -> dict:
     [0, duration] bounds any skew.
     """
     row: dict = {}
-    if component == "RGBCCT":
-        # Brightness is the device's percent, as Hue's row is. The status carries ct and rgb in either mode; only
-        # the active one is reported, as core does.
+    # Brightness is the device's percent, as Hue's row is. A field the status lacks leaves its row out.
+    if component in _DIMMABLE and "brightness" in status:
         row["brightness"] = status["brightness"]
-        if status["mode"] == "cct":
+    if component == "RGBCCT":
+        # The status carries ct and rgb in either mode; only the active one is reported, as core does.
+        if status.get("mode") == "cct" and "ct" in status:
             row["color_temp_kelvin"] = status["ct"]
-        elif status["mode"] == "rgb":
+        elif status.get("mode") == "rgb" and "rgb" in status:
             row.update(rgb_row(*status["rgb"]))
+    elif component == "CCT":
+        if "ct" in status:
+            row["color_temp_kelvin"] = status["ct"]
+    elif component in ("RGB", "RGBW") and "rgb" in status:
+        row.update(rgb_row(*status["rgb"]))
     if "timer_started_at" in status and "timer_duration" in status:
         duration = status["timer_duration"]
         remaining = min(max(status["timer_started_at"] + duration - now.timestamp(), 0), duration)
@@ -83,7 +92,12 @@ class ShellyGetAttributes(RpcComponent, Adapter[Request]):
             row = status_row(address(target).component, status, dt_util.utcnow())
             if isinstance(config, Exception):
                 _LOGGER.debug("get_attributes GetConfig failed for %s: %r", target.entity_id, config)
-                return self.result(target, Status.CONFIRMED, data=row)
-            return self.result(target, Status.CONFIRMED, data=row | config_row(config))
+            else:
+                row |= config_row(config)
+            if not row:
+                # Nothing was read, so nothing is confirmed.
+                _LOGGER.warning("get_attributes read nothing from %s's status", target.entity_id)
+                return self.result(target, Status.REJECTED, detail="error")
+            return self.result(target, Status.CONFIRMED, data=row)
 
         return await self.gather(hass, targets, read)

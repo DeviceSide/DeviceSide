@@ -193,3 +193,28 @@ async def test_a_slow_groupcast_times_out_its_members_and_keeps_the_others(hass,
 
     assert raised.value.translation_placeholders["summary"] == "light.a: timeout, light.b: timeout"
     assert [command.data["ieee"] for command in commands] == [IEEE]
+
+
+async def test_one_light_of_three_failing_rejects_only_it(hass, commands, clock):
+    c = "00:00:00:00:00:00:00:0c"
+    for entity_id, ieee in (("light.a", A), ("light.b", B), ("light.c", c)):
+        bulb(hass, entity_id, ieee)
+    await call(hass, "raise_brightness", {"entity_id": ["light.a", "light.b", "light.c"]})
+    for entity_id in ("light.a", "light.b", "light.c"):
+        hue_moves(hass).add(entity_id)
+    clock.now += 1
+
+    async def fail_b(service: ServiceCall) -> None:
+        if service.data["ieee"] == B:
+            raise HomeAssistantError("no route")
+
+    hass.services.async_register("zha", "issue_zigbee_cluster_command", fail_b)
+    with pytest.raises(HomeAssistantError) as raised:
+        await call(hass, "stop", {"entity_id": ["light.a", "light.b", "light.c"]})
+
+    assert raised.value.translation_placeholders["summary"] == "light.b: error"
+    cache = transition_cache(hass)
+    assert cache.halted("light.a", BRIGHTNESS)
+    assert cache.halted("light.c", BRIGHTNESS)
+    assert cache.running("light.b", BRIGHTNESS) is not None  # still the move it was
+    assert hue_moves(hass) == {"light.b"}
