@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 import pytest
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry, async_capture_events, async_fire_time_changed
 
@@ -17,6 +18,29 @@ from custom_components.deviceside.core.wire import WIRE_EVENT, WIRE_LOGGER
 from .fakes.scripted import SCRIPT
 
 FAKE_INTEGRATIONS = ["tests.fakes.broken_integration", "tests.fakes.fake_integration", "tests.fakes.fake_special"]
+
+
+class Clock:
+    """A transition cache clock the test moves by hand."""
+
+    def __init__(self) -> None:
+        self.now = 1000.0
+
+    def __call__(self) -> float:
+        return self.now
+
+
+def unload_mock_entries(domain: str):
+    """An autouse fixture, for an integration's conftest: mark its mocked config entries not loaded before teardown,
+    so HA doesn't import the real integration (or run its unload) on them."""
+
+    @pytest.fixture(autouse=True, name=f"unload_mock_{domain}_entries")
+    async def unload(hass: HomeAssistant):
+        yield
+        for entry in hass.config_entries.async_entries(domain):
+            entry.mock_state(hass, ConfigEntryState.NOT_LOADED)
+
+    return unload
 
 
 @pytest.fixture(autouse=True)
