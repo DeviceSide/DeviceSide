@@ -9,7 +9,7 @@ from homeassistant.helpers import target as target_helpers
 
 from . import duration, ha_watch
 from .action import Action
-from .adapter import Adapter
+from .adapter import DEADLINE, Adapter
 from .errors import EXPERIMENTAL_OFF, Reason, TargetNotSupported
 from .fields import lacking
 from .groups import expand_ha_groups
@@ -18,7 +18,7 @@ from .registry import AdapterRegistry
 from .resolver import resolve
 from .runtime import get_runtime
 from .scope import Level
-from ..const import ADAPTER_TIMEOUT_S, DOMAIN
+from ..const import ADAPTER_BACKSTOP_S, ADAPTER_TIMEOUT_S, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -191,8 +191,12 @@ class Dispatcher:
         clamped_to = None
         if isinstance(request, TimedRequest):
             request, clamped_to = duration.clamp(request, adapter.scope.duration)
+        # Each run is its own task (run_adapters gathers them), so the deadline set here is this run's alone.
+        deadline = asyncio.get_running_loop().time() + ADAPTER_TIMEOUT_S
+        DEADLINE.set(deadline)
         try:
-            async with asyncio.timeout(ADAPTER_TIMEOUT_S):
+            # Adapter.gather holds each target to the deadline; this catches an execute still busy outside it.
+            async with asyncio.timeout_at(deadline + ADAPTER_BACKSTOP_S):
                 raw = await adapter.execute(self.hass, request, targets)
         except TimeoutError:
             _LOGGER.warning("%s on %s timed out after %ss", adapter.action, adapter.integration, ADAPTER_TIMEOUT_S)

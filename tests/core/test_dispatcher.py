@@ -24,6 +24,8 @@ from ..fixtures.fake import add_fake_entity, add_fake_native_group, add_ha_group
 
 pytestmark = pytest.mark.usefixtures("setup_integration")
 
+DISPATCHER = "custom_components.deviceside.core.dispatcher"
+
 
 @pytest.fixture(autouse=True, params=[False, True], ids=["experimental_off", "experimental_on"])
 def experimental_option(request, hass, setup_integration):
@@ -514,19 +516,48 @@ async def test_a_request_left_nothing_to_do_is_unchanged_and_sends_nothing(hass,
 async def test_adapter_exception_and_timeout_reject_every_target(hass, fake, reset_script):
     add_fake_entity(hass, fake, "light.a")
     add_fake_entity(hass, fake, "switch.b")
+    data = {"entity_id": ["light.a", "switch.b"], "duration": 5}
     reset_script.execute_error = RuntimeError("bridge gone")
 
-    with pytest.raises(HomeAssistantError):
-        await call(hass, "turn_on_for", {"entity_id": ["light.a", "switch.b"], "duration": 5})
+    with pytest.raises(HomeAssistantError) as err:
+        await call(hass, "turn_on_for", data)
+    assert err.value.translation_placeholders == {"summary": "light.a: error, switch.b: error"}
 
     reset_script.execute_error = None
     reset_script.delay = 1
+    with patch(f"{DISPATCHER}.ADAPTER_TIMEOUT_S", 0.01), pytest.raises(HomeAssistantError) as err:
+        await call(hass, "turn_on_for", data)
+    assert err.value.translation_placeholders == {"summary": "light.a: timeout, switch.b: timeout"}
+
+
+async def test_a_timeout_keeps_the_results_of_the_targets_that_finished(hass, fake, reset_script):
+    add_fake_entity(hass, fake, "light.fast")
+    add_fake_entity(hass, fake, "light.slow")
+    reset_script.delays = {"light.slow": 1}
+
+    with patch(f"{DISPATCHER}.ADAPTER_TIMEOUT_S", 0.05), pytest.raises(HomeAssistantError) as err:
+        await call(hass, "turn_on_for", {"entity_id": ["light.fast", "light.slow"], "duration": 5})
+
+    # light.fast was sent and isn't reported failed: only the light still going when time ran out is.
+    assert err.value.translation_placeholders == {"summary": "light.slow: timeout"}
+
+
+async def test_an_execute_busy_outside_gather_past_the_backstop_times_out_every_target(hass, fake):
+    add_fake_entity(hass, fake, "light.a")
+    add_fake_entity(hass, fake, "light.b")
+
+    async def execute(self, hass, request, targets):
+        await asyncio.sleep(1)
+
     with (
-        patch("custom_components.deviceside.core.dispatcher.ADAPTER_TIMEOUT_S", 0.01),
+        patch("tests.fakes.fake_integration.FakeTurnOnFor.execute", execute),
+        patch(f"{DISPATCHER}.ADAPTER_TIMEOUT_S", 0.01),
+        patch(f"{DISPATCHER}.ADAPTER_BACKSTOP_S", 0.01),
         pytest.raises(HomeAssistantError) as err,
     ):
-        await call(hass, "turn_on_for", {"entity_id": "light.a", "duration": 5})
-    assert err.value.translation_placeholders == {"summary": "light.a: timeout"}
+        await call(hass, "turn_on_for", {"entity_id": ["light.a", "light.b"], "duration": 5})
+
+    assert err.value.translation_placeholders == {"summary": "light.a: timeout, light.b: timeout"}
 
 
 async def test_missing_and_stray_results_are_reconciled(hass, fake):

@@ -2,6 +2,7 @@ import asyncio
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import Awaitable, Callable
+from contextvars import ContextVar
 from typing import ClassVar
 
 from homeassistant.core import HomeAssistant
@@ -11,6 +12,9 @@ from .runtime import get_runtime
 from .scope import AdapterScope
 
 _LOGGER = logging.getLogger(__name__)
+
+# The loop time the dispatcher gives a run's targets to finish by, set around each execute(); None outside one.
+DEADLINE: ContextVar[float | None] = ContextVar("deviceside_adapter_deadline", default=None)
 
 
 class Adapter[RequestT: Request](ABC):
@@ -68,17 +72,24 @@ class Adapter[RequestT: Request](ABC):
     ) -> list[EntityResult]:
         """Run send() per target under the integration's and this adapter's concurrency limits.
 
-        An exception from one target becomes that target's REJECTED result and does not affect the others.
+        An exception from one target becomes that target's REJECTED result and does not affect the others. A target
+        not done by the dispatcher's deadline, waiting for a slot included, is REJECTED with timeout, so a large room
+        cut short still reports the lights that changed.
         """
         integration_limit, adapter_limit = self.limits(hass)
+        deadline = DEADLINE.get()
 
         async def _one(target: Target) -> EntityResult:
-            async with integration_limit, adapter_limit:
-                try:
+            budget = asyncio.timeout_at(deadline)
+            try:
+                async with budget, integration_limit, adapter_limit:
                     return await send(target)
-                except Exception as err:  # noqa: BLE001 - one device's failure must not abort the room
-                    # repr, not str: a timeout's message is empty, and only its type says what went wrong
-                    _LOGGER.warning("%s on %s failed for %s: %r", self.action, self.integration, target.entity_id, err)
-                    return self.result(target, Status.REJECTED, detail="error")
+            except Exception as err:  # noqa: BLE001 - one device's failure must not abort the room
+                if budget.expired():
+                    _LOGGER.warning("%s on %s timed out for %s", self.action, self.integration, target.entity_id)
+                    return self.result(target, Status.REJECTED, detail="timeout")
+                # repr, not str: a timeout's message is empty, and only its type says what went wrong
+                _LOGGER.warning("%s on %s failed for %s: %r", self.action, self.integration, target.entity_id, err)
+                return self.result(target, Status.REJECTED, detail="error")
 
         return list(await asyncio.gather(*(_one(target) for target in targets)))
