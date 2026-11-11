@@ -7,5 +7,5 @@ requires: Bridge v2/Pro
 doesnt_work:
   - what: Hue smart scenes
     reason: A smart (All-Day) scene changes with the time of day, so it has no fixed settings to write
-    source: https://github.com/jasonmx/DeviceSide/blob/main/docs/integrations/hue/index.md#flash-free-turn-on
+    source: https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/hue/index.md#flash-free-turn-on
 reports: []

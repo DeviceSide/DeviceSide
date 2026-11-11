@@ -8,7 +8,7 @@ import pytest
 from custom_components.deviceside.core.scope import AdapterScope, documented, experimental, reported, verified
 from scripts import gen_features as gf
 
-LIGHT = '<img src="https://raw.githubusercontent.com/jasonmx/DeviceSide/main/docs/icons/light.svg"'
+LIGHT = '<img src="https://raw.githubusercontent.com/DeviceSide/DeviceSide/main/docs/icons/light.svg"'
 SWITCH = "/switch.svg"
 KEYS = ("zha", "zigbee2mqtt", "shelly", "hue", "matter")  # the real bundles, in column order
 GROUP = "/group.svg"
@@ -223,7 +223,7 @@ def test_a_blocked_key_that_is_built_only_with_experimental_on_fails(monkeypatch
         gf.generate(FakeRegistry(*every_row(domains=verified("light") | experimental("switch"))))
 
 
-DOCS = "https://github.com/jasonmx/DeviceSide/blob/main/docs/"
+DOCS = "https://github.com/DeviceSide/DeviceSide/blob/main/docs/"
 
 
 def test_repeated_headings_get_githubs_numbered_anchors():

@@ -14,7 +14,7 @@ from custom_components.deviceside.core.registry import AdapterRegistry
 
 from .fakes.fake_integration import ADAPTERS, INTEGRATION, FakeTurnOffFor
 
-REASON = "https://github.com/jasonmx/DeviceSide/issues/1"
+REASON = "https://github.com/DeviceSide/DeviceSide/issues/1"
 
 
 class UnmaintainedTurnOffFor(FakeTurnOffFor):
