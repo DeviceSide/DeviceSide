@@ -31,8 +31,8 @@ Depends-on: #374
 - **Changed lines.** `git diff -U0 <stale commit> HEAD` of the module, HEAD side. Each changed line maps to the
   innermost statement (or `except`/`case` clause) around it, which is covered when any line of its header (first
   decorator through the line before its body; a simple statement's whole span) is executed. A line with no code
-  (comment, blank) or inside a docstring needs nothing. A hunk that removes code not replaced line for line at the
-  same indentation (a deletion, or code moved across a block) also needs the nearest code line on each side covered.
+  (comment, blank) or inside a docstring needs nothing. A hunk that adds code, or removes code not replaced line
+  for line at the same indentation (an inserted `else:` or a deletion moves code across a block), also needs the nearest code line on each side covered.
 - **Import-time lines (Jason, 2026-11-11, after audit 1): never cleared.** A line added, changed or removed in a
   module's or class's own statements stales every adapter that reaches it. A changed decorator or `def` signature needs the function's first
   non-docstring statement executed (the call). A lambda's or generator expression's body is its own clause, needing
@@ -64,6 +64,8 @@ code across a block dropped the removal's neighbors; a one-line def ran at impor
 (M1 by the narrower option: neighbors unless each removed code line is replaced in order at the same indentation).
 **Audit report 3: NOT-CLEAN** (m=1 l=2): module/class-level multi-line lambdas and genexps counted as deferred;
 an insert-only hunk needed neighbors; docstring wording. Fixed in the commit after ef94c68.
+**Audit report 4: NOT-CLEAN** (m=1): report 3's insert-only exemption let an inserted `else:` move code
+unseen; reverted in the commit after cc45f68.
 L2 (multi-line list/set/dict comprehensions folded into their statement) left open: Jason's call. Gate is at HANDOFF
 (two NOT-CLEAN in a row): Jason runs `audit-gate accept` or asks for audit 3; then `gh pr ready`, `merge-green 377
 --squash --delete-branch` (repo opts in).

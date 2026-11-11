@@ -42,11 +42,12 @@ each covering that integration's adapter for the action. Prose and headings arou
 a record that passed, of a released adapter with a Verified call (any integration's), whose cited commit holds the
 module as HEAD does, and whose run executed a line of each clause the change touches (`needed_headers`: a statement,
 `except` or `case` clause, from its first decorator to the line before its body; a function's decorators and signature
-need its first statement, a lambda's body its body; a comment, blank line or docstring needs none, and removed code
-not replaced line for line at the same indentation needs the code on each side of it). The rest of that run's
-adapter may have changed since. A change to a module's or class's own statements (a constant, a class attribute, an
-import), which every run executes at import, and a change inside an integration's package are never cleared this way.
-The rig writes the run's coverage into the record, the modules relative to the component and the lines as
+need its first statement, a lambda's body its body; a comment, blank line or docstring needs none, and a hunk that
+adds code, or removes code not replaced line for line at the same indentation, needs the code on each side of it).
+The rest of that run's adapter may have changed since. A change to a module's or class's own statements (a constant,
+a class attribute, an import), which every run executes at import, and a change inside an integration's package are
+never cleared this way. The rig writes the run's coverage into the record, the modules relative to the component and
+the lines as
 coverage.py's executed lines:
 
     ## Shared coverage
@@ -557,8 +558,9 @@ def indents(text: str, lines: set[int]) -> list[int]:
 def needed_headers(commit: str, head: str, path: str) -> list[range] | None:
     """The lines the module's change from the commit to the head (both full hashes, for the cache) needs a run to
     execute, one of each range: those of the innermost clause (`clauses`) around each changed code line, a comment,
-    blank line or docstring needing none; for a hunk that removes code not replaced line for line at the same
-    indentation (a deletion, or code moved across a block), those of the nearest code line on each side too. None if
+    blank line or docstring needing none; for a hunk that adds code, or removes code not replaced line for line at
+    the same indentation (an inserted `else:` or a deletion moves code across a block), those of the nearest code line
+    on each side too. None if
     the change can't be cleared: either side's module can't be parsed, or the change adds, alters or removes a
     module's or class's own statements (`deferred_lines`), which every run that imports the module executes."""
     if (diff := git("diff", "-U0", commit, head, "--", path)).returncode:
@@ -584,7 +586,7 @@ def needed_headers(commit: str, head: str, path: str) -> list[range] | None:
         lines |= added
         if (removed := old_code.intersection(range(old_start, old_start + old_count))) - old_deferred:
             return None
-        if removed and indents(old, removed) != indents(text, added):
+        if indents(old, removed) != indents(text, added):
             # With no new lines, git numbers the hunk by the line before the deletion.
             last = start + count - 1 if count else start
             before = [line for line in code if line < start or (not count and line == start)]

@@ -1072,8 +1072,13 @@ def body(*lines: str) -> str:
             body("if v:", "    a2()", "d()"),
             [range(2, 3), range(3, 4), range(4, 5)],
         ),
-        # Inserted code needs only itself.
-        (body("a()", "c()"), body("a()", "b()", "c()"), [range(3, 4)]),
+        # Inserted code needs the code on each side too: an inserted `else:` moves the code below it.
+        (body("a()", "c()"), body("a()", "b()", "c()"), [range(2, 3), range(3, 4), range(4, 5)]),
+        (
+            body("if v:", "    a()", "    b()"),
+            body("if v:", "    a()", "else:", "    b()"),
+            [range(3, 4), range(2, 3), range(5, 6)],
+        ),
         # Code moved across a block boundary needs the code around the removal too.
         (
             body("if v:", "    a()", "    b()", "c()"),
