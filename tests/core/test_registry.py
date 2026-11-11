@@ -125,6 +125,18 @@ def test_an_adapter_naming_capabilities_must_list_them_in_its_scope():
     AdapterRegistry(actions.discover(), [SimpleNamespace(INTEGRATION=INTEGRATION, ADAPTERS=[Listed])])
 
 
+def test_an_adapter_listing_capabilities_must_name_them():
+    from types import SimpleNamespace
+
+    from ..fakes.fake_integration import INTEGRATION, FakeTurnOnFor
+
+    class Unnamed(FakeTurnOnFor):
+        scope = replace(FakeTurnOnFor.scope, capabilities=verified("Switch"))
+
+    with pytest.raises(ValueError, match="lists capabilities in its scope but names none"):
+        AdapterRegistry(actions.discover(), [SimpleNamespace(INTEGRATION=INTEGRATION, ADAPTERS=[Unnamed])])
+
+
 @pytest.mark.parametrize(
     ("maintainers", "error"),
     [

@@ -14,11 +14,22 @@ change to it stales those adapters' records. `actions/` and imports made only fo
 Exits 1 on any integration that failed to import, whatever the options; with --coverage, any module of an adapter's
 code, bar `__init__.py`, under 95% line coverage; with --release, any experimental adapter or a Stale tests mismatch;
 with --records, any `_manual.md` error, or any released adapter with a Verified call that lacks `<action>.md` or an
-`<action>-<option>.md` for one of its scope's options, a record whose Result is not `pass`, or code changed after the
-commit one of its records cites. Each record holds the latest run of its call or option. Setting or clearing
+`<action>-<option>.md` for one of its scope's options, a record whose Result is not `pass` or that has no readable
+Covers row, a Verified item no record covers (below), or code changed after the commit one of its records cites. Each
+record holds the latest run of its call or option. Setting or clearing
 `experimental`, `unmaintained` or `stale_tests`, or changing an integration's `maintainers`, is not a change to the
 code: no call reads them (setup reads `unmaintained` and `stale_tests` only to warn, and registration checks
 `maintainers`).
+
+**Covers.** The rig writes, in each record's table, what its passing cases sent through the adapter, from the
+dispatcher's `deviceside_scope` trace (core/wire.py), and each of the scope's options as the run set it:
+
+    | Covers | domains=light,switch; capabilities=RGBCCT,Switch; fields=brightness; options=predicted_state:off |
+
+All four axes, in that order, each a sorted comma-separated list that may be empty. Across the adapter's records,
+every Verified domain, capability and field must appear, and each option both `:on` and `:off` (CLAUDE.md § Release
+flag, "Clearing it"). Uncovered items are listed only once every record the adapter needs is there and every record
+of it has the row.
 
 **Retests.** An adapter with no Verified call has no rig coverage, so a record can't gate it; it still needs a retest
 as new as its code once it holds a call that ships on (Documented or better; an adapter whose calls are all
@@ -97,6 +108,10 @@ COVERAGE_BAR = 95.0
 BUNDLES = REPO / "docs" / "integrations"
 CITED_COMMIT = re.compile(r"^\| Source \|.*\bcommit `([0-9a-f]{7,40})`", re.MULTILINE)
 RESULT = re.compile(r"^\| Result \| (\S+) \|", re.MULTILINE)
+COVERS = re.compile(r"^\| Covers \| (.*) \|$", re.MULTILINE)
+COVERS_AXES = ("domains", "capabilities", "fields", "options")
+COVERS_ITEMS = dict.fromkeys(COVERS_AXES, r"\w+") | {"options": r"\w+:(?:on|off)"}
+COVERS_VALUE = re.compile("; ".join(rf"{axis}=((?:{item}(?:,{item})*)?)" for axis, item in COVERS_ITEMS.items()))
 MANUAL = "_manual.md"
 MANUAL_HEADER = ("| Date | Commit | Tester | Devices | Passed |", "|---|---|---|---|---|")
 BACKTICKED = r"`[^`|]+`(?:, `[^`|]+`)*"
@@ -356,10 +371,26 @@ def result(record: Path) -> str | None:
     return m[1] if (m := RESULT.search(record.read_text())) else None
 
 
+def covers(text: str) -> dict[str, set[str]] | None:
+    """The record's Covers row, by axis; None if it has none, or one not in the exact form the rig writes."""
+    if not (row := COVERS.search(text)) or not (value := COVERS_VALUE.fullmatch(row[1])):
+        return None
+    return {axis: set(items.split(",")) - {""} for axis, items in zip(COVERS_AXES, value.groups(), strict=True)}
+
+
+def verified_items(scope) -> dict[str, set[str]]:
+    """What the adapter's records must cover, by Covers axis: its Verified domains, capabilities and fields, and each
+    of its options on and off."""
+    held = {"domains": scope.domains, "capabilities": scope.capabilities or {}, "fields": scope.fields}
+    items = {axis: {item for item, level in levels.items() if level is Level.VERIFIED} for axis, levels in held.items()}
+    return items | {"options": {f"{option}:{state}" for option in scope.options for state in ("on", "off")}}
+
+
 def record_errors(registry: AdapterRegistry, shared: SharedIndex | None = None) -> list[str]:
-    """A released adapter missing its base record or one of its options' records, or with a record that did not pass
-    or is stale (a `core/` change the shared coverage clears aside), is an error. Experimental adapters are exempt, as
-    no release has them, and so are adapters with no Verified call, as no record proves them."""
+    """A released adapter missing its base record or one of its options' records, with a record that did not pass, has
+    no readable Covers row or is stale (a `core/` change the shared coverage clears aside), or with a Verified item no
+    record covers, is an error. Experimental adapters are exempt, as no release has them, and so are adapters with no
+    Verified call, as no record proves them."""
     errors = []
     for name, adapter in adapters(registry):
         if adapter.scope.experimental or not proven(adapter.scope):
@@ -367,21 +398,39 @@ def record_errors(registry: AdapterRegistry, shared: SharedIndex | None = None) 
         found = records(adapter.integration, adapter.action)
         have = {record.name for record in found}
         folder = test_records_dir(adapter.integration).relative_to(REPO)
-        errors += [
-            f"{name}: no test record {folder}/{file}"
-            for file in record_names(adapter.action, adapter.scope.options)
-            if file not in have
-        ]
+        missing = [file for file in record_names(adapter.action, adapter.scope.options) if file not in have]
+        errors += [f"{name}: no test record {folder}/{file}" for file in missing]
         code = code_of(adapter)
+        rows = {record: covers(record.read_text()) for record in found}
         for record in found:
             label = record.relative_to(REPO)
+            if rows[record] is None:
+                errors.append(f"{name}: {label} has no readable Covers row")
             if (outcome := result(record)) is None:
                 errors.append(f"{name}: {label} has no readable Result row")
             elif outcome != "pass":
                 errors.append(f"{name}: {label} did not pass (result: {outcome})")
             if problem := staleness(record, code, shared):
                 errors.append(f"{name}: {label} {problem}")
+        if not missing:
+            errors += [f"{name}: {gap}" for gap in coverage_gaps(adapter.scope, list(rows.values()))]
     return errors
+
+
+def coverage_gaps(scope, rows: list[dict[str, set[str]] | None]) -> list[str]:
+    """What the records' Covers rows (`covers`) leave uncovered of the scope's Verified items (`verified_items`), one
+    line per axis; nothing while a record has no readable row, which is already an error."""
+    covered: dict[str, set[str]] = {axis: set() for axis in COVERS_AXES}
+    for items in rows:
+        if items is None:
+            return []
+        for axis, values in items.items():
+            covered[axis] |= values
+    return [
+        f"no record covers Verified {axis} {', '.join(sorted(uncovered))}"
+        for axis, needed in verified_items(scope).items()
+        if (uncovered := needed - covered[axis])
+    ]
 
 
 def staleness(record: Path, code: list[str], shared: SharedIndex | None = None) -> str | None:

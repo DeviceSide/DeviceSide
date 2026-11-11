@@ -10,7 +10,7 @@ commands with it on and off, and a rig comparing traces must not read two such r
 The same logger gates the scope trace, `deviceside_scope`: one event per target the dispatcher runs, past the
 Experimental gate, naming what `AdapterScope.level()` weighed for it (its domain, the capability the adapter named,
 null when none, and the fields the call carries after drops). A rig unions it over the cases a run passed into its
-record's `Covers:` line, which `check_release.py --records` holds against the adapter's Verified scope. The target is
+record's `Covers` row, which `check_release.py --records` holds against the adapter's Verified scope. The target is
 named by the entity_id results are keyed on.
 """
 

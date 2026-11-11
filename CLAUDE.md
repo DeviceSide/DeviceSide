@@ -45,7 +45,8 @@ performance work and fixes to adapters the rig can retest before the next RC. Wh
 
 **Clearing it:** a PR citing a passing test record (`docs/integrations/<integration>/test-records/<action>*.md`)
 that covers the adapter's whole scope bar its Documented, Reported and Experimental items: `AdapterScope.domains`,
-`.capabilities`, `.fields`, and each of `.options` on and off.
+`.capabilities`, `.fields`, and each of `.options` on and off. `check_release.py --records` checks it against the
+records' `Covers` rows.
 
 **Proof follows the call.** A record proves the call an adapter sends and the capability it reaches (Shelly: the RPC
 component), whatever entity domain the target shows: a relay exposed as a `switch` or an on/off `light` rides one
