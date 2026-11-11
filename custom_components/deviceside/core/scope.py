@@ -59,13 +59,17 @@ class AdapterScope:
     An Experimental item is gated at runtime: the dispatcher refuses a call that touches one unless the Experimental
     features option is on. An item that is not built, or built but not unit-tested, is left out of scope and refused.
     `experimental=True` is the adapter-level flag: it keeps a behavior change to proven code out of a stable release.
-    `unmaintained` marks an adapter no one is fixing: it stays live, setup warns and its card says so. Neither changes a
-    call, so the records check ignores both (scripts/check_release.py).
+    `unmaintained` marks an adapter no one is fixing, and `stale_tests` one that ships changed since its last retest:
+    either way it stays live, setup warns and its card says so. None of the three changes a call, so the records check
+    ignores them (scripts/check_release.py).
     """
 
     experimental: bool = False
     # Why no one is fixing it: an issue URL, or a reason. Set by the project owner's call; cleared on a fix or adoption.
     unmaintained: str | None = None
+    # Why it ships untested: an issue URL (the call for testers), or a reason. Set by hand on an adapter with no fresh
+    # retest at the cut (check_release.py --release); cleared in the PR that adds one.
+    stale_tests: str | None = None
     domains: Mapping[str, Level] = field(default_factory=lambda: verified("light"))
     duration: DurationLimits | None = None
     # Never Documented: a field changes the call, so no sibling's proof covers it.

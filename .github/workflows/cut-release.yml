@@ -2,8 +2,9 @@ name: Cut release
 
 # The only way a vX.Y.Z tag is made (a tag ruleset refuses any other). Dispatched from main, it tags the commit of
 # vX.Y.Z's latest RC, not main's head: what ships is what soaked, while main moves on. Requires a version above the
-# latest release and, at the RC's commit, manifest.json at that version, green CI, no experimental adapter, and every
-# adapter's test records passing and citing a commit with its adapter code (check_release --release --records). Soak is the repo
+# latest release and, at the RC's commit, manifest.json at that version, green CI, no experimental adapter, every
+# adapter's test records passing and citing a commit with its adapter code, and an adapter with no fresh retest marked
+# stale_tests (check_release --release --records), whose call for testers leads the release notes. Soak is the repo
 # maintainers' call.
 #
 # Two jobs, so the code `uv sync` installs never shares a runner with write access: `check` runs the gates with a
@@ -29,6 +30,7 @@ jobs:
       BRANCH: ${{ github.ref_name }}
     outputs:
       target: ${{ steps.target.outputs.target }}
+      notes: ${{ steps.gates.outputs.notes }}
 
     steps:
       - name: Refuse a tag ref
@@ -78,8 +80,12 @@ jobs:
       - name: Fetch the commits test records cite
         run: git fetch --quiet origin '+refs/pull/*/head:refs/remotes/pull/*'
 
-      - name: Refuse an experimental adapter, or a test record older than its adapter's code
-        run: .venv/bin/python scripts/check_release.py --release --records
+      # The call for testers rides to `tag` as an output, as that job's runner has none of this one's files.
+      - name: Refuse an experimental adapter, a test record older than its adapter's code, or an unmarked untested adapter
+        id: gates
+        run: |
+          .venv/bin/python scripts/check_release.py --release --records --notes "$RUNNER_TEMP/notes.md"
+          { echo 'notes<<END_OF_NOTES'; cat "$RUNNER_TEMP/notes.md"; echo 'END_OF_NOTES'; } >> "$GITHUB_OUTPUT"
 
   tag:
     needs: check
@@ -106,7 +112,9 @@ jobs:
       - name: Tag and publish the release
         env:
           DEPLOY_KEY: ${{ secrets.RELEASE_TAG_DEPLOY_KEY }}
+          NOTES: ${{ needs.check.outputs.notes }}
         run: |
+          printf '%s' "$NOTES" > "$RUNNER_TEMP/notes.md"
           key="$RUNNER_TEMP/tag_deploy_key"
           hosts="$RUNNER_TEMP/github_known_hosts"
           trap 'rm -f "$key" "$hosts"' EXIT
@@ -115,4 +123,4 @@ jobs:
           export GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$hosts"
           git tag "$VERSION" "$TARGET"
           git push "git@github.com:$GITHUB_REPOSITORY.git" "refs/tags/$VERSION"
-          gh release create "$VERSION" --verify-tag --latest --generate-notes --title "$VERSION"
+          gh release create "$VERSION" --verify-tag --latest --generate-notes --notes-file "$RUNNER_TEMP/notes.md" --title "$VERSION"
