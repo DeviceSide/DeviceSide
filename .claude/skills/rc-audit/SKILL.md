@@ -16,7 +16,7 @@ only runs the audit and writes the record.
   of the head (the root commit if none). A `release/vX.Y.Z` branch cut from an RC tag has that RC as an
   ancestor.
 - **What blocks:** a Critical or High with status `open`. `waived` needs a `reason`; `fixed` needs a `fixed_in`
-  commit inside a later pass. Medium and Low never block.
+  commit inside a later pass. Medium and Low on low-frequency paths never block.
 - **Fixes get their own pass.** A fix changes code after the audit, so `--fix-pass` audits just the new commits
   rather than re-running the whole range, reading past its hunks for what the fix broke (§ Fix pass, step 2).
   Passes chain from `base`, and nothing outside `docs/audits/` may change after the last one.
