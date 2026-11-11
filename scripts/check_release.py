@@ -38,6 +38,22 @@ Devices are model ids (docs/models.yaml), never a household's device names; Pass
 each covering that integration's adapter for the action. Prose and headings around the table are ignored; any other
 `|` line is an error under --records, as is a tester who is not one of the integration's maintainers.
 
+**Shared code.** A change to a `core/` module counts against no adapter's records or retests once one run proved it:
+a record that passed, of a released adapter with a Verified call (any integration's), whose cited commit holds the
+module as HEAD does, and whose run executed a line of each clause the change touches (`needed_headers`: a statement,
+`except` or `case` clause, from its first decorator to the line before its body; a comment, blank line or docstring
+needs none, and a deletion needs the code on each side of it). The rest of that run's adapter may have changed since.
+A change inside an integration's package is never cleared this way. The rig writes the run's coverage into the record,
+the modules relative to the component and the lines as coverage.py's executed lines:
+
+    ## Shared coverage
+
+    | Module | Executed lines |
+    |---|---|
+    | `core/dispatcher.py` | 12-40, 55 |
+
+Other `|` lines in that section are errors under --records; the section ends at the next `## ` heading.
+
 **Stale tests.** --records lists each adapter that needs a retest and has none fresh. --release fails on one unless
 its scope sets `stale_tests` (it then ships live, marked ⚠️ Stale tests), and on a `stale_tests` adapter that has a
 fresh retest or needs none, as that retest clears the mark. --notes writes the release notes' call for testers: each
@@ -82,6 +98,12 @@ MANUAL_ROW = re.compile(
     rf"\| (\d{{4}}-\d{{2}}-\d{{2}}) \| `([0-9a-f]{{7,40}})` \| @([A-Za-z0-9-]+) \| ({BACKTICKED}) \| ({BACKTICKED}) \|"
 )
 DEVICE_REPORT = f"{REPORT_URL}?template=device_report.yml"
+CORE_DIR = "custom_components/deviceside/core/"
+SHARED_HEADING = re.compile(r"^## Shared coverage[ \t]*$", re.MULTILINE)
+SHARED_HEADER = ("| Module | Executed lines |", "|---|---|")
+LINE_RANGES = r"\d+(?:-\d+)?(?:, \d+(?:-\d+)?)*"
+SHARED_ROW = re.compile(rf"\| `(core/[\w/]+\.py)` \| ({LINE_RANGES}) \|")
+HUNK = re.compile(r"^@@ -\S+ \+(\d+)(?:,(\d+))? @@", re.MULTILINE)
 
 
 def adapters(registry: AdapterRegistry) -> list[tuple[str, object]]:
@@ -328,10 +350,10 @@ def result(record: Path) -> str | None:
     return m[1] if (m := RESULT.search(record.read_text())) else None
 
 
-def record_errors(registry: AdapterRegistry) -> list[str]:
+def record_errors(registry: AdapterRegistry, shared: SharedIndex | None = None) -> list[str]:
     """A released adapter missing its base record or one of its options' records, or with a record that did not pass
-    or is stale, is an error. Experimental adapters are exempt, as no release has them, and so are adapters with no
-    Verified call, as no record proves them."""
+    or is stale (a `core/` change the shared coverage clears aside), is an error. Experimental adapters are exempt, as
+    no release has them, and so are adapters with no Verified call, as no record proves them."""
     errors = []
     for name, adapter in adapters(registry):
         if adapter.scope.experimental or not proven(adapter.scope):
@@ -351,30 +373,196 @@ def record_errors(registry: AdapterRegistry) -> list[str]:
                 errors.append(f"{name}: {label} has no readable Result row")
             elif outcome != "pass":
                 errors.append(f"{name}: {label} did not pass (result: {outcome})")
-            if problem := staleness(record, code):
+            if problem := staleness(record, code, shared):
                 errors.append(f"{name}: {label} {problem}")
     return errors
 
 
-def staleness(record: Path, code: list[str]) -> str | None:
+def staleness(record: Path, code: list[str], shared: SharedIndex | None = None) -> str | None:
     """Why the record is stale: it cites no commit or one git can't find, or the code differs between the cited commit
     and HEAD by more than its flags (`FLAGS`). Trees are compared, not history, so a record citing
     a squash-merged branch counts. None if it is fresh."""
     if not (cited := CITED_COMMIT.search(record.read_text())):
         return "cites no commit"
-    return changed_since(cited[1], code)
+    return changed_since(cited[1], code, shared)
 
 
-def changed_since(commit: str, code: list[str]) -> str | None:
+def changed_since(commit: str, code: list[str], shared: SharedIndex | None = None) -> str | None:
     """Why code tested at the commit (a hash or a tag) is not the code at HEAD: git can't find the commit, or the code
-    differs between the two by more than its flags. None if it is the same."""
+    differs between the two by more than its flags, bar `core/` modules whose change the shared coverage clears
+    (`shared_clears`). None if it is the same."""
     if git("rev-parse", "--verify", "--quiet", f"{commit}^{{commit}}").returncode:
         return f"cites commit {commit}, which git can't find"
     if (diff := git("diff", "--name-only", commit, "HEAD", "--", *code)).returncode:
         raise SystemExit(f"git diff {commit} HEAD failed: {diff.stderr.strip()}")
-    if changed := changed_code(commit, diff.stdout.split()):
+    changed = changed_code(commit, diff.stdout.split())
+    if changed := [path for path in changed if not shared_clears(commit, path, shared or {})]:
         return f"cites {commit}; changed since: {', '.join(changed)}"
     return None
+
+
+@dataclass(frozen=True)
+class SharedCoverage:
+    """A record's run, at its cited commit, executed these lines of a `core/` module."""
+
+    source: str  # the record, for messages
+    commit: str
+    executed: frozenset[int]
+
+
+# Each `core/` module, as a path relative to the repository, and the runs that covered it.
+SharedIndex = dict[str, list[SharedCoverage]]
+
+
+def parse_ranges(text: str) -> frozenset[int]:
+    """`12-40, 55` as the lines it names."""
+    lines: set[int] = set()
+    for part in text.split(", "):
+        first, _, last = part.partition("-")
+        lines.update(range(int(first), int(last or first) + 1))
+    return frozenset(lines)
+
+
+def shared_rows(record: Path, commit: str) -> tuple[list[tuple[str, SharedCoverage]], list[str]]:
+    """The record's `## Shared coverage` rows, each as its module's path and coverage, and the errors in the section:
+    a `|` line that is neither the header nor a row of the format, or a range that runs backwards. A row in error
+    covers nothing. A record without the section has none."""
+    text = record.read_text()
+    if not (heading := SHARED_HEADING.search(text)):
+        return [], []
+    label = record.relative_to(REPO)
+    start = text.count("\n", 0, heading.end()) + 2
+    rows, errors = [], []
+    for number, line in enumerate(text[heading.end() :].splitlines()[1:], start):
+        line = line.strip()
+        if line.startswith("## "):
+            break
+        if not line.startswith("|") or line in SHARED_HEADER:
+            continue
+        row = SHARED_ROW.fullmatch(line)
+        if not row or any(int(a) > int(b) for a, b in re.findall(r"(\d+)-(\d+)", row[2])):
+            errors.append(f"{label}:{number}: not a row of `{SHARED_HEADER[0]}`: {line}")
+            continue
+        rows.append(
+            (f"custom_components/deviceside/{row[1]}", SharedCoverage(str(label), commit, parse_ranges(row[2])))
+        )
+    return rows, errors
+
+
+def shared_coverage(registry) -> tuple[SharedIndex, list[str]]:
+    """The `core/` coverage of every record that can prove shared code, and the errors in their sections. A record
+    can when it passed and cites a commit, and its adapter is released with a Verified call; the rest of its
+    adapter's code may have changed since."""
+    index: SharedIndex = {}
+    errors: list[str] = []
+    for _, adapter in adapters(registry):
+        if adapter.scope.experimental or not proven(adapter.scope):
+            continue
+        for record in records(adapter.integration, adapter.action):
+            if result(record) != "pass" or not (cited := CITED_COMMIT.search(record.read_text())):
+                continue
+            rows, problems = shared_rows(record, cited[1])
+            errors += problems
+            for module, covered in rows:
+                index.setdefault(module, []).append(covered)
+    return index, errors
+
+
+def blob(commit: str, path: str) -> str | None:
+    """The path's blob at the commit, or None where it has none."""
+    found = git("rev-parse", "--verify", "--quiet", f"{commit}:{path}")
+    return None if found.returncode else found.stdout.strip()
+
+
+def docstring_lines(tree: ast.Module) -> set[int]:
+    """The lines of the module's, its classes' and its functions' docstrings."""
+    lines: set[int] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)) and node.body:
+            first = node.body[0]
+            if (
+                isinstance(first, ast.Expr)
+                and isinstance(first.value, ast.Constant)
+                and isinstance(first.value.value, str)
+            ):
+                lines.update(range(first.lineno, first.end_lineno + 1))
+    return lines
+
+
+def code_lines(text: str) -> set[int]:
+    """The lines that hold code: any token bar comments and line ends, a multi-line string holding every line it
+    spans."""
+    skip = {tokenize.COMMENT, tokenize.NL, tokenize.NEWLINE, tokenize.INDENT, tokenize.DEDENT, tokenize.ENDMARKER}
+    lines: set[int] = set()
+    for token in tokenize.generate_tokens(io.StringIO(text).readline):
+        if token.type not in skip:
+            lines.update(range(token.start[0], token.end[0] + 1))
+    return lines
+
+
+def clauses(tree: ast.Module) -> list[tuple[range, range]]:
+    """Each statement, `except` and `case` clause: its span (from its first decorator) and its header, the lines one of
+    which coverage.py marks executed when it runs. A compound clause's header runs to the line before its body; a
+    simple statement's is its span."""
+    found = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.match_case):
+            line, last = node.pattern.lineno, node.body[-1].end_lineno
+        elif isinstance(node, ast.stmt | ast.excepthandler):
+            line, last = node.lineno, node.end_lineno
+        else:
+            continue
+        first = min([line, *(decorator.lineno for decorator in getattr(node, "decorator_list", []))])
+        body = getattr(node, "body", None)
+        head_end = max(line, body[0].lineno - 1) if body else last
+        found.append((range(first, last + 1), range(first, head_end + 1)))
+    return found
+
+
+def needed_headers(commit: str, path: str) -> list[range] | None:
+    """The headers of the clauses the module's change from the commit to HEAD touches, each needing one executed
+    line: the innermost clause around each changed code line, a comment, blank line or docstring needing none, and
+    for a hunk that only deletes, the clauses around the nearest code line on each side. None if HEAD's module can't
+    be parsed, as its change then can't be cleared."""
+    if (diff := git("diff", "-U0", commit, "HEAD", "--", path)).returncode:
+        raise SystemExit(f"git diff {commit} HEAD failed: {diff.stderr.strip()}")
+    text = git("show", f"HEAD:{path}").stdout
+    try:
+        tree = ast.parse(text)
+        code = code_lines(text) - docstring_lines(tree)
+    except SyntaxError, tokenize.TokenError:
+        return None
+    lines: set[int] = set()
+    for hunk in HUNK.finditer(diff.stdout):
+        start, count = int(hunk[1]), int(hunk[2] if hunk[2] is not None else 1)
+        if count:
+            lines.update(line for line in range(start, start + count) if line in code)
+            continue
+        before = [line for line in code if line <= start]
+        after = [line for line in code if line > start]
+        lines.update([max(before)] if before else [])
+        lines.update([min(after)] if after else [])
+    spans = clauses(tree)
+    headers = []
+    for line in sorted(lines):
+        around = [(span, head) for span, head in spans if line in span]
+        if not around:
+            return None
+        headers.append(min(around, key=lambda clause: len(clause[0]))[1])
+    return headers
+
+
+def shared_clears(commit: str, path: str, shared: SharedIndex) -> bool:
+    """Whether the change to a `core/` module since the commit is proven for every adapter that reaches it: a run that
+    can prove shared code (`shared_coverage`) covered the module at a commit where it is the same as at HEAD, and
+    executed a line of each clause the change touches (`needed_headers`)."""
+    if not path.startswith(CORE_DIR) or not (runs := shared.get(path)):
+        return False
+    head = blob("HEAD", path)
+    matching = [run for run in runs if head is not None and blob(run.commit, path) == head]
+    if not matching or (headers := needed_headers(commit, path)) is None:
+        return False
+    return any(all(run.executed.intersection(header) for header in headers) for run in matching)
 
 
 @dataclass(frozen=True)
@@ -446,25 +634,25 @@ def shipping_items(scope) -> set[str]:
     return {item for item, level in held.items() if level >= Level.DOCUMENTED}
 
 
-def fresh_retest(adapter, retests: list[Retest]) -> str | None:
+def fresh_retest(adapter, retests: list[Retest], shared: SharedIndex | None = None) -> str | None:
     """Where a fresh retest of the adapter is: a passing record of it as new as its code, or a manual line or report
     naming its action (a report, on an item it ships) at a commit its code is unchanged since. None if it has none."""
     code = code_of(adapter)
     for record in records(adapter.integration, adapter.action):
-        if result(record) == "pass" and staleness(record, code) is None:
+        if result(record) == "pass" and staleness(record, code, shared) is None:
             return str(record.relative_to(REPO))
     items = shipping_items(adapter.scope)
     for retest in retests:
         if (
             adapter.action in retest.actions
             and (retest.item is None or retest.item in items)
-            and changed_since(retest.commit, code) is None
+            and changed_since(retest.commit, code, shared) is None
         ):
             return retest.source
     return None
 
 
-def retest_errors(registry) -> tuple[list[str], list[str]]:
+def retest_errors(registry, shared: SharedIndex | None = None) -> tuple[list[str], list[str]]:
     """The `_manual.md` errors, and the adapters that need a retest and have no fresh one, named."""
     errors: list[str] = []
     retests: dict[str, list[Retest]] = {}
@@ -475,7 +663,7 @@ def retest_errors(registry) -> tuple[list[str], list[str]]:
     untested = [
         name
         for name, adapter in adapters(registry)
-        if needs_retest(adapter.scope) and fresh_retest(adapter, retests.get(adapter.integration, [])) is None
+        if needs_retest(adapter.scope) and fresh_retest(adapter, retests.get(adapter.integration, []), shared) is None
     ]
     return errors, untested
 
@@ -510,8 +698,9 @@ def retest_checks(args: argparse.Namespace, registry) -> tuple[list[str], list[s
     release notes with --notes. Nothing is checked without one of the three."""
     if not (args.records or args.release or args.notes):
         return [], []
-    manual_errors, untested = retest_errors(registry)
-    errors = record_errors(registry) + manual_errors if args.records else []
+    shared, shared_errors = shared_coverage(registry)
+    manual_errors, untested = retest_errors(registry, shared)
+    errors = record_errors(registry, shared) + manual_errors + shared_errors if args.records else []
     if args.release:
         errors += stale_tests_errors(registry, untested)
     if args.notes:

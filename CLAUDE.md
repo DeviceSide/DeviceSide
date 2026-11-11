@@ -56,6 +56,11 @@ across firmware (an exception to once per firmware version), HA and code; an obs
 than that model's latest pass covering the lent sequence, blocks lends to that model for sequences that begin with the
 failed one.
 
+**Shared code is proven once.** A change to `core/` needs no retest from each integration: one passing Verified record,
+of any integration, whose run covered every clause the change touches at code where the module matches HEAD, proves it
+for every adapter that reaches it. A change inside an integration's package still stales only that integration's
+records and retests. Format and rules: `scripts/check_release.py`'s docstring.
+
 **Default to Documented.** A rig case earns its place only by catching what nothing else can: a call shape, a
 branch the adapter takes on a live reply, or a device behavior that DeviceSide or its docs rely on. One Verified
 case per call shape per adapter; every sibling that meets the test below rides it. A firmware fact (precedence,

@@ -80,6 +80,9 @@ the RC tag, only flag-only, docs, `scripts/` and rig step-file changes land. The
 - [x] **Retests and Stale tests** (#374): every changed adapter is retested before release (a rig record, a maintainer's
   `_manual.md` line or an accepted report at a release); one left untested at the cut ships live, marked ⚠️ Stale tests,
   with a call for testers in the release notes.
+- [ ] **Shared code proof** (#377): a passing Verified record whose run covered a `core/` change proves it for every
+  adapter, so a core change needs one rig run, not a retest per integration. Ticks once the rig writes the records'
+  `## Shared coverage` table (tracked in the rig repo).
 
 ## After v0.1.0
 

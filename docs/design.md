@@ -198,7 +198,8 @@ Each gate's rules are in the header of the script or workflow named.
   for testers in both cut workflows; `--release` in `cut-release` fails on one not marked `stale_tests`.
 - **Adapter code:** both gates weigh an adapter's code (`adapter_code` in `check_release.py`): its module and what it
   and its integration package import, followed into `core/`, so a shared helper is held to the coverage bar and a
-  change to it stales the records of every adapter that reaches it. `actions/` is not followed.
+  change to it stales the records of every adapter that reaches it, unless one Verified run that covered the change
+  proves it for all (CLAUDE.md § Release flag). `actions/` is not followed.
 - **Tags:** `scripts/check_tag.py`, in `.github/workflows/cut-release-candidate.yml` and `cut-release.yml`, the only
   way a tag is made.
 - **RC audit:** `scripts/check_audit.py`, in `cut-release-candidate`.
