@@ -17,7 +17,7 @@ from custom_components.deviceside.integrations.zigbee2mqtt.restore_journal impor
 
 from .conftest import SET, light
 from ...conftest import call
-from ...fixtures.z2m import GROUPS, IEEE, INFO, add_z2m_entity, add_z2m_group, z2m_entry
+from ...fixtures.zigbee2mqtt import GROUPS, IEEE, INFO, add_z2m_entity, add_z2m_group, z2m_entry
 
 SENT = {"status": "sent", "integration": "zigbee2mqtt"}
 DEVICE_REQUEST = "zigbee2mqtt/bridge/request/device/options"

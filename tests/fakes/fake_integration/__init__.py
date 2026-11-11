@@ -22,6 +22,7 @@ INTEGRATION = IntegrationInfo(
     key="fake",
     title="Fake",
     ha_domain="fake",
+    maintainers=("jasonmx",),
     is_group=is_group,
     expand_group=expand_group,
     max_concurrency=2,

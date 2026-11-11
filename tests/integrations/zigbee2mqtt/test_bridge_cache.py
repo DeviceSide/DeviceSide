@@ -9,7 +9,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.deviceside.const import CONF_Z2M_COLOR_MODES, DOMAIN
 from custom_components.deviceside.integrations.zigbee2mqtt import bridge, bridge_cache
 
-from ...fixtures.z2m import GROUPS, INFO
+from ...fixtures.zigbee2mqtt import GROUPS, INFO
 
 DEVICES = "zigbee2mqtt/bridge/devices"
 STATE = "zigbee2mqtt/bridge/state"

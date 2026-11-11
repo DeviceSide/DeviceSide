@@ -4,7 +4,7 @@ from custom_components.deviceside.integrations.zigbee2mqtt import bridge, native
 from custom_components.deviceside.integrations.zigbee2mqtt.fade import transition_cache
 
 from ...conftest import Clock, unload_mock_entries
-from ...fixtures.z2m import GROUPS, IEEE, INFO, Broker, add_z2m_entity, add_z2m_group, z2m_entry
+from ...fixtures.zigbee2mqtt import GROUPS, IEEE, INFO, Broker, add_z2m_entity, add_z2m_group, z2m_entry
 
 unload_mock_mqtt_entries = unload_mock_entries("mqtt")
 
