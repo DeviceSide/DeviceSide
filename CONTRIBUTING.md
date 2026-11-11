@@ -20,7 +20,6 @@ Everybody is invited and welcome to contribute.
 
 - If you use a coding agent, point it at [CLAUDE.md](CLAUDE.md). It holds the repo's rules.
 - Open pull requests against `main`, or against a `release/vX.Y.Z` branch when one exists for the fix.
-- A pull request needs an issue assigned to you, referenced in its description (`Closes #N` or `Part of #N`); one without is closed automatically. For a new device or integration, [propose it](https://github.com/jasonmx/DeviceSide/issues/new?template=propose_device_or_integration.yml) first. Changes to Markdown docs only don't need an issue, except `CLAUDE.md`, `docs/design.md`, `docs/action-behavior.md`, `docs/device-compatibility.md`, and anything under `docs/test-records/`, `docs/audits/` or `.github/`.
 - Set up with `uv sync`.
 - Run `.venv/bin/pytest` and `pre-commit run --all-files` before you push. CI runs both.
 - If you use Claude, run `/audit-code` on your diff before submitting a pull request for review. Else ask for an audit in the PR.
