@@ -36,6 +36,7 @@ def test_a_body_without_the_dropdown_routes_nowhere():
 
 def test_the_last_field_is_read_to_the_end():
     assert ri.chosen("### Notes\n\nx\n\n### Integration\n\nHue\n") == ["Hue"]
+    assert ri.chosen("### Notes\r\n\r\nx\r\n\r\n### Integration\r\n\r\nHue, Shelly\r\n") == ["Hue", "Shelly"]
 
 
 def test_the_parse_matches_the_registry():

@@ -429,10 +429,19 @@ def test_a_stray_flag_is_found(code, strays):
 
 
 INTEGRATION_CODE = sorted((cr.REPO / "custom_components").rglob("*.py"))
-# The one reader of `unmaintained`, setup's warning, and of `maintainers`, registration's check: neither changes a call.
+# The one function reading `unmaintained`, setup's warning, and `maintainers`, registration's check: neither changes a
+# call.
 SETUP = cr.REPO / "custom_components" / "deviceside" / "__init__.py"
 REGISTRATION = cr.REPO / "custom_components" / "deviceside" / "core" / "registry.py"
-READERS = {"unmaintained": SETUP, "maintainers": REGISTRATION}
+READERS = {"unmaintained": (SETUP, "warn_unmaintained"), "maintainers": (REGISTRATION, "check_maintainers")}
+
+
+def without_reader(path: Path, flag: str) -> ast.Module:
+    """The module's tree, less the one function allowed to read the flag."""
+    tree = ast.parse(path.read_text())
+    if READERS.get(flag, (None,))[0] == path:
+        tree.body = [node for node in tree.body if getattr(node, "name", None) != READERS[flag][1]]
+    return tree
 
 
 @pytest.mark.parametrize("flag", cr.FLAGS)
@@ -447,8 +456,7 @@ def test_no_call_reads_the_flags(flag):
     reads = [
         f"{path.relative_to(cr.REPO)}:{line}"
         for path in INTEGRATION_CODE
-        if path != READERS.get(flag)
-        for line in flag_reads(ast.parse(path.read_text()), flag)
+        for line in flag_reads(without_reader(path, flag), flag)
     ]
     assert reads == []
 
@@ -456,7 +464,9 @@ def test_no_call_reads_the_flags(flag):
 @pytest.mark.parametrize("flag", READERS)
 def test_the_one_reader_reads_its_flag(flag):
     """The exemptions above stay honest: setup is where the warning lives, registration where the check does."""
-    assert flag_reads(ast.parse(READERS[flag].read_text()), flag)
+    path, function = READERS[flag]
+    [reader] = [node for node in ast.parse(path.read_text()).body if getattr(node, "name", None) == function]
+    assert flag_reads(reader, flag)
 
 
 def test_every_record_of_the_adapter_must_be_new(tested, monkeypatch):

@@ -61,6 +61,7 @@ def integrations(root: Path = INTEGRATIONS) -> dict[str, Integration]:
 
 def chosen(body: str) -> list[str]:
     """The dropdown's choices: the text between its `### Integration` heading and the next heading."""
+    body = body.replace("\r\n", "\n")  # a body edited on the web comes back with CRLF
     if not (match := re.search(rf"^### {LABEL}[ \t]*\n(.*?)(?=^### |\Z)", body, re.MULTILINE | re.DOTALL)):
         return []
     text = match[1].strip()

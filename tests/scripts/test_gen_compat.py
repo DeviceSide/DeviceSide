@@ -618,6 +618,14 @@ def test_a_card_marks_unmaintained_adapters_by_reason_and_leaves_out_flagged_one
     ]
 
 
+def test_an_unmaintained_entry_names_stop_beside_other_features(root):
+    card = zha_card(
+        adapter("zha", "turn_on_for", AdapterScope(unmaintained=ISSUE_REASON)),
+        adapter("zha", "stop", AdapterScope(unmaintained=ISSUE_REASON)),
+    )
+    assert f"- [⚠️ Unmaintained]({ISSUE_REASON}): turn on with timer, stop" in card.render().splitlines()
+
+
 def test_a_maintained_card_has_no_unmaintained_entry(root):
     assert gc.UNMAINTAINED not in zha_card(adapter("zha", "stop")).render()
 

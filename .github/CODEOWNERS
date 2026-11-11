@@ -20,3 +20,4 @@
 
 /custom_components/deviceside/integrations/zigbee2mqtt/ @jasonmx
 /tests/integrations/zigbee2mqtt/ @jasonmx
+/tests/fixtures/zigbee2mqtt.py @jasonmx

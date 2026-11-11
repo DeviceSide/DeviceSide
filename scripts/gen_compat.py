@@ -472,10 +472,11 @@ def evidence(registry: AdapterRegistry, data: Data) -> str:
 # The README cards.
 
 
-def features(actions: set[str]) -> tuple[str, ...]:
+def features(actions: set[str], *, fold_stop: bool = True) -> tuple[str, ...]:
+    """The actions' feature labels, `stop` folded into the others unless asked (a warning must name every action)."""
     labels = list(dict.fromkeys(FEATURES[action] for action in FEATURES if action in actions))
     labels += sorted(action for action in actions if action not in FEATURES)
-    if len(labels) > 1 and "stop" in labels:
+    if fold_stop and len(labels) > 1 and "stop" in labels:
         labels.remove("stop")
     return tuple(labels)
 
@@ -599,7 +600,10 @@ def unmaintained_entries(integration_adapters: list) -> list[str]:
     for adapter in integration_adapters:
         if not adapter.scope.experimental and (reason := adapter.scope.unmaintained):
             by_reason.setdefault(reason, set()).add(adapter.action)
-    return [f"{unmaintained(reason)}: {', '.join(features(actions))}" for reason, actions in by_reason.items()]
+    return [
+        f"{unmaintained(reason)}: {', '.join(features(actions, fold_stop=False))}"
+        for reason, actions in by_reason.items()
+    ]
 
 
 def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: Data) -> Card:

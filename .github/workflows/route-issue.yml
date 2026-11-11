@@ -25,11 +25,16 @@ jobs:
         with:
           persist-credentials: false
 
+      # The repo's Python, not the runner's: the integrations' __init__.py files use 3.14 syntax.
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+
       - name: Read the integrations the issue names
         id: route
         env:
           ISSUE_BODY: ${{ github.event.issue.body }}
-        run: python3 scripts/route_issue.py
+        run: python scripts/route_issue.py
 
       - name: Label and assign
         if: steps.route.outputs.labels != ''

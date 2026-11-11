@@ -11,7 +11,7 @@ from custom_components.deviceside.integrations.zigbee2mqtt.fade import hue_moves
 
 from .conftest import GET, SENT, SET, commands, group, light
 from ...conftest import advance, call, refusal, result, wall_clock_now
-from ...fixtures.z2m import add_z2m_group, z2m_entry
+from ...fixtures.zigbee2mqtt import add_z2m_group, z2m_entry
 
 pytestmark = pytest.mark.usefixtures("setup_production", "clock")
 

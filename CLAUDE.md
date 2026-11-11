@@ -84,8 +84,8 @@ code change to the records check.
 Work lands on `main`. RCs are cut from it, and `cut-release` tags the version's latest RC, so what ships is what
 soaked while `main` moves on. The cut workflows enforce the tag rules, green CI, the RC audit (its record comes from
 `/rc-audit`), the release flag, and test records that pass and are no older than their adapter's code
-(`check_release.py --records`, so each adapter changed since its last rig run, beyond its `experimental` flag, needs a
-new one); see their headers.
+(`check_release.py --records`, so each adapter changed since its last rig run, beyond the arguments that script's
+`FLAGS` ignores, needs a new one); see their headers.
 The steps they don't check:
 
 1. **Each RC:** install it through HACS (the rig deploys a checkout, not the release); it loads and the log is clean.

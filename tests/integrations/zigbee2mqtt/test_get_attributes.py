@@ -12,7 +12,7 @@ from homeassistant.util import dt as dt_util
 from custom_components.deviceside.integrations.zigbee2mqtt import read
 
 from ...conftest import allow_experimental, call, refusal
-from ...fixtures.z2m import GROUPS, IEEE, INFO, add_z2m_entity, add_z2m_group, z2m_entry
+from ...fixtures.zigbee2mqtt import GROUPS, IEEE, INFO, add_z2m_entity, add_z2m_group, z2m_entry
 
 pytestmark = pytest.mark.usefixtures("setup_production")
 
