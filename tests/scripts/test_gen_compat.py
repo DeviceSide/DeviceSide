@@ -634,7 +634,8 @@ def test_the_legend_leads_the_cards_and_no_extension_mark_shows(root):
     assert text.index(gc.CARDS_LEGEND) < text.index("**ZHA**")
     assert gc.CARDS_LEGEND == (
         "🟢 works · ✔ verified on automated rig · 🟡 should work: same call pattern as a tested device · "
-        "🙋 testers wanted · 🔴 doesn't work · ⚠️ unmaintained: no one is fixing it; use at your own risk"
+        "🙋 testers wanted · 🔴 doesn't work · ⚠️ unmaintained: no one is fixing it; use at your own risk · "
+        "⚠️ stale tests: changed since last tested; please report whether it works"
     )
     assert "👥" not in text
     assert text.index("Details per integration are in [docs/integrations.md](") < text.index("</details>")
@@ -785,3 +786,28 @@ def test_every_evidence_row_of_an_unmaintained_adapter_is_marked(root):
     assert level_row.startswith("| `stop` ⚠️ Unmaintained (a \\| b) | Experimental |")
     linked = adapter("zha", "stop", AdapterScope(unmaintained=ISSUE_REASON))
     assert gc.row("stop", linked, data()).startswith(f"| `stop` [⚠️ Unmaintained]({ISSUE_REASON}) | Verified |")
+
+
+def test_a_card_marks_stale_tests_adapters_after_unmaintained_ones_and_leaves_out_flagged_ones(root):
+    card = zha_card(
+        adapter("zha", "turn_on_for", AdapterScope(stale_tests=ISSUE_REASON)),
+        adapter("zha", "turn_off_for", AdapterScope(stale_tests=ISSUE_REASON, unmaintained="gone")),
+        adapter("zha", "set_scene", AdapterScope(experimental=True, stale_tests=ISSUE_REASON)),
+    )
+    lines = card.render().splitlines()
+    marks = [line for line in lines if line.startswith("- ⚠️") or line.startswith("- [⚠️")]
+    assert marks == [
+        "- ⚠️ Unmaintained (gone): turn off with timer",
+        f"- [⚠️ Stale tests]({ISSUE_REASON}): turn on with timer, turn off with timer",
+    ]
+    # Stale tests is not unmaintained: the heading still names the maintainers.
+    assert "formerly maintained" not in heading(card)
+    assert gc.STALE_TESTS not in zha_card(adapter("zha", "stop")).render()
+
+
+def test_an_evidence_row_shows_both_marks(root):
+    record(root, "zha", "stop")
+    both = adapter("zha", "stop", AdapterScope(unmaintained="gone", stale_tests=ISSUE_REASON))
+    assert gc.row("stop", both, data()).startswith(
+        f"| `stop` ⚠️ Unmaintained (gone) [⚠️ Stale tests]({ISSUE_REASON}) | Verified |"
+    )

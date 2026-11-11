@@ -74,11 +74,16 @@ promotes the item to Verified. Anything else untested is Experimental, or out of
 on a sibling's proof.
 
 **Reported.** A maintainer can request moving an Experimental item to `Level.REPORTED` once it has five accepted working
-user reports of its call from users other than the maintainer, and no open bugs, when unit tests pin the payload. It
-has no record, so no freshness check; after a change to its call, one working report at the new code, the maintainer's
-included, keeps it Reported. A field may be Reported once a report can name one
-(`devices.yaml` reports name a domain or capability only; `gen_compat.py` refuses a Reported field until then). A record
-promotes it to Verified. One working report on a Documented item promotes it to Reported.
+user reports of its call from users other than the maintainer, and no open bugs, when unit tests pin the payload; review
+checks the count, `gen_compat.py` doesn't. Its siblings sharing that call may move from Experimental to Documented on the
+same evidence when they meet the Documented test. It has no record; after a change to its call, one working report at
+the new code, the maintainer's included, keeps it Reported and is its retest (below). A field may be Reported once a
+report can name one (`devices.yaml` reports name a domain or capability only; `gen_compat.py` refuses a Reported field
+until then). A record promotes it to Verified. One working report on a Documented item promotes it to Reported.
+
+**Retests.** Every change to an adapter that ships a call (Documented or better) is retested before release: a rig
+record, a `_manual.md` line from one of its maintainers in a PR, or an accepted working report at a release tag. An
+adapter with a Verified call still needs its records. Format and freshness: `scripts/check_release.py`'s docstring.
 
 ## Maintainers
 
@@ -94,13 +99,21 @@ The adapter stays live; setup warns and its card shows ⚠️ Unmaintained. An i
 gets it on every adapter. It clears when someone fixes the adapter or adopts the integration. Like `experimental`, it is
 not a code change to the records check.
 
+**Stale tests:** `AdapterScope.stale_tests` (an issue URL or a reason), set by hand on an adapter left without a fresh
+retest at the cut. It ships live; setup warns, its card shows ⚠️ Stale tests, and the release notes link the device
+report form to recruit testers. One accepted report at the new code (or any fresh retest) clears it, in the PR that
+lands the retest.
+Unmaintained stays separate: a call about a missing maintainer, not missing evidence.
+
 ## Releasing
 
 Work lands on `main`. RCs are cut from it, and `cut-release` tags the version's latest RC, so what ships is what
 soaked while `main` moves on. The cut workflows enforce the tag rules, green CI, the RC audit (its record comes from
-`/rc-audit`), the release flag, and test records that pass and are no older than their adapter's code
-(`check_release.py --records`, so each adapter changed since its last rig run, beyond the arguments that script's
-`FLAGS` ignores, needs a new one); see their headers.
+`/rc-audit`), the release flag, retests (`cut-release` fails on an adapter with no fresh retest unless it sets
+`stale_tests`, and on a `stale_tests` adapter with one), and test records that pass and are no older than their
+adapter's code (`check_release.py --records`, so each adapter changed since its last rig run, beyond the arguments
+that script's `FLAGS` ignores, needs a new one); see their headers. `cut-release` checks the latest RC's commit, so set
+`stale_tests`, or land the retest that clears it, before the last RC.
 The steps they don't check:
 
 1. **Each RC:** install it through HACS (the rig deploys a checkout, not the release); it loads and the log is clean.

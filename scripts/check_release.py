@@ -2,8 +2,9 @@
 """Check the adapters against the release gates: the coverage bar, no experimental adapter in a release, and test
 records that pass and are as new as the code they prove.
 
-The release flag and the levels are defined in CLAUDE.md § Release flag. --release fails on the flag only, not on an
-Experimental item; --records weighs only an adapter's code against its records, as items below Verified have none.
+The release flag and the levels are defined in CLAUDE.md § Release flag. --release fails on the flag, not on an
+Experimental item, and on the Stale tests mark (below); --records weighs an adapter with a Verified call against its
+records, and one without against its retests (below).
 Records live in each integration's bundle (`test_records_dir`).
 
 An adapter's code (`adapter_code`) is its module and what that module and its integration package import, followed
@@ -11,14 +12,39 @@ into `core/`, so a shared helper counts for every adapter that reaches it: its c
 change to it stales those adapters' records. `actions/` and imports made only for type checking are not followed.
 
 Exits 1 on any integration that failed to import, whatever the options; with --coverage, any module of an adapter's
-code, bar `__init__.py`, under 95% line coverage; with --release, any experimental adapter; with --records, any
-released adapter with a Verified call that lacks `<action>.md` or an `<action>-<option>.md` for one of its scope's
-options, a record whose Result is not `pass`, or code changed after the commit one of its records cites. Each record
-holds the latest run of its call or option. Setting or clearing `experimental` or `unmaintained`, or changing an
-integration's `maintainers`, is not a change to the code: no call reads them (setup reads `unmaintained` only to warn,
-and registration checks `maintainers`).
+code, bar `__init__.py`, under 95% line coverage; with --release, any experimental adapter or a Stale tests mismatch;
+with --records, any `_manual.md` error, or any released adapter with a Verified call that lacks `<action>.md` or an
+`<action>-<option>.md` for one of its scope's options, a record whose Result is not `pass`, or code changed after the
+commit one of its records cites. Each record holds the latest run of its call or option. Setting or clearing
+`experimental`, `unmaintained` or `stale_tests`, or changing an integration's `maintainers`, is not a change to the
+code: no call reads them (setup reads `unmaintained` and `stale_tests` only to warn, and registration checks
+`maintainers`).
 
-Usage: scripts/check_release.py [--coverage coverage.json] [--release] [--records]
+**Retests.** An adapter with no Verified call has no rig coverage, so a record can't gate it; it still needs a retest
+as new as its code once it holds a call that ships on (Documented or better; an adapter whose calls are all
+Experimental needs none). A retest is any of: a passing record of the adapter (as above); a line of the integration's
+`test-records/_manual.md` by one of its maintainers; an accepted working report in its devices.yaml whose `deviceside`
+version is a tag (`v<version>`) and whose `item` the adapter ships (Documented or better). Each is fresh when the
+adapter's code is unchanged, bar the flags, between the commit it names (a manual line's, the report's tag) and HEAD.
+An adapter with a Verified call keeps needing its records.
+
+A `_manual.md` line is a table row: date, commit, tester, devices, what passed.
+
+    | Date | Commit | Tester | Devices | Passed |
+    |---|---|---|---|---|
+    | 2026-11-11 | `1a2b3c4` | @handle | `LCA001`, `SNSPL-10` | `turn_on_for`, `set_auto_off` |
+
+Devices are model ids (docs/models.yaml), never a household's device names; Passed names the actions that worked,
+each covering that integration's adapter for the action. Prose and headings around the table are ignored; any other
+`|` line is an error under --records, as is a tester who is not one of the integration's maintainers.
+
+**Stale tests.** --records lists each adapter that needs a retest and has none fresh. --release fails on one unless
+its scope sets `stale_tests` (it then ships live, marked ⚠️ Stale tests), and on a `stale_tests` adapter that has a
+fresh retest or needs none, as that retest clears the mark. --notes writes the release notes' call for testers: each
+adapter --records lists, marked or not (an RC lists them before they are), with a link to the device report form;
+empty when there are none.
+
+Usage: scripts/check_release.py [--coverage coverage.json] [--release] [--records] [--notes notes.md]
 """
 
 import argparse
@@ -32,12 +58,16 @@ import subprocess
 import sys
 import tokenize
 from collections.abc import Collection, Iterator
+from dataclasses import dataclass
 from pathlib import Path
+
+import yaml
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 COMPONENT = "custom_components.deviceside"
 
+from custom_components.deviceside.config_flow import REPORT_URL  # noqa: E402
 from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
 from custom_components.deviceside.core.scope import Level  # noqa: E402
 
@@ -45,6 +75,13 @@ COVERAGE_BAR = 95.0
 BUNDLES = REPO / "docs" / "integrations"
 CITED_COMMIT = re.compile(r"^\| Source \|.*\bcommit `([0-9a-f]{7,40})`", re.MULTILINE)
 RESULT = re.compile(r"^\| Result \| (\S+) \|", re.MULTILINE)
+MANUAL = "_manual.md"
+MANUAL_HEADER = ("| Date | Commit | Tester | Devices | Passed |", "|---|---|---|---|---|")
+BACKTICKED = r"`[^`|]+`(?:, `[^`|]+`)*"
+MANUAL_ROW = re.compile(
+    rf"\| (\d{{4}}-\d{{2}}-\d{{2}}) \| `([0-9a-f]{{7,40}})` \| @([A-Za-z0-9-]+) \| ({BACKTICKED}) \| ({BACKTICKED}) \|"
+)
+DEVICE_REPORT = f"{REPORT_URL}?template=device_report.yml"
 
 
 def adapters(registry: AdapterRegistry) -> list[tuple[str, object]]:
@@ -227,12 +264,17 @@ def git(*args: str) -> subprocess.CompletedProcess:
 
 # The arguments no call reads, each with the literal types it takes: setting or clearing one is not a change.
 # `maintainers` is an `IntegrationInfo` argument, a tuple of handles; the others are `AdapterScope`'s.
-FLAGS = {"experimental": (bool,), "unmaintained": (str, type(None)), "maintainers": (tuple,)}
+FLAGS = {
+    "experimental": (bool,),
+    "unmaintained": (str, type(None)),
+    "stale_tests": (str, type(None)),
+    "maintainers": (tuple,),
+}
 
 
 def is_flag(keyword: ast.keyword) -> bool:
-    """`experimental=True` or `=False`, `unmaintained="<reason>"` or `=None`, `maintainers=("<handle>", ...)`, or a
-    parameter of the flag's name passed straight on."""
+    """`experimental=True` or `=False`, `unmaintained` or `stale_tests` `="<reason>"` or `=None`,
+    `maintainers=("<handle>", ...)`, or a parameter of the flag's name passed straight on."""
     if keyword.arg not in FLAGS:
         return False
     if isinstance(keyword.value, ast.Name):
@@ -320,24 +362,177 @@ def staleness(record: Path, code: list[str]) -> str | None:
     a squash-merged branch counts. None if it is fresh."""
     if not (cited := CITED_COMMIT.search(record.read_text())):
         return "cites no commit"
-    if git("rev-parse", "--verify", "--quiet", f"{cited[1]}^{{commit}}").returncode:
-        return f"cites commit {cited[1]}, which git can't find"
-    if (diff := git("diff", "--name-only", cited[1], "HEAD", "--", *code)).returncode:
-        raise SystemExit(f"git diff {cited[1]} HEAD failed: {diff.stderr.strip()}")
-    if changed := changed_code(cited[1], diff.stdout.split()):
-        return f"cites {cited[1]}; changed since: {', '.join(changed)}"
+    return changed_since(cited[1], code)
+
+
+def changed_since(commit: str, code: list[str]) -> str | None:
+    """Why code tested at the commit (a hash or a tag) is not the code at HEAD: git can't find the commit, or the code
+    differs between the two by more than its flags. None if it is the same."""
+    if git("rev-parse", "--verify", "--quiet", f"{commit}^{{commit}}").returncode:
+        return f"cites commit {commit}, which git can't find"
+    if (diff := git("diff", "--name-only", commit, "HEAD", "--", *code)).returncode:
+        raise SystemExit(f"git diff {commit} HEAD failed: {diff.stderr.strip()}")
+    if changed := changed_code(commit, diff.stdout.split()):
+        return f"cites {commit}; changed since: {', '.join(changed)}"
     return None
+
+
+@dataclass(frozen=True)
+class Retest:
+    """A test of some of an integration's actions at a commit, outside a rig record: a manual line or a report."""
+
+    source: str  # where it is, for messages: `<file>:<line>` or the report's issue
+    commit: str  # a hash, or a version tag
+    actions: frozenset[str]
+    item: str | None = None  # a report's item, which the adapter must ship; None for a manual line
+
+
+def manual_retests(integration: str, maintainers: Collection[str]) -> tuple[list[Retest], list[str]]:
+    """The integration's `_manual.md` lines, and the errors in it: a `|` line that is neither the header nor a row of
+    the format, or a row whose tester is not one of the maintainers. A row in error is no retest."""
+    path = test_records_dir(integration) / MANUAL
+    if not path.is_file():
+        return [], []
+    label = path.relative_to(REPO)
+    retests, errors = [], []
+    for number, line in enumerate(path.read_text().splitlines(), 1):
+        line = line.strip()
+        if not line.startswith("|") or line in MANUAL_HEADER:
+            continue
+        if not (row := MANUAL_ROW.fullmatch(line)):
+            errors.append(f"{label}:{number}: not a row of `{MANUAL_HEADER[0]}`: {line}")
+        elif row[3] not in maintainers:
+            errors.append(f"{label}:{number}: tester @{row[3]} is not a maintainer of {integration}")
+        else:
+            actions = frozenset(re.findall(r"`([^`]+)`", row[5]))
+            retests.append(Retest(f"{label}:{number}", row[2], actions))
+    return retests, errors
+
+
+def report_retests(integration: str) -> list[Retest]:
+    """The accepted working reports in the integration's devices.yaml, each at its DeviceSide version's tag.
+    gen_compat checks their shape; one this can't read is left for it to fail on."""
+    path = BUNDLES / integration / "devices.yaml"
+    if not path.is_file():
+        return []
+    reports = (yaml.safe_load(path.read_text()) or {}).get("reports") or []
+    return [
+        Retest(
+            str(report.get("issue")),
+            f"v{str(report['deviceside']).removeprefix('v')}",
+            frozenset(worked),
+            str(report.get("item")),
+        )
+        for report in reports
+        if isinstance(report, dict) and report.get("deviceside") and (worked := report.get("worked"))
+    ]
+
+
+def needs_retest(scope) -> bool:
+    """Whether a released adapter without a Verified call holds a call that ships on: a domain and, when the scope
+    lists capabilities, a capability, each Documented or better. One whose calls are all Experimental needs none."""
+    if scope.experimental or proven(scope):
+        return False
+    shipping = [level for level in scope.domains.values() if level >= Level.DOCUMENTED]
+    return bool(shipping) and (
+        scope.capabilities is None or any(level >= Level.DOCUMENTED for level in scope.capabilities.values())
+    )
+
+
+def shipping_items(scope) -> set[str]:
+    """The items a report can retest the adapter through: its capabilities when the scope lists them, else its
+    domains, each Documented or better."""
+    held = scope.capabilities if scope.capabilities is not None else scope.domains
+    return {item for item, level in held.items() if level >= Level.DOCUMENTED}
+
+
+def fresh_retest(adapter, retests: list[Retest]) -> str | None:
+    """Where a fresh retest of the adapter is: a passing record of it as new as its code, or a manual line or report
+    naming its action (a report, on an item it ships) at a commit its code is unchanged since. None if it has none."""
+    code = code_of(adapter)
+    for record in records(adapter.integration, adapter.action):
+        if result(record) == "pass" and staleness(record, code) is None:
+            return str(record.relative_to(REPO))
+    items = shipping_items(adapter.scope)
+    for retest in retests:
+        if (
+            adapter.action in retest.actions
+            and (retest.item is None or retest.item in items)
+            and changed_since(retest.commit, code) is None
+        ):
+            return retest.source
+    return None
+
+
+def retest_errors(registry) -> tuple[list[str], list[str]]:
+    """The `_manual.md` errors, and the adapters that need a retest and have no fresh one, named."""
+    errors: list[str] = []
+    retests: dict[str, list[Retest]] = {}
+    for key, info in registry.integrations.items():
+        manual, problems = manual_retests(key, info.maintainers)
+        retests[key] = manual + report_retests(key)
+        errors += problems
+    untested = [
+        name
+        for name, adapter in adapters(registry)
+        if needs_retest(adapter.scope) and fresh_retest(adapter, retests.get(adapter.integration, [])) is None
+    ]
+    return errors, untested
+
+
+def stale_tests_errors(registry, untested: Collection[str]) -> list[str]:
+    """For a release: an adapter needing a retest with none fresh must be marked `stale_tests`, and one with a fresh
+    retest (or none needed) must not be."""
+    errors = []
+    for name, adapter in adapters(registry):
+        if name in untested and not adapter.scope.stale_tests:
+            errors.append(f"{name} changed since its last retest; retest it, or set stale_tests to ship it marked")
+        elif name not in untested and adapter.scope.stale_tests:
+            why = "has a fresh retest" if needs_retest(adapter.scope) else "needs none (records gate a Verified call)"
+            errors.append(f"{name} sets stale_tests but {why}; clear stale_tests")
+    return errors
+
+
+def release_notes(registry, untested: Collection[str]) -> str:
+    """The release notes' call for testers: each adapter shipping without a fresh retest, and the report form. At a
+    release each is marked `stale_tests`; an RC lists them before they are, so a report at its tag can retest them."""
+    names = [name for name, _ in adapters(registry) if name in untested]
+    if not names:
+        return ""
+    return (
+        "## ⚠️ Stale tests\n\nThese changed since anyone last tested them on a device. They ship live; if you use one,"
+        f" please [report whether it works]({DEVICE_REPORT}).\n\n" + "".join(f"- {name}\n" for name in names)
+    )
+
+
+def retest_checks(args: argparse.Namespace, registry) -> tuple[list[str], list[str]]:
+    """The records (with --records) and Stale tests (with --release) errors, and the untested adapters, writing the
+    release notes with --notes. Nothing is checked without one of the three."""
+    if not (args.records or args.release or args.notes):
+        return [], []
+    manual_errors, untested = retest_errors(registry)
+    errors = record_errors(registry) + manual_errors if args.records else []
+    if args.release:
+        errors += stale_tests_errors(registry, untested)
+    if args.notes:
+        args.notes.write_text(release_notes(registry, untested))
+    return errors, untested
 
 
 def main(argv: list[str] | None = None, registry: AdapterRegistry | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--coverage", type=Path, help="coverage.json from pytest --cov-report=json")
-    parser.add_argument("--release", action="store_true", help="fail on any experimental adapter")
+    parser.add_argument(
+        "--release",
+        action="store_true",
+        help="fail on any experimental adapter, or an untested one not marked stale_tests",
+    )
     parser.add_argument(
         "--records",
         action="store_true",
-        help="fail on any released adapter whose test records did not pass or predate its code",
+        help="fail on any released adapter whose test records did not pass or predate its code, or a _manual.md error",
     )
+    parser.add_argument("--notes", type=Path, help="write the release notes' call for testers here")
     args = parser.parse_args(argv)
 
     registry = registry or AdapterRegistry.discover()
@@ -354,16 +549,22 @@ def main(argv: list[str] | None = None, registry: AdapterRegistry | None = None)
         errors += [
             f"{name} is experimental; a release has none" for name, adapter in found if adapter.scope.experimental
         ]
-    if args.records:
-        errors += record_errors(registry)
+    retest_problems, untested = retest_checks(args, registry)
+    errors += retest_problems
+
+    def status(name: str, adapter) -> str:
+        marks = ["experimental"] if adapter.scope.experimental else []
+        if name in untested:
+            marks.append("stale tests" if adapter.scope.stale_tests else "untested since its code changed")
+        return ", ".join(marks)
 
     width = max((len(name) for name, _ in found), default=0)
     for name, adapter in found:
-        print(f"{name:{width}}  {'experimental' if adapter.scope.experimental else ''}".rstrip())
+        print(f"{name:{width}}  {status(name, adapter)}".rstrip())
     if summary := os.environ.get("GITHUB_STEP_SUMMARY"):
-        rows = [f"| {name} | {'yes' if adapter.scope.experimental else ''} |" for name, adapter in found]
+        rows = [f"| {name} | {status(name, adapter)} |" for name, adapter in found]
         with open(summary, "a") as handle:
-            handle.write("## Adapters\n\n| Adapter | Experimental |\n|---|---|\n" + "\n".join(rows) + "\n")
+            handle.write("## Adapters\n\n| Adapter | Status |\n|---|---|\n" + "\n".join(rows) + "\n")
     for error in errors:
         print(f"error: {error}", file=sys.stderr)
     return 1 if errors else 0
