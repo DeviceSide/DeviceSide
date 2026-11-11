@@ -37,8 +37,6 @@ flag-only, docs, `scripts/` and rig step-file changes land. The items below run 
   #222). Then the PR clearing the last flags: every `set_attributes` and `stop`, and Z2M `lower_hue`.
 - [ ] **9d** Final sweep, after the runs above: `rig.py --coverage` full, and `check_release.py --records` clean on
   committed code.
-- [ ] **#314**: link each rig-verified model on the device cards to its records. Any time before the RC: it touches
-  `scripts/gen_compat.py` only.
 - [ ] **Release notes**: hand-written v0.1.0 notes in `notes/`, signed off by Jason, after the RC installs cleanly
   and before `cut-release`, so they describe what the RC ships.
 - [ ] **12** v0.1.0: no adapter left `experimental` (`scripts/check_release.py --release`). The release
