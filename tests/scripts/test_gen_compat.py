@@ -560,14 +560,17 @@ def test_a_report_names_an_item_in_its_actions_scope():
         data(FakeRegistry(adapter("zha", "turn_on_for")), reports=reports)
 
 
-@pytest.mark.parametrize("helper", [experimental, documented])
-def test_a_working_report_on_an_item_left_below_reported_is_an_error(helper):
-    scope = AdapterScope(
-        domains=verified("light") | helper("switch"), siblings={"switch": "light"} if helper is documented else {}
-    )
+def test_a_working_report_on_a_documented_item_left_below_reported_is_an_error():
+    scope = AdapterScope(domains=verified("light") | documented("switch"), siblings={"switch": "light"})
     reports = [{**REPORT, "item": "switch", "worked": ["turn_on_for"], "issue": f"{gc.ISSUE_URL}1"}]
     with pytest.raises(SystemExit, match="promote it to Level.REPORTED"):
         data(FakeRegistry(adapter("zha", "turn_on_for", scope)), reports=reports)
+
+
+def test_a_working_report_on_an_experimental_item_is_recorded_without_promoting_it():
+    scope = AdapterScope(domains=verified("light") | experimental("switch"))
+    reports = [{**REPORT, "item": "switch", "worked": ["turn_on_for"], "issue": f"{gc.ISSUE_URL}1"}]
+    assert data(FakeRegistry(adapter("zha", "turn_on_for", scope)), reports=reports).reports
 
 
 def test_a_report_on_a_scope_with_capabilities_must_name_a_capability():
