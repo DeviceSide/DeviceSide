@@ -23,7 +23,7 @@ from custom_components.deviceside.integrations.zigbee2mqtt.addressing import (
 from custom_components.deviceside.integrations.zigbee2mqtt.detect import detect
 
 from ...conftest import advance, allow_experimental, call, refusal, traced, wall_clock_now
-from ...fixtures.z2m import IEEE, add_z2m_entity, add_z2m_group, z2m_entry
+from ...fixtures.zigbee2mqtt import IEEE, add_z2m_entity, add_z2m_group, z2m_entry
 
 SENT = {"status": "sent", "integration": "zigbee2mqtt"}
 TOPIC = f"zigbee2mqtt/{IEEE}/set"

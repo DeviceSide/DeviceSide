@@ -9,7 +9,7 @@ from custom_components.deviceside.core.runtime import get_runtime
 from custom_components.deviceside.integrations.zigbee2mqtt import bridge_cache
 from custom_components.deviceside.integrations.zigbee2mqtt import restore_journal as rj
 
-from ...fixtures.z2m import INFO
+from ...fixtures.zigbee2mqtt import INFO
 
 STORE = "deviceside.zigbee2mqtt_restore_journal"
 STATE = "zigbee2mqtt/bridge/state"

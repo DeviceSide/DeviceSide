@@ -3,6 +3,23 @@ description: Tell us how DeviceSide worked on your device(s), or report a proble
 title: "Device report: "
 labels: ["device-report"]
 body:
+  # Options: each integration's title, then the catch-all; scripts/route_issue.py reads them to label the issue and
+  # assign the integration's maintainers. tests/test_issue_templates.py keeps the list in step with the integrations.
+  - type: dropdown
+    id: integration
+    attributes:
+      label: Integration
+      description: The integration of each device you tested. Its maintainers are assigned to the report.
+      multiple: true
+      options:
+        - Hue
+        - Matter
+        - Shelly
+        - ZHA
+        - Zigbee2MQTT
+        - Other or not sure
+    validations:
+      required: true
   - type: textarea
     id: devices
     attributes:

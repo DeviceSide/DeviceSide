@@ -45,33 +45,33 @@ Maybe. A key reason these features aren't supported in HA core is that device ma
 <details>
 <summary><b>Device compatibility by integration</b></summary>
 
-🟢 works · ✔ verified on automated rig · 🟡 should work: same call pattern as a tested device · 🙋 testers wanted · 🔴 doesn't work
+🟢 works · ✔ verified on automated rig · 🟡 should work: same call pattern as a tested device · 🙋 testers wanted · 🔴 doesn't work · ⚠️ unmaintained: no one is fixing it; use at your own risk
 
-**ZHA**
-
-- 🟢 [Hue White Ambiance E27 1100lm](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#hue-white-ambiance-e27-1100lm) ✔ · [Hue Essential White and Color Ambiance A60](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#hue-essential-white-and-color-ambiance-a60) ✔ · [Hue White A60 B22](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#hue-white-a60-b22) ✔ · [native groups](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#native-groups) ✔
-- 🙋 [plugs and switches](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#zigbee-plugs-and-switches): turn on with timer, get attributes
-- 🔴 [Tuya TS011F](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#tuya-ts011f)
-
-**Zigbee2MQTT**
+**ZHA** · maintained by [@jasonmx](https://github.com/jasonmx)
 
 - 🟢 [Hue White Ambiance E27 1100lm](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#hue-white-ambiance-e27-1100lm) ✔ · [Hue Essential White and Color Ambiance A60](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#hue-essential-white-and-color-ambiance-a60) ✔ · [Hue White A60 B22](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#hue-white-a60-b22) ✔ · [native groups](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#native-groups) ✔
 - 🙋 [plugs and switches](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#zigbee-plugs-and-switches): turn on with timer, get attributes
 - 🔴 [Tuya TS011F](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#tuya-ts011f)
 
-**Shelly** (Gen2+)
+**Zigbee2MQTT** · maintained by [@jasonmx](https://github.com/jasonmx)
+
+- 🟢 [Hue White Ambiance E27 1100lm](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#hue-white-ambiance-e27-1100lm) ✔ · [Hue Essential White and Color Ambiance A60](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#hue-essential-white-and-color-ambiance-a60) ✔ · [Hue White A60 B22](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#hue-white-a60-b22) ✔ · [native groups](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#native-groups) ✔
+- 🙋 [plugs and switches](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#zigbee-plugs-and-switches): turn on with timer, get attributes
+- 🔴 [Tuya TS011F](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#tuya-ts011f)
+
+**Shelly** (Gen2+) · maintained by [@jasonmx](https://github.com/jasonmx)
 
 - 🟢 [Multicolor Bulb Gen3](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#shelly-multicolor-bulb-gen3) ✔ · [1 Mini Gen3](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#shelly-1-mini-gen3) ✔ · [1 Mini Gen4](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#shelly-1-mini-gen4) ✔
 - 🟡 [dimmers](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#shelly-dimmers), [LED controllers (CCT, RGB, RGBW)](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#shelly-led-controllers): turn on with timer, turn off with timer, auto-off/on, get attributes
 - 🟡 [multicolor bulbs](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#shelly-multicolor-bulbs): auto-off/on
 - 🙋 [dimmers](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#shelly-dimmers), [LED controllers (CCT, RGB, RGBW)](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#shelly-led-controllers): smooth dimming
 
-**Hue** (Bridge v2/Pro)
+**Hue** (Bridge v2/Pro) · maintained by [@jasonmx](https://github.com/jasonmx)
 
 - 🟢 [White Ambiance E27 1100lm](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#hue-white-ambiance-e27-1100lm) ✔ · [Essential White and Color Ambiance A60](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#hue-essential-white-and-color-ambiance-a60) ✔ · [native groups](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#native-groups) ✔
 - 🔴 [smart scenes](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#hue-smart-scenes)
 
-**Matter**
+**Matter** · maintained by [@jasonmx](https://github.com/jasonmx)
 
 - 🟢 [WiZ Smart Plug](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#wiz-smart-plug) ✔
 - 🟡 [lights](https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md#matter-lights): turn on with timer, get attributes

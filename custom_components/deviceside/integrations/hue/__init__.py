@@ -16,6 +16,7 @@ INTEGRATION = IntegrationInfo(
     key="hue",
     title="Hue",
     ha_domain="hue",
+    maintainers=("jasonmx",),
     is_group=is_hue_group,
     expand_group=expand_group,
     call_resolver=HueCallResolver(),

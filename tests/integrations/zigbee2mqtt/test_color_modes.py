@@ -22,7 +22,7 @@ from custom_components.deviceside.integrations.zigbee2mqtt.color_modes import (
 )
 
 from ...conftest import wall_clock_now
-from ...fixtures.z2m import GROUPS, IEEE, INFO
+from ...fixtures.zigbee2mqtt import GROUPS, IEEE, INFO
 
 DEVICES = "zigbee2mqtt/bridge/devices"
 DEVICE_REQUEST = "zigbee2mqtt/bridge/request/device/options"

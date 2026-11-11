@@ -19,6 +19,7 @@ INTEGRATION = IntegrationInfo(
     key="zigbee2mqtt",
     title="Zigbee2MQTT",
     ha_domain="mqtt",
+    maintainers=("jasonmx",),
     detect=detect,
     is_group=is_z2m_group,
     call_resolver=Z2MCallResolver(),
