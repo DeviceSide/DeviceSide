@@ -62,6 +62,8 @@ script's docstring), TODO item (unticked until the rig writes the table). Branch
 **Audit report 2: NOT-CLEAN** (h=1 m=1 l=3): removed module/class statements were cleared; an equal-count hunk moving
 code across a block dropped the removal's neighbors; a one-line def ran at import. Fixed in the commit after 2e42822
 (M1 by the narrower option: neighbors unless each removed code line is replaced in order at the same indentation).
+**Audit report 3: NOT-CLEAN** (m=1 l=2): module/class-level multi-line lambdas and genexps counted as deferred;
+an insert-only hunk needed neighbors; docstring wording. Fixed in the commit after ef94c68.
 L2 (multi-line list/set/dict comprehensions folded into their statement) left open: Jason's call. Gate is at HANDOFF
 (two NOT-CLEAN in a row): Jason runs `audit-gate accept` or asks for audit 3; then `gh pr ready`, `merge-green 377
 --squash --delete-branch` (repo opts in).

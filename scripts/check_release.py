@@ -43,10 +43,11 @@ a record that passed, of a released adapter with a Verified call (any integratio
 module as HEAD does, and whose run executed a line of each clause the change touches (`needed_headers`: a statement,
 `except` or `case` clause, from its first decorator to the line before its body; a function's decorators and signature
 need its first statement, a lambda's body its body; a comment, blank line or docstring needs none, and removed code
-needs the code on each side of it). The rest of that run's adapter may have changed since. A change to a module's or
-class's own statements (a constant, a class attribute, an import), which every run executes at import, and a change
-inside an integration's package are never cleared this way. The rig writes the run's coverage into the record,
-the modules relative to the component and the lines as coverage.py's executed lines:
+not replaced line for line at the same indentation needs the code on each side of it). The rest of that run's
+adapter may have changed since. A change to a module's or class's own statements (a constant, a class attribute, an
+import), which every run executes at import, and a change inside an integration's package are never cleared this way.
+The rig writes the run's coverage into the record, the modules relative to the component and the lines as
+coverage.py's executed lines:
 
     ## Shared coverage
 
@@ -535,16 +536,14 @@ def clauses(tree: ast.Module) -> list[tuple[range, range]]:
 
 
 def deferred_lines(tree: ast.Module) -> set[int]:
-    """The lines that run only when called: each function's, from its first decorator, and each lambda's and
-    generator expression's. The rest, a module's or class's own statements, runs at import, as does a function whose
-    body starts on its `def` line."""
+    """The lines that run only when called: each function's, from its first decorator. The rest, a module's or
+    class's own statements (a lambda or generator expression in one included), runs at import, as does a function
+    whose body starts on its `def` line."""
     lines: set[int] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
             if node.body[0].lineno not in (head := header(node)):
                 lines.update(range(head.start, node.end_lineno + 1))
-        elif isinstance(node, ast.Lambda | ast.GeneratorExp):
-            lines.update(range(node.lineno, node.end_lineno + 1))
     return lines
 
 
@@ -585,7 +584,7 @@ def needed_headers(commit: str, head: str, path: str) -> list[range] | None:
         lines |= added
         if (removed := old_code.intersection(range(old_start, old_start + old_count))) - old_deferred:
             return None
-        if indents(old, removed) != indents(text, added):
+        if removed and indents(old, removed) != indents(text, added):
             # With no new lines, git numbers the hunk by the line before the deletion.
             last = start + count - 1 if count else start
             before = [line for line in code if line < start or (not count and line == start)]

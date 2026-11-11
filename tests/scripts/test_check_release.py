@@ -1072,6 +1072,8 @@ def body(*lines: str) -> str:
             body("if v:", "    a2()", "d()"),
             [range(2, 3), range(3, 4), range(4, 5)],
         ),
+        # Inserted code needs only itself.
+        (body("a()", "c()"), body("a()", "b()", "c()"), [range(3, 4)]),
         # Code moved across a block boundary needs the code around the removal too.
         (
             body("if v:", "    a()", "    b()", "c()"),
@@ -1115,6 +1117,15 @@ def test_the_clauses_a_change_touches(repo, monkeypatch, before, after, headers)
         (
             "class C:\n    def a(self):\n        pass\n\n    x = 1\n\n    def b(self):\n        pass\n",
             "class C:\n    def a(self):\n        pass\n\n    def b(self):\n        pass\n",
+        ),
+        # A lambda or generator expression in a module's own statement runs at import with it.
+        (
+            "ORDER = sorted(\n    RAW,\n    key=lambda item: (\n        item.a\n    ),\n)\n",
+            "ORDER = sorted(\n    RAW,\n    key=lambda item: (\n        item.b\n    ),\n)\n",
+        ),
+        (
+            "X = frozenset(\n    n.upper()\n    for n in RAW\n)\n",
+            "X = frozenset(\n    n.lower()\n    for n in RAW\n)\n",
         ),
         # A body on the def line runs at import with it.
         ("def f(x=1): ...\n", "def f(x=2): ...\n"),
