@@ -2,12 +2,13 @@
 """Generate the README's device table and the evidence block of docs/device-compatibility.md, from the test records,
 the adapters' scopes and docs/devices.yaml.
 
-**Cards.** One collapsed section between the README's devices markers, with a card per integration: its name, then
-a bullet per outcome:
+**Cards.** One collapsed section between the README's devices markers, with a card per integration: its name and
+maintainers (`IntegrationInfo.maintainers`), then ⚠️ Unmaintained with the features of any unmaintained adapter, then a
+bullet per outcome:
 - Works: the models in the passing records of adapters that ship (Verified), plus native groups, and the models of
   accepted working reports (linked to the report). A rig-tested entry ends ✔.
 - Should work: the classes (devices.yaml `capabilities`) the shipping adapters hold as Documented; one whose sibling
-  is Reported, so community-supported, links the sibling's reports.
+  is Reported links the sibling's reports.
 - Help us test: the classes they hold as Experimental, refused until the Experimental features option is on.
 - Doesn't work: devices.yaml `doesnt_work`.
 Each class entry, a bullet of its own, names the features it is at that level for; classes sharing a page section
@@ -15,10 +16,10 @@ share a link. A model or blocker drops the integration's name where it leads, as
 Adapters with the `experimental` flag are left out of the cards: they are in RCs only. The legend leads the section, so
 ✔ (verified on the automated rig) is read before the first card. The section ends with a link to the integrations page.
 
-**Evidence.** Per integration, every action's level, who supports it (`AdapterScope.support`) and the models its
-passing records tested, with a row per level and support below Verified that its domains, capabilities or fields hold,
-and the reports on it. Its level is Verified, and its support the maintainer's, only on a passing record of the base
-action (`<action>.md`) as new as the adapter's code (check_release's freshness check). A group (a Device entry with
+**Evidence.** Per integration, every action's level and the models its passing records tested, with a row per level
+below Verified that its domains, capabilities or fields hold, and the reports on it; an unmaintained adapter's action
+is marked ⚠️ Unmaintained. Its level is Verified only on a passing record of the base action (`<action>.md`) as new as
+the adapter's code (check_release's freshness check). A group (a Device entry with
 firmware `unknown`, or named Group or Zone) shows as "group", not as a model; any other entry the record format can't
 read is an error. The prose outside the evidence markers is kept as written; every heading a card links to must be in
 it.
@@ -42,7 +43,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
 from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
-from custom_components.deviceside.core.scope import Level, Support  # noqa: E402
+from custom_components.deviceside.core.scope import Level  # noqa: E402
 from scripts.check_release import adapters, code_of, proven, record_names, records, result, staleness  # noqa: E402
 from scripts.gen_features import COLUMNS, anchors, slug  # noqa: E402
 from scripts.gen_features import FEATURES as TABLE_FEATURES  # noqa: E402
@@ -84,13 +85,16 @@ OUTCOMES = (
     ("no", "🔴", "doesn't work"),
 )
 VERIFIED = "✔"
+UNMAINTAINED = "⚠️ Unmaintained"
 CARDS_LEGEND = " · ".join(
     [
         f"{OUTCOMES[0][1]} {OUTCOMES[0][2]}",
         f"{VERIFIED} verified on automated rig",
         *(f"{icon} {legend}" for _, icon, legend in OUTCOMES[1:]),
+        "⚠️ unmaintained: no one is fixing it; use at your own risk",
     ]
 )
+GITHUB = "https://github.com/"
 INTEGRATIONS_URL = "https://github.com/jasonmx/DeviceSide/blob/main/docs/integrations.md"
 # The keys each devices.yaml entry may hold, so a typo fails instead of being ignored.
 MODEL_KEYS = {"name", "ids", "type", "section"}
@@ -365,16 +369,28 @@ def padded(text: str) -> str:
     return f" {text} " if text else " "
 
 
+def unmaintained(reason: str) -> str:
+    """⚠️ Unmaintained, linking its reason when that is a URL and giving it in brackets when not."""
+    return f"[{UNMAINTAINED}]({reason})" if reason.startswith("https://") else f"{UNMAINTAINED} ({reason})"
+
+
+def action_cell(action: str, adapter) -> str:
+    reason = adapter.scope.unmaintained
+    return f"`{action}`" + (f" {cell(unmaintained(reason))}" if reason else "")
+
+
 def row(action: str, adapter, data: Data) -> str:
     found = passing(adapter.integration, action)
     base = [record for record in found if record.name == record_names(action)[0]]
     verified = bool(base) and staleness(base[0], code_of(adapter)) is None
     level = IN_RCS if adapter.scope.experimental else "Verified" if verified else STALE if base else NO_RECORD
-    support = Support.MAINTAINER if verified else ""
     models = [GROUP if item == GROUP else f"`{item[0]}`, firmware `{item[1]}`" for item in tested(adapter, data, found)]
     records_cell = ", ".join(link(record, action) for record in found)
     reports = reports_cell(adapter.integration, action, data)
-    return f"| `{action}` | {level} | {support} | {'<br>'.join(models) or 'none'} | {records_cell} |{padded(reports)}|"
+    return (
+        f"| {action_cell(action, adapter)} | {level} | {'<br>'.join(models) or 'none'} | {records_cell} "
+        f"|{padded(reports)}|"
+    )
 
 
 def cell(text: str) -> str:
@@ -383,36 +399,33 @@ def cell(text: str) -> str:
 
 
 def level_rows(action: str, adapter, data: Data) -> list[str]:
-    """A row per level below Verified that the adapter's domains, capabilities or fields hold, and per support within
-    it (a Documented item takes its sibling's), weakest last. They have no record, so no models; a community-supported
-    row shows the reports on its items, and an experimental adapter's rows are in RCs only, as the rest of it is."""
+    """A row per level below Verified that the adapter's domains, capabilities or fields hold, weakest last. They have
+    no record, so no models; a row shows the reports behind its items that stand on one (Reported, or Documented on a
+    Reported sibling), and an experimental adapter's rows are in RCs only, as the rest of it is."""
     scope = adapter.scope
     rows = []
     for level, label, why in ITEM_LEVELS:
-        held: dict[Support, list[str]] = {}
-        named: dict[Support, list[str]] = {}
+        held: list[str] = []
+        named: list[str] = []
         for items, noun in (
             (scope.domains, "entities"),
             (scope.capabilities or {}, "components"),
             (scope.fields, "fields"),
         ):
-            supports: dict[Support, list[str]] = {}
-            for item, item_level in items.items():
-                if item_level is level:
-                    supports.setdefault(
-                        Support.of(scope.proof(item) if item_level is Level.DOCUMENTED else level), []
-                    ).append(item)
-            for support, names in supports.items():
-                held.setdefault(support, []).append(f"{', '.join(names)} {noun}")
-                # A Documented item's reports are its sibling's.
-                named.setdefault(support, []).extend(scope.siblings.get(name, name) for name in names)
-        for support in sorted(held, key=list(Support).index):
-            reports = (
-                reports_cell(adapter.integration, action, data, named[support]) if support is Support.COMMUNITY else ""
-            )
+            names = [item for item, item_level in items.items() if item_level is level]
+            if not names:
+                continue
+            held.append(f"{', '.join(names)} {noun}")
+            # A Documented item's reports are its sibling's.
+            if level is Level.REPORTED:
+                named += names
+            elif level is Level.DOCUMENTED:
+                named += [scope.siblings[name] for name in names if scope.proof(name) is Level.REPORTED]
+        if held:
+            reports = reports_cell(adapter.integration, action, data, named) if named else ""
             rows.append(
-                f"| `{action}` | {IN_RCS if scope.experimental else label} | {support} "
-                f"| none ({why}: {'; '.join(held[support])}) | |{padded(reports)}|"
+                f"| {action_cell(action, adapter)} | {IN_RCS if scope.experimental else label} "
+                f"| none ({why}: {'; '.join(held)}) | |{padded(reports)}|"
             )
     return rows
 
@@ -439,8 +452,8 @@ def evidence(registry: AdapterRegistry, data: Data) -> str:
     ]
     for key, integration_adapters in by_integration(registry).items():
         parts.append(f"### {registry.integrations[key].title}\n")
-        parts.append("| Action | Level | Support | Tested models | Records | Reports |")
-        parts.append("|---|---|---|---|---|---|")
+        parts.append("| Action | Level | Tested models | Records | Reports |")
+        parts.append("|---|---|---|---|---|")
         for adapter in integration_adapters:
             # An unflagged adapter with no Verified call ships its items behind the option: level_rows lists them.
             if adapter.scope.experimental or proven(adapter.scope):
@@ -459,10 +472,11 @@ def evidence(registry: AdapterRegistry, data: Data) -> str:
 # The README cards.
 
 
-def features(actions: set[str]) -> tuple[str, ...]:
+def features(actions: set[str], *, fold_stop: bool = True) -> tuple[str, ...]:
+    """The actions' feature labels, `stop` folded into the others unless asked (a warning must name every action)."""
     labels = list(dict.fromkeys(FEATURES[action] for action in FEATURES if action in actions))
     labels += sorted(action for action in actions if action not in FEATURES)
-    if len(labels) > 1 and "stop" in labels:
+    if fold_stop and len(labels) > 1 and "stop" in labels:
         labels.remove("stop")
     return tuple(labels)
 
@@ -475,6 +489,9 @@ def anchor(text: str, section: str) -> str:
 class Card:
     title: str
     requires: str | None = None
+    maintainers: tuple[str, ...] = ()
+    # ⚠️ Unmaintained entries: the features of the unmaintained adapters, by reason.
+    unmaintained: list[str] = field(default_factory=list)
     lines: dict[str, list[str]] = field(default_factory=dict)
 
     def short(self, name: str) -> str:
@@ -483,7 +500,9 @@ class Card:
 
     def render(self) -> str:
         requires = f" ({self.requires})" if self.requires else ""
-        lines = [f"**{self.title}**{requires}", ""]
+        maintainers = ", ".join(f"[@{handle}]({GITHUB}{handle})" for handle in self.maintainers)
+        lines = [f"**{self.title}**{requires} · maintained by {maintainers}", ""]
+        lines += [f"- {entry}" for entry in self.unmaintained]
         for key, icon, _ in OUTCOMES:
             if key in ("should", "help"):
                 lines += [f"- {icon} {entry}" for entry in self.lines.get(key, [])]
@@ -494,7 +513,7 @@ class Card:
 
 def classes(key: str, integration_adapters: list, level: Level, data: Data) -> dict[str, dict[str, list[str]]]:
     """Each domain or capability the shipping adapters hold at the level, in first-seen order, with the actions that
-    hold it there, each with the reports behind it when it rides a Reported sibling (community-supported)."""
+    hold it there, each with the reports behind it when it rides a Reported sibling."""
     held: dict[str, dict[str, list[str]]] = {}
     for adapter in integration_adapters:
         if adapter.scope.experimental:
@@ -528,8 +547,9 @@ def merged(phrases: list[str], section: str) -> str:
 
 def class_entries(key: str, held: dict[str, dict[str, list[str]]], data: Data) -> list[str]:
     """Classes with the same features and the same reports behind them share one entry: "dimmers, LED controllers
-    (CCT, RGB): turn on with timer", then a link per report when community-supported. A class held by actions of
-    different support is an entry per support, so a bare entry never takes another action's report links."""
+    (CCT, RGB): turn on with timer", then a link per report when it rides a Reported sibling. A class held by actions
+    with different reports behind it is an entry per set of reports, so a bare entry never takes another action's
+    report links."""
     grouped: dict[tuple[tuple[str, ...], tuple[str, ...]], dict[str, list[str]]] = {}
     for item, actions in held.items():
         entry = data.capabilities[key][item]
@@ -574,8 +594,21 @@ def works(card: Card, key: str, integration_adapters: list, data: Data) -> list[
     return lines
 
 
+def unmaintained_entries(integration_adapters: list) -> list[str]:
+    """The shipping adapters no one is fixing, as their features, one entry per reason."""
+    by_reason: dict[str, set[str]] = {}
+    for adapter in integration_adapters:
+        if not adapter.scope.experimental and (reason := adapter.scope.unmaintained):
+            by_reason.setdefault(reason, set()).add(adapter.action)
+    return [
+        f"{unmaintained(reason)}: {', '.join(features(actions, fold_stop=False))}"
+        for reason, actions in by_reason.items()
+    ]
+
+
 def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: Data) -> Card:
-    result = Card(registry.integrations[key].title, data.requires.get(key))
+    info = registry.integrations[key]
+    result = Card(info.title, data.requires.get(key), info.maintainers, unmaintained_entries(integration_adapters))
     result.lines["works"] = works(result, key, integration_adapters, data)
     for outcome, level in (("should", Level.DOCUMENTED), ("help", Level.EXPERIMENTAL)):
         held = classes(key, integration_adapters, level, data)

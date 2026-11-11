@@ -1,3 +1,4 @@
+import logging
 from functools import partial
 
 from homeassistant.config_entries import ConfigEntry
@@ -23,12 +24,23 @@ from .core.runtime import DATA, DeviceSideData, get_runtime
 from .integrations.zigbee2mqtt import bridge_cache, color_modes, restore_journal
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+_LOGGER = logging.getLogger(__name__)
+
+
+def warn_unmaintained(registry: AdapterRegistry) -> None:
+    """One warning per unmaintained adapter: it stays live, but no one is fixing it."""
+    for action, integration, adapter in registry.matrix():
+        if adapter is not None and (reason := adapter.scope.unmaintained):
+            _LOGGER.warning(
+                "%s %s is unmaintained (%s): no one is fixing it; use at your own risk", integration, action, reason
+            )
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType):
     # Discovery imports every integration module, so it runs in the import executor rather than the event loop.
     registry = await hass.async_add_import_executor_job(AdapterRegistry.discover)
     hass.data[DATA] = runtime = DeviceSideData(registry=registry, dispatcher=Dispatcher(hass, registry))
+    warn_unmaintained(registry)
 
     @callback
     def stopping(_event: Event) -> None:

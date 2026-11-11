@@ -13,7 +13,6 @@ from custom_components.deviceside.core.registry import AdapterRegistry
 from custom_components.deviceside.core.scope import (
     AdapterScope,
     Level,
-    Support,
     documented,
     experimental,
     reported,
@@ -226,39 +225,6 @@ def test_a_sibling_from_the_other_mapping_is_refused():
 def test_siblings_name_only_documented_items(scope):
     with pytest.raises(ValueError, match="not Documented"):
         AdapterScope(**scope)
-
-
-@pytest.mark.parametrize(
-    ("domains", "capability", "fields", "support"),
-    [
-        (verified("light"), None, (), Support.MAINTAINER),
-        (reported("light"), None, (), Support.COMMUNITY),
-        (experimental("light"), None, (), Support.EXPERIMENTAL),
-        (verified("switch") | documented("light"), None, (), Support.MAINTAINER),
-        (reported("switch") | documented("light"), None, (), Support.COMMUNITY),
-        (verified("light"), "Switch", (), Support.MAINTAINER),
-        (verified("light"), "Light", (), Support.MAINTAINER),  # Documented on the Verified RGBCCT
-        (verified("light"), "CCT", (), Support.COMMUNITY),  # Documented on the Reported RGB
-        (verified("light"), "RGB", (), Support.COMMUNITY),
-        (verified("light"), "Unknown", (), Support.EXPERIMENTAL),
-        (verified("light"), None, ("brightness",), Support.COMMUNITY),
-        (verified("light"), None, ("transition",), Support.EXPERIMENTAL),
-    ],
-)
-def test_support_counts_a_documented_item_at_its_siblings_level(domains, capability, fields, support):
-    scope = AdapterScope(
-        domains=domains,
-        capabilities=verified("Switch", "RGBCCT") | reported("RGB") | documented("Light", "CCT"),
-        fields=reported("brightness") | experimental("transition"),
-        siblings={"Light": "RGBCCT", "CCT": "RGB"} | ({"light": "switch"} if "switch" in domains else {}),
-    )
-
-    assert scope.support("light", capability, fields) is support
-
-
-def test_support_leaves_the_adapter_flag_to_its_callers():
-    """No runtime path reads the flag, so the records check can treat it as data (PR #306)."""
-    assert AdapterScope(experimental=True).support("light") is Support.MAINTAINER
 
 
 def test_a_name_both_a_domain_and_a_capability_is_refused():

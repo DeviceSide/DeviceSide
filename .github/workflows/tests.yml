@@ -92,3 +92,6 @@ jobs:
 
       - name: Check the README feature table is current
         run: .venv/bin/python scripts/gen_features.py --check
+
+      - name: Check CODEOWNERS is current
+        run: .venv/bin/python scripts/gen_codeowners.py --check

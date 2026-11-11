@@ -8,6 +8,7 @@ INTEGRATION = IntegrationInfo(
     key="matter",
     title="Matter",
     ha_domain="matter",
+    maintainers=("jasonmx",),
     max_concurrency=2,
 )
 

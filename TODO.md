@@ -68,6 +68,10 @@ flag-only, docs, `scripts/` and rig step-file changes land. The items below run 
   `docs/hardware-the-rig-lacks.md`.
 - [x] **Single report form** (#313): one device report form for results and bugs, several devices per report; the Support
   field and the options flow's action step are gone.
+- [x] **Maintainers per integration** (#359): `IntegrationInfo.maintainers` on the cards, `.github/CODEOWNERS` and
+  issue routing; `Support` retired; ⚠️ Unmaintained.
+- [ ] **Code-owner enforcement**: before adding the first outside maintainer: decide code-owner enforcement (write
+  access lets them merge).
 
 ## After v0.1.0
 
@@ -81,6 +85,6 @@ flag-only, docs, `scripts/` and rig step-file changes land. The items below run 
 - [ ] **Shelly RGB and RGBW color**: port core's conversions (`light/helper.py` rgb to rgbw with the white split,
   kelvin to color) so RGB and RGBW take color instead of dropping it, and give `status_row` a branch per component
   so `get_attributes` reads Light, CCT, RGB and RGBW light state.
-- **9b** Community-maintained adapters, once a contributor offers one for hardware the rig lacks: a maintainer per
-  adapter and a route to stable other than the rig, left open in `docs/design.md` (Release gates). Until then, such
-  work ships as Experimental items and earns Reported from user reports.
+- **9b** Maintained adapters: the rig kit, so maintainers can commit records for hardware the rig lacks
+  (`docs/design.md`, Release gates). Until then, such work ships as Experimental items and earns Reported from user
+  reports.

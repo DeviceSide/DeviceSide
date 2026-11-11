@@ -106,6 +106,38 @@ def test_adapter_for_unknown_action_is_refused():
         AdapterRegistry(actions.discover(), [SimpleNamespace(INTEGRATION=INTEGRATION, ADAPTERS=[Stray])])
 
 
+@pytest.mark.parametrize(
+    ("maintainers", "error"),
+    [
+        ((), "non-empty tuple"),
+        (["jasonmx"], "non-empty tuple"),
+        (("@jasonmx",), "not GitHub handles"),
+        (("jason mx",), "not GitHub handles"),
+        (("-jasonmx",), "not GitHub handles"),
+        (("a" * 40,), "not GitHub handles"),
+        (("jasonmx", "jasonmx"), "twice"),
+    ],
+)
+def test_an_integration_must_name_its_maintainers_by_handle(maintainers, error):
+    from types import SimpleNamespace
+
+    from ..fakes.fake_integration import ADAPTERS, INTEGRATION
+
+    info = replace(INTEGRATION, maintainers=maintainers)
+    with pytest.raises(ValueError, match=error):
+        AdapterRegistry(actions.discover(), [SimpleNamespace(INTEGRATION=info, ADAPTERS=ADAPTERS)])
+
+
+def test_several_maintainers_are_accepted():
+    from types import SimpleNamespace
+
+    from ..fakes.fake_integration import ADAPTERS, INTEGRATION
+
+    info = replace(INTEGRATION, maintainers=("jasonmx", "a-b", "a" * 39))
+    registry = AdapterRegistry(actions.discover(), [SimpleNamespace(INTEGRATION=info, ADAPTERS=ADAPTERS)])
+    assert registry.integrations["fake"].maintainers == ("jasonmx", "a-b", "a" * 39)
+
+
 def test_production_discovery_imports_cleanly():
     registry = AdapterRegistry.discover()
     assert set(registry.actions) == {
@@ -130,6 +162,7 @@ def test_production_discovery_imports_cleanly():
     assert registry.integrations["hue"].available
     assert registry.adapter("turn_on_for", "shelly") is not None
     assert registry.adapter("turn_off_for", "shelly") is not None
+    assert all(info.maintainers for info in registry.available_integrations())
 
 
 def test_call_resolvers_are_keyed_by_ha_domain():

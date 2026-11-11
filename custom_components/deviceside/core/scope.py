@@ -1,6 +1,6 @@
 from collections.abc import Callable, Collection, Mapping
 from dataclasses import dataclass, field
-from enum import IntEnum, StrEnum
+from enum import IntEnum
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
@@ -35,24 +35,6 @@ class Level(IntEnum):
     VERIFIED = 30
 
 
-class Support(StrEnum):
-    """Who fixes a bug in a call, by the proof behind it: the maintainer's rig, a user's report, or none yet."""
-
-    # Verified, or Documented on a Verified sibling.
-    MAINTAINER = "maintainer"
-    # Reported, or Documented on a Reported sibling: bugs are accepted, fixes come from the community.
-    COMMUNITY = "community"
-    # Unproven on hardware, opt-in: unsupported.
-    EXPERIMENTAL = "experimental (opt-in)"
-
-    @classmethod
-    def of(cls, level: Level) -> Support:
-        """The support a proof gives; a Documented item has none of its own, so it takes its sibling's."""
-        return {Level.VERIFIED: cls.MAINTAINER, Level.REPORTED: cls.COMMUNITY, Level.EXPERIMENTAL: cls.EXPERIMENTAL}[
-            level
-        ]
-
-
 def verified(*items: str) -> dict[str, Level]:
     return dict.fromkeys(items, Level.VERIFIED)
 
@@ -77,9 +59,13 @@ class AdapterScope:
     An Experimental item is gated at runtime: the dispatcher refuses a call that touches one unless the Experimental
     features option is on. An item that is not built, or built but not unit-tested, is left out of scope and refused.
     `experimental=True` is the adapter-level flag: it keeps a behavior change to proven code out of a stable release.
+    `unmaintained` marks an adapter no one is fixing: it stays live, setup warns and its card says so. Neither changes a
+    call, so the records check ignores both (scripts/check_release.py).
     """
 
     experimental: bool = False
+    # Why no one is fixing it: an issue URL, or a reason. Set by the project owner's call; cleared on a fix or adoption.
+    unmaintained: str | None = None
     domains: Mapping[str, Level] = field(default_factory=lambda: verified("light"))
     duration: DurationLimits | None = None
     # Never Documented: a field changes the call, so no sibling's proof covers it.
@@ -123,15 +109,6 @@ class AdapterScope:
             levels.append(self.capabilities.get(capability, Level.EXPERIMENTAL))
         return min(levels)
 
-    def support(self, domain: str, capability: str | None = None, fields: Collection[str] = ()) -> Support:
-        """Who supports a call, as level() weighs it but with each Documented item counted at its sibling's level.
-        It leaves out the adapter-level flag, which no runtime path reads (scripts/check_release.py, records check):
-        a flagged adapter ships in RCs only, and the docs that show it weigh the flag themselves."""
-        levels = [self.proof(domain), *(self.fields[name] for name in fields)]
-        if capability is not None and self.capabilities is not None:
-            levels.append(self.proof(capability))
-        return Support.of(min(levels))
-
     def proof(self, item: str) -> Level:
         """The level of the proof behind a domain or capability: its own, or its sibling's when Documented. One outside
         the scope counts as Experimental, as in level()."""
@@ -174,6 +151,9 @@ class IntegrationInfo:
     key: str
     title: str
     ha_domain: str
+    # GitHub handles of the people who support its adapters and approve changes to its package; one or more, checked
+    # at registration (core/registry.py). Empty only on the placeholder for an integration that failed to import.
+    maintainers: tuple[str, ...]
     # Picks this integration over a generic sibling on the same ha_domain (Z2M over plain mqtt).
     detect: Callable[[HomeAssistant, er.RegistryEntry, dr.DeviceEntry | None], bool] | None = None
     # True for an integration-native group (Hue grouped_light, a Z2M or ZHA group entity).

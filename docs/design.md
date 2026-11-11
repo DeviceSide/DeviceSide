@@ -23,13 +23,16 @@ Code and docs use these terms.
   are refused as not yet tested.
 - **Level**: how well a scope item is proven (Verified, Reported, Documented or Experimental): rules in
   [CLAUDE.md](../CLAUDE.md#release-flag).
-- **Support**: who fixes a bug in a call, from the proof behind each item it touches: rules in
-  [CLAUDE.md](../CLAUDE.md#release-flag).
+- **Maintainer**: a GitHub handle in an integration's `IntegrationInfo.maintainers`. Maintainers support that
+  integration's items bar the Experimental ones and approve changes to its package. Rules:
+  [CLAUDE.md](../CLAUDE.md#maintainers). User wording: [device-compatibility.md](device-compatibility.md#support).
+- **Unmaintained**: an adapter no one is fixing (`AdapterScope.unmaintained`, an issue URL or reason, set at Jason's
+  call). It stays live; setup warns and its card shows ⚠️ Unmaintained.
 - **Experimental features**: the option (`experimental_features`, off by default) that lets calls touching an
   Experimental item through. Only the dispatcher reads it.
 - **Release flag**: `experimental=True` on an adapter's scope keeps the whole adapter in release candidates only. Not
   the Experimental level, which gates an item at runtime. Rules: [CLAUDE.md](../CLAUDE.md#release-flag).
-- **Rig**: the maintainer's live Home Assistant and devices, and the private tool that runs DeviceSide's actions on
+- **Rig**: Jason's live Home Assistant and devices, and the private tool that runs DeviceSide's actions on
   them and writes test records. It is kept outside this repo; the records are its output here.
 - **Test record**: the evidence that an adapter works on real hardware, from a rig run:
   `docs/integrations/<integration>/records/<action>*.md`. Clearing `experimental` cites one.
@@ -186,5 +189,6 @@ Each gate's rules are in the header of the script or workflow named.
   Shelly RPC, the Matter client, aiohue) against a real `hass`. The rig runs against a live HA and writes the test
   records.
 
-**Extensions (planned):** an adapter its contributor maintains, on hardware the rig lacks, marked 🧩 on the cards.
-Its route to stable, other than the rig, is left open.
+**Hardware the rig lacks (planned):** a maintainer's adapter ships Experimental and climbs to Reported on accepted
+device reports. After v0.1.0, a published rig kit lets maintainers run the rig on their own devices and commit
+attributed test records under `docs/test-records/<integration>/`, the same route to Verified the rig's own adapters take.

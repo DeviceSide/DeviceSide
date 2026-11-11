@@ -13,7 +13,8 @@ code (`adapter_code`, bar `__init__.py`) under 95% line coverage; with --release
 --records, any released adapter with a Verified call that lacks `<action>.md` or an `<action>-<option>.md` for one
 of its scope's options, a record whose Result is not `pass`, or code changed after the commit one of its records
 cites. Each record holds the latest run of its call or option. Setting or
-clearing `experimental` is not a change to the code: nothing reads it at runtime.
+clearing `experimental` or `unmaintained`, or changing an integration's `maintainers`, is not a change to the code: no
+call reads them (setup reads `unmaintained` only to warn, and registration checks `maintainers`).
 
 Usage: scripts/check_release.py [--coverage coverage.json] [--release] [--records]
 """
@@ -151,12 +152,24 @@ def git(*args: str) -> subprocess.CompletedProcess:
     return subprocess.run(["git", *args], cwd=REPO, capture_output=True, text=True)
 
 
+# The arguments no call reads, each with the literal types it takes: setting or clearing one is not a change.
+# `maintainers` is an `IntegrationInfo` argument, a tuple of handles; the others are `AdapterScope`'s.
+FLAGS = {"experimental": (bool,), "unmaintained": (str, type(None)), "maintainers": (tuple,)}
+
+
 def is_flag(keyword: ast.keyword) -> bool:
-    """`experimental=True`, `=False`, or a parameter of that name passed straight on."""
-    value = keyword.value
-    return keyword.arg == "experimental" and (
-        (isinstance(value, ast.Constant) and isinstance(value.value, bool))
-        or (isinstance(value, ast.Name) and value.id == "experimental")
+    """`experimental=True` or `=False`, `unmaintained="<reason>"` or `=None`, `maintainers=("<handle>", ...)`, or a
+    parameter of the flag's name passed straight on."""
+    if keyword.arg not in FLAGS:
+        return False
+    if isinstance(keyword.value, ast.Name):
+        return keyword.value.id == keyword.arg
+    try:
+        literal = ast.literal_eval(keyword.value)
+    except ValueError, TypeError, SyntaxError:
+        return False
+    return isinstance(literal, FLAGS[keyword.arg]) and (
+        not isinstance(literal, tuple) or all(isinstance(item, str) for item in literal)
     )
 
 
@@ -172,7 +185,7 @@ def runtime_shape(text: str) -> tuple[str, list[str]]:
 
 
 def changed_code(cited: str, paths: list[str]) -> list[str]:
-    """Of the paths that differ between the cited commit and HEAD, those whose change is more than the flag."""
+    """Of the paths that differ between the cited commit and HEAD, those whose change is more than the flags."""
     changed = []
     for path in paths:
         before, after = git("show", f"{cited}:{path}"), git("show", f"HEAD:{path}")
@@ -230,8 +243,8 @@ def record_errors(registry: AdapterRegistry) -> list[str]:
 
 def staleness(record: Path, code: list[str]) -> str | None:
     """Why the record is stale: it cites no commit or one git can't find, or the code differs between the cited commit
-    and HEAD by more than its `experimental` flag. Trees are compared, not history, so a record citing a squash-merged
-    branch counts. None if it is fresh."""
+    and HEAD by more than its flags (`FLAGS`). Trees are compared, not history, so a record citing
+    a squash-merged branch counts. None if it is fresh."""
     if not (cited := CITED_COMMIT.search(record.read_text())):
         return "cites no commit"
     if git("rev-parse", "--verify", "--quiet", f"{cited[1]}^{{commit}}").returncode:
