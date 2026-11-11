@@ -28,6 +28,8 @@ class FakeAdapter:
 class FakeRegistry:
     def __init__(self, adapters: dict[tuple[str, str], AdapterScope], integrations=()):
         self._adapters = {key: FakeAdapter(scope) for key, scope in adapters.items()}
+        for (action, integration), adapter in self._adapters.items():
+            adapter.action, adapter.integration = action, integration
         self.integrations = {info.key: info for info in integrations}
 
     def matrix(self):
@@ -97,7 +99,7 @@ def test_an_integration_that_failed_to_import_is_an_error(monkeypatch, capsys, a
         key="zha", title="zha", ha_domain="zha", maintainers=(), available=False, unavailable_reason="No module"
     )
     registry = FakeRegistry({("turn_on_for", "shelly"): AdapterScope(experimental=True)}, [broken])
-    monkeypatch.setattr(cr, "record_errors", lambda registry: [])
+    monkeypatch.setattr(cr, "record_errors", lambda registry, shared=None: [])
     assert cr.main(argv, registry) == 1
     assert "error: zha: failed to import (No module)" in capsys.readouterr().err.splitlines()
 
@@ -866,3 +868,298 @@ def test_every_manual_line_in_the_repo_is_in_format():
         error for key, info in registry.integrations.items() for error in cr.manual_retests(key, info.maintainers)[1]
     ]
     assert errors == []
+
+
+# Shared code proof: a run of one integration's record proves a core/ change for every adapter that reaches it.
+
+MODELS = f"{CORE}/models.py"
+PICK = '"""Models."""\n\n\ndef pick(value):\n    if value:\n        return 1\n    return 2\n'
+
+
+class SharedRegistry(FakeRecordsRegistry):
+    """The fake adapter, and the same adapter class under a second integration, `other`, whose record covers core."""
+
+    def __init__(self, repo, monkeypatch, scope: AdapterScope | None = None, other: AdapterScope | None = None):
+        super().__init__(repo, monkeypatch, scope=scope)
+        self.other = type(self.adapter)(other or AdapterScope())
+        self.other.action, self.other.integration = "turn_on_for", "other"
+        self.integrations["other"] = IntegrationInfo(key="other", title="Other", ha_domain="other", maintainers=("b",))
+
+    def matrix(self):
+        yield "turn_on_for", "fake", self.adapter
+        yield "turn_on_for", "other", self.other
+
+
+def covering_record(repo, commit: str, rows: list[str], result: str = "pass") -> str:
+    """Commit other's record citing the commit, with a Shared coverage table of the rows, and return the new head."""
+    table = "\n".join([*cr.SHARED_HEADER, *rows])
+    text = (
+        f"# Other · turn_on_for\n\n| | |\n|---|---|\n| Result | {result} |\n"
+        f"| Source | rig run (`scripts/rig.py`), commit `{commit[:7]}` |\n\n## Tests\n\n| a | b |\n\n"
+        f"## Shared coverage\n\n{table}\n\n## Notes\n\n| not | coverage |\n"
+    )
+    return repo.commit("docs/integrations/other/test-records/turn_on_for.md", text)
+
+
+@pytest.fixture
+def shared(tested):
+    """The fake record cites core/models.py as PICK. Returns (repo, that commit)."""
+    repo, _ = tested
+    sha = repo.commit(MODELS, PICK)
+    write_record(repo, "turn_on_for.md", sha)
+    return repo, sha
+
+
+def stale_message(sha: str) -> list[str]:
+    return [
+        f"fake / turn_on_for: docs/integrations/fake/test-records/turn_on_for.md cites {sha[:7]}; "
+        f"changed since: {MODELS}"
+    ]
+
+
+def checked(repo, monkeypatch, **scopes) -> list[str]:
+    registry = SharedRegistry(repo, monkeypatch, **scopes)
+    index, errors = cr.shared_coverage(registry)
+    return cr.record_errors(registry, index) + errors
+
+
+@pytest.mark.parametrize(
+    ("after", "executed", "cleared"),
+    [
+        (PICK.replace("return 1", "return 3"), "1-7", True),
+        (PICK.replace("return 1", "return 3"), "1-5, 7", False),
+        # A multi-line statement counts as run when coverage.py marks any line of it.
+        (PICK.replace("return 1", "return (\n            3\n        )"), "1-6, 9", True),
+        # A comment, a blank line or a docstring needs nothing, but the run must have reached the module.
+        (PICK.replace("    return 2", "    # two\n\n    return 2"), "4", True),
+        (PICK.replace("Models.", "The models."), "4", True),
+        # A deletion needs the code on each side of it run.
+        (PICK.replace("    if value:\n        return 1\n", ""), "1-4", False),
+        (PICK.replace("    if value:\n        return 1\n", ""), "4-5", True),
+        # Commenting out code needs the code around it run.
+        (PICK.replace("    return 2", "    # return 2"), "1-5", False),
+        (PICK.replace("    return 2", "    # return 2"), "1-6", True),
+        # A signature runs at import: it needs the call.
+        (PICK.replace("pick(value)", "pick(value=1)"), "1-4", False),
+        (PICK.replace("pick(value)", "pick(value=1)"), "1-5", True),
+        # A module's own statement runs at import in every run, so no coverage clears it.
+        (PICK + "LIMIT = 2\n", "1-9", False),
+    ],
+)
+def test_a_core_change_another_integrations_run_covered_is_proven(shared, monkeypatch, after, executed, cleared):
+    repo, sha = shared
+    head = repo.commit(MODELS, after)
+    covering_record(repo, head, [f"| `core/models.py` | {executed} |"])
+    assert checked(repo, monkeypatch) == ([] if cleared else stale_message(sha))
+
+
+def test_a_change_inside_the_package_is_never_cleared(shared, monkeypatch):
+    repo, sha = shared
+    head = repo.commit(f"{PACKAGE}/nested.py", "X = 1\n")
+    covering_record(repo, head, ["| `core/models.py` | 1-7 |"])
+    index = {f"{PACKAGE}/nested.py": [cr.SharedCoverage("r", head, frozenset({1}))]}
+    assert not cr.shared_clears(sha, f"{PACKAGE}/nested.py", index)
+    assert checked(repo, monkeypatch)[0].endswith(f"changed since: {PACKAGE}/nested.py")
+
+
+@pytest.mark.parametrize(
+    ("result", "other", "moved"),
+    [
+        ("fail", None, False),
+        ("pass", AdapterScope(experimental=True), False),
+        ("pass", AdapterScope(domains=reported("light")), False),
+        # The run covered the module, but at code it has changed from since.
+        ("pass", None, True),
+    ],
+)
+def test_only_a_passing_released_verified_run_at_heads_module_covers(shared, monkeypatch, result, other, moved):
+    repo, sha = shared
+    head = repo.commit(MODELS, PICK.replace("return 1", "return 3"))
+    covering_record(repo, head, ["| `core/models.py` | 1-8 |"], result=result)
+    if moved:
+        repo.commit(MODELS, PICK.replace("return 1", "return 4"))
+    errors = checked(repo, monkeypatch, other=other)
+    assert stale_message(sha)[0] in errors
+
+
+def test_the_covering_runs_own_adapter_may_have_moved_on(shared, monkeypatch):
+    repo, sha = shared
+    head = repo.commit(MODELS, PICK.replace("return 1", "return 3"))
+    covering_record(repo, head, ["| `core/models.py` | 1-7 |"])
+    repo.commit(f"{PACKAGE}/nested.py", "X = 1\n")
+    registry = SharedRegistry(repo, monkeypatch)
+    index, _ = cr.shared_coverage(registry)
+    assert cr.changed_since(sha, [MODELS], index) is None
+
+
+def test_a_core_change_covered_clears_a_retest_too(shared, monkeypatch):
+    repo, sha = shared
+    repo.git("rm", "-q", "docs/integrations/fake/test-records/turn_on_for.md")
+    repo.commit(MANUAL, manual(manual_row(sha)))
+    registry = SharedRegistry(repo, monkeypatch, scope=UNPROVEN)
+    head = repo.commit(MODELS, PICK.replace("return 1", "return 3"))
+    assert cr.retest_errors(registry, cr.shared_coverage(registry)[0]) == ([], ["fake / turn_on_for"])
+    covering_record(repo, head, ["| `core/models.py` | 1-7 |"])
+    assert cr.retest_errors(registry, cr.shared_coverage(registry)[0]) == ([], [])
+
+
+@pytest.mark.parametrize(
+    "row",
+    [
+        "| `integrations/fake/nested.py` | 1-3 |",
+        "| `core/models.py` | 5-3 |",
+        "| `core/models.py` | |",
+        "| core/models.py | 1 |",
+    ],
+)
+def test_a_malformed_shared_coverage_row_is_an_error_and_covers_nothing(shared, monkeypatch, capsys, row):
+    monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
+    repo, sha = shared
+    covering_record(repo, sha, [row])
+    registry = SharedRegistry(repo, monkeypatch)
+    index, errors = cr.shared_coverage(registry)
+    assert index == {}
+    assert errors == [
+        f"docs/integrations/other/test-records/turn_on_for.md:16: not a row of `| Module | Executed lines |`: {row}"
+    ]
+    assert cr.main(["--records"], registry) == 1
+    assert errors[0] in capsys.readouterr().err
+
+
+def test_shared_coverage_reads_the_section_alone(shared, monkeypatch):
+    repo, sha = shared
+    covering_record(repo, sha, ["| `core/models.py` | 1-3, 5 |", "| `core/scope.py` | 2 |"])
+    index, errors = cr.shared_coverage(SharedRegistry(repo, monkeypatch))
+    source = "docs/integrations/other/test-records/turn_on_for.md"
+    assert errors == []
+    assert index == {
+        MODELS: [cr.SharedCoverage(source, sha[:7], frozenset({1, 2, 3, 5}))],
+        f"{CORE}/scope.py": [cr.SharedCoverage(source, sha[:7], frozenset({2}))],
+    }
+
+
+def body(*lines: str) -> str:
+    """A function `f` whose body is the lines."""
+    return "def f(v):\n" + "".join(f"    {line}\n" for line in lines)
+
+
+@pytest.mark.parametrize(
+    ("before", "after", "headers"),
+    [
+        # An except clause is its own clause.
+        (
+            body("try:", "    x = 1", "except ValueError:", "    x = 2"),
+            body("try:", "    x = 1", "except KeyError:", "    x = 2"),
+            [range(4, 5)],
+        ),
+        (
+            body("match v:", "    case 1:", "        x = 1"),
+            body("match v:", "    case 2:", "        x = 1"),
+            [range(3, 4)],
+        ),
+        (body("x = 1"), body("x = 1  # one"), [range(2, 3)]),
+        (body("x = 1", "# one"), body("x = 1", "# two"), []),
+        # A function's decorators and signature run at import: they need its first statement, the call.
+        (
+            '@a\ndef f(\n    y,\n):\n    """Doc."""\n    return y\n',
+            '@b\ndef f(\n    y=1,\n):\n    """Doc."""\n    return y\n',
+            [range(6, 7)],
+        ),
+        # Code replaced by a comment, or by less code, needs the code on each side of it.
+        (body("a()", "b()", "c()"), body("a()", "# b()", "c()"), [range(2, 3), range(4, 5)]),
+        (
+            body("if v:", "    a()", "    b()", "d()"),
+            body("if v:", "    a2()", "d()"),
+            [range(2, 3), range(3, 4), range(4, 5)],
+        ),
+        # Inserted code needs the code on each side too: an inserted `else:` moves the code below it.
+        (body("a()", "c()"), body("a()", "b()", "c()"), [range(2, 3), range(3, 4), range(4, 5)]),
+        (
+            body("if v:", "    a()", "    b()"),
+            body("if v:", "    a()", "else:", "    b()"),
+            [range(3, 4), range(2, 3), range(5, 6)],
+        ),
+        # Code moved across a block boundary needs the code around the removal too.
+        (
+            body("if v:", "    a()", "    b()", "c()"),
+            body("if v:", "    a()", "d()", "c()"),
+            [range(3, 4), range(4, 5), range(5, 6)],
+        ),
+        # A lambda's or generator expression's body runs when called, bar the line it starts on.
+        (
+            body("return sorted(", "    v,", "    key=lambda x: (", "        x.a", "    ),", ")"),
+            body("return sorted(", "    v,", "    key=lambda x: (", "        x.b", "    ),", ")"),
+            [range(5, 6)],
+        ),
+        (
+            body("return any(", "    x.a", "    for x in v", ")"),
+            body("return any(", "    x.b", "    for x in v", ")"),
+            [range(3, 4)],
+        ),
+    ],
+)
+def test_the_clauses_a_change_touches(repo, monkeypatch, before, after, headers):
+    monkeypatch.setattr(cr, "REPO", repo.path)
+    sha = repo.commit(MODELS, before)
+    head = repo.commit(MODELS, after)
+    assert cr.needed_headers(sha, head, MODELS) == headers
+
+
+@pytest.mark.parametrize(
+    ("before", "after"),
+    [
+        # A module's or class's own statements run at import, in every run.
+        ("X = 1\n", "X = 2\n"),
+        ("X = 1\n", "X = 1  # one\n"),
+        ("class C:\n    x = 1\n", "class C:\n    x = 2\n"),
+        ("try:\n    x = 1\nexcept ValueError:\n    x = 2\n", "try:\n    x = 1\nexcept KeyError:\n    x = 2\n"),
+        ("X = 1\nY = 2\n", "X = 1\n"),
+        # A lambda whose body is on the line it starts on can't show it was called.
+        (body("return sorted(v, key=lambda x: x.a)"), body("return sorted(v, key=lambda x: x.b)")),
+        # Removing one is a change to it too, wherever its neighbors run.
+        ("def f():\n    a()\n\n\nregister(f)\n\n\ndef g():\n    b()\n", "def f():\n    a()\n\n\ndef g():\n    b()\n"),
+        ("def f():\n    a()\n\n\nregister(f)\n", "def f():\n    a()\n\n\n# register(f)\n"),
+        (
+            "class C:\n    def a(self):\n        pass\n\n    x = 1\n\n    def b(self):\n        pass\n",
+            "class C:\n    def a(self):\n        pass\n\n    def b(self):\n        pass\n",
+        ),
+        # A lambda or generator expression in a module's own statement runs at import with it.
+        (
+            "ORDER = sorted(\n    RAW,\n    key=lambda item: (\n        item.a\n    ),\n)\n",
+            "ORDER = sorted(\n    RAW,\n    key=lambda item: (\n        item.b\n    ),\n)\n",
+        ),
+        (
+            "X = frozenset(\n    n.upper()\n    for n in RAW\n)\n",
+            "X = frozenset(\n    n.lower()\n    for n in RAW\n)\n",
+        ),
+        # A body on the def line runs at import with it.
+        ("def f(x=1): ...\n", "def f(x=2): ...\n"),
+        # An old module that won't parse can't say what was removed.
+        ("x = (\n", body("return 1")),
+        # A function with only a docstring has no statement to show the call.
+        ('def f():\n    """A."""\n', 'def f(v):\n    """A."""\n'),
+    ],
+)
+def test_a_change_no_line_can_show_exercised_is_never_cleared(repo, monkeypatch, before, after):
+    monkeypatch.setattr(cr, "REPO", repo.path)
+    sha = repo.commit(MODELS, before)
+    head = repo.commit(MODELS, after)
+    assert cr.needed_headers(sha, head, MODELS) is None
+
+
+def test_a_second_shared_coverage_section_is_an_error(shared, monkeypatch):
+    repo, sha = shared
+    path = "docs/integrations/other/test-records/turn_on_for.md"
+    covering_record(repo, sha, ["| `core/models.py` | 1-7 |"])
+    text = (repo.path / path).read_text() + "\n## Shared coverage\n\n| `core/models.py` | 1 |\n"
+    repo.commit(path, text)
+    _, errors = cr.shared_coverage(SharedRegistry(repo, monkeypatch))
+    assert errors == [f"{path}:{text.count(chr(10)) - 2}: a second `## Shared coverage` section"]
+
+
+def test_a_module_head_cannot_parse_is_never_cleared(repo, monkeypatch):
+    monkeypatch.setattr(cr, "REPO", repo.path)
+    sha = repo.commit(MODELS, "x = 1\n")
+    head = repo.commit(MODELS, "x = (\n")
+    assert cr.needed_headers(sha, head, MODELS) is None
+    assert not cr.shared_clears(sha, MODELS, {MODELS: [cr.SharedCoverage("r", head, frozenset({1}))]})
