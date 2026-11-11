@@ -267,6 +267,7 @@ def test_an_import_adapter_code_cannot_resolve_raises_naming_it(tested, path, te
             "def f():\n    from custom_components.deviceside import const\n",
             "custom_components.deviceside",
         ),
+        (ADAPTER, "from custom_components import deviceside\n", "custom_components.deviceside"),
     ],
 )
 def test_an_absolute_import_of_the_component_raises_naming_it(tested, path, text, name):
