@@ -162,10 +162,17 @@ class Data:
         return self.models[model_id]
 
     def url(self, key: str | None, section: str) -> str:
-        """The section's heading: on the integration's page when that has it, else on PAGE."""
-        if key is not None and slug(section) in self.pages.get(key, set()):
-            return f"{BLOB_URL}{page(key)}#{slug(section)}"
-        return f"{PAGE_URL}#{slug(section)}"
+        """The section's heading: on the integration's page when that has it, else (a model's, which any card may
+        link) on the integration page that has it, else on PAGE. Where `check_sections` looks, so its pass means a
+        live link."""
+        anchor = slug(section)
+        owners = [key] if key is not None else []
+        if (None, section) in self.sections:
+            owners += sorted(self.pages)
+        for owner in owners:
+            if anchor in self.pages.get(owner, set()):
+                return f"{BLOB_URL}{page(owner)}#{anchor}"
+        return f"{PAGE_URL}#{anchor}"
 
 
 def fail(message: str) -> None:

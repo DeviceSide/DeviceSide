@@ -465,6 +465,20 @@ def test_a_bundle_merges_in_as_its_integrations_own_and_its_page_holds_its_secti
         gc.check_sections(page, gc.load(FakeRegistry(), write_bundles(root, monkeypatch)))
 
 
+def test_a_models_section_on_another_integrations_page_links_there(root, monkeypatch):
+    models = write_bundles(root, monkeypatch)
+    (root / "docs" / "integrations" / "zha" / "index.md").write_text("# ZHA\n\n### Hue lamp\n")
+    data = gc.load(FakeRegistry(), models)
+    # Every card showing the model links its heading on the ZHA page, which is where the check found it.
+    assert data.url("hue", "Hue lamp") == f"{gc.BLOB_URL}docs/integrations/zha/index.md#hue-lamp"
+    assert data.url("zha", "Hue lamp") == f"{gc.BLOB_URL}docs/integrations/zha/index.md#hue-lamp"
+    page = PROSE.replace("### Hue lamp\n\n", "") + "<!-- evidence:start -->\n<!-- evidence:end -->\n"
+    gc.check_sections(page, data)
+    # A class's section isn't a model's: another integration's page doesn't hold it.
+    (root / "docs" / "integrations" / "zha" / "index.md").write_text("# ZHA\n\n### Dimmers\n")
+    assert gc.load(FakeRegistry(), models).url("hue", "Dimmers") == f"{URL}#dimmers"
+
+
 def test_a_card_title_links_to_its_integrations_page(root, monkeypatch):
     data = gc.load(FakeRegistry(), write_bundles(root, monkeypatch))
     card = gc.card("zha", FakeRegistry(), [], data)

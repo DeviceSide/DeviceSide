@@ -14,13 +14,15 @@ what ships, so its "not X" means not yet. Reword such a line to the real state, 
 
 ## Where facts go
 
-One fact, one home; elsewhere, point to it. `<x>` is `docs/integrations/<integration>/`, the integration's bundle.
+One fact, one home; elsewhere, point to it. A device fact cites its source: a record, report, research file or upstream
+link. `<x>` is `docs/integrations/<integration>/`, the integration's bundle; a fact spanning integrations goes in the
+shared home named in brackets.
 
 | Fact | Home |
 |---|---|
-| User-facing limits and device classes | `<x>/index.md` |
+| User-facing limits and device classes | `<x>/index.md` (shared: `docs/device-compatibility.md`) |
 | Wire calls, measurements, upstream defects | `<x>/internals.md` (shared: `docs/internals.md`, core HA: `docs/defects.md`) |
-| Classes, doesn't-work entries, accepted device reports | `<x>/devices.yaml` (`scripts/gen_compat.py` regenerates the cards) |
+| Classes, doesn't-work entries, accepted device reports | `<x>/devices.yaml` (shared doesn't-work: `docs/models.yaml`; `scripts/gen_compat.py` regenerates the cards) |
 | Models across integrations | `docs/models.yaml` |
 | Dated sources, never edited after | `<x>/research/` |
 | Run evidence | `<x>/test-records/` |
