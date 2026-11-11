@@ -10,7 +10,7 @@ from uuid import uuid4
 from homeassistant.components import mqtt
 from homeassistant.core import HomeAssistant, callback
 
-from . import bridge_cache
+from . import bridge_cache, set_check
 from .addressing import bridge_topic, options_address, state_topic, topic
 from ...core.models import Target
 from ...core.wire import wire_enabled, wire_trace
@@ -187,7 +187,9 @@ def traced_options(hass: HomeAssistant, target: Target) -> dict:
 
 
 async def publish_set(hass: HomeAssistant, target: Target, payload: dict) -> None:
-    """Publish a command to the target's set topic, traced. A read, sent on the same topic, goes through publish()."""
+    """Publish a command to the target's set topic, traced and noted for the call's set check (set_check.py). A read,
+    sent on the same topic, goes through publish()."""
+    await set_check.note(hass, target)
     if wire_enabled():
         wire_trace(hass, target.reported_id, "mqtt", "set", payload, options=traced_options(hass, target))
     await publish(hass, topic(target, "set"), payload)
