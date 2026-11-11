@@ -21,11 +21,11 @@ Code and docs use these terms.
 - **Entity domain**: light, switch. "Domain" alone is fine where unambiguous.
 - **Scope**: the entity domains, capabilities and fields an adapter is built for, each at a Level. Outside it, calls
   are refused as not yet tested.
-- **Level**: how well a scope item is proven (Verified, Reported, Documented or Experimental): rules in
-  [CLAUDE.md](../CLAUDE.md#release-flag).
-- **Maintainer**: a GitHub handle in an integration's `IntegrationInfo.maintainers`. Maintainers support that
-  integration's items bar the Experimental ones and approve changes to its package. Rules:
-  [CLAUDE.md](../CLAUDE.md#maintainers). User wording: [device-compatibility.md](device-compatibility.md#support).
+- **Level**: how well a scope item is proven (Verified, Reported, Documented or Experimental). Rules:
+  [CLAUDE.md](../CLAUDE.md#release-flag). User wording: [device-compatibility.md](device-compatibility.md#levels-of-proof).
+- **Maintainer**: a GitHub handle in an integration's `IntegrationInfo.maintainers`. Maintainers look after that
+  integration's package: they get its bug reports and approve changes to it. Rules:
+  [CLAUDE.md](../CLAUDE.md#maintainers). User wording: [device-compatibility.md](device-compatibility.md#maintainers).
 - **Unmaintained**: an adapter no one is fixing (`AdapterScope.unmaintained`, an issue URL or reason, set at Jason's
   call). It stays live; setup warns and its card shows ⚠️ Unmaintained.
 - **Experimental features**: the option (`experimental_features`, off by default) that lets calls touching an

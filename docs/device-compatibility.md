@@ -13,17 +13,17 @@ Aligned to our core tenet that claims follow evidence, we classify feature claim
 - **Documented:** uses the same call pattern as a Verified or Reported device.
 - **Experimental:** untested call pattern.
 
-Experimental features stay off until you turn on **Experimental features** in **Configure > Settings**. Whether they
+Experimental features are unreleased and may contain bugs, so they stay off until you turn on **Experimental features** in **Configure > Settings**. Whether they
 work or not, please tell us with **Report a device test result or bug** in the same menu: a working report makes a
 feature Reported, for everyone.
 
-## Support
+## Maintainers
 
-Each integration's maintainers, named on its card, support its features once they are proven (Verified, Reported or
-Documented): they fix bugs in them and review changes to them. Please
+DeviceSide is run by volunteers. Each integration's maintainers, named on its card, look after it: they review changes
+to it and fix bugs in it as they can. Please
 [report a bug](https://github.com/jasonmx/DeviceSide/issues/new?template=device_report.yml); the report goes to the
-maintainers of the integration you choose. Experimental features are unsupported until they are proven. A report that
-one doesn't work is still useful: it is how features get fixed or left out.
+maintainers of the integration you choose. A report that a feature doesn't work is still useful: it is how features
+get fixed or left out.
 
 **⚠️ Unmaintained** marks a feature no one is fixing. It still works as it did, but a bug in it stays unfixed until
 someone fixes it or takes over the integration, so use it at your own risk.

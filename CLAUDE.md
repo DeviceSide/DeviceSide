@@ -84,8 +84,6 @@ its `IntegrationInfo.maintainers`, one or more. A PR confined to one package nee
 (`.github/CODEOWNERS`, from `scripts/gen_codeowners.py`) and green CI; anything outside it (`core/`, shared docs, the
 generated pages' inputs) needs Jason. Jason merges.
 
-**Support:** an integration's maintainers support its every item but the Experimental ones, which are unsupported.
-
 **Unmaintained:** `AdapterScope.unmaintained` (an issue URL or a reason), set per adapter at Jason's call. The adapter
 stays live; setup warns and its card shows ⚠️ Unmaintained. An integration whose maintainers are all gone gets it on
 every adapter. It clears when someone fixes the adapter or adopts the integration. Like `experimental`, it is not a
