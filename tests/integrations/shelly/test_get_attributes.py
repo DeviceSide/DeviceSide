@@ -116,14 +116,29 @@ def test_unknown_mode_reports_brightness_only():
 @pytest.mark.parametrize(
     ("started_at", "remaining_s"),
     [
-        (TIMER_STARTED_AT + 10, 5.0),  # device clock ahead of HA's: never more than the duration
-        (TIMER_STARTED_AT - 10, 0.0),  # timer overdue: never negative
+        (TIMER_STARTED_AT + 4, 5.0),  # device clock 4 s ahead of HA's: never more than the duration
+        (TIMER_STARTED_AT - 6, 0.0),  # timer 3 s overdue: never negative
     ],
 )
 def test_remaining_time_is_clamped_to_the_duration(started_at, remaining_s):
     status = {"output": True, "timer_started_at": started_at, "timer_duration": 5.0}
 
     assert status_row("Switch", status, NOW) == {"timer": timer("off", remaining_s)}
+
+
+@pytest.mark.parametrize(
+    "started_at",
+    [
+        4.95,  # an unsynced Gen2's seconds since boot
+        TIMER_STARTED_AT - 9,  # 6 s overdue: past the skew
+        TIMER_STARTED_AT + 1000,  # started in HA's future
+    ],
+)
+def test_a_timer_off_the_ha_clock_reads_as_no_timer(started_at):
+    # The time left can't be read, so there is no timer, as action-behavior.md has it, rather than a confident 0.
+    status = {"output": True, "timer_started_at": started_at, "timer_duration": 5.0}
+
+    assert status_row("Switch", status, NOW) == {}
 
 
 async def test_gen1_and_non_timer_entities_are_refused(hass):

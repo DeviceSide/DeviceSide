@@ -190,8 +190,14 @@ class Dispatcher:
             else:
                 # Members are indirect, so an unavailable one is skipped quietly, as core skips one in an area.
                 expanded += [member for member in expand(self.hass, target) if _available(member.state)]
-        seen: set[str] = set()
-        return [target for target in expanded if not (target.reported_id in seen or seen.add(target.reported_id))]
+        # One copy per entity. A member the caller also named stays named, whichever copy came first, so it raises
+        # rather than skips, as a named target does.
+        by_id: dict[str, Target] = {}
+        for target in expanded:
+            kept = by_id.setdefault(target.reported_id, target)
+            if target.named and not kept.named:
+                by_id[target.reported_id] = replace(kept, named=True)
+        return list(by_id.values())
 
     async def _run_adapter(
         self, adapter: Adapter, request: Request, targets: list[Target], dropped: frozenset[str]

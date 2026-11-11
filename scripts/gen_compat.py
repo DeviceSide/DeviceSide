@@ -322,8 +322,9 @@ def load_broken(entry: dict, known: set[str], data: Data) -> None:
 
 
 def load_report(report: dict, known: set[str], shipped: dict[tuple[str, str], object], data: Data) -> None:
-    """A report names the domain or capability (Shelly: RPC component) its call reached as `item`. A working one must
-    have promoted that item to Reported, unless a record already made it Verified."""
+    """A report names the domain or capability (Shelly: RPC component) its call reached as `item`. A working one on a
+    Documented item must have promoted it to Reported. One on an Experimental item is recorded and counts toward its
+    graduation, which its maintainer requests at their discretion, so no count is checked here."""
     where = f"report {report.get('issue') if isinstance(report, dict) else report}"
     need(report, where, ("integration", "item"), keys=REPORT_KEYS)
     if report["integration"] not in known:
@@ -353,7 +354,7 @@ def check_item(report: dict, action: str, adapter, where: str) -> None:
     held = scope.capabilities if scope.capabilities is not None else scope.domains
     if (level := held.get(report["item"])) is None:
         fail(f"{where}: {report['integration']} {action} has no item {report['item']!r} in scope")
-    if action in (report.get("worked") or []) and level < Level.REPORTED:
+    if action in (report.get("worked") or []) and level is Level.DOCUMENTED:
         fail(
             f"{where}: {report['integration']} {action} works on {report['item']}, which its scope holds as "
             f"{level.name.title()}; promote it to Level.REPORTED"

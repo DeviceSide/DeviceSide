@@ -6,6 +6,9 @@ name: Cut release candidate
 # commit since the previous RC, and every released adapter's test records passing and citing a commit with the head's
 # adapter code (check_release --records).
 # Tags pushed with GITHUB_TOKEN start no other workflow, so anything an RC needs runs here.
+#
+# Two jobs, so the code `uv sync` installs never shares a runner with write access: `check` runs the gates with a
+# read-only token, and `tag`, on a fresh runner that installs nothing, alone holds the write token and the deploy key.
 
 on:
   workflow_dispatch:
@@ -17,17 +20,16 @@ on:
 permissions: {}
 
 jobs:
-  cut:
+  check:
     runs-on: ubuntu-latest
-    # Holds the tag deploy key, and deploys only from main and release/*.
-    environment: release
     permissions:
-      contents: write
+      contents: read
       actions: read
     env:
       RC: ${{ inputs.rc }}
       BRANCH: ${{ github.ref_name }}
-      GH_TOKEN: ${{ github.token }}
+    outputs:
+      notes: ${{ steps.gates.outputs.notes }}
 
     steps:
       - name: Refuse a tag ref
@@ -36,7 +38,6 @@ jobs:
           echo "::error::Dispatch from main or release/vX.Y.Z, not a tag."
           exit 1
 
-      # No credentials left in .git: the repo is public, so fetches need none, and only the push step holds the key.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           fetch-depth: 0
@@ -53,6 +54,8 @@ jobs:
           fi
 
       - name: Require green CI on the head
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: bash scripts/require_green.sh "$GITHUB_SHA"
 
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
@@ -71,8 +74,29 @@ jobs:
       - name: Fetch the commits test records cite
         run: git fetch --quiet origin '+refs/pull/*/head:refs/remotes/pull/*'
 
+      # The call for testers rides to `tag` as an output, as that job's runner has none of this one's files.
       - name: Refuse a test record older than its adapter's code
-        run: .venv/bin/python scripts/check_release.py --records --notes "$RUNNER_TEMP/notes.md"
+        id: gates
+        run: |
+          .venv/bin/python scripts/check_release.py --records --notes "$RUNNER_TEMP/notes.md"
+          { echo 'notes<<END_OF_NOTES'; cat "$RUNNER_TEMP/notes.md"; echo 'END_OF_NOTES'; } >> "$GITHUB_OUTPUT"
+
+  tag:
+    needs: check
+    runs-on: ubuntu-latest
+    # Holds the tag deploy key, and deploys only from main and release/*.
+    environment: release
+    permissions:
+      contents: write
+    env:
+      RC: ${{ inputs.rc }}
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      # The checked commit only; no credentials left in .git, as only the push holds the key.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
 
       # The tag ruleset's only bypass is the deploy key: GITHUB_TOKEN can't bypass a ruleset on a personal repo.
       # The key exists only in this step, in a file only the runner user can read, and github.com's host keys come
@@ -80,7 +104,9 @@ jobs:
       - name: Tag and publish a pre-release
         env:
           DEPLOY_KEY: ${{ secrets.RELEASE_TAG_DEPLOY_KEY }}
+          NOTES: ${{ needs.check.outputs.notes }}
         run: |
+          printf '%s' "$NOTES" > "$RUNNER_TEMP/notes.md"
           key="$RUNNER_TEMP/tag_deploy_key"
           hosts="$RUNNER_TEMP/github_known_hosts"
           trap 'rm -f "$key" "$hosts"' EXIT
