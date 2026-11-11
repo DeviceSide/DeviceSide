@@ -22,9 +22,10 @@ jobs:
       code: ${{ steps.diff.outputs.code }}
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Look for changes outside docs
         id: diff
@@ -56,15 +57,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v7
+      # Full history: the compatibility page is Verified only on records as new as their code, so its check (and the
+      # test pinning the checked-in page) diffs each record's cited commit against HEAD.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
 
-      - uses: actions/setup-python@v7
+      # A record cites the commit its rig run deployed, often on a PR branch since squash-merged and deleted. Not under
+      # refs/remotes/pull/: on a pull_request run, checkout already holds refs/remotes/pull/<n>/merge there.
+      - name: Fetch the commits test records cite
+        run: git fetch --quiet origin '+refs/pull/*/head:refs/remotes/pr/*'
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.14"
 
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
         with:
-          enable-cache: true
+          enable-cache: true # zizmor: ignore[cache-poisoning] publishes no artifacts, releases come from cut-release*
 
       - name: Install test dependencies
         run: uv sync --locked

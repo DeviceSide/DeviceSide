@@ -365,8 +365,11 @@ async def test_lock_is_per_device(hass, setup_production, broker):
             await release.wait()
 
     tasks = [asyncio.create_task(hold("light.one")), asyncio.create_task(hold("light.two"))]
-    while len(order) < 2:
-        await asyncio.sleep(0.01)
+    for _ in range(1000):  # capped: a hold that never starts fails here, not hangs
+        if len(order) == 2:
+            break
+        await asyncio.sleep(0)
+    assert len(order) == 2
     release.set()
     await asyncio.gather(*tasks)
 

@@ -33,11 +33,11 @@ jobs:
           echo "::error::Dispatch from main, not a tag."
           exit 1
 
-      - uses: actions/checkout@v7
+      # No credentials left in .git: the repo is public, so fetches need none, and only the push step holds the key.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           fetch-depth: 0
-          # The v* tag ruleset's only bypass: GITHUB_TOKEN can't bypass a ruleset on a personal repo.
-          ssh-key: ${{ secrets.RELEASE_TAG_DEPLOY_KEY }}
+          persist-credentials: false
 
       - name: Check the tag, and find the RC it releases
         run: |
@@ -58,7 +58,7 @@ jobs:
       - name: Check out the RC
         run: git checkout --quiet --detach "$TARGET"
 
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
         with:
           python-version: "3.14"
 
@@ -74,8 +74,19 @@ jobs:
       - name: Refuse an experimental adapter, or a test record older than its adapter's code
         run: .venv/bin/python scripts/check_release.py --release --records
 
+      # The v* tag ruleset's only bypass is the deploy key: GITHUB_TOKEN can't bypass a ruleset on a personal repo.
+      # The key exists only in this step, in a file only the runner user can read, and github.com's host keys come
+      # from the API over TLS rather than trust on first use.
       - name: Tag and publish the release
+        env:
+          DEPLOY_KEY: ${{ secrets.RELEASE_TAG_DEPLOY_KEY }}
         run: |
+          key="$RUNNER_TEMP/tag_deploy_key"
+          hosts="$RUNNER_TEMP/github_known_hosts"
+          trap 'rm -f "$key" "$hosts"' EXIT
+          (umask 077 && printf '%s\n' "$DEPLOY_KEY" > "$key")
+          gh api meta --jq '.ssh_keys[] | "github.com " + .' > "$hosts"
+          export GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$hosts"
           git tag "$VERSION" "$TARGET"
-          git push origin "refs/tags/$VERSION"
+          git push "git@github.com:$GITHUB_REPOSITORY.git" "refs/tags/$VERSION"
           gh release create "$VERSION" --verify-tag --latest --generate-notes --title "$VERSION"

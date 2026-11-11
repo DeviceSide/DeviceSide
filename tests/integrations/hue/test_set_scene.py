@@ -5,7 +5,7 @@ from homeassistant.exceptions import HomeAssistantError
 
 from custom_components.deviceside.integrations.hue.transition_cache import transition_cache
 
-from ...conftest import call, refusal
+from ...conftest import call, refusal, result
 from ...fixtures.hue import add_hue_entity, hue_entry, light_action
 
 pytestmark = pytest.mark.usefixtures("setup_production")
@@ -89,7 +89,7 @@ async def test_actions_with_nothing_to_write_are_skipped(hass, bridge, action):
 
     response = await call(hass, "set_scene", {"entity_id": "scene.relax"})
 
-    assert response == {"scene.relax": {"status": "unchanged", "integration": "hue", "detail": "nothing_to_set"}}
+    assert response == {"scene.relax": result("hue", "unchanged", detail="nothing_to_set")}
     assert bridge.puts == []
 
 

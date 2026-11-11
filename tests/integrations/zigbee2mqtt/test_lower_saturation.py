@@ -2,8 +2,8 @@
 
 import pytest
 
-from .conftest import SENT, SET, commands, light, unchanged
-from ...conftest import call
+from .conftest import SENT, SET, commands, light
+from ...conftest import call, result
 
 pytestmark = pytest.mark.usefixtures("setup_production", "clock")
 
@@ -40,5 +40,5 @@ async def test_nothing_left_to_move_is_unchanged(hass, broker, options, data, de
 
     response = await call(hass, "lower_saturation", {"entity_id": entity_id, **data})
 
-    assert response == {entity_id: unchanged(detail)}
+    assert response == {entity_id: result("zigbee2mqtt", "unchanged", detail=detail)}
     assert commands(broker) == []

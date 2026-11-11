@@ -78,6 +78,9 @@ def data(registry=None, **changes):
 def root(tmp_path, monkeypatch):
     monkeypatch.setattr(gc, "REPO", tmp_path)
     monkeypatch.setattr(cr, "RECORDS", tmp_path / "docs" / "test-records")
+    # Freshness needs git history and an adapter's source: every record is fresh unless a test says otherwise.
+    monkeypatch.setattr(gc, "code_of", lambda adapter: [])
+    monkeypatch.setattr(gc, "staleness", lambda record, code: None)
     return tmp_path
 
 
@@ -87,18 +90,22 @@ def test_entries_are_model_ids_with_their_firmware_and_groups_are_not_models(roo
         "hue",
         "stop",
         device="Hue lamp (`LTA009`), firmware `1.2`; LCA016, firmware `0x01`; Zone, firmware `unknown`; "
-        "Group, firmware `Zigbee2MQTT 2.1`; a temporary group holding only it",
+        "Group, firmware `Zigbee2MQTT 2.1`",
     )
-    assert gc.entries(path) == [("LTA009", "1.2"), ("LCA016", "0x01"), "group", "group", "group"]
+    assert gc.entries(path) == [("LTA009", "1.2"), ("LCA016", "0x01"), "group", "group"]
 
 
 def test_a_record_with_no_device_lists_no_models(root):
     assert gc.entries(record(root, "hue", "set_scene", device="none")) == []
 
 
-def test_a_device_row_that_cannot_be_read_is_an_error(root):
+@pytest.mark.parametrize("device", ["a lamp", "a temporary group holding only it"])
+def test_a_device_entry_that_cannot_be_read_is_an_error(root, device):
     with pytest.raises(SystemExit, match="can't read Device entry"):
-        gc.entries(record(root, "hue", "stop", device="a lamp"))
+        gc.entries(record(root, "hue", "stop", device=device))
+
+
+def test_a_missing_device_row_is_an_error(root):
     path = record(root, "hue", "lower_hue")
     path.write_text("| Result | pass |\n")
     with pytest.raises(SystemExit, match="no Device row"):
@@ -202,6 +209,15 @@ def test_an_experimental_adapter_or_a_failing_record_is_experimental(root):
     assert "| Experimental (in RCs only) |" in gc.row("stop", adapter("zha", "stop", experimental=True), data())
     line = gc.row("stop", adapter("hue", "stop"), data())
     assert line == f"| `stop` | {gc.NO_RECORD} |  | none |  | |"
+
+
+def test_only_a_fresh_passing_base_record_is_verified(root, monkeypatch):
+    record(root, "zha", "stop-predicted_state")
+    line = gc.row("stop", adapter("zha", "stop"), data())
+    assert line.startswith(f"| `stop` | {gc.NO_RECORD} |  | `LTA009`")
+    base = record(root, "zha", "stop")
+    monkeypatch.setattr(gc, "staleness", lambda record, code: "changed since: x.py" if record == base else None)
+    assert gc.row("stop", adapter("zha", "stop"), data()).startswith(f"| `stop` | {gc.STALE} |  | `LTA009`")
 
 
 def test_reports_fill_the_reports_column_of_their_action(root):

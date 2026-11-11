@@ -8,7 +8,7 @@ from homeassistant.exceptions import HomeAssistantError
 from custom_components.deviceside.core.scope import Level
 from custom_components.deviceside.integrations.shelly.set_attributes import ShellySetAttributes
 
-from ...conftest import call, refusal
+from ...conftest import call, refusal, result
 from ...fixtures.shelly import add_shelly_entity, failing, shelly_device
 
 KELVIN_RANGE = {"min_color_temp_kelvin": 2700, "max_color_temp_kelvin": 6500}
@@ -137,7 +137,7 @@ async def test_limits_clamp_the_stored_brightness(hass, setup_production, stored
     response = await call(hass, "set_attributes", {**BULB, **data})
 
     if expected is None:
-        assert response == {"light.bulb": {"status": "unchanged", "integration": "shelly", "detail": "within_limits"}}
+        assert response == {"light.bulb": result("shelly", "unchanged", detail="within_limits")}
         assert all(".Set" not in c.args[0] for c in call_rpc.await_args_list)
         return
     assert response == {"light.bulb": CONFIRMED}

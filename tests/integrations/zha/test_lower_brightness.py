@@ -9,8 +9,8 @@ from pytest_homeassistant_custom_component.common import async_mock_service
 from custom_components.deviceside.integrations.zha import zcl
 from custom_components.deviceside.integrations.zha.fade import soft_off_restores
 
-from .conftest import RESTORE_60, SENT, A, B, bulb, on_off_reads, sent, to, unchanged
-from ...conftest import advance, call, wall_clock_now
+from .conftest import RESTORE_60, SENT, A, B, bulb, on_off_reads, sent, to
+from ...conftest import advance, call, result, wall_clock_now
 
 pytestmark = pytest.mark.usefixtures("setup_production", "clock", "bulbs")
 
@@ -47,7 +47,9 @@ async def test_continues_from_the_predicted_value(hass, commands, clock):
 async def test_an_off_light_is_unchanged(hass, commands):
     bulb(hass, state="off")
 
-    assert await call(hass, "lower_brightness", {"entity_id": "light.bulb"}) == {"light.bulb": unchanged("off")}
+    assert await call(hass, "lower_brightness", {"entity_id": "light.bulb"}) == {
+        "light.bulb": result("zha", "unchanged", detail="off")
+    }
     assert not commands
 
 
@@ -170,6 +172,6 @@ async def test_a_lower_that_passes_an_off_member_by_goes_to_each_lit_one(
 
     response = await call(hass, "lower_brightness", {"entity_id": "light.zha_group"})
 
-    assert response == {"light.a": SENT, "light.b": unchanged("off")}
+    assert response == {"light.a": SENT, "light.b": result("zha", "unchanged", detail="off")}
     assert to(commands) == [A]
     assert not group_commands
