@@ -78,7 +78,7 @@ maker documents that call identically for both.
 ## Help us test
 
 These are built and unit-tested, and wait only for someone with the hardware. Turn on Experimental features to try
-them, then report the result, whether they work or not: a working report ships them to everyone.
+them, then report the result, whether they work or not: working reports help ship them to everyone.
 
 ### Zigbee plugs and switches
 
