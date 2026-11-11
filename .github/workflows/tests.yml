@@ -45,7 +45,7 @@ jobs:
             # The bundles' records, devices.yaml, index and internals pages, icons, models.yaml, the shared pages and the
             # README are docs, but generated, generated from or cited by code: check them.
             if [ -n "$files" ] && grep -qvE '(\.md$|^docs/)' <<<"$files"; then code=true
-            elif grep -qE '^docs/integrations/[^/]+/(records/|devices\.yaml$|index\.md$|internals\.md$)' <<<"$files"; then code=true
+            elif grep -qE '^docs/integrations/[^/]+/(test-records/|devices\.yaml$|index\.md$|internals\.md$)' <<<"$files"; then code=true
             elif grep -qE '^(docs/(icons/|device-compatibility\.md$|integrations\.md$|internals\.md$|models\.yaml$)|README\.md$)' <<<"$files"; then code=true
             else code=false; fi
           fi

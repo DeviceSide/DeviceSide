@@ -54,7 +54,7 @@ bridge's earlier report (rig runs, 2026-11-11: Hue [Tested behavior](integration
 A color bulb, rig-tested on Hue, ZHA and Zigbee2MQTT: `LCA016` on Hue and ZHA, `8720169392182` on Zigbee2MQTT
 ([zigbee-herdsman-converters](https://github.com/Koenkk/zigbee-herdsman-converters/blob/master/src/devices/philips.ts)).
 It carries the smooth saturation and hue tests, and Zigbee2MQTT's color mode override
-([record](integrations/zigbee2mqtt/records/color_modes.md)). Turning that option off is unit-tested only: the rig can't
+([record](integrations/zigbee2mqtt/test-records/color_modes.md)). Turning that option off is unit-tested only: the rig can't
 cleanly remove the override the option writes.
 
 ### Hue White A60 B22
@@ -106,17 +106,17 @@ native group of the integration (a Hue zone, a ZHA or Zigbee2MQTT group).
 
 | Action | Level | Tested models | Records | Reports |
 |---|---|---|---|---|
-| `get_attributes` | Unproven: record older than its code | `LTA009`, firmware `0x01002a00`<br>`LCA016`, firmware `0x01001200`<br>`LWA012`, firmware `0x01002502`<br>group | [record](integrations/zha/records/get_attributes.md) | |
+| `get_attributes` | Unproven: record older than its code | `LTA009`, firmware `0x01002a00`<br>`LCA016`, firmware `0x01001200`<br>`LWA012`, firmware `0x01002502`<br>group | [record](integrations/zha/test-records/get_attributes.md) | |
 | `get_attributes` | Experimental | none (untested, behind Experimental features: switch entities) | | |
-| `lower_brightness` | Unproven: record older than its code | `LTA009`, firmware `0x01002a00`<br>group | [record](integrations/zha/records/lower_brightness.md) | |
-| `lower_hue` | Unproven: record older than its code | `LCA016`, firmware `0x01001200` | [record](integrations/zha/records/lower_hue.md) | |
-| `lower_saturation` | Unproven: record older than its code | `LCA016`, firmware `0x01001200` | [record](integrations/zha/records/lower_saturation.md) | |
-| `raise_brightness` | Unproven: record older than its code | `LTA009`, firmware `0x01002a00`<br>group | [record](integrations/zha/records/raise_brightness.md) | |
-| `raise_hue` | Unproven: record older than its code | `LCA016`, firmware `0x01001200` | [record](integrations/zha/records/raise_hue.md) | |
-| `raise_saturation` | Unproven: record older than its code | `LCA016`, firmware `0x01001200` | [record](integrations/zha/records/raise_saturation.md) | |
-| `set_attributes` | Experimental (in RCs only) | `LCA016`, firmware `0x01001200` | [record](integrations/zha/records/set_attributes.md) | |
-| `stop` | Experimental (in RCs only) | `LTA009`, firmware `0x01002a00`<br>`LCA016`, firmware `0x01001200`<br>group | [record](integrations/zha/records/stop.md) | |
-| `turn_on_for` | Unproven: record older than its code | `LWA012`, firmware `0x01002502`<br>`LTA009`, firmware `0x01002a00`<br>group | [record](integrations/zha/records/turn_on_for.md) | |
+| `lower_brightness` | Unproven: record older than its code | `LTA009`, firmware `0x01002a00`<br>group | [record](integrations/zha/test-records/lower_brightness.md) | |
+| `lower_hue` | Unproven: record older than its code | `LCA016`, firmware `0x01001200` | [record](integrations/zha/test-records/lower_hue.md) | |
+| `lower_saturation` | Unproven: record older than its code | `LCA016`, firmware `0x01001200` | [record](integrations/zha/test-records/lower_saturation.md) | |
+| `raise_brightness` | Unproven: record older than its code | `LTA009`, firmware `0x01002a00`<br>group | [record](integrations/zha/test-records/raise_brightness.md) | |
+| `raise_hue` | Unproven: record older than its code | `LCA016`, firmware `0x01001200` | [record](integrations/zha/test-records/raise_hue.md) | |
+| `raise_saturation` | Unproven: record older than its code | `LCA016`, firmware `0x01001200` | [record](integrations/zha/test-records/raise_saturation.md) | |
+| `set_attributes` | Experimental (in RCs only) | `LCA016`, firmware `0x01001200` | [record](integrations/zha/test-records/set_attributes.md) | |
+| `stop` | Experimental (in RCs only) | `LTA009`, firmware `0x01002a00`<br>`LCA016`, firmware `0x01001200`<br>group | [record](integrations/zha/test-records/stop.md) | |
+| `turn_on_for` | Unproven: record older than its code | `LWA012`, firmware `0x01002502`<br>`LTA009`, firmware `0x01002a00`<br>group | [record](integrations/zha/test-records/turn_on_for.md) | |
 | `turn_on_for` | Experimental | none (untested, behind Experimental features: switch entities) | | |
 
 | Doesn't work | Why | Source |
@@ -127,17 +127,17 @@ native group of the integration (a Hue zone, a ZHA or Zigbee2MQTT group).
 
 | Action | Level | Tested models | Records | Reports |
 |---|---|---|---|---|
-| `get_attributes` | Unproven: record older than its code | `9290024684`, firmware `1.163.1`<br>`8720169392182`, firmware `1.164.2`<br>`9290018217`, firmware `1.122.2`<br>group | [record](integrations/zigbee2mqtt/records/get_attributes.md) | |
+| `get_attributes` | Unproven: record older than its code | `9290024684`, firmware `1.163.1`<br>`8720169392182`, firmware `1.164.2`<br>`9290018217`, firmware `1.122.2`<br>group | [record](integrations/zigbee2mqtt/test-records/get_attributes.md) | |
 | `get_attributes` | Experimental | none (untested, behind Experimental features: switch entities) | | |
-| `lower_brightness` | Unproven: record older than its code | `9290024684`, firmware `1.163.1`<br>group | [record](integrations/zigbee2mqtt/records/lower_brightness.md) | |
-| `lower_hue` | Experimental (in RCs only) | `8720169392182`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/records/lower_hue.md) | |
-| `lower_saturation` | Unproven: record older than its code | `8720169392182`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/records/lower_saturation.md) | |
-| `raise_brightness` | Unproven: record older than its code | `9290024684`, firmware `1.163.1`<br>group | [record](integrations/zigbee2mqtt/records/raise_brightness.md) | |
-| `raise_hue` | Unproven: record older than its code | `8720169392182`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/records/raise_hue.md) | |
-| `raise_saturation` | Unproven: record older than its code | `8720169392182`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/records/raise_saturation.md) | |
-| `set_attributes` | Experimental (in RCs only) | `9290024684`, firmware `1.163.1`<br>`8720169392182`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/records/set_attributes.md) | |
-| `stop` | Experimental (in RCs only) | `9290024684`, firmware `1.163.1`<br>`8720169392182`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/records/stop.md) | |
-| `turn_on_for` | Unproven: record older than its code | `LWA012`, firmware `1.104.2`<br>`LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2` | [record](integrations/zigbee2mqtt/records/turn_on_for.md) | |
+| `lower_brightness` | Unproven: record older than its code | `9290024684`, firmware `1.163.1`<br>group | [record](integrations/zigbee2mqtt/test-records/lower_brightness.md) | |
+| `lower_hue` | Experimental (in RCs only) | `8720169392182`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/lower_hue.md) | |
+| `lower_saturation` | Unproven: record older than its code | `8720169392182`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/lower_saturation.md) | |
+| `raise_brightness` | Unproven: record older than its code | `9290024684`, firmware `1.163.1`<br>group | [record](integrations/zigbee2mqtt/test-records/raise_brightness.md) | |
+| `raise_hue` | Unproven: record older than its code | `8720169392182`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/raise_hue.md) | |
+| `raise_saturation` | Unproven: record older than its code | `8720169392182`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/raise_saturation.md) | |
+| `set_attributes` | Experimental (in RCs only) | `9290024684`, firmware `1.163.1`<br>`8720169392182`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/set_attributes.md) | |
+| `stop` | Experimental (in RCs only) | `9290024684`, firmware `1.163.1`<br>`8720169392182`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/stop.md) | |
+| `turn_on_for` | Unproven: record older than its code | `LWA012`, firmware `1.104.2`<br>`LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2` | [record](integrations/zigbee2mqtt/test-records/turn_on_for.md) | |
 | `turn_on_for` | Experimental | none (untested, behind Experimental features: switch entities) | | |
 
 | Doesn't work | Why | Source |
@@ -148,40 +148,40 @@ native group of the integration (a Hue zone, a ZHA or Zigbee2MQTT group).
 
 | Action | Level | Tested models | Records | Reports |
 |---|---|---|---|---|
-| `clear_auto_off` | Unproven: record older than its code | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](integrations/shelly/records/clear_auto_off.md) | |
+| `clear_auto_off` | Unproven: record older than its code | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](integrations/shelly/test-records/clear_auto_off.md) | |
 | `clear_auto_off` | Documented | none (untested: Light, CCT, RGB, RGBW, RGBCCT components) | | |
-| `clear_auto_on` | Unproven: record older than its code | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](integrations/shelly/records/clear_auto_on.md) | |
+| `clear_auto_on` | Unproven: record older than its code | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](integrations/shelly/test-records/clear_auto_on.md) | |
 | `clear_auto_on` | Documented | none (untested: Light, CCT, RGB, RGBW, RGBCCT components) | | |
-| `get_attributes` | Unproven: record older than its code | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943`<br>`S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](integrations/shelly/records/get_attributes.md) | |
+| `get_attributes` | Unproven: record older than its code | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943`<br>`S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](integrations/shelly/test-records/get_attributes.md) | |
 | `get_attributes` | Documented | none (untested: Light, CCT, RGB, RGBW components) | | |
-| `lower_brightness` | Unproven: record older than its code | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/records/lower_brightness.md) | |
+| `lower_brightness` | Unproven: record older than its code | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/lower_brightness.md) | |
 | `lower_brightness` | Experimental | none (untested, behind Experimental features: Light, CCT, RGB, RGBW components) | | |
-| `raise_brightness` | Unproven: record older than its code | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/records/raise_brightness.md) | |
+| `raise_brightness` | Unproven: record older than its code | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/raise_brightness.md) | |
 | `raise_brightness` | Experimental | none (untested, behind Experimental features: Light, CCT, RGB, RGBW components) | | |
-| `set_attributes` | Unproven: record older than its code | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/records/set_attributes.md) | |
-| `set_auto_off` | Unproven: record older than its code | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](integrations/shelly/records/set_auto_off.md) | |
+| `set_attributes` | Unproven: record older than its code | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/set_attributes.md) | |
+| `set_auto_off` | Unproven: record older than its code | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](integrations/shelly/test-records/set_auto_off.md) | |
 | `set_auto_off` | Documented | none (untested: Light, CCT, RGB, RGBW, RGBCCT components) | | |
-| `set_auto_on` | Unproven: record older than its code | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](integrations/shelly/records/set_auto_on.md) | |
+| `set_auto_on` | Unproven: record older than its code | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](integrations/shelly/test-records/set_auto_on.md) | |
 | `set_auto_on` | Documented | none (untested: Light, CCT, RGB, RGBW, RGBCCT components) | | |
-| `stop` | Unproven: record older than its code | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/records/stop.md) | |
+| `stop` | Unproven: record older than its code | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/stop.md) | |
 | `stop` | Experimental | none (untested, behind Experimental features: Light, CCT, RGB, RGBW components) | | |
-| `turn_off_for` | Unproven: record older than its code | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943`<br>`S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/records/turn_off_for.md) | |
+| `turn_off_for` | Unproven: record older than its code | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943`<br>`S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/turn_off_for.md) | |
 | `turn_off_for` | Documented | none (untested: Light, CCT, RGB, RGBW components) | | |
-| `turn_on_for` | Unproven: record older than its code | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943`<br>`S4SW-001X8EU`, firmware `20261026-122156/2.0.3-g4601943`<br>`S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/records/turn_on_for.md) | |
+| `turn_on_for` | Unproven: record older than its code | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943`<br>`S4SW-001X8EU`, firmware `20261026-122156/2.0.3-g4601943`<br>`S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/turn_on_for.md) | |
 | `turn_on_for` | Documented | none (untested: Light, CCT, RGB, RGBW components) | | |
 
 ### Hue
 
 | Action | Level | Tested models | Records | Reports |
 |---|---|---|---|---|
-| `get_attributes` | Unproven: record older than its code | `LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>group | [record](integrations/hue/records/get_attributes.md) | |
-| `lower_brightness` | Unproven: record older than its code | `LTA009`, firmware `1.163.1`<br>group | [predicted state](integrations/hue/records/lower_brightness-predicted_state.md), [record](integrations/hue/records/lower_brightness.md) | |
-| `lower_saturation` | Unproven: record older than its code | `LCA016`, firmware `1.164.2`<br>group | [record](integrations/hue/records/lower_saturation.md) | |
-| `raise_brightness` | Unproven: record older than its code | `LTA009`, firmware `1.163.1`<br>group | [predicted state](integrations/hue/records/raise_brightness-predicted_state.md), [record](integrations/hue/records/raise_brightness.md) | |
-| `raise_saturation` | Unproven: record older than its code | `LCA016`, firmware `1.164.2`<br>group | [record](integrations/hue/records/raise_saturation.md) | |
-| `set_attributes` | Experimental (in RCs only) | `LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>group | [record](integrations/hue/records/set_attributes.md) | |
-| `set_scene` | Unproven: record older than its code | group | [record](integrations/hue/records/set_scene.md) | |
-| `stop` | Experimental (in RCs only) | `LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>group | [predicted state](integrations/hue/records/stop-predicted_state.md), [record](integrations/hue/records/stop.md) | |
+| `get_attributes` | Unproven: record older than its code | `LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>group | [record](integrations/hue/test-records/get_attributes.md) | |
+| `lower_brightness` | Unproven: record older than its code | `LTA009`, firmware `1.163.1`<br>group | [predicted state](integrations/hue/test-records/lower_brightness-predicted_state.md), [record](integrations/hue/test-records/lower_brightness.md) | |
+| `lower_saturation` | Unproven: record older than its code | `LCA016`, firmware `1.164.2`<br>group | [record](integrations/hue/test-records/lower_saturation.md) | |
+| `raise_brightness` | Unproven: record older than its code | `LTA009`, firmware `1.163.1`<br>group | [predicted state](integrations/hue/test-records/raise_brightness-predicted_state.md), [record](integrations/hue/test-records/raise_brightness.md) | |
+| `raise_saturation` | Unproven: record older than its code | `LCA016`, firmware `1.164.2`<br>group | [record](integrations/hue/test-records/raise_saturation.md) | |
+| `set_attributes` | Experimental (in RCs only) | `LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>group | [record](integrations/hue/test-records/set_attributes.md) | |
+| `set_scene` | Unproven: record older than its code | group | [record](integrations/hue/test-records/set_scene.md) | |
+| `stop` | Experimental (in RCs only) | `LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>group | [predicted state](integrations/hue/test-records/stop-predicted_state.md), [record](integrations/hue/test-records/stop.md) | |
 
 | Doesn't work | Why | Source |
 |---|---|---|
@@ -191,9 +191,9 @@ native group of the integration (a Hue zone, a ZHA or Zigbee2MQTT group).
 
 | Action | Level | Tested models | Records | Reports |
 |---|---|---|---|---|
-| `get_attributes` | Unproven: record older than its code | `8979`, firmware `v1.4` | [record](integrations/matter/records/get_attributes.md) | |
+| `get_attributes` | Unproven: record older than its code | `8979`, firmware `v1.4` | [record](integrations/matter/test-records/get_attributes.md) | |
 | `get_attributes` | Documented | none (untested: light entities) | | |
-| `turn_on_for` | Unproven: record older than its code | `8979`, firmware `v1.4` | [record](integrations/matter/records/turn_on_for.md) | |
+| `turn_on_for` | Unproven: record older than its code | `8979`, firmware `v1.4` | [record](integrations/matter/test-records/turn_on_for.md) | |
 | `turn_on_for` | Documented | none (untested: light entities) | | |
 
 <!-- evidence:end -->

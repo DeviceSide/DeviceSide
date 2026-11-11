@@ -35,7 +35,7 @@ Code and docs use these terms.
 - **Rig**: Jason's live Home Assistant and devices, and the private tool that runs DeviceSide's actions on
   them and writes test records. It is kept outside this repo; the records are its output here.
 - **Test record**: the evidence that an adapter works on real hardware, from a rig run:
-  `docs/integrations/<integration>/records/<action>*.md`. Clearing `experimental` cites one.
+  `docs/integrations/<integration>/test-records/<action>*.md`. Clearing `experimental` cites one.
 - **Device report**: a user's "works" or "doesn't work" for an action on a model. In the bundle's `devices.yaml` each
   one names the `item` its call reached (the domain, or the capability for an adapter that lists them). An accepted
   "works" on an item's call makes it Reported; a "doesn't work" is evidence for a fix or for leaving the item out.
@@ -191,4 +191,5 @@ Each gate's rules are in the header of the script or workflow named.
 
 **Hardware the rig lacks (planned):** a maintainer's adapter ships Experimental and climbs to Reported on accepted
 device reports. After v0.1.0, a published rig kit lets maintainers run the rig on their own devices and commit
-attributed test records under `docs/test-records/<integration>/`, the same route to Verified the rig's own adapters take.
+attributed test records under `docs/integrations/<integration>/test-records/`, the same route to Verified the rig's
+own adapters take.

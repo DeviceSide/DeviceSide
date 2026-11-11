@@ -135,12 +135,12 @@ class FakeRecordsRegistry:
 
 
 def write_record(repo, name: str, commit: str | None, result: str | None = "pass") -> str:
-    """Commit docs/integrations/fake/records/<name> citing the commit (or no commit), with the result (or no Result
+    """Commit docs/integrations/fake/test-records/<name> citing the commit (or no commit), with the result (or no Result
     row), and return the new head."""
     source = f"rig run (`scripts/rig.py`), commit `{commit[:7]}`" if commit else "probe script"
     row = f"| Result | {result} |\n" if result else ""
     text = f"# Fake · turn_on_for\n\n| | |\n|---|---|\n{row}| Source | {source} |\n"
-    return repo.commit(f"docs/integrations/fake/records/{name}", text)
+    return repo.commit(f"docs/integrations/fake/test-records/{name}", text)
 
 
 @pytest.fixture
@@ -297,7 +297,8 @@ def test_a_change_to_the_adapters_code_after_its_record_is_an_error(tested, monk
     repo, sha = tested
     repo.commit(changed)
     assert cr.record_errors(FakeRecordsRegistry(repo, monkeypatch)) == [
-        f"fake / turn_on_for: docs/integrations/fake/records/turn_on_for.md cites {sha[:7]}; changed since: {changed}"
+        f"fake / turn_on_for: docs/integrations/fake/test-records/turn_on_for.md cites {sha[:7]}; "
+        f"changed since: {changed}"
     ]
 
 
@@ -351,7 +352,8 @@ def test_a_change_beside_the_flag_is_still_a_change(tested, monkeypatch, after):
     write_record(repo, "turn_on_for.md", sha)
     repo.commit(ADAPTER, after)
     assert cr.record_errors(FakeRecordsRegistry(repo, monkeypatch)) == [
-        f"fake / turn_on_for: docs/integrations/fake/records/turn_on_for.md cites {sha[:7]}; changed since: {ADAPTER}"
+        f"fake / turn_on_for: docs/integrations/fake/test-records/turn_on_for.md cites {sha[:7]}; "
+        f"changed since: {ADAPTER}"
     ]
 
 
@@ -527,7 +529,9 @@ def test_every_record_of_the_adapter_must_be_new(tested, monkeypatch):
     repo.commit(ADAPTER)
     write_record(repo, "turn_on_for.md", repo.git("rev-parse", "HEAD"))
     [error] = cr.record_errors(FakeRecordsRegistry(repo, monkeypatch))
-    assert error.startswith("fake / turn_on_for: docs/integrations/fake/records/turn_on_for-predicted_state.md cites")
+    assert error.startswith(
+        "fake / turn_on_for: docs/integrations/fake/test-records/turn_on_for-predicted_state.md cites"
+    )
 
 
 def test_a_record_citing_an_unmerged_branch_compares_trees(tested, monkeypatch):
@@ -552,15 +556,16 @@ def test_a_missing_unciting_or_unknown_record_is_an_error(tested, monkeypatch):
     registry = FakeRecordsRegistry(repo, monkeypatch)
     write_record(repo, "turn_on_for.md", None)
     assert cr.record_errors(registry) == [
-        "fake / turn_on_for: docs/integrations/fake/records/turn_on_for.md cites no commit"
+        "fake / turn_on_for: docs/integrations/fake/test-records/turn_on_for.md cites no commit"
     ]
     write_record(repo, "turn_on_for.md", "0" * 40)
     assert cr.record_errors(registry) == [
-        "fake / turn_on_for: docs/integrations/fake/records/turn_on_for.md cites commit 0000000, which git can't find"
+        "fake / turn_on_for: docs/integrations/fake/test-records/turn_on_for.md cites commit 0000000, "
+        "which git can't find"
     ]
-    repo.git("rm", "-q", "docs/integrations/fake/records/turn_on_for.md")
+    repo.git("rm", "-q", "docs/integrations/fake/test-records/turn_on_for.md")
     assert cr.record_errors(registry) == [
-        "fake / turn_on_for: no test record docs/integrations/fake/records/turn_on_for.md"
+        "fake / turn_on_for: no test record docs/integrations/fake/test-records/turn_on_for.md"
     ]
 
 
@@ -570,12 +575,12 @@ def test_each_option_of_the_scope_needs_its_record(tested, monkeypatch):
     registry.adapter.scope = AdapterScope(options=frozenset({"predicted_state", "soft_off"}))
     write_record(repo, "turn_on_for-soft_off.md", sha)
     assert cr.record_errors(registry) == [
-        "fake / turn_on_for: no test record docs/integrations/fake/records/turn_on_for-predicted_state.md"
+        "fake / turn_on_for: no test record docs/integrations/fake/test-records/turn_on_for-predicted_state.md"
     ]
     write_record(repo, "turn_on_for-predicted_state.md", sha)
-    repo.git("rm", "-q", "docs/integrations/fake/records/turn_on_for.md")
+    repo.git("rm", "-q", "docs/integrations/fake/test-records/turn_on_for.md")
     assert cr.record_errors(registry) == [
-        "fake / turn_on_for: no test record docs/integrations/fake/records/turn_on_for.md"
+        "fake / turn_on_for: no test record docs/integrations/fake/test-records/turn_on_for.md"
     ]
 
 
@@ -584,11 +589,11 @@ def test_a_fresh_record_that_did_not_pass_is_an_error(tested, monkeypatch):
     registry = FakeRecordsRegistry(repo, monkeypatch)
     write_record(repo, "turn_on_for.md", tested_at, result="fail")
     assert cr.record_errors(registry) == [
-        "fake / turn_on_for: docs/integrations/fake/records/turn_on_for.md did not pass (result: fail)"
+        "fake / turn_on_for: docs/integrations/fake/test-records/turn_on_for.md did not pass (result: fail)"
     ]
     write_record(repo, "turn_on_for.md", tested_at, result=None)
     assert cr.record_errors(registry) == [
-        "fake / turn_on_for: docs/integrations/fake/records/turn_on_for.md has no readable Result row"
+        "fake / turn_on_for: docs/integrations/fake/test-records/turn_on_for.md has no readable Result row"
     ]
     write_record(repo, "turn_on_for.md", tested_at)
     assert cr.record_errors(registry) == []
@@ -598,7 +603,8 @@ def test_every_record_of_the_adapter_must_pass(tested, monkeypatch):
     repo, tested_at = tested
     write_record(repo, "turn_on_for-predicted_state.md", tested_at, result="fail")
     assert cr.record_errors(FakeRecordsRegistry(repo, monkeypatch)) == [
-        "fake / turn_on_for: docs/integrations/fake/records/turn_on_for-predicted_state.md did not pass (result: fail)"
+        "fake / turn_on_for: docs/integrations/fake/test-records/turn_on_for-predicted_state.md "
+        "did not pass (result: fail)"
     ]
 
 
@@ -628,9 +634,9 @@ def test_an_experimental_adapter_is_exempt(tested, monkeypatch):
 def test_an_adapter_with_no_verified_call_needs_no_record(tested, monkeypatch, scope):
     repo, _ = tested
     registry = FakeRecordsRegistry(repo, monkeypatch)
-    repo.git("rm", "-q", "docs/integrations/fake/records/turn_on_for.md")
+    repo.git("rm", "-q", "docs/integrations/fake/test-records/turn_on_for.md")
     assert cr.record_errors(registry) == [
-        "fake / turn_on_for: no test record docs/integrations/fake/records/turn_on_for.md"
+        "fake / turn_on_for: no test record docs/integrations/fake/test-records/turn_on_for.md"
     ]
     registry.adapter.scope = scope
     assert cr.record_errors(registry) == []
@@ -649,7 +655,9 @@ def test_main_fails_on_a_stale_record(tested, monkeypatch, capsys):
 
 def test_every_rig_record_in_the_repo_cites_a_commit_the_check_can_read():
     """The rig writes the Source row (scripts/rig.py) and --records parses it: a change to either breaks this."""
-    found = [path for path in cr.BUNDLES.glob("*/records/*.md") if path.read_text().count("rig run (`scripts/rig.py")]
+    found = [
+        path for path in cr.BUNDLES.glob("*/test-records/*.md") if path.read_text().count("rig run (`scripts/rig.py")
+    ]
     assert found
     assert [path.name for path in found if not cr.CITED_COMMIT.search(path.read_text())] == []
     assert [path.name for path in found if cr.result(path) is None] == []

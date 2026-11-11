@@ -47,7 +47,7 @@ def report(**over):
 
 
 def record(root, integration, name, *, result="pass", device="Hue lamp (`LTA009`), firmware `1.2.3`"):
-    path = root / "docs" / "integrations" / integration / "records" / f"{name}.md"
+    path = root / "docs" / "integrations" / integration / "test-records" / f"{name}.md"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(f"# t\n\n| | |\n|---|---|\n| Result | {result} |\n| Device | {device} |\n")
     return path
@@ -203,8 +203,8 @@ def test_a_passing_record_on_a_released_adapter_is_verified(root):
     record(root, "zha", "stop-predicted_state", device="Zone, firmware `unknown`")
     line = gc.row("stop", adapter("zha", "stop"), data())
     assert line.startswith("| `stop` | Verified | `LTA009`, firmware `1.2.3`<br>group |")
-    assert "[predicted state](integrations/zha/records/stop-predicted_state.md)" in line
-    assert line.endswith("[record](integrations/zha/records/stop.md) | |")
+    assert "[predicted state](integrations/zha/test-records/stop-predicted_state.md)" in line
+    assert line.endswith("[record](integrations/zha/test-records/stop.md) | |")
 
 
 def test_an_experimental_adapter_or_a_failing_record_is_experimental(root):

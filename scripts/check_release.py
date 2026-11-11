@@ -4,7 +4,7 @@ records that pass and are as new as the code they prove.
 
 The release flag and the levels are defined in CLAUDE.md § Release flag. --release fails on the flag only, not on an
 Experimental item; --records weighs only an adapter's code against its records, as items below Verified have none.
-Records live in each integration's bundle (`record_dir`).
+Records live in each integration's bundle (`test_records_dir`).
 
 An adapter's code (`adapter_code`) is its module and what that module and its integration package import, followed
 into `core/`, so a shared helper counts for every adapter that reaches it: its coverage is held to the bar and a
@@ -182,15 +182,16 @@ def code_of(adapter) -> list[str]:
     return [str(path.relative_to(REPO)) for path in adapter_code(Path(inspect.getsourcefile(type(adapter))))]
 
 
-def record_dir(integration: str) -> Path:
-    """Where the integration's test records live: `docs/integrations/<integration>/records/`. The rig writes there."""
-    return BUNDLES / integration / "records"
+def test_records_dir(integration: str) -> Path:
+    """Where the integration's test records live: `docs/integrations/<integration>/test-records/`. The rig writes
+    there."""
+    return BUNDLES / integration / "test-records"
 
 
 def records(integration: str, action: str) -> list[Path]:
     """The adapter's test records: `<action>.md`, and `<action>-<option>.md` for a run with an option set."""
     pattern = re.compile(rf"{re.escape(action)}(-[^.]+)?\.md")
-    return sorted(path for path in record_dir(integration).glob("*.md") if pattern.fullmatch(path.name))
+    return sorted(path for path in test_records_dir(integration).glob("*.md") if pattern.fullmatch(path.name))
 
 
 def record_names(action: str, options: Collection[str] = ()) -> list[str]:
@@ -274,7 +275,7 @@ def record_errors(registry: AdapterRegistry) -> list[str]:
             continue
         found = records(adapter.integration, adapter.action)
         have = {record.name for record in found}
-        folder = record_dir(adapter.integration).relative_to(REPO)
+        folder = test_records_dir(adapter.integration).relative_to(REPO)
         errors += [
             f"{name}: no test record {folder}/{file}"
             for file in record_names(adapter.action, adapter.scope.options)
