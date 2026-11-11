@@ -363,8 +363,9 @@ changed (brightness and on, or color) is taken as DeviceSide's, except a switch 
 a lit level, and a report of anything the move didn't change. Those end the prediction of what they report, and
 only that: brightness and color fade independently, and a bulb can correct a color mid-fade (Tested behavior), so a
 color report leaves a brightness fade's prediction, and the stale brightness the bulb reported with it, in place.
-A bridge scene recall (`status.active`) and a Home Assistant call end the light's whole prediction. With `predicted_state` on, the reports taken as DeviceSide's are hidden from
-aiohue and Home Assistant is sent the prediction instead; a raise from off shows 0.4 %, where the fade starts.
+A bridge scene recall (`status.active`) and a Home Assistant call end the light's whole prediction. With
+`predicted_state` on, the reports taken as DeviceSide's are hidden from aiohue and Home Assistant is sent the
+prediction instead; a raise from off shows 0.4 %, where the fade starts.
 
 ### Tested behavior
 
