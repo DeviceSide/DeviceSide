@@ -26,8 +26,8 @@ the RC tag, only flag-only, docs, `scripts/` and rig step-file changes land. The
   landed before the freeze.
 - [x] **Z2M `turn_on_for` late off**: `bulb_transition_then_off[light_dimmable]` was a step-file timing bug (the off
   window closed before DeviceSide's end read), not the bulb or DeviceSide; fixed in ha-rig #47.
-- [x] **Freeze** at `ccc156f` (after the Hue fixes #348/#352, maintainers #357–#365 and the docs taxonomy #362),
-  then the rig runs below. Rig runs come from ha-rig `main`.
+- [x] **Freeze** at `77bedb2` (after the Hue fixes #348/#352, maintainers #357–#365, the docs taxonomy #362 and
+  the Z2M set check #372), then the rig runs below. Rig runs come from ha-rig `main`.
 - [ ] **Stale records rerun**: every record `check_release.py --records` names (36 at the freeze, all of them: since
   #358 a `core/` change stales every adapter). Every profile: Shelly (with a watched `set_attributes` `sets_color_while_off`),
   Matter, Hue, ZHA and Z2M, and the house run for the Z2M group cases deferred from #330.
