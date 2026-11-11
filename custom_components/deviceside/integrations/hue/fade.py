@@ -90,7 +90,7 @@ class HueFade(Adapter[RampRequest]):
     Brightness: raising turns the light on. Lowering to 0 % is a plain soft off, on: false with the duration and no
     brightness, so the bridge keeps the stored brightness for the next plain on. A light the bridge says can't dim is
     unchanged with fields_dropped. With predicted_state on, HA holds the start brightness while the fade runs and shows
-    the end once it has (report_filter).
+    the end once it has (report_filter), and lowering a light or room with none lit is unchanged with off.
 
     Saturation is HA's hs saturation, as on Z2M and ZHA: an xy write, of the light's current hue at the end saturation
     (the hue of the mean xy, for a room, as HA shows a room), clamped to the light's gamut; a room's lights are each
@@ -112,7 +112,6 @@ class HueFade(Adapter[RampRequest]):
 
     async def execute(self, hass: HomeAssistant, request: RampRequest, targets: list[Target]) -> list[EntityResult]:
         cache = transition_cache(hass)
-        plan = brightness_fade if request.attribute == BRIGHTNESS else saturation_fade
 
         async def send(target: Target) -> EntityResult:
             api = bridge_api(target)
@@ -120,11 +119,15 @@ class HueFade(Adapter[RampRequest]):
             rid = resource_id(target)
             if (resource := writer.get(rid)) is None:
                 return self.result(target, Status.REJECTED, detail="not_on_bridge")
-            if isinstance(fade := plan(cache, request, target, api, resource), str):
-                return self.result(target, Status.UNCHANGED, detail=fade)
-            _LOGGER.debug("Hue fade of %s: %s from %s to %s", target.entity_id, fade.attribute, fade.starts, fade.ends)
             # Before the write, as stop does: the bridge may report the fade's end before the write returns.
             reports = report_filter(hass, target)
+            if request.attribute == BRIGHTNESS:
+                fade = brightness_fade(cache, request, target, api, resource, predicted_state=reports.hiding)
+            else:
+                fade = saturation_fade(cache, request, target, api, resource)
+            if isinstance(fade, str):
+                return self.result(target, Status.UNCHANGED, detail=fade)
+            _LOGGER.debug("Hue fade of %s: %s from %s to %s", target.entity_id, fade.attribute, fade.starts, fade.ends)
             write = partial(
                 set_state,
                 hass,
@@ -151,10 +154,19 @@ class HueFade(Adapter[RampRequest]):
 
 
 def brightness_fade(
-    cache: HueTransitionCache, request: RampRequest, target: Target, api: HueBridgeV2, resource: Light | GroupedLight
+    cache: HueTransitionCache,
+    request: RampRequest,
+    target: Target,
+    api: HueBridgeV2,
+    resource: Light | GroupedLight,
+    *,
+    predicted_state: bool,
 ) -> Fade | str:
     """The brightness fade toward the limit; fields_dropped for a light that can't dim, at_limit when there is none left
-    to make."""
+    to make.
+
+    Lowering a light or room with none lit answers off with predicted_state on, as saturation does; with it off, the
+    move plans from what aiohue reports, 0 % for an off light, so at_limit."""
     if resource.dimming is None:
         return "fields_dropped"
     up, limit = request.up, request.end()
@@ -167,8 +179,11 @@ def brightness_fade(
         current = mean(starts[light.id] for light in lit_lights or lights) if lights else 0.0
     else:
         rid = resource_id(target)
+        lit_lights = lit(cache, [resource])
         starts = {rid: cache.value(rid, BRIGHTNESS, reported_brightness(target))}
         moving, current = [rid], starts[rid]
+    if not up and predicted_state and not lit_lights:
+        return "off"
     if (limit - current if up else current - limit) < MIN_BRIGHTNESS_STEP:
         return "at_limit"
     duration = abs(limit - current) / 100 * request.sweep_time
