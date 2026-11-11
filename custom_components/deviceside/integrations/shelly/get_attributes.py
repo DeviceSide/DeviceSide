@@ -21,13 +21,16 @@ _LOGGER = logging.getLogger(__name__)
 
 
 _DIMMABLE = frozenset({"Light", "CCT", "RGB", "RGBW", "RGBCCT"})
+# The clock skew the timer's time left absorbs; more means the device's clock isn't synced.
+_SKEW_S = 5.0
 
 
 def status_row(component: str, status: dict, now: datetime) -> dict:
     """One target's row from its GetStatus. The bulb keeps brightness, ct and rgb while off, so they read then too.
 
-    The time left is the device's timer_started_at against HA's clock: both are SNTP-synced, and the clamp to
-    [0, duration] bounds any skew.
+    The time left is the device's timer_started_at against HA's clock, both SNTP-synced; the clamp to [0, duration]
+    absorbs up to _SKEW_S of skew. Beyond that the device's clock isn't synced (an unsynced Gen2 reports
+    timer_started_at as seconds since boot), so the time left can't be read and the row has no timer.
     """
     row: dict = {}
     # Brightness is the device's percent, as Hue's row is. A field the status lacks leaves its row out.
@@ -46,8 +49,11 @@ def status_row(component: str, status: dict, now: datetime) -> dict:
         row.update(rgb_row(*status["rgb"]))
     if "timer_started_at" in status and "timer_duration" in status:
         duration = status["timer_duration"]
-        remaining = min(max(status["timer_started_at"] + duration - now.timestamp(), 0), duration)
-        row["timer"] = timer_row("off" if status["output"] else "on", remaining, now)
+        remaining = status["timer_started_at"] + duration - now.timestamp()
+        if -_SKEW_S <= remaining <= duration + _SKEW_S:
+            row["timer"] = timer_row("off" if status["output"] else "on", min(max(remaining, 0), duration), now)
+        else:
+            _LOGGER.debug("Shelly timer_started_at %s is off HA's clock: no timer row", status["timer_started_at"])
     return row
 
 

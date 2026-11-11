@@ -31,8 +31,11 @@ timer's reads back different.
 ### `get_attributes`
 
 One `GetStatus`. Time left is `timer_started_at` + `timer_duration` against Home Assistant's
-clock (both SNTP-synced), clamped to 0 to the duration to bound skew. `RGBCCT` adds brightness and the active
-mode's color, the others derived from it. A `<Component>.GetConfig` runs alongside for `auto_off` and `auto_on`;
+clock (both SNTP-synced), clamped to 0 to the duration to absorb up to 5 s of skew. Further off, the device's clock
+isn't synced, so the row has no timer: until SNTP syncs, `Sys.GetStatus` `unixtime` is null
+([Sys](https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Sys)) and `timer_started_at` reads as seconds
+since boot ([forum report](https://shelly-forum.com/thread/31934-shelly-time-is-incorrect/)). `RGBCCT` adds brightness
+and the active mode's color, the others derived from it. A `<Component>.GetConfig` runs alongside for `auto_off` and `auto_on`;
 if it fails, the row leaves both keys out (unknown) rather than reporting them `null` (disabled).
 
 ### `set_attributes`
