@@ -152,7 +152,8 @@ class Dispatcher:
             # One execute per set of dropped fields, so every target in a run gets the same request.
             by_dropped: dict[frozenset[str], list[Target]] = {}
             for target in self._expand_native_groups(adapter, bucket, results):
-                dropped = lacking(target, request) | (request.fields_present() & adapter.scope.drops)
+                lacked = lacking(target, request, adapter.scope.unlisted)
+                dropped = lacked | (request.fields_present() & adapter.scope.drops)
                 reduced = request.without(dropped)
                 if reason := adapter.supports(self.hass, reduced, target):
                     results += _skip(target.reported_id, target.named, reason, adapter.integration)

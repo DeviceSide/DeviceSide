@@ -46,6 +46,14 @@ ported or recorded for another is dropped there, not refused (`color_temp_kelvin
 light field, so a timed call still runs its timer. A call left nothing to do by dropping is `unchanged` with
 `fields_dropped`. An empty group is skipped silently, as core's group expansion yields nothing for one.
 
+**Unlisted fields depart from core.** An adapter may name, in `AdapterScope.unlisted`, fields its devices take
+although the light's state says they can't; a light never lacks those for that adapter, where
+`filter_turn_on_params` would drop them. Why: DeviceSide fills design gaps between an upstream integration and HA,
+as it makes Zigbee2MQTT announce the HS mode its full-color lights have ([integrations.md](integrations.md)), and
+an integration that leaves a mode out of `supported_color_modes` shouldn't stop a device that has it. HA's own UI still shows the light without the mode,
+and `light.turn_on` still drops the field. An unlisted field must be in the adapter's `fields`, at its own level:
+fields are never Documented, so it starts Experimental. A `switch` still lacks every light field.
+
 **A value the device can't reach** passes the schema but lies outside what the device can do: a timer longer
 than its counter, or a `raise_hue` or `lower_hue` `sweep_time` outside a native hue cycle's 1–254 s (Zigbee2MQTT). It is clamped to
 that range and the result carries `clamped_to`, the value used. It isn't refused, as the call can still do the

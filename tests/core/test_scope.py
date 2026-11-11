@@ -95,6 +95,29 @@ def test_a_field_may_be_verified_reported_or_experimental(helper):
     assert AdapterScope(fields=helper("brightness")).fields == helper("brightness")
 
 
+def test_an_unlisted_field_takes_its_level_from_fields():
+    scope = AdapterScope(
+        fields=verified("brightness") | experimental("color_temp_kelvin"), unlisted=frozenset({"color_temp_kelvin"})
+    )
+    assert scope.level("light", fields={"color_temp_kelvin"}) is Level.EXPERIMENTAL
+
+
+@pytest.mark.parametrize(
+    ("scope", "message"),
+    [
+        pytest.param({"fields": experimental("duration")}, "never lacks", id="not_a_lackable_field"),
+        pytest.param({"fields": {}}, "outside the scope's fields", id="not_in_fields"),
+        pytest.param(
+            {"fields": experimental("transition"), "drops": frozenset({"transition"})}, "the scope drops", id="dropped"
+        ),
+    ],
+)
+def test_unlisted_names_only_lackable_fields_in_scope_and_not_dropped(scope, message):
+    unlisted = frozenset(scope["fields"]) or frozenset({"transition"})
+    with pytest.raises(ValueError, match=message):
+        AdapterScope(**scope, unlisted=unlisted)
+
+
 def test_mappings_are_read_only_copies_and_the_scope_hashes():
     shared = verified("Switch")
     scope = AdapterScope(capabilities=shared)
