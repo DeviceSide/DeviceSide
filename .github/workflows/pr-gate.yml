@@ -1,0 +1,53 @@
+# Close an outside pull request unless its author is assigned to an issue it references; scripts/pr_gate.py has the
+# rules. pull_request_target runs the base branch's copy of this workflow and script with a token that can comment and
+# close: it checks out the base only and never checks out, builds or runs the pull request's code.
+name: PR gate
+
+on:
+  pull_request_target: # zizmor: ignore[dangerous-triggers] base checkout only, no PR code runs
+    types: [opened, edited, reopened]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Pull request number
+        type: number
+        required: true
+      dry_run:
+        description: Print the verdict only
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: write
+
+concurrency:
+  group: pr-gate-${{ github.event.pull_request.number || inputs.pr }}
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # No dependencies to install: the script needs the standard library and the runner's gh.
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+
+      - name: Check the pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number || inputs.pr }}
+          # A reopen by a maintainer overrides the gate; other events have no sender to weigh.
+          SENDER: ${{ github.event.action == 'reopened' && github.event.sender.login || '' }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+        run: |
+          args=(--pr "$PR")
+          if [ -n "$SENDER" ]; then args+=(--sender "$SENDER"); fi
+          if [ "$DRY_RUN" = true ]; then args+=(--dry-run); fi
+          python scripts/pr_gate.py "${args[@]}"
