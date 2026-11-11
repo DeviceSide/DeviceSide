@@ -209,26 +209,26 @@ native group of the integration (a Hue zone, a ZHA or Zigbee2MQTT group).
 
 | Action | Level | Support | Tested models | Records | Reports |
 |---|---|---|---|---|---|
-| `clear_auto_off` | Verified | maintainer | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](test-records/shelly/clear_auto_off.md) | |
+| `clear_auto_off` | Unproven: record older than its code |  | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](test-records/shelly/clear_auto_off.md) | |
 | `clear_auto_off` | Documented | maintainer | none (untested: Light, CCT, RGB, RGBW, RGBCCT components) | | |
-| `clear_auto_on` | Verified | maintainer | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](test-records/shelly/clear_auto_on.md) | |
+| `clear_auto_on` | Unproven: record older than its code |  | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](test-records/shelly/clear_auto_on.md) | |
 | `clear_auto_on` | Documented | maintainer | none (untested: Light, CCT, RGB, RGBW, RGBCCT components) | | |
-| `get_attributes` | Verified | maintainer | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943`<br>`S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](test-records/shelly/get_attributes.md) | |
+| `get_attributes` | Unproven: record older than its code |  | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943`<br>`S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](test-records/shelly/get_attributes.md) | |
 | `get_attributes` | Documented | maintainer | none (untested: Light, CCT, RGB, RGBW components) | | |
-| `lower_brightness` | Verified | maintainer | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/lower_brightness.md) | |
+| `lower_brightness` | Unproven: record older than its code |  | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/lower_brightness.md) | |
 | `lower_brightness` | Experimental | experimental (opt-in) | none (untested, behind Experimental features: Light, CCT, RGB, RGBW components) | | |
-| `raise_brightness` | Verified | maintainer | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/raise_brightness.md) | |
+| `raise_brightness` | Unproven: record older than its code |  | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/raise_brightness.md) | |
 | `raise_brightness` | Experimental | experimental (opt-in) | none (untested, behind Experimental features: Light, CCT, RGB, RGBW components) | | |
-| `set_attributes` | Verified | maintainer | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/set_attributes.md) | |
-| `set_auto_off` | Verified | maintainer | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](test-records/shelly/set_auto_off.md) | |
+| `set_attributes` | Unproven: record older than its code |  | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/set_attributes.md) | |
+| `set_auto_off` | Unproven: record older than its code |  | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](test-records/shelly/set_auto_off.md) | |
 | `set_auto_off` | Documented | maintainer | none (untested: Light, CCT, RGB, RGBW, RGBCCT components) | | |
-| `set_auto_on` | Verified | maintainer | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](test-records/shelly/set_auto_on.md) | |
+| `set_auto_on` | Unproven: record older than its code |  | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](test-records/shelly/set_auto_on.md) | |
 | `set_auto_on` | Documented | maintainer | none (untested: Light, CCT, RGB, RGBW, RGBCCT components) | | |
-| `stop` | Verified | maintainer | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/stop.md) | |
+| `stop` | Unproven: record older than its code |  | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/stop.md) | |
 | `stop` | Experimental | experimental (opt-in) | none (untested, behind Experimental features: Light, CCT, RGB, RGBW components) | | |
-| `turn_off_for` | Verified | maintainer | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943`<br>`S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/turn_off_for.md) | |
+| `turn_off_for` | Unproven: record older than its code |  | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943`<br>`S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/turn_off_for.md) | |
 | `turn_off_for` | Documented | maintainer | none (untested: Light, CCT, RGB, RGBW components) | | |
-| `turn_on_for` | Verified | maintainer | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943`<br>`S4SW-001X8EU`, firmware `20261026-122156/2.0.3-g4601943`<br>`S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/turn_on_for.md) | |
+| `turn_on_for` | Unproven: record older than its code |  | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943`<br>`S4SW-001X8EU`, firmware `20261026-122156/2.0.3-g4601943`<br>`S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](test-records/shelly/turn_on_for.md) | |
 | `turn_on_for` | Documented | maintainer | none (untested: Light, CCT, RGB, RGBW components) | | |
 
 ### Hue
@@ -252,9 +252,9 @@ native group of the integration (a Hue zone, a ZHA or Zigbee2MQTT group).
 
 | Action | Level | Support | Tested models | Records | Reports |
 |---|---|---|---|---|---|
-| `get_attributes` | Verified | maintainer | `8979`, firmware `v1.4` | [record](test-records/matter/get_attributes.md) | |
+| `get_attributes` | Unproven: record older than its code |  | `8979`, firmware `v1.4` | [record](test-records/matter/get_attributes.md) | |
 | `get_attributes` | Documented | maintainer | none (untested: light entities) | | |
-| `turn_on_for` | Verified | maintainer | `8979`, firmware `v1.4` | [record](test-records/matter/turn_on_for.md) | |
+| `turn_on_for` | Unproven: record older than its code |  | `8979`, firmware `v1.4` | [record](test-records/matter/turn_on_for.md) | |
 | `turn_on_for` | Documented | maintainer | none (untested: light entities) | | |
 
 <!-- evidence:end -->
