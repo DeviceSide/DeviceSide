@@ -2,9 +2,12 @@
 """Generate the README feature table: per feature and integration, an icon for each kind of target that is built
 (light, switch, native group, native scene), and one prohibited sign for whatever appears impossible.
 
-Each icon links to the docs: a cell's to its integration's section in docs/integrations.md (the feature's subsection
-when it has one), a prohibited sign's to the section there that says why, a legend entry's to the heading that
-explains it.
+Each icon links to the docs: a cell's to its integration's page, `docs/integrations/<integration>/index.md` (the
+feature's section when it has one), a prohibited sign's to the section of docs/integrations.md that says why, a legend
+entry's to the heading that explains it.
+
+The columns come from each integration's bundle: `column` (the README label) and `column_order` in
+`docs/integrations/<integration>/devices.yaml`. An integration without one is an error naming the file to add.
 
 What is built comes from each adapter's `AdapterScope`: an amber icon for what works with the Experimental features
 option off, a grey one for what works only with it on. Only NO_PATH, the known blockers, is kept by hand. A blank cell
@@ -19,14 +22,17 @@ import argparse
 import re
 import sys
 from collections import Counter
+from collections.abc import Iterable
 from pathlib import Path
+
+import yaml
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
 from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
 from custom_components.deviceside.core.scope import Level  # noqa: E402
-from scripts.check_release import adapters  # noqa: E402
+from scripts.check_release import BUNDLES, adapters  # noqa: E402
 
 README = REPO / "README.md"
 START = "<!-- features:start -->"
@@ -41,13 +47,10 @@ IMPOSSIBLE = "what-cant-be-done-and-why"
 
 # Icon key -> alt text in a cell, in the order a cell shows them.
 ICONS = {"light": "light", "switch": "switch", "group": "native group", "scene": "native scene"}
-# Integration -> (README column, its section's heading in docs/integrations.md).
-COLUMNS = {"zha": "ZHA", "zigbee2mqtt": "Z2M", "shelly": "Shelly", "hue": "Hue Bridge", "matter": "Matter"}
-SECTIONS = {"zha": "ZHA", "zigbee2mqtt": "Zigbee2MQTT", "shelly": "Shelly", "hue": "Hue", "matter": "Matter"}
-# (label, README anchor, integrations.md subsection, device cards' name, actions): a cell is built only for what every
+# (label, README anchor, integration page section, device cards' name, actions): a cell is built only for what every
 # one of the row's actions takes. A smooth move is unusable without `stop`, so its rows include it. A cell's icons link
-# to the subsection under the integration's section, or to the section when it has none. The device cards
-# (gen_compat) name each action's feature by its row's card name.
+# to the section of the integration's page, or to the page when it has none. The device cards (gen_compat) name each
+# action's feature by its row's card name.
 FEATURES = (
     ("Turn on with timer", "turn-on-with-timer", "Turn on with timer", "turn on with timer", ("turn_on_for",)),
     ("Turn off with timer", "turn-off-with-timer", "Turn off with timer", "turn off with timer", ("turn_off_for",)),
@@ -117,6 +120,39 @@ NO_PATH = {
 }
 
 
+def bundle(integration: str) -> dict:
+    """The integration's `devices.yaml`, parsed. Missing, it is an error naming the file to add."""
+    path, name = BUNDLES / integration / "devices.yaml", f"docs/integrations/{integration}/devices.yaml"
+    if not path.is_file():
+        raise SystemExit(f"no {name}; add the {integration} bundle (devices.yaml and index.md)")
+    data = yaml.safe_load(path.read_text()) or {}
+    if not isinstance(data, dict):
+        raise SystemExit(f"{name} must be a mapping")
+    return data
+
+
+def page(integration: str) -> str:
+    """The integration's user page, relative to the repository."""
+    return f"docs/integrations/{integration}/index.md"
+
+
+def columns(integrations: Iterable[str]) -> dict[str, str]:
+    """Integration -> its README column label, in `column_order`, from each bundle."""
+    found = {}
+    for key in integrations:
+        data = bundle(key)
+        label, order = data.get("column"), data.get("column_order")
+        if not isinstance(label, str) or not label or not isinstance(order, int) or isinstance(order, bool):
+            raise SystemExit(f"docs/integrations/{key}/devices.yaml needs a column and a column_order")
+        found[key] = (order, label)
+    return {key: label for key, (_, label) in sorted(found.items(), key=lambda item: item[1])}
+
+
+def integration_columns(registry: AdapterRegistry) -> dict[str, str]:
+    """Every integration's column, those of integrations without adapters included."""
+    return columns(sorted({*registry.integrations, *(adapter.integration for _, adapter in adapters(registry))}))
+
+
 def keys(adapter, registry: AdapterRegistry, experimental: bool = False) -> set[str]:
     """The icon keys an adapter covers: its domains at any Level but Experimental (Documented and Reported ship with
     the option off), plus `group` when it takes lights and the dispatcher passes it native groups, natively or expanded
@@ -138,19 +174,20 @@ def keys(adapter, registry: AdapterRegistry, experimental: bool = False) -> set[
     return found
 
 
-def built(registry: AdapterRegistry, experimental: bool = False) -> dict[tuple[str, str], set[str]]:
+def built(
+    registry: AdapterRegistry, experimental: bool = False, cols: dict[str, str] | None = None
+) -> dict[tuple[str, str], set[str]]:
     """(feature label, integration) -> icon keys every one of the row's actions covers, with the Experimental features
-    option on when `experimental`."""
+    option on when `experimental`. Every integration has a column."""
     by_pair = {(adapter.action, adapter.integration): adapter for _, adapter in adapters(registry)}
     actions = {action for action, _ in by_pair}
-    extra = sorted({integration for _, integration in by_pair} - set(COLUMNS))
-    if extra:
-        raise SystemExit(f"no README column for integration {', '.join(extra)}; add it to COLUMNS")
+    if cols is None:
+        cols = integration_columns(registry)
     cells = {}
     for label, _, _, _, row_actions in FEATURES:
         if missing := [action for action in row_actions if action not in actions]:
             raise SystemExit(f"{label}: no adapter anywhere for {', '.join(missing)}; was it renamed?")
-        for integration in COLUMNS:
+        for integration in cols:
             found = [by_pair.get((action, integration)) for action in row_actions]
             cells[label, integration] = (
                 set.intersection(*(keys(adapter, registry, experimental) for adapter in found)) if all(found) else set()
@@ -162,8 +199,10 @@ def img(name: str, text: str, href: str) -> str:
     return f'<a href="{href}"><img src="{ICON_URL.format(name)}" height="20" alt="{text}" title="{text}"></a>'
 
 
-def href(file: str, anchor: str) -> str:
-    return f"#{anchor}" if file == "README.md" else DOC_URL.format(file, anchor)
+def href(file: str, anchor: str | None) -> str:
+    if file == "README.md":
+        return f"#{anchor}"
+    return DOC_URL.format(file, anchor) if anchor else DOC_URL.format(file, "").removesuffix("#")
 
 
 def cell(have: set[str], blocked: tuple[str, ...], trial: set[str] = frozenset(), link: str = "", why: str = "") -> str:
@@ -180,38 +219,38 @@ def cell(have: set[str], blocked: tuple[str, ...], trial: set[str] = frozenset()
     return " ".join(icons)
 
 
-def cell_link(sections: dict[str, dict[str, str]], integration: str, topic: str) -> str:
-    """The integrations.md anchor for a feature on an integration: its subsection, else the integration's section."""
-    if (heading := SECTIONS.get(integration)) not in sections:
-        raise SystemExit(f"{INTEGRATIONS} has no section for {integration}; fix SECTIONS")
-    section = sections[heading]
-    return href(INTEGRATIONS, section.get(topic, section[heading]))
+def cell_link(integration: str, topic: str) -> str:
+    """The link for a feature on an integration: its page's section on the feature, else the page."""
+    if not (path := REPO / page(integration)).is_file():
+        raise SystemExit(f"no {page(integration)}; add the {integration} bundle's user page")
+    found = anchors(path.read_text())
+    return href(page(integration), slug(topic) if slug(topic) in found else None)
 
 
 def generate(registry: AdapterRegistry) -> str:
     doc = (REPO / INTEGRATIONS).read_text()
-    sections = headings(doc)
     if IMPOSSIBLE not in anchors(doc):
         raise SystemExit(f"{INTEGRATIONS} has no heading for #{IMPOSSIBLE}; fix IMPOSSIBLE")
     why = href(INTEGRATIONS, IMPOSSIBLE)
-    cells = built(registry)
-    trial = built(registry, experimental=True)
+    cols = integration_columns(registry)
+    cells = built(registry, cols=cols)
+    trial = built(registry, experimental=True, cols=cols)
     labels = {label for label, *_ in FEATURES}
     for (label, integration), blocked in NO_PATH.items():
-        if label not in labels or integration not in COLUMNS:
+        if label not in labels or integration not in cols:
             raise SystemExit(f"NO_PATH entry ({label!r}, {integration!r}) names no README row or column")
         if unknown := [key for key in blocked if key not in ICONS]:
             raise SystemExit(f"NO_PATH entry ({label!r}, {integration!r}): no icon {', '.join(unknown)}")
         if stale := [key for key in blocked if key in trial[label, integration]]:
             raise SystemExit(
-                f"{label} on {COLUMNS[integration]}: {', '.join(stale)} is built, so not blocked; drop it from NO_PATH"
+                f"{label} on {cols[integration]}: {', '.join(stale)} is built, so not blocked; drop it from NO_PATH"
             )
     lines = [
         START,
         "<!-- Generated by scripts/gen_features.py from the adapters' scopes. Do not edit; run the script. -->",
         "",
-        f"| Feature by Integration | {' | '.join(COLUMNS.values())} |",
-        f"|:--- |{':---:|' * len(COLUMNS)}",
+        f"| Feature by Integration | {' | '.join(cols.values())} |",
+        f"|:--- |{':---:|' * len(cols)}",
     ]
     for label, anchor, topic, *_ in FEATURES:
         row = [
@@ -219,10 +258,10 @@ def generate(registry: AdapterRegistry) -> str:
                 cells[label, integration],
                 NO_PATH.get((label, integration), ()),
                 trial[label, integration],
-                cell_link(sections, integration, topic),
+                cell_link(integration, topic),
                 why,
             )
-            for integration in COLUMNS
+            for integration in cols
         ]
         lines.append(f"| [{label}](#{anchor}) | {' | '.join(row)} |")
     legend = [f"{img(icon, alt, href(file, anchor))} {label}" for icon, alt, label, file, anchor in LEGEND]
@@ -246,14 +285,6 @@ def anchored(text: str) -> list[tuple[str, str, str]]:
                 section = heading
             found.append((section, heading, f"{base}-{seen[base]}" if seen[base] else base))
             seen[base] += 1
-    return found
-
-
-def headings(text: str) -> dict[str, dict[str, str]]:
-    """Level-2 heading -> heading under it -> its anchor; the first one wins where a heading repeats."""
-    found = {"": {}}
-    for section, heading, anchor in anchored(text):
-        found.setdefault(section, {}).setdefault(heading, anchor)
     return found
 
 

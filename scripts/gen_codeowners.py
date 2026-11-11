@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Generate .github/CODEOWNERS from each integration's `IntegrationInfo.maintainers`.
 
-The project owner owns everything (`*`, first), so shared code, shared docs, test records and the generated pages'
-inputs need his review. Each integration's package then goes to its maintainers, with the owner appended so he can
-always approve: its adapter package, its tests and test fixture, and its doc bundle (`docs/integrations/<key>/`),
-each only once it exists. GitHub reads the last matching line, so the per-integration lines must follow `*`.
+The project owner owns everything (`*`, first), so shared code, shared docs and the generated pages' shared inputs
+(`docs/models.yaml`) need his review. Each integration's package then goes to its maintainers, with the owner appended
+so he can always approve: its adapter package, its tests and test fixture, and its doc bundle
+(`docs/integrations/<key>/`, its test records included), each only once it exists. GitHub reads the last matching
+line, so the per-integration lines must follow `*`.
 
 Usage: scripts/gen_codeowners.py [--check]
 

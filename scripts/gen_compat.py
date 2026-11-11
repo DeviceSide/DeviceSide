@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Generate the README's device table and the evidence block of docs/device-compatibility.md, from the test records,
-the adapters' scopes and docs/devices.yaml.
+the adapters' scopes, docs/models.yaml and each integration's bundle, docs/integrations/<integration>/.
 
-**Cards.** One collapsed section between the README's devices markers, with a card per integration: its name and
-maintainers (`IntegrationInfo.maintainers`; "⚠️ Unmaintained · formerly maintained by" when every shipping adapter is
-unmaintained), then ⚠️ Unmaintained with the features of any unmaintained adapter, then a
-bullet per outcome:
+**Cards.** One collapsed section between the README's devices markers, with a card per integration: its name, linked
+to its page (the bundle's index.md), and maintainers (`IntegrationInfo.maintainers`; "⚠️ Unmaintained · formerly
+maintained by" when every shipping adapter is unmaintained), then ⚠️ Unmaintained with the features of any
+unmaintained adapter, then a bullet per outcome:
 - Works: the models in the passing records of adapters that ship (Verified), plus native groups, and the models of
   accepted working reports (linked to the report). A rig-tested entry ends ✔.
 - Should work: the classes (devices.yaml `capabilities`) the shipping adapters hold as Documented; one whose sibling
@@ -22,8 +22,23 @@ below Verified that its domains, capabilities or fields hold, and the reports on
 is marked ⚠️ Unmaintained. Its level is Verified only on a passing record of the base action (`<action>.md`) as new as
 the adapter's code (check_release's freshness check). A group (a Device entry with
 firmware `unknown`, or named Group or Zone) shows as "group", not as a model; any other entry the record format can't
-read is an error. The prose outside the evidence markers is kept as written; every heading a card links to must be in
-it.
+read is an error. The prose outside the evidence markers is kept as written.
+
+**Data.** docs/models.yaml holds what integrations share: `models`, one entry per physical model (`name`, `ids` across
+integrations, `type`, optional `section`), and `doesnt_work` entries that name their `integrations`. Each bundle's
+devices.yaml holds its integration's: `column` and `column_order` (the README feature table's, read by
+gen_features), `requires` (shown after the card's name), `capabilities` (a `phrase` and `section` per domain or
+capability the scopes hold below Verified, for Should work and Help us test), `doesnt_work` (`what`, `reason`,
+`source`, optional `section`: devices that fail the call DeviceSide sends, not what isn't built) and `reports`. A
+report is an accepted device-report issue: `model` (one of a model's ids), `item` (the entity domain or capability,
+Shelly: RPC component, its call reached), `firmware` and `deviceside` (version), both quoted, `worked` and `failed`
+(action names) and `issue` (URL); what an accepted one promotes is in CLAUDE.md § Release flag. Every integration
+needs a bundle; one without is an error naming the file.
+
+**Links.** A card links each model, class or blocker to the heading its `section` names (default: the model's
+`name`, the blocker's `what`): on the card's integration page when that has the heading; a model's or native groups'
+heading may be on any integration's page; else on docs/device-compatibility.md outside the evidence block. A heading
+none of them has is an error.
 
 Usage: scripts/gen_compat.py [--check]
 
@@ -45,15 +60,24 @@ sys.path.insert(0, str(REPO))
 
 from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
 from custom_components.deviceside.core.scope import Level  # noqa: E402
-from scripts.check_release import adapters, code_of, proven, record_names, records, result, staleness  # noqa: E402
-from scripts.gen_features import COLUMNS, anchors, slug  # noqa: E402
+from scripts.check_release import (  # noqa: E402
+    adapters,
+    code_of,
+    proven,
+    record_names,
+    records,
+    result,
+    staleness,
+)
 from scripts.gen_features import FEATURES as TABLE_FEATURES  # noqa: E402
+from scripts.gen_features import anchors, bundle, columns, page, slug  # noqa: E402
 
 PAGE = REPO / "docs" / "device-compatibility.md"
 README = REPO / "README.md"
-DATA = REPO / "docs" / "devices.yaml"
+MODELS = REPO / "docs" / "models.yaml"
 # Absolute: HACS renders the README inside Home Assistant, where a relative link doesn't resolve.
-PAGE_URL = "https://github.com/jasonmx/DeviceSide/blob/main/docs/device-compatibility.md"
+BLOB_URL = "https://github.com/jasonmx/DeviceSide/blob/main/"
+PAGE_URL = f"{BLOB_URL}docs/device-compatibility.md"
 CARDS = ("<!-- devices:start -->", "<!-- devices:end -->")
 CARDS_TITLE = "Device compatibility by integration"
 EVIDENCE = ("<!-- evidence:start -->", "<!-- evidence:end -->")
@@ -98,6 +122,8 @@ CARDS_LEGEND = " · ".join(
 GITHUB = "https://github.com/"
 INTEGRATIONS_URL = "https://github.com/jasonmx/DeviceSide/blob/main/docs/integrations.md"
 # The keys each devices.yaml entry may hold, so a typo fails instead of being ignored.
+SHARED_KEYS = {"models", "doesnt_work"}
+BUNDLE_KEYS = {"column", "column_order", "requires", "capabilities", "doesnt_work", "reports"}
 MODEL_KEYS = {"name", "ids", "type", "section"}
 CLASS_KEYS = {"phrase", "section"}
 BROKEN_KEYS = {"what", "integrations", "reason", "source", "section"}
@@ -120,23 +146,39 @@ FEATURES = card_features()
 
 @dataclass
 class Data:
-    """docs/devices.yaml, validated."""
+    """docs/models.yaml and the bundles' devices.yaml, merged and validated."""
 
     requires: dict[str, str]
     models: dict[str, dict]  # by each of its ids
     capabilities: dict[str, dict[str, dict]]
     doesnt_work: list[dict]
     reports: list[dict]
-    sections: set[str] = field(default_factory=set)  # every heading an entry links to
+    # Every heading an entry links to, with the integration whose card links it (None: any card, as for a model).
+    sections: set[tuple[str | None, str]] = field(default_factory=set)
+    # The heading anchors of each integration's page; a section on none of them is on PAGE.
+    pages: dict[str, set[str]] = field(default_factory=dict)
 
     def model(self, model_id: str, where: str) -> dict:
         if model_id not in self.models:
-            raise SystemExit(f"{where}: model {model_id!r} is not in docs/devices.yaml; add it to `models`")
+            raise SystemExit(f"{where}: model {model_id!r} is not in docs/models.yaml; add it to `models`")
         return self.models[model_id]
+
+    def url(self, key: str | None, section: str) -> str:
+        """The section's heading: on the integration's page when that has it, else (a model's or native groups',
+        which any card may link) on the integration page that has it, else on PAGE. Where `check_sections` looks, so
+        its pass means a live link."""
+        anchor = slug(section)
+        owners = [key] if key is not None else []
+        if (None, section) in self.sections:
+            owners += sorted(self.pages)
+        for owner in owners:
+            if anchor in self.pages.get(owner, set()):
+                return f"{BLOB_URL}{page(owner)}#{anchor}"
+        return f"{PAGE_URL}#{anchor}"
 
 
 def fail(message: str) -> None:
-    raise SystemExit(f"docs/devices.yaml: {message}")
+    raise SystemExit(f"device data: {message}")
 
 
 def check_type(kind, where: str) -> None:
@@ -144,8 +186,44 @@ def check_type(kind, where: str) -> None:
         fail(f"{where}: type {kind!r} is not one of {', '.join(TYPES)}")
 
 
-def load(path: Path, registry: AdapterRegistry) -> Data:
-    return load_raw(yaml.safe_load(path.read_text()) or {}, registry)
+def load(registry: AdapterRegistry, models: Path = MODELS) -> Data:
+    """docs/models.yaml and every integration's bundle: its devices.yaml merged in, its page's headings read."""
+    shared = yaml.safe_load(models.read_text()) or {}
+    bundles = {key: bundle(key) for key in sorted(registry.integrations)}
+    data = load_raw(merge(shared, bundles), registry)
+    for key in bundles:
+        if not (path := REPO / page(key)).is_file():
+            raise SystemExit(f"no {page(key)}; add the {key} bundle's user page")
+        data.pages[key] = anchors(path.read_text())
+    return data
+
+
+def merge(shared: dict, bundles: dict[str, dict]) -> dict:
+    """The shared file and the bundles as one mapping, each bundle's entries named for its integration: a bundle's
+    `doesnt_work` and `reports` entries are its own, so they take no `integrations` or `integration` key."""
+    need(shared, "docs/models.yaml")
+    if extra := set(shared) - SHARED_KEYS:
+        fail(f"docs/models.yaml: unknown key {', '.join(sorted(extra))}")
+    raw: dict = {"integrations": {}, "capabilities": {}, "models": shared.get("models"), "reports": []}
+    raw["doesnt_work"] = list(shared.get("doesnt_work") or [])
+    for key, data in bundles.items():
+        where = f"docs/integrations/{key}/devices.yaml"
+        if extra := set(data) - BUNDLE_KEYS:
+            fail(f"{where}: unknown key {', '.join(sorted(extra))}")
+        if "requires" in data:
+            raw["integrations"][key] = {"requires": data["requires"]}
+        if data.get("capabilities"):
+            raw["capabilities"][key] = data["capabilities"]
+        for name, own in (("doesnt_work", "integrations"), ("reports", "integration")):
+            if not isinstance(entries := data.get(name) or [], list):
+                fail(f"{where}: {name} must be a list")
+            for entry in entries:
+                if isinstance(entry, dict) and own in entry:
+                    fail(f"{where}: a {name} entry is {key}'s own; drop its {own}")
+                raw[name].append(
+                    {**entry, own: [key] if own == "integrations" else key} if isinstance(entry, dict) else entry
+                )
+    return raw
 
 
 def need(
@@ -188,11 +266,12 @@ def load_raw(raw: dict, registry: AdapterRegistry) -> Data:
     data = Data(requires, {}, raw.get("capabilities") or {}, [], [])
     for model in raw.get("models") or []:
         load_model(model, data)
+    data.sections.add((None, GROUPS_ENTRY[1]))  # every card with groups links it, as it does a model
     for key, items in data.capabilities.items():
         need(items, f"capabilities {key}")
         for item, entry in items.items():
             need(entry, f"capabilities {key} {item}", ("phrase", "section"), keys=CLASS_KEYS)
-            data.sections.add(entry["section"])
+            data.sections.add((key, entry["section"]))
     for entry in raw.get("doesnt_work") or []:
         load_broken(entry, known, data)
     shipped = {(adapter.integration, adapter.action): adapter for _, adapter in adapters(registry)}
@@ -214,7 +293,7 @@ def load_model(model: dict, data: Data) -> None:
         if model_id in data.models:
             fail(f"model id {model_id!r} is listed twice")
         data.models[model_id] = model
-    data.sections.add(model["section"])
+    data.sections.add((None, model["section"]))
 
 
 def load_broken(entry: dict, known: set[str], data: Data) -> None:
@@ -233,7 +312,7 @@ def load_broken(entry: dict, known: set[str], data: Data) -> None:
         if not entry.get(key):
             fail(f"doesnt_work {entry['what']!r} needs a {key}")
     entry.setdefault("section", entry["what"])
-    data.sections.add(entry["section"])
+    data.sections.update((key, entry["section"]) for key in entry["integrations"])
     data.doesnt_work.append(entry)
 
 
@@ -252,7 +331,7 @@ def load_report(report: dict, known: set[str], shipped: dict[tuple[str, str], ob
     if not ISSUE.match(str(report.get("issue"))):
         fail(f"{where}: issue must be a DeviceSide issue URL")
     report["model"] = str(report["model"])
-    data.model(report["model"], f"docs/devices.yaml: {where}")
+    data.model(report["model"], f"device data: {where}")
     for action in [*(report.get("worked") or []), *(report.get("failed") or [])]:
         if (adapter := shipped.get((report["integration"], action))) is None:
             fail(f"{where}: {report['integration']} has no {action} adapter")
@@ -436,19 +515,14 @@ def by_integration(registry: AdapterRegistry) -> dict[str, list]:
     grouped: dict[str, list] = {}
     for _, adapter in adapters(registry):
         grouped.setdefault(adapter.integration, []).append(adapter)
-    order = list(COLUMNS)  # the README feature table's columns, then any other by title
-
-    def place(key: str) -> tuple[int, str]:
-        return (order.index(key) if key in order else len(order), registry.integrations[key].title)
-
-    return {key: sorted(grouped[key], key=lambda a: a.action) for key in sorted(grouped, key=place)}
+    return {key: sorted(grouped[key], key=lambda a: a.action) for key in columns(grouped)}
 
 
 def evidence(registry: AdapterRegistry, data: Data) -> str:
     parts = [
         EVIDENCE[0],
-        "<!-- Generated by scripts/gen_compat.py from docs/test-records/, the adapters' scopes and docs/devices.yaml."
-        " Do not edit; run the script. -->",
+        "<!-- Generated by scripts/gen_compat.py from the bundles' records and devices.yaml, docs/models.yaml and the"
+        " adapters' scopes. Do not edit; run the script. -->",
         "",
     ]
     for key, integration_adapters in by_integration(registry).items():
@@ -482,14 +556,15 @@ def features(actions: set[str], *, fold_stop: bool = True) -> tuple[str, ...]:
     return tuple(labels)
 
 
-def anchor(text: str, section: str) -> str:
-    return f"[{text}]({PAGE_URL}#{slug(section)})"
+def anchor(text: str, url: str) -> str:
+    return f"[{text}]({url})"
 
 
 @dataclass
 class Card:
     title: str
     requires: str | None = None
+    url: str | None = None  # the integration's page
     maintainers: tuple[str, ...] = ()
     # ⚠️ Unmaintained entries: the features of the unmaintained adapters, by reason.
     unmaintained: list[str] = field(default_factory=list)
@@ -504,12 +579,13 @@ class Card:
     def render(self) -> str:
         requires = f" ({self.requires})" if self.requires else ""
         maintainers = ", ".join(f"[@{handle}]({GITHUB}{handle})" for handle in self.maintainers)
+        title = f"[{self.title}]({self.url})" if self.url else self.title
         status = (
             f"⚠️ Unmaintained · formerly maintained by {maintainers}"
             if self.all_unmaintained
             else f"maintained by {maintainers}"
         )
-        lines = [f"**{self.title}**{requires} · {status}", ""]
+        lines = [f"**{title}**{requires} · {status}", ""]
         lines += [f"- {entry}" for entry in self.unmaintained]
         for key, icon, _ in OUTCOMES:
             if key in ("should", "help"):
@@ -538,19 +614,19 @@ def classes(key: str, integration_adapters: list, level: Level, data: Data) -> d
     return held
 
 
-def merged(phrases: list[str], section: str) -> str:
+def merged(phrases: list[str], url: str) -> str:
     """One link for the classes of a page section, their shared last words said once: "CCT LED controllers", "RGB LED
     controllers" -> "LED controllers (CCT, RGB)". With no shared ending, the phrases in a list."""
     if len(phrases) == 1:
-        return anchor(phrases[0], section)
+        return anchor(phrases[0], url)
     words = [phrase.split() for phrase in phrases]
     shared = 0
     while all(len(w) > shared for w in words) and len({tuple(w[len(w) - shared - 1 :]) for w in words}) == 1:
         shared += 1
     if not shared or any(len(w) == shared for w in words):  # nothing shared, or a phrase with no prefix to list
-        return anchor(", ".join(phrases), section)
+        return anchor(", ".join(phrases), url)
     ending = " ".join(words[0][-shared:])
-    return anchor(f"{ending} ({', '.join(' '.join(w[:-shared]) for w in words)})", section)
+    return anchor(f"{ending} ({', '.join(' '.join(w[:-shared]) for w in words)})", url)
 
 
 def class_entries(key: str, held: dict[str, dict[str, list[str]]], data: Data) -> list[str]:
@@ -567,8 +643,8 @@ def class_entries(key: str, held: dict[str, dict[str, list[str]]], data: Data) -
         for issues, group in by_issues.items():
             grouped.setdefault((features(group), issues), {}).setdefault(entry["section"], []).append(entry["phrase"])
     return [
-        f"{', '.join(merged(phrases, section) for section, phrases in sections.items())}: {', '.join(names)}"
-        + badges(issues)
+        f"{', '.join(merged(phrases, data.url(key, section)) for section, phrases in sections.items())}: "
+        f"{', '.join(names)}" + badges(issues)
         for (names, issues), sections in grouped.items()
     ]
 
@@ -596,9 +672,9 @@ def works(card: Card, key: str, integration_adapters: list, data: Data) -> list[
     lines = []
     for name in sorted(names, key=lambda name: TYPES.index(by_name[name]["type"])):
         marks = f" {VERIFIED}" if name in tested_names else badges(reported[name])
-        lines.append(anchor(card.short(name), by_name[name]["section"]) + marks)
+        lines.append(anchor(card.short(name), data.url(key, by_name[name]["section"])) + marks)
     if groups:
-        lines.append(f"{anchor(*GROUPS_ENTRY)} {VERIFIED}")
+        lines.append(f"{anchor(GROUPS_ENTRY[0], data.url(key, GROUPS_ENTRY[1]))} {VERIFIED}")
     return lines
 
 
@@ -623,11 +699,12 @@ def all_unmaintained(integration_adapters: list) -> bool:
 def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: Data) -> Card:
     info = registry.integrations[key]
     result = Card(
-        info.title,
-        data.requires.get(key),
-        info.maintainers,
-        unmaintained_entries(integration_adapters),
-        all_unmaintained(integration_adapters),
+        title=info.title,
+        requires=data.requires.get(key),
+        url=f"{BLOB_URL}{page(key)}" if key in data.pages else None,
+        maintainers=info.maintainers,
+        unmaintained=unmaintained_entries(integration_adapters),
+        all_unmaintained=all_unmaintained(integration_adapters),
     )
     result.lines["works"] = works(result, key, integration_adapters, data)
     for outcome, level in (("should", Level.DOCUMENTED), ("help", Level.EXPERIMENTAL)):
@@ -636,7 +713,7 @@ def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: 
     result.lines["no"] = []
     for entry in data.doesnt_work:
         if key in entry["integrations"]:
-            result.lines["no"].append(anchor(result.short(entry["what"]), entry["section"]))
+            result.lines["no"].append(anchor(result.short(entry["what"]), data.url(key, entry["section"])))
     return result
 
 
@@ -673,13 +750,21 @@ def splice(text: str, markers: tuple[str, str], block: str, name: str) -> str:
     return text[: text.index(start)] + block + text[text.index(end) + len(end) :]
 
 
-def check_sections(page: str, data: Data) -> None:
-    """Every section a card links to is a heading in the page's prose, so a renamed heading fails here rather than
-    leaving a dead link."""
-    prose = splice(page, EVIDENCE, "", "the page")
-    headings = anchors(prose)
-    if dead := sorted(section for section in {*data.sections, GROUPS_ENTRY[1]} if slug(section) not in headings):
-        raise SystemExit(f"docs/device-compatibility.md has no heading for {', '.join(dead)}; add a section")
+def check_sections(text: str, data: Data) -> None:
+    """Every section a card links to is a heading on its integration's page or in the shared page's prose, so a
+    renamed heading fails here rather than leaving a dead link. A model's or native groups' may be on any integration's
+    page."""
+    shared = anchors(splice(text, EVIDENCE, "", "the page"))
+    anywhere = shared.union(*data.pages.values())
+    dead = sorted(
+        section
+        for key, section in data.sections
+        if slug(section) not in (anywhere if key is None else shared | data.pages.get(key, set()))
+    )
+    if dead:
+        raise SystemExit(
+            f"no heading for {', '.join(dead)} on docs/device-compatibility.md or the integration's page; add a section"
+        )
 
 
 def main(
@@ -687,14 +772,14 @@ def main(
     registry: AdapterRegistry | None = None,
     page: Path = PAGE,
     readme: Path = README,
-    data_path: Path = DATA,
+    models: Path = MODELS,
 ) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--check", action="store_true", help="fail when the README or the page is out of date")
     args = parser.parse_args(argv)
 
     registry = registry or AdapterRegistry.discover()
-    data = load(data_path, registry)
+    data = load(registry, models)
     # Both are computed before either is written, so a failure leaves neither half-updated.
     updates = {}
     for path, markers, block in ((page, EVIDENCE, evidence(registry, data)), (readme, CARDS, cards(registry, data))):

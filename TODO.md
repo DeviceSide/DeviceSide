@@ -70,10 +70,19 @@ the RC tag, only flag-only, docs, `scripts/` and rig step-file changes land. The
   field and the options flow's action step are gone.
 - [x] **Maintainers per integration** (#359): `IntegrationInfo.maintainers` on the cards, `.github/CODEOWNERS` and
   issue routing; `Support` retired; ⚠️ Unmaintained.
+- [x] **Docs bundles** (#362): each integration's user page, internals, device data, research and test records in
+  `docs/integrations/<integration>/`, which its maintainers own; shared pages keep what spans integrations, and
+  `docs/models.yaml` the models.
 - [ ] **Code-owner enforcement**: before adding the first outside maintainer: decide code-owner enforcement (write
   access lets them merge).
 
 ## After v0.1.0
+
+- [ ] **Code comments cite the bundles**: eight comments under `integrations/` (hue, matter, zha, zigbee2mqtt) still
+  cite `docs/integration-internals.md` or `docs/integrations.md`; point each at its bundle's
+  `internals.md#tested-behavior` (Z2M `addressing.py`: `index.md#sharp-edges`), which `tests/scripts/test_doc_anchors.py`
+  then checks; widen that test to page-only citations (`docs/….md` with no anchor) too. Held back by the freeze: a
+  comment change stales the records of the code it is in.
 
 - [ ] **Forum announcement**, once v0.1.0 ships: refresh the draft's testers-wanted list from
   [Help us test](docs/device-compatibility.md#help-us-test) and check every link resolves (the issue forms,

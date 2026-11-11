@@ -1,0 +1,38 @@
+# Physical models, and devices that fail on more than one integration, for scripts/gen_compat.py. It merges this file
+# with each integration's docs/integrations/<integration>/devices.yaml; its docstring gives both formats. A model a
+# record or report names must be here.
+#
+# A model's `type` orders a card's Works line: bulb, relay, plug, dimmer or LED controller. Its `section` (default:
+# its `name`) is the heading a card links to; gen_compat's docstring says where it may be.
+
+# One entry per physical model, with its ids across integrations: a Hue bulb is `LTA009` on Hue and ZHA and
+# `9290024684` on Zigbee2MQTT (zigbee-herdsman-converters, src/devices/philips.ts, maps one to the other).
+models:
+  - name: Hue White Ambiance E27 1100lm
+    ids: [LTA009, "9290024684"]
+    type: bulb
+  - name: Hue Essential White and Color Ambiance A60
+    ids: [LCA016, "8720169392182"]
+    type: bulb
+  - name: Hue White A60 B22
+    ids: [LWA012, "9290018217"]
+    type: bulb
+  - name: Shelly 1 Mini Gen3
+    ids: [S3SW-001X8EU]
+    type: relay
+  - name: Shelly 1 Mini Gen4
+    ids: [S4SW-001X8EU]
+    type: relay
+  - name: Shelly Multicolor Bulb Gen3
+    ids: [S3BL-C010007AEU]
+    type: bulb
+  - name: WiZ Smart Plug
+    ids: ["8979"]
+    type: plug
+
+# Devices that fail the call DeviceSide sends on several integrations, and why. One integration's go in its bundle.
+doesnt_work:
+  - what: Tuya TS011F
+    integrations: [zha, zigbee2mqtt]
+    reason: It stores the Zigbee timer as a countdown and never switches on
+    source: https://github.com/jasonmx/DeviceSide/blob/main/docs/integrations.md#zigbee-plugs-and-switches

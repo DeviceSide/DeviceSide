@@ -1,0 +1,16 @@
+# Hue · set_scene
+
+| | |
+|---|---|
+| Result | pass |
+| Date | 2026-11-08 |
+| Source | rig run (`scripts/rig.py`), commit `8aae106` |
+| Home Assistant | 2026.10.4 |
+| Device | Zone, firmware `unknown` |
+
+## Tests
+
+| Test | Target | Result |
+|---|---|---|
+| `sets_while_off[scene]` | `scene` (scene) | pass |
+| `applies_while_on[scene]` | `scene` (scene) | pass |

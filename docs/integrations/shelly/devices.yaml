@@ -1,0 +1,13 @@
+# Shelly's data for scripts/gen_compat.py (the README card and the evidence on docs/device-compatibility.md) and
+# scripts/gen_features.py (the README column). gen_compat's docstring gives the format.
+
+column: Shelly
+column_order: 3
+requires: Gen2+
+capabilities:
+  Light: {phrase: dimmers, section: Shelly dimmers}
+  CCT: {phrase: CCT LED controllers, section: Shelly LED controllers}
+  RGB: {phrase: RGB LED controllers, section: Shelly LED controllers}
+  RGBW: {phrase: RGBW LED controllers, section: Shelly LED controllers}
+  RGBCCT: {phrase: multicolor bulbs, section: Shelly multicolor bulbs}
+reports: []
