@@ -16,7 +16,7 @@
 
 ## Testing evidence
 
-<!-- For each device: model, firmware, HA version, library version, the commit you tested, the date, and what you saw. -->
+<!-- For each device: model, firmware, HA version, library version, the commit you tested, the date, and what you saw. A maintainer's retest also adds a line to the bundle's `test-records/_manual.md`. -->
 
 ## Records staled
 

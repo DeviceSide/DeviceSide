@@ -31,6 +31,11 @@ Code and docs use these terms.
   integration's Maintainer.
 - **Unmaintained**: an adapter no one is fixing (`AdapterScope.unmaintained`, an issue URL or reason, set at the repo
   maintainers' call). It stays live; setup warns and its card shows ⚠️ Unmaintained.
+- **Retest**: evidence, as new as an adapter's code, that the changed adapter still works: a test record, a
+  `_manual.md` line or an accepted device report. Rules: [CLAUDE.md](../CLAUDE.md#release-flag).
+- **At risk**: an adapter that ships changed since its last retest (`AdapterScope.at_risk`, an issue URL or reason,
+  set by hand). It stays live; setup warns, its card shows ⚠️ At risk and the release notes ask for testers. A fresh
+  retest clears it. Rules: [CLAUDE.md](../CLAUDE.md#maintainers).
 - **Experimental features**: the option (`experimental_features`, off by default) that lets calls touching an
   Experimental item through. Only the dispatcher reads it.
 - **Release flag**: `experimental=True` on an adapter's scope keeps the whole adapter in release candidates only. Not
@@ -38,11 +43,13 @@ Code and docs use these terms.
 - **Rig**: a tool that tests DeviceSide's features automatically with real hardware on a live Home Assistant instance,
   and writes up the results as test records.
 - **Test record**: the evidence that an adapter works on real hardware, from a rig run:
-  `docs/integrations/<integration>/test-records/<action>*.md`. Clearing `experimental` cites one.
+  `docs/integrations/<integration>/test-records/<action>*.md`. Clearing `experimental` cites one. A maintainer's
+  hand test goes in the same folder's `_manual.md`, one line per run; it is a retest, never a record.
 - **Device report**: a user's "works" or "doesn't work" for an action on a model. In the bundle's `devices.yaml` each
   one names the `item` its call reached (the domain, or the capability for an adapter that lists them). An accepted
   "works" on an item's call counts toward Reported (five from users other than the maintainer move an Experimental
-  item; one, the maintainer's included, keeps a changed call Reported); a "doesn't work" is
+  item; one, the maintainer's included, keeps a changed call Reported) and is a retest of that release's code; a
+  "doesn't work" is
   evidence for a fix or for leaving the item out.
 - **Profile**: one test setup on the rig's HA, the entities a run may move by integration and role; a record names the
   one it ran on (`lab`, `house`).
