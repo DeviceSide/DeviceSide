@@ -73,23 +73,26 @@ falls with its Reported sibling (`AdapterScope.siblings` names the sibling and r
 promotes the item to Verified. Anything else untested is Experimental, or out of scope and refused, never Documented
 on a sibling's proof.
 
-**Reported.** A scope item ships as `Level.REPORTED` on an accepted working user report of the item's call, when unit
-tests pin the payload. It has no record, so no freshness check; a change to its call makes it Experimental until a
-new report or a record. A field may be Reported once a report can name one (`devices.yaml` reports name a domain or
-capability only; `gen_compat.py` refuses a Reported field until then). A record promotes it to Verified. A working
-report on a Documented item promotes it to Reported too.
+**Reported.** A maintainer can request moving an Experimental item to `Level.REPORTED` once it has five accepted working
+user reports of its call from users other than the maintainer, and no open bugs, when unit tests pin the payload. It
+has no record, so no freshness check; after a change to its call, one working report at the new code, the maintainer's
+included, keeps it Reported. A field may be Reported once a report can name one
+(`devices.yaml` reports name a domain or capability only; `gen_compat.py` refuses a Reported field until then). A record
+promotes it to Verified. One working report on a Documented item promotes it to Reported.
 
 ## Maintainers
 
 An integration's package (`integrations/<x>/`, `tests/integrations/<x>/`, its fixture, its bundle
 `docs/integrations/<x>/`) belongs to the GitHub handles in its `IntegrationInfo.maintainers`, one or more. A PR confined
-to one package needs one maintainer's approval (`.github/CODEOWNERS`, from `scripts/gen_codeowners.py`) and green CI; anything outside it
-(`core/`, shared docs, `docs/models.yaml`) needs Jason. Jason merges.
+to one package needs one maintainer's approval and green CI; anything outside it (`core/`, shared docs,
+`docs/models.yaml`) needs a repo maintainer. Repo maintainers merge every PR. Integration maintainers hold Triage, so
+GitHub ignores their names in `.github/CODEOWNERS` (from `scripts/gen_codeowners.py`) until one gets write access. A
+contributor PR follows CONTRIBUTING's Fast track.
 
-**Unmaintained:** `AdapterScope.unmaintained` (an issue URL or a reason), set per adapter at Jason's call. The adapter
-stays live; setup warns and its card shows ⚠️ Unmaintained. An integration whose maintainers are all gone gets it on
-every adapter. It clears when someone fixes the adapter or adopts the integration. Like `experimental`, it is not a
-code change to the records check.
+**Unmaintained:** `AdapterScope.unmaintained` (an issue URL or a reason), set per adapter at the repo maintainers' call.
+The adapter stays live; setup warns and its card shows ⚠️ Unmaintained. An integration whose maintainers are all gone
+gets it on every adapter. It clears when someone fixes the adapter or adopts the integration. Like `experimental`, it is
+not a code change to the records check.
 
 ## Releasing
 

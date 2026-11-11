@@ -19,7 +19,7 @@ the RC tag, only flag-only, docs, `scripts/` and rig step-file changes land. The
 
 - [x] **RC audit**: `/rc-audit v0.1.0rc1` over `967bec0..HEAD` (rc1 was never tagged), fixes landed (#316). A second
   pass before the RC covers what lands after it.
-- [x] **Docs sign-off** by Jason, before the freeze, as it may change the design: README, `CONTRIBUTING.md`,
+- [x] **Docs sign-off** by the repo maintainers, before the freeze, as it may change the design: README, `CONTRIBUTING.md`,
   `docs/device-compatibility.md` and its "Help us test", `docs/integrations.md`, `docs/design.md`,
   `docs/action-behavior.md`; the GitHub issue flows end to end (`.github/ISSUE_TEMPLATE/`, and the options flow's
   "Report a device" step as a user meets it in HA); the forum draft (#319–#322). Each design change it raised
@@ -37,7 +37,7 @@ the RC tag, only flag-only, docs, `scripts/` and rig step-file changes land. The
   #222). Then the PR clearing the last flags: every `set_attributes` and `stop`, and Z2M `lower_hue`.
 - [ ] **9d** Final sweep, after the runs above: `rig.py --coverage` full, and `check_release.py --records` clean on
   committed code.
-- [ ] **Release notes**: hand-written v0.1.0 notes in `notes/`, signed off by Jason, after the RC installs cleanly
+- [ ] **Release notes**: hand-written v0.1.0 notes in `notes/`, signed off by the repo maintainers, after the RC installs cleanly
   and before `cut-release`, so they describe what the RC ships.
 - [ ] **12** v0.1.0: no adapter left `experimental` (`scripts/check_release.py --release`). The release
   steps are in `CLAUDE.md` (Releasing); the release body gets the signed-off notes.
@@ -73,8 +73,10 @@ the RC tag, only flag-only, docs, `scripts/` and rig step-file changes land. The
 - [x] **Docs bundles** (#362): each integration's user page, internals, device data, research and test records in
   `docs/integrations/<integration>/`, which its maintainers own; shared pages keep what spans integrations, and
   `docs/models.yaml` the models.
-- [ ] **Code-owner enforcement**: before adding the first outside maintainer: decide code-owner enforcement (write
-  access lets them merge).
+- [x] **Code-owner enforcement** (#370): outside maintainers hold Triage, repo maintainers merge, and CODEOWNERS keeps naming
+  them; review requests go out by hand until that becomes a bottleneck.
+- [x] **Fast track** (#370): a contributor who builds and tests on their own hardware opens a PR directly, with no
+  issue (CONTRIBUTING, PR template); an Experimental item moves to Reported, on its maintainer's request, after five working reports from other users.
 
 ## After v0.1.0
 

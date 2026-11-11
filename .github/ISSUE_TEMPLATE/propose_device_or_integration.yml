@@ -7,6 +7,8 @@ body:
     attributes:
       value: |
         Proposals are accepted only for devices and integrations where a known YAML solution already exists. Please only submit a proposal if you have the feature running stably on your Home Assistant instance and are willing to share the YAML. Speculative feature requests belong in the community forum.
+
+        Building it yourself? Skip this form and open a pull request: see the [Fast track](https://github.com/DeviceSide/DeviceSide/blob/main/CONTRIBUTING.md#fast-track-build-it-yourself).
   - type: input
     id: integration
     attributes:

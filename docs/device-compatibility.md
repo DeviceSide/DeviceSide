@@ -9,13 +9,13 @@ comes from, and the evidence behind every claim.
 Aligned to our core tenet that claims follow evidence, we classify feature claims into four levels of proof:
 
 - **Verified:** proven via automated tests on real hardware.
-- **Reported:** reported as working by a user.
+- **Reported:** reported as working by users.
 - **Documented:** uses the same call pattern as a Verified or Reported device.
 - **Experimental:** untested call pattern.
 
 Experimental features are unreleased and may contain bugs, so they stay off until you turn on **Experimental features** in **Configure > Settings**. Whether they
-work or not, please tell us with **Report a device test result or bug** in the same menu: a working report makes a
-feature Reported, for everyone.
+work or not, please tell us with **Report a device test result or bug** in the same menu: working reports from users
+help move a feature to Reported, for everyone.
 
 ## Maintainers
 
@@ -78,7 +78,7 @@ maker documents that call identically for both.
 ## Help us test
 
 These are built and unit-tested, and wait only for someone with the hardware. Turn on Experimental features to try
-them, then report the result, whether they work or not: a working report ships them to everyone.
+them, then report the result, whether they work or not: working reports help ship them to everyone.
 
 ### Zigbee plugs and switches
 
