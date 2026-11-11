@@ -21,17 +21,23 @@ Depends-on: #374
 4. This covers the retests of #374 too: the same core/ coverage clears a core/ change for adapters without a Verified
    call.
 
-## Open decisions (for the planning session)
+## Decisions (interview, 2026-11-11)
 
-- Record format: a `Shared coverage` row (module, covered line ranges, commit), its home in the record, and how
-  `check_release.py` parses it. The rig is a private repo: this repo defines the format and reads it; the rig work is
-  tracked there, not here.
-- "Every changed line": the lines of the module that differ between the stale record's cited commit and HEAD
-  (`git diff -U0`), compared against the covering record's covered lines. Deleted-only hunks, docstring-only and
-  comment-only changes: count or ignore (`changed_code` already ignores some, see its docstring).
-- Whether a record of an Experimental-flagged adapter can cover shared code (probably no: Verified only).
-- Rule text: CLAUDE.md § Release flag ("Proof follows the call", "A firmware fact…") and § Releasing; design.md
-  Release gates.
+- **Format.** A record's `## Shared coverage` section: a `| Module | Executed lines |` table, one row per `core/`
+  module the run reached, the module named relative to the component (`` `core/dispatch.py` ``), the lines as
+  coverage.py's `executed_lines` at the record's cited commit, as ranges (`12-40, 55`). The rig writes it (tracked in
+  the rig repo); this repo defines and reads it, in `check_release.py`'s docstring. A malformed row is an error under
+  --records.
+- **Changed lines.** `git diff -U0 <stale commit> HEAD` of the module, HEAD side. Each changed line maps to the
+  innermost statement (or `except`/`case` clause) around it, which is covered when any line of its header (first
+  decorator through the line before its body; a simple statement's whole span) is executed. A line with no code
+  (comment, blank) or inside a docstring needs nothing. A deletion-only hunk needs the nearest code line on each side
+  covered.
+- **Coverer.** Any record with Result `pass` of an adapter not flagged experimental and with a Verified call, whose
+  cited commit holds the module byte-identical to HEAD (so its line numbers apply). The rest of its adapter's code may
+  have moved on.
+- **Where it applies.** `changed_since`, so both record staleness and #374's retests clear a covered core/ change.
+- Rule text: CLAUDE.md § Release flag ("Proof follows the call") and § Releasing; design.md Release gates.
 
 ## Steps
 
