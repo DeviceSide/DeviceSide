@@ -18,6 +18,8 @@ permissions: {}
 jobs:
   cut:
     runs-on: ubuntu-latest
+    # Holds the tag deploy key, and deploys only from main and release/*.
+    environment: release
     permissions:
       contents: write
       actions: read
@@ -74,7 +76,7 @@ jobs:
       - name: Refuse an experimental adapter, or a test record older than its adapter's code
         run: .venv/bin/python scripts/check_release.py --release --records
 
-      # The v* tag ruleset's only bypass is the deploy key: GITHUB_TOKEN can't bypass a ruleset on a personal repo.
+      # The tag ruleset's only bypass is the deploy key: GITHUB_TOKEN can't bypass a ruleset on a personal repo.
       # The key exists only in this step, in a file only the runner user can read, and github.com's host keys come
       # from the API over TLS rather than trust on first use.
       - name: Tag and publish the release
