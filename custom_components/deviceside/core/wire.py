@@ -6,6 +6,12 @@ IEEE, a Hue resource ID, a Shelly component ID, an MQTT device topic), so a trac
 A transport setting that changes how the call is encoded rides the event as `options`, apart from `params`; addressing
 never does. Z2M stamps its `hue_native_control` this way on every set, since the same payload sends different Zigbee
 commands with it on and off, and a rig comparing traces must not read two such runs as one. Reads are not traced.
+
+The same logger gates the scope trace, `deviceside_scope`: one event per target the dispatcher runs, past the
+Experimental gate, naming what `AdapterScope.level()` weighed for it (its domain, the capability the adapter named,
+null when none, and the fields the call carries after drops). A rig unions it over the cases a run passed into its
+record's `Covers:` line, which `check_release.py --records` holds against the adapter's Verified scope. The target is
+named by the entity_id results are keyed on.
 """
 
 import copy
@@ -15,6 +21,7 @@ from typing import Any
 from homeassistant.core import HomeAssistant
 
 WIRE_EVENT = "deviceside_wire"
+SCOPE_EVENT = "deviceside_scope"
 WIRE_LOGGER = logging.getLogger("custom_components.deviceside.wire")
 
 
@@ -48,3 +55,27 @@ def wire_trace(
         data["options"] = copy.deepcopy(options)
     WIRE_LOGGER.debug("%s", data)
     hass.bus.async_fire(WIRE_EVENT, data)
+
+
+def scope_trace(
+    hass: HomeAssistant,
+    entity_id: str,
+    action: str,
+    integration: str,
+    domain: str,
+    capability: str | None,
+    fields: frozenset[str],
+) -> None:
+    """Fire the scope trace of one target about to run, when the wire logger is at DEBUG; else do nothing."""
+    if not wire_enabled():
+        return
+    data = {
+        "entity_id": entity_id,
+        "action": action,
+        "integration": integration,
+        "domain": domain,
+        "capability": capability,
+        "fields": sorted(fields),
+    }
+    WIRE_LOGGER.debug("%s", data)
+    hass.bus.async_fire(SCOPE_EVENT, data)
