@@ -249,6 +249,37 @@ def test_an_import_adapter_code_cannot_resolve_raises_naming_it(tested, path, te
         cr.adapter_code(repo.path / ADAPTER)
 
 
+@pytest.mark.parametrize(
+    ("path", "text", "name"),
+    [
+        (
+            ADAPTER,
+            "from custom_components.deviceside.core.scope import AdapterScope\n",
+            "custom_components.deviceside.core.scope",
+        ),
+        (
+            f"{PACKAGE}/groups.py",
+            "import custom_components.deviceside.core.scope\n",
+            "custom_components.deviceside.core.scope",
+        ),
+        (
+            f"{CORE}/scope.py",
+            "def f():\n    from custom_components.deviceside import const\n",
+            "custom_components.deviceside",
+        ),
+    ],
+)
+def test_an_absolute_import_of_the_component_raises_naming_it(tested, path, text, name):
+    repo, _ = tested
+    repo.commit(path, text)
+    with pytest.raises(ValueError, match=rf"{path.rpartition('/')[2]}: absolute import of `{re.escape(name)}`"):
+        cr.adapter_code(repo.path / ADAPTER)
+
+
+def test_an_absolute_import_of_another_package_is_not_the_components():
+    assert cr.absolute_component_imports(ast.parse("import custom_components.deviceside_other").body[0]) == []
+
+
 def test_a_change_to_the_packages_group_helper_stales_the_record(tested, monkeypatch):
     repo, _ = tested
     repo.commit(f"{PACKAGE}/members.py", "MEMBERS = 1\n")

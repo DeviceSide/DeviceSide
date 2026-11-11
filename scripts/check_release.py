@@ -36,6 +36,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
+COMPONENT = "custom_components.deviceside"
 
 from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
 from custom_components.deviceside.core.scope import Level  # noqa: E402
@@ -98,12 +99,27 @@ def run_time_nodes(tree: ast.AST) -> Iterator[ast.AST]:
             todo += ast.iter_child_nodes(node)
 
 
+def absolute_component_imports(node: ast.AST) -> list[str]:
+    """The component modules an `import` or a level-0 `from` names absolutely: `custom_components.deviceside...`."""
+    if isinstance(node, ast.Import):
+        names = [alias.name for alias in node.names]
+    elif isinstance(node, ast.ImportFrom) and not node.level and node.module:
+        names = [node.module]
+    else:
+        return []
+    return [name for name in names if name == COMPONENT or name.startswith(f"{COMPONENT}.")]
+
+
 def relative_imports(path: Path) -> list[tuple[ast.ImportFrom, Path]]:
     """Each relative import the module runs, function bodies included and `if TYPE_CHECKING:` blocks left out, with
     the path its `from` part names, resolved by its level against the module's package: `from ...core.x import a` in
-    `integrations/hue/fade.py` names `<deviceside>/core/x`, without a suffix, as it may be a module or a package."""
+    `integrations/hue/fade.py` names `<deviceside>/core/x`, without a suffix, as it may be a module or a package.
+    Raises ValueError on an absolute import of the component, which the check doesn't follow, so it would drop code
+    from the check unseen."""
     imports = []
     for node in run_time_nodes(ast.parse(path.read_text(), str(path))):
+        if "custom_components" in path.parts and (absolute := absolute_component_imports(node)):
+            raise ValueError(f"{path}: absolute import of `{absolute[0]}`; make it relative so the check follows it")
         if isinstance(node, ast.ImportFrom) and node.level:
             base = path.parents[node.level - 1]
             imports.append((node, base.joinpath(*node.module.split(".")) if node.module else base))
@@ -153,7 +169,8 @@ def adapter_code(module: Path) -> list[Path]:
     and shared helpers included. The sibling adapter modules `__init__.py` imports for `ADAPTERS` are left out, unless
     the adapter's own code reaches them. `actions/` (the action surface, not the call), other integrations and the
     rest of the component are left out. Raises ValueError on a relative import into the package or `core/` that names
-    no module, which would otherwise drop code from the check unseen."""
+    no module, or an absolute import of the component, either of which would otherwise drop code from the check
+    unseen."""
     package = module.parent
     roots = (package, package.parents[1] / "core")
     init = package / "__init__.py"
