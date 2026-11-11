@@ -10,6 +10,7 @@ from custom_components.deviceside.actions import discover
 from custom_components.deviceside.core.scope import AdapterScope, documented, experimental, reported, verified
 from scripts import check_release as cr
 from scripts import gen_compat as gc
+from scripts import gen_features as gf
 
 URL = gc.PAGE_URL
 DATA = {
@@ -115,9 +116,9 @@ def test_a_missing_device_row_is_an_error(root):
         gc.entries(path)
 
 
-def test_a_model_a_record_names_must_be_in_devices_yaml(root):
+def test_a_model_a_record_names_must_be_in_models_yaml(root):
     record(root, "zha", "stop", device="Bulb (`NEW1`), firmware `1`")
-    with pytest.raises(SystemExit, match="model 'NEW1' is not in docs/devices.yaml"):
+    with pytest.raises(SystemExit, match="model 'NEW1' is not in docs/models.yaml"):
         gc.row("stop", adapter("zha", "stop"), data())
 
 
@@ -202,8 +203,8 @@ def test_a_passing_record_on_a_released_adapter_is_verified(root):
     record(root, "zha", "stop-predicted_state", device="Zone, firmware `unknown`")
     line = gc.row("stop", adapter("zha", "stop"), data())
     assert line.startswith("| `stop` | Verified | `LTA009`, firmware `1.2.3`<br>group |")
-    assert "[predicted state](test-records/zha/stop-predicted_state.md)" in line
-    assert line.endswith("[record](test-records/zha/stop.md) | |")
+    assert "[predicted state](integrations/zha/records/stop-predicted_state.md)" in line
+    assert line.endswith("[record](integrations/zha/records/stop.md) | |")
 
 
 def test_an_experimental_adapter_or_a_failing_record_is_experimental(root):
@@ -350,13 +351,12 @@ def test_untested_classes_share_an_entry_per_feature_set_and_name_their_features
 
 
 def test_classes_of_one_section_say_their_shared_ending_once():
-    assert (
-        gc.merged(["CCT LED controllers", "RGB LED controllers"], "LED") == f"[LED controllers (CCT, RGB)]({URL}#led)"
-    )
-    assert gc.merged(["dimmers"], "Dimmers") == f"[dimmers]({URL}#dimmers)"
+    led = f"{URL}#led"
+    assert gc.merged(["CCT LED controllers", "RGB LED controllers"], led) == f"[LED controllers (CCT, RGB)]({led})"
+    assert gc.merged(["dimmers"], f"{URL}#dimmers") == f"[dimmers]({URL}#dimmers)"
     # A phrase that is all ending has no prefix to list, so the phrases are listed whole.
-    assert gc.merged(["LED controllers", "RGB LED controllers"], "LED") == (
-        f"[LED controllers, RGB LED controllers]({URL}#led)"
+    assert (
+        gc.merged(["LED controllers", "RGB LED controllers"], led) == f"[LED controllers, RGB LED controllers]({led})"
     )
 
 
@@ -382,18 +382,43 @@ def test_an_untested_item_without_a_class_is_an_error(root):
         zha_card(adapter("zha", "turn_on_for", scope))
 
 
-def write_files(root, registry):
-    page, readme, devices = root / "page.md", root / "README.md", root / "devices.yaml"
+# DATA as files: the shared models.yaml, and a bundle per FakeRegistry integration.
+BUNDLE = {
+    "zha": {
+        "column": "ZHA",
+        "column_order": 1,
+        "requires": "Zigbee 3.0",
+        "capabilities": DATA["capabilities"]["zha"],
+        "doesnt_work": [{"what": "Old plug", "reason": "No timer", "source": "https://x.y/z"}],
+    },
+    "hue": {"column": "Hue", "column_order": 2},
+}
+
+
+def write_bundles(root, monkeypatch, bundles=BUNDLE, shared=None):
+    monkeypatch.setattr(gf, "BUNDLES", root / "docs" / "integrations")
+    models = root / "models.yaml"
+    models.write_text(yaml.safe_dump(shared if shared is not None else {"models": DATA["models"]}))
+    for key, data in bundles.items():
+        folder = root / "docs" / "integrations" / key
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / "devices.yaml").write_text(yaml.safe_dump(data))
+        (folder / "index.md").write_text(f"# {key}\n")
+    return models
+
+
+def write_files(root, registry, monkeypatch):
+    page, readme = root / "page.md", root / "README.md"
+    models = write_bundles(root, monkeypatch)
     page.write_text(PROSE + "## Evidence\n\n<!-- evidence:start -->\n<!-- evidence:end -->\n")
     readme.write_text("# R\n\n<!-- devices:start -->\n<!-- devices:end -->\n\nAfter.\n")
-    devices.write_text(yaml.safe_dump(DATA))
-    return lambda argv: gc.main(argv, registry, page, readme, devices)
+    return lambda argv: gc.main(argv, registry, page, readme, models)
 
 
-def test_check_fails_on_a_stale_readme_or_page_until_they_are_regenerated(root, capsys):
+def test_check_fails_on_a_stale_readme_or_page_until_they_are_regenerated(root, capsys, monkeypatch):
     registry = FakeRegistry(adapter("zha", "stop"))
     device = record(root, "zha", "stop")
-    run = write_files(root, registry)
+    run = write_files(root, registry, monkeypatch)
     assert run(["--check"]) == 1  # nothing generated yet
     assert "page.md and README.md out of date" in capsys.readouterr().err
     assert run([]) == 0
@@ -407,21 +432,83 @@ def test_check_fails_on_a_stale_readme_or_page_until_they_are_regenerated(root, 
     assert "9.9.9" in (root / "page.md").read_text()
 
 
-def test_a_card_linking_to_a_missing_heading_fails(root):
-    run = write_files(root, FakeRegistry(adapter("zha", "stop")))
+def test_a_card_linking_to_a_missing_heading_fails(root, monkeypatch):
+    run = write_files(root, FakeRegistry(adapter("zha", "stop")), monkeypatch)
     page = root / "page.md"
     page.write_text(page.read_text().replace("### Dimmers\n", ""))
     with pytest.raises(SystemExit, match="no heading for Dimmers"):
         run([])
 
 
-def test_a_heading_inside_the_evidence_block_does_not_count(root):
-    run = write_files(root, FakeRegistry(adapter("zha", "stop")))
+def test_a_heading_inside_the_evidence_block_does_not_count(root, monkeypatch):
+    run = write_files(root, FakeRegistry(adapter("zha", "stop")), monkeypatch)
     page = root / "page.md"
     text = page.read_text().replace("### Old plug\n", "")
     page.write_text(text.replace("<!-- evidence:start -->\n", "<!-- evidence:start -->\n### Old plug\n"))
     with pytest.raises(SystemExit, match="no heading for Old plug"):
         run([])
+
+
+def test_a_bundle_merges_in_as_its_integrations_own_and_its_page_holds_its_sections(root, monkeypatch):
+    models = write_bundles(root, monkeypatch)
+    (root / "docs" / "integrations" / "zha" / "index.md").write_text("# ZHA\n\n### Dimmers\n")
+    data = gc.load(FakeRegistry(), models)
+    assert data.requires == {"zha": "Zigbee 3.0"}
+    assert data.doesnt_work[0]["integrations"] == ["zha"]
+    # A section on the integration's page links there; the rest fall back to the shared page.
+    assert data.url("zha", "Dimmers") == f"{gc.BLOB_URL}docs/integrations/zha/index.md#dimmers"
+    assert data.url("zha", "Zigbee plugs") == f"{URL}#zigbee-plugs"
+    assert data.url("hue", "Dimmers") == f"{URL}#dimmers"
+    page = PROSE.replace("### Dimmers\n\n", "") + "<!-- evidence:start -->\n<!-- evidence:end -->\n"
+    gc.check_sections(page, data)  # Dimmers is on the ZHA page
+    with pytest.raises(SystemExit, match="no heading for Dimmers"):
+        gc.check_sections(page, gc.load(FakeRegistry(), write_bundles(root, monkeypatch)))
+
+
+def test_a_card_title_links_to_its_integrations_page(root, monkeypatch):
+    data = gc.load(FakeRegistry(), write_bundles(root, monkeypatch))
+    card = gc.card("zha", FakeRegistry(), [], data)
+    assert card.render().startswith(f"**[ZHA]({gc.BLOB_URL}docs/integrations/zha/index.md)** (Zigbee 3.0)")
+
+
+@pytest.mark.parametrize(
+    ("bundles", "shared", "error"),
+    [
+        ({"zha": BUNDLE["zha"]}, None, "no docs/integrations/hue/devices.yaml; add the hue bundle"),
+        (
+            {**BUNDLE, "hue": {"column": "Hue", "column_order": 2, "models": []}},
+            None,
+            "hue/devices.yaml: unknown key models",
+        ),
+        (BUNDLE, {"models": [], "capabilities": {}}, "docs/models.yaml: unknown key capabilities"),
+        (
+            {**BUNDLE, "hue": {"column": "Hue", "column_order": 2, "reports": [{**REPORT, "issue": "x"}]}},
+            None,
+            "a reports entry is hue's own; drop its integration",
+        ),
+        (
+            {**BUNDLE, "hue": {"column": "Hue", "column_order": 2, "doesnt_work": [DATA["doesnt_work"][0]]}},
+            None,
+            "a doesnt_work entry is hue's own; drop its integrations",
+        ),
+        (
+            {**BUNDLE, "hue": {"column": "Hue", "column_order": 2, "reports": {"a": 1}}},
+            None,
+            "hue/devices.yaml: reports must",
+        ),
+    ],
+)
+def test_a_missing_bundle_or_a_misplaced_key_fails_naming_the_file(root, monkeypatch, bundles, shared, error):
+    models = write_bundles(root, monkeypatch, bundles, shared)
+    with pytest.raises(SystemExit, match=error):
+        gc.load(FakeRegistry(), models)
+
+
+def test_an_integration_without_a_user_page_fails(root, monkeypatch):
+    models = write_bundles(root, monkeypatch)
+    (root / "docs" / "integrations" / "hue" / "index.md").unlink()
+    with pytest.raises(SystemExit, match="no docs/integrations/hue/index.md; add the hue bundle's user page"):
+        gc.load(FakeRegistry(), models)
 
 
 def test_the_checked_in_readme_and_page_match_the_real_records():

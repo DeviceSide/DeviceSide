@@ -1,0 +1,8 @@
+# ZHA's data for scripts/gen_compat.py (the README card and the evidence on docs/device-compatibility.md) and
+# scripts/gen_features.py (the README column). gen_compat's docstring gives the format.
+
+column: ZHA
+column_order: 1
+capabilities:
+  switch: {phrase: plugs and switches, section: Zigbee plugs and switches}
+reports: []

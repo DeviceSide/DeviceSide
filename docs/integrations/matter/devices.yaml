@@ -1,0 +1,8 @@
+# Matter's data for scripts/gen_compat.py (the README card and the evidence on docs/device-compatibility.md) and
+# scripts/gen_features.py (the README column). gen_compat's docstring gives the format.
+
+column: Matter
+column_order: 5
+capabilities:
+  light: {phrase: lights, section: Matter lights}
+reports: []

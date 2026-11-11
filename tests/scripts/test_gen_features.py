@@ -10,13 +10,14 @@ from scripts import gen_features as gf
 
 LIGHT = '<img src="https://raw.githubusercontent.com/jasonmx/DeviceSide/main/docs/icons/light.svg"'
 SWITCH = "/switch.svg"
+KEYS = ("zha", "zigbee2mqtt", "shelly", "hue", "matter")  # the real bundles, in column order
 GROUP = "/group.svg"
 
 
 class FakeRegistry:
     def __init__(self, *adapters, expand=()):
         self._adapters = adapters
-        self.integrations = {key: SimpleNamespace(expand_group=(len if key in expand else None)) for key in gf.COLUMNS}
+        self.integrations = {key: SimpleNamespace(expand_group=(len if key in expand else None)) for key in KEYS}
 
     def matrix(self):
         yield "stop", "hue", None
@@ -161,9 +162,20 @@ def test_an_action_with_no_adapter_anywhere_fails(no_blockers):
         gf.generate(FakeRegistry(*adapters))
 
 
-def test_an_integration_with_no_column_fails(no_blockers):
-    with pytest.raises(SystemExit, match="no README column for integration tuya"):
+def test_an_integration_without_a_bundle_fails_naming_the_file(no_blockers):
+    with pytest.raises(SystemExit, match="no docs/integrations/tuya/devices.yaml; add the tuya bundle"):
         gf.generate(FakeRegistry(*every_row(), adapter("tuya", "stop")))
+
+
+def test_columns_follow_their_order_and_need_a_label_and_an_order(tmp_path, monkeypatch):
+    monkeypatch.setattr(gf, "BUNDLES", tmp_path)
+    for key, text in (("b", "column: B\ncolumn_order: 1\n"), ("a", "column: A\ncolumn_order: 2\n"), ("c", "x: 1\n")):
+        (tmp_path / key).mkdir()
+        (tmp_path / key / "devices.yaml").write_text(text)
+    assert gf.columns(["a", "b"]) == {"b": "B", "a": "A"}
+    assert list(gf.columns(["a", "b"])) == ["b", "a"]
+    with pytest.raises(SystemExit, match="needs a column and a column_order"):
+        gf.columns(["c"])
 
 
 def test_the_readme_needs_its_markers(tmp_path, no_blockers):
@@ -216,21 +228,20 @@ DOCS = "https://github.com/jasonmx/DeviceSide/blob/main/docs/"
 
 def test_repeated_headings_get_githubs_numbered_anchors():
     text = "# Doc\n## Shelly\n### Get attributes\n## ZHA\n### Get attributes\n### Auto-off/on\n"
-    found = gf.headings(text)
-    assert found["Shelly"] == {"Shelly": "shelly", "Get attributes": "get-attributes"}
-    assert found["ZHA"] == {"ZHA": "zha", "Get attributes": "get-attributes-1", "Auto-off/on": "auto-offon"}
-    assert found[""] == {"Doc": "doc"}
+    assert gf.anchors(text) == {"doc", "shelly", "get-attributes", "zha", "get-attributes-1", "auto-offon"}
 
 
-def test_a_cells_icons_link_to_the_features_subsection_or_else_the_integrations_section(monkeypatch):
+def test_a_cells_icons_link_to_the_features_section_of_the_integrations_page_or_else_the_page(monkeypatch):
     monkeypatch.setattr(gf, "NO_PATH", {("Turn off with timer", "zha"): ("light",)})
     text = gf.generate(
         FakeRegistry(*every_row(domains=verified("light")), *every_row("matter", domains=verified("light")))
     )
     shelly = cells(text, "Get attributes")[2]
-    assert shelly.startswith(f'<a href="{DOCS}integrations.md#get-attributes"><img ')
+    assert shelly.startswith(f'<a href="{DOCS}integrations/shelly/index.md#get-attributes"><img ')
     matter = cells(text, "Get attributes")[4]
-    assert f'href="{DOCS}integrations.md#get-attributes-' in matter
+    assert f'href="{DOCS}integrations/matter/index.md#get-attributes"' in matter
+    # The Matter page has no smooth dimming section, so its cell links to the page.
+    assert f'href="{DOCS}integrations/matter/index.md"><img ' in cells(text, "Smooth dimming")[4]
     blocked = cells(text, "Turn off with timer")[0]
     assert blocked.startswith(f'<a href="{DOCS}integrations.md#what-cant-be-done-and-why"><img ')
     assert "/no.svg" in blocked
@@ -240,7 +251,7 @@ def test_a_prohibited_sign_links_to_why_while_the_cells_other_icons_link_to_the_
     monkeypatch.setattr(gf, "NO_PATH", {("Smooth dimming", "shelly"): ("switch",)})
     cell = cells(gf.generate(FakeRegistry(*every_row(domains=verified("light")))), "Smooth dimming")[2]
     feature, why = (
-        f'href="{DOCS}integrations.md#smooth-dimming"',
+        f'href="{DOCS}integrations/shelly/index.md#smooth-dimming"',
         f'href="{DOCS}integrations.md#what-cant-be-done-and-why"',
     )
     assert cell.index(feature) < cell.index("/light.svg") < cell.index(why) < cell.index("/no.svg")
@@ -253,9 +264,13 @@ def test_a_missing_why_section_fails(monkeypatch, no_blockers):
         gf.generate(FakeRegistry(*every_row()))
 
 
-def test_an_integration_missing_from_the_integrations_doc_fails(monkeypatch, no_blockers):
-    monkeypatch.setattr(gf, "SECTIONS", {**gf.SECTIONS, "hue": "Philips"})
-    with pytest.raises(SystemExit, match="no section for hue"):
+def test_an_integration_without_a_user_page_fails(tmp_path, monkeypatch, no_blockers):
+    monkeypatch.setattr(gf, "BUNDLES", tmp_path)
+    for order, key in enumerate(KEYS):
+        (tmp_path / key).mkdir()
+        (tmp_path / key / "devices.yaml").write_text(f"column: {key}\ncolumn_order: {order}\n")
+    monkeypatch.setattr(gf, "page", lambda key: f"docs/integrations/{key}/missing.md")
+    with pytest.raises(SystemExit, match="no docs/integrations/zha/missing.md; add the zha bundle's user page"):
         gf.generate(FakeRegistry(*every_row()))
 
 

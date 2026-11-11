@@ -51,7 +51,7 @@ class MatterGetAttributes(Adapter[Request]):
     async def execute(self, hass: HomeAssistant, request: Request, targets: list[Target]) -> list[EntityResult]:
         async def read(target: Target) -> EntityResult:
             # Live, not the node cache: the plug never reports OnTime on its subscription, so the cache reads 0
-            # while a timer runs (docs/integrations/matter/internals.md#tested-behavior).
+            # while a timer runs (docs/integration-internals.md, Matter tested behavior).
             client = matter_client(hass, target.entry.config_entry_id)  # supports() refused the targets without one
             on_time, on_off = await read_timer(
                 client,

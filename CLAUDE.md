@@ -5,15 +5,27 @@ in the PR that finishes them.
 
 When an action should raise, skip a target, or what its response holds: match core, per `docs/action-behavior.md`.
 
-A PR that teaches a device fact adds it to `docs/device-compatibility.md`, citing its source; an accepted device report
-goes into `docs/devices.yaml` (`scripts/gen_compat.py` regenerates the README cards from both).
-
 Scope comes from the design, the device's capabilities and the release flag below, never from the README: it records
 what ships, so its "not X" means not yet. Reword such a line to the real state, and update the README after the work lands.
 
 **The repo is public:** no household entity IDs, device names, MACs or hostnames anywhere in it, commit messages included.
 
 **No personal tooling:** deploy hosts, SSH aliases, and private stacks belong in gitignored files (`.private-terms`, `notes/`, `CLAUDE.local.md`), not in committed code, docs or commit messages.
+
+## Where facts go
+
+One fact, one home; elsewhere, point to it. `<x>` is `docs/integrations/<integration>/`, the integration's bundle.
+
+| Fact | Home |
+|---|---|
+| User-facing limits and device classes | `<x>/index.md` |
+| Wire calls, measurements, upstream defects | `<x>/internals.md` (shared: `docs/internals.md`, core HA: `docs/defects.md`) |
+| Classes, doesn't-work entries, accepted device reports | `<x>/devices.yaml` (`scripts/gen_compat.py` regenerates the cards) |
+| Models across integrations | `docs/models.yaml` |
+| Dated sources, never edited after | `<x>/research/` |
+| Run evidence | `<x>/records/` |
+| Why the code does something | the module docstring |
+| Rule evidence | the PR body |
 
 ## Release flag
 
@@ -29,14 +41,14 @@ option, and turning it on never changes how any other item behaves.
 **Setting it:** for a behavior change to a Verified item that the rig can't exercise. Leave it off for refactors,
 performance work and fixes to adapters the rig can retest before the next RC. When unsure, ask.
 
-**Clearing it:** a PR citing a passing test record (`docs/test-records/<integration>/<action>*.md`) that covers the
+**Clearing it:** a PR citing a passing test record (`docs/integrations/<integration>/records/<action>*.md`) that covers the
 adapter's whole scope bar its Documented, Reported and Experimental items: `AdapterScope.domains`, `.capabilities`,
 `.fields`, and each of `.options` on and off.
 
 **Proof follows the call.** A record proves the call an adapter sends and the capability it reaches (Shelly: the RPC
 component), whatever entity domain the target shows: a relay exposed as a `switch` or an on/off `light` rides one
 record. A native group path is proven once any action of the same adapter class has passed through it and the command has
-passed on one device (PR #204). An observed pass in `docs/test-records/<integration>/_observed.md` proves that a
+passed on one device (PR #204). An observed pass in the integration's `records/_observed.md`, when present, proves that a
 maker's devices, started from that state, respond as seen to that call sequence and to any sequence it begins with,
 across firmware (an exception to once per firmware version), HA and code; an observed failure on a model, newer
 than that model's latest pass covering the lent sequence, blocks lends to that model for sequences that begin with the
@@ -102,7 +114,7 @@ there, cut the next RC from it, and merge the branch back into `main`.
 - Before each push: `.venv/bin/pytest` and `pre-commit run --all-files` (ruff and the household check).
 - Audits: as the global `## Code audits` rule says. The binding-rule surface that puts an Opus auditor on the PR
   audit is the release flag and `AdapterScope`, `Level.DOCUMENTED`, `scripts/check_release.py`,
-  `docs/test-records/`, and rule text in `CLAUDE.md` or `docs/design.md`.
+  `docs/integrations/*/records/`, and rule text in `CLAUDE.md` or `docs/design.md`.
 
 ## Layout
 
@@ -112,7 +124,8 @@ there, cut the next RC from it, and merge the branch back into `main`.
 - `tests/{core,actions,integrations,scripts}`: mirror the above
 - `scripts/`: household check, generated docs (device cards, device compatibility page, README feature table), release checks
   (coverage, the release flag, record freshness, tags, RC audits)
-- `docs/test-records/<integration>/`: test records, written by the rig. Design detail lives in `docs/design.md`.
+- `docs/integrations/<integration>/`: the integration's bundle (see Where facts go); the rig writes its `records/`.
+  Design detail lives in `docs/design.md`.
 
 The rig, which drives the live HA and writes the records, is a private repo kept out of this one: don't add rig code,
 step files or rig docs here. When it is attached to the session, its `CLAUDE.md` says how to run it.

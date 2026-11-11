@@ -2,11 +2,9 @@
 """Check the adapters against the release gates: the coverage bar, no experimental adapter in a release, and test
 records that pass and are as new as the code they prove.
 
-`experimental=True` on an adapter's scope means it is not in a stable release yet. It is cleared by a PR citing a
-passing test record that covers the scope. An Experimental scope item (`Level.EXPERIMENTAL`) is not the flag: it ships
-in a stable release, refused at runtime until the user turns on Experimental features, so --release passes it.
-Reported and Experimental items have no record to age, so --records weighs only the adapter's code against its
-records.
+The release flag and the levels are defined in CLAUDE.md § Release flag. --release fails on the flag only, not on an
+Experimental item; --records weighs only an adapter's code against its records, as items below Verified have none.
+Records live in each integration's bundle (`record_dir`).
 
 Exits 1 on any integration that failed to import, whatever the options; with --coverage, any module of an adapter's
 code (`adapter_code`, bar `__init__.py`) under 95% line coverage; with --release, any experimental adapter; with

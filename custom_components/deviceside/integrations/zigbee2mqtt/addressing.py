@@ -52,7 +52,7 @@ def topic(target: Target, suffix: str) -> str | None:
     The suffix is "set" for a command and "get" for a read. A device is addressed by IEEE and a group
     by ID, both under the default base topic. A group's identifier carries its base topic, so a group
     on any other base topic gets None rather than a dead topic; a device's doesn't, so a custom base
-    topic still misfires for devices (docs/integrations/zigbee2mqtt/index.md#sharp-edges).
+    topic still misfires for devices (a sharp edge documented in docs/integrations.md).
     """
     if target.device is None:
         return None
