@@ -27,6 +27,7 @@ def repo(tmp_path):
         (tmp_path / path).mkdir(parents=True)
     (tmp_path / "tests" / "fixtures").mkdir()
     (tmp_path / "tests" / "fixtures" / "control4.py").write_text("")
+    (tmp_path / "custom_components" / "deviceside" / "manifest.json").write_text('{"codeowners": ["@jasonmx"]}')
     return tmp_path
 
 
@@ -73,6 +74,23 @@ def test_check_fails_on_a_stale_or_hand_edited_file_until_it_is_regenerated(repo
     path.write_text(path.read_text().replace("@alice", "@mallory"))
     assert gco.main(["--check"], fake, repo) == 1
     assert "CODEOWNERS out of date" in capsys.readouterr().err
+
+
+def test_an_empty_repo_maintainers_is_an_error(repo, monkeypatch):
+    monkeypatch.setattr(gco, "REPO_MAINTAINERS", ())
+    with pytest.raises(SystemExit, match="REPO_MAINTAINERS is empty"):
+        gco.generate(registry(hue=info("carol")), repo)
+
+
+def test_manifest_codeowners_must_match_the_repo_maintainers_in_either_mode(repo, monkeypatch, capsys):
+    fake = registry(control4=info("alice"))
+    monkeypatch.setattr(gco, "REPO_MAINTAINERS", ("jasonmx", "carol"))
+    assert gco.main([], fake, repo) == 1
+    assert not (repo / ".github" / "CODEOWNERS").exists()
+    assert gco.main(["--check"], fake, repo) == 1
+    assert "don't match REPO_MAINTAINERS" in capsys.readouterr().err
+    (repo / "custom_components" / "deviceside" / "manifest.json").write_text('{"codeowners": ["@jasonmx", "@carol"]}')
+    assert gco.main([], fake, repo) == 0
 
 
 def test_the_committed_file_is_current():

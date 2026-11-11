@@ -4,7 +4,7 @@ name: Cut release
 # vX.Y.Z's latest RC, not main's head: what ships is what soaked, while main moves on. Requires a version above the
 # latest release and, at the RC's commit, manifest.json at that version, green CI, no experimental adapter, and every
 # adapter's test records passing and citing a commit with its adapter code (check_release --release --records). Soak is the repo
-# owner's call.
+# maintainers' call.
 
 on:
   workflow_dispatch:
