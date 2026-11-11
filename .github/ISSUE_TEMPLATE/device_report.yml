@@ -89,5 +89,6 @@ body:
     id: deviceside_version
     attributes:
       label: DeviceSide version
+      description: "The release you tested, such as 0.2.0 or 0.2.0rc1: your report counts as a test of that release's code. Filled in when you start from DeviceSide's options."
     validations:
       required: true
