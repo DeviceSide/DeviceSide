@@ -36,8 +36,7 @@ the rig's tests, or a public rig, come only if user complaints call for them.
 1. `pr-draft` this plan in a `wt/evidence-levels` worktree off `main` (after #370 merges).
 2. **Rule text:** rewrite CLAUDE.md's Reported paragraph and add graduation, retest and At risk rules; update the
    design.md glossary (Reported, Device report, new At risk entry); CONTRIBUTING step 5 and the maintainer section
-   (graduation request, `_manual.md`); PR template Testing evidence mentions `_manual.md`. Revert #370's "the author's
-   report counts" wording to rule 2/3 above.
+   (graduation request, `_manual.md`); PR template Testing evidence mentions `_manual.md`.
 3. **Reports:** `gen_compat.py` reports gain a reporter-is-maintainer distinction (from the issue author vs
    `IntegrationInfo.maintainers`) so it can count independent reports; refuse a Reported item that left Experimental
    on fewer than five, or keep it a review check if the count can't be derived from `devices.yaml` cleanly

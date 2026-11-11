@@ -73,9 +73,10 @@ falls with its Reported sibling (`AdapterScope.siblings` names the sibling and r
 promotes the item to Verified. Anything else untested is Experimental, or out of scope and refused, never Documented
 on a sibling's proof.
 
-**Reported.** A scope item ships as `Level.REPORTED` on an accepted working user report of the item's call, the call's
-author's included, when unit tests pin the payload. It has no record, so no freshness check; a change to its
-call makes it Experimental until a new report or a record. A field may be Reported once a report can name one
+**Reported.** A maintainer can request moving an Experimental item to `Level.REPORTED` once it has five accepted working
+user reports of its call from users other than the maintainer, and no open bugs, when unit tests pin the payload. It
+has no record, so no freshness check; after a change to its call, one working report at the new code, the maintainer's
+included, keeps it Reported. A field may be Reported once a report can name one
 (`devices.yaml` reports name a domain or capability only; `gen_compat.py` refuses a Reported field until then). A record
 promotes it to Verified. A working report of that kind on a Documented item promotes it to Reported too.
 

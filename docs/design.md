@@ -41,7 +41,8 @@ Code and docs use these terms.
   `docs/integrations/<integration>/test-records/<action>*.md`. Clearing `experimental` cites one.
 - **Device report**: a user's "works" or "doesn't work" for an action on a model. In the bundle's `devices.yaml` each
   one names the `item` its call reached (the domain, or the capability for an adapter that lists them). An accepted
-  "works" on an item's call, the call's author's included, makes it Reported; a "doesn't work" is
+  "works" on an item's call counts toward Reported (five from users other than the maintainer move an Experimental
+  item; one, the maintainer's included, keeps a changed call Reported); a "doesn't work" is
   evidence for a fix or for leaving the item out.
 - **Profile**: one test setup on the rig's HA, the entities a run may move by integration and role; a record names the
   one it ran on (`lab`, `house`).
