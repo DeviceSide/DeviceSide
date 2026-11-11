@@ -6,7 +6,8 @@ Intent: Replace the second-tester and Reported rules with the agreed evidence te
 independent reports, every changed adapter is retested before release, and an adapter left untested at the cut ships
 live marked ⚠️ At risk.
 Touches: CLAUDE.md, docs/design.md, CONTRIBUTING.md, .github/ISSUE_TEMPLATE/device_report.yml,
-.github/pull_request_template.md, custom_components/deviceside/core/scope.py, custom_components/deviceside/config_flow.py,
+.github/pull_request_template.md, .github/workflows/cut-release*.yml, README.md, custom_components/deviceside/__init__.py,
+custom_components/deviceside/core/scope.py, tests/test_init.py,
 scripts/check_release.py, scripts/gen_compat.py, docs/integrations/*/test-records/_manual.md, tests/core/**,
 tests/scripts/**, TODO.md
 Depends-on: #370
