@@ -507,7 +507,7 @@ def test_a_documented_class_on_a_reported_sibling_carries_its_reports(root):
     reports = [{**REPORT, "item": "RGB", "worked": ["turn_on_for"], "issue": issue}]
     card = zha_card(adapter("zha", "turn_on_for", scope), reports=reports)
     assert card.lines["works"] == [f"[Plug]({URL}#plug) ([report]({issue}))"]
-    # Same features, different support: two entries, the community one marked.
+    # Same features, different proof: two entries, the reported one linked.
     assert card.lines["should"] == [
         f"[dimmers]({URL}#dimmers): turn on with timer",
         f"[CCT controllers]({URL}#dimmers): turn on with timer ([report]({issue}))",
@@ -527,7 +527,7 @@ def test_the_legend_leads_the_cards_and_no_extension_mark_shows(root):
     assert "🧩" not in text
 
 
-def test_a_class_held_by_actions_of_different_support_never_shares_a_bare_entry_with_a_report(root):
+def test_a_class_held_by_actions_of_different_proof_never_shares_a_bare_entry_with_a_report(root):
     issue = f"{gc.ISSUE_URL}9"
     on_verified = AdapterScope(capabilities=verified("Switch") | documented("Light"), siblings={"Light": "Switch"})
     on_reported = AdapterScope(capabilities=reported("RGB") | documented("Light"), siblings={"Light": "RGB"})
@@ -541,7 +541,7 @@ def test_a_class_held_by_actions_of_different_support_never_shares_a_bare_entry_
     ]
 
 
-def test_a_community_row_shows_the_reports_on_its_items_only():
+def test_a_level_row_shows_the_reports_on_its_items_only():
     issue, other = f"{gc.ISSUE_URL}9", f"{gc.ISSUE_URL}10"
     scope = AdapterScope(
         capabilities=reported("RGB", "CCT") | verified("Switch") | documented("Light"),

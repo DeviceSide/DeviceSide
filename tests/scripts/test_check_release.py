@@ -303,6 +303,43 @@ def test_a_change_beside_the_flag_is_still_a_change(tested, monkeypatch, after):
     ]
 
 
+INFO = 'INTEGRATION = IntegrationInfo(key="fake", title="Fake", max_concurrency=4)\n'
+WITH_MAINTAINERS = INFO.replace('title="Fake", ', 'title="Fake", maintainers=("a",), ')
+
+
+@pytest.mark.parametrize(
+    ("before", "after"),
+    [
+        (INFO, WITH_MAINTAINERS),
+        (WITH_MAINTAINERS, WITH_MAINTAINERS.replace('("a",)', '("a", "b")')),
+        (WITH_MAINTAINERS, INFO.replace("IntegrationInfo(", "IntegrationInfo(\n    ").replace("=4)", "=4,\n)")),
+    ],
+    ids=["added", "another_handle", "dropped_and_reflowed"],
+)
+def test_a_change_to_the_maintainers_alone_leaves_the_record_fresh(tested, monkeypatch, before, after):
+    repo, _ = tested
+    init = f"{PACKAGE}/__init__.py"
+    sha = repo.commit(init, before)
+    write_record(repo, "turn_on_for.md", sha)
+    repo.commit(init, after)
+    assert cr.record_errors(FakeRecordsRegistry(repo, monkeypatch)) == []
+
+
+@pytest.mark.parametrize(
+    "after",
+    [WITH_MAINTAINERS.replace('("a",)', "HANDLES"), WITH_MAINTAINERS.replace('("a",)', '("a", 1)')],
+    ids=["a_name", "a_non_handle"],
+)
+def test_maintainers_that_are_not_a_tuple_of_strings_are_a_change(tested, monkeypatch, after):
+    repo, _ = tested
+    init = f"{PACKAGE}/__init__.py"
+    sha = repo.commit(init, INFO)
+    write_record(repo, "turn_on_for.md", sha)
+    repo.commit(init, after)
+    [error] = cr.record_errors(FakeRecordsRegistry(repo, monkeypatch))
+    assert error.endswith(f"changed since: {init}")
+
+
 def test_code_the_check_cannot_parse_at_the_cited_commit_is_a_change(tested, monkeypatch):
     repo, _ = tested
     sha = repo.commit(ADAPTER, FLAGGED + "def broken(:\n")
@@ -362,7 +399,7 @@ def test_a_read_of_the_flag_is_found(code, line):
 def stray_flags(trees: list[ast.AST], flag: str = "experimental") -> list[int]:
     """Lines passing `<flag>=` to anything but `AdapterScope` or a bare-named helper taking that parameter: the check
     drops the argument as a no-op, so it must never reach outside code."""
-    takers = {"AdapterScope"} | {
+    takers = {"AdapterScope", "IntegrationInfo"} | {
         node.name
         for tree in trees
         for node in ast.walk(tree)
@@ -392,8 +429,10 @@ def test_a_stray_flag_is_found(code, strays):
 
 
 INTEGRATION_CODE = sorted((cr.REPO / "custom_components").rglob("*.py"))
-# The one reader of `unmaintained`: setup's warning, which changes no call.
+# The one reader of `unmaintained`, setup's warning, and of `maintainers`, registration's check: neither changes a call.
 SETUP = cr.REPO / "custom_components" / "deviceside" / "__init__.py"
+REGISTRATION = cr.REPO / "custom_components" / "deviceside" / "core" / "registry.py"
+READERS = {"unmaintained": SETUP, "maintainers": REGISTRATION}
 
 
 @pytest.mark.parametrize("flag", cr.FLAGS)
@@ -403,20 +442,21 @@ def test_the_flags_only_reach_a_scope(flag):
 
 @pytest.mark.parametrize("flag", cr.FLAGS)
 def test_no_call_reads_the_flags(flag):
-    """The records check ignores both flags because no call reads them; a read would make them a change. Setup reads
-    `unmaintained`, to warn, and nothing else does."""
+    """The records check ignores the flags because no call reads them; a read would make them a change. Setup reads
+    `unmaintained`, to warn, registration reads `maintainers`, to check them, and nothing else reads either."""
     reads = [
         f"{path.relative_to(cr.REPO)}:{line}"
         for path in INTEGRATION_CODE
-        if not (flag == "unmaintained" and path == SETUP)
+        if path != READERS.get(flag)
         for line in flag_reads(ast.parse(path.read_text()), flag)
     ]
     assert reads == []
 
 
-def test_setup_reads_unmaintained():
-    """The exemption above stays honest: setup is where the warning lives."""
-    assert flag_reads(ast.parse(SETUP.read_text()), "unmaintained")
+@pytest.mark.parametrize("flag", READERS)
+def test_the_one_reader_reads_its_flag(flag):
+    """The exemptions above stay honest: setup is where the warning lives, registration where the check does."""
+    assert flag_reads(ast.parse(READERS[flag].read_text()), flag)
 
 
 def test_every_record_of_the_adapter_must_be_new(tested, monkeypatch):
