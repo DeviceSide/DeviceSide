@@ -32,7 +32,8 @@ gen_features), `requires` (shown after the card's name), `capabilities` (a `phra
 capability the scopes hold below Verified, for Should work and Help us test), `doesnt_work` (`what`, `reason`,
 `source`, optional `section`: devices that fail the call DeviceSide sends, not what isn't built) and `reports`. A
 report is an accepted device-report issue: `model` (one of a model's ids), `item` (the entity domain or capability,
-Shelly: RPC component, its call reached), `firmware` and `deviceside` (version), both quoted, `worked` and `failed`
+Shelly: RPC component, its call reached), `firmware` and `deviceside` (the tag tested without its `v`, an RC's `rcN`
+included, which check_release counts as a retest of that tag's code), both quoted, `worked` and `failed`
 (action names) and `issue` (URL); what an accepted one promotes is in CLAUDE.md § Release flag. Every integration
 needs a bundle; one without is an error naming the file.
 

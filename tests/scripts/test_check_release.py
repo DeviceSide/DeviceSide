@@ -781,11 +781,11 @@ def test_a_manual_line_out_of_format_or_by_a_non_maintainer_is_an_error(tested, 
     assert cr.main(["--records"], registry) == 1
 
 
-def write_report(repo, version: str, worked: list[str]) -> None:
+def write_report(repo, version: str, worked: list[str], item: str = "light") -> None:
     report = {
         "integration": "fake",
         "model": "LCA001",
-        "item": "light",
+        "item": item,
         "firmware": "1.0",
         "deviceside": version,
         "worked": worked,
@@ -811,6 +811,19 @@ def test_a_report_at_an_unknown_version_or_not_working_is_no_retest(tested, monk
     assert cr.retest_errors(registry) == ([], ["fake / turn_on_for"])
 
 
+@pytest.mark.parametrize(
+    "scope",
+    [UNPROVEN, AdapterScope(domains=reported("light") | experimental("cover"))],
+    ids=["not_held", "experimental"],
+)
+def test_a_report_on_an_item_the_adapter_does_not_ship_is_no_retest(tested, monkeypatch, scope):
+    """Proof follows the call: a report on a cover can't retest a changed light call."""
+    repo, registry, sha = unproven(tested, monkeypatch, scope)
+    repo.git("tag", "v0.2.0rc1", sha)
+    write_report(repo, "0.2.0rc1", ["turn_on_for"], item="cover")
+    assert cr.retest_errors(registry) == ([], ["fake / turn_on_for"])
+
+
 def test_a_fresh_passing_record_is_a_retest(tested, monkeypatch):
     repo, registry, sha = unproven(tested, monkeypatch)
     write_record(repo, "turn_on_for.md", sha, result="fail")
@@ -825,9 +838,12 @@ def test_a_release_needs_an_untested_adapter_marked_stale_tests(tested, monkeypa
     notes = tmp_path / "notes.md"
     assert cr.main(["--records"], registry) == 0
     assert "fake / turn_on_for  untested since its code changed" in capsys.readouterr().out
+    # The RC cut lists it before it is marked, so a report at the RC can retest it, and passes.
+    assert cr.main(["--records", "--notes", str(notes)], registry) == 0
+    assert notes.read_text().endswith("\n- fake / turn_on_for\n")
+    capsys.readouterr()
     assert cr.main(["--release", "--notes", str(notes)], registry) == 1
     assert "fake / turn_on_for changed since its last retest" in capsys.readouterr().err
-    # An RC lists it before it is marked, so a report at the RC can retest it.
     assert notes.read_text().endswith("\n- fake / turn_on_for\n")
 
     registry.adapter.scope = replace(UNPROVEN, stale_tests=REPORT_ISSUE)

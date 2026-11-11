@@ -2,8 +2,9 @@
 """Check the adapters against the release gates: the coverage bar, no experimental adapter in a release, and test
 records that pass and are as new as the code they prove.
 
-The release flag and the levels are defined in CLAUDE.md § Release flag. --release fails on the flag only, not on an
-Experimental item; --records weighs only an adapter's code against its records, as items below Verified have none.
+The release flag and the levels are defined in CLAUDE.md § Release flag. --release fails on the flag, not on an
+Experimental item, and on the Stale tests mark (below); --records weighs an adapter with a Verified call against its
+records, and one without against its retests (below).
 Records live in each integration's bundle (`test_records_dir`).
 
 An adapter's code (`adapter_code`) is its module and what that module and its integration package import, followed
@@ -11,19 +12,21 @@ into `core/`, so a shared helper counts for every adapter that reaches it: its c
 change to it stales those adapters' records. `actions/` and imports made only for type checking are not followed.
 
 Exits 1 on any integration that failed to import, whatever the options; with --coverage, any module of an adapter's
-code, bar `__init__.py`, under 95% line coverage; with --release, any experimental adapter; with --records, any
-released adapter with a Verified call that lacks `<action>.md` or an `<action>-<option>.md` for one of its scope's
-options, a record whose Result is not `pass`, or code changed after the commit one of its records cites. Each record
-holds the latest run of its call or option. Setting or clearing `experimental`, `unmaintained` or `stale_tests`, or
-changing an integration's `maintainers`, is not a change to the code: no call reads them (setup reads `unmaintained`
-and `stale_tests` only to warn, and registration checks `maintainers`).
+code, bar `__init__.py`, under 95% line coverage; with --release, any experimental adapter or a Stale tests mismatch;
+with --records, any `_manual.md` error, or any released adapter with a Verified call that lacks `<action>.md` or an
+`<action>-<option>.md` for one of its scope's options, a record whose Result is not `pass`, or code changed after the
+commit one of its records cites. Each record holds the latest run of its call or option. Setting or clearing
+`experimental`, `unmaintained` or `stale_tests`, or changing an integration's `maintainers`, is not a change to the
+code: no call reads them (setup reads `unmaintained` and `stale_tests` only to warn, and registration checks
+`maintainers`).
 
 **Retests.** An adapter with no Verified call has no rig coverage, so a record can't gate it; it still needs a retest
 as new as its code once it holds a call that ships on (Documented or better; an adapter whose calls are all
 Experimental needs none). A retest is any of: a passing record of the adapter (as above); a line of the integration's
 `test-records/_manual.md` by one of its maintainers; an accepted working report in its devices.yaml whose `deviceside`
-version is a tag (`v<version>`). Each is fresh when the adapter's code is unchanged, bar the flags, between the commit
-it names (a manual line's, the report's tag) and HEAD. An adapter with a Verified call keeps needing its records.
+version is a tag (`v<version>`) and whose `item` the adapter ships (Documented or better). Each is fresh when the
+adapter's code is unchanged, bar the flags, between the commit it names (a manual line's, the report's tag) and HEAD.
+An adapter with a Verified call keeps needing its records.
 
 A `_manual.md` line is a table row: date, commit, tester, devices, what passed.
 
@@ -381,6 +384,7 @@ class Retest:
     source: str  # where it is, for messages: `<file>:<line>` or the report's issue
     commit: str  # a hash, or a version tag
     actions: frozenset[str]
+    item: str | None = None  # a report's item, which the adapter must ship; None for a manual line
 
 
 def manual_retests(integration: str, maintainers: Collection[str]) -> tuple[list[Retest], list[str]]:
@@ -413,7 +417,12 @@ def report_retests(integration: str) -> list[Retest]:
         return []
     reports = (yaml.safe_load(path.read_text()) or {}).get("reports") or []
     return [
-        Retest(str(report.get("issue")), f"v{str(report['deviceside']).removeprefix('v')}", frozenset(worked))
+        Retest(
+            str(report.get("issue")),
+            f"v{str(report['deviceside']).removeprefix('v')}",
+            frozenset(worked),
+            str(report.get("item")),
+        )
         for report in reports
         if isinstance(report, dict) and report.get("deviceside") and (worked := report.get("worked"))
     ]
@@ -430,15 +439,27 @@ def needs_retest(scope) -> bool:
     )
 
 
+def shipping_items(scope) -> set[str]:
+    """The items a report can retest the adapter through: its capabilities when the scope lists them, else its
+    domains, each Documented or better."""
+    held = scope.capabilities if scope.capabilities is not None else scope.domains
+    return {item for item, level in held.items() if level >= Level.DOCUMENTED}
+
+
 def fresh_retest(adapter, retests: list[Retest]) -> str | None:
     """Where a fresh retest of the adapter is: a passing record of it as new as its code, or a manual line or report
-    naming its action at a commit its code is unchanged since. None if it has none."""
+    naming its action (a report, on an item it ships) at a commit its code is unchanged since. None if it has none."""
     code = code_of(adapter)
     for record in records(adapter.integration, adapter.action):
         if result(record) == "pass" and staleness(record, code) is None:
             return str(record.relative_to(REPO))
+    items = shipping_items(adapter.scope)
     for retest in retests:
-        if adapter.action in retest.actions and changed_since(retest.commit, code) is None:
+        if (
+            adapter.action in retest.actions
+            and (retest.item is None or retest.item in items)
+            and changed_since(retest.commit, code) is None
+        ):
             return retest.source
     return None
 
@@ -509,7 +530,7 @@ def main(argv: list[str] | None = None, registry: AdapterRegistry | None = None)
     parser.add_argument(
         "--records",
         action="store_true",
-        help="fail on any released adapter whose test records did not pass or predate its code",
+        help="fail on any released adapter whose test records did not pass or predate its code, or a _manual.md error",
     )
     parser.add_argument("--notes", type=Path, help="write the release notes' call for testers here")
     args = parser.parse_args(argv)
