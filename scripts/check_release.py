@@ -28,7 +28,8 @@ dispatcher's `deviceside_scope` trace (core/wire.py), and each of the scope's op
 
 All four axes, in that order, each a sorted comma-separated list that may be empty. Across the adapter's records,
 every Verified domain, capability and field must appear, and each option both `:on` and `:off` (CLAUDE.md § Release
-flag, "Clearing it"). Uncovered items are listed only once every record the adapter needs is there and has the row.
+flag, "Clearing it"). Uncovered items are listed only once every record the adapter needs is there and every record
+of it has the row.
 
 **Retests.** An adapter with no Verified call has no rig coverage, so a record can't gate it; it still needs a retest
 as new as its code once it holds a call that ships on (Documented or better; an adapter whose calls are all
@@ -400,9 +401,10 @@ def record_errors(registry: AdapterRegistry, shared: SharedIndex | None = None) 
         missing = [file for file in record_names(adapter.action, adapter.scope.options) if file not in have]
         errors += [f"{name}: no test record {folder}/{file}" for file in missing]
         code = code_of(adapter)
+        rows = {record: covers(record.read_text()) for record in found}
         for record in found:
             label = record.relative_to(REPO)
-            if covers(record.read_text()) is None:
+            if rows[record] is None:
                 errors.append(f"{name}: {label} has no readable Covers row")
             if (outcome := result(record)) is None:
                 errors.append(f"{name}: {label} has no readable Result row")
@@ -411,16 +413,16 @@ def record_errors(registry: AdapterRegistry, shared: SharedIndex | None = None) 
             if problem := staleness(record, code, shared):
                 errors.append(f"{name}: {label} {problem}")
         if not missing:
-            errors += [f"{name}: {gap}" for gap in coverage_gaps(adapter.scope, found)]
+            errors += [f"{name}: {gap}" for gap in coverage_gaps(adapter.scope, list(rows.values()))]
     return errors
 
 
-def coverage_gaps(scope, found: list[Path]) -> list[str]:
-    """What the records leave uncovered of the scope's Verified items (`verified_items`), one line per axis; nothing
-    while a record has no readable Covers row, which is already an error."""
+def coverage_gaps(scope, rows: list[dict[str, set[str]] | None]) -> list[str]:
+    """What the records' Covers rows (`covers`) leave uncovered of the scope's Verified items (`verified_items`), one
+    line per axis; nothing while a record has no readable row, which is already an error."""
     covered: dict[str, set[str]] = {axis: set() for axis in COVERS_AXES}
-    for record in found:
-        if (items := covers(record.read_text())) is None:
+    for items in rows:
+        if items is None:
             return []
         for axis, values in items.items():
             covered[axis] |= values
