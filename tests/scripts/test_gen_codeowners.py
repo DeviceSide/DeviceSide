@@ -1,4 +1,4 @@
-"""scripts/gen_codeowners.py: the owner owns everything, then each integration's paths go to its maintainers."""
+"""scripts/gen_codeowners.py: the repo maintainers own everything, then each integration's paths to its maintainers."""
 
 from types import SimpleNamespace
 
@@ -30,7 +30,7 @@ def repo(tmp_path):
     return tmp_path
 
 
-def test_the_owner_comes_first_then_each_integrations_existing_paths_to_its_maintainers(repo):
+def test_the_repo_maintainers_come_first_then_each_integrations_existing_paths_to_its_maintainers(repo):
     text = gco.generate(registry(hue=info("jasonmx"), control4=info("alice", "bob")), repo)
     lines = [line for line in text.splitlines() if line and not line.startswith("#")]
     assert lines == [
@@ -41,6 +41,16 @@ def test_the_owner_comes_first_then_each_integrations_existing_paths_to_its_main
         "/docs/integrations/control4/ @alice @bob @jasonmx",
         # hue has no tests, fixture or doc bundle here: only its package.
         "/custom_components/deviceside/integrations/hue/ @jasonmx",
+    ]
+
+
+def test_every_repo_maintainer_owns_everything_and_each_package_once(repo, monkeypatch):
+    monkeypatch.setattr(gco, "REPO_MAINTAINERS", ("jasonmx", "carol"))
+    text = gco.generate(registry(hue=info("carol", "dave")), repo)
+    lines = [line for line in text.splitlines() if line and not line.startswith("#")]
+    assert lines == [
+        "* @jasonmx @carol",
+        "/custom_components/deviceside/integrations/hue/ @carol @dave @jasonmx",
     ]
 
 

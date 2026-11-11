@@ -26,13 +26,16 @@ Code and docs use these terms.
 - **Maintainer**: a GitHub handle in an integration's `IntegrationInfo.maintainers`. Maintainers look after that
   integration's package: they get its bug reports and approve changes to it. Rules:
   [CLAUDE.md](../CLAUDE.md#maintainers). User wording: [device-compatibility.md](device-compatibility.md#maintainers).
-- **Unmaintained**: an adapter no one is fixing (`AdapterScope.unmaintained`, an issue URL or reason, set at Jason's
-  call). It stays live; setup warns and its card shows ⚠️ Unmaintained.
+- **Repo maintainer**: a handle in `REPO_MAINTAINERS` (`scripts/gen_codeowners.py`), with admin on the repo. Repo
+  maintainers own shared code, merge every PR and make the scope and Unmaintained calls. Distinct from an
+  integration's Maintainer.
+- **Unmaintained**: an adapter no one is fixing (`AdapterScope.unmaintained`, an issue URL or reason, set at the repo
+  maintainers' call). It stays live; setup warns and its card shows ⚠️ Unmaintained.
 - **Experimental features**: the option (`experimental_features`, off by default) that lets calls touching an
   Experimental item through. Only the dispatcher reads it.
 - **Release flag**: `experimental=True` on an adapter's scope keeps the whole adapter in release candidates only. Not
   the Experimental level, which gates an item at runtime. Rules: [CLAUDE.md](../CLAUDE.md#release-flag).
-- **Rig**: Jason's live Home Assistant and devices, and the private tool that runs DeviceSide's actions on
+- **Rig**: a repo maintainer's live Home Assistant and devices, and the private tool that runs DeviceSide's actions on
   them and writes test records. It is kept outside this repo; the records are its output here.
 - **Test record**: the evidence that an adapter works on real hardware, from a rig run:
   `docs/integrations/<integration>/test-records/<action>*.md`. Clearing `experimental` cites one.
