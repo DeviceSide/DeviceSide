@@ -12,7 +12,12 @@ from pytest_homeassistant_custom_component.common import async_mock_service
 
 from custom_components.deviceside.core.runtime import get_runtime
 from custom_components.deviceside.core.transition import BRIGHTNESS, SATURATION
-from custom_components.deviceside.integrations.hue.report_filter import Report, applies_later, classify
+from custom_components.deviceside.integrations.hue.report_filter import (
+    Report,
+    applies_later,
+    classify,
+    real_attributes,
+)
 from custom_components.deviceside.integrations.hue.transition_cache import API_SETTLE_SECONDS, transition_cache
 
 from .conftest import light_event, setup_room
@@ -58,6 +63,25 @@ async def test_classify_a_light_mid_move(hass, bridge, cache, clock, event, repo
     moving_up(cache, clock)
 
     assert classify(cache, bridge.api, event) is report
+
+
+@pytest.mark.parametrize(
+    ("event", "ending"),
+    [
+        pytest.param(light_event("one", on=False), [BRIGHTNESS], id="off_from_elsewhere"),
+        pytest.param(light_event("one", color_temperature={"mirek": 298}), [SATURATION], id="mirek"),
+        pytest.param(
+            light_event("one", brightness=96.44, color={"xy": {"x": 0.4, "y": 0.4}}), [SATURATION], id="xy_and_ours"
+        ),
+        pytest.param(light_event("one", brightness=79.84), [], id="ours"),
+        pytest.param({"id": "1", "type": "grouped_light", "on": {"on": False}}, [], id="grouped_light"),
+    ],
+)
+async def test_a_real_report_ends_only_the_attributes_it_reports(hass, bridge, cache, clock, event, ending):
+    await setup_room(hass, bridge)
+    moving_up(cache, clock)
+
+    assert real_attributes(cache, bridge.api, event) == ending
 
 
 @pytest.mark.parametrize(

@@ -9,6 +9,7 @@ from aiohue.v2.controllers.events import EventType
 from pytest_homeassistant_custom_component.common import async_mock_service
 
 from custom_components.deviceside.core.runtime import get_runtime
+from custom_components.deviceside.core.transition import BRIGHTNESS, SATURATION
 from custom_components.deviceside.integrations.hue.report_filter import _END_PREFIX
 from custom_components.deviceside.integrations.hue.transition_cache import MIN_BRIGHTNESS_STEP, transition_cache
 
@@ -271,15 +272,73 @@ async def test_off_from_elsewhere_mid_fade_shows_at_once_and_drops_the_end(hass,
 
 
 async def test_a_color_change_from_elsewhere_mid_fade_shows_at_once(hass, bridge, clock):
-    # Our brightness writes never report a color temperature, so the light was changed elsewhere.
+    # Our brightness writes never report a color temperature, so the color changed elsewhere; the brightness in the
+    # same event is still the fade's, which a color change doesn't stop.
     await setup_room(hass, bridge)
     await raise_one(hass)
 
     report(bridge, light_event("one", brightness=70.0, color_temperature={"mirek": 300}))
     await settle(hass)
 
-    assert shown(bridge, "one") == (True, 70.0)
+    assert shown(bridge, "one") == (True, 20.0)
     assert bridge.api.lights["one"].color_temperature.mirek == 300
+
+
+async def test_a_color_report_mid_room_fade_keeps_the_brightness_prediction(hass, bridge, clock):
+    # rig-run-2026-11-11-085849: mid-fade a bulb reported a stale brightness, then a color the bridge had reported
+    # wrongly before the fade. The color forgot the whole light and handed HA the stale brightness for good.
+    await setup_room(hass, bridge)
+    start = wall_clock_now()
+    await call(hass, "raise_brightness", {"entity_id": "light.room", "sweep_time": 10})
+    for light_id in ("one", "two"):
+        report(bridge, light_event(light_id, brightness=100.0))  # the bridge's end values, at the start
+    report(bridge, {"id": "1", "type": "grouped_light", "dimming": {"brightness": 100.0}})
+    clock.now += FADE_S - 0.5
+
+    report(bridge, light_event("one", brightness=96.44))  # the bulb, mid-fade
+    report(bridge, light_event("one", color_temperature={"mirek": 298}, color={"xy": {"x": 0.4141, "y": 0.3958}}))
+    await settle(hass)
+    assert shown(bridge, "one") == (True, 20.0)  # the hidden 96.44 not handed back
+    assert bridge.api.lights["one"].color_temperature.mirek == 298
+
+    await advance(hass, start, FADE_S + 0.1)
+    await settle(hass)
+    clock.now += 1.0
+    assert shown(bridge, "one") == shown(bridge, "two") == (True, 100.0)
+    assert room_shown(bridge) == (True, 100.0)
+    response = await call(hass, "get_attributes", {"entity_id": ["light.room", "light.one"]})
+    assert response["light.one"]["brightness"] == response["light.room"]["brightness"] == 100.0
+
+
+async def test_a_brightness_report_mid_saturation_fade_keeps_the_saturation_prediction(hass, bridge, clock):
+    # Every color key is the saturation move's, so only a brightness from elsewhere is real; the xy fade runs on.
+    await setup_room(hass, bridge)
+    cache = transition_cache(hass)
+    await raise_one(hass)  # attaches the filter
+    cache.forget("one", BRIGHTNESS)
+    cache.moving("one", SATURATION, 20.0, 80.0, 10.0)
+    clock.now += 2.0
+
+    report(bridge, light_event("one", brightness=55.0))  # the Hue app
+    await settle(hass)
+
+    assert cache.live("one", SATURATION) is not None
+    assert shown(bridge, "one") == (True, 55.0)
+
+
+async def test_off_from_elsewhere_mid_fade_forgets_only_the_brightness(hass, bridge, clock):
+    await setup_room(hass, bridge)
+    cache = transition_cache(hass)
+    await raise_one(hass)
+    cache.moving("one", SATURATION, 20.0, 80.0, 10.0)
+    clock.now += 2.0
+
+    report(bridge, light_event("one", on=False))  # the Hue app
+    await settle(hass)
+
+    assert cache.live("one", BRIGHTNESS) is None
+    assert cache.live("one", SATURATION) is not None
+    assert not any(key.endswith(f"one:{BRIGHTNESS}") for key in get_runtime(hass).pending)
 
 
 async def test_option_off_shows_what_the_bridge_reports(hass, bridge, clock):
