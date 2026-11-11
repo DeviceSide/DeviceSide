@@ -38,7 +38,6 @@ class MatterTurnOnFor(Adapter[TurnOnForRequest]):
         siblings={"light": "switch"},
         duration=_TIMER_LIMITS,
         fields=verified(),
-        # capabilities=None covers every endpoint that passes the LT feature check.
         confirmable=True,
     )
 

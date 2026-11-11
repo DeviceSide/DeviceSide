@@ -18,6 +18,7 @@ from .registry import AdapterRegistry
 from .resolver import resolve
 from .runtime import DEADLINE, get_runtime
 from .scope import Level
+from .wire import scope_trace, wire_enabled
 from ..const import ADAPTER_BACKSTOP_S, ADAPTER_TIMEOUT_S, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -162,6 +163,8 @@ class Dispatcher:
                 elif not experimental_on and self._experimental(adapter, reduced, target):
                     results += _skip(target.reported_id, target.named, EXPERIMENTAL_OFF, adapter.integration)
                 else:
+                    if wire_enabled():
+                        self._trace_scope(action_key, adapter, reduced, target)
                     by_dropped.setdefault(dropped, []).append(target)
             runs += [(adapter, request.without(dropped), ready, dropped) for dropped, ready in by_dropped.items()]
 
@@ -174,6 +177,18 @@ class Dispatcher:
         the option gates anything; adapters never read it."""
         capability = adapter.capability(self.hass, target)
         return adapter.scope.level(target.domain, capability, request.fields_present()) is Level.EXPERIMENTAL
+
+    def _trace_scope(self, action_key: str, adapter: Adapter, request: Request, target: Target) -> None:
+        """The scope trace of a target about to run: what _experimental weighs, so a record can name what it proved."""
+        scope_trace(
+            self.hass,
+            target.reported_id,
+            action_key,
+            adapter.integration,
+            target.domain,
+            adapter.capability(self.hass, target),
+            request.fields_present(),
+        )
 
     def _expand_native_groups(
         self, adapter: Adapter, bucket: list[Target], results: list[EntityResult]

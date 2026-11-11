@@ -8,6 +8,7 @@ import pytest
 
 from custom_components.deviceside import actions
 from custom_components.deviceside.core.registry import AdapterRegistry
+from custom_components.deviceside.core.scope import verified
 
 from ..conftest import FAKE_INTEGRATIONS
 
@@ -104,6 +105,24 @@ def test_adapter_for_unknown_action_is_refused():
 
     with pytest.raises(ValueError, match="unknown action"):
         AdapterRegistry(actions.discover(), [SimpleNamespace(INTEGRATION=INTEGRATION, ADAPTERS=[Stray])])
+
+
+def test_an_adapter_naming_capabilities_must_list_them_in_its_scope():
+    from types import SimpleNamespace
+
+    from ..fakes.fake_integration import INTEGRATION, FakeTurnOnFor
+
+    class Named(FakeTurnOnFor):
+        def capability(self, hass, target):
+            return "Switch"
+
+    with pytest.raises(ValueError, match="names capabilities but its scope lists none"):
+        AdapterRegistry(actions.discover(), [SimpleNamespace(INTEGRATION=INTEGRATION, ADAPTERS=[Named])])
+
+    class Listed(Named):
+        scope = replace(FakeTurnOnFor.scope, capabilities=verified("Switch"))
+
+    AdapterRegistry(actions.discover(), [SimpleNamespace(INTEGRATION=INTEGRATION, ADAPTERS=[Listed])])
 
 
 @pytest.mark.parametrize(

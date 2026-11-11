@@ -75,7 +75,8 @@ class AdapterScope:
     # Fields the adapter takes though the light's state says it can't (a design gap between the upstream integration
     # and HA): never dropped as lacked on a light. Each must be in `fields`, whose level gates it like any field's.
     unlisted: frozenset[str] = frozenset()
-    # Device-side capabilities (Shelly: RPC component names); None covers all it can address, as Verified.
+    # Device-side capabilities (Shelly: RPC component names); None for an adapter with no capability axis, whose
+    # capability() names none (the registry refuses one that does).
     # A record proves only the capability the call reaches, so a sibling's untested one is out of scope unless
     # Documented.
     capabilities: Mapping[str, Level] | None = None
