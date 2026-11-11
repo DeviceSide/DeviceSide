@@ -1,6 +1,6 @@
 # Shelly color transitions: upstream research (2026-11-08)
 
-Companion to [shelly-dimming-research.md](shelly-dimming-research.md), which covers brightness and whose findings
+Companion to [shelly-dimming-research.md](2026-11-08-dimming.md), which covers brightness and whose findings
 are not repeated. Question: what does upstream know about hue and saturation transitions (fades, stoppable moves)
 on Shelly Gen2+ color lights?
 

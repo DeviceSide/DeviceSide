@@ -422,7 +422,7 @@ Each record holds one or more of these keys: `brightness` (%), `color_temp_kelvi
 
 ## Usability patches
 
-* **Color lights on Zigbee2MQTT:** Home Assistant ignores Z2M's color updates for full-color bulbs in hue-saturation (HS) mode. DeviceSide fixes this by [announcing both XY and HS color modes](docs/integrations.md#what-deviceside-changes-in-zigbee2mqtt).
+* **Color lights on Zigbee2MQTT:** Home Assistant ignores Z2M's color updates for full-color bulbs in hue-saturation (HS) mode. DeviceSide fixes this by [announcing both XY and HS color modes](docs/integrations/zigbee2mqtt/index.md#what-deviceside-changes-in-zigbee2mqtt).
 
 * **Hue integration:** Hue Bridges report 0% or 100% brightness when a transition starts, and only snap back to the light's actual brightness ~10 s later. That's jarring in HA for a transition you plan to stop. DeviceSide reports the light's actual brightness at the start of a transition, and its new brightness when the transition stops.
 

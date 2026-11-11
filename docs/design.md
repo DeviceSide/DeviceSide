@@ -1,7 +1,9 @@
 # Design
 
-How DeviceSide is built and why. What each integration does for users is in [integrations.md](integrations.md); what
-goes on the wire, and what was measured on real devices, is in [integration-internals.md](integration-internals.md).
+How DeviceSide is built and why. What each integration does for users is in its bundle's `index.md`, under
+`docs/integrations/<integration>/`, with what they share in [integrations.md](integrations.md); what goes on the wire,
+and what was measured on real devices, is in the bundle's `internals.md`, with what they share in
+[internals.md](internals.md).
 
 ## Glossary
 
@@ -19,13 +21,10 @@ Code and docs use these terms.
 - **Entity domain**: light, switch. "Domain" alone is fine where unambiguous.
 - **Scope**: the entity domains, capabilities and fields an adapter is built for, each at a Level. Outside it, calls
   are refused as not yet tested.
-- **Level**: how well a scope item is proven: Verified, Reported, Documented or Experimental. A call's level is the
-  weakest among the items it touches (`AdapterScope.level`); a Documented item names its sibling in
-  `AdapterScope.siblings`. Rules: [CLAUDE.md](../CLAUDE.md#release-flag). User wording:
-  [device-compatibility.md](device-compatibility.md#levels-of-proof).
-- **Support**: who fixes a bug in a call (maintainer, community, or nobody while Experimental), from the proof behind
-  each item it touches (`AdapterScope.support`, `proof()`). Per item, not per adapter:
-  [device-compatibility.md](device-compatibility.md#support).
+- **Level**: how well a scope item is proven (Verified, Reported, Documented or Experimental): rules in
+  [CLAUDE.md](../CLAUDE.md#release-flag).
+- **Support**: who fixes a bug in a call, from the proof behind each item it touches: rules in
+  [CLAUDE.md](../CLAUDE.md#release-flag).
 - **Experimental features**: the option (`experimental_features`, off by default) that lets calls touching an
   Experimental item through. Only the dispatcher reads it.
 - **Release flag**: `experimental=True` on an adapter's scope keeps the whole adapter in release candidates only. Not
@@ -33,10 +32,10 @@ Code and docs use these terms.
 - **Rig**: the maintainer's live Home Assistant and devices, and the private tool that runs DeviceSide's actions on
   them and writes test records. It is kept outside this repo; the records are its output here.
 - **Test record**: the evidence that an adapter works on real hardware, from a rig run:
-  `docs/test-records/<integration>/<action>*.md`. Clearing `experimental` cites one.
-- **Device report**: a user's "works" or "doesn't work" for an action on a model. In `docs/devices.yaml` each one names
-  the `item` its call reached (the domain, or the capability for an adapter that lists them). An accepted "works" on
-  an item's call makes it Reported; a "doesn't work" is evidence for a fix or for leaving the item out.
+  `docs/integrations/<integration>/records/<action>*.md`. Clearing `experimental` cites one.
+- **Device report**: a user's "works" or "doesn't work" for an action on a model. In the bundle's `devices.yaml` each
+  one names the `item` its call reached (the domain, or the capability for an adapter that lists them). An accepted
+  "works" on an item's call makes it Reported; a "doesn't work" is evidence for a fix or for leaving the item out.
 - **Profile**: one test setup on the rig's HA, the entities a run may move by integration and role; a record names the
   one it ran on (`lab`, `house`).
 
@@ -73,8 +72,9 @@ built:
 ## Scope
 
 Integrations: Zigbee2MQTT (via `mqtt`), ZHA, Matter, Shelly Gen2+ and Hue (CLIP v2). Each adapter's `AdapterScope`
-says what it covers, and `scripts/check_release.py` lists every adapter. Per integration:
-[integrations.md](integrations.md). What can't be built where, and why: `NO_PATH` in `scripts/gen_features.py`, the
+says what it covers, and `scripts/check_release.py` lists every adapter. Each integration's docs, data and records
+are its bundle, `docs/integrations/<integration>/`, which [CLAUDE.md](../CLAUDE.md#where-facts-go) lays out. What
+can't be built where, and why: `NO_PATH` in `scripts/gen_features.py`, the
 README's prohibited signs, explained to users in
 [integrations.md](integrations.md#what-cant-be-done-and-why).
 

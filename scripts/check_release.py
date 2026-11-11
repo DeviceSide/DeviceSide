@@ -38,7 +38,7 @@ from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: 
 from custom_components.deviceside.core.scope import Level  # noqa: E402
 
 COVERAGE_BAR = 95.0
-RECORDS = REPO / "docs" / "test-records"
+BUNDLES = REPO / "docs" / "integrations"
 CITED_COMMIT = re.compile(r"^\| Source \|.*\bcommit `([0-9a-f]{7,40})`", re.MULTILINE)
 RESULT = re.compile(r"^\| Result \| (\S+) \|", re.MULTILINE)
 
@@ -130,10 +130,15 @@ def code_of(adapter) -> list[str]:
     return [str(path.relative_to(REPO)) for path in adapter_code(Path(inspect.getsourcefile(type(adapter))))]
 
 
+def record_dir(integration: str) -> Path:
+    """Where the integration's test records live: `docs/integrations/<integration>/records/`. The rig writes there."""
+    return BUNDLES / integration / "records"
+
+
 def records(integration: str, action: str) -> list[Path]:
     """The adapter's test records: `<action>.md`, and `<action>-<option>.md` for a run with an option set."""
     pattern = re.compile(rf"{re.escape(action)}(-[^.]+)?\.md")
-    return sorted(path for path in (RECORDS / integration).glob("*.md") if pattern.fullmatch(path.name))
+    return sorted(path for path in record_dir(integration).glob("*.md") if pattern.fullmatch(path.name))
 
 
 def record_names(action: str, options: Collection[str] = ()) -> list[str]:
@@ -205,7 +210,7 @@ def record_errors(registry: AdapterRegistry) -> list[str]:
             continue
         found = records(adapter.integration, adapter.action)
         have = {record.name for record in found}
-        folder = (RECORDS / adapter.integration).relative_to(REPO)
+        folder = record_dir(adapter.integration).relative_to(REPO)
         errors += [
             f"{name}: no test record {folder}/{file}"
             for file in record_names(adapter.action, adapter.scope.options)

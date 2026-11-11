@@ -46,7 +46,7 @@ def report(**over):
 
 
 def record(root, integration, name, *, result="pass", device="Hue lamp (`LTA009`), firmware `1.2.3`"):
-    path = root / "docs" / "test-records" / integration / f"{name}.md"
+    path = root / "docs" / "integrations" / integration / "records" / f"{name}.md"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(f"# t\n\n| | |\n|---|---|\n| Result | {result} |\n| Device | {device} |\n")
     return path
@@ -77,7 +77,7 @@ def data(registry=None, **changes):
 @pytest.fixture
 def root(tmp_path, monkeypatch):
     monkeypatch.setattr(gc, "REPO", tmp_path)
-    monkeypatch.setattr(cr, "RECORDS", tmp_path / "docs" / "test-records")
+    monkeypatch.setattr(cr, "BUNDLES", tmp_path / "docs" / "integrations")
     # Freshness needs git history and an adapter's source: every record is fresh unless a test says otherwise.
     monkeypatch.setattr(gc, "code_of", lambda adapter: [])
     monkeypatch.setattr(gc, "staleness", lambda record, code: None)

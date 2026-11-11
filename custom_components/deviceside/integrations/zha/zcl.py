@@ -51,7 +51,7 @@ SIGNIFY = 0x100B
 _HUE_ON_BRIGHTNESS_FADE = 0x0013
 
 # Models that don't store a MoveToLevel while off: the Sengled E11-G13 jumps CurrentLevel to 255 with or without the
-# override and comes on at full (docs/integration-internals.md, ZHA tested behavior).
+# override and comes on at full (docs/integrations/zha/internals.md#tested-behavior).
 DROPS_WHILE_OFF = frozenset({"E11-G13"})
 
 

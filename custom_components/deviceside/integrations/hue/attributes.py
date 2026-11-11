@@ -2,7 +2,7 @@
 
 A report key names one value in a light's or grouped_light's event ("on", "brightness"). A write of an attribute makes
 the bridge report the keys that attribute owns, and only those: a brightness move reports on and brightness, never a
-color temperature (Tested behavior in docs/integration-internals.md). A bulb can still report a color mid-fade,
+color temperature (docs/integrations/hue/internals.md#tested-behavior). A bulb can still report a color mid-fade,
 correcting the bridge's earlier report; report_filter takes it as real, ending only the color's prediction.
 """
 
