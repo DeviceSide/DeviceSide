@@ -31,8 +31,12 @@ Depends-on: #374
 - **Changed lines.** `git diff -U0 <stale commit> HEAD` of the module, HEAD side. Each changed line maps to the
   innermost statement (or `except`/`case` clause) around it, which is covered when any line of its header (first
   decorator through the line before its body; a simple statement's whole span) is executed. A line with no code
-  (comment, blank) or inside a docstring needs nothing. A deletion-only hunk needs the nearest code line on each side
-  covered.
+  (comment, blank) or inside a docstring needs nothing. A hunk that removes code (none added, or more removed than
+  added) also needs the nearest code line on each side covered.
+- **Import-time lines (Jason, 2026-11-11, after audit 1): never cleared.** A changed line in a module's or class's own
+  statements stales every adapter that reaches it. A changed decorator or `def` signature needs the function's first
+  non-docstring statement executed (the call). A lambda's or generator expression's body is its own clause, needing
+  its body's lines bar the one it starts on; one that needs no line can't be cleared.
 - **Coverer.** Any record with Result `pass` of an adapter not flagged experimental and with a Verified call, whose
   cited commit holds the module byte-identical to HEAD (so its line numbers apply). The rest of its adapter's code may
   have moved on.

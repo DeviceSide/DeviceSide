@@ -936,6 +936,14 @@ def checked(repo, monkeypatch, **scopes) -> list[str]:
         # A deletion needs the code on each side of it run.
         (PICK.replace("    if value:\n        return 1\n", ""), "1-4", False),
         (PICK.replace("    if value:\n        return 1\n", ""), "4-5", True),
+        # Commenting out code needs the code around it run.
+        (PICK.replace("    return 2", "    # return 2"), "1-5", False),
+        (PICK.replace("    return 2", "    # return 2"), "1-6", True),
+        # A signature runs at import: it needs the call.
+        (PICK.replace("pick(value)", "pick(value=1)"), "1-4", False),
+        (PICK.replace("pick(value)", "pick(value=1)"), "1-5", True),
+        # A module's own statement runs at import in every run, so no coverage clears it.
+        (PICK + "LIMIT = 2\n", "1-9", False),
     ],
 )
 def test_a_core_change_another_integrations_run_covered_is_proven(shared, monkeypatch, after, executed, cleared):
@@ -1030,35 +1038,95 @@ def test_shared_coverage_reads_the_section_alone(shared, monkeypatch):
     }
 
 
+def body(*lines: str) -> str:
+    """A function `f` whose body is the lines."""
+    return "def f(v):\n" + "".join(f"    {line}\n" for line in lines)
+
+
 @pytest.mark.parametrize(
     ("before", "after", "headers"),
     [
-        # An except clause is its own clause; a decorated def's header runs from its decorator.
+        # An except clause is its own clause.
         (
-            "try:\n    x = 1\nexcept ValueError:\n    x = 2\n",
-            "try:\n    x = 1\nexcept KeyError:\n    x = 2\n",
+            body("try:", "    x = 1", "except ValueError:", "    x = 2"),
+            body("try:", "    x = 1", "except KeyError:", "    x = 2"),
+            [range(4, 5)],
+        ),
+        (
+            body("match v:", "    case 1:", "        x = 1"),
+            body("match v:", "    case 2:", "        x = 1"),
             [range(3, 4)],
         ),
-        ("@a\ndef f(\n    y,\n):\n    return y\n", "@b\ndef f(\n    y,\n):\n    return y\n", [range(1, 5)]),
+        (body("x = 1"), body("x = 1  # one"), [range(2, 3)]),
+        (body("x = 1", "# one"), body("x = 1", "# two"), []),
+        # A function's decorators and signature run at import: they need its first statement, the call.
         (
-            "match v:\n    case 1:\n        x = 1\n",
-            "match v:\n    case 2:\n        x = 1\n",
-            [range(2, 3)],
+            '@a\ndef f(\n    y,\n):\n    """Doc."""\n    return y\n',
+            '@b\ndef f(\n    y=1,\n):\n    """Doc."""\n    return y\n',
+            [range(6, 7)],
         ),
-        ("x = 1\n", "x = 1  # one\n", [range(1, 2)]),
-        ("x = 1\n# one\n", "x = 1\n# two\n", []),
+        # Code replaced by a comment, or by less code, needs the code on each side of it.
+        (body("a()", "b()", "c()"), body("a()", "# b()", "c()"), [range(2, 3), range(4, 5)]),
+        (
+            body("if v:", "    a()", "    b()", "d()"),
+            body("if v:", "    a2()", "d()"),
+            [range(2, 3), range(3, 4), range(4, 5)],
+        ),
+        # A lambda's or generator expression's body runs when called, bar the line it starts on.
+        (
+            body("return sorted(", "    v,", "    key=lambda x: (", "        x.a", "    ),", ")"),
+            body("return sorted(", "    v,", "    key=lambda x: (", "        x.b", "    ),", ")"),
+            [range(5, 6)],
+        ),
+        (
+            body("return any(", "    x.a", "    for x in v", ")"),
+            body("return any(", "    x.b", "    for x in v", ")"),
+            [range(3, 4)],
+        ),
     ],
 )
 def test_the_clauses_a_change_touches(repo, monkeypatch, before, after, headers):
     monkeypatch.setattr(cr, "REPO", repo.path)
     sha = repo.commit(MODELS, before)
-    repo.commit(MODELS, after)
-    assert cr.needed_headers(sha, MODELS) == headers
+    head = repo.commit(MODELS, after)
+    assert cr.needed_headers(sha, head, MODELS) == headers
+
+
+@pytest.mark.parametrize(
+    ("before", "after"),
+    [
+        # A module's or class's own statements run at import, in every run.
+        ("X = 1\n", "X = 2\n"),
+        ("X = 1\n", "X = 1  # one\n"),
+        ("class C:\n    x = 1\n", "class C:\n    x = 2\n"),
+        ("try:\n    x = 1\nexcept ValueError:\n    x = 2\n", "try:\n    x = 1\nexcept KeyError:\n    x = 2\n"),
+        ("X = 1\nY = 2\n", "X = 1\n"),
+        # A lambda whose body is on the line it starts on can't show it was called.
+        (body("return sorted(v, key=lambda x: x.a)"), body("return sorted(v, key=lambda x: x.b)")),
+        # A function with only a docstring has no statement to show the call.
+        ('def f():\n    """A."""\n', 'def f(v):\n    """A."""\n'),
+    ],
+)
+def test_a_change_no_line_can_show_exercised_is_never_cleared(repo, monkeypatch, before, after):
+    monkeypatch.setattr(cr, "REPO", repo.path)
+    sha = repo.commit(MODELS, before)
+    head = repo.commit(MODELS, after)
+    assert cr.needed_headers(sha, head, MODELS) is None
+
+
+def test_a_second_shared_coverage_section_is_an_error(shared, monkeypatch):
+    repo, sha = shared
+    path = "docs/integrations/other/test-records/turn_on_for.md"
+    covering_record(repo, sha, ["| `core/models.py` | 1-7 |"])
+    text = (repo.path / path).read_text() + "\n## Shared coverage\n\n| `core/models.py` | 1 |\n"
+    repo.commit(path, text)
+    _, errors = cr.shared_coverage(SharedRegistry(repo, monkeypatch))
+    assert errors == [f"{path}:{text.count(chr(10)) - 2}: a second `## Shared coverage` section"]
 
 
 def test_a_module_head_cannot_parse_is_never_cleared(repo, monkeypatch):
     monkeypatch.setattr(cr, "REPO", repo.path)
     sha = repo.commit(MODELS, "x = 1\n")
     head = repo.commit(MODELS, "x = (\n")
-    assert cr.needed_headers(sha, MODELS) is None
+    assert cr.needed_headers(sha, head, MODELS) is None
     assert not cr.shared_clears(sha, MODELS, {MODELS: [cr.SharedCoverage("r", head, frozenset({1}))]})

@@ -41,9 +41,11 @@ each covering that integration's adapter for the action. Prose and headings arou
 **Shared code.** A change to a `core/` module counts against no adapter's records or retests once one run proved it:
 a record that passed, of a released adapter with a Verified call (any integration's), whose cited commit holds the
 module as HEAD does, and whose run executed a line of each clause the change touches (`needed_headers`: a statement,
-`except` or `case` clause, from its first decorator to the line before its body; a comment, blank line or docstring
-needs none, and a deletion needs the code on each side of it). The rest of that run's adapter may have changed since.
-A change inside an integration's package is never cleared this way. The rig writes the run's coverage into the record,
+`except` or `case` clause, from its first decorator to the line before its body; a function's decorators and signature
+need its first statement, a lambda's body its body; a comment, blank line or docstring needs none, and removed code
+needs the code on each side of it). The rest of that run's adapter may have changed since. A change to a module's or
+class's own statements (a constant, a class attribute, an import), which every run executes at import, and a change
+inside an integration's package are never cleared this way. The rig writes the run's coverage into the record,
 the modules relative to the component and the lines as coverage.py's executed lines:
 
     ## Shared coverage
@@ -52,7 +54,8 @@ the modules relative to the component and the lines as coverage.py's executed li
     |---|---|
     | `core/dispatcher.py` | 12-40, 55 |
 
-Other `|` lines in that section are errors under --records; the section ends at the next `## ` heading.
+In a record that can prove shared code, other `|` lines in that section, or a second section, are errors under
+--records; the section ends at the next `## ` heading.
 
 **Stale tests.** --records lists each adapter that needs a retest and has none fresh. --release fails on one unless
 its scope sets `stale_tests` (it then ships live, marked ⚠️ Stale tests), and on a `stale_tests` adapter that has a
@@ -65,6 +68,7 @@ Usage: scripts/check_release.py [--coverage coverage.json] [--release] [--record
 
 import argparse
 import ast
+import functools
 import inspect
 import io
 import json
@@ -103,7 +107,7 @@ SHARED_HEADING = re.compile(r"^## Shared coverage[ \t]*$", re.MULTILINE)
 SHARED_HEADER = ("| Module | Executed lines |", "|---|---|")
 LINE_RANGES = r"\d+(?:-\d+)?(?:, \d+(?:-\d+)?)*"
 SHARED_ROW = re.compile(rf"\| `(core/[\w/]+\.py)` \| ({LINE_RANGES}) \|")
-HUNK = re.compile(r"^@@ -\S+ \+(\d+)(?:,(\d+))? @@", re.MULTILINE)
+HUNK = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@", re.MULTILINE)
 
 
 def adapters(registry: AdapterRegistry) -> list[tuple[str, object]]:
@@ -425,14 +429,16 @@ def parse_ranges(text: str) -> frozenset[int]:
 
 def shared_rows(record: Path, commit: str) -> tuple[list[tuple[str, SharedCoverage]], list[str]]:
     """The record's `## Shared coverage` rows, each as its module's path and coverage, and the errors in the section:
-    a `|` line that is neither the header nor a row of the format, or a range that runs backwards. A row in error
-    covers nothing. A record without the section has none."""
+    a `|` line that is neither the header nor a row of the format, a range that runs backwards, or a second section.
+    A row in error covers nothing. A record without the section has none."""
     text = record.read_text()
     if not (heading := SHARED_HEADING.search(text)):
         return [], []
     label = record.relative_to(REPO)
     start = text.count("\n", 0, heading.end()) + 2
     rows, errors = [], []
+    for again in list(SHARED_HEADING.finditer(text))[1:]:
+        errors.append(f"{label}:{text.count(chr(10), 0, again.start()) + 1}: a second `## Shared coverage` section")
     for number, line in enumerate(text[heading.end() :].splitlines()[1:], start):
         line = line.strip()
         if line.startswith("## "):
@@ -468,10 +474,8 @@ def shared_coverage(registry) -> tuple[SharedIndex, list[str]]:
     return index, errors
 
 
-def blob(commit: str, path: str) -> str | None:
-    """The path's blob at the commit, or None where it has none."""
-    found = git("rev-parse", "--verify", "--quiet", f"{commit}:{path}")
-    return None if found.returncode else found.stdout.strip()
+def is_docstring(node: ast.stmt) -> bool:
+    return isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant) and isinstance(node.value.value, str)
 
 
 def docstring_lines(tree: ast.Module) -> set[int]:
@@ -479,12 +483,7 @@ def docstring_lines(tree: ast.Module) -> set[int]:
     lines: set[int] = set()
     for node in ast.walk(tree):
         if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)) and node.body:
-            first = node.body[0]
-            if (
-                isinstance(first, ast.Expr)
-                and isinstance(first.value, ast.Constant)
-                and isinstance(first.value.value, str)
-            ):
+            if is_docstring(first := node.body[0]):
                 lines.update(range(first.lineno, first.end_lineno + 1))
     return lines
 
@@ -500,67 +499,123 @@ def code_lines(text: str) -> set[int]:
     return lines
 
 
+def header(node: ast.stmt | ast.excepthandler | ast.match_case) -> range:
+    """The lines of a clause one of which coverage.py marks executed when it runs: a compound clause's from its first
+    decorator to the line before its body, a simple statement's whole span."""
+    line = node.pattern.lineno if isinstance(node, ast.match_case) else node.lineno
+    first = min([line, *(decorator.lineno for decorator in getattr(node, "decorator_list", []))])
+    body = getattr(node, "body", None)
+    return range(first, (max(line, body[0].lineno - 1) if body else node.end_lineno) + 1)
+
+
 def clauses(tree: ast.Module) -> list[tuple[range, range]]:
-    """Each statement, `except` and `case` clause: its span (from its first decorator) and its header, the lines one of
-    which coverage.py marks executed when it runs. A compound clause's header runs to the line before its body; a
-    simple statement's is its span."""
+    """Each clause, as its span and the lines one of which a run must execute to show the clause's change exercised.
+
+    A statement, `except` or `case` clause needs its header (`header`); a function's own header (decorators and
+    signature) is executed at import, so it needs its first statement bar a docstring, the call. A lambda's or
+    generator expression's body runs only when called, so it is a clause of its own, needing its body's lines bar the
+    line it starts on, which the enclosing statement executes. A clause needing no line can't be cleared."""
     found = []
     for node in ast.walk(tree):
-        if isinstance(node, ast.match_case):
-            line, last = node.pattern.lineno, node.body[-1].end_lineno
-        elif isinstance(node, ast.stmt | ast.excepthandler):
-            line, last = node.lineno, node.end_lineno
-        else:
+        if isinstance(node, ast.Lambda | ast.GeneratorExp):
+            inner = node.body if isinstance(node, ast.Lambda) else node.elt
+            body = range(max(inner.lineno, node.lineno + 1), inner.end_lineno + 1)
+            found.append((range(node.lineno, node.end_lineno + 1), body))
             continue
-        first = min([line, *(decorator.lineno for decorator in getattr(node, "decorator_list", []))])
-        body = getattr(node, "body", None)
-        head_end = max(line, body[0].lineno - 1) if body else last
-        found.append((range(first, last + 1), range(first, head_end + 1)))
+        if not isinstance(node, ast.stmt | ast.excepthandler | ast.match_case):
+            continue
+        head = header(node)
+        last = node.body[-1].end_lineno if isinstance(node, ast.match_case) else node.end_lineno
+        span = range(head.start, last + 1)
+        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+            calls = [statement for statement in node.body if not is_docstring(statement)]
+            head = header(calls[0]) if calls else range(0)
+        found.append((span, head))
     return found
 
 
-def needed_headers(commit: str, path: str) -> list[range] | None:
-    """The headers of the clauses the module's change from the commit to HEAD touches, each needing one executed
-    line: the innermost clause around each changed code line, a comment, blank line or docstring needing none, and
-    for a hunk that only deletes, the clauses around the nearest code line on each side. None if HEAD's module can't
-    be parsed, as its change then can't be cleared."""
-    if (diff := git("diff", "-U0", commit, "HEAD", "--", path)).returncode:
+def deferred_lines(tree: ast.Module) -> set[int]:
+    """The lines that run only when called: each function's, from its first decorator, and each lambda's and
+    generator expression's. The rest, a module's or class's own statements, runs at import."""
+    lines: set[int] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+            lines.update(range(header(node).start, node.end_lineno + 1))
+        elif isinstance(node, ast.Lambda | ast.GeneratorExp):
+            lines.update(range(node.lineno, node.end_lineno + 1))
+    return lines
+
+
+@functools.cache
+def needed_headers(commit: str, head: str, path: str) -> list[range] | None:
+    """The lines the module's change from the commit to the head (both full hashes, for the cache) needs a run to
+    execute, one of each range: those of the innermost clause (`clauses`) around each changed code line, a comment,
+    blank line or docstring needing none; for a hunk that removes more code than it adds, those of the nearest code
+    line on each side too. None if the change can't be cleared: the head's module can't be parsed, or the change
+    touches a module's or class's own statements (`deferred_lines`), which every run that imports the module
+    executes."""
+    if (diff := git("diff", "-U0", commit, head, "--", path)).returncode:
         raise SystemExit(f"git diff {commit} HEAD failed: {diff.stderr.strip()}")
-    text = git("show", f"HEAD:{path}").stdout
+    text = git("show", f"{head}:{path}").stdout
     try:
         tree = ast.parse(text)
         code = code_lines(text) - docstring_lines(tree)
     except SyntaxError, tokenize.TokenError:
         return None
+    old = git("show", f"{commit}:{path}").stdout
+    try:
+        old_code = code_lines(old) - docstring_lines(ast.parse(old))
+    except SyntaxError, tokenize.TokenError:
+        old_code = set(range(1, old.count("\n") + 2))
     lines: set[int] = set()
     for hunk in HUNK.finditer(diff.stdout):
-        start, count = int(hunk[1]), int(hunk[2] if hunk[2] is not None else 1)
-        if count:
-            lines.update(line for line in range(start, start + count) if line in code)
-            continue
-        before = [line for line in code if line <= start]
-        after = [line for line in code if line > start]
-        lines.update([max(before)] if before else [])
-        lines.update([min(after)] if after else [])
+        old_start, old_count = int(hunk[1]), int(hunk[2] if hunk[2] is not None else 1)
+        start, count = int(hunk[3]), int(hunk[4] if hunk[4] is not None else 1)
+        added = {line for line in range(start, start + count) if line in code}
+        lines |= added
+        removed = len(old_code.intersection(range(old_start, old_start + old_count)))
+        if removed > len(added):
+            # With no new lines, git numbers the hunk by the line before the deletion.
+            last = start + count - 1 if count else start
+            before = [line for line in code if line < start or (not count and line == start)]
+            after = [line for line in code if line > last]
+            lines.update([max(before)] if before else [])
+            lines.update([min(after)] if after else [])
+    if lines - deferred_lines(tree):
+        return None
     spans = clauses(tree)
     headers = []
     for line in sorted(lines):
-        around = [(span, head) for span, head in spans if line in span]
-        if not around:
+        # The innermost: the shortest span, and of equal ones the deepest, which `ast.walk` yields last.
+        around = [(span, head) for span, head in reversed(spans) if line in span]
+        if not around or not (needed := min(around, key=lambda clause: len(clause[0]))[1]):
             return None
-        headers.append(min(around, key=lambda clause: len(clause[0]))[1])
-    return headers
+        headers.append(needed)
+    return list(dict.fromkeys(headers))
+
+
+@functools.cache
+def blob(commit: str, path: str) -> str | None:
+    """The path's blob at the commit (a full hash, for the cache), or None where it has none."""
+    found = git("rev-parse", "--verify", "--quiet", f"{commit}:{path}")
+    return None if found.returncode else found.stdout.strip()
+
+
+def resolve(commit: str) -> str:
+    return git("rev-parse", "--verify", "--quiet", f"{commit}^{{commit}}").stdout.strip()
 
 
 def shared_clears(commit: str, path: str, shared: SharedIndex) -> bool:
     """Whether the change to a `core/` module since the commit is proven for every adapter that reaches it: a run that
     can prove shared code (`shared_coverage`) covered the module at a commit where it is the same as at HEAD, and
-    executed a line of each clause the change touches (`needed_headers`)."""
+    executed a line of each range the change needs (`needed_headers`)."""
     if not path.startswith(CORE_DIR) or not (runs := shared.get(path)):
         return False
-    head = blob("HEAD", path)
-    matching = [run for run in runs if head is not None and blob(run.commit, path) == head]
-    if not matching or (headers := needed_headers(commit, path)) is None:
+    head = resolve("HEAD")
+    if (now := blob(head, path)) is None:
+        return False
+    matching = [run for run in runs if (cited := resolve(run.commit)) and blob(cited, path) == now]
+    if not matching or (headers := needed_headers(resolve(commit), head, path)) is None:
         return False
     return any(all(run.executed.intersection(header) for header in headers) for run in matching)
 
