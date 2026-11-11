@@ -1,4 +1,15 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["github>DeviceSide/.github//renovate/default"]
+  "extends": ["github>DeviceSide/.github//renovate/default"],
+  "homeassistant-manifest": {
+    "enabled": true,
+    "managerFilePatterns": ["/^custom_components/deviceside/manifest\\.json$/"]
+  },
+  "packageRules": [
+    {
+      "description": "Python follows Home Assistant's minimum: hold below 3.15 until HA moves, then raise this with requires-python, ruff's target-version and pyupgrade's --pyXY-plus in one PR.",
+      "matchDepNames": ["python"],
+      "allowedVersions": "<3.15"
+    }
+  ]
 }

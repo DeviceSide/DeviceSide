@@ -743,7 +743,12 @@ def stale_tests_errors(registry, untested: Collection[str]) -> list[str]:
         if name in untested and not adapter.scope.stale_tests:
             errors.append(f"{name} changed since its last retest; retest it, or set stale_tests to ship it marked")
         elif name not in untested and adapter.scope.stale_tests:
-            why = "has a fresh retest" if needs_retest(adapter.scope) else "needs none (records gate a Verified call)"
+            if needs_retest(adapter.scope):
+                why = "has a fresh retest"
+            elif proven(adapter.scope):
+                why = "needs none (records gate a Verified call)"
+            else:
+                why = "needs none (no call ships on)"
             errors.append(f"{name} sets stale_tests but {why}; clear stale_tests")
     return errors
 

@@ -48,7 +48,7 @@ Get cheap ground truth before reading code:
 ## 4. Verify before you report
 
 Reviewer reports are model output, not facts. They overstate severity, miss mitigations and miscount. Before writing:
-- **Re-read the code for every Critical and High, and every Medium you'll recommend.** Use targeted `sed -n` / `rg -n`, not whole files. Drop anything that doesn't hold; correct line numbers that drifted.
+- **Re-read the code for every Critical and High, and any Medium on a high-frequency path.** Use targeted `sed -n` / `rg -n`, not whole files. Drop anything that doesn't hold; correct line numbers that drifted.
 - **Calibrate severity against context.** A data-driven XSS behind authenticated access with pipeline-built URLs is Medium, not High. A latent crash on a default parameter that no caller uses is Medium. A breach of the repo's binding rule is High even when it looks small.
 - **Prefer your own numbers** (test counts, timings, line counts) over a reviewer's.
 - Merge duplicates across reviewers, and fold related findings into one when they share a fix.
@@ -75,7 +75,7 @@ Use these six sections, in this order. Lead with a two-or-three-sentence verdict
 ## 6. Prioritised action plan
 ```
 
-Section 6 is a table ranked by severity, then impact per unit of effort: `# | Severity | Item | Effort | Impact/effort`. Then, for **every Critical and High**, give:
+Section 6 is a table ranked by severity, then impact per unit of effort: `# | Severity | Item | Effort | Impact/effort`. Then, for **every Critical and High, and any Medium on a high-frequency path**, give:
 - the exact `file:line` and function
 - why it matters (the risk or the debt) in one or two sentences
 - a minimal, concrete fix snippet in the repo's own idiom, short enough to apply as-is
