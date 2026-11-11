@@ -15,7 +15,7 @@ pass: its author can't reopen a pull request someone else closed. Nothing else i
 
 The pr-gate workflow runs this from the base branch on `pull_request_target`; it never checks out or runs PR code.
 
-Usage: scripts/pr_gate.py --pr N [--repo owner/name] [--sender login] [--manual] [--dry-run]
+Usage: scripts/pr_gate.py --pr N [--repo owner/name] [--manual] [--dry-run]
 """
 
 import argparse
@@ -29,7 +29,8 @@ from fnmatch import fnmatchcase
 
 MAINTAINERS = frozenset({"OWNER", "MEMBER", "COLLABORATOR"})
 WRITE = frozenset({"admin", "maintain", "write"})
-GATE = "github-actions[bot]"  # the account GITHUB_TOKEN acts as, so the one a gate close shows
+# The account GITHUB_TOKEN acts as, so the one a gate close shows; no other workflow here closes pull requests.
+GATE = "github-actions[bot]"
 # Markdown that binds behavior, scope or the release rules: a change to it is gated like code.
 BINDING = (
     "CLAUDE.md",
@@ -51,8 +52,9 @@ Thanks for the pull request! DeviceSide accepts outside pull requests only for a
 that each new device or integration is agreed before anyone spends time building it.
 
 To propose one, [open a proposal]({url}/issues/new?template={form}) and say you'd like to build it. Once the issue is \
-assigned to you, reference it in this pull request's description (`Closes #N` or `Part of #N`) and the pull request \
-reopens automatically. [CONTRIBUTING.md]({url}/blob/main/CONTRIBUTING.md) has the details.
+assigned to you, edit this pull request's description to reference it (`Closes #N` or `Part of #N`) and the pull \
+request reopens automatically. An edit is what re-runs the check, so make one after the \
+assignment. [CONTRIBUTING.md]({url}/blob/main/CONTRIBUTING.md) has the details.
 """
 
 
@@ -147,14 +149,21 @@ def fetch(repo: str, number: int) -> PullRequest:
     )
 
 
+def gone(err: subprocess.CalledProcessError) -> bool:
+    """The call failed because what it asked for doesn't exist; any other failure (rate limit, outage) is raised."""
+    return any(f"HTTP {code}" in (err.stderr or "") for code in (404, 410))
+
+
 def fetch_issues(repo: str, numbers: list[int]) -> dict[int, Issue]:
     """Each number that exists, as an issue or a pull request; a missing one is left out."""
     issues = {}
     for number in numbers[:MAX_REFS]:
         try:
             issue = json.loads(gh("api", f"repos/{repo}/issues/{number}"))
-        except subprocess.CalledProcessError:
-            continue
+        except subprocess.CalledProcessError as err:
+            if gone(err):
+                continue
+            raise
         issues[number] = Issue("pull_request" in issue, frozenset(a["login"] for a in issue.get("assignees") or []))
     return issues
 
@@ -162,26 +171,34 @@ def fetch_issues(repo: str, numbers: list[int]) -> dict[int, Issue]:
 def has_write(repo: str, login: str) -> bool:
     try:
         return json.loads(gh("api", f"repos/{repo}/collaborators/{login}/permission"))["permission"] in WRITE
-    except subprocess.CalledProcessError, KeyError, ValueError:
-        return False
+    except subprocess.CalledProcessError as err:
+        if gone(err):  # not a collaborator
+            return False
+        raise
 
 
-def closed_by_gate(repo: str, number: int) -> bool:
-    """The pull request's latest close was the gate's."""
-    events = [
-        e
-        for page in json.loads(gh("api", "--paginate", "--slurp", f"repos/{repo}/issues/{number}/events"))
-        for e in page
-    ]
-    closes = [e for e in events if e.get("event") == "closed"]
-    return bool(closes) and (closes[-1].get("actor") or {}).get("login") == GATE
+def fetch_events(repo: str, number: int) -> list[dict]:
+    pages = json.loads(gh("api", "--paginate", "--slurp", f"repos/{repo}/issues/{number}/events"))
+    return [event for page in pages for event in page]
+
+
+def latest_actor(events: list[dict], kind: str) -> str | None:
+    """Who did the latest event of this kind, or None if there is none."""
+    found = [event for event in events if event.get("event") == kind]
+    return (found[-1].get("actor") or {}).get("login") if found else None
+
+
+def reopened_by_maintainer(repo: str, pr: PullRequest, events: list[dict]) -> bool:
+    """The latest reopen was by someone with write access other than the author or the gate: an override that holds
+    through later edits."""
+    actor = latest_actor(events, "reopened")
+    return actor not in (None, pr.author, GATE) and has_write(repo, actor)
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.strip().splitlines()[0])
     parser.add_argument("--pr", type=int, required=True)
     parser.add_argument("--repo", default=os.environ.get("GITHUB_REPOSITORY"))
-    parser.add_argument("--sender", help="who triggered a reopen; a maintainer's reopen is an override")
     parser.add_argument("--manual", action="store_true", help="a dispatched run: gates pull requests up to HELD too")
     parser.add_argument("--dry-run", action="store_true", help="print the verdict only")
     args = parser.parse_args(argv)
@@ -192,7 +209,8 @@ def main(argv: list[str] | None = None) -> int:
     if pr.state == "merged":
         print(f"#{pr.number}: merged, nothing to do")
         return 0
-    override = bool(args.sender) and args.sender != pr.author and has_write(args.repo, args.sender)
+    events = fetch_events(args.repo, pr.number)
+    override = reopened_by_maintainer(args.repo, pr, events)
     verdict = decide(pr, fetch_issues(args.repo, referenced(pr.body, pr.closing, args.repo)), override, args.manual)
     print(f"#{pr.number} by {pr.author}: {verdict.outcome} ({verdict.reason})")
     if args.dry_run:
@@ -203,7 +221,7 @@ def main(argv: list[str] | None = None) -> int:
         gh("pr", "comment", str(pr.number), "--repo", args.repo, "--body", COMMENT.format(url=url, form=FORM))
         gh("pr", "close", str(pr.number), "--repo", args.repo)
         print(f"#{pr.number}: commented and closed")
-    elif verdict.outcome == "pass" and pr.state == "closed" and closed_by_gate(args.repo, pr.number):
+    elif verdict.outcome == "pass" and pr.state == "closed" and latest_actor(events, "closed") == GATE:
         gh("pr", "reopen", str(pr.number), "--repo", args.repo)
         print(f"#{pr.number}: reopened")
     return 0

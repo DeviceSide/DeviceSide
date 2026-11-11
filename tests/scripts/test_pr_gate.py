@@ -93,8 +93,9 @@ def test_referenced(body, closing, expected):
 class FakeGh:
     """Answers `gh` calls from a table keyed on their arguments, and records the writes."""
 
-    def __init__(self, pull, files, closing=(), issues=None, events=(), permission=None):
+    def __init__(self, pull, files, closing=(), issues=None, events=(), permission=None, failing=()):
         self.writes = []
+        self.failing = set(failing)  # keys that fail as an outage would, not as a missing resource
         self.reads = {
             f"api repos/{REPO}/pulls/400": pull,
             f"api --paginate --slurp repos/{REPO}/pulls/400/files": [files],
@@ -121,8 +122,10 @@ class FakeGh:
             self.writes.append(args)
             return ""
         key = "graphql" if args[:2] == ("api", "graphql") else " ".join(args)
+        if key in self.failing:
+            raise subprocess.CalledProcessError(1, ["gh", *args], stderr="gh: Server Error (HTTP 502)")
         if key not in self.reads:
-            raise subprocess.CalledProcessError(1, ["gh", *args])
+            raise subprocess.CalledProcessError(1, ["gh", *args], stderr="gh: Not Found (HTTP 404)")
         return json.dumps(self.reads[key])
 
 
@@ -153,6 +156,7 @@ def test_unassigned_pr_is_commented_and_closed(run):
     body = comment[-1]
     assert f"https://github.com/{REPO}/issues/new?template=propose_device_or_integration.yml" in body
     assert "reopens automatically" in body
+    assert "edit this pull request's description" in body
     assert "—" not in body  # public text: no em-dashes
     assert close == ("pr", "close", "400", "--repo", REPO)
 
@@ -203,19 +207,43 @@ def test_a_pr_the_gate_closed_reopens_once_it_passes(run, closer, reopens):
     assert fake.writes == ([("pr", "reopen", "400", "--repo", REPO)] if reopens else [])
 
 
+GATE_CLOSE = {"event": "closed", "actor": {"login": "github-actions[bot]"}}
+
+
 @pytest.mark.parametrize(
-    ("sender", "permission", "closes"),
+    ("reopener", "permission", "closes"),
     [
         ("owner", ("owner", "admin"), False),
         ("owner", ("owner", "read"), True),
-        ("eve", None, True),
-        ("alice", None, True),
+        ("eve", None, True),  # not a collaborator: a 404
+        ("alice", None, True),  # the author
+        ("github-actions[bot]", None, True),
     ],
 )
-def test_a_maintainer_reopen_is_an_override(run, sender, permission, closes):
-    fake = FakeGh(pull(), CODE, permission=permission)
-    run(fake, "--sender", sender)
+def test_a_maintainer_reopen_is_an_override_that_holds_through_edits(run, reopener, permission, closes):
+    """Each run, an edit's included, weighs the latest reopen, not who sent the event."""
+    events = [GATE_CLOSE, {"event": "reopened", "actor": {"login": reopener}}, {"event": "renamed"}]
+    fake = FakeGh(pull(), CODE, events=events, permission=permission)
+    run(fake)
     assert bool(fake.writes) == closes
+
+
+@pytest.mark.parametrize(
+    ("failing", "extra"),
+    [
+        (f"api repos/{REPO}/issues/7", {}),
+        (
+            f"api repos/{REPO}/collaborators/owner/permission",
+            {"events": [{"event": "reopened", "actor": {"login": "owner"}}]},
+        ),
+    ],
+)
+def test_an_outage_fails_the_run_instead_of_closing(monkeypatch, failing, extra):
+    fake = FakeGh(pull("Part of #7"), CODE, failing=[failing], **extra)
+    monkeypatch.setattr(pr_gate, "gh", fake)
+    with pytest.raises(subprocess.CalledProcessError):
+        pr_gate.main(["--pr", "400", "--repo", REPO])
+    assert fake.writes == []
 
 
 def test_issue_lookups_are_capped(run, monkeypatch):
