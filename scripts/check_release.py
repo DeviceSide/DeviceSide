@@ -6,13 +6,17 @@ The release flag and the levels are defined in CLAUDE.md § Release flag. --rele
 Experimental item; --records weighs only an adapter's code against its records, as items below Verified have none.
 Records live in each integration's bundle (`record_dir`).
 
+An adapter's code (`adapter_code`) is its module and what that module and its integration package import, followed
+into `core/`, so a shared helper counts for every adapter that reaches it: its coverage is held to the bar and a
+change to it stales those adapters' records. `actions/` and imports made only for type checking are not followed.
+
 Exits 1 on any integration that failed to import, whatever the options; with --coverage, any module of an adapter's
-code (`adapter_code`, bar `__init__.py`) under 95% line coverage; with --release, any experimental adapter; with
---records, any released adapter with a Verified call that lacks `<action>.md` or an `<action>-<option>.md` for one
-of its scope's options, a record whose Result is not `pass`, or code changed after the commit one of its records
-cites. Each record holds the latest run of its call or option. Setting or
-clearing `experimental` or `unmaintained`, or changing an integration's `maintainers`, is not a change to the code: no
-call reads them (setup reads `unmaintained` only to warn, and registration checks `maintainers`).
+code, bar `__init__.py`, under 95% line coverage; with --release, any experimental adapter; with --records, any
+released adapter with a Verified call that lacks `<action>.md` or an `<action>-<option>.md` for one of its scope's
+options, a record whose Result is not `pass`, or code changed after the commit one of its records cites. Each record
+holds the latest run of its call or option. Setting or clearing `experimental` or `unmaintained`, or changing an
+integration's `maintainers`, is not a change to the code: no call reads them (setup reads `unmaintained` only to warn,
+and registration checks `maintainers`).
 
 Usage: scripts/check_release.py [--coverage coverage.json] [--release] [--records]
 """
@@ -27,7 +31,7 @@ import re
 import subprocess
 import sys
 import tokenize
-from collections.abc import Collection
+from collections.abc import Collection, Iterator
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
@@ -74,16 +78,65 @@ def coverage_errors(registry: AdapterRegistry, coverage: dict) -> list[str]:
     return errors
 
 
-def relative_imports(path: Path) -> list[tuple[str, list[str]]]:
-    """Each `from .x import a, b` in the module, as `("x", ["a", "b"])`, and each `from . import x` as `("x", [])`."""
+def type_checking(node: ast.AST) -> bool:
+    """`if TYPE_CHECKING:` or `if typing.TYPE_CHECKING:`, whose body never runs."""
+    return isinstance(node, ast.If) and (
+        (isinstance(node.test, ast.Name) and node.test.id == "TYPE_CHECKING")
+        or (isinstance(node.test, ast.Attribute) and node.test.attr == "TYPE_CHECKING")
+    )
+
+
+def run_time_nodes(tree: ast.AST) -> Iterator[ast.AST]:
+    """`ast.walk`, bar the body of each `if TYPE_CHECKING:` block."""
+    todo = [tree]
+    while todo:
+        node = todo.pop()
+        yield node
+        if type_checking(node):
+            todo += [node.test, *node.orelse]
+        else:
+            todo += ast.iter_child_nodes(node)
+
+
+def relative_imports(path: Path) -> list[tuple[ast.ImportFrom, Path]]:
+    """Each relative import the module runs, function bodies included and `if TYPE_CHECKING:` blocks left out, with
+    the path its `from` part names, resolved by its level against the module's package: `from ...core.x import a` in
+    `integrations/hue/fade.py` names `<deviceside>/core/x`, without a suffix, as it may be a module or a package."""
     imports = []
-    for node in ast.walk(ast.parse(path.read_text(), str(path))):
-        if isinstance(node, ast.ImportFrom) and node.level == 1:
-            if node.module:
-                imports.append((node.module.partition(".")[0], [alias.name for alias in node.names]))
-            else:
-                imports += [(alias.name, []) for alias in node.names]
+    for node in run_time_nodes(ast.parse(path.read_text(), str(path))):
+        if isinstance(node, ast.ImportFrom) and node.level:
+            base = path.parents[node.level - 1]
+            imports.append((node, base.joinpath(*node.module.split(".")) if node.module else base))
     return imports
+
+
+def imported_modules(importer: Path, node: ast.ImportFrom, target: Path, roots: Collection[Path]) -> list[Path]:
+    """The modules an import runs, if it lands in one of the roots: the module it names, or, for a package, each
+    submodule it imports, with the `__init__.py` of every package on the way down from the root. An import landing
+    outside the roots runs no code the check follows. Raises ValueError on one inside a root that names no module, as
+    that would drop code from the check unseen."""
+    if not (root := next((root for root in roots if target.is_relative_to(root)), None)):
+        return []
+    dots = "." * node.level + (node.module or "")
+    if target.with_suffix(".py").is_file():
+        found = [target.with_suffix(".py")]
+    elif target.is_dir():
+        found = []
+        for alias in node.names:
+            if not (module := target / f"{alias.name}.py").is_file():
+                raise ValueError(
+                    f"{importer}: can't resolve `from {dots}{'.' if node.module else ''}{alias.name}`"
+                    f" to a module of {target}"
+                )
+            found.append(module)
+    else:
+        raise ValueError(f"{importer}: can't resolve `from {dots}` to a module of {root}")
+    package = found[0].parent
+    while package.is_relative_to(root):
+        if (init := package / "__init__.py").is_file():
+            found.append(init)
+        package = package.parent
+    return found
 
 
 def adapter_names(init: Path) -> set[str]:
@@ -95,32 +148,32 @@ def adapter_names(init: Path) -> set[str]:
 
 
 def adapter_code(module: Path) -> list[Path]:
-    """The adapter's module, its integration package's `__init__.py`, and every module of that package either imports,
-    directly or through another: the code behind the call it sends, the group expansion and call resolver included.
-    The sibling adapter modules `__init__.py` imports for `ADAPTERS` are left out, unless the adapter's own code
-    reaches them. `core/` and `actions/` are left out. Raises ValueError on a relative import that names no module of
-    the package, which would otherwise drop code from the check unseen."""
+    """The adapter's module, its integration package's `__init__.py`, and every module of that package or of `core/`
+    either imports, directly or through another: the code behind the call it sends, the group expansion, call resolver
+    and shared helpers included. The sibling adapter modules `__init__.py` imports for `ADAPTERS` are left out, unless
+    the adapter's own code reaches them. `actions/` (the action surface, not the call), other integrations and the
+    rest of the component are left out. Raises ValueError on a relative import into the package or `core/` that names
+    no module, which would otherwise drop code from the check unseen."""
     package = module.parent
+    roots = (package, package.parents[1] / "core")
     init = package / "__init__.py"
     adapters = adapter_names(init)
 
-    def modules(importer: Path, names: list[str]) -> list[Path]:
-        paths = [package / f"{name}.py" for name in names]
-        for name, path in zip(names, paths, strict=True):
-            if not path.is_file():
-                raise ValueError(f"{importer}: can't resolve `from .{name}` to a module of {package}")
-        return paths
+    def modules(importer: Path, skip: set[str] | frozenset[str] = frozenset()) -> list[Path]:
+        return [
+            path
+            for node, target in relative_imports(importer)
+            if skip.isdisjoint(alias.name for alias in node.names)
+            for path in imported_modules(importer, node, target, roots)
+        ]
 
     found: set[Path] = {init}
-    todo = [
-        module,
-        *modules(init, [name for name, names in relative_imports(init) if not adapters.intersection(names)]),
-    ]
+    todo = [module, *modules(init, adapters)]
     while todo:
         if (path := todo.pop()) in found:
             continue
         found.add(path)
-        todo += modules(path, [name for name, _ in relative_imports(path)])
+        todo += modules(path)
     return sorted(found)
 
 
