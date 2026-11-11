@@ -11,9 +11,9 @@ on 4 Nov 2026. v0.1.0 is next: everything lands on `main`, and release candidate
 adapter passing its tests, no soak. An RC also needs a rig run since each released adapter's last code change
 (`check_release.py --records`).
 
-**Order.** Adapter code freezes before the final rig runs: a change under `integrations/` stales the records it
-touches, and `core/` and `actions/` change behavior without tripping the check. From the freeze until the RC tag, only
-flag-only, docs, `scripts/` and rig step-file changes land. The items below run in this order.
+**Order.** Adapter code freezes before the final rig runs: a change under `integrations/` or `core/` stales the records
+of the adapters that reach it (#358), and `actions/` changes behavior without tripping the check. From the freeze until
+the RC tag, only flag-only, docs, `scripts/` and rig step-file changes land. The items below run in this order.
 
 ## To go
 
