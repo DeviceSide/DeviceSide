@@ -33,9 +33,9 @@ Code and docs use these terms.
   maintainers' call). It stays live; setup warns and its card shows ⚠️ Unmaintained.
 - **Retest**: evidence, as new as an adapter's code, that the changed adapter still works: a test record, a
   `_manual.md` line or an accepted device report. Rules: [CLAUDE.md](../CLAUDE.md#release-flag).
-- **At risk**: an adapter that ships changed since its last retest (`AdapterScope.at_risk`, an issue URL or reason,
-  set by hand). It stays live; setup warns, its card shows ⚠️ At risk and the release notes ask for testers. A fresh
-  retest clears it. Rules: [CLAUDE.md](../CLAUDE.md#maintainers).
+- **Stale tests**: an adapter that ships changed since its last retest (`AdapterScope.stale_tests`, an issue URL or
+  reason, set by hand). It stays live; setup warns, its card shows ⚠️ Stale tests and the release notes ask for
+  testers. A fresh retest clears it. Rules: [CLAUDE.md](../CLAUDE.md#maintainers).
 - **Experimental features**: the option (`experimental_features`, off by default) that lets calls touching an
   Experimental item through. Only the dispatcher reads it.
 - **Release flag**: `experimental=True` on an adapter's scope keeps the whole adapter in release candidates only. Not
@@ -194,6 +194,8 @@ Each gate's rules are in the header of the script or workflow named.
 - **Coverage:** `scripts/check_release.py --coverage`, in CI.
 - **Release flag:** `check_release.py --release`, in `cut-release`.
 - **Record freshness:** `check_release.py --records`, in both cut workflows.
+- **Retests and Stale tests:** `check_release.py --records` lists adapters with no fresh retest, and `--notes` asks
+  for testers in both cut workflows; `--release` in `cut-release` fails on one not marked `stale_tests`.
 - **Adapter code:** both gates weigh an adapter's code (`adapter_code` in `check_release.py`): its module and what it
   and its integration package import, followed into `core/`, so a shared helper is held to the coverage bar and a
   change to it stales the records of every adapter that reaches it. `actions/` is not followed.

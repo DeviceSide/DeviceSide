@@ -361,9 +361,9 @@ ramp = ramp_scope(BRIGHTNESS, experimental=False)
         FLAGGED.replace("experimental=True", "experimental=False").replace(", experimental=False)", ")"),
         FLAGGED.replace("experimental=True, ", 'unmaintained="https://github.com/o/r/issues/1", '),
         FLAGGED.replace("experimental=True, ", "unmaintained=None, "),
-        FLAGGED.replace("experimental=True, ", 'at_risk="https://github.com/o/r/issues/2", '),
+        FLAGGED.replace("experimental=True, ", 'stale_tests="https://github.com/o/r/issues/2", '),
     ],
-    ids=["dropped", "reflowed", "set_and_dropped", "unmaintained_set", "unmaintained_none", "at_risk_set"],
+    ids=["dropped", "reflowed", "set_and_dropped", "unmaintained_set", "unmaintained_none", "stale_tests_set"],
 )
 def test_a_change_to_the_flags_alone_leaves_the_record_fresh(tested, monkeypatch, after):
     repo, _ = tested
@@ -521,13 +521,13 @@ def test_a_stray_flag_is_found(code, strays):
 
 
 INTEGRATION_CODE = sorted((cr.REPO / "custom_components").rglob("*.py"))
-# The one function reading `unmaintained` and `at_risk`, setup's warning, and `maintainers`, registration's check:
+# The one function reading `unmaintained` and `stale_tests`, setup's warning, and `maintainers`, registration's check:
 # neither changes a call.
 SETUP = cr.REPO / "custom_components" / "deviceside" / "__init__.py"
 REGISTRATION = cr.REPO / "custom_components" / "deviceside" / "core" / "registry.py"
 READERS = {
     "unmaintained": (SETUP, "warn_marked"),
-    "at_risk": (SETUP, "warn_marked"),
+    "stale_tests": (SETUP, "warn_marked"),
     "maintainers": (REGISTRATION, "check_maintainers"),
 }
 
@@ -548,7 +548,8 @@ def test_the_flags_only_reach_a_scope(flag):
 @pytest.mark.parametrize("flag", cr.FLAGS)
 def test_no_call_reads_the_flags(flag):
     """The records check ignores the flags because no call reads them; a read would make them a change. Setup reads
-    `unmaintained` and `at_risk`, to warn, registration reads `maintainers`, to check them, and nothing else reads them.
+    `unmaintained` and `stale_tests`, to warn, registration reads `maintainers`, to check them, and nothing else reads
+    them.
     """
     reads = [
         f"{path.relative_to(cr.REPO)}:{line}"
@@ -706,7 +707,7 @@ def test_every_rig_record_in_the_repo_cites_a_commit_the_check_can_read():
     assert [path.name for path in found if cr.result(path) is None] == []
 
 
-# Retests and At risk: an adapter with no Verified call.
+# Retests and Stale tests: an adapter with no Verified call.
 
 UNPROVEN = AdapterScope(domains=reported("light"))
 MANUAL = "docs/integrations/fake/test-records/_manual.md"
@@ -818,7 +819,7 @@ def test_a_fresh_passing_record_is_a_retest(tested, monkeypatch):
     assert cr.retest_errors(registry) == ([], [])
 
 
-def test_a_release_needs_an_untested_adapter_marked_at_risk(tested, monkeypatch, capsys, tmp_path):
+def test_a_release_needs_an_untested_adapter_marked_stale_tests(tested, monkeypatch, capsys, tmp_path):
     monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
     repo, registry, sha = unproven(tested, monkeypatch)
     notes = tmp_path / "notes.md"
@@ -826,19 +827,20 @@ def test_a_release_needs_an_untested_adapter_marked_at_risk(tested, monkeypatch,
     assert "fake / turn_on_for  untested since its code changed" in capsys.readouterr().out
     assert cr.main(["--release", "--notes", str(notes)], registry) == 1
     assert "fake / turn_on_for changed since its last retest" in capsys.readouterr().err
-    assert notes.read_text() == ""
+    # An RC lists it before it is marked, so a report at the RC can retest it.
+    assert notes.read_text().endswith("\n- fake / turn_on_for\n")
 
-    registry.adapter.scope = replace(UNPROVEN, at_risk=REPORT_ISSUE)
+    registry.adapter.scope = replace(UNPROVEN, stale_tests=REPORT_ISSUE)
     assert cr.main(["--release", "--notes", str(notes)], registry) == 0
-    assert "fake / turn_on_for  at risk" in capsys.readouterr().out
-    assert notes.read_text().startswith("## ⚠️ At risk\n")
+    assert "fake / turn_on_for  stale tests" in capsys.readouterr().out
+    assert notes.read_text().startswith("## ⚠️ Stale tests\n")
     assert f"]({cr.DEVICE_REPORT})" in notes.read_text()
     assert notes.read_text().endswith("\n- fake / turn_on_for\n")
 
     # A retest clears the mark, so the release asks for it gone.
     repo.commit(MANUAL, manual(manual_row(sha)))
     assert cr.main(["--release"], registry) == 1
-    assert "fake / turn_on_for is at_risk but needs no retest or has a fresh one" in capsys.readouterr().err
+    assert "fake / turn_on_for sets stale_tests but has a fresh retest" in capsys.readouterr().err
 
 
 def test_every_manual_line_in_the_repo_is_in_format():

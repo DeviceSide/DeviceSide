@@ -14,9 +14,9 @@ Exits 1 on any integration that failed to import, whatever the options; with --c
 code, bar `__init__.py`, under 95% line coverage; with --release, any experimental adapter; with --records, any
 released adapter with a Verified call that lacks `<action>.md` or an `<action>-<option>.md` for one of its scope's
 options, a record whose Result is not `pass`, or code changed after the commit one of its records cites. Each record
-holds the latest run of its call or option. Setting or clearing `experimental`, `unmaintained` or `at_risk`, or
+holds the latest run of its call or option. Setting or clearing `experimental`, `unmaintained` or `stale_tests`, or
 changing an integration's `maintainers`, is not a change to the code: no call reads them (setup reads `unmaintained`
-and `at_risk` only to warn, and registration checks `maintainers`).
+and `stale_tests` only to warn, and registration checks `maintainers`).
 
 **Retests.** An adapter with no Verified call has no rig coverage, so a record can't gate it; it still needs a retest
 as new as its code once it holds a call that ships on (Documented or better; an adapter whose calls are all
@@ -35,10 +35,11 @@ Devices are model ids (docs/models.yaml), never a household's device names; Pass
 each covering that integration's adapter for the action. Prose and headings around the table are ignored; any other
 `|` line is an error under --records, as is a tester who is not one of the integration's maintainers.
 
-**At risk.** --records lists each adapter that needs a retest and has none fresh. --release fails on one unless its
-scope sets `at_risk` (it then ships live, marked ⚠️ At risk), and on an `at_risk` adapter that has a fresh retest, as
-that retest clears the mark. --notes writes the release notes' call for testers: the at-risk adapters, with a link to
-the device report form; empty when there are none.
+**Stale tests.** --records lists each adapter that needs a retest and has none fresh. --release fails on one unless
+its scope sets `stale_tests` (it then ships live, marked ⚠️ Stale tests), and on a `stale_tests` adapter that has a
+fresh retest or needs none, as that retest clears the mark. --notes writes the release notes' call for testers: each
+adapter --records lists, marked or not (an RC lists them before they are), with a link to the device report form;
+empty when there are none.
 
 Usage: scripts/check_release.py [--coverage coverage.json] [--release] [--records] [--notes notes.md]
 """
@@ -263,13 +264,13 @@ def git(*args: str) -> subprocess.CompletedProcess:
 FLAGS = {
     "experimental": (bool,),
     "unmaintained": (str, type(None)),
-    "at_risk": (str, type(None)),
+    "stale_tests": (str, type(None)),
     "maintainers": (tuple,),
 }
 
 
 def is_flag(keyword: ast.keyword) -> bool:
-    """`experimental=True` or `=False`, `unmaintained` or `at_risk` `="<reason>"` or `=None`,
+    """`experimental=True` or `=False`, `unmaintained` or `stale_tests` `="<reason>"` or `=None`,
     `maintainers=("<handle>", ...)`, or a parameter of the flag's name passed straight on."""
     if keyword.arg not in FLAGS:
         return False
@@ -458,38 +459,40 @@ def retest_errors(registry) -> tuple[list[str], list[str]]:
     return errors, untested
 
 
-def at_risk_errors(registry, untested: Collection[str]) -> list[str]:
-    """For a release: an adapter needing a retest with none fresh must be marked `at_risk`, and one with a fresh retest
-    (or none needed) must not be."""
+def stale_tests_errors(registry, untested: Collection[str]) -> list[str]:
+    """For a release: an adapter needing a retest with none fresh must be marked `stale_tests`, and one with a fresh
+    retest (or none needed) must not be."""
     errors = []
     for name, adapter in adapters(registry):
-        if name in untested and not adapter.scope.at_risk:
-            errors.append(f"{name} changed since its last retest; retest it, or set at_risk to ship it marked")
-        elif name not in untested and adapter.scope.at_risk:
-            errors.append(f"{name} is at_risk but needs no retest or has a fresh one; clear at_risk")
+        if name in untested and not adapter.scope.stale_tests:
+            errors.append(f"{name} changed since its last retest; retest it, or set stale_tests to ship it marked")
+        elif name not in untested and adapter.scope.stale_tests:
+            why = "has a fresh retest" if needs_retest(adapter.scope) else "needs none (records gate a Verified call)"
+            errors.append(f"{name} sets stale_tests but {why}; clear stale_tests")
     return errors
 
 
 def release_notes(registry, untested: Collection[str]) -> str:
-    """The release notes' call for testers: each adapter shipping marked at risk, and the report form."""
-    names = [name for name, adapter in adapters(registry) if name in untested and adapter.scope.at_risk]
+    """The release notes' call for testers: each adapter shipping without a fresh retest, and the report form. At a
+    release each is marked `stale_tests`; an RC lists them before they are, so a report at its tag can retest them."""
+    names = [name for name, _ in adapters(registry) if name in untested]
     if not names:
         return ""
     return (
-        "## ⚠️ At risk\n\nThese changed since anyone last tested them on a device. They ship live; if you use one,"
+        "## ⚠️ Stale tests\n\nThese changed since anyone last tested them on a device. They ship live; if you use one,"
         f" please [report whether it works]({DEVICE_REPORT}).\n\n" + "".join(f"- {name}\n" for name in names)
     )
 
 
 def retest_checks(args: argparse.Namespace, registry) -> tuple[list[str], list[str]]:
-    """The records (with --records) and At risk (with --release) errors, and the untested adapters, writing the release
-    notes with --notes. Nothing is checked without one of the three."""
+    """The records (with --records) and Stale tests (with --release) errors, and the untested adapters, writing the
+    release notes with --notes. Nothing is checked without one of the three."""
     if not (args.records or args.release or args.notes):
         return [], []
     manual_errors, untested = retest_errors(registry)
     errors = record_errors(registry) + manual_errors if args.records else []
     if args.release:
-        errors += at_risk_errors(registry, untested)
+        errors += stale_tests_errors(registry, untested)
     if args.notes:
         args.notes.write_text(release_notes(registry, untested))
     return errors, untested
@@ -501,7 +504,7 @@ def main(argv: list[str] | None = None, registry: AdapterRegistry | None = None)
     parser.add_argument(
         "--release",
         action="store_true",
-        help="fail on any experimental adapter, or an untested one not marked at_risk",
+        help="fail on any experimental adapter, or an untested one not marked stale_tests",
     )
     parser.add_argument(
         "--records",
@@ -531,7 +534,7 @@ def main(argv: list[str] | None = None, registry: AdapterRegistry | None = None)
     def status(name: str, adapter) -> str:
         marks = ["experimental"] if adapter.scope.experimental else []
         if name in untested:
-            marks.append("at risk" if adapter.scope.at_risk else "untested since its code changed")
+            marks.append("stale tests" if adapter.scope.stale_tests else "untested since its code changed")
         return ", ".join(marks)
 
     width = max((len(name) for name, _ in found), default=0)

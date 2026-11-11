@@ -4,7 +4,8 @@ name: Cut release candidate
 # soaking RC or a release needs a fix without what main has gained since (cut that branch from its tag). Requires a
 # version above the latest release, manifest.json at X.Y.Z, green CI on the head, docs/audits/<rc>.md covering every
 # commit since the previous RC, and every released adapter's test records passing and citing a commit with the head's
-# adapter code (check_release --records).
+# adapter code (check_release --records). The same check lists adapters with no fresh retest, and the RC's notes ask
+# for testers for them (--notes).
 # Tags pushed with GITHUB_TOKEN start no other workflow, so anything an RC needs runs here.
 #
 # Two jobs, so the code `uv sync` installs never shares a runner with write access: `check` runs the gates with a

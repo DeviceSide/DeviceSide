@@ -28,8 +28,8 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def warn_marked(registry: AdapterRegistry) -> None:
-    """One warning per mark per adapter: an unmaintained one stays live, but no one is fixing it; an at-risk one ships
-    changed since anyone last tested it."""
+    """One warning per mark per adapter: an unmaintained one stays live, but no one is fixing it; one with stale tests
+    ships changed since anyone last tested it."""
     for action, integration, adapter in registry.matrix():
         if adapter is None:
             continue
@@ -37,9 +37,9 @@ def warn_marked(registry: AdapterRegistry) -> None:
             _LOGGER.warning(
                 "%s %s is unmaintained (%s): no one is fixing it; use at your own risk", integration, action, reason
             )
-        if reason := adapter.scope.at_risk:
+        if reason := adapter.scope.stale_tests:
             _LOGGER.warning(
-                "%s %s is at risk (%s): changed since anyone last tested it; please report whether it works",
+                "%s %s has stale tests (%s): changed since anyone last tested it; please report whether it works",
                 integration,
                 action,
                 reason,

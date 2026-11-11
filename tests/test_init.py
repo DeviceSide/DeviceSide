@@ -1,4 +1,4 @@
-"""Setup: an unmaintained or at-risk adapter stays live and setup warns once for each mark on it."""
+"""Setup: an unmaintained adapter, or one with stale tests, stays live and setup warns once for each mark on it."""
 
 import logging
 from dataclasses import replace
@@ -18,18 +18,18 @@ from .fakes.fake_integration import ADAPTERS, INTEGRATION, FakeTurnOffFor
 REASON = "https://github.com/DeviceSide/DeviceSide/issues/1"
 WARNINGS = {
     "unmaintained": f"fake turn_off_for is unmaintained ({REASON}): no one is fixing it; use at your own risk",
-    "at_risk": f"fake turn_off_for is at risk ({REASON}): changed since anyone last tested it; please report whether"
-    " it works",
+    "stale_tests": f"fake turn_off_for has stale tests ({REASON}): changed since anyone last tested it; please report"
+    " whether it works",
 }
 
 
 def marked(caplog) -> list[str]:
     """The mark warnings, in the order setup gives them."""
     messages = [record.getMessage() for record in caplog.records]
-    return [message for message in messages if " is unmaintained " in message or " is at risk " in message]
+    return [message for message in messages if " is unmaintained " in message or " has stale tests " in message]
 
 
-@pytest.mark.parametrize("marks", [("unmaintained",), ("at_risk",), ("unmaintained", "at_risk")])
+@pytest.mark.parametrize("marks", [("unmaintained",), ("stale_tests",), ("unmaintained", "stale_tests")])
 async def test_setup_warns_once_per_mark(hass: HomeAssistant, caplog, marks):
     scope = replace(FakeTurnOffFor.scope, **dict.fromkeys(marks, REASON))
     adapter = type("MarkedTurnOffFor", (FakeTurnOffFor,), {"scope": scope})

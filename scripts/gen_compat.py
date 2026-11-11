@@ -5,8 +5,8 @@ the adapters' scopes, docs/models.yaml and each integration's bundle, docs/integ
 **Cards.** One collapsed section between the README's devices markers, with a card per integration: its name, linked
 to its page (the bundle's index.md), and maintainers (`IntegrationInfo.maintainers`; "⚠️ Unmaintained · formerly
 maintained by" when every shipping adapter is unmaintained), then ⚠️ Unmaintained with the features of any
-unmaintained adapter and ⚠️ At risk with those of any adapter shipping changed since its last retest (`at_risk`), then
-a bullet per outcome:
+unmaintained adapter and ⚠️ Stale tests with those of any adapter shipping changed since its last retest
+(`stale_tests`), then a bullet per outcome:
 - Works: the models in the passing records of adapters that ship (Verified), plus native groups, and the models of
   accepted working reports (linked to the report). A rig-tested entry ends ✔.
 - Should work: the classes (devices.yaml `capabilities`) the shipping adapters hold as Documented; one whose sibling
@@ -20,8 +20,8 @@ Adapters with the `experimental` flag are left out of the cards: they are in RCs
 
 **Evidence.** Per integration, every action's level and the models its passing records tested, with a row per level
 below Verified that its domains, capabilities or fields hold, and the reports on it; an unmaintained adapter's action
-is marked ⚠️ Unmaintained, an at-risk one's ⚠️ At risk. Its level is Verified only on a passing record of the base
-action (`<action>.md`) as new as the adapter's code (check_release's freshness check). A group (a Device entry with
+is marked ⚠️ Unmaintained, one with stale tests ⚠️ Stale tests. Its level is Verified only on a passing record of the
+base action (`<action>.md`) as new as the adapter's code (check_release's freshness check). A group (a Device entry with
 firmware `unknown`, or named Group or Zone) shows as "group", not as a model; any other entry the record format can't
 read is an error. The prose outside the evidence markers is kept as written.
 
@@ -112,16 +112,16 @@ OUTCOMES = (
 )
 VERIFIED = "✔"
 UNMAINTAINED = "⚠️ Unmaintained"
-AT_RISK = "⚠️ At risk"
+STALE_TESTS = "⚠️ Stale tests"
 # The scope's marks, as (attribute, label), in a card's order.
-MARKS = (("unmaintained", UNMAINTAINED), ("at_risk", AT_RISK))
+MARKS = (("unmaintained", UNMAINTAINED), ("stale_tests", STALE_TESTS))
 CARDS_LEGEND = " · ".join(
     [
         f"{OUTCOMES[0][1]} {OUTCOMES[0][2]}",
         f"{VERIFIED} verified on automated rig",
         *(f"{icon} {legend}" for _, icon, legend in OUTCOMES[1:]),
         "⚠️ unmaintained: no one is fixing it; use at your own risk",
-        "⚠️ at risk: changed since last tested; please report whether it works",
+        "⚠️ stale tests: changed since last tested; please report whether it works",
     ]
 )
 GITHUB = "https://github.com/"
@@ -456,7 +456,7 @@ def padded(text: str) -> str:
 
 
 def marked(label: str, reason: str) -> str:
-    """A mark (⚠️ Unmaintained, ⚠️ At risk), linking its reason when that is a URL and giving it in brackets when not."""
+    """A mark (⚠️ Unmaintained, ⚠️ Stale tests), linking its reason when that is a URL, else giving it in brackets."""
     return f"[{label}]({reason})" if reason.startswith("https://") else f"{label} ({reason})"
 
 
@@ -572,7 +572,7 @@ class Card:
     requires: str | None = None
     url: str | None = None  # the integration's page
     maintainers: tuple[str, ...] = ()
-    # ⚠️ Unmaintained, then ⚠️ At risk entries: the features of the adapters so marked, by reason.
+    # ⚠️ Unmaintained, then ⚠️ Stale tests entries: the features of the adapters so marked, by reason.
     marks: list[str] = field(default_factory=list)
     # Every shipping adapter is unmaintained, so the heading says "formerly maintained".
     all_unmaintained: bool = False
