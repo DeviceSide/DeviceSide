@@ -141,12 +141,17 @@ class FakeRecordsRegistry:
         yield "turn_on_for", "fake", self.adapter
 
 
-def write_record(repo, name: str, commit: str | None, result: str | None = "pass") -> str:
+COVERS = "domains=light; capabilities=; fields=; options="
+
+
+def write_record(repo, name: str, commit: str | None, result: str | None = "pass", covers: str | None = COVERS) -> str:
     """Commit docs/integrations/fake/test-records/<name> citing the commit (or no commit), with the result (or no Result
-    row), and return the new head."""
+    row) and the Covers value (or no Covers row; by default, the default scope's Verified light), and return the new
+    head."""
     source = f"rig run (`scripts/rig.py`), commit `{commit[:7]}`" if commit else "probe script"
     row = f"| Result | {result} |\n" if result else ""
-    text = f"# Fake · turn_on_for\n\n| | |\n|---|---|\n{row}| Source | {source} |\n"
+    row += f"| Source | {source} |\n" + (f"| Covers | {covers} |\n" if covers is not None else "")
+    text = f"# Fake · turn_on_for\n\n| | |\n|---|---|\n{row}"
     return repo.commit(f"docs/integrations/fake/test-records/{name}", text)
 
 
@@ -688,6 +693,84 @@ def test_an_adapter_with_no_verified_call_needs_no_record(tested, monkeypatch, s
     assert cr.record_errors(registry) == []
 
 
+@pytest.mark.parametrize(
+    "value",
+    [
+        None,
+        "domains=light; capabilities=; fields=",
+        "capabilities=; domains=light; fields=; options=",
+        "domains=light;capabilities=; fields=; options=",
+        "domains=light, switch; capabilities=; fields=; options=",
+        "domains=light,; capabilities=; fields=; options=",
+        "domains=light; capabilities=; fields=; options=predicted_state",
+        "domains=light; capabilities=; fields=; options=predicted_state:yes",
+    ],
+)
+def test_a_record_without_a_readable_covers_row_is_an_error(tested, monkeypatch, value):
+    repo, sha = tested
+    write_record(repo, "turn_on_for.md", sha, covers=value)
+    assert cr.record_errors(FakeRecordsRegistry(repo, monkeypatch)) == [
+        "fake / turn_on_for: docs/integrations/fake/test-records/turn_on_for.md has no readable Covers row"
+    ]
+
+
+def test_the_covers_row_reads_each_axis():
+    text = "| Covers | domains=light,switch; capabilities=RGBCCT; fields=; options=predicted_state:on |\n"
+    assert cr.covers(text) == {
+        "domains": {"light", "switch"},
+        "capabilities": {"RGBCCT"},
+        "fields": set(),
+        "options": {"predicted_state:on"},
+    }
+
+
+SCOPED = AdapterScope(
+    domains=verified("light", "switch") | reported("fan"),
+    capabilities=verified("Switch", "RGBCCT") | experimental("RGBW"),
+    fields=verified("brightness", "transition") | experimental("xy_color"),
+    options=frozenset({"predicted_state"}),
+)
+
+
+def test_the_records_together_must_cover_every_verified_item(tested, monkeypatch):
+    """Items below Verified need no record; the union of the records must hold the rest, each option on and off."""
+    repo, sha = tested
+    registry = FakeRecordsRegistry(repo, monkeypatch, scope=SCOPED)
+    off = "domains=light; capabilities=RGBCCT; fields=brightness; options=predicted_state:off"
+    on = "domains=switch; capabilities=Switch; fields=transition; options=predicted_state:on"
+    write_record(repo, "turn_on_for.md", sha, covers=off)
+    write_record(repo, "turn_on_for-predicted_state.md", sha, covers=on)
+    assert cr.record_errors(registry) == []
+
+    write_record(repo, "turn_on_for-predicted_state.md", sha, covers=on.replace(":on", ":off").replace("Switch", ""))
+    assert cr.record_errors(registry) == [
+        "fake / turn_on_for: no record covers Verified capabilities Switch",
+        "fake / turn_on_for: no record covers Verified options predicted_state:on",
+    ]
+    write_record(repo, "turn_on_for-predicted_state.md", sha, covers="domains=; capabilities=; fields=; options=")
+    assert cr.record_errors(registry) == [
+        "fake / turn_on_for: no record covers Verified domains switch",
+        "fake / turn_on_for: no record covers Verified capabilities Switch",
+        "fake / turn_on_for: no record covers Verified fields transition",
+        "fake / turn_on_for: no record covers Verified options predicted_state:on",
+    ]
+
+
+def test_uncovered_items_wait_for_every_record_to_hold_its_row(tested, monkeypatch):
+    """A missing record or Covers row already fails the adapter: listing what the rest leave uncovered would bury it."""
+    repo, sha = tested
+    registry = FakeRecordsRegistry(repo, monkeypatch, scope=SCOPED)
+    write_record(repo, "turn_on_for.md", sha, covers="domains=; capabilities=; fields=; options=")
+    assert cr.record_errors(registry) == [
+        "fake / turn_on_for: no test record docs/integrations/fake/test-records/turn_on_for-predicted_state.md"
+    ]
+    write_record(repo, "turn_on_for-predicted_state.md", sha, covers=None)
+    assert cr.record_errors(registry) == [
+        "fake / turn_on_for: docs/integrations/fake/test-records/turn_on_for-predicted_state.md "
+        "has no readable Covers row"
+    ]
+
+
 def test_main_fails_on_a_stale_record(tested, monkeypatch, capsys):
     monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
     repo, _ = tested
@@ -707,6 +790,9 @@ def test_every_rig_record_in_the_repo_cites_a_commit_the_check_can_read():
     assert found
     assert [path.name for path in found if not cr.CITED_COMMIT.search(path.read_text())] == []
     assert [path.name for path in found if cr.result(path) is None] == []
+    # The Covers row is checked at a cut, not here, as records predating it fail until rerun; one the rig wrote must
+    # read.
+    assert [path.name for path in found if "| Covers |" in path.read_text() and not cr.covers(path.read_text())] == []
 
 
 # Retests and Stale tests: an adapter with no Verified call.
@@ -895,7 +981,8 @@ def covering_record(repo, commit: str, rows: list[str], result: str = "pass") ->
     table = "\n".join([*cr.SHARED_HEADER, *rows])
     text = (
         f"# Other · turn_on_for\n\n| | |\n|---|---|\n| Result | {result} |\n"
-        f"| Source | rig run (`scripts/rig.py`), commit `{commit[:7]}` |\n\n## Tests\n\n| a | b |\n\n"
+        f"| Source | rig run (`scripts/rig.py`), commit `{commit[:7]}` |\n| Covers | {COVERS} |\n\n"
+        "## Tests\n\n| a | b |\n\n"
         f"## Shared coverage\n\n{table}\n\n## Notes\n\n| not | coverage |\n"
     )
     return repo.commit("docs/integrations/other/test-records/turn_on_for.md", text)
@@ -1020,7 +1107,7 @@ def test_a_malformed_shared_coverage_row_is_an_error_and_covers_nothing(shared, 
     index, errors = cr.shared_coverage(registry)
     assert index == {}
     assert errors == [
-        f"docs/integrations/other/test-records/turn_on_for.md:16: not a row of `| Module | Executed lines |`: {row}"
+        f"docs/integrations/other/test-records/turn_on_for.md:17: not a row of `| Module | Executed lines |`: {row}"
     ]
     assert cr.main(["--records"], registry) == 1
     assert errors[0] in capsys.readouterr().err

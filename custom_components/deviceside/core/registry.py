@@ -75,6 +75,9 @@ class AdapterRegistry:
                 # None means no capability axis, so every capability the adapter named would pass unweighed: a new
                 # one would widen its Verified scope with no diff.
                 raise ValueError(f"{cls.__name__} names capabilities but its scope lists none")
+            if cls.capability is Adapter.capability and cls.scope.capabilities is not None:
+                # Its calls would name no capability, which level() weighs as Experimental: every call refused.
+                raise ValueError(f"{cls.__name__} lists capabilities in its scope but names none")
             self._adapters[(cls.action, info.key)] = cls()
 
     def _add_unavailable(self, key: str, reason: str) -> None:
