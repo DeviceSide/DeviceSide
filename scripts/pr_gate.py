@@ -7,14 +7,15 @@ of an issue it references: a closing reference (keyword or sidebar link) or a ba
 `Part of #N` counts. References to pull requests don't count.
 
 Exempt: authors with write access (`OWNER`, `MEMBER`, `COLLABORATOR`), bot accounts, a reopen by a maintainer (an
-override), and prose-only changes: every changed file is Markdown and none is binding (`BINDING`).
+override), pull requests up to `HELD` on an event (`--manual` gates them), and prose-only changes: every changed
+file is Markdown and none is binding (`BINDING`).
 
 A failing open pull request gets a comment and is closed. A pull request the gate closed reopens once an edit makes it
 pass: its author can't reopen a pull request someone else closed. Nothing else is touched, so a run is idempotent.
 
 The pr-gate workflow runs this from the base branch on `pull_request_target`; it never checks out or runs PR code.
 
-Usage: scripts/pr_gate.py --pr N [--repo owner/name] [--sender login] [--dry-run]
+Usage: scripts/pr_gate.py --pr N [--repo owner/name] [--sender login] [--manual] [--dry-run]
 """
 
 import argparse
@@ -40,6 +41,8 @@ BINDING = (
     "docs/audits/*",
     ".github/*",
 )
+# Pull requests opened before the gate, held until the TODO.md item that runs it over them by hand, then 0.
+HELD = 351
 MAX_REFS = 20  # issues looked up per pull request; a body listing more is unusual and costs API calls
 FORM = "propose_device_or_integration.yml"
 
@@ -92,12 +95,16 @@ def referenced(body: str, closing: list[int], repo: str) -> list[int]:
     return list(dict.fromkeys(found))
 
 
-def decide(pr: PullRequest, issues: dict[int, Issue], reopened_by_maintainer: bool = False) -> Verdict:
+def decide(
+    pr: PullRequest, issues: dict[int, Issue], reopened_by_maintainer: bool = False, manual: bool = False
+) -> Verdict:
     """The verdict on pr, given the referenced numbers that exist, each an issue or a pull request."""
     if pr.association in MAINTAINERS:
         return Verdict("exempt", f"author association {pr.association}")
     if pr.author_type == "Bot":
         return Verdict("exempt", "bot author")
+    if pr.number <= HELD and not manual:
+        return Verdict("exempt", f"opened before the gate (#{HELD} or earlier)")
     if reopened_by_maintainer:
         return Verdict("exempt", "reopened by a maintainer")
     if prose_only(pr.files):
@@ -175,6 +182,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--pr", type=int, required=True)
     parser.add_argument("--repo", default=os.environ.get("GITHUB_REPOSITORY"))
     parser.add_argument("--sender", help="who triggered a reopen; a maintainer's reopen is an override")
+    parser.add_argument("--manual", action="store_true", help="a dispatched run: gates pull requests up to HELD too")
     parser.add_argument("--dry-run", action="store_true", help="print the verdict only")
     args = parser.parse_args(argv)
     if not args.repo:
@@ -185,7 +193,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"#{pr.number}: merged, nothing to do")
         return 0
     override = bool(args.sender) and args.sender != pr.author and has_write(args.repo, args.sender)
-    verdict = decide(pr, fetch_issues(args.repo, referenced(pr.body, pr.closing, args.repo)), override)
+    verdict = decide(pr, fetch_issues(args.repo, referenced(pr.body, pr.closing, args.repo)), override, args.manual)
     print(f"#{pr.number} by {pr.author}: {verdict.outcome} ({verdict.reason})")
     if args.dry_run:
         return 0

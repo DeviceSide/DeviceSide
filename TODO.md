@@ -83,7 +83,8 @@ flag-only, docs, `scripts/` and rig step-file changes land. The items below run 
 - [ ] **Shelly RGB and RGBW color**: port core's conversions (`light/helper.py` rgb to rgbw with the white split,
   kelvin to color) so RGB and RGBW take color instead of dropping it, and give `status_row` a branch per component
   so `get_attributes` reads Light, CCT, RGB and RGBW light state.
-- [ ] **PR gate on #350/#351**, straight after v0.1.0 ships: dispatch `pr-gate` with `dry_run=false` for each.
+- [ ] **PR gate on #350/#351**, straight after v0.1.0 ships: dispatch `pr-gate` with `dry_run=false` for each,
+  then set `HELD` in `scripts/pr_gate.py` to 0.
 - **9b** Community-maintained adapters, once a contributor offers one for hardware the rig lacks: a maintainer per
   adapter and a route to stable other than the rig, left open in `docs/design.md` (Release gates). Until then, such
   work ships as Experimental items and earns Reported from user reports.

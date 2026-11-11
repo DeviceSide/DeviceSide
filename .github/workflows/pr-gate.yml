@@ -45,9 +45,11 @@ jobs:
           PR: ${{ github.event.pull_request.number || inputs.pr }}
           # A reopen by a maintainer overrides the gate; other events have no sender to weigh.
           SENDER: ${{ github.event.action == 'reopened' && github.event.sender.login || '' }}
+          MANUAL: ${{ github.event_name == 'workflow_dispatch' }}
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
         run: |
           args=(--pr "$PR")
           if [ -n "$SENDER" ]; then args+=(--sender "$SENDER"); fi
+          if [ "$MANUAL" = true ]; then args+=(--manual); fi
           if [ "$DRY_RUN" = true ]; then args+=(--dry-run); fi
           python scripts/pr_gate.py "${args[@]}"

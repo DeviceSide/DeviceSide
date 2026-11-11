@@ -61,6 +61,13 @@ def test_decide(overrides, issues, override, outcome, reason):
     assert pr_gate.decide(pr(**overrides), issues, override) == pr_gate.Verdict(outcome, reason)
 
 
+@pytest.mark.parametrize(
+    ("number", "manual", "outcome"), [(351, False, "exempt"), (351, True, "close"), (352, False, "close")]
+)
+def test_prs_opened_before_the_gate_are_held_until_a_manual_run(number, manual, outcome):
+    assert pr_gate.decide(pr(number=number), {}, manual=manual).outcome == outcome
+
+
 def test_a_renamed_binding_file_is_gated():
     """A rename lists its old path too, so moving docs/design.md to docs/notes.md isn't prose-only."""
     assert not pr_gate.prose_only(["docs/notes.md", "docs/design.md"])
