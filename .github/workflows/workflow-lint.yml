@@ -38,10 +38,15 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: zizmorcore/zizmor-action@45d7276c9ca790aabd705e31ca99c6185c3e76dd # v0.8.1
-        with:
-          # Code scanning needs Advanced Security on private repos; fail the job instead.
-          advanced-security: false
-          annotations: true
+      # Installed from PyPI, not zizmorcore/zizmor-action: that action pulls in github/codeql-action, which
+      # the Actions allow-list doesn't admit. GitHub annotations stand in for code scanning (needs Advanced
+      # Security on private repos).
+      - name: Run zizmor
+        env:
           # renovate: datasource=pypi depName=zizmor
-          version: 1.32.0
+          ZIZMOR_VERSION: 1.32.0
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 -m venv "$RUNNER_TEMP/zizmor"
+          "$RUNNER_TEMP/zizmor/bin/pip" install --quiet "zizmor==${ZIZMOR_VERSION}"
+          "$RUNNER_TEMP/zizmor/bin/zizmor" --format=github .
