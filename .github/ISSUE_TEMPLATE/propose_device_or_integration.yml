@@ -7,8 +7,6 @@ body:
     attributes:
       value: |
         Proposals are accepted only for devices and integrations where a known YAML solution already exists. Please only submit a proposal if you have the feature running stably on your Home Assistant instance and are willing to share the YAML. Speculative feature requests belong in the community forum.
-
-        Want to build it yourself? Wait until this issue is assigned to you, then reference it in your PR. PRs without one are closed automatically.
   - type: input
     id: integration
     attributes:
