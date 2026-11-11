@@ -19,6 +19,7 @@ INTEGRATION = IntegrationInfo(
     key="zha",
     title="ZHA",
     ha_domain="zha",
+    maintainers=("jasonmx",),
     is_group=is_zha_group,
     expand_group=expand_group,
     call_resolver=ZHACallResolver(),

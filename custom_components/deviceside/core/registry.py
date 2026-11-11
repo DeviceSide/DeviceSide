@@ -1,5 +1,6 @@
 import importlib
 import logging
+import re
 from collections.abc import Iterable, Iterator
 from types import ModuleType
 
@@ -11,6 +12,19 @@ from .. import actions as actions_pkg
 from .. import integrations as integrations_pkg
 
 _LOGGER = logging.getLogger(__name__)
+# A GitHub handle: alphanumerics and single inner hyphens, at most 39 characters, no leading @.
+HANDLE = re.compile(r"[A-Za-z0-9](?:-?[A-Za-z0-9]){0,38}")
+
+
+def check_maintainers(info: IntegrationInfo) -> None:
+    """An integration names one or more maintainers, each a GitHub handle, each once."""
+    maintainers = info.maintainers
+    if not isinstance(maintainers, tuple) or not maintainers:
+        raise ValueError(f"{info.key}: maintainers must be a non-empty tuple of GitHub handles")
+    if bad := [handle for handle in maintainers if not isinstance(handle, str) or not HANDLE.fullmatch(handle)]:
+        raise ValueError(f"{info.key}: maintainers {bad!r} are not GitHub handles (no leading @)")
+    if len(set(maintainers)) != len(maintainers):
+        raise ValueError(f"{info.key}: maintainers lists a handle twice")
 
 
 class AdapterRegistry:
@@ -50,6 +64,7 @@ class AdapterRegistry:
                 self._add_unavailable(key, repr(err))
                 return
         info: IntegrationInfo = module.INTEGRATION
+        check_maintainers(info)
         self.integrations[info.key] = info
         for cls in module.ADAPTERS:
             if cls.integration != info.key:
@@ -60,7 +75,7 @@ class AdapterRegistry:
 
     def _add_unavailable(self, key: str, reason: str) -> None:
         self.integrations[key] = IntegrationInfo(
-            key=key, title=key, ha_domain=key, available=False, unavailable_reason=reason
+            key=key, title=key, ha_domain=key, maintainers=(), available=False, unavailable_reason=reason
         )
 
     def adapter(self, action: str, integration: str) -> Adapter | None:

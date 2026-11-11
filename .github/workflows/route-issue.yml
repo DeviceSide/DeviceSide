@@ -1,0 +1,56 @@
+name: Route issue
+
+# Labels an issue integration:<key> for each integration its form names, and assigns their maintainers
+# (IntegrationInfo.maintainers, read by scripts/route_issue.py). Only an issue form with an Integration dropdown names
+# any. A maintainer GitHub can't assign (no access to the repo) is skipped by GitHub, not an error.
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions: {}
+
+concurrency:
+  group: route-issue-${{ github.event.issue.number }}
+
+jobs:
+  route:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Read the integrations the issue names
+        id: route
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: python3 scripts/route_issue.py
+
+      - name: Label and assign
+        if: steps.route.outputs.labels != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.issue.number }}
+          LABELS: ${{ steps.route.outputs.labels }}
+          ASSIGNEES: ${{ steps.route.outputs.assignees }}
+        run: |
+          IFS=, read -ra labels <<< "$LABELS"
+          for label in "${labels[@]}"; do
+            gh label create "$label" --color c5def5 --description "Routed to the integration's maintainers" --force
+          done
+          gh issue edit "$NUMBER" --add-label "$LABELS"
+          # The REST call, not `gh issue edit --add-assignee`: it skips a handle GitHub can't assign instead of failing.
+          IFS=, read -ra handles <<< "$ASSIGNEES"
+          args=()
+          for handle in "${handles[@]}"; do
+            args+=(-f "assignees[]=$handle")
+          done
+          if [ ${#args[@]} -gt 0 ]; then
+            gh api --method POST "repos/$GH_REPO/issues/$NUMBER/assignees" "${args[@]}" > /dev/null
+          fi

@@ -63,11 +63,21 @@ on a sibling's proof.
 tests pin the payload. It has no record, so no freshness check; a change to its call makes it Experimental until a
 new report or a record. A field may be Reported once a report can name one (`devices.yaml` reports name a domain or
 capability only; `gen_compat.py` refuses a Reported field until then). A record promotes it to Verified. A working
-report on a Documented item promotes it to Reported too, so it becomes community-supported.
+report on a Documented item promotes it to Reported too.
 
-**Support follows the proof** (`AdapterScope.support`): Verified, and Documented on a Verified sibling, are
-maintainer-supported; Reported, and Documented on a Reported sibling, community-supported (bugs labelled `community`,
-PRs reviewed, not fixed by the maintainer); Experimental, unsupported.
+## Maintainers
+
+An integration's package (`integrations/<x>/`, `tests/integrations/<x>/`, its fixture) belongs to the GitHub handles in
+its `IntegrationInfo.maintainers`, one or more. A PR confined to one package needs one maintainer's approval
+(`.github/CODEOWNERS`, from `scripts/gen_codeowners.py`) and green CI; anything outside it (`core/`, shared docs, the
+generated pages' inputs) needs Jason. Jason merges.
+
+**Support:** an integration's maintainers support its every item but the Experimental ones, which are unsupported.
+
+**Unmaintained:** `AdapterScope.unmaintained` (an issue URL or a reason), set per adapter at Jason's call. The adapter
+stays live; setup warns and its card shows ⚠️ Unmaintained. An integration whose maintainers are all gone gets it on
+every adapter. It clears when someone fixes the adapter or adopts the integration. Like `experimental`, it is not a
+code change to the records check.
 
 ## Releasing
 

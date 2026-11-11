@@ -11,7 +11,12 @@ def detect(hass, entry, device) -> bool:
 
 
 INTEGRATION = IntegrationInfo(
-    key="fake_special", title="Fake special", ha_domain="fake", detect=detect, is_group=is_group
+    key="fake_special",
+    title="Fake special",
+    ha_domain="fake",
+    maintainers=("jasonmx",),
+    detect=detect,
+    is_group=is_group,
 )
 
 

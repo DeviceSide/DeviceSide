@@ -87,7 +87,9 @@ def test_release_passes_experimental_scope_items(monkeypatch):
 def test_an_integration_that_failed_to_import_is_an_error(monkeypatch, capsys, argv):
     """Its adapters are missing from the registry, so no gate would see them."""
     monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
-    broken = IntegrationInfo(key="zha", title="zha", ha_domain="zha", available=False, unavailable_reason="No module")
+    broken = IntegrationInfo(
+        key="zha", title="zha", ha_domain="zha", maintainers=(), available=False, unavailable_reason="No module"
+    )
     registry = FakeRegistry({("turn_on_for", "shelly"): AdapterScope(experimental=True)}, [broken])
     monkeypatch.setattr(cr, "record_errors", lambda registry: [])
     assert cr.main(argv, registry) == 1
@@ -267,10 +269,12 @@ ramp = ramp_scope(BRIGHTNESS, experimental=False)
             "scope = AdapterScope(domains=DOMAINS, confirmable=True)  # the scope",
         ),
         FLAGGED.replace("experimental=True", "experimental=False").replace(", experimental=False)", ")"),
+        FLAGGED.replace("experimental=True, ", 'unmaintained="https://github.com/o/r/issues/1", '),
+        FLAGGED.replace("experimental=True, ", "unmaintained=None, "),
     ],
-    ids=["dropped", "reflowed", "set_and_dropped"],
+    ids=["dropped", "reflowed", "set_and_dropped", "unmaintained_set", "unmaintained_none"],
 )
-def test_a_change_to_the_experimental_flag_alone_leaves_the_record_fresh(tested, monkeypatch, after):
+def test_a_change_to_the_flags_alone_leaves_the_record_fresh(tested, monkeypatch, after):
     repo, _ = tested
     sha = repo.commit(ADAPTER, FLAGGED)
     write_record(repo, "turn_on_for.md", sha)
@@ -285,8 +289,9 @@ def test_a_change_to_the_experimental_flag_alone_leaves_the_record_fresh(tested,
         FLAGGED.replace("experimental=True, ", "").replace("# the scope", "# the call"),
         FLAGGED.replace("experimental=True", "verified=True"),
         FLAGGED.replace("experimental=False", "experimental=load()"),
+        FLAGGED.replace("experimental=True, ", "unmaintained=REASON, "),
     ],
-    ids=["another_argument", "a_comment", "a_renamed_keyword", "a_computed_value"],
+    ids=["another_argument", "a_comment", "a_renamed_keyword", "a_computed_value", "unmaintained_computed"],
 )
 def test_a_change_beside_the_flag_is_still_a_change(tested, monkeypatch, after):
     repo, _ = tested
@@ -315,26 +320,26 @@ def test_a_module_new_since_the_record_is_a_change(tested, monkeypatch):
     assert error.endswith(f"changed since: {PACKAGE}/extra.py, {PACKAGE}/nested.py")
 
 
-def flag_reads(tree: ast.AST) -> list[int]:
-    """Lines that read `experimental`: anything but an `experimental=` argument or parameter, passing a parameter
-    of that name straight on as `experimental=experimental`, or calling the bare `experimental(...)` helper from
-    `core.scope`, which marks items Experimental and reads no flag."""
+def flag_reads(tree: ast.AST, flag: str = "experimental") -> list[int]:
+    """Lines that read the flag: anything but a `<flag>=` argument or parameter, passing a parameter of that name
+    straight on as `<flag>=<flag>`, or calling a bare helper of that name (`experimental(...)` from `core.scope`, which
+    marks items Experimental and reads no flag)."""
     passed_on = {
         id(keyword.value)
         for node in ast.walk(tree)
         if isinstance(node, ast.Call)
         for keyword in node.keywords
-        if keyword.arg == "experimental"
+        if keyword.arg == flag
     } | {id(node.func) for node in ast.walk(tree) if isinstance(node, ast.Call)}
     return [
         node.lineno
         for node in ast.walk(tree)
-        if (isinstance(node, ast.Attribute) and node.attr == "experimental")
-        or (isinstance(node, ast.Constant) and node.value == "experimental")
-        or (isinstance(node, ast.MatchClass) and "experimental" in node.kwd_attrs)
+        if (isinstance(node, ast.Attribute) and node.attr == flag)
+        or (isinstance(node, ast.Constant) and node.value == flag)
+        or (isinstance(node, ast.MatchClass) and flag in node.kwd_attrs)
         or (
             isinstance(node, ast.Name)
-            and node.id == "experimental"
+            and node.id == flag
             and isinstance(node.ctx, ast.Load)
             and id(node) not in passed_on
         )
@@ -354,22 +359,21 @@ def test_a_read_of_the_flag_is_found(code, line):
     assert flag_reads(ast.parse(code)) == [line]
 
 
-def stray_flags(trees: list[ast.AST]) -> list[int]:
-    """Lines passing `experimental=` to anything but `AdapterScope` or a bare-named helper taking that parameter: the
-    check drops the argument as a no-op, so it must never reach outside code."""
+def stray_flags(trees: list[ast.AST], flag: str = "experimental") -> list[int]:
+    """Lines passing `<flag>=` to anything but `AdapterScope` or a bare-named helper taking that parameter: the check
+    drops the argument as a no-op, so it must never reach outside code."""
     takers = {"AdapterScope"} | {
         node.name
         for tree in trees
         for node in ast.walk(tree)
-        if isinstance(node, ast.FunctionDef)
-        and any(arg.arg == "experimental" for arg in node.args.args + node.args.kwonlyargs)
+        if isinstance(node, ast.FunctionDef) and any(arg.arg == flag for arg in node.args.args + node.args.kwonlyargs)
     }
     return [
         node.lineno
         for tree in trees
         for node in ast.walk(tree)
         if isinstance(node, ast.Call)
-        and any(keyword.arg == "experimental" for keyword in node.keywords)
+        and any(keyword.arg == flag for keyword in node.keywords)
         and not (isinstance(node.func, ast.Name) and node.func.id in takers)
     ]
 
@@ -387,18 +391,32 @@ def test_a_stray_flag_is_found(code, strays):
     assert stray_flags([ast.parse(code)]) == strays
 
 
-def test_the_flag_only_reaches_a_scope():
-    assert stray_flags([ast.parse(path.read_text()) for path in (cr.REPO / "custom_components").rglob("*.py")]) == []
+INTEGRATION_CODE = sorted((cr.REPO / "custom_components").rglob("*.py"))
+# The one reader of `unmaintained`: setup's warning, which changes no call.
+SETUP = cr.REPO / "custom_components" / "deviceside" / "__init__.py"
 
 
-def test_nothing_in_the_integration_reads_the_flag():
-    """The records check ignores `experimental` because no runtime path reads it; a read would make it a change."""
+@pytest.mark.parametrize("flag", cr.FLAGS)
+def test_the_flags_only_reach_a_scope(flag):
+    assert stray_flags([ast.parse(path.read_text()) for path in INTEGRATION_CODE], flag) == []
+
+
+@pytest.mark.parametrize("flag", cr.FLAGS)
+def test_no_call_reads_the_flags(flag):
+    """The records check ignores both flags because no call reads them; a read would make them a change. Setup reads
+    `unmaintained`, to warn, and nothing else does."""
     reads = [
         f"{path.relative_to(cr.REPO)}:{line}"
-        for path in (cr.REPO / "custom_components").rglob("*.py")
-        for line in flag_reads(ast.parse(path.read_text()))
+        for path in INTEGRATION_CODE
+        if not (flag == "unmaintained" and path == SETUP)
+        for line in flag_reads(ast.parse(path.read_text()), flag)
     ]
     assert reads == []
+
+
+def test_setup_reads_unmaintained():
+    """The exemption above stays honest: setup is where the warning lives."""
+    assert flag_reads(ast.parse(SETUP.read_text()), "unmaintained")
 
 
 def test_every_record_of_the_adapter_must_be_new(tested, monkeypatch):

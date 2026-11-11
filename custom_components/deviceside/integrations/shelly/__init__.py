@@ -13,7 +13,9 @@ from .turn_off_for import ShellyTurnOffFor
 from .turn_on_for import ShellyTurnOnFor
 from ...core.scope import IntegrationInfo
 
-INTEGRATION = IntegrationInfo(key="shelly", title="Shelly", ha_domain="shelly", max_concurrency=4)
+INTEGRATION = IntegrationInfo(
+    key="shelly", title="Shelly", ha_domain="shelly", maintainers=("jasonmx",), max_concurrency=4
+)
 
 ADAPTERS = [
     ShellyClearAutoOff,
