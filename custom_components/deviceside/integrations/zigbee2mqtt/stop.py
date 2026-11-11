@@ -8,6 +8,7 @@ from .addressing import not_addressable
 from .bridge import publish_set
 from .color_refresh import DELAY_S, refresh_color
 from .fade import hue_moves, lights_of, read_back_key, transition_cache
+from .set_check import checked
 from ...core.adapter import Adapter
 from ...core.errors import Reason
 from ...core.models import EntityResult, Request, Status, Target
@@ -110,4 +111,4 @@ class Z2MStop(Adapter[Request]):
             runtime.schedule(hass, read_back_key(target, SATURATION), [(DELAY_S, refresh)] if color_halted else [])
             return self.result(target, Status.SENT)
 
-        return await self.gather(hass, targets, send)
+        return await checked(self, hass, targets, send)
