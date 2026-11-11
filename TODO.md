@@ -73,8 +73,10 @@ the RC tag, only flag-only, docs, `scripts/` and rig step-file changes land. The
 - [x] **Docs bundles** (#362): each integration's user page, internals, device data, research and test records in
   `docs/integrations/<integration>/`, which its maintainers own; shared pages keep what spans integrations, and
   `docs/models.yaml` the models.
-- [ ] **Code-owner enforcement**: before adding the first outside maintainer: decide code-owner enforcement (write
-  access lets them merge).
+- [x] **Code-owner enforcement** (#370): outside maintainers hold Triage, Jason merges, and CODEOWNERS keeps naming
+  them; review requests go out by hand until that becomes a bottleneck.
+- [x] **Fast track** (#370): a contributor who builds and tests on their own hardware opens a PR directly and lands
+  it Reported on their own device report (CONTRIBUTING, PR template).
 
 ## After v0.1.0
 
