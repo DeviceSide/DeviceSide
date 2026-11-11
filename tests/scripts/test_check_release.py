@@ -1072,6 +1072,12 @@ def body(*lines: str) -> str:
             body("if v:", "    a2()", "d()"),
             [range(2, 3), range(3, 4), range(4, 5)],
         ),
+        # Code moved across a block boundary needs the code around the removal too.
+        (
+            body("if v:", "    a()", "    b()", "c()"),
+            body("if v:", "    a()", "d()", "c()"),
+            [range(3, 4), range(4, 5), range(5, 6)],
+        ),
         # A lambda's or generator expression's body runs when called, bar the line it starts on.
         (
             body("return sorted(", "    v,", "    key=lambda x: (", "        x.a", "    ),", ")"),
@@ -1103,6 +1109,17 @@ def test_the_clauses_a_change_touches(repo, monkeypatch, before, after, headers)
         ("X = 1\nY = 2\n", "X = 1\n"),
         # A lambda whose body is on the line it starts on can't show it was called.
         (body("return sorted(v, key=lambda x: x.a)"), body("return sorted(v, key=lambda x: x.b)")),
+        # Removing one is a change to it too, wherever its neighbors run.
+        ("def f():\n    a()\n\n\nregister(f)\n\n\ndef g():\n    b()\n", "def f():\n    a()\n\n\ndef g():\n    b()\n"),
+        ("def f():\n    a()\n\n\nregister(f)\n", "def f():\n    a()\n\n\n# register(f)\n"),
+        (
+            "class C:\n    def a(self):\n        pass\n\n    x = 1\n\n    def b(self):\n        pass\n",
+            "class C:\n    def a(self):\n        pass\n\n    def b(self):\n        pass\n",
+        ),
+        # A body on the def line runs at import with it.
+        ("def f(x=1): ...\n", "def f(x=2): ...\n"),
+        # An old module that won't parse can't say what was removed.
+        ("x = (\n", body("return 1")),
         # A function with only a docstring has no statement to show the call.
         ('def f():\n    """A."""\n', 'def f(v):\n    """A."""\n'),
     ],

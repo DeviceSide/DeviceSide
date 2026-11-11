@@ -536,24 +536,32 @@ def clauses(tree: ast.Module) -> list[tuple[range, range]]:
 
 def deferred_lines(tree: ast.Module) -> set[int]:
     """The lines that run only when called: each function's, from its first decorator, and each lambda's and
-    generator expression's. The rest, a module's or class's own statements, runs at import."""
+    generator expression's. The rest, a module's or class's own statements, runs at import, as does a function whose
+    body starts on its `def` line."""
     lines: set[int] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
-            lines.update(range(header(node).start, node.end_lineno + 1))
+            if node.body[0].lineno not in (head := header(node)):
+                lines.update(range(head.start, node.end_lineno + 1))
         elif isinstance(node, ast.Lambda | ast.GeneratorExp):
             lines.update(range(node.lineno, node.end_lineno + 1))
     return lines
+
+
+def indents(text: str, lines: set[int]) -> list[int]:
+    """Each line's indentation, in order."""
+    split = text.splitlines()
+    return [len(split[line - 1]) - len(split[line - 1].lstrip()) for line in sorted(lines)]
 
 
 @functools.cache
 def needed_headers(commit: str, head: str, path: str) -> list[range] | None:
     """The lines the module's change from the commit to the head (both full hashes, for the cache) needs a run to
     execute, one of each range: those of the innermost clause (`clauses`) around each changed code line, a comment,
-    blank line or docstring needing none; for a hunk that removes more code than it adds, those of the nearest code
-    line on each side too. None if the change can't be cleared: the head's module can't be parsed, or the change
-    touches a module's or class's own statements (`deferred_lines`), which every run that imports the module
-    executes."""
+    blank line or docstring needing none; for a hunk that removes code not replaced line for line at the same
+    indentation (a deletion, or code moved across a block), those of the nearest code line on each side too. None if
+    the change can't be cleared: either side's module can't be parsed, or the change adds, alters or removes a
+    module's or class's own statements (`deferred_lines`), which every run that imports the module executes."""
     if (diff := git("diff", "-U0", commit, head, "--", path)).returncode:
         raise SystemExit(f"git diff {commit} HEAD failed: {diff.stderr.strip()}")
     text = git("show", f"{head}:{path}").stdout
@@ -564,17 +572,20 @@ def needed_headers(commit: str, head: str, path: str) -> list[range] | None:
         return None
     old = git("show", f"{commit}:{path}").stdout
     try:
-        old_code = code_lines(old) - docstring_lines(ast.parse(old))
+        old_tree = ast.parse(old)
+        old_code = code_lines(old) - docstring_lines(old_tree)
     except SyntaxError, tokenize.TokenError:
-        old_code = set(range(1, old.count("\n") + 2))
+        return None
+    old_deferred = deferred_lines(old_tree)
     lines: set[int] = set()
     for hunk in HUNK.finditer(diff.stdout):
         old_start, old_count = int(hunk[1]), int(hunk[2] if hunk[2] is not None else 1)
         start, count = int(hunk[3]), int(hunk[4] if hunk[4] is not None else 1)
         added = {line for line in range(start, start + count) if line in code}
         lines |= added
-        removed = len(old_code.intersection(range(old_start, old_start + old_count)))
-        if removed > len(added):
+        if (removed := old_code.intersection(range(old_start, old_start + old_count))) - old_deferred:
+            return None
+        if indents(old, removed) != indents(text, added):
             # With no new lines, git numbers the hunk by the line before the deletion.
             last = start + count - 1 if count else start
             before = [line for line in code if line < start or (not count and line == start)]
