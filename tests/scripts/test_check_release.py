@@ -2,6 +2,7 @@
 
 import ast
 import json
+import re
 import sys
 import types
 from pathlib import Path
@@ -109,6 +110,10 @@ def test_main_reads_the_real_registry(monkeypatch, capsys):
 
 PACKAGE = "custom_components/deviceside/integrations/fake"
 ADAPTER = f"{PACKAGE}/turn_on_for.py"
+CORE = "custom_components/deviceside/core"
+ADAPTER_IMPORTS = (
+    "from . import shared\nfrom .addressing import address\nfrom ..zha import zcl\nfrom ...actions.ramp import Ramp\n"
+)
 
 
 class FakeRecordsRegistry:
@@ -139,13 +144,17 @@ def write_record(repo, name: str, commit: str | None, result: str | None = "pass
 @pytest.fixture
 def tested(repo, monkeypatch):
     """The fake integration: its adapter, the helpers it imports, the group helper its package imports, a sibling
-    adapter, an unrelated module and a core one, with a record citing them. Returns (repo, the commit the record
-    cites)."""
+    adapter, an unrelated module, the core modules it reaches and some it doesn't, an action module and the package's
+    constants, with a record citing them. Returns (repo, the commit the record cites)."""
     monkeypatch.setattr(cr, "REPO", repo.path)
     monkeypatch.setattr(cr, "RECORDS", repo.path / "docs" / "test-records")
     init = (
         "from .groups import expand_group\nfrom .other import Other\nfrom .turn_on_for import FakeTurnOnFor\n"
         "from ...core.scope import IntegrationInfo\n\nADAPTERS = [FakeTurnOnFor, Other]\n"
+    )
+    scope = (
+        "from typing import TYPE_CHECKING\n\nfrom ..const import DOMAIN\nfrom .models import Target\n\n"
+        "if TYPE_CHECKING:\n    from .dispatcher import Dispatcher\n"
     )
     for path, text in [
         (f"{PACKAGE}/__init__.py", init),
@@ -156,8 +165,14 @@ def tested(repo, monkeypatch):
         (f"{PACKAGE}/addressing.py", "from ...core import scope\n"),
         (f"{PACKAGE}/other.py", "from .unrelated import thing\n"),
         (f"{PACKAGE}/unrelated.py", ""),
-        ("custom_components/deviceside/core/scope.py", ""),
-        (ADAPTER, "from . import shared\nfrom .addressing import address\nfrom ..zha import zcl\n"),
+        (f"{CORE}/__init__.py", ""),
+        (f"{CORE}/scope.py", scope),
+        (f"{CORE}/models.py", ""),
+        (f"{CORE}/dispatcher.py", ""),
+        (f"{CORE}/unused.py", ""),
+        ("custom_components/deviceside/actions/ramp.py", ""),
+        ("custom_components/deviceside/const.py", ""),
+        (ADAPTER, ADAPTER_IMPORTS),
     ]:
         tested_at = repo.commit(path, text)
     write_record(repo, "turn_on_for.md", tested_at)
@@ -167,25 +182,45 @@ def tested(repo, monkeypatch):
 def test_adapter_code_is_the_module_and_what_it_or_its_package_imports_bar_sibling_adapters(tested):
     repo, _ = tested
     code = cr.adapter_code(repo.path / ADAPTER)
-    assert [path.name for path in code] == [
-        "__init__.py",
-        "addressing.py",
-        "groups.py",
-        "members.py",
-        "nested.py",
-        "shared.py",
-        "turn_on_for.py",
+    assert [str(path.relative_to(repo.path)) for path in code] == [
+        f"{CORE}/__init__.py",
+        f"{CORE}/models.py",
+        f"{CORE}/scope.py",
+        f"{PACKAGE}/__init__.py",
+        f"{PACKAGE}/addressing.py",
+        f"{PACKAGE}/groups.py",
+        f"{PACKAGE}/members.py",
+        f"{PACKAGE}/nested.py",
+        f"{PACKAGE}/shared.py",
+        ADAPTER,
     ]
+
+
+@pytest.mark.parametrize("test", ["TYPE_CHECKING", "typing.TYPE_CHECKING"])
+def test_core_code_under_type_checking_alone_is_not_the_adapters(tested, test):
+    repo, _ = tested
+    repo.commit(
+        f"{CORE}/models.py", f"if {test}:\n    from .dispatcher import Dispatcher\nelse:\n    from .unused import x\n"
+    )
+    names = [path.name for path in cr.adapter_code(repo.path / ADAPTER)]
+    assert "unused.py" in names
+    assert "dispatcher.py" not in names
 
 
 def test_the_bar_covers_every_module_of_the_adapters_code_bar_init(tested, monkeypatch):
     repo, _ = tested
     registry = FakeRecordsRegistry(repo, monkeypatch)
     files = {str(path.relative_to(repo.path)): 100 for path in cr.adapter_code(repo.path / ADAPTER)}
-    files |= {f"{PACKAGE}/__init__.py": 0, f"{PACKAGE}/members.py": 90}
+    files |= {
+        f"{PACKAGE}/__init__.py": 0,
+        f"{CORE}/__init__.py": 0,
+        f"{PACKAGE}/members.py": 90,
+        f"{CORE}/models.py": 94,
+    }
     report = {"files": {name: {"summary": {"covered_lines": n, "num_statements": 100}} for name, n in files.items()}}
     assert cr.coverage_errors(registry, report) == [
-        f"{PACKAGE}/members.py: 90.0% line coverage, under 95% (code of fake / turn_on_for)"
+        f"{CORE}/models.py: 94.0% line coverage, under 95% (code of fake / turn_on_for)",
+        f"{PACKAGE}/members.py: 90.0% line coverage, under 95% (code of fake / turn_on_for)",
     ]
 
 
@@ -197,12 +232,18 @@ def test_a_sibling_adapter_the_adapter_imports_is_its_code(tested):
 
 @pytest.mark.parametrize(
     ("path", "text", "name"),
-    [(ADAPTER, "from .missing import thing\n", "missing"), (f"{PACKAGE}/groups.py", "from . import gone\n", "gone")],
+    [
+        (ADAPTER, "from .missing import thing\n", ".missing"),
+        (f"{PACKAGE}/groups.py", "from . import gone\n", ".gone"),
+        (ADAPTER, "from ...core.missing import thing\n", "...core.missing"),
+        (f"{CORE}/scope.py", "from . import gone\n", ".gone"),
+        (f"{PACKAGE}/groups.py", "from ...core import gone\n", "...core.gone"),
+    ],
 )
 def test_an_import_adapter_code_cannot_resolve_raises_naming_it(tested, path, text, name):
     repo, _ = tested
     repo.commit(path, text)
-    with pytest.raises(ValueError, match=rf"{path.rpartition('/')[2]}: can't resolve `from \.{name}`"):
+    with pytest.raises(ValueError, match=rf"{path.rpartition('/')[2]}: can't resolve `from {re.escape(name)}`"):
         cr.adapter_code(repo.path / ADAPTER)
 
 
@@ -232,13 +273,24 @@ def test_the_observed_calls_file_is_never_a_record(tested):
 
 
 def test_a_record_as_new_as_the_code_passes(tested, monkeypatch):
+    """Code the adapter doesn't reach may change: a sibling adapter's, core code it doesn't import or imports only for
+    type checking, an action's, and the rest of the component."""
     repo, _ = tested
-    repo.commit(f"{PACKAGE}/other.py")
-    repo.commit("custom_components/deviceside/core/scope.py")
+    for path in [
+        f"{PACKAGE}/other.py",
+        f"{CORE}/unused.py",
+        f"{CORE}/dispatcher.py",
+        "custom_components/deviceside/actions/ramp.py",
+        "custom_components/deviceside/const.py",
+    ]:
+        repo.commit(path)
     assert cr.record_errors(FakeRecordsRegistry(repo, monkeypatch)) == []
 
 
-@pytest.mark.parametrize("changed", [ADAPTER, f"{PACKAGE}/nested.py", f"{PACKAGE}/__init__.py"])
+@pytest.mark.parametrize(
+    "changed",
+    [ADAPTER, f"{PACKAGE}/nested.py", f"{PACKAGE}/__init__.py", f"{CORE}/scope.py", f"{CORE}/models.py"],
+)
 def test_a_change_to_the_adapters_code_after_its_record_is_an_error(tested, monkeypatch, changed):
     repo, sha = tested
     repo.commit(changed)
