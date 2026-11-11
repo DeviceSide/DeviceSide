@@ -5,7 +5,6 @@
 | Result | pass |
 | Date | 2026-11-07 |
 | Source | rig run (`scripts/rig.py`), commit `1de5a51` |
-| Profile | lab |
 | Home Assistant | 2026.10.2 |
 | Device | LCA016, firmware `0x01001200` |
 

@@ -719,6 +719,38 @@ def test_a_card_marks_unmaintained_adapters_by_reason_and_leaves_out_flagged_one
     ]
 
 
+def heading(card):
+    return card.render().splitlines()[0]
+
+
+def test_a_card_whose_shipping_adapters_are_all_unmaintained_says_formerly_maintained(root):
+    card = zha_card(
+        adapter("zha", "turn_on_for", AdapterScope(unmaintained=ISSUE_REASON)),
+        adapter("zha", "stop", AdapterScope(unmaintained="gone")),
+        adapter("zha", "set_scene", AdapterScope(experimental=True)),
+    )
+    assert " · ⚠️ Unmaintained · formerly maintained by [@" in heading(card)
+    assert " · maintained by " not in heading(card)
+
+
+def test_a_card_with_one_maintained_shipping_adapter_keeps_maintained_by(root):
+    card = zha_card(
+        adapter("zha", "turn_on_for", AdapterScope(unmaintained=ISSUE_REASON)),
+        adapter("zha", "stop"),
+    )
+    assert " · maintained by [@" in heading(card)
+
+
+def test_experimental_adapters_do_not_make_a_card_unmaintained(root):
+    card = zha_card(
+        adapter("zha", "turn_on_for", AdapterScope(experimental=True, unmaintained=ISSUE_REASON)),
+        adapter("zha", "stop"),
+    )
+    assert " · maintained by [@" in heading(card)
+    only_experimental = zha_card(adapter("zha", "stop", AdapterScope(experimental=True, unmaintained=ISSUE_REASON)))
+    assert " · maintained by [@" in heading(only_experimental)
+
+
 def test_an_unmaintained_entry_names_stop_beside_other_features(root):
     card = zha_card(
         adapter("zha", "turn_on_for", AdapterScope(unmaintained=ISSUE_REASON)),

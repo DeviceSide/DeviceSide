@@ -5,7 +5,6 @@
 | Result | pass |
 | Date | 2026-11-07 |
 | Source | rig run (`scripts/rig.py`), commit `cbc2156` |
-| Profile | lab |
 | Home Assistant | 2026.10.4 |
 | Device | Hue ambiance lamp (`LTA009`), firmware `1.163.1` |
 

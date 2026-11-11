@@ -5,7 +5,6 @@
 | Result | pass |
 | Date | 2026-11-11 |
 | Source | rig run (`scripts/rig.py`), commit `3507e87` |
-| Profile | shelly |
 | Home Assistant | 2026.10.4 |
 | Device | Shelly 1 Mini Gen3 (`S3SW-001X8EU`), firmware `20261026-122213/2.0.3-g4601943`; Shelly 1 Mini Gen4 (`S4SW-001X8EU`), firmware `20261026-122156/2.0.3-g4601943`; Shelly Multicolor Bulb Gen3 (`S3BL-C010007AEU`), firmware `20261026-122229/2.0.3-g4601943` |
 

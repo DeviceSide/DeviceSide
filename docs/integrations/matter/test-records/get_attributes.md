@@ -5,7 +5,6 @@
 | Result | pass |
 | Date | 2026-11-11 |
 | Source | rig run (`scripts/rig.py`), commit `a251331` |
-| Profile | lab_matter |
 | Home Assistant | 2026.10.4 |
 | Device | WiZ Smart Plug (`8979`), firmware `v1.4` |
 
