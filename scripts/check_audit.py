@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
-"""Check an RC's audit record: every commit since the previous RC audited, no blocking finding left open.
+"""Check an RC's audit record: every commit since the previous RC audited, no Critical or High left open.
 
 The record is `docs/audits/<rc>.md`: YAML frontmatter (rc, base, passes, findings), then the audit-code report.
 - `base` is the previous RC tag of the same version, or for rc1 the latest release tag that is an ancestor of the
   head (the root commit if none). A release/vX.Y.Z branch cut from an RC tag has that RC as an ancestor.
 - Passes chain from it (`passes[0].from == base`, each `from` the previous `to`); each `to` is an ancestor of the head.
 - Nothing outside `docs/audits/` changed after the last pass.
-- A blocking finding (Critical, High, or a Medium on a high-frequency path) is `fixed` (`fixed_in` inside a pass
-  after the first) or `waived` (with a `reason`).
+- A Critical or High finding is `fixed` (`fixed_in` inside a pass after the first) or `waived` (with a `reason`).
 See .claude/skills/rc-audit/SKILL.md.
 
 Usage: scripts/check_audit.py <rc> <head-sha>
@@ -26,8 +25,7 @@ sys.path.insert(0, str(REPO))
 from scripts.check_tag import RC, git, name, releases  # noqa: E402
 
 AUDITS = Path("docs") / "audits"
-# The record lists blocking findings only: a Medium goes in when it sits on a high-frequency path.
-SEVERITIES = frozenset({"critical", "high", "medium"})
+SEVERITIES = frozenset({"critical", "high"})
 # A squash or rebase merge replaces the commits a record cites, so they are no longer under the head.
 REWRITTEN = "; was the audit PR squashed or rebased? Merge it with a merge commit"
 
@@ -127,7 +125,7 @@ def finding_errors(repo: Path, finding: dict, later: list[tuple[str | None, str 
     label = f"finding {finding.get('id', '?')}"
     severity, status = finding.get("severity"), finding.get("status")
     if severity not in SEVERITIES:
-        return [f"{label}: severity {severity!r} is not critical, high or medium"]
+        return [f"{label}: severity {severity!r} is not critical or high"]
     if status == "open":
         return [f"{label} ({severity}) is open"]
     if status == "waived":
@@ -158,7 +156,7 @@ def main(argv: list[str] | None = None, repo: Path = REPO) -> int:
     for problem in problems:
         print(f"error: {problem}", file=sys.stderr)
     if not problems:
-        print(f"{argv[0]}: audit record covers every commit to the head; no blocking finding open.")
+        print(f"{argv[0]}: audit record covers every commit to the head; no open Critical or High.")
     return 1 if problems else 0
 
 

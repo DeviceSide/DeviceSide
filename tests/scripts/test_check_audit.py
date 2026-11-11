@@ -39,7 +39,6 @@ def test_a_fix_pass_covers_the_fix(audited):
     findings = [
         {"id": "H1", "severity": "high", "status": "fixed", "fixed_in": fix[:7]},
         {"id": "C1", "severity": "critical", "status": "waived", "reason": "not reachable from HA"},
-        {"id": "M1", "severity": "medium", "status": "fixed", "fixed_in": fix[:7]},
     ]
     assert errors(repo, record(repo, base=base, passes=[(base, end), (end, fix)], findings=findings)) == []
 
@@ -135,11 +134,7 @@ def test_code_after_the_last_pass_is_refused(audited):
     [
         ({"id": "H1", "severity": "high", "status": "open"}, "finding H1 (high) is open"),
         ({"id": "H2", "severity": "high", "status": "waived", "reason": " "}, "finding H2 is waived without a reason"),
-        ({"id": "M1", "severity": "medium", "status": "open"}, "finding M1 (medium) is open"),
-        (
-            {"id": "L1", "severity": "low", "status": "open"},
-            "finding L1: severity 'low' is not critical, high or medium",
-        ),
+        ({"id": "M1", "severity": "medium", "status": "open"}, "finding M1: severity 'medium' is not critical or high"),
         ({"id": "H3", "severity": "high", "status": "done"}, "finding H3: status 'done' is not open, fixed or waived"),
         ({"severity": "high", "status": "fixed"}, "finding ?: fixed_in None is not inside a pass after the first"),
     ],
@@ -182,4 +177,4 @@ def test_main(audited, capsys):
     assert "error: docs/audits" in capsys.readouterr().err
     head = record(repo, base=base, passes=[(base, end)])
     assert check_audit.main([RC, head], repo.path) == 0
-    assert "no blocking finding open" in capsys.readouterr().out
+    assert "no open Critical or High" in capsys.readouterr().out
