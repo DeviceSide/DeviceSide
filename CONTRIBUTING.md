@@ -21,7 +21,7 @@ Everybody is invited and welcome to contribute.
 If you can build a change and test it on your own devices, open a pull request directly. You don't need an issue first. If you're unsure it fits, open a draft pull request early and ask. If you use a coding agent, point it at [CLAUDE.md](CLAUDE.md): it holds the repo's rules.
 
 1. **Check the fit** against the development principles above.
-2. **Keep one concern per pull request.** Apart from a new integration's shared touch points in step 3, any change outside your integration's package (`core/`, `actions/`, `scripts/`, shared docs, another integration) goes in its own small pull request first, and yours says `Depends on #N`. Each pull request passes CI on its own; don't stack one on another's unmerged branch. Don't refactor another integration's adapters: their test records go stale, and a rig rerun is needed before the next release. If you need a helper that another integration has, copy it into your package or propose the move in its own pull request.
+2. **Keep one concern per pull request.** Apart from a new integration's shared touch points in step 3, any change outside your integration's package (`core/`, `actions/`, `scripts/`, shared docs, another integration) goes in its own small pull request first, and yours says `Depends on #N`. Each pull request passes CI on its own; don't stack one on another's unmerged branch. If you need a helper that another integration has, copy it into your package or propose the move in its own pull request.
 3. **Stay in your package:** `custom_components/deviceside/integrations/<x>/`, `tests/integrations/<x>/`, `tests/fixtures/<x>.py` and the docs bundle `docs/integrations/<x>/` (CLAUDE.md's "Where facts go" says which fact goes in which file). A new integration also touches these shared files, which the repo maintainers review:
    - `custom_components/deviceside/services.yaml`: the integration's HA domain in each action's target filter
    - `.github/ISSUE_TEMPLATE/device_report.yml`: its title in the Integration dropdown
@@ -29,13 +29,16 @@ If you can build a change and test it on your own devices, open a pull request d
    - `docs/models.yaml`: the models you tested
    - `scripts/gen_features.py`: a `NO_PATH` row for each feature the devices can't support, with the reason, and its explanation in `docs/integrations.md`'s "What can't be done, and why"
    - `README.md`: the integration in the Requirements list
+   - `custom_components/deviceside/manifest.json`: its HA domain in `after_dependencies` when DeviceSide must load after it, and any library your code imports in `requirements`
+   - `pyproject.toml`: any library its tests need, in the `dev` group
+   - `custom_components/deviceside/__init__.py`, `const.py`, `strings.json` and `translations/en.json`: only if it adds a setup hook or a user option
 4. **Ship it Experimental.** New actions, domains, capabilities and fields start as `Level.EXPERIMENTAL`. Unit tests pin each payload you send, and every module of your adapter code needs at least 95% line coverage.
-5. **Show your own test, and find a second tester.** Test each item on your devices at the commit whose calls you'll ship, and put the results in the pull request's Evidence section; if review changes a call, test again. Put measurements in your bundle's `internals.md`, dated, with the firmware, HA and library versions. Your items leave Experimental only when someone other than you confirms them: another user's [device report](https://github.com/DeviceSide/DeviceSide/issues/new?template=device_report.yml) makes them Reported, and a passing rig run makes them Verified, whoever runs it. A tester runs them with the Experimental features option turned on.
+5. **Test it on your devices.** Test each item at the commit whose calls you'll ship, and put the results in the pull request's Testing evidence section; if review changes a call, test again. Put measurements in your bundle's `internals.md`, dated, with the firmware, HA and library versions. An item leaves Experimental on an accepted working [device report](https://github.com/DeviceSide/DeviceSide/issues/new?template=device_report.yml), yours included, which makes it Reported, or a passing run of an automated rig, which makes it Verified. Test with the Experimental features option turned on.
 6. **Run the checks:** set up with `uv sync`, then run `.venv/bin/pytest` and `pre-commit run --all-files`. Regenerate the cards, the feature table and CODEOWNERS with `scripts/gen_compat.py`, `scripts/gen_features.py` and `scripts/gen_codeowners.py`; CI checks each one. `scripts/check_release.py --records` should list no adapter outside your package.
-7. **Audit:** if you use Claude, run `/audit-code` on your diff; otherwise ask for an audit in the pull request. Fix every Critical and High finding and list the rest.
+7. **Audit:** if you use Claude, run `/audit-code` on your diff; otherwise ask for an audit in the pull request. Fix every Critical, High and Medium finding and list the rest.
 8. **Open the pull request** against `main` (or a `release/vX.Y.Z` branch when one exists for the fix) and fill in the template.
 
-A new integration's pull request names you in its `IntegrationInfo.maintainers`, and once it merges you're its maintainer. Its items climb from Experimental on other people's reports; Verified on hardware the rig lacks comes with the rig kit.
+A new integration's pull request names you in its `IntegrationInfo.maintainers`, and once it merges you're its maintainer.
 
 ## Maintaining an integration
 
@@ -45,4 +48,4 @@ Each integration in DeviceSide has one or more maintainers, named in its `Integr
 - **What you approve:** a pull request confined to your package needs one maintainer's approval and green CI. You're asked to review it, and a repo maintainer merges once you approve.
 - **What needs a repo maintainer:** anything outside the package, such as shared code in `core/`, shared docs, and the inputs to the generated pages.
 - **Access:** maintainers get the Triage role on the repo, so they can label, assign, close and reopen issues and pull requests. The repo maintainers (who hold admin on the repo, listed in `scripts/gen_codeowners.py`) merge every pull request.
-- **Stepping back:** if no one is fixing an adapter, the repo maintainers may mark it ⚠️ Unmaintained. It stays live, setup warns, and its card shows the mark until someone fixes it or adopts the integration. Please say so in an issue if you can no longer maintain an integration.
+- **Stepping back:** if no one is fixing an adapter, the repo maintainers may mark it ⚠️ Unmaintained. It stays live, setup warns, and its card shows the mark until someone fixes it or adopts the integration. Please open an issue if you want to stop being an integration's maintainer.

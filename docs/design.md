@@ -35,13 +35,13 @@ Code and docs use these terms.
   Experimental item through. Only the dispatcher reads it.
 - **Release flag**: `experimental=True` on an adapter's scope keeps the whole adapter in release candidates only. Not
   the Experimental level, which gates an item at runtime. Rules: [CLAUDE.md](../CLAUDE.md#release-flag).
-- **Rig**: a repo maintainer's live Home Assistant and devices, and the private tool that runs DeviceSide's actions on
-  them and writes test records. It is kept outside this repo; the records are its output here.
+- **Rig**: a tool that tests DeviceSide's features automatically with real hardware on a live Home Assistant instance,
+  and writes up the results as test records.
 - **Test record**: the evidence that an adapter works on real hardware, from a rig run:
   `docs/integrations/<integration>/test-records/<action>*.md`. Clearing `experimental` cites one.
 - **Device report**: a user's "works" or "doesn't work" for an action on a model. In the bundle's `devices.yaml` each
   one names the `item` its call reached (the domain, or the capability for an adapter that lists them). An accepted
-  "works" on an item's call, from someone other than the call's author, makes it Reported; a "doesn't work" is
+  "works" on an item's call, the call's author's included, makes it Reported; a "doesn't work" is
   evidence for a fix or for leaving the item out.
 - **Profile**: one test setup on the rig's HA, the entities a run may move by integration and role; a record names the
   one it ran on (`lab`, `house`).

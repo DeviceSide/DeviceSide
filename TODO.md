@@ -76,7 +76,7 @@ the RC tag, only flag-only, docs, `scripts/` and rig step-file changes land. The
 - [x] **Code-owner enforcement** (#370): outside maintainers hold Triage, repo maintainers merge, and CODEOWNERS keeps naming
   them; review requests go out by hand until that becomes a bottleneck.
 - [x] **Fast track** (#370): a contributor who builds and tests on their own hardware opens a PR directly, with no
-  issue (CONTRIBUTING, PR template); Reported needs a report from someone other than the call's author.
+  issue (CONTRIBUTING, PR template); the author's own accepted device report makes an item Reported.
 
 ## After v0.1.0
 

@@ -10,11 +10,11 @@
 - Actions:
 - Level of each new or changed item:
 
-## Shared code
+## Changes to shared code
 
 <!-- "None", or "Depends on #N" for the pull request that carries the change outside your package. -->
 
-## Evidence
+## Testing evidence
 
 <!-- For each device: model, firmware, HA version, library version, the commit you tested, the date, and what you saw. -->
 
@@ -30,9 +30,9 @@
 
 ## Audit
 
-<!-- How it was audited, and every finding left open, with its severity. -->
+<!-- How the code quality was audited, and every finding left open, with its severity. -->
 
 ## New integration only
 
-- [ ] The shared touch points CONTRIBUTING lists
+- [ ] The shared touch points CONTRIBUTING's Fast track step 3 lists, `manifest.json`'s dependencies and the README's Requirements list included
 - [ ] `IntegrationInfo.maintainers` names me
