@@ -76,7 +76,7 @@ PAGE = REPO / "docs" / "device-compatibility.md"
 README = REPO / "README.md"
 MODELS = REPO / "docs" / "models.yaml"
 # Absolute: HACS renders the README inside Home Assistant, where a relative link doesn't resolve.
-BLOB_URL = "https://github.com/jasonmx/DeviceSide/blob/main/"
+BLOB_URL = "https://github.com/DeviceSide/DeviceSide/blob/main/"
 PAGE_URL = f"{BLOB_URL}docs/device-compatibility.md"
 CARDS = ("<!-- devices:start -->", "<!-- devices:end -->")
 CARDS_TITLE = "Device compatibility by integration"
@@ -84,7 +84,7 @@ EVIDENCE = ("<!-- evidence:start -->", "<!-- evidence:end -->")
 
 DEVICE = re.compile(r"^\| Device \| (.*) \|$", re.MULTILINE)
 ENTRY = re.compile(r"^(?P<name>.*?)(?: \(`(?P<model>[^`]+)`\))?, firmware `(?P<firmware>[^`]+)`$")
-ISSUE_URL = "https://github.com/jasonmx/DeviceSide/issues/"
+ISSUE_URL = "https://github.com/DeviceSide/DeviceSide/issues/"
 ISSUE = re.compile(rf"^{re.escape(ISSUE_URL)}(\d+)$")
 GROUP_NAMES = {"group", "zone"}
 GROUP = "group"
@@ -120,7 +120,7 @@ CARDS_LEGEND = " · ".join(
     ]
 )
 GITHUB = "https://github.com/"
-INTEGRATIONS_URL = "https://github.com/jasonmx/DeviceSide/blob/main/docs/integrations.md"
+INTEGRATIONS_URL = "https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations.md"
 # The keys each devices.yaml entry may hold, so a typo fails instead of being ignored.
 SHARED_KEYS = {"models", "doesnt_work"}
 BUNDLE_KEYS = {"column", "column_order", "requires", "capabilities", "doesnt_work", "reports"}

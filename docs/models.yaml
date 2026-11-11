@@ -35,4 +35,4 @@ doesnt_work:
   - what: Tuya TS011F
     integrations: [zha, zigbee2mqtt]
     reason: It stores the Zigbee timer as a countdown and never switches on
-    source: https://github.com/jasonmx/DeviceSide/blob/main/docs/integrations.md#zigbee-plugs-and-switches
+    source: https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations.md#zigbee-plugs-and-switches

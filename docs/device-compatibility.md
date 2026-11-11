@@ -21,7 +21,7 @@ feature Reported, for everyone.
 
 DeviceSide is run by volunteers. Each integration's maintainers, named on its card, look after it: they review changes
 to it and fix bugs in it as they can. Please
-[report a bug](https://github.com/jasonmx/DeviceSide/issues/new?template=device_report.yml); the report goes to the
+[report a bug](https://github.com/DeviceSide/DeviceSide/issues/new?template=device_report.yml); the report goes to the
 maintainers of the integration you choose. A report that a feature doesn't work is still useful: it is how features
 get fixed or left out.
 
@@ -34,7 +34,7 @@ On the cards, ✔ marks what the automated rig verified. A model with a report l
 
 A model works on the integrations and features its records cover; the [evidence](#evidence) lists them per action,
 with the firmware tested. Other models may work too, but makers implement these features inconsistently: if yours isn't here, please try it and
-[report the result](https://github.com/jasonmx/DeviceSide/issues/new?template=device_report.yml), whether it works or
+[report the result](https://github.com/DeviceSide/DeviceSide/issues/new?template=device_report.yml), whether it works or
 not.
 
 ### Hue White Ambiance E27 1100lm
@@ -121,7 +121,7 @@ native group of the integration (a Hue zone, a ZHA or Zigbee2MQTT group).
 
 | Doesn't work | Why | Source |
 |---|---|---|
-| Tuya TS011F | It stores the Zigbee timer as a countdown and never switches on | [source](https://github.com/jasonmx/DeviceSide/blob/main/docs/integrations.md#zigbee-plugs-and-switches) |
+| Tuya TS011F | It stores the Zigbee timer as a countdown and never switches on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations.md#zigbee-plugs-and-switches) |
 
 ### Zigbee2MQTT
 
@@ -142,7 +142,7 @@ native group of the integration (a Hue zone, a ZHA or Zigbee2MQTT group).
 
 | Doesn't work | Why | Source |
 |---|---|---|
-| Tuya TS011F | It stores the Zigbee timer as a countdown and never switches on | [source](https://github.com/jasonmx/DeviceSide/blob/main/docs/integrations.md#zigbee-plugs-and-switches) |
+| Tuya TS011F | It stores the Zigbee timer as a countdown and never switches on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations.md#zigbee-plugs-and-switches) |
 
 ### Shelly
 
@@ -185,7 +185,7 @@ native group of the integration (a Hue zone, a ZHA or Zigbee2MQTT group).
 
 | Doesn't work | Why | Source |
 |---|---|---|
-| Hue smart scenes | A smart (All-Day) scene changes with the time of day, so it has no fixed settings to write | [source](https://github.com/jasonmx/DeviceSide/blob/main/docs/integrations/hue/index.md#flash-free-turn-on) |
+| Hue smart scenes | A smart (All-Day) scene changes with the time of day, so it has no fixed settings to write | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/hue/index.md#flash-free-turn-on) |
 
 ### Matter
 

@@ -26,7 +26,7 @@ from .const import (
 from .core.resolver import resolve
 from .core.runtime import DATA
 
-REPORT_URL = "https://github.com/jasonmx/DeviceSide/issues/new"
+REPORT_URL = "https://github.com/DeviceSide/DeviceSide/issues/new"
 CONF_ENTITY = "entity_id"
 
 
