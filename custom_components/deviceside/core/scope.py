@@ -8,6 +8,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
+from .fields import LACKABLE
 from .models import Target
 
 if TYPE_CHECKING:
@@ -85,6 +86,9 @@ class AdapterScope:
     fields: Mapping[str, Level] = field(default_factory=dict)
     # Fields the integration can never send; dropped before the scope check, as a field the light lacks is.
     drops: frozenset[str] = frozenset()
+    # Fields the adapter takes though the light's state says it can't (a design gap between the upstream integration
+    # and HA): never dropped as lacked on a light. Each must be in `fields`, whose level gates it like any field's.
+    unlisted: frozenset[str] = frozenset()
     # Device-side capabilities (Shelly: RPC component names); None covers all it can address, as Verified.
     # A record proves only the capability the call reaches, so a sibling's untested one is out of scope unless
     # Documented.
@@ -102,6 +106,7 @@ class AdapterScope:
     def __post_init__(self) -> None:
         if Level.DOCUMENTED in self.fields.values():
             raise ValueError("fields are never Documented: a field changes the call")
+        self._check_unlisted()
         self._check_siblings()
         # Read-only copies: adapters share mappings such as Shelly's CAPABILITIES, and a frozen scope stays frozen.
         for name in ("domains", "fields", "capabilities", "siblings"):
@@ -133,6 +138,14 @@ class AdapterScope:
         items = self.domains if item in self.domains else self.capabilities or {}
         level = items.get(item, Level.EXPERIMENTAL)
         return items[self.siblings[item]] if level is Level.DOCUMENTED else level
+
+    def _check_unlisted(self) -> None:
+        if unknown := self.unlisted - LACKABLE:
+            raise ValueError(f"unlisted names fields a light's state never lacks: {sorted(unknown)}")
+        if untested := self.unlisted - self.fields.keys():
+            raise ValueError(f"unlisted names fields outside the scope's fields: {sorted(untested)}")
+        if dropped := self.unlisted & self.drops:
+            raise ValueError(f"unlisted names fields the scope drops: {sorted(dropped)}")
 
     def _check_siblings(self) -> None:
         if shared := set(self.domains) & set(self.capabilities or {}):

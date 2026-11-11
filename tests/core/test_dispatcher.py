@@ -555,6 +555,28 @@ async def test_scope_drops_are_dropped_before_the_scope_check(hass, fake, reset_
     assert reset_script.calls[0][2].fields_present() == frozenset()
 
 
+async def test_an_unlisted_field_reaches_the_adapter_on_a_light_whose_state_lacks_it(hass, fake, reset_script):
+    # A brightness-only light, as core shows a light whose integration leaves out its color temperature.
+    add_fake_entity(hass, fake, "light.dim", attributes={"supported_color_modes": [ColorMode.BRIGHTNESS]} | NO_FEATURES)
+    scope = AdapterScope(
+        duration=LIMITS,
+        fields=verified("brightness", "transition") | experimental("color_temp_kelvin"),
+        unlisted=frozenset({"color_temp_kelvin"}),
+    )
+    data = {"entity_id": "light.dim", "duration": 5, "color_temp_kelvin": 3000, "transition": 1}
+
+    with patch.object(FakeTurnOnFor, "scope", scope):
+        allow_experimental(hass, False)
+        assert await refusal(hass, "turn_on_for", data) == "experimental_off"
+        assert reset_script.calls == []
+        allow_experimental(hass, True)
+        response = await call(hass, "turn_on_for", data)
+
+    # transition is still dropped as lacked: only the unlisted field passes.
+    assert response == {"light.dim": {"status": "sent", "integration": "fake", "detail": "fields_dropped"}}
+    assert reset_script.calls[0][2].fields_present() == {"color_temp_kelvin"}
+
+
 async def test_wrapper_reports_under_the_light_and_drops_light_fields(hass, fake, reset_script):
     add_fake_entity(hass, fake, "switch.relay")
     add_switch_as_x(hass, "light.relay", "switch.relay")

@@ -17,13 +17,16 @@ BRIGHTNESS = frozenset({"brightness", "min_brightness", "max_brightness"})
 COLOR_TEMP = frozenset({"color_temp_kelvin"})
 COLOR = frozenset({"hs_color", "rgb_color", "xy_color", "hue", "saturation"})
 TRANSITION = frozenset({"transition"})
+# Every field a light's state can say it lacks: the only ones AdapterScope.unlisted may name.
+LACKABLE = BRIGHTNESS | COLOR_TEMP | COLOR | TRANSITION
 
 
-def lacking(target: Target, request: Request) -> frozenset[str]:
+def lacking(target: Target, request: Request, unlisted: frozenset[str] = frozenset()) -> frozenset[str]:
     """The request's fields the target lacks. A switch, or the switch a switch_as_x light drives, lacks them all.
 
     A light whose state doesn't list its color modes or features lacks nothing by that attribute: only a state that
-    says the light can't take a field drops it.
+    says the light can't take a field drops it. A light never lacks a field in `unlisted` (the adapter's
+    AdapterScope.unlisted), which the adapter takes whatever the state says; a switch still lacks it.
     """
     present = request.fields_present()
     if not present or target.domain != "light":
@@ -40,4 +43,4 @@ def lacking(target: Target, request: Request) -> frozenset[str]:
     features = attributes.get(ATTR_SUPPORTED_FEATURES)
     if features is not None and not features & LightEntityFeature.TRANSITION:
         lacked |= TRANSITION
-    return present & lacked
+    return present & (lacked - unlisted)
