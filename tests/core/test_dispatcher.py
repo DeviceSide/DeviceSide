@@ -442,6 +442,23 @@ async def test_native_group_members_are_indirect(hass, fake, reset_script):
     assert reset_script.calls[0][3] == ["light.dim"]
 
 
+async def test_a_named_member_stays_named_after_its_group_expands_first(hass, fake, reset_script):
+    add_fake_entity(hass, fake, "light.lamp")
+    add_fake_entity(hass, fake, "light.dim", attributes={"supported_color_modes": [ColorMode.BRIGHTNESS]})
+    add_fake_native_group(hass, fake, "light.fake_group", ["light.lamp", "light.dim"])
+
+    # The group sorts first, so its indirect copy of light.lamp is met before the named one.
+    with pytest.raises(ServiceNotSupported) as err:
+        await call(
+            hass,
+            "turn_on_for",
+            {"entity_id": ["light.fake_group", "light.lamp"], "duration": 5, "rgb_color": [1, 2, 3]},
+        )
+
+    assert err.value.translation_placeholders["entity_id"] == "light.lamp"
+    assert reset_script.calls == []
+
+
 async def test_rows_for_untargeted_entities_are_dropped(hass, fake):
     add_fake_entity(hass, fake, "switch.a")
     add_fake_entity(hass, fake, "switch.b")
