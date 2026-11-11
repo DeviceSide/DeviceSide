@@ -51,7 +51,7 @@ body:
     attributes:
       label: Checklist
       options:
-        - label: I have searched the [existing issues](https://github.com/jasonmx/DeviceSide/issues/) to see if my proposal already exists.
+        - label: I have searched the [existing issues](https://github.com/DeviceSide/DeviceSide/issues/) to see if my proposal already exists.
           required: true
         - label: I've got the feature(s) working in my home for the proposed device/integration.
           required: true

@@ -103,6 +103,8 @@ class Broker:
         self.fading: dict[str, tuple[int, float]] = {}  # IEEE -> (level before the write, when the fade ends)
         self.fade_reads = 0  # reads, not seconds: a lit bulb answers the old level to this many reads after a write
         self.fading_reads: dict[str, list[int]] = {}  # IEEE -> [level before the write, reads left to answer it]
+        # Z2M's answer to a set or light.turn_on publish, called with its topic and payload (state or a log line)
+        self.on_set = None
 
     async def subscribe(self, hass, topic, msg_callback):
         self.topics.append(topic)
@@ -148,6 +150,10 @@ class Broker:
             self._read(topic.split("/")[1], payload["read"])
         elif "command" in payload:
             self._command(topic.split("/")[1], payload["command"])
+            if self.on_set is not None:
+                self.on_set(topic, payload)
+        elif self.on_set is not None and topic.endswith("/set"):
+            self.on_set(topic, payload)
         elif topic.startswith("zigbee2mqtt/bridge/request/") and self.reply is not None:
             response = topic.replace("/request/", "/response/")
             self.deliver(response, json.dumps({"transaction": "someone else's", "status": "error"}))

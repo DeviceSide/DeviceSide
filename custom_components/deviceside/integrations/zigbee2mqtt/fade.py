@@ -15,6 +15,7 @@ from .bridge import has_feature, publish, publish_set
 from .color_refresh import refresh_color
 from .members import member_lights
 from .native_control import NEED, native_control
+from .set_check import checked
 from ...actions.ramp import RampRequest
 from ...core import transition
 from ...core.adapter import Adapter
@@ -164,7 +165,7 @@ class Z2MRamp(Adapter[RampRequest]):
             clamped_to = await start(hass, cache, target, lights, outcome, NEED.get(self.action))
             return self.result(target, Status.SENT, clamped_to=clamped_to)
 
-        return await self.gather(hass, targets, send)
+        return await checked(self, hass, targets, send)
 
 
 type HueMove = tuple[int, float | None]  # hue_move's signed rate, and the sweep_time used where it was clamped

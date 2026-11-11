@@ -11,6 +11,7 @@ from .addressing import not_addressable
 from .bridge import publish_set
 from .members import member_lights
 from .read import Reader, reader
+from .set_check import checked
 from ...actions.set_attributes import SetAttributesRequest
 from ...core.adapter import Adapter
 from ...core.errors import Reason
@@ -180,7 +181,7 @@ class Z2MSetAttributes(Adapter[SetAttributesRequest]):
                 return self.result(target, Status.REJECTED, detail=NOT_STORED)
             return self.result(target, Status.CONFIRMED, detail=detail)
 
-        return await self.gather(hass, targets, write)
+        return await checked(self, hass, targets, write, settle=False)
 
     async def _send(
         self, hass: HomeAssistant, reading: Reader, request: SetAttributesRequest, to: Target

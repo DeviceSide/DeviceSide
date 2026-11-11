@@ -29,13 +29,20 @@ DeviceSide sets three Zigbee2MQTT options:
 - **`filtered_cache`**, before the first read of a device, so a read's answer isn't resent in every later state
   message. Your own entries are kept. Removing DeviceSide's is harmless: it comes back at the next read.
 
+## Failed sends
+
+When Zigbee2MQTT logs that it couldn't send a command (a busy coordinator refusing a group command, say), raise,
+lower, stop, turn on with timer and set attributes report that light or group failed, with the reason Zigbee2MQTT
+gave (`busy`). These actions answer up to 2 s later than before while DeviceSide listens for that line; a command
+Zigbee2MQTT answers with the light's state ends the wait at once.
+
 ## Turn on with timer
 
 With light fields, DeviceSide calls `light.turn_on` first, then starts the timer once Zigbee2MQTT reports the
 light's new state, usually within a fraction of a second. If that takes over 5 s, the light stays on up to 5 s
 longer than asked.
 
-The result is always `sent`: Zigbee2MQTT doesn't confirm a timer, or report the light's state after one. Device
+The result is `sent`: Zigbee2MQTT doesn't confirm a timer, or report the light's state after one. Device
 Side reads the state back after the light turns on and when the timer ends, so Home Assistant stays right. A
 restart during a timer loses those reads, and the state can stay stale until the light next reports.
 

@@ -38,9 +38,9 @@ README = REPO / "README.md"
 START = "<!-- features:start -->"
 END = "<!-- features:end -->"
 # Absolute: HACS renders the README inside Home Assistant, where relative image paths don't resolve.
-ICON_URL = "https://raw.githubusercontent.com/jasonmx/DeviceSide/main/docs/icons/{}.svg"
+ICON_URL = "https://raw.githubusercontent.com/DeviceSide/DeviceSide/main/docs/icons/{}.svg"
 # Absolute for the same reason. Without a link of its own, GitHub links each icon to its SVG file.
-DOC_URL = "https://github.com/jasonmx/DeviceSide/blob/main/{}#{}"
+DOC_URL = "https://github.com/DeviceSide/DeviceSide/blob/main/{}#{}"
 INTEGRATIONS = "docs/integrations.md"
 # The integrations.md section explaining every NO_PATH entry to users; keep the two in step.
 IMPOSSIBLE = "what-cant-be-done-and-why"
