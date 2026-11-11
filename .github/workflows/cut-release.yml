@@ -2,9 +2,10 @@ name: Cut release
 
 # The only way a vX.Y.Z tag is made (a tag ruleset refuses any other). Dispatched from main, it tags the commit of
 # vX.Y.Z's latest RC, not main's head: what ships is what soaked, while main moves on. Requires a version above the
-# latest release and, at the RC's commit, manifest.json at that version, green CI, no experimental adapter, and every
-# adapter's test records passing and citing a commit with its adapter code (check_release --release --records). Soak is the repo
-# owner's call.
+# latest release and, at the RC's commit, manifest.json at that version, green CI, no experimental adapter, every
+# adapter's test records passing and citing a commit with its adapter code, and an adapter with no fresh retest marked
+# at_risk (check_release --release --records), whose call for testers leads the release notes. Soak is the repo owner's
+# call.
 
 on:
   workflow_dispatch:
@@ -73,8 +74,8 @@ jobs:
       - name: Fetch the commits test records cite
         run: git fetch --quiet origin '+refs/pull/*/head:refs/remotes/pull/*'
 
-      - name: Refuse an experimental adapter, or a test record older than its adapter's code
-        run: .venv/bin/python scripts/check_release.py --release --records
+      - name: Refuse an experimental adapter, a test record older than its adapter's code, or an unmarked untested adapter
+        run: .venv/bin/python scripts/check_release.py --release --records --notes "$RUNNER_TEMP/notes.md"
 
       # The tag ruleset's only bypass is the deploy key: GITHUB_TOKEN can't bypass a ruleset on a personal repo.
       # The key exists only in this step, in a file only the runner user can read, and github.com's host keys come
@@ -91,4 +92,4 @@ jobs:
           export GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$hosts"
           git tag "$VERSION" "$TARGET"
           git push "git@github.com:$GITHUB_REPOSITORY.git" "refs/tags/$VERSION"
-          gh release create "$VERSION" --verify-tag --latest --generate-notes --title "$VERSION"
+          gh release create "$VERSION" --verify-tag --latest --generate-notes --notes-file "$RUNNER_TEMP/notes.md" --title "$VERSION"

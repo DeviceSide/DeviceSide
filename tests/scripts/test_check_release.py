@@ -5,9 +5,11 @@ import json
 import re
 import sys
 import types
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
+import yaml
 
 from custom_components.deviceside.actions import discover
 from custom_components.deviceside.core.registry import AdapterRegistry
@@ -65,7 +67,10 @@ def test_main_prints_the_table_and_the_step_summary(tmp_path, monkeypatch, capsy
     monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary))
     assert cr.main(["--coverage", str(coverage(tmp_path, 100))], REGISTRY) == 0
     assert capsys.readouterr().out.splitlines() == ["matter / turn_on_for  experimental", "shelly / turn_on_for"]
-    assert summary.read_text().splitlines()[-2:] == ["| matter / turn_on_for | yes |", "| shelly / turn_on_for |  |"]
+    assert summary.read_text().splitlines()[-2:] == [
+        "| matter / turn_on_for | experimental |",
+        "| shelly / turn_on_for |  |",
+    ]
 
 
 def test_release_fails_on_an_experimental_adapter(tmp_path, monkeypatch, capsys):
@@ -121,14 +126,14 @@ ADAPTER_IMPORTS = (
 class FakeRecordsRegistry:
     """One adapter, fake / turn_on_for, whose class's module is the repository's adapter module."""
 
-    def __init__(self, repo, monkeypatch, experimental: bool = False):
+    def __init__(self, repo, monkeypatch, experimental: bool = False, scope: AdapterScope | None = None):
         module = types.ModuleType("fake_turn_on_for")
         module.__file__ = str(repo.path / ADAPTER)
         monkeypatch.setitem(sys.modules, module.__name__, module)
         cls = type("FakeTurnOnFor", (FakeAdapter,), {"__module__": module.__name__})
-        self.adapter = cls(AdapterScope(experimental=experimental))
+        self.adapter = cls(scope or AdapterScope(experimental=experimental))
         self.adapter.action, self.adapter.integration = "turn_on_for", "fake"
-        self.integrations = {}
+        self.integrations = {"fake": IntegrationInfo(key="fake", title="Fake", ha_domain="fake", maintainers=("a",))}
 
     def matrix(self):
         yield "turn_on_for", "fake", self.adapter
@@ -324,8 +329,9 @@ ramp = ramp_scope(BRIGHTNESS, experimental=False)
         FLAGGED.replace("experimental=True", "experimental=False").replace(", experimental=False)", ")"),
         FLAGGED.replace("experimental=True, ", 'unmaintained="https://github.com/o/r/issues/1", '),
         FLAGGED.replace("experimental=True, ", "unmaintained=None, "),
+        FLAGGED.replace("experimental=True, ", 'at_risk="https://github.com/o/r/issues/2", '),
     ],
-    ids=["dropped", "reflowed", "set_and_dropped", "unmaintained_set", "unmaintained_none"],
+    ids=["dropped", "reflowed", "set_and_dropped", "unmaintained_set", "unmaintained_none", "at_risk_set"],
 )
 def test_a_change_to_the_flags_alone_leaves_the_record_fresh(tested, monkeypatch, after):
     repo, _ = tested
@@ -483,11 +489,15 @@ def test_a_stray_flag_is_found(code, strays):
 
 
 INTEGRATION_CODE = sorted((cr.REPO / "custom_components").rglob("*.py"))
-# The one function reading `unmaintained`, setup's warning, and `maintainers`, registration's check: neither changes a
-# call.
+# The one function reading `unmaintained` and `at_risk`, setup's warning, and `maintainers`, registration's check:
+# neither changes a call.
 SETUP = cr.REPO / "custom_components" / "deviceside" / "__init__.py"
 REGISTRATION = cr.REPO / "custom_components" / "deviceside" / "core" / "registry.py"
-READERS = {"unmaintained": (SETUP, "warn_unmaintained"), "maintainers": (REGISTRATION, "check_maintainers")}
+READERS = {
+    "unmaintained": (SETUP, "warn_marked"),
+    "at_risk": (SETUP, "warn_marked"),
+    "maintainers": (REGISTRATION, "check_maintainers"),
+}
 
 
 def without_reader(path: Path, flag: str) -> ast.Module:
@@ -506,7 +516,8 @@ def test_the_flags_only_reach_a_scope(flag):
 @pytest.mark.parametrize("flag", cr.FLAGS)
 def test_no_call_reads_the_flags(flag):
     """The records check ignores the flags because no call reads them; a read would make them a change. Setup reads
-    `unmaintained`, to warn, registration reads `maintainers`, to check them, and nothing else reads either."""
+    `unmaintained` and `at_risk`, to warn, registration reads `maintainers`, to check them, and nothing else reads them.
+    """
     reads = [
         f"{path.relative_to(cr.REPO)}:{line}"
         for path in INTEGRATION_CODE
@@ -661,3 +672,147 @@ def test_every_rig_record_in_the_repo_cites_a_commit_the_check_can_read():
     assert found
     assert [path.name for path in found if not cr.CITED_COMMIT.search(path.read_text())] == []
     assert [path.name for path in found if cr.result(path) is None] == []
+
+
+# Retests and At risk: an adapter with no Verified call.
+
+UNPROVEN = AdapterScope(domains=reported("light"))
+MANUAL = "docs/integrations/fake/test-records/_manual.md"
+REPORT_ISSUE = "https://github.com/DeviceSide/DeviceSide/issues/9"
+
+
+def manual(*rows: str) -> str:
+    return "# Fake · manual retests\n\nProse is ignored.\n\n" + "\n".join([*cr.MANUAL_HEADER, *rows]) + "\n"
+
+
+def manual_row(commit: str, tester: str = "a", passed: str = "`turn_on_for`") -> str:
+    return f"| 2026-11-11 | `{commit[:7]}` | @{tester} | `LCA001`, `SNSPL-10` | {passed} |"
+
+
+def unproven(tested, monkeypatch, scope: AdapterScope = UNPROVEN) -> tuple:
+    """The fake adapter with no Verified call and no record. Returns (repo, registry, the commit its code is at)."""
+    repo, sha = tested
+    repo.git("rm", "-q", "docs/integrations/fake/test-records/turn_on_for.md")
+    repo.git("commit", "-q", "-m", "drop the record")
+    return repo, FakeRecordsRegistry(repo, monkeypatch, scope=scope), sha
+
+
+@pytest.mark.parametrize(
+    ("scope", "needs"),
+    [
+        (AdapterScope(), False),  # Verified: its records gate it
+        (AdapterScope(domains=reported("light")), True),
+        (AdapterScope(domains=reported("light"), experimental=True), False),  # in RCs only
+        (AdapterScope(domains=experimental("light")), False),  # nothing ships on
+        (AdapterScope(domains=reported("light"), capabilities=experimental("Light")), False),
+        (AdapterScope(domains=reported("light"), capabilities=experimental("Light") | reported("CCT")), True),
+    ],
+)
+def test_an_adapter_with_a_shipping_call_and_no_verified_one_needs_a_retest(scope, needs):
+    assert cr.needs_retest(scope) is needs
+
+
+def test_an_adapter_never_retested_is_untested(tested, monkeypatch):
+    _, registry, _ = unproven(tested, monkeypatch)
+    assert cr.retest_errors(registry) == ([], ["fake / turn_on_for"])
+    # No record is asked of it, as before.
+    assert cr.record_errors(registry) == []
+
+
+def test_a_manual_line_by_a_maintainer_at_the_code_is_a_retest(tested, monkeypatch):
+    repo, registry, sha = unproven(tested, monkeypatch)
+    repo.commit(MANUAL, manual(manual_row(sha)))
+    assert cr.retest_errors(registry) == ([], [])
+    assert cr.fresh_retest(registry.adapter, cr.manual_retests("fake", ("a",))[0]) == f"{MANUAL}:7"
+
+
+def test_a_manual_line_older_than_the_code_or_for_another_action_is_no_retest(tested, monkeypatch):
+    repo, registry, sha = unproven(tested, monkeypatch)
+    repo.commit(MANUAL, manual(manual_row(sha, passed="`turn_off_for`")))
+    assert cr.retest_errors(registry) == ([], ["fake / turn_on_for"])
+    repo.commit(MANUAL, manual(manual_row(sha)))
+    repo.commit(ADAPTER)
+    assert cr.retest_errors(registry) == ([], ["fake / turn_on_for"])
+
+
+def test_a_manual_line_out_of_format_or_by_a_non_maintainer_is_an_error(tested, monkeypatch):
+    repo, registry, sha = unproven(tested, monkeypatch)
+    bad = f"| 2026-11-11 | {sha[:7]} | @a | LCA001 | turn_on_for |"
+    repo.commit(MANUAL, manual(bad, manual_row(sha, tester="b")))
+    errors, untested = cr.retest_errors(registry)
+    assert errors == [
+        f"{MANUAL}:7: not a row of `{cr.MANUAL_HEADER[0]}`: {bad}",
+        f"{MANUAL}:8: tester @b is not a maintainer of fake",
+    ]
+    assert untested == ["fake / turn_on_for"]
+    assert cr.main(["--records"], registry) == 1
+
+
+def write_report(repo, version: str, worked: list[str]) -> None:
+    report = {
+        "integration": "fake",
+        "model": "LCA001",
+        "item": "light",
+        "firmware": "1.0",
+        "deviceside": version,
+        "worked": worked,
+        "issue": REPORT_ISSUE,
+    }
+    repo.commit("docs/integrations/fake/devices.yaml", yaml.safe_dump({"reports": [report]}))
+
+
+def test_an_accepted_working_report_at_a_tag_of_the_code_is_a_retest(tested, monkeypatch):
+    repo, registry, sha = unproven(tested, monkeypatch)
+    repo.git("tag", "v0.2.0rc1", sha)
+    write_report(repo, "0.2.0rc1", ["turn_on_for"])
+    assert cr.retest_errors(registry) == ([], [])
+    repo.commit(ADAPTER)
+    assert cr.retest_errors(registry) == ([], ["fake / turn_on_for"])
+
+
+@pytest.mark.parametrize(("version", "worked"), [("0.9.0", ["turn_on_for"]), ("0.2.0rc1", [])])
+def test_a_report_at_an_unknown_version_or_not_working_is_no_retest(tested, monkeypatch, version, worked):
+    repo, registry, sha = unproven(tested, monkeypatch)
+    repo.git("tag", "v0.2.0rc1", sha)
+    write_report(repo, version, worked)
+    assert cr.retest_errors(registry) == ([], ["fake / turn_on_for"])
+
+
+def test_a_fresh_passing_record_is_a_retest(tested, monkeypatch):
+    repo, registry, sha = unproven(tested, monkeypatch)
+    write_record(repo, "turn_on_for.md", sha, result="fail")
+    assert cr.retest_errors(registry) == ([], ["fake / turn_on_for"])
+    write_record(repo, "turn_on_for.md", sha)
+    assert cr.retest_errors(registry) == ([], [])
+
+
+def test_a_release_needs_an_untested_adapter_marked_at_risk(tested, monkeypatch, capsys, tmp_path):
+    monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
+    repo, registry, sha = unproven(tested, monkeypatch)
+    notes = tmp_path / "notes.md"
+    assert cr.main(["--records"], registry) == 0
+    assert "fake / turn_on_for  untested since its code changed" in capsys.readouterr().out
+    assert cr.main(["--release", "--notes", str(notes)], registry) == 1
+    assert "fake / turn_on_for changed since its last retest" in capsys.readouterr().err
+    assert notes.read_text() == ""
+
+    registry.adapter.scope = replace(UNPROVEN, at_risk=REPORT_ISSUE)
+    assert cr.main(["--release", "--notes", str(notes)], registry) == 0
+    assert "fake / turn_on_for  at risk" in capsys.readouterr().out
+    assert notes.read_text().startswith("## ⚠️ At risk\n")
+    assert f"]({cr.DEVICE_REPORT})" in notes.read_text()
+    assert notes.read_text().endswith("\n- fake / turn_on_for\n")
+
+    # A retest clears the mark, so the release asks for it gone.
+    repo.commit(MANUAL, manual(manual_row(sha)))
+    assert cr.main(["--release"], registry) == 1
+    assert "fake / turn_on_for is at_risk but needs no retest or has a fresh one" in capsys.readouterr().err
+
+
+def test_every_manual_line_in_the_repo_is_in_format():
+    """`_manual.md` files are written by hand, so the real ones are held to the format too."""
+    registry = AdapterRegistry.discover()
+    errors = [
+        error for key, info in registry.integrations.items() for error in cr.manual_retests(key, info.maintainers)[1]
+    ]
+    assert errors == []

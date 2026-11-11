@@ -72,7 +72,7 @@ jobs:
         run: git fetch --quiet origin '+refs/pull/*/head:refs/remotes/pull/*'
 
       - name: Refuse a test record older than its adapter's code
-        run: .venv/bin/python scripts/check_release.py --records
+        run: .venv/bin/python scripts/check_release.py --records --notes "$RUNNER_TEMP/notes.md"
 
       # The tag ruleset's only bypass is the deploy key: GITHUB_TOKEN can't bypass a ruleset on a personal repo.
       # The key exists only in this step, in a file only the runner user can read, and github.com's host keys come
@@ -89,4 +89,4 @@ jobs:
           export GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$hosts"
           git tag "$RC" "$GITHUB_SHA"
           git push "git@github.com:$GITHUB_REPOSITORY.git" "refs/tags/$RC"
-          gh release create "$RC" --verify-tag --prerelease --generate-notes --title "$RC"
+          gh release create "$RC" --verify-tag --prerelease --generate-notes --notes-file "$RUNNER_TEMP/notes.md" --title "$RC"
