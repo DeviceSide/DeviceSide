@@ -71,6 +71,10 @@ class AdapterRegistry:
                 raise ValueError(f"{cls.__name__} declares integration {cls.integration}, module is {info.key}")
             if cls.action not in self.actions:
                 raise ValueError(f"{cls.__name__} serves unknown action {cls.action}")
+            if cls.capability is not Adapter.capability and cls.scope.capabilities is None:
+                # None means no capability axis, so every capability the adapter named would pass unweighed: a new
+                # one would widen its Verified scope with no diff.
+                raise ValueError(f"{cls.__name__} names capabilities but its scope lists none")
             self._adapters[(cls.action, info.key)] = cls()
 
     def _add_unavailable(self, key: str, reason: str) -> None:

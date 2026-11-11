@@ -1,6 +1,7 @@
 """End-to-end through registered services, against the fake integrations."""
 
 import asyncio
+import logging
 from unittest.mock import patch
 
 import pytest
@@ -12,6 +13,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import floor_registry as fr
 from homeassistant.helpers import label_registry as lr
+from pytest_homeassistant_custom_component.common import async_capture_events
 
 from custom_components.deviceside.core.models import EntityResult, Status, TimedRequest
 from custom_components.deviceside.core.scope import (
@@ -21,6 +23,7 @@ from custom_components.deviceside.core.scope import (
     reported,
     verified,
 )
+from custom_components.deviceside.core.wire import SCOPE_EVENT, WIRE_LOGGER
 
 from ..conftest import allow_experimental, call, refusal
 from ..fakes.fake_integration import LIMITS, FakeSetAttributes, FakeTurnOnFor
@@ -171,6 +174,45 @@ async def test_an_experimental_call_left_nothing_to_send_is_unchanged_not_refuse
 
     assert response == {"light.onoff": {"status": "unchanged", "integration": "fake", "detail": "fields_dropped"}}
     assert reset_script.calls == []
+
+
+async def test_the_scope_trace_names_what_each_run_target_was_weighed_on(hass, fake, reset_script, wire):
+    add_fake_entity(hass, fake, "light.a", attributes=FULL)
+    add_fake_entity(hass, fake, "light.no_fade", attributes=FULL | NO_FEATURES)
+    add_fake_entity(hass, fake, "light.b", attributes=FULL)
+    scope = AdapterScope(duration=LIMITS, fields=verified("brightness", "transition"), capabilities=verified("A"))
+    events = async_capture_events(hass, SCOPE_EVENT)
+
+    def capability(self, hass, target):
+        return "A" if target.entity_id != "light.b" else "B"
+
+    with patch.object(FakeTurnOnFor, "scope", scope), patch.object(FakeTurnOnFor, "capability", capability):
+        data = {"duration": 5, "brightness": 9, "transition": 1}
+        await call(hass, "turn_on_for", {"entity_id": ["light.a", "light.no_fade"], **data})
+        # A target refused before it runs is not traced: it proved nothing.
+        await refusal(hass, "turn_on_for", {"entity_id": "light.b", "duration": 5})
+    await hass.async_block_till_done()
+
+    base = {"action": "turn_on_for", "integration": "fake", "domain": "light", "capability": "A"}
+    assert sorted((e.data for e in events), key=lambda d: d["entity_id"]) == [
+        {"entity_id": "light.a", **base, "fields": ["brightness", "transition"]},
+        # Fields the light lacks are dropped first, so the trace names what the call carried.
+        {"entity_id": "light.no_fade", **base, "fields": ["brightness"]},
+    ]
+
+
+async def test_the_scope_trace_is_off_unless_the_wire_logger_is_at_debug(hass, fake, reset_script):
+    add_fake_entity(hass, fake, "light.a")
+    events = async_capture_events(hass, SCOPE_EVENT)
+    level = WIRE_LOGGER.level
+    WIRE_LOGGER.setLevel(logging.INFO)
+    try:
+        await call(hass, "turn_on_for", {"entity_id": "light.a", "duration": 5})
+        await hass.async_block_till_done()
+    finally:
+        WIRE_LOGGER.setLevel(level)
+
+    assert events == []
 
 
 async def test_response_shape(hass, fake, reset_script):
@@ -348,7 +390,12 @@ async def test_entity_id_all_acts_on_every_supported_light_and_skips_the_rest_qu
     # Nothing is named: the unsupported light is skipped with the one warning rather than raised, and the
     # unavailable one is skipped without a word, as core does for "all".
     assert "turn_on_for skipped targets that can't take it: light.yaml_only (not_in_registry)" in caplog.text
-    ours = [r.getMessage() for r in caplog.records if r.name.startswith("custom_components.deviceside")]
+    # Warnings only: caplog captures at DEBUG, which turns the wire and scope traces on.
+    ours = [
+        r.getMessage()
+        for r in caplog.records
+        if r.name.startswith("custom_components.deviceside") and r.levelno >= logging.WARNING
+    ]
     assert ours == ["turn_on_for skipped targets that can't take it: light.yaml_only (not_in_registry)"]
 
 

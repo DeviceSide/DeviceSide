@@ -2,7 +2,9 @@
 
 import pytest
 
-from .conftest import SENT, SOFT_OFF_3S, fade_put, lamp, mixed_room
+from custom_components.deviceside.core.runtime import get_runtime
+
+from .conftest import SENT, SOFT_OFF_3S, fade_put, lamp, mixed_room, report_off
 from ...conftest import call, result
 
 pytestmark = pytest.mark.usefixtures("setup_production")
@@ -34,11 +36,46 @@ async def test_already_past_the_limit_nothing_is_sent(hass, bridge):
 
 
 async def test_down_from_off_is_at_the_limit(hass, bridge):
+    # predicted_state off: the move plans from what aiohue reports, 0 % for an off light.
+    get_runtime(hass).predicted_state = False
     entity_id = await lamp(hass, bridge, state="off")
 
     response = await call(hass, "lower_brightness", {"entity_id": entity_id})
 
     assert response[entity_id]["detail"] == "at_limit"
+    assert bridge.puts == []
+
+
+async def test_down_from_off_is_off_with_predicted_state(hass, bridge):
+    entity_id = await lamp(hass, bridge, state="off")
+
+    response = await call(hass, "lower_brightness", {"entity_id": entity_id, "limit": 20})
+
+    assert response == {entity_id: result("hue", "unchanged", detail="off")}
+    assert bridge.puts == []
+
+
+async def test_room_down_with_none_lit_is_off_with_predicted_state(hass, bridge):
+    entity_id = await mixed_room(hass, bridge, None, None)
+
+    response = await call(hass, "lower_brightness", {"entity_id": entity_id})
+
+    assert response == {entity_id: result("hue", "unchanged", detail="off")}
+    assert bridge.puts == []
+
+
+async def test_down_mid_our_soft_off_is_sent_with_predicted_state(hass, bridge, clock):
+    # aiohue may hear off at a soft off's start; the prediction still has the light lit.
+    entity_id = await lamp(hass, bridge, brightness_pct=100.0)
+    await call(hass, "lower_brightness", {"entity_id": entity_id, "sweep_time": 10})
+    report_off(bridge, "light-1")
+    hass.states.async_set(entity_id, "off", {})
+    clock.now += 3
+
+    response = await call(hass, "lower_brightness", {"entity_id": entity_id, "limit": 20, "sweep_time": 10})
+
+    assert response == {entity_id: SENT}
+    assert bridge.puts[1] == ("light/light-1", fade_put(20.0, 5000))
 
 
 async def test_room_down_leaves_its_off_lights_out(hass, bridge, clock):
