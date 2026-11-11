@@ -15,7 +15,8 @@ DEVICES = "zigbee2mqtt/bridge/devices"
 STATE = "zigbee2mqtt/bridge/state"
 DEVICE_RESPONSE = "zigbee2mqtt/bridge/response/device/options"
 GROUP_RESPONSE = "zigbee2mqtt/bridge/response/group/options"
-HELD_TOPICS = [DEVICE_RESPONSE, GROUP_RESPONSE, DEVICES, GROUPS, INFO, STATE]
+LOGGING = "zigbee2mqtt/bridge/logging"
+HELD_TOPICS = [DEVICE_RESPONSE, GROUP_RESPONSE, LOGGING, DEVICES, GROUPS, INFO, STATE]
 ROOM = [{"id": 7, "members": [{"ieee_address": "0x01"}]}]
 
 

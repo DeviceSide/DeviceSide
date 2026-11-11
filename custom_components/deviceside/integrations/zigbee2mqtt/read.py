@@ -21,6 +21,7 @@ from homeassistant.core import HomeAssistant, callback
 
 from .addressing import bridge_topic, state_topic, topic, z2m_address
 from .bridge import ensure_options, first_retained, publish, wait
+from .bridge_cache import log_error
 from ...core.models import Target
 
 _LOGGER = logging.getLogger(__name__)
@@ -72,14 +73,9 @@ class Reader:
     def _on_log(self, msg: mqtt.ReceiveMessage) -> None:
         # Z2M logs a failed read as: Publish 'set' 'read' to '<name>' failed: ... ZCL command <ieee>/<endpoint>
         # <cluster>.read([...]) failed (<status>).
-        if self._reply is None or self._reply.done():
+        if self._reply is None or self._reply.done() or (message := log_error(msg.payload)) is None:
             return
-        try:
-            entry = json.loads(msg.payload)
-            message = entry["message"]
-        except ValueError, TypeError, KeyError:
-            return
-        if entry.get("level") == "error" and all(part in message for part in self._failure):
+        if all(part in message for part in self._failure):
             self._reply.set_exception((DeliveryFailed if _DELIVERY_FAILED in message else RuntimeError)(message))
 
     @callback

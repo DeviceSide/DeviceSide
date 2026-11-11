@@ -8,13 +8,15 @@ read bridge/groups two or three times in series. Held here instead:
   and info on every settings change and on start, so a user's change of an option reaches the cache (probe in
   docs/integration-internals.md, Tested behavior).
 - The options response topics, routed to whichever `ensure_options` call is waiting on the reply's transaction.
+- bridge/logging, whose error lines go to whichever calls listen (`listen_log`): a set's failure is logged there and
+  nowhere else (set_check.py). Each line is parsed only while a call listens.
 
-The response topics carry no retained message, so nothing shows they are live; the retained bridge/state, subscribed
-after them, does. Queued after them, it reaches the broker in their batch or a later one (HA sends a batch once the
-last is acknowledged), and on a reconnect HA resubscribes in topic order, which puts bridge/state after them too: its
-arrival shows they are subscribed (PR #69's barrier, made once per connection rather than per call). A disconnect
-clears everything until the resubscribe brings it back, so a cache whose subscriptions died with the MQTT client reads
-fresh, as before.
+The response topics and bridge/logging carry no retained message, so nothing shows they are live; the retained
+bridge/state, subscribed after them, does. Queued after them, it reaches the broker in their batch or a later one
+(HA sends a batch once the last is acknowledged), and on a reconnect HA resubscribes in topic order, which puts
+bridge/state after them too: its arrival shows they are subscribed (PR #69's barrier, made once per connection rather
+than per call). A disconnect clears everything until the resubscribe brings it back, so a cache whose subscriptions
+died with the MQTT client reads fresh, as before.
 
 Z2M republishes bridge/info just before it answers an options request (microseconds apart on the rig), so the held
 bridge/info usually has the new value by the time the reply arrives. Nothing promises that order, so `ensure_options`
@@ -43,6 +45,7 @@ HELD = ("devices", "groups", "info")
 KINDS = ("device", "group")
 # Retained by Z2M ("online"), and after the response topics in both subscribe orders.
 _BARRIER = "state"
+LOG = "logging"
 
 
 class BridgeCache:
@@ -55,8 +58,10 @@ class BridgeCache:
         self.pending: dict[str, asyncio.Future[dict]] = {}
         # Options Z2M confirmed since its last bridge/info, by (section, Z2M ID): Z2M's whole options after the write.
         self.confirmed: dict[tuple[str, str], dict] = {}
-        # Whether the response topics are subscribed, so a request's reply reaches `pending`.
+        # Whether the response topics and bridge/logging are subscribed, so a request's reply reaches `pending` and a
+        # log line the listeners.
         self.replies_live = False
+        self._log_listeners: list[Callable[[str], None]] = []
         self._unsubscribes: list[Callable[[], None]] = []
 
     def parsed(self, suffix: str) -> Any | None:
@@ -96,6 +101,17 @@ class BridgeCache:
 
         return received
 
+    def listen_log(self, listener: Callable[[str], None]) -> Callable[[], None]:
+        """Call listener with the message of each error line Z2M logs, until the returned callable is called."""
+        self._log_listeners.append(listener)
+        return lambda: self._log_listeners.remove(listener)
+
+    @callback
+    def _on_log(self, msg: mqtt.ReceiveMessage) -> None:
+        if self._log_listeners and (message := log_error(msg.payload)) is not None:
+            for listener in list(self._log_listeners):
+                listener(message)
+
     @callback
     def _on_barrier(self, msg: mqtt.ReceiveMessage) -> None:
         self.replies_live = True
@@ -121,11 +137,12 @@ class BridgeCache:
         self.confirmed.clear()
 
     async def subscribe(self, hass: HomeAssistant) -> None:
-        # In this order, so the barrier follows the response topics in HA's batch.
+        # In this order, so the barrier follows the response topics and the log in HA's batch.
         for kind in KINDS:
             self._unsubscribes.append(
                 await mqtt.async_subscribe(hass, bridge_topic(f"response/{kind}/options"), reply_router(self.pending))
             )
+        self._unsubscribes.append(await mqtt.async_subscribe(hass, bridge_topic(LOG), self._on_log))
         for suffix in HELD:
             self._unsubscribes.append(await mqtt.async_subscribe(hass, bridge_topic(suffix), self._keeper(suffix)))
         self._unsubscribes.append(await mqtt.async_subscribe(hass, bridge_topic(_BARRIER), self._on_barrier))
@@ -141,6 +158,17 @@ def _says_online(payload: str) -> bool:
     except ValueError:
         return False
     return isinstance(state, dict) and state.get("state") == "online"
+
+
+def log_error(payload: str) -> str | None:
+    """The message of a bridge/logging line at error level; None for any other level, or a line that doesn't parse."""
+    try:
+        entry = json.loads(payload)
+        if entry.get("level") == "error" and isinstance(message := entry["message"], str):
+            return message
+    except ValueError, TypeError, KeyError, AttributeError:
+        pass
+    return None
 
 
 def reply_router(pending: dict[str, asyncio.Future[dict]]) -> Callable[[mqtt.ReceiveMessage], None]:
