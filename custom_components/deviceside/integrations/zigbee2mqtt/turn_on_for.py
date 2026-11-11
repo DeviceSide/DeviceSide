@@ -9,6 +9,7 @@ from homeassistant.core import HomeAssistant
 from .addressing import not_addressable, topic
 from .bridge import publish, publish_set, state_reply, traced_options
 from .native_control import COLOR_FIELDS, NEED, native_control, settled
+from .set_check import checked, note
 from ...actions.turn_on_for import TurnOnForRequest
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Status, Target
@@ -45,8 +46,8 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
     publish when no fields ran light.turn_on, and twice after the timer should end. A new call on the same
     target replaces its pending reads.
 
-    Returns SENT (fire-and-forget via MQTT); the bridge forwards the command to the device. The reads never
-    change the result.
+    Returns SENT (fire-and-forget via MQTT), or REJECTED when Zigbee2MQTT logs a set as failed (set_check.py). The
+    reads never change the result.
     """
 
     action: ClassVar[str] = "turn_on_for"
@@ -88,7 +89,7 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
             self._schedule_reads(hass, target, on_time, read_on=not request.light.present())
             return self.result(target, Status.SENT)
 
-        return await self.gather(hass, targets, send)
+        return await checked(self, hass, targets, send)
 
     async def _turn_on(self, hass: HomeAssistant, target: Target, data: dict) -> None:
         """light.turn_on, returning once Z2M publishes the light's state, so the timer follows the fields.
@@ -102,6 +103,8 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
         try:
             if wire_enabled():
                 wire_trace(hass, target.reported_id, "ha", "light.turn_on", data, options=traced_options(hass, target))
+            # HA publishes it as a set, whose failure Z2M logs as any other's.
+            await note(hass, target)
             await hass.services.async_call("light", "turn_on", service_data, blocking=True)
             if published is None:
                 return

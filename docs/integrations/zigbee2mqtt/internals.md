@@ -132,6 +132,16 @@ one, the longest.
 saturation fade, since `saturation_move: stop` halts the attribute and lets the xy fade drift on. Each is its own
 publish, color first: Z2M reads back about 0.7 s after a brightness stop before sending the next key.
 
+### `set_check`
+
+Z2M reports a set it couldn't send only on `bridge/logging`, at error level:
+`Publish 'set' '<key>' to '<friendly name>' failed: '<error>'`, then goes on to the message's next key and publishes
+the message's state after the last (`lib/extension/publish.ts`). So a key's failure line comes before its message's
+state. raise, lower, stop and turn_on_for settle after their publishes until each entity published to has a state
+publish or a failure line, else 2 s past its last publish; a failure line makes the target `rejected`, with the status
+it names (`busy`) or `send_failed`. set_attributes checks without the settle. The settle never delays a publish.
+`hue_move`, a raw `command` and `on_time` draw no state, so those settles run the 2 s.
+
 ### `color_refresh`
 
 Z2M publishes a fade's end value at once and reads back within a second of a brightness or hue stop. Once a fade has
@@ -183,6 +193,12 @@ cites have been checked upstream: search each tracker for duplicates before fili
   later state message carries it. Workaround: `deviceside_read` appended to each device's `filtered_cache`.
   Fix: a non-persisting read, or `state_property` keys kept out of the cache. They may answer "use
   `filtered_cache`".
+- **zigbee-herdsman (Ember adapter): a groupcast the coordinator refuses with BUSY isn't retried.**
+  `sendZclFrameToGroup` makes one `ezsp.send` (multicast) and throws on any status but success, while a unicast
+  retries BUSY up to `QUEUE_MAX_SEND_ATTEMPTS` (3), 500 ms apart (`src/adapter/ember/adapter/emberAdapter.ts`).
+  Seen on the house rig 2026-11-11: Z2M logged `[ZCL GROUP groupId=<id>] Failed to send with status=BUSY.` about
+  20 ms after a group `brightness` set, and the group never moved. Workaround: none for the send; `set_check` reports
+  the target failed. Fix: retry a group send on BUSY as a unicast is. Not yet filed.
 - **Zigbee2MQTT: announce both xy and hs.** Declined in #33025, hence the `homeassistant.light` override
   (`integrations/zigbee2mqtt/color_modes.py`). The remaining angle is narrower: opt-in per device, or only for
   Signify bulbs known to handle mixed modes.

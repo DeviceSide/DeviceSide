@@ -5,6 +5,9 @@ name: Cut release
 # latest release and, at the RC's commit, manifest.json at that version, green CI, no experimental adapter, and every
 # adapter's test records passing and citing a commit with its adapter code (check_release --release --records). Soak is the repo
 # maintainers' call.
+#
+# Two jobs, so the code `uv sync` installs never shares a runner with write access: `check` runs the gates with a
+# read-only token, and `tag`, on a fresh runner that installs nothing, alone holds the write token and the deploy key.
 
 on:
   workflow_dispatch:
@@ -16,17 +19,16 @@ on:
 permissions: {}
 
 jobs:
-  cut:
+  check:
     runs-on: ubuntu-latest
-    # Holds the tag deploy key, and deploys only from main and release/*.
-    environment: release
     permissions:
-      contents: write
+      contents: read
       actions: read
     env:
       VERSION: ${{ inputs.version }}
       BRANCH: ${{ github.ref_name }}
-      GH_TOKEN: ${{ github.token }}
+    outputs:
+      target: ${{ steps.target.outputs.target }}
 
     steps:
       - name: Refuse a tag ref
@@ -35,16 +37,17 @@ jobs:
           echo "::error::Dispatch from main, not a tag."
           exit 1
 
-      # No credentials left in .git: the repo is public, so fetches need none, and only the push step holds the key.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
 
       - name: Check the tag, and find the RC it releases
+        id: target
         run: |
           target=$(python3 scripts/check_tag.py "$VERSION" "$BRANCH")
           echo "TARGET=$target" >> "$GITHUB_ENV"
+          echo "target=$target" >> "$GITHUB_OUTPUT"
 
       - name: Refuse a release candidate
         run: |
@@ -54,6 +57,8 @@ jobs:
           fi
 
       - name: Require green CI on the RC
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: bash scripts/require_green.sh "$TARGET"
 
       # The remaining gates check the tree that ships, with the scripts it shipped with.
@@ -75,6 +80,25 @@ jobs:
 
       - name: Refuse an experimental adapter, or a test record older than its adapter's code
         run: .venv/bin/python scripts/check_release.py --release --records
+
+  tag:
+    needs: check
+    runs-on: ubuntu-latest
+    # Holds the tag deploy key, and deploys only from main and release/*.
+    environment: release
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ inputs.version }}
+      TARGET: ${{ needs.check.outputs.target }}
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      # The RC's commit only; no credentials left in .git, as only the push holds the key.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ needs.check.outputs.target }}
+          persist-credentials: false
 
       # The tag ruleset's only bypass is the deploy key: GITHUB_TOKEN can't bypass a ruleset on a personal repo.
       # The key exists only in this step, in a file only the runner user can read, and github.com's host keys come
