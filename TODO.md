@@ -83,6 +83,10 @@ the RC tag, only flag-only, docs, `scripts/` and rig step-file changes land. The
 - [ ] **Shared code proof** (#377): a passing Verified record whose run covered a `core/` change proves it for every
   adapter, so a core change needs one rig run, not a retest per integration. Ticks once the rig writes the records'
   `## Shared coverage` table (tracked in the rig repo).
+  - [ ] **Attended `--shared-coverage` run**, once the rig's coverage helper is deployed and loaded in HA: one small
+    suite. The staged record has the section, it lists lines of a coroutine already running before coverage started
+    (if it doesn't, the rig's docs name the gap), and `check_release.py --records` accepts it. This item's tick lands
+    with that record.
 
 ## After v0.1.0
 
