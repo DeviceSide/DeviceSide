@@ -77,6 +77,9 @@ the RC tag, only flag-only, docs, `scripts/` and rig step-file changes land. The
   them; review requests go out by hand until that becomes a bottleneck.
 - [x] **Fast track** (#370): a contributor who builds and tests on their own hardware opens a PR directly, with no
   issue (CONTRIBUTING, PR template); an Experimental item moves to Reported, on its maintainer's request, after five working reports from other users.
+- [x] **Retests and At risk** (#374): every changed adapter is retested before release (a rig record, a maintainer's
+  `_manual.md` line or an accepted report at a release); one left untested at the cut ships live, marked ⚠️ At risk,
+  with a call for testers in the release notes.
 
 ## After v0.1.0
 
