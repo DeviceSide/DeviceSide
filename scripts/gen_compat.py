@@ -3,7 +3,8 @@
 the adapters' scopes and docs/devices.yaml.
 
 **Cards.** One collapsed section between the README's devices markers, with a card per integration: its name and
-maintainers (`IntegrationInfo.maintainers`), then ⚠️ Unmaintained with the features of any unmaintained adapter, then a
+maintainers (`IntegrationInfo.maintainers`; "⚠️ Unmaintained · formerly maintained by" when every shipping adapter is
+unmaintained), then ⚠️ Unmaintained with the features of any unmaintained adapter, then a
 bullet per outcome:
 - Works: the models in the passing records of adapters that ship (Verified), plus native groups, and the models of
   accepted working reports (linked to the report). A rig-tested entry ends ✔.
@@ -492,6 +493,8 @@ class Card:
     maintainers: tuple[str, ...] = ()
     # ⚠️ Unmaintained entries: the features of the unmaintained adapters, by reason.
     unmaintained: list[str] = field(default_factory=list)
+    # Every shipping adapter is unmaintained, so the heading says "formerly maintained".
+    all_unmaintained: bool = False
     lines: dict[str, list[str]] = field(default_factory=dict)
 
     def short(self, name: str) -> str:
@@ -501,7 +504,12 @@ class Card:
     def render(self) -> str:
         requires = f" ({self.requires})" if self.requires else ""
         maintainers = ", ".join(f"[@{handle}]({GITHUB}{handle})" for handle in self.maintainers)
-        lines = [f"**{self.title}**{requires} · maintained by {maintainers}", ""]
+        status = (
+            f"⚠️ Unmaintained · formerly maintained by {maintainers}"
+            if self.all_unmaintained
+            else f"maintained by {maintainers}"
+        )
+        lines = [f"**{self.title}**{requires} · {status}", ""]
         lines += [f"- {entry}" for entry in self.unmaintained]
         for key, icon, _ in OUTCOMES:
             if key in ("should", "help"):
@@ -606,9 +614,21 @@ def unmaintained_entries(integration_adapters: list) -> list[str]:
     ]
 
 
+def all_unmaintained(integration_adapters: list) -> bool:
+    """Whether the integration has shipping adapters and every one is unmaintained (experimental ones don't count)."""
+    shipping = [adapter for adapter in integration_adapters if not adapter.scope.experimental]
+    return bool(shipping) and all(adapter.scope.unmaintained for adapter in shipping)
+
+
 def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: Data) -> Card:
     info = registry.integrations[key]
-    result = Card(info.title, data.requires.get(key), info.maintainers, unmaintained_entries(integration_adapters))
+    result = Card(
+        info.title,
+        data.requires.get(key),
+        info.maintainers,
+        unmaintained_entries(integration_adapters),
+        all_unmaintained(integration_adapters),
+    )
     result.lines["works"] = works(result, key, integration_adapters, data)
     for outcome, level in (("should", Level.DOCUMENTED), ("help", Level.EXPERIMENTAL)):
         held = classes(key, integration_adapters, level, data)
