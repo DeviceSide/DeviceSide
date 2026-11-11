@@ -360,9 +360,12 @@ DeviceSide's own soft off is cut with `on: true` at the predicted brightness and
 
 Reports during a remembered move can't be told apart by value (Tested behavior), so every report of what the move
 changed (brightness and on, or color) is taken as DeviceSide's, except a switch to off while fading to or halted at
-a lit level, and a report of anything the move didn't change; those, a bridge scene recall (`status.active`), and a
-Home Assistant call end the prediction. With `predicted_state` on, the reports taken as DeviceSide's are hidden from
-aiohue and Home Assistant is sent the prediction instead; a raise from off shows 0.4 %, where the fade starts.
+a lit level, and a report of anything the move didn't change. Those end the prediction of what they report, and
+only that: brightness and color fade independently, and a bulb can correct a color mid-fade (Tested behavior), so a
+color report leaves a brightness fade's prediction, and the stale brightness the bulb reported with it, in place.
+A bridge scene recall (`status.active`) and a Home Assistant call end the light's whole prediction. With
+`predicted_state` on, the reports taken as DeviceSide's are hidden from aiohue and Home Assistant is sent the
+prediction instead; a raise from off shows 0.4 %, where the fade starts.
 
 ### Tested behavior
 
@@ -394,6 +397,14 @@ Assistant 2026.10.2, aiohue 4.9.0, unless dated otherwise. Home Assistant shows 
   mid-fade halts it, reported at once. One write takes a dimming stop and an xy. An xy fade and a brightness fade
   0.5 s apart both run. A zone xy write changes only its color bulbs.
 - **A brightness write never reports a color:** across the full Hue rig suite (2026-10-27), only `on` and `dimming`.
+  But a bulb can report the color it really holds mid-fade, correcting the bridge (rig run 2026-11-11 08:58, a room
+  of color and color temperature bulbs): a room was set to one color temperature, then one member to another,
+  each reported at once; 25 s later, mid-way through a brightness-only room fade, that member reported a stale
+  mid-fade brightness and, in the next event, the room's color temperature. It happened on both bulbs, in two cases.
+- **A room member can be left stale** (2026-11-11, LTA009s): after a room fade, one light's last report can be a
+  mid-fade brightness, with nothing after it for 40 s, while the bulb reaches the end. It happened in 2 of 6 fades, a
+  different light each time. A Home Assistant `light.turn_on` of the room can leave one too: set to 60 %, a light
+  last reported 47.43 %.
 - **A bridge scene recall** sets `status.active` to `static` within about 1 s of its lights' reports. A light whose
   color the scene leaves alone reports only `on` and `dimming`, so only the scene's report shows the change came
   from elsewhere.

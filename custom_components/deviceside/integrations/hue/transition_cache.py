@@ -41,9 +41,14 @@ class HueTransitionCache(transition.TransitionCache):
             for key in keys:
                 hidden.pop(key, None)
 
-    def release(self, resource_id: str) -> dict[str, float | bool]:
-        """The bridge's values aiohue was not shown, now to be shown, so no longer kept here."""
-        return self._hidden.pop(resource_id, {})
+    def release(self, resource_id: str, keys: Iterable[str]) -> dict[str, float | bool]:
+        """The bridge's values of these keys aiohue was not shown, now to be shown, so no longer kept here."""
+        if (hidden := self._hidden.get(resource_id)) is None:
+            return {}
+        released = {key: hidden.pop(key) for key in keys if key in hidden}
+        if not hidden:
+            del self._hidden[resource_id]
+        return released
 
     @asynccontextmanager
     async def recording(self, keys: Iterable[tuple[str, str]]) -> AsyncIterator[dict[tuple[str, str], Transition]]:

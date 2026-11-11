@@ -47,6 +47,10 @@ Zigbee2MQTT, which maps one to the other
 Smooth dimming is tested on all three, and turn on with timer on ZHA and Zigbee2MQTT (the Hue bridge has no usable
 timer: see [integrations](integrations.md#hue)).
 
+On a Hue bridge, a room fade can leave one of these bulbs last reported at a mid-fade brightness, with nothing after,
+while the bulb reaches the end; and mid-fade, a bulb can report the color temperature it really holds, correcting the
+bridge's earlier report (rig runs, 2026-11-11: Hue [Tested behavior](integration-internals.md#tested-behavior-3)).
+
 ### Hue Essential White and Color Ambiance A60
 
 A color bulb, rig-tested on Hue, ZHA and Zigbee2MQTT: `LCA016` on Hue and ZHA, `8720169392182` on Zigbee2MQTT
