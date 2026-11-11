@@ -37,19 +37,17 @@ the rig's tests, or a public rig, come only if user complaints call for them.
 2. **Rule text:** rewrite CLAUDE.md's Reported paragraph and add graduation, retest and At risk rules; update the
    design.md glossary (Reported, Device report, new At risk entry); CONTRIBUTING step 5 and the maintainer section
    (graduation request, `_manual.md`); PR template Testing evidence mentions `_manual.md`.
-3. **Reports:** `gen_compat.py` reports gain a reporter-is-maintainer distinction (from the issue author vs
-   `IntegrationInfo.maintainers`) so it can count independent reports; refuse a Reported item that left Experimental
-   on fewer than five, or keep it a review check if the count can't be derived from `devices.yaml` cleanly
-   (judgment call: decide and note why in the module docstring).
+3. **Reports:** the five-report count is the maintainer's discretion, checked in review, not by `gen_compat.py`. Say
+   so in CLAUDE.md's Reported rule and CONTRIBUTING.
 4. **Retests:** `check_release.py --records` accepts a `_manual.md` line or an accepted report newer than the
    adapter's code as a retest; at the cut it lists the rest as At risk instead of failing for adapters with no rig
    coverage. Define the `_manual.md` line format there and test it.
-5. **At risk mark:** how it is carried (a generated list the release writes, or an `AdapterScope` field like
-   `unmaintained`): pick the fewest mechanisms; setup warning and card mark mirror Unmaintained's.
+5. **At risk mark:** an `AdapterScope.at_risk` field (an issue URL or reason), set by hand, mirroring `unmaintained`
+   (setup warning, card mark). `check_release.py --release` fails while a changed adapter has neither a retest newer
+   than its code nor `at_risk` set; a retest PR clears it. No generated file, no write step in the cut workflows.
 6. Tests, `pre-commit run --all-files`, regenerate cards/feature table, audit (binding-rule surface: Opus auditor),
    `gh pr ready`.
 
 ## Open decisions
 
-- Step 3: enforce the five-report count in `gen_compat.py`, or leave it to maintainer review.
-- Step 5: how At risk is carried.
+None.
