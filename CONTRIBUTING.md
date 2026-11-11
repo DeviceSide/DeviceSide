@@ -30,12 +30,12 @@ If you can build a change and test it on your own devices, open a pull request d
    - `scripts/gen_features.py`: a `NO_PATH` row for each feature the devices can't support, with the reason
    - `README.md`: the integration in the Requirements list
 4. **Ship it Experimental.** New actions, domains, capabilities and fields start as `Level.EXPERIMENTAL`. Unit tests pin each payload you send, and every module of your adapter code needs at least 95% line coverage.
-5. **Earn Reported with your own test.** Test each item on your devices at the commit whose calls you'll ship. File a [device report](https://github.com/DeviceSide/DeviceSide/issues/new?template=device_report.yml) giving that commit as the DeviceSide version, add it to `reports` in your bundle's `devices.yaml`, and set those items to `Level.REPORTED`. Fields stay Experimental for now. If review changes a call, test again and file a new report. Put measurements in your bundle's `internals.md`, dated, with the firmware, HA and library versions.
+5. **Show your own test, and find a second tester.** Test each item on your devices at the commit whose calls you'll ship, and put the results in the pull request's Evidence section; if review changes a call, test again. Put measurements in your bundle's `internals.md`, dated, with the firmware, HA and library versions. Your items leave Experimental only when someone other than you confirms them: another user's [device report](https://github.com/DeviceSide/DeviceSide/issues/new?template=device_report.yml) makes them Reported, and the automated rig makes them Verified. A tester runs them with the Experimental features option turned on.
 6. **Run the checks:** set up with `uv sync`, then run `.venv/bin/pytest` and `pre-commit run --all-files`. Regenerate the cards, the feature table and CODEOWNERS with `scripts/gen_compat.py`, `scripts/gen_features.py` and `scripts/gen_codeowners.py`; CI checks each one. `scripts/check_release.py --records` should list no adapter outside your package.
 7. **Audit:** if you use Claude, run `/audit-code` on your diff; otherwise ask for an audit in the pull request. Fix every Critical and High finding and list the rest.
 8. **Open the pull request** against `main` (or a `release/vX.Y.Z` branch when one exists for the fix) and fill in the template.
 
-A new integration's pull request names you in its `IntegrationInfo.maintainers`, and once it merges you're its maintainer. Its next rung, Verified, comes with the rig kit, which lets maintainers commit test records from their own hardware.
+A new integration's pull request names you in its `IntegrationInfo.maintainers`, and once it merges you're its maintainer. Its items climb from Experimental on other people's reports; Verified on hardware the rig lacks comes with the rig kit.
 
 ## Maintaining an integration
 

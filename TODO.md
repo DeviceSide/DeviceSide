@@ -75,8 +75,8 @@ the RC tag, only flag-only, docs, `scripts/` and rig step-file changes land. The
   `docs/models.yaml` the models.
 - [x] **Code-owner enforcement** (#370): outside maintainers hold Triage, Jason merges, and CODEOWNERS keeps naming
   them; review requests go out by hand until that becomes a bottleneck.
-- [x] **Fast track** (#370): a contributor who builds and tests on their own hardware opens a PR directly and lands
-  it Reported on their own device report (CONTRIBUTING, PR template).
+- [x] **Fast track** (#370): a contributor who builds and tests on their own hardware opens a PR directly, with no
+  issue (CONTRIBUTING, PR template); Reported needs a report from someone other than the call's author.
 
 ## After v0.1.0
 

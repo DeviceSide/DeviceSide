@@ -8,7 +8,7 @@
 
 - Integration:
 - Actions:
-- Level of each new or changed item (Experimental, Reported):
+- Level of each new or changed item:
 
 ## Shared code
 
@@ -16,7 +16,7 @@
 
 ## Evidence
 
-<!-- For each device: model, firmware, HA version, library version, the commit you tested, the date, and the device report issue. -->
+<!-- For each device: model, firmware, HA version, library version, the commit you tested, the date, and what you saw. -->
 
 ## Records staled
 
