@@ -151,7 +151,7 @@ class IntegrationInfo:
     key: str
     title: str
     ha_domain: str
-    # GitHub handles of the people who support its adapters and approve changes to its package; one or more, checked
+    # GitHub handles of the people who look after its package and approve changes to it; one or more, checked
     # at registration (core/registry.py). Empty only on the placeholder for an integration that failed to import.
     maintainers: tuple[str, ...]
     # Picks this integration over a generic sibling on the same ha_domain (Z2M over plain mqtt).
