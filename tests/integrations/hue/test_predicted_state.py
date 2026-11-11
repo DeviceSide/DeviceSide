@@ -231,6 +231,18 @@ async def test_a_room_up_from_off_shows_on(hass, bridge, clock):
     assert room_shown(bridge) == (True, MIN_BRIGHTNESS_STEP)
 
 
+@pytest.mark.parametrize("action", ["raise_brightness", "lower_brightness"])
+async def test_a_room_its_bridge_has_not_reported_on_yet_shows_on_at_the_start(hass, bridge, clock, action):
+    # The rig saw this for ~1 s: a room turned on just before the move, its lights reported on, the room not yet.
+    await setup_room(hass, bridge)
+    bridge.api.groups.grouped_light["1"].on.on = False
+
+    await call(hass, action, {"entity_id": "light.room", "sweep_time": 10})
+    await settle(hass)
+
+    assert room_shown(bridge) == (True, 20.0)
+
+
 async def test_a_stale_report_after_a_stop_stays_hidden(hass, bridge, clock):
     # The rig saw a bulb report, 4 s after a stop, the brightness it held before the move.
     await setup_room(hass, bridge)

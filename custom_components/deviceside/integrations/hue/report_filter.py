@@ -127,6 +127,9 @@ class ReportFilter:
         A light HA shows off, faded up from off, is shown on at once at the lowest step, where the fade starts, so HA
         doesn't hold it off for the whole fade. Not at its `min_dim_level`: that is the light output at the lowest
         step (5 % on a Hue White), not a brightness, and the bridge reports levels below it.
+
+        The lights' rooms are shown at once too: the bridge reports a room about 1 s after its lights, so one turned on
+        just before the fade can still be off in HA, and the room's next report is the fade's, which is hidden.
         """
         if not self.hiding or ATTRIBUTES[attribute].shows is None:
             return
@@ -139,6 +142,7 @@ class ReportFilter:
         if attribute == BRIGHTNESS:
             lights = [self.api.lights.get(light_id) for light_id, target in ends.items() if target > 0]
             self.show(BRIGHTNESS, {light.id: MIN_BRIGHTNESS_STEP for light in lights if light and not light.on.on})
+        self._show_rooms_soon(self._rooms(ends))
 
     def halted(self, attribute: str, halts: dict[str, float]) -> None:
         """Show each light where a stop halted it, and drop the end its fade would have shown."""
