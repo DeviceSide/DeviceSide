@@ -51,3 +51,38 @@ the rig's tests, or a public rig, come only if user complaints call for them.
 ## Open decisions
 
 None.
+
+## Handoff
+
+Branch `wt/evidence-levels`, worktree `/Users/jason/projects/ha/deviceside-wt/evidence-levels`, draft PR #374. #370 is
+merged and merged into the branch. Suite (1759) and pre-commit green at `3c8eb85`.
+
+**Done (steps 1, 4, 5, part of 6):**
+- `AdapterScope.at_risk` (`core/scope.py`), in `check_release.FLAGS`; setup warns in `__init__.py` `warn_marked` (was
+  `warn_unmaintained`; `tests/test_init.py`, READERS in `test_check_release.py`).
+- `check_release.py`: module docstring defines Retests, the `_manual.md` row format and At risk. `needs_retest`,
+  `manual_retests`, `report_retests` (report's `deviceside` → tag `v<version>`), `fresh_retest`, `retest_errors`,
+  `at_risk_errors`, `release_notes`, `retest_checks`; `--notes PATH`. Adapters with a Verified call still need their rig
+  records; manual lines and reports count only for adapters without one (design call: rig coverage stays the gate
+  where it exists). Tests at the end of `tests/scripts/test_check_release.py`.
+- `gen_compat.py`: `MARKS`, `marked()`, `mark_entries()`, `Card.marks`; ⚠️ At risk on cards, evidence rows, legend;
+  README regenerated.
+- Both cut workflows pass the call for testers from `check` to `tag` as a job output (main split them into two jobs)
+  and `gh release create --notes-file`. RC notes too, not just releases (design call).
+- Device report form: the DeviceSide version field says a report tests that release's code.
+
+**Next:**
+1. Step 2, rule text (#370 already rewrote CLAUDE.md's Reported paragraph and CONTRIBUTING step 5 for rules 2–3):
+   CLAUDE.md: say the five-report count is checked in review, not by `gen_compat.py`; siblings sharing the call may
+   move Experimental → Documented on the same evidence; add the retest rule (rule 5) and an **At risk** paragraph
+   beside Unmaintained (rule 6, pointing at `check_release.py` for the format, not restating it); Releasing: the cut
+   enforces At risk. design.md glossary: At risk entry, Device report (counts as a retest at its version), Test record
+   / `_manual.md`. CONTRIBUTING: step 5 and the maintainer section (graduation request, `_manual.md` line).
+   `.github/pull_request_template.md` Testing evidence: mention `_manual.md`.
+2. Add a ticked TODO.md item for this work (`(#374)`), as its own commit.
+3. Rerun `pr-draft docs/plans/2026-11-11-evidence-levels.md` after fixing Touches: drop `config_flow.py`; add
+   `custom_components/deviceside/__init__.py`, `tests/test_init.py`, `README.md`, `.github/workflows/cut-release*.yml`.
+4. Audit (binding-rule surface: Opus auditor) per global § Code audits, then `gh pr ready`, then a backgrounded
+   `merge-green 374 --squash --delete-branch`.
+
+Overlaps: #350/#351 (Control4, no live agent) touch `device_report.yml` and `docs/design.md`.
