@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+from types import SimpleNamespace
 
 import pytest
 from homeassistant.core import ServiceCall
@@ -258,4 +259,28 @@ async def test_a_watch_closed_mid_subscribe_drops_the_subscription(hass, broker,
     await watch.note(target(hass, entity_id), entity_id)
 
     assert watch.entities == {}
+    assert broker.subscribers["zigbee2mqtt/lamp"] == []
+
+
+async def test_two_sends_noting_one_entity_at_once_both_own_it(hass, broker, live, monkeypatch):
+    # A group's send writing a member that is also a target: both subscribes are in flight together.
+    entity_id = light(hass, broker)
+    subscribe = broker.subscribe
+
+    async def slow(hass, topic, msg_callback):
+        unsubscribe = await subscribe(hass, topic, msg_callback)
+        msg_callback(SimpleNamespace(topic=topic, payload="{}", retain=False))  # before the entity is noted
+        await asyncio.sleep(0)
+        return unsubscribe
+
+    monkeypatch.setattr(set_check.mqtt, "async_subscribe", slow)
+    watch = set_check.Watch(hass, live)
+    lamp = target(hass, entity_id)
+
+    await asyncio.gather(watch.note(lamp, "light.room"), watch.note(lamp, entity_id))
+    log(broker, LAMP_UNDELIVERED)
+
+    assert watch.failures() == {"light.room": LAMP_UNDELIVERED, entity_id: LAMP_UNDELIVERED}
+    assert len(broker.subscribers["zigbee2mqtt/lamp"]) == 1
+    watch.close()
     assert broker.subscribers["zigbee2mqtt/lamp"] == []

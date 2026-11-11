@@ -108,10 +108,13 @@ class Watch:
             except Exception as err:  # noqa: BLE001 - the publish goes out unchecked, as before
                 _LOGGER.debug("Couldn't subscribe to %s, so a failed send isn't seen: %s", light_topic, err)
                 return
-            if self.closed:
+            # Another send may have noted the entity during the subscribe (a group's member that is a target too).
+            if self.closed or (entity := self.entities.get(target.entity_id)) is not None:
                 unsubscribe()
-                return
-            entity = self.entities[target.entity_id] = _Entity(target.device.name, set(), unsubscribe)
+                if entity is None:
+                    return
+            else:
+                entity = self.entities[target.entity_id] = _Entity(target.device.name, set(), unsubscribe)
         entity.owners.add(owner)
         entity.published_at = self.hass.loop.time()
         entity.answered = False
@@ -120,8 +123,9 @@ class Watch:
         @callback
         def received(msg: mqtt.ReceiveMessage) -> None:
             # A retained message is old state the broker resends on subscribe, not Z2M's answer.
-            if not msg.retain:
-                self.entities[entity_id].answered = True
+            # Until the subscribe returns, the entity isn't noted yet, and no publish has gone out to answer.
+            if not msg.retain and (entity := self.entities.get(entity_id)) is not None:
+                entity.answered = True
                 self._changed.set()
 
         return received
