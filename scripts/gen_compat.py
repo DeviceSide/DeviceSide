@@ -36,8 +36,9 @@ Shelly: RPC component, its call reached), `firmware` and `deviceside` (version),
 needs a bundle; one without is an error naming the file.
 
 **Links.** A card links each model, class or blocker to the heading its `section` names (default: the model's
-`name`, the blocker's `what`): on the card's integration page when that has the heading, else on
-docs/device-compatibility.md outside the evidence block. A heading neither has is an error.
+`name`, the blocker's `what`): on the card's integration page when that has the heading; a model's or native groups'
+heading may be on any integration's page; else on docs/device-compatibility.md outside the evidence block. A heading
+none of them has is an error.
 
 Usage: scripts/gen_compat.py [--check]
 
@@ -163,9 +164,9 @@ class Data:
         return self.models[model_id]
 
     def url(self, key: str | None, section: str) -> str:
-        """The section's heading: on the integration's page when that has it, else (a model's, which any card may
-        link) on the integration page that has it, else on PAGE. Where `check_sections` looks, so its pass means a
-        live link."""
+        """The section's heading: on the integration's page when that has it, else (a model's or native groups',
+        which any card may link) on the integration page that has it, else on PAGE. Where `check_sections` looks, so
+        its pass means a live link."""
         anchor = slug(section)
         owners = [key] if key is not None else []
         if (None, section) in self.sections:
@@ -265,6 +266,7 @@ def load_raw(raw: dict, registry: AdapterRegistry) -> Data:
     data = Data(requires, {}, raw.get("capabilities") or {}, [], [])
     for model in raw.get("models") or []:
         load_model(model, data)
+    data.sections.add((None, GROUPS_ENTRY[1]))  # every card with groups links it, as it does a model
     for key, items in data.capabilities.items():
         need(items, f"capabilities {key}")
         for item, entry in items.items():
@@ -750,12 +752,13 @@ def splice(text: str, markers: tuple[str, str], block: str, name: str) -> str:
 
 def check_sections(text: str, data: Data) -> None:
     """Every section a card links to is a heading on its integration's page or in the shared page's prose, so a
-    renamed heading fails here rather than leaving a dead link. A model's may be on any integration's page."""
+    renamed heading fails here rather than leaving a dead link. A model's or native groups' may be on any integration's
+    page."""
     shared = anchors(splice(text, EVIDENCE, "", "the page"))
     anywhere = shared.union(*data.pages.values())
     dead = sorted(
         section
-        for key, section in {*data.sections, (None, GROUPS_ENTRY[1])}
+        for key, section in data.sections
         if slug(section) not in (anywhere if key is None else shared | data.pages.get(key, set()))
     )
     if dead:

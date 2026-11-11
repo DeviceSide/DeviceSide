@@ -479,6 +479,16 @@ def test_a_models_section_on_another_integrations_page_links_there(root, monkeyp
     assert gc.load(FakeRegistry(), models).url("hue", "Dimmers") == f"{URL}#dimmers"
 
 
+def test_the_native_groups_heading_on_another_integrations_page_links_there(root, monkeypatch):
+    models = write_bundles(root, monkeypatch)
+    (root / "docs" / "integrations" / "zha" / "index.md").write_text("# ZHA\n\n### Native groups\n")
+    data = gc.load(FakeRegistry(), models)
+    assert data.url("hue", "Native groups") == f"{gc.BLOB_URL}docs/integrations/zha/index.md#native-groups"
+    gc.check_sections(
+        PROSE.replace("### Native groups\n\n", "") + "<!-- evidence:start -->\n<!-- evidence:end -->\n", data
+    )
+
+
 def test_a_card_title_links_to_its_integrations_page(root, monkeypatch):
     data = gc.load(FakeRegistry(), write_bundles(root, monkeypatch))
     card = gc.card("zha", FakeRegistry(), [], data)

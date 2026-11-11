@@ -16,7 +16,7 @@ what ships, so its "not X" means not yet. Reword such a line to the real state, 
 
 One fact, one home; elsewhere, point to it. A device fact cites its source: a record, report, research file or upstream
 link. `<x>` is `docs/integrations/<integration>/`, the integration's bundle; a fact spanning integrations goes in the
-shared home named in brackets.
+shared home named in parentheses.
 
 | Fact | Home |
 |---|---|
@@ -81,10 +81,10 @@ report on a Documented item promotes it to Reported too.
 
 ## Maintainers
 
-An integration's package (`integrations/<x>/`, `tests/integrations/<x>/`, its fixture) belongs to the GitHub handles in
-its `IntegrationInfo.maintainers`, one or more. A PR confined to one package needs one maintainer's approval
-(`.github/CODEOWNERS`, from `scripts/gen_codeowners.py`) and green CI; anything outside it (`core/`, shared docs, the
-generated pages' inputs) needs Jason. Jason merges.
+An integration's package (`integrations/<x>/`, `tests/integrations/<x>/`, its fixture, its bundle
+`docs/integrations/<x>/`) belongs to the GitHub handles in its `IntegrationInfo.maintainers`, one or more. A PR confined
+to one package needs one maintainer's approval (`.github/CODEOWNERS`, from `scripts/gen_codeowners.py`) and green CI; anything outside it
+(`core/`, shared docs, `docs/models.yaml`) needs Jason. Jason merges.
 
 **Unmaintained:** `AdapterScope.unmaintained` (an issue URL or a reason), set per adapter at Jason's call. The adapter
 stays live; setup warns and its card shows ⚠️ Unmaintained. An integration whose maintainers are all gone gets it on
