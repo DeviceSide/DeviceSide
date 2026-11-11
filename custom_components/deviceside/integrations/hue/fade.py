@@ -1,6 +1,7 @@
 """Hue raise and lower, brightness and saturation: one write to the light or room, with the end point and a duration
 the bridge runs alone. Each action's adapter is a HueFade."""
 
+import logging
 from dataclasses import dataclass, field
 from functools import partial
 from statistics import mean
@@ -24,6 +25,8 @@ if TYPE_CHECKING:
     from aiohue.v2 import HueBridgeV2
     from aiohue.v2.models.grouped_light import GroupedLight
     from aiohue.v2.models.light import Light
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def room_lights(api: HueBridgeV2, target: Target) -> list[Light]:
@@ -119,6 +122,7 @@ class HueFade(Adapter[RampRequest]):
                 return self.result(target, Status.REJECTED, detail="not_on_bridge")
             if isinstance(fade := plan(cache, request, target, api, resource), str):
                 return self.result(target, Status.UNCHANGED, detail=fade)
+            _LOGGER.debug("Hue fade of %s: %s from %s to %s", target.entity_id, fade.attribute, fade.starts, fade.ends)
             # Before the write, as stop does: the bridge may report the fade's end before the write returns.
             reports = report_filter(hass, target)
             write = partial(

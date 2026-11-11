@@ -127,6 +127,9 @@ class ReportFilter:
         A light HA shows off, faded up from off, is shown on at once at the lowest step, where the fade starts, so HA
         doesn't hold it off for the whole fade. Not at its `min_dim_level`: that is the light output at the lowest
         step (5 % on a Hue White), not a brightness, and the bridge reports levels below it.
+
+        The lights' rooms are shown at once too: the bridge reports a room about 1 s after its lights, so one turned on
+        just before the fade can still be off in HA, and the room's next report is the fade's, which is hidden.
         """
         if not self.hiding or ATTRIBUTES[attribute].shows is None:
             return
@@ -139,6 +142,7 @@ class ReportFilter:
         if attribute == BRIGHTNESS:
             lights = [self.api.lights.get(light_id) for light_id, target in ends.items() if target > 0]
             self.show(BRIGHTNESS, {light.id: MIN_BRIGHTNESS_STEP for light in lights if light and not light.on.on})
+        self._show_rooms_soon(self._rooms(ends))
 
     def halted(self, attribute: str, halts: dict[str, float]) -> None:
         """Show each light where a stop halted it, and drop the end its fade would have shown."""
@@ -175,6 +179,7 @@ class ReportFilter:
                         forget(self.hass, light_id)
                 return
             report = classify(self.cache, self.api, data)
+            _LOGGER.debug("Bridge %s %s %s: %s", data.get("type"), data.get("id"), reported_values(data), report)
             if self.hiding and report is Report.OURS:
                 self._hide(data)
             if data.get("type") == ResourceTypes.LIGHT.value:
@@ -228,6 +233,7 @@ class ReportFilter:
                     dimmed := [light.dimming.brightness for light in lit if light.dimming]
                 ):
                     event["dimming"] = {"brightness": mean(dimmed)}
+                _LOGGER.debug("Showing room %s: %s", grouped_light_id, event)
                 self.api.events.emit(EventType.RESOURCE_UPDATED, event)
         except Exception:
             _LOGGER.exception("Hue report filter failed showing rooms %s", grouped_light_ids)
