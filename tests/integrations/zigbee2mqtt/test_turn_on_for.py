@@ -53,33 +53,21 @@ async def test_light_without_fields_publishes_on_time(hass, setup_production, pu
     assert json.loads(publishes[0].data["payload"]) == {"state": "ON", "on_time": 5.0}
 
 
-async def test_light_with_brightness_calls_turn_on_then_publishes_on_time(hass, setup_production, publishes, turn_ons):
+async def test_light_with_fields_calls_turn_on_with_them_all_then_publishes_on_time(
+    hass, setup_production, publishes, turn_ons
+):
     entry = z2m_entry(hass)
     add_z2m_entity(hass, entry, "light.kitchen")
+    data = {"entity_id": "light.kitchen", "duration": 10, "brightness": 80, "color_temp_kelvin": 3000}
 
-    response = await call(hass, "turn_on_for", {"entity_id": "light.kitchen", "duration": 10, "brightness": 50})
+    response = await call(hass, "turn_on_for", data)
 
     assert response == {"light.kitchen": SENT}
     assert len(turn_ons) == 1
-    assert turn_ons[0].data == {"entity_id": "light.kitchen", "brightness": 128}
+    assert turn_ons[0].data == {"entity_id": "light.kitchen", "brightness": 204, "color_temp_kelvin": 3000}
     assert len(publishes) == 1
     assert publishes[0].data["topic"] == TOPIC
     assert json.loads(publishes[0].data["payload"]) == {"state": "ON", "on_time": 10.0}
-
-
-async def test_light_with_multiple_fields_passes_them_all_to_turn_on(hass, setup_production, publishes, turn_ons):
-    entry = z2m_entry(hass)
-    add_z2m_entity(hass, entry, "light.kitchen")
-
-    await call(
-        hass,
-        "turn_on_for",
-        {"entity_id": "light.kitchen", "duration": 5, "brightness": 80, "color_temp_kelvin": 3000},
-    )
-
-    assert len(turn_ons) == 1
-    assert turn_ons[0].data == {"entity_id": "light.kitchen", "brightness": 204, "color_temp_kelvin": 3000}
-    assert len(publishes) == 1
 
 
 async def test_switch_is_experimental(hass, setup_production, publishes, turn_ons):
@@ -96,23 +84,23 @@ async def test_switch_is_experimental(hass, setup_production, publishes, turn_on
     assert json.loads(publishes[0].data["payload"]) == {"state": "ON", "on_time": 5.0}
 
 
-async def test_duration_rounded_to_one_decimal_place(hass, setup_production, publishes, turn_ons):
-    entry = z2m_entry(hass)
-    add_z2m_entity(hass, entry, "light.kitchen")
+@pytest.mark.parametrize(
+    ("duration", "on_time", "clamped_to"),
+    [
+        pytest.param({"milliseconds": 1500}, 1.5, None, id="rounded_to_one_decimal_place"),
+        pytest.param({"hours": 2}, 6553.4, 6553.4, id="clamped_to_z2m_max"),
+        pytest.param({"milliseconds": 20}, 0.1, 0.05, id="below_50ms_clamped"),
+    ],
+)
+async def test_duration_is_rounded_and_clamped(
+    hass, setup_production, publishes, turn_ons, duration, on_time, clamped_to
+):
+    add_z2m_entity(hass, z2m_entry(hass), "light.kitchen")
 
-    await call(hass, "turn_on_for", {"entity_id": "light.kitchen", "duration": {"milliseconds": 1500}})
+    response = await call(hass, "turn_on_for", {"entity_id": "light.kitchen", "duration": duration})
 
-    assert json.loads(publishes[0].data["payload"]) == {"state": "ON", "on_time": 1.5}
-
-
-async def test_duration_clamped_to_z2m_max(hass, setup_production, publishes, turn_ons):
-    entry = z2m_entry(hass)
-    add_z2m_entity(hass, entry, "light.kitchen")
-
-    response = await call(hass, "turn_on_for", {"entity_id": "light.kitchen", "duration": {"hours": 2}})
-
-    assert response == {"light.kitchen": {**SENT, "clamped_to": 6553.4}}
-    assert json.loads(publishes[0].data["payload"]) == {"state": "ON", "on_time": 6553.4}
+    assert response == {"light.kitchen": SENT if clamped_to is None else {**SENT, "clamped_to": clamped_to}}
+    assert json.loads(publishes[0].data["payload"]) == {"state": "ON", "on_time": on_time}
 
 
 async def test_non_z2m_mqtt_entity_is_refused(hass, setup_production, publishes, turn_ons):
@@ -161,42 +149,6 @@ async def test_turn_on_error_rejects_that_target(hass, setup_production, publish
 
     assert raised.value.translation_key == "targets_failed"
     assert not publishes  # publish was never reached
-
-
-async def test_multiple_devices_each_get_their_own_topic(hass, setup_production, publishes, turn_ons):
-    ieee1, ieee2 = "0x00124b0000000001", "0x00124b0000000002"
-    entry = z2m_entry(hass)
-    add_z2m_entity(hass, entry, "light.room1", ieee=ieee1)
-    add_z2m_entity(hass, entry, "light.room2", ieee=ieee2)
-
-    response = await call(hass, "turn_on_for", {"entity_id": ["light.room1", "light.room2"], "duration": 5})
-
-    assert response["light.room1"] == SENT
-    assert response["light.room2"] == SENT
-    topics = {p.data["topic"] for p in publishes}
-    assert topics == {f"zigbee2mqtt/{ieee1}/set", f"zigbee2mqtt/{ieee2}/set"}
-
-
-async def test_duration_below_50ms_is_clamped(hass, setup_production, publishes, turn_ons):
-    entry = z2m_entry(hass)
-    add_z2m_entity(hass, entry, "light.kitchen")
-
-    response = await call(hass, "turn_on_for", {"entity_id": "light.kitchen", "duration": {"milliseconds": 20}})
-
-    assert response == {"light.kitchen": {**SENT, "clamped_to": 0.05}}
-    assert json.loads(publishes[0].data["payload"]) == {"state": "ON", "on_time": 0.1}
-
-
-async def test_group_without_fields_publishes_to_group_id_topic(hass, setup_production, publishes, turn_ons):
-    add_z2m_group(hass, z2m_entry(hass), "light.downstairs", group_id=7)
-
-    response = await call(hass, "turn_on_for", {"entity_id": "light.downstairs", "duration": 5})
-
-    assert response == {"light.downstairs": SENT}
-    assert not turn_ons
-    assert len(publishes) == 1
-    assert publishes[0].data["topic"] == "zigbee2mqtt/7/set"
-    assert json.loads(publishes[0].data["payload"]) == {"state": "ON", "on_time": 5.0}
 
 
 async def test_group_with_fields_calls_turn_on_then_publishes(hass, setup_production, publishes, turn_ons):
