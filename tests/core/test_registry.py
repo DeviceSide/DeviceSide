@@ -3,6 +3,7 @@
 import importlib
 import logging
 from dataclasses import replace
+from itertools import product
 
 import pytest
 
@@ -41,57 +42,18 @@ def test_import_failure_warns_only_when_our_code_is_out_of_step(monkeypatch, cap
 
 
 def test_matrix_lists_every_pair_sorted():
-    registry = AdapterRegistry(actions.discover(), FAKE_INTEGRATIONS)
+    discovered = actions.discover()
+    registry = AdapterRegistry(discovered, FAKE_INTEGRATIONS)
+    matrix = list(registry.matrix())
 
-    assert [(action, integration, adapter is not None) for action, integration, adapter in registry.matrix()] == [
-        ("clear_auto_off", "broken_integration", False),
-        ("clear_auto_off", "fake", False),
-        ("clear_auto_off", "fake_special", False),
-        ("clear_auto_on", "broken_integration", False),
-        ("clear_auto_on", "fake", False),
-        ("clear_auto_on", "fake_special", False),
-        ("get_attributes", "broken_integration", False),
-        ("get_attributes", "fake", False),
-        ("get_attributes", "fake_special", False),
-        ("lower_brightness", "broken_integration", False),
-        ("lower_brightness", "fake", False),
-        ("lower_brightness", "fake_special", False),
-        ("lower_hue", "broken_integration", False),
-        ("lower_hue", "fake", False),
-        ("lower_hue", "fake_special", False),
-        ("lower_saturation", "broken_integration", False),
-        ("lower_saturation", "fake", False),
-        ("lower_saturation", "fake_special", False),
-        ("raise_brightness", "broken_integration", False),
-        ("raise_brightness", "fake", False),
-        ("raise_brightness", "fake_special", False),
-        ("raise_hue", "broken_integration", False),
-        ("raise_hue", "fake", False),
-        ("raise_hue", "fake_special", False),
-        ("raise_saturation", "broken_integration", False),
-        ("raise_saturation", "fake", False),
-        ("raise_saturation", "fake_special", False),
-        ("set_attributes", "broken_integration", False),
-        ("set_attributes", "fake", True),
-        ("set_attributes", "fake_special", False),
-        ("set_auto_off", "broken_integration", False),
-        ("set_auto_off", "fake", False),
-        ("set_auto_off", "fake_special", False),
-        ("set_auto_on", "broken_integration", False),
-        ("set_auto_on", "fake", False),
-        ("set_auto_on", "fake_special", False),
-        ("set_scene", "broken_integration", False),
-        ("set_scene", "fake", False),
-        ("set_scene", "fake_special", False),
-        ("stop", "broken_integration", False),
-        ("stop", "fake", False),
-        ("stop", "fake_special", False),
-        ("turn_off_for", "broken_integration", False),
-        ("turn_off_for", "fake", True),
-        ("turn_off_for", "fake_special", False),
-        ("turn_on_for", "broken_integration", False),
-        ("turn_on_for", "fake", True),
-        ("turn_on_for", "fake_special", True),
+    keys = sorted(action.key for action in discovered)
+    integrations = ["broken_integration", "fake", "fake_special"]
+    assert [(action, integration) for action, integration, _ in matrix] == list(product(keys, integrations))
+    assert [(action, integration) for action, integration, adapter in matrix if adapter is not None] == [
+        ("set_attributes", "fake"),
+        ("turn_off_for", "fake"),
+        ("turn_on_for", "fake"),
+        ("turn_on_for", "fake_special"),
     ]
 
 
