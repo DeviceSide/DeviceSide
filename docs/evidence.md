@@ -28,7 +28,17 @@ No RC is cut until step 5 lands.
 1. **User experience is the north star.** Actions make devices do what users expect, quickly. If that holds, nothing
    else matters.
 2. **Probe before you build.** When unsure how a device responds to a call, run a cheap probe rather than assume.
-   Record what it shows as a fact (the bundle's `internals.md`, dated).
+   Record what it shows as a fact (the bundle's `internals.md`, dated). Where its source goes depends on whether a
+   shipped call depends on the fact staying true:
+   - **Yes: a fact test.** The rig re-runs it (`--facts`) when that call changes, and `test-records/_facts.md` keeps
+     each dated result. A watched test covers what only a person can see.
+   - **No: `research/`.** The fact decided scope or design, and no shipped call depends on it. A dated file, never
+     edited; if evidence suggests it has changed, repeat the probe by hand in a new file.
+
+   *Example:* a bulb set to red while off must come on red, with no flash of its old color. HA's state can't show the
+   flash, and the call sequence DeviceSide sends decides it, so it's a watched fact test (`set_attributes`,
+   `sets_color_while_off`). A Hue bulb's timer can't be stopped through the bridge, so Hue ships no `turn_on_for`. No
+   call depends on that, so it lives in `research/`.
 3. **Verify, then trust.** A verified fact stands across firmware, HA and code changes until evidence contradicts it.
    Nobody goes looking for things to re-prove.
 4. **Surprises reopen facts.** A bug or unexplained behavior triggers a root-cause dive. The finding joins the fact
