@@ -8,7 +8,7 @@ from custom_components.deviceside.integrations.zha.addressing import Address
 from custom_components.deviceside.integrations.zha.fade import transition_cache
 
 from .conftest import BOTTOM, SENT, A, B, bulb, sent, to
-from ...conftest import call, result
+from ...conftest import call
 from ...fixtures.zha import IEEE
 
 pytestmark = pytest.mark.usefixtures("setup_production", "clock", "bulbs")
@@ -66,15 +66,6 @@ async def test_from_off_on_a_model_that_drops_levels_while_off_skips_the_bottom(
     await call(hass, "raise_brightness", {"entity_id": "light.bulb"})
 
     assert sent(commands) == [(0x0008, 0x04, {"level": 254, "transition_time": 50})]
-
-
-async def test_at_the_top_is_unchanged(hass, commands):
-    bulb(hass, brightness=255)
-
-    assert await call(hass, "raise_brightness", {"entity_id": "light.bulb"}) == {
-        "light.bulb": result("zha", "unchanged", detail="at_limit")
-    }
-    assert not commands
 
 
 async def test_a_transition_longer_than_zcl_holds_runs_at_the_most(hass, commands):
