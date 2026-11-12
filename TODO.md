@@ -29,8 +29,9 @@ step 5 lands. The items below run in this order.
   - [ ] 2. Runtime: two levels, the `experimental` gate, `caveat`; the seven release-flagged adapters lose the flag;
     the code comments citing CLAUDE.md's "Release flag" or "Default to Documented" point to `docs/evidence.md`.
   - [ ] 3. Rig (ha-rig): drop the wire and scope taps, `Covers`, observed lending and the firmware-fact ledger.
-  - [ ] 4. Release gate: `check_release.py --signoffs`; drop `--release` and the rest of `--records`.
-  - [ ] 5. Cards: `gen_compat.py` tiers for two levels, the flag and caveats.
+  - [ ] 4. Release gate: `check_release.py --signoffs`; drop `--release` and the rest of `--records`; the
+    docstring's CLAUDE.md citations and CLAUDE.md's Layout line on release checks.
+  - [ ] 5. Cards: `gen_compat.py` tiers for two levels, the flag and caveats, and the docstring's CLAUDE.md citations.
 - [ ] **Sign-offs** for v0.1.0, one per integration changed since v0.0.1 (`check_release.py --signoffs`), each a rig
   run from ha-rig `main`:
   - [ ] Hue
@@ -51,7 +52,7 @@ step 5 lands. The items below run in this order.
   the flag.
 - [x] **Shelly smooth dimming** (PR #289): `raise_brightness`, `lower_brightness` and `stop` on Shelly lights,
   brightness only: each move one `<Component>.Set` with `transition_duration`, halted by `DimStop` (the `DimUp`/`DimDown` ramps
-  are stepped and have no `sweep_time` mapping). Findings: [`docs/shelly-dimming-research.md`](docs/shelly-dimming-research.md).
+  are stepped and have no `sweep_time` mapping). Findings: [`docs/integrations/shelly/research/2026-11-08-dimming.md`](docs/integrations/shelly/research/2026-11-08-dimming.md).
   RGBCCT; the records clear the flag.
 - [x] **Device support, part 1** (#262): support levels and contribution lanes in `CONTRIBUTING.md`, the README's "Will it
   work with my device?", and the device report, device request and bug issue forms.

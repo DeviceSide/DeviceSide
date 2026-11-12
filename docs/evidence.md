@@ -6,7 +6,8 @@ for these rules; other docs point here. Settled in [the evidence-rules plan](pla
 ## Transition
 
 These rules apply from 2026-11-12, but the code that enforces the old ones is removed in steps 2–5 of the plan. Until
-each step lands, its old gate keeps running, and work satisfies it:
+each step lands, its old gate keeps running, and work satisfies it. The old rules are in CLAUDE.md at `075895f`
+(§ Release flag) and in `scripts/check_release.py`'s docstring.
 
 - **Runtime (step 2):** `Level.REPORTED` and `Level.EXPERIMENTAL`, the `experimental=True` release flag, the
   `unmaintained`, `stale_tests` and `siblings` fields, and the wire and scope traces.
@@ -43,7 +44,8 @@ domain keeps its proof.
 
 ## Levels
 
-Each scope item (an entity domain, capability or field of an adapter) is at one of two levels.
+A scope item (an entity domain, capability or field of an adapter) is Verified, Documented, or untested; an untested
+item ships only behind `experimental`.
 
 - **Verified:** a maintainer has verified the call on a real device, by rig record or by manual test. How it was
   tested is the maintainer's choice; the rig is a tool, not a requirement.
@@ -59,7 +61,7 @@ covers only what was exercised; it never signs off untested code.
 **Contrary evidence:** a report of misbehavior doesn't change the level. The maintainer root-causes it, and the fix,
 the updated fact or a demotion lands with the finding.
 
-*Example:* Shelly's timer calls are Verified on the `Switch` and `RGBCCT` components and Documented on `Light`, `CCT`,
+*Example:* Shelly's `turn_on_for` and `turn_off_for` calls are Verified on the `Switch` and `RGBCCT` components and Documented on `Light`, `CCT`,
 `RGB` and `RGBW`: the same call, addressed to another component, which Shelly's API documents identically
 (`integrations/shelly/addressing.py`).
 
@@ -75,8 +77,8 @@ opted-in users. A repo maintainer removes the flag. The directional bar is five 
 the maintainer and no open bugs; nothing counts the reports in code.
 
 *Example:* Shelly dimming on `Light` is `experimental("Light")`: a user's report of a Gen3 Dimmer jumping on
-`DimStop` keeps it from Documented. Once a maintainer verifies it on a dimmer, a repo maintainer's PR makes it
-`verified("Light")`.
+`DimStop` keeps it from Documented. Once a maintainer verifies it on a dimmer, it soaks flagged; once a repo
+maintainer judges it has soaked, their PR makes it `verified("Light")`.
 
 ## Caveats
 
@@ -92,7 +94,7 @@ line:
 
 A deprecation gets a hand-written note in that release's notes, not a caveat.
 
-*Example:* a fix to an adapter whose devices no maintainer has lands before the cut. It ships with ⚠️ Untested fix and
+*Example:* a low-risk fix to a broken adapter whose devices no maintainer has lands before the cut. It ships with ⚠️ Untested fix and
 the issue URL; a user's working report, cited in a maintainer's `_manual.md` line, clears it.
 
 ## Release gate
@@ -105,8 +107,9 @@ needs a sign-off at or after its last change. Any change counts, flags included.
   when none responds.
 - **Prefer the rig.** Where the rig covers an integration, the sign-off is a rig run: it is repeatable and catches what
   a person doesn't. A manual line is the fallback for integrations the rig can't reach, or when the rig is broken; a
-  manual sign-off on a rig-covered integration says why in its PR. This is guidance, not a gate check: the cards keep
-  their ✔ for rig-tested models, and `--signoffs` prints each sign-off's kind (record or manual) for the RC audit.
+  manual sign-off on a rig-covered integration says why in its PR. This is guidance, not a gate check. Rig evidence is
+  no separate level: the cards keep their ✔ for rig-tested models, and `--signoffs` prints each sign-off's kind (record
+  or manual) for the RC audit.
 - `core/`, `actions/` and `scripts/` changes need no device sign-off: unit tests, the RC soak and tenet 5 cover them.
 - **RCs need no sign-off.** The gate runs only at `cut-release`. An RC's notes list each integration changed without a
   sign-off, with a link to the device report form, so an RC can carry an unsigned fix for others to test.

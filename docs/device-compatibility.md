@@ -10,7 +10,7 @@ Claims follow evidence, at one of two levels of proof:
 
 - **Verified:** a maintainer tested it on a real device, on the automated rig or by hand.
 - **Documented:** no device of the class has been tested, but DeviceSide sends it the same call as a Verified device,
-  and the maker documents that call identically for both.
+  differing only in addressing, and no known class of devices handles it differently.
 
 New features ship as **Experimental**: they stay off until you turn on **Experimental features** in **Configure >
 Settings**, so they can soak with users who opt in. Some are tested and soaking, others wait for someone with the
@@ -77,7 +77,7 @@ Documented ([levels of proof](#levels-of-proof)).
 
 ## Try it: Experimental features
 
-These are built and unit-tested, and wait only for someone with the hardware. Turn on Experimental features to try
+These are built and unit-tested; some have also passed a maintainer's test and are soaking. Turn on Experimental features to try
 them, then report the result, whether they work or not: working reports help ship them to everyone.
 
 ### Zigbee plugs and switches

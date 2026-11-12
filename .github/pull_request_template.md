@@ -8,7 +8,7 @@
 
 - Integration:
 - Actions:
-- Level of each new or changed item (Verified or Documented, flagged `experimental` or not):
+- Level of each new or changed item (Verified, Documented or untested; flagged `experimental` or not):
 
 ## Changes to shared code
 

@@ -19,7 +19,7 @@ Code and docs use these terms.
   Zigbee or Matter cluster).
 - **Field**: an action parameter, e.g. `brightness`.
 - **Entity domain**: light, switch. "Domain" alone is fine where unambiguous.
-- **Scope**: the entity domains, capabilities and fields an adapter is built for, each at a Level and flagged or not.
+- **Scope**: the entity domains, capabilities and fields an adapter is built for, each Verified, Documented or untested, and flagged or not.
   Outside it, calls are refused as not yet tested.
 - **Level**: how a scope item is proven, Verified or Documented. Rules: [evidence.md](evidence.md#levels). User
   wording: [device-compatibility.md](device-compatibility.md#levels-of-proof).
@@ -35,8 +35,9 @@ Code and docs use these terms.
 - **Caveat**: a risk mark on an adapter (`AdapterScope.caveat`, an issue URL), ⚠️ Untested fix or ⚠️ Unmaintained,
   set by a repo maintainer. It ships live; setup warns, its card shows the mark and the release notes say why. Rules:
   [evidence.md](evidence.md#caveats).
-- **Sign-off**: a maintainer's passing test record or `_manual.md` line at or after an integration's last change,
-  which a release needs for each integration changed since the last tag. Rules:
+- **Sign-off**: a passing test record or `_manual.md` line from one of an integration's Maintainers (or a Repo
+  maintainer when none responds), at or after its last change, which a release needs for each integration changed
+  since the last tag. Rules:
   [evidence.md](evidence.md#release-gate).
 - **Experimental features**: the option (`experimental_features`, off by default) that lets calls touching a flagged
   item through. Only the dispatcher reads it.
@@ -44,7 +45,7 @@ Code and docs use these terms.
   and writes up the results as test records.
 - **Test record**: the evidence that an adapter works on real hardware, from a rig run:
   `docs/integrations/<integration>/test-records/<action>*.md`. A maintainer's hand test goes in the same folder's
-  `_manual.md`, one line per run; either is a sign-off.
+  `_manual.md`, one line per run; either can be a sign-off ([release gate](evidence.md#release-gate)).
 - **Device report**: a user's "works" or "doesn't work" for an action on a model. In the bundle's `devices.yaml` each
   one names the `item` its call reached (the domain, or the capability for an adapter that lists them). Accepted
   "works" reports guide removing a flag, and a maintainer's `_manual.md` line may cite one as a sign-off; a

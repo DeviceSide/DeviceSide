@@ -57,8 +57,8 @@ contributor PR follows CONTRIBUTING's Fast track.
 
 Work lands on `main`. RCs are cut from it, and `cut-release` tags the version's latest RC, so what ships is what
 soaked while `main` moves on. The cut workflows enforce the tag rules, green CI, the RC audit (its record comes from
-`/rc-audit`) and, in `cut-release`, a sign-off or caveat for each integration changed since the last release tag
-(`docs/evidence.md`, Release gate); see their headers. RCs need no sign-off, but `cut-release` checks the latest RC's
+`/rc-audit`) and, in `cut-release`, the release gate (`docs/evidence.md`; until step 4 lands, the old checks its
+Transition lists); see their headers. RCs need no sign-off, but `cut-release` checks the latest RC's
 commit, so land the sign-offs or caveats before the last RC. The steps they don't check:
 
 1. **Each RC:** install it through HACS (the rig deploys a checkout, not the release); it loads and the log is clean.
