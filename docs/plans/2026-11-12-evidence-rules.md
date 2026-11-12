@@ -72,6 +72,10 @@ deciding when to test.
   has the package's last change as an ancestor. Any change counts, flags included; a sign-off may say "no call
   changed".
 - Who signs off: any of the integration's maintainers, or a repo maintainer when none responds.
+- **Prefer the rig.** Where the rig covers an integration, the sign-off is a rig run: it is repeatable and catches
+  what a person doesn't. A manual line is the fallback for integrations the rig can't reach, or when the rig is
+  broken. A manual sign-off on a rig-covered integration says why in its PR. This is guidance for maintainers, not a
+  gate check.
 - `core/`, `actions/` and `scripts/` changes need no device sign-off: unit tests, the RC soak and tenet 5 cover them.
 - If an integration has no sign-off, the cut fails. The fixes: sign it off, revert the change, or put the changed item
   back behind `experimental`.
@@ -94,7 +98,8 @@ replaces the wire trace and lives in the shared transport helpers, so adapters g
 
 - **The seven release-flagged adapters** (`stop` and `set_attributes` on Hue, ZHA and Zigbee2MQTT, plus Zigbee2MQTT
   `lower_hue`) ship to everyone: the flag is dropped, and they don't move behind `experimental`. They all have rig
-  records. The watched lab session in TODO.md is no longer a release gate.
+  records. Their v0.1.0 sign-offs are rig runs (see Prefer the rig). The watched lab session in TODO.md shrinks to
+  whatever those sign-off runs need, and no longer exists to clear flags.
 - **Untested `Level.EXPERIMENTAL` items** (the `switch` domain on ZHA and Zigbee2MQTT `turn_on_for` and
   `get_attributes`; Shelly dimming on `Light`, `CCT`, `RGB` and `RGBW`) become Documented behind `experimental` where
   they meet the Documented test, with the argument made in the PR. Any that don't meet it leave the scope until
@@ -160,7 +165,9 @@ The estimates below are code plus tests.
    - Drop Reported, siblings, Stale tests and the record-freshness rule for Verified.
    - Regenerate the README and `docs/device-compatibility.md`.
 6. **v0.1.0.**
-   - One sign-off per integration changed since v0.0.1 (`check_release.py --signoffs`).
+   - One sign-off per integration changed since v0.0.1 (`check_release.py --signoffs`), by rig run for every
+     integration the rig covers (Hue, ZHA, Zigbee2MQTT, Shelly and Matter on today's profiles), and manual only as a
+     fallback.
    - `/rc-audit` over the new range, then the RC, a HACS install, the release notes and `cut-release`.
 
 Total estimate: about 2,800 lines, before the test consolidation (separate session) and the rig's roaming and
