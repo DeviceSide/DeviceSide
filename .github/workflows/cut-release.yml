@@ -76,10 +76,6 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked
 
-      # A record cites the commit its rig run deployed, often on a PR branch since squash-merged and deleted.
-      - name: Fetch the commits test records cite
-        run: git fetch --quiet origin '+refs/pull/*/head:refs/remotes/pull/*'
-
       # The call for testers rides to `tag` as an output, as that job's runner has none of this one's files.
       - name: Refuse a changed integration with neither a sign-off nor Untested fix
         id: gates
