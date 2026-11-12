@@ -174,8 +174,17 @@ The estimates below are code plus tests.
    - Z2M BUSY call windows come from the rig's own step timestamps.
    - The rig decides nothing about what needs testing (principle below): delete `coverage.py`'s fingerprints,
      freshness check and observed hints, and `--coverage`. The rig runs the suites it is asked for.
-   - Observed and firmware-fact cases are opt-in: a passed one stands as a fact, a default run leaves them out, and a
-     maintainer adds them with an option. No hashing, lending or ledger.
+   - **Fact cases** (decided 2026-11-12): the watched (`<name> observed`) case of a test with `observe:`, and every
+     case of a `firmware_fact: true` test. They're opt-in through one option, `--facts`; `--unattended` records
+     watched cases `not observed`. A default run runs every other automated case, including an observed test's
+     automated twin. A passed fact stands; no hashing, lending or ledger.
+   - **`_facts.md`**: fact results, pass and fail, go to each bundle's append-only `test-records/_facts.md`
+     (`| Date | Suite | Test | Kind | Devices | Result |`, Kind `automated` or `observed`). A default run never
+     writes it, and a record points to it for skipped fact cases. Shelly's is seeded from its earlier records.
+   - **Probe or fact case**: a fact that a shipped call depends on staying true is a fact case; one that decided
+     scope or design (the Hue bridge timer) lives in `research/` (docs/evidence.md, tenet 2).
+   - **Record bar**: every default case that applies passes. Skips are only fact cases and cases that don't apply
+     (no adapter, role or group member), and a record never narrows. Records carry a `Ran` row and no `Covers`.
    - The progress ledger stays only to resume an interrupted run, keyed by commit plus suite.
    - Leave roaming, concurrency and the repo merge for separate decisions.
 3b. **Step files move to DeviceSide** (decided 2026-11-12). The rig's `steps/<action>.yaml` move to DeviceSide
@@ -232,6 +241,16 @@ The estimates below are code plus tests.
 
 Total estimate: about 2,800 lines, before the test simplification (step 7) and the rig's roaming and
 concurrency decisions.
+
+## Working notes (for a fresh or compacted session)
+
+- Branches: this work lives on `claude/reduce-code-complexity-syqjth` in both DeviceSide and ha-rig; push only there.
+  Each step is one or more commits, split into PRs later.
+- PR order: the ha-rig PRs pair with DeviceSide's through `Tests-with: DeviceSide/DeviceSide#N`. Merge DeviceSide's
+  step 2–3b PR together with the rig's; for a rig engine change a step file needs, merge the rig PR first.
+- Each step: an implementer subagent, then a reviewer subagent against this plan; rule questions go to Jason.
+- Step 6 needs Jason and the physical rig: stop there.
+- Known flaky tests, unrelated: ha-rig `tests/test_rig_busy.py` timing; DeviceSide `test_no_z2m_does_nothing_quietly`.
 
 ## Verification
 
