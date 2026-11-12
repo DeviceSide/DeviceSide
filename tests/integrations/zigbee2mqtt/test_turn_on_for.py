@@ -252,7 +252,7 @@ class StateTopic:
     def turn_on(self, call) -> None:
         self.events.append("turn_on")
         if self.answer:
-            self.hass.loop.call_later(0.05, self.publish_state)
+            self.hass.loop.call_later(0.01, self.publish_state)
 
     def publish_state(self) -> None:
         self.events.append("state")
@@ -269,7 +269,7 @@ class StateTopic:
 def z2m(hass, monkeypatch):
     fake = StateTopic(hass)
     monkeypatch.setattr(bridge.mqtt, "async_subscribe", fake.subscribe)
-    monkeypatch.setattr(turn_on_for, "_STATE_TIMEOUT_S", 0.2)
+    monkeypatch.setattr(turn_on_for, "_STATE_TIMEOUT_S", 0.05)
     hass.services.async_register("light", "turn_on", fake.turn_on)
     hass.services.async_register("mqtt", "publish", fake.publish)
     return fake
@@ -303,7 +303,7 @@ async def test_no_state_by_the_timeout_still_sends_the_timer(hass, setup_product
     assert response == {"light.kitchen": SENT}
     assert z2m.events == ["turn_on", "timer"]
     assert (
-        "No state from Zigbee2MQTT for light.kitchen in 0.2 s, "
+        "No state from Zigbee2MQTT for light.kitchen in 0.05 s, "
         "so its timer starts late and it stays on that much longer" in caplog.text
     )
     assert z2m.subscribers[STATE_TOPIC] == []

@@ -28,9 +28,9 @@ def broker(hass, monkeypatch):
     fake.retained[INFO] = {"config": {"devices": {IEEE: {"friendly_name": "bulb"}}, "groups": {}}}
     fake.retained["zigbee2mqtt/bridge/state"] = {"state": "online"}
     monkeypatch.setattr(bridge.mqtt, "async_subscribe", fake.subscribe)
-    monkeypatch.setattr(bridge, "_RETAINED_TIMEOUT_S", 0.25)
-    monkeypatch.setattr(bridge, "_REPLY_TIMEOUT_S", 0.25)
-    monkeypatch.setattr(read, "_REPLY_TIMEOUT_S", 0.25)
+    monkeypatch.setattr(bridge, "_RETAINED_TIMEOUT_S", 0.02)
+    monkeypatch.setattr(bridge, "_REPLY_TIMEOUT_S", 0.02)
+    monkeypatch.setattr(read, "_REPLY_TIMEOUT_S", 0.02)
     monkeypatch.setattr(native_control, "_REPLY_CAP_S", 0.05)
     monkeypatch.setattr(set_attributes, "_FADE_WAIT_S", 0.0)
     monkeypatch.setattr(set_attributes, "_RETRY_S", 0.0)
