@@ -12,12 +12,14 @@ A level comes from the scope alone (verify, then trust): a record never ages.
 page last, with a card per integration: its name, linked to its page (the bundle's index.md), and maintainers
 (`IntegrationInfo.maintainers`; "⚠️ Unmaintained · formerly maintained by" when every adapter is), then the features
 of the adapters with each `caveat` (⚠️ Unmaintained, then ⚠️ Untested fix, linking its reason), then a bullet per tier:
-- Works: the models the evidence of unflagged adapters tested (rig-tested ones end ✔), and native groups. The PR
-  that lands a flagged item's verification lifts its flag, so only an adapter flagged again over its old records
-  (a risky fix put behind the flag, or a demotion) has evidence left out here.
+- Works: the models the evidence tested (rig-tested ones end ✔), and native groups. A pass on a flagged item never
+  puts a model here, and records name a run's models and each test's Target domain but not which test reached which
+  model or component, so the rule is fail-safe: an adapter flagged whole, or on any capability or field, adds no
+  models; one flagged on a domain adds those of the records whose passing tests all target unflagged domains, and no
+  `_manual.md` row's. A model can still reach Works through another adapter's evidence.
 - Should work: the classes (devices.yaml `capabilities`) unflagged adapters hold as Documented.
 - Experimental features: the classes held as `experimental(...)`, and the features of adapters flagged whole
-  (`experimental=True`), not yet verified by a maintainer.
+  (`experimental=True`), whatever their evidence.
 - Doesn't work: devices.yaml `doesnt_work`.
 Classes with the same features share an entry, and those of one page section a link. A model or blocker drops the
 integration's name where it leads, as the card's name already gives it. Cards show features, not fields: a flagged or
@@ -75,6 +77,8 @@ EVIDENCE = ("<!-- evidence:start -->", "<!-- evidence:end -->")
 DEVICE = re.compile(r"^\| Device \| (.*) \|$", re.MULTILINE)
 ENTRY = re.compile(r"^(?P<name>.*?)(?: \(`(?P<model>[^`]+)`\))?, firmware `(?P<firmware>[^`]+)`$")
 BACKTICKS = re.compile(r"`([^`]+)`")
+# A passing row of a record's Tests table: | `test` | `domain` (role) | pass |
+PASSED = re.compile(r"^\| `[^`]+` \| (?P<target>[^|]*) \| pass \|$", re.MULTILINE)
 REPORT_URL = "https://github.com/DeviceSide/DeviceSide/issues/new?template=device_report.yml"
 GROUP_NAMES = {"group", "zone"}
 GROUP = "group"
@@ -339,6 +343,30 @@ class Evidence:
         return found
 
 
+def targets(record: Path) -> set[str]:
+    """The domains the record's passing tests target. A Target with no domain in backticks stays whole, so it matches
+    no domain."""
+    found = set()
+    for row in PASSED.finditer(record.read_text()):
+        domain = BACKTICKS.match(row["target"])
+        found.add(domain[1] if domain else row["target"])
+    return found
+
+
+def card_evidence(adapter) -> Evidence:
+    """The evidence a card's Works counts. Fail-safe, as a record doesn't say which test reached which model: none for
+    an adapter flagged whole or on a capability or field; for one flagged on a domain, the records whose passing tests
+    all target unflagged domains, and no `_manual.md` rows."""
+    flagged = [noun for level, _, noun in items(adapter.scope) if level is Level.EXPERIMENTAL]
+    if adapter.scope.experimental or any(noun != "entities" for noun in flagged):
+        return Evidence([], [])
+    evidence = Evidence.of(adapter)
+    if not flagged:
+        return evidence
+    unflagged = {domain for domain, level in adapter.scope.domains.items() if level is not Level.EXPERIMENTAL}
+    return Evidence([record for record in evidence.records if unflagged >= (found := targets(record)) and found], [])
+
+
 def items(scope) -> list[tuple[Level, str, str]]:
     """The scope's items, as (level, item, noun), domains first: all Experimental in an adapter flagged whole."""
     axes = (scope.domains, scope.capabilities or {}, scope.fields)
@@ -540,15 +568,13 @@ def class_entries(key: str, held: dict[str, set[str]], data: Data) -> list[str]:
 
 
 def works(card: Card, key: str, integration_adapters: list, data: Data) -> list[str]:
-    """The models the unflagged adapters' evidence tested, by device type, then first seen, then native groups. A
-    rig-tested model and the native groups end ✔."""
+    """The models the adapters' evidence tested (`card_evidence`), by device type, then first seen, then native
+    groups. A rig-tested model and the native groups end ✔."""
     rig: set[str] = set()
     names: list[str] = []
     groups = False
     for adapter in integration_adapters:
-        if adapter.scope.experimental:
-            continue
-        for item in Evidence.of(adapter).devices(data):
+        for item in card_evidence(adapter).devices(data):
             if item == GROUP:
                 groups = True
                 continue

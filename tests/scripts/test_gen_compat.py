@@ -40,10 +40,12 @@ PROSE = "# Page\n\n" + "".join(
 )
 
 
-def record(root, integration, name, *, result="pass", device="Hue lamp (`LTA009`), firmware `1.2.3`"):
+def record(root, integration, name, *, result="pass", device="Hue lamp (`LTA009`), firmware `1.2.3`", tests=()):
+    """A record; `tests` are its Tests table's (Target, Result) rows."""
     path = root / "docs" / "integrations" / integration / "test-records" / f"{name}.md"
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(f"# t\n\n| | |\n|---|---|\n| Result | {result} |\n| Device | {device} |\n")
+    rows = "".join(f"| `t{index}` | {target} | {outcome} |\n" for index, (target, outcome) in enumerate(tests))
+    path.write_text(f"# t\n\n| | |\n|---|---|\n| Result | {result} |\n| Device | {device} |\n\n{rows}")
     return path
 
 
@@ -275,6 +277,36 @@ def test_a_card_puts_flagged_adapters_under_experimental_features_and_leaves_out
     assert card.lines["should"] == []
     # One entry for every adapter flagged whole, evidence or not; stop rides the smooth move.
     assert card.lines["experimental"] == ["smooth hue"]
+
+
+def test_an_adapter_flagged_on_a_domain_counts_only_records_whose_passing_tests_all_target_unflagged_ones(root):
+    manual_file(root)
+    light = ("`light` (light_ct)", "pass")
+    record(root, "zha", "turn_on_for", tests=[light, ("switch_plug: none in the profile", "skipped")])
+    record(
+        root,
+        "zha",
+        "turn_on_for-option",
+        device="Plug (`P1`), firmware `1`",
+        tests=[light, ("`switch` (plug)", "pass")],
+    )
+    record(root, "zha", "stop", tests=[("a target with no domain", "pass")])
+    record(root, "zha", "lower_hue", device="Plug (`P1`), firmware `1`")  # no passing tests
+    scope = AdapterScope(domains=verified("light") | experimental("switch"))
+    card = zha_card(*(adapter("zha", action, scope) for action in ("turn_on_for", "stop", "lower_hue")))
+    # Not Plug, whose record also passed on a switch, nor the manual rows; Hue lamp from the light-only record.
+    assert card.lines["works"] == [f"[Hue lamp]({URL}#hue-lamp) ✔"]
+
+
+def test_a_pass_on_a_flagged_capability_puts_no_model_under_works(root):
+    # Shelly smooth dimming: a pass on a Gen3 Dimmer's Light component must not make it work.
+    record(root, "zha", "raise_brightness", device="Plug (`P1`), firmware `1`", tests=[("`light` (dimmer)", "pass")])
+    record(root, "zha", "turn_on_for", tests=[("`light` (bulb)", "pass")])
+    dimming = AdapterScope(capabilities=verified("RGBCCT") | experimental("Light"))
+    card = zha_card(adapter("zha", "raise_brightness", dimming), adapter("zha", "turn_on_for"))
+    assert card.lines["works"] == [f"[Hue lamp]({URL}#hue-lamp) ✔"]  # from the unflagged adapter alone
+    flagged_field = AdapterScope(fields=verified("brightness") | experimental("transition"))
+    assert zha_card(adapter("zha", "raise_brightness", flagged_field)).lines["works"] == []
 
 
 def test_documented_and_flagged_classes_share_an_entry_per_feature_set_and_name_their_features(root):
