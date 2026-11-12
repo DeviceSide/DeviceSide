@@ -283,7 +283,8 @@ def describe(gate: Gate) -> str:
     if gate.passes:
         return f"{head}; no sign-off, Untested fix stands in on every changed adapter: {', '.join(gate.caveated)}"
     rejected = "".join(f" ({why})" for why in gate.rejected)
-    return f"{head}; no sign-off at or after it{rejected}, and no Untested fix on {', '.join(gate.uncaveated) or 'any adapter'}"
+    bare = ", ".join(gate.uncaveated) or "any adapter"
+    return f"{head}; no sign-off at or after it{rejected}, and no Untested fix on {bare}"
 
 
 def release_notes(registry, found: list[Gate]) -> str:
