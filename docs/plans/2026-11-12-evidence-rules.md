@@ -54,7 +54,9 @@ deciding when to test.
   known class of devices departs. Unit tests pin the payload. A field is never Documented, because it changes the
   call. The PR that claims Documented argues the sibling case, and review checks it. A bug on the Verified sibling
   reopens its Documented siblings in the same fix.
-- Nothing ships, not even behind the flag, unless it is Verified or Documented.
+- Nothing ships unflagged unless it is Verified or Documented. Built and unit-tested code that the maintainer can't
+  exercise, and that isn't Documented, ships behind `experimental` as untested ("Help us test" on the cards). A
+  sign-off covers only what was exercised; it never signs off untested code.
 - **`experimental`** is a flag, not a level. A flagged item is refused unless the user turns on the Experimental
   features option. Every new feature (action, integration, domain, capability or field) starts flagged, so it soaks in
   RCs and with opted-in users. A repo maintainer removes the flag. The directional bar is five working reports from
@@ -103,8 +105,8 @@ replaces the wire trace and lives in the shared transport helpers, so adapters g
   whatever those sign-off runs need, and no longer exists to clear flags.
 - **Untested `Level.EXPERIMENTAL` items** (the `switch` domain on ZHA and Zigbee2MQTT `turn_on_for` and
   `get_attributes`; Shelly dimming on `Light`, `CCT`, `RGB` and `RGBW`) become Documented behind `experimental` where
-  they meet the Documented test, with the argument made in the PR. Any that don't meet it leave the scope until
-  someone tests them.
+  they meet the Documented test, with the argument made in the PR. Any that don't meet it ship in v0.1.0 behind
+  `experimental` as untested (Jason, 2026-11-12), not removed from the scope.
 - **v0.1.0** ships under the new rules: about five sign-offs, one per integration changed since v0.0.1.
 
 ## Steps
@@ -184,8 +186,9 @@ concurrency decisions.
 
 ## Open decisions
 
-None blocking. Two implementation choices, fixed here unless review objects:
-- The field shape `experimental: bool | frozenset[str]`.
+One open, one fixed unless review objects:
+- The field shape for `experimental`: under discussion (see the session); `bool | frozenset[str]` or the per-axis
+  `experimental(...)` marker kept from today.
 - The coverage bar over all of `core/` and `integrations/` instead of `adapter_code`.
 
 ## Handoff
