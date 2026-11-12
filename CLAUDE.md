@@ -41,7 +41,7 @@ shared home named in parentheses.
 7. Maintainers judge sufficiency: gates check that a sign-off exists, not how thorough it was.
 
 The levels (Verified, Documented), the `experimental` flag, caveats, the release gate and the sign-off format:
-[`docs/evidence.md`](docs/evidence.md), whose Transition note lists the old gates that still run.
+[`docs/evidence.md`](docs/evidence.md).
 
 ## Maintainers
 

@@ -9,8 +9,8 @@ as issues.
 `v0.0.1` is out, and HACS accepted the submission ([hacs/default#12611](https://github.com/hacs/default/pull/12611))
 on 4 Nov 2026. v0.1.0 is next: everything lands on `main`, and release candidates are cut from it. It ships under the
 [evidence rules](docs/evidence.md): one sign-off per integration changed since v0.0.1. The
-[evidence-rules plan](docs/plans/2026-11-12-evidence-rules.md) lifted the freeze at `075895f`; no RC is cut until its
-step 5 lands. The items below run in this order.
+[evidence-rules plan](docs/plans/2026-11-12-evidence-rules.md) lifted the freeze at `075895f`; with its step 5
+landed, the old gates are gone and RCs can be cut again. The items below run in this order.
 
 ## To go
 
@@ -24,7 +24,7 @@ step 5 lands. The items below run in this order.
 - [x] **Z2M `turn_on_for` late off**: `bulb_transition_then_off[light_dimmable]` was a step-file timing bug (the off
   window closed before DeviceSide's end read), not the bulb or DeviceSide; fixed in ha-rig #47.
 - [x] **Freeze** at `075895f`; lifted by the evidence-rules plan.
-- [ ] **Evidence rules**, one PR per step of the [plan](docs/plans/2026-11-12-evidence-rules.md):
+- [x] **Evidence rules**, one PR per step of the [plan](docs/plans/2026-11-12-evidence-rules.md):
   - [x] 1. Rules, docs only (`docs/evidence.md`).
   - [x] 2. Runtime: two levels, the `experimental` gate, `caveat`; the seven release-flagged adapters lose the flag;
     the code comments citing CLAUDE.md's "Release flag" or "Default to Documented" point to `docs/evidence.md`.
@@ -33,7 +33,7 @@ step 5 lands. The items below run in this order.
     from the checkout under test.
   - [x] 4. Release gate: `check_release.py --signoffs`; drop `--release` and the rest of `--records`; the
     docstring's CLAUDE.md citations and CLAUDE.md's Layout line on release checks.
-  - [ ] 5. Cards: `gen_compat.py` tiers for two levels, the flag and caveats, and the docstring's CLAUDE.md citations.
+  - [x] 5. Cards: `gen_compat.py` tiers for two levels, the flag and caveats, and the docstring's CLAUDE.md citations.
 - [ ] **Sign-offs** for v0.1.0, one per integration changed since v0.0.1 (`check_release.py --signoffs`), each a rig
   run from ha-rig `main`. The runs for the formerly release-flagged adapters need these `--profile lab` cases, run
   watched, the A60 visiting each network: Hue `saturation_down_stop`, `halts_brightness_and_saturation` and

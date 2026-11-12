@@ -3,16 +3,6 @@
 What DeviceSide must know about a device before a feature ships, and what a release needs. This page is the one home
 for these rules; other docs point here. Settled in [the evidence-rules plan](plans/2026-11-12-evidence-rules.md).
 
-## Transition
-
-These rules apply from 2026-11-12. Steps 2–4 of the plan (runtime, rig, release gate) have landed; until step 5 lands,
-the cards' old rules keep running: `gen_compat.py`'s record-freshness rule for Verified (a record counts only while
-its integration's package and `core/` are as at its commit), the "Experimental (in RCs only)" label and its rule
-leaving flagged adapters out of the cards (`IN_RCS`), and the rework into the new tiers. The old rules are in
-CLAUDE.md at `5aae1fe` (§ Release flag).
-
-No RC is cut until step 5 lands.
-
 ## Tenets
 
 1. **User experience is the north star.** Actions make devices do what users expect, quickly. If that holds, nothing
