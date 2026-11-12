@@ -13,9 +13,9 @@ Claims follow evidence, at one of two levels of proof:
   differing only in addressing, and no known class of devices handles it differently.
 
 New features ship as **Experimental**: they stay off until you turn on **Experimental features** in **Configure >
-Settings**, so they can soak with users who opt in. Some are tested and soaking, others wait for someone with the
-hardware. Whether they work or not, please tell us with **Report a device test result or bug** in the same menu:
-working reports help ship a feature to everyone. How we decide: [evidence rules](evidence.md).
+Settings**, so they can soak with users who opt in. Some may also have passed a maintainer's test and be soaking.
+Whether they work or not, please tell us with **Report a device test result or bug** in the same menu: working reports
+help ship a feature to everyone. How we decide: [evidence rules](evidence.md).
 
 ## Maintainers
 
@@ -77,8 +77,8 @@ Documented ([levels of proof](#levels-of-proof)).
 
 ## Try it: Experimental features
 
-These are built and unit-tested; some have also passed a maintainer's test and are soaking. Turn on Experimental features to try
-them, then report the result, whether they work or not: working reports help ship them to everyone.
+These are built and unit-tested; some may also have passed a maintainer's test and be soaking. Turn on Experimental
+features to try them, then report the result, whether they work or not: working reports help ship them to everyone.
 
 ### Zigbee plugs and switches
 

@@ -33,7 +33,11 @@ step 5 lands. The items below run in this order.
     docstring's CLAUDE.md citations and CLAUDE.md's Layout line on release checks.
   - [ ] 5. Cards: `gen_compat.py` tiers for two levels, the flag and caveats, and the docstring's CLAUDE.md citations.
 - [ ] **Sign-offs** for v0.1.0, one per integration changed since v0.0.1 (`check_release.py --signoffs`), each a rig
-  run from ha-rig `main`:
+  run from ha-rig `main`. The runs for the formerly release-flagged adapters need these `--profile lab` cases, run
+  watched, the A60 visiting each network: Hue `saturation_down_stop`, `halts_brightness_and_saturation` and
+  `sets_color_while_off`; ZHA `hue_cycle_stop`, `saturation_down_stop` and `sets_color_while_off`; Z2M
+  `halts_a_lower_to_off`, `hue_cycle_stop`, `saturation_down_stop` and `sets_color_while_off`. Unattended alongside:
+  Z2M `lower_hue` `cycles_down_the_wheel[group_color]` (#222).
   - [ ] Hue
   - [ ] Matter
   - [ ] Shelly
@@ -51,8 +55,9 @@ step 5 lands. The items below run in this order.
 - [x] **Shelly `set_attributes`** (#284, PR #287): RGBCCT, with `min_brightness`/`max_brightness`; the record clears
   the flag.
 - [x] **Shelly smooth dimming** (PR #289): `raise_brightness`, `lower_brightness` and `stop` on Shelly lights,
-  brightness only: each move one `<Component>.Set` with `transition_duration`, halted by `DimStop` (the `DimUp`/`DimDown` ramps
-  are stepped and have no `sweep_time` mapping). Findings: [`docs/integrations/shelly/research/2026-11-08-dimming.md`](docs/integrations/shelly/research/2026-11-08-dimming.md).
+  brightness only: each move one `<Component>.Set` with `transition_duration`, halted by `DimStop` (the
+  `DimUp`/`DimDown` ramps are stepped and have no `sweep_time` mapping). Findings:
+  [`docs/integrations/shelly/research/2026-11-08-dimming.md`](docs/integrations/shelly/research/2026-11-08-dimming.md).
   RGBCCT; the records clear the flag.
 - [x] **Device support, part 1** (#262): support levels and contribution lanes in `CONTRIBUTING.md`, the README's "Will it
   work with my device?", and the device report, device request and bug issue forms.
@@ -93,10 +98,10 @@ step 5 lands. The items below run in this order.
   `internals.md#tested-behavior` (Z2M `addressing.py`: `index.md#sharp-edges`), which `tests/scripts/test_doc_anchors.py`
   then checks; widen that test to page-only citations (`docs/….md` with no anchor) too.
 
-- [ ] **Forum announcement**, once v0.1.0 ships: refresh the draft's testers-wanted list from
-  [Try it: Experimental features](docs/device-compatibility.md#try-it-experimental-features) and check every link resolves (the issue forms,
-  `docs/device-compatibility.md`), then post it. After posting, point the "Getting involved" testers link at the heading's
-  anchor, which Discourse names after the post id.
+- [ ] **Forum announcement**, once v0.1.0 ships: refresh the draft's testers-wanted list from [Try it: Experimental
+  features](docs/device-compatibility.md#try-it-experimental-features) and check every link resolves (the issue forms,
+  `docs/device-compatibility.md`), then post it. After posting, point the "Getting involved" testers link at the
+  heading's anchor, which Discourse names after the post id.
 - [ ] **Forum thread links**: add the thread URL as the contact link in `.github/ISSUE_TEMPLATE/config.yml` and set
   `blank_issues_enabled: false` there, and link the thread from `CONTRIBUTING.md` and the README's Contributing
   section.

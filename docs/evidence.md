@@ -6,13 +6,17 @@ for these rules; other docs point here. Settled in [the evidence-rules plan](pla
 ## Transition
 
 These rules apply from 2026-11-12, but the code that enforces the old ones is removed in steps 2–5 of the plan. Until
-each step lands, its old gate keeps running, and work satisfies it. The old rules are in CLAUDE.md at `075895f`
+each step lands, its old gate keeps running, and work satisfies it. The old rules are in CLAUDE.md at `5aae1fe`
 (§ Release flag) and in `scripts/check_release.py`'s docstring.
 
 - **Runtime (step 2):** `Level.REPORTED` and `Level.EXPERIMENTAL`, the `experimental=True` release flag, the
   `unmaintained`, `stale_tests` and `siblings` fields, and the wire and scope traces.
+- **Rig (step 3):** the rig still writes `Covers` and `## Shared coverage`, which `--records` reads, and `observed.py`
+  still lends and blocks.
 - **Release gate (step 4):** `check_release.py --release` (the release flag, Stale tests) and `--records` (record
-  freshness, `FLAGS`, shared coverage, `Covers`, report retests), and the coverage bar over `adapter_code`.
+  freshness, `FLAGS`, shared coverage, `Covers`, report retests). The coverage bar still covers each adapter's code
+  (`adapter_code`), as CONTRIBUTING's "every module of your adapter code" says, not every module the Coverage bullet
+  below names.
 - **Cards (step 5):** `gen_compat.py`'s Reported tier, siblings, Unmaintained and Stale tests marks, and its
   record-freshness rule for Verified.
 
@@ -61,16 +65,17 @@ covers only what was exercised; it never signs off untested code.
 **Contrary evidence:** a report of misbehavior doesn't change the level. The maintainer root-causes it, and the fix,
 the updated fact or a demotion lands with the finding.
 
-*Example:* Shelly's `turn_on_for` and `turn_off_for` calls are Verified on the `Switch` and `RGBCCT` components and Documented on `Light`, `CCT`,
-`RGB` and `RGBW`: the same call, addressed to another component, which Shelly's API documents identically
-(`integrations/shelly/addressing.py`).
+*Example:* Shelly's `turn_on_for` and `turn_off_for` calls are Verified on the `Switch` and `RGBCCT` components and
+Documented on `Light`, `CCT`, `RGB` and `RGBW`: the same call, addressed to another component, which Shelly's API
+documents identically (`integrations/shelly/addressing.py`).
 
 ## The experimental flag
 
 `experimental` is a flag, not a level. In code it is the per-axis marker `experimental(...)`, beside `verified(...)` and
 `documented(...)`; `experimental=True` on an `AdapterScope` flags the whole adapter. A flagged item is refused unless
-the user turns on the Experimental features option. It may be tested and soaking, or untested: the cards tell which
-from the evidence (a record or `_manual.md` line, or none).
+the user turns on the Experimental features option. The dispatcher is the only gate: adapters never read the option, and
+turning it on never changes how any other item behaves. A flagged item may be tested and soaking, or untested: the cards
+tell which from the evidence (a record or `_manual.md` line, or none).
 
 Every new feature (action, integration, domain, capability or field) starts flagged, so it soaks in RCs and with
 opted-in users. A repo maintainer removes the flag. The directional bar is five working reports from users other than
@@ -90,12 +95,12 @@ line:
   in the release notes. A sign-off clears it, including a maintainer's `_manual.md` line citing a user's working
   report.
 - **⚠️ Unmaintained:** nobody is fixing it. It ships live. Cleared when someone fixes the adapter or adopts the
-  integration.
+  integration. An integration whose maintainers are all gone gets it on every adapter.
 
 A deprecation gets a hand-written note in that release's notes, not a caveat.
 
-*Example:* a low-risk fix to a broken adapter whose devices no maintainer has lands before the cut. It ships with ⚠️ Untested fix and
-the issue URL; a user's working report, cited in a maintainer's `_manual.md` line, clears it.
+*Example:* a low-risk fix to a broken adapter whose devices no maintainer has lands before the cut. It ships with
+⚠️ Untested fix and the issue URL; a user's working report, cited in a maintainer's `_manual.md` line, clears it.
 
 ## Release gate
 
@@ -110,9 +115,11 @@ needs a sign-off at or after its last change. Any change counts, flags included.
   manual sign-off on a rig-covered integration says why in its PR. This is guidance, not a gate check. Rig evidence is
   no separate level: the cards keep their ✔ for rig-tested models, and `--signoffs` prints each sign-off's kind (record
   or manual) for the RC audit.
-- `core/`, `actions/` and `scripts/` changes need no device sign-off: unit tests, the RC soak and tenet 5 cover them.
+- Changes outside an integration package (`core/`, `actions/`, the component root, `scripts/`) need no device
+  sign-off: unit tests, the RC soak and tenet 5 cover them.
 - **RCs need no sign-off.** The gate runs only at `cut-release`. An RC's notes list each integration changed without a
-  sign-off, with a link to the device report form, so an RC can carry an unsigned fix for others to test.
+  sign-off, with a link to the device report form, so an RC can carry an unsigned fix for others to test. But
+  `cut-release` checks the latest RC's commit, so land the sign-offs or caveats before the last RC.
 - **No sign-off at the cut:** `cut-release` fails unless a changed adapter of that integration carries a caveat. A
   repo maintainer picks whichever is most likely to work for users (tenet 1): hold the fix back (revert it, or leave
   it out of the release branch) when the current code mostly works; ship it marked ⚠️ Untested fix when the current
@@ -135,4 +142,7 @@ model ids (`docs/models.yaml`, never a household's device names) and what passed
     |---|---|---|---|---|
     | 2026-11-12 | `1a2b3c4` | @handle | `S3SW-001X8EU`, `S3BL-C010007AEU` | `turn_on_for`, `set_auto_off` |
 
-*Example:* a log-wording change in a Shelly adapter signs off with `no call changed` in Passed.
+A change that sends no new call signs off with a row whose Devices holds a dash and whose Passed holds exactly
+`no call changed`; step 4's parser accepts it. *Example:* a log-wording change in a Shelly adapter:
+
+    | 2026-11-12 | `1a2b3c4` | @handle | - | no call changed |

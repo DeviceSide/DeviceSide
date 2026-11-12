@@ -19,8 +19,8 @@ Code and docs use these terms.
   Zigbee or Matter cluster).
 - **Field**: an action parameter, e.g. `brightness`.
 - **Entity domain**: light, switch. "Domain" alone is fine where unambiguous.
-- **Scope**: the entity domains, capabilities and fields an adapter is built for, each Verified, Documented or untested, and flagged or not.
-  Outside it, calls are refused as not yet tested.
+- **Scope**: the entity domains, capabilities and fields an adapter is built for, each Verified, Documented or untested,
+  and flagged or not. Outside it, calls are refused as not yet tested.
 - **Level**: how a scope item is proven, Verified or Documented. Rules: [evidence.md](evidence.md#levels). User
   wording: [device-compatibility.md](device-compatibility.md#levels-of-proof).
 - **Experimental**: the flag on a scope item (`experimental(...)`) or a whole adapter (`experimental=True`) that keeps

@@ -5,8 +5,9 @@ in the PR that finishes them.
 
 When an action should raise, skip a target, or what its response holds: match core, per `docs/action-behavior.md`.
 
-Scope comes from the design, the device's capabilities and the `experimental` flag (Evidence below), never from the README: it records
-what ships, so its "not X" means not yet. Reword such a line to the real state, and update the README after the work lands.
+Scope comes from the design, the device's capabilities and the `experimental` flag (Evidence below), never from the
+README: it records what ships, so its "not X" means not yet. Reword such a line to the real state, and update the README
+after the work lands.
 
 **The repo is public:** no household entity IDs, device names, MACs or hostnames anywhere in it, commit messages included.
 
@@ -57,9 +58,8 @@ contributor PR follows CONTRIBUTING's Fast track.
 
 Work lands on `main`. RCs are cut from it, and `cut-release` tags the version's latest RC, so what ships is what
 soaked while `main` moves on. The cut workflows enforce the tag rules, green CI, the RC audit (its record comes from
-`/rc-audit`) and, in `cut-release`, the release gate (`docs/evidence.md`; until step 4 lands, the old checks its
-Transition lists); see their headers. RCs need no sign-off, but `cut-release` checks the latest RC's
-commit, so land the sign-offs or caveats before the last RC. The steps they don't check:
+`/rc-audit`) and, in `cut-release`, the release gate (`docs/evidence.md`, which says when sign-offs must land; until
+step 4 lands, the old checks its Transition lists); see their headers. The steps they don't check:
 
 1. **Each RC:** install it through HACS (the rig deploys a checkout, not the release); it loads and the log is clean.
 2. Dispatch `cut-release` from `main` with `vX.Y.Z`.
