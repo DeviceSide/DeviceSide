@@ -267,8 +267,29 @@ for 24 lines/h. That is about 850 lines in about 15.5 h.
   - Splitting `ON_THEN_OFF` into a fast copy: about +10 lines for about 3 s, and it weakens the two timing tests.
   - Many tests have no lines of their own, but they assert distinct outputs, so they stay.
 
+## Outcome (2026-11-12)
+
+Approved by Jason with the recommended cutoff, and done on `claude/reduce-code-complexity-syqjth` in both repos, one
+commit per item, plus one commit of review fixes in each. An independent review of each diff checked every drop, table
+and timing change.
+
+| | DeviceSide before → after | ha-rig before → after |
+|---|---|---|
+| Lines | 17,775 → 17,180 (−595) | 13,377 → 13,196 (−181) |
+| Code lines | 12,160 → 11,759 | 10,165 → 10,039 |
+| Test functions | 1,095 → 1,032 | 776 → 746 |
+| Collected cases | 1,685 → 1,617 | 1,119 → 1,116 |
+| Wall time, `-p no:randomly` | 55 s → 43 s | 74 s → 53 s |
+
+- **Coverage:** the only newly uncovered line is `zigbee2mqtt/turn_on_for.py:67` (decided).
+  `check_release.py --coverage` passes. The rig's missing lines are identical.
+- **D1:** the z2m reply bounds landed at 0.1 s, not 0.02. At 0.02 the z2m files flaked under CPU load (7 of 8 loaded
+  runs); at 0.1 they passed 5 loaded runs.
+- **Review fixes:** the review restored two checks the merges had weakened: D20's empty selection, and D9's group
+  refusal. It also made the rig's gate tables clearer (R7).
+- **CI:** the `tests.yml` pytest job now checks out shallow. Nothing it runs reads history; this was checked in a
+  depth-1 clone.
+
 ## Handoff
 
-Plan written on `claude/reduce-code-complexity-syqjth` in DeviceSide. Next: Jason reviews the plan and approves it,
-in whole or in part. The implementation then runs in a new session, one implementer subagent per repo, each
-followed by a reviewer, using the verify protocol above.
+Done; nothing pending. The PRs (one per repo, test-only) come when the branch is split.
