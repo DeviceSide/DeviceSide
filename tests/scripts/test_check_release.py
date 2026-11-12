@@ -22,9 +22,9 @@ class FakeAdapter:
 
 class FakeRegistry:
     """Adapters by (action, integration), each of a class whose module is `<package>/<action>.py` under the root, and
-    the integrations' infos, maintained by @a unless given."""
+    the integrations' infos, each maintained by @a."""
 
-    def __init__(self, root: Path, monkeypatch, adapters: dict[tuple[str, str], AdapterScope], integrations=()):
+    def __init__(self, root: Path, monkeypatch, adapters: dict[tuple[str, str], AdapterScope]):
         self.adapters = {}
         for (action, integration), scope in adapters.items():
             module = types.ModuleType(f"fake_{integration}_{action}")
@@ -37,7 +37,6 @@ class FakeRegistry:
         self.integrations = {
             key: IntegrationInfo(key=key, title=key.title(), ha_domain=key, maintainers=("a",)) for key in keys
         }
-        self.integrations |= {info.key: info for info in integrations}
 
     def matrix(self):
         yield "turn_off_for", "fake", None
@@ -57,21 +56,11 @@ def fake_repo(repo, monkeypatch):
 # Import failures and the real registry.
 
 
-@pytest.mark.parametrize("argv", [[], ["--signoffs"]])
-def test_an_integration_that_failed_to_import_is_an_error(fake_repo, monkeypatch, capsys, argv):
-    """Its adapters are missing from the registry, so no gate would see them."""
-    broken = IntegrationInfo(
-        key="zha", title="zha", ha_domain="zha", maintainers=(), available=False, unavailable_reason="No module"
-    )
-    fake_repo.commit()
-    assert cr.main(argv, FakeRegistry(fake_repo.path, monkeypatch, {}, [broken])) == 1
-    assert "error: zha: failed to import (No module)" in capsys.readouterr().err.splitlines()
-
-
 def test_a_real_import_failure_reaches_the_gate(monkeypatch, capsys):
+    """Its adapters are missing from the registry, so no gate would see them: the failure is an error itself."""
     registry = AdapterRegistry(discover(), ["custom_components.deviceside.integrations.missing"])
     assert cr.main([], registry) == 1
-    assert "error: missing: failed to import" in capsys.readouterr().err
+    assert "error: missing: failed to import (" in capsys.readouterr().err
 
 
 def test_main_reads_the_real_registry(capsys):

@@ -173,7 +173,7 @@ def test_an_adapters_rows_hold_each_level_its_scope_holds_strongest_first_with_i
 
 
 def test_a_level_comes_from_the_scope_not_from_the_records(root):
-    # No record and Verified: the scope decides (verify, then trust). A record never ages.
+    # No record and Verified: the scope decides (verify, then trust).
     assert gc.rows(adapter("hue", "stop"), data()) == ["| `stop` | Verified | light entities | none | |"]
 
 
