@@ -4,6 +4,7 @@ import importlib
 import logging
 from dataclasses import replace
 from itertools import product
+from types import SimpleNamespace
 
 import pytest
 
@@ -12,6 +13,12 @@ from custom_components.deviceside.core.registry import AdapterRegistry
 from custom_components.deviceside.core.scope import verified
 
 from ..conftest import FAKE_INTEGRATIONS
+from ..fakes.fake_integration import ADAPTERS, INTEGRATION, FakeTurnOnFor
+
+
+def _registry(adapters=ADAPTERS, info=INTEGRATION) -> AdapterRegistry:
+    """A registry of the fake integration alone, with these adapters and this info."""
+    return AdapterRegistry(actions.discover(), [SimpleNamespace(INTEGRATION=info, ADAPTERS=adapters)])
 
 
 def test_broken_integration_is_recorded_unavailable_and_others_load():
@@ -58,45 +65,33 @@ def test_matrix_lists_every_pair_sorted():
 
 
 def test_adapter_for_unknown_action_is_refused():
-    from types import SimpleNamespace
-
-    from ..fakes.fake_integration import INTEGRATION, FakeTurnOnFor
-
     class Stray(FakeTurnOnFor):
         action = "no_such_action"
 
     with pytest.raises(ValueError, match="unknown action"):
-        AdapterRegistry(actions.discover(), [SimpleNamespace(INTEGRATION=INTEGRATION, ADAPTERS=[Stray])])
+        _registry([Stray])
 
 
 def test_an_adapter_naming_capabilities_must_list_them_in_its_scope():
-    from types import SimpleNamespace
-
-    from ..fakes.fake_integration import INTEGRATION, FakeTurnOnFor
-
     class Named(FakeTurnOnFor):
         def capability(self, hass, target):
             return "Switch"
 
     with pytest.raises(ValueError, match="names capabilities but its scope lists none"):
-        AdapterRegistry(actions.discover(), [SimpleNamespace(INTEGRATION=INTEGRATION, ADAPTERS=[Named])])
+        _registry([Named])
 
     class Listed(Named):
         scope = replace(FakeTurnOnFor.scope, capabilities=verified("Switch"))
 
-    AdapterRegistry(actions.discover(), [SimpleNamespace(INTEGRATION=INTEGRATION, ADAPTERS=[Listed])])
+    _registry([Listed])
 
 
 def test_an_adapter_listing_capabilities_must_name_them():
-    from types import SimpleNamespace
-
-    from ..fakes.fake_integration import INTEGRATION, FakeTurnOnFor
-
     class Unnamed(FakeTurnOnFor):
         scope = replace(FakeTurnOnFor.scope, capabilities=verified("Switch"))
 
     with pytest.raises(ValueError, match="lists capabilities in its scope but names none"):
-        AdapterRegistry(actions.discover(), [SimpleNamespace(INTEGRATION=INTEGRATION, ADAPTERS=[Unnamed])])
+        _registry([Unnamed])
 
 
 @pytest.mark.parametrize(
@@ -112,22 +107,12 @@ def test_an_adapter_listing_capabilities_must_name_them():
     ],
 )
 def test_an_integration_must_name_its_maintainers_by_handle(maintainers, error):
-    from types import SimpleNamespace
-
-    from ..fakes.fake_integration import ADAPTERS, INTEGRATION
-
-    info = replace(INTEGRATION, maintainers=maintainers)
     with pytest.raises(ValueError, match=error):
-        AdapterRegistry(actions.discover(), [SimpleNamespace(INTEGRATION=info, ADAPTERS=ADAPTERS)])
+        _registry(info=replace(INTEGRATION, maintainers=maintainers))
 
 
 def test_several_maintainers_are_accepted():
-    from types import SimpleNamespace
-
-    from ..fakes.fake_integration import ADAPTERS, INTEGRATION
-
-    info = replace(INTEGRATION, maintainers=("jasonmx", "a-b", "a" * 39))
-    registry = AdapterRegistry(actions.discover(), [SimpleNamespace(INTEGRATION=info, ADAPTERS=ADAPTERS)])
+    registry = _registry(info=replace(INTEGRATION, maintainers=("jasonmx", "a-b", "a" * 39)))
     assert registry.integrations["fake"].maintainers == ("jasonmx", "a-b", "a" * 39)
 
 
