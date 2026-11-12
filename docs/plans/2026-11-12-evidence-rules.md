@@ -212,12 +212,13 @@ The estimates below are code plus tests.
      integration the rig covers (Hue, ZHA, Zigbee2MQTT, Shelly and Matter on today's profiles), and manual only as a
      fallback.
    - `/rc-audit` over the new range, then the RC, a HACS install, the release notes and `cut-release`.
-7. **Test simplification plan.** Re-run the test consolidation audit on both repos once steps 4 and 5 have landed,
-   so it measures the code that remains, then write the plan to simplify the tests.
-   - Start from the first audit, ha-rig `docs/plans/2026-11-12-test-consolidation.md` on branch
-     `claude/test-consolidation-plan` (written before the rules changed). Drop its items whose subject this plan
-     removed, and remeasure the rest.
-   - Same constraints: the ≥95% coverage bar, no test dropped without naming what still catches its failure, items
+7. **Test simplification plan**, the last step. In a new session, once steps 4 and 5 have landed:
+   - **A fresh audit** of both repos' tests for what can be simplified, measured on the code that remains. The first
+     audit (ha-rig `docs/plans/2026-11-12-test-consolidation.md`, branch `claude/test-consolidation-plan`) predates
+     the rule changes and is stale: don't start from it.
+   - **A proposed consolidation plan for Jason to review.** The session interviews Jason where it needs his call,
+     before finalizing the plan, and changes no code until he approves it.
+   - Constraints: the ≥95% coverage bar, no test dropped without naming what still catches its failure, and items
      ranked by lines saved per hour, each with its files, risk and how to verify (pytest plus a coverage diff).
    - The plan lands in DeviceSide `docs/plans/`, covering both repos. Test-only changes send no new call, so they
      need no sign-off, and the work needn't wait for step 6.
