@@ -86,10 +86,10 @@ built:
 ## Scope
 
 Integrations: Zigbee2MQTT (via `mqtt`), ZHA, Matter, Shelly Gen2+ and Hue (CLIP v2). Each adapter's `AdapterScope`
-says what it covers, and `scripts/check_release.py` lists every adapter. Each integration's docs, data and records
-are its bundle, `docs/integrations/<integration>/`, which [CLAUDE.md](../CLAUDE.md#where-facts-go) lays out. What
-can't be built where, and why: `NO_PATH` in `scripts/gen_features.py`, the
-README's prohibited signs, explained to users in
+says what it covers, and the README feature table (`scripts/gen_features.py`) lists every adapter. Each integration's
+docs, data and records are its bundle, `docs/integrations/<integration>/`, which
+[CLAUDE.md](../CLAUDE.md#where-facts-go) lays out. What can't be built where, and why: `NO_PATH` in
+`scripts/gen_features.py`, the README's prohibited signs, explained to users in
 [integrations.md](integrations.md#what-cant-be-done-and-why).
 
 - **`turn_on_for`, `turn_off_for`**: on, then off after `duration` (or the reverse), timed on the device.
@@ -188,13 +188,13 @@ adapter's targets at once, so native group commands stay possible.
 
 ## Release gates
 
-The rules are in [evidence.md](evidence.md#release-gate), with the old gates still running listed under its
-Transition; each gate's mechanics are in the header of the script or workflow named.
+The rules are in [evidence.md](evidence.md#release-gate); each gate's mechanics are in the header of the script or
+workflow named.
 
 - **Coverage:** `scripts/check_release.py --coverage`, in CI.
-- **Sign-offs:** `check_release.py --signoffs`, in `cut-release` once the plan's step 4 lands: a sign-off or caveat
-  for each integration whose package changed since the last release tag. `--notes` lists the unsigned integrations
-  and Untested fix caveats in both cut workflows.
+- **Sign-offs:** `check_release.py --signoffs`, in `cut-release`: a sign-off or caveat for each integration whose
+  package changed since the last release tag. `--notes` lists the unsigned integrations and Untested fix caveats in
+  both cut workflows.
 - **Tags:** `scripts/check_tag.py`, in `.github/workflows/cut-release-candidate.yml` and `cut-release.yml`, the only
   way a tag is made.
 - **RC audit:** `scripts/check_audit.py`, in `cut-release-candidate`.

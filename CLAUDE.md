@@ -58,8 +58,8 @@ contributor PR follows CONTRIBUTING's Fast track.
 
 Work lands on `main`. RCs are cut from it, and `cut-release` tags the version's latest RC, so what ships is what
 soaked while `main` moves on. The cut workflows enforce the tag rules, green CI, the RC audit (its record comes from
-`/rc-audit`) and, in `cut-release`, the release gate (`docs/evidence.md`, which says when sign-offs must land; until
-step 4 lands, the old checks its Transition lists); see their headers. The steps they don't check:
+`/rc-audit`) and, in `cut-release`, the release gate (`check_release.py --signoffs`; `docs/evidence.md` says when
+sign-offs must land); see their headers. The steps they don't check:
 
 1. **Each RC:** install it through HACS (the rig deploys a checkout, not the release); it loads and the log is clean.
 2. Dispatch `cut-release` from `main` with `vX.Y.Z`.
@@ -84,7 +84,7 @@ there, cut the next RC from it, and merge the branch back into `main`.
 - `custom_components/deviceside/integrations/<integration>/`: one adapter module per action
 - `tests/{core,actions,integrations,scripts}`: mirror the above
 - `scripts/`: household check, generated docs (device cards, device compatibility page, README feature table), release checks
-  (coverage, the release flag, record freshness, tags, RC audits)
+  (coverage, sign-offs, tags, RC audits)
 - `docs/integrations/<integration>/`: the integration's bundle (see Where facts go); the rig writes its `test-records/`.
   Design detail lives in `docs/design.md`.
 

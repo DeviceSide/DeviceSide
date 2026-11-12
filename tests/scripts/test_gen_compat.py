@@ -90,8 +90,7 @@ def root(tmp_path, monkeypatch):
     monkeypatch.setattr(gc, "REPO", tmp_path)
     monkeypatch.setattr(cr, "BUNDLES", tmp_path / "docs" / "integrations")
     # Freshness needs git history and an adapter's source: every record is fresh unless a test says otherwise.
-    monkeypatch.setattr(gc, "code_of", lambda adapter: [])
-    monkeypatch.setattr(gc, "staleness", lambda record, code: None)
+    monkeypatch.setattr(gc, "fresh", lambda record, integration: True)
     return tmp_path
 
 
@@ -227,8 +226,28 @@ def test_only_a_fresh_passing_base_record_is_verified(root, monkeypatch):
     line = gc.row("stop", adapter("zha", "stop"), data())
     assert line.startswith(f"| `stop` | {gc.NO_RECORD} | `LTA009`")
     base = record(root, "zha", "stop")
-    monkeypatch.setattr(gc, "staleness", lambda record, code: "changed since: x.py" if record == base else None)
+    monkeypatch.setattr(gc, "fresh", lambda record, integration: record != base)
     assert gc.row("stop", adapter("zha", "stop"), data()).startswith(f"| `stop` | {gc.STALE} | `LTA009`")
+
+
+def test_a_record_is_fresh_while_its_package_and_core_are_as_at_its_commit(repo, monkeypatch):
+    """Until the cards drop the freshness rule: any change to the package or `core/`, a flag's included, stales it."""
+    monkeypatch.setattr(cr, "REPO", repo.path)
+    package = "custom_components/deviceside/integrations/zha"
+    tested = repo.commit(f"{package}/stop.py", "AdapterScope()\n")
+    path = repo.path / "stop.md"
+    path.write_text(f"| Source | rig run (`scripts/rig.py`), commit `{tested[:7]}` |\n")
+    repo.commit("custom_components/deviceside/actions/stop.py")
+    repo.commit("custom_components/deviceside/integrations/hue/stop.py")
+    assert gc.fresh(path, "zha")
+    repo.commit(f"{package}/stop.py", "AdapterScope(experimental=True)\n")
+    assert not gc.fresh(path, "zha")
+    path.write_text(f"| Source | rig run (`scripts/rig.py`), commit `{repo.git('rev-parse', 'HEAD')[:7]}` |\n")
+    assert gc.fresh(path, "zha")
+    repo.commit("custom_components/deviceside/core/dispatcher.py")
+    assert not gc.fresh(path, "zha")
+    path.write_text("| Source | probe script |\n")
+    assert not gc.fresh(path, "zha")
 
 
 def test_reports_fill_the_reports_column_of_their_action(root):

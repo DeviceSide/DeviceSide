@@ -5,21 +5,11 @@ for these rules; other docs point here. Settled in [the evidence-rules plan](pla
 
 ## Transition
 
-These rules apply from 2026-11-12, but the code that enforces the old ones is removed in steps 2–5 of the plan. Until
-each step lands, its old gate keeps running, and work satisfies it. The old rules are in CLAUDE.md at `5aae1fe`
-(§ Release flag) and in `scripts/check_release.py`'s docstring.
-
-- **Runtime (step 2):** landed. `Level.REPORTED`, the `unmaintained`, `stale_tests` and `siblings` fields and the
-  wire and scope traces are gone; `experimental=True` gates at runtime, and `caveat` holds Untested fix or Unmaintained.
-- **Rig (step 3, landed with step 2):** records no longer carry `Covers` or `## Shared coverage`, so `--records`
-  refuses them until step 4. Observed and firmware-fact results go to each bundle's `test-records/_facts.md`.
-- **Release gate (step 4):** `check_release.py --release` (the Untested fix caveat check, and it still refuses an
-  `experimental=True` adapter until step 4) and `--records` (record freshness, `FLAGS`, shared coverage, `Covers`,
-  report retests). The coverage bar still covers each adapter's code
-  (`adapter_code`), as CONTRIBUTING's "every module of your adapter code" says, not every module the Coverage bullet
-  below names.
-- **Cards (step 5):** `gen_compat.py`'s record-freshness rule for Verified, the "Experimental (in RCs only)" label
-  and its rule leaving flagged adapters out of the cards (`IN_RCS`), and the rework into the new tiers.
+These rules apply from 2026-11-12. Steps 2–4 of the plan (runtime, rig, release gate) have landed; until step 5 lands,
+the cards' old rules keep running: `gen_compat.py`'s record-freshness rule for Verified (a record counts only while
+its integration's package and `core/` are as at its commit), the "Experimental (in RCs only)" label and its rule
+leaving flagged adapters out of the cards (`IN_RCS`), and the rework into the new tiers. The old rules are in
+CLAUDE.md at `5aae1fe` (§ Release flag).
 
 No RC is cut until step 5 lands.
 
@@ -154,6 +144,6 @@ model ids (`docs/models.yaml`, never a household's device names) and what passed
     | 2026-11-12 | `1a2b3c4` | @handle | `S3SW-001X8EU`, `S3BL-C010007AEU` | `turn_on_for`, `set_auto_off` |
 
 A change that sends no new call signs off with a row whose Devices holds a dash and whose Passed holds exactly
-`no call changed`; step 4's parser accepts it. *Example:* a log-wording change in a Shelly adapter:
+`no call changed`. *Example:* a log-wording change in a Shelly adapter:
 
     | 2026-11-12 | `1a2b3c4` | @handle | - | no call changed |
