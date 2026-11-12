@@ -3,17 +3,15 @@ issue_zigbee_group_command for a ZHA group's members), then an OnOff and OnTime 
 
 from unittest.mock import AsyncMock
 
-import probatio
 import pytest
-from homeassistant.core import Context, ServiceCall
+from homeassistant.core import ServiceCall
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers.service import async_register_admin_service
 from pytest_homeassistant_custom_component.common import async_mock_service
 
-from custom_components.deviceside.const import DOMAIN
 from custom_components.deviceside.integrations.zha import zcl
 from custom_components.deviceside.integrations.zha.addressing import address
 
+from .conftest import call_as
 from ...conftest import allow_experimental, call, refusal, sent
 from ...fixtures.zha import IEEE, add_zha_entity, zha_entry, zha_group
 
@@ -182,34 +180,13 @@ async def test_zha_error_rejects_that_target(hass, setup_production, turn_ons):
     assert "light.gone: error" in raised.value.translation_placeholders["summary"]
 
 
-@pytest.fixture
-def admin_command(hass):
-    """ZHA's real registration: an admin service, which checks the caller's context."""
-    calls: list[ServiceCall] = []
-
-    async def handler(service: ServiceCall) -> None:
-        calls.append(service)
-
-    schema = probatio.Schema({}, extra=probatio.ALLOW_EXTRA)
-    async_register_admin_service(hass, "zha", "issue_zigbee_cluster_command", handler, schema)
-    return calls
-
-
-async def _call_as(hass, user) -> dict:
-    return await hass.services.async_call(
-        DOMAIN,
-        "turn_on_for",
-        {"entity_id": "light.bulb", "duration": 5},
-        blocking=True,
-        return_response=True,
-        context=Context(user_id=user.id),
-    )
+BULB_FOR_5 = {"entity_id": "light.bulb", "duration": 5}
 
 
 async def test_admin_caller_reaches_zha(hass, setup_production, admin_command, hass_admin_user):
     add_zha_entity(hass, zha_entry(hass), "light.bulb")
 
-    assert await _call_as(hass, hass_admin_user) == {"light.bulb": CONFIRMED}
+    assert await call_as(hass, hass_admin_user, "turn_on_for", BULB_FOR_5) == {"light.bulb": CONFIRMED}
     assert admin_command[0].context.user_id == hass_admin_user.id
 
 
@@ -217,7 +194,7 @@ async def test_non_admin_caller_is_refused_by_zha(hass, setup_production, admin_
     add_zha_entity(hass, zha_entry(hass), "light.bulb")
 
     with pytest.raises(HomeAssistantError) as raised:
-        await _call_as(hass, hass_read_only_user)
+        await call_as(hass, hass_read_only_user, "turn_on_for", BULB_FOR_5)
 
     assert raised.value.translation_placeholders["summary"] == "light.bulb: admin_required"
     assert not admin_command
@@ -313,28 +290,13 @@ async def test_a_light_named_directly_or_through_an_ha_group_gets_its_own_comman
 
 
 async def test_non_admin_caller_is_refused_for_every_member(
-    hass, setup_production, two_light_group, hass_read_only_user, readback
+    hass, setup_production, two_light_group, admin_command, hass_read_only_user, readback
 ):
-    calls: list[ServiceCall] = []
-
-    async def handler(service: ServiceCall) -> None:
-        calls.append(service)
-
-    schema = probatio.Schema({}, extra=probatio.ALLOW_EXTRA)
-    async_register_admin_service(hass, "zha", "issue_zigbee_group_command", handler, schema)
-
     with pytest.raises(HomeAssistantError) as raised:
-        await hass.services.async_call(
-            DOMAIN,
-            "turn_on_for",
-            {"entity_id": "light.zha_group", "duration": 5},
-            blocking=True,
-            return_response=True,
-            context=Context(user_id=hass_read_only_user.id),
-        )
+        await call_as(hass, hass_read_only_user, "turn_on_for", {"entity_id": "light.zha_group", "duration": 5})
 
     assert raised.value.translation_placeholders["summary"] == "light.a: admin_required, light.b: admin_required"
-    assert not calls
+    assert not admin_command
     readback.assert_not_awaited()
 
 

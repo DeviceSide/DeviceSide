@@ -4,19 +4,18 @@ import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
-import probatio
 import pytest
-from homeassistant.core import Context, ServiceCall
+from homeassistant.core import ServiceCall
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
-from homeassistant.helpers.service import async_register_admin_service
 from homeassistant.util.color import color_xy_to_hs
 
-from custom_components.deviceside.const import ADAPTER_BACKSTOP_S, DOMAIN
+from custom_components.deviceside.const import ADAPTER_BACKSTOP_S
 from custom_components.deviceside.integrations.zha import set_attributes as adapter
 from custom_components.deviceside.integrations.zha import zcl
 
+from .conftest import call_as
 from ...conftest import advance, call, refusal, result, wall_clock_now
 from ...fixtures.zha import IEEE, add_zha_entity, zha_entry, zha_group
 
@@ -252,28 +251,14 @@ async def test_a_failed_level_read_rejects_that_light(hass, commands, level_read
     assert not commands
 
 
-async def test_non_admin_caller_is_refused_by_zha(hass, refreshes, hass_read_only_user):
+async def test_non_admin_caller_is_refused_by_zha(hass, refreshes, admin_command, hass_read_only_user):
     bulb(hass, DIMMABLE)
-    calls: list[ServiceCall] = []
-
-    async def handler(service: ServiceCall) -> None:
-        calls.append(service)
-
-    schema = probatio.Schema({}, extra=probatio.ALLOW_EXTRA)
-    async_register_admin_service(hass, "zha", "issue_zigbee_cluster_command", handler, schema)
 
     with pytest.raises(HomeAssistantError) as raised:
-        await hass.services.async_call(
-            DOMAIN,
-            "set_attributes",
-            {"entity_id": "light.bulb", "brightness": 40},
-            blocking=True,
-            return_response=True,
-            context=Context(user_id=hass_read_only_user.id),
-        )
+        await call_as(hass, hass_read_only_user, "set_attributes", {"entity_id": "light.bulb", "brightness": 40})
 
     assert raised.value.translation_placeholders["summary"] == "light.bulb: admin_required"
-    assert not calls
+    assert not admin_command
 
 
 async def test_entity_without_a_light_unique_id_is_not_addressable(hass, commands):

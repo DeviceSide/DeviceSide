@@ -4,20 +4,17 @@ import asyncio
 import logging
 from unittest.mock import AsyncMock
 
-import probatio
 import pytest
-from homeassistant.core import Context, ServiceCall
+from homeassistant.core import ServiceCall
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
-from homeassistant.helpers.service import async_register_admin_service
 from pytest_homeassistant_custom_component.common import async_mock_service
 
-from custom_components.deviceside.const import DOMAIN
 from custom_components.deviceside.core.transition import BRIGHTNESS, SATURATION
 from custom_components.deviceside.integrations.zha import zcl
 from custom_components.deviceside.integrations.zha.fade import hue_moves, soft_off_restores, transition_cache
 
-from .conftest import BOTTOM, RESTORE_60, SENT, A, B, bulb, on_off_reads, sent, xy
+from .conftest import BOTTOM, RESTORE_60, SENT, A, B, bulb, call_as, on_off_reads, sent, xy
 from ...conftest import advance, call, result, wall_clock_now
 from ...fixtures.zha import IEEE
 
@@ -78,28 +75,14 @@ async def test_a_move_of_another_attribute_keeps_the_soft_offs_restore(hass, com
     assert len(refreshes) == 2  # one per fade
 
 
-async def test_non_admin_caller_is_refused(hass, hass_read_only_user):
-    calls: list[ServiceCall] = []
-
-    async def handler(service: ServiceCall) -> None:
-        calls.append(service)
-
-    schema = probatio.Schema({}, extra=probatio.ALLOW_EXTRA)
-    async_register_admin_service(hass, "zha", "issue_zigbee_cluster_command", handler, schema)
+async def test_non_admin_caller_is_refused(hass, admin_command, hass_read_only_user):
     bulb(hass)
 
     with pytest.raises(HomeAssistantError) as raised:
-        await hass.services.async_call(
-            DOMAIN,
-            "raise_brightness",
-            {"entity_id": "light.bulb"},
-            blocking=True,
-            return_response=True,
-            context=Context(user_id=hass_read_only_user.id),
-        )
+        await call_as(hass, hass_read_only_user, "raise_brightness", {"entity_id": "light.bulb"})
 
     assert raised.value.translation_placeholders["summary"] == "light.bulb: admin_required"
-    assert not calls
+    assert not admin_command
     assert not transition_cache(hass).tracks("light.bulb", BRIGHTNESS)
 
 

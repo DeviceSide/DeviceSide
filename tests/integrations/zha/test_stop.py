@@ -4,17 +4,14 @@ refresh at once."""
 import asyncio
 from unittest.mock import patch
 
-import probatio
 import pytest
-from homeassistant.core import Context, ServiceCall
+from homeassistant.core import ServiceCall
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers.service import async_register_admin_service
 
-from custom_components.deviceside.const import DOMAIN
 from custom_components.deviceside.core.transition import BRIGHTNESS, SATURATION
 from custom_components.deviceside.integrations.zha.fade import hue_moves, transition_cache
 
-from .conftest import IEEE, SENT, A, B, bulb, sent
+from .conftest import IEEE, SENT, A, B, bulb, call_as, sent
 from ...conftest import advance, call, result, wall_clock_now
 
 DISPATCHER = "custom_components.deviceside.core.dispatcher"
@@ -140,28 +137,14 @@ async def test_a_group_with_an_off_member_stops_each_lit_one(hass, two_light_gro
     assert not group_commands
 
 
-async def test_non_admin_caller_is_refused(hass, hass_read_only_user, refreshes):
-    calls: list[ServiceCall] = []
-
-    async def handler(service: ServiceCall) -> None:
-        calls.append(service)
-
-    schema = probatio.Schema({}, extra=probatio.ALLOW_EXTRA)
-    async_register_admin_service(hass, "zha", "issue_zigbee_cluster_command", handler, schema)
+async def test_non_admin_caller_is_refused(hass, admin_command, hass_read_only_user, refreshes):
     bulb(hass)
 
     with pytest.raises(HomeAssistantError) as raised:
-        await hass.services.async_call(
-            DOMAIN,
-            "stop",
-            {"entity_id": "light.bulb"},
-            blocking=True,
-            return_response=True,
-            context=Context(user_id=hass_read_only_user.id),
-        )
+        await call_as(hass, hass_read_only_user, "stop", {"entity_id": "light.bulb"})
 
     assert raised.value.translation_placeholders["summary"] == "light.bulb: admin_required"
-    assert not calls
+    assert not admin_command
     assert not refreshes
 
 
