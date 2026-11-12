@@ -34,23 +34,10 @@ DATA = {
         }
     },
     "doesnt_work": [{"what": "Old plug", "integrations": ["zha"], "reason": "No timer", "source": "https://x.y/z"}],
-    "reports": [],
 }
 PROSE = "# Page\n\n" + "".join(
     f"### {heading}\n\n" for heading in ("Hue lamp", "Plug", "Zigbee plugs", "Dimmers", "Old plug", "Native groups")
 )
-
-REPORT = {
-    "integration": "zha",
-    "model": "P1",
-    "item": "light",
-    "firmware": "1.2",
-    "deviceside": "0.1.0",
-}
-
-
-def report(**over):
-    return {**REPORT, "issue": f"{gc.ISSUE_URL}1", **over}
 
 
 def record(root, integration, name, *, result="pass", device="Hue lamp (`LTA009`), firmware `1.2.3`"):
@@ -140,28 +127,6 @@ def test_a_model_a_record_names_must_be_in_models_yaml(root):
             {"doesnt_work": [{"what": "X", "integrations": ["zha"], "reason": "", "source": "https://s"}]},
             "needs a reason",
         ),
-        (
-            {"reports": [{"integration": "zha", "model": "P1", "item": "light", "issue": "https://example.com/1"}]},
-            "issue URL",
-        ),
-        (
-            {"reports": [{"integration": "zha", "model": "ZZ", "item": "light", "issue": f"{gc.ISSUE_URL}1"}]},
-            "'ZZ' is not in",
-        ),
-        (
-            {
-                "reports": [
-                    {
-                        "integration": "zha",
-                        "model": "P1",
-                        "item": "light",
-                        "worked": ["set_scene"],
-                        "issue": f"{gc.ISSUE_URL}1",
-                    }
-                ]
-            },
-            "zha has no set_scene adapter",
-        ),
         ({"extra": 1}, "unknown key extra"),
         ({"integrations": {"zha": {}}}, "integrations zha needs a requires"),
         ({"models": [{"name": "Lamp", "ids": "L1", "type": "bulb"}]}, "ids must be a list"),
@@ -176,25 +141,6 @@ def test_a_model_a_record_names_must_be_in_models_yaml(root):
             "must be a list",
         ),
         ({"doesnt_work": [{"what": "X", "integrations": ["zha"], "reason": "r", "source": "s"}]}, "https URL"),
-        ({"reports": [{"model": "P1", "item": "light", "issue": f"{gc.ISSUE_URL}1"}]}, "needs an integration"),
-        (
-            {"reports": [{"integration": "tuya", "model": "P1", "item": "light", "issue": f"{gc.ISSUE_URL}1"}]},
-            "no integration 'tuya'",
-        ),
-        (
-            {
-                "reports": [
-                    {"integration": "zha", "model": "P1", "item": "light", "worked": "x", "issue": f"{gc.ISSUE_URL}1"}
-                ]
-            },
-            "worked must",
-        ),
-        ({"reports": [{**REPORT, "issue": f"{gc.ISSUE_URL}1", "firmware": ""}]}, "needs firmware"),
-        (
-            {"reports": [{"integration": "zha", "model": "P1", "item": "light", "issue": f"{gc.ISSUE_URL}1"}]},
-            "needs firmware",
-        ),
-        ({"reports": [{**REPORT, "issue": f"{gc.ISSUE_URL}1", "firmware": 1.1}]}, "needs firmware, as a quoted"),
     ],
 )
 def test_devices_yaml_is_validated(changes, error):  # a clean error, never a KeyError
@@ -215,15 +161,15 @@ def test_an_adapters_rows_hold_each_level_its_scope_holds_strongest_first_with_i
         "| `stop` | Verified | light entities; Light components; brightness fields"
         " | `LTA009`, firmware `1.2.3`<br>group"
         " | [predicted state](integrations/zha/test-records/stop-predicted_state.md),"
-        " [record](integrations/zha/test-records/stop.md) | |",
-        "| `stop` | Documented | CCT components | | | |",
-        "| `stop` | Experimental: Help us test | switch entities; RGB components; transition fields | | | |",
+        " [record](integrations/zha/test-records/stop.md) |",
+        "| `stop` | Documented | CCT components | | |",
+        "| `stop` | Experimental | switch entities; RGB components; transition fields | | |",
     ]
 
 
 def test_a_level_comes_from_the_scope_not_from_the_records(root):
     # No record and Verified: the scope decides (verify, then trust). A record never ages.
-    assert gc.rows(adapter("hue", "stop"), data()) == ["| `stop` | Verified | light entities | none | | |"]
+    assert gc.rows(adapter("hue", "stop"), data()) == ["| `stop` | Verified | light entities | none | |"]
 
 
 def test_records_are_the_action_and_its_options(root):
@@ -233,31 +179,11 @@ def test_records_are_the_action_and_its_options(root):
     assert names == ["turn_on_for-predicted_state.md", "turn_on_for.md"]
 
 
-def table_text(*rows):
-    return "\n## Tests\n\n| Test | Target | Result |\n|---|---|---|\n" + "".join(f"{row}\n" for row in rows)
-
-
-def test_a_flagged_item_is_tested_once_a_passing_test_targets_it(root):
-    path = record(root, "zha", "turn_on_for")
-    path.write_text(path.read_text() + table_text("| `a[switch_plug]` | `switch` (switch_plug) | fail |"))
-    scope = AdapterScope(domains=verified("light") | experimental("switch", "fan"))
-    flagged = adapter("zha", "turn_on_for", scope)
-    assert [row.split(" | ")[1:3] for row in gc.rows(flagged, data())[1:]] == [
-        ["Experimental: Help us test", "switch, fan entities"]
-    ]
-    path.write_text(path.read_text().replace("| fail |", "| pass |"))
-    assert [row.split(" | ")[1:3] for row in gc.rows(flagged, data())[1:]] == [
-        ["Experimental: tested", "switch entities"],
-        ["Experimental: Help us test", "fan entities"],
-    ]
-
-
-def test_an_adapter_flagged_whole_has_one_row_tested_once_it_has_evidence(root):
+def test_an_adapter_flagged_whole_has_one_experimental_row(root):
     scope = AdapterScope(experimental=True, domains=verified("light") | documented("switch"))
-    flagged = adapter("zha", "stop", scope)
-    assert gc.rows(flagged, data()) == ["| `stop` | Experimental: Help us test | light, switch entities | none | | |"]
-    record(root, "zha", "stop")
-    assert gc.rows(flagged, data())[0].startswith("| `stop` | Experimental: tested | light, switch entities | `LTA009`")
+    assert gc.rows(adapter("zha", "stop", scope), data()) == [
+        "| `stop` | Experimental | light, switch entities | none | |"
+    ]
 
 
 MANUAL = """# Manual sign-offs
@@ -280,8 +206,8 @@ def test_a_manual_row_is_evidence_for_the_actions_it_passed(root):
     manual_file(root)
     flagged = adapter("zha", "stop", AdapterScope(experimental=True))
     assert gc.rows(flagged, data()) == [
-        "| `stop` | Experimental: tested | light entities | `P1`, by hand<br>`LTA009`, by hand"
-        " | [by hand](integrations/zha/test-records/_manual.md) | |"
+        "| `stop` | Experimental | light entities | `P1`, by hand<br>`LTA009`, by hand"
+        " | [by hand](integrations/zha/test-records/_manual.md) |"
     ]
     assert gc.manual("zha", "lower_hue") == []
     assert gc.manual("hue", "stop") == []
@@ -292,15 +218,6 @@ def test_a_manual_row_names_models_in_models_yaml(root):
     (root / "docs" / "integrations" / "zha" / "test-records" / "_manual.md").write_text(MANUAL.replace("`P1`", "`NEW`"))
     with pytest.raises(SystemExit, match="model 'NEW' is not in docs/models.yaml"):
         gc.rows(adapter("zha", "stop"), data())
-
-
-def test_reports_fill_the_reports_column_of_their_action(root):
-    issue = f"{gc.ISSUE_URL}12"
-    reports = [{**REPORT, "worked": ["turn_on_for"], "failed": ["stop"], "issue": issue}]
-    loaded = data(FakeRegistry(adapter("zha", "turn_on_for"), adapter("zha", "stop")), reports=reports)
-    assert gc.reports_cell("zha", "turn_on_for", loaded) == f"✅ [#12]({issue}) `P1`"
-    assert gc.reports_cell("zha", "stop", loaded) == f"❌ [#12]({issue}) `P1`"
-    assert gc.reports_cell("hue", "stop", loaded) == ""
 
 
 def test_the_evidence_groups_by_integration_skips_unsupported_pairs_and_lists_what_doesnt_work(root):
@@ -353,10 +270,11 @@ def test_a_card_puts_flagged_adapters_under_experimental_features_and_leaves_out
     )
     assert card.lines["works"] == []
     assert card.lines["should"] == []
-    assert card.lines["experimental"] == ["stop", f"smooth hue · {gc.HELP_MARK}"]
+    # One entry for every adapter flagged whole, evidence or not; stop rides the smooth move.
+    assert card.lines["experimental"] == ["smooth hue"]
 
 
-def test_untested_classes_share_an_entry_per_feature_set_and_status_and_name_their_features(root):
+def test_untested_classes_share_an_entry_per_feature_set_and_name_their_features(root):
     dimming = AdapterScope(capabilities=verified("Switch") | experimental("Light", "CCT"))
     timer = AdapterScope(
         domains=verified("light") | documented("switch"),
@@ -369,24 +287,13 @@ def test_untested_classes_share_an_entry_per_feature_set_and_status_and_name_the
     )
     assert card.lines["should"] == [f"[plugs]({URL}#zigbee-plugs), [dimmers]({URL}#dimmers): turn on with timer"]
     # stop rides the smooth move, so it isn't named. Two classes of one section share a link.
-    assert card.lines["experimental"] == [f"[dimmers, CCT controllers]({URL}#dimmers): smooth dimming · {gc.HELP_MARK}"]
+    assert card.lines["experimental"] == [f"[dimmers, CCT controllers]({URL}#dimmers): smooth dimming"]
     assert card.lines["no"] == [f"[Old plug]({URL}#old-plug)"]
     # A bullet per class entry, in OUTCOMES order.
     assert card.render().splitlines()[2:] == [
         f"- 🟡 {card.lines['should'][0]}",
         f"- 🧪 {card.lines['experimental'][0]}",
         f"- 🔴 {card.lines['no'][0]}",
-    ]
-
-
-def test_a_tested_flagged_class_has_an_entry_of_its_own_without_the_help_mark(root):
-    path = record(root, "zha", "turn_on_for")
-    path.write_text(path.read_text() + table_text("| `a[switch_plug]` | `switch` (switch_plug) | pass |"))
-    scope = AdapterScope(domains=verified("light") | experimental("switch"))
-    card = zha_card(adapter("zha", "turn_on_for", scope), adapter("zha", "get_attributes", scope))
-    assert card.lines["experimental"] == [
-        f"[plugs]({URL}#zigbee-plugs): turn on with timer",
-        f"[plugs]({URL}#zigbee-plugs): get attributes · {gc.HELP_MARK}",
     ]
 
 
@@ -546,19 +453,14 @@ def test_a_card_title_links_to_its_integrations_page(root, monkeypatch):
         ),
         (BUNDLE, {"models": [], "capabilities": {}}, "docs/models.yaml: unknown key capabilities"),
         (
-            {**BUNDLE, "hue": {"column": "Hue", "column_order": 2, "reports": [{**REPORT, "issue": "x"}]}},
-            None,
-            "a reports entry is hue's own; drop its integration",
-        ),
-        (
             {**BUNDLE, "hue": {"column": "Hue", "column_order": 2, "doesnt_work": [DATA["doesnt_work"][0]]}},
             None,
             "a doesnt_work entry is hue's own; drop its integrations",
         ),
         (
-            {**BUNDLE, "hue": {"column": "Hue", "column_order": 2, "reports": {"a": 1}}},
+            {**BUNDLE, "hue": {"column": "Hue", "column_order": 2, "doesnt_work": {"a": 1}}},
             None,
-            "hue/devices.yaml: reports must",
+            "hue/devices.yaml: doesnt_work must",
         ),
     ],
 )
@@ -586,35 +488,11 @@ def test_the_checked_in_readme_and_page_match_the_real_records():
         {"models": [{"name": "Lamp", "ids": ["L1"], "type": "bulb", "colour": "red"}]},
         {"capabilities": {"zha": {"switch": {"phrase": "plugs", "section": "Zigbee plugs", "level": 1}}}},
         {"doesnt_work": [{**DATA["doesnt_work"][0], "why": "x"}]},
-        {"reports": [{**REPORT, "issue": f"{gc.ISSUE_URL}1", "works": ["turn_on_for"]}]},
     ],
 )
 def test_an_unknown_key_in_an_entry_is_an_error(changes):
     with pytest.raises(SystemExit, match="unknown key"):
         data(FakeRegistry(adapter("zha", "turn_on_for")), **changes)
-
-
-@pytest.mark.parametrize(
-    ("scope", "item", "key"),
-    [
-        (AdapterScope(domains=verified("light") | documented("switch")), "switch", "worked"),
-        (AdapterScope(domains=verified("light") | experimental("switch")), "switch", "worked"),
-        (AdapterScope(domains=verified("light") | experimental("switch")), "switch", "failed"),
-    ],
-)
-def test_a_report_may_name_any_item_in_scope(scope, item, key):
-    reports = [{**REPORT, "item": item, key: ["turn_on_for"], "issue": f"{gc.ISSUE_URL}1"}]
-    assert data(FakeRegistry(adapter("zha", "turn_on_for", scope)), reports=reports).reports
-
-
-@pytest.mark.parametrize(
-    ("scope", "item"),
-    [(None, "Light"), (AdapterScope(domains=verified("light"), capabilities=experimental("Light")), "light")],
-)
-def test_a_report_names_an_item_in_its_actions_scope_and_a_capability_where_it_lists_them(scope, item):
-    reports = [{**REPORT, "item": item, "worked": ["turn_on_for"], "issue": f"{gc.ISSUE_URL}1"}]
-    with pytest.raises(SystemExit, match=f"has no item '{item}' in scope"):
-        data(FakeRegistry(adapter("zha", "turn_on_for", scope)), reports=reports)
 
 
 def test_the_legend_leads_the_cards(root):
@@ -623,8 +501,8 @@ def test_the_legend_leads_the_cards(root):
     assert text.index(gc.CARDS_LEGEND) < text.index("**ZHA**")
     assert gc.CARDS_LEGEND == (
         "🟢 works · ✔ verified on automated rig · 🟡 should work: same call pattern as a tested device · "
-        "🧪 experimental: tested, soaking; off until you turn on Experimental features · "
-        "🙋 help us test: experimental and untested; please report whether it works · 🔴 doesn't work · "
+        f"🧪 experimental: off until you turn on Experimental features; please [report how it goes]({gc.REPORT_URL}) · "
+        "🔴 doesn't work · "
         "⚠️ unmaintained: no one is fixing it; use at your own risk · "
         "⚠️ untested fix: changed, not yet tested; please report whether it works"
     )
@@ -660,7 +538,7 @@ def test_every_action_has_a_card_name_from_the_feature_table():
     assert list(gc.FEATURES)[-1] == "stop" == gc.FEATURES["stop"]
 
 
-ISSUE_REASON = f"{gc.ISSUE_URL}40"
+ISSUE_REASON = "https://github.com/DeviceSide/DeviceSide/issues/40"
 
 
 def unmaintained(reason: str) -> Caveat:
@@ -730,7 +608,7 @@ def test_every_evidence_row_of_an_adapter_with_a_caveat_is_marked(root):
     scope = AdapterScope(domains=verified("light") | experimental("switch"), caveat=unmaintained("a | b"))
     assert [row.split(" | ")[:2] for row in gc.rows(adapter("zha", "stop", scope), data())] == [
         ["| `stop` ⚠️ Unmaintained (a \\| b)", "Verified"],
-        ["| `stop` ⚠️ Unmaintained (a \\| b)", "Experimental: Help us test"],
+        ["| `stop` ⚠️ Unmaintained (a \\| b)", "Experimental"],
     ]
     linked = adapter("zha", "stop", AdapterScope(caveat=untested_fix(ISSUE_REASON)))
     assert gc.rows(linked, data())[0].startswith(f"| `stop` [⚠️ Untested fix]({ISSUE_REASON}) | Verified |")

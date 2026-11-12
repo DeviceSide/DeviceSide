@@ -50,7 +50,7 @@ item ships only behind `experimental`.
   reopens its Documented siblings in the same fix.
 
 Nothing ships unflagged unless it is Verified or Documented. Built and unit-tested code that the maintainer can't
-exercise, and that isn't Documented, ships behind `experimental` as untested ("Help us test" on the cards). A sign-off
+exercise, and that isn't Documented, ships behind `experimental` as untested. A sign-off
 covers only what was exercised; it never signs off untested code.
 
 **Contrary evidence:** a report of misbehavior doesn't change the level. The maintainer root-causes it, and the fix,
@@ -65,8 +65,8 @@ documents identically (`integrations/shelly/addressing.py`).
 `experimental` is a flag, not a level. In code it is the per-axis marker `experimental(...)`, beside `verified(...)` and
 `documented(...)`; `experimental=True` on an `AdapterScope` flags the whole adapter. A flagged item is refused unless
 the user turns on the Experimental features option. The dispatcher is the only gate: adapters never read the option, and
-turning it on never changes how any other item behaves. A flagged item may be tested and soaking, or untested: the cards
-tell which from the evidence (a record or `_manual.md` line, or none).
+turning it on never changes how any other item behaves. A flagged item may be tested and soaking, or untested; the cards
+show both alike, and whether it was tested is the judgment of the repo maintainer who removes its flag.
 
 Every new feature (action, integration, domain, capability or field) starts flagged, so it soaks in RCs and with
 opted-in users. A repo maintainer removes the flag. The directional bar is five working reports from users other than

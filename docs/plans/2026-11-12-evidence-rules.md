@@ -227,6 +227,12 @@ The estimates below are code plus tests.
    - Flagged items show as tested (soaking) or Help us test, from the evidence. Caveat marks replace the Unmaintained
      and Stale tests marks.
    - Drop Reported, siblings and the record-freshness rule for Verified.
+   - Follow-up (Jason, 2026-11-12): one 🧪 tier, no tested/Help us test split. Every flagged item shows alike, with
+     no per-item evidence rule; the legend's 🧪 entry says it's off until Experimental features is on and asks for a
+     report. Whether a flagged item was tested is the judgment of the repo maintainer who removes its flag.
+   - Follow-up (Jason, 2026-11-12): drop `reports:` from `devices.yaml`, with its loader, validation and the evidence
+     block's Reports column. The GitHub issue is a report's record; a maintainer who trusts one cites it in a
+     `_manual.md` sign-off.
    - Regenerate the README and `docs/device-compatibility.md`.
 6. **v0.1.0.**
    - One sign-off per integration changed since v0.0.1 (`check_release.py --signoffs`), by rig run for every

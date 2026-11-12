@@ -46,10 +46,9 @@ Code and docs use these terms.
 - **Test record**: the evidence that an adapter works on real hardware, from a rig run:
   `docs/integrations/<integration>/test-records/<action>*.md`. A maintainer's hand test goes in the same folder's
   `_manual.md`, one line per run; either can be a sign-off ([release gate](evidence.md#release-gate)).
-- **Device report**: a user's "works" or "doesn't work" for an action on a model. In the bundle's `devices.yaml` each
-  one names the `item` its call reached (the domain, or the capability for an adapter that lists them). Accepted
-  "works" reports guide removing a flag, and a maintainer's `_manual.md` line may cite one as a sign-off; a
-  "doesn't work" is evidence for a fix or for leaving the item out.
+- **Device report**: a user's "works" or "doesn't work" for an action on a model, filed with the device report form;
+  the GitHub issue is its record. "Works" reports guide removing a flag, and a maintainer who trusts one may cite it in
+  a `_manual.md` line as a sign-off; a "doesn't work" is evidence for a fix or for leaving the item out.
 - **Profile**: one test setup on the rig's HA, the entities a run may move by integration and role; a record names the
   one it ran on (`lab`, `house`).
 

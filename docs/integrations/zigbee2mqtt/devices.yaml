@@ -5,4 +5,3 @@ column: Z2M
 column_order: 2
 capabilities:
   switch: {phrase: plugs and switches, section: Zigbee plugs and switches}
-reports: []

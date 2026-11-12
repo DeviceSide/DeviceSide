@@ -23,7 +23,7 @@ shared home named in parentheses.
 |---|---|
 | User-facing limits and device classes | `<x>/index.md` (shared: `docs/device-compatibility.md`) |
 | Wire calls, measurements, upstream defects | `<x>/internals.md` (shared: `docs/internals.md`, core HA: `docs/defects.md`) |
-| Classes, doesn't-work entries, accepted device reports | `<x>/devices.yaml` (shared doesn't-work: `docs/models.yaml`; `scripts/gen_compat.py` regenerates the cards) |
+| Classes, doesn't-work entries | `<x>/devices.yaml` (shared doesn't-work: `docs/models.yaml`; `scripts/gen_compat.py` regenerates the cards) |
 | Models across integrations | `docs/models.yaml` |
 | Dated sources, never edited after | `<x>/research/` |
 | Run evidence | `<x>/test-records/` |

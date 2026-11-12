@@ -8,37 +8,28 @@ rows whose Passed names it. A record's Device row gives the models it tested: a 
 Group or Zone) shows as "group", and an entry the format can't read is an error; a manual row's Devices are model ids.
 A level comes from the scope alone (verify, then trust): a record never ages.
 
-**Tested or Help us test.** A flagged item is tested (soaking) when the evidence names it, else Help us test: an
-adapter flagged whole (`experimental=True`) when its action has any evidence; an `experimental(...)` item when a
-passing test of a passing record of its action targets it (its Target cell starts with the item, as `` `switch` ``).
-A manual row names actions, not items, so it counts only for an adapter flagged whole.
-
 **Cards.** One collapsed section between the README's devices markers, the legend first and a link to the integrations
 page last, with a card per integration: its name, linked to its page (the bundle's index.md), and maintainers
 (`IntegrationInfo.maintainers`; "⚠️ Unmaintained · formerly maintained by" when every adapter is), then the features
 of the adapters with each `caveat` (⚠️ Unmaintained, then ⚠️ Untested fix, linking its reason), then a bullet per tier:
 - Works: the models the evidence of unflagged adapters tested (rig-tested ones end ✔), and native groups.
 - Should work: the classes (devices.yaml `capabilities`) unflagged adapters hold as Documented.
-- Experimental features: the classes held as `experimental(...)`, and the features of adapters flagged whole, each
-  tested or 🙋 Help us test.
+- Experimental features: the classes held as `experimental(...)`, and the features of adapters flagged whole
+  (`experimental=True`), all alike: whether one was tested is the judgment of whoever lifts its flag.
 - Doesn't work: devices.yaml `doesnt_work`.
-Classes with the same features and status share an entry, and those of one page section a link. A model or blocker
-drops the integration's name where it leads, as the card's name already gives it.
+Classes with the same features share an entry, and those of one page section a link. A model or blocker drops the
+integration's name where it leads, as the card's name already gives it.
 
 **Evidence block.** Per integration, a row per action and level its domains, capabilities and fields hold (an adapter
-flagged whole has one), the first with the evidence's models and records and the action's reports; each row carries
-the adapter's caveat. The prose outside the evidence markers is kept as written.
+flagged whole has one), the first with the evidence's models and records; each row carries the adapter's caveat. The
+prose outside the evidence markers is kept as written.
 
 **Data.** docs/models.yaml holds what integrations share: `models`, one entry per physical model (`name`, `ids` across
 integrations, `type`, optional `section`), and `doesnt_work` entries that name their `integrations`. Each bundle's
 devices.yaml holds its integration's: `column` and `column_order` (the README feature table's, read by
 gen_features), `requires` (shown after the card's name), `capabilities` (a `phrase` and `section` per domain or
-capability the scopes hold below Verified), `doesnt_work` (`what`, `reason`, `source`, optional `section`: devices
-that fail the call DeviceSide sends, not what isn't built) and `reports`. A report is an accepted device-report issue:
-`model` (one of a model's ids), `item` (the entity domain or capability, Shelly: RPC component, its call reached),
-`firmware` and `deviceside` (the tag tested without its `v`, an RC's `rcN` included), both quoted, `worked` and
-`failed` (action names) and `issue` (URL). Reports show in the evidence block only: they inform whoever removes a flag,
-and become evidence when a maintainer cites one in a `_manual.md` row. Every integration needs a bundle.
+capability the scopes hold below Verified) and `doesnt_work` (`what`, `reason`, `source`, optional `section`: devices
+that fail the call DeviceSide sends, not what isn't built). Every integration needs a bundle.
 
 **Links.** A card links each model, class or blocker to the heading its `section` names (default: the model's
 `name`, the blocker's `what`): on the card's integration page when that has the heading; a model's or native groups'
@@ -80,17 +71,13 @@ EVIDENCE = ("<!-- evidence:start -->", "<!-- evidence:end -->")
 
 DEVICE = re.compile(r"^\| Device \| (.*) \|$", re.MULTILINE)
 ENTRY = re.compile(r"^(?P<name>.*?)(?: \(`(?P<model>[^`]+)`\))?, firmware `(?P<firmware>[^`]+)`$")
-# A passing row of a record's Tests table, by the item its Target names.
-PASSED_TEST = re.compile(r"^\| `[^`]+` \| `([^`]+)`[^|]* \| pass \|$", re.MULTILINE)
 BACKTICKS = re.compile(r"`([^`]+)`")
-ISSUE_URL = "https://github.com/DeviceSide/DeviceSide/issues/"
-ISSUE = re.compile(rf"^{re.escape(ISSUE_URL)}(\d+)$")
+REPORT_URL = "https://github.com/DeviceSide/DeviceSide/issues/new?template=device_report.yml"
 GROUP_NAMES = {"group", "zone"}
 GROUP = "group"
 # The scope's levels, strongest first, as the evidence block names them.
 LEVELS = ((Level.VERIFIED, "Verified"), (Level.DOCUMENTED, "Documented"), (Level.EXPERIMENTAL, "Experimental"))
 NOUNS = ("entities", "components", "fields")  # for a scope's domains, capabilities and fields
-TESTED, HELP = "tested", "Help us test"
 
 # Device types, in a card's order for its Works models.
 TYPES = ("bulb", "relay", "plug", "dimmer", "LED controller")
@@ -98,11 +85,14 @@ TYPES = ("bulb", "relay", "plug", "dimmer", "LED controller")
 OUTCOMES = (
     ("works", "🟢", "works"),
     ("should", "🟡", "should work: same call pattern as a tested device"),
-    ("experimental", "🧪", "experimental: tested, soaking; off until you turn on Experimental features"),
+    (
+        "experimental",
+        "🧪",
+        f"experimental: off until you turn on Experimental features; please [report how it goes]({REPORT_URL})",
+    ),
     ("no", "🔴", "doesn't work"),
 )
 VERIFIED = "✔"
-HELP_MARK = "🙋 help us test"
 UNMAINTAINED = "⚠️ Unmaintained"
 UNTESTED_FIX = "⚠️ Untested fix"
 # The scope's caveats, as (kind, label), in a card's order.
@@ -111,9 +101,7 @@ CARDS_LEGEND = " · ".join(
     [
         f"{OUTCOMES[0][1]} {OUTCOMES[0][2]}",
         f"{VERIFIED} verified on automated rig",
-        *(f"{icon} {legend}" for _, icon, legend in OUTCOMES[1:3]),
-        f"{HELP_MARK}: experimental and untested; please report whether it works",
-        f"{OUTCOMES[3][1]} {OUTCOMES[3][2]}",
+        *(f"{icon} {legend}" for _, icon, legend in OUTCOMES[1:]),
         "⚠️ unmaintained: no one is fixing it; use at your own risk",
         "⚠️ untested fix: changed, not yet tested; please report whether it works",
     ]
@@ -122,11 +110,10 @@ GITHUB = "https://github.com/"
 INTEGRATIONS_URL = "https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations.md"
 # The keys each devices.yaml entry may hold, so a typo fails instead of being ignored.
 SHARED_KEYS = {"models", "doesnt_work"}
-BUNDLE_KEYS = {"column", "column_order", "requires", "capabilities", "doesnt_work", "reports"}
+BUNDLE_KEYS = {"column", "column_order", "requires", "capabilities", "doesnt_work"}
 MODEL_KEYS = {"name", "ids", "type", "section"}
 CLASS_KEYS = {"phrase", "section"}
 BROKEN_KEYS = {"what", "integrations", "reason", "source", "section"}
-REPORT_KEYS = {"integration", "model", "item", "firmware", "deviceside", "worked", "failed", "issue"}
 GROUPS_ENTRY = ("native groups", "Native groups")  # (phrase, section) for the groups a record tested
 
 
@@ -151,7 +138,6 @@ class Data:
     models: dict[str, dict]  # by each of its ids
     capabilities: dict[str, dict[str, dict]]
     doesnt_work: list[dict]
-    reports: list[dict]
     # Every heading an entry links to, with the integration whose card links it (None: any card, as for a model).
     sections: set[tuple[str | None, str]] = field(default_factory=set)
     # The heading anchors of each integration's page; a section on none of them is on PAGE.
@@ -199,11 +185,11 @@ def load(registry: AdapterRegistry, models: Path = MODELS) -> Data:
 
 def merge(shared: dict, bundles: dict[str, dict]) -> dict:
     """The shared file and the bundles as one mapping, each bundle's entries named for its integration: a bundle's
-    `doesnt_work` and `reports` entries are its own, so they take no `integrations` or `integration` key."""
+    `doesnt_work` entries are its own, so they take no `integrations` key."""
     need(shared, "docs/models.yaml")
     if extra := set(shared) - SHARED_KEYS:
         fail(f"docs/models.yaml: unknown key {', '.join(sorted(extra))}")
-    raw: dict = {"integrations": {}, "capabilities": {}, "models": shared.get("models"), "reports": []}
+    raw: dict = {"integrations": {}, "capabilities": {}, "models": shared.get("models")}
     raw["doesnt_work"] = list(shared.get("doesnt_work") or [])
     for key, data in bundles.items():
         where = f"docs/integrations/{key}/devices.yaml"
@@ -213,15 +199,12 @@ def merge(shared: dict, bundles: dict[str, dict]) -> dict:
             raw["integrations"][key] = {"requires": data["requires"]}
         if data.get("capabilities"):
             raw["capabilities"][key] = data["capabilities"]
-        for name, own in (("doesnt_work", "integrations"), ("reports", "integration")):
-            if not isinstance(entries := data.get(name) or [], list):
-                fail(f"{where}: {name} must be a list")
-            for entry in entries:
-                if isinstance(entry, dict) and own in entry:
-                    fail(f"{where}: a {name} entry is {key}'s own; drop its {own}")
-                raw[name].append(
-                    {**entry, own: [key] if own == "integrations" else key} if isinstance(entry, dict) else entry
-                )
+        if not isinstance(broken := data.get("doesnt_work") or [], list):
+            fail(f"{where}: doesnt_work must be a list")
+        for entry in broken:
+            if isinstance(entry, dict) and "integrations" in entry:
+                fail(f"{where}: a doesnt_work entry is {key}'s own; drop its integrations")
+            raw["doesnt_work"].append({**entry, "integrations": [key]} if isinstance(entry, dict) else entry)
     return raw
 
 
@@ -243,13 +226,13 @@ def need(
 
 def check_shape(raw: dict, known: set[str]) -> None:
     """The file's top level: only known keys, a mapping or list where one belongs, and no unknown integration."""
-    if extra := set(raw) - {"integrations", "models", "capabilities", "doesnt_work", "reports"}:
+    if extra := set(raw) - {"integrations", "models", "capabilities", "doesnt_work"}:
         fail(f"unknown key {', '.join(sorted(extra))}")
     for key in ("integrations", "capabilities"):
         need(raw.get(key) or {}, key)
         if unknown := set(raw.get(key) or {}) - known:
             fail(f"{key}: no integration {', '.join(repr(name) for name in sorted(unknown))}")
-    for key in ("models", "doesnt_work", "reports"):
+    for key in ("models", "doesnt_work"):
         if not isinstance(raw.get(key) or [], list):
             fail(f"{key} must be a list")
 
@@ -262,7 +245,7 @@ def load_raw(raw: dict, registry: AdapterRegistry) -> Data:
     for key, entry in (raw.get("integrations") or {}).items():
         need(entry, f"integrations {key}", ("requires",), keys={"requires"})
     requires = {key: entry["requires"] for key, entry in (raw.get("integrations") or {}).items()}
-    data = Data(requires, {}, raw.get("capabilities") or {}, [], [])
+    data = Data(requires, {}, raw.get("capabilities") or {}, [])
     for model in raw.get("models") or []:
         load_model(model, data)
     data.sections.add((None, GROUPS_ENTRY[1]))  # every card with groups links it, as it does a model
@@ -273,9 +256,6 @@ def load_raw(raw: dict, registry: AdapterRegistry) -> Data:
             data.sections.add((key, entry["section"]))
     for entry in raw.get("doesnt_work") or []:
         load_broken(entry, known, data)
-    shipped = {(adapter.integration, adapter.action): adapter for _, adapter in adapters(registry)}
-    for report in raw.get("reports") or []:
-        load_report(report, known, shipped, data)
     return data
 
 
@@ -312,40 +292,6 @@ def load_broken(entry: dict, known: set[str], data: Data) -> None:
     entry.setdefault("section", entry["what"])
     data.sections.update((key, entry["section"]) for key in entry["integrations"])
     data.doesnt_work.append(entry)
-
-
-def load_report(report: dict, known: set[str], shipped: dict[tuple[str, str], object], data: Data) -> None:
-    """A report names the domain or capability (Shelly: RPC component) its call reached as `item`, flagged or not:
-    reports inform the repo maintainer who removes a flag, and nothing counts them."""
-    where = f"report {report.get('issue') if isinstance(report, dict) else report}"
-    need(report, where, ("integration", "item"), keys=REPORT_KEYS)
-    if report["integration"] not in known:
-        fail(f"{where}: no integration {report['integration']!r}")
-    for key in ("worked", "failed"):
-        if not isinstance(report.get(key) or [], list):
-            fail(f"{where}: {key} must be a list")
-    if "model" not in report:
-        fail(f"{where} needs a model")
-    if not ISSUE.match(str(report.get("issue"))):
-        fail(f"{where}: issue must be a DeviceSide issue URL")
-    report["model"] = str(report["model"])
-    data.model(report["model"], f"device data: {where}")
-    for action in [*(report.get("worked") or []), *(report.get("failed") or [])]:
-        if (adapter := shipped.get((report["integration"], action))) is None:
-            fail(f"{where}: {report['integration']} has no {action} adapter")
-        check_item(report, action, adapter, where)
-    for key in ("firmware", "deviceside"):
-        if not isinstance(report.get(key), str) or not report[key]:  # YAML reads firmware 1.10 as 1.1
-            fail(f"{where} needs {key}, as a quoted string")
-    data.reports.append(report)
-
-
-def check_item(report: dict, action: str, adapter, where: str) -> None:
-    # A scope that lists capabilities names its item by capability; the domain is only the entity's kind.
-    scope = adapter.scope
-    held = scope.capabilities if scope.capabilities is not None else scope.domains
-    if report["item"] not in held:
-        fail(f"{where}: {report['integration']} {action} has no item {report['item']!r} in scope")
 
 
 def entries(record: Path) -> list[tuple[str, str] | str]:
@@ -398,13 +344,6 @@ class Evidence:
     def of(cls, adapter) -> Evidence:
         return cls(passing(adapter.integration, adapter.action), manual(adapter.integration, adapter.action))
 
-    def __bool__(self) -> bool:
-        return bool(self.records or self.manual)
-
-    def targets(self) -> set[str]:
-        """The items a passing test of a passing record targets."""
-        return {item for record in self.records for item in PASSED_TEST.findall(record.read_text())}
-
     def devices(self, data: Data) -> list[tuple[str, str | None] | str]:
         """The devices tested, each once, as (model id, firmware; None for a manual row) or GROUP: the records' first,
         then the manual rows', groups last. Every model must be in docs/models.yaml."""
@@ -421,17 +360,14 @@ class Evidence:
         return found
 
 
-def status(evidence: Evidence, item: str | None = None) -> str:
-    """A flagged item's status, TESTED or HELP (module docstring): the whole adapter's when item is None."""
-    if item is None:
-        return TESTED if evidence else HELP
-    return TESTED if item in evidence.targets() else HELP
-
-
 def items(scope) -> list[tuple[Level, str, str]]:
-    """The scope's items, as (level, item, noun), domains first."""
+    """The scope's items, as (level, item, noun), domains first: all Experimental in an adapter flagged whole."""
     axes = (scope.domains, scope.capabilities or {}, scope.fields)
-    return [(level, item, noun) for axis, noun in zip(axes, NOUNS, strict=True) for item, level in axis.items()]
+    return [
+        (Level.EXPERIMENTAL if scope.experimental else level, item, noun)
+        for axis, noun in zip(axes, NOUNS, strict=True)
+        for item, level in axis.items()
+    ]
 
 
 # The evidence block.
@@ -441,19 +377,6 @@ def link(record: Path, action: str) -> str:
     option = record.stem.removeprefix(action).lstrip("-")
     label = option.replace("_", " ") if option else "record"
     return f"[{label}]({record.relative_to(REPO / 'docs').as_posix()})"
-
-
-def reports_cell(integration: str, action: str, data: Data) -> str:
-    """The reports on the action, as links."""
-    cells = []
-    for report in data.reports:
-        if report["integration"] != integration:
-            continue
-        number = ISSUE.match(report["issue"])[1]
-        for key, mark in (("worked", "✅"), ("failed", "❌")):
-            if action in (report.get(key) or []):
-                cells.append(f"{mark} [#{number}]({report['issue']}) `{report['model']}`")
-    return "<br>".join(cells)
 
 
 def caveat_reason(scope, kind: CaveatKind) -> str | None:
@@ -479,23 +402,12 @@ def named(held: list[tuple[str, str]]) -> str:
     return "; ".join(f"{', '.join(names)} {noun}" for noun, names in by_noun.items())
 
 
-def level_rows(adapter) -> list[tuple[str, str]]:
-    """(level, items) per row: a row per level the scope holds, strongest first, its flagged items split by status,
-    tested first; one Experimental row for an adapter flagged whole."""
-    evidence, scope = Evidence.of(adapter), adapter.scope
-    if scope.experimental:
-        return [(f"Experimental: {status(evidence)}", named([(item, noun) for _, item, noun in items(scope)]))]
+def level_rows(scope) -> list[tuple[str, str]]:
+    """(level, items) per row: a row per level the scope holds, strongest first."""
     found = []
     for level, label in LEVELS:
-        states = (TESTED, HELP) if level is Level.EXPERIMENTAL else ("",)
-        for state in states:
-            held = [
-                (item, noun)
-                for item_level, item, noun in items(scope)
-                if item_level is level and (not state or status(evidence, item) == state)
-            ]
-            if held:
-                found.append((f"{label}: {state}" if state else label, named(held)))
+        if held := [(item, noun) for item_level, item, noun in items(scope) if item_level is level]:
+            found.append((label, named(held)))
     return found
 
 
@@ -504,7 +416,7 @@ def table_row(cells: list[str]) -> str:
 
 
 def rows(adapter, data: Data) -> list[str]:
-    """The action's rows: its evidence's models and records, and its reports, on the first."""
+    """The action's rows: its evidence's models and records on the first."""
     evidence = Evidence.of(adapter)
     models = [
         item if item == GROUP else f"`{item[0]}`, firmware `{item[1]}`" if item[1] else f"`{item[0]}`, by hand"
@@ -516,10 +428,10 @@ def rows(adapter, data: Data) -> list[str]:
         sources.append(f"[by hand]({path.relative_to(REPO / 'docs').as_posix()})")
     marks = [marked(label, reason) for kind, label in MARKS if (reason := caveat_reason(adapter.scope, kind))]
     action = " ".join([f"`{adapter.action}`", *(cell(mark) for mark in marks)])
-    first = ["<br>".join(models) or "none", ", ".join(sources), reports_cell(adapter.integration, adapter.action, data)]
+    first = ["<br>".join(models) or "none", ", ".join(sources)]
     return [
-        table_row([action, level, held, *(first if index == 0 else ["", "", ""])])
-        for index, (level, held) in enumerate(level_rows(adapter))
+        table_row([action, level, held, *(first if index == 0 else ["", ""])])
+        for index, (level, held) in enumerate(level_rows(adapter.scope))
     ]
 
 
@@ -540,8 +452,8 @@ def evidence(registry: AdapterRegistry, data: Data) -> str:
     ]
     for key, integration_adapters in by_integration(registry).items():
         parts.append(f"### {registry.integrations[key].title}\n")
-        parts.append("| Action | Level | Items | Tested models | Records | Reports |")
-        parts.append("|---|---|---|---|---|---|")
+        parts.append("| Action | Level | Items | Tested models | Records |")
+        parts.append("|---|---|---|---|---|")
         for adapter in integration_adapters:
             parts += rows(adapter, data)
         if broken := [entry for entry in data.doesnt_work if key in entry["integrations"]]:
@@ -605,20 +517,18 @@ class Card:
         return "\n".join(lines)
 
 
-def classes(key: str, integration_adapters: list, level: Level, data: Data) -> dict[tuple[str, str], set[str]]:
-    """Each (domain or capability, status) the unflagged adapters hold at the level, in first-seen order, with the
-    actions that hold it there. A Documented item's status is empty."""
-    held: dict[tuple[str, str], set[str]] = {}
+def classes(key: str, integration_adapters: list, level: Level, data: Data) -> dict[str, set[str]]:
+    """Each domain or capability the unflagged adapters hold at the level, in first-seen order, with the actions that
+    hold it there."""
+    held: dict[str, set[str]] = {}
     for adapter in integration_adapters:
         if adapter.scope.experimental:
             continue
-        evidence = Evidence.of(adapter)
         for item_level, item, noun in items(adapter.scope):
             if item_level is level and noun != "fields":
                 if item not in data.capabilities.get(key, {}):
                     fail(f"capabilities: no entry for {key} {item}, which a scope holds as {level.name.title()}")
-                state = status(evidence, item) if level is Level.EXPERIMENTAL else ""
-                held.setdefault((item, state), set()).add(adapter.action)
+                held.setdefault(item, set()).add(adapter.action)
     return held
 
 
@@ -637,34 +547,17 @@ def merged(phrases: list[str], url: str) -> str:
     return anchor(f"{ending} ({', '.join(' '.join(w[:-shared]) for w in words)})", url)
 
 
-def helped(text: str, state: str) -> str:
-    return f"{text} · {HELP_MARK}" if state == HELP else text
-
-
-def class_entries(key: str, held: dict[tuple[str, str], set[str]], data: Data) -> list[str]:
-    """Classes with the same features and status share one entry: "dimmers, LED controllers (CCT, RGB): turn on with
-    timer"."""
-    grouped: dict[tuple[tuple[str, ...], str], dict[str, list[str]]] = {}
-    for (item, state), actions in held.items():
+def class_entries(key: str, held: dict[str, set[str]], data: Data) -> list[str]:
+    """Classes with the same features share one entry: "dimmers, LED controllers (CCT, RGB): turn on with timer"."""
+    grouped: dict[tuple[str, ...], dict[str, list[str]]] = {}
+    for item, actions in held.items():
         entry = data.capabilities[key][item]
-        grouped.setdefault((features(actions), state), {}).setdefault(entry["section"], []).append(entry["phrase"])
+        grouped.setdefault(features(actions), {}).setdefault(entry["section"], []).append(entry["phrase"])
     return [
-        helped(
-            f"{', '.join(merged(phrases, data.url(key, section)) for section, phrases in sections.items())}: "
-            f"{', '.join(names)}",
-            state,
-        )
-        for (names, state), sections in grouped.items()
+        f"{', '.join(merged(phrases, data.url(key, section)) for section, phrases in sections.items())}: "
+        f"{', '.join(names)}"
+        for names, sections in grouped.items()
     ]
-
-
-def flagged_entries(integration_adapters: list) -> list[str]:
-    """The features of the adapters flagged whole, tested ones first."""
-    by_status: dict[str, set[str]] = {}
-    for adapter in integration_adapters:
-        if adapter.scope.experimental:
-            by_status.setdefault(status(Evidence.of(adapter)), set()).add(adapter.action)
-    return [helped(", ".join(features(by_status[state])), state) for state in (TESTED, HELP) if state in by_status]
 
 
 def works(card: Card, key: str, integration_adapters: list, data: Data) -> list[str]:
@@ -726,8 +619,9 @@ def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: 
     result.lines["should"] = class_entries(key, classes(key, integration_adapters, Level.DOCUMENTED, data), data)
     result.lines["experimental"] = [
         *class_entries(key, classes(key, integration_adapters, Level.EXPERIMENTAL, data), data),
-        *flagged_entries(integration_adapters),
     ]
+    if flagged := {adapter.action for adapter in integration_adapters if adapter.scope.experimental}:
+        result.lines["experimental"].append(", ".join(features(flagged)))
     result.lines["no"] = []
     for entry in data.doesnt_work:
         if key in entry["integrations"]:
