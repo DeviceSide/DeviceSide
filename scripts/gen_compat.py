@@ -18,7 +18,8 @@ of the adapters with each `caveat` (⚠️ Unmaintained, then ⚠️ Untested fi
   (`experimental=True`), all alike: whether one was tested is the judgment of whoever lifts its flag.
 - Doesn't work: devices.yaml `doesnt_work`.
 Classes with the same features share an entry, and those of one page section a link. A model or blocker drops the
-integration's name where it leads, as the card's name already gives it.
+integration's name where it leads, as the card's name already gives it. Cards show features, not fields: a flagged or
+Documented field shows on the integration's page and in the evidence block only.
 
 **Evidence block.** Per integration, a row per action and level its domains, capabilities and fields hold (an adapter
 flagged whole has one), the first with the evidence's models and records; each row carries the adapter's caveat. The
@@ -75,8 +76,6 @@ BACKTICKS = re.compile(r"`([^`]+)`")
 REPORT_URL = "https://github.com/DeviceSide/DeviceSide/issues/new?template=device_report.yml"
 GROUP_NAMES = {"group", "zone"}
 GROUP = "group"
-# The scope's levels, strongest first, as the evidence block names them.
-LEVELS = ((Level.VERIFIED, "Verified"), (Level.DOCUMENTED, "Documented"), (Level.EXPERIMENTAL, "Experimental"))
 NOUNS = ("entities", "components", "fields")  # for a scope's domains, capabilities and fields
 
 # Device types, in a card's order for its Works models.
@@ -88,7 +87,8 @@ OUTCOMES = (
     (
         "experimental",
         "🧪",
-        f"experimental: off until you turn on Experimental features; please [report how it goes]({REPORT_URL})",
+        "experimental: off until you turn on Experimental features in DeviceSide's Configure > Settings; please"
+        f" [report how it goes]({REPORT_URL})",
     ),
     ("no", "🔴", "doesn't work"),
 )
@@ -103,13 +103,13 @@ CARDS_LEGEND = " · ".join(
         f"{VERIFIED} verified on automated rig",
         *(f"{icon} {legend}" for _, icon, legend in OUTCOMES[1:]),
         "⚠️ unmaintained: no one is fixing it; use at your own risk",
-        "⚠️ untested fix: changed, not yet tested; please report whether it works",
+        f"⚠️ untested fix: changed, not yet tested; please [report whether it works]({REPORT_URL})",
     ]
 )
 GITHUB = "https://github.com/"
 INTEGRATIONS_URL = "https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations.md"
 # The keys each devices.yaml entry may hold, so a typo fails instead of being ignored.
-SHARED_KEYS = {"models", "doesnt_work"}
+SHARED_KEYS = {"models", "doesnt_work"}  # each a list
 BUNDLE_KEYS = {"column", "column_order", "requires", "capabilities", "doesnt_work"}
 MODEL_KEYS = {"name", "ids", "type", "section"}
 CLASS_KEYS = {"phrase", "section"}
@@ -166,11 +166,6 @@ def fail(message: str) -> None:
     raise SystemExit(f"device data: {message}")
 
 
-def check_type(kind, where: str) -> None:
-    if kind not in TYPES:
-        fail(f"{where}: type {kind!r} is not one of {', '.join(TYPES)}")
-
-
 def load(registry: AdapterRegistry, models: Path = MODELS) -> Data:
     """docs/models.yaml and every integration's bundle: its devices.yaml merged in, its page's headings read."""
     shared = yaml.safe_load(models.read_text()) or {}
@@ -186,17 +181,16 @@ def load(registry: AdapterRegistry, models: Path = MODELS) -> Data:
 def merge(shared: dict, bundles: dict[str, dict]) -> dict:
     """The shared file and the bundles as one mapping, each bundle's entries named for its integration: a bundle's
     `doesnt_work` entries are its own, so they take no `integrations` key."""
-    need(shared, "docs/models.yaml")
-    if extra := set(shared) - SHARED_KEYS:
-        fail(f"docs/models.yaml: unknown key {', '.join(sorted(extra))}")
-    raw: dict = {"integrations": {}, "capabilities": {}, "models": shared.get("models")}
+    need(shared, "docs/models.yaml", lists=tuple(sorted(SHARED_KEYS & set(shared))), keys=SHARED_KEYS)
+    raw: dict = {"requires": {}, "capabilities": {}, "models": shared.get("models") or []}
     raw["doesnt_work"] = list(shared.get("doesnt_work") or [])
     for key, data in bundles.items():
         where = f"docs/integrations/{key}/devices.yaml"
         if extra := set(data) - BUNDLE_KEYS:
             fail(f"{where}: unknown key {', '.join(sorted(extra))}")
         if "requires" in data:
-            raw["integrations"][key] = {"requires": data["requires"]}
+            need(data, where, ("requires",))
+            raw["requires"][key] = data["requires"]
         if data.get("capabilities"):
             raw["capabilities"][key] = data["capabilities"]
         if not isinstance(broken := data.get("doesnt_work") or [], list):
@@ -224,29 +218,11 @@ def need(
             fail(f"{where}: {key} must be a list")
 
 
-def check_shape(raw: dict, known: set[str]) -> None:
-    """The file's top level: only known keys, a mapping or list where one belongs, and no unknown integration."""
-    if extra := set(raw) - {"integrations", "models", "capabilities", "doesnt_work"}:
-        fail(f"unknown key {', '.join(sorted(extra))}")
-    for key in ("integrations", "capabilities"):
-        need(raw.get(key) or {}, key)
-        if unknown := set(raw.get(key) or {}) - known:
-            fail(f"{key}: no integration {', '.join(repr(name) for name in sorted(unknown))}")
-    for key in ("models", "doesnt_work"):
-        if not isinstance(raw.get(key) or [], list):
-            fail(f"{key} must be a list")
-
-
 def load_raw(raw: dict, registry: AdapterRegistry) -> Data:
-    need(raw, "the file")
+    """The merged mapping (`merge`), its entries validated and their defaults filled in."""
     raw = copy.deepcopy(raw)  # defaults are filled in place
-    known = set(registry.integrations)
-    check_shape(raw, known)
-    for key, entry in (raw.get("integrations") or {}).items():
-        need(entry, f"integrations {key}", ("requires",), keys={"requires"})
-    requires = {key: entry["requires"] for key, entry in (raw.get("integrations") or {}).items()}
-    data = Data(requires, {}, raw.get("capabilities") or {}, [])
-    for model in raw.get("models") or []:
+    data = Data(raw["requires"], {}, raw["capabilities"], [])
+    for model in raw["models"]:
         load_model(model, data)
     data.sections.add((None, GROUPS_ENTRY[1]))  # every card with groups links it, as it does a model
     for key, items in data.capabilities.items():
@@ -254,8 +230,8 @@ def load_raw(raw: dict, registry: AdapterRegistry) -> Data:
         for item, entry in items.items():
             need(entry, f"capabilities {key} {item}", ("phrase", "section"), keys=CLASS_KEYS)
             data.sections.add((key, entry["section"]))
-    for entry in raw.get("doesnt_work") or []:
-        load_broken(entry, known, data)
+    for entry in raw["doesnt_work"]:
+        load_broken(entry, set(registry.integrations), data)
     return data
 
 
@@ -263,7 +239,8 @@ def load_model(model: dict, data: Data) -> None:
     need(model, f"model {model.get('name') if isinstance(model, dict) else model!r}", ("name",), ("ids",), MODEL_KEYS)
     if any(other["name"] == model["name"] for other in data.models.values()):
         fail(f"model name {model['name']!r} is listed twice")
-    check_type(model.get("type"), f"model {model.get('name')!r}")
+    if model.get("type") not in TYPES:
+        fail(f"model {model['name']!r}: type {model.get('type')!r} is not one of {', '.join(TYPES)}")
     model.setdefault("section", model["name"])
     for model_id in model["ids"]:
         if not isinstance(model_id, str):
@@ -405,9 +382,9 @@ def named(held: list[tuple[str, str]]) -> str:
 def level_rows(scope) -> list[tuple[str, str]]:
     """(level, items) per row: a row per level the scope holds, strongest first."""
     found = []
-    for level, label in LEVELS:
+    for level in sorted(Level, reverse=True):
         if held := [(item, noun) for item_level, item, noun in items(scope) if item_level is level]:
-            found.append((label, named(held)))
+            found.append((level.name.title(), named(held)))
     return found
 
 
@@ -616,10 +593,8 @@ def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: 
         and all(caveat_reason(adapter.scope, CaveatKind.UNMAINTAINED) for adapter in integration_adapters),
     )
     result.lines["works"] = works(result, key, integration_adapters, data)
-    result.lines["should"] = class_entries(key, classes(key, integration_adapters, Level.DOCUMENTED, data), data)
-    result.lines["experimental"] = [
-        *class_entries(key, classes(key, integration_adapters, Level.EXPERIMENTAL, data), data),
-    ]
+    for level, tier in ((Level.DOCUMENTED, "should"), (Level.EXPERIMENTAL, "experimental")):
+        result.lines[tier] = class_entries(key, classes(key, integration_adapters, level, data), data)
     if flagged := {adapter.action for adapter in integration_adapters if adapter.scope.experimental}:
         result.lines["experimental"].append(", ".join(features(flagged)))
     result.lines["no"] = []

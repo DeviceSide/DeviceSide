@@ -61,11 +61,11 @@ deciding when to test.
   call. The PR that claims Documented argues the sibling case, and review checks it. A bug on the Verified sibling
   reopens its Documented siblings in the same fix.
 - Nothing ships unflagged unless it is Verified or Documented. Built and unit-tested code that the maintainer can't
-  exercise, and that isn't Documented, ships behind `experimental` as untested ("Help us test" on the cards). A
-  sign-off covers only what was exercised; it never signs off untested code.
+  exercise, and that isn't Documented, ships behind `experimental` as untested. A sign-off covers only what was
+  exercised; it never signs off untested code.
 - **`experimental`** is a flag, not a level. In code it keeps today's per-axis marker, `experimental(...)`, beside
   `verified(...)` and `documented(...)`; `experimental=True` on the scope flags the whole adapter. A flagged item may be
-  tested and soaking, or untested: the cards tell which from the evidence (a record or `_manual.md` line, or none).
+  tested and soaking, or untested; the cards show both alike (superseded: step 5's follow-ups).
   Removing the flag is one line, `experimental("switch")` to `documented("switch")`. A flagged item is refused unless the user turns on the Experimental
   features option. Every new feature (action, integration, domain, capability or field) starts flagged, so it soaks in
   RCs and with opted-in users. A repo maintainer removes the flag. The directional bar is five working reports from
@@ -238,6 +238,8 @@ The estimates below are code plus tests.
    - Follow-up (Jason, 2026-11-12): drop `reports:` from `devices.yaml`, with its loader, validation and the evidence
      block's Reports column. The GitHub issue is a report's record; a maintainer who trusts one cites it in a
      `_manual.md` sign-off.
+   - Follow-up (Jason, 2026-11-12): cards show features, not fields. A flagged (or Documented) field shows on the
+     integration's page and in the evidence block only.
    - Regenerate the README and `docs/device-compatibility.md`.
 6. **v0.1.0.**
    - One sign-off per integration changed since v0.0.1 (`check_release.py --signoffs`), by rig run for every

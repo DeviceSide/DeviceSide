@@ -21,7 +21,7 @@ from scripts import gen_features as gf
 
 URL = gc.PAGE_URL
 DATA = {
-    "integrations": {"zha": {"requires": "Zigbee 3.0"}},
+    "requires": {"zha": "Zigbee 3.0"},
     "models": [
         {"name": "Hue lamp", "ids": ["LTA009", "9290024684"], "type": "bulb"},
         {"name": "Plug", "ids": ["P1"], "type": "plug"},
@@ -122,13 +122,10 @@ def test_a_model_a_record_names_must_be_in_models_yaml(root):
             {"models": [{"name": "A", "ids": ["X"], "type": "plug"}, {"name": "B", "ids": ["X"], "type": "plug"}]},
             "twice",
         ),
-        ({"capabilities": {"tuya": {}}}, "no integration 'tuya'"),
         (
             {"doesnt_work": [{"what": "X", "integrations": ["zha"], "reason": "", "source": "https://s"}]},
             "needs a reason",
         ),
-        ({"extra": 1}, "unknown key extra"),
-        ({"integrations": {"zha": {}}}, "integrations zha needs a requires"),
         ({"models": [{"name": "Lamp", "ids": "L1", "type": "bulb"}]}, "ids must be a list"),
         ({"models": [{"ids": ["L1"], "type": "bulb"}]}, "needs a name"),
         (
@@ -141,6 +138,12 @@ def test_a_model_a_record_names_must_be_in_models_yaml(root):
             "must be a list",
         ),
         ({"doesnt_work": [{"what": "X", "integrations": ["zha"], "reason": "r", "source": "s"}]}, "https URL"),
+        ({"doesnt_work": [{"what": "X", "integrations": ["tuya"], "reason": "r", "source": "https://s"}]}, "no integr"),
+        ({"models": [{"name": "Lamp", "ids": ["L1"], "type": "bulb", "colour": "red"}]}, "unknown key colour"),
+        ({"capabilities": {"zha": {"switch": {"phrase": "p", "section": "S", "level": 1}}}}, "unknown key level"),
+        ({"doesnt_work": [{**DATA["doesnt_work"][0], "why": "x"}]}, "unknown key why"),
+        ({"capabilities": {"zha": None}}, "capabilities zha must be a mapping"),
+        ({"capabilities": {"zha": ["switch"]}}, "capabilities zha must be a mapping"),
     ],
 )
 def test_devices_yaml_is_validated(changes, error):  # a clean error, never a KeyError
@@ -274,7 +277,7 @@ def test_a_card_puts_flagged_adapters_under_experimental_features_and_leaves_out
     assert card.lines["experimental"] == ["smooth hue"]
 
 
-def test_untested_classes_share_an_entry_per_feature_set_and_name_their_features(root):
+def test_documented_and_flagged_classes_share_an_entry_per_feature_set_and_name_their_features(root):
     dimming = AdapterScope(capabilities=verified("Switch") | experimental("Light", "CCT"))
     timer = AdapterScope(
         domains=verified("light") | documented("switch"),
@@ -323,7 +326,7 @@ def test_stop_alone_is_named():
     )
 
 
-def test_an_untested_item_without_a_class_is_an_error(root):
+def test_a_documented_item_without_a_class_is_an_error(root):
     scope = AdapterScope(capabilities=verified("Switch") | documented("RGB"))
     with pytest.raises(SystemExit, match="no entry for zha RGB, which a scope holds as Documented"):
         zha_card(adapter("zha", "turn_on_for", scope))
@@ -412,27 +415,17 @@ def test_a_bundle_merges_in_as_its_integrations_own_and_its_page_holds_its_secti
         gc.check_sections(page, gc.load(FakeRegistry(), write_bundles(root, monkeypatch)))
 
 
-def test_a_models_section_on_another_integrations_page_links_there(root, monkeypatch):
+@pytest.mark.parametrize("section", ["Hue lamp", "Native groups"])
+def test_a_models_or_native_groups_section_on_another_integrations_page_links_there(root, monkeypatch, section):
     models = write_bundles(root, monkeypatch)
-    (root / "docs" / "integrations" / "zha" / "index.md").write_text("# ZHA\n\n### Hue lamp\n")
+    (root / "docs" / "integrations" / "zha" / "index.md").write_text(f"# ZHA\n\n### {section}\n")
     data = gc.load(FakeRegistry(), models)
-    # Every card showing the model links its heading on the ZHA page, which is where the check found it.
-    assert data.url("hue", "Hue lamp") == f"{gc.BLOB_URL}docs/integrations/zha/index.md#hue-lamp"
-    assert data.url("zha", "Hue lamp") == f"{gc.BLOB_URL}docs/integrations/zha/index.md#hue-lamp"
-    page = PROSE.replace("### Hue lamp\n\n", "") + "<!-- evidence:start -->\n<!-- evidence:end -->\n"
-    gc.check_sections(page, data)
-    # A class's section isn't a model's: another integration's page doesn't hold it.
-    (root / "docs" / "integrations" / "zha" / "index.md").write_text("# ZHA\n\n### Dimmers\n")
-    assert gc.load(FakeRegistry(), models).url("hue", "Dimmers") == f"{URL}#dimmers"
-
-
-def test_the_native_groups_heading_on_another_integrations_page_links_there(root, monkeypatch):
-    models = write_bundles(root, monkeypatch)
-    (root / "docs" / "integrations" / "zha" / "index.md").write_text("# ZHA\n\n### Native groups\n")
-    data = gc.load(FakeRegistry(), models)
-    assert data.url("hue", "Native groups") == f"{gc.BLOB_URL}docs/integrations/zha/index.md#native-groups"
+    # Every card showing it links its heading on the ZHA page, which is where the check found it. A class's section
+    # isn't one (test_a_bundle_merges_in_as_its_integrations_own_and_its_page_holds_its_sections).
+    for key in ("hue", "zha"):
+        assert data.url(key, section) == f"{gc.BLOB_URL}docs/integrations/zha/index.md#{gf.slug(section)}"
     gc.check_sections(
-        PROSE.replace("### Native groups\n\n", "") + "<!-- evidence:start -->\n<!-- evidence:end -->\n", data
+        PROSE.replace(f"### {section}\n\n", "") + "<!-- evidence:start -->\n<!-- evidence:end -->\n", data
     )
 
 
@@ -452,6 +445,8 @@ def test_a_card_title_links_to_its_integrations_page(root, monkeypatch):
             "hue/devices.yaml: unknown key models",
         ),
         (BUNDLE, {"models": [], "capabilities": {}}, "docs/models.yaml: unknown key capabilities"),
+        (BUNDLE, {"models": {"a": 1}}, "docs/models.yaml: models must be a list"),
+        ({**BUNDLE, "hue": {"column": "Hue", "column_order": 2, "requires": ""}}, None, "hue/devices.yaml needs a req"),
         (
             {**BUNDLE, "hue": {"column": "Hue", "column_order": 2, "doesnt_work": [DATA["doesnt_work"][0]]}},
             None,
@@ -482,47 +477,19 @@ def test_the_checked_in_readme_and_page_match_the_real_records():
     assert gc.main(["--check"]) == 0
 
 
-@pytest.mark.parametrize(
-    "changes",
-    [
-        {"models": [{"name": "Lamp", "ids": ["L1"], "type": "bulb", "colour": "red"}]},
-        {"capabilities": {"zha": {"switch": {"phrase": "plugs", "section": "Zigbee plugs", "level": 1}}}},
-        {"doesnt_work": [{**DATA["doesnt_work"][0], "why": "x"}]},
-    ],
-)
-def test_an_unknown_key_in_an_entry_is_an_error(changes):
-    with pytest.raises(SystemExit, match="unknown key"):
-        data(FakeRegistry(adapter("zha", "turn_on_for")), **changes)
-
-
 def test_the_legend_leads_the_cards(root):
     registry = FakeRegistry(adapter("zha", "turn_on_for"))
     text = gc.cards(registry, data(registry))
     assert text.index(gc.CARDS_LEGEND) < text.index("**ZHA**")
     assert gc.CARDS_LEGEND == (
         "🟢 works · ✔ verified on automated rig · 🟡 should work: same call pattern as a tested device · "
-        f"🧪 experimental: off until you turn on Experimental features; please [report how it goes]({gc.REPORT_URL}) · "
+        "🧪 experimental: off until you turn on Experimental features in DeviceSide's Configure > Settings; please"
+        f" [report how it goes]({gc.REPORT_URL}) · "
         "🔴 doesn't work · "
         "⚠️ unmaintained: no one is fixing it; use at your own risk · "
-        "⚠️ untested fix: changed, not yet tested; please report whether it works"
+        f"⚠️ untested fix: changed, not yet tested; please [report whether it works]({gc.REPORT_URL})"
     )
     assert text.index("Details per integration are in [docs/integrations.md](") < text.index("</details>")
-
-
-@pytest.mark.parametrize(
-    ("changes", "error"),
-    [
-        ({"integrations": {"zha": {"requires": "x", "extra": 1}}}, "unknown key extra"),
-        ({"capabilities": {"zha": None}}, "capabilities zha must be a mapping"),
-        ({"capabilities": {"zha": ["switch"]}}, "capabilities zha must be a mapping"),
-        ({"capabilities": ["zha"]}, "capabilities must be a mapping"),
-        ({"models": {"a": 1}}, "models must be a list"),
-        ({"capabilities": {"zha": {"switch": {"phrase": "p", "section": "S", "type": "plug"}}}}, "unknown key type"),
-    ],
-)
-def test_devices_yaml_shapes_and_unknown_keys_fail_cleanly(changes, error):
-    with pytest.raises(SystemExit, match=error):
-        data(**changes)
 
 
 def test_a_pipe_in_a_doesnt_work_entry_stays_in_its_cell(root):
@@ -561,13 +528,15 @@ def test_a_card_marks_unmaintained_adapters_by_reason_flagged_ones_included(root
     card = zha_card(
         adapter("zha", "turn_on_for", AdapterScope(caveat=unmaintained(ISSUE_REASON))),
         adapter("zha", "turn_off_for", AdapterScope(caveat=unmaintained(ISSUE_REASON))),
-        adapter("zha", "stop", AdapterScope(caveat=unmaintained("the maintainer left"))),
+        adapter("zha", "stop", AdapterScope(caveat=unmaintained(ISSUE_REASON))),
+        adapter("zha", "get_attributes", AdapterScope(caveat=unmaintained("the maintainer left"))),
         adapter("zha", "set_scene", AdapterScope(experimental=True, caveat=unmaintained(ISSUE_REASON))),
-        adapter("zha", "get_attributes"),
+        adapter("zha", "raise_hue"),
     )
+    # A warning names every feature, stop beside the others.
     assert card.render().splitlines()[2:4] == [
-        f"- [⚠️ Unmaintained]({ISSUE_REASON}): turn on with timer, turn off with timer, scenes",
-        "- ⚠️ Unmaintained (the maintainer left): stop",
+        f"- [⚠️ Unmaintained]({ISSUE_REASON}): turn on with timer, turn off with timer, scenes, stop",
+        "- ⚠️ Unmaintained (the maintainer left): get attributes",
     ]
 
 
@@ -590,18 +559,6 @@ def test_a_card_whose_adapters_are_all_unmaintained_says_formerly_maintained(roo
         )
         assert " · maintained by [@" in heading(card)
     assert " · maintained by [@" in heading(zha_card())
-
-
-def test_an_unmaintained_entry_names_stop_beside_other_features(root):
-    card = zha_card(
-        adapter("zha", "turn_on_for", AdapterScope(caveat=unmaintained(ISSUE_REASON))),
-        adapter("zha", "stop", AdapterScope(caveat=unmaintained(ISSUE_REASON))),
-    )
-    assert f"- [⚠️ Unmaintained]({ISSUE_REASON}): turn on with timer, stop" in card.render().splitlines()
-
-
-def test_a_maintained_card_has_no_unmaintained_entry(root):
-    assert gc.UNMAINTAINED not in zha_card(adapter("zha", "stop")).render()
 
 
 def test_every_evidence_row_of_an_adapter_with_a_caveat_is_marked(root):
@@ -628,4 +585,4 @@ def test_a_card_marks_untested_fixes_after_unmaintained_ones(root):
     ]
     # An untested fix is not unmaintained: the heading still names the maintainers.
     assert "formerly maintained" not in heading(card)
-    assert gc.UNTESTED_FIX not in zha_card(adapter("zha", "stop")).render()
+    assert "⚠️" not in zha_card(adapter("zha", "stop")).render()  # no caveat, no mark
