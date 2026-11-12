@@ -33,27 +33,16 @@ def timer(remaining_s: float) -> dict:
     return {"turns": "off", "ends_at": ends_at, "remaining_s": remaining_s}
 
 
-async def test_running_timer_is_read_live(hass):
+@pytest.mark.parametrize("entity_id", ["switch.plug", "light.bulb"])
+async def test_running_timer_is_read_live(hass, entity_id):
+    # A light is Documented on the switch's proof: the same OnOff reads, pinned.
     entry, _, read_attr = matter_device(hass, endpoint_id=EP)
     read_attr.side_effect = on_time_reads(125).side_effect  # tenths of a second
-    add_matter_entity(hass, entry, "switch.plug", endpoint_id=EP, state="on")
+    add_matter_entity(hass, entry, entity_id, endpoint_id=EP, state="on")
 
-    response = await call(hass, "get_attributes", {"entity_id": "switch.plug"})
+    response = await call(hass, "get_attributes", {"entity_id": entity_id})
 
-    assert response == {"switch.plug": {"timer": timer(12.5)}}
-    assert read_attr.await_args_list == [
-        mock_call(node_id=NODE_ID, attribute_path=f"{EP}/6/16385"),
-        mock_call(node_id=NODE_ID, attribute_path=f"{EP}/6/0"),
-    ]
-
-
-async def test_light_reads_the_same_attributes(hass):
-    entry, _, read_attr = matter_device(hass, endpoint_id=EP)
-    read_attr.side_effect = on_time_reads(125).side_effect
-    add_matter_entity(hass, entry, "light.bulb", endpoint_id=EP, state="on")
-
-    assert await call(hass, "get_attributes", {"entity_id": "light.bulb"}) == {"light.bulb": {"timer": timer(12.5)}}
-    # Documented on the switch's proof: the same OnOff reads, pinned.
+    assert response == {entity_id: {"timer": timer(12.5)}}
     assert read_attr.await_args_list == [
         mock_call(node_id=NODE_ID, attribute_path=f"{EP}/6/16385"),
         mock_call(node_id=NODE_ID, attribute_path=f"{EP}/6/0"),
