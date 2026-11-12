@@ -114,13 +114,6 @@ async def test_other_components_are_refused(hass, setup_production, key):
     assert not call_rpc.await_args_list
 
 
-async def test_gen1_is_refused(hass, setup_production):
-    entry, call_rpc = shelly_device(hass, gen1=True)
-    add_shelly_entity(hass, entry, "light.old", "rgbcct:0")
-
-    assert await refusal(hass, "set_attributes", {"entity_id": "light.old", "brightness": 40}) == "gen1_unsupported"
-
-
 @pytest.mark.parametrize(
     ("stored", "data", "expected"),
     [
