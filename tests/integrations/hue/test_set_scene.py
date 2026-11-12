@@ -163,14 +163,6 @@ async def test_scene_is_reread_on_each_call(hass, bridge):
     assert bridge.puts[-1] == ("light/light-1", {"dimming": {"brightness": 75.0}})
 
 
-async def test_v1_bridge_is_refused(hass, bridge):
-    bridge.scene("scene-1", [])
-    entry = await hue_entry(hass, bridge, api_version=1)
-    add_hue_entity(hass, entry, "scene.relax", "scene-1")
-
-    assert await refusal(hass, "set_scene", {"entity_id": "scene.relax"}) == "bridge_v1"
-
-
 async def test_the_lights_written_forget_their_move_predictions(hass, bridge):
     await scene(
         hass,

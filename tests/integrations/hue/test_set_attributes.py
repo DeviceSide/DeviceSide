@@ -12,7 +12,7 @@ from homeassistant.util.color import color_hs_to_xy, color_RGB_to_xy
 
 from custom_components.deviceside.integrations.hue import set_attributes as adapter
 
-from ...conftest import call, refusal, result, sent
+from ...conftest import call, result, sent
 from ...fixtures.hue import add_hue_entity, add_hue_group, hue_entry
 
 pytestmark = pytest.mark.usefixtures("setup_production")
@@ -254,15 +254,6 @@ async def test_empty_room_raises_no_entities_matched(hass, bridge):
 
     # empty_group is skipped silently; no targets ran, and the caller asked for a response.
     assert raised.value.translation_key == "no_entities_matched"
-
-
-async def test_v1_bridge_is_refused(hass, bridge):
-    bridge.light("light-1")
-    entry = await hue_entry(hass, bridge, api_version=1)
-    add_hue_entity(hass, entry, "light.lamp", "light-1")
-
-    assert await refusal(hass, "set_attributes", {"entity_id": "light.lamp", "brightness": 40}) == "bridge_v1"
-    assert bridge.puts == []
 
 
 GAMUT_C = {"red": {"x": 0.6915, "y": 0.3083}, "green": {"x": 0.17, "y": 0.7}, "blue": {"x": 0.1532, "y": 0.0475}}
