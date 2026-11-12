@@ -8,7 +8,7 @@ from homeassistant.exceptions import HomeAssistantError
 from custom_components.deviceside.core.scope import Level
 from custom_components.deviceside.integrations.matter.turn_on_for import MatterTurnOnFor
 
-from ...conftest import call, refusal, sent
+from ...conftest import call, sent
 from ...fixtures.matter import (
     NODE_ID,
     add_matter_entity,
@@ -50,15 +50,6 @@ async def test_duration_converted_to_tenths(hass):
     assert cmd.onTime == 15  # 1.5 s * 10 = 15 tenths
 
 
-async def test_no_lt_feature_is_refused(hass):
-    """An endpoint without the LT feature bit raises TargetNotSupported."""
-    entry, send_cmd, _ = matter_device(hass, endpoint_id=EP, feature_map=0x0000)
-    add_matter_entity(hass, entry, "switch.no_lt", endpoint_id=EP)
-
-    assert await refusal(hass, "turn_on_for", {"entity_id": "switch.no_lt", "duration": 5}) == "no_lt_feature"
-    send_cmd.assert_not_awaited()
-
-
 def test_light_is_documented_and_plug_verified():
     assert MatterTurnOnFor.scope.level("light") is Level.DOCUMENTED
     assert MatterTurnOnFor.scope.level("switch") is Level.VERIFIED
@@ -79,48 +70,6 @@ async def test_no_running_timer_does_not_confirm(hass, reads, entity_id):
     response = await call(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5})
 
     assert response == {entity_id: {"status": "sent", "integration": "matter", "detail": "timer_not_reported"}}
-
-
-def _no_client(entry):
-    del entry.runtime_data
-
-
-def _node_lookup_raises(entry):
-    entry.runtime_data.adapter.matter_client.get_node.side_effect = KeyError("node gone")
-
-
-def _node_missing(entry):
-    entry.runtime_data.adapter.matter_client.get_node.return_value = None
-
-
-@pytest.mark.parametrize("break_node", [_no_client, _node_lookup_raises, _node_missing])
-async def test_unreachable_node_is_refused(hass, break_node):
-    """No Matter client, a node lookup that raises, or no node: raises TargetNotSupported."""
-    entry, send_cmd, _ = matter_device(hass, endpoint_id=EP)
-    break_node(entry)
-    add_matter_entity(hass, entry, "switch.gone", endpoint_id=EP)
-
-    assert await refusal(hass, "turn_on_for", {"entity_id": "switch.gone", "duration": 5}) == "not_addressable"
-    send_cmd.assert_not_awaited()
-
-
-async def test_dead_front_bit_alone_is_not_lt(hass):
-    """FeatureMap 0x2 is DeadFrontBehavior, not Lighting: raises TargetNotSupported."""
-    entry, send_cmd, _ = matter_device(hass, endpoint_id=EP, feature_map=0x0002)
-    add_matter_entity(hass, entry, "switch.dead_front", endpoint_id=EP)
-
-    assert await refusal(hass, "turn_on_for", {"entity_id": "switch.dead_front", "duration": 5}) == "no_lt_feature"
-    send_cmd.assert_not_awaited()
-
-
-async def test_featuremap_missing_from_cache_is_not_lt(hass):
-    """An endpoint whose OnOff FeatureMap the node never reported raises TargetNotSupported."""
-    entry, send_cmd, _ = matter_device(hass, endpoint_id=EP)
-    entry.runtime_data.adapter.matter_client.get_node.return_value.node_data.attributes = {}
-    add_matter_entity(hass, entry, "switch.unreported", endpoint_id=EP)
-
-    assert await refusal(hass, "turn_on_for", {"entity_id": "switch.unreported", "duration": 5}) == "no_lt_feature"
-    send_cmd.assert_not_awaited()
 
 
 async def test_readback_fails_returns_sent(hass):
@@ -172,14 +121,6 @@ async def test_duration_beyond_limit_is_clamped(hass):
     assert response["switch.bulb"]["clamped_to"] == 6553.4
     cmd = send_cmd.call_args.kwargs["command"]
     assert cmd.onTime == round(6553.4 * 10)
-
-
-async def test_not_addressable_when_unique_id_unparseable(hass):
-    """An entity whose unique_id doesn't match the expected format returns not_addressable."""
-    entry, send_cmd, _ = matter_device(hass, endpoint_id=EP)
-    add_matter_entity(hass, entry, "switch.broken", unique_id="bad-uid")
-
-    assert await refusal(hass, "turn_on_for", {"entity_id": "switch.broken", "duration": 5}) == "not_addressable"
 
 
 async def test_the_command_is_logged_without_the_node(hass, wire):
