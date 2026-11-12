@@ -48,9 +48,11 @@ The levels (Verified, Documented), the `experimental` flag, caveats, the release
 An integration's package (`integrations/<x>/`, `tests/integrations/<x>/`, its fixture, its bundle
 `docs/integrations/<x>/`) belongs to the GitHub handles in its `IntegrationInfo.maintainers`, one or more. A PR confined
 to one package needs one maintainer's approval and green CI; anything outside it (`core/`, shared docs,
-`docs/models.yaml`) needs a repo maintainer. Repo maintainers merge every PR. Integration maintainers hold Triage, so
-GitHub ignores their names in `.github/CODEOWNERS` (from `scripts/gen_codeowners.py`) until one gets write access. A
-contributor PR follows CONTRIBUTING's Fast track.
+`docs/models.yaml`) needs a repo maintainer. Regenerated output follows its inputs: a package PR that also regenerates
+shared generated files (README, `docs/device-compatibility.md`, CODEOWNERS) still needs only its maintainer, as CI's
+`--check` proves them. Repo maintainers merge every PR. Integration maintainers hold Triage, so GitHub ignores their
+names in `.github/CODEOWNERS` (from `scripts/gen_codeowners.py`) until one gets write access. A contributor PR follows
+CONTRIBUTING's Fast track.
 
 **Caveats** (⚠️ Untested fix, ⚠️ Unmaintained) are set and cleared by a repo maintainer: `docs/evidence.md`.
 

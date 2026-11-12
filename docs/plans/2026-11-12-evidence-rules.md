@@ -277,6 +277,9 @@ concurrency decisions.
   step 2–3b PR together with the rig's; for a rig engine change a step file needs, merge the rig PR first.
 - Each step: an implementer subagent, then a reviewer subagent against this plan; rule questions go to Jason.
 - Step 6 needs Jason and the physical rig: stop there.
+- **Decision (Jason, 2026-11-12): regenerated output follows its inputs.** A PR confined to one integration's package
+  that also regenerates shared generated files needs only that integration's maintainer: CI's `--check` proves the
+  output, so only the inputs need review. CODEOWNERS and `gen_codeowners.py` are unchanged.
 - Known flaky tests, unrelated: ha-rig `tests/test_rig_busy.py` timing; DeviceSide `test_no_z2m_does_nothing_quietly`.
 
 ## Verification
