@@ -183,9 +183,10 @@ The estimates below are code plus tests.
    from the target checkout. CLAUDE.md's "don't add rig code, step files or rig docs here" becomes "no rig code or rig
    docs here; step files live in `tests/rig/steps/`". Step files name roles, never entities; the household check
    covers them. The rig engine stays private.
-   - **Done.** A record cites the commit, so a rig run with uncommitted step files goes ahead but writes no record and
-     keeps no ledger; the ledger key is the commit and the suite, without the step-file digest.
-     `tests/test_rig_steps.py` checks each file loads and calls a registered action; the rig's CI parses them in full.
+   - **Done.** A record cites the commit, so a rig run with uncommitted step files goes ahead but writes no record or
+     fact row and keeps no ledger; the ledger key is the commit and the suite, without the step-file digest.
+     `tests/test_rig_steps.py` checks each file loads, calls a registered action and names registered integrations;
+     the rig's CI parses them in full. The rig's own tests use fixture copies, not these.
 4. **Release gate (`check_release.py`), about −1,100.**
    - Keep `--coverage`, with the bar on every module under `core/` and `integrations/` except `__init__.py`. That drops
      the `adapter_code` import graph; first check that no module falls below the bar, and if one does, raise it in this
