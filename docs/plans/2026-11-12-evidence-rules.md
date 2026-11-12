@@ -99,11 +99,12 @@ deciding when to test.
 - `core/`, `actions/` and `scripts/` changes need no device sign-off: unit tests, the RC soak and tenet 5 cover them.
 - **RCs need no sign-off.** The gate runs only at `cut-release`. An RC's notes list each integration changed without a
   sign-off, with a link to the device report form, so an RC can carry an unsigned fix for others to test.
-- If an integration has no sign-off at `cut-release`, the cut fails unless a changed adapter of it carries a caveat.
-  A repo maintainer picks whichever is most likely to work for users (tenet 1): hold the fix back (revert it, or leave
-  it out of the release branch) when the current code mostly works; ship it marked ⚠️ Untested fix when the current
-  code is broken and the fix is low-risk; or put it behind `experimental` when it is risky. Review checks that the
-  right adapters carry the caveat.
+- If an integration has no sign-off at `cut-release`, the cut fails unless every changed adapter of it carries ⚠️
+  Untested fix (Jason, 2026-11-12): not Unmaintained, nor the bare `experimental` flag. A change to a package module
+  that is no adapter's (a shared helper) changes every adapter of the package, and the gate checks it. A repo
+  maintainer picks whichever is most likely to work for users (tenet 1): hold the fix back (revert it, or leave it out
+  of the release branch) when the current code mostly works; ship it marked ⚠️ Untested fix when the current code is
+  broken and the fix is low-risk; or, when it is risky, put it behind `experimental` and mark it ⚠️ Untested fix.
 - **Sign off after merge** (Jason, 2026-11-12). `main` squash-merges, so a PR branch's commits never reach its
   history. A sign-off cites a commit on `main` (or a `release/` branch) at or after the change, and lands in a later
   PR: before a release, one rig run on `main` over the `--signoffs --json` list, plus any manual lines, in one PR.

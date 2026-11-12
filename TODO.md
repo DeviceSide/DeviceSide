@@ -28,7 +28,9 @@ step 5 lands. The items below run in this order.
   - [x] 1. Rules, docs only (`docs/evidence.md`).
   - [x] 2. Runtime: two levels, the `experimental` gate, `caveat`; the seven release-flagged adapters lose the flag;
     the code comments citing CLAUDE.md's "Release flag" or "Default to Documented" point to `docs/evidence.md`.
-  - [ ] 3. Rig (ha-rig): drop the wire and scope taps, `Covers`, observed lending and the firmware-fact ledger.
+  - [x] 3. Rig (ha-rig): drop the wire and scope taps, `Covers`, observed lending and the firmware-fact ledger.
+  - [x] 3b. Step files move to DeviceSide (`tests/rig/steps/`, `tests/integrations/<x>/rig/`), the rig reading them
+    from the checkout under test.
   - [x] 4. Release gate: `check_release.py --signoffs`; drop `--release` and the rest of `--records`; the
     docstring's CLAUDE.md citations and CLAUDE.md's Layout line on release checks.
   - [ ] 5. Cards: `gen_compat.py` tiers for two levels, the flag and caveats, and the docstring's CLAUDE.md citations.

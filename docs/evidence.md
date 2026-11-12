@@ -105,12 +105,14 @@ A deprecation gets a hand-written note in that release's notes, not a caveat.
 
 ## Release gate
 
-Each integration whose package (`custom_components/deviceside/integrations/<x>/`) changed since the last release tag
-needs a sign-off at or after its last change. Any change counts, flags included.
+Each integration whose package (`custom_components/deviceside/integrations/<x>/`) differs from the last release tag
+needs a sign-off at or after its last change. Any change counts, flags included; a reverted one is none.
 
 - **A sign-off** is a passing test record, or a `_manual.md` line, whose commit has the package's last change as an
-  ancestor. It may say "no call changed". It comes from one of the integration's maintainers, or a repo maintainer
-  when none responds.
+  ancestor and holds the package as the release does. It may say "no call changed". It comes from one of the
+  integration's maintainers, or a repo maintainer when none responds.
+- **Sign off after merge.** `main` squash-merges, so a PR branch's commits never reach it: a sign-off cites a commit on
+  `main` (or a `release/` branch) at or after the change, and lands in a later PR.
 - **Prefer the rig.** Where the rig covers an integration, the sign-off is a rig run: it is repeatable and catches what
   a person doesn't. A manual line is the fallback for integrations the rig can't reach, or when the rig is broken; a
   manual sign-off on a rig-covered integration says why in its PR. This is guidance, not a gate check. Rig evidence is
@@ -120,12 +122,13 @@ needs a sign-off at or after its last change. Any change counts, flags included.
   sign-off: unit tests, the RC soak and tenet 5 cover them.
 - **RCs need no sign-off.** The gate runs only at `cut-release`. An RC's notes list each integration changed without a
   sign-off, with a link to the device report form, so an RC can carry an unsigned fix for others to test. But
-  `cut-release` checks the latest RC's commit, so land the sign-offs or caveats before the last RC.
-- **No sign-off at the cut:** `cut-release` fails unless a changed adapter of that integration carries a caveat. A
-  repo maintainer picks whichever is most likely to work for users (tenet 1): hold the fix back (revert it, or leave
-  it out of the release branch) when the current code mostly works; ship it marked ⚠️ Untested fix when the current
-  code is broken and the fix is low-risk; or put it behind `experimental` when it is risky. Review checks that the
-  right adapters carry the caveat.
+  `cut-release` checks the latest RC's commit, so land the sign-offs or Untested fix caveats before the last RC.
+- **No sign-off at the cut:** `cut-release` fails unless every changed adapter of that integration carries ⚠️
+  Untested fix; no other caveat, nor the `experimental` flag alone, stands in. A change to a package module that is no
+  adapter's (a shared helper) changes every adapter of the package. A repo maintainer picks whichever is most likely
+  to work for users (tenet 1): hold the fix back (revert it, or leave it out of the release branch) when the current
+  code mostly works; ship it marked ⚠️ Untested fix when the current code is broken and the fix is low-risk; or, when
+  it is risky, put it behind `experimental` and mark it ⚠️ Untested fix.
 - Records keep a `Covers` row as information if the rig writes one. Nothing checks it.
 - **Coverage:** every module under `core/` and `integrations/`, bar `__init__.py`, needs at least 95% line coverage;
   CI checks it.

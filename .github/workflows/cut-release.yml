@@ -2,9 +2,10 @@ name: Cut release
 
 # The only way a vX.Y.Z tag is made (a tag ruleset refuses any other). Dispatched from main, it tags the commit of
 # vX.Y.Z's latest RC, not main's head: what ships is what soaked, while main moves on. Requires a version above the
-# latest release and, at the RC's commit, manifest.json at that version, green CI, and a sign-off, or a caveat on a
-# changed adapter, for each integration changed since the last release (check_release --signoffs; docs/evidence.md,
-# Release gate). Its call for testers (--notes) leads the release notes. Soak is the repo maintainers' call.
+# latest release and, at the RC's commit, manifest.json at that version, green CI, and a sign-off, or Untested fix on
+# every changed adapter, for each integration changed since the last release (check_release --signoffs;
+# docs/evidence.md, Release gate). Its call for testers (--notes) leads the release notes. Soak is the repo
+# maintainers' call.
 #
 # Two jobs, so the code `uv sync` installs never shares a runner with write access: `check` runs the gates with a
 # read-only token, and `tag`, on a fresh runner that installs nothing, alone holds the write token and the deploy key.
@@ -80,7 +81,7 @@ jobs:
         run: git fetch --quiet origin '+refs/pull/*/head:refs/remotes/pull/*'
 
       # The call for testers rides to `tag` as an output, as that job's runner has none of this one's files.
-      - name: Refuse a changed integration with neither a sign-off nor a caveat
+      - name: Refuse a changed integration with neither a sign-off nor Untested fix
         id: gates
         run: |
           .venv/bin/python scripts/check_release.py --signoffs --notes "$RUNNER_TEMP/notes.md"

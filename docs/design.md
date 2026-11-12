@@ -192,9 +192,9 @@ The rules are in [evidence.md](evidence.md#release-gate); each gate's mechanics 
 workflow named.
 
 - **Coverage:** `scripts/check_release.py --coverage`, in CI.
-- **Sign-offs:** `check_release.py --signoffs`, in `cut-release`: a sign-off or caveat for each integration whose
-  package changed since the last release tag. `--notes` lists the unsigned integrations and Untested fix caveats in
-  both cut workflows.
+- **Sign-offs:** `check_release.py --signoffs`, in `cut-release`: a sign-off, or ⚠️ Untested fix on every changed
+  adapter, for each integration whose package differs from the last release tag. `--notes` lists the unsigned
+  integrations and Untested fix caveats in both cut workflows.
 - **Tags:** `scripts/check_tag.py`, in `.github/workflows/cut-release-candidate.yml` and `cut-release.yml`, the only
   way a tag is made.
 - **RC audit:** `scripts/check_audit.py`, in `cut-release-candidate`.
