@@ -131,13 +131,9 @@ async def test_an_integration_stuck_in_setup_does_not_hold_deviceside_back(hass:
         zha_setup.cancel()
 
 
-async def test_predicted_state_is_on_for_an_entry_without_options(hass: HomeAssistant):
-    await load_entry(hass)
-    assert get_runtime(hass).predicted_state is True
-
-
 async def test_saving_the_option_reloads_the_entry_with_it(hass: HomeAssistant):
     entry = await load_entry(hass)
+    assert get_runtime(hass).predicted_state is True  # on for an entry without options
 
     result = await open_settings(hass, entry)
     assert result["data_schema"]({}) == {
