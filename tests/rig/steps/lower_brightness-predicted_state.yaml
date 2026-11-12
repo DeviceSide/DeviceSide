@@ -13,7 +13,7 @@ tests:
       - sample: {attribute: brightness, for: 2, expect: steady, min: 148, max: 158}
       - expect_state: {state: off, within: 1 + tol}
 
-  - name: lower_to_a_limit  # §2.4; with predicted_state off HA shows the bridge's reports, and it can leave a room member stale
+  - name: lower_to_a_limit  # with predicted_state off HA shows the bridge's reports, and it can leave a room member stale
     roles: [light_ct, group]
     steps:
       - set: {state: on, brightness_pct: 100}

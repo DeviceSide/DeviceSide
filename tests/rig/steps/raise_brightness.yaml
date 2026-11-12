@@ -1,12 +1,11 @@
-# hue_dimmer tests/RELEASE_CHECKLIST.md §2 as steps, raising; lower_brightness.yaml has the rest, and stop.yaml
-# stopping a raise (§2.5, with the raise that follows) and a lower to off. Each test runs on a lamp and then a room;
-# on the room, expect_state checks every member light. HA shows a fade's end value at once, so samples read
-# DeviceSide: Hue's prediction, Zigbee2MQTT's and ZHA's live reads, in percent. Zigbee2MQTT and ZHA don't notice a
-# change from elsewhere mid-fade.
+# Raising; lower_brightness.yaml has the rest, and stop.yaml stopping a raise (with the raise that follows) and a lower
+# to off. Each test runs on a lamp and then a room; on the room, expect_state checks every member light. HA shows a
+# fade's end value at once, so samples read DeviceSide: Hue's prediction, Zigbee2MQTT's and ZHA's live reads, in
+# percent. Zigbee2MQTT and ZHA don't notice a change from elsewhere mid-fade.
 action: raise_brightness
 rig_seconds: 400
 tests:
-  - name: raise  # §2.1
+  - name: raise
     roles: [light_ct, group]
     setup:
       - set: {state: on, brightness_pct: 20}
@@ -18,7 +17,7 @@ tests:
       - wait: 1 + tol
       - sample: {attribute: brightness, for: 0.5, expect: steady, min: 99, source: deviceside}
 
-  - name: raise_after_soft_off  # §2.3: a plain soft off keeps the stored brightness: does the next raise start there?
+  - name: raise_after_soft_off  # a plain soft off keeps the stored brightness: does the next raise start there?
     roles: [light_ct, group]
     setup:
       - set: {state: on, brightness_pct: 60}

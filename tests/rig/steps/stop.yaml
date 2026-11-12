@@ -1,11 +1,11 @@
-# hue_dimmer tests/RELEASE_CHECKLIST.md §2.5 and §2.6 from the stop side: each halt is followed by the move again, so
-# the case also checks the bookkeeping a stop leaves. Samples after a raise or lower read DeviceSide (Hue's
-# prediction, Zigbee2MQTT's and ZHA's live reads), in percent: HA shows a fade's end value at once. A hue cycle's
-# stop is checked in raise_hue.yaml's hue_stop_raise, and here with brightness in halts_brightness_and_hue.
+# Each halt is followed by the move again, so the case also checks the bookkeeping a stop leaves. Samples after a raise
+# or lower read DeviceSide (Hue's prediction, Zigbee2MQTT's and ZHA's live reads), in percent: HA shows a fade's end
+# value at once. A hue cycle's stop is checked in raise_hue.yaml's hue_stop_raise, and here with brightness in
+# halts_brightness_and_hue.
 action: stop
 rig_seconds: 380
 tests:
-  - name: halts_a_raise  # §2.5
+  - name: halts_a_raise
     roles: [light_ct, group]
     setup:
       - set: {state: on, brightness_pct: 10}
@@ -40,7 +40,7 @@ tests:
       watch: 'The stop: it holds about two thirds up, with no flash, jump or blink off first.'
       ask: Did it stop part way down and hold there, with no flash, jump or blink off?
 
-  - name: stop_when_idle  # §2.6
+  - name: stop_when_idle
     roles: [light_ct]
     steps:
       - set: {state: on, brightness_pct: 50}

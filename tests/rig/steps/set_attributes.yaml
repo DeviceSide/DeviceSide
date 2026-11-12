@@ -1,10 +1,9 @@
-# hue_dimmer tests/RELEASE_CHECKLIST.md §3 as steps.
 # A room is written light by light, so on the group role the response and expect_state cover every member.
 # Color steps run on the light_color role, and the hs and xy ones on group_color too (a Z2M color groupcast).
 action: set_attributes
 rig_seconds: 130
 tests:
-  - name: sets_while_off  # §3.1
+  - name: sets_while_off
     roles: [light_ct, group]
     steps:
       - set: {state: off}
@@ -29,7 +28,7 @@ tests:
       - set: {state: on}
       - expect_state: {brightness: {min: 100, max: 104}, color_temp_kelvin: {min: 2650, max: 2750}, within: tol}
 
-  - name: sets_color_while_off  # §3.2
+  - name: sets_color_while_off
     roles: [light_color]
     setup:
       - set: {state: on, hs_color: [240, 90]}
@@ -89,7 +88,7 @@ tests:
       - expect_response: {status: expected, integration: self}
       - expect_state: {xy_color.0: {min: 0.16, max: 0.18}, xy_color.1: {min: 0.69, max: 0.71}, within: tol}
 
-  - name: min_brightness_raises  # §3.3
+  - name: min_brightness_raises
     roles: [light_ct]
     steps:
       - set: {state: on, brightness_pct: 20}
@@ -97,7 +96,7 @@ tests:
       - call: {min_brightness: 50}
       - expect_state: {brightness: {min: 126, max: 130}, within: tol}
 
-  - name: min_brightness_leaves_brighter  # §3.3
+  - name: min_brightness_leaves_brighter
     roles: [light_ct]
     steps:
       - set: {state: on, brightness_pct: 70}

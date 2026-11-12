@@ -1,11 +1,10 @@
-# hue_dimmer tests/RELEASE_CHECKLIST.md §4 as steps.
 # On the group role set_attributes writes and confirms every member, so the room's own row reads the same values back.
 action: get_attributes
 rig_seconds: 300
 tests:
   # The setup is DeviceSide's own set_attributes: it writes while the light is off, then reads back every member and
   # raises not_stored when one missed the write, so a dropped delivery fails here and not as a wrong read (#281).
-  - name: reads_while_off  # §4.1
+  - name: reads_while_off
     roles: [light_ct]
     steps:
       - set: {state: off}
@@ -16,7 +15,7 @@ tests:
       - expect_response:
           attributes: {brightness: {min: 39, max: 41}, color_temp_kelvin: {min: 2650, max: 2750}}
 
-  - name: predicts_mid_move  # §4.2: about 40% three seconds in, not the 100% the bridge reports
+  - name: predicts_mid_move  # about 40% three seconds in, not the 100% the bridge reports
     roles: [light_ct, group]
     only: [hue]  # the only integration whose read predicts a fade
     steps:

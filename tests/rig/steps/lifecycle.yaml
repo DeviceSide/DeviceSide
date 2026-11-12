@@ -1,8 +1,7 @@
-# DeviceSide's config entry, reloaded and disabled: hue_dimmer's release checklist checked both by hand. The entry
-# steps reload it under every other run, so the file runs alone, holding HA exclusively; a disabled entry is enabled
-# again when the case ends, and by --recover after a crash. get_attributes, a read, stands in for every action. Hue
-# alone runs it, on one lamp: the entry's reload and refusal are the same whatever adapter the call reaches, and Hue
-# has a call_resolver of its own to rebuild.
+# DeviceSide's config entry, reloaded and disabled. The entry steps reload it under every other run, so the file runs
+# alone, holding HA exclusively; a disabled entry is enabled again when the case ends, and by --recover after a crash.
+# get_attributes, a read, stands in for every action. Hue alone runs it, on one lamp: the entry's reload and refusal are
+# the same whatever adapter the call reaches, and Hue has a call_resolver of its own to rebuild.
 action: get_attributes
 name: lifecycle
 rig_seconds: 15
