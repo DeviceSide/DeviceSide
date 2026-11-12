@@ -95,5 +95,6 @@ branch, or a firmware fact. When the rig is attached to the session, its `CLAUDE
 
 ## Conventions
 
-- Async throughout; `_LOGGER = logging.getLogger(__name__)`; actions registered once in `async_setup`.
+- Async throughout; actions registered once in `async_setup`.
+- Logging: [`docs/logging.md`](docs/logging.md): levels, the per-call DEBUG line, and never a device address.
 - American English, matching HA. The version lives in `manifest.json`.

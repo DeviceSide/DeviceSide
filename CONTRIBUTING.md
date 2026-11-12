@@ -33,11 +33,7 @@ If you can build a change and test it on your own devices, open a pull request d
    - `pyproject.toml`: any library its tests need, in the `dev` group
    - `custom_components/deviceside/__init__.py`, `const.py`, `strings.json` and `translations/en.json`: only if it adds a setup hook or a user option
 4. **Ship it behind `experimental`.** Every new action, integration, domain, capability and field starts flagged, as `experimental(...)` in its scope ([evidence rules](docs/evidence.md)). Unit tests pin each payload you send, and every module of your adapter code needs at least 95% line coverage.
-   - **Log for the first bug report.** A user's debug log is often all you'll get.
-     - **DEBUG:** each call you send, and each branch you take on a device's reply (a retry, a fallback, a read-back that failed, a skipped step), with the values that decided it.
-     - **INFO:** a lasting change you make to another system's settings, such as a Zigbee2MQTT option.
-     - **WARNING:** the device didn't get the command, or HA may now show the wrong state. Name the action, integration and entity, and the cause (timeout or error). End with the consequence: "…, so HA may show the old values".
-     - **Never:** device addressing (IEEE, MAC, bridge resource IDs) or tokens. Users paste logs into public issues.
+   - **Log for the first bug report**, following [docs/logging.md](docs/logging.md): a user's debug log is often all you'll get.
 5. **Test it on your devices.** Test each item at the commit whose calls you'll ship, with the Experimental features option turned on, and put the results in the pull request's Testing evidence section; if review changes a call, test again. Put measurements in your bundle's `internals.md`, dated, with the firmware, HA and library versions. What you verified ships flagged until it has soaked; then a repo maintainer removes the flag ([evidence rules](docs/evidence.md#the-experimental-flag)).
 6. **Run the checks:** set up with `uv sync`, then run `.venv/bin/pytest` and `pre-commit run --all-files`. Regenerate the cards, the feature table and CODEOWNERS with `scripts/gen_compat.py`, `scripts/gen_features.py` and `scripts/gen_codeowners.py`; CI checks each one.
 7. **Audit:** if you use Claude, run `/audit-code` on your diff; otherwise ask for an audit in the pull request. Fix every Critical and High finding and any Medium finding on a high-frequency path, and list the rest.
