@@ -89,9 +89,11 @@ there, cut the next RC from it, and merge the branch back into `main`.
   Design detail lives in `docs/design.md`.
 
 The rig, which drives the live HA and writes the records, is a private repo kept out of this one: no rig code or rig
-docs here; the rig's test plan, its step files, lives in `tests/rig/steps/`, named for the action they test, landed with
-that action. Before adding a case, name what it catches that no existing case or unit test does: a different call shape,
-a live-reply branch, or a firmware fact. When the rig is attached to the session, its `CLAUDE.md` says how to run it.
+docs here; the rig's test plan, its step files, named for the action they test and landed with that action, has two
+homes: shared ones in `tests/rig/steps/` need a repo maintainer; an integration's own in `tests/integrations/<x>/rig/`,
+run on `<x>` alone, belong to its maintainers, and repo maintainers may adopt them into the shared files. Before adding
+a case, name what it catches that no existing case or unit test does: a different call shape, a live-reply branch, or a
+firmware fact. When the rig is attached to the session, its `CLAUDE.md` says how to run it.
 
 ## Conventions
 

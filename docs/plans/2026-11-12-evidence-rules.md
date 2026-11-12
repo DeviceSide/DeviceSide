@@ -187,6 +187,12 @@ The estimates below are code plus tests.
      fact row and keeps no ledger; the ledger key is the commit and the suite, without the step-file digest.
      `tests/test_rig_steps.py` checks each file loads, calls a registered action and names registered integrations;
      the rig's CI parses them in full. The rig's own tests use fixture copies, not these.
+   - **Governance (owner, 2026-11-12).** Two homes. Shared: `tests/rig/steps/<action>.yaml`, approved by a repo
+     maintainer. Per integration: `tests/integrations/<x>/rig/<action>.yaml`, owned by that integration's
+     maintainers through its package (no CODEOWNERS change); the rig merges its tests into the action's shared suite,
+     run on `<x>` alone, and refuses an `only:` naming another integration, a test name the shared file has, or an
+     action with no adapter on `<x>`. A repo maintainer adopts good cases into the shared files when it suits.
+     Neither home is on the binding-rule audit surface.
 4. **Release gate (`check_release.py`), about −1,100.**
    - Keep `--coverage`, with the bar on every module under `core/` and `integrations/` except `__init__.py`. That drops
      the `adapter_code` import graph; first check that no module falls below the bar, and if one does, raise it in this
