@@ -51,7 +51,7 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
     scope: ClassVar[AdapterScope] = AdapterScope(
         # Zigbee plugs and switches rarely honor OnWithTimedOff (the rig's Tuya TS011F stores OnTime as a countdown
         # and never switches on), so switch fails the Documented test (docs/evidence.md, Levels): it takes the same
-        # call, so it stays flagged experimental, untested, until a maintainer verifies it.
+        # call, so it stays flagged experimental, untested, until a maintainer judges it ready.
         domains=verified("light") | experimental("switch"),
         duration=_TIMER_LIMITS,
         fields=verified("brightness", "color_temp_kelvin"),

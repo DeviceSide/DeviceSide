@@ -25,8 +25,8 @@ class Level(IntEnum):
     """How well a scope item is proven, weakest first (docs/evidence.md). A call's level is the weakest among the
     in-scope items it touches."""
 
-    # The experimental flag on one item, not yet verified by a maintainer: refused unless the Experimental features
-    # option is on. The PR that lands its verification lifts it (docs/evidence.md, The experimental flag).
+    # The experimental flag on one item, not yet judged ready for everyone: refused unless the Experimental features
+    # option is on. A maintainer lifts it when they judge it ready (docs/evidence.md, The experimental flag).
     EXPERIMENTAL = 0
     # Reaches the same capability as a Verified item, differing only in addressing; unit tests pin the payload.
     DOCUMENTED = 10

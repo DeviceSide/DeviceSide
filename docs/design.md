@@ -24,8 +24,8 @@ Code and docs use these terms.
 - **Level**: how a scope item is proven, Verified or Documented. Rules: [evidence.md](evidence.md#levels). User
   wording: [device-compatibility.md](device-compatibility.md#levels-of-proof).
 - **Experimental**: the flag on a scope item (`experimental(...)`) or a whole adapter (`experimental=True`) not yet
-  verified by a maintainer, which keeps it off until the user turns on Experimental features; not a level. The PR
-  that lands its verification lifts it. Rules:
+  judged ready for everyone, which keeps it off until the user turns on Experimental features; not a level. An
+  integration maintainer lifts it when they judge it ready; a passing run is evidence for that, not a trigger. Rules:
   [evidence.md](evidence.md#the-experimental-flag).
 - **Maintainer**: a GitHub handle in an integration's `IntegrationInfo.maintainers`. Maintainers look after that
   integration's package: they get its bug reports and approve changes to it. Rules:
@@ -48,7 +48,7 @@ Code and docs use these terms.
   `_manual.md`, one line per run; either can be a sign-off ([release gate](evidence.md#release-gate)).
 - **Device report**: a user's "works" or "doesn't work" for an action on a model, filed with the device report form;
   the GitHub issue is its record. A maintainer who trusts a "works" report may cite it in a `_manual.md` line as a
-  sign-off, which for an item no maintainer can test verifies it and lifts its flag; a "doesn't work" is evidence for
+  sign-off, which for an item no maintainer can test verifies it; a "doesn't work" is evidence for
   a fix or for leaving the item out.
 - **Profile**: one test setup on the rig's HA, the entities a run may move by integration and role; a record names the
   one it ran on (`lab`, `house`).

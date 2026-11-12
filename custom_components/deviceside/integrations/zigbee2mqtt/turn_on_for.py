@@ -54,7 +54,7 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
     scope: ClassVar[AdapterScope] = AdapterScope(
         # Zigbee plugs and switches rarely honor OnWithTimedOff, and Z2M has no read-back to show it, so switch fails
         # the Documented test (docs/evidence.md, Levels): it takes the same call, so it stays flagged experimental,
-        # untested, until a maintainer verifies it.
+        # untested, until a maintainer judges it ready.
         domains=verified("light") | experimental("switch"),
         duration=_TIMER_LIMITS,
         fields=verified("brightness", "color_temp_kelvin", "hs_color", "rgb_color", "xy_color", "transition"),

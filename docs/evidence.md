@@ -62,26 +62,29 @@ documents identically (`integrations/shelly/addressing.py`).
 
 ## The experimental flag
 
-`experimental` is a flag, not a level, and it means one thing: not yet verified by a maintainer (nor Documented). In
-code it is the per-axis marker `experimental(...)`, beside `verified(...)` and `documented(...)`; `experimental=True` on
-an `AdapterScope` flags the whole adapter. A flagged item is refused unless the user turns on the Experimental features
-option. The dispatcher is the only gate: adapters never read the option, and turning it on never changes how any other
-item behaves.
+`experimental` is a flag, not a level: the item is not yet judged ready for everyone. In code it is the per-axis
+marker `experimental(...)`, beside `verified(...)` and `documented(...)`; `experimental=True` on an `AdapterScope` flags
+the whole adapter. A flagged item is refused unless the user turns on the Experimental features option. The dispatcher
+is the only gate: adapters never read the option, and turning it on never changes how any other item behaves.
 
-Every new feature (action, integration, domain, capability or field) starts flagged. The PR that lands a
-maintainer's verification of a flagged item, a passing rig record or a `_manual.md` sign-off, also lifts its flag:
-`experimental(...)` becomes `verified(...)`, or `experimental=True` goes. A flagged item that qualifies as Documented
-becomes `documented(...)` in a PR that argues the sibling case ([Levels](#levels)). The soak is the RC soak every
-change gets before a release, so no passing run on `main` covers a flagged item's current call. Lifting a flag is a
-change to the integration's package, so one of its maintainers approves it, as for any change there
+Every new feature (action, integration, domain, capability or field) starts flagged, and soaks behind the flag with
+users who opt in. A passing rig record or `_manual.md` sign-off on a flagged item is evidence a maintainer can use to
+lift its flag for the next release, skipping that soak; it is not a requirement to lift it. Whether to lift is the
+maintainer's judgment, by how complex the feature is and how complete its tests are: a developer may run the first
+few rig cases before the full suite exists, so a flagged item may have passing runs and stay flagged. Lifting makes
+`experimental(...)` into `verified(...)`, or drops `experimental=True`; a flagged item that qualifies as Documented
+becomes `documented(...)` in a PR that argues the sibling case ([Levels](#levels)). Lifting a flag is a change to the
+integration's package, so one of its maintainers approves it, as for any change there
 ([CLAUDE.md](../CLAUDE.md#maintainers)).
 
 For an item no maintainer can test, users' working reports, cited in a maintainer's `_manual.md` sign-off, can verify
-it and lift its flag. The maintainer judges how many are enough (tenet 7); nothing counts them in code.
+it. The maintainer judges how many are enough (tenet 7); nothing counts them in code.
+
+The cards never put a model under Works from a pass on a flagged item while its flag stands (`scripts/gen_compat.py`).
 
 *Example:* Shelly dimming on `Light` is `experimental("Light")`: a user's report of a Gen3 Dimmer jumping on
-`DimStop` keeps it from Documented. Once a maintainer verifies it on a dimmer, the PR that lands that record makes it
-`verified("Light")`.
+`DimStop` keeps it from Documented. A passing `raise_brightness` run on a Gen3 Dimmer puts no model under Works and
+lets a Shelly maintainer lift the flag, once they judge the tests complete: their PR makes it `verified("Light")`.
 
 ## Caveats
 

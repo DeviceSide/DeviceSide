@@ -78,6 +78,20 @@ deciding when to test.
   every change gets. Lifting a flag is a package change, so the integration's maintainers approve it. The
   soak-then-five-reports route is gone as the normal path; for an item no maintainer can test, user reports cited in
   a `_manual.md` sign-off can verify it and lift its flag. A flagged item so never has a passing run on `main`.
+  (Superseded 2026-11-12: the decision below.)
+- **Decision (Jason, 2026-11-12): a passing run is evidence for lifting the flag, not a requirement to lift it.** The
+  flag means the item is not yet judged ready for everyone. A passing rig run or `_manual.md` sign-off on a flagged
+  item lets a maintainer lift the flag for the next release, skipping the flagged soak; lifting stays the
+  maintainer's judgment, by how complex the feature is and how complete its tests are (a developer may run the first
+  few rig cases before the full suite exists). The integration's maintainer approves the lift. For an item no
+  maintainer can test, users' reports cited in a `_manual.md` sign-off can verify it. A flagged item may so have
+  passing runs and stay flagged.
+- **Decision (Jason, 2026-11-12): a pass on a flagged item never puts its model on the cards** under Works until the
+  flag is removed. Records name models and each test's Target domain but not which test reached which model or
+  component, so `gen_compat` is fail-safe: an adapter flagged on any capability or field, or whole, adds no Works
+  models from its records or manual rows; one flagged on a domain counts only records whose passing tests all target
+  unflagged domains, and no `_manual.md` rows. A model can still reach Works through another adapter's evidence.
+  Today's cards are unchanged by it.
 - **Contrary evidence:** a report of misbehavior doesn't change the level. The maintainer root-causes it, and the fix,
   the updated fact or a demotion lands with the finding.
 - **Caveats** (decided 2026-11-12): one field, `AdapterScope.caveat`, with a reason (an issue URL), set and cleared by
@@ -243,7 +257,8 @@ The estimates below are code plus tests.
    - Follow-up (Jason, 2026-11-12): one 🧪 tier, no tested/Help us test split. Every flagged item shows alike, with
      no per-item evidence rule; the legend's 🧪 entry says it's off until Experimental features is on and asks for a
      report. Whether a flagged item was tested is the judgment of the repo maintainer who removes its flag
-     (superseded 2026-11-12: a flagged item is untested, as the PR landing its verification lifts its flag).
+     (superseded 2026-11-12: a flagged item is untested, as the PR landing its verification lifts its flag; that in
+     turn superseded 2026-11-12: a flagged item may have passing runs, and its maintainer judges when to lift it).
    - Follow-up (Jason, 2026-11-12): drop `reports:` from `devices.yaml`, with its loader, validation and the evidence
      block's Reports column. The GitHub issue is a report's record; a maintainer who trusts one cites it in a
      `_manual.md` sign-off.
