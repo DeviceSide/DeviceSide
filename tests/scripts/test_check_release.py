@@ -100,10 +100,16 @@ CORE = "custom_components/deviceside/core"
 HUE = "custom_components/deviceside/integrations/hue"
 
 
+def touch(repo, *files: str) -> None:
+    """Write empty files into the repository without committing them: the coverage bar reads only the tree."""
+    for file in files:
+        (repo.path / file).parent.mkdir(parents=True, exist_ok=True)
+        (repo.path / file).write_text("")
+
+
 def test_the_bar_covers_every_module_under_core_and_integrations_bar_init(fake_repo, tmp_path):
-    for module in [f"{CORE}/__init__.py", f"{CORE}/dispatcher.py", f"{HUE}/__init__.py", f"{HUE}/transport.py"]:
-        fake_repo.commit(module, "")
-    fake_repo.commit("custom_components/deviceside/actions/stop.py", "")
+    modules = [f"{CORE}/__init__.py", f"{CORE}/dispatcher.py", f"{HUE}/__init__.py", f"{HUE}/transport.py"]
+    touch(fake_repo, *modules, "custom_components/deviceside/actions/stop.py")
     report = {f"{CORE}/dispatcher.py": 94, f"{HUE}/transport.py": 95, "custom_components/deviceside/actions/stop.py": 0}
     assert cr.coverage_errors(json.loads(coverage(tmp_path / "c.json", report).read_text())) == [
         f"{CORE}/dispatcher.py: 94.0% line coverage, under 95%"
@@ -111,18 +117,18 @@ def test_the_bar_covers_every_module_under_core_and_integrations_bar_init(fake_r
 
 
 def test_a_module_missing_from_coverage_is_an_error(fake_repo):
-    fake_repo.commit(f"{HUE}/transport.py", "")
+    touch(fake_repo, f"{HUE}/transport.py")
     assert cr.coverage_errors({"files": {}}) == [f"{HUE}/transport.py: 0.0% line coverage, under 95%"]
 
 
 def test_a_module_with_no_statements_is_covered(fake_repo):
-    fake_repo.commit(f"{HUE}/const.py", "")
+    touch(fake_repo, f"{HUE}/const.py")
     empty = {"files": {f"{HUE}/const.py": {"summary": {"covered_lines": 0, "num_statements": 0}}}}
     assert cr.coverage_errors(empty) == []
 
 
 def test_main_fails_under_the_bar(fake_repo, monkeypatch, tmp_path, capsys):
-    fake_repo.commit(f"{HUE}/transport.py", "")
+    touch(fake_repo, f"{HUE}/transport.py")
     registry = FakeRegistry(fake_repo.path, monkeypatch, {})
     assert cr.main(["--coverage", str(coverage(tmp_path / "c.json", {f"{HUE}/transport.py": 100}))], registry) == 0
     assert cr.main(["--coverage", str(coverage(tmp_path / "c.json", {f"{HUE}/transport.py": 50}))], registry) == 1
@@ -224,9 +230,9 @@ OTHER = "custom_components/deviceside/integrations/other"
 @pytest.fixture
 def released(fake_repo):
     """fake and other, each with two adapter modules and a helper, released as v0.1.0, with a later RC tag."""
-    for package in (FAKE, OTHER):
-        for module in ("__init__.py", "turn_on_for.py", "stop.py", "transport.py"):
-            fake_repo.commit(f"{package}/{module}", "")
+    modules = ("__init__.py", "turn_on_for.py", "stop.py", "transport.py")
+    touch(fake_repo, *(f"{package}/{module}" for package in (FAKE, OTHER) for module in modules))
+    fake_repo.commit()
     fake_repo.git("tag", "v0.1.0")
     fake_repo.commit()
     fake_repo.git("tag", "v0.2.0rc1")  # an RC is never the last release
