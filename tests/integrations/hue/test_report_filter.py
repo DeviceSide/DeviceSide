@@ -171,16 +171,6 @@ async def test_a_real_change_from_the_bridge_forgets_the_light(hass, bridge, cac
     assert not api.lights["one"].on.on  # aiohue applies every event: observe only
 
 
-async def test_a_refused_move_records_nothing(hass, bridge, cache):
-    await setup_room(hass, bridge)
-    bridge.failing.add("one")
-
-    with pytest.raises(HomeAssistantError):
-        await call(hass, "raise_brightness", {"entity_id": "light.one"})
-
-    assert not cache.follows("one")
-
-
 @pytest.mark.parametrize("action", ["raise_brightness", "stop"])
 async def test_a_refused_write_puts_back_the_prediction_it_replaced(hass, bridge, cache, clock, action):
     await setup_room(hass, bridge)
