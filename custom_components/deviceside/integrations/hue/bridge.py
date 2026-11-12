@@ -61,6 +61,12 @@ def expand_group(hass: HomeAssistant, target: Target) -> list[Target]:
     return resolve_members(hass, get_runtime(hass).registry, target, "hue", (light.id for light in lights))
 
 
+def entity_name(hass: HomeAssistant, rid: str) -> str:
+    """The light entity HA has for a light or grouped_light resource, for a log line, which never names the resource
+    id; "a Hue light with no entity" when HA has none."""
+    return er.async_get(hass).async_get_entity_id("light", "hue", rid) or "a Hue light with no entity"
+
+
 def log_write(
     hass: HomeAssistant,
     writer: LightsController | GroupedLightController,
@@ -73,7 +79,7 @@ def log_write(
     caller's target (entity_id) when the write is to it, else the light entity the registry has for the resource."""
     if not _LOGGER.isEnabledFor(logging.DEBUG):
         return
-    entity_id = entity_id or er.async_get(hass).async_get_entity_id("light", "hue", rid)
+    entity_id = entity_id or entity_name(hass, rid)
     _LOGGER.debug("%s: sending clip %s.%s %s", entity_id, writer.item_type.value, command, params)
 
 

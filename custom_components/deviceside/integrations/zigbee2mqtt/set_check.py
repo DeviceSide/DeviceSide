@@ -106,7 +106,9 @@ class Watch:
                 # HA's own entity subscribes to this topic, so the subscription is live at once (as state_reply).
                 unsubscribe = await mqtt.async_subscribe(self.hass, light_topic, self._on_state(target.entity_id))
             except Exception as err:  # noqa: BLE001 - the publish goes out unchecked, as before
-                _LOGGER.debug("Couldn't subscribe to %s, so a failed send isn't seen: %s", light_topic, err)
+                _LOGGER.debug(
+                    "Couldn't subscribe to %s's state, so a failed send isn't seen: %s", target.entity_id, err
+                )
                 return
             # Another send may have noted the entity during the subscribe (a group's member that is a target too).
             if self.closed or (entity := self.entities.get(target.entity_id)) is not None:

@@ -428,7 +428,8 @@ async def test_failed_state_subscribe_still_restores_after_the_cap(
 
     assert loop.time() - start >= nc._REPLY_CAP_S
     assert options(broker) == [True, False]
-    assert "Couldn't subscribe to zigbee2mqtt/lamp, so Zigbee2MQTT's answer isn't awaited" in caplog.text
+    assert f"Couldn't subscribe to {entity_id}'s state, so Zigbee2MQTT's answer isn't awaited" in caplog.text
+    assert "zigbee2mqtt/lamp" not in caplog.text
 
 
 async def test_call_returns_before_the_reply_and_restores_after_it(hass, setup_production, clock, broker, monkeypatch):

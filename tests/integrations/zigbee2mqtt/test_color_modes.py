@@ -22,7 +22,7 @@ from custom_components.deviceside.integrations.zigbee2mqtt.color_modes import (
 )
 
 from ...conftest import wall_clock_now
-from ...fixtures.zigbee2mqtt import GROUPS, IEEE, INFO
+from ...fixtures.zigbee2mqtt import GROUPS, IEEE, INFO, add_z2m_entity, add_z2m_group, z2m_entry
 
 DEVICES = "zigbee2mqtt/bridge/devices"
 DEVICE_REQUEST = "zigbee2mqtt/bridge/request/device/options"
@@ -51,8 +51,12 @@ def overrides(modes: list[str] | None) -> dict:
 
 
 @pytest.fixture
-def z2m(broker):
-    """Z2M with one full-color bulb, one more, a color temperature bulb, and their groups."""
+def z2m(hass, broker):
+    """Z2M with one full-color bulb, one more, a color temperature bulb, and their groups; HA has the first bulb's
+    light and the first group's, which the log lines name instead of Z2M's friendly names."""
+    entry = z2m_entry(hass)
+    add_z2m_entity(hass, entry, "light.lamp", ieee=IEEE)
+    add_z2m_group(hass, entry, "light.color_pair", 1)
     broker.retained[DEVICES] = [
         {"ieee_address": "0x0000", "type": "Coordinator", "definition": None},
         device(IEEE, FULL, name="lamp"),
@@ -151,8 +155,10 @@ async def test_enabled_announces_qualifying_lights_and_groups_with_both_modes(ha
         ("device", OTHER): overrides(["xy", "hs"]),
         ("group", "1"): ON,
     }
-    assert "color modes for lamp to xy, hs, color_temp, so Home Assistant shows its color" in caplog.text
-    assert "for color pair to xy, hs, color_temp" in caplog.text
+    assert "color modes for light.lamp to xy, hs, color_temp, so Home Assistant shows its color" in caplog.text
+    assert "for light.color_pair to xy, hs, color_temp" in caplog.text
+    assert "for a Zigbee2MQTT device with no light to xy, hs," in caplog.text  # OTHER has no light in HA
+    assert "color pair" not in caplog.text and OTHER not in caplog.text
     assert not z2m.subscribers.get(DEVICES) and not z2m.subscribers.get(INFO)
 
 
@@ -174,7 +180,7 @@ async def test_disabled_puts_back_z2m_defaults_only_where_deviceside_set_them(ha
         await ensure_color_modes(hass, False)
 
     assert sent(z2m) == {("device", IEEE): OFF, ("group", "1"): OFF}
-    assert "for lamp to xy, color_temp, as Zigbee2MQTT announces it" in caplog.text
+    assert "for light.lamp to xy, color_temp, as Zigbee2MQTT announces it" in caplog.text
 
 
 async def test_no_z2m_does_nothing_quietly(hass, broker, caplog):
@@ -190,7 +196,7 @@ async def test_an_error_reply_warns_and_the_rest_still_go(hass, z2m, caplog):
     await ensure_color_modes(hass, True)
 
     assert set(sent(z2m)) == {("device", IEEE), ("device", OTHER), ("group", "1")}
-    assert "Couldn't set Zigbee2MQTT's Home Assistant color modes for lamp: refused" in caplog.text
+    assert "Couldn't set Zigbee2MQTT's Home Assistant color modes for light.lamp: refused" in caplog.text
 
 
 async def test_unexpected_bridge_devices_warns_and_does_nothing(hass, z2m, caplog):

@@ -147,7 +147,7 @@ async def read_attributes(
 
     device = gateway(hass).get_device(EUI64.convert(addr.ieee))
     if device is None:
-        raise LookupError(f"ZHA device {addr.ieee} not found")
+        raise LookupError("ZHA device not found")
     cluster = device.async_get_cluster(addr.endpoint_id, cluster_id, cluster_type="in")
     wanted = [*attributes, *optional]
     success, failure = await cluster.read_attributes(wanted, allow_cache=False, only_cache=False)
@@ -182,7 +182,7 @@ async def hue_turn_on(
     from zigpy.types import EUI64, SerializableBytes, Struct
 
     if (device := gateway(hass).get_device(EUI64.convert(addr.ieee))) is None:
-        raise LookupError(f"ZHA device {addr.ieee} not found")
+        raise LookupError(f"ZHA device of {entity_id} not found")
     try:
         cluster = device.async_get_cluster(addr.endpoint_id, HUE_CLUSTER, cluster_type="in")
     except KeyError:
@@ -196,7 +196,7 @@ async def hue_turn_on(
     _LOGGER.debug("%s: sending zcl %s %s", entity_id, _command_name(HUE_CLUSTER, HUE_MULTI_COLOR), payload.hex())
     response = await cluster.request(False, HUE_MULTI_COLOR, MultiColor, payload, manufacturer=SIGNIFY)
     if (status := getattr(response, "status", 0)) != 0:
-        raise HomeAssistantError(f"multiColor to {addr.ieee} answered {status}")
+        raise HomeAssistantError(f"multiColor to {entity_id} answered {status}")
     return True
 
 
@@ -210,7 +210,7 @@ async def enhanced_hue(hass: HomeAssistant, addr: Address) -> bool:
     from zigpy.types import EUI64
 
     if (device := gateway(hass).get_device(EUI64.convert(addr.ieee))) is None:
-        raise LookupError(f"ZHA device {addr.ieee} not found")
+        raise LookupError("ZHA device not found")
     try:
         cluster = device.async_get_cluster(addr.endpoint_id, COLOR_CLUSTER, cluster_type="in")
     except KeyError:

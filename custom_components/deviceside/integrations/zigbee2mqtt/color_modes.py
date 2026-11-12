@@ -21,7 +21,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.debounce import Debouncer
 
-from .addressing import bridge_topic
+from .addressing import bridge_topic, entity_name
 from .bridge import ensure_options, retained
 
 _LOGGER = logging.getLogger(__name__)
@@ -123,7 +123,8 @@ async def ensure_color_modes(hass: HomeAssistant, enabled: bool) -> None:
         _LOGGER.warning("Couldn't read Zigbee2MQTT's devices to check their color modes: %s", err)
         return
 
-    for kind, z2m_id, exposes, name in entities:
+    for kind, z2m_id, exposes in entities:
+        name = entity_name(hass, kind, z2m_id)  # never the friendly name, which a user's log would carry
         if not wanted(settings.get(f"{kind}s", {}).get(z2m_id, {}), exposes, enabled):
             continue
         modes = both_modes(exposes) if enabled else default_modes(exposes)
@@ -142,19 +143,18 @@ async def ensure_color_modes(hass: HomeAssistant, enabled: bool) -> None:
             _LOGGER.warning("Couldn't set Zigbee2MQTT's Home Assistant color modes for %s: %s", name, err)
 
 
-def _entities(devices: list[dict], groups: list[dict]) -> list[tuple[str, str, list[dict], str]]:
-    """(kind, Z2M ID, light exposes, name) for each qualifying device, and each group whose members all qualify."""
+def _entities(devices: list[dict], groups: list[dict]) -> list[tuple[str, str, list[dict]]]:
+    """(kind, Z2M ID, light exposes) for each qualifying device, and each group whose members all qualify."""
     lights = {
         device["ieee_address"]: expose
         for device in devices
         if qualifies(expose := light_expose(device.get("definition"))) and device.get("ieee_address")
     }
-    names = {device.get("ieee_address"): device.get("friendly_name") for device in devices}
-    entities = [("device", ieee, [expose], names[ieee]) for ieee, expose in lights.items()]
+    entities = [("device", ieee, [expose]) for ieee, expose in lights.items()]
     for group in groups:
         members = [member.get("ieee_address") for member in group.get("members", [])]
         if members and all(member in lights for member in members):
-            entities.append(("group", str(group.get("id")), [lights[m] for m in members], group.get("friendly_name")))
+            entities.append(("group", str(group.get("id")), [lights[m] for m in members]))
     return entities
 
 

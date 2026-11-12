@@ -319,9 +319,9 @@ def load_broken(entry: dict, known: set[str], data: Data) -> None:
 
 
 def load_report(report: dict, known: set[str], shipped: dict[tuple[str, str], object], data: Data) -> None:
-    """A report names the domain or capability (Shelly: RPC component) its call reached as `item`. A working one on a
-    One on an Experimental item is recorded and counts toward removing its flag, which a repo maintainer judges, so no
-    count is checked here."""
+    """A report names the domain or capability (Shelly: RPC component) its call reached as `item`. One on an
+    Experimental item is recorded and counts toward removing its flag, which a repo maintainer judges, so no count is
+    checked here."""
     where = f"report {report.get('issue') if isinstance(report, dict) else report}"
     need(report, where, ("integration", "item"), keys=REPORT_KEYS)
     if report["integration"] not in known:

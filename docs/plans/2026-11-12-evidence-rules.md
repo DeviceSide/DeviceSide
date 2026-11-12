@@ -152,9 +152,9 @@ The estimates below are code plus tests.
      land. No RC is cut during the transition.
    - Run pre-commit and the Opus audit (binding-rule surface).
 2. **Runtime (DeviceSide), about −300.**
-   - `core/scope.py`: `Level` keeps `VERIFIED` and `DOCUMENTED`. `experimental` becomes a runtime gate:
-     the `experimental(...)` marker and `experimental=True` both gate at runtime. Drop `REPORTED`, `stale_tests`,
-     `siblings` and `_check_siblings`. Add `caveat` (Untested fix, Unmaintained) in place of `unmaintained`.
+   - `core/scope.py`: `Level` keeps `VERIFIED`, `DOCUMENTED` and `EXPERIMENTAL` (the per-item flag); drop
+     `REPORTED`. `experimental` becomes a runtime gate: the `experimental(...)` marker and `experimental=True` both
+     gate at runtime. Drop `stale_tests`, `siblings` and `_check_siblings`. Add `caveat` (Untested fix, Unmaintained) in place of `unmaintained`.
    - `core/dispatcher.py`: refuse a flagged item unless the option is on; drop the scope trace.
    - `core/wire.py`: becomes a `_LOGGER.debug` per call in the same helpers; drop both HA events.
    - `__init__.py`: one setup warning per caveat, replacing the unmaintained and stale-tests warnings.
