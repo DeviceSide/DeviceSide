@@ -1,0 +1,35 @@
+# Clearing the persistent auto-off. Plug only, and the entry reload, as in set_auto_off.yaml; the devices start with
+# it clear. A clear on a setting already clear is unit-tested in deviceside (test_auto.py).
+action: clear_auto_off
+rig_seconds: 300
+tests:
+  - name: clears
+    roles: [switch_plug]
+    only: [shelly]
+    steps:
+      - set: {state: off}
+      - call: {action: set_auto_off, duration: 6}
+      - expect_response: {status: expected, integration: self}
+      - call: {}  # waits out the set's entry reload
+      - expect_response: {status: expected, integration: self}
+      - set: {state: on}  # waits out the clear's
+      - wait: duration + 2 * tol
+      - expect_state: {state: on}
+
+  # A turn_on_for countdown already running, guessed as surviving the clear. All inside the clear's 60 s before its
+  # entry reload, so no reload cuts in.
+  - name: countdown_survives_a_clear
+    roles: [switch_plug]
+    only: [shelly]
+    firmware_fact: true
+    steps:
+      - set: {state: off}
+      - call: {action: set_auto_off, duration: 60}
+      - expect_response: {status: expected, integration: self}
+      - call: {action: turn_on_for, duration: 20}  # waits out the set's entry reload
+      - expect_state: {state: on, within: tol}
+      - wait: 3
+      - call: {}
+      - expect_response: {status: expected, integration: self}
+      - expect_state: {state: on}
+      - expect_state: {state: off, within: 17 + 2 * tol}

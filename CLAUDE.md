@@ -88,8 +88,10 @@ there, cut the next RC from it, and merge the branch back into `main`.
 - `docs/integrations/<integration>/`: the integration's bundle (see Where facts go); the rig writes its `test-records/`.
   Design detail lives in `docs/design.md`.
 
-The rig, which drives the live HA and writes the records, is a private repo kept out of this one: don't add rig code,
-step files or rig docs here. When it is attached to the session, its `CLAUDE.md` says how to run it.
+The rig, which drives the live HA and writes the records, is a private repo kept out of this one: no rig code or rig
+docs here; the rig's step files live in `tests/rig/steps/`, one per action, landed with the action they test. Before
+adding a case, name what it catches that no existing case or unit test does: a different call shape, a live-reply
+branch, or a firmware fact. When the rig is attached to the session, its `CLAUDE.md` says how to run it.
 
 ## Conventions
 

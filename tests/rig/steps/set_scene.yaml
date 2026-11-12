@@ -1,0 +1,29 @@
+# hue_dimmer tests/RELEASE_CHECKLIST.md §5.1-5.2 as steps. §5.3, an edit in the Hue app applying, is unit-tested
+# (re-read on every call) and was watched on the rig in #48.
+# The target is the scene; `target: group` points a step at the room the scene belongs to. §5.4-5.8 need
+# scene kinds (a light off, All-Day, dynamic), a large room and a second bridge that profile roles don't name yet.
+action: set_scene
+rig_seconds: 80
+tests:
+  - name: sets_while_off  # §5.1
+    roles: [scene]
+    setup:
+      - set: {target: group, state: on, color_temp_kelvin: 6500}
+      - set: {target: group, state: off}
+    steps:
+      - call: {}
+      - expect_response: {status: expected, integration: self}
+      - wait: 1
+      - expect_state: {target: group, state: off}
+      - set: {target: group, state: on}
+
+  # The room starts at full and 6500 K, far from the scene's 40 % and 2732 K (the rig-made scene's values, roam.py's
+  # SCENE_BRIGHTNESS and SCENE_MIREK), so a call that applied nothing leaves light_ct where the setup put it and fails.
+  - name: applies_while_on  # §5.2
+    roles: [scene]
+    setup:
+      - set: {target: group, state: on, brightness_pct: 100, color_temp_kelvin: 6500}
+    steps:
+      - call: {}
+      - expect_state: {target: group, state: on, within: tol}
+      - expect_state: {target: light_ct, state: on, brightness: {min: 90, max: 114}, color_temp_kelvin: {min: 2600, max: 2850}, within: 5}

@@ -1,0 +1,230 @@
+# The device's own timer turns the target back off. A relay sends the same call whether HA shows it as a switch,
+# a light, or a switch_as_x light over the switch, so the plug proves on/off for all three; the drops_brightness
+# cases keep the two light shapes covered.
+action: turn_on_for
+rig_seconds: 90
+tests:
+  - name: on_then_off
+    roles: [switch_plug]
+    steps:
+      - set: {state: off}
+      - call: {duration: 6}
+      - expect_response: {status: expected, integration: self}
+      - expect_state: {state: on, within: tol}
+      - wait: duration - tol
+      - expect_state: {state: on}
+      - expect_state: {state: off, within: 2 * tol}
+
+  # A switch_as_x wrapper drives an on/off switch, so brightness is dropped and the timer still runs.
+  - name: drops_brightness_on_a_wrapper
+    roles: [light_wrapped]
+    steps:
+      - set: {state: off}
+      - call: {duration: 6, brightness: 50}
+      - expect_response: {status: expected, integration: self, detail: fields_dropped}
+      - expect_state: {state: on, within: tol}
+      - wait: duration - tol
+      - expect_state: {state: off, within: 2 * tol}
+
+  # A Shelly relay shown as a light is on/off (its Switch component), so brightness is dropped likewise.
+  - name: drops_brightness_on_a_relay_light
+    roles: [light_onoff]
+    only: [shelly]
+    steps:
+      - set: {state: off}
+      - call: {duration: 6, brightness: 50}
+      - expect_response: {status: expected, integration: self, detail: fields_dropped}
+      - expect_state: {state: on, within: tol}
+      - wait: duration - tol
+      - expect_state: {state: off, within: 2 * tol}
+
+  # A bulb takes the same timer; a dimmer's own On command, not a relay's.
+  - name: bulb_on_then_off
+    roles: [light_dimmable]
+    steps:
+      - set: {state: off}
+      - wait: 2  # ZHA ignores a light's "on" report for 1.5 s after light.turn_off
+        only: [zha]
+      - call: {duration: 6}
+      - expect_response: {status: expected, integration: self}
+      - expect_state: {state: on, within: tol}
+      - wait: duration - tol
+      - expect_state: {state: on}
+      - expect_state: {state: off, within: 2 * tol}
+
+  # Brightness is set by light.turn_on before the timer starts, and holds until the device turns itself off.
+  - name: bulb_brightness_then_off
+    roles: [light_dimmable]
+    only: [zha]  # bulb_transition_then_off covers brightness on Shelly and Zigbee2MQTT
+    steps:
+      - set: {state: off}
+      - wait: 2  # ZHA ignores a light's "on" report for 1.5 s after light.turn_off
+      - call: {duration: 6, brightness: 50}
+      - expect_response: {status: expected, integration: self}
+      - expect_state: {state: on, brightness: {min: 120, max: 136}, within: tol}
+      - wait: duration - tol
+      - expect_state: {state: on}
+      - expect_state: {state: off, within: 2 * tol}
+
+  # Color temperature rides the same light.turn_on as brightness. On Z2M the option is turned off first, so the color
+  # landing proves the adapter turns Hue native control on for the turn_on, and the option after proves it put the
+  # user's value back (z2m_option steps do nothing elsewhere).
+  - name: bulb_color_temp_then_off
+    roles: [light_ct]
+    only: [shelly, zha, zigbee2mqtt]
+    steps:
+      - z2m_option: {hue_native_control: false}
+      - set: {state: off}
+      - wait: 2  # ZHA ignores a light's "on" report for 1.5 s after light.turn_off
+        only: [zha]
+      - call: {duration: 6, color_temp_kelvin: 4000}
+      - expect_response: {status: expected, integration: self}
+      - expect_state: {state: on, color_temp_kelvin: {min: 3900, max: 4100}, within: tol}
+      - wait: duration - tol
+      - expect_state: {state: on}
+      - expect_state: {state: off, within: 2 * tol}
+      - expect_z2m_option: {hue_native_control: false}  # set for the turn_on only, then put back
+
+  # Shelly sends transition in the same Set as the timer: the bulb fades up to the brightness, then turns itself off.
+  - name: bulb_transition_then_off
+    roles: [light_dimmable]
+    only: [shelly, zigbee2mqtt]  # ZHA's scope has no transition
+    steps:
+      - set: {state: off}
+      - call: {duration: 6, brightness: 50, transition: 2}
+      - expect_response: {status: expected, integration: self}
+      - expect_state: {state: on, brightness: {min: 120, max: 136}, within: tol + 2}
+      # The on check can pass at once (Z2M shows the target brightness before the fade ends), so the still-on
+      # check comes 2 s early and the off window takes those 2 s back: it ends duration + tol after the on check,
+      # as in every case above, and so still covers Z2M's state read at on_time + 1 s.
+      - wait: duration - tol - 2
+      - expect_state: {state: on}
+      - expect_state: {state: off, within: 2 * tol + 2}
+
+  # Shelly's RGBCCT Set carries mode rgb with the color, so color_mode rgb shows the bulb left color temperature.
+  # Watched, as no automated check sees whether it lit warm white first.
+  - name: rgbcct_bulb_rgb_then_off
+    roles: [light_color]
+    only: [shelly]
+    setup:
+      - set: {state: on, color_temp_kelvin: 2700}
+      - set: {state: off}
+    steps:
+      - call: {duration: 6, rgb_color: [255, 0, 0]}
+      - expect_response: {status: expected, integration: self}
+      - expect_state: {state: on, color_mode: rgb, rgb_color: [255, 0, 0], within: tol}
+      - wait: duration - tol
+      - expect_state: {state: on}
+      - expect_state: {state: off, within: 2 * tol}
+
+  # hs and xy go as the rgb core would send (light/helper.py), which doesn't depend on the bulb's mode: hs from color
+  # temperature, xy from a color, each ending on core's rgb for it.
+  - name: rgbcct_bulb_hs_then_off
+    roles: [light_color]
+    only: [shelly]
+    setup:
+      - set: {state: on, color_temp_kelvin: 2700}
+      - set: {state: off}
+    steps:
+      - call: {duration: 6, hs_color: [120, 100]}
+      - expect_response: {status: expected, integration: self}
+      - expect_state: {state: on, color_mode: rgb, rgb_color: [0, 255, 0], within: tol}
+      - wait: duration - tol
+      - expect_state: {state: on}
+      - expect_state: {state: off, within: 2 * tol}
+
+  - name: rgbcct_bulb_xy_then_off
+    roles: [light_color]
+    only: [shelly]
+    setup:
+      - set: {state: on, rgb_color: [255, 0, 0]}
+      - set: {state: off}
+    steps:
+      - call: {duration: 6, xy_color: [0.15, 0.06]}
+      - expect_response: {status: expected, integration: self}
+      - expect_state: {state: on, color_mode: rgb, rgb_color: [57, 53, 255], within: tol}
+      - wait: duration - tol
+      - expect_state: {state: on}
+      - expect_state: {state: off, within: 2 * tol}
+
+  # A color rides the same light.turn_on as brightness. Setup leaves the bulb in color temperature, so color_mode
+  # xy shows the call moved it to color; Z2M reports every color field in xy. One test per field, as a record
+  # covers only the fields its calls sent. The RGB test's red from the start was watched in #80.
+  - name: bulb_rgb_then_off
+    roles: [light_color]
+    only: [zigbee2mqtt]
+    setup:
+      - z2m_option: {hue_native_control: false}
+      - set: {state: on, color_temp_kelvin: 2700}
+      - set: {state: off}
+    steps:
+      - call: {duration: 6, rgb_color: [255, 0, 0]}
+      - expect_response: {status: expected, integration: self}
+      - expect_state: {state: on, color_mode: xy, within: tol}
+      - wait: duration - tol
+      - expect_state: {state: on}
+      - expect_state: {state: off, within: 2 * tol}
+      - expect_z2m_option: {hue_native_control: false}  # set for the turn_on only, then put back
+
+  - name: bulb_hs_then_off
+    roles: [light_color]
+    only: [zigbee2mqtt]
+    setup:
+      - z2m_option: {hue_native_control: false}
+      - set: {state: on, color_temp_kelvin: 2700}
+      - set: {state: off}
+    steps:
+      - call: {duration: 6, hs_color: [120, 100]}
+      - expect_response: {status: expected, integration: self}
+      - expect_state: {state: on, color_mode: xy, within: tol}
+      - wait: duration - tol
+      - expect_state: {state: on}
+      - expect_state: {state: off, within: 2 * tol}
+      - expect_z2m_option: {hue_native_control: false}  # set for the turn_on only, then put back
+
+  - name: bulb_xy_then_off
+    roles: [light_color]
+    only: [zigbee2mqtt]
+    setup:
+      - z2m_option: {hue_native_control: false}
+      - set: {state: on, color_temp_kelvin: 2700}
+      - set: {state: off}
+    steps:
+      - call: {duration: 6, xy_color: [0.15, 0.06]}
+      - expect_response: {status: expected, integration: self}
+      - expect_state: {state: on, color_mode: xy, within: tol}
+      - wait: duration - tol
+      - expect_state: {state: on}
+      - expect_state: {state: off, within: 2 * tol}
+      - expect_z2m_option: {hue_native_control: false}  # set for the turn_on only, then put back
+
+  # A Zigbee group takes one OnWithTimedOff on its group address, so every member runs the same timer: Z2M on its
+  # group ID topic, ZHA as one groupcast followed by a read-back of each member.
+  - name: group_on_then_off
+    roles: [group]
+    only: [zha, zigbee2mqtt]
+    setup:
+      - set: {state: off}
+      - wait: 2
+    steps:
+      - call: {duration: 6}
+      - expect_response: {status: expected, integration: self}
+      - expect_state: {state: on, within: tol}
+      - wait: duration - tol
+      - expect_state: {state: on}
+      - expect_state: {state: off, within: 2 * tol}
+
+  # On ZHA, the brightness goes to the group entity's light.turn_on, then the groupcast starts every member's timer.
+  - name: group_brightness_then_off
+    roles: [group]
+    only: [zha]
+    setup:
+      - set: {state: off}
+      - wait: 2  # ZHA ignores a light's "on" report for 1.5 s after light.turn_off
+    steps:
+      - call: {duration: 6, brightness: 50}
+      - expect_response: {status: expected, integration: self}
+      - expect_state: {state: on, brightness: {min: 120, max: 136}, within: tol}
+      - wait: duration - tol
+      - expect_state: {state: on}
+      - expect_state: {state: off, within: 2 * tol}

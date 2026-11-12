@@ -1,0 +1,35 @@
+# The device's persistent auto-on: after every turn-off, from any source, it turns itself on after the delay. Plug
+# only, and the entry reload, as in set_auto_off.yaml.
+action: set_auto_on
+rig_seconds: 400
+tests:
+  # The one regression case: the write, the repeat that sends nothing, the stored delay read back, and the delay
+  # firing on a plain turn-off.
+  - name: applies_to_any_turn_off
+    roles: [switch_plug]
+    only: [shelly]
+    steps:
+      - set: {state: on}
+      - call: {duration: 6}
+      - expect_response: {status: expected, integration: self}
+      - call: {duration: 6}  # waits out the first write's entry reload
+      - expect_response: {status: unchanged, detail: already_set}
+      - call: {action: get_attributes}
+      - expect_response: {attributes: {auto_on.duration: 6}}
+      - set: {state: off}  # plain HA, so only the device's own setting can turn it on
+      - wait: duration - tol
+      - expect_state: {state: off}
+      - expect_state: {state: on, within: 2 * tol}
+
+  - name: takes_the_bounds
+    roles: [switch_plug]
+    only: [shelly]
+    firmware_fact: true
+    steps:
+      - set: {state: on}  # and on throughout, so the short delay never fires
+      - call: {duration: 0.05}
+      - expect_response: {status: expected, integration: self}
+      - call: {duration: 604801}
+      - expect_response: {status: expected, integration: self, clamped_to: 604800}
+      - call: {action: get_attributes}
+      - expect_response: {attributes: {auto_on.duration: 604800}}
