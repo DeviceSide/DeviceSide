@@ -1,5 +1,6 @@
 """The core hue integration's bridge, through aiohue's v2 API: the bridge behind a target, group members, writes."""
 
+import logging
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any
 
@@ -10,12 +11,13 @@ from ...core.models import Target
 from ...core.resolver import resolve_members
 from ...core.runtime import get_runtime
 from ...core.transition import BRIGHTNESS
-from ...core.wire import wire_enabled, wire_trace
 
 if TYPE_CHECKING:
     from aiohue.v2 import HueBridgeV2
     from aiohue.v2.controllers.groups import GroupedLightController
     from aiohue.v2.controllers.lights import LightsController
+
+_LOGGER = logging.getLogger(__name__)
 
 # The delta object whose stop halts each attribute's fade.
 DELTAS = {BRIGHTNESS: "dimming_delta"}
@@ -59,20 +61,20 @@ def expand_group(hass: HomeAssistant, target: Target) -> list[Target]:
     return resolve_members(hass, get_runtime(hass).registry, target, "hue", (light.id for light in lights))
 
 
-def trace(
+def log_write(
     hass: HomeAssistant,
     writer: LightsController | GroupedLightController,
     rid: str,
     command: str,
     params: dict,
     entity_id: str | None = None,
-):
-    """The wire trace of one write to the light or grouped_light, naming an entity, not its resource id: the caller's
-    target (entity_id) when the write is to it, else the light entity the registry has for the resource."""
-    if not wire_enabled():
+) -> None:
+    """The debug line of one write to the light or grouped_light, naming an entity, never its resource id: the
+    caller's target (entity_id) when the write is to it, else the light entity the registry has for the resource."""
+    if not _LOGGER.isEnabledFor(logging.DEBUG):
         return
     entity_id = entity_id or er.async_get(hass).async_get_entity_id("light", "hue", rid)
-    wire_trace(hass, entity_id, "clip", f"{writer.item_type.value}.{command}", params)
+    _LOGGER.debug("%s: sending clip %s.%s %s", entity_id, writer.item_type.value, command, params)
 
 
 async def set_state(
@@ -82,8 +84,10 @@ async def set_state(
     entity_id: str | None = None,
     **state: Any,
 ) -> None:
-    """aiohue's set_state on the light or grouped_light, traced as trace() names it. Raises on failure."""
-    trace(hass, writer, rid, "set_state", {key: value for key, value in state.items() if value is not None}, entity_id)
+    """aiohue's set_state on the light or grouped_light, logged as log_write() names it. Raises on failure."""
+    log_write(
+        hass, writer, rid, "set_state", {key: value for key, value in state.items() if value is not None}, entity_id
+    )
     await writer.set_state(rid, **state)
 
 
@@ -131,7 +135,7 @@ async def put(
     body: dict,
     entity_id: str | None = None,
 ) -> None:
-    """One raw CLIP v2 PUT to the light or grouped_light, its body as given, traced as trace() names it. Raises on
+    """One raw CLIP v2 PUT to the light or grouped_light, its body as given, logged as log_write() names it. Raises on
     failure."""
-    trace(hass, writer, rid, "put", body, entity_id)
+    log_write(hass, writer, rid, "put", body, entity_id)
     await api.request("put", f"clip/v2/resource/{writer.item_type.value}/{rid}", json=body)

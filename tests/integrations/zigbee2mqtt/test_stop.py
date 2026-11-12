@@ -6,7 +6,7 @@ from custom_components.deviceside.core.transition import BRIGHTNESS, SATURATION
 from custom_components.deviceside.integrations.zigbee2mqtt.fade import hue_moves, transition_cache
 
 from .conftest import GET, SENT, SET, commands, group, light
-from ...conftest import advance, call, result, traced, wall_clock_now
+from ...conftest import advance, call, result, sent, wall_clock_now
 
 pytestmark = pytest.mark.usefixtures("setup_production", "clock")
 
@@ -183,9 +183,9 @@ async def test_an_empty_group_is_skipped(hass, broker):
     assert response == {"light.lamp": SENT}
 
 
-async def test_the_stop_is_traced_without_the_topic(hass, broker, wire):
+async def test_the_stop_is_logged_without_the_topic(hass, broker, wire):
     entity_id = light(hass, broker)
 
     await call(hass, "stop", {"entity_id": entity_id})
 
-    assert traced(wire) == [(entity_id, "mqtt", "set", BRIGHTNESS_STOP)]
+    assert sent(wire) == [f"{entity_id}: sending mqtt set {BRIGHTNESS_STOP} with {{'hue_native_control': None}}"]

@@ -7,7 +7,14 @@ import pytest
 import yaml
 
 from custom_components.deviceside.actions import discover
-from custom_components.deviceside.core.scope import AdapterScope, documented, experimental, reported, verified
+from custom_components.deviceside.core.scope import (
+    AdapterScope,
+    Caveat,
+    CaveatKind,
+    documented,
+    experimental,
+    verified,
+)
 from scripts import check_release as cr
 from scripts import gen_compat as gc
 from scripts import gen_features as gf
@@ -235,9 +242,8 @@ def test_reports_fill_the_reports_column_of_their_action(root):
 
 def test_documented_capabilities_get_a_row_and_are_in_rcs_only_on_an_experimental_adapter(root):
     caps = verified("Switch") | documented("Light", "CCT")
-    sibs = {"Light": "Switch", "CCT": "Switch"}
-    released = adapter("zha", "stop", AdapterScope(capabilities=caps, siblings=sibs))
-    flagged = adapter("zha", "stop", AdapterScope(experimental=True, capabilities=caps, siblings=sibs))
+    released = adapter("zha", "stop", AdapterScope(capabilities=caps))
+    flagged = adapter("zha", "stop", AdapterScope(experimental=True, capabilities=caps))
     assert gc.level_rows("stop", released, data()) == [
         "| `stop` | Documented | none (untested: Light, CCT components) | | |"
     ]
@@ -246,15 +252,13 @@ def test_documented_capabilities_get_a_row_and_are_in_rcs_only_on_an_experimenta
     assert gc.level_rows("stop", adapter("zha", "stop"), data()) == []
 
 
-def test_reported_documented_and_experimental_items_each_get_a_row_strongest_first():
+def test_documented_and_experimental_items_each_get_a_row_strongest_first():
     scope = AdapterScope(
         domains=verified("light") | experimental("switch"),
-        capabilities=reported("Light") | documented("CCT") | experimental("RGB"),
-        siblings={"CCT": "Light"},
+        capabilities=verified("Light") | documented("CCT") | experimental("RGB"),
         fields=verified("brightness") | experimental("transition"),
     )
     assert gc.level_rows("turn_on_for", adapter("zha", "turn_on_for", scope), data()) == [
-        "| `turn_on_for` | Reported | none (reported by users: Light components) | | |",
         "| `turn_on_for` | Documented | none (untested: CCT components) | | |",
         "| `turn_on_for` | Experimental | none (untested, behind Experimental features: "
         "switch entities; "
@@ -305,9 +309,7 @@ def test_a_card_lists_tested_models_once_each_by_their_name_then_native_groups(r
 def test_a_card_leaves_out_flagged_adapters_and_failing_records(root):
     record(root, "zha", "stop")
     record(root, "zha", "turn_on_for", result="fail", device="Plug (`P1`), firmware `1`")
-    scope = AdapterScope(
-        experimental=True, domains=verified("light") | documented("switch"), siblings={"switch": "light"}
-    )
+    scope = AdapterScope(experimental=True, domains=verified("light") | documented("switch"))
     card = zha_card(adapter("zha", "stop", scope), adapter("zha", "turn_on_for"))
     assert card.lines["works"] == []
     assert card.lines["should"] == []
@@ -331,7 +333,6 @@ def test_untested_classes_share_an_entry_per_feature_set_and_name_their_features
     timer = AdapterScope(
         domains=verified("light") | documented("switch"),
         capabilities=verified("Switch") | documented("Light"),
-        siblings={"switch": "light", "Light": "Switch"},
     )
     card = zha_card(
         adapter("zha", "raise_brightness", dimming),
@@ -377,7 +378,7 @@ def test_stop_alone_is_named():
 
 
 def test_an_untested_item_without_a_class_is_an_error(root):
-    scope = AdapterScope(capabilities=verified("Switch") | documented("RGB"), siblings={"RGB": "Switch"})
+    scope = AdapterScope(capabilities=verified("Switch") | documented("RGB"))
     with pytest.raises(SystemExit, match="no entry for zha RGB, which a scope holds as Documented"):
         zha_card(adapter("zha", "turn_on_for", scope))
 
@@ -560,11 +561,10 @@ def test_a_report_names_an_item_in_its_actions_scope():
         data(FakeRegistry(adapter("zha", "turn_on_for")), reports=reports)
 
 
-def test_a_working_report_on_a_documented_item_left_below_reported_is_an_error():
-    scope = AdapterScope(domains=verified("light") | documented("switch"), siblings={"switch": "light"})
+def test_a_working_report_on_a_documented_item_is_recorded_without_promoting_it():
+    scope = AdapterScope(domains=verified("light") | documented("switch"))
     reports = [{**REPORT, "item": "switch", "worked": ["turn_on_for"], "issue": f"{gc.ISSUE_URL}1"}]
-    with pytest.raises(SystemExit, match="promote it to Level.REPORTED"):
-        data(FakeRegistry(adapter("zha", "turn_on_for", scope)), reports=reports)
+    assert data(FakeRegistry(adapter("zha", "turn_on_for", scope)), reports=reports).reports
 
 
 def test_a_working_report_on_an_experimental_item_is_recorded_without_promoting_it():
@@ -586,48 +586,6 @@ def test_a_failed_report_may_name_an_experimental_item():
     assert data(FakeRegistry(adapter("zha", "turn_on_for", scope)), reports=reports).reports
 
 
-def test_a_reported_item_needs_a_working_report_unless_its_adapter_is_flagged():
-    scope = AdapterScope(domains=verified("light") | reported("switch"))
-    with pytest.raises(SystemExit, match="none says zha turn_on_for works on switch"):
-        data(FakeRegistry(adapter("zha", "turn_on_for", scope)))
-    flagged = AdapterScope(experimental=True, domains=reported("switch"))
-    assert data(FakeRegistry(adapter("zha", "turn_on_for", flagged))).reports == []
-
-
-def test_a_documented_row_holds_every_documented_item_with_its_reported_siblings_reports():
-    issue = f"{gc.ISSUE_URL}9"
-    scope = AdapterScope(
-        capabilities=verified("Switch") | reported("RGB") | documented("Light", "CCT"),
-        siblings={"Light": "Switch", "CCT": "RGB"},
-    )
-    reports = [
-        report(item="RGB", worked=["stop"], issue=issue),
-        report(item="Switch", worked=["stop"], issue=f"{gc.ISSUE_URL}8"),
-    ]
-    loaded = data(FakeRegistry(adapter("zha", "stop", scope)), reports=reports)
-    # Only RGB's report: Light rides the Verified Switch, whose reports no Documented row needs.
-    assert gc.level_rows("stop", adapter("zha", "stop", scope), loaded) == [
-        f"| `stop` | Reported | none (reported by users: RGB components) | | ✅ [#9]({issue}) `P1` |",
-        f"| `stop` | Documented | none (untested: Light, CCT components) | | ✅ [#9]({issue}) `P1` |",
-    ]
-
-
-def test_a_documented_class_on_a_reported_sibling_carries_its_reports(root):
-    issue = f"{gc.ISSUE_URL}9"
-    scope = AdapterScope(
-        capabilities=reported("RGB") | verified("Switch") | documented("Light", "CCT"),
-        siblings={"Light": "Switch", "CCT": "RGB"},
-    )
-    reports = [{**REPORT, "item": "RGB", "worked": ["turn_on_for"], "issue": issue}]
-    card = zha_card(adapter("zha", "turn_on_for", scope), reports=reports)
-    assert card.lines["works"] == [f"[Plug]({URL}#plug) ([report]({issue}))"]
-    # Same features, different proof: two entries, the reported one linked.
-    assert card.lines["should"] == [
-        f"[dimmers]({URL}#dimmers): turn on with timer",
-        f"[CCT controllers]({URL}#dimmers): turn on with timer ([report]({issue}))",
-    ]
-
-
 def test_the_legend_leads_the_cards_and_no_extension_mark_shows(root):
     registry = FakeRegistry(adapter("zha", "turn_on_for"))
     text = gc.cards(registry, data(registry))
@@ -635,48 +593,11 @@ def test_the_legend_leads_the_cards_and_no_extension_mark_shows(root):
     assert gc.CARDS_LEGEND == (
         "🟢 works · ✔ verified on automated rig · 🟡 should work: same call pattern as a tested device · "
         "🙋 testers wanted · 🔴 doesn't work · ⚠️ unmaintained: no one is fixing it; use at your own risk · "
-        "⚠️ stale tests: changed since last tested; please report whether it works"
+        "⚠️ untested fix: changed, not yet tested; please report whether it works"
     )
     assert "👥" not in text
     assert text.index("Details per integration are in [docs/integrations.md](") < text.index("</details>")
     assert "🧩" not in text
-
-
-def test_a_class_held_by_actions_of_different_proof_never_shares_a_bare_entry_with_a_report(root):
-    issue = f"{gc.ISSUE_URL}9"
-    on_verified = AdapterScope(capabilities=verified("Switch") | documented("Light"), siblings={"Light": "Switch"})
-    on_reported = AdapterScope(capabilities=reported("RGB") | documented("Light"), siblings={"Light": "RGB"})
-    reports = [report(item="RGB", worked=["turn_off_for"], issue=issue)]
-    card = zha_card(
-        adapter("zha", "turn_on_for", on_verified), adapter("zha", "turn_off_for", on_reported), reports=reports
-    )
-    assert card.lines["should"] == [
-        f"[dimmers]({URL}#dimmers): turn on with timer",
-        f"[dimmers]({URL}#dimmers): turn off with timer ([report]({issue}))",
-    ]
-
-
-def test_a_level_row_shows_the_reports_on_its_items_only():
-    issue, other = f"{gc.ISSUE_URL}9", f"{gc.ISSUE_URL}10"
-    scope = AdapterScope(
-        capabilities=reported("RGB", "CCT") | verified("Switch") | documented("Light"),
-        siblings={"Light": "RGB"},
-    )
-    reports = [
-        report(item="RGB", worked=["stop"], issue=issue),
-        report(item="CCT", worked=["stop"], issue=other),
-        report(item="Switch", failed=["stop"], issue=f"{gc.ISSUE_URL}11"),
-    ]
-    registry = FakeRegistry(adapter("zha", "stop", scope))
-    rows = gc.level_rows("stop", registry._adapters[0], data(registry, reports=reports))
-    assert rows[0].endswith(f"| | ✅ [#9]({issue}) `P1`<br>✅ [#10]({other}) `P1` |")
-    assert rows[1].endswith(f"| | ✅ [#9]({issue}) `P1` |")  # Light rides RGB
-
-
-def test_a_reported_field_is_refused_until_a_report_can_name_one():
-    scope = AdapterScope(domains=verified("light"), fields=reported("brightness"))
-    with pytest.raises(SystemExit, match="field as Reported"):
-        data(FakeRegistry(adapter("zha", "turn_on_for", scope)))
 
 
 @pytest.mark.parametrize(
@@ -711,6 +632,14 @@ def test_every_action_has_a_card_name_from_the_feature_table():
 ISSUE_REASON = f"{gc.ISSUE_URL}40"
 
 
+def unmaintained(reason: str) -> Caveat:
+    return Caveat(CaveatKind.UNMAINTAINED, reason)
+
+
+def untested_fix(reason: str) -> Caveat:
+    return Caveat(CaveatKind.UNTESTED_FIX, reason)
+
+
 def test_a_card_names_every_maintainer_with_a_profile_link(root):
     registry = FakeRegistry(adapter("hue", "stop"))
     card = gc.card("hue", registry, [adapter("hue", "stop")], data(registry))
@@ -721,10 +650,10 @@ def test_a_card_names_every_maintainer_with_a_profile_link(root):
 
 def test_a_card_marks_unmaintained_adapters_by_reason_and_leaves_out_flagged_ones(root):
     card = zha_card(
-        adapter("zha", "turn_on_for", AdapterScope(unmaintained=ISSUE_REASON)),
-        adapter("zha", "turn_off_for", AdapterScope(unmaintained=ISSUE_REASON)),
-        adapter("zha", "stop", AdapterScope(unmaintained="the maintainer left")),
-        adapter("zha", "set_scene", AdapterScope(experimental=True, unmaintained=ISSUE_REASON)),
+        adapter("zha", "turn_on_for", AdapterScope(caveat=unmaintained(ISSUE_REASON))),
+        adapter("zha", "turn_off_for", AdapterScope(caveat=unmaintained(ISSUE_REASON))),
+        adapter("zha", "stop", AdapterScope(caveat=unmaintained("the maintainer left"))),
+        adapter("zha", "set_scene", AdapterScope(experimental=True, caveat=unmaintained(ISSUE_REASON))),
         adapter("zha", "get_attributes"),
     )
     assert card.render().splitlines()[2:4] == [
@@ -739,8 +668,8 @@ def heading(card):
 
 def test_a_card_whose_shipping_adapters_are_all_unmaintained_says_formerly_maintained(root):
     card = zha_card(
-        adapter("zha", "turn_on_for", AdapterScope(unmaintained=ISSUE_REASON)),
-        adapter("zha", "stop", AdapterScope(unmaintained="gone")),
+        adapter("zha", "turn_on_for", AdapterScope(caveat=unmaintained(ISSUE_REASON))),
+        adapter("zha", "stop", AdapterScope(caveat=unmaintained("gone"))),
         adapter("zha", "set_scene", AdapterScope(experimental=True)),
     )
     assert " · ⚠️ Unmaintained · formerly maintained by [@" in heading(card)
@@ -749,7 +678,7 @@ def test_a_card_whose_shipping_adapters_are_all_unmaintained_says_formerly_maint
 
 def test_a_card_with_one_maintained_shipping_adapter_keeps_maintained_by(root):
     card = zha_card(
-        adapter("zha", "turn_on_for", AdapterScope(unmaintained=ISSUE_REASON)),
+        adapter("zha", "turn_on_for", AdapterScope(caveat=unmaintained(ISSUE_REASON))),
         adapter("zha", "stop"),
     )
     assert " · maintained by [@" in heading(card)
@@ -757,18 +686,20 @@ def test_a_card_with_one_maintained_shipping_adapter_keeps_maintained_by(root):
 
 def test_experimental_adapters_do_not_make_a_card_unmaintained(root):
     card = zha_card(
-        adapter("zha", "turn_on_for", AdapterScope(experimental=True, unmaintained=ISSUE_REASON)),
+        adapter("zha", "turn_on_for", AdapterScope(experimental=True, caveat=unmaintained(ISSUE_REASON))),
         adapter("zha", "stop"),
     )
     assert " · maintained by [@" in heading(card)
-    only_experimental = zha_card(adapter("zha", "stop", AdapterScope(experimental=True, unmaintained=ISSUE_REASON)))
+    only_experimental = zha_card(
+        adapter("zha", "stop", AdapterScope(experimental=True, caveat=unmaintained(ISSUE_REASON)))
+    )
     assert " · maintained by [@" in heading(only_experimental)
 
 
 def test_an_unmaintained_entry_names_stop_beside_other_features(root):
     card = zha_card(
-        adapter("zha", "turn_on_for", AdapterScope(unmaintained=ISSUE_REASON)),
-        adapter("zha", "stop", AdapterScope(unmaintained=ISSUE_REASON)),
+        adapter("zha", "turn_on_for", AdapterScope(caveat=unmaintained(ISSUE_REASON))),
+        adapter("zha", "stop", AdapterScope(caveat=unmaintained(ISSUE_REASON))),
     )
     assert f"- [⚠️ Unmaintained]({ISSUE_REASON}): turn on with timer, stop" in card.render().splitlines()
 
@@ -779,35 +710,27 @@ def test_a_maintained_card_has_no_unmaintained_entry(root):
 
 def test_every_evidence_row_of_an_unmaintained_adapter_is_marked(root):
     record(root, "zha", "stop")
-    scope = AdapterScope(domains=verified("light") | experimental("switch"), unmaintained="a | b")
-    unmaintained = adapter("zha", "stop", scope)
-    assert gc.row("stop", unmaintained, data()).startswith("| `stop` ⚠️ Unmaintained (a \\| b) | Verified |")
-    [level_row] = gc.level_rows("stop", unmaintained, data())
+    scope = AdapterScope(domains=verified("light") | experimental("switch"), caveat=unmaintained("a | b"))
+    gone = adapter("zha", "stop", scope)
+    assert gc.row("stop", gone, data()).startswith("| `stop` ⚠️ Unmaintained (a \\| b) | Verified |")
+    [level_row] = gc.level_rows("stop", gone, data())
     assert level_row.startswith("| `stop` ⚠️ Unmaintained (a \\| b) | Experimental |")
-    linked = adapter("zha", "stop", AdapterScope(unmaintained=ISSUE_REASON))
+    linked = adapter("zha", "stop", AdapterScope(caveat=unmaintained(ISSUE_REASON)))
     assert gc.row("stop", linked, data()).startswith(f"| `stop` [⚠️ Unmaintained]({ISSUE_REASON}) | Verified |")
 
 
-def test_a_card_marks_stale_tests_adapters_after_unmaintained_ones_and_leaves_out_flagged_ones(root):
+def test_a_card_marks_untested_fixes_after_unmaintained_ones_and_leaves_out_flagged_ones(root):
     card = zha_card(
-        adapter("zha", "turn_on_for", AdapterScope(stale_tests=ISSUE_REASON)),
-        adapter("zha", "turn_off_for", AdapterScope(stale_tests=ISSUE_REASON, unmaintained="gone")),
-        adapter("zha", "set_scene", AdapterScope(experimental=True, stale_tests=ISSUE_REASON)),
+        adapter("zha", "turn_on_for", AdapterScope(caveat=untested_fix(ISSUE_REASON))),
+        adapter("zha", "turn_off_for", AdapterScope(caveat=unmaintained("gone"))),
+        adapter("zha", "set_scene", AdapterScope(experimental=True, caveat=untested_fix(ISSUE_REASON))),
     )
     lines = card.render().splitlines()
     marks = [line for line in lines if line.startswith("- ⚠️") or line.startswith("- [⚠️")]
     assert marks == [
         "- ⚠️ Unmaintained (gone): turn off with timer",
-        f"- [⚠️ Stale tests]({ISSUE_REASON}): turn on with timer, turn off with timer",
+        f"- [⚠️ Untested fix]({ISSUE_REASON}): turn on with timer",
     ]
-    # Stale tests is not unmaintained: the heading still names the maintainers.
+    # An untested fix is not unmaintained: the heading still names the maintainers.
     assert "formerly maintained" not in heading(card)
-    assert gc.STALE_TESTS not in zha_card(adapter("zha", "stop")).render()
-
-
-def test_an_evidence_row_shows_both_marks(root):
-    record(root, "zha", "stop")
-    both = adapter("zha", "stop", AdapterScope(unmaintained="gone", stale_tests=ISSUE_REASON))
-    assert gc.row("stop", both, data()).startswith(
-        f"| `stop` ⚠️ Unmaintained (gone) [⚠️ Stale tests]({ISSUE_REASON}) | Verified |"
-    )
+    assert gc.UNTESTED_FIX not in zha_card(adapter("zha", "stop")).render()

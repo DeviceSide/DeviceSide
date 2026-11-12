@@ -22,7 +22,7 @@ from custom_components.deviceside.integrations.zigbee2mqtt.addressing import (
 )
 from custom_components.deviceside.integrations.zigbee2mqtt.detect import detect
 
-from ...conftest import advance, allow_experimental, call, refusal, traced, wall_clock_now
+from ...conftest import advance, allow_experimental, call, refusal, sent, wall_clock_now
 from ...fixtures.zigbee2mqtt import IEEE, add_z2m_entity, add_z2m_group, z2m_entry
 
 SENT = {"status": "sent", "integration": "zigbee2mqtt"}
@@ -569,12 +569,12 @@ def test_supports_returns_super_reason_when_scope_refuses(hass):
         Z2MTurnOnFor.scope = original_scope
 
 
-async def test_the_fields_and_the_timer_are_traced_without_the_topic(hass, setup_production, publishes, turn_ons, wire):
+async def test_the_fields_and_the_timer_are_logged_without_the_topic(hass, setup_production, publishes, turn_ons, wire):
     add_z2m_entity(hass, z2m_entry(hass), "light.kitchen")
 
     await call(hass, "turn_on_for", {"entity_id": "light.kitchen", "duration": 10, "brightness": 50})
 
-    assert traced(wire) == [
-        ("light.kitchen", "ha", "light.turn_on", {"brightness": 128}),
-        ("light.kitchen", "mqtt", "set", {"state": "ON", "on_time": 10.0}),
+    assert [line.split(" with ")[0] for line in sent(wire)] == [
+        "light.kitchen: sending ha light.turn_on {'brightness': 128}",
+        "light.kitchen: sending mqtt set {'state': 'ON', 'on_time': 10.0}",
     ]

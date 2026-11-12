@@ -9,8 +9,8 @@ These rules apply from 2026-11-12, but the code that enforces the old ones is re
 each step lands, its old gate keeps running, and work satisfies it. The old rules are in CLAUDE.md at `5aae1fe`
 (§ Release flag) and in `scripts/check_release.py`'s docstring.
 
-- **Runtime (step 2):** `Level.REPORTED` and `Level.EXPERIMENTAL`, the `experimental=True` release flag, the
-  `unmaintained`, `stale_tests` and `siblings` fields, and the wire and scope traces.
+- **Runtime (step 2):** landed. `Level.REPORTED`, the `unmaintained`, `stale_tests` and `siblings` fields and the
+  wire and scope traces are gone; `experimental=True` gates at runtime, and `caveat` holds Untested fix or Unmaintained.
 - **Rig (step 3):** the rig still writes `Covers` and `## Shared coverage`, which `--records` reads, and `observed.py`
   still lends and blocks.
 - **Release gate (step 4):** `check_release.py --release` (the release flag, Stale tests) and `--records` (record

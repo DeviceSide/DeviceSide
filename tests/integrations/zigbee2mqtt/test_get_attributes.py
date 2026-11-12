@@ -11,7 +11,7 @@ from homeassistant.util import dt as dt_util
 
 from custom_components.deviceside.integrations.zigbee2mqtt import read
 
-from ...conftest import allow_experimental, call, refusal
+from ...conftest import allow_experimental, call, refusal, sent
 from ...fixtures.zigbee2mqtt import GROUPS, IEEE, INFO, add_z2m_entity, add_z2m_group, z2m_entry
 
 pytestmark = pytest.mark.usefixtures("setup_production")
@@ -176,14 +176,14 @@ async def test_adds_the_read_key_to_filtered_cache_first_keeping_the_users(hass,
     assert f"Added {KEY} to Zigbee2MQTT's filtered_cache for light.lamp" in caplog.text
 
 
-async def test_reads_and_the_options_request_are_not_traced(hass, broker, wire):
+async def test_reads_and_the_options_request_are_not_logged_as_sent(hass, broker, wire):
     bulb(hass, broker)
     broker.retained[INFO]["config"]["devices"][IEEE] = {"filtered_cache": ["linkquality"]}
 
     await call(hass, "get_attributes", {"entity_id": "light.lamp"})
 
     assert broker.requests() and broker.reads()
-    assert wire == []
+    assert sent(wire) == []
 
 
 async def test_read_key_already_filtered_sends_no_request(hass, broker):

@@ -133,7 +133,7 @@ async def test_capability_out_of_scope_is_refused(hass, setup_production, monkey
     monkeypatch.setattr(
         ShellyTurnOnFor,
         "scope",
-        dataclasses.replace(ShellyTurnOnFor.scope, capabilities=verified("Switch"), siblings={}),
+        dataclasses.replace(ShellyTurnOnFor.scope, capabilities=verified("Switch")),
     )
     entry, call_rpc = shelly_device(hass)
     add_shelly_entity(hass, entry, "light.dimmer", "light:0")

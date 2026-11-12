@@ -13,7 +13,15 @@ import yaml
 
 from custom_components.deviceside.actions import discover
 from custom_components.deviceside.core.registry import AdapterRegistry
-from custom_components.deviceside.core.scope import AdapterScope, IntegrationInfo, experimental, reported, verified
+from custom_components.deviceside.core.scope import (
+    AdapterScope,
+    Caveat,
+    CaveatKind,
+    IntegrationInfo,
+    documented,
+    experimental,
+    verified,
+)
 from scripts import check_release as cr
 
 # Every fake adapter is defined here, so this file is each one's module.
@@ -366,11 +374,15 @@ ramp = ramp_scope(BRIGHTNESS, experimental=False)
             "scope = AdapterScope(domains=DOMAINS, confirmable=True)  # the scope",
         ),
         FLAGGED.replace("experimental=True", "experimental=False").replace(", experimental=False)", ")"),
-        FLAGGED.replace("experimental=True, ", 'unmaintained="https://github.com/o/r/issues/1", '),
-        FLAGGED.replace("experimental=True, ", "unmaintained=None, "),
-        FLAGGED.replace("experimental=True, ", 'stale_tests="https://github.com/o/r/issues/2", '),
+        FLAGGED.replace(
+            "experimental=True, ", 'caveat=Caveat(CaveatKind.UNMAINTAINED, "https://github.com/o/r/issues/1"), '
+        ),
+        FLAGGED.replace("experimental=True, ", "caveat=None, "),
+        FLAGGED.replace(
+            "experimental=True, ", 'caveat=Caveat(CaveatKind.UNTESTED_FIX, "https://github.com/o/r/issues/2"), '
+        ),
     ],
-    ids=["dropped", "reflowed", "set_and_dropped", "unmaintained_set", "unmaintained_none", "stale_tests_set"],
+    ids=["dropped", "reflowed", "set_and_dropped", "unmaintained_set", "caveat_none", "untested_fix_set"],
 )
 def test_a_change_to_the_flags_alone_leaves_the_record_fresh(tested, monkeypatch, after):
     repo, _ = tested
@@ -387,9 +399,9 @@ def test_a_change_to_the_flags_alone_leaves_the_record_fresh(tested, monkeypatch
         FLAGGED.replace("experimental=True, ", "").replace("# the scope", "# the call"),
         FLAGGED.replace("experimental=True", "verified=True"),
         FLAGGED.replace("experimental=False", "experimental=load()"),
-        FLAGGED.replace("experimental=True, ", "unmaintained=REASON, "),
+        FLAGGED.replace("experimental=True, ", "caveat=REASON, "),
     ],
-    ids=["another_argument", "a_comment", "a_renamed_keyword", "a_computed_value", "unmaintained_computed"],
+    ids=["another_argument", "a_comment", "a_renamed_keyword", "a_computed_value", "caveat_computed"],
 )
 def test_a_change_beside_the_flag_is_still_a_change(tested, monkeypatch, after):
     repo, _ = tested
@@ -528,22 +540,33 @@ def test_a_stray_flag_is_found(code, strays):
 
 
 INTEGRATION_CODE = sorted((cr.REPO / "custom_components").rglob("*.py"))
-# The one function reading `unmaintained` and `stale_tests`, setup's warning, and `maintainers`, registration's check:
-# neither changes a call.
+# The one function reading each flag, none of which changes a call: the dispatcher's gate reads `experimental`, setup's
+# warning `caveat`, and registration's check `maintainers`. A method is named <class>.<method>.
 SETUP = cr.REPO / "custom_components" / "deviceside" / "__init__.py"
+DISPATCHER = cr.REPO / "custom_components" / "deviceside" / "core" / "dispatcher.py"
 REGISTRATION = cr.REPO / "custom_components" / "deviceside" / "core" / "registry.py"
 READERS = {
-    "unmaintained": (SETUP, "warn_marked"),
-    "stale_tests": (SETUP, "warn_marked"),
+    "experimental": (DISPATCHER, "Dispatcher._experimental"),
+    "caveat": (SETUP, "warn_caveats"),
     "maintainers": (REGISTRATION, "check_maintainers"),
 }
+
+
+def reader_body(tree: ast.Module, function: str) -> tuple[list[ast.stmt], str]:
+    """The body holding the reader (the module's, or its class's), and the reader's own name."""
+    owner, _, name = function.rpartition(".")
+    if not owner:
+        return tree.body, name
+    [cls] = [node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == owner]
+    return cls.body, name
 
 
 def without_reader(path: Path, flag: str) -> ast.Module:
     """The module's tree, less the one function allowed to read the flag."""
     tree = ast.parse(path.read_text())
     if READERS.get(flag, (None,))[0] == path:
-        tree.body = [node for node in tree.body if getattr(node, "name", None) != READERS[flag][1]]
+        body, name = reader_body(tree, READERS[flag][1])
+        body[:] = [node for node in body if getattr(node, "name", None) != name]
     return tree
 
 
@@ -554,9 +577,9 @@ def test_the_flags_only_reach_a_scope(flag):
 
 @pytest.mark.parametrize("flag", cr.FLAGS)
 def test_no_call_reads_the_flags(flag):
-    """The records check ignores the flags because no call reads them; a read would make them a change. Setup reads
-    `unmaintained` and `stale_tests`, to warn, registration reads `maintainers`, to check them, and nothing else reads
-    them.
+    """The records check ignores the flags because no call reads them; a read would make them a change. The
+    dispatcher reads `experimental`, to gate the call, setup reads `caveat`, to warn, registration reads `maintainers`,
+    to check them, and nothing else reads them.
     """
     reads = [
         f"{path.relative_to(cr.REPO)}:{line}"
@@ -568,9 +591,10 @@ def test_no_call_reads_the_flags(flag):
 
 @pytest.mark.parametrize("flag", READERS)
 def test_the_one_reader_reads_its_flag(flag):
-    """The exemptions above stay honest: setup is where the warning lives, registration where the check does."""
+    """The exemptions above stay honest: each reader is where its gate, warning or check lives."""
     path, function = READERS[flag]
-    [reader] = [node for node in ast.parse(path.read_text()).body if getattr(node, "name", None) == function]
+    body, name = reader_body(ast.parse(path.read_text()), function)
+    [reader] = [node for node in body if getattr(node, "name", None) == name]
     assert flag_reads(reader, flag)
 
 
@@ -664,7 +688,7 @@ def test_a_failing_record_of_an_experimental_or_unproven_adapter_is_exempt(teste
     write_record(repo, "turn_on_for.md", tested_at, result="fail")
     assert cr.record_errors(FakeRecordsRegistry(repo, monkeypatch, experimental=True)) == []
     registry = FakeRecordsRegistry(repo, monkeypatch)
-    registry.adapter.scope = AdapterScope(domains=reported("light"))
+    registry.adapter.scope = AdapterScope(domains=documented("light"))
     assert cr.record_errors(registry) == []
 
 
@@ -678,8 +702,8 @@ def test_an_experimental_adapter_is_exempt(tested, monkeypatch):
     "scope",
     [
         AdapterScope(domains=experimental("light")),
-        AdapterScope(domains=reported("light")),
-        AdapterScope(domains=verified("light"), capabilities=experimental("Light") | reported("CCT")),
+        AdapterScope(domains=documented("light")),
+        AdapterScope(domains=verified("light"), capabilities=experimental("Light") | documented("CCT")),
     ],
 )
 def test_an_adapter_with_no_verified_call_needs_no_record(tested, monkeypatch, scope):
@@ -725,7 +749,7 @@ def test_the_covers_row_reads_each_axis():
 
 
 SCOPED = AdapterScope(
-    domains=verified("light", "switch") | reported("fan"),
+    domains=verified("light", "switch") | documented("fan"),
     capabilities=verified("Switch", "RGBCCT") | experimental("RGBW"),
     fields=verified("brightness", "transition") | experimental("xy_color"),
     options=frozenset({"predicted_state"}),
@@ -795,9 +819,9 @@ def test_every_rig_record_in_the_repo_cites_a_commit_the_check_can_read():
     assert [path.name for path in found if "| Covers |" in path.read_text() and not cr.covers(path.read_text())] == []
 
 
-# Retests and Stale tests: an adapter with no Verified call.
+# Retests and the Untested fix caveat: an adapter with no Verified call.
 
-UNPROVEN = AdapterScope(domains=reported("light"))
+UNPROVEN = AdapterScope(domains=documented("light"))
 MANUAL = "docs/integrations/fake/test-records/_manual.md"
 REPORT_ISSUE = "https://github.com/DeviceSide/DeviceSide/issues/9"
 
@@ -822,11 +846,11 @@ def unproven(tested, monkeypatch, scope: AdapterScope = UNPROVEN) -> tuple:
     ("scope", "needs"),
     [
         (AdapterScope(), False),  # Verified: its records gate it
-        (AdapterScope(domains=reported("light")), True),
-        (AdapterScope(domains=reported("light"), experimental=True), False),  # in RCs only
+        (AdapterScope(domains=documented("light")), True),
+        (AdapterScope(domains=documented("light"), experimental=True), False),  # in RCs only
         (AdapterScope(domains=experimental("light")), False),  # nothing ships on
-        (AdapterScope(domains=reported("light"), capabilities=experimental("Light")), False),
-        (AdapterScope(domains=reported("light"), capabilities=experimental("Light") | reported("CCT")), True),
+        (AdapterScope(domains=documented("light"), capabilities=experimental("Light")), False),
+        (AdapterScope(domains=documented("light"), capabilities=experimental("Light") | documented("CCT")), True),
     ],
 )
 def test_an_adapter_with_a_shipping_call_and_no_verified_one_needs_a_retest(scope, needs):
@@ -901,7 +925,7 @@ def test_a_report_at_an_unknown_version_or_not_working_is_no_retest(tested, monk
 
 @pytest.mark.parametrize(
     "scope",
-    [UNPROVEN, AdapterScope(domains=reported("light") | experimental("cover"))],
+    [UNPROVEN, AdapterScope(domains=documented("light") | experimental("cover"))],
     ids=["not_held", "experimental"],
 )
 def test_a_report_on_an_item_the_adapter_does_not_ship_is_no_retest(tested, monkeypatch, scope):
@@ -920,7 +944,7 @@ def test_a_fresh_passing_record_is_a_retest(tested, monkeypatch):
     assert cr.retest_errors(registry) == ([], [])
 
 
-def test_a_release_needs_an_untested_adapter_marked_stale_tests(tested, monkeypatch, capsys, tmp_path):
+def test_a_release_needs_an_untested_adapter_marked_untested_fix(tested, monkeypatch, capsys, tmp_path):
     monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
     repo, registry, sha = unproven(tested, monkeypatch)
     notes = tmp_path / "notes.md"
@@ -934,9 +958,9 @@ def test_a_release_needs_an_untested_adapter_marked_stale_tests(tested, monkeypa
     assert "fake / turn_on_for changed since its last retest" in capsys.readouterr().err
     assert notes.read_text().endswith("\n- fake / turn_on_for\n")
 
-    registry.adapter.scope = replace(UNPROVEN, stale_tests=REPORT_ISSUE)
+    registry.adapter.scope = replace(UNPROVEN, caveat=Caveat(CaveatKind.UNTESTED_FIX, REPORT_ISSUE))
     assert cr.main(["--release", "--notes", str(notes)], registry) == 0
-    assert "fake / turn_on_for  stale tests" in capsys.readouterr().out
+    assert "fake / turn_on_for  untested fix" in capsys.readouterr().out
     assert notes.read_text().startswith("## ⚠️ Stale tests\n")
     assert f"]({cr.DEVICE_REPORT})" in notes.read_text()
     assert notes.read_text().endswith("\n- fake / turn_on_for\n")
@@ -944,7 +968,7 @@ def test_a_release_needs_an_untested_adapter_marked_stale_tests(tested, monkeypa
     # A retest clears the mark, so the release asks for it gone.
     repo.commit(MANUAL, manual(manual_row(sha)))
     assert cr.main(["--release"], registry) == 1
-    assert "fake / turn_on_for sets stale_tests but has a fresh retest" in capsys.readouterr().err
+    assert "fake / turn_on_for has an Untested fix caveat but has a fresh retest" in capsys.readouterr().err
 
 
 def test_every_manual_line_in_the_repo_is_in_format():
@@ -1054,7 +1078,7 @@ def test_a_change_inside_the_package_is_never_cleared(shared, monkeypatch):
     [
         ("fail", None, False),
         ("pass", AdapterScope(experimental=True), False),
-        ("pass", AdapterScope(domains=reported("light")), False),
+        ("pass", AdapterScope(domains=documented("light")), False),
         # The run covered the module, but at code it has changed from since.
         ("pass", None, True),
     ],

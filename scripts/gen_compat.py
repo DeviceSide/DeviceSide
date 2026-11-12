@@ -5,12 +5,11 @@ the adapters' scopes, docs/models.yaml and each integration's bundle, docs/integ
 **Cards.** One collapsed section between the README's devices markers, with a card per integration: its name, linked
 to its page (the bundle's index.md), and maintainers (`IntegrationInfo.maintainers`; "⚠️ Unmaintained · formerly
 maintained by" when every shipping adapter is unmaintained), then ⚠️ Unmaintained with the features of any
-unmaintained adapter and ⚠️ Stale tests with those of any adapter shipping changed since its last retest
-(`stale_tests`), then a bullet per outcome:
+unmaintained adapter and ⚠️ Untested fix with those of any adapter shipping a fix no one could test (each a
+`caveat`), then a bullet per outcome:
 - Works: the models in the passing records of adapters that ship (Verified), plus native groups, and the models of
   accepted working reports (linked to the report). A rig-tested entry ends ✔.
-- Should work: the classes (devices.yaml `capabilities`) the shipping adapters hold as Documented; one whose sibling
-  is Reported links the sibling's reports.
+- Should work: the classes (devices.yaml `capabilities`) the shipping adapters hold as Documented.
 - Help us test: the classes they hold as Experimental, refused until the Experimental features option is on.
 - Doesn't work: devices.yaml `doesnt_work`.
 Each class entry, a bullet of its own, names the features it is at that level for; classes sharing a page section
@@ -20,7 +19,7 @@ Adapters with the `experimental` flag are left out of the cards: they are in RCs
 
 **Evidence.** Per integration, every action's level and the models its passing records tested, with a row per level
 below Verified that its domains, capabilities or fields hold, and the reports on it; an unmaintained adapter's action
-is marked ⚠️ Unmaintained, one with stale tests ⚠️ Stale tests. Its level is Verified only on a passing record of the
+is marked ⚠️ Unmaintained, one with an untested fix ⚠️ Untested fix. Its level is Verified only on a passing record of the
 base action (`<action>.md`) as new as the adapter's code (check_release's freshness check). A group (a Device entry with
 firmware `unknown`, or named Group or Zone) shows as "group", not as a model; any other entry the record format can't
 read is an error. The prose outside the evidence markers is kept as written.
@@ -51,7 +50,6 @@ import argparse
 import copy
 import re
 import sys
-from collections.abc import Collection
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -61,7 +59,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
 from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
-from custom_components.deviceside.core.scope import Level  # noqa: E402
+from custom_components.deviceside.core.scope import CaveatKind, Level  # noqa: E402
 from scripts.check_release import (  # noqa: E402
     adapters,
     code_of,
@@ -97,7 +95,6 @@ NO_RECORD = "Unproven: no passing record"
 STALE = "Unproven: record older than its code"
 # The item levels below Verified, as (level, label, why the row has no models), in the page's order.
 ITEM_LEVELS = (
-    (Level.REPORTED, "Reported", "reported by users"),
     (Level.DOCUMENTED, "Documented", "untested"),
     (Level.EXPERIMENTAL, "Experimental", "untested, behind Experimental features"),
 )
@@ -113,16 +110,16 @@ OUTCOMES = (
 )
 VERIFIED = "✔"
 UNMAINTAINED = "⚠️ Unmaintained"
-STALE_TESTS = "⚠️ Stale tests"
-# The scope's marks, as (attribute, label), in a card's order.
-MARKS = (("unmaintained", UNMAINTAINED), ("stale_tests", STALE_TESTS))
+UNTESTED_FIX = "⚠️ Untested fix"
+# The scope's caveats, as (kind, label), in a card's order.
+MARKS = ((CaveatKind.UNMAINTAINED, UNMAINTAINED), (CaveatKind.UNTESTED_FIX, UNTESTED_FIX))
 CARDS_LEGEND = " · ".join(
     [
         f"{OUTCOMES[0][1]} {OUTCOMES[0][2]}",
         f"{VERIFIED} verified on automated rig",
         *(f"{icon} {legend}" for _, icon, legend in OUTCOMES[1:]),
         "⚠️ unmaintained: no one is fixing it; use at your own risk",
-        "⚠️ stale tests: changed since last tested; please report whether it works",
+        "⚠️ untested fix: changed, not yet tested; please report whether it works",
     ]
 )
 GITHUB = "https://github.com/"
@@ -283,7 +280,6 @@ def load_raw(raw: dict, registry: AdapterRegistry) -> Data:
     shipped = {(adapter.integration, adapter.action): adapter for _, adapter in adapters(registry)}
     for report in raw.get("reports") or []:
         load_report(report, known, shipped, data)
-    check_reported(shipped, data)
     return data
 
 
@@ -324,8 +320,8 @@ def load_broken(entry: dict, known: set[str], data: Data) -> None:
 
 def load_report(report: dict, known: set[str], shipped: dict[tuple[str, str], object], data: Data) -> None:
     """A report names the domain or capability (Shelly: RPC component) its call reached as `item`. A working one on a
-    Documented item must have promoted it to Reported. One on an Experimental item is recorded and counts toward its
-    graduation, which its maintainer requests at their discretion, so no count is checked here."""
+    One on an Experimental item is recorded and counts toward removing its flag, which a repo maintainer judges, so no
+    count is checked here."""
     where = f"report {report.get('issue') if isinstance(report, dict) else report}"
     need(report, where, ("integration", "item"), keys=REPORT_KEYS)
     if report["integration"] not in known:
@@ -353,36 +349,8 @@ def check_item(report: dict, action: str, adapter, where: str) -> None:
     # A scope that lists capabilities names its item by capability; the domain is only the entity's kind.
     scope = adapter.scope
     held = scope.capabilities if scope.capabilities is not None else scope.domains
-    if (level := held.get(report["item"])) is None:
+    if report["item"] not in held:
         fail(f"{where}: {report['integration']} {action} has no item {report['item']!r} in scope")
-    if action in (report.get("worked") or []) and level is Level.DOCUMENTED:
-        fail(
-            f"{where}: {report['integration']} {action} works on {report['item']}, which its scope holds as "
-            f"{level.name.title()}; promote it to Level.REPORTED"
-        )
-
-
-def check_reported(shipped: dict[tuple[str, str], object], data: Data) -> None:
-    """A Reported item stands on an accepted working report: a scope that holds one with no report has nothing behind
-    it. Flagged adapters are in RCs only, and checked when the flag clears."""
-    for (integration, action), adapter in shipped.items():
-        if adapter.scope.experimental:
-            continue
-        if Level.REPORTED in adapter.scope.fields.values():
-            fail(f"{integration} {action} holds a field as Reported; a report can't name a field yet")
-        for items in (adapter.scope.domains, adapter.scope.capabilities or {}):
-            for item, level in items.items():
-                if level is Level.REPORTED and not worked_reports(integration, action, item, data):
-                    fail(f"reports: none says {integration} {action} works on {item}, which a scope holds as Reported")
-
-
-def worked_reports(integration: str, action: str, item: str, data: Data) -> list[str]:
-    """The issues of the accepted reports that the action worked on the item."""
-    return [
-        report["issue"]
-        for report in data.reports
-        if report["integration"] == integration and report["item"] == item and action in (report.get("worked") or [])
-    ]
 
 
 def badges(issues) -> str:
@@ -438,11 +406,11 @@ def link(record: Path, action: str) -> str:
     return f"[{label}]({record.relative_to(REPO / 'docs').as_posix()})"
 
 
-def reports_cell(integration: str, action: str, data: Data, items: Collection[str] | None = None) -> str:
-    """The reports on the action, as links; only those that name one of `items` when given."""
+def reports_cell(integration: str, action: str, data: Data) -> str:
+    """The reports on the action, as links."""
     cells = []
     for report in data.reports:
-        if report["integration"] != integration or (items is not None and report["item"] not in items):
+        if report["integration"] != integration:
             continue
         number = ISSUE.match(report["issue"])[1]
         for key, mark in (("worked", "✅"), ("failed", "❌")):
@@ -456,13 +424,18 @@ def padded(text: str) -> str:
     return f" {text} " if text else " "
 
 
+def caveat_reason(scope, kind: CaveatKind) -> str | None:
+    """The reason of the scope's caveat when it is of that kind, else None."""
+    return scope.caveat.reason if scope.caveat is not None and scope.caveat.kind is kind else None
+
+
 def marked(label: str, reason: str) -> str:
-    """A mark (⚠️ Unmaintained, ⚠️ Stale tests), linking its reason when that is a URL, else giving it in brackets."""
+    """A mark (⚠️ Unmaintained, ⚠️ Untested fix), linking its reason when that is a URL, else giving it in brackets."""
     return f"[{label}]({reason})" if reason.startswith("https://") else f"{label} ({reason})"
 
 
 def action_cell(action: str, adapter) -> str:
-    marks = [marked(label, reason) for attr, label in MARKS if (reason := getattr(adapter.scope, attr))]
+    marks = [marked(label, reason) for kind, label in MARKS if (reason := caveat_reason(adapter.scope, kind))]
     return " ".join([f"`{action}`", *(cell(mark) for mark in marks)])
 
 
@@ -487,13 +460,11 @@ def cell(text: str) -> str:
 
 def level_rows(action: str, adapter, data: Data) -> list[str]:
     """A row per level below Verified that the adapter's domains, capabilities or fields hold, weakest last. They have
-    no record, so no models; a row shows the reports behind its items that stand on one (Reported, or Documented on a
-    Reported sibling), and an experimental adapter's rows are in RCs only, as the rest of it is."""
+    no record, so no models, and an experimental adapter's rows are in RCs only, as the rest of it is."""
     scope = adapter.scope
     rows = []
     for level, label, why in ITEM_LEVELS:
         held: list[str] = []
-        named: list[str] = []
         for items, noun in (
             (scope.domains, "entities"),
             (scope.capabilities or {}, "components"),
@@ -503,16 +474,10 @@ def level_rows(action: str, adapter, data: Data) -> list[str]:
             if not names:
                 continue
             held.append(f"{', '.join(names)} {noun}")
-            # A Documented item's reports are its sibling's.
-            if level is Level.REPORTED:
-                named += names
-            elif level is Level.DOCUMENTED:
-                named += [scope.siblings[name] for name in names if scope.proof(name) is Level.REPORTED]
         if held:
-            reports = reports_cell(adapter.integration, action, data, named) if named else ""
             rows.append(
                 f"| {action_cell(action, adapter)} | {IN_RCS if scope.experimental else label} "
-                f"| none ({why}: {'; '.join(held)}) | |{padded(reports)}|"
+                f"| none ({why}: {'; '.join(held)}) | | |"
             )
     return rows
 
@@ -604,7 +569,7 @@ class Card:
 
 def classes(key: str, integration_adapters: list, level: Level, data: Data) -> dict[str, dict[str, list[str]]]:
     """Each domain or capability the shipping adapters hold at the level, in first-seen order, with the actions that
-    hold it there, each with the reports behind it when it rides a Reported sibling."""
+    hold it there, each with the reports behind it (none, until step 5 of the evidence-rules plan reworks the cards)."""
     held: dict[str, dict[str, list[str]]] = {}
     for adapter in integration_adapters:
         if adapter.scope.experimental:
@@ -614,10 +579,7 @@ def classes(key: str, integration_adapters: list, level: Level, data: Data) -> d
                 if item_level is level:
                     if item not in data.capabilities.get(key, {}):
                         fail(f"capabilities: no entry for {key} {item}, which a scope holds as {level.name.title()}")
-                    issues = []
-                    if level is Level.DOCUMENTED and adapter.scope.proof(item) is Level.REPORTED:
-                        issues = worked_reports(key, adapter.action, adapter.scope.siblings[item], data)
-                    held.setdefault(item, {})[adapter.action] = issues
+                    held.setdefault(item, {})[adapter.action] = []
     return held
 
 
@@ -638,7 +600,7 @@ def merged(phrases: list[str], url: str) -> str:
 
 def class_entries(key: str, held: dict[str, dict[str, list[str]]], data: Data) -> list[str]:
     """Classes with the same features and the same reports behind them share one entry: "dimmers, LED controllers
-    (CCT, RGB): turn on with timer", then a link per report when it rides a Reported sibling. A class held by actions
+    (CCT, RGB): turn on with timer", then a link per report behind it. A class held by actions
     with different reports behind it is an entry per set of reports, so a bare entry never takes another action's
     report links."""
     grouped: dict[tuple[tuple[str, ...], tuple[str, ...]], dict[str, list[str]]] = {}
@@ -686,13 +648,13 @@ def works(card: Card, key: str, integration_adapters: list, data: Data) -> list[
 
 
 def mark_entries(integration_adapters: list) -> list[str]:
-    """The shipping adapters no one is fixing, then those shipping changed since their last retest, as their features,
-    one entry per mark and reason."""
+    """The shipping adapters no one is fixing, then those shipping a fix no one could test, as their features, one
+    entry per caveat and reason."""
     entries = []
-    for attr, label in MARKS:
+    for kind, label in MARKS:
         by_reason: dict[str, set[str]] = {}
         for adapter in integration_adapters:
-            if not adapter.scope.experimental and (reason := getattr(adapter.scope, attr)):
+            if not adapter.scope.experimental and (reason := caveat_reason(adapter.scope, kind)):
                 by_reason.setdefault(reason, set()).add(adapter.action)
         entries += [
             f"{marked(label, reason)}: {', '.join(features(actions, fold_stop=False))}"
@@ -704,7 +666,7 @@ def mark_entries(integration_adapters: list) -> list[str]:
 def all_unmaintained(integration_adapters: list) -> bool:
     """Whether the integration has shipping adapters and every one is unmaintained (experimental ones don't count)."""
     shipping = [adapter for adapter in integration_adapters if not adapter.scope.experimental]
-    return bool(shipping) and all(adapter.scope.unmaintained for adapter in shipping)
+    return bool(shipping) and all(caveat_reason(adapter.scope, CaveatKind.UNMAINTAINED) for adapter in shipping)
 
 
 def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: Data) -> Card:

@@ -13,17 +13,14 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import floor_registry as fr
 from homeassistant.helpers import label_registry as lr
-from pytest_homeassistant_custom_component.common import async_capture_events
 
 from custom_components.deviceside.core.models import EntityResult, Status, TimedRequest
 from custom_components.deviceside.core.scope import (
     AdapterScope,
     documented,
     experimental,
-    reported,
     verified,
 )
-from custom_components.deviceside.core.wire import SCOPE_EVENT, WIRE_LOGGER
 
 from ..conftest import allow_experimental, call, refusal
 from ..fakes.fake_integration import LIMITS, FakeSetAttributes, FakeTurnOnFor
@@ -74,18 +71,17 @@ async def test_a_named_target_on_an_experimental_domain_raises_unless_the_option
 
 
 @pytest.mark.parametrize(
-    ("domains", "siblings"),
+    "domains",
     [
-        pytest.param(verified("light") | documented("switch"), {"switch": "light"}, id="documented"),
-        pytest.param(verified("light") | reported("switch"), {}, id="reported"),
-        pytest.param(verified("light", "switch"), {}, id="verified"),
+        pytest.param(verified("light") | documented("switch"), id="documented"),
+        pytest.param(verified("light", "switch"), id="verified"),
     ],
 )
-async def test_every_level_above_experimental_passes_with_the_option_off(hass, fake, reset_script, domains, siblings):
+async def test_every_level_above_experimental_passes_with_the_option_off(hass, fake, reset_script, domains):
     add_fake_entity(hass, fake, "switch.s")
     allow_experimental(hass, False)
 
-    with patch.object(FakeTurnOnFor, "scope", AdapterScope(domains=domains, siblings=siblings, duration=LIMITS)):
+    with patch.object(FakeTurnOnFor, "scope", AdapterScope(domains=domains, duration=LIMITS)):
         assert await call(hass, "turn_on_for", {"entity_id": "switch.s", "duration": 5}) == {
             "switch.s": {"status": "sent", "integration": "fake"}
         }
@@ -176,43 +172,26 @@ async def test_an_experimental_call_left_nothing_to_send_is_unchanged_not_refuse
     assert reset_script.calls == []
 
 
-async def test_the_scope_trace_names_what_each_run_target_was_weighed_on(hass, fake, reset_script, wire):
-    add_fake_entity(hass, fake, "light.a", attributes=FULL)
-    add_fake_entity(hass, fake, "light.no_fade", attributes=FULL | NO_FEATURES)
-    add_fake_entity(hass, fake, "light.b", attributes=FULL)
-    scope = AdapterScope(duration=LIMITS, fields=verified("brightness", "transition"), capabilities=verified("A"))
-    events = async_capture_events(hass, SCOPE_EVENT)
+async def test_a_flagged_adapter_is_refused_unless_the_option_is_on(hass, fake, reset_script, caplog):
+    """experimental=True flags every item of the adapter, Verified ones included: a named target raises and an
+    indirect one is skipped while the option is off, and both run once it is on."""
+    add_fake_entity(hass, fake, "light.named")
+    add_fake_entity(hass, fake, "light.member")
+    add_ha_group(hass, "light.room", ["light.member"])
+    flagged = AdapterScope(experimental=True, duration=LIMITS)
+    allow_experimental(hass, False)
 
-    def capability(self, hass, target):
-        return "A" if target.entity_id != "light.b" else "B"
+    with patch.object(FakeTurnOnFor, "scope", flagged):
+        assert await refusal(hass, "turn_on_for", {"entity_id": "light.named", "duration": 5}) == "experimental_off"
+        await call(hass, "turn_on_for", {"entity_id": "light.room", "duration": 5}, return_response=False)
+        assert "light.member (experimental_off)" in caplog.text
+        assert reset_script.calls == []
 
-    with patch.object(FakeTurnOnFor, "scope", scope), patch.object(FakeTurnOnFor, "capability", capability):
-        data = {"duration": 5, "brightness": 9, "transition": 1}
-        await call(hass, "turn_on_for", {"entity_id": ["light.a", "light.no_fade"], **data})
-        # A target refused before it runs is not traced: it proved nothing.
-        await refusal(hass, "turn_on_for", {"entity_id": "light.b", "duration": 5})
-    await hass.async_block_till_done()
+        allow_experimental(hass, True)
+        response = await call(hass, "turn_on_for", {"entity_id": ["light.named", "light.room"], "duration": 5})
 
-    base = {"action": "turn_on_for", "integration": "fake", "domain": "light", "capability": "A"}
-    assert sorted((e.data for e in events), key=lambda d: d["entity_id"]) == [
-        {"entity_id": "light.a", **base, "fields": ["brightness", "transition"]},
-        # Fields the light lacks are dropped first, so the trace names what the call carried.
-        {"entity_id": "light.no_fade", **base, "fields": ["brightness"]},
-    ]
-
-
-async def test_the_scope_trace_is_off_unless_the_wire_logger_is_at_debug(hass, fake, reset_script):
-    add_fake_entity(hass, fake, "light.a")
-    events = async_capture_events(hass, SCOPE_EVENT)
-    level = WIRE_LOGGER.level
-    WIRE_LOGGER.setLevel(logging.INFO)
-    try:
-        await call(hass, "turn_on_for", {"entity_id": "light.a", "duration": 5})
-        await hass.async_block_till_done()
-    finally:
-        WIRE_LOGGER.setLevel(level)
-
-    assert events == []
+    assert set(response) == {"light.named", "light.member"}
+    assert {result["status"] for result in response.values()} == {"sent"}
 
 
 async def test_response_shape(hass, fake, reset_script):

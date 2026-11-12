@@ -45,7 +45,7 @@ Maybe. A key reason these features aren't supported in HA core is that device ma
 <details>
 <summary><b>Device compatibility by integration</b></summary>
 
-🟢 works · ✔ verified on automated rig · 🟡 should work: same call pattern as a tested device · 🙋 testers wanted · 🔴 doesn't work · ⚠️ unmaintained: no one is fixing it; use at your own risk · ⚠️ stale tests: changed since last tested; please report whether it works
+🟢 works · ✔ verified on automated rig · 🟡 should work: same call pattern as a tested device · 🙋 testers wanted · 🔴 doesn't work · ⚠️ unmaintained: no one is fixing it; use at your own risk · ⚠️ untested fix: changed, not yet tested; please report whether it works
 
 **[ZHA](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/index.md)** · maintained by [@jasonmx](https://github.com/jasonmx)
 

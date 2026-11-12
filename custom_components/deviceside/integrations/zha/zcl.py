@@ -9,7 +9,6 @@ from homeassistant.core import Context, HomeAssistant
 from homeassistant.exceptions import HomeAssistantError, Unauthorized, UnknownUser
 
 from .addressing import Address, group_entity_id
-from ...core.wire import wire_enabled, wire_trace
 from ...core.zcl_write import level as level
 
 _LOGGER = logging.getLogger(__name__)
@@ -72,13 +71,13 @@ async def command(
     entity_id: str,
 ) -> None:
     """Send a server command to the device's in cluster through zha.issue_zigbee_cluster_command; params by zigpy name.
-    `entity_id` is the light's, for the wire trace.
+    `entity_id` is the light's, for the debug line (never the IEEE).
 
     The action is admin-only, so it carries the caller's context: a non-admin caller gets Unauthorized from ZHA rather
     than DeviceSide's own rights. The zha library raises on a delivery failure or a non-success ZCL status, so a call
     that returns was accepted.
     """
-    wire_trace(hass, entity_id, "zcl", _command_name(cluster_id, command_id), params)
+    _LOGGER.debug("%s: sending zcl %s %s", entity_id, _command_name(cluster_id, command_id), params)
     await hass.services.async_call(
         "zha",
         "issue_zigbee_cluster_command",
@@ -102,10 +101,10 @@ async def group_command(
     """Groupcast a server command to a Zigbee group through zha.issue_zigbee_group_command; args are positional.
 
     Admin-only, like command(), so it carries the caller's context. A groupcast returns at once with no delivery
-    feedback: a member that can't run the command drops it silently. The wire trace names the group's light entity.
+    feedback: a member that can't run the command drops it silently. The debug line names the group's light entity.
     """
-    if wire_enabled():
-        wire_trace(hass, group_entity_id(hass, gid), "zcl", _command_name(cluster_id, command_id), {"args": args})
+    if _LOGGER.isEnabledFor(logging.DEBUG):
+        _LOGGER.debug("%s: sending zcl %s %s", group_entity_id(hass, gid), _command_name(cluster_id, command_id), args)
     await hass.services.async_call(
         "zha",
         "issue_zigbee_group_command",
@@ -194,7 +193,7 @@ async def hue_turn_on(
         data: SerializableBytes
 
     payload = struct.pack("<HBBH", _HUE_ON_BRIGHTNESS_FADE, 1, max(1, min(level, 254)), 0)
-    wire_trace(hass, entity_id, "zcl", _command_name(HUE_CLUSTER, HUE_MULTI_COLOR), {"data": payload.hex()})
+    _LOGGER.debug("%s: sending zcl %s %s", entity_id, _command_name(HUE_CLUSTER, HUE_MULTI_COLOR), payload.hex())
     response = await cluster.request(False, HUE_MULTI_COLOR, MultiColor, payload, manufacturer=SIGNIFY)
     if (status := getattr(response, "status", 0)) != 0:
         raise HomeAssistantError(f"multiColor to {addr.ieee} answered {status}")
