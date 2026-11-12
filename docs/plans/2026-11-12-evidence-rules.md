@@ -75,7 +75,8 @@ deciding when to test.
 - **Prefer the rig.** Where the rig covers an integration, the sign-off is a rig run: it is repeatable and catches
   what a person doesn't. A manual line is the fallback for integrations the rig can't reach, or when the rig is
   broken. A manual sign-off on a rig-covered integration says why in its PR. This is guidance for maintainers, not a
-  gate check.
+  gate check. No separate level for rig evidence: the cards keep their ✔ for rig-tested models, and
+  `--signoffs` prints each sign-off's kind (record or manual), so the RC audit sees any manual one.
 - `core/`, `actions/` and `scripts/` changes need no device sign-off: unit tests, the RC soak and tenet 5 cover them.
 - If an integration has no sign-off, the cut fails. The fixes: sign it off, revert the change, or put the changed item
   back behind `experimental`.
