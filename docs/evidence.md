@@ -11,9 +11,8 @@ each step lands, its old gate keeps running, and work satisfies it. The old rule
 
 - **Runtime (step 2):** landed. `Level.REPORTED`, the `unmaintained`, `stale_tests` and `siblings` fields and the
   wire and scope traces are gone; `experimental=True` gates at runtime, and `caveat` holds Untested fix or Unmaintained.
-- **Rig (step 3):** the rig still writes `Covers` and `## Shared coverage`, which `--records` reads, and `observed.py`
-  still lends and blocks. With step 2 landed the rig can no longer build `Covers` rows (`deviceside_scope` is gone),
-  so step 2 merges paired with step 3.
+- **Rig (step 3, landed with step 2):** records no longer carry `Covers` or `## Shared coverage`, so `--records`
+  refuses them until step 4. Observed and firmware-fact results go to each bundle's `test-records/_facts.md`.
 - **Release gate (step 4):** `check_release.py --release` (the Untested fix caveat check, and it still refuses an
   `experimental=True` adapter until step 4) and `--records` (record freshness, `FLAGS`, shared coverage, `Covers`,
   report retests). The coverage bar still covers each adapter's code
