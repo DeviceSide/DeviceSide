@@ -104,6 +104,10 @@ deciding when to test.
   it out of the release branch) when the current code mostly works; ship it marked ⚠️ Untested fix when the current
   code is broken and the fix is low-risk; or put it behind `experimental` when it is risky. Review checks that the
   right adapters carry the caveat.
+- **Sign off after merge** (Jason, 2026-11-12). `main` squash-merges, so a PR branch's commits never reach its
+  history. A sign-off cites a commit on `main` (or a `release/` branch) at or after the change, and lands in a later
+  PR: before a release, one rig run on `main` over the `--signoffs --json` list, plus any manual lines, in one PR.
+  Squash stays because every branch commit message would otherwise land in the public history.
 - Records keep a `Covers` row as information if the rig writes one. Nothing checks it.
 
 ### Logging guidance (CONTRIBUTING, Fast track step 4)
