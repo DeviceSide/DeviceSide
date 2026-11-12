@@ -6,16 +6,16 @@ comes from, and the evidence behind every claim.
 
 ## Levels of proof
 
-Aligned to our core tenet that claims follow evidence, we classify feature claims into four levels of proof:
+Claims follow evidence, at one of two levels of proof:
 
-- **Verified:** proven via automated tests on real hardware.
-- **Reported:** reported as working by users.
-- **Documented:** uses the same call pattern as a Verified or Reported device.
-- **Experimental:** untested call pattern.
+- **Verified:** a maintainer tested it on a real device, on the automated rig or by hand.
+- **Documented:** no device of the class has been tested, but DeviceSide sends it the same call as a Verified device,
+  and the maker documents that call identically for both.
 
-Experimental features are unreleased and may contain bugs, so they stay off until you turn on **Experimental features** in **Configure > Settings**. Whether they
-work or not, please tell us with **Report a device test result or bug** in the same menu: working reports from users
-help move a feature to Reported, for everyone.
+New features ship as **Experimental**: they stay off until you turn on **Experimental features** in **Configure >
+Settings**, so they can soak with users who opt in. Some are tested and soaking, others wait for someone with the
+hardware. Whether they work or not, please tell us with **Report a device test result or bug** in the same menu:
+working reports help ship a feature to everyone. How we decide: [evidence rules](evidence.md).
 
 ## Maintainers
 
@@ -26,7 +26,8 @@ maintainers of the integration you choose. A report that a feature doesn't work 
 get fixed or left out.
 
 **⚠️ Unmaintained** marks a feature no one is fixing. It still works as it did, but a bug in it stays unfixed until
-someone fixes it or takes over the integration, so use it at your own risk.
+someone fixes it or takes over the integration, so use it at your own risk. **⚠️ Untested fix** marks a feature
+changed in a release before anyone could test it on a device: please report how it works for you.
 
 On the cards, ✔ marks what the automated rig verified. A model with a report link and no ✔ was reported by users.
 
@@ -72,10 +73,9 @@ it sets attributes ([integrations](integrations/hue/index.md)).
 
 ## Should work
 
-Documented: no device of the class has been tested, but DeviceSide sends it the call a tested device takes, and the
-maker documents that call identically for both.
+Documented ([levels of proof](#levels-of-proof)).
 
-## Help us test
+## Try it: Experimental features
 
 These are built and unit-tested, and wait only for someone with the hardware. Turn on Experimental features to try
 them, then report the result, whether they work or not: working reports help ship them to everyone.

@@ -8,7 +8,7 @@
 
 - Integration:
 - Actions:
-- Level of each new or changed item:
+- Level of each new or changed item (Verified or Documented, flagged `experimental` or not):
 
 ## Changes to shared code
 
@@ -16,11 +16,7 @@
 
 ## Testing evidence
 
-<!-- For each device: model, firmware, HA version, library version, the commit you tested, the date, and what you saw. A maintainer's retest also adds a line to the bundle's `test-records/_manual.md`. -->
-
-## Records staled
-
-<!-- Adapters that `scripts/check_release.py --records` now lists, or "None". -->
+<!-- For each device: model, firmware, HA version, library version, the commit you tested, the date, and what you saw. A maintainer's manual sign-off also adds a line to the bundle's `test-records/_manual.md` ([format](https://github.com/DeviceSide/DeviceSide/blob/main/docs/evidence.md#sign-off-format)). -->
 
 ## Checks
 
