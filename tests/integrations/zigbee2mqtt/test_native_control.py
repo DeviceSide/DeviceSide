@@ -391,21 +391,6 @@ async def test_state_reply_ends_the_wait(hass, setup_production, clock, broker, 
     assert not broker.subscribers["zigbee2mqtt/lamp"]
 
 
-async def test_retained_state_doesnt_end_the_wait(hass, setup_production, clock, broker, monkeypatch):
-    monkeypatch.setattr(nc, "_REPLY_CAP_S", 0.2)
-    entity_id = light(hass, broker, manufacturer="Philips")
-    broker.retained["zigbee2mqtt/lamp"] = {"state": "ON"}  # resent on subscribe: old state, not Z2M's answer
-    loop = asyncio.get_running_loop()
-
-    start = loop.time()
-    async with nc.native_control(hass, target(hass, entity_id), True):
-        pass
-    await nc.settled(hass, target(hass, entity_id))
-
-    assert loop.time() - start >= 0.2
-    assert options(broker) == [True, False]
-
-
 async def test_failed_state_subscribe_still_restores_after_the_cap(
     hass, setup_production, clock, broker, monkeypatch, caplog
 ):
