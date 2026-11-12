@@ -57,15 +57,26 @@ deciding when to test.
 - Nothing ships unflagged unless it is Verified or Documented. Built and unit-tested code that the maintainer can't
   exercise, and that isn't Documented, ships behind `experimental` as untested ("Help us test" on the cards). A
   sign-off covers only what was exercised; it never signs off untested code.
-- **`experimental`** is a flag, not a level. A flagged item is refused unless the user turns on the Experimental
+- **`experimental`** is a flag, not a level. In code it keeps today's per-axis marker, `experimental(...)`, beside
+  `verified(...)` and `documented(...)`; `experimental=True` on the scope flags the whole adapter. A flagged item may be
+  tested and soaking, or untested: the cards tell which from the evidence (a record or `_manual.md` line, or none).
+  Removing the flag is one line, `experimental("switch")` to `documented("switch")`. A flagged item is refused unless the user turns on the Experimental
   features option. Every new feature (action, integration, domain, capability or field) starts flagged, so it soaks in
   RCs and with opted-in users. A repo maintainer removes the flag. The directional bar is five working reports from
   users other than the maintainer and no open bugs. Nothing counts the reports in code.
 - **Contrary evidence:** a report of misbehavior doesn't change the level. The maintainer root-causes it, and the fix,
   the updated fact or a demotion lands with the finding.
-- **Unmaintained** stays as it is, as a call about people, not evidence.
+- **Caveats** (decided 2026-11-12): one field, `AdapterScope.caveat`, with a reason (an issue URL), set and cleared by
+  a repo maintainer. It is not a level: levels are about evidence, caveats about risk and people. One setup warning,
+  one card mark and one release-notes line, worded per caveat:
+  - ⚠️ **Untested fix:** changed, and nobody could test it before the release. It ships live, with a call for testers in
+    the release notes. A sign-off clears it, including a maintainer's `_manual.md` line citing a user's working report.
+  - ⚠️ **Unmaintained:** nobody is fixing it. It ships live. Cleared when someone fixes the adapter or adopts the
+    integration.
+  - No Deprecated caveat: a deprecation gets a hand-written note in that release's notes.
 - Removed: Reported, the release flag (as a release gate), Stale tests, `siblings`, observed-pass lending, the
-  firmware-fact ledger, shared-code proof, and `Covers` gating.
+  firmware-fact ledger, shared-code proof, `Covers` gating, and the separate `unmaintained` and `stale_tests` fields
+  (folded into `caveat`).
 
 ### Release gate (option B)
 
@@ -80,8 +91,13 @@ deciding when to test.
   gate check. No separate level for rig evidence: the cards keep their ✔ for rig-tested models, and
   `--signoffs` prints each sign-off's kind (record or manual), so the RC audit sees any manual one.
 - `core/`, `actions/` and `scripts/` changes need no device sign-off: unit tests, the RC soak and tenet 5 cover them.
-- If an integration has no sign-off, the cut fails. The fixes: sign it off, revert the change, or put the changed item
-  back behind `experimental`.
+- **RCs need no sign-off.** The gate runs only at `cut-release`. An RC's notes list each integration changed without a
+  sign-off, with a link to the device report form, so an RC can carry an unsigned fix for others to test.
+- If an integration has no sign-off at `cut-release`, the cut fails unless a changed adapter of it carries a caveat.
+  A repo maintainer picks whichever is most likely to work for users (tenet 1): hold the fix back (revert it, or leave
+  it out of the release branch) when the current code mostly works; ship it marked ⚠️ Untested fix when the current
+  code is broken and the fix is low-risk; or put it behind `experimental` when it is risky. Review checks that the
+  right adapters carry the caveat.
 - Records keep a `Covers` row as information if the rig writes one. Nothing checks it.
 
 ### Logging guidance (CONTRIBUTING, Fast track step 4)
@@ -137,13 +153,13 @@ The estimates below are code plus tests.
    - Run pre-commit and the Opus audit (binding-rule surface).
 2. **Runtime (DeviceSide), about −300.**
    - `core/scope.py`: `Level` keeps `VERIFIED` and `DOCUMENTED`. `experimental` becomes a runtime gate:
-     `bool | frozenset[str]`, where `True` flags the whole adapter and a set flags the named items. Drop `stale_tests`,
-     `siblings` and `_check_siblings`.
+     the `experimental(...)` marker and `experimental=True` both gate at runtime. Drop `REPORTED`, `stale_tests`,
+     `siblings` and `_check_siblings`. Add `caveat` (Untested fix, Unmaintained) in place of `unmaintained`.
    - `core/dispatcher.py`: refuse a flagged item unless the option is on; drop the scope trace.
    - `core/wire.py`: becomes a `_LOGGER.debug` per call in the same helpers; drop both HA events.
-   - `__init__.py`: drop the stale-tests warning.
-   - Migrate the scopes: the seven adapters lose the flag; untested items become Documented and flagged, or leave the
-     scope.
+   - `__init__.py`: one setup warning per caveat, replacing the unmaintained and stale-tests warnings.
+   - Migrate the scopes: the seven adapters lose the flag. Untested items become Documented where they qualify, else
+     stay `experimental(...)` (untested, flagged).
    - Update tests and regenerate the cards and feature table.
    - Pair with step 3 via `Tests-with`.
 3. **Rig (ha-rig), about −1,000.** Plan it in ha-rig `docs/plans/`.
@@ -157,15 +173,19 @@ The estimates below are code plus tests.
      the `adapter_code` import graph; first check that no module falls below the bar, and if one does, raise it in this
      PR.
    - Add `--signoffs` (option B: package diff since the last tag, `git merge-base --is-ancestor`, tester in maintainers
-     or `REPO_MAINTAINERS`).
-   - Drop `--release`, `--notes` and the rest of `--records`: freshness, `FLAGS`, shared coverage, `Covers`, report
+     or `REPO_MAINTAINERS`). A changed integration passes with a sign-off or a caveat on one of its changed adapters.
+     The output names each sign-off's kind and each caveat.
+   - `--notes` writes the call for testers: integrations changed without a sign-off (RCs) and Untested fix caveats.
+   - Drop `--release` and the rest of `--records`: freshness, `FLAGS`, shared coverage, `Covers`, report
      retests and Stale tests.
    - Update the three workflows and the docstring, which describes the checks and points to `docs/evidence.md` for the
      rules.
 5. **Cards (`gen_compat.py`), about −400.**
    - Tiers: Works (Verified models and native groups), Should work (Documented classes), Experimental features
      (flagged items), Doesn't work.
-   - Drop Reported, siblings, Stale tests and the record-freshness rule for Verified.
+   - Flagged items show as tested (soaking) or Help us test, from the evidence. Caveat marks replace the Unmaintained
+     and Stale tests marks.
+   - Drop Reported, siblings and the record-freshness rule for Verified.
    - Regenerate the README and `docs/device-compatibility.md`.
 6. **v0.1.0.**
    - One sign-off per integration changed since v0.0.1 (`check_release.py --signoffs`), by rig run for every
@@ -186,9 +206,8 @@ concurrency decisions.
 
 ## Open decisions
 
-One open, one fixed unless review objects:
-- The field shape for `experimental`: under discussion (see the session); `bool | frozenset[str]` or the per-axis
-  `experimental(...)` marker kept from today.
+None. Decided 2026-11-12: today's per-axis `experimental(...)` marker stays (not `bool | frozenset[str]`), and one
+`caveat` field without Deprecated. Fixed unless review objects:
 - The coverage bar over all of `core/` and `integrations/` instead of `adapter_code`.
 
 ## Handoff
