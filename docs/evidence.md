@@ -62,19 +62,26 @@ documents identically (`integrations/shelly/addressing.py`).
 
 ## The experimental flag
 
-`experimental` is a flag, not a level. In code it is the per-axis marker `experimental(...)`, beside `verified(...)` and
-`documented(...)`; `experimental=True` on an `AdapterScope` flags the whole adapter. A flagged item is refused unless
-the user turns on the Experimental features option. The dispatcher is the only gate: adapters never read the option, and
-turning it on never changes how any other item behaves. A flagged item may be tested and soaking, or untested; the cards
-show both alike, and whether it was tested is the judgment of the repo maintainer who removes its flag.
+`experimental` is a flag, not a level, and it means one thing: not yet verified by a maintainer (nor Documented). In
+code it is the per-axis marker `experimental(...)`, beside `verified(...)` and `documented(...)`; `experimental=True` on
+an `AdapterScope` flags the whole adapter. A flagged item is refused unless the user turns on the Experimental features
+option. The dispatcher is the only gate: adapters never read the option, and turning it on never changes how any other
+item behaves.
 
-Every new feature (action, integration, domain, capability or field) starts flagged, so it soaks in RCs and with
-opted-in users. A repo maintainer removes the flag. The directional bar is five working reports from users other than
-the maintainer and no open bugs; nothing counts the reports in code.
+Every new feature (action, integration, domain, capability or field) starts flagged. The PR that lands a
+maintainer's verification of a flagged item, a passing rig record or a `_manual.md` sign-off, also lifts its flag:
+`experimental(...)` becomes `verified(...)`, or `experimental=True` goes. A flagged item that qualifies as Documented
+becomes `documented(...)` in a PR that argues the sibling case ([Levels](#levels)). The soak is the RC soak every
+change gets before a release, so no passing run on `main` covers a flagged item's current call. Lifting a flag is a
+change to the integration's package, so one of its maintainers approves it, as for any change there
+([CLAUDE.md](../CLAUDE.md#maintainers)).
+
+For an item no maintainer can test, users' working reports, cited in a maintainer's `_manual.md` sign-off, can verify
+it and lift its flag. The maintainer judges how many are enough (tenet 7); nothing counts them in code.
 
 *Example:* Shelly dimming on `Light` is `experimental("Light")`: a user's report of a Gen3 Dimmer jumping on
-`DimStop` keeps it from Documented. Once a maintainer verifies it on a dimmer, it soaks flagged; once a repo
-maintainer judges it has soaked, their PR makes it `verified("Light")`.
+`DimStop` keeps it from Documented. Once a maintainer verifies it on a dimmer, the PR that lands that record makes it
+`verified("Light")`.
 
 ## Caveats
 

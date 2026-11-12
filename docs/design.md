@@ -23,14 +23,15 @@ Code and docs use these terms.
   and flagged or not. Outside it, calls are refused as not yet tested.
 - **Level**: how a scope item is proven, Verified or Documented. Rules: [evidence.md](evidence.md#levels). User
   wording: [device-compatibility.md](device-compatibility.md#levels-of-proof).
-- **Experimental**: the flag on a scope item (`experimental(...)`) or a whole adapter (`experimental=True`) that keeps
-  it off until the user turns on Experimental features; not a level. Rules:
+- **Experimental**: the flag on a scope item (`experimental(...)`) or a whole adapter (`experimental=True`) not yet
+  verified by a maintainer, which keeps it off until the user turns on Experimental features; not a level. The PR
+  that lands its verification lifts it. Rules:
   [evidence.md](evidence.md#the-experimental-flag).
 - **Maintainer**: a GitHub handle in an integration's `IntegrationInfo.maintainers`. Maintainers look after that
   integration's package: they get its bug reports and approve changes to it. Rules:
   [CLAUDE.md](../CLAUDE.md#maintainers). User wording: [device-compatibility.md](device-compatibility.md#maintainers).
 - **Repo maintainer**: a handle in `REPO_MAINTAINERS` (`scripts/gen_codeowners.py`), with admin on the repo. Repo
-  maintainers own shared code, merge every PR, remove `experimental` flags and set caveats. Distinct from an
+  maintainers own shared code, merge every PR and set caveats. Distinct from an
   integration's Maintainer.
 - **Caveat**: a risk mark on an adapter (`AdapterScope.caveat`, an issue URL), ⚠️ Untested fix or ⚠️ Unmaintained,
   set by a repo maintainer. It ships live; setup warns, its card shows the mark and the release notes say why. Rules:
@@ -46,8 +47,9 @@ Code and docs use these terms.
   `docs/integrations/<integration>/test-records/<action>*.md`. A maintainer's hand test goes in the same folder's
   `_manual.md`, one line per run; either can be a sign-off ([release gate](evidence.md#release-gate)).
 - **Device report**: a user's "works" or "doesn't work" for an action on a model, filed with the device report form;
-  the GitHub issue is its record. "Works" reports guide removing a flag, and a maintainer who trusts one may cite it in
-  a `_manual.md` line as a sign-off; a "doesn't work" is evidence for a fix or for leaving the item out.
+  the GitHub issue is its record. A maintainer who trusts a "works" report may cite it in a `_manual.md` line as a
+  sign-off, which for an item no maintainer can test verifies it and lifts its flag; a "doesn't work" is evidence for
+  a fix or for leaving the item out.
 - **Profile**: one test setup on the rig's HA, the entities a run may move by integration and role; a record names the
   one it ran on (`lab`, `house`).
 

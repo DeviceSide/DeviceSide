@@ -12,10 +12,12 @@ A level comes from the scope alone (verify, then trust): a record never ages.
 page last, with a card per integration: its name, linked to its page (the bundle's index.md), and maintainers
 (`IntegrationInfo.maintainers`; "⚠️ Unmaintained · formerly maintained by" when every adapter is), then the features
 of the adapters with each `caveat` (⚠️ Unmaintained, then ⚠️ Untested fix, linking its reason), then a bullet per tier:
-- Works: the models the evidence of unflagged adapters tested (rig-tested ones end ✔), and native groups.
+- Works: the models the evidence of unflagged adapters tested (rig-tested ones end ✔), and native groups. The PR
+  that lands a flagged item's verification lifts its flag, so only an adapter flagged again over its old records
+  (a risky fix put behind the flag, or a demotion) has evidence left out here.
 - Should work: the classes (devices.yaml `capabilities`) unflagged adapters hold as Documented.
 - Experimental features: the classes held as `experimental(...)`, and the features of adapters flagged whole
-  (`experimental=True`), all alike: whether one was tested is the judgment of whoever lifts its flag.
+  (`experimental=True`), not yet verified by a maintainer.
 - Doesn't work: devices.yaml `doesnt_work`.
 Classes with the same features share an entry, and those of one page section a link. A model or blocker drops the
 integration's name where it leads, as the card's name already gives it. Cards show features, not fields: a flagged or

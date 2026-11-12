@@ -65,11 +65,19 @@ deciding when to test.
   exercised; it never signs off untested code.
 - **`experimental`** is a flag, not a level. In code it keeps today's per-axis marker, `experimental(...)`, beside
   `verified(...)` and `documented(...)`; `experimental=True` on the scope flags the whole adapter. A flagged item may be
-  tested and soaking, or untested; the cards show both alike (superseded: step 5's follow-ups).
+  tested and soaking, or untested; the cards show both alike (superseded: step 5's follow-ups, then the decision
+  below).
   Removing the flag is one line, `experimental("switch")` to `documented("switch")`. A flagged item is refused unless the user turns on the Experimental
   features option. Every new feature (action, integration, domain, capability or field) starts flagged, so it soaks in
   RCs and with opted-in users. A repo maintainer removes the flag. The directional bar is five working reports from
-  users other than the maintainer and no open bugs. Nothing counts the reports in code.
+  users other than the maintainer and no open bugs. Nothing counts the reports in code. (Superseded: the decision
+  below.)
+- **Decision (Jason, 2026-11-12): a verified run lifts the flag.** The flag means one thing: not yet verified by a
+  maintainer. The PR that lands a maintainer's passing rig run or `_manual.md` sign-off for a flagged item also lifts
+  its flag (`experimental("Light")` to `verified("Light")`, or drops `experimental=True`); the soak is the RC soak
+  every change gets. Lifting a flag is a package change, so the integration's maintainers approve it. The
+  soak-then-five-reports route is gone as the normal path; for an item no maintainer can test, user reports cited in
+  a `_manual.md` sign-off can verify it and lift its flag. A flagged item so never has a passing run on `main`.
 - **Contrary evidence:** a report of misbehavior doesn't change the level. The maintainer root-causes it, and the fix,
   the updated fact or a demotion lands with the finding.
 - **Caveats** (decided 2026-11-12): one field, `AdapterScope.caveat`, with a reason (an issue URL), set and cleared by
@@ -234,7 +242,8 @@ The estimates below are code plus tests.
    - Drop Reported, siblings and the record-freshness rule for Verified.
    - Follow-up (Jason, 2026-11-12): one 🧪 tier, no tested/Help us test split. Every flagged item shows alike, with
      no per-item evidence rule; the legend's 🧪 entry says it's off until Experimental features is on and asks for a
-     report. Whether a flagged item was tested is the judgment of the repo maintainer who removes its flag.
+     report. Whether a flagged item was tested is the judgment of the repo maintainer who removes its flag
+     (superseded 2026-11-12: a flagged item is untested, as the PR landing its verification lifts its flag).
    - Follow-up (Jason, 2026-11-12): drop `reports:` from `devices.yaml`, with its loader, validation and the evidence
      block's Reports column. The GitHub issue is a report's record; a maintainer who trusts one cites it in a
      `_manual.md` sign-off.

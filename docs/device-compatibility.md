@@ -12,10 +12,10 @@ Claims follow evidence, at one of two levels of proof:
 - **Documented:** no device of the class has been tested, but DeviceSide sends it the same call as a Verified device,
   differing only in addressing, and no known class of devices handles it differently.
 
-New features ship as **Experimental**: they stay off until you turn on **Experimental features** in **Configure >
-Settings**, so they can soak with users who opt in. Some may also have passed a maintainer's test and be soaking.
-Whether they work or not, please tell us with **Report a device test result or bug** in the same menu: working reports
-help ship a feature to everyone. How we decide: [evidence rules](evidence.md).
+New features ship as **Experimental** until a maintainer has tested them: they stay off until you turn on
+**Experimental features** in **Configure > Settings**. Whether they work or not, please tell us with **Report a device
+test result or bug** in the same menu: for a feature no maintainer can test, working reports help ship it to everyone.
+How we decide: [evidence rules](evidence.md).
 
 ## Maintainers
 
@@ -77,8 +77,9 @@ Documented ([levels of proof](#levels-of-proof)).
 
 ## Try it: Experimental features
 
-These are built and unit-tested ([levels of proof](#levels-of-proof)). Turn on Experimental features to try them, then
-report the result, whether they work or not: working reports help ship them to everyone.
+These are built and unit-tested, but no maintainer has tested them on a device yet
+([levels of proof](#levels-of-proof)). Turn on Experimental features to try them, then report the result, whether they
+work or not: your report helps get them fixed or shipped to everyone.
 
 ### Zigbee plugs and switches
 
