@@ -221,6 +221,13 @@ def test_an_experimental_adapter_or_a_failing_record_is_experimental(root):
     assert line == f"| `stop` | {gc.NO_RECORD} | none |  | |"
 
 
+def test_records_are_the_action_and_its_options(root):
+    for name in ["turn_on_for", "turn_on_for-predicted_state", "turn_on_for_x", "turn_off_for"]:
+        record(root, "zha", name)
+    names = [path.name for path in gc.records("zha", "turn_on_for")]
+    assert names == ["turn_on_for-predicted_state.md", "turn_on_for.md"]
+
+
 def test_only_a_fresh_passing_base_record_is_verified(root, monkeypatch):
     record(root, "zha", "stop-predicted_state")
     line = gc.row("stop", adapter("zha", "stop"), data())

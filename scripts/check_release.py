@@ -7,13 +7,14 @@ The rules are in docs/evidence.md (Release gate, Sign-off format); this is how t
 needs at least 95% line coverage; one missing from the report has none.
 
 --signoffs: an integration is changed when its package (`integrations/<key>/`) differs between the last release tag
-(the latest `vX.Y.Z` that is an ancestor of HEAD; with none, every integration is changed) and HEAD, and its last
-change is the latest commit touching the package. It needs a sign-off whose commit has that last change as an ancestor
-(`git merge-base --is-ancestor`): a test record whose Result is `pass`, or a `_manual.md` row. Without one, a caveat on
-a changed adapter stands in: one whose module changed, or any of the package's adapters when a module that is no
-adapter's changed (a shared helper). Prints a line per changed integration naming its sign-off (kind, commit, tester)
-or the caveats standing in, and fails on each with neither. With --json, prints instead the changed integrations
-without a sign-off, as a JSON list: the rig's run selection.
+(the latest `vX.Y.Z` that is an ancestor of HEAD; with none, every integration is changed) and HEAD, so a reverted
+change is none; its last change is the latest commit touching the package. It needs a sign-off, a test record whose
+Result is `pass` or a `_manual.md` row, whose commit is in this checkout, has that last change as an ancestor
+(`git merge-base --is-ancestor`) and holds the package as HEAD does. Without one, a ⚠️ Untested fix caveat stands in
+when every changed adapter carries it: each adapter whose module changed, or all of the package's when a module that
+is no adapter's changed (a shared helper). Prints a line per changed integration naming its sign-off (kind, commit,
+tester) or the caveats standing in, and fails on each with neither, saying why each sign-off it found was rejected.
+With --json, prints instead the changed integrations without a sign-off, as a JSON list: the rig's run selection.
 
 --notes notes.md: writes the release notes' call for testers, with a link to the device report form: the changed
 integrations without a sign-off, and every adapter with an Untested fix caveat. Empty when there are none.
@@ -31,7 +32,8 @@ Prose and headings around the table are ignored. Under --signoffs, any other `|`
 is neither one of the integration's maintainers nor a repo maintainer (`REPO_MAINTAINERS`). A record names no tester:
 review of the PR that lands it checks who ran it.
 
-Exits 1 on an integration that failed to import, whatever the options, and on any failure of the checks asked for.
+Exits 1 on an integration that failed to import, whatever the options, and on any failure of the checks asked for. A
+git error fails the run rather than pass a gate unseen.
 
 Usage: scripts/check_release.py [--coverage coverage.json] [--signoffs [--json]] [--notes notes.md]
 """
@@ -52,6 +54,7 @@ sys.path.insert(0, str(REPO))
 from custom_components.deviceside.config_flow import REPORT_URL  # noqa: E402
 from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
 from custom_components.deviceside.core.scope import CaveatKind  # noqa: E402
+from scripts.check_tag import git as git_in  # noqa: E402
 from scripts.check_tag import releases  # noqa: E402
 from scripts.gen_codeowners import REPO_MAINTAINERS  # noqa: E402
 
@@ -79,8 +82,32 @@ def adapters(registry: AdapterRegistry) -> list[tuple[str, object]]:
     ]
 
 
-def git(*args: str) -> subprocess.CompletedProcess:
+def git(*args: str) -> str:
+    """The command's output; raises on a non-zero exit."""
+    return git_in(REPO, *args)
+
+
+def run(*args: str) -> subprocess.CompletedProcess:
     return subprocess.run(["git", *args], cwd=REPO, capture_output=True, text=True)
+
+
+def holds(*args: str) -> bool:
+    """For a command whose exit 1 means no (`merge-base --is-ancestor`, `diff --quiet`): whether it exited 0. Raises on
+    any other exit, a git error."""
+    done = run(*args)
+    if done.returncode > 1:
+        raise RuntimeError(f"git {' '.join(args)}: {done.stderr.strip()}")
+    return done.returncode == 0
+
+
+def exists(commit: str) -> bool:
+    """Whether the commit is in this checkout."""
+    return run("cat-file", "-e", f"{commit}^{{commit}}").returncode == 0
+
+
+def same(commit: str, *paths: str) -> bool:
+    """Whether the paths are at the commit as at HEAD."""
+    return holds("diff", "--quiet", commit, "HEAD", "--", *paths)
 
 
 def package(integration: str) -> str:
@@ -92,12 +119,6 @@ def test_records_dir(integration: str) -> Path:
     """Where the integration's test records live: `docs/integrations/<integration>/test-records/`. The rig writes
     there."""
     return BUNDLES / integration / "test-records"
-
-
-def records(integration: str, action: str) -> list[Path]:
-    """The adapter's test records: `<action>.md`, and `<action>-<option>.md` for a run with an option set."""
-    pattern = re.compile(rf"{re.escape(action)}(-[^.]+)?\.md")
-    return sorted(path for path in test_records_dir(integration).glob("*.md") if pattern.fullmatch(path.name))
 
 
 def result(record: Path) -> str | None:
@@ -141,12 +162,19 @@ class SignOff:
 
 @dataclass(frozen=True)
 class Gate:
-    """A changed integration: its last change, the sign-off at or after it, and its changed adapters' caveats."""
+    """A changed integration: its last change, its sign-off and why any other was rejected, and its changed adapters,
+    split by whether they carry an Untested fix caveat."""
 
     integration: str
     last_change: str
     signoff: SignOff | None
-    caveats: list[str]
+    rejected: list[str]
+    caveated: list[str]
+    uncaveated: list[str]
+
+    @property
+    def passes(self) -> bool:
+        return self.signoff is not None or (bool(self.caveated) and not self.uncaveated)
 
 
 def last_release() -> str | None:
@@ -156,9 +184,11 @@ def last_release() -> str | None:
 
 
 def last_change(integration: str, base: str | None) -> str | None:
-    """The latest commit touching the integration's package since the base, or None if there is none."""
-    span = f"{base}..HEAD" if base else "HEAD"
-    return git("log", "-1", "--format=%H", span, "--", package(integration)).stdout.strip() or None
+    """The latest commit touching the integration's package since the base, or None if the package is as at the
+    base (or, with none, has no commit)."""
+    if base and same(base, package(integration)):
+        return None
+    return git("log", "-1", "--format=%H", f"{base}..HEAD" if base else "HEAD", "--", package(integration)) or None
 
 
 def record_signoffs(integration: str) -> list[SignOff]:
@@ -167,8 +197,7 @@ def record_signoffs(integration: str) -> list[SignOff]:
     for path in sorted(test_records_dir(integration).glob("*.md")):
         if path.name.startswith("_"):
             continue
-        text = path.read_text()
-        if (passed := RESULT.search(text)) and passed[1] == "pass" and (cited := CITED_COMMIT.search(text)):
+        if result(path) == "pass" and (cited := CITED_COMMIT.search(path.read_text())):
             found.append(SignOff("record", str(path.relative_to(REPO)), cited[1]))
     return found
 
@@ -180,6 +209,7 @@ def manual_signoffs(integration: str, testers: tuple[str, ...]) -> tuple[list[Si
     if not path.is_file():
         return [], []
     label = path.relative_to(REPO)
+    allowed = {tester.casefold() for tester in testers}
     found, errors = [], []
     for number, line in enumerate(path.read_text().splitlines(), 1):
         line = line.strip()
@@ -187,16 +217,23 @@ def manual_signoffs(integration: str, testers: tuple[str, ...]) -> tuple[list[Si
             continue
         if not (row := MANUAL_ROW.fullmatch(line)):
             errors.append(f"{label}:{number}: not a row of `{MANUAL_HEADER[0]}`: {line}")
-        elif row[2] not in testers:
+        elif row[2].casefold() not in allowed:
             errors.append(f"{label}:{number}: tester @{row[2]} is neither a maintainer of {integration} nor a repo one")
         else:
             found.append(SignOff("manual", f"{label}:{number}", row[1], row[2]))
     return found, errors
 
 
-def is_ancestor(commit: str, of: str) -> bool:
-    """Whether the commit is an ancestor of `of`, or `of` itself. False when git can't find either."""
-    return git("merge-base", "--is-ancestor", commit, of).returncode == 0
+def rejection(signoff: SignOff, integration: str, last: str) -> str | None:
+    """Why the sign-off doesn't sign off the integration's last change, or None when it does."""
+    at = f"{signoff.source} at {signoff.commit[:7]}"
+    if not exists(signoff.commit):
+        return f"{at}: not in this checkout; cite a commit on main"
+    if not holds("merge-base", "--is-ancestor", last, signoff.commit):
+        return f"{at}: predates the last change {last[:7]}"
+    if not same(signoff.commit, package(integration)):
+        return f"{at}: the package differs from HEAD's"
+    return None
 
 
 def changed_adapters(registry, integration: str, base: str | None) -> list[tuple[str, object]]:
@@ -205,7 +242,7 @@ def changed_adapters(registry, integration: str, base: str | None) -> list[tuple
     own = [(name, adapter) for name, adapter in adapters(registry) if adapter.integration == integration]
     if base is None:
         return own
-    changed = set(git("diff", "--name-only", base, "HEAD", "--", package(integration)).stdout.split())
+    changed = set(git("diff", "--name-only", base, "HEAD", "--", package(integration)).split())
     modules = {
         name: Path(inspect.getsourcefile(type(adapter))).resolve().relative_to(REPO.resolve()) for name, adapter in own
     }
@@ -223,13 +260,17 @@ def gates(registry) -> tuple[str | None, list[Gate], list[str]]:
         errors += problems
         if not (last := last_change(key, base)):
             continue
-        signoff = next((s for s in [*record_signoffs(key), *manual] if is_ancestor(last, s.commit)), None)
-        caveats = [
-            f"{name} ({adapter.scope.caveat.kind.value})"
-            for name, adapter in changed_adapters(registry, key, base)
-            if adapter.scope.caveat is not None
-        ]
-        found.append(Gate(key, last, signoff, caveats))
+        signoff, rejected = None, []
+        for candidate in [*record_signoffs(key), *manual]:
+            if not (why := rejection(candidate, key, last)):
+                signoff = candidate
+                break
+            rejected.append(why)
+        caveated, uncaveated = [], []
+        for name, adapter in changed_adapters(registry, key, base):
+            caveat = adapter.scope.caveat
+            (caveated if caveat is not None and caveat.kind is CaveatKind.UNTESTED_FIX else uncaveated).append(name)
+        found.append(Gate(key, last, signoff, rejected, caveated, uncaveated))
     return base, found, errors
 
 
@@ -239,9 +280,10 @@ def describe(gate: Gate) -> str:
     if signoff := gate.signoff:
         tester = f", @{signoff.tester}" if signoff.tester else ""
         return f"{head}; signed off by {signoff.kind} {signoff.source} at {signoff.commit[:7]}{tester}"
-    if gate.caveats:
-        return f"{head}; no sign-off, caveats stand in: {', '.join(gate.caveats)}"
-    return f"{head}; no sign-off at or after it, and no caveat on a changed adapter"
+    if gate.passes:
+        return f"{head}; no sign-off, Untested fix stands in on every changed adapter: {', '.join(gate.caveated)}"
+    rejected = "".join(f" ({why})" for why in gate.rejected)
+    return f"{head}; no sign-off at or after it{rejected}, and no Untested fix on {', '.join(gate.uncaveated) or 'any adapter'}"
 
 
 def release_notes(registry, found: list[Gate]) -> str:
@@ -295,7 +337,7 @@ def main(argv: list[str] | None = None, registry: AdapterRegistry | None = None)
             args.notes.write_text(release_notes(registry, found))
         if args.signoffs:
             errors += manual_errors
-            errors += [describe(gate) for gate in found if gate.signoff is None and not gate.caveats]
+            errors += [describe(gate) for gate in found if not gate.passes]
             lines = [f"Since {base or 'the first commit'}:", *(describe(gate) for gate in found)]
             if args.json:
                 print(json.dumps([gate.integration for gate in found if gate.signoff is None]))

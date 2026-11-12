@@ -59,7 +59,7 @@ sys.path.insert(0, str(REPO))
 
 from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
 from custom_components.deviceside.core.scope import CaveatKind, Level  # noqa: E402
-from scripts.check_release import CITED_COMMIT, adapters, git, package, records, result  # noqa: E402
+from scripts.check_release import CITED_COMMIT, adapters, exists, package, result, same, test_records_dir  # noqa: E402
 from scripts.gen_features import FEATURES as TABLE_FEATURES  # noqa: E402
 from scripts.gen_features import anchors, bundle, columns, page, slug  # noqa: E402
 
@@ -383,7 +383,13 @@ def fresh(record: Path, integration: str) -> bool:
     stricter, as the package and `core/` hold that code, and any change counts, flags included."""
     if not (cited := CITED_COMMIT.search(record.read_text())):
         return False
-    return not git("diff", "--quiet", cited[1], "HEAD", "--", package(integration), CORE).returncode
+    return exists(cited[1]) and same(cited[1], package(integration), CORE)
+
+
+def records(integration: str, action: str) -> list[Path]:
+    """The adapter's test records: `<action>.md`, and `<action>-<option>.md` for a run with an option set."""
+    pattern = re.compile(rf"{re.escape(action)}(-[^.]+)?\.md")
+    return sorted(path for path in test_records_dir(integration).glob("*.md") if pattern.fullmatch(path.name))
 
 
 def passing(integration: str, action: str) -> list[Path]:
@@ -547,7 +553,7 @@ class Card:
     requires: str | None = None
     url: str | None = None  # the integration's page
     maintainers: tuple[str, ...] = ()
-    # ⚠️ Unmaintained, then ⚠️ Stale tests entries: the features of the adapters so marked, by reason.
+    # ⚠️ Unmaintained, then ⚠️ Untested fix entries: the features of the adapters so marked, by reason.
     marks: list[str] = field(default_factory=list)
     # Every shipping adapter is unmaintained, so the heading says "formerly maintained".
     all_unmaintained: bool = False

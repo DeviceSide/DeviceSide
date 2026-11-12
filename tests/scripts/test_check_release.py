@@ -143,22 +143,10 @@ def write_record(repo, name: str, commit: str, result: str = "pass", integration
     return repo.commit(f"docs/integrations/{integration}/test-records/{name}", text)
 
 
-def test_records_are_the_action_and_its_options(fake_repo):
-    sha = fake_repo.commit()
-    for name in ["turn_on_for.md", "turn_on_for-predicted_state.md", "turn_on_for_x.md", "turn_off_for.md"]:
-        write_record(fake_repo, name, sha)
-    names = [path.name for path in cr.records("fake", "turn_on_for")]
-    assert names == ["turn_on_for-predicted_state.md", "turn_on_for.md"]
-
-
-def test_a_file_named_with_a_leading_underscore_is_never_a_record(fake_repo):
-    """The rig keeps each integration's fact results in `_facts.md`, beside the records; no action is named with a
-    leading underscore, and no sign-off reads it."""
-    sha = fake_repo.commit()
-    write_record(fake_repo, "_facts.md", sha)
-    actions = [action.key for action in discover()]
-    assert actions
-    assert "_facts.md" not in [path.name for name in actions for path in cr.records("fake", name)]
+@pytest.mark.parametrize("name", ["_facts.md", "_manual.md"])
+def test_a_file_named_with_a_leading_underscore_is_never_a_record(fake_repo, name):
+    """The rig's fact results (`_facts.md`) and the manual sign-offs sit beside the records; neither is one."""
+    write_record(fake_repo, name, fake_repo.commit())
     assert cr.record_signoffs("fake") == []
 
 
@@ -266,7 +254,7 @@ def test_a_changed_integration_with_no_signoff_fails(released, monkeypatch, caps
     change = released.commit(f"{FAKE}/stop.py")
     assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
     out, err = capsys.readouterr()
-    line = f"fake: changed at {change[:7]}; no sign-off at or after it, and no caveat on a changed adapter"
+    line = f"fake: changed at {change[:7]}; no sign-off at or after it, and no Untested fix on fake / stop"
     assert out.splitlines() == ["Since v0.1.0:", line]
     assert err.splitlines() == [f"error: {line}"]
 
@@ -283,16 +271,17 @@ def test_a_passing_record_at_or_after_the_last_change_signs_off(released, monkey
     assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 0
 
 
-def test_a_record_before_the_last_change_or_not_passing_is_no_signoff(released, monkeypatch):
+def test_a_record_before_the_last_change_or_not_passing_is_no_signoff(released, monkeypatch, capsys):
     before = released.commit(f"{FAKE}/stop.py")
     write_record(released, "stop.md", before)
-    released.commit(f"{FAKE}/transport.py")
+    last = released.commit(f"{FAKE}/transport.py")
     assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
+    assert f"({RECORDS}/stop.md at {before[:7]}: predates the last change {last[:7]})" in capsys.readouterr().out
     write_record(released, "turn_on_for.md", released.git("rev-parse", "HEAD"), result="fail")
     assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
 
 
-def test_a_record_citing_a_commit_off_the_branch_is_no_signoff(released, monkeypatch):
+def test_a_record_citing_a_commit_off_the_branch_is_no_signoff(released, monkeypatch, capsys):
     """Ancestry, not trees: a run on a branch that lacks the last change didn't test it."""
     released.git("checkout", "-q", "-b", "side", "v0.1.0")
     side = released.commit("side.txt")
@@ -301,7 +290,34 @@ def test_a_record_citing_a_commit_off_the_branch_is_no_signoff(released, monkeyp
     write_record(released, "stop.md", side)
     assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
     write_record(released, "stop.md", "0" * 40)  # one git can't find
+    capsys.readouterr()
     assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
+    assert f"({RECORDS}/stop.md at 0000000: not in this checkout; cite a commit on main)" in capsys.readouterr().out
+
+
+def test_a_signoff_whose_package_differs_from_heads_is_none(released, monkeypatch, capsys):
+    """A run on a branch that changed the package again tested other code."""
+    released.commit(f"{FAKE}/stop.py")
+    released.git("checkout", "-q", "-b", "side")
+    side = released.commit(f"{FAKE}/stop.py")
+    released.git("checkout", "-q", "main")
+    write_record(released, "stop.md", side)
+    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
+    assert f"({RECORDS}/stop.md at {side[:7]}: the package differs from HEAD's)" in capsys.readouterr().out
+
+
+def test_a_reverted_change_is_unchanged(released, monkeypatch, capsys):
+    released.commit(f"{FAKE}/stop.py")
+    released.git("revert", "--no-edit", "HEAD")
+    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 0
+    assert capsys.readouterr().out == "Since v0.1.0:\n"
+
+
+def test_a_base_git_cannot_resolve_fails(released, monkeypatch):
+    """A git error fails closed: an unresolvable base must not read as no change."""
+    monkeypatch.setattr(cr, "last_release", lambda: "v9.9.9")
+    with pytest.raises(RuntimeError, match="v9.9.9"):
+        cr.main(["--signoffs"], registry(released, monkeypatch))
 
 
 def test_a_manual_row_at_the_last_change_signs_off_naming_the_tester(released, monkeypatch, capsys):
@@ -313,9 +329,10 @@ def test_a_manual_row_at_the_last_change_signs_off_naming_the_tester(released, m
     )
 
 
-def test_a_repo_maintainer_may_sign_off(released, monkeypatch):
+@pytest.mark.parametrize("tester", [cr.REPO_MAINTAINERS[0], cr.REPO_MAINTAINERS[0].upper(), "A"])
+def test_a_repo_maintainer_may_sign_off_and_handles_ignore_case(released, monkeypatch, tester):
     change = released.commit(f"{FAKE}/stop.py")
-    released.commit(MANUAL, manual(manual_row(change, tester=cr.REPO_MAINTAINERS[0])))
+    released.commit(MANUAL, manual(manual_row(change, tester=tester)))
     assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 0
 
 
@@ -329,12 +346,22 @@ def test_a_manual_row_error_fails_the_gate(released, monkeypatch, capsys):
 CAVEAT = AdapterScope(caveat=Caveat(CaveatKind.UNTESTED_FIX, ISSUE))
 
 
-def test_a_caveat_on_a_changed_adapter_stands_in_for_the_signoff(released, monkeypatch, capsys):
+def test_untested_fix_on_the_changed_adapter_stands_in_for_the_signoff(released, monkeypatch, capsys):
     change = released.commit(f"{FAKE}/stop.py")
     assert cr.main(["--signoffs"], registry(released, monkeypatch, stop=CAVEAT)) == 0
     assert capsys.readouterr().out.splitlines()[1] == (
-        f"fake: changed at {change[:7]}; no sign-off, caveats stand in: fake / stop (Untested fix)"
+        f"fake: changed at {change[:7]}; no sign-off, Untested fix stands in on every changed adapter: fake / stop"
     )
+
+
+@pytest.mark.parametrize(
+    "scope",
+    [AdapterScope(caveat=Caveat(CaveatKind.UNMAINTAINED, ISSUE)), AdapterScope(experimental=True)],
+    ids=["unmaintained", "experimental"],
+)
+def test_no_other_caveat_nor_the_flag_stands_in(released, monkeypatch, scope):
+    released.commit(f"{FAKE}/stop.py")
+    assert cr.main(["--signoffs"], registry(released, monkeypatch, stop=scope)) == 1
 
 
 def test_a_caveat_on_an_unchanged_adapter_does_not(released, monkeypatch):
@@ -342,9 +369,11 @@ def test_a_caveat_on_an_unchanged_adapter_does_not(released, monkeypatch):
     assert cr.main(["--signoffs"], registry(released, monkeypatch, turn_on_for=CAVEAT)) == 1
 
 
-def test_a_change_to_a_shared_module_changes_every_adapter_of_the_package(released, monkeypatch):
+def test_a_change_to_a_shared_module_needs_the_caveat_on_every_adapter_of_the_package(released, monkeypatch, capsys):
     released.commit(f"{FAKE}/transport.py")
-    assert cr.main(["--signoffs"], registry(released, monkeypatch, turn_on_for=CAVEAT)) == 0
+    assert cr.main(["--signoffs"], registry(released, monkeypatch, turn_on_for=CAVEAT)) == 1
+    assert "no Untested fix on fake / stop" in capsys.readouterr().out
+    assert cr.main(["--signoffs"], registry(released, monkeypatch, turn_on_for=CAVEAT, stop=CAVEAT)) == 0
 
 
 def test_with_no_release_every_integration_is_changed(fake_repo, monkeypatch, capsys):
