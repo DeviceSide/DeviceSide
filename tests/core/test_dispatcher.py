@@ -31,10 +31,11 @@ pytestmark = pytest.mark.usefixtures("setup_integration")
 DISPATCHER = "custom_components.deviceside.core.dispatcher"
 
 
-@pytest.fixture(autouse=True, params=[False, True], ids=["experimental_off", "experimental_on"])
+@pytest.fixture(params=[False, True], ids=["experimental_off", "experimental_on"])
 def experimental_option(request, hass, setup_integration):
-    """Every test runs with the Experimental features option off and on: no fake adapter has an Experimental item,
-    so the option must change nothing. The tests of the gate set it themselves, or take its value."""
+    """The Experimental features option off and on. The refusal and skip-log tests take it: no fake adapter they
+    reach has an Experimental item, so the option must change nothing there. The tests of the gate set it
+    themselves, or take its value."""
     allow_experimental(hass, request.param)
     return request.param
 
@@ -265,6 +266,7 @@ async def test_an_unauthorized_target_is_rejected_as_admin_required_and_the_rest
     assert reset_script.calls[0][3] == ["light.a", "light.b"]
 
 
+@pytest.mark.usefixtures("experimental_option")
 async def test_a_named_target_that_cant_take_the_action_raises_before_anything_is_sent(hass, fake, reset_script):
     add_fake_entity(hass, fake, "light.a")
     add_fake_entity(hass, fake, "light.b")
@@ -283,6 +285,7 @@ async def test_a_named_target_that_cant_take_the_action_raises_before_anything_i
     assert reset_script.calls == []
 
 
+@pytest.mark.usefixtures("experimental_option")
 async def test_an_indirect_target_that_cant_take_the_action_is_skipped_and_logged(hass, fake, reset_script, caplog):
     add_fake_entity(hass, fake, "light.a")
     add_fake_entity(hass, fake, "cover.blind")
@@ -519,6 +522,7 @@ async def test_native_group_without_expand_hook_is_refused(hass, fake, reset_scr
     assert reset_script.calls == []
 
 
+@pytest.mark.usefixtures("experimental_option")
 async def test_refusal_reasons_from_resolution_and_adapters(hass, fake):
     add_fake_entity(hass, fake, "light.a")
     add_fake_entity(hass, fake, "light.lamp", identifier="special_1")
