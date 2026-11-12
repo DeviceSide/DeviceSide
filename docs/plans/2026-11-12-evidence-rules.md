@@ -16,6 +16,12 @@ Tests-with: the ha-rig PR in step 3 pairs with the runtime PR (step 2), because 
 subscribes to.
 Depends-on: none. This plan lifts the v0.1.0 freeze at `075895f`. No RC is cut until step 5 lands.
 
+## Principle: the rig is a dumb executor (Jason, 2026-11-12)
+
+DeviceSide decides the facts and logic of what needs testing: which integrations need a sign-off, the step files that
+say what to send and expect. The rig executes the test plan it is given and writes records. It holds no rule of its
+own about what is proven, covered or stale.
+
 ## Why
 
 The `## Release flag` section of CLAUDE.md is 858 words, over half the file. It changed in 10 commits in a week, and
@@ -166,15 +172,26 @@ The estimates below are code plus tests.
    - Drop the wire and scope taps in `client.py` and `engine.py`, `Covers` rendering, Shared-coverage capture,
      `observed.py` lending and blocking, and the firmware-fact ledger in `progress.py` and `coverage.py`.
    - Z2M BUSY call windows come from the rig's own step timestamps.
-   - `coverage.py` fingerprints by integration package, not `adapter_code`.
+   - The rig decides nothing about what needs testing (principle below): delete `coverage.py`'s fingerprints,
+     freshness check and observed hints, and `--coverage`. The rig runs the suites it is asked for.
+   - Observed and firmware-fact cases are opt-in: a passed one stands as a fact, a default run leaves them out, and a
+     maintainer adds them with an option. No hashing, lending or ledger.
+   - The progress ledger stays only to resume an interrupted run, keyed by commit plus suite.
    - Leave roaming, concurrency and the repo merge for separate decisions.
+3b. **Step files move to DeviceSide** (decided 2026-11-12). The rig's `steps/<action>.yaml` move to DeviceSide
+   `tests/rig/steps/`, landed with the action they test, so a new action needs no paired rig PR. The rig reads them
+   from the target checkout. CLAUDE.md's "don't add rig code, step files or rig docs here" becomes "no rig code or rig
+   docs here; step files live in `tests/rig/steps/`". Step files name roles, never entities; the household check
+   covers them. The rig engine stays private.
 4. **Release gate (`check_release.py`), about −1,100.**
    - Keep `--coverage`, with the bar on every module under `core/` and `integrations/` except `__init__.py`. That drops
      the `adapter_code` import graph; first check that no module falls below the bar, and if one does, raise it in this
      PR.
    - Add `--signoffs` (option B: package diff since the last tag, `git merge-base --is-ancestor`, tester in maintainers
      or `REPO_MAINTAINERS`). A changed integration passes with a sign-off or a caveat on one of its changed adapters.
-     The output names each sign-off's kind and each caveat.
+     The output names each sign-off's kind and each caveat. A machine-readable form (`--signoffs --json`) lists
+     the integrations that still need one; the rig takes that list as its run selection (a rig change after this
+     step).
    - `--notes` writes the call for testers: integrations changed without a sign-off (RCs) and Untested fix caveats.
    - Drop `--release` and the rest of `--records`: freshness, `FLAGS`, shared coverage, `Covers`, report
      retests and Stale tests.
