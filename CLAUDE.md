@@ -109,26 +109,13 @@ not a code change to the records check.
 **Stale tests:** `AdapterScope.stale_tests` (an issue URL or a reason), set by hand on an adapter left without a fresh
 retest at the cut. It ships live; setup warns, its card shows ⚠️ Stale tests, and the release notes link the device
 report form to recruit testers. One accepted report at the new code (or any fresh retest) clears it, in the PR that
-lands the retest.
+lands the retest. `cut-release` checks the latest RC's commit, so set `stale_tests`, or land the retest that clears it,
+before the last RC.
 Unmaintained stays separate: a call about a missing maintainer, not missing evidence.
 
 ## Releasing
 
-Work lands on `main`. RCs are cut from it, and `cut-release` tags the version's latest RC, so what ships is what
-soaked while `main` moves on. The cut workflows enforce the tag rules, green CI, the RC audit (its record comes from
-`/rc-audit`), the release flag, retests (`cut-release` fails on an adapter with no fresh retest unless it sets
-`stale_tests`, and on a `stale_tests` adapter with one), and test records that pass and are no older than their
-adapter's code (`check_release.py --records`, so each adapter changed since its last rig run, beyond the arguments
-that script's `FLAGS` ignores, needs a new one); see their headers. `cut-release` checks the latest RC's commit, so set
-`stale_tests`, or land the retest that clears it, before the last RC.
-The steps they don't check:
-
-1. **Each RC:** install it through HACS (the rig deploys a checkout, not the release); it loads and the log is clean.
-2. Dispatch `cut-release` from `main` with `vX.Y.Z`.
-3. Set `manifest.json` on `main` to the next version.
-
-To fix an RC or a release without what `main` has gained since, cut `release/vX.Y.Z` from its tag, land the fix
-there, cut the next RC from it, and merge the branch back into `main`.
+Cutting, tagging and fixing RCs and releases: the `release` skill (`.claude/skills/release/SKILL.md`).
 
 ## Pull requests
 
@@ -139,21 +126,12 @@ there, cut the next RC from it, and merge the branch back into `main`.
   audit is the release flag and `AdapterScope`, `Level.DOCUMENTED`, `scripts/check_release.py`,
   `docs/integrations/*/test-records/`, and rule text in `CLAUDE.md` or `docs/design.md`.
 
-## Layout
+## The rig
 
-- `custom_components/deviceside/core/`: registry, resolver, dispatcher, action registration
-- `custom_components/deviceside/actions/`: one module per action
-- `custom_components/deviceside/integrations/<integration>/`: one adapter module per action
-- `tests/{core,actions,integrations,scripts}`: mirror the above
-- `scripts/`: household check, generated docs (device cards, device compatibility page, README feature table), release checks
-  (coverage, the release flag, record freshness, tags, RC audits)
-- `docs/integrations/<integration>/`: the integration's bundle (see Where facts go); the rig writes its `test-records/`.
-  Design detail lives in `docs/design.md`.
-
-The rig, which drives the live HA and writes the records, is a private repo kept out of this one: don't add rig code,
-step files or rig docs here. When it is attached to the session, its `CLAUDE.md` says how to run it.
+The rig, which drives the live HA and writes the records in `docs/integrations/<integration>/test-records/`, is a
+private repo kept out of this one: don't add rig code, step files or rig docs here. When it is attached to the
+session, its `CLAUDE.md` says how to run it.
 
 ## Conventions
 
-- Async throughout; `_LOGGER = logging.getLogger(__name__)`; actions registered once in `async_setup`.
-- American English, matching HA. The version lives in `manifest.json`.
+- American English, matching HA.
