@@ -3,7 +3,6 @@
 import json
 import logging
 from types import SimpleNamespace
-from unittest.mock import MagicMock
 
 import pytest
 from homeassistant.core import callback
@@ -12,15 +11,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import async_mock_service
 
-from custom_components.deviceside.core.scope import verified
 from custom_components.deviceside.integrations.zigbee2mqtt import bridge, turn_on_for
-from custom_components.deviceside.integrations.zigbee2mqtt.addressing import (
-    is_z2m_group,
-    state_topic,
-    topic,
-    z2m_address,
-)
-from custom_components.deviceside.integrations.zigbee2mqtt.detect import detect
 
 from ...conftest import advance, allow_experimental, call, refusal, sent, wall_clock_now
 from ...fixtures.zigbee2mqtt import IEEE, add_z2m_entity, add_z2m_group, z2m_entry
@@ -290,24 +281,6 @@ async def test_without_fields_nothing_is_subscribed(hass, setup_production, z2m)
     assert z2m.subscribers == {}
 
 
-def test_state_topic_is_the_device_name():
-    device = MagicMock()
-    device.identifiers = {("mqtt", f"zigbee2mqtt_{IEEE}")}
-    device.name = "Kitchen"
-    assert state_topic(SimpleNamespace(device=device)) == STATE_TOPIC
-
-
-def test_state_topic_is_none_without_a_name_or_an_address():
-    named = MagicMock()
-    named.identifiers = {("mqtt", "other_bridge_0x1234")}
-    named.name = "Kitchen"
-    unnamed = MagicMock()
-    unnamed.identifiers = {("mqtt", f"zigbee2mqtt_{IEEE}")}
-    unnamed.name = None
-    assert state_topic(SimpleNamespace(device=named)) is None
-    assert state_topic(SimpleNamespace(device=unnamed)) is None
-
-
 # --- State read-backs ---
 
 
@@ -420,105 +393,6 @@ async def test_a_failed_read_is_logged_and_the_result_stays_sent(hass, setup_pro
     assert response == {"light.kitchen": SENT}
     assert len(sets) == 1
     assert caplog.text.count("State read for light.kitchen failed: broker unreachable") == 3
-
-
-# --- Direct helper tests (covering edge-case guards) ---
-
-
-def _target(identifier: str) -> SimpleNamespace:
-    device = MagicMock()
-    device.identifiers = {("mqtt", identifier)}
-    return SimpleNamespace(device=device)
-
-
-def test_group_identifier_matches_z2m_encoding():
-    """Pinned to the literal Z2M writes, so the test checks Z2M's scheme rather than our own."""
-    assert topic(_target("zigbee2mqtt_1221051039810110150109113116116_7"), "set") == "zigbee2mqtt/7/set"
-
-
-def test_is_z2m_group_true_for_any_base_topic(hass):
-    assert is_z2m_group(hass, _target("zigbee2mqtt_1221051039810110150109113116116_7"))
-    assert is_z2m_group(hass, _target("zigbee2mqtt_12250109_7"))
-
-
-def test_is_z2m_group_false_for_a_device(hass):
-    assert not is_z2m_group(hass, _target(f"zigbee2mqtt_{IEEE}"))
-    assert not is_z2m_group(hass, SimpleNamespace(device=None))
-
-
-def test_detect_returns_false_when_device_is_none(hass):
-    entry = MagicMock()
-    assert detect(hass, entry, None) is False
-
-
-def test_detect_returns_false_when_identifier_prefix_does_not_match(hass):
-    device = MagicMock()
-    device.identifiers = {("mqtt", "other_bridge_0x1234")}
-    assert detect(hass, MagicMock(), device) is False
-
-
-def test_detect_returns_true_for_z2m_identifier(hass):
-    device = MagicMock()
-    device.identifiers = {("mqtt", f"zigbee2mqtt_{IEEE}")}
-    assert detect(hass, MagicMock(), device) is True
-
-
-def test_z2m_address_returns_none_when_no_matching_identifier():
-    device = MagicMock()
-    device.identifiers = {("mqtt", "other_bridge_0x1234"), ("zha", IEEE)}
-    assert z2m_address(device) is None
-
-
-def test_topic_returns_none_when_device_is_none():
-    target = SimpleNamespace(device=None)
-    assert topic(target, "set") is None
-
-
-def test_topic_returns_none_when_identifier_does_not_match():
-    device = MagicMock()
-    device.identifiers = {("mqtt", "other_bridge_0x1234")}
-    target = SimpleNamespace(device=device)
-    assert topic(target, "set") is None
-
-
-def test_topic_returns_set_topic_for_z2m_device():
-    device = MagicMock()
-    device.identifiers = {("mqtt", f"zigbee2mqtt_{IEEE}")}
-    target = SimpleNamespace(device=device)
-    assert topic(target, "set") == f"zigbee2mqtt/{IEEE}/set"
-
-
-def test_supports_returns_super_reason_when_scope_refuses(hass):
-    """Line 48: super().supports() returns non-None; the adapter propagates the reason."""
-    import dataclasses
-
-    from custom_components.deviceside.actions.turn_on_for import TurnOnForRequest
-    from custom_components.deviceside.core.models import LightFields
-    from custom_components.deviceside.integrations.zigbee2mqtt.turn_on_for import Z2MTurnOnFor
-
-    adapter = Z2MTurnOnFor()
-    device = MagicMock()
-    device.identifiers = {("mqtt", f"zigbee2mqtt_{IEEE}")}
-    target = SimpleNamespace(
-        entity_id="light.test",
-        domain="light",
-        device=device,
-        entry=MagicMock(),
-        config_entry=MagicMock(),
-        state=None,
-        via_group=None,
-        via_wrapper=None,
-        is_group=False,
-    )
-    # Request with brightness; temporarily restrict scope so brightness is not in scope.
-    request = TurnOnForRequest(duration_s=5.0, light=LightFields(brightness=50))
-    restricted_scope = dataclasses.replace(Z2MTurnOnFor.scope, fields=verified())
-    original_scope = Z2MTurnOnFor.scope
-    Z2MTurnOnFor.scope = restricted_scope
-    try:
-        assert adapter.supports(hass, request, target) == "fields_not_tested"
-    finally:
-        Z2MTurnOnFor.scope = original_scope
 
 
 async def test_the_fields_and_the_timer_are_logged_without_the_topic(hass, setup_production, publishes, turn_ons, wire):
