@@ -8,13 +8,16 @@ needs at least 95% line coverage; one missing from the report has none.
 
 --signoffs: an integration is changed when its package (`integrations/<key>/`) differs between the last release tag
 (the latest `vX.Y.Z` that is an ancestor of HEAD; with none, every integration is changed) and HEAD, so a reverted
-change is none; its last change is the latest commit touching the package. It needs a sign-off, a test record whose
-Result is `pass` or a `_manual.md` row, whose commit is in this checkout, has that last change as an ancestor
-(`git merge-base --is-ancestor`) and holds the package as HEAD does. Without one, a ⚠️ Untested fix caveat stands in
+change is none; its last change is the latest commit touching the package. It needs a sign-off, its test records as
+one run or a `_manual.md` row, whose commit is in this checkout, has that last change as an ancestor
+(`git merge-base --is-ancestor`) and holds the package as HEAD does. The records are one run when every one cites the
+same commit and passes; a partial run (records citing different commits) or a failing record is none, until a rerun
+of the missing or failing actions at that commit completes it. Without one, a ⚠️ Untested fix caveat stands in
 when every changed adapter carries it: each adapter whose module changed, or all of the package's when a module that
 is no adapter's changed (a shared helper). Prints a line per changed integration naming its sign-off (kind, commit,
-tester) or the caveats standing in, and fails on each with neither, saying why each sign-off it found was rejected.
-With --json, prints instead the changed integrations without a sign-off, as a JSON list: the rig's run selection.
+tester) or the caveats standing in, and fails on each with neither, saying why its records and each manual row were
+rejected. With --json, prints instead the changed integrations without a sign-off, as a JSON list: the rig's run
+selection.
 
 --notes notes.md: writes the release notes' call for testers, with a link to the device report form: the changed
 integrations without a sign-off, and every adapter with an Untested fix caveat. Empty when there are none.
@@ -45,6 +48,7 @@ import os
 import re
 import subprocess
 import sys
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -155,7 +159,7 @@ def coverage_errors(coverage: dict) -> list[str]:
 @dataclass(frozen=True)
 class SignOff:
     kind: str  # "record" or "manual"
-    source: str  # the record, or the manual row as `<file>:<line>`
+    source: str  # the records' folder, or the manual row as `<file>:<line>`
     commit: str
     tester: str | None = None  # a manual row's handle; a record names none
 
@@ -191,15 +195,20 @@ def last_change(integration: str, base: str | None) -> str | None:
     return git("log", "-1", "--format=%H", f"{base}..HEAD" if base else "HEAD", "--", package(integration)) or None
 
 
-def record_signoffs(integration: str) -> list[SignOff]:
-    """The integration's passing test records that cite a commit. `_`-prefixed files are not records."""
-    found = []
-    for path in sorted(test_records_dir(integration).glob("*.md")):
-        if path.name.startswith("_"):
-            continue
-        if result(path) == "pass" and (cited := CITED_COMMIT.search(path.read_text())):
-            found.append(SignOff("record", str(path.relative_to(REPO)), cited[1]))
-    return found
+def record_signoff(integration: str) -> tuple[SignOff | None, str | None]:
+    """The integration's test records as one sign-off when they are one passing run, every record citing the same
+    commit; else None and why not, or no reason when there are no records. `_`-prefixed files are not records."""
+    folder = test_records_dir(integration)
+    if not (records := [path for path in sorted(folder.glob("*.md")) if not path.name.startswith("_")]):
+        return None, None
+    commits = Counter(m[1][:7] if (m := CITED_COMMIT.search(path.read_text())) else "none" for path in records)
+    if len(commits) > 1:
+        counts = ", ".join(f"{commit}: {n}" for commit, n in commits.most_common())
+        return None, f"records cite {len(commits)} commits ({counts}); a sign-off is one run at one commit"
+    (commit,) = commits
+    if failing := [path.name for path in records if result(path) != "pass"]:
+        return None, f"{', '.join(failing)} fail{'s' * (len(failing) == 1)} at {commit}"
+    return SignOff("record", str(folder.relative_to(REPO)), commit), None
 
 
 def manual_signoffs(integration: str, testers: tuple[str, ...]) -> tuple[list[SignOff], list[str]]:
@@ -260,8 +269,9 @@ def gates(registry) -> tuple[str | None, list[Gate], list[str]]:
         errors += problems
         if not (last := last_change(key, base)):
             continue
-        signoff, rejected = None, []
-        for candidate in [*record_signoffs(key), *manual]:
+        run, why = record_signoff(key)
+        signoff, rejected = None, [why] if why else []
+        for candidate in [run, *manual] if run else manual:
             if not (why := rejection(candidate, key, last)):
                 signoff = candidate
                 break

@@ -35,10 +35,9 @@ Code and docs use these terms.
 - **Caveat**: a risk mark on an adapter (`AdapterScope.caveat`, an issue URL), ⚠️ Untested fix or ⚠️ Unmaintained,
   set by a repo maintainer. It ships live; setup warns, its card shows the mark and the release notes say why. Rules:
   [evidence.md](evidence.md#caveats).
-- **Sign-off**: a passing test record or `_manual.md` line from one of an integration's Maintainers (or a Repo
-  maintainer when none responds), at or after its last change, which a release needs for each integration changed
-  since the last tag. Rules:
-  [evidence.md](evidence.md#release-gate).
+- **Sign-off**: a whole passing rig run (every test record at one commit) or a `_manual.md` line from one of an
+  integration's Maintainers (or a Repo maintainer when none responds), at or after its last change, which a release
+  needs for each integration changed since the last tag. Rules: [evidence.md](evidence.md#release-gate).
 - **Experimental features**: the option (`experimental_features`, off by default) that lets calls touching a flagged
   item through. Only the dispatcher reads it.
 - **Rig**: a tool that tests DeviceSide's features automatically with real hardware on a live Home Assistant instance,

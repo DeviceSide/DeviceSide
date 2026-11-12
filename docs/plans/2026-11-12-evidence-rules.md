@@ -87,9 +87,14 @@ deciding when to test.
 ### Release gate (option B)
 
 - Each integration whose package (`custom_components/deviceside/integrations/<x>/`) changed since the last release tag
-  needs a sign-off at or after its last change. A sign-off is a passing test record or a `_manual.md` line whose commit
-  has the package's last change as an ancestor. Any change counts, flags included; a sign-off may say "no call
+  needs a sign-off at or after its last change. A sign-off is a whole passing rig run or a `_manual.md` line whose
+  commit has the package's last change as an ancestor. Any change counts, flags included; a sign-off may say "no call
   changed".
+- **A record sign-off is a whole passing run** (Jason, 2026-11-12). The integration's records sign it off only when
+  every one (bar `_`-files) cites the same commit and passes; a failing record or a partial run (records citing
+  different commits) is none, and rerunning the failing action at that commit completes the run. One passing record
+  no longer signs off the whole integration. An action removed from the integration leaves its old record to delete
+  by hand. A `_manual.md` line still signs off alone; an integration with no records can only be signed off that way.
 - Who signs off: any of the integration's maintainers, or a repo maintainer when none responds.
 - **Prefer the rig.** Where the rig covers an integration, the sign-off is a rig run: it is repeatable and catches
   what a person doesn't. A manual line is the fallback for integrations the rig can't reach, or when the rig is

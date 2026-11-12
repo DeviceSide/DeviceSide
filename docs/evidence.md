@@ -98,7 +98,7 @@ A deprecation gets a hand-written note in that release's notes, not a caveat.
 Each integration whose package (`custom_components/deviceside/integrations/<x>/`) differs from the last release tag
 needs a sign-off at or after its last change. Any change counts, flags included; a reverted one is none.
 
-- **A sign-off** is a passing test record, or a `_manual.md` line, whose commit has the package's last change as an
+- **A sign-off** is a whole passing rig run, or a `_manual.md` line, whose commit has the package's last change as an
   ancestor and holds the package as the release does. It may say "no call changed". It comes from one of the
   integration's maintainers, or a repo maintainer when none responds.
 - **Sign off after merge.** `main` squash-merges, so a PR branch's commits never reach it: a sign-off cites a commit on
@@ -123,14 +123,16 @@ needs a sign-off at or after its last change. Any change counts, flags included;
 - **Coverage:** every module under `core/` and `integrations/`, bar `__init__.py`, needs at least 95% line coverage;
   CI checks it.
 
-*Example:* all five integrations changed since v0.0.1, so v0.1.0 needs five sign-offs. A passing Hue rig record
-whose commit follows Hue's last change signs off Hue; an integration with no change would need none.
+*Example:* all five integrations changed since v0.0.1, so v0.1.0 needs five sign-offs. A passing Hue rig run whose
+commit follows Hue's last change signs off Hue; an integration with no change would need none.
 
 ### Sign-off format
 
-A rig sign-off is the test record the rig writes, `docs/integrations/<x>/test-records/<action>*.md`, with its commit
-and Result. A manual sign-off is a row of the bundle's `test-records/_manual.md`, added in a PR: date, commit, tester,
-model ids (`docs/models.yaml`, never a household's device names) and what passed.
+A rig sign-off is the bundle's test records, `docs/integrations/<x>/test-records/<action>*.md`, when every one cites
+the same commit and passes: one whole run. *Example:* if `stop.md` fails, or cites a later commit than the rest, the
+records are no sign-off until every action passes at one commit. A manual sign-off is a row of the bundle's
+`test-records/_manual.md`, added in a PR: date, commit, tester, model ids (`docs/models.yaml`, never a household's
+device names) and what passed.
 
     | Date | Commit | Tester | Devices | Passed |
     |---|---|---|---|---|
