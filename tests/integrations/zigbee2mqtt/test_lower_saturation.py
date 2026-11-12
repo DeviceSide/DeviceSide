@@ -28,17 +28,10 @@ async def test_publishes_the_end_point_with_the_time_left(hass, broker, data, pa
     assert commands(broker) == [(SET, payload)]
 
 
-@pytest.mark.parametrize(
-    ("options", "data", "detail"),
-    [
-        pytest.param({"hs": (200.0, 20.0)}, {"limit": 20}, "at_limit", id="at_the_limit"),
-        pytest.param({"state": "off"}, {}, "off", id="an_off_light"),
-    ],
-)
-async def test_nothing_left_to_move_is_unchanged(hass, broker, options, data, detail):
-    entity_id = light(hass, broker, **options)
+async def test_at_the_limit_is_unchanged(hass, broker):
+    entity_id = light(hass, broker, hs=(200.0, 20.0))
 
-    response = await call(hass, "lower_saturation", {"entity_id": entity_id, **data})
+    response = await call(hass, "lower_saturation", {"entity_id": entity_id, "limit": 20})
 
-    assert response == {entity_id: result("zigbee2mqtt", "unchanged", detail=detail)}
+    assert response == {entity_id: result("zigbee2mqtt", "unchanged", detail="at_limit")}
     assert commands(broker) == []

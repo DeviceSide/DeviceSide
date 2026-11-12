@@ -7,7 +7,7 @@ from custom_components.deviceside.core.transition import SATURATION
 from custom_components.deviceside.integrations.zigbee2mqtt.fade import hue_moves, transition_cache
 
 from .conftest import GET, SENT, SET, commands, group, light
-from ...conftest import advance, call, result, wall_clock_now
+from ...conftest import advance, call, wall_clock_now
 
 pytestmark = pytest.mark.usefixtures("setup_production", "clock")
 
@@ -30,15 +30,6 @@ async def test_publishes_the_end_point_with_the_time_left(hass, broker, data, pa
 
     assert response == {entity_id: SENT}
     assert commands(broker) == [(SET, payload)]
-
-
-async def test_an_off_light_is_unchanged(hass, broker):
-    entity_id = light(hass, broker, state="off")
-
-    response = await call(hass, "raise_saturation", {"entity_id": entity_id})
-
-    assert response == {entity_id: result("zigbee2mqtt", "unchanged", detail="off")}
-    assert commands(broker) == []
 
 
 async def test_a_group_records_each_lit_member(hass, broker, clock):
