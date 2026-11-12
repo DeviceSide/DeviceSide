@@ -7,7 +7,8 @@ from ...fixtures.shelly import add_shelly_entity, shelly_device
 
 pytestmark = pytest.mark.usefixtures("setup_production")
 
-GEN1 = {"light": ("light.old_bulb", "light_0"), "switch": ("switch.old_relay", "relay_0")}
+# A Gen1 light under a key Gen2 would address: the refusal is the generation's, not the key's.
+GEN1 = {"light": ("light.old_bulb", "rgbcct:0"), "switch": ("switch.old_relay", "relay_0")}
 OUT_OF_REACH = {"light": ("light.other", "script:1"), "switch": ("switch.child_lock", "boolean:200-boolean_child_lock")}
 
 

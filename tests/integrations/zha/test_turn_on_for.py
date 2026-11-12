@@ -188,6 +188,7 @@ async def test_admin_caller_reaches_zha(hass, setup_production, admin_command, h
 
     assert await call_as(hass, hass_admin_user, "turn_on_for", BULB_FOR_5) == {"light.bulb": CONFIRMED}
     assert admin_command[0].context.user_id == hass_admin_user.id
+    assert admin_command[0].service == "issue_zigbee_cluster_command"
 
 
 async def test_non_admin_caller_is_refused_by_zha(hass, setup_production, admin_command, hass_read_only_user, readback):
@@ -290,13 +291,15 @@ async def test_a_light_named_directly_or_through_an_ha_group_gets_its_own_comman
 
 
 async def test_non_admin_caller_is_refused_for_every_member(
-    hass, setup_production, two_light_group, admin_command, hass_read_only_user, readback
+    hass, setup_production, two_light_group, admin_command, commands, hass_read_only_user, readback
 ):
+    """Only the group command is ZHA's admin one here: a fallback to a per-member cluster command would be sent."""
     with pytest.raises(HomeAssistantError) as raised:
         await call_as(hass, hass_read_only_user, "turn_on_for", {"entity_id": "light.zha_group", "duration": 5})
 
     assert raised.value.translation_placeholders["summary"] == "light.a: admin_required, light.b: admin_required"
     assert not admin_command
+    assert not commands
     readback.assert_not_awaited()
 
 

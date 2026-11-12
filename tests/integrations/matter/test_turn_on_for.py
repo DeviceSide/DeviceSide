@@ -1,7 +1,5 @@
 """Matter turn_on_for: OnWithTimedOff on the OnOff cluster, with OnTime read-back."""
 
-from unittest.mock import AsyncMock
-
 import pytest
 from homeassistant.exceptions import HomeAssistantError
 
@@ -57,14 +55,14 @@ def test_light_is_documented_and_plug_verified():
 
 @pytest.mark.parametrize(
     "reads",
-    [on_time_reads(0), on_time_reads(50, on=False), AsyncMock(return_value={})],
+    [on_time_reads(0).side_effect, on_time_reads(50, on=False).side_effect, lambda *args, **kwargs: {}],
     ids=["zero", "off_with_on_time", "path_missing"],
 )
 @pytest.mark.parametrize("entity_id", ["switch.plug", "light.bulb"])
 async def test_no_running_timer_does_not_confirm(hass, reads, entity_id):
     """OnTime 0, OnTime > 0 with OnOff off, or a read without the OnTime path: no running timer, so SENT."""
     entry, _, read_attr = matter_device(hass, endpoint_id=EP)
-    read_attr.side_effect, read_attr.return_value = reads.side_effect, reads.return_value
+    read_attr.side_effect = reads
     add_matter_entity(hass, entry, entity_id, endpoint_id=EP)
 
     response = await call(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5})

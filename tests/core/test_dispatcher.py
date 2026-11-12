@@ -328,6 +328,7 @@ async def test_unavailable_targets_are_skipped_and_the_named_ones_logged(hass, f
 
 
 async def test_no_targets_left_returns_or_raises_by_response_mode(hass, fake, reset_script):
+    add_fake_entity(hass, fake, "light.a")  # an empty selection must not mean "all": nothing reaches it
     add_fake_entity(hass, fake, "light.down", state="unavailable")
     add_fake_entity(hass, fake, "cover.blind")
     area_id = in_area(hass, "Den", "cover.blind")
