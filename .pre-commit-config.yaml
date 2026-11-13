@@ -82,3 +82,14 @@ repos:
         entry: python scripts/check_private.py
         language: python
         stages: [pre-commit, commit-msg]
+
+  # -------------------------
+  # Log lines (docs/logging.md: no addresses, %r on caught exceptions)
+  # -------------------------
+  - repo: local
+    hooks:
+      - id: check-logging
+        name: check log lines
+        entry: python scripts/check_logging.py
+        language: python
+        files: ^custom_components/.*\.py$

@@ -24,7 +24,9 @@ integrations without a sign-off, and every adapter with an Untested fix caveat. 
 
 Test records are the rig's, `docs/integrations/<key>/test-records/<action>*.md`: their Source row cites the commit
 (`commit `1a2b3c4``), their Result row the outcome. A file whose name starts with `_` is no record (`_facts.md`), bar
-`_manual.md`, whose table rows are manual sign-offs:
+`_manual.md`, whose table rows are manual sign-offs. Under --signoffs, any other file is an error, named: a record
+without the rig's Source row (`| Source | rig run (`scripts/rig.py`), commit `1a2b3c4` |`) is no rig record. Probe
+findings go in internals.md, manual sign-offs in `_manual.md`:
 
     | Date | Commit | Tester | Devices | Passed |
     |---|---|---|---|---|
@@ -65,6 +67,7 @@ from scripts.gen_codeowners import REPO_MAINTAINERS  # noqa: E402
 COVERAGE_BAR = 95.0
 COMPONENT = Path("custom_components") / "deviceside"
 BUNDLES = REPO / "docs" / "integrations"
+RIG_SOURCE = re.compile(r"^\| Source \| rig run \(`scripts/rig\.py`\), commit `[0-9a-f]{7,40}` \|", re.MULTILINE)
 CITED_COMMIT = re.compile(r"^\| Source \|.*\bcommit `([0-9a-f]{7,40})`", re.MULTILINE)
 RESULT = re.compile(r"^\| Result \| (\S+) \|", re.MULTILINE)
 MANUAL = "_manual.md"
@@ -197,10 +200,15 @@ def last_change(integration: str, base: str | None) -> str | None:
 
 def record_signoff(integration: str) -> tuple[SignOff | None, str | None]:
     """The integration's test records as one sign-off when they are one passing run, every record citing the same
-    commit; else None and why not, or no reason when there are no records. `_`-prefixed files are not records."""
+    commit; else None and why not, or no reason when there are no records. `_`-prefixed files are not records; a file
+    without the rig's Source row is an error."""
     folder = test_records_dir(integration)
     if not (records := [path for path in sorted(folder.glob("*.md")) if not path.name.startswith("_")]):
         return None, None
+    if foreign := [path.name for path in records if not RIG_SOURCE.search(path.read_text())]:
+        return None, (
+            f"{', '.join(foreign)}: not rig records; probe findings go in internals.md, manual sign-offs in _manual.md"
+        )
     commits = Counter(m[1][:7] if (m := CITED_COMMIT.search(path.read_text())) else "none" for path in records)
     if len(commits) > 1:
         counts = ", ".join(f"{commit}: {n}" for commit, n in commits.most_common())
