@@ -129,11 +129,22 @@ def test_main_fails_under_the_bar(fake_repo, monkeypatch, tmp_path, capsys):
 RECORDS = "docs/integrations/fake/test-records"
 
 
-def write_record(repo, name: str, commit: str, result: str = "pass", integration: str = "fake") -> str:
-    """Commit a record of the rig's format citing the commit, and return the new head."""
+def tree_of(repo, commit: str, integration: str = "fake") -> str:
+    """The integration's package tree at the commit, as the rig cites it."""
+    return repo.git("rev-parse", "--short=12", f"{commit}:custom_components/deviceside/integrations/{integration}")
+
+
+def write_record(
+    repo, name: str, commit: str, result: str = "pass", integration: str = "fake", tree: str | None = "package"
+) -> str:
+    """Commit a record of the rig's format citing the commit, and return the new head. Its Package row cites the
+    package tree at the commit, or `tree` when given one, or none when `tree` is None."""
+    if tree == "package":
+        tree = tree_of(repo, commit, integration)
+    package = f"| Package | `{tree}` |\n" if tree else ""
     text = (
         f"# Fake · {name}\n\n| | |\n|---|---|\n| Result | {result} |\n| Ran | 4 passed, 0 skipped |\n"
-        f"| Source | rig run (`scripts/rig.py`), commit `{commit[:7]}` |\n"
+        f"| Source | rig run (`scripts/rig.py`), commit `{commit[:7]}` |\n{package}"
     )
     return repo.commit(f"docs/integrations/{integration}/test-records/{name}", text)
 
@@ -141,7 +152,7 @@ def write_record(repo, name: str, commit: str, result: str = "pass", integration
 @pytest.mark.parametrize("name", ["_facts.md", "_manual.md"])
 def test_a_file_named_with_a_leading_underscore_is_never_a_record(fake_repo, name):
     """The rig's fact results (`_facts.md`) and the manual sign-offs sit beside the records; neither is one."""
-    write_record(fake_repo, name, fake_repo.commit())
+    write_record(fake_repo, name, fake_repo.commit(), tree=None)
     assert cr.record_signoff("fake") == (None, None)
 
 
@@ -254,7 +265,7 @@ def test_a_changed_integration_with_no_signoff_fails(released, monkeypatch, caps
     assert err.splitlines() == [f"error: {line}"]
 
 
-def test_every_record_passing_at_one_commit_at_or_after_the_last_change_signs_off(released, monkeypatch, capsys):
+def test_every_record_passing_at_the_package_as_it_ships_signs_off(released, monkeypatch, capsys):
     change = released.commit(f"{FAKE}/stop.py")
     write_record(released, "stop.md", change)
     write_record(released, "turn_on_for.md", change)
@@ -268,18 +279,39 @@ def test_every_record_passing_at_one_commit_at_or_after_the_last_change_signs_of
     assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 0
 
 
-def test_records_citing_different_commits_are_a_partial_run_and_no_signoff(released, monkeypatch, capsys):
-    """A run of one action doesn't sign off the rest; rerunning the others at its commit completes the run."""
+def test_records_citing_different_trees_are_a_partial_run_and_no_signoff(released, monkeypatch, capsys):
+    """A run of one action doesn't sign off the rest; rerunning the others completes the run."""
     change = released.commit(f"{FAKE}/stop.py")
     write_record(released, "stop.md", change)
     write_record(released, "turn_on_for.md", change)
-    later = write_record(released, "lifecycle.md", change)
-    write_record(released, "stop.md", later)
-    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
-    assert f"({change[:7]}: 2, {later[:7]}: 1); a sign-off is one run at one commit)" in capsys.readouterr().out
+    later = released.commit(f"{FAKE}/transport.py")
     write_record(released, "lifecycle.md", later)
+    old, new = tree_of(released, change), tree_of(released, later)
+    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
+    assert (
+        f"records cover 2 package versions ({old}: 2, {new}: 1); a sign-off is one run of one package)"
+        in capsys.readouterr().out
+    )
+    write_record(released, "stop.md", later)
     write_record(released, "turn_on_for.md", later)
     assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 0
+
+
+def test_records_at_two_commits_with_one_tree_are_one_run(released, monkeypatch, capsys):
+    """A rerun of one action on main completes a run made on the branch: the package is what they share."""
+    change = released.commit(f"{FAKE}/stop.py")
+    write_record(released, "stop.md", change)
+    write_record(released, "turn_on_for.md", released.commit("README.md"))  # a later commit, the same package
+    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 0
+    assert f"signed off by record {RECORDS} at {change[:7]}" in capsys.readouterr().out
+
+
+def test_a_record_without_a_package_row_is_no_signoff(released, monkeypatch, capsys):
+    change = released.commit(f"{FAKE}/stop.py")
+    write_record(released, "stop.md", change)
+    write_record(released, "turn_on_for.md", change, tree=None)
+    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
+    assert "(turn_on_for.md: no Package row: rerun with the rig)" in capsys.readouterr().out
 
 
 def test_a_file_that_is_no_rig_record_fails_by_name(released, monkeypatch, capsys):
@@ -300,47 +332,33 @@ def test_a_folder_of_rig_records_still_signs_off(released):
     assert cr.record_signoff("fake")[0] is not None
 
 
-def test_a_failing_record_fails_the_run_and_a_rerun_at_its_commit_completes_it(released, monkeypatch, capsys):
+def test_a_failing_record_fails_the_run_and_a_rerun_completes_it(released, monkeypatch, capsys):
     change = released.commit(f"{FAKE}/stop.py")
     write_record(released, "stop.md", change)
     write_record(released, "turn_on_for.md", change, result="fail")
     assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
-    assert f"(turn_on_for.md fails at {change[:7]})" in capsys.readouterr().out
+    assert f"(turn_on_for.md fails at package {tree_of(released, change)})" in capsys.readouterr().out
     write_record(released, "turn_on_for.md", change)
     assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 0
 
 
-def test_a_run_before_the_last_change_is_no_signoff(released, monkeypatch, capsys):
+def test_a_record_citing_a_commit_git_does_not_have_signs_off_by_its_tree(released, monkeypatch, capsys):
+    """The squash case: the run's commit was on a deleted branch, but the package it tested is the one on main."""
+    change = released.commit(f"{FAKE}/stop.py")
+    write_record(released, "stop.md", "0" * 40, tree=tree_of(released, change))
+    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 0
+    assert f"signed off by record {RECORDS} at 0000000" in capsys.readouterr().out
+
+
+def test_a_record_whose_package_tree_differs_from_heads_is_no_signoff(released, monkeypatch, capsys):
+    """A run before the last change, or on a branch that changed the package differently, tested other code."""
     before = released.commit(f"{FAKE}/stop.py")
     write_record(released, "stop.md", before)
-    last = released.commit(f"{FAKE}/transport.py")
+    released.commit(f"{FAKE}/transport.py")
     assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
-    assert f"({RECORDS} at {before[:7]}: predates the last change {last[:7]})" in capsys.readouterr().out
-
-
-def test_a_record_citing_a_commit_off_the_branch_is_no_signoff(released, monkeypatch, capsys):
-    """Ancestry, not trees: a run on a branch that lacks the last change didn't test it."""
-    released.git("checkout", "-q", "-b", "side", "v0.1.0")
-    side = released.commit("side.txt")
-    released.git("checkout", "-q", "main")
-    released.commit(f"{FAKE}/stop.py")
-    write_record(released, "stop.md", side)
-    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
-    write_record(released, "stop.md", "0" * 40)  # one git can't find
-    capsys.readouterr()
-    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
-    assert f"({RECORDS} at 0000000: not in this checkout; cite a commit on main)" in capsys.readouterr().out
-
-
-def test_a_signoff_whose_package_differs_from_heads_is_none(released, monkeypatch, capsys):
-    """A run on a branch that changed the package again tested other code."""
-    released.commit(f"{FAKE}/stop.py")
-    released.git("checkout", "-q", "-b", "side")
-    side = released.commit(f"{FAKE}/stop.py")
-    released.git("checkout", "-q", "main")
-    write_record(released, "stop.md", side)
-    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
-    assert f"({RECORDS} at {side[:7]}: the package differs from HEAD's)" in capsys.readouterr().out
+    assert f"({RECORDS} at package {tree_of(released, before)}: the package differs from HEAD's)" in (
+        capsys.readouterr().out
+    )
 
 
 def test_a_reverted_change_is_unchanged(released, monkeypatch, capsys):
@@ -364,6 +382,24 @@ def test_a_manual_row_at_the_last_change_signs_off_naming_the_tester(released, m
     assert capsys.readouterr().out.splitlines()[1] == (
         f"fake: changed at {change[:7]}; signed off by manual {MANUAL}:7 at {change[:7]}, @a"
     )
+
+
+def test_a_manual_row_off_the_branch_signs_off_when_the_package_is_equal(released, monkeypatch):
+    """Ancestry is no longer asked: a commit on a side branch holding the package as HEAD does is enough."""
+    released.git("checkout", "-q", "-b", "side", "v0.1.0")
+    side = released.commit(f"{FAKE}/stop.py", "x\n")
+    released.git("checkout", "-q", "main")
+    released.commit(f"{FAKE}/stop.py", "x\n")
+    released.commit(MANUAL, manual(manual_row(side)))
+    assert side not in released.git("rev-list", "HEAD").split()
+    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 0
+
+
+def test_a_manual_row_at_a_commit_git_does_not_have_is_no_signoff(released, monkeypatch, capsys):
+    released.commit(f"{FAKE}/stop.py")
+    released.commit(MANUAL, manual(manual_row("0" * 40)))
+    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
+    assert f"({MANUAL}:7 at 0000000: not in this checkout; cite a commit on main)" in capsys.readouterr().out
 
 
 @pytest.mark.parametrize("tester", [cr.REPO_MAINTAINERS[0], cr.REPO_MAINTAINERS[0].upper(), "A"])
