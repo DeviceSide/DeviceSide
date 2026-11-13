@@ -3,7 +3,8 @@
 What the [README](../README.md) features do on every integration, and what none can do. Each integration has its own
 page, with its limits and what DeviceSide changes in your setup: [Shelly](integrations/shelly/index.md),
 [Zigbee2MQTT](integrations/zigbee2mqtt/index.md), [ZHA](integrations/zha/index.md),
-[Matter](integrations/matter/index.md) and [Hue](integrations/hue/index.md). Which devices each feature is proven on
+[Matter](integrations/matter/index.md), [Hue](integrations/hue/index.md) and
+[Control4](integrations/control4/index.md). Which devices each feature is proven on
 is on the [device compatibility page](device-compatibility.md). How the commands work on the wire, and what was
 measured on real bulbs, is in [internals.md](internals.md) and each integration's own.
 
@@ -12,8 +13,9 @@ measured on real bulbs, is in [internals.md](internals.md) and each integration'
 - **Refused targets.** A target that can't take an action fails the call if you named it, and is skipped if it
   came through an area, device, label or group ([action-behavior.md](action-behavior.md)). The error names the
   reason, such as `capability_not_tested`.
-- **Groups.** For timers and smooth moves, Zigbee2MQTT and ZHA groups and Hue rooms and zones get one
-  command, so their lights move together. `set_attributes` writes a ZHA group's or Hue room's lights one by one.
+- **Groups.** For timers and smooth moves, Zigbee2MQTT and ZHA groups, Hue rooms and zones, and
+  Control4 light groups get one command, so their lights move together. `set_attributes` writes a ZHA group's or
+  Hue room's lights one by one.
   Any other group, such as a light group helper, is expanded and each light gets its own command.
 - **Switches shown as lights.** A light made from a supported switch with Home Assistant's "Change device type of a
   switch" helper is treated as that switch: light fields are dropped and the timer still runs. An inverted one is

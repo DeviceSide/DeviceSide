@@ -2,6 +2,11 @@
 # run the script. The last matching line wins, so everything not listed below is the repo maintainers'.
 * @jasonmx
 
+/custom_components/deviceside/integrations/control4/ @skialpine @jasonmx
+/tests/integrations/control4/ @skialpine @jasonmx
+/tests/fixtures/control4.py @skialpine @jasonmx
+/docs/integrations/control4/ @skialpine @jasonmx
+
 /custom_components/deviceside/integrations/hue/ @jasonmx
 /tests/integrations/hue/ @jasonmx
 /tests/fixtures/hue.py @jasonmx
