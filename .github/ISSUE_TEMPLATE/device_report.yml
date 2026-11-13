@@ -66,7 +66,7 @@ body:
     id: notes
     attributes:
       label: Notes on failed tests and bugs
-      description: Consider redacting private information before sharing logs (e.g. devices named after people, MAC addresses).
+      description: "For a bug, attach a debug log: on DeviceSide's integration page, select Enable debug logging, reproduce the problem, then disable it and attach the log it downloads. Consider redacting private information before sharing logs (e.g. devices named after people, MAC addresses)."
       placeholder: |
         1. What I expected to happen:
         1. What actually happened:
