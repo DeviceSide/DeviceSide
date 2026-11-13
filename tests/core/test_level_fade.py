@@ -60,6 +60,20 @@ def ramp(up: bool = True, **kwargs) -> RampRequest:
     return RampRequest(attribute="brightness", up=up, sweep_time=4, **kwargs)
 
 
+def test_a_fade_without_its_limits_cant_be_created():
+    """The registry creates every adapter at load, so a missing fade_limits fails there, not on a user's call."""
+
+    class NoLimits(LevelFade):
+        action = "raise_brightness"
+        integration = "fake"
+        unaddressable = PlainFade.unaddressable
+        read = PlainFade.read
+        fade_to = PlainFade.fade_to
+
+    with pytest.raises(TypeError, match="fade_limits"):
+        NoLimits()
+
+
 def test_a_fade_takes_its_share_of_the_sweep_time():
     assert PlainFade().seconds(distance=25, sweep_time=4) == 1.0
 

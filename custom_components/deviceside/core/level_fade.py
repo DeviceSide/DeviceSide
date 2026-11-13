@@ -28,10 +28,14 @@ class LevelFade(Adapter["RampRequest"]):
     fade shorter than the device's shortest runs at that, unreported.
     """
 
-    # What a full-range fade can take on the device.
-    fade_limits: ClassVar[DurationLimits]
     # The device's brightness resolution, in percent: a shorter distance is nothing to send.
     min_step: ClassVar[float] = 1.0
+
+    @property
+    @abstractmethod
+    def fade_limits(self) -> DurationLimits:
+        """What a full-range fade can take on the device. A class attribute in each integration: abstract, so a
+        subclass that omits it fails when the registry creates it, not on a user's first call."""
 
     @abstractmethod
     def unaddressable(self, target: Target) -> str | None:

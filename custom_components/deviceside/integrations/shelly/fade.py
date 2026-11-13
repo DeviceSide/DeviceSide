@@ -9,7 +9,7 @@ from .addressing import DIMMING_CAPABILITIES, RpcComponent, unsupported_reason
 from .rpc import TRANSITION_LIMITS, get_status, set_fade
 from ...core.level_fade import LevelFade
 from ...core.models import Target
-from ...core.scope import AdapterScope, DurationLimits, verified
+from ...core.scope import AdapterScope, verified
 from ...core.transition import BRIGHTNESS
 
 # The device keeps brightness in whole percent.
@@ -35,7 +35,7 @@ class ShellyFade(RpcComponent, LevelFade):
     """
 
     integration: ClassVar[str] = "shelly"
-    fade_limits: ClassVar[DurationLimits] = TRANSITION_LIMITS
+    fade_limits = TRANSITION_LIMITS
     min_step: ClassVar[float] = MIN_STEP
 
     def unaddressable(self, target: Target) -> str | None:
