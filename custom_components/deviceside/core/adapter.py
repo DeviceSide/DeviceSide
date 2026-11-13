@@ -8,6 +8,7 @@ from typing import ClassVar
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import Unauthorized
 
+from .errors import describe
 from .models import ActionKind, EntityResult, Request, Status, Target
 from .runtime import DEADLINE, get_runtime
 from .scope import AdapterScope
@@ -34,7 +35,7 @@ class Adapter[RequestT: Request](ABC):
         if self.kind is ActionKind.QUERY:
             return "so its attributes aren't reported"
         if self.kind is ActionKind.SETTING:
-            return "so the device keeps its old setting"
+            return "so the device may keep its old setting"
         return "so HA may show the old values"
 
     def supports(self, hass: HomeAssistant, request: RequestT, target: Target) -> str | None:
@@ -127,13 +128,13 @@ class Adapter[RequestT: Request](ABC):
                 )
                 return self.result(target, Status.REJECTED, detail="admin_required")
             except Exception as err:  # noqa: BLE001 - one device's failure must not abort the room
-                # repr, not str: a timeout's message is empty, and only its type says what went wrong
+                # describe() is repr, not str: a timeout's message is empty, and only its type says what went wrong
                 _LOGGER.warning(
-                    "%s on %s failed for %s: %r, %s",
+                    "%s on %s failed for %s: %s, %s",
                     self.action,
                     self.integration,
                     target.entity_id,
-                    err,
+                    describe(err),
                     self.consequence,
                 )
                 return self.result(target, Status.REJECTED, detail="error")

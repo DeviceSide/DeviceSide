@@ -5,6 +5,7 @@ import logging
 from unittest.mock import patch
 
 import pytest
+from aiohttp import ClientResponseError, RequestInfo
 from homeassistant.components.light import ColorMode, LightEntityFeature
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.exceptions import HomeAssistantError, ServiceNotSupported, ServiceValidationError, Unauthorized
@@ -13,6 +14,8 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import floor_registry as fr
 from homeassistant.helpers import label_registry as lr
+from multidict import CIMultiDict, CIMultiDictProxy
+from yarl import URL
 
 from custom_components.deviceside.core.models import EntityResult, Status, TimedRequest
 from custom_components.deviceside.core.scope import (
@@ -255,6 +258,19 @@ async def test_a_device_failure_raises_once_every_target_has_run(hass, fake, res
         "turn_on_for on fake failed for light.b: RuntimeError('radio busy'), so HA may show the old values"
         in caplog.text
     )
+
+
+async def test_an_http_error_is_logged_without_its_request(hass, fake, reset_script, caplog):
+    add_fake_entity(hass, fake, "light.a")
+    url = URL("https://192.0.2.1/clip/v2/resource/light/a-resource-id")
+    request = RequestInfo(url, "PUT", CIMultiDictProxy(CIMultiDict({"hue-application-key": "an-app-key"})), url)
+    reset_script.outcomes["light.a"] = ClientResponseError(request, (), status=500, message="Internal Server Error")
+
+    with pytest.raises(HomeAssistantError):
+        await call(hass, "turn_on_for", {"entity_id": "light.a", "duration": 5})
+
+    assert "failed for light.a: ClientResponseError(status=500, message='Internal Server Error')" in caplog.text
+    assert "an-app-key" not in caplog.text and "a-resource-id" not in caplog.text
 
 
 async def test_an_unauthorized_target_is_rejected_as_admin_required_and_the_rest_run(hass, fake, reset_script, caplog):

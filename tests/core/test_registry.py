@@ -151,7 +151,7 @@ def test_each_adapter_takes_its_actions_kind_which_ends_its_warnings():
 
     assert query.consequence == "so its attributes aren't reported"
     assert command.consequence == "so HA may show the old values"
-    assert setting.consequence == "so the device keeps its old setting"
+    assert setting.consequence == "so the device may keep its old setting"
 
 
 def test_call_resolvers_are_keyed_by_ha_domain():

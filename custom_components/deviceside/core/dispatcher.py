@@ -10,7 +10,7 @@ from homeassistant.helpers import target as target_helpers
 from . import duration, ha_watch
 from .action import Action
 from .adapter import Adapter
-from .errors import EXPERIMENTAL_OFF, Reason, TargetNotSupported
+from .errors import EXPERIMENTAL_OFF, Reason, TargetNotSupported, describe, traceback_is_safe
 from .fields import lacking
 from .groups import expand_ha_groups
 from .models import FAILED, ActionKind, EntityResult, Request, Status, Target, TimedRequest
@@ -228,13 +228,13 @@ class Dispatcher:
         except Exception as err:
             # A warning, not _LOGGER.exception (docs/logging.md): the traceback rides along for the bug report.
             _LOGGER.warning(
-                "%s on %s failed for %s: %r, %s",
+                "%s on %s failed for %s: %s, %s",
                 adapter.action,
                 adapter.integration,
                 ", ".join(target.reported_id for target in targets),
-                err,
+                describe(err),
                 adapter.consequence,
-                exc_info=True,
+                exc_info=traceback_is_safe(err),
             )
             return [adapter.result(target, Status.REJECTED, detail="error") for target in targets]
         return self._reconcile(adapter, targets, raw, clamped_to, dropped)

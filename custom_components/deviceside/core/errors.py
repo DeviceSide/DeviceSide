@@ -1,5 +1,6 @@
 from enum import StrEnum
 
+import aiohttp
 from homeassistant.exceptions import ServiceNotSupported, ServiceValidationError
 
 from ..const import DOMAIN
@@ -33,3 +34,24 @@ class TargetNotSupported(ServiceNotSupported):
             translation_placeholders={"entity_id": entity_id, "reason": reason},
         )
         self.reason = reason
+
+
+def describe(err: BaseException) -> str:
+    """An upstream error for a log line (docs/logging.md): its repr, as its text is often the diagnosis.
+
+    Not an aiohttp error's: its repr holds the request's URL and headers (a Hue bridge's address, a resource id, the
+    hue-application-key) and its str the URL or host. It gives its type, a response error its status and reason, and a
+    connection error the OS error's text.
+    """
+    if isinstance(err, aiohttp.ClientResponseError):
+        return f"{type(err).__name__}(status={err.status}, message={err.message!r})"
+    if isinstance(err, aiohttp.ClientConnectorError) and err.os_error.strerror:
+        return f"{type(err).__name__}({err.os_error.strerror!r})"
+    if isinstance(err, aiohttp.ClientError):
+        return f"{type(err).__name__}()"
+    return repr(err)
+
+
+def traceback_is_safe(err: BaseException) -> bool:
+    """Whether a log line may carry err's traceback, whose last line is str(err): not an aiohttp error's (describe)."""
+    return not isinstance(err, aiohttp.ClientError)

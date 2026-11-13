@@ -28,8 +28,10 @@ Users paste logs into public issues.
   address, look up its entity (Hue: `bridge.entity_name`; Zigbee2MQTT: `addressing.entity_name`).
 - **Never device addressing or secrets:** IEEE or MAC addresses, MQTT device topics, Zigbee2MQTT friendly names, Hue
   resource IDs, Shelly component IDs, Matter node IDs, tokens.
-- **Upstream errors are logged as they are** (`%r`): their text is often the diagnosis, and HA logs them the same way.
-  Your own format strings never add an address to them.
+- **Upstream errors are logged as they are**, through `core.errors.describe`: their repr, as their text is often the
+  diagnosis and HA logs them the same way. An HTTP client error is the exception: its repr holds the request's URL and
+  headers (a Hue bridge's app key) and its text the host, so `describe` gives its type, status and reason, and its
+  traceback stays out. Your own format strings never add an address to them.
 - **A message another system wrote is not an upstream error.** An upstream error is an exception a library raises.
   A line another system logs or sends, such as a Zigbee2MQTT `bridge/logging` line, names devices its own way, so log
   the cause it names, never the line (Zigbee2MQTT: `bridge_cache.cause` and `scrub`).

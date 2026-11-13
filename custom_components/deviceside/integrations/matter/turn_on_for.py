@@ -16,6 +16,7 @@ from .addressing import (
 )
 from ...actions.turn_on_for import TurnOnForRequest
 from ...core.adapter import Adapter
+from ...core.errors import describe
 from ...core.models import EntityResult, Status, Target
 from ...core.scope import AdapterScope, DurationLimits, documented, verified
 
@@ -63,7 +64,7 @@ class MatterTurnOnFor(Adapter[TurnOnForRequest]):
             try:
                 read_on_time, on_off = await read_timer(client, node_id, ep_id)
             except Exception as err:  # noqa: BLE001
-                _LOGGER.debug("turn_on_for matter read-back failed for %s: %s", target.entity_id, err)
+                _LOGGER.debug("turn_on_for matter read-back failed for %s: %s", target.entity_id, describe(err))
                 return self.result(target, Status.SENT, detail="readback_failed")
 
             if timer_matches(read_on_time, on_off, on_time):

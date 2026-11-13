@@ -12,6 +12,7 @@ from .fade import in_soft_off, light_xy, lit, predicted_brightness, room_lights
 from .report_filter import report_filter
 from .transition_cache import XY, transition_cache
 from ...core.adapter import Adapter
+from ...core.errors import describe
 from ...core.models import EntityResult, Request, Status, Target
 from ...core.scope import AdapterScope
 from ...core.transition import BRIGHTNESS, SATURATION, TransitionCache, reported_brightness
@@ -99,7 +100,9 @@ class HueStop(Adapter[Request]):
                 ]
                 _LOGGER.warning(
                     "stop on hue failed for %s in %s, so they may keep fading",
-                    ", ".join(f"{name} ({failure!r})" for name, failure in sorted(failed, key=lambda pair: pair[0])),
+                    ", ".join(
+                        f"{name} ({describe(failure)})" for name, failure in sorted(failed, key=lambda pair: pair[0])
+                    ),
                     target.entity_id,
                 )
                 return self.result(target, Status.REJECTED, detail="some_lights_failed")

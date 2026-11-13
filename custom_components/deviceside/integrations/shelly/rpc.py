@@ -10,6 +10,7 @@ from homeassistant.util.color import color_hs_to_RGB, color_xy_to_RGB
 
 from .addressing import address, rpc_device
 from ...core.adapter import Adapter
+from ...core.errors import describe
 from ...core.models import EntityResult, LightFields, Status, Target
 from ...core.scope import DurationLimits
 
@@ -93,7 +94,7 @@ async def read_back(
     try:
         held = await read(target)
     except Exception as err:  # noqa: BLE001 - aioshelly's errors can't be imported here; see addressing.py
-        _LOGGER.debug("%s read-back failed for %s: %s", adapter.action, target.entity_id, err)
+        _LOGGER.debug("%s read-back failed for %s: %s", adapter.action, target.entity_id, describe(err))
         return adapter.result(target, Status.SENT, detail="readback_failed")
     return judge(held)
 
