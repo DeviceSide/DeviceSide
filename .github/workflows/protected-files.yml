@@ -1,0 +1,79 @@
+name: Protected files
+
+# Fails a PR from anyone but a repo maintainer that edits README.md outside its generated blocks alongside other files
+# (a README-only PR passes), and comments on one that changes manifest.json (scripts/check_protected.py says why each).
+# pull_request_target, so the workflow and the script come from the base branch and a PR can't edit its own check away. No step runs the PR's code: its head is
+# fetched and read with `git show`, as data.
+
+on:
+  pull_request_target: # zizmor: ignore[dangerous-triggers] runs only base-branch code; the PR head is read as data
+    types: [opened, synchronize, reopened, edited]
+
+permissions: {}
+
+# No concurrency group: a cancelled run (superseded, or a queued one bumped by a third event) reads as not green to
+# merge gates, and each run checks its own head in seconds. Two runs racing can both post a comment (a duplicate at worst).
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+
+      - name: Check README.md and manifest.json
+        id: check
+        continue-on-error: true
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+        # Against the checked-out base tip, not the event's base.sha: that can predate a `main` the PR has merged in,
+        # which would blame the PR for `main`'s README edits. The head is the event's commit, not whatever the PR's
+        # ref has moved to since.
+        run: |
+          git fetch --quiet --no-tags origin "$HEAD_SHA"
+          python scripts/check_protected.py HEAD "$HEAD_SHA" --author "$AUTHOR"
+
+      # Each comment once per PR, kept, not repeated on each push (best effort: concurrent runs can duplicate).
+      - name: Comment on the PR
+        if: steps.check.outputs.readme == 'true' || steps.check.outputs.manifest == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.pull_request.number }}
+          README: ${{ steps.check.outputs.readme }}
+          MANIFEST: ${{ steps.check.outputs.manifest }}
+        run: |
+          # The bot's own comments only: a marker anyone else posts doesn't silence it.
+          posted=$(gh api "repos/$GH_REPO/issues/$NUMBER/comments" --paginate \
+            --jq '.[] | select(.user.login == "github-actions[bot]") | .body')
+          comment() {  # <marker> <body>
+            grep -qF "$1" <<< "$posted" || gh pr comment "$NUMBER" --body "$1"$'\n'"$2"
+          }
+          if [ "$README" = true ]; then
+            comment '<!-- protected-files:readme -->' "❌ This pull request changes the hand-written text of \`README.md\`
+          (outside its generated feature table and device cards) alongside other files. Please revert that part here and
+          propose it in a separate pull request that changes only \`README.md\`. Regenerating the table and cards with
+          \`scripts/gen_features.py\` and \`scripts/gen_compat.py\` in this pull request is fine."
+          fi
+          if [ "$MANIFEST" = true ]; then
+            comment '<!-- protected-files:manifest -->' "⚠️ This pull request changes
+          \`custom_components/deviceside/manifest.json\`, which changes only by exception: a core integration in
+          \`after_dependencies\` slows Home Assistant's startup for every user. Please say in the pull request why the
+          change is needed; a repo maintainer will review it."
+          fi
+
+      - name: Fail on the README.md change or a check error
+        if: steps.check.outcome == 'failure'
+        run: exit 1

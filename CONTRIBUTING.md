@@ -28,10 +28,10 @@ If you can build a change and test it on your own devices, open a pull request d
    - `docs/integrations.md`: a link to its page
    - `docs/models.yaml`: the models you tested
    - `scripts/gen_features.py`: a `NO_PATH` row for each feature the devices can't support, with the reason, and its explanation in `docs/integrations.md`'s "What can't be done, and why"
-   - `README.md`: the integration in the Requirements list
-   - `custom_components/deviceside/manifest.json`: its HA domain in `after_dependencies` when DeviceSide must load after it, and any library your code imports in `requirements`
    - `pyproject.toml`: any library its tests need, in the `dev` group
    - `custom_components/deviceside/__init__.py`, `const.py`, `strings.json` and `translations/en.json`: only if it adds a setup hook or a user option
+
+   If you also need changes to `README.md` outside its auto-generated sections (the feature table and device cards), propose them in a separate pull request that changes only `README.md`. If your integration needs a change to `manifest.json`, say so in the pull request.
 4. **Ship it behind `experimental`.** Every new action, integration, domain, capability and field starts flagged, as `experimental(...)` in its scope ([evidence rules](docs/evidence.md)). Unit tests pin each payload you send, and every module under `core/` and `integrations/`, bar `__init__.py`, needs at least 95% line coverage.
    - **Log for the first bug report**, following [docs/logging.md](docs/logging.md): a user's debug log is often all you'll get.
 5. **Test it on your devices.** Test each item at the commit whose calls you'll ship, with the Experimental features option turned on, and put the results in the pull request's Testing evidence section; if review changes a call, test again. Put measurements in your bundle's `internals.md`, dated, with the firmware, HA and library versions. It still lands flagged: a sign-off cites a commit on `main`, so once it merges, land your passing rig records or a `_manual.md` line in a later pull request. They let a maintainer lift the flag for the next release instead of letting it soak with opted-in users; whether to is their judgment ([evidence rules](docs/evidence.md#the-experimental-flag)).
