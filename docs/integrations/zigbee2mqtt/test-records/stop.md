@@ -5,9 +5,9 @@
 | Result | pass |
 | Ran | 9 passed, 2 skipped |
 | Date | 2026-11-13 |
-| Source | rig run (`scripts/rig.py`), commit `e385562` |
+| Source | rig run (`scripts/rig.py`), commit `a47b753` |
 | Home Assistant | 2026.10.4 |
-| Device | Hue white ambiance E27 1100lm with Bluetooth (`9290024684`), firmware `1.163.1`; Hue Essential White and Color Ambiance A60 (`8720169392182`), firmware `1.164.2`; Group, firmware `Zigbee2MQTT 2.14.3` |
+| Device | Hue white ambiance E27 1100lm with Bluetooth (`9290024684`), firmware `1.163.1`; Group, firmware `Zigbee2MQTT 2.14.3`; Hue Essential White and Color Ambiance A60 (`8720169392182`), firmware `1.164.2` |
 
 ## Tests
 

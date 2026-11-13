@@ -150,8 +150,8 @@ async def test_a_refused_replay_stays_owed(hass, setup_production, broker, mqtt_
 
     assert (await rj.journal(hass)).owed == {"group/7": True}
     assert (
-        "Couldn't put Zigbee2MQTT's hue_native_control back to True for a Zigbee2MQTT group with no light: refused"
-        in (caplog.text)
+        "Couldn't put Zigbee2MQTT's hue_native_control back to True for a Zigbee2MQTT group with no light: "
+        "RuntimeError('refused')" in (caplog.text)
     )
 
 
@@ -224,7 +224,7 @@ async def test_an_unreadable_journal_warns(hass, setup_production, monkeypatch, 
 
     await rj.replay(hass)
 
-    assert "Couldn't read the hue_native_control restore journal: unreadable" in caplog.text
+    assert "Couldn't read the hue_native_control restore journal: OSError('unreadable')" in caplog.text
 
 
 async def test_a_strike_that_fails_warns(hass, setup_production, broker, mqtt_up, hass_storage, monkeypatch, caplog):
@@ -240,7 +240,7 @@ async def test_a_strike_that_fails_warns(hass, setup_production, broker, mqtt_up
 
     assert (
         "Couldn't strike the hue_native_control restore for a Zigbee2MQTT device with no light off the journal: "
-        "disk full" in caplog.text
+        "OSError('disk full')" in caplog.text
     )
     assert not [r for r in caplog.records if r.name.startswith("custom_components") and "0x01" in r.getMessage()]
 

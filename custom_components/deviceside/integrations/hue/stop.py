@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from homeassistant.core import HomeAssistant
 
-from .bridge import bridge_api, controller, put, resource_id, stops, xy_halt
+from .bridge import bridge_api, controller, entity_name, put, resource_id, stops, xy_halt
 from .fade import in_soft_off, light_xy, lit, predicted_brightness, room_lights
 from .report_filter import report_filter
 from .transition_cache import XY, transition_cache
@@ -91,7 +91,8 @@ class HueStop(Adapter[Request]):
                 SATURATION, {light_id: value for light_id, value in saturation.items() if light_id in halted}
             )
             if set(halted) != set(brightness):
-                _LOGGER.warning("hue stop on %s failed for lights %s", target.entity_id, set(brightness) - set(halted))
+                failed = ", ".join(sorted(entity_name(hass, light_id) for light_id in set(brightness) - set(halted)))
+                _LOGGER.warning("hue stop on %s failed for lights %s", target.entity_id, failed)
                 return self.result(target, Status.REJECTED, detail="some_lights_failed")
             return self.result(target, Status.SENT)
 

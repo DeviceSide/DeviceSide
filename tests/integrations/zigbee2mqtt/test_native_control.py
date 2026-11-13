@@ -163,8 +163,9 @@ async def test_failed_set_warns_and_still_sends(
     assert options(broker) == sent
     assert (
         "Couldn't set Zigbee2MQTT's hue_native_control to True for light.lamp, so the command goes out as the option "
-        f"stands: {reason}"
+        "stands: "
     ) in caplog.text
+    assert reason in caplog.text
     assert not broker.listening(DEVICE_RESPONSE)
 
 
@@ -247,7 +248,8 @@ async def test_no_bridge_groups_warns_and_still_sends(hass, setup_production, br
 
     assert response == {"light.downstairs": SENT}
     assert len(broker.timers()) == 1
-    assert "so the command goes out as the option stands: no bridge/groups from Zigbee2MQTT" in caplog.text
+    assert "so the command goes out as the option stands: " in caplog.text
+    assert "no bridge/groups from Zigbee2MQTT" in caplog.text
 
 
 # Ramps: off for brightness; saturation and hue leave it alone

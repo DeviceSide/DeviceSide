@@ -78,7 +78,7 @@ class HueSetScene(Adapter[Request]):
                 except Exception as err:  # noqa: BLE001 - one light's failure must not stop the rest of the scene
                     failed += 1
                     _LOGGER.warning(
-                        "set_scene %s: write to %s failed: %s", target.entity_id, entity_name(hass, light_id), err
+                        "set_scene %s: write to %s failed: %r", target.entity_id, entity_name(hass, light_id), err
                     )
             if failed:
                 detail = "error" if failed == len(writes) else "some_lights_failed"

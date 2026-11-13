@@ -90,6 +90,14 @@ its move, hue cycle and soft-off restore; the lights that halted record the halt
 
 ## Tested behavior
 
+Color fades, on a Philips Hue A60 (LCA016, firmware 1.164.2): `MoveToColor` runs linearly in the bulb's own hue and
+saturation, not along a straight xy line, so a saturation fade toward white swings the hue (136° to 100° in 2.5 s of
+a 9 s fade). `StopMoveStep` halts on that path, and the reads hold after it; the same on Zigbee2MQTT. Probe:
+[research/2026-11-13-a60-color-fade-path.md](research/2026-11-13-a60-color-fade-path.md). Watched, the stop of that
+saturation fade still shows as a jump in saturation, on ZHA and Zigbee2MQTT, though the reads have none: the bulb
+renders the fade unlike the state it reports. Cause not yet known:
+[research/2026-11-13-a60-stop-jump-watched.md](research/2026-11-13-a60-stop-jump-watched.md).
+
 Timers, on a Philips Hue LTA004 (firmware `0x01001416`, Home Assistant 2026.10.2). Firmware decides this, so other
 devices may differ.
 

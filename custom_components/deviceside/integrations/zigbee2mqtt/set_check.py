@@ -113,7 +113,7 @@ class Watch:
                 unsubscribe = await mqtt.async_subscribe(self.hass, light_topic, self._on_state(target.entity_id))
             except Exception as err:  # noqa: BLE001 - the publish goes out unchecked, as before
                 _LOGGER.debug(
-                    "Couldn't subscribe to %s's state, so a failed send isn't seen: %s", target.entity_id, err
+                    "Couldn't subscribe to %s's state, so a failed send isn't seen: %r", target.entity_id, err
                 )
                 return
             # Another send may have noted the entity during the subscribe (a group's member that is a target too).
