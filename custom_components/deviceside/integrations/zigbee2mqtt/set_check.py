@@ -48,6 +48,7 @@ from homeassistant.core import HomeAssistant, callback
 from . import bridge_cache
 from .addressing import state_topic
 from ...core.adapter import Adapter
+from ...core.errors import describe
 from ...core.models import EntityResult, Status, Target
 from ...core.runtime import DEADLINE
 
@@ -107,7 +108,7 @@ class Watch:
                 unsubscribe = await mqtt.async_subscribe(self.hass, light_topic, self._on_state(target.entity_id))
             except Exception as err:  # noqa: BLE001 - the publish goes out unchecked, as before
                 _LOGGER.debug(
-                    "Couldn't subscribe to %s's state, so a failed send isn't seen: %s", target.entity_id, err
+                    "Couldn't subscribe to %s's state, so a failed send isn't seen: %s", target.entity_id, describe(err)
                 )
                 return
             # Another send may have noted the entity during the subscribe (a group's member that is a target too).

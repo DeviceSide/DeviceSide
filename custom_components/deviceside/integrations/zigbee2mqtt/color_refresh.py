@@ -16,6 +16,7 @@ from homeassistant.core import HomeAssistant
 from .addressing import topic
 from .bridge import publish
 from .members import member_lights
+from ...core.errors import describe
 from ...core.models import Target
 
 _LOGGER = logging.getLogger(__name__)
@@ -45,4 +46,6 @@ async def refresh_color(hass: HomeAssistant, target: Target, silent: bool = Fals
 
 
 def _stale(target: Target, err: Exception) -> None:
-    _LOGGER.warning("Couldn't refresh Home Assistant's color for %s, so it may be stale: %s", target.entity_id, err)
+    _LOGGER.warning(
+        "Couldn't refresh Home Assistant's color for %s, so it may be stale: %s", target.entity_id, describe(err)
+    )

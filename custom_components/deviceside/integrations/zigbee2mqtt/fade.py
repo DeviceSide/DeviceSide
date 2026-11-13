@@ -19,7 +19,7 @@ from .set_check import checked
 from ...actions.ramp import RampRequest
 from ...core import transition
 from ...core.adapter import Adapter
-from ...core.errors import Reason
+from ...core.errors import Reason, describe
 from ...core.ha_watch import ALL, Call, Entries
 from ...core.models import EntityResult, Status, Target
 from ...core.resolver import resolve
@@ -283,6 +283,6 @@ def end_read(hass: HomeAssistant, target: Target, lights: list[Target], attribut
             try:
                 await publish(hass, topic(light, "get"), {"state": "", "brightness": ""})
             except Exception as err:  # noqa: BLE001 - a failed read leaves HA's state stale, nothing more
-                _LOGGER.debug("End read-back for %s failed: %s", light.entity_id, err)
+                _LOGGER.debug("End read-back for %s failed: %s", light.entity_id, describe(err))
 
     return read

@@ -12,6 +12,7 @@ from . import zcl
 from .addressing import Address, address, unsupported_reason, via_zha_group
 from ...actions.turn_on_for import TurnOnForRequest
 from ...core.adapter import Adapter, DeadlinePassed
+from ...core.errors import describe
 from ...core.models import EntityResult, Status, Target
 from ...core.scope import AdapterScope, DurationLimits, experimental, verified
 
@@ -122,7 +123,7 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
             _LOGGER.warning("%s on %s timed out for %s", self.action, self.integration, group_entity)
             return [self.result(target, Status.REJECTED, detail="timeout") for target in members]
         except Exception as err:  # noqa: BLE001 - as in gather(): one group's failure must not abort the room
-            _LOGGER.warning("%s on %s failed for %s: %r", self.action, self.integration, group_entity, err)
+            _LOGGER.warning("%s on %s failed for %s: %s", self.action, self.integration, group_entity, describe(err))
             return [self.result(target, Status.REJECTED, detail="error") for target in members]
 
         async def read_back(target: Target) -> EntityResult:
@@ -153,7 +154,7 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
                 raise ValueError(f"OnOff read {on_off!r}")
             running = 0 < remaining and on_time - _READBACK_SLACK_TENTHS <= remaining <= on_time
         except Exception as err:  # noqa: BLE001 - zha and zigpy errors can't be imported here; see zcl.py
-            _LOGGER.debug("%s read-back failed for %s: %s", self.action, target.entity_id, err)
+            _LOGGER.debug("%s read-back failed for %s: %s", self.action, target.entity_id, describe(err))
             return self.result(target, Status.SENT, detail="readback_failed")
         if not on_off:
             return self.result(target, Status.SENT, detail="not_on")

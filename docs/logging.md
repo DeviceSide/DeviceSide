@@ -28,16 +28,18 @@ Users paste logs into public issues.
   address, look up its entity (Hue: `bridge.entity_name`; Zigbee2MQTT: `addressing.entity_name`).
 - **Never device addressing or secrets:** IEEE or MAC addresses, MQTT device topics, Zigbee2MQTT friendly names, Hue
   resource IDs, Shelly component IDs, Matter node IDs, tokens.
-- **Upstream errors are logged as they are**, through `core.errors.describe`: their repr, as their text is often the
-  diagnosis and HA logs them the same way. An HTTP client error is the exception: its repr holds the request's URL and
-  headers (a Hue bridge's app key) and its text the host, so `describe` gives its type, status and reason, and its
-  traceback stays out. Your own format strings never add an address to them.
+- **Upstream errors go through `core.errors.describe`**, never `%r` or `%s` at the call site: a call site can't tell
+  which errors carry a secret, so one function decides. Most give their repr, as their text is often the diagnosis and
+  HA logs them the same way. An HTTP client error's repr holds the request's URL and headers (a Hue bridge's app key)
+  and its text the URL or the address it couldn't reach, so `describe` gives only its type, status and reason, or its
+  errno name, for it or an error wrapping it, and its traceback stays out. A new client library whose errors carry
+  addresses or secrets is handled in `describe`. Your own format strings never add an address to them.
 - **A message another system wrote is not an upstream error.** An upstream error is an exception a library raises.
   A line another system logs or sends, such as a Zigbee2MQTT `bridge/logging` line, names devices its own way, so log
   the cause it names, never the line (Zigbee2MQTT: `bridge_cache.cause` and `scrub`).
 - **Tests check it:** the Hue and Zigbee2MQTT tests run at DEBUG and fail on a line that names an address their
-  fixtures use: a quoted Hue resource ID; an IEEE, a device topic, a Zigbee2MQTT failure line or a quoted friendly
-  name (their `conftest.py`).
+  fixtures use: a quoted Hue resource ID; an IEEE, a device topic, a Zigbee2MQTT failure line, or a friendly name
+  quoted or ahead of an endpoint (their `conftest.py`).
 
 ## Cost
 

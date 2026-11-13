@@ -130,22 +130,32 @@ async def test_without_a_color_nothing_is_read(hass, setup_production, broker, t
 @pytest.mark.parametrize(
     ("break_it", "reason", "sent"),
     [
-        pytest.param(lambda broker: broker.retained.pop(INFO), "no bridge/info from Zigbee2MQTT", [], id="no_info"),
+        pytest.param(
+            lambda broker: broker.retained.pop(INFO),
+            "TimeoutError('no bridge/info from Zigbee2MQTT')",
+            [],
+            id="no_info",
+        ),
         # Z2M may have applied a write it never answered, so it is put back.
         pytest.param(
-            lambda broker: setattr(broker, "reply", None), "no reply from Zigbee2MQTT", [True, False], id="no_reply"
+            lambda broker: setattr(broker, "reply", None),
+            "TimeoutError('no reply from Zigbee2MQTT')",
+            [True, False],
+            id="no_reply",
         ),
         pytest.param(
             # Z2M names the device it was asked about; the log line doesn't.
             lambda broker: setattr(broker, "reply", {"status": "error", "error": f"Device '{IEEE}' does not exist"}),
-            "Device '<device>' does not exist",
+            "RuntimeError(\"Device '<device>' does not exist\")",
             [True],
             id="error_reply",
         ),
-        pytest.param(lambda broker: setattr(broker, "reply", {}), "status None", [True], id="no_status"),
+        pytest.param(
+            lambda broker: setattr(broker, "reply", {}), "RuntimeError('status None')", [True], id="no_status"
+        ),
         pytest.param(
             lambda broker: setattr(broker, "reply", "not json"),
-            "no reply from Zigbee2MQTT",
+            "TimeoutError('no reply from Zigbee2MQTT')",
             [True, False],
             id="unreadable",
         ),
@@ -248,7 +258,9 @@ async def test_no_bridge_groups_warns_and_still_sends(hass, setup_production, br
 
     assert response == {"light.downstairs": SENT}
     assert len(broker.timers()) == 1
-    assert "so the command goes out as the option stands: no bridge/groups from Zigbee2MQTT" in caplog.text
+    assert (
+        "so the command goes out as the option stands: TimeoutError('no bridge/groups from Zigbee2MQTT')" in caplog.text
+    )
 
 
 # Ramps: off for brightness; saturation and hue leave it alone

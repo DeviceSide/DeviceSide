@@ -12,6 +12,7 @@ from .native_control import COLOR_FIELDS, NEED, native_control, settled
 from .set_check import checked, note
 from ...actions.turn_on_for import TurnOnForRequest
 from ...core.adapter import Adapter
+from ...core.errors import describe
 from ...core.models import EntityResult, Status, Target
 from ...core.runtime import get_runtime
 from ...core.scope import AdapterScope, DurationLimits, experimental, verified
@@ -129,7 +130,7 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
                 # A failure lands here rather than in HA's error log; the read runs in its own task.
                 await publish(hass, get_topic, {"state": ""})
             except Exception as err:  # noqa: BLE001 - a failed read leaves HA's state stale, nothing more
-                _LOGGER.debug("State read for %s failed: %s", target.entity_id, err)
+                _LOGGER.debug("State read for %s failed: %s", target.entity_id, describe(err))
 
         delays = [on_time + _END_READ_S, on_time + max(_LATE_END_READ_MIN_S, _LATE_END_READ_FRACTION * on_time)]
         if read_on:

@@ -12,6 +12,7 @@ from . import zcl
 from .addressing import address, unsupported_reason
 from ...actions.set_attributes import SetAttributesRequest
 from ...core.adapter import Adapter
+from ...core.errors import describe
 from ...core.ha_entity import ha_entity, replace_if_set
 from ...core.models import EntityResult, Status, Target
 from ...core.runtime import get_runtime
@@ -236,4 +237,4 @@ class ZHASetAttributes(Adapter[SetAttributesRequest]):
                 "homeassistant", "update_entity", {"entity_id": entity_id}, blocking=True, context=request.context
             )
         except Exception as err:  # noqa: BLE001 - the write landed; a stale HA state is no reason to fail it
-            _LOGGER.warning("update_entity after %s failed for %s: %s", self.action, entity_id, err)
+            _LOGGER.warning("update_entity after %s failed for %s: %s", self.action, entity_id, describe(err))

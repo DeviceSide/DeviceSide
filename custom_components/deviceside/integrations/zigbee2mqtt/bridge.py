@@ -12,6 +12,7 @@ from homeassistant.core import HomeAssistant, callback
 
 from . import bridge_cache, set_check
 from .addressing import bridge_topic, options_address, state_topic, topic
+from ...core.errors import describe
 from ...core.models import Target
 
 _LOGGER = logging.getLogger(__name__)
@@ -241,6 +242,8 @@ async def state_reply(hass: HomeAssistant, target: Target) -> tuple[asyncio.Futu
         return published, await mqtt.async_subscribe(hass, light_topic, received)
     except Exception as err:  # noqa: BLE001 - each caller goes on without the reply
         _LOGGER.debug(
-            "Couldn't subscribe to %s's state, so Zigbee2MQTT's answer isn't awaited: %s", target.entity_id, err
+            "Couldn't subscribe to %s's state, so Zigbee2MQTT's answer isn't awaited: %s",
+            target.entity_id,
+            describe(err),
         )
         return None, lambda: None

@@ -19,6 +19,7 @@ from .groups import light_members
 from ...actions.ramp import HUE, RampRequest
 from ...core import transition
 from ...core.adapter import Adapter, DeadlinePassed
+from ...core.errors import describe
 from ...core.ha_watch import ALL, Call, Entries
 from ...core.models import EntityResult, Status, Target
 from ...core.runtime import Job, get_runtime
@@ -197,7 +198,7 @@ async def refresh(hass: HomeAssistant, light: Target, context: Context | None) -
             "homeassistant", "update_entity", {"entity_id": light.entity_id}, blocking=True, context=context
         )
     except Exception as err:  # noqa: BLE001 - a failed refresh leaves HA's state stale, nothing more
-        _LOGGER.debug("update_entity for %s failed: %r", light.entity_id, err)
+        _LOGGER.debug("update_entity for %s failed: %s", light.entity_id, describe(err))
 
 
 @dataclass(frozen=True, slots=True)
@@ -277,7 +278,9 @@ class ZHARamp(Adapter[RampRequest]):
         try:
             lacking = await lacks_hue(hass, request, lights)
         except Exception as err:  # noqa: BLE001 - zha and zigpy errors can't be imported here; read_attributes says why
-            _LOGGER.warning("%s on zha failed for %s: ColorCapabilities not read: %r", self.action, names(lights), err)
+            _LOGGER.warning(
+                "%s on zha failed for %s: ColorCapabilities not read: %s", self.action, names(lights), describe(err)
+            )
             return each(Status.REJECTED, detail="error")
         if lacking:
             return each(Status.UNCHANGED, detail="fields_dropped")
@@ -301,7 +304,7 @@ class ZHARamp(Adapter[RampRequest]):
             _LOGGER.warning("%s on zha timed out for %s", self.action, names(lights))
             return each(Status.REJECTED, detail="timeout")
         except Exception as err:  # noqa: BLE001 - as in gather(): one group's failure must not abort the room
-            _LOGGER.warning("%s on zha failed for %s: %r", self.action, names(lights), err)
+            _LOGGER.warning("%s on zha failed for %s: %s", self.action, names(lights), describe(err))
             return each(Status.REJECTED, detail="error")
         if errors := {light_id: err for light_id, err in failed.items() if not isinstance(err, Unauthorized)}:
             why = ", ".join(f"{light_id}: {err!r}" for light_id, err in errors.items())
@@ -548,7 +551,7 @@ async def sync_to_bulb(
         at = (before + after) / 2
         level = read[zcl.CURRENT_LEVEL] * 100 / 254
     except Exception as err:  # noqa: BLE001 - the prediction stands, as on the other integrations
-        _LOGGER.debug("Level read after a fade was sent failed for %s: %r", light.entity_id, err)
+        _LOGGER.debug("Level read after a fade was sent failed for %s: %s", light.entity_id, describe(err))
         return
     elapsed = (at - recorded.started_at) / recorded.duration if recorded.duration > 0 else 1.0
     if elapsed >= 1 or cache.live(light.entity_id, BRIGHTNESS) is not recorded:
@@ -599,7 +602,7 @@ def end_job(hass: HomeAssistant, light: Target, restore: dict[str, float] | None
                         hass, addr, zcl.LEVEL_CLUSTER, zcl.MOVE_TO_LEVEL, params, context, entity_id=light.reported_id
                     )
             except Exception as err:  # noqa: BLE001 - the light stays off, and comes back on dim
-                _LOGGER.warning("Restoring %s's level after a soft off failed: %r", light.entity_id, err)
+                _LOGGER.warning("Restoring %s's level after a soft off failed: %s", light.entity_id, describe(err))
         await refresh(hass, light, context)
 
     return run

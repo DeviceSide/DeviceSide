@@ -33,6 +33,7 @@ from homeassistant.helpers import device_registry as dr
 from .addressing import device_identifier, group_id, options_address, z2m_address
 from .bridge import OPTION, ensure_options, group_members, state_reply
 from .restore_journal import Address, journal, locks
+from ...core.errors import describe
 from ...core.models import Target
 from ...core.runtime import get_runtime
 
@@ -197,7 +198,7 @@ async def _owe(hass: HomeAssistant, address: Address, value: bool, entity_id: st
     try:
         return await (await journal(hass)).add(address, value)
     except Exception as err:  # noqa: BLE001 - the journal is a safety net; the action goes on without it
-        _LOGGER.warning("Couldn't journal the pending %s restore for %s: %s", OPTION, entity_id, err)
+        _LOGGER.warning("Couldn't journal the pending %s restore for %s: %s", OPTION, entity_id, describe(err))
         return False
 
 
@@ -206,7 +207,7 @@ async def _owed(hass: HomeAssistant, address: Address, entity_id: str) -> bool |
     try:
         return (await journal(hass)).owes(address)
     except Exception as err:  # noqa: BLE001 - as if none were owed
-        _LOGGER.warning("Couldn't read the %s restore journal for %s: %s", OPTION, entity_id, err)
+        _LOGGER.warning("Couldn't read the %s restore journal for %s: %s", OPTION, entity_id, describe(err))
         return None
 
 
@@ -214,7 +215,7 @@ async def _strike(hass: HomeAssistant, address: Address, value: bool, entity_id:
     try:
         await (await journal(hass)).strike(address, value)
     except Exception as err:  # noqa: BLE001 - a stale entry is replayed harmlessly at the next online
-        _LOGGER.warning("Couldn't strike the %s restore for %s off the journal: %s", OPTION, entity_id, err)
+        _LOGGER.warning("Couldn't strike the %s restore for %s off the journal: %s", OPTION, entity_id, describe(err))
 
 
 async def _put_back(hass: HomeAssistant, target: Target, address: Address, fallback: bool) -> None:
@@ -298,7 +299,7 @@ async def _set(
                 value,
                 target.entity_id,
                 not value,
-                err,
+                describe(err),
             )
     return written
 
@@ -309,5 +310,5 @@ def _warn_set(target: Target, value: bool, err: Exception) -> None:
         OPTION,
         value,
         target.entity_id,
-        err,
+        describe(err),
     )

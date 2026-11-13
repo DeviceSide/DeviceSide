@@ -37,6 +37,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 
 from .addressing import bridge_topic
+from ...core.errors import describe
 from ...core.runtime import DATA
 
 _LOGGER = logging.getLogger(__name__)
@@ -262,7 +263,7 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry, on_online: Callab
     try:
         await cache.subscribe(hass)
     except Exception as err:  # noqa: BLE001 - each caller reads fresh, as without the cache
-        _LOGGER.warning("Couldn't subscribe to Zigbee2MQTT's bridge, so each action reads it fresh: %s", err)
+        _LOGGER.warning("Couldn't subscribe to Zigbee2MQTT's bridge, so each action reads it fresh: %s", describe(err))
         cache.stop()
         return
     state[_KEY] = cache
