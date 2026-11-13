@@ -19,38 +19,37 @@ Code and docs use these terms.
   Zigbee or Matter cluster).
 - **Field**: an action parameter, e.g. `brightness`.
 - **Entity domain**: light, switch. "Domain" alone is fine where unambiguous.
-- **Scope**: the entity domains, capabilities and fields an adapter is built for, each at a Level. Outside it, calls
-  are refused as not yet tested.
-- **Level**: how well a scope item is proven (Verified, Reported, Documented or Experimental). Rules:
-  [CLAUDE.md](../CLAUDE.md#release-flag). User wording: [device-compatibility.md](device-compatibility.md#levels-of-proof).
+- **Scope**: the entity domains, capabilities and fields an adapter is built for, each Verified, Documented or untested,
+  and flagged or not. Outside it, calls are refused as not yet tested.
+- **Level**: how a scope item is proven, Verified or Documented. Rules: [evidence.md](evidence.md#levels). User
+  wording: [device-compatibility.md](device-compatibility.md#levels-of-proof).
+- **Experimental**: the flag on a scope item (`experimental(...)`) or a whole adapter (`experimental=True`) that keeps
+  it off until the user turns on Experimental features; not a level. Rules:
+  [evidence.md](evidence.md#the-experimental-flag).
 - **Maintainer**: a GitHub handle in an integration's `IntegrationInfo.maintainers`. Maintainers look after that
   integration's package: they get its bug reports and approve changes to it. Rules:
   [CLAUDE.md](../CLAUDE.md#maintainers). User wording: [device-compatibility.md](device-compatibility.md#maintainers).
 - **Repo maintainer**: a handle in `REPO_MAINTAINERS` (`scripts/gen_codeowners.py`), with admin on the repo. Repo
-  maintainers own shared code, merge every PR and make the scope and Unmaintained calls. Distinct from an
+  maintainers own shared code, merge every PR, remove `experimental` flags and set caveats. Distinct from an
   integration's Maintainer.
-- **Unmaintained**: an adapter no one is fixing (`AdapterScope.unmaintained`, an issue URL or reason, set at the repo
-  maintainers' call). It stays live; setup warns and its card shows ⚠️ Unmaintained.
-- **Retest**: evidence, as new as an adapter's code, that the changed adapter still works: a test record, a
-  `_manual.md` line or an accepted device report. Rules: [CLAUDE.md](../CLAUDE.md#release-flag).
-- **Stale tests**: an adapter that ships changed since its last retest (`AdapterScope.stale_tests`, an issue URL or
-  reason, set by hand). It stays live; setup warns, its card shows ⚠️ Stale tests and the release notes ask for
-  testers. A fresh retest clears it. Rules: [CLAUDE.md](../CLAUDE.md#maintainers).
-- **Experimental features**: the option (`experimental_features`, off by default) that lets calls touching an
-  Experimental item through. Only the dispatcher reads it.
-- **Release flag**: `experimental=True` on an adapter's scope keeps the whole adapter in release candidates only. Not
-  the Experimental level, which gates an item at runtime. Rules: [CLAUDE.md](../CLAUDE.md#release-flag).
+- **Caveat**: a risk mark on an adapter (`AdapterScope.caveat`, an issue URL), ⚠️ Untested fix or ⚠️ Unmaintained,
+  set by a repo maintainer. It ships live; setup warns, its card shows the mark and the release notes say why. Rules:
+  [evidence.md](evidence.md#caveats).
+- **Sign-off**: a passing test record or `_manual.md` line from one of an integration's Maintainers (or a Repo
+  maintainer when none responds), at or after its last change, which a release needs for each integration changed
+  since the last tag. Rules:
+  [evidence.md](evidence.md#release-gate).
+- **Experimental features**: the option (`experimental_features`, off by default) that lets calls touching a flagged
+  item through. Only the dispatcher reads it.
 - **Rig**: a tool that tests DeviceSide's features automatically with real hardware on a live Home Assistant instance,
   and writes up the results as test records.
 - **Test record**: the evidence that an adapter works on real hardware, from a rig run:
-  `docs/integrations/<integration>/test-records/<action>*.md`. Clearing `experimental` cites one. A maintainer's
-  hand test goes in the same folder's `_manual.md`, one line per run; it is a retest, never a record.
+  `docs/integrations/<integration>/test-records/<action>*.md`. A maintainer's hand test goes in the same folder's
+  `_manual.md`, one line per run; either can be a sign-off ([release gate](evidence.md#release-gate)).
 - **Device report**: a user's "works" or "doesn't work" for an action on a model. In the bundle's `devices.yaml` each
-  one names the `item` its call reached (the domain, or the capability for an adapter that lists them). An accepted
-  "works" on an item's call counts toward Reported (five from users other than the maintainer move an Experimental
-  item; one, the maintainer's included, keeps a changed call Reported) and is a retest of that release's code; a
-  "doesn't work" is
-  evidence for a fix or for leaving the item out.
+  one names the `item` its call reached (the domain, or the capability for an adapter that lists them). Accepted
+  "works" reports guide removing a flag, and a maintainer's `_manual.md` line may cite one as a sign-off; a
+  "doesn't work" is evidence for a fix or for leaving the item out.
 - **Profile**: one test setup on the rig's HA, the entities a run may move by integration and role; a record names the
   one it ran on (`lab`, `house`).
 
@@ -189,17 +188,13 @@ adapter's targets at once, so native group commands stay possible.
 
 ## Release gates
 
-Each gate's rules are in the header of the script or workflow named.
+The rules are in [evidence.md](evidence.md#release-gate), with the old gates still running listed under its
+Transition; each gate's mechanics are in the header of the script or workflow named.
 
 - **Coverage:** `scripts/check_release.py --coverage`, in CI.
-- **Release flag:** `check_release.py --release`, in `cut-release`.
-- **Record freshness:** `check_release.py --records`, in both cut workflows.
-- **Retests and Stale tests:** `check_release.py --records` lists adapters with no fresh retest, and `--notes` asks
-  for testers in both cut workflows; `--release` in `cut-release` fails on one not marked `stale_tests`.
-- **Adapter code:** both gates weigh an adapter's code (`adapter_code` in `check_release.py`): its module and what it
-  and its integration package import, followed into `core/`, so a shared helper is held to the coverage bar and a
-  change to it stales the records of every adapter that reaches it, unless one Verified run that covered the change
-  proves it for all (CLAUDE.md § Release flag). `actions/` is not followed.
+- **Sign-offs:** `check_release.py --signoffs`, in `cut-release` once the plan's step 4 lands: a sign-off or caveat
+  for each integration whose package changed since the last release tag. `--notes` lists the unsigned integrations
+  and Untested fix caveats in both cut workflows.
 - **Tags:** `scripts/check_tag.py`, in `.github/workflows/cut-release-candidate.yml` and `cut-release.yml`, the only
   way a tag is made.
 - **RC audit:** `scripts/check_audit.py`, in `cut-release-candidate`.
@@ -207,7 +202,6 @@ Each gate's rules are in the header of the script or workflow named.
   Shelly RPC, the Matter client, aiohue) against a real `hass`. The rig runs against a live HA and writes the test
   records.
 
-**Hardware the rig lacks (planned):** a maintainer's adapter ships Experimental and climbs to Reported on accepted
-device reports. After v0.1.0, a published rig kit lets maintainers run the rig on their own devices and commit
-attributed test records under `docs/integrations/<integration>/test-records/`, the same route to Verified the rig's
-own adapters take.
+**Hardware the rig lacks:** a maintainer verifies by hand and signs off with a `_manual.md` line. After v0.1.0, a
+published rig kit lets maintainers run the rig on their own devices and commit attributed test records under
+`docs/integrations/<integration>/test-records/`.
