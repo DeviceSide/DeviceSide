@@ -189,7 +189,7 @@ def logged_options(hass: HomeAssistant, target: Target) -> dict:
 async def publish_set(hass: HomeAssistant, target: Target, payload: dict) -> None:
     """Publish a command to the target's set topic, logged (never the topic) and noted for the call's set check
     (set_check.py). A read, sent on the same topic, goes through publish()."""
-    await set_check.note(hass, target)
+    await set_check.note(hass, target, payload)
     if _LOGGER.isEnabledFor(logging.DEBUG):
         _LOGGER.debug("%s: sending mqtt set %s with %s", target.reported_id, payload, logged_options(hass, target))
     await publish(hass, topic(target, "set"), payload)
