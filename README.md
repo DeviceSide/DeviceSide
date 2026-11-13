@@ -117,6 +117,8 @@ Details per integration are in [docs/integrations.md](https://github.com/DeviceS
 </details>
 <!-- ha-marketplace:exclude-end -->
 
+After downloading, restart Home Assistant, then [add DeviceSide](https://my.home-assistant.io/redirect/config_flow_start/?domain=deviceside).
+
 ## Usage
 
 <details>
