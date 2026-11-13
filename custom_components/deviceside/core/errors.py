@@ -40,10 +40,11 @@ class TargetNotSupported(ServiceNotSupported):
 def describe(err: BaseException) -> str:
     """An upstream error for a log line (docs/logging.md): its repr, as its text is often the diagnosis.
 
-    Not an aiohttp error's, nor one wrapping it (as its args, cause or context): its repr holds the request's URL and
-    headers (a Hue bridge's address, a resource id, the hue-application-key), and its text the URL or, where a connect
-    failed, the address asyncio writes into the OS error. It gives the type, a response error its status and reason,
-    and a connection error the OS error's errno name; a wrapper's type wraps that.
+    Not an aiohttp error's, nor one wrapping it (as its args, cause, context, or in an exception group): its repr holds
+    the request's URL and headers (a Hue bridge's address, a resource id, the hue-application-key), and its text the URL
+    or, where a connect failed, the address asyncio writes into the OS error. It gives the type, a response error its
+    status and reason, an SSL error its reason (CERTIFICATE_VERIFY_FAILED), and another connection error the OS error's
+    errno name; a wrapper's type wraps that.
     """
     if (client := _client_error(err)) is None:
         return repr(err)

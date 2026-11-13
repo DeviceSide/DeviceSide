@@ -108,7 +108,7 @@ class ZHAStop(Adapter[Request]):
                             cache.forget(light_id, attribute)
                             cache.restore(before[(light_id, attribute)])
         except DeadlinePassed:
-            _LOGGER.warning("stop on zha timed out for %s", ", ".join(sorted(halting_ids)))
+            _LOGGER.warning("stop on zha timed out for %s, %s", ", ".join(sorted(halting_ids)), self.consequence)
             return [*off, *(self.result(light, Status.REJECTED, detail="timeout") for light in halting)]
         if errors := {light_id: err for light_id, err in failed.items() if not isinstance(err, Unauthorized)}:
             _LOGGER.warning(

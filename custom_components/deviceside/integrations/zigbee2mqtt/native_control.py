@@ -198,7 +198,12 @@ async def _owe(hass: HomeAssistant, address: Address, value: bool, entity_id: st
     try:
         return await (await journal(hass)).add(address, value)
     except Exception as err:  # noqa: BLE001 - the journal is a safety net; the action goes on without it
-        _LOGGER.warning("Couldn't journal the pending %s restore for %s: %s", OPTION, entity_id, describe(err))
+        _LOGGER.warning(
+            "Couldn't journal the pending %s restore for %s: %s, so a restart before it would leave the option flipped",
+            OPTION,
+            entity_id,
+            describe(err),
+        )
         return False
 
 
@@ -207,7 +212,12 @@ async def _owed(hass: HomeAssistant, address: Address, entity_id: str) -> bool |
     try:
         return (await journal(hass)).owes(address)
     except Exception as err:  # noqa: BLE001 - as if none were owed
-        _LOGGER.warning("Couldn't read the %s restore journal for %s: %s", OPTION, entity_id, describe(err))
+        _LOGGER.warning(
+            "Couldn't read the %s restore journal for %s: %s, so this action pays no restore it owes",
+            OPTION,
+            entity_id,
+            describe(err),
+        )
         return None
 
 
@@ -215,7 +225,12 @@ async def _strike(hass: HomeAssistant, address: Address, value: bool, entity_id:
     try:
         await (await journal(hass)).strike(address, value)
     except Exception as err:  # noqa: BLE001 - a stale entry is replayed harmlessly at the next online
-        _LOGGER.warning("Couldn't strike the %s restore for %s off the journal: %s", OPTION, entity_id, describe(err))
+        _LOGGER.warning(
+            "Couldn't strike the %s restore for %s off the journal: %s, so the next online replays it, harmlessly",
+            OPTION,
+            entity_id,
+            describe(err),
+        )
 
 
 async def _put_back(hass: HomeAssistant, target: Target, address: Address, fallback: bool) -> None:

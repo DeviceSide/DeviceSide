@@ -107,7 +107,10 @@ class ShellyGetAttributes(RpcComponent, Adapter[Request]):
                 row |= config_row(config)
             if not row:
                 # Nothing was read, so nothing is confirmed.
-                _LOGGER.warning("get_attributes read nothing from %s's status", target.entity_id)
+                _LOGGER.warning(
+                    "get_attributes on shelly read nothing from %s's status, so its attributes aren't reported",
+                    target.entity_id,
+                )
                 return self.result(target, Status.REJECTED, detail="error")
             return self.result(target, Status.CONFIRMED, data=row)
 

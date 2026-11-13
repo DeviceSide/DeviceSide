@@ -237,4 +237,9 @@ class ZHASetAttributes(Adapter[SetAttributesRequest]):
                 "homeassistant", "update_entity", {"entity_id": entity_id}, blocking=True, context=request.context
             )
         except Exception as err:  # noqa: BLE001 - the write landed; a stale HA state is no reason to fail it
-            _LOGGER.warning("update_entity after %s failed for %s: %s", self.action, entity_id, describe(err))
+            _LOGGER.warning(
+                "update_entity after %s failed for %s: %s, so HA may show the old values",
+                self.action,
+                entity_id,
+                describe(err),
+            )

@@ -279,7 +279,11 @@ class ZHARamp(Adapter[RampRequest]):
             lacking = await lacks_hue(hass, request, lights)
         except Exception as err:  # noqa: BLE001 - zha and zigpy errors can't be imported here; read_attributes says why
             _LOGGER.warning(
-                "%s on zha failed for %s: ColorCapabilities not read: %s", self.action, names(lights), describe(err)
+                "%s on zha failed for %s: ColorCapabilities not read: %s, %s",
+                self.action,
+                names(lights),
+                describe(err),
+                self.consequence,
             )
             return each(Status.REJECTED, detail="error")
         if lacking:
@@ -301,10 +305,12 @@ class ZHARamp(Adapter[RampRequest]):
             async with self.slot(hass):
                 clamped_to, failed = await start(hass, request.context, cache, gid, outcome)
         except DeadlinePassed:
-            _LOGGER.warning("%s on zha timed out for %s", self.action, names(lights))
+            _LOGGER.warning("%s on zha timed out for %s, %s", self.action, names(lights), self.consequence)
             return each(Status.REJECTED, detail="timeout")
         except Exception as err:  # noqa: BLE001 - as in gather(): one group's failure must not abort the room
-            _LOGGER.warning("%s on zha failed for %s: %s", self.action, names(lights), describe(err))
+            _LOGGER.warning(
+                "%s on zha failed for %s: %s, %s", self.action, names(lights), describe(err), self.consequence
+            )
             return each(Status.REJECTED, detail="error")
         if errors := {light_id: err for light_id, err in failed.items() if not isinstance(err, Unauthorized)}:
             why = ", ".join(f"{light_id}: {describe(err)}" for light_id, err in errors.items())
@@ -602,7 +608,11 @@ def end_job(hass: HomeAssistant, light: Target, restore: dict[str, float] | None
                         hass, addr, zcl.LEVEL_CLUSTER, zcl.MOVE_TO_LEVEL, params, context, entity_id=light.reported_id
                     )
             except Exception as err:  # noqa: BLE001 - the light stays off, and comes back on dim
-                _LOGGER.warning("Restoring %s's level after a soft off failed: %s", light.entity_id, describe(err))
+                _LOGGER.warning(
+                    "zha couldn't put back %s's level after a soft off: %s, so its next plain turn on comes up dim",
+                    light.entity_id,
+                    describe(err),
+                )
         await refresh(hass, light, context)
 
     return run
