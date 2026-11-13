@@ -20,9 +20,9 @@ Adapters with the `experimental` flag are left out of the cards: they are in RCs
 **Evidence.** Per integration, every action's level and the models its passing records tested, with a row per level
 below Verified that its domains, capabilities or fields hold, and the reports on it; an unmaintained adapter's action
 is marked ⚠️ Unmaintained, one with an untested fix ⚠️ Untested fix. Its level is Verified only on a passing record of the
-base action (`<action>.md`) as new as the adapter's code (check_release's freshness check). A group (a Device entry with
-firmware `unknown`, or named Group or Zone) shows as "group", not as a model; any other entry the record format can't
-read is an error. The prose outside the evidence markers is kept as written.
+base action (`<action>.md`) whose cited commit holds the integration's package and `core/` as HEAD does (`fresh`). A
+group (a Device entry with firmware `unknown`, or named Group or Zone) shows as "group", not as a model; any other entry
+the record format can't read is an error. The prose outside the evidence markers is kept as written.
 
 **Data.** docs/models.yaml holds what integrations share: `models`, one entry per physical model (`name`, `ids` across
 integrations, `type`, optional `section`), and `doesnt_work` entries that name their `integrations`. Each bundle's
@@ -32,9 +32,8 @@ capability the scopes hold below Verified, for Should work and Help us test), `d
 `source`, optional `section`: devices that fail the call DeviceSide sends, not what isn't built) and `reports`. A
 report is an accepted device-report issue: `model` (one of a model's ids), `item` (the entity domain or capability,
 Shelly: RPC component, its call reached), `firmware` and `deviceside` (the tag tested without its `v`, an RC's `rcN`
-included, which check_release counts as a retest of that tag's code), both quoted, `worked` and `failed`
-(action names) and `issue` (URL); what an accepted one promotes is in CLAUDE.md § Release flag. Every integration
-needs a bundle; one without is an error naming the file.
+included), both quoted, `worked` and `failed` (action names) and `issue` (URL); what an accepted one promotes is in
+CLAUDE.md § Release flag. Every integration needs a bundle; one without is an error naming the file.
 
 **Links.** A card links each model, class or blocker to the heading its `section` names (default: the model's
 `name`, the blocker's `what`): on the card's integration page when that has the heading; a model's or native groups'
@@ -60,19 +59,12 @@ sys.path.insert(0, str(REPO))
 
 from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
 from custom_components.deviceside.core.scope import CaveatKind, Level  # noqa: E402
-from scripts.check_release import (  # noqa: E402
-    adapters,
-    code_of,
-    proven,
-    record_names,
-    records,
-    result,
-    staleness,
-)
+from scripts.check_release import CITED_COMMIT, adapters, exists, package, result, same, test_records_dir  # noqa: E402
 from scripts.gen_features import FEATURES as TABLE_FEATURES  # noqa: E402
 from scripts.gen_features import anchors, bundle, columns, page, slug  # noqa: E402
 
 PAGE = REPO / "docs" / "device-compatibility.md"
+CORE = "custom_components/deviceside/core/"
 README = REPO / "README.md"
 MODELS = REPO / "docs" / "models.yaml"
 # Absolute: HACS renders the README inside Home Assistant, where a relative link doesn't resolve.
@@ -377,6 +369,29 @@ def entries(record: Path) -> list[tuple[str, str] | str]:
     return found
 
 
+def proven(scope) -> bool:
+    """Whether the adapter has a Verified call: a Verified domain and, when the scope lists capabilities, a Verified
+    one."""
+    if Level.VERIFIED not in scope.domains.values():
+        return False
+    return scope.capabilities is None or Level.VERIFIED in scope.capabilities.values()
+
+
+def fresh(record: Path, integration: str) -> bool:
+    """Whether the record's cited commit holds the integration's package and `core/` as HEAD does. Until the plan's
+    step 5 drops the freshness rule: it stands in for the old check of the adapter's own code (the modules it imports),
+    stricter, as the package and `core/` hold that code, and any change counts, flags included."""
+    if not (cited := CITED_COMMIT.search(record.read_text())):
+        return False
+    return exists(cited[1]) and same(cited[1], package(integration), CORE)
+
+
+def records(integration: str, action: str) -> list[Path]:
+    """The adapter's test records: `<action>.md`, and `<action>-<option>.md` for a run with an option set."""
+    pattern = re.compile(rf"{re.escape(action)}(-[^.]+)?\.md")
+    return sorted(path for path in test_records_dir(integration).glob("*.md") if pattern.fullmatch(path.name))
+
+
 def passing(integration: str, action: str) -> list[Path]:
     return [path for path in records(integration, action) if result(path) == "pass"]
 
@@ -441,8 +456,8 @@ def action_cell(action: str, adapter) -> str:
 
 def row(action: str, adapter, data: Data) -> str:
     found = passing(adapter.integration, action)
-    base = [record for record in found if record.name == record_names(action)[0]]
-    verified = bool(base) and staleness(base[0], code_of(adapter)) is None
+    base = [record for record in found if record.name == f"{action}.md"]
+    verified = bool(base) and fresh(base[0], adapter.integration)
     level = IN_RCS if adapter.scope.experimental else "Verified" if verified else STALE if base else NO_RECORD
     models = [GROUP if item == GROUP else f"`{item[0]}`, firmware `{item[1]}`" for item in tested(adapter, data, found)]
     records_cell = ", ".join(link(record, action) for record in found)
@@ -538,7 +553,7 @@ class Card:
     requires: str | None = None
     url: str | None = None  # the integration's page
     maintainers: tuple[str, ...] = ()
-    # ⚠️ Unmaintained, then ⚠️ Stale tests entries: the features of the adapters so marked, by reason.
+    # ⚠️ Unmaintained, then ⚠️ Untested fix entries: the features of the adapters so marked, by reason.
     marks: list[str] = field(default_factory=list)
     # Every shipping adapter is unmaintained, so the heading says "formerly maintained".
     all_unmaintained: bool = False

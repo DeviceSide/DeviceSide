@@ -2,10 +2,9 @@ name: Cut release candidate
 
 # The only way a vX.Y.ZrcN tag is made (a tag ruleset refuses any other): from main, or from release/vX.Y.Z when a
 # soaking RC or a release needs a fix without what main has gained since (cut that branch from its tag). Requires a
-# version above the latest release, manifest.json at X.Y.Z, green CI on the head, docs/audits/<rc>.md covering every
-# commit since the previous RC, and every released adapter's test records passing and citing a commit with the head's
-# adapter code (check_release --records). The same check lists adapters with no fresh retest, and the RC's notes ask
-# for testers for them (--notes).
+# version above the latest release, manifest.json at X.Y.Z, green CI on the head, and docs/audits/<rc>.md covering
+# every commit since the previous RC. An RC needs no sign-off (docs/evidence.md, Release gate): its notes ask for testers
+# of each integration changed since the last release without one, and of each Untested fix (check_release --notes).
 # Tags pushed with GITHUB_TOKEN start no other workflow, so anything an RC needs runs here.
 #
 # Two jobs, so the code `uv sync` installs never shares a runner with write access: `check` runs the gates with a
@@ -71,15 +70,11 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked
 
-      # A record cites the commit its rig run deployed, often on a PR branch since squash-merged and deleted.
-      - name: Fetch the commits test records cite
-        run: git fetch --quiet origin '+refs/pull/*/head:refs/remotes/pull/*'
-
       # The call for testers rides to `tag` as an output, as that job's runner has none of this one's files.
-      - name: Refuse a test record older than its adapter's code
+      - name: Write the call for testers
         id: gates
         run: |
-          .venv/bin/python scripts/check_release.py --records --notes "$RUNNER_TEMP/notes.md"
+          .venv/bin/python scripts/check_release.py --notes "$RUNNER_TEMP/notes.md"
           { echo 'notes<<END_OF_NOTES'; cat "$RUNNER_TEMP/notes.md"; echo 'END_OF_NOTES'; } >> "$GITHUB_OUTPUT"
 
   tag:
