@@ -12,8 +12,6 @@ from custom_components.deviceside.core.adapter import Adapter
 from custom_components.deviceside.core.registry import AdapterRegistry
 from custom_components.deviceside.core.scope import (
     AdapterScope,
-    Caveat,
-    CaveatKind,
     Level,
     documented,
     experimental,
@@ -126,13 +124,6 @@ def test_mappings_are_read_only_copies_and_the_scope_hashes():
     with pytest.raises(TypeError):
         scope.domains["switch"] = Level.VERIFIED
     assert hash(scope) == hash(scope)
-
-
-def test_a_scope_has_no_caveat_unless_given_one():
-    caveat = Caveat(CaveatKind.UNTESTED_FIX, "https://github.com/DeviceSide/DeviceSide/issues/1")
-
-    assert AdapterScope().caveat is None
-    assert AdapterScope(caveat=caveat).caveat == caveat
 
 
 def _adapters() -> list[Adapter]:

@@ -44,15 +44,6 @@ async def test_continues_from_the_predicted_value(hass, commands, clock):
     assert sent(commands)[-1] == (0x0008, 0x00, {"level": 51, "transition_time": 30})
 
 
-async def test_an_off_light_is_unchanged(hass, commands):
-    bulb(hass, state="off")
-
-    assert await call(hass, "lower_brightness", {"entity_id": "light.bulb"}) == {
-        "light.bulb": result("zha", "unchanged", detail="off")
-    }
-    assert not commands
-
-
 async def test_soft_off_restores_the_start_level_once_the_light_reads_off(hass, commands, refreshes, on_off_read):
     bulb(hass)
     start = wall_clock_now()

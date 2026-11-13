@@ -4,21 +4,18 @@ import asyncio
 import logging
 from unittest.mock import AsyncMock
 
-import probatio
 import pytest
-from homeassistant.core import Context, ServiceCall
+from homeassistant.core import ServiceCall
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
-from homeassistant.helpers.service import async_register_admin_service
 from pytest_homeassistant_custom_component.common import async_mock_service
 
-from custom_components.deviceside.const import DOMAIN
 from custom_components.deviceside.core.transition import BRIGHTNESS, SATURATION
 from custom_components.deviceside.integrations.zha import zcl
 from custom_components.deviceside.integrations.zha.fade import hue_moves, soft_off_restores, transition_cache
 
-from .conftest import BOTTOM, RESTORE_60, SENT, A, B, bulb, on_off_reads, sent, xy
-from ...conftest import advance, call, wall_clock_now
+from .conftest import BOTTOM, RESTORE_60, SENT, A, B, bulb, call_as, on_off_reads, sent, xy
+from ...conftest import advance, call, result, wall_clock_now
 from ...fixtures.zha import IEEE
 
 pytestmark = pytest.mark.usefixtures("setup_production", "clock")
@@ -42,6 +39,29 @@ async def test_brightness_and_saturation_are_separate_fades(hass, commands, cloc
     assert cache.value("light.bulb", SATURATION, 0) == pytest.approx(80)
 
 
+@pytest.mark.parametrize(
+    ("action", "light", "detail"),
+    [
+        pytest.param("lower_brightness", {"state": "off"}, "off", id="lower_brightness_off"),
+        pytest.param("raise_hue", {"state": "off"}, "off", id="raise_hue_off"),
+        pytest.param("raise_saturation", {"state": "off"}, "off", id="raise_saturation_off"),
+        pytest.param("lower_saturation", {"hs": (200.0, 0.0)}, "at_limit", id="lower_saturation_at_white"),
+        pytest.param("raise_brightness", {"brightness": 255}, "at_limit", id="raise_brightness_at_the_top"),
+        pytest.param("raise_hue", {}, "fields_dropped", id="raise_hue_without_enhanced_hue"),
+    ],
+)
+async def test_nothing_to_make_is_unchanged(hass, commands, action, light, detail):
+    """One row per branch: the lower and raise of an attribute share it, so lower_hue and lower_saturation have none
+    of their own."""
+    zcl.enhanced_hue.return_value = detail != "fields_dropped"
+    bulb(hass, **light)
+
+    assert await call(hass, action, {"entity_id": "light.bulb"}) == {
+        "light.bulb": result("zha", "unchanged", detail=detail)
+    }
+    assert not commands
+
+
 async def test_a_move_of_another_attribute_keeps_the_soft_offs_restore(hass, commands, refreshes, on_off_read):
     bulb(hass)
     start = wall_clock_now()
@@ -55,28 +75,14 @@ async def test_a_move_of_another_attribute_keeps_the_soft_offs_restore(hass, com
     assert len(refreshes) == 2  # one per fade
 
 
-async def test_non_admin_caller_is_refused(hass, hass_read_only_user):
-    calls: list[ServiceCall] = []
-
-    async def handler(service: ServiceCall) -> None:
-        calls.append(service)
-
-    schema = probatio.Schema({}, extra=probatio.ALLOW_EXTRA)
-    async_register_admin_service(hass, "zha", "issue_zigbee_cluster_command", handler, schema)
+async def test_non_admin_caller_is_refused(hass, admin_command, hass_read_only_user):
     bulb(hass)
 
     with pytest.raises(HomeAssistantError) as raised:
-        await hass.services.async_call(
-            DOMAIN,
-            "raise_brightness",
-            {"entity_id": "light.bulb"},
-            blocking=True,
-            return_response=True,
-            context=Context(user_id=hass_read_only_user.id),
-        )
+        await call_as(hass, hass_read_only_user, "raise_brightness", {"entity_id": "light.bulb"})
 
     assert raised.value.translation_placeholders["summary"] == "light.bulb: admin_required"
-    assert not calls
+    assert not admin_command
     assert not transition_cache(hass).tracks("light.bulb", BRIGHTNESS)
 
 

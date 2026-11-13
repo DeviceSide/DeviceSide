@@ -77,23 +77,25 @@ def fake_registry():
         yield
 
 
-@pytest.fixture
-async def setup_integration(hass: HomeAssistant, fake_registry) -> MockConfigEntry:
+async def load_entry(hass: HomeAssistant) -> MockConfigEntry:
+    """DeviceSide's config entry, added and set up as HA does at start."""
     entry = MockConfigEntry(domain=DOMAIN)
     entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     return entry
+
+
+@pytest.fixture
+async def setup_integration(hass: HomeAssistant, fake_registry) -> MockConfigEntry:
+    """The integration over the fake integrations."""
+    return await load_entry(hass)
 
 
 @pytest.fixture
 async def setup_production(hass: HomeAssistant) -> MockConfigEntry:
     """The integration over the real discovered integrations, for adapter tests."""
-    entry = MockConfigEntry(domain=DOMAIN)
-    entry.add_to_hass(hass)
-    assert await hass.config_entries.async_setup(entry.entry_id)
-    await hass.async_block_till_done()
-    return entry
+    return await load_entry(hass)
 
 
 async def call(hass: HomeAssistant, service: str, data: dict, return_response: bool = True):

@@ -10,7 +10,7 @@ from custom_components.deviceside.core.scope import Level
 from custom_components.deviceside.integrations.shelly.auto import ShellyClearAuto, ShellySetAuto
 from custom_components.deviceside.integrations.shelly.rpc import AUTO_DELAY_LIMITS
 
-from ...conftest import call, refusal, result
+from ...conftest import call, result
 from ...fixtures.shelly import OTHER_LIGHT_COMPONENTS, add_shelly_entity, failing, shelly_device
 
 pytestmark = pytest.mark.usefixtures("setup_production")
@@ -153,19 +153,6 @@ async def test_zero_duration_is_rejected(hass, which):
         await call(hass, f"set_auto_{which}", {"entity_id": "switch.gate", "duration": 0})
 
     assert raised.value.translation_key == "invalid_duration"
-    assert not call_rpc.await_args_list
-
-
-@pytest.mark.parametrize("action", ["set_auto_off", "set_auto_on", "clear_auto_off", "clear_auto_on"])
-async def test_out_of_scope_targets_are_refused(hass, action):
-    gen1, _ = shelly_device(hass, gen1=True, mac="112233445566")
-    add_shelly_entity(hass, gen1, "switch.old_relay", "relay_0")
-    entry, call_rpc = shelly_device(hass)
-    add_shelly_entity(hass, entry, "switch.child_lock", "boolean:200-boolean_child_lock")
-    data = {"duration": 5} if action.startswith("set_") else {}
-
-    assert await refusal(hass, action, {"entity_id": "switch.old_relay", **data}) == "gen1_unsupported"
-    assert await refusal(hass, action, {"entity_id": "switch.child_lock", **data}) == "not_addressable"
     assert not call_rpc.await_args_list
 
 

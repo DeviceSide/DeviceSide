@@ -9,10 +9,11 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry, async_mock_service
 
-from custom_components.deviceside.const import DOMAIN
 from custom_components.deviceside.core import ha_watch
 from custom_components.deviceside.core.ha_watch import ALL, Call
 from custom_components.deviceside.core.registry import AdapterRegistry
+
+from ..conftest import load_entry
 
 
 class Resolver:
@@ -54,10 +55,7 @@ def resolvers() -> dict[str, Resolver]:
 @pytest.fixture
 async def watched(hass, fake_registry, resolvers) -> MockConfigEntry:
     with patch.object(AdapterRegistry, "call_resolvers", lambda self: resolvers):
-        entry = MockConfigEntry(domain=DOMAIN)
-        entry.add_to_hass(hass)
-        assert await hass.config_entries.async_setup(entry.entry_id)
-        await hass.async_block_till_done()
+        entry = await load_entry(hass)
     async_mock_service(hass, "light", "turn_on")
     async_mock_service(hass, "scene", "turn_on")
     async_mock_service(hass, "switch", "turn_on")

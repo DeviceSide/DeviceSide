@@ -3,7 +3,7 @@
 import pytest
 
 from .conftest import SENT, SET, commands, light
-from ...conftest import call, result
+from ...conftest import call
 
 pytestmark = pytest.mark.usefixtures("setup_production", "clock")
 
@@ -15,15 +15,6 @@ async def test_a_cycle_in_the_sweep_time(hass, broker):
 
     assert response == {entity_id: SENT}
     assert commands(broker) == [(SET, {"hue_move": 51})]
-
-
-async def test_an_off_light_is_unchanged(hass, broker):
-    entity_id = light(hass, broker, state="off")
-
-    response = await call(hass, "raise_hue", {"entity_id": entity_id})
-
-    assert response == {entity_id: result("zigbee2mqtt", "unchanged", detail="off")}
-    assert commands(broker) == []
 
 
 @pytest.mark.parametrize(

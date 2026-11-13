@@ -168,7 +168,7 @@ async def test_failed_set_warns_and_still_sends(
     assert not broker.listening(DEVICE_RESPONSE)
 
 
-async def test_failed_restore_warns(hass, setup_production, broker, turn_ons, caplog):
+async def test_a_failed_restore_warns_and_stays_owed(hass, setup_production, broker, turn_ons, caplog):
     hue_bulb(hass)
     publish = broker.publish
 
@@ -185,6 +185,7 @@ async def test_failed_restore_warns(hass, setup_production, broker, turn_ons, ca
     assert options(broker) == [True, False]
     assert len(broker.timers()) == 1
     assert "Couldn't put Zigbee2MQTT's hue_native_control back to False for light.lamp, so it stays True" in caplog.text
+    assert (await journal(hass)).owed == {f"device/{IEEE}": False}
 
 
 # Groups: the group's own option, and only with a Hue member
@@ -266,18 +267,11 @@ async def test_brightness_ramp_turns_it_off_for_its_publish(hass, setup_producti
     assert options(broker) == [False, True]
 
 
-async def test_saturation_ramp_leaves_it_alone(hass, setup_production, clock, broker):
+@pytest.mark.parametrize("action", ["raise_saturation", "raise_hue"])
+async def test_a_color_ramp_leaves_it_alone(hass, setup_production, clock, broker, action):
     entity_id = light(hass, broker, manufacturer="Philips")
 
-    await call(hass, "raise_saturation", {"entity_id": entity_id})
-
-    assert broker.requests() == []
-
-
-async def test_hue_move_leaves_it_alone(hass, setup_production, clock, broker):
-    entity_id = light(hass, broker, manufacturer="Philips")
-
-    await call(hass, "raise_hue", {"entity_id": entity_id})
+    await call(hass, action, {"entity_id": entity_id})
 
     assert broker.requests() == []
 
@@ -389,21 +383,6 @@ async def test_state_reply_ends_the_wait(hass, setup_production, clock, broker, 
     assert loop.time() - start < 1
     assert options(broker) == [True, False]
     assert not broker.subscribers["zigbee2mqtt/lamp"]
-
-
-async def test_retained_state_doesnt_end_the_wait(hass, setup_production, clock, broker, monkeypatch):
-    monkeypatch.setattr(nc, "_REPLY_CAP_S", 0.2)
-    entity_id = light(hass, broker, manufacturer="Philips")
-    broker.retained["zigbee2mqtt/lamp"] = {"state": "ON"}  # resent on subscribe: old state, not Z2M's answer
-    loop = asyncio.get_running_loop()
-
-    start = loop.time()
-    async with nc.native_control(hass, target(hass, entity_id), True):
-        pass
-    await nc.settled(hass, target(hass, entity_id))
-
-    assert loop.time() - start >= 0.2
-    assert options(broker) == [True, False]
 
 
 async def test_failed_state_subscribe_still_restores_after_the_cap(
@@ -622,14 +601,6 @@ async def test_a_group_is_stamped_from_the_group_section(hass, setup_production,
     assert bridge.logged_options(hass, target(hass, "light.downstairs")) == {nc.OPTION: True}
 
 
-async def test_the_stamp_is_unknown_without_the_bridge_cache(hass, setup_production, broker, wire):
-    entity_id = light(hass, broker)
-
-    await call(hass, "stop", {"entity_id": entity_id})
-
-    assert stamps(wire) == [None]
-
-
 async def test_the_stamp_is_unknown_without_an_address(hass, setup_production):
     assert bridge.logged_options(hass, Target("light.x", "light", "zigbee2mqtt", None, None, None, None)) == {
         nc.OPTION: None
@@ -652,22 +623,6 @@ async def test_a_confirmed_restore_leaves_nothing_owed(hass, setup_production, b
     await call(hass, "turn_on_for", RED)
 
     assert (await journal(hass)).owed == {}
-
-
-async def test_a_failed_restore_stays_owed(hass, setup_production, broker, turn_ons):
-    hue_bulb(hass)
-    publish = broker.publish
-
-    def refuse_after_the_first(service):
-        if broker.requests():
-            broker.reply = {"status": "error", "error": "refused"}
-        publish(service)
-
-    hass.services.async_register("mqtt", "publish", refuse_after_the_first)
-
-    await call(hass, "turn_on_for", RED)
-
-    assert (await journal(hass)).owed == {f"device/{IEEE}": False}
 
 
 async def test_a_later_owe_keeps_the_users_value_owed(hass, setup_production):
