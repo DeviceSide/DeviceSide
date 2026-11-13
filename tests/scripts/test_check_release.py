@@ -282,11 +282,22 @@ def test_records_citing_different_commits_are_a_partial_run_and_no_signoff(relea
     assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 0
 
 
-def test_records_citing_no_commit_are_no_signoff(released, monkeypatch, capsys):
-    released.commit(f"{FAKE}/stop.py")
-    released.commit(f"{RECORDS}/stop.md", "| Result | pass |\n")
+def test_a_file_that_is_no_rig_record_fails_by_name(released, monkeypatch, capsys):
+    change = released.commit(f"{FAKE}/stop.py")
+    write_record(released, "stop.md", change)
+    released.commit(f"{RECORDS}/probe.md", "| Result | pass |\n")
     assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
-    assert f"({RECORDS} at none: not in this checkout; cite a commit on main)" in capsys.readouterr().out
+    assert (
+        "probe.md: not rig records; probe findings go in internals.md, manual sign-offs in _manual.md"
+        in capsys.readouterr().out
+    )
+
+
+def test_a_folder_of_rig_records_still_signs_off(released):
+    change = released.commit(f"{FAKE}/stop.py")
+    write_record(released, "stop.md", change)
+    write_record(released, "turn_on_for.md", change)
+    assert cr.record_signoff("fake")[0] is not None
 
 
 def test_a_failing_record_fails_the_run_and_a_rerun_at_its_commit_completes_it(released, monkeypatch, capsys):
