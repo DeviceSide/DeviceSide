@@ -23,7 +23,11 @@ request: `confirmed` when on and OnTime is above 0, at most the request and no m
 
 A group gets one `light.turn_on` and one group `OnWithTimedOff`; per-member commands would start about 0.7 s apart
 across 8 lights. A group command gets no reply, so every member is still read back. A slow end device (the rig's
-Sengled) can read `not_on` before it takes the group's `light.turn_on` (Tested behavior).
+Sengled) can read `not_on` before it takes the group's `light.turn_on` (Tested behavior). A member's read can also
+overtake the group `OnWithTimedOff`: on the rig (2026-11-13, house run), the LTA004 read on with no timer straight
+after a groupcast with brightness, then went off 6.57 s after coming on, where the cases before it went off at 6.0 to
+6.1 s; the timer had landed about 0.5 s after the group's `light.turn_on`. So a member that reads `not_on` or no
+timer is read again every 0.5 s, up to 3 times, before it is reported `sent`.
 
 ### `set_attributes`
 

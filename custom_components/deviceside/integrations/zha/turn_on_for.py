@@ -24,6 +24,11 @@ _ON_WITH_TIMED_OFF = 0x42
 # tolerance, 3 s.
 _READBACK_SLACK_TENTHS = 30
 
+# A member's unicast read can overtake the groupcast it checks, so one that reads no timer is read again, every
+# _REREAD_S, up to _REREADS times (docs/integrations/zha/internals.md, turn_on_for).
+_REREAD_S = 0.5
+_REREADS = 3
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -127,7 +132,14 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
 
         async def read_back(target: Target) -> EntityResult:
             # supports() refused any member without an address, so address() can't be None here.
-            return await self._read_back(hass, target, address(target.entry.unique_id), on_time)
+            addr = address(target.entry.unique_id)
+            result = await self._read_back(hass, target, addr, on_time)
+            for _ in range(_REREADS):
+                if result.detail not in ("not_on", "timer_not_reported"):
+                    break
+                await asyncio.sleep(_REREAD_S)
+                result = await self._read_back(hass, target, addr, on_time)
+            return result
 
         return await self.gather(hass, members, read_back)
 
