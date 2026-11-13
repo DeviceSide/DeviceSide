@@ -1,0 +1,65 @@
+name: Protected files
+
+# Fails a PR from anyone but a repo maintainer that edits README.md outside its generated blocks, and comments on one
+# that changes manifest.json (scripts/check_protected.py says why each). pull_request_target, so the workflow and the
+# script come from the base branch and a PR can't edit its own check away. No step runs the PR's code: its head is
+# fetched and read with `git show`, as data.
+
+on:
+  pull_request_target: # zizmor: ignore[dangerous-triggers] runs only base-branch code; the PR head is read as data
+    types: [opened, synchronize, reopened, edited]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+
+      - name: Check README.md and manifest.json
+        id: check
+        continue-on-error: true
+        env:
+          NUMBER: ${{ github.event.pull_request.number }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: |
+          git fetch --quiet --no-tags origin "refs/pull/${NUMBER}/head"
+          python scripts/check_protected.py "$BASE" FETCH_HEAD --author "$AUTHOR"
+
+      # One comment per PR, kept, not repeated on each push.
+      - name: Warn about the manifest.json change
+        if: steps.check.outputs.manifest == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          marker='<!-- protected-files:manifest -->'
+          if gh api "repos/$GH_REPO/issues/$NUMBER/comments" --paginate --jq '.[].body' | grep -qF "$marker"; then
+            exit 0
+          fi
+          gh pr comment "$NUMBER" --body "$marker
+          ⚠️ This pull request changes \`custom_components/deviceside/manifest.json\`, which changes only by exception: a
+          core integration in \`after_dependencies\` slows Home Assistant's startup for every user. Please say in the
+          pull request why the change is needed; a repo maintainer will review it."
+
+      - name: Fail on the README.md change
+        if: steps.check.outcome == 'failure'
+        run: exit 1
