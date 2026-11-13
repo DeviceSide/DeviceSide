@@ -93,7 +93,7 @@ async def read_back(
     try:
         held = await read(target)
     except Exception as err:  # noqa: BLE001 - aioshelly's errors can't be imported here; see addressing.py
-        _LOGGER.debug("%s read-back failed for %s: %s", adapter.action, target.entity_id, err)
+        _LOGGER.debug("%s read-back failed for %s: %r", adapter.action, target.entity_id, err)
         return adapter.result(target, Status.SENT, detail="readback_failed")
     return judge(held)
 

@@ -79,7 +79,10 @@ async def test_a_failed_get_is_logged_and_the_group_carries_on(hass, broker, cap
     with caplog.at_level(logging.WARNING, logger=LOGGER):
         await stop_after(hass, broker, room, "raise_hue")
 
-    assert "Couldn't refresh Home Assistant's color for light.one, so it may be stale: broker gone" in caplog.text
+    assert (
+        "Couldn't refresh Home Assistant's color for light.one, so it may be stale: RuntimeError('broker gone')"
+        in caplog.text
+    )
     assert sent == ["zigbee2mqtt/0x02/get"]
 
 

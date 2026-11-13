@@ -168,7 +168,7 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
                 raise ValueError(f"OnOff read {on_off!r}")
             running = 0 < remaining and on_time - _READBACK_SLACK_TENTHS <= remaining <= on_time
         except Exception as err:  # noqa: BLE001 - zha and zigpy errors can't be imported here; see zcl.py
-            _LOGGER.debug("%s read-back failed for %s: %s", self.action, target.entity_id, err)
+            _LOGGER.debug("%s read-back failed for %s: %r", self.action, target.entity_id, err)
             return self.result(target, Status.SENT, detail="readback_failed")
         if not on_off:
             return self.result(target, Status.SENT, detail=_NOT_ON)

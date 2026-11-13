@@ -56,7 +56,7 @@ class AdapterRegistry:
                 # The integration's library is absent, which is routine: debug. A missing HA or DeviceSide module is
                 # our code out of step with HA (a rename), which would hide every adapter of it: warn.
                 ours = (err.name or "").startswith(("homeassistant", "custom_components"))
-                (_LOGGER.warning if ours else _LOGGER.debug)("Integration %s unavailable: %s", key, err)
+                (_LOGGER.warning if ours else _LOGGER.debug)("Integration %s unavailable: %r", key, err)
                 self._add_unavailable(key, str(err))
                 return
             except Exception as err:  # noqa: BLE001 - one integration's broken import must not take the rest down

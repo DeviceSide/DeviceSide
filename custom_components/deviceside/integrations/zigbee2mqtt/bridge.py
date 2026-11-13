@@ -237,6 +237,6 @@ async def state_reply(hass: HomeAssistant, target: Target) -> tuple[asyncio.Futu
         return published, await mqtt.async_subscribe(hass, light_topic, received)
     except Exception as err:  # noqa: BLE001 - each caller goes on without the reply
         _LOGGER.debug(
-            "Couldn't subscribe to %s's state, so Zigbee2MQTT's answer isn't awaited: %s", target.entity_id, err
+            "Couldn't subscribe to %s's state, so Zigbee2MQTT's answer isn't awaited: %r", target.entity_id, err
         )
         return None, lambda: None

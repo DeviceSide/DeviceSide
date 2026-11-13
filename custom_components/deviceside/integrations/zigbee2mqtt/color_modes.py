@@ -117,10 +117,10 @@ async def ensure_color_modes(hass: HomeAssistant, enabled: bool) -> None:
         settings = (await retained(hass, "info")).get("config", {})
         entities = _entities(devices, groups)
     except TimeoutError as err:
-        _LOGGER.debug("Not checking Zigbee2MQTT's color modes: %s", err)
+        _LOGGER.debug("Not checking Zigbee2MQTT's color modes: %r", err)
         return
     except Exception as err:  # noqa: BLE001 - a background pass; HA keeps announcing what Z2M announced
-        _LOGGER.warning("Couldn't read Zigbee2MQTT's devices to check their color modes: %s", err)
+        _LOGGER.warning("Couldn't read Zigbee2MQTT's devices to check their color modes: %r", err)
         return
 
     for kind, z2m_id, exposes in entities:
@@ -140,7 +140,7 @@ async def ensure_color_modes(hass: HomeAssistant, enabled: bool) -> None:
         try:
             await ensure_options(hass, kind, [z2m_id], lambda current, e=exposes: wanted(current, e, enabled), changed)
         except Exception as err:  # noqa: BLE001 - one light that can't be changed mustn't stop the others
-            _LOGGER.warning("Couldn't set Zigbee2MQTT's Home Assistant color modes for %s: %s", name, err)
+            _LOGGER.warning("Couldn't set Zigbee2MQTT's Home Assistant color modes for %s: %r", name, err)
 
 
 def _entities(devices: list[dict], groups: list[dict]) -> list[tuple[str, str, list[dict]]]:

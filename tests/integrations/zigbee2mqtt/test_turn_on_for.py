@@ -392,7 +392,7 @@ async def test_a_failed_read_is_logged_and_the_result_stays_sent(hass, setup_pro
 
     assert response == {"light.kitchen": SENT}
     assert len(sets) == 1
-    assert caplog.text.count("State read for light.kitchen failed: broker unreachable") == 3
+    assert caplog.text.count("State read for light.kitchen failed: HomeAssistantError('broker unreachable')") == 3
 
 
 async def test_the_fields_and_the_timer_are_logged_without_the_topic(hass, setup_production, publishes, turn_ons, wire):

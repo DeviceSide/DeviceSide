@@ -129,7 +129,7 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
                 # A failure lands here rather than in HA's error log; the read runs in its own task.
                 await publish(hass, get_topic, {"state": ""})
             except Exception as err:  # noqa: BLE001 - a failed read leaves HA's state stale, nothing more
-                _LOGGER.debug("State read for %s failed: %s", target.entity_id, err)
+                _LOGGER.debug("State read for %s failed: %r", target.entity_id, err)
 
         delays = [on_time + _END_READ_S, on_time + max(_LATE_END_READ_MIN_S, _LATE_END_READ_FRACTION * on_time)]
         if read_on:
