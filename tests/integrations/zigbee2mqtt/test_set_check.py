@@ -152,6 +152,25 @@ async def test_a_retained_state_doesnt_answer_a_set(hass, broker):
     assert elapsed >= set_check.BOUND_S
 
 
+async def test_a_hue_move_waits_only_for_a_groupcasts_busy(hass, broker, live, monkeypatch):
+    # hue_move draws no state, so a settle to BOUND_S would hold a raise_hue's answer, and a script's stop after it.
+    monkeypatch.setattr(set_check, "BOUND_S", 30.0)
+    entity_id = light(hass, broker)
+
+    response, elapsed = await timed(call(hass, "raise_hue", {"entity_id": entity_id}))
+
+    assert response == {entity_id: SENT}
+    assert set_check.NO_STATE_BOUND_S <= elapsed < 1.0
+
+
+@pytest.mark.usefixtures("live")
+async def test_a_groupcast_hue_move_z2m_logs_busy_fails_the_group(hass, broker):
+    entity_id = group(hass, broker, one={}, two={})
+    answer(broker, GROUP_SET, line=GROUP_BUSY.replace("'brightness'", "'hue_move'"))
+
+    assert await failure(hass, "raise_hue", {"entity_id": entity_id}) == "light.room: busy"
+
+
 async def test_the_settle_ends_before_the_dispatchers_deadline(hass, broker, live, monkeypatch):
     monkeypatch.setattr(set_check, "BOUND_S", 30.0)
     monkeypatch.setattr(set_check, "DEADLINE_MARGIN_S", 0.05)
@@ -257,10 +276,23 @@ async def test_a_watch_closed_mid_subscribe_drops_the_subscription(hass, broker,
     watch = set_check.Watch(hass, live)
     watch.close()
 
-    await watch.note(target(hass, entity_id), entity_id)
+    await watch.note(target(hass, entity_id), entity_id, set_check.BOUND_S)
 
     assert watch.entities == {}
     assert broker.subscribers["zigbee2mqtt/lamp"] == []
+
+
+async def test_a_no_state_publish_keeps_an_earlier_publishs_longer_bound(hass, broker, live):
+    entity_id = light(hass, broker)
+    watch = set_check.Watch(hass, live)
+    lamp = target(hass, entity_id)
+    start = hass.loop.time()
+
+    await watch.note(lamp, entity_id, set_check.BOUND_S)
+    await watch.note(lamp, entity_id, set_check.NO_STATE_BOUND_S)
+
+    assert watch.entities[entity_id].bound_at >= start + set_check.BOUND_S
+    watch.close()
 
 
 async def test_two_sends_noting_one_entity_at_once_both_own_it(hass, broker, live, monkeypatch):
@@ -278,7 +310,9 @@ async def test_two_sends_noting_one_entity_at_once_both_own_it(hass, broker, liv
     watch = set_check.Watch(hass, live)
     lamp = target(hass, entity_id)
 
-    await asyncio.gather(watch.note(lamp, "light.room"), watch.note(lamp, entity_id))
+    await asyncio.gather(
+        watch.note(lamp, "light.room", set_check.BOUND_S), watch.note(lamp, entity_id, set_check.BOUND_S)
+    )
     log(broker, LAMP_UNDELIVERED)
 
     assert watch.failures() == {"light.room": LAMP_UNDELIVERED, entity_id: LAMP_UNDELIVERED}

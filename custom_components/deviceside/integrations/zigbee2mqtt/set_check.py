@@ -19,9 +19,12 @@ concurrency slots, so it holds none: it ends once every entity published to has 
 its last publish or a failure line, else at its last publish plus `BOUND_S` (a unicast's retries take ~1.5 s), and
 never past the dispatcher's deadline less a margin. Only the response waits.
 
-Keys whose publish draws no state from Z2M run every settle to the bound: hue_move (a rate or stop), a raw `command`
-(stop's stopMoveStep) and on_time (turn_on_for's timer). `brightness_move: stop` does draw state (Z2M reads the light,
-or a group's first member, back), so a plain stop ends early.
+Keys whose publish draws no state from Z2M (`NO_STATE_KEYS`: hue_move, a rate or stop; a raw `command`, stop's
+stopMoveStep; on_time, turn_on_for's timer) would run every settle to the bound, so they wait only `NO_STATE_BOUND_S`,
+a groupcast's BUSY: a raise_hue answering 2 s late runs its hue 2 s longer in a script that waits, then stops (rig
+run 2026-11-13, +40° on a 3 s raise). A unicast's BUSY on them answers `sent`, as core's MQTT light would.
+`brightness_move: stop` does draw state (Z2M reads the light, or a group's first member, back), so a plain stop ends
+early.
 
 Off (answering as before, with no subscription and no wait) when the bridge cache isn't live: its bridge/logging
 subscription might not be either, and a groupcast's BUSY would be missed. set_attributes checks without the settle
@@ -55,6 +58,9 @@ _LOGGER = logging.getLogger(__name__)
 
 # Past the last publish to an entity: a groupcast's BUSY is logged in ~20 ms, a unicast's after herdsman's 3 × 500 ms.
 BOUND_S = 2.0
+# Past a publish that draws no state: a groupcast's BUSY, with the MQTT round trip.
+NO_STATE_BOUND_S = 0.25
+NO_STATE_KEYS = frozenset({"hue_move", "command", "on_time"})
 # The settle ends this long before the dispatcher's deadline, so the results still reach it.
 DEADLINE_MARGIN_S = 0.25
 _PREFIX = "Publish 'set' '"
@@ -71,7 +77,7 @@ class _Entity:
     name: str  # Z2M's friendly name, which its log lines and state topic use
     owners: set[str]
     unsubscribe: Callable[[], None]
-    published_at: float = 0.0
+    bound_at: float = 0.0  # when the settle stops waiting for its last publish
     answered: bool = False
     failure: str | None = None  # the first failure line Z2M logged for it
 
@@ -98,7 +104,7 @@ class Watch:
 
         return owned
 
-    async def note(self, target: Target, owner: str) -> None:
+    async def note(self, target: Target, owner: str, bound_s: float) -> None:
         if (entity := self.entities.get(target.entity_id)) is None:
             if (light_topic := state_topic(target)) is None:
                 return
@@ -118,7 +124,8 @@ class Watch:
             else:
                 entity = self.entities[target.entity_id] = _Entity(target.device.name, set(), unsubscribe)
         entity.owners.add(owner)
-        entity.published_at = self.hass.loop.time()
+        # A later no-state publish mustn't cut short the bound an earlier publish still needs.
+        entity.bound_at = max(entity.bound_at, self.hass.loop.time() + bound_s)
         entity.answered = False
 
     def _on_state(self, entity_id: str) -> Callable[[mqtt.ReceiveMessage], None]:
@@ -146,7 +153,7 @@ class Watch:
         deadline = DEADLINE.get()
         cap = None if deadline is None else deadline - DEADLINE_MARGIN_S
         while waiting := [e for e in self.entities.values() if not e.answered and e.failure is None]:
-            until = max(e.published_at for e in waiting) + BOUND_S
+            until = max(e.bound_at for e in waiting)
             if cap is not None:
                 until = min(until, cap)
             self._changed.clear()
@@ -175,10 +182,12 @@ class Watch:
 _CURRENT: ContextVar[tuple[Watch, str] | None] = ContextVar("deviceside_z2m_set_watch", default=None)
 
 
-async def note(hass: HomeAssistant, target: Target) -> None:
-    """Note a set about to be published to the target, under the running call's watch; nothing outside one."""
+async def note(hass: HomeAssistant, target: Target, payload: dict | None = None) -> None:
+    """Note a set about to be published to the target, under the running call's watch; nothing outside one. payload,
+    where known, sets the bound: a short one where it draws no state."""
     if (current := _CURRENT.get()) is not None and not current[0].closed:
-        await current[0].note(target, current[1])
+        bound_s = NO_STATE_BOUND_S if payload is not None and NO_STATE_KEYS & payload.keys() else BOUND_S
+        await current[0].note(target, current[1], bound_s)
 
 
 def detail(message: str) -> str:
