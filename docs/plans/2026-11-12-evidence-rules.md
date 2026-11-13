@@ -16,6 +16,12 @@ Tests-with: the ha-rig PR in step 3 pairs with the runtime PR (step 2), because 
 subscribes to.
 Depends-on: none. This plan lifts the v0.1.0 freeze at `075895f`. No RC is cut until step 5 lands.
 
+## Principle: the rig is a dumb executor (Jason, 2026-11-12)
+
+DeviceSide decides the facts and logic of what needs testing: which integrations need a sign-off, the step files that
+say what to send and expect. The rig executes the test plan it is given and writes records. It holds no rule of its
+own about what is proven, covered or stale.
+
 ## Why
 
 The `## Release flag` section of CLAUDE.md is 858 words, over half the file. It changed in 10 commits in a week, and
@@ -166,15 +172,45 @@ The estimates below are code plus tests.
    - Drop the wire and scope taps in `client.py` and `engine.py`, `Covers` rendering, Shared-coverage capture,
      `observed.py` lending and blocking, and the firmware-fact ledger in `progress.py` and `coverage.py`.
    - Z2M BUSY call windows come from the rig's own step timestamps.
-   - `coverage.py` fingerprints by integration package, not `adapter_code`.
+   - The rig decides nothing about what needs testing (principle below): delete `coverage.py`'s fingerprints,
+     freshness check and observed hints, and `--coverage`. The rig runs the suites it is asked for.
+   - **Fact cases** (decided 2026-11-12): the watched (`<name> observed`) case of a test with `observe:`, and every
+     case of a `firmware_fact: true` test. They're opt-in through one option, `--facts`; `--unattended` records
+     watched cases `not observed`. A default run runs every other automated case, including an observed test's
+     automated twin. A passed fact stands; no hashing, lending or ledger.
+   - **`_facts.md`**: fact results, pass and fail, go to each bundle's append-only `test-records/_facts.md`
+     (`| Date | Suite | Test | Kind | Devices | Result |`, Kind `automated` or `observed`). A default run never
+     writes it, and a record points to it for skipped fact cases. Shelly's is seeded from its earlier records.
+   - **Probe or fact case**: a fact that a shipped call depends on staying true is a fact case; one that decided
+     scope or design (the Hue bridge timer) lives in `research/` (docs/evidence.md, tenet 2).
+   - **Record bar**: every default case that applies passes. Skips are only fact cases and cases that don't apply
+     (no adapter, role or group member), and a record never narrows. Records carry a `Ran` row and no `Covers`.
+   - The progress ledger stays only to resume an interrupted run, keyed by commit plus suite.
    - Leave roaming, concurrency and the repo merge for separate decisions.
+3b. **Step files move to DeviceSide** (decided 2026-11-12). The rig's `steps/<action>.yaml` move to DeviceSide
+   `tests/rig/steps/`, landed with the action they test, so a new action needs no paired rig PR. The rig reads them
+   from the target checkout. CLAUDE.md's "don't add rig code, step files or rig docs here" becomes "no rig code or rig
+   docs here; step files live in `tests/rig/steps/`". Step files name roles, never entities; the household check
+   covers them. The rig engine stays private.
+   - **Done.** A record cites the commit, so a rig run with uncommitted step files goes ahead but writes no record or
+     fact row and keeps no ledger; the ledger key is the commit and the suite, without the step-file digest.
+     `tests/test_rig_steps.py` checks each file loads, calls a registered action and names registered integrations;
+     the rig's CI parses them in full. The rig's own tests use fixture copies, not these.
+   - **Governance (owner, 2026-11-12).** Two homes. Shared: `tests/rig/steps/<action>.yaml`, approved by a repo
+     maintainer. Per integration: `tests/integrations/<x>/rig/<action>.yaml`, owned by that integration's
+     maintainers through its package (no CODEOWNERS change); the rig merges its tests into the action's shared suite,
+     run on `<x>` alone, and refuses an `only:` naming another integration, a test name the shared file has, or an
+     action with no adapter on `<x>`. A repo maintainer adopts good cases into the shared files when it suits.
+     Neither home is on the binding-rule audit surface.
 4. **Release gate (`check_release.py`), about −1,100.**
    - Keep `--coverage`, with the bar on every module under `core/` and `integrations/` except `__init__.py`. That drops
      the `adapter_code` import graph; first check that no module falls below the bar, and if one does, raise it in this
      PR.
    - Add `--signoffs` (option B: package diff since the last tag, `git merge-base --is-ancestor`, tester in maintainers
      or `REPO_MAINTAINERS`). A changed integration passes with a sign-off or a caveat on one of its changed adapters.
-     The output names each sign-off's kind and each caveat.
+     The output names each sign-off's kind and each caveat. A machine-readable form (`--signoffs --json`) lists
+     the integrations that still need one; the rig takes that list as its run selection (a rig change after this
+     step).
    - `--notes` writes the call for testers: integrations changed without a sign-off (RCs) and Untested fix caveats.
    - Drop `--release` and the rest of `--records`: freshness, `FLAGS`, shared coverage, `Covers`, report
      retests and Stale tests.
@@ -192,9 +228,29 @@ The estimates below are code plus tests.
      integration the rig covers (Hue, ZHA, Zigbee2MQTT, Shelly and Matter on today's profiles), and manual only as a
      fallback.
    - `/rc-audit` over the new range, then the RC, a HACS install, the release notes and `cut-release`.
+7. **Test simplification plan**, the last step. In a new session, once steps 4 and 5 have landed:
+   - **A fresh audit** of both repos' tests for what can be simplified, measured on the code that remains. The first
+     audit (ha-rig `docs/plans/2026-11-12-test-consolidation.md`, branch `claude/test-consolidation-plan`) predates
+     the rule changes and is stale: don't start from it.
+   - **A proposed consolidation plan for Jason to review.** The session interviews Jason where it needs his call,
+     before finalizing the plan, and changes no code until he approves it.
+   - Constraints: the ≥95% coverage bar, no test dropped without naming what still catches its failure, and items
+     ranked by lines saved per hour, each with its files, risk and how to verify (pytest plus a coverage diff).
+   - The plan lands in DeviceSide `docs/plans/`, covering both repos. Test-only changes send no new call, so they
+     need no sign-off, and the work needn't wait for step 6.
 
-Total estimate: about 2,800 lines, before the test consolidation (separate session) and the rig's roaming and
+Total estimate: about 2,800 lines, before the test simplification (step 7) and the rig's roaming and
 concurrency decisions.
+
+## Working notes (for a fresh or compacted session)
+
+- Branches: this work lives on `claude/reduce-code-complexity-syqjth` in both DeviceSide and ha-rig; push only there.
+  Each step is one or more commits, split into PRs later.
+- PR order: the ha-rig PRs pair with DeviceSide's through `Tests-with: DeviceSide/DeviceSide#N`. Merge DeviceSide's
+  step 2–3b PR together with the rig's; for a rig engine change a step file needs, merge the rig PR first.
+- Each step: an implementer subagent, then a reviewer subagent against this plan; rule questions go to Jason.
+- Step 6 needs Jason and the physical rig: stop there.
+- Known flaky tests, unrelated: ha-rig `tests/test_rig_busy.py` timing; DeviceSide `test_no_z2m_does_nothing_quietly`.
 
 ## Verification
 

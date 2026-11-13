@@ -184,6 +184,18 @@ class ReportFilter:
         self.api.events.emit(EventType.RESOURCE_UPDATED, event | event_fields(held))
         self._show_rooms_soon(self._rooms([light_id]))
 
+    def _log_report(self, data: dict, report: Report | None, ending: list) -> None:
+        """One DEBUG line per bridge report, under its entity, never its resource id; the lookup only when logged."""
+        if _LOGGER.isEnabledFor(logging.DEBUG):
+            _LOGGER.debug(
+                "Bridge %s %s %s: %s%s",
+                data.get("type"),
+                entity_name(self.hass, data["id"]) if "id" in data else None,
+                reported_values(data),
+                report,
+                f", ending {ending}" if ending else "",
+            )
+
     def _on_event(self, event_type: EventType, data: dict | None) -> None:
         # Runs inside aiohue's event loop: an exception here would stop core hue's events too.
         try:
@@ -197,14 +209,7 @@ class ReportFilter:
                 return
             report = classify(self.cache, self.api, data)
             ending = real_attributes(self.cache, self.api, data) if report is Report.REAL else []
-            _LOGGER.debug(
-                "Bridge %s %s %s: %s%s",
-                data.get("type"),
-                data.get("id"),
-                reported_values(data),
-                report,
-                f", ending {ending}" if ending else "",
-            )
+            self._log_report(data, report, ending)
             if self.hiding and report is not None:
                 # A real report can carry keys of a prediction it leaves running: those stay ours.
                 self._hide(data, ending)

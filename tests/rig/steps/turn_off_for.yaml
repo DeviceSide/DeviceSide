@@ -1,0 +1,27 @@
+# The device's own timer turns the target back on. Same relay-call argument as turn_on_for: the plug proves on/off
+# for all three on/off roles.
+action: turn_off_for
+rig_seconds: 40
+tests:
+  - name: off_then_on
+    roles: [switch_plug]
+    steps:
+      - set: {state: on}
+      - call: {duration: 6}
+      - expect_response: {status: expected, integration: self}
+      - expect_state: {state: off, within: tol}
+      - wait: duration - tol
+      - expect_state: {state: off}
+      - expect_state: {state: on, within: 2 * tol}
+
+  # A bulb comes back on at the brightness it had, not full.
+  - name: bulb_off_then_on
+    roles: [light_dimmable]
+    steps:
+      - set: {state: on, brightness: 128}
+      - call: {duration: 6}
+      - expect_response: {status: expected, integration: self}
+      - expect_state: {state: off, within: tol}
+      - wait: duration - tol
+      - expect_state: {state: off}
+      - expect_state: {state: on, brightness: {min: 120, max: 136}, within: 2 * tol}
