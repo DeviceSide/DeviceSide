@@ -31,6 +31,10 @@ Users paste logs into public issues.
 - **Upstream errors are logged as they are** (`%r`): their text is often the diagnosis, and HA logs them the same way.
   Your own format strings never add an address to them.
 
+`scripts/check_logging.py` (a pre-commit hook) flags a caught exception logged with `%s` and a log line naming an
+address field. It reads names, so it can't see an address inside a dict or a payload: keep those out by hand. A line that
+needs an exception ends with `# log-ok: <reason>`.
+
 ## Cost
 
 A line that needs a lookup to build (an entity, a group's name) runs it only under `_LOGGER.isEnabledFor(DEBUG)`.

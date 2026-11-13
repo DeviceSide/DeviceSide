@@ -112,7 +112,7 @@ async def test_a_failed_read_back_is_logged(hass, broker, caplog):
     with caplog.at_level("DEBUG"):
         await advance(hass, start, 3.5)
 
-    assert "End read-back for light.lamp failed: broker gone" in caplog.text
+    assert "End read-back for light.lamp failed: RuntimeError('broker gone')" in caplog.text
 
 
 async def test_a_new_move_replaces_the_pending_read_back(hass, broker):

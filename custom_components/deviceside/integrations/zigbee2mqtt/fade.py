@@ -283,6 +283,6 @@ def end_read(hass: HomeAssistant, target: Target, lights: list[Target], attribut
             try:
                 await publish(hass, topic(light, "get"), {"state": "", "brightness": ""})
             except Exception as err:  # noqa: BLE001 - a failed read leaves HA's state stale, nothing more
-                _LOGGER.debug("End read-back for %s failed: %s", light.entity_id, err)
+                _LOGGER.debug("End read-back for %s failed: %r", light.entity_id, err)
 
     return read

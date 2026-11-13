@@ -196,7 +196,8 @@ async def test_an_error_reply_warns_and_the_rest_still_go(hass, z2m, caplog):
     await ensure_color_modes(hass, True)
 
     assert set(sent(z2m)) == {("device", IEEE), ("device", OTHER), ("group", "1")}
-    assert "Couldn't set Zigbee2MQTT's Home Assistant color modes for light.lamp: refused" in caplog.text
+    assert "Couldn't set Zigbee2MQTT's Home Assistant color modes for light.lamp: " in caplog.text
+    assert "refused" in caplog.text
 
 
 async def test_unexpected_bridge_devices_warns_and_does_nothing(hass, z2m, caplog):

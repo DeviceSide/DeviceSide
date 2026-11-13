@@ -140,7 +140,7 @@ async def replay(hass: HomeAssistant) -> None:
     try:
         held = await journal(hass)
     except Exception as err:  # noqa: BLE001 - nothing to pay from; the next online retries the load
-        _LOGGER.warning("Couldn't read the %s restore journal: %s", OPTION, err)
+        _LOGGER.warning("Couldn't read the %s restore journal: %r", OPTION, err)
         return
     for key in list(held.owed):
         kind, z2m_id = key.split("/", 1)
@@ -158,10 +158,10 @@ async def replay(hass: HomeAssistant) -> None:
                     lambda _id: None,
                 )
             except Exception as err:  # noqa: BLE001 - kept for the next try
-                _LOGGER.warning("Couldn't put Zigbee2MQTT's %s back to %s for %s: %s", OPTION, value, name, err)
+                _LOGGER.warning("Couldn't put Zigbee2MQTT's %s back to %s for %s: %r", OPTION, value, name, err)
                 continue
             try:
                 await held.strike(address, value)
             except Exception as err:  # noqa: BLE001 - struck in memory; the next start finds it already paid
-                _LOGGER.warning("Couldn't strike the %s restore for %s off the journal: %s", OPTION, name, err)
+                _LOGGER.warning("Couldn't strike the %s restore for %s off the journal: %r", OPTION, name, err)
         _LOGGER.info("Put Zigbee2MQTT's %s back to %s for %s, left owed by an earlier restore", OPTION, value, name)
