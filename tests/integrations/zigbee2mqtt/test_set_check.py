@@ -84,19 +84,25 @@ async def timed(coro) -> tuple[object, float]:
 
 
 @pytest.mark.usefixtures("live")
-async def test_a_groupcast_z2m_logs_busy_fails_the_group_with_the_status(hass, broker):
+async def test_a_groupcast_z2m_logs_busy_fails_the_group_with_the_status(hass, broker, caplog):
     entity_id = group(hass, broker, one={}, two={})
     answer(broker, GROUP_SET, line=GROUP_BUSY)
 
     assert await failure(hass, "lower_brightness", {"entity_id": entity_id}) == "light.room: busy"
+    # The line names the group by friendly name and number, so only its call and cause are logged.
+    assert (
+        "lower_brightness on zigbee2mqtt failed for light.room: Zigbee2MQTT logged genLevelCtrl.moveToLevelWithOnOff"
+        " failed (Failed to send with status=BUSY.), so HA may show the old values"
+    ) in caplog.text
 
 
 @pytest.mark.usefixtures("live")
-async def test_a_unicast_z2m_couldnt_deliver_fails_the_light(hass, broker):
+async def test_a_unicast_z2m_couldnt_deliver_fails_the_light(hass, broker, caplog):
     entity_id = light(hass, broker)
     answer(broker, SET, line=LAMP_UNDELIVERED)
 
     assert await failure(hass, "lower_brightness", {"entity_id": entity_id, "limit": 20}) == "light.lamp: send_failed"
+    assert "Zigbee2MQTT logged genLevelCtrl.moveToLevelWithOnOff failed (Delivery failed)" in caplog.text
 
 
 @pytest.mark.usefixtures("live")

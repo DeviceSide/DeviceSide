@@ -9,7 +9,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.deviceside.const import CONF_Z2M_COLOR_MODES, DOMAIN
 from custom_components.deviceside.integrations.zigbee2mqtt import bridge, bridge_cache
 
-from ...fixtures.zigbee2mqtt import GROUPS, INFO
+from ...fixtures.zigbee2mqtt import GROUPS, IEEE, INFO
 
 DEVICES = "zigbee2mqtt/bridge/devices"
 STATE = "zigbee2mqtt/bridge/state"
@@ -363,3 +363,37 @@ async def test_a_malformed_fresh_payload_raises_timeout(hass, broker, monkeypatc
 
     with pytest.raises(TimeoutError, match="no parseable bridge/groups"):
         await bridge.retained(hass, "groups")
+
+
+@pytest.mark.parametrize(
+    ("message", "logged"),
+    [
+        pytest.param(
+            f"Publish 'set' 'read' to 'lamp' failed: ZCL command {IEEE}/11 lightingColorCtrl.read() failed"
+            " (UNSUPPORTED_ATTRIBUTE)",
+            "lightingColorCtrl.read failed (UNSUPPORTED_ATTRIBUTE)",
+            id="a_status",
+        ),
+        pytest.param(
+            f"Publish 'set' 'brightness' to 'lamp' failed: 'Error: ZCL command {IEEE}/11 genLevelCtrl.moveToLevel("
+            "{\"level\":51}) failed (Delivery failed for '12345')'",
+            "genLevelCtrl.moveToLevel failed (Delivery failed)",
+            id="a_quoted_nwk",
+        ),
+        pytest.param(
+            "Publish 'set' 'brightness' to 'room' failed: 'Error: ZCL command 7 genLevelCtrl.moveToLevel({}) failed "
+            "(~x~> [ZCL GROUP groupId=7] Failed to send with status=BUSY.)'",
+            "genLevelCtrl.moveToLevel failed (Failed to send with status=BUSY.)",
+            id="a_group_sender",
+        ),
+        pytest.param(
+            f"Publish 'set' 'state' to 'lamp' failed: 'Error: ZCL command {IEEE}/11 genOnOff.on({{}}) failed "
+            "(Timeout - 46516 - 11 - 7 - 6 - 11 after 10000ms)'",
+            "genOnOff.on failed (Timeout - # - # - # - # - # after 10000ms)",
+            id="bare_numbers_but_the_duration",
+        ),
+        pytest.param("Failed to ping 'lamp'", "a failure DeviceSide doesn't parse", id="another_shape"),
+    ],
+)
+def test_a_failure_line_is_logged_as_its_call_and_cause_without_addressing(message, logged):
+    assert bridge_cache.cause(message) == logged

@@ -205,11 +205,11 @@ async def checked(
     for result in results:
         if (message := failed.get(result.entity_id)) is not None and result.status is not Status.UNSUPPORTED:
             _LOGGER.warning(
-                "%s on %s failed for %s: Zigbee2MQTT logged: %s",
+                "%s on %s failed for %s: Zigbee2MQTT logged %s, so HA may show the old values",
                 adapter.action,
                 adapter.integration,
                 result.entity_id,
-                message,
+                bridge_cache.cause(message),
             )
             result = dataclasses.replace(result, status=Status.REJECTED, detail=detail(message), clamped_to=None)
         checked_results.append(result)

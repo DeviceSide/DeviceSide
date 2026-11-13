@@ -30,6 +30,11 @@ Users paste logs into public issues.
   resource IDs, Shelly component IDs, Matter node IDs, tokens.
 - **Upstream errors are logged as they are** (`%r`): their text is often the diagnosis, and HA logs them the same way.
   Your own format strings never add an address to them.
+- **A message another system wrote is not an upstream error.** An upstream error is an exception a library raises.
+  A line another system logs or sends, such as a Zigbee2MQTT `bridge/logging` line, names devices its own way, so log
+  the cause it names, never the line (Zigbee2MQTT: `bridge_cache.cause`).
+- **Tests check it:** the Hue and Zigbee2MQTT tests run at DEBUG and fail on a line that names a device's address
+  (their `conftest.py`).
 
 ## Cost
 

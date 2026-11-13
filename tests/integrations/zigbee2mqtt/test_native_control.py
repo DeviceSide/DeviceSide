@@ -607,7 +607,8 @@ async def test_the_stamp_is_unknown_without_an_address(hass, setup_production):
     }
 
 
-async def test_nothing_is_computed_while_debug_logging_is_off(hass, setup_production, broker, monkeypatch):
+async def test_nothing_is_computed_while_debug_logging_is_off(hass, setup_production, broker, monkeypatch, caplog):
+    caplog.set_level(logging.INFO, logger="custom_components.deviceside")  # the conftest's guard turns DEBUG on
     entity_id = light(hass, broker)
     monkeypatch.setattr(bridge, "logged_options", lambda *args: pytest.fail("looked up with debug logging off"))
 

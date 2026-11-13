@@ -1,12 +1,27 @@
+import logging
+import re
+
 import pytest
 
 from custom_components.deviceside.integrations.zigbee2mqtt import bridge, native_control, read, set_attributes
 from custom_components.deviceside.integrations.zigbee2mqtt.fade import transition_cache
 
-from ...conftest import Clock, unload_mock_entries
+from ...conftest import Clock, leaked, unload_mock_entries
 from ...fixtures.zigbee2mqtt import GROUPS, IEEE, INFO, Broker, add_z2m_entity, add_z2m_group, z2m_entry
 
 unload_mock_mqtt_entries = unload_mock_entries("mqtt")
+
+# What names a Z2M device in a log line (docs/logging.md): an IEEE, a device's MQTT topic, or Z2M's own failure line,
+# which carries its friendly name and IEEE.
+_ADDRESSED = re.compile(r"0x[0-9a-fA-F]{16}|zigbee2mqtt/(?!bridge/)|Publish 'set' '")
+
+
+@pytest.fixture(autouse=True)
+def no_addresses_logged(caplog):
+    """Every Zigbee2MQTT test runs at DEBUG and fails if a log line names a device's address."""
+    caplog.set_level(logging.DEBUG, logger="custom_components.deviceside")
+    yield
+    assert not leaked(caplog, _ADDRESSED.search)
 
 
 @pytest.fixture(autouse=True)

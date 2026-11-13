@@ -28,6 +28,7 @@ bridge/info arriving later holds it too: each new one drops the overlay.
 import asyncio
 import json
 import logging
+import re
 from collections.abc import Callable
 from typing import Any
 
@@ -169,6 +170,35 @@ def log_error(payload: str) -> str | None:
     except ValueError, TypeError, KeyError, AttributeError:
         pass
     return None
+
+
+# A failed ZCL command, as Z2M logs it: `... ZCL command <address> <cluster>.<command>(<payload>) failed (<cause>)`,
+# the address a device's <ieee>/<endpoint> or a group's number.
+_ZCL_FAILURE = re.compile(r"ZCL command \S+ (?P<call>\w+\.\w+)\(.*\) failed \((?P<cause>.*)\)'?$")
+# The addressing a cause can carry: a bracketed sender (`[ZCL GROUP groupId=7]`), a quoted address (`Delivery failed
+# for '<nwk>'`), an IEEE, and any other bare number but a duration (`Timeout - <nwk> - ... after 10000ms`).
+_CAUSE_ADDRESSING = (
+    (re.compile(r"~x~>\s*|\s*\[[^\]]*\]"), ""),
+    (re.compile(r" for '[^']*'"), ""),
+    (re.compile(r"'[^']*'"), "''"),
+    (re.compile(r"0x[0-9a-fA-F]+"), "#"),
+    (re.compile(r"\b\d+\b(?!\s*ms)"), "#"),
+)
+
+
+def cause(message: str) -> str:
+    """What a Z2M failure line says went wrong (`genOnOff.read failed (UNSUPPORTED_ATTRIBUTE)`), for a log line.
+
+    The line names the device by friendly name, IEEE or group number, which a log line never does (docs/logging.md),
+    so it is never logged whole: only the ZCL call and the cause, with any addressing taken out. A line in a shape
+    this doesn't know gives a generic phrase rather than its text.
+    """
+    if (match := _ZCL_FAILURE.search(message)) is None:
+        return "a failure DeviceSide doesn't parse"
+    reason = match["cause"]
+    for pattern, replacement in _CAUSE_ADDRESSING:
+        reason = pattern.sub(replacement, reason)
+    return f"{match['call']} failed ({reason.strip()})"
 
 
 def reply_router(pending: dict[str, asyncio.Future[dict]]) -> Callable[[mqtt.ReceiveMessage], None]:

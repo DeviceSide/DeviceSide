@@ -65,6 +65,17 @@ def wire(caplog):
     return caplog
 
 
+def leaked(caplog, addressed) -> list[str]:
+    """DeviceSide's log lines for which addressed(line) is true: a line that names a device's address, which
+    docs/logging.md forbids, as users paste their logs into public issues."""
+    return [
+        line
+        # Called at teardown, where caplog.records holds only the teardown's own records.
+        for record in (*caplog.get_records("setup"), *caplog.get_records("call"), *caplog.records)
+        if record.name.startswith("custom_components.deviceside") and addressed(line := record.getMessage())
+    ]
+
+
 def sent(caplog) -> list[str]:
     """The debug line of each call sent, in order: "<entity_id>: sending <transport> <command> <params>"."""
     return [r.getMessage() for r in caplog.records if r.levelno == logging.DEBUG and ": sending " in r.msg]
