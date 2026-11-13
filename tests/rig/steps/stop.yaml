@@ -19,7 +19,7 @@ tests:
       - call: {action: raise_brightness, sweep_time: 10}  # and a raise after the halt carries on from it
       - sample: {attribute: brightness, for: 2, expect: rising, max: 78, source: deviceside}
 
-  - name: halts_a_lower_to_off  # Hue refuses a dimming stop during a soft off, so it is cut with on + brightness
+  - name: halts_a_lower_to_off  # Hue refuses a dimming stop in a soft off, so cuts it with on; Z2M's is a ZCL stop
     roles: [light_ct, group]
     setup:
       - set: {state: on, brightness_pct: 100}

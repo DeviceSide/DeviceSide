@@ -132,6 +132,24 @@ one, the longest.
 saturation fade, since `saturation_move: stop` halts the attribute and lets the xy fade drift on. Each is its own
 publish, color first: Z2M reads back about 0.7 s after a brightness stop before sending the next key.
 
+A soft off of ours is halted by `brightness_move: stop` alone: `lower_brightness` turns `hue_native_control` off for
+its publish (`native_control`), so the soft off runs as a ZCL transition, which a ZCL stop ends. Z2M reports `OFF`
+from the start of a soft off, so HA shows the light off until Z2M's read-back after the stop. Lab probe, LTA009 on
+Z2M 2.14.3, a 10 s soft off from full stopped 3.2 s in: the bulb held `currentLevel` 175 for 4 s on the stop alone,
+where the linear prediction was 172; HA showed `on` 0.59 s after the stop, at Z2M's stale 254 for 40 ms, then 175.
+The pin this replaced (on at the predicted brightness) made `on` immediate but jumped the bulb to the prediction, a
+flicker seen by eye.
+
+- **Rare case:** the `hue_native_control` set fails or times out (MQTT or Z2M slow or down; `native_control` logs
+  "Couldn't set Zigbee2MQTT's hue_native_control to ..." and sends the command anyway). The soft off then goes out as
+  Philips' own command, which `brightness_move: stop` doesn't end, so the light fades on to off after a stop.
+- **How often:** no field data (no telemetry). 85 lab rig logs, 2026-11-08 to 13, on one Z2M 2.14.3, hold no
+  set-failed and no restore-failed warning (172 sets visible, in the debug-logged runs only).
+- **Fix if it bites:** restore the pin, `{"state": "ON", "brightness", "transition": 0}` at the predicted brightness
+  after the stop, but only for a soft off whose native-control set failed (`native_control` reports it; the stop
+  picks those lights out). `6710d79` pinned every soft off, from when the stop didn't end the Philips command;
+  #302 made native control per action, and #407 dropped the pin.
+
 ### `set_check`
 
 Z2M reports a set it couldn't send only on `bridge/logging`, at error level:

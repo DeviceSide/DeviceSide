@@ -194,10 +194,9 @@ async def test_without_a_live_bridge_cache_nothing_is_checked(hass, broker):
 
 
 async def test_a_stops_publishes_go_out_back_to_back(hass, broker, live, clock):
-    # A soft off of ours, halted: the stop, then the cut to its predicted brightness, with no settle between them.
+    # A hue cycle of ours, halted: the hue stop, then the brightness stop, with no settle between them.
     entity_id = light(hass, broker)
-    await call(hass, "lower_brightness", {"entity_id": entity_id})
-    hass.states.async_set(entity_id, "off", {})
+    await call(hass, "raise_hue", {"entity_id": entity_id})
     clock.now += 1.5
     loop = asyncio.get_running_loop()
     stamps: list[float] = []
@@ -208,8 +207,8 @@ async def test_a_stops_publishes_go_out_back_to_back(hass, broker, live, clock):
 
     assert response == {entity_id: SENT}
     assert [payload for _topic, payload in commands(broker)[before:]] == [
+        {"hue_move": "stop"},
         {"brightness_move": "stop"},
-        {"state": "ON", "brightness": 76, "transition": 0},
     ]
     assert stamps[1] - stamps[0] < 0.02 < set_check.BOUND_S <= elapsed
 

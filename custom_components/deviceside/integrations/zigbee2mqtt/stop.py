@@ -26,11 +26,6 @@ _STOP_MOVE_STEP = {
 }
 
 
-def _cut(percent: float) -> dict:
-    """Z2M's own payload that ends a soft off at this brightness: on, with no transition."""
-    return {"state": "ON", "brightness": max(1, round(percent / 100 * 254)), "transition": 0}
-
-
 class Z2MStop(Adapter[Request]):
     """Send brightness_move: stop to the light or group, with hue_move: stop where a hue move of ours cycles and a raw
     stopMoveStep where a saturation move of ours fades, and record the predicted values as where it halted.
@@ -74,16 +69,6 @@ class Z2MStop(Adapter[Request]):
                     if cache.tracks(light.entity_id, SATURATION)
                 },
             }
-            # A soft off of ours: where hue_native_control couldn't be turned off for the lower, Z2M sent it as
-            # Philips' own command, which a ZCL stop doesn't end, so the light is also cut with on at its predicted
-            # brightness (as on Hue).
-            soft_off = [
-                light
-                for light in halting
-                if light.entity_id in halts[BRIGHTNESS]
-                and (running := cache.running(light.entity_id, BRIGHTNESS)) is not None
-                and running.target == 0
-            ]
             hue = [light.entity_id for light in halting if light.entity_id in cycling]
             async with cache.recording(
                 (light_id, attribute) for attribute, values in halts.items() for light_id in values
@@ -96,8 +81,6 @@ class Z2MStop(Adapter[Request]):
                 if halts[SATURATION]:
                     await publish_set(hass, target, _STOP_MOVE_STEP)
                 await publish_set(hass, target, {"brightness_move": "stop"})
-                for light in soft_off:
-                    await publish_set(hass, light, _cut(halts[BRIGHTNESS][light.entity_id]))
             cycling.difference_update(hue)
 
             async def refresh() -> None:
