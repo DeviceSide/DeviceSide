@@ -2,10 +2,9 @@
 
 from homeassistant.const import STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
-from .addressing import device_identifier, group_id, state_topic
+from .addressing import group_id, state_topic, z2m_device
 from .bridge import group_members
 from ...core.models import Target
 from ...core.resolver import resolve_members
@@ -18,11 +17,10 @@ async def member_lights(hass: HomeAssistant, group: Target) -> list[Target]:
     An unavailable member is left out, as the dispatcher leaves one out when it expands a group, and so is one HA
     has no light for.
     """
-    devices = dr.async_get(hass)
     entities = er.async_get(hass)
     unique_ids = []
     for address in await group_members(hass, group_id(group)):
-        if (device := devices.async_get_device(identifiers={device_identifier(address)})) is None:
+        if (device := z2m_device(hass, group, address)) is None:
             continue
         lights = [e for e in er.async_entries_for_device(entities, device.id) if e.domain == group.domain]
         unique_ids += [lights[0].unique_id] if lights else []
