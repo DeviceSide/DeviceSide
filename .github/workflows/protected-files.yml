@@ -12,7 +12,7 @@ on:
 permissions: {}
 
 # No concurrency group: a cancelled run (superseded, or a queued one bumped by a third event) reads as not green to
-# merge gates, and each run checks its own head in seconds. Two runs racing can both post a comment, at worst once.
+# merge gates, and each run checks its own head in seconds. Two runs racing can both post a comment (a duplicate at worst).
 
 jobs:
   check:
@@ -45,7 +45,7 @@ jobs:
           git fetch --quiet --no-tags origin "$HEAD_SHA"
           python scripts/check_protected.py HEAD "$HEAD_SHA" --author "$AUTHOR"
 
-      # Each comment once per PR, kept, not repeated on each push.
+      # Each comment once per PR, kept, not repeated on each push (best effort: concurrent runs can duplicate).
       - name: Comment on the PR
         if: steps.check.outputs.readme == 'true' || steps.check.outputs.manifest == 'true'
         env:
