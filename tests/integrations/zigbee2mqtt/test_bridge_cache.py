@@ -389,8 +389,19 @@ async def test_a_malformed_fresh_payload_raises_timeout(hass, broker, monkeypatc
         pytest.param(
             f"Publish 'set' 'state' to 'lamp' failed: 'Error: ZCL command {IEEE}/11 genOnOff.on({{}}) failed "
             "(Timeout - 46516 - 11 - 7 - 6 - 11 after 10000ms)'",
-            "genOnOff.on failed (Timeout - # - # - # - # - # after 10000ms)",
-            id="bare_numbers_but_the_duration",
+            "genOnOff.on failed (Timeout after 10000ms)",
+            id="a_timeouts_address_fields",
+        ),
+        pytest.param(
+            f"Publish 'set' 'state' to 'lamp' failed: 'Error: ZCL command {IEEE}/11 genOnOff.on({{}}) failed "
+            "(Data request failed with error: 'MAC no ack' (233))'",
+            "genOnOff.on failed (Data request failed with error: 'MAC no ack' (233))",
+            id="quoted_text_and_codes_kept",
+        ),
+        pytest.param(
+            "Publish 'set' 'state' to 'lamp' failed: 'Error: No converter available for 'state' on 'lamp''",
+            "No converter available for 'state' on '<device>'",
+            id="another_set_failure_gives_its_error",
         ),
         pytest.param("Failed to ping 'lamp'", "a failure DeviceSide doesn't parse", id="another_shape"),
     ],

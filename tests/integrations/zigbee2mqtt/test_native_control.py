@@ -136,8 +136,9 @@ async def test_without_a_color_nothing_is_read(hass, setup_production, broker, t
             lambda broker: setattr(broker, "reply", None), "no reply from Zigbee2MQTT", [True, False], id="no_reply"
         ),
         pytest.param(
-            lambda broker: setattr(broker, "reply", {"status": "error", "error": "Device 'x' does not exist"}),
-            "Device 'x' does not exist",
+            # Z2M names the device it was asked about; the log line doesn't.
+            lambda broker: setattr(broker, "reply", {"status": "error", "error": f"Device '{IEEE}' does not exist"}),
+            "Device '<device>' does not exist",
             [True],
             id="error_reply",
         ),

@@ -124,7 +124,9 @@ async def ensure_options(
             )
             answer = await wait(pending[transaction], _REPLY_TIMEOUT_S, "no reply from Zigbee2MQTT")
             if answer.get("status") != "ok":
-                raise RuntimeError(answer.get("error") or f"status {answer.get('status')}")
+                # Z2M's error names the device it was asked about (`Device '<ieee>' does not exist`): scrubbed.
+                error = answer.get("error")
+                raise RuntimeError(bridge_cache.scrub(error, z2m_id) if error else f"status {answer.get('status')}")
             if cache is not None:
                 cache.confirmed[(section, z2m_id)] = _after(answer, before, options)
             changed(z2m_id)

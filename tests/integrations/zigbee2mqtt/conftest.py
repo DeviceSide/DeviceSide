@@ -16,12 +16,25 @@ unload_mock_mqtt_entries = unload_mock_entries("mqtt")
 _ADDRESSED = re.compile(r"0x[0-9a-fA-F]{16}|zigbee2mqtt/(?!bridge/)|Publish 'set' '")
 
 
+def friendly_names(broker) -> set[str]:
+    """The friendly names the broker knows: its devices', and those bridge/info lists."""
+    config = (broker.retained.get(INFO) or {}).get("config", {})
+    listed = [*config.get("devices", {}).values(), *config.get("groups", {}).values()]
+    return {name for name, _ in broker.devices.values()} | {
+        name for entry in listed if (name := entry.get("friendly_name"))
+    }
+
+
 @pytest.fixture(autouse=True)
-def no_addresses_logged(caplog):
-    """Every Zigbee2MQTT test runs at DEBUG and fails if a log line names a device's address."""
+def no_addresses_logged(request, caplog):
+    """Every Zigbee2MQTT test runs at DEBUG and fails if a log line names a device's address: one of _ADDRESSED, or
+    a friendly name the test's broker knows, quoted, as Z2M's own text quotes it."""
     caplog.set_level(logging.DEBUG, logger="custom_components.deviceside")
+    # Taken now, so the broker outlives this fixture's check.
+    broker = request.getfixturevalue("broker") if "broker" in request.fixturenames else None
     yield
-    assert not leaked(caplog, _ADDRESSED.search)
+    quoted = {f"'{name}'" for name in friendly_names(broker)} if broker is not None else set()
+    assert not leaked(caplog, lambda line: _ADDRESSED.search(line) or any(name in line for name in quoted))
 
 
 @pytest.fixture(autouse=True)

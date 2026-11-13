@@ -175,30 +175,44 @@ def log_error(payload: str) -> str | None:
 # A failed ZCL command, as Z2M logs it: `... ZCL command <address> <cluster>.<command>(<payload>) failed (<cause>)`,
 # the address a device's <ieee>/<endpoint> or a group's number.
 _ZCL_FAILURE = re.compile(r"ZCL command \S+ (?P<call>\w+\.\w+)\(.*\) failed \((?P<cause>.*)\)'?$")
-# The addressing a cause can carry: a bracketed sender (`[ZCL GROUP groupId=7]`), a quoted address (`Delivery failed
-# for '<nwk>'`), an IEEE, and any other bare number but a duration (`Timeout - <nwk> - ... after 10000ms`).
-_CAUSE_ADDRESSING = (
+# Any other failed set: `Publish 'set' '<key>' to '<friendly name>' failed: '<error>'`.
+_SET_FAILURE = re.compile(r"^Publish '\w+' '[^']*' to '(?P<name>[^']*)' failed: '?(?:Error: )?(?P<error>.*?)'?$")
+# The shapes Z2M and herdsman address a device or group in: a bracketed sender (`[ZCL GROUP groupId=7]`), the network
+# address a delivery failed for (`for '<nwk>'`), the address fields of herdsman's timeout (`Timeout - <nwk> - <ep> -
+# <tsn> - <cluster> - <command> after 10000ms`), an IEEE with its endpoint, and a group's number. Only these: the
+# rest of a cause, quoted text and codes included (`'MAC no ack' (233)`), is the diagnosis.
+_ADDRESSING = (
     (re.compile(r"~x~>\s*|\s*\[[^\]]*\]"), ""),
-    (re.compile(r" for '[^']*'"), ""),
-    (re.compile(r"'[^']*'"), "''"),
-    (re.compile(r"0x[0-9a-fA-F]+"), "#"),
-    (re.compile(r"\b\d+\b(?!\s*ms)"), "#"),
+    (re.compile(r" for '\d+'"), ""),
+    (re.compile(r"\bTimeout(?: - \d+)+"), "Timeout"),
+    (re.compile(r"0x[0-9a-fA-F]{16}(?:/\d+)?"), "<device>"),
+    (re.compile(r"\bgroupId=\d+"), "groupId=<group>"),
 )
+
+
+def scrub(text: str, *names: str) -> str:
+    """text Z2M wrote, for a log line (docs/logging.md): the addressing Z2M and herdsman put in it taken out, and each
+    of names (a friendly name, the id a request used) replaced where it is quoted."""
+    for name in names:
+        if name:
+            text = text.replace(f"'{name}'", "'<device>'")
+    for pattern, replacement in _ADDRESSING:
+        text = pattern.sub(replacement, text)
+    return text.strip()
 
 
 def cause(message: str) -> str:
     """What a Z2M failure line says went wrong (`genOnOff.read failed (UNSUPPORTED_ATTRIBUTE)`), for a log line.
 
-    The line names the device by friendly name, IEEE or group number, which a log line never does (docs/logging.md),
-    so it is never logged whole: only the ZCL call and the cause, with any addressing taken out. A line in a shape
-    this doesn't know gives a generic phrase rather than its text.
+    The line names the device by friendly name, IEEE or group number, which a log line never does, so it is never
+    logged whole: a ZCL failure gives its call and cause, another failed set its error, each scrubbed. A line in a
+    shape this doesn't know gives a generic phrase rather than its text.
     """
-    if (match := _ZCL_FAILURE.search(message)) is None:
-        return "a failure DeviceSide doesn't parse"
-    reason = match["cause"]
-    for pattern, replacement in _CAUSE_ADDRESSING:
-        reason = pattern.sub(replacement, reason)
-    return f"{match['call']} failed ({reason.strip()})"
+    if (match := _ZCL_FAILURE.search(message)) is not None:
+        return f"{match['call']} failed ({scrub(match['cause'])})"
+    if (match := _SET_FAILURE.match(message)) is not None:
+        return scrub(match["error"], match["name"])
+    return "a failure DeviceSide doesn't parse"
 
 
 def reply_router(pending: dict[str, asyncio.Future[dict]]) -> Callable[[mqtt.ReceiveMessage], None]:

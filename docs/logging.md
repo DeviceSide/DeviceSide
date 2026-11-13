@@ -32,9 +32,10 @@ Users paste logs into public issues.
   Your own format strings never add an address to them.
 - **A message another system wrote is not an upstream error.** An upstream error is an exception a library raises.
   A line another system logs or sends, such as a Zigbee2MQTT `bridge/logging` line, names devices its own way, so log
-  the cause it names, never the line (Zigbee2MQTT: `bridge_cache.cause`).
-- **Tests check it:** the Hue and Zigbee2MQTT tests run at DEBUG and fail on a line that names a device's address
-  (their `conftest.py`).
+  the cause it names, never the line (Zigbee2MQTT: `bridge_cache.cause` and `scrub`).
+- **Tests check it:** the Hue and Zigbee2MQTT tests run at DEBUG and fail on a line that names an address their
+  fixtures use: a quoted Hue resource ID; an IEEE, a device topic, a Zigbee2MQTT failure line or a quoted friendly
+  name (their `conftest.py`).
 
 ## Cost
 
