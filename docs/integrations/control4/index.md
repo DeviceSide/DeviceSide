@@ -19,6 +19,30 @@ The light runs the ramp itself, and `stop` reads back where it halted.
 - Calling the same raise or lower again while its ramp runs, as a remote that repeats while held does, sends nothing.
   The ramp keeps its speed.
 
+## Flash-free turn-on
+
+`set_attributes` sets `color_temp_kelvin` and nothing else. Home Assistant shows a Control4 light as brightness-only,
+so this is the only way to set its color temperature, and the field is missing from the action's form: send it in
+YAML.
+
+- The kelvin is clamped to the light's own range, and the result carries `clamped_to`.
+- A light with no color temperature is left `unchanged` (`fields_dropped`), so the rest of a room still changes.
+- A light that is off stays off and comes on at the new value. It reports `sent` (`stored_while_off`), not
+  `confirmed`.
+- The color temperature lasts until Control4 next applies the light's On Color preset.
+- `brightness`, `min_brightness` and `max_brightness` are refused (`fields_not_tested`): Home Assistant's own turn-on
+  always sends a level, so one stored while off would be lost. Colors are dropped: no full-color Control4 light has
+  been tested.
+
+## Get attributes
+
+`get_attributes` reads `brightness` and `color_temp_kelvin` from Control4 itself. Home Assistant shows no color
+temperature for these lights.
+
+- Brightness is up to a second old mid-ramp. Home Assistant's own state can be several seconds old.
+- Control4 keeps color temperature in tens of kelvin, so a light set to 2203 reads 2200.
+- A light that is off reports no brightness.
+
 ## Try it: Experimental features
 
 ### Control4 lights

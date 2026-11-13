@@ -201,8 +201,10 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 
 | Action | Level | Items | Tested models | Records |
 |---|---|---|---|---|
+| `get_attributes` | Experimental | light entities | none | |
 | `lower_brightness` | Experimental | light entities; brightness fields | none | |
 | `raise_brightness` | Experimental | light entities; brightness fields | none | |
+| `set_attributes` | Experimental | light entities; color_temp_kelvin fields | none | |
 | `stop` | Experimental | light entities | none | |
 
 <!-- evidence:end -->
