@@ -25,9 +25,17 @@ CONNECTION = aiohttp.client_reqrep.ConnectionKey("192.0.2.1", 443, True, True, N
             id="a_response_error",
         ),
         pytest.param(
-            aiohttp.ClientConnectorError(CONNECTION, OSError(errno.ECONNREFUSED, "Connect call failed")),
-            "ClientConnectorError('Connect call failed')",
+            # asyncio's own text names the address it couldn't reach (selector_events.py).
+            aiohttp.ClientConnectorError(
+                CONNECTION, OSError(errno.ECONNREFUSED, "Connect call failed ('192.0.2.1', 443)")
+            ),
+            "ClientConnectorError(ECONNREFUSED)",
             id="a_connection_error",
+        ),
+        pytest.param(
+            RuntimeError(aiohttp.ClientConnectorError(CONNECTION, OSError(errno.EHOSTUNREACH, "192.0.2.1"))),
+            "RuntimeError(ClientConnectorError(EHOSTUNREACH))",
+            id="a_wrapped_one",
         ),
         pytest.param(aiohttp.InvalidURL(URL_), "InvalidURL()", id="another_client_error"),
         pytest.param(TimeoutError(), "TimeoutError()", id="any_other_error_is_its_repr"),
@@ -38,6 +46,15 @@ def test_an_error_is_described_without_what_addresses_the_device(err, described)
     assert all(secret not in describe(err) for secret in ("192.0.2.1", "a-resource-id", "an-app-key"))
 
 
-def test_only_an_aiohttp_errors_traceback_is_kept_out():
-    assert not traceback_is_safe(aiohttp.ClientResponseError(REQUEST, (), status=500))
+def test_a_chained_aiohttp_error_is_described_and_its_traceback_kept_out():
+    try:
+        try:
+            raise aiohttp.ClientResponseError(REQUEST, (), status=500, message="Internal Server Error")
+        except aiohttp.ClientError as err:
+            raise RuntimeError("device unreachable") from err
+    except RuntimeError as wrapper:
+        chained = wrapper
+
+    assert describe(chained) == "RuntimeError(ClientResponseError(status=500, message='Internal Server Error'))"
+    assert not traceback_is_safe(chained)
     assert traceback_is_safe(RuntimeError("bridge gone"))

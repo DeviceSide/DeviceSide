@@ -1,3 +1,4 @@
+import errno
 from enum import StrEnum
 
 import aiohttp
@@ -39,19 +40,38 @@ class TargetNotSupported(ServiceNotSupported):
 def describe(err: BaseException) -> str:
     """An upstream error for a log line (docs/logging.md): its repr, as its text is often the diagnosis.
 
-    Not an aiohttp error's: its repr holds the request's URL and headers (a Hue bridge's address, a resource id, the
-    hue-application-key) and its str the URL or host. It gives its type, a response error its status and reason, and a
-    connection error the OS error's text.
+    Not an aiohttp error's, nor one wrapping it (as its args, cause or context): its repr holds the request's URL and
+    headers (a Hue bridge's address, a resource id, the hue-application-key), and its text the URL or, where a connect
+    failed, the address asyncio writes into the OS error. It gives the type, a response error its status and reason,
+    and a connection error the OS error's errno name; a wrapper's type wraps that.
     """
-    if isinstance(err, aiohttp.ClientResponseError):
-        return f"{type(err).__name__}(status={err.status}, message={err.message!r})"
-    if isinstance(err, aiohttp.ClientConnectorError) and err.os_error.strerror:
-        return f"{type(err).__name__}({err.os_error.strerror!r})"
-    if isinstance(err, aiohttp.ClientError):
-        return f"{type(err).__name__}()"
-    return repr(err)
+    if (client := _client_error(err)) is None:
+        return repr(err)
+    if isinstance(client, aiohttp.ClientResponseError):
+        text = f"{type(client).__name__}(status={client.status}, message={client.message!r})"
+    elif isinstance(client, aiohttp.ClientConnectorError) and client.os_error.errno:
+        text = f"{type(client).__name__}({errno.errorcode.get(client.os_error.errno, client.os_error.errno)})"
+    else:
+        text = f"{type(client).__name__}()"
+    return text if client is err else f"{type(err).__name__}({text})"
 
 
 def traceback_is_safe(err: BaseException) -> bool:
-    """Whether a log line may carry err's traceback, whose last line is str(err): not an aiohttp error's (describe)."""
-    return not isinstance(err, aiohttp.ClientError)
+    """Whether a log line may carry err's traceback, which prints each chained error's text: not where describe hides
+    an aiohttp error."""
+    return _client_error(err) is None
+
+
+def _client_error(err: BaseException) -> aiohttp.ClientError | None:
+    """The aiohttp error err is or wraps, through its args, cause and context; None if there is none."""
+    seen: set[int] = set()
+    pending: list[BaseException] = [err]
+    while pending:
+        if id(current := pending.pop()) in seen:
+            continue
+        seen.add(id(current))
+        if isinstance(current, aiohttp.ClientError):
+            return current
+        pending += [arg for arg in current.args if isinstance(arg, BaseException)]
+        pending += [chained for chained in (current.__cause__, current.__context__) if chained is not None]
+    return None

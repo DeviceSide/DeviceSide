@@ -14,6 +14,7 @@ from .addressing import CAPABILITIES, RpcComponent, address, unsupported_reason
 from .rpc import get_config, get_status
 from ...core.adapter import Adapter
 from ...core.color import rgb_row
+from ...core.errors import describe
 from ...core.models import EntityResult, Request, Status, Target
 from ...core.scope import AdapterScope, verified
 from ...core.timer import timer_row
@@ -101,7 +102,7 @@ class ShellyGetAttributes(RpcComponent, Adapter[Request]):
                 raise config  # a cancellation, not a device error
             row = status_row(address(target).component, status, dt_util.utcnow())
             if isinstance(config, Exception):
-                _LOGGER.debug("get_attributes GetConfig failed for %s: %r", target.entity_id, config)
+                _LOGGER.debug("get_attributes GetConfig failed for %s: %s", target.entity_id, describe(config))
             else:
                 row |= config_row(config)
             if not row:
