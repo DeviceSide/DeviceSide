@@ -111,8 +111,9 @@ none.
 
 - **A sign-off** is a whole passing rig run or a `_manual.md` line. A run is checked by the Package tree its records
   cite, so a run on a PR branch still counts once the PR squash-merges, and its records can land in the same PR. A
-  manual line is checked by its commit, which must be on `main` (or a `release/` branch), so it lands after the change
-  merges. It may say "no call changed". It comes from one of the integration's maintainers, or a repo maintainer when
+  manual line is checked by its commit, which must be in the release's checkout and hold the package as the release
+  does: cite one on `main` (or a `release/` branch), as a PR branch's is gone once it squash-merges, so the line lands
+  after the change merges. It may say "no call changed". It comes from one of the integration's maintainers, or a repo maintainer when
   none responds.
 - **Prefer the rig.** Where the rig covers an integration, the sign-off is a rig run: it is repeatable and catches what
   a person doesn't. A manual line is the fallback for integrations the rig can't reach, or when the rig is broken; a

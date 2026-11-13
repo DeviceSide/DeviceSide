@@ -350,6 +350,15 @@ def test_a_record_citing_a_commit_git_does_not_have_signs_off_by_its_tree(releas
     assert f"signed off by record {RECORDS} at 0000000" in capsys.readouterr().out
 
 
+def test_records_citing_one_tree_at_different_lengths_are_one_run(released, monkeypatch):
+    """The rig cites 12 hex digits; a full tree id is the same package, not a second version."""
+    change = released.commit(f"{FAKE}/stop.py")
+    full = released.git("rev-parse", f"{change}:custom_components/deviceside/integrations/fake")
+    write_record(released, "stop.md", change, tree=full)
+    write_record(released, "turn_on_for.md", change)
+    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 0
+
+
 def test_a_record_whose_package_tree_differs_from_heads_is_no_signoff(released, monkeypatch, capsys):
     """A run before the last change, or on a branch that changed the package differently, tested other code."""
     before = released.commit(f"{FAKE}/stop.py")
