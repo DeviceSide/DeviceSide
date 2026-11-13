@@ -9,7 +9,7 @@ from custom_components.deviceside.integrations.shelly.raise_brightness import Sh
 from custom_components.deviceside.integrations.shelly.stop import ShellyStop
 
 from .conftest import BULB, CONFIRMED, SENT, dimmable_bulb
-from ...conftest import allow_experimental, call, refusal, result, traced
+from ...conftest import allow_experimental, call, refusal, result, sent
 from ...fixtures.shelly import OTHER_LIGHT_COMPONENTS, add_shelly_entity, failing, shelly_device
 
 STOP = rpc_call("RGBCCT.DimStop", {"id": 0})
@@ -143,9 +143,9 @@ def test_scope():
     assert scope.capabilities == ShellyRaiseBrightness.scope.capabilities
 
 
-async def test_the_dimstop_is_traced_without_the_component_id(hass, setup_production, wire):
+async def test_the_dimstop_is_logged_without_the_component_id(hass, setup_production, wire):
     dimmable_bulb(hass, brightness=40)
 
     await call(hass, "stop", BULB)
 
-    assert traced(wire) == [("light.bulb", "rpc", "RGBCCT.DimStop", {})]
+    assert sent(wire) == ["light.bulb: sending rpc RGBCCT.DimStop {}"]

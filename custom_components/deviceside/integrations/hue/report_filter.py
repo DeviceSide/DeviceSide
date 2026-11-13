@@ -31,7 +31,7 @@ from homeassistant.core import CALLBACK_TYPE, HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
 from .attributes import ATTRIBUTES, event_fields, reported_values, strip
-from .bridge import bridge_api
+from .bridge import bridge_api, entity_name
 from .transition_cache import MIN_BRIGHTNESS_STEP, transition_cache
 from ...core.ha_watch import ALL, Call, Entries
 from ...core.models import Target
@@ -261,10 +261,15 @@ class ReportFilter:
                     dimmed := [light.dimming.brightness for light in lit if light.dimming]
                 ):
                     event["dimming"] = {"brightness": mean(dimmed)}
-                _LOGGER.debug("Showing room %s: %s", grouped_light_id, event)
+                if _LOGGER.isEnabledFor(logging.DEBUG):
+                    shown = {key: value for key, value in event.items() if key != "id"}
+                    _LOGGER.debug("Showing room %s: %s", entity_name(self.hass, grouped_light_id), shown)
                 self.api.events.emit(EventType.RESOURCE_UPDATED, event)
         except Exception:
-            _LOGGER.exception("Hue report filter failed showing rooms %s", grouped_light_ids)
+            _LOGGER.exception(
+                "Hue report filter failed showing rooms %s",
+                ", ".join(sorted(entity_name(self.hass, rid) for rid in grouped_light_ids)),
+            )
 
     def lights(self, entry: er.RegistryEntry) -> list[str]:
         """The bridge's lights behind a Hue light, room, zone or scene entity of this bridge."""

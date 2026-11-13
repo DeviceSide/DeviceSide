@@ -13,7 +13,6 @@ from homeassistant.core import HomeAssistant, callback
 from . import bridge_cache, set_check
 from .addressing import bridge_topic, options_address, state_topic, topic
 from ...core.models import Target
-from ...core.wire import wire_enabled, wire_trace
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -169,13 +168,14 @@ def _after(answer: dict, before: dict, sent: dict) -> dict:
     return {**before, **sent}
 
 
-def traced_options(hass: HomeAssistant, target: Target) -> dict:
-    """The option that changes how Z2M encodes a set, for the wire trace: hue_native_control as of this publish.
+def logged_options(hass: HomeAssistant, target: Target) -> dict:
+    """The option that changes how Z2M encodes a set, for its debug line: hue_native_control as of this publish, since
+    the same payload sends different Zigbee commands with it on and off.
 
     Read from the bridge cache, which lays confirmed writes over bridge/info (an absent option is Z2M's default, off).
     None when it can't be known: no cache, no bridge/info held, or no address. Stamped for every target, Hue or not,
     so no Hue lookup sits on the publish path; Z2M ignores the option on other devices, so their stamp stays false.
-    Call only while the trace is on.
+    Call only while debug logging is on.
 
     Known limit: a set whose write timed out is not in the cache, so the stamp shows the prior value (that path logs
     a warning).
@@ -187,11 +187,11 @@ def traced_options(hass: HomeAssistant, target: Target) -> dict:
 
 
 async def publish_set(hass: HomeAssistant, target: Target, payload: dict) -> None:
-    """Publish a command to the target's set topic, traced and noted for the call's set check (set_check.py). A read,
-    sent on the same topic, goes through publish()."""
+    """Publish a command to the target's set topic, logged (never the topic) and noted for the call's set check
+    (set_check.py). A read, sent on the same topic, goes through publish()."""
     await set_check.note(hass, target)
-    if wire_enabled():
-        wire_trace(hass, target.reported_id, "mqtt", "set", payload, options=traced_options(hass, target))
+    if _LOGGER.isEnabledFor(logging.DEBUG):
+        _LOGGER.debug("%s: sending mqtt set %s with %s", target.reported_id, payload, logged_options(hass, target))
     await publish(hass, topic(target, "set"), payload)
 
 
@@ -236,5 +236,7 @@ async def state_reply(hass: HomeAssistant, target: Target) -> tuple[asyncio.Futu
         # HA's own light entity subscribes to this topic, so the subscription is live at once.
         return published, await mqtt.async_subscribe(hass, light_topic, received)
     except Exception as err:  # noqa: BLE001 - each caller goes on without the reply
-        _LOGGER.debug("Couldn't subscribe to %s, so Zigbee2MQTT's answer isn't awaited: %s", light_topic, err)
+        _LOGGER.debug(
+            "Couldn't subscribe to %s's state, so Zigbee2MQTT's answer isn't awaited: %s", target.entity_id, err
+        )
         return None, lambda: None

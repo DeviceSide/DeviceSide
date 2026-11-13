@@ -2,7 +2,7 @@ from typing import ClassVar
 
 from homeassistant.core import HomeAssistant
 
-from .addressing import CAPABILITIES, SIBLINGS, RpcComponent, unsupported_reason
+from .addressing import CAPABILITIES, RpcComponent, unsupported_reason
 from .rpc import TIMER_LIMITS, set_with_timer
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Target, TimedRequest
@@ -20,7 +20,6 @@ class ShellyTurnOffFor(RpcComponent, Adapter[TimedRequest]):
         confirmable=True,
         # A relay shown as a light sends the same Switch.Set.
         capabilities=CAPABILITIES,
-        siblings=SIBLINGS,
     )
 
     def supports(self, hass: HomeAssistant, request: TimedRequest, target: Target) -> str | None:

@@ -9,4 +9,4 @@ from ...core.scope import AdapterScope
 
 class ZHALowerHue(ZHARamp):
     action: ClassVar[str] = "lower_hue"
-    scope: ClassVar[AdapterScope] = ramp_scope(HUE, experimental=False)
+    scope: ClassVar[AdapterScope] = ramp_scope(HUE)

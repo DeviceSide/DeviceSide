@@ -12,7 +12,6 @@ from .addressing import address, rpc_device
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, LightFields, Status, Target
 from ...core.scope import DurationLimits
-from ...core.wire import wire_trace
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -68,9 +67,10 @@ def light_params(light: LightFields, component: str, state: State | None) -> dic
 
 
 async def send(hass: HomeAssistant, target: Target, method: str, params: dict[str, Any]) -> None:
-    """One write RPC, <Component>.<method>, to the target's component, traced; an error propagates."""
+    """One write RPC, <Component>.<method>, to the target's component, logged without the component id; an error
+    propagates."""
     rpc, device = address(target), rpc_device(target)
-    wire_trace(hass, target.reported_id, "rpc", f"{rpc.component}.{method}", params)
+    _LOGGER.debug("%s: sending rpc %s.%s %s", target.reported_id, rpc.component, method, params)
     await device.call_rpc(f"{rpc.component}.{method}", {"id": rpc.id, **params})
 
 

@@ -10,7 +10,7 @@ from custom_components.deviceside.core.transition import BRIGHTNESS, SATURATION
 from custom_components.deviceside.integrations.hue.transition_cache import transition_cache
 
 from .conftest import SENT, STOP, color_lamp, color_room, hs_xy, lamp, mixed_room, report_off, room, xy_halt
-from ...conftest import call, refusal, result, traced
+from ...conftest import call, refusal, result, sent
 
 pytestmark = pytest.mark.usefixtures("setup_production")
 
@@ -182,12 +182,12 @@ async def test_stop_halts_brightness_and_saturation_in_one_write(hass, bridge, c
     assert bridge.puts[2] == ("light/light-1", STOP | xy_halt(along(hs_xy(200.0, 90.0), color_hs_to_xy(hue, 0), 0.5)))
 
 
-async def test_a_room_stop_is_traced_on_the_rooms_light_without_its_resource_id(hass, bridge, wire):
+async def test_a_room_stop_is_logged_on_the_rooms_light_without_its_resource_id(hass, bridge, wire):
     entity_id = await room(hass, bridge)
 
     await call(hass, "stop", {"entity_id": entity_id})
 
-    assert traced(wire) == [(entity_id, "clip", "grouped_light.put", {"dimming_delta": {"action": "stop"}})]
+    assert sent(wire) == [f"{entity_id}: sending clip grouped_light.put {{'dimming_delta': {{'action': 'stop'}}}}"]
 
 
 async def test_a_failed_light_in_a_room_cut_rolls_back_only_its_own_prediction(hass, bridge, clock, caplog):

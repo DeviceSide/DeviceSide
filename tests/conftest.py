@@ -6,14 +6,13 @@ from unittest.mock import patch
 import pytest
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
-from pytest_homeassistant_custom_component.common import MockConfigEntry, async_capture_events, async_fire_time_changed
+from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed
 
 from custom_components.deviceside import actions
 from custom_components.deviceside.const import DOMAIN
 from custom_components.deviceside.core.errors import TargetNotSupported
 from custom_components.deviceside.core.registry import AdapterRegistry
 from custom_components.deviceside.core.runtime import get_runtime
-from custom_components.deviceside.core.wire import WIRE_EVENT, WIRE_LOGGER
 
 from .fakes.scripted import SCRIPT
 
@@ -60,18 +59,15 @@ def reset_script():
 
 
 @pytest.fixture
-async def wire(hass: HomeAssistant):
-    """The wire trace, on as a rig turns it on (its logger at DEBUG): the deviceside_wire events fired."""
-    events = async_capture_events(hass, WIRE_EVENT)
-    level = WIRE_LOGGER.level
-    WIRE_LOGGER.setLevel(logging.DEBUG)
-    yield events
-    WIRE_LOGGER.setLevel(level)
+def wire(caplog):
+    """DeviceSide's log at DEBUG, as a user's debug log has it, for sent() to read the calls an action sent."""
+    caplog.set_level(logging.DEBUG, logger="custom_components.deviceside")
+    return caplog
 
 
-def traced(events) -> list[tuple]:
-    """Each traced call as (entity_id, transport, command, params)."""
-    return [(e.data["entity_id"], e.data["transport"], e.data["command"], e.data["params"]) for e in events]
+def sent(caplog) -> list[str]:
+    """The debug line of each call sent, in order: "<entity_id>: sending <transport> <command> <params>"."""
+    return [r.getMessage() for r in caplog.records if r.levelno == logging.DEBUG and ": sending " in r.msg]
 
 
 @pytest.fixture

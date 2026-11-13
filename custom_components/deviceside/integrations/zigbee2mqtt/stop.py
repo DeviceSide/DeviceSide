@@ -43,7 +43,7 @@ class Z2MStop(Adapter[Request]):
 
     action: ClassVar[str] = "stop"
     integration: ClassVar[str] = "zigbee2mqtt"
-    scope: ClassVar[AdapterScope] = AdapterScope(experimental=True, domains=verified("light"), native_groups=True)
+    scope: ClassVar[AdapterScope] = AdapterScope(domains=verified("light"), native_groups=True)
 
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:
         if (reason := super().supports(hass, request, target)) is not None:
