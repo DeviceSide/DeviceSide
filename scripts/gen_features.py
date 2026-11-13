@@ -154,15 +154,15 @@ def integration_columns(registry: AdapterRegistry) -> dict[str, str]:
 
 
 def keys(adapter, registry: AdapterRegistry, experimental: bool = False) -> set[str]:
-    """The icon keys an adapter covers: its domains at any Level but Experimental (Documented and Reported ship with
+    """The icon keys an adapter covers: its domains at any Level but Experimental (Verified and Documented ship with
     the option off), plus `group` when it takes lights and the dispatcher passes it native groups, natively or expanded
-    to their members (`_expand_native_groups`). Empty when the scope lists capabilities and every one is Experimental:
-    then no call works with the option off. With `experimental`, what it covers with the option on: every domain."""
+    to their members (`_expand_native_groups`). Empty when the adapter is flagged (`experimental=True`), or the scope
+    lists capabilities and every one is Experimental: then no call works with the option off. With `experimental`,
+    what it covers with the option on: every domain."""
     capabilities = adapter.scope.capabilities
-    if (
-        not experimental
-        and capabilities is not None
-        and all(level is Level.EXPERIMENTAL for level in capabilities.values())
+    if not experimental and (
+        adapter.scope.experimental
+        or (capabilities is not None and all(level is Level.EXPERIMENTAL for level in capabilities.values()))
     ):
         return set()
     found = {

@@ -118,10 +118,8 @@ class Fade:
     before: tuple[tuple[Target, dict], ...] = ()
 
 
-def ramp_scope(attribute: str, *, experimental: bool) -> AdapterScope:
-    return AdapterScope(
-        experimental=experimental, domains=verified("light"), fields=verified(attribute), native_groups=True
-    )
+def ramp_scope(attribute: str) -> AdapterScope:
+    return AdapterScope(domains=verified("light"), fields=verified(attribute), native_groups=True)
 
 
 class Z2MRamp(Adapter[RampRequest]):

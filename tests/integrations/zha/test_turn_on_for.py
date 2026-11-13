@@ -14,7 +14,7 @@ from custom_components.deviceside.const import DOMAIN
 from custom_components.deviceside.integrations.zha import zcl
 from custom_components.deviceside.integrations.zha.addressing import address
 
-from ...conftest import allow_experimental, call, refusal, traced
+from ...conftest import allow_experimental, call, refusal, sent
 from ...fixtures.zha import IEEE, add_zha_entity, zha_entry, zha_group
 
 CONFIRMED = {"status": "confirmed", "integration": "zha"}
@@ -355,12 +355,12 @@ async def test_a_failed_groupcast_rejects_only_that_groups_members(
     assert raised.value.translation_placeholders["summary"] == "light.a: error, light.b: error"
 
 
-async def test_the_fields_and_the_timer_are_traced_in_order(hass, setup_production, commands, turn_ons, wire):
+async def test_the_fields_and_the_timer_are_logged_in_order(hass, setup_production, commands, turn_ons, wire):
     add_zha_entity(hass, zha_entry(hass), "light.bulb")
 
     await call(hass, "turn_on_for", {"entity_id": "light.bulb", "duration": 5, "brightness": 50})
 
-    assert traced(wire) == [
-        ("light.bulb", "ha", "light.turn_on", {"brightness": 128}),
-        ("light.bulb", "zcl", "0x0006/0x42", {"on_off_control": 0, "on_time": 50, "off_wait_time": 0}),
+    assert sent(wire) == [
+        "light.bulb: sending ha light.turn_on {'brightness': 128}",
+        "light.bulb: sending zcl 0x0006/0x42 {'on_off_control': 0, 'on_time': 50, 'off_wait_time': 0}",
     ]

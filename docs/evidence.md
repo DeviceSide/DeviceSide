@@ -9,16 +9,18 @@ These rules apply from 2026-11-12, but the code that enforces the old ones is re
 each step lands, its old gate keeps running, and work satisfies it. The old rules are in CLAUDE.md at `5aae1fe`
 (§ Release flag) and in `scripts/check_release.py`'s docstring.
 
-- **Runtime (step 2):** `Level.REPORTED` and `Level.EXPERIMENTAL`, the `experimental=True` release flag, the
-  `unmaintained`, `stale_tests` and `siblings` fields, and the wire and scope traces.
+- **Runtime (step 2):** landed. `Level.REPORTED`, the `unmaintained`, `stale_tests` and `siblings` fields and the
+  wire and scope traces are gone; `experimental=True` gates at runtime, and `caveat` holds Untested fix or Unmaintained.
 - **Rig (step 3):** the rig still writes `Covers` and `## Shared coverage`, which `--records` reads, and `observed.py`
-  still lends and blocks.
-- **Release gate (step 4):** `check_release.py --release` (the release flag, Stale tests) and `--records` (record
-  freshness, `FLAGS`, shared coverage, `Covers`, report retests). The coverage bar still covers each adapter's code
+  still lends and blocks. With step 2 landed the rig can no longer build `Covers` rows (`deviceside_scope` is gone),
+  so step 2 merges paired with step 3.
+- **Release gate (step 4):** `check_release.py --release` (the Untested fix caveat check, and it still refuses an
+  `experimental=True` adapter until step 4) and `--records` (record freshness, `FLAGS`, shared coverage, `Covers`,
+  report retests). The coverage bar still covers each adapter's code
   (`adapter_code`), as CONTRIBUTING's "every module of your adapter code" says, not every module the Coverage bullet
   below names.
-- **Cards (step 5):** `gen_compat.py`'s Reported tier, siblings, Unmaintained and Stale tests marks, and its
-  record-freshness rule for Verified.
+- **Cards (step 5):** `gen_compat.py`'s record-freshness rule for Verified, the "Experimental (in RCs only)" label
+  and its rule leaving flagged adapters out of the cards (`IN_RCS`), and the rework into the new tiers.
 
 No RC is cut until step 5 lands.
 

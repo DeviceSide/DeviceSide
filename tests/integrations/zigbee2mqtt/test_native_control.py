@@ -428,7 +428,8 @@ async def test_failed_state_subscribe_still_restores_after_the_cap(
 
     assert loop.time() - start >= nc._REPLY_CAP_S
     assert options(broker) == [True, False]
-    assert "Couldn't subscribe to zigbee2mqtt/lamp, so Zigbee2MQTT's answer isn't awaited" in caplog.text
+    assert f"Couldn't subscribe to {entity_id}'s state, so Zigbee2MQTT's answer isn't awaited" in caplog.text
+    assert "zigbee2mqtt/lamp" not in caplog.text
 
 
 async def test_call_returns_before_the_reply_and_restores_after_it(hass, setup_production, clock, broker, monkeypatch):
@@ -554,7 +555,7 @@ async def test_no_need_writes_nothing(hass, setup_production, broker):
     assert broker.topics == []
 
 
-# The wire trace stamps the option's value on each set
+# The debug line stamps the option's value on each set
 
 
 def hold_info(hass, broker) -> None:
@@ -564,8 +565,13 @@ def hold_info(hass, broker) -> None:
     hass.data[DATA].integration_state[bridge_cache._KEY] = cache
 
 
+def sets(wire) -> list[tuple]:
+    """The args of each set's debug line, its options last."""
+    return [r.args for r in wire.records if r.levelno == logging.DEBUG and r.msg.endswith(" with %s")]
+
+
 def stamps(wire) -> list:
-    return [event.data["options"][nc.OPTION] for event in wire if event.data["command"] in ("set", "light.turn_on")]
+    return [args[-1][nc.OPTION] for args in sets(wire)]
 
 
 @pytest.mark.parametrize(
@@ -579,7 +585,7 @@ async def test_a_set_is_stamped_with_the_option_from_bridge_info(hass, setup_pro
     await call(hass, "stop", {"entity_id": entity_id})
 
     assert stamps(wire) == [stamp]
-    assert wire[0].data["params"] == {"brightness_move": "stop"}  # params stays the published payload
+    assert sets(wire)[0][1] == {"brightness_move": "stop"}  # the payload stays the published one
 
 
 async def test_a_confirmed_write_shows_in_the_stamp_then_the_users_value_returns(
@@ -613,7 +619,7 @@ async def test_a_group_is_stamped_from_the_group_section(hass, setup_production,
     broker.retained[INFO]["config"]["devices"][MEMBER] = {"hue_native_control": False}
     hold_info(hass, broker)
 
-    assert bridge.traced_options(hass, target(hass, "light.downstairs")) == {nc.OPTION: True}
+    assert bridge.logged_options(hass, target(hass, "light.downstairs")) == {nc.OPTION: True}
 
 
 async def test_the_stamp_is_unknown_without_the_bridge_cache(hass, setup_production, broker, wire):
@@ -625,14 +631,14 @@ async def test_the_stamp_is_unknown_without_the_bridge_cache(hass, setup_product
 
 
 async def test_the_stamp_is_unknown_without_an_address(hass, setup_production):
-    assert bridge.traced_options(hass, Target("light.x", "light", "zigbee2mqtt", None, None, None, None)) == {
+    assert bridge.logged_options(hass, Target("light.x", "light", "zigbee2mqtt", None, None, None, None)) == {
         nc.OPTION: None
     }
 
 
-async def test_nothing_is_computed_while_the_trace_is_off(hass, setup_production, broker, monkeypatch):
+async def test_nothing_is_computed_while_debug_logging_is_off(hass, setup_production, broker, monkeypatch):
     entity_id = light(hass, broker)
-    monkeypatch.setattr(bridge, "traced_options", lambda *args: pytest.fail("looked up with the trace off"))
+    monkeypatch.setattr(bridge, "logged_options", lambda *args: pytest.fail("looked up with debug logging off"))
 
     await call(hass, "stop", {"entity_id": entity_id})
 

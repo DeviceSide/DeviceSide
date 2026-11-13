@@ -17,12 +17,12 @@ with --records, any `_manual.md` error, or any released adapter with a Verified 
 `<action>-<option>.md` for one of its scope's options, a record whose Result is not `pass` or that has no readable
 Covers row, a Verified item no record covers (below), or code changed after the commit one of its records cites. Each
 record holds the latest run of its call or option. Setting or clearing
-`experimental`, `unmaintained` or `stale_tests`, or changing an integration's `maintainers`, is not a change to the
-code: no call reads them (setup reads `unmaintained` and `stale_tests` only to warn, and registration checks
-`maintainers`).
+`experimental` or `caveat`, or changing an integration's `maintainers`, is not a change to the code: no call reads
+them (the dispatcher reads `experimental` only to gate the call, setup reads `caveat` only to warn, and registration
+checks `maintainers`).
 
-**Covers.** The rig writes, in each record's table, what its passing cases sent through the adapter, from the
-dispatcher's `deviceside_scope` trace (core/wire.py), and each of the scope's options as the run set it:
+**Covers.** The rig writes, in each record's table, what its passing cases sent through the adapter, and each of the
+scope's options as the run set it:
 
     | Covers | domains=light,switch; capabilities=RGBCCT,Switch; fields=brightness; options=predicted_state:off |
 
@@ -71,7 +71,7 @@ In a record that can prove shared code, other `|` lines in that section, or a se
 --records; the section ends at the next `## ` heading.
 
 **Stale tests.** --records lists each adapter that needs a retest and has none fresh. --release fails on one unless
-its scope sets `stale_tests` (it then ships live, marked ⚠️ Stale tests), and on a `stale_tests` adapter that has a
+its scope sets an Untested fix `caveat` (it then ships live, marked ⚠️ Untested fix), and on such an adapter that has a
 fresh retest or needs none, as that retest clears the mark. --notes writes the release notes' call for testers: each
 adapter --records lists, marked or not (an RC lists them before they are), with a link to the device report form;
 empty when there are none.
@@ -102,7 +102,7 @@ COMPONENT = "custom_components.deviceside"
 
 from custom_components.deviceside.config_flow import REPORT_URL  # noqa: E402
 from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
-from custom_components.deviceside.core.scope import Level  # noqa: E402
+from custom_components.deviceside.core.scope import CaveatKind, Level  # noqa: E402
 
 COVERAGE_BAR = 95.0
 BUNDLES = REPO / "docs" / "integrations"
@@ -309,19 +309,20 @@ def git(*args: str) -> subprocess.CompletedProcess:
 # `maintainers` is an `IntegrationInfo` argument, a tuple of handles; the others are `AdapterScope`'s.
 FLAGS = {
     "experimental": (bool,),
-    "unmaintained": (str, type(None)),
-    "stale_tests": (str, type(None)),
+    "caveat": (type(None),),
     "maintainers": (tuple,),
 }
 
 
 def is_flag(keyword: ast.keyword) -> bool:
-    """`experimental=True` or `=False`, `unmaintained` or `stale_tests` `="<reason>"` or `=None`,
-    `maintainers=("<handle>", ...)`, or a parameter of the flag's name passed straight on."""
+    """`experimental=True` or `=False`, `caveat=Caveat(...)` or `=None`, `maintainers=("<handle>", ...)`, or a
+    parameter of the flag's name passed straight on."""
     if keyword.arg not in FLAGS:
         return False
     if isinstance(keyword.value, ast.Name):
         return keyword.value.id == keyword.arg
+    if keyword.arg == "caveat" and isinstance(keyword.value, ast.Call):
+        return isinstance(keyword.value.func, ast.Name) and keyword.value.func.id == "Caveat"
     try:
         literal = ast.literal_eval(keyword.value)
     except ValueError, TypeError, SyntaxError:
@@ -360,7 +361,7 @@ def changed_code(cited: str, paths: list[str]) -> list[str]:
 
 def proven(scope) -> bool:
     """Whether the adapter has a Verified call, which a record must prove: a Verified domain and, when the scope lists
-    capabilities, a Verified one. Reported and Experimental items have no record to age."""
+    capabilities, a Verified one. Documented and Experimental items have no record to age."""
     if Level.VERIFIED not in scope.domains.values():
         return False
     return scope.capabilities is None or Level.VERIFIED in scope.capabilities.values()
@@ -784,27 +785,33 @@ def retest_errors(registry, shared: SharedIndex | None = None) -> tuple[list[str
     return errors, untested
 
 
+def untested_fix(scope) -> bool:
+    """Whether the scope carries the Untested fix caveat, which took over the Stale tests mark."""
+    return scope.caveat is not None and scope.caveat.kind is CaveatKind.UNTESTED_FIX
+
+
 def stale_tests_errors(registry, untested: Collection[str]) -> list[str]:
-    """For a release: an adapter needing a retest with none fresh must be marked `stale_tests`, and one with a fresh
-    retest (or none needed) must not be."""
+    """For a release: an adapter needing a retest with none fresh must carry an Untested fix caveat, and one with a
+    fresh retest (or none needed) must not."""
     errors = []
     for name, adapter in adapters(registry):
-        if name in untested and not adapter.scope.stale_tests:
-            errors.append(f"{name} changed since its last retest; retest it, or set stale_tests to ship it marked")
-        elif name not in untested and adapter.scope.stale_tests:
+        if name in untested and not untested_fix(adapter.scope):
+            errors.append(f"{name} changed since its last retest; retest it, or set an Untested fix caveat to ship it")
+        elif name not in untested and untested_fix(adapter.scope):
             if needs_retest(adapter.scope):
                 why = "has a fresh retest"
             elif proven(adapter.scope):
                 why = "needs none (records gate a Verified call)"
             else:
                 why = "needs none (no call ships on)"
-            errors.append(f"{name} sets stale_tests but {why}; clear stale_tests")
+            errors.append(f"{name} has an Untested fix caveat but {why}; clear the caveat")
     return errors
 
 
 def release_notes(registry, untested: Collection[str]) -> str:
     """The release notes' call for testers: each adapter shipping without a fresh retest, and the report form. At a
-    release each is marked `stale_tests`; an RC lists them before they are, so a report at its tag can retest them."""
+    release each carries an Untested fix caveat; an RC lists them before they do, so a report at its tag can retest
+    them."""
     names = [name for name, _ in adapters(registry) if name in untested]
     if not names:
         return ""
@@ -835,7 +842,7 @@ def main(argv: list[str] | None = None, registry: AdapterRegistry | None = None)
     parser.add_argument(
         "--release",
         action="store_true",
-        help="fail on any experimental adapter, or an untested one not marked stale_tests",
+        help="fail on any experimental adapter, or an untested one without an Untested fix caveat",
     )
     parser.add_argument(
         "--records",
@@ -865,7 +872,7 @@ def main(argv: list[str] | None = None, registry: AdapterRegistry | None = None)
     def status(name: str, adapter) -> str:
         marks = ["experimental"] if adapter.scope.experimental else []
         if name in untested:
-            marks.append("stale tests" if adapter.scope.stale_tests else "untested since its code changed")
+            marks.append("untested fix" if untested_fix(adapter.scope) else "untested since its code changed")
         return ", ".join(marks)
 
     width = max((len(name) for name, _ in found), default=0)

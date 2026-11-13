@@ -26,7 +26,7 @@ step 5 lands. The items below run in this order.
 - [x] **Freeze** at `075895f`; lifted by the evidence-rules plan.
 - [ ] **Evidence rules**, one PR per step of the [plan](docs/plans/2026-11-12-evidence-rules.md):
   - [x] 1. Rules, docs only (`docs/evidence.md`).
-  - [ ] 2. Runtime: two levels, the `experimental` gate, `caveat`; the seven release-flagged adapters lose the flag;
+  - [x] 2. Runtime: two levels, the `experimental` gate, `caveat`; the seven release-flagged adapters lose the flag;
     the code comments citing CLAUDE.md's "Release flag" or "Default to Documented" point to `docs/evidence.md`.
   - [ ] 3. Rig (ha-rig): drop the wire and scope taps, `Covers`, observed lending and the firmware-fact ledger.
   - [ ] 4. Release gate: `check_release.py --signoffs`; drop `--release` and the rest of `--records`; the

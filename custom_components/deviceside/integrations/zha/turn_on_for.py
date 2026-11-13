@@ -14,7 +14,6 @@ from ...actions.turn_on_for import TurnOnForRequest
 from ...core.adapter import Adapter, DeadlinePassed
 from ...core.models import EntityResult, Status, Target
 from ...core.scope import AdapterScope, DurationLimits, experimental, verified
-from ...core.wire import wire_trace
 
 # OnWithTimedOff.on_time is a uint16 in tenths of a second; 0xFFFF is reserved, so 65534 tenths is the most.
 _TIMER_LIMITS = DurationLimits(min_s=0.1, max_s=6553.4)
@@ -51,8 +50,8 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
     integration: ClassVar[str] = "zha"
     scope: ClassVar[AdapterScope] = AdapterScope(
         # Zigbee plugs and switches rarely honor OnWithTimedOff (the rig's Tuya TS011F stores OnTime as a countdown
-        # and never switches on), so switch fails the Documented conditions (CLAUDE.md, "Release flag"): it takes the
-        # same call, so it is Experimental until a record covers it.
+        # and never switches on), so switch fails the Documented test (docs/evidence.md, Levels): it takes the same
+        # call, so it stays flagged experimental, untested, until a maintainer verifies it.
         domains=verified("light") | experimental("switch"),
         duration=_TIMER_LIMITS,
         fields=verified("brightness", "color_temp_kelvin"),
@@ -87,7 +86,7 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
     ) -> EntityResult:
         addr = address(target.entry.unique_id)  # supports() refused the targets it can't address
         if request.light.present():
-            await self._turn_on(hass, request, target.entity_id, traced_as=target.reported_id)
+            await self._turn_on(hass, request, target.entity_id, logged_as=target.reported_id)
         await zcl.command(
             hass,
             addr,
@@ -133,11 +132,11 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
         return await self.gather(hass, members, read_back)
 
     async def _turn_on(
-        self, hass: HomeAssistant, request: TurnOnForRequest, entity_id: str, traced_as: str | None = None
+        self, hass: HomeAssistant, request: TurnOnForRequest, entity_id: str, logged_as: str | None = None
     ) -> None:
-        """light.turn_on on entity_id, traced as the caller's target (traced_as) when that differs."""
+        """light.turn_on on entity_id, logged as the caller's target (logged_as) when that differs."""
         data = request.light.as_turn_on_data()
-        wire_trace(hass, traced_as or entity_id, "ha", "light.turn_on", data)
+        _LOGGER.debug("%s: sending ha light.turn_on %s", logged_as or entity_id, data)
         await hass.services.async_call(
             "light", "turn_on", {"entity_id": entity_id, **data}, blocking=True, context=request.context
         )

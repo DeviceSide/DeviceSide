@@ -18,7 +18,6 @@ from ...actions.turn_on_for import TurnOnForRequest
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Status, Target
 from ...core.scope import AdapterScope, DurationLimits, documented, verified
-from ...core.wire import wire_trace
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -33,9 +32,8 @@ class MatterTurnOnFor(Adapter[TurnOnForRequest]):
     action: ClassVar[str] = "turn_on_for"
     integration: ClassVar[str] = "matter"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        # Lights take the same OnWithTimedOff as plugs, behind the same LT check: Documented until a record covers them.
+        # Lights take the same OnWithTimedOff as plugs, behind the same LT check: Documented.
         domains=verified("switch") | documented("light"),
-        siblings={"light": "switch"},
         duration=_TIMER_LIMITS,
         fields=verified(),
         confirmable=True,
@@ -55,7 +53,7 @@ class MatterTurnOnFor(Adapter[TurnOnForRequest]):
             on_time = round(request.duration_s * 10)
             params = {"on_off_control": 0, "on_time": on_time, "off_wait_time": 0}
             command = make_on_with_timed_off(**params)
-            wire_trace(hass, target.reported_id, "matter", "OnOff.OnWithTimedOff", params)
+            _LOGGER.debug("%s: sending matter OnOff.OnWithTimedOff %s", target.reported_id, params)
             await client.send_device_command(
                 node_id=node_id,
                 endpoint_id=ep_id,
