@@ -220,7 +220,12 @@ class ReportFilter:
                 if self.hiding:
                     self._show_rooms_soon(self._rooms([data["id"]]))
         except Exception:
-            _LOGGER.exception("Hue report filter failed on %s", data)
+            # The event itself carries resource ids (id, id_v1, owner.rid), which a log line never names.
+            _LOGGER.exception(
+                "Hue report filter failed on a %s report for %s",
+                data.get("type"),
+                entity_name(self.hass, data["id"]) if "id" in data else None,
+            )
 
     def _hide(self, data: dict, ending: Iterable[str] = ()) -> None:
         """Take the report keys a live transition owns out of the event before aiohue applies it, of the attributes HA

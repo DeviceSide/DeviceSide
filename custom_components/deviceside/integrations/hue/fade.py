@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from homeassistant.core import HomeAssistant
 from homeassistant.util.color import color_hs_to_xy, color_xy_to_hs
 
-from .bridge import bridge_api, controller, resource_id, set_state
+from .bridge import bridge_api, controller, named, resource_id, set_state
 from .colors import clamp_to_gamut
 from .report_filter import report_filter
 from .transition_cache import MIN_BRIGHTNESS_STEP, XY, HueTransitionCache, transition_cache
@@ -126,7 +126,14 @@ class HueFade(Adapter[RampRequest]):
                 fade = saturation_fade(cache, request, target, api, resource)
             if isinstance(fade, str):
                 return self.result(target, Status.UNCHANGED, detail=fade)
-            _LOGGER.debug("Hue fade of %s: %s from %s to %s", target.entity_id, fade.attribute, fade.starts, fade.ends)
+            if _LOGGER.isEnabledFor(logging.DEBUG):
+                _LOGGER.debug(
+                    "Hue fade of %s: %s from %s to %s",
+                    target.entity_id,
+                    fade.attribute,
+                    named(hass, fade.starts),
+                    named(hass, fade.ends),
+                )
             write = partial(
                 set_state,
                 hass,
