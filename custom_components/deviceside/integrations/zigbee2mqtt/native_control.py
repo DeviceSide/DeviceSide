@@ -28,9 +28,8 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr
 
-from .addressing import device_identifier, group_id, options_address, z2m_address
+from .addressing import group_id, options_address, z2m_address, z2m_device
 from .bridge import OPTION, ensure_options, group_members, state_reply
 from .restore_journal import Address, journal, locks
 from ...core.models import Target
@@ -240,16 +239,15 @@ async def _reply(target: Target, replied: asyncio.Future[None] | None) -> None:
 async def _hue_address(hass: HomeAssistant, target: Target) -> Address | None:
     """Where the target's options live, for a Hue device or a group with a Hue member; None for anything else."""
     if (group := group_id(target)) is not None:
-        return ("group", group) if await _has_hue_member(hass, group) else None
+        return ("group", group) if await _has_hue_member(hass, target, group) else None
     if target.device is not None and target.device.manufacturer == _HUE_MANUFACTURER:
         return ("device", ieee) if (ieee := z2m_address(target.device)) is not None else None
     return None
 
 
-async def _has_hue_member(hass: HomeAssistant, group: str) -> bool:
-    registry = dr.async_get(hass)
+async def _has_hue_member(hass: HomeAssistant, target: Target, group: str) -> bool:
     for ieee in await group_members(hass, group):
-        device = registry.async_get_device(identifiers={device_identifier(ieee)})
+        device = z2m_device(hass, target, ieee)
         if device is not None and device.manufacturer == _HUE_MANUFACTURER:
             return True
     return False

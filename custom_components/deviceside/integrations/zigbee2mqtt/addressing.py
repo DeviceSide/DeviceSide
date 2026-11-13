@@ -25,6 +25,17 @@ def device_identifier(address: str) -> tuple[str, str]:
     return ("mqtt", f"{IDENTIFIER_PREFIX}{address}")
 
 
+def z2m_device(hass: HomeAssistant, group: Target, address: str) -> dr.DeviceEntry | None:
+    """The device Z2M registered at this address, under the MQTT entry that owns the group; None when HA has none.
+
+    A device's identifier is unique within a config entry only (since HA 2026.10), and Z2M announces a group and its
+    members through the same broker, so the group's entry is the one to look in.
+    """
+    if (entry_id := group.entry.config_entry_id) is None:
+        return None
+    return dr.async_get(hass).async_get_device_by_identifier(device_identifier(address), entry_id)
+
+
 def entity_name(hass: HomeAssistant, kind: Literal["device", "group"], z2m_id: str) -> str:
     """The light entity HA has for a Z2M device (by IEEE) or group (by ID), for a log line, which never names the
     IEEE, group ID, friendly name or topic; "a Zigbee2MQTT <kind> with no light" when HA has none."""

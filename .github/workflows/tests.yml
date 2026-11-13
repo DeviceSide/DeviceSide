@@ -61,6 +61,8 @@ jobs:
     # Fails open: tests run unless the changes job succeeded and found docs only.
     if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.code != 'false') }}
     runs-on: ubuntu-latest
+    outputs:
+      deprecations: ${{ steps.deprecations.outputs.reports }}
 
     steps:
       # A shallow checkout: no test or check here reads the repo's history (the git tests build their own repos).
@@ -80,7 +82,16 @@ jobs:
         run: uv sync --locked
 
       - name: Run tests
+        env:
+          DEVICESIDE_HA_DEPRECATIONS: ${{ runner.temp }}/ha-deprecations.json
         run: .venv/bin/pytest -n auto tests/ --cov=custom_components/deviceside --cov-report=json
+
+      # HA's deprecation reports on DeviceSide's code (tests/ha_deprecations.py), for the ha-deprecations job. They
+      # fail nothing: HA names the version that breaks the call, often a year out.
+      - name: Read the HA deprecation reports
+        id: deprecations
+        if: ${{ !cancelled() }}
+        run: echo "reports=$(jq -c . "$RUNNER_TEMP/ha-deprecations.json" 2>/dev/null || echo '[]')" >> "$GITHUB_OUTPUT"
 
       - name: Check coverage
         run: .venv/bin/python scripts/check_release.py --coverage coverage.json
@@ -93,3 +104,39 @@ jobs:
 
       - name: Check CODEOWNERS is current
         run: .venv/bin/python scripts/gen_codeowners.py --check
+
+  # One open issue per deprecated call HA reports, filed from main only: main's HA pin is the one the next release is
+  # tested on, and a fork's pull request gets no token that can file one. Its own job, so the token that can write
+  # issues never runs test code.
+  ha-deprecations:
+    needs: pytest
+    if: >-
+      ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+      && needs.pytest.outputs.deprecations != '' && needs.pytest.outputs.deprecations != '[]' }}
+    runs-on: ubuntu-latest
+    # Reports fail nothing, and nor does filing them: release gates read main's runs.
+    continue-on-error: true
+    permissions:
+      issues: write
+
+    steps:
+      - name: File an issue for each new deprecated call
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          REPORTS: ${{ needs.pytest.outputs.deprecations }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          # Matched on the exact title among open issues; the search only narrows the list.
+          open=$(gh issue list --state open --limit 200 --search '"HA deprecation" in:title' --json title --jq '.[].title')
+          jq -c '.[]' <<<"$REPORTS" | while read -r report; do
+            title="HA deprecation: $(jq -r .call <<<"$report")"
+            if grep -qxF "$title" <<<"$open"; then
+              echo "Already open: $title"
+              continue
+            fi
+            fence='```'
+            body=$(printf "HA reports a deprecated call in DeviceSide's code. It works until the HA version the report names.\n\n%s\n%s\n%s\n\nFrom the [Tests run](%s) at %s.\n" \
+              "$fence" "$(jq -r .message <<<"$report")" "$fence" "$RUN_URL" "$GITHUB_SHA")
+            gh issue create --title "$title" --body "$body"
+          done
