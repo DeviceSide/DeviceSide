@@ -35,7 +35,8 @@ def on_pr(repo, file, text):
     repo.git("checkout", "-q", "main")
 
 
-def test_a_contributor_may_regenerate_the_blocks(pr):
+def test_a_contributor_may_regenerate_the_blocks_alongside_code(pr):
+    on_pr(pr, "code.py", "x = 1\n")
     on_pr(pr, cp.README, README.replace("old table", "new table").replace("old cards", "new cards"))
     assert cp.check("main", "pr", "alice", MAINTAINERS) == (True, False)
 
