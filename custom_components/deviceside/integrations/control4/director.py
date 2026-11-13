@@ -9,6 +9,7 @@ wherever Control4 isn't installed. docs/integrations/control4/internals.md has t
 import asyncio
 import json
 import logging
+import math
 from collections.abc import Awaitable, Callable
 from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass, replace
@@ -39,6 +40,21 @@ LIGHT_LEVEL = "LIGHT_LEVEL"
 # light that reports none is assumed, untested, to be one that reports LIGHT_LEVEL alone.
 BRIGHTNESS_TARGET = "Brightness Target Percent"
 LEVEL_VARIABLES = (BRIGHTNESS_PERCENT, LIGHT_LEVEL, BRIGHTNESS_TARGET)
+
+# On or off. Core shows an item that reports this and no level as an on/off light.
+LIGHT_STATE = "LIGHT_STATE"
+# The color temperature the light is at, in kelvin, and its color mode: 1 is color temperature, the only
+# mode measured (Tested behavior). An off light shows what it last had, bar a moment after a write.
+CURRENT_CCT = "Current CCT"
+# Where a lit light's color temperature is heading; it equals the current one at rest. Off, see CURRENT_CCT.
+TARGET_CCT = "Target CCT"
+TARGET_COLOR_MODE = "Target Color Mode"
+COLOR_MODE = "Current Color Mode"
+_MODE_CCT = 1
+# The Director's color temperature variables hold tens of kelvin (Tested behavior).
+_KELVIN_STEP = 10
+# What the light itself can do, as the Director hands it over: {"DynamicCapabilities": {...}}.
+CAPABILITIES = "Navigator Dynamic Capabilities"
 
 # RAMP_TO_LEVEL's TIME is sent as whole milliseconds. A Zigbee bulb's driver caps a rate at 65535 ms; a group's takes
 # far longer, but a call may reach either, so the bulb's ceiling bounds both (Tested behavior).
@@ -146,6 +162,57 @@ def parse_level(held: dict[str, Any]) -> LightLevel:
         # No place a ramp can be heading: read as a driver that reports none, so nothing is confirmed from it.
         target = None
     return LightLevel(brightness=brightness, target=target)
+
+
+def _kelvin(value: Any) -> int | None:
+    """A variable's value as a whole kelvin; None for one that is absent, zero or not a finite number."""
+    number = _number(value)
+    return round(number) if number and math.isfinite(number) else None
+
+
+def color_temperature(held: dict[str, Any]) -> int | None:
+    """The light's color temperature in kelvin, or None when it isn't in color temperature mode or reports none."""
+    return _kelvin(held.get(CURRENT_CCT)) if _number(held.get(COLOR_MODE)) == _MODE_CCT else None
+
+
+def heading_for(held: dict[str, Any], kelvin: int) -> bool:
+    """Whether the light is at the kelvin or heading for it. The Director shows a new color temperature as the
+    target within 0.2 s and as current most of a second later (Tested behavior), so the target is the first sign of
+    the command. Whether a lit light that doesn't obey, as a bulb with no power, still shows it as its target is
+    unmeasured. Either counts only in color temperature mode, so a light left in full color with an old target
+    isn't taken for one that obeyed."""
+    heading = _shows(_kelvin(held.get(TARGET_CCT)), kelvin) and _number(held.get(TARGET_COLOR_MODE)) == _MODE_CCT
+    return heading or _shows(color_temperature(held), kelvin)
+
+
+def _shows(reported: int | None, kelvin: int) -> bool:
+    """Whether a kelvin the Director reports is the one sent. It reports a color temperature in tens of kelvin,
+    rounded down: 2203 sent reads 2200, and 2956 reads 2950 (Tested behavior)."""
+    return reported is not None and 0 <= kelvin - reported < _KELVIN_STEP
+
+
+def kelvin_range(held: dict[str, Any]) -> tuple[int, int] | None:
+    """The color temperatures the light takes, from its own capabilities variable; None when the light has no such
+    variable or says it takes none. Core's light entity shows no color temperature, so only the device can say.
+    Capabilities that can't be read, or that claim a color temperature with no real range, raise: that light is
+    rejected, not passed off as one that lacks the field."""
+    capabilities = held.get(CAPABILITIES)
+    if capabilities is None:
+        return None
+    if isinstance(capabilities, str):
+        # The Director hands the variable over as an object (Tested behavior). JSON text of one is read too, as a
+        # guard: no driver has been seen to hold it that way.
+        capabilities = json.loads(capabilities)
+    capabilities = capabilities.get("DynamicCapabilities") if isinstance(capabilities, dict) else None
+    if not isinstance(capabilities, dict):
+        raise ValueError("the Director reported capabilities that can't be read")
+    if capabilities.get("supports_color_correlated_temperature") is not True:
+        return None
+    low = _number(capabilities.get("color_correlated_temperature_min"))
+    high = _number(capabilities.get("color_correlated_temperature_max"))
+    if low is None or high is None or not 0 < low <= high < math.inf:
+        raise ValueError(f"the Director reported no usable color temperature range: {low} to {high}")
+    return round(low), round(high)
 
 
 def _refused(err: BaseException) -> bool:
@@ -322,6 +389,13 @@ def own_ramp_end(hass: HomeAssistant, target: Target) -> int | None:
     the light's level is always the Director's."""
     level, over_by = _ramp_ends(hass).get(_item_key(target), (None, 0.0))
     return level if hass.loop.time() < over_by else None
+
+
+async def set_color_temperature(hass: HomeAssistant, target: Target, kelvin: int) -> None:
+    """SET_COLOR_TARGET in color temperature mode, as pyControl4 2.0.2's own set_color_temperature sends it. A light
+    that is off stays off and comes on at it (Tested behavior)."""
+    params = {"LIGHT_COLOR_TARGET_COLOR_CORRELATED_TEMPERATURE": kelvin, "LIGHT_COLOR_TARGET_MODE": _MODE_CCT}
+    await send(hass, target, "SET_COLOR_TARGET", params)
 
 
 async def stop_brightness(hass: HomeAssistant, target: Target) -> None:

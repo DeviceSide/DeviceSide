@@ -81,6 +81,36 @@ stop, or a new move began meanwhile), `sent` (`halt_not_reported`) on
 a driver with no target, `unchanged` (`off`) at rest at 0. An on/off light is refused (`not_dimmable`) with nothing
 sent.
 
+### `get_attributes`
+
+Core's entity shows the level as of its last poll of the Director (`DEFAULT_SCAN_INTERVAL`, 5 s, a user option), and
+no color temperature; this reads the Director itself. One read of `Brightness Percent` (or `LIGHT_LEVEL`),
+`LIGHT_STATE`, `Current CCT` and `Current Color Mode`, logged with its values as every read of the Director's
+variables is (`director.read_variables`). Brightness is reported when above 0; `color_temp_kelvin` when the mode is 1
+(color temperature, the only mode measured) and the light reports one. An off light with neither returns an empty row,
+as does a light that reports `LIGHT_STATE` and no level. A read with neither a level nor `LIGHT_STATE` rejects the
+target.
+
+### `set_attributes`
+
+`color_temp_kelvin` only, declared `unlisted` in the adapter's scope so the dispatcher doesn't drop it for an entity
+that lists brightness alone. The `services.yaml` filter hides the field from the action's form for such an entity, so
+it is sent from YAML. A read of `Navigator Dynamic Capabilities` first. A light with no such variable, or whose
+`supports_color_correlated_temperature` isn't true, lacks the field: `unchanged` with `fields_dropped`, nothing sent.
+Capabilities that can't be read, or that claim a color temperature without a real
+`color_correlated_temperature_min`/`max` range, reject the target. The kelvin is clamped to the range and a clamped
+result carries `clamped_to`. Then `SET_COLOR_TARGET {LIGHT_COLOR_TARGET_COLOR_CORRELATED_TEMPERATURE,
+LIGHT_COLOR_TARGET_MODE: 1}`, as pyControl4's `set_color_temperature` sends it, to every target first. Then a
+read-back per target, on `stop`'s schedule, ending at the first read that shows the light off or heading for the
+kelvin: `Target CCT` equal to it with `Target Color Mode` 1, or `Current CCT` equal to it with `Current Color Mode` 1.
+The target shows a new value within 0.2 s and the current one most of a second later (color temperature timing,
+below), so the target is what confirms. `confirmed` when lit and heading for it, `sent` (`color_temp_not_reported`)
+when lit and not, `sent` (`stored_while_off`) when off, `sent` (`readback_failed`) when a read-back fails or holds no
+level. Heading for it means the Director's target shows it, in the tens of kelvin the Director holds: it reports a
+color temperature rounded down to 10 K, so the kelvin sent matches a report up to 9 K below it; whether the target
+also shows it for a lit bulb that can't obey, as one with no power, is unmeasured, so `confirmed` here is the
+Director's word, not yet proven to be the bulb's.
+
 ## Tested behavior
 
 Measured by one contributor on a CORE 5 controller (OS 4.3.0) with a light group (the "Light Group" driver) of three
@@ -150,6 +180,45 @@ hardware and versions, sent and timed in-process by a probe in Home Assistant. N
   level 0, target 0, `LIGHT_STATE` 0): no `LIGHT_LEVEL` row and none for the made-up name, with no error.
 - **Text for a light that has never reported.** Bulbs added to the project but not yet paired, and a group of them,
   reported `"0"` as text for `Brightness Percent` and `LIGHT_STATE`; paired lights report numbers.
+- **A color temperature is taken on or off.** With the group on, `SET_COLOR_TARGET` with the kelvin and mode 1 moved
+  `Current CCT` from 3200 to 2700 by a read about a second later; a read sent straight after the command still showed
+  3200, the same lag a halt has. With the group off, the same command for 4000 left it off and `Current CCT` at 2700
+  on the read taken then, by hand and untimed (the 2026-11-13 entry below times what it shows meanwhile); the next
+  turn-on brought it up at 4000. The same command with `LIGHT_COLOR_TARGET_X`/`Y` added to it changed nothing, on the
+  group or on a bulb.
+- **Color temperature timing, 2026-11-13.** Four `SET_COLOR_TARGET` commands on lit lights, two on the group and two
+  on a bulb, between 3200 and 2700, read every 150 ms: `Target CCT` showed the new value on the first read (8 to 63 ms
+  after the POST) in three and on the second (159 ms) in one; `Current CCT` first showed it on reads sent 0.76 to 0.91
+  s after the POST (reads 150 ms apart). `Current Color Mode` and `Target Color Mode` read 1 throughout; the lights
+  report `supports_color: false`, so a start from full-color mode is untested.
+- **Tens of kelvin, 2026-11-13.** `SET_COLOR_TARGET` on the group, lit: 3333 read back as 3330 in `Target CCT` and
+  `Current CCT`, 2956 as 2950, 6536 as 6530, 3205 as 3200 and 2203 as 2200. The Director holds tens of kelvin, rounded
+  down.
+- **DeviceSide's own actions, 2026-11-13.** Run on the group through the adapters as rebuilt on main that day.
+  `set_attributes` 2700 on the lit group: `confirmed` on the first read-back, where `Target CCT` showed 2700 and
+  `Current CCT` still 3200. With the group off, 4000: `sent` (`stored_while_off`), and a raise then brought it on at
+  4000. `get_attributes` gave the level and color temperature the Director held each time. A 2000 was clamped to 2203
+  and took, but with the comparison then exact it reported `sent` (`color_temp_not_reported`) against the Director's
+  2200. Run again with the tens-of-kelvin match: 2000 was `confirmed` with `clamped_to` 2203, 2956 was `confirmed`,
+  and 7000 was `confirmed` with `clamped_to` 6536.
+- **Color presets, 2026-11-13.** Each light has an On Color and a Dim Color preset in Control4 (both 3200 K by
+  default, read from its `Color Presets` variable). On a group whose presets were 2700 and 3200, Control4 itself moved
+  the color temperature with the brightness on a ramp (2850 K read at 68 %). A color temperature set by
+  `SET_COLOR_TARGET` held through a ramp, and an off then on from Control4 brought the light back at its On Color
+  preset; which off and on commands were used was not noted.
+- **A color temperature set while off, 2026-11-13.** `SET_COLOR_TARGET` for 4000 on the group while off: reads from 9
+  ms to 1.2 s after it showed `Current CCT` and `Target CCT` 4000 with the level 0; the read at 1.5 s showed both back
+  at 3200, as did one 3 s later. A `RAMP_TO_LEVEL` to 100 then brought the group up at 4000, which held.
+- **Capabilities, 2026-11-13.** `Navigator Dynamic Capabilities` arrives as an object, `{"DynamicCapabilities": {…}}`.
+  Its keys on the group: `dimmer`, `supports_target`, `supports_brightness_stop`, `supports_color` (false),
+  `supports_color_correlated_temperature` (true), `supports_color_stop`, `brightness_rate_min`/`max`,
+  `color_correlated_temperature_min` (2203) and `_max` (6536), `color_rate_behavior`, `color_rate_min`/`max`,
+  `has_extras`, `click_rate_min`/`max`, `hold_rate_min`/`max`, `cold_start`, `supports_color_cycling`,
+  `advanced_scene_support` and four `hide_proxy_…` flags: capabilities and rates, no address or name. A bulb gives the
+  same keys.
+- **The stored on-level holds for Control4's on only.** `SET_PRESET_LEVEL {LEVEL: 40}` on the group while off left it
+  off with `PRESET_LEVEL` 40, and Control4's `ON` brought it up at 40. Home Assistant's `light.turn_on` then brought
+  it up at 100: core sends its own level. So `set_attributes` takes no brightness.
 - **A press and release also ramps.** `BUTTON_ACTION` press (`ACTION: 1`) on the bottom button ramped the group down
   at its hold rate until the release, from 100 to 32; the top button raised it to 94. The adapters don't send a press:
   its speed is the driver's, not the call's `sweep_time`.

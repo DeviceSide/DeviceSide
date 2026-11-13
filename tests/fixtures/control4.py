@@ -4,6 +4,7 @@ import asyncio
 import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
+from urllib.parse import unquote
 
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
@@ -39,13 +40,30 @@ class FakeDirector:
         self.gate: asyncio.Event | None = None
         self.brightness = float(brightness) if on else 0.0
         self.target = self.brightness
+        # The color temperature the Director shows, the one a light that is off will come on at, and the range the
+        # light's capabilities give (None: it says it takes none).
+        self.kelvin = 3200
+        # Where the color temperature is heading; `current_lags` leaves the current one behind it, as the Director
+        # does for most of a second after a write (Tested behavior).
+        self.target_kelvin = 3200
+        self.current_lags = False
+        self.pending_kelvin: int | None = None
+        self.kelvin_span: tuple[int, int] | None = (2203, 6536)
+        self.color_mode = 1
+        self.target_color_mode = 1
         self.halt = halt
         self.legacy = legacy
         self.text = False
         self.ignore_stop = False
+        self.ignore_color = False
+        # An on/off light as this fake models one: LIGHT_STATE alone. None has been read on hardware.
+        self.on_off = False
+        # The capabilities variable as the JSON text of the object, not the object.
+        self.capabilities_as_text = False
         # Reads after a stop that still show the ramp, as a Director that hasn't heard from the light yet does.
         self.lag_reads = 0
         self._lagging: int | None = None
+        self._lagging_color: list | None = None
         self.send_get_request = AsyncMock(side_effect=self._get)
         self.send_post_request = AsyncMock(side_effect=self._post)
 
@@ -63,23 +81,71 @@ class FakeDirector:
             else:
                 self._lagging = None
                 self._halt()
+        if self._lagging_color is not None and "Current%20CCT" in uri:
+            if self._lagging_color[0] > 0:
+                self._lagging_color[0] -= 1
+            else:
+                self._show(self._lagging_color[1])
+                self._lagging_color = None
         on = 1 if self.brightness > 0 else 0
-        if self.legacy:
+        if self.on_off:
+            rows = {"LIGHT_STATE": on}
+        elif self.legacy:
             rows = {"LIGHT_LEVEL": self.brightness}
         else:
-            rows = {"Brightness Percent": self.brightness, "LIGHT_STATE": on, "Brightness Target Percent": self.target}
-        return json.dumps([{"id": item, "varName": name, "value": self._value(value)} for name, value in rows.items()])
+            rows = {
+                "Brightness Percent": self.brightness,
+                "LIGHT_STATE": on,
+                "Brightness Target Percent": self.target,
+                "Current CCT": self.kelvin,
+                "Target CCT": self.target_kelvin,
+                "Target Color Mode": self.target_color_mode,
+                "Current Color Mode": self.color_mode,
+            }
+        found = [{"id": item, "varName": name, "value": self._value(value)} for name, value in rows.items()]
+        if not self.legacy and not self.on_off:
+            span = self.kelvin_span or (0, 0)
+            capabilities = {
+                "supports_color_correlated_temperature": self.kelvin_span is not None,
+                "color_correlated_temperature_min": span[0],
+                "color_correlated_temperature_max": span[1],
+            }
+            value = {"DynamicCapabilities": capabilities}
+            if self.capabilities_as_text:
+                value = json.dumps(value)
+            found.append({"id": item, "varName": "Navigator Dynamic Capabilities", "value": value})
+        wanted = [unquote(name) for name in uri.partition("varnames=")[2].split(",")]
+        return json.dumps([row for row in found if row["varName"] in wanted])
 
     async def _post(self, uri: str, command: str, params: dict) -> str:
         self.log.append((command, int(uri.split("/")[4])))
         if command == "RAMP_TO_LEVEL":
             self.target = float(params["LEVEL"])
+        elif command == "SET_COLOR_TARGET":
+            # A light that is on shows it as its target at once here; on hardware that took up to 0.2 s, and the
+            # current one first showed on reads sent 0.76-0.91 s after the command (Tested behavior), which only
+            # `current_lags` models. One that is off shows it for a little over a second, then the old one until it
+            # comes on; this models the light after that.
+            kelvin = params["LIGHT_COLOR_TARGET_COLOR_CORRELATED_TEMPERATURE"]
+            if self.brightness > 0 and not self.ignore_color and self.lag_reads:
+                self._lagging_color = [self.lag_reads, kelvin]
+            elif self.brightness > 0 and not self.ignore_color:
+                self._show(kelvin)
+            else:
+                self.pending_kelvin = kelvin
         elif command == "SET_BRIGHTNESS_STOP" and not self.ignore_stop and self.target != self.brightness:
             if self.lag_reads:
                 self._lagging = self.lag_reads
             else:
                 self._halt()
         return "{}"
+
+    def _show(self, kelvin: int) -> None:
+        # The Director holds a color temperature in tens of kelvin, rounded down (Tested behavior).
+        kelvin = kelvin // 10 * 10
+        self.target_kelvin = kelvin
+        if not self.current_lags:
+            self.kelvin = kelvin
 
     def _halt(self) -> None:
         self.brightness = self.target = float(self.halt if self.halt is not None else self.brightness)

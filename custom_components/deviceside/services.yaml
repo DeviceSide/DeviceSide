@@ -135,6 +135,8 @@ set_attributes:
   target:
     entity:
       - domain: light
+        integration: control4
+      - domain: light
         integration: hue
       - domain: light
         integration: zha
@@ -265,6 +267,8 @@ stop:
 get_attributes:
   target:
     entity:
+      - domain: light
+        integration: control4
       - domain: light
         integration: hue
       - domain: [light, switch]
