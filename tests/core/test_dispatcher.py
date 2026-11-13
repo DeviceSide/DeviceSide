@@ -392,7 +392,9 @@ async def test_entity_id_all_acts_on_every_supported_light_and_skips_the_rest_qu
         for r in caplog.records
         if r.name.startswith("custom_components.deviceside") and r.levelno >= logging.WARNING
     ]
-    assert ours == ["turn_on_for skipped targets that can't take it: light.yaml_only (not_in_registry)"]
+    assert ours == [
+        "turn_on_for skipped targets that can't take it: light.yaml_only (not_in_registry), so they got no command"
+    ]
 
 
 async def test_a_label_target_resolves_to_its_lights(hass, fake, reset_script):

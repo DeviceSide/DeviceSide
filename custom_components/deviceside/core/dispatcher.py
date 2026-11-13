@@ -106,9 +106,10 @@ class Dispatcher:
         # An empty group is skipped silently, whether planning found it so or an adapter that reads membership did.
         if skipped := [r for r in results if r.status is Status.UNSUPPORTED and r.detail != Reason.EMPTY_GROUP]:
             _LOGGER.warning(
-                "%s skipped targets that can't take it: %s",
+                "%s skipped targets that can't take it: %s, %s",
                 action.key,
                 ", ".join(f"{result.entity_id} ({result.detail})" for result in skipped),
+                "so they aren't read" if action.kind is ActionKind.QUERY else "so they got no command",
             )
         ran = [result for result in results if result.status is not Status.UNSUPPORTED]
         if failed := [result for result in ran if result.status in FAILED]:

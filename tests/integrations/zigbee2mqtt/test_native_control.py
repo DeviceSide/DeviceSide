@@ -774,7 +774,11 @@ async def test_an_unreadable_journal_runs_as_if_none_were_owed(hass, setup_produ
     await nc.settled(hass, target(hass, "light.lamp"))
 
     assert options(broker) == [True, False]
-    assert "Couldn't read the hue_native_control restore journal" in caplog.text
+    # The put-back's read says what follows from it: it restores the value it found.
+    assert (
+        "Couldn't read Zigbee2MQTT's hue_native_control restore journal for light.lamp: OSError('unreadable'), "
+        "so it puts back False, the value it found"
+    ) in caplog.text
 
 
 async def test_a_cancelled_set_that_was_refused_strikes_its_entry(hass, setup_production, broker, monkeypatch):

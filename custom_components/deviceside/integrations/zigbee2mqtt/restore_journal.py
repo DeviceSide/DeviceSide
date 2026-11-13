@@ -162,7 +162,10 @@ async def replay(hass: HomeAssistant) -> None:
                     kind,
                     [z2m_id],
                     lambda current, value=value: {OPTION: value} if bool(current.get(OPTION)) != value else {},
-                    lambda _id: None,
+                    # INFO only for a write Z2M confirmed: one the user had made already writes nothing.
+                    lambda _id, value=value, name=name: _LOGGER.info(
+                        "Put Zigbee2MQTT's %s back to %s for %s, left owed by an earlier restore", OPTION, value, name
+                    ),
                 )
             except Exception as err:  # noqa: BLE001 - kept for the next try
                 _LOGGER.warning(
@@ -182,4 +185,3 @@ async def replay(hass: HomeAssistant) -> None:
                     name,
                     describe(err),
                 )
-        _LOGGER.info("Put Zigbee2MQTT's %s back to %s for %s, left owed by an earlier restore", OPTION, value, name)

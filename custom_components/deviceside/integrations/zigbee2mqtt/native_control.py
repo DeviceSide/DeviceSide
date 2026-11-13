@@ -150,7 +150,7 @@ async def _take(hass: HomeAssistant, target: Target, address: Address, need: boo
         return True
     if journaled:
         await _strike(hass, address, not need, target.entity_id)  # refused: the option stands as it was
-    return await _owed(hass, address, target.entity_id) is not None
+    return await _owed(hass, address, target.entity_id, "so this action pays no restore it owes") is not None
 
 
 def _restore_task(hass: HomeAssistant, address: Address, restore: Coroutine[Any, Any, None]) -> None:
@@ -207,16 +207,18 @@ async def _owe(hass: HomeAssistant, address: Address, value: bool, entity_id: st
         return False
 
 
-async def _owed(hass: HomeAssistant, address: Address, entity_id: str) -> bool | None:
-    """The value the journal owes back at the address, or None (none owed, or the journal unreadable)."""
+async def _owed(hass: HomeAssistant, address: Address, entity_id: str, consequence: str) -> bool | None:
+    """The value the journal owes back at the address, or None (none owed, or the journal unreadable, which the
+    caller's consequence ends the warning with)."""
     try:
         return (await journal(hass)).owes(address)
     except Exception as err:  # noqa: BLE001 - as if none were owed
         _LOGGER.warning(
-            "Couldn't read the %s restore journal for %s: %s, so this action pays no restore it owes",
+            "Couldn't read Zigbee2MQTT's %s restore journal for %s: %s, %s",
             OPTION,
             entity_id,
             describe(err),
+            consequence,
         )
         return None
 
@@ -224,9 +226,9 @@ async def _owed(hass: HomeAssistant, address: Address, entity_id: str) -> bool |
 async def _strike(hass: HomeAssistant, address: Address, value: bool, entity_id: str) -> None:
     try:
         await (await journal(hass)).strike(address, value)
-    except Exception as err:  # noqa: BLE001 - a stale entry is replayed harmlessly at the next online
+    except Exception as err:  # noqa: BLE001 - struck in memory; the next start finds the stale entry already paid
         _LOGGER.warning(
-            "Couldn't strike the %s restore for %s off the journal: %s, so the next online replays it, harmlessly",
+            "Couldn't strike Zigbee2MQTT's %s restore for %s off the journal: %s, so the next start strikes it",
             OPTION,
             entity_id,
             describe(err),
@@ -236,7 +238,8 @@ async def _strike(hass: HomeAssistant, address: Address, value: bool, entity_id:
 async def _put_back(hass: HomeAssistant, target: Target, address: Address, fallback: bool) -> None:
     """Restore the user's value, the one the journal owes (fallback when none is), and strike it off once Z2M
     confirmed it."""
-    value = owed if (owed := await _owed(hass, address, target.entity_id)) is not None else fallback
+    found = f"so it puts back {fallback}, the value it found"
+    value = owed if (owed := await _owed(hass, address, target.entity_id, found)) is not None else fallback
     if await _set(hass, target, address, value, restoring=True):
         await _strike(hass, address, value, target.entity_id)
 
