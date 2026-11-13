@@ -24,6 +24,13 @@ _ON_WITH_TIMED_OFF = 0x42
 # tolerance, 3 s.
 _READBACK_SLACK_TENTHS = 30
 
+# A member's unicast read can overtake the groupcast it checks, so one that reads no timer is read again, every
+# _REREAD_S, up to _REREADS times (docs/integrations/zha/internals.md, turn_on_for).
+_REREAD_S = 0.5
+_REREADS = 3
+_NOT_ON = "not_on"
+_NO_TIMER = "timer_not_reported"
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -43,7 +50,8 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
     it silently. So each light is read back either way: a new timer replaces a running one, so reading OnTime
     straight back shows whether ours is running: CONFIRMED when it sits within _READBACK_SLACK_TENTHS under the
     request and OnOff reads on, otherwise SENT with a detail. OnTime alone is not proof: a Tuya TS011F plug stores
-    it as its own countdown and stays off.
+    it as its own countdown and stays off. A group member that reads no timer is read again, as its read can
+    overtake the groupcast.
     """
 
     action: ClassVar[str] = "turn_on_for"
@@ -127,7 +135,14 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
 
         async def read_back(target: Target) -> EntityResult:
             # supports() refused any member without an address, so address() can't be None here.
-            return await self._read_back(hass, target, address(target.entry.unique_id), on_time)
+            addr = address(target.entry.unique_id)
+            result = await self._read_back(hass, target, addr, on_time)
+            for _ in range(_REREADS):
+                if result.detail not in (_NOT_ON, _NO_TIMER):
+                    break
+                await asyncio.sleep(_REREAD_S)
+                result = await self._read_back(hass, target, addr, on_time)
+            return result
 
         return await self.gather(hass, members, read_back)
 
@@ -156,7 +171,7 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
             _LOGGER.debug("%s read-back failed for %s: %s", self.action, target.entity_id, err)
             return self.result(target, Status.SENT, detail="readback_failed")
         if not on_off:
-            return self.result(target, Status.SENT, detail="not_on")
+            return self.result(target, Status.SENT, detail=_NOT_ON)
         if running:
             return self.result(target, Status.CONFIRMED)
-        return self.result(target, Status.SENT, detail="timer_not_reported")
+        return self.result(target, Status.SENT, detail=_NO_TIMER)

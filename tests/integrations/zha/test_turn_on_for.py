@@ -8,7 +8,7 @@ from homeassistant.core import ServiceCall
 from homeassistant.exceptions import HomeAssistantError
 from pytest_homeassistant_custom_component.common import async_mock_service
 
-from custom_components.deviceside.integrations.zha import zcl
+from custom_components.deviceside.integrations.zha import turn_on_for, zcl
 from custom_components.deviceside.integrations.zha.addressing import address
 
 from .conftest import call_as
@@ -29,6 +29,11 @@ def readback(monkeypatch):
     read = AsyncMock(return_value=reads(50))
     monkeypatch.setattr(zcl, "read_attributes", read)
     return read
+
+
+@pytest.fixture(autouse=True)
+def no_reread_wait(monkeypatch):
+    monkeypatch.setattr(turn_on_for, "_REREAD_S", 0)
 
 
 @pytest.fixture
@@ -267,6 +272,42 @@ async def test_a_member_without_on_time_reports_no_timer(
     response = await call(hass, "turn_on_for", {"entity_id": "light.zha_group", "duration": 5})
 
     assert response == {"light.a": CONFIRMED, "light.b": {"status": "sent", "integration": "zha", "detail": detail}}
+    assert [read.args[1].ieee for read in readback.await_args_list].count(B) == 1 + turn_on_for._REREADS
+
+
+@pytest.mark.parametrize("first", [reads(0, on=False), reads(0)])
+async def test_a_member_read_before_the_groupcast_lands_is_read_again(
+    hass, setup_production, two_light_group, group_commands, readback, first
+):
+    """A unicast read can overtake the groupcast: no timer at first, then the timer is running."""
+    late = iter([first, reads(48)])
+    readback.side_effect = lambda hass, addr, *args, **kwargs: next(late) if addr.ieee == B else reads(50)
+
+    response = await call(hass, "turn_on_for", {"entity_id": "light.zha_group", "duration": 5})
+
+    assert response == {"light.a": CONFIRMED, "light.b": CONFIRMED}
+
+
+async def test_a_member_whose_read_fails_is_not_read_again(
+    hass, setup_production, two_light_group, group_commands, readback
+):
+    readback.side_effect = lambda hass, addr, *args, **kwargs: {} if addr.ieee == B else reads(50)
+
+    response = await call(hass, "turn_on_for", {"entity_id": "light.zha_group", "duration": 5})
+
+    assert response["light.b"]["detail"] == "readback_failed"
+    assert [read.args[1].ieee for read in readback.await_args_list].count(B) == 1
+
+
+async def test_a_unicast_is_read_back_once(hass, setup_production, commands, readback):
+    """A unicast returns once the light has taken it, so there is nothing to wait for."""
+    add_zha_entity(hass, zha_entry(hass), "light.bulb")
+    readback.return_value = reads(0)
+
+    response = await call(hass, "turn_on_for", {"entity_id": "light.bulb", "duration": 5})
+
+    assert response["light.bulb"]["detail"] == "timer_not_reported"
+    assert readback.await_count == 1
 
 
 async def test_a_group_zha_no_longer_knows_is_skipped_as_empty(hass, setup_production, zha_groups, group_commands):
