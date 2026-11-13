@@ -60,8 +60,9 @@ lights don't take `set_attributes` yet.
 
 ## Get attributes
 
-On lights other than the Multicolor Bulb, `get_attributes` reports the timer and auto-off/on but not brightness or
-color.
+On every Shelly light, `get_attributes` reports the timer, auto-off/on, brightness, and the color its component
+keeps: color temperature on a CCT light, color on an RGB or RGBW light (with its white mixed in, as Home Assistant
+shows it).
 
 ## Tested devices
 
@@ -87,7 +88,7 @@ turning on, and get attributes. Auto-off and auto-on are Documented on it: see
 
 Gen2+ dimmers (the `Light` component) take the relay's and bulb's timer, auto-off and auto-on calls
 ([Shelly Light API](https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Light/)). On them, get
-attributes reports the timer, auto-off and auto-on, but not brightness. Smooth dimming is Experimental: see
+attributes reports the timer, auto-off, auto-on and brightness. Smooth dimming is Experimental: see
 [Try it: Experimental features](#try-it-experimental-features).
 
 ### Shelly LED controllers

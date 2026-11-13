@@ -8,6 +8,7 @@ from typing import ClassVar
 
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
+from homeassistant.util.color import color_rgbw_to_rgb
 
 from .addressing import CAPABILITIES, RpcComponent, address, unsupported_reason
 from .rpc import get_config, get_status
@@ -36,17 +37,7 @@ def status_row(component: str, status: dict, now: datetime) -> dict:
     # Brightness is the device's percent, as Hue's row is. A field the status lacks leaves its row out.
     if component in _DIMMABLE and "brightness" in status:
         row["brightness"] = status["brightness"]
-    if component == "RGBCCT":
-        # The status carries ct and rgb in either mode; only the active one is reported, as core does.
-        if status.get("mode") == "cct" and "ct" in status:
-            row["color_temp_kelvin"] = status["ct"]
-        elif status.get("mode") == "rgb" and "rgb" in status:
-            row.update(rgb_row(*status["rgb"]))
-    elif component == "CCT":
-        if "ct" in status:
-            row["color_temp_kelvin"] = status["ct"]
-    elif component in ("RGB", "RGBW") and "rgb" in status:
-        row.update(rgb_row(*status["rgb"]))
+    row.update(color_row(component, status))
     if "timer_started_at" in status and "timer_duration" in status:
         duration = status["timer_duration"]
         remaining = status["timer_started_at"] + duration - now.timestamp()
@@ -55,6 +46,20 @@ def status_row(component: str, status: dict, now: datetime) -> dict:
         else:
             _LOGGER.debug("Shelly timer_started_at %s is off HA's clock: no timer row", status["timer_started_at"])
     return row
+
+
+def color_row(component: str, status: dict) -> dict:
+    """The color a component's GetStatus holds, as core's light state shows it; nothing for a field it lacks."""
+    mode = status.get("mode") if component == "RGBCCT" else None
+    # The bulb's status carries ct and rgb in either mode; only the active one is reported, as core does.
+    if (component == "CCT" or mode == "cct") and "ct" in status:
+        return {"color_temp_kelvin": status["ct"]}
+    if (component == "RGB" or mode == "rgb") and "rgb" in status:
+        return rgb_row(*status["rgb"])
+    if component == "RGBW" and "rgb" in status and "white" in status:
+        # As core's light state shows an RGBW light (light/__init__.py): its rgb, hs and xy with the white mixed in.
+        return rgb_row(*color_rgbw_to_rgb(*status["rgb"], status["white"]))
+    return {}
 
 
 def config_row(config: dict) -> dict:

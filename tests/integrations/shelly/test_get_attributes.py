@@ -7,8 +7,9 @@ from unittest.mock import call as rpc_call
 import pytest
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util import dt as dt_util
-from homeassistant.util.color import color_RGB_to_hs, color_RGB_to_xy
+from homeassistant.util.color import color_RGB_to_hs, color_RGB_to_xy, color_rgbw_to_rgb
 
+from custom_components.deviceside.core.color import rgb_row
 from custom_components.deviceside.core.scope import Level
 from custom_components.deviceside.integrations.shelly.get_attributes import ShellyGetAttributes, config_row, status_row
 
@@ -162,6 +163,18 @@ def test_a_status_without_a_field_leaves_its_row_out(component):
     assert status_row(component, {"mode": "rgb"}, NOW) == {}
 
 
+def test_an_rgbw_lights_color_mixes_in_its_white_as_core_shows_it():
+    # Red at full with white at half: core shows the rgb color_rgbw_to_rgb gives, not the pure red of the channels.
+    row = status_row("RGBW", {"rgb": [255, 0, 0], "white": 128}, NOW)
+
+    assert row == rgb_row(*color_rgbw_to_rgb(255, 0, 0, 128))
+    assert row["rgb_color"] != [255, 0, 0]
+
+
+def test_an_rgbw_status_without_its_white_leaves_the_color_out():
+    assert status_row("RGBW", {"brightness": 40, "rgb": [255, 0, 0]}, NOW) == {"brightness": 40}
+
+
 async def test_a_target_that_yields_no_row_is_not_confirmed(hass):
     entry, call_rpc = shelly_device(hass, status={})
     add_shelly_entity(hass, entry, "light.lamp", "light:0")
@@ -175,7 +188,7 @@ async def test_a_target_that_yields_no_row_is_not_confirmed(hass):
 
 @pytest.mark.parametrize(("key", "component"), OTHER_LIGHT_COMPONENTS)
 async def test_each_profile_reports_the_rows_it_has(hass, key, component):
-    entry, call_rpc = shelly_device(hass, status={"brightness": 40, "ct": 4000, "rgb": [255, 0, 0]})
+    entry, call_rpc = shelly_device(hass, status={"brightness": 40, "ct": 4000, "rgb": [255, 0, 0], "white": 0})
     add_shelly_entity(hass, entry, "light.lamp", key)
     await call(hass, "turn_on_for", {"entity_id": "light.lamp", "duration": 5})
 
