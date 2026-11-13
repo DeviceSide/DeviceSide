@@ -31,7 +31,11 @@ class Adapter[RequestT: Request](ABC):
     @property
     def consequence(self) -> str:
         """How a WARNING about this adapter's failure ends: what the user is left with (docs/logging.md)."""
-        return "so its attributes aren't reported" if self.kind is ActionKind.QUERY else "so HA may show the old values"
+        if self.kind is ActionKind.QUERY:
+            return "so its attributes aren't reported"
+        if self.kind is ActionKind.SETTING:
+            return "so the device keeps its old setting"
+        return "so HA may show the old values"
 
     def supports(self, hass: HomeAssistant, request: RequestT, target: Target) -> str | None:
         """None if this adapter can serve the target, else a reason key. Sync and cheap: no I/O.

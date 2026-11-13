@@ -147,9 +147,11 @@ def test_each_adapter_takes_its_actions_kind_which_ends_its_warnings():
     registry = AdapterRegistry.discover()
 
     query, command = registry.adapter("get_attributes", "hue"), registry.adapter("stop", "hue")
+    setting = registry.adapter("set_auto_off", "shelly")
 
     assert query.consequence == "so its attributes aren't reported"
     assert command.consequence == "so HA may show the old values"
+    assert setting.consequence == "so the device keeps its old setting"
 
 
 def test_call_resolvers_are_keyed_by_ha_domain():
