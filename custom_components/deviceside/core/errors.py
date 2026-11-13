@@ -49,6 +49,10 @@ def describe(err: BaseException) -> str:
         return repr(err)
     if isinstance(client, aiohttp.ClientResponseError):
         text = f"{type(client).__name__}(status={client.status}, message={client.message!r})"
+    elif isinstance(client, aiohttp.ClientSSLError):
+        # Its errno is OpenSSL's code, not the OS's; its reason (CERTIFICATE_VERIFY_FAILED) names no address.
+        reason = getattr(client.os_error, "reason", None)
+        text = f"{type(client).__name__}({reason})" if reason else f"{type(client).__name__}()"
     elif isinstance(client, aiohttp.ClientConnectorError) and client.os_error.errno:
         text = f"{type(client).__name__}({errno.errorcode.get(client.os_error.errno, client.os_error.errno)})"
     else:
@@ -63,7 +67,7 @@ def traceback_is_safe(err: BaseException) -> bool:
 
 
 def _client_error(err: BaseException) -> aiohttp.ClientError | None:
-    """The aiohttp error err is or wraps, through its args, cause and context; None if there is none."""
+    """The aiohttp error err is or wraps, through its args, cause, context and a group's exceptions; None if none."""
     seen: set[int] = set()
     pending: list[BaseException] = [err]
     while pending:
@@ -73,5 +77,7 @@ def _client_error(err: BaseException) -> aiohttp.ClientError | None:
         if isinstance(current, aiohttp.ClientError):
             return current
         pending += [arg for arg in current.args if isinstance(arg, BaseException)]
+        if isinstance(current, BaseExceptionGroup):
+            pending += current.exceptions
         pending += [chained for chained in (current.__cause__, current.__context__) if chained is not None]
     return None

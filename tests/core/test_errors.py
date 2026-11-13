@@ -1,6 +1,7 @@
 """describe: an upstream error for a log line, its repr, but never an aiohttp error's URL, headers or host."""
 
 import errno
+import ssl
 
 import aiohttp
 import pytest
@@ -36,6 +37,18 @@ CONNECTION = aiohttp.client_reqrep.ConnectionKey("192.0.2.1", 443, True, True, N
             RuntimeError(aiohttp.ClientConnectorError(CONNECTION, OSError(errno.EHOSTUNREACH, "192.0.2.1"))),
             "RuntimeError(ClientConnectorError(EHOSTUNREACH))",
             id="a_wrapped_one",
+        ),
+        pytest.param(
+            ExceptionGroup(
+                "calls", [aiohttp.ClientConnectorError(CONNECTION, OSError(errno.ECONNREFUSED, "192.0.2.1"))]
+            ),
+            "ExceptionGroup(ClientConnectorError(ECONNREFUSED))",
+            id="one_in_a_group",
+        ),
+        pytest.param(
+            aiohttp.ClientConnectorCertificateError(CONNECTION, ssl.SSLCertVerificationError(1, "192.0.2.1")),
+            "ClientConnectorCertificateError()",
+            id="an_ssl_error_is_no_errno",
         ),
         pytest.param(aiohttp.InvalidURL(URL_), "InvalidURL()", id="another_client_error"),
         pytest.param(TimeoutError(), "TimeoutError()", id="any_other_error_is_its_repr"),
