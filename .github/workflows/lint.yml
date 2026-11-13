@@ -44,6 +44,8 @@ jobs:
         with:
           path: ~/.cache/pre-commit
           key: pre-commit-${{ runner.os }}-py3.14-${{ hashFiles('.pre-commit-config.yaml') }}
+          # A config change restores the last envs: pre-commit reuses the unchanged hooks' and installs the rest.
+          restore-keys: pre-commit-${{ runner.os }}-py3.14-
 
       - name: Run pre-commit
         run: pre-commit run --all-files

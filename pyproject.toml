@@ -44,7 +44,7 @@ dev = [
     "aiohue==4.9.0",
     "pytest-homeassistant-custom-component==0.13.373",
     "pytest-randomly>=5.1.0",
-    # CI runs the suite on the runner's 4 vCPUs (`-n 4`), about half the serial time.
+    # CI runs the suite on one worker per runner vCPU (`-n auto`), about half the serial time.
     "pytest-xdist>=3.6",
     # Bump with ruff-pre-commit's rev in .pre-commit-config.yaml, so the two never disagree.
     "ruff==0.17.2",
