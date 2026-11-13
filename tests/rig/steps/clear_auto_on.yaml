@@ -1,0 +1,17 @@
+# Clearing the persistent auto-on. Plug only, and the entry reload, as in set_auto_off.yaml; the devices start with
+# it clear. A clear on a setting already clear is unit-tested in deviceside (test_auto.py).
+action: clear_auto_on
+rig_seconds: 200
+tests:
+  - name: clears
+    roles: [switch_plug]
+    only: [shelly]
+    steps:
+      - set: {state: on}
+      - call: {action: set_auto_on, duration: 6}
+      - expect_response: {status: expected, integration: self}
+      - call: {}  # waits out the set's entry reload
+      - expect_response: {status: expected, integration: self}
+      - set: {state: off}  # waits out the clear's
+      - wait: duration + 2 * tol
+      - expect_state: {state: off}

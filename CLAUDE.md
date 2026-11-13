@@ -70,9 +70,14 @@ Cutting, tagging and fixing RCs and releases: the `release` skill (`.claude/skil
 ## The rig
 
 The rig, which drives the live HA and writes the records in `docs/integrations/<integration>/test-records/`, is a
-private repo kept out of this one: don't add rig code, step files or rig docs here. When it is attached to the session,
-its `CLAUDE.md` says how to run it.
+private repo kept out of this one: no rig code or rig docs here. The rig's test plan, its step files, named for the
+action they test and landed with that action, has two homes: shared ones in `tests/rig/steps/` need a repo maintainer;
+an integration's own in `tests/integrations/<x>/rig/`, run on `<x>` alone, belong to its maintainers, and repo
+maintainers may adopt them into the shared files. Before adding a case, name what it catches that no existing case or
+unit test does: a different call shape, a live-reply branch, or a firmware fact. When the rig is attached to the
+session, its `CLAUDE.md` says how to run it.
 
 ## Conventions
 
+- Logging: [`docs/logging.md`](docs/logging.md): levels, the per-call DEBUG line, and never a device address.
 - American English, matching HA.

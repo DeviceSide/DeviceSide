@@ -1,0 +1,104 @@
+# Each halt is followed by the move again, so the case also checks the bookkeeping a stop leaves. Samples after a raise
+# or lower read DeviceSide (Hue's prediction, Zigbee2MQTT's and ZHA's live reads), in percent: HA shows a fade's end
+# value at once. A hue cycle's stop is checked in raise_hue.yaml's hue_stop_raise, and here with brightness in
+# halts_brightness_and_hue.
+action: stop
+rig_seconds: 380
+tests:
+  - name: halts_a_raise
+    roles: [light_ct, group]
+    setup:
+      - set: {state: on, brightness_pct: 10}
+      - wait: 1.5  # the set's own fade is still running when the raise starts, and the raise reads its start
+    steps:
+      - call: {action: raise_brightness, sweep_time: 10}
+      - wait: 3
+      - call: {}
+      - expect_response: {status: expected, integration: self}
+      - sample: {attribute: brightness, for: 4, expect: steady, max: 78, source: deviceside}
+      - call: {action: raise_brightness, sweep_time: 10}  # and a raise after the halt carries on from it
+      - sample: {attribute: brightness, for: 2, expect: rising, max: 78, source: deviceside}
+
+  - name: halts_a_lower_to_off  # Hue refuses a dimming stop during a soft off, so it is cut with on + brightness
+    roles: [light_ct, group]
+    setup:
+      - set: {state: on, brightness_pct: 100}
+      - wait: 1.5
+    steps:
+      - call: {action: lower_brightness, sweep_time: 10}
+      - wait: 3
+      - call: {}
+      - expect_response: {status: expected, integration: self}
+      - expect_state: {state: on, within: tol}
+      - sample: {attribute: brightness, for: 4, expect: steady, min: 47, max: 82, source: deviceside}
+      - call: {action: lower_brightness, sweep_time: 10}  # and a lower after the halt carries on from it
+      - sample: {attribute: brightness, for: 2, expect: falling, min: 12, source: deviceside}
+    observe:
+      roles: [light_ct]  # Hue's was watched in #48, and a group gets the same command
+      only: [zigbee2mqtt]
+      see: The light at full, fading slowly toward off, stopped after 3 s.
+      watch: 'The stop: it holds about two thirds up, with no flash, jump or blink off first.'
+      ask: Did it stop part way down and hold there, with no flash, jump or blink off?
+
+  - name: stop_when_idle
+    roles: [light_ct]
+    steps:
+      - set: {state: on, brightness_pct: 50}
+      # ZHA holds a light's reports for 0.5 s after a turn_on, then applies the last: the bulb's report of the
+      # previous case's restore can land there, and HA shows that level until the next report. On Zigbee2MQTT with
+      # hue_native_control on, the set is a Hue bulb's own ~0.4 s fade, which a stop rightly halts: the rig stops
+      # only moves DeviceSide started, so the set's fade ends first.
+      - wait: 2
+        only: [zha, zigbee2mqtt]
+      - call: {}
+      - expect_response: {status: expected}
+      - sample: {attribute: brightness, for: 2, expect: steady}
+
+  # One stop halting a brightness and a color move. A Hue bulb's brightness and color temperature stop let the color
+  # carry on (deviceside's docs/integration-internals.md, Zigbee2MQTT tested behavior), so each attribute is held to its own halt. The color move starts
+  # 1 s after the brightness one, as a second button would.
+  - name: halts_brightness_and_saturation
+    roles: [light_color, group_color]
+    setup:
+      # Green: hue 200° at 90 % is outside a gamut C bulb's reach, which the bridge clamps to about 76 %
+      - set: {state: on, brightness_pct: 20, hs_color: [135, 90]}
+      - wait: 1.5  # the set's fade is still running when the raise starts
+    steps:
+      # 10 % a second for 3 s and 2 s: about 50 % brightness and 70 % saturation at the stop
+      - call: {action: raise_brightness, sweep_time: 10}
+      - wait: 1
+      - call: {action: lower_saturation, sweep_time: 10}
+      - wait: 2
+      - call: {}
+      - expect_response: {status: expected, integration: self}
+      - expect_matches_read: {attributes: [xy_color.0, xy_color.1], tolerance: 0.01, within: 3}
+      - expect_state: {state: on, hs_color.1: {min: 60, max: 82}}
+      - sample: {attribute: brightness, for: 3, expect: steady, min: 38, max: 70, source: deviceside}
+      - expect_matches_read: {attributes: [xy_color.0, xy_color.1], tolerance: 0.01}
+      - expect_state: {state: on, hs_color.1: {min: 60, max: 82}}
+    observe:
+      roles: [light_color]  # the group_color case is automated only
+      see: 'The light at 20 % brightness, hue 135° (green), 90 % saturation. Brightness rises 10 % a second; from 1 s, saturation pales 10 % a second. Both stop at 3 s, near 50 % brightness and 70 % saturation.'
+      watch: 'The stop: brightness and color both hold, with no jump in either and no drift after (on toward white, or a second change a second later). On Hue the halt writes the predicted xy, so whether it jumps is seen, not read.'
+      ask: Did brightness and color both stop where they were and hold, with no jump or drift?
+
+  - name: halts_brightness_and_hue
+    roles: [light_color, group_color]
+    only: [zigbee2mqtt, zha]
+    setup:
+      - set: {state: on, brightness_pct: 20, hs_color: [30, 90]}
+      - wait: 1.5  # the bulb fades into the color (0.4 s on Z2M); a move started mid-fade starts short of the mark
+    steps:
+      - mark_hue: {}
+      # 5 % a second for 3 s and 18° a second for 2 s: about 35 % brightness and 36° round the hue wheel at the stop
+      - call: {action: raise_brightness, sweep_time: 20}
+      - wait: 1
+      - call: {action: raise_hue, sweep_time: 20}
+      - wait: 2
+      - call: {}
+      - expect_response: {status: expected, integration: self}
+      - expect_matches_read: {attributes: [xy_color.0, xy_color.1], tolerance: 0.01, within: 3}
+      - expect_hue_travel: {by: 36, tolerance: 12}
+      - sample: {attribute: brightness, for: 3, expect: steady, min: 25, max: 50, source: deviceside}
+      - expect_matches_read: {attributes: [xy_color.0, xy_color.1], tolerance: 0.01}
+      - expect_hue_travel: {by: 36, tolerance: 12}
