@@ -43,22 +43,32 @@ jobs:
           git fetch --quiet --no-tags origin "refs/pull/${NUMBER}/head"
           python scripts/check_protected.py "$BASE" FETCH_HEAD --author "$AUTHOR"
 
-      # One comment per PR, kept, not repeated on each push.
-      - name: Warn about the manifest.json change
-        if: steps.check.outputs.manifest == 'true'
+      # Each comment once per PR, kept, not repeated on each push.
+      - name: Comment on the PR
+        if: steps.check.outputs.readme == 'true' || steps.check.outputs.manifest == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           NUMBER: ${{ github.event.pull_request.number }}
+          README: ${{ steps.check.outputs.readme }}
+          MANIFEST: ${{ steps.check.outputs.manifest }}
         run: |
-          marker='<!-- protected-files:manifest -->'
-          if gh api "repos/$GH_REPO/issues/$NUMBER/comments" --paginate --jq '.[].body' | grep -qF "$marker"; then
-            exit 0
+          posted=$(gh api "repos/$GH_REPO/issues/$NUMBER/comments" --paginate --jq '.[].body')
+          comment() {  # <marker> <body>
+            grep -qF "$1" <<< "$posted" || gh pr comment "$NUMBER" --body "$1"$'\n'"$2"
+          }
+          if [ "$README" = true ]; then
+            comment '<!-- protected-files:readme -->' "❌ This pull request changes the hand-written text of \`README.md\`
+          (outside its generated feature table and device cards) alongside other files. Please revert that part here and
+          propose it in a separate pull request that changes only \`README.md\`. Regenerating the table and cards with
+          \`scripts/gen_features.py\` and \`scripts/gen_compat.py\` in this pull request is fine."
           fi
-          gh pr comment "$NUMBER" --body "$marker
-          ⚠️ This pull request changes \`custom_components/deviceside/manifest.json\`, which changes only by exception: a
-          core integration in \`after_dependencies\` slows Home Assistant's startup for every user. Please say in the
-          pull request why the change is needed; a repo maintainer will review it."
+          if [ "$MANIFEST" = true ]; then
+            comment '<!-- protected-files:manifest -->' "⚠️ This pull request changes
+          \`custom_components/deviceside/manifest.json\`, which changes only by exception: a core integration in
+          \`after_dependencies\` slows Home Assistant's startup for every user. Please say in the pull request why the
+          change is needed; a repo maintainer will review it."
+          fi
 
       - name: Fail on the README.md change
         if: steps.check.outcome == 'failure'

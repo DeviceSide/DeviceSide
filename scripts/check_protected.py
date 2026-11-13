@@ -15,7 +15,8 @@ reads the PR's files only as data.
 
 Usage: scripts/check_protected.py <base> <head> --author <login>
 
-Exits 1 when the README check fails. Writes `manifest=true|false` to `$GITHUB_OUTPUT` when set.
+Exits 1 when the README check fails. Writes `readme=true|false` (it failed) and `manifest=true|false` (warn) to
+`$GITHUB_OUTPUT` when set, for the workflow's comments.
 """
 
 import argparse
@@ -80,7 +81,7 @@ def main(argv: list[str] | None = None) -> int:
     readme_ok, manifest_changed = check(args.base, args.head, args.author, repo_maintainers())
     if output := os.environ.get("GITHUB_OUTPUT"):
         with open(output, "a") as file:
-            file.write(f"manifest={str(manifest_changed).lower()}\n")
+            file.write(f"readme={str(not readme_ok).lower()}\nmanifest={str(manifest_changed).lower()}\n")
     if manifest_changed:
         print(f"::warning file={MANIFEST}::manifest.json changes by exception; a repo maintainer will review it")
     if not readme_ok:

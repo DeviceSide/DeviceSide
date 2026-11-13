@@ -85,7 +85,7 @@ def test_main_writes_the_output_and_fails_on_the_readme(pr, tmp_path, monkeypatc
     output = tmp_path / "output"
     monkeypatch.setenv("GITHUB_OUTPUT", str(output))
     assert cp.main(["main", "pr", "--author", "alice"]) == 1
-    assert output.read_text() == "manifest=true\n"
+    assert output.read_text() == "readme=true\nmanifest=true\n"
     out = capsys.readouterr().out
     assert "::warning file=custom_components/deviceside/manifest.json" in out
     assert "::error file=README.md" in out
