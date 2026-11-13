@@ -2,7 +2,7 @@
 persistent auto-off / auto-on setting in <Component>.SetConfig, each with a read-back."""
 
 import logging
-from collections.abc import Awaitable, Callable
+from collections.abc import Callable
 from typing import Any, Literal
 
 from homeassistant.core import HomeAssistant, State
@@ -11,6 +11,7 @@ from homeassistant.util.color import color_hs_to_RGB, color_xy_to_RGB
 from .addressing import address, rpc_device
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, LightFields, Status, Target
+from ...core.readback import read_back
 from ...core.scope import DurationLimits
 
 _LOGGER = logging.getLogger(__name__)
@@ -78,24 +79,6 @@ async def get_status(target: Target) -> dict[str, Any]:
     """The target's <Component>.GetStatus; an error propagates."""
     rpc = address(target)
     return await rpc_device(target).call_rpc(f"{rpc.component}.GetStatus", {"id": rpc.id})
-
-
-async def read_back(
-    adapter: Adapter,
-    target: Target,
-    read: Callable[[Target], Awaitable[dict[str, Any]]],
-    judge: Callable[[dict[str, Any]], EntityResult],
-) -> EntityResult:
-    """Read what the device kept after an accepted write and let `judge` rule on it.
-
-    A failed read-back reports SENT: the device accepted the write.
-    """
-    try:
-        held = await read(target)
-    except Exception as err:  # noqa: BLE001 - aioshelly's errors can't be imported here; see addressing.py
-        _LOGGER.debug("%s read-back failed for %s: %r", adapter.action, target.entity_id, err)
-        return adapter.result(target, Status.SENT, detail="readback_failed")
-    return judge(held)
 
 
 async def set_and_read_back(

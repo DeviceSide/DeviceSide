@@ -2,7 +2,7 @@ import asyncio
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator, Awaitable, Callable
-from contextlib import asynccontextmanager
+from contextlib import AbstractAsyncContextManager, asynccontextmanager, nullcontext
 from typing import ClassVar
 
 from homeassistant.core import HomeAssistant
@@ -70,17 +70,21 @@ class Adapter[RequestT: Request](ABC):
         )
 
     @asynccontextmanager
-    async def slot(self, hass: HomeAssistant) -> AsyncIterator[None]:
+    async def slot(self, hass: HomeAssistant, hold: AbstractAsyncContextManager | None = None) -> AsyncIterator[None]:
         """A slot under the integration's and this adapter's concurrency limits, held to the dispatcher's deadline.
 
         Every command to a device runs in one. Past the deadline, waiting for the slot included, it raises
         DeadlinePassed, which the caller reports as REJECTED with timeout for the targets it held; a send's own
         TimeoutError propagates as itself.
+
+        `hold`, a per-device lock, is taken under the same deadline but before the limits, so a call waiting on its
+        device holds no slot another device's call could use. A section under a hold never takes a slot itself: at
+        the cap, it would wait on itself until the deadline.
         """
         integration_limit, adapter_limit = self.limits(hass)
         budget = asyncio.timeout_at(DEADLINE.get())
         try:
-            async with budget, integration_limit, adapter_limit:
+            async with budget, hold or nullcontext(), integration_limit, adapter_limit:
                 yield
         except TimeoutError as err:
             if budget.expired():
@@ -88,9 +92,13 @@ class Adapter[RequestT: Request](ABC):
             raise
 
     async def gather(
-        self, hass: HomeAssistant, targets: list[Target], send: Callable[[Target], Awaitable[EntityResult]]
+        self,
+        hass: HomeAssistant,
+        targets: list[Target],
+        send: Callable[[Target], Awaitable[EntityResult]],
+        hold: Callable[[Target], AbstractAsyncContextManager] | None = None,
     ) -> list[EntityResult]:
-        """Run send() per target, each in its own slot().
+        """Run send() per target, each in its own slot(), under hold(target) when given (see slot()).
 
         An exception from one target becomes that target's REJECTED result and does not affect the others. A target
         not done by the dispatcher's deadline is REJECTED with timeout, so a large room cut short still reports the
@@ -99,7 +107,7 @@ class Adapter[RequestT: Request](ABC):
 
         async def _one(target: Target) -> EntityResult:
             try:
-                async with self.slot(hass):
+                async with self.slot(hass, hold(target) if hold else None):
                     return await send(target)
             except DeadlinePassed:
                 _LOGGER.warning("%s on %s timed out for %s", self.action, self.integration, target.entity_id)

@@ -715,6 +715,44 @@ async def test_integration_semaphore_bounds_concurrency(hass, fake, reset_script
     assert reset_script.max_active == 2  # IntegrationInfo.max_concurrency, below the adapter's 4
 
 
+async def test_a_call_waiting_on_its_devices_hold_holds_no_slot(hass, fake, reset_script):
+    """At the cap of 2, a second call to a locked device waits outside the slots, so another device's call runs."""
+    entity_ids = [add_fake_entity(hass, fake, f"light.{name}") for name in ("a1", "a2", "b")]
+    reset_script.holds = dict.fromkeys(["light.a1", "light.a2"], asyncio.Lock())
+    reset_script.delay = 0.02
+
+    await call(hass, "turn_on_for", {"entity_id": entity_ids, "duration": 5})
+
+    assert reset_script.started == ["light.a1", "light.b", "light.a2"]
+
+
+async def test_a_hold_not_taken_by_the_deadline_is_a_timeout(hass, fake, reset_script):
+    """Waiting on the device counts against the run's deadline, as waiting on a slot does."""
+    add_fake_entity(hass, fake, "light.a1")
+    add_fake_entity(hass, fake, "light.b")
+    held = asyncio.Lock()
+    reset_script.holds = {"light.a1": held}
+
+    async with held:
+        with patch(f"{DISPATCHER}.ADAPTER_TIMEOUT_S", 0.05), pytest.raises(HomeAssistantError) as err:
+            await call(hass, "turn_on_for", {"entity_id": ["light.a1", "light.b"], "duration": 5})
+
+    assert err.value.translation_placeholders == {"summary": "light.a1: timeout"}
+
+
+async def test_a_send_that_raises_releases_its_hold(hass, fake, reset_script):
+    add_fake_entity(hass, fake, "light.a1")
+    add_fake_entity(hass, fake, "light.a2")
+    reset_script.holds = dict.fromkeys(["light.a1", "light.a2"], asyncio.Lock())
+    reset_script.outcomes = {"light.a1": RuntimeError("device gone")}
+
+    with pytest.raises(HomeAssistantError) as err:
+        await call(hass, "turn_on_for", {"entity_id": ["light.a1", "light.a2"], "duration": 5})
+
+    assert err.value.translation_placeholders == {"summary": "light.a1: error"}
+    assert reset_script.started == ["light.a1", "light.a2"]
+
+
 async def test_adapters_on_different_integrations_run_concurrently(hass, fake, reset_script):
     add_fake_entity(hass, fake, "light.a")
     add_fake_entity(hass, fake, "light.lamp", identifier="special_1")

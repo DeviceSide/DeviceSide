@@ -3,8 +3,9 @@
 | | |
 |---|---|
 | Result | pass |
-| Date | 2026-11-11 |
-| Source | rig run (`scripts/rig.py`), commit `3507e87` |
+| Ran | 1 passed, 1 skipped |
+| Date | 2026-11-13 |
+| Source | rig run (`scripts/rig.py`), commit `5aa4aa4` |
 | Home Assistant | 2026.10.4 |
 | Device | Shelly 1 Mini Gen3 (`S3SW-001X8EU`), firmware `20261026-122213/2.0.3-g4601943` |
 
@@ -13,6 +14,8 @@
 | Test | Target | Result |
 |---|---|---|
 | `clears[switch_plug]` | `switch` (switch_plug) | pass |
-| `countdown_survives_a_clear[switch_plug]` | `switch` (switch_plug) | pass (firmware fact) |
+| `countdown_survives_a_clear[switch_plug]` | switch_plug | skipped |
 
-A firmware fact proves the device's behavior, not the adapter's code: its pass stands at the firmware listed under Device, and may come from an earlier commit at that firmware.
+Fact cases run only when asked (--facts), and their results go to [`_facts.md`](_facts.md), never here:
+
+- `countdown_survives_a_clear[switch_plug]`: last on file 2026-11-11, on Shelly 1 Mini Gen3 (`S3SW-001X8EU`), firmware `20261026-122213/2.0.3-g4601943`: pass

@@ -136,6 +136,8 @@ groups.py        HA group expansion, any domain
 dispatcher.py    parse, extract, expand, resolve, plan, run, raise rule, response
 ha_watch.py      drops predictions a light or scene call from HA leaves stale
 transition.py    a move's predicted value, per integration
+level_fade.py    LevelFade: raise and lower from the level the device reports, in one timed set
+readback.py      read_back: the read after an accepted write; a failed read reports sent
 runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, integration state
 ```
 
@@ -175,6 +177,11 @@ Each command runs under two semaphores, applied in `Adapter.gather()`: the integ
 (`IntegrationInfo.max_concurrency`: Hue, ZHA and Matter 2; Shelly and Z2M 4) and the adapter's
 (`AdapterScope.max_concurrency`). Hue is 2 because aiohue's cap of 3 is shared with core. `execute` gets all of an
 adapter's targets at once, so native group commands stay possible.
+
+A per-device lock (`LevelFade.guard`, and the stop that shares it) is `gather`'s `hold`, taken before the slot under
+the same deadline, so a call waiting on its device holds no slot; a section under a hold never takes a slot itself.
+Not built, for when more integrations need per-device ordering: a lock-free per-device stop counter (a move that sees
+a stop land during it sends one more halt), or a per-device command queue.
 
 ### services.yaml, strings, icons
 
