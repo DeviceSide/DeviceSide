@@ -12,7 +12,14 @@ from custom_components.deviceside.core.runtime import get_runtime
 from custom_components.deviceside.integrations.control4 import director as director_module
 from custom_components.deviceside.integrations.control4.director import MOVE_SETTLE_DELAYS_S as SHIPPED_MOVE_DELAYS_S
 from custom_components.deviceside.integrations.control4.director import SETTLE_DELAYS_S as SHIPPED_DELAYS_S
-from custom_components.deviceside.integrations.control4.director import LightLevel, parse_level, whole_percent
+from custom_components.deviceside.integrations.control4.director import (
+    LightLevel,
+    color_temperature,
+    heading_for,
+    kelvin_range,
+    parse_level,
+    whole_percent,
+)
 
 from .conftest import CONFIRMED, LAMP, SENT, dimmable_lamp, ramp
 from ...conftest import call
@@ -420,3 +427,116 @@ def test_brightness_percent_is_read_ahead_of_light_level():
     """The tested lights report Brightness Percent; LIGHT_LEVEL is the fallback when it is absent."""
     assert parse_level({"LIGHT_LEVEL": 10, "Brightness Percent": 40}).brightness == 40
     assert parse_level({"LIGHT_LEVEL": 10}).brightness == 10
+
+
+CCT = "supports_color_correlated_temperature"
+LOW, HIGH = "color_correlated_temperature_min", "color_correlated_temperature_max"
+
+
+def capabilities(value) -> dict:
+    return {"Navigator Dynamic Capabilities": value}
+
+
+@pytest.mark.parametrize(
+    "held",
+    [{}, capabilities({"DynamicCapabilities": {CCT: False}}), capabilities({"DynamicCapabilities": {CCT: "true"}})],
+    ids=["no_capabilities_variable", "says_it_takes_none", "support_as_text"],
+)
+def test_a_light_that_claims_no_color_temperature_has_no_range(held):
+    assert kelvin_range(held) is None
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "not json",
+        "[]",
+        {"other": {}},
+        {"DynamicCapabilities": {CCT: True, LOW: 2200}},
+        {"DynamicCapabilities": {CCT: True, LOW: 0, HIGH: 0}},
+        {"DynamicCapabilities": {CCT: True, LOW: 6500, HIGH: 2200}},
+        {"DynamicCapabilities": {CCT: True, LOW: 2200, HIGH: "inf"}},
+        {"DynamicCapabilities": {CCT: True, LOW: "nan", HIGH: 6500}},
+    ],
+    ids=[
+        "text_that_isnt_json",
+        "json_that_isnt_an_object",
+        "no_capabilities_in_it",
+        "no_maximum",
+        "empty",
+        "reversed",
+        "endless",
+        "not_a_number",
+    ],
+)
+def test_capabilities_that_cant_be_read_or_give_no_real_range_raise(value):
+    """A light that can't say isn't passed off as one that says it lacks the field."""
+    with pytest.raises(ValueError):
+        kelvin_range(capabilities(value))
+
+
+def test_a_range_of_one_kelvin_is_a_range():
+    assert kelvin_range(capabilities({"DynamicCapabilities": {CCT: True, LOW: 2700, HIGH: 2700}})) == (2700, 2700)
+
+
+def test_a_fractional_range_is_whole_kelvins():
+    assert kelvin_range(capabilities({"DynamicCapabilities": {CCT: True, LOW: 2202.6, HIGH: "6536.4"}})) == (2203, 6536)
+
+
+@pytest.mark.parametrize(
+    ("held", "heading"),
+    [
+        ({"Target CCT": 2700.4, "Target Color Mode": 1}, True),
+        ({"Target CCT": 2699.6, "Target Color Mode": 1}, True),
+        ({"Target CCT": 2700, "Target Color Mode": 1}, True),
+        ({"Target CCT": 2710, "Target Color Mode": 1}, False),
+        ({"Target CCT": 2690, "Target Color Mode": 1}, False),
+        ({"Current CCT": 2700, "Current Color Mode": 1}, True),
+        ({"Current CCT": 2690, "Current Color Mode": 1}, False),
+        ({"Target CCT": 2700, "Target Color Mode": 0, "Current Color Mode": 1}, False),
+        ({"Target CCT": 2700, "Current Color Mode": 1}, False),
+        ({"Target CCT": 3200, "Target Color Mode": 1, "Current CCT": "2700", "Current Color Mode": 1}, True),
+        ({"Current CCT": 2700, "Current Color Mode": 0, "Target Color Mode": 1}, False),
+        ({"Target CCT": "nan", "Target Color Mode": 1}, False),
+        ({"Target CCT": "inf", "Target Color Mode": 1, "Current CCT": "nan", "Current Color Mode": 1}, False),
+        ({}, False),
+    ],
+    ids=[
+        "target_rounds_to_it",
+        "target_rounds_up_to_it",
+        "target_is_its_tens",
+        "target_a_step_above",
+        "target_a_step_below",
+        "current_is_its_tens",
+        "current_a_step_below",
+        "target_in_full_color",
+        "target_mode_not_reported",
+        "already_at_it",
+        "at_it_in_full_color",
+        "target_not_a_number",
+        "nothing_finite",
+        "nothing_reported",
+    ],
+)
+def test_heading_for_takes_the_target_or_the_current_each_with_its_own_mode(held, heading):
+    assert heading_for(held, 2705) is heading
+
+
+@pytest.mark.parametrize(
+    ("held", "kelvin"),
+    [
+        ({"Current CCT": 2700.4, "Current Color Mode": 1}, 2700),
+        ({"Current CCT": "3200", "Current Color Mode": "1"}, 3200),
+        ({"Current CCT": 2700, "Current Color Mode": 0}, None),
+        ({"Current CCT": 2700, "Current Color Mode": 2}, None),
+        ({"Current CCT": 2700}, None),
+        ({"Current CCT": 0, "Current Color Mode": 1}, None),
+        ({"Current CCT": "nan", "Current Color Mode": 1}, None),
+        ({"Current Color Mode": 1}, None),
+    ],
+    ids=["fractional", "as_text", "full_color", "another_mode", "no_mode", "zero", "not_a_number", "none_reported"],
+)
+def test_color_temperature_is_a_whole_kelvin_in_color_temperature_mode_only(held, kelvin):
+    found = color_temperature(held)
+    assert found == kelvin
+    assert type(found) is type(kelvin)
