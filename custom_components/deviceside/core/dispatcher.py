@@ -217,14 +217,25 @@ class Dispatcher:
                 raw = await adapter.execute(self.hass, request, targets)
         except TimeoutError:
             _LOGGER.warning(
-                "%s on %s timed out after %ss",
+                "%s on %s timed out after %ss for %s, %s",
                 adapter.action,
                 adapter.integration,
                 ADAPTER_TIMEOUT_S + ADAPTER_BACKSTOP_S,
+                ", ".join(target.reported_id for target in targets),
+                adapter.consequence,
             )
             return [adapter.result(target, Status.REJECTED, detail="timeout") for target in targets]
-        except Exception:
-            _LOGGER.exception("%s on %s failed", adapter.action, adapter.integration)
+        except Exception as err:
+            # A warning, not _LOGGER.exception (docs/logging.md): the traceback rides along for the bug report.
+            _LOGGER.warning(
+                "%s on %s failed for %s: %r, %s",
+                adapter.action,
+                adapter.integration,
+                ", ".join(target.reported_id for target in targets),
+                err,
+                adapter.consequence,
+                exc_info=True,
+            )
             return [adapter.result(target, Status.REJECTED, detail="error") for target in targets]
         return self._reconcile(adapter, targets, raw, clamped_to, dropped)
 

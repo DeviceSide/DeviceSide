@@ -78,7 +78,9 @@ class AdapterRegistry:
             if cls.capability is Adapter.capability and cls.scope.capabilities is not None:
                 # Its calls would name no capability, which level() weighs as Experimental: every call refused.
                 raise ValueError(f"{cls.__name__} lists capabilities in its scope but names none")
-            self._adapters[(cls.action, info.key)] = cls()
+            adapter = cls()
+            adapter.kind = self.actions[cls.action].kind
+            self._adapters[(cls.action, info.key)] = adapter
 
     def _add_unavailable(self, key: str, reason: str) -> None:
         self.integrations[key] = IntegrationInfo(

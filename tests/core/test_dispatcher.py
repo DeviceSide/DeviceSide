@@ -239,7 +239,7 @@ def in_area(hass, area: str, *entity_ids: str) -> str:
     return area_id
 
 
-async def test_a_device_failure_raises_once_every_target_has_run(hass, fake, reset_script):
+async def test_a_device_failure_raises_once_every_target_has_run(hass, fake, reset_script, caplog):
     for entity_id in ("light.a", "light.b", "light.c"):
         add_fake_entity(hass, fake, entity_id)
     reset_script.outcomes["light.b"] = RuntimeError("radio busy")
@@ -251,9 +251,13 @@ async def test_a_device_failure_raises_once_every_target_has_run(hass, fake, res
     assert err.value.translation_key == "targets_failed"
     assert err.value.translation_placeholders == {"summary": "light.b: error, light.c: rejected"}
     assert reset_script.calls[0][3] == ["light.a", "light.b", "light.c"]
+    assert (
+        "turn_on_for on fake failed for light.b: RuntimeError('radio busy'), so HA may show the old values"
+        in caplog.text
+    )
 
 
-async def test_an_unauthorized_target_is_rejected_as_admin_required_and_the_rest_run(hass, fake, reset_script):
+async def test_an_unauthorized_target_is_rejected_as_admin_required_and_the_rest_run(hass, fake, reset_script, caplog):
     for entity_id in ("light.a", "light.b"):
         add_fake_entity(hass, fake, entity_id)
     reset_script.outcomes["light.a"] = Unauthorized()
@@ -264,6 +268,9 @@ async def test_an_unauthorized_target_is_rejected_as_admin_required_and_the_rest
     assert err.value.translation_key == "targets_failed"
     assert err.value.translation_placeholders == {"summary": "light.a: admin_required"}
     assert reset_script.calls[0][3] == ["light.a", "light.b"]
+    assert "turn_on_for on fake refused for light.a: it needs an admin user, so HA may show the old values" in (
+        caplog.text
+    )
 
 
 @pytest.mark.usefixtures("experimental_option")
@@ -619,7 +626,7 @@ async def test_a_request_left_nothing_to_do_is_unchanged_and_sends_nothing(hass,
     assert reset_script.calls[0][3] == ["light.dim"]
 
 
-async def test_adapter_exception_and_timeout_reject_every_target(hass, fake, reset_script):
+async def test_adapter_exception_and_timeout_reject_every_target(hass, fake, reset_script, caplog):
     add_fake_entity(hass, fake, "light.a")
     add_fake_entity(hass, fake, "switch.b")
     data = {"entity_id": ["light.a", "switch.b"], "duration": 5}
@@ -628,6 +635,12 @@ async def test_adapter_exception_and_timeout_reject_every_target(hass, fake, res
     with pytest.raises(HomeAssistantError) as err:
         await call(hass, "turn_on_for", data)
     assert err.value.translation_placeholders == {"summary": "light.a: error, switch.b: error"}
+    # A warning with its traceback, not _LOGGER.exception, which docs/logging.md keeps for background callbacks.
+    [record] = [r for r in caplog.records if r.name.endswith("core.dispatcher")]
+    assert record.levelno == logging.WARNING and record.exc_info is not None
+    assert record.getMessage() == (
+        "turn_on_for on fake failed for light.a, switch.b: RuntimeError('bridge gone'), so HA may show the old values"
+    )
 
     reset_script.execute_error = None
     reset_script.delay = 1
@@ -636,7 +649,7 @@ async def test_adapter_exception_and_timeout_reject_every_target(hass, fake, res
     assert err.value.translation_placeholders == {"summary": "light.a: timeout, switch.b: timeout"}
 
 
-async def test_a_timeout_keeps_the_results_of_the_targets_that_finished(hass, fake, reset_script):
+async def test_a_timeout_keeps_the_results_of_the_targets_that_finished(hass, fake, reset_script, caplog):
     add_fake_entity(hass, fake, "light.fast")
     add_fake_entity(hass, fake, "light.slow")
     reset_script.delays = {"light.slow": 1}
@@ -646,9 +659,10 @@ async def test_a_timeout_keeps_the_results_of_the_targets_that_finished(hass, fa
 
     # light.fast was sent and isn't reported failed: only the light still going when time ran out is.
     assert err.value.translation_placeholders == {"summary": "light.slow: timeout"}
+    assert "turn_on_for on fake timed out for light.slow, so HA may show the old values" in caplog.text
 
 
-async def test_an_execute_busy_outside_gather_past_the_backstop_times_out_every_target(hass, fake):
+async def test_an_execute_busy_outside_gather_past_the_backstop_times_out_every_target(hass, fake, caplog):
     add_fake_entity(hass, fake, "light.a")
     add_fake_entity(hass, fake, "light.b")
 
@@ -664,6 +678,9 @@ async def test_an_execute_busy_outside_gather_past_the_backstop_times_out_every_
         await call(hass, "turn_on_for", {"entity_id": ["light.a", "light.b"], "duration": 5})
 
     assert err.value.translation_placeholders == {"summary": "light.a: timeout, light.b: timeout"}
+    assert "turn_on_for on fake timed out after 0.02s for light.a, light.b, so HA may show the old values" in (
+        caplog.text
+    )
 
 
 async def test_missing_stray_and_untargeted_results_are_reconciled(hass, fake):

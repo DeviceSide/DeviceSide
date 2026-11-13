@@ -8,7 +8,7 @@ from typing import ClassVar
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import Unauthorized
 
-from .models import EntityResult, Request, Status, Target
+from .models import ActionKind, EntityResult, Request, Status, Target
 from .runtime import DEADLINE, get_runtime
 from .scope import AdapterScope
 
@@ -25,6 +25,13 @@ class Adapter[RequestT: Request](ABC):
     action: ClassVar[str]
     integration: ClassVar[str]
     scope: ClassVar[AdapterScope]
+    # The action's kind, which the registry sets from the action; it decides how a failure's WARNING ends.
+    kind: ActionKind = ActionKind.COMMAND
+
+    @property
+    def consequence(self) -> str:
+        """How a WARNING about this adapter's failure ends: what the user is left with (docs/logging.md)."""
+        return "so its attributes aren't reported" if self.kind is ActionKind.QUERY else "so HA may show the old values"
 
     def supports(self, hass: HomeAssistant, request: RequestT, target: Target) -> str | None:
         """None if this adapter can serve the target, else a reason key. Sync and cheap: no I/O.
@@ -102,14 +109,29 @@ class Adapter[RequestT: Request](ABC):
                 async with self.slot(hass):
                     return await send(target)
             except DeadlinePassed:
-                _LOGGER.warning("%s on %s timed out for %s", self.action, self.integration, target.entity_id)
+                _LOGGER.warning(
+                    "%s on %s timed out for %s, %s", self.action, self.integration, target.entity_id, self.consequence
+                )
                 return self.result(target, Status.REJECTED, detail="timeout")
             except Unauthorized:
-                _LOGGER.warning("%s on %s: %s needs an admin user", self.action, self.integration, target.entity_id)
+                _LOGGER.warning(
+                    "%s on %s refused for %s: it needs an admin user, %s",
+                    self.action,
+                    self.integration,
+                    target.entity_id,
+                    self.consequence,
+                )
                 return self.result(target, Status.REJECTED, detail="admin_required")
             except Exception as err:  # noqa: BLE001 - one device's failure must not abort the room
                 # repr, not str: a timeout's message is empty, and only its type says what went wrong
-                _LOGGER.warning("%s on %s failed for %s: %r", self.action, self.integration, target.entity_id, err)
+                _LOGGER.warning(
+                    "%s on %s failed for %s: %r, %s",
+                    self.action,
+                    self.integration,
+                    target.entity_id,
+                    err,
+                    self.consequence,
+                )
                 return self.result(target, Status.REJECTED, detail="error")
 
         return list(await asyncio.gather(*(_one(target) for target in targets)))
