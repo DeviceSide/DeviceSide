@@ -26,21 +26,12 @@ def fade_scope() -> AdapterScope:
     )
 
 
-def fade_seconds(distance: float, sweep_time: float) -> float:
-    """How long a fade over `distance` percent takes at the sweep_time's speed, at least the device's shortest."""
-    return round(max(distance / 100 * sweep_time, TRANSITION_LIMITS.min_s), _DURATION_DIGITS)
-
-
 class ShellyFade(RpcComponent, LevelFade):
-    """A GetStatus for the device's level, then one Set to the limit (or range end) with a transition for the distance
-    left; the device runs the fade (core.level_fade).
+    """core.level_fade's read and set: a GetStatus for the level, then one Set with a transition for the distance left.
 
-    The device reports its level exactly mid-fade (rig, 8 Nov), so a move after a stop or mid-fade starts from where
-    the light is, with no prediction kept, and a change made elsewhere can't leave one stale. Raising turns a light
-    that is off on, fading in from the bottom; lowering passes it by, unchanged with off. Lowering to 0 is the
-    device's soft off. A sweep_time outside what a full-range fade can take on the device (0.5 to 10800 s) is clamped,
-    with clamped_to; a shorter fade than the device's shortest runs at that, unreported. A relay shown as a light
-    lacks brightness, so the dispatcher leaves it unchanged with fields_dropped.
+    The device reports its level exactly mid-fade (rig, 8 Nov), which is what LevelFade relies on. Lowering to 0 is
+    the device's soft off. A full-range fade takes 0.5 to 10800 s (TRANSITION_LIMITS). A relay shown as a light lacks
+    brightness, so the dispatcher leaves it unchanged with fields_dropped.
     """
 
     integration: ClassVar[str] = "shelly"
@@ -52,11 +43,10 @@ class ShellyFade(RpcComponent, LevelFade):
 
     async def read(self, hass: HomeAssistant, target: Target) -> tuple[bool, float]:
         status = await get_status(target)
-        lit = bool(status["output"])
-        return lit, status["brightness"] if lit else 0.0
+        return bool(status["output"]), status["brightness"]
 
     async def fade_to(self, hass: HomeAssistant, target: Target, end: float, seconds: float) -> None:
         await set_fade(hass, target, end, seconds)
 
     def seconds(self, distance: float, sweep_time: float) -> float:
-        return fade_seconds(distance, sweep_time)
+        return round(super().seconds(distance, sweep_time), _DURATION_DIGITS)

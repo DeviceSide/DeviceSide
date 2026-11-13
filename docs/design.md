@@ -136,6 +136,8 @@ groups.py        HA group expansion, any domain
 dispatcher.py    parse, extract, expand, resolve, plan, run, raise rule, response
 ha_watch.py      drops predictions a light or scene call from HA leaves stale
 transition.py    a move's predicted value, per integration
+level_fade.py    LevelFade: raise and lower from the level the device reports, in one timed set
+readback.py      read_back: the read after an accepted write; a failed read reports sent
 runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, integration state
 ```
 

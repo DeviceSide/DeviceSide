@@ -24,7 +24,8 @@ class LevelFade(Adapter["RampRequest"]):
     The level is the device's own, so a move after a stop or mid-fade starts from where the light is, and a change
     made elsewhere can't leave a prediction stale. Raising turns a light that is off on, fading in from the bottom;
     lowering passes it by, unchanged with off. A move with less than `min_step` left is unchanged with at_limit. A
-    sweep_time outside what a full-range fade can take on the device (`fade_limits`) is clamped, with clamped_to.
+    sweep_time outside what a full-range fade can take on the device (`fade_limits`) is clamped, with clamped_to; a
+    fade shorter than the device's shortest runs at that, unreported.
     """
 
     # What a full-range fade can take on the device.
@@ -46,8 +47,8 @@ class LevelFade(Adapter["RampRequest"]):
         """One set fading to `end` percent over `seconds`; 0 ends off."""
 
     def seconds(self, distance: float, sweep_time: float) -> float:
-        """How long a fade over `distance` percent takes at the sweep_time's speed."""
-        return distance / 100 * sweep_time
+        """How long a fade over `distance` percent takes at the sweep_time's speed, at least the device's shortest."""
+        return max(distance / 100 * sweep_time, self.fade_limits.min_s)
 
     def guard(self, hass: HomeAssistant, target: Target) -> AbstractAsyncContextManager:
         """Held from the read to the set, for an integration whose stop must not slip in between them."""

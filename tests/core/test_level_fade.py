@@ -64,6 +64,10 @@ def test_a_fade_takes_its_share_of_the_sweep_time():
     assert PlainFade().seconds(distance=25, sweep_time=4) == 1.0
 
 
+def test_a_fade_runs_at_least_the_devices_shortest():
+    assert PlainFade().seconds(distance=5, sweep_time=4) == 0.5
+
+
 def test_a_scope_refusal_comes_before_the_integrations_own():
     with patch.object(Adapter, "supports", return_value="domain_not_tested"):
         assert PlainFade().supports(None, ramp(), None) == "domain_not_tested"
@@ -135,7 +139,7 @@ async def test_a_light_already_at_the_limit_is_unchanged(caplog):
     )
 
 
-@pytest.mark.parametrize(("asked", "clamped", "seconds"), [(0.1, 0.5, 0.3), (600, 60, 36.0)])
+@pytest.mark.parametrize(("asked", "clamped", "seconds"), [(0.1, 0.5, 0.5), (600, 60, 36.0)])
 async def test_a_sweep_time_outside_the_devices_range_is_clamped_and_reported(asked, clamped, seconds):
     """Clamped to what a full-range fade can take, and the fade is timed at the clamped speed."""
     fade = PlainFade()
