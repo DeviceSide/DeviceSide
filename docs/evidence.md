@@ -5,21 +5,11 @@ for these rules; other docs point here. Settled in [the evidence-rules plan](pla
 
 ## Transition
 
-These rules apply from 2026-11-12, but the code that enforces the old ones is removed in steps 2–5 of the plan. Until
-each step lands, its old gate keeps running, and work satisfies it. The old rules are in CLAUDE.md at `5aae1fe`
-(§ Release flag) and in `scripts/check_release.py`'s docstring.
-
-- **Runtime (step 2):** landed. `Level.REPORTED`, the `unmaintained`, `stale_tests` and `siblings` fields and the
-  wire and scope traces are gone; `experimental=True` gates at runtime, and `caveat` holds Untested fix or Unmaintained.
-- **Rig (step 3, landed with step 2):** records no longer carry `Covers` or `## Shared coverage`, so `--records`
-  refuses them until step 4. Observed and firmware-fact results go to each bundle's `test-records/_facts.md`.
-- **Release gate (step 4):** `check_release.py --release` (the Untested fix caveat check, and it still refuses an
-  `experimental=True` adapter until step 4) and `--records` (record freshness, `FLAGS`, shared coverage, `Covers`,
-  report retests). The coverage bar still covers each adapter's code
-  (`adapter_code`), as CONTRIBUTING's "every module of your adapter code" says, not every module the Coverage bullet
-  below names.
-- **Cards (step 5):** `gen_compat.py`'s record-freshness rule for Verified, the "Experimental (in RCs only)" label
-  and its rule leaving flagged adapters out of the cards (`IN_RCS`), and the rework into the new tiers.
+These rules apply from 2026-11-12. Steps 2–4 of the plan (runtime, rig, release gate) have landed; until step 5 lands,
+the cards' old rules keep running: `gen_compat.py`'s record-freshness rule for Verified (a record counts only while
+its integration's package and `core/` are as at its commit), the "Experimental (in RCs only)" label and its rule
+leaving flagged adapters out of the cards (`IN_RCS`), and the rework into the new tiers. The old rules are in
+CLAUDE.md at `5aae1fe` (§ Release flag).
 
 No RC is cut until step 5 lands.
 
@@ -115,12 +105,14 @@ A deprecation gets a hand-written note in that release's notes, not a caveat.
 
 ## Release gate
 
-Each integration whose package (`custom_components/deviceside/integrations/<x>/`) changed since the last release tag
-needs a sign-off at or after its last change. Any change counts, flags included.
+Each integration whose package (`custom_components/deviceside/integrations/<x>/`) differs from the last release tag
+needs a sign-off at or after its last change. Any change counts, flags included; a reverted one is none.
 
 - **A sign-off** is a passing test record, or a `_manual.md` line, whose commit has the package's last change as an
-  ancestor. It may say "no call changed". It comes from one of the integration's maintainers, or a repo maintainer
-  when none responds.
+  ancestor and holds the package as the release does. It may say "no call changed". It comes from one of the
+  integration's maintainers, or a repo maintainer when none responds.
+- **Sign off after merge.** `main` squash-merges, so a PR branch's commits never reach it: a sign-off cites a commit on
+  `main` (or a `release/` branch) at or after the change, and lands in a later PR.
 - **Prefer the rig.** Where the rig covers an integration, the sign-off is a rig run: it is repeatable and catches what
   a person doesn't. A manual line is the fallback for integrations the rig can't reach, or when the rig is broken; a
   manual sign-off on a rig-covered integration says why in its PR. This is guidance, not a gate check. Rig evidence is
@@ -130,12 +122,13 @@ needs a sign-off at or after its last change. Any change counts, flags included.
   sign-off: unit tests, the RC soak and tenet 5 cover them.
 - **RCs need no sign-off.** The gate runs only at `cut-release`. An RC's notes list each integration changed without a
   sign-off, with a link to the device report form, so an RC can carry an unsigned fix for others to test. But
-  `cut-release` checks the latest RC's commit, so land the sign-offs or caveats before the last RC.
-- **No sign-off at the cut:** `cut-release` fails unless a changed adapter of that integration carries a caveat. A
-  repo maintainer picks whichever is most likely to work for users (tenet 1): hold the fix back (revert it, or leave
-  it out of the release branch) when the current code mostly works; ship it marked ⚠️ Untested fix when the current
-  code is broken and the fix is low-risk; or put it behind `experimental` when it is risky. Review checks that the
-  right adapters carry the caveat.
+  `cut-release` checks the latest RC's commit, so land the sign-offs or Untested fix caveats before the last RC.
+- **No sign-off at the cut:** `cut-release` fails unless every changed adapter of that integration carries ⚠️
+  Untested fix; no other caveat, nor the `experimental` flag alone, stands in. A change to a package module that is no
+  adapter's (a shared helper) changes every adapter of the package. A repo maintainer picks whichever is most likely
+  to work for users (tenet 1): hold the fix back (revert it, or leave it out of the release branch) when the current
+  code mostly works; ship it marked ⚠️ Untested fix when the current code is broken and the fix is low-risk; or, when
+  it is risky, put it behind `experimental` and mark it ⚠️ Untested fix.
 - Records keep a `Covers` row as information if the rig writes one. Nothing checks it.
 - **Coverage:** every module under `core/` and `integrations/`, bar `__init__.py`, needs at least 95% line coverage;
   CI checks it.
@@ -154,6 +147,6 @@ model ids (`docs/models.yaml`, never a household's device names) and what passed
     | 2026-11-12 | `1a2b3c4` | @handle | `S3SW-001X8EU`, `S3BL-C010007AEU` | `turn_on_for`, `set_auto_off` |
 
 A change that sends no new call signs off with a row whose Devices holds a dash and whose Passed holds exactly
-`no call changed`; step 4's parser accepts it. *Example:* a log-wording change in a Shelly adapter:
+`no call changed`. *Example:* a log-wording change in a Shelly adapter:
 
     | 2026-11-12 | `1a2b3c4` | @handle | - | no call changed |
