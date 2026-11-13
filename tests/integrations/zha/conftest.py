@@ -1,3 +1,5 @@
+import logging
+import re
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -14,7 +16,7 @@ from custom_components.deviceside.const import DOMAIN
 from custom_components.deviceside.integrations.zha import zcl
 from custom_components.deviceside.integrations.zha.fade import transition_cache
 
-from ...conftest import Clock, unload_mock_entries
+from ...conftest import Clock, leaked, unload_mock_entries
 from ...fixtures.zha import IEEE, add_zha_entity, zha_entry, zha_group
 
 SENT = {"status": "sent", "integration": "zha"}
@@ -27,6 +29,18 @@ RESTORE_60 = (0x0008, 0x00, {"level": 152, "transition_time": 0, "options_mask":
 
 
 unload_mock_zha_entries = unload_mock_entries("zha")
+
+
+# A ZHA IEEE as HA and zha write it (00:17:88:01:02:03:04:05), which a log line never names (docs/logging.md).
+_IEEE = re.compile(r"\b(?:[0-9a-fA-F]{2}:){7}[0-9a-fA-F]{2}\b")
+
+
+@pytest.fixture(autouse=True)
+def no_ieee_logged(caplog):
+    """Every ZHA test runs at DEBUG and fails if a log line names a device's IEEE."""
+    caplog.set_level(logging.DEBUG, logger="custom_components.deviceside")
+    yield
+    assert not leaked(caplog, _IEEE.search)
 
 
 @pytest.fixture(autouse=True)

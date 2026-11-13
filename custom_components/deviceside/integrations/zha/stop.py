@@ -12,6 +12,7 @@ from . import zcl
 from .addressing import unsupported_reason
 from .fade import end_key, has_color, hue_moves, refresh, send_each, soft_off_restores, transition_cache, units
 from ...core.adapter import Adapter, DeadlinePassed
+from ...core.errors import describe
 from ...core.models import EntityResult, Request, Status, Target
 from ...core.runtime import get_runtime
 from ...core.scope import AdapterScope, verified
@@ -111,7 +112,9 @@ class ZHAStop(Adapter[Request]):
             return [*off, *(self.result(light, Status.REJECTED, detail="timeout") for light in halting)]
         if errors := {light_id: err for light_id, err in failed.items() if not isinstance(err, Unauthorized)}:
             _LOGGER.warning(
-                "stop on zha failed for %s", ", ".join(f"{light_id}: {err!r}" for light_id, err in errors.items())
+                "stop on zha failed for %s, %s",
+                ", ".join(f"{light_id}: {describe(err)}" for light_id, err in errors.items()),
+                self.consequence,
             )
         halted = [light for light in halting if light.entity_id not in failed]
         halted_ids = {light.entity_id for light in halted}

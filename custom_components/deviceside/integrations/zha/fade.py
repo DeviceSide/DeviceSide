@@ -307,8 +307,8 @@ class ZHARamp(Adapter[RampRequest]):
             _LOGGER.warning("%s on zha failed for %s: %s", self.action, names(lights), describe(err))
             return each(Status.REJECTED, detail="error")
         if errors := {light_id: err for light_id, err in failed.items() if not isinstance(err, Unauthorized)}:
-            why = ", ".join(f"{light_id}: {err!r}" for light_id, err in errors.items())
-            _LOGGER.warning("%s on zha failed for %s", self.action, why)
+            why = ", ".join(f"{light_id}: {describe(err)}" for light_id, err in errors.items())
+            _LOGGER.warning("%s on zha failed for %s, %s", self.action, why, self.consequence)
         moved = {light.entity_id for light in outcome.movers}
         return [self._result(light, moved, failed, clamped_to) for light in lights]
 

@@ -161,7 +161,7 @@ async def test_entity_without_a_light_unique_id_is_not_addressable(hass, setup_p
     assert await refusal(hass, "turn_on_for", {"entity_id": "light.quirk", "duration": 5}) == "not_addressable"
 
 
-async def test_zha_error_rejects_that_target(hass, setup_production, turn_ons):
+async def test_zha_error_rejects_that_target(hass, setup_production, turn_ons, caplog):
     entry = zha_entry(hass)
     add_zha_entity(hass, entry, "light.gone", ieee="00:00:00:00:00:00:00:01")
     add_zha_entity(hass, entry, "light.bulb")
@@ -178,6 +178,8 @@ async def test_zha_error_rejects_that_target(hass, setup_production, turn_ons):
 
     assert raised.value.translation_key == "targets_failed"
     assert "light.gone: error" in raised.value.translation_placeholders["summary"]
+    # ZHA's error names the IEEE; the log line names the entity instead.
+    assert "failed for light.gone: LookupError('ZHA device of light.gone not found')" in caplog.text
 
 
 BULB_FOR_5 = {"entity_id": "light.bulb", "duration": 5}
