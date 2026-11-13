@@ -973,6 +973,7 @@ dev = [
     { name = "aiohue" },
     { name = "pytest-homeassistant-custom-component" },
     { name = "pytest-randomly" },
+    { name = "pytest-xdist" },
     { name = "ruff" },
 ]
 
@@ -983,6 +984,7 @@ dev = [
     { name = "aiohue", specifier = "==4.9.0" },
     { name = "pytest-homeassistant-custom-component", specifier = "==0.13.373" },
     { name = "pytest-randomly", specifier = ">=5.1.0" },
+    { name = "pytest-xdist", specifier = ">=3.6" },
     { name = "ruff", specifier = "==0.17.2" },
 ]
 

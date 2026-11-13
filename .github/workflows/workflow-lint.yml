@@ -2,10 +2,14 @@
 # zizmor checks security.
 name: Workflow lint
 
+# Only when a workflow changes. pre-commit's actionlint and zizmor hooks already lint every PR; this adds zizmor's online
+# audits. Not a required check, so a PR that skips it isn't left pending.
 on:
   pull_request:
+    paths: [".github/workflows/**"]
   push:
     branches: [main]
+    paths: [".github/workflows/**"]
 
 permissions:
   contents: read

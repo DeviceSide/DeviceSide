@@ -37,6 +37,16 @@ jobs:
       - name: Install pre-commit
         run: uv pip install --system pre-commit
 
+      # Installing the hook environments is nearly all of the job's time (70 s of the hooks' 1 s); they change only with
+      # the config.
+      - name: Cache pre-commit environments
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0 # zizmor: ignore[cache-poisoning] publishes no artifacts, releases come from cut-release*
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ runner.os }}-py3.14-${{ hashFiles('.pre-commit-config.yaml') }}
+          # A config change restores the last envs: pre-commit reuses the unchanged hooks' and installs the rest.
+          restore-keys: pre-commit-${{ runner.os }}-py3.14-
+
       - name: Run pre-commit
         run: pre-commit run --all-files
 
