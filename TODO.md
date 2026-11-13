@@ -40,11 +40,11 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   `sets_color_while_off`; ZHA `hue_stop_raise`, `halts_brightness_and_saturation` and `sets_color_while_off`; Z2M
   `halts_a_lower_to_off`, `hue_stop_raise`, `halts_brightness_and_saturation` and `sets_color_while_off`. Unattended alongside:
   Z2M `lower_hue` `cycles_down_the_wheel[group_color]` (#222).
-  - [ ] Hue
-  - [ ] Matter
-  - [ ] Shelly
-  - [ ] ZHA
-  - [ ] Zigbee2MQTT
+  - [x] Hue
+  - [x] Matter
+  - [x] Shelly
+  - [x] ZHA
+  - [x] Zigbee2MQTT
 - [ ] **Release notes**: hand-written v0.1.0 notes in `notes/`, signed off by the repo maintainers, after the RC installs cleanly
   and before `cut-release`, so they describe what the RC ships.
 - [ ] **v0.1.0**: `/rc-audit` over the new range, the RC and its HACS install, then `cut-release` with every
