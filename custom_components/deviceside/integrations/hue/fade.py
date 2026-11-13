@@ -68,10 +68,9 @@ class Fade:
     paths: dict[str, tuple[XY, XY]] = field(default_factory=dict)
 
 
-def fade_scope(attribute: str, *, experimental: bool) -> AdapterScope:
+def fade_scope(attribute: str) -> AdapterScope:
     """predicted_state is brightness's only: HA is shown the bridge's xy for saturation either way."""
     return AdapterScope(
-        experimental=experimental,
         fields=verified(attribute),
         options=frozenset({"predicted_state"}) if attribute == BRIGHTNESS else frozenset(),
         native_groups=True,

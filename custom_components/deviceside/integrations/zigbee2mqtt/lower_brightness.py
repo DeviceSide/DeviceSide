@@ -9,4 +9,4 @@ from ...core.transition import BRIGHTNESS
 
 class Z2MLowerBrightness(Z2MRamp):
     action: ClassVar[str] = "lower_brightness"
-    scope: ClassVar[AdapterScope] = ramp_scope(BRIGHTNESS, experimental=False)
+    scope: ClassVar[AdapterScope] = ramp_scope(BRIGHTNESS)

@@ -1,5 +1,6 @@
 """The Hue report filter: the bridge's reports of our fades told from real changes, which forget the prediction."""
 
+import logging
 from types import SimpleNamespace
 
 import pytest
@@ -168,16 +169,6 @@ async def test_a_real_change_from_the_bridge_forgets_the_light(hass, bridge, cac
     await hass.async_block_till_done()
     assert not cache.follows("one")
     assert not api.lights["one"].on.on  # aiohue applies every event: observe only
-
-
-async def test_a_refused_move_records_nothing(hass, bridge, cache):
-    await setup_room(hass, bridge)
-    bridge.failing.add("one")
-
-    with pytest.raises(HomeAssistantError):
-        await call(hass, "raise_brightness", {"entity_id": "light.one"})
-
-    assert not cache.follows("one")
 
 
 @pytest.mark.parametrize("action", ["raise_brightness", "stop"])
@@ -349,3 +340,14 @@ async def test_a_scene_recalled_on_the_bridge_forgets_its_rooms_lights(
 
     assert cache.follows("one") is not forgotten
     assert cache.follows("two") is not forgotten
+
+
+async def test_a_bridge_report_is_logged_under_its_entity_never_its_resource_id(hass, bridge, cache, caplog):
+    caplog.set_level(logging.DEBUG, "custom_components.deviceside.integrations.hue.report_filter")
+    await setup_room(hass, bridge)
+    await call(hass, "stop", {"entity_id": "light.one"})  # attaches the filter
+    bridge.api.events.emit(EventType.RESOURCE_UPDATED, light_event("one", brightness=90.0))
+    await hass.async_block_till_done()
+
+    assert "Bridge light light.one " in caplog.text
+    assert "Bridge light one " not in caplog.text

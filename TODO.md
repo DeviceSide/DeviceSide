@@ -7,13 +7,10 @@ as issues.
 ## Releases
 
 `v0.0.1` is out, and HACS accepted the submission ([hacs/default#12611](https://github.com/hacs/default/pull/12611))
-on 4 Nov 2026. v0.1.0 is next: everything lands on `main`, and release candidates are cut from it. v0.1.0 ships every
-adapter passing its tests, no soak. An RC also needs a rig run since each released adapter's last code change
-(`check_release.py --records`).
-
-**Order.** Adapter code freezes before the final rig runs: a change under `integrations/` or `core/` stales the records
-of the adapters that reach it (#358), and `actions/` changes behavior without tripping the check. From the freeze until
-the RC tag, only flag-only, docs, `scripts/` and rig step-file changes land. The items below run in this order.
+on 4 Nov 2026. v0.1.0 is next: everything lands on `main`, and release candidates are cut from it. It ships under the
+[evidence rules](docs/evidence.md): one sign-off per integration changed since v0.0.1. The
+[evidence-rules plan](docs/plans/2026-11-12-evidence-rules.md) lifted the freeze at `075895f`; with its step 5
+landed, the old gates are gone and RCs can be cut again. The items below run in this order.
 
 ## To go
 
@@ -26,21 +23,33 @@ the RC tag, only flag-only, docs, `scripts/` and rig step-file changes land. The
   landed before the freeze.
 - [x] **Z2M `turn_on_for` late off**: `bulb_transition_then_off[light_dimmable]` was a step-file timing bug (the off
   window closed before DeviceSide's end read), not the bulb or DeviceSide; fixed in ha-rig #47.
-- [x] **Freeze** at `075895f`, then the rig runs below. Rig runs come from ha-rig `main`.
-- [ ] **Stale records rerun**: every record `check_release.py --records` names (36 at the freeze: the wire trace,
-  #329, touched each transport). Every profile: Shelly (with a watched `set_attributes` `sets_color_while_off`),
-  Matter, Hue, ZHA and Z2M, and the house run for the Z2M group cases deferred from #330.
-- [ ] **Watched lab session**, `--profile lab`, the A60 visiting each network: Hue `saturation_down_stop`,
-  `halts_brightness_and_saturation`, `sets_color_while_off`; ZHA `hue_cycle_stop`, `saturation_down_stop`,
-  `sets_color_while_off`; Z2M `halts_a_lower_to_off`, `hue_cycle_stop`, `saturation_down_stop`,
-  `sets_color_while_off`. Unattended alongside: Z2M `lower_hue` `cycles_down_the_wheel[group_color]` (failed twice,
-  #222). Then the PR clearing the last flags: every `set_attributes` and `stop`, and Z2M `lower_hue`.
-- [ ] **9d** Final sweep, after the runs above: `rig.py --coverage` full, and `check_release.py --records` clean on
-  committed code.
+- [x] **Freeze** at `075895f`; lifted by the evidence-rules plan.
+- [x] **Evidence rules**, one PR per step of the [plan](docs/plans/2026-11-12-evidence-rules.md):
+  - [x] 1. Rules, docs only (`docs/evidence.md`).
+  - [x] 2. Runtime: two levels, the `experimental` gate, `caveat`; the seven release-flagged adapters lose the flag;
+    the code comments citing CLAUDE.md's "Release flag" or "Default to Documented" point to `docs/evidence.md`.
+  - [x] 3. Rig (ha-rig): drop the wire and scope taps, `Covers`, observed lending and the firmware-fact ledger.
+  - [x] 3b. Step files move to DeviceSide (`tests/rig/steps/`, `tests/integrations/<x>/rig/`), the rig reading them
+    from the checkout under test.
+  - [x] 4. Release gate: `check_release.py --signoffs`; drop `--release` and the rest of `--records`; the
+    docstring's CLAUDE.md citations and CLAUDE.md's Layout line on release checks.
+  - [x] 5. Cards: `gen_compat.py` tiers for two levels, the flag and caveats, and the docstring's CLAUDE.md citations.
+- [ ] **Sign-offs** for v0.1.0, one per integration changed since v0.0.1 (`check_release.py --signoffs`), each a rig
+  run from ha-rig `main`. The runs for the formerly release-flagged adapters need these `--profile lab` cases, run
+  watched, the A60 visiting each network: Hue `saturation_down_stop`, `halts_brightness_and_saturation` and
+  `sets_color_while_off`; ZHA `hue_cycle_stop`, `saturation_down_stop` and `sets_color_while_off`; Z2M
+  `halts_a_lower_to_off`, `hue_cycle_stop`, `saturation_down_stop` and `sets_color_while_off`. Unattended alongside:
+  Z2M `lower_hue` `cycles_down_the_wheel[group_color]` (#222).
+  - [ ] Hue
+  - [ ] Matter
+  - [ ] Shelly
+  - [ ] ZHA
+  - [ ] Zigbee2MQTT
 - [ ] **Release notes**: hand-written v0.1.0 notes in `notes/`, signed off by the repo maintainers, after the RC installs cleanly
   and before `cut-release`, so they describe what the RC ships.
-- [ ] **12** v0.1.0: no adapter left `experimental` (`scripts/check_release.py --release`). The release
-  steps are in `CLAUDE.md` (Releasing); the release body gets the signed-off notes.
+- [ ] **v0.1.0**: `/rc-audit` over the new range, the RC and its HACS install, then `cut-release` with every
+  integration signed off (`check_release.py --signoffs`). The release steps are in the `release` skill; the release
+  body gets the signed-off notes.
 - [x] **Raise/lower rig run**: the six actions and `stop` on Hue and Z2M, rerun in the lab reruns (#297, #299).
 - [x] **Lab rerun**: the first lab run's failures fixed (#160–#163, #172) and rerun (#297, #299); the Z2M failures
   it found fixed by #302.
@@ -48,8 +57,9 @@ the RC tag, only flag-only, docs, `scripts/` and rig step-file changes land. The
 - [x] **Shelly `set_attributes`** (#284, PR #287): RGBCCT, with `min_brightness`/`max_brightness`; the record clears
   the flag.
 - [x] **Shelly smooth dimming** (PR #289): `raise_brightness`, `lower_brightness` and `stop` on Shelly lights,
-  brightness only: each move one `<Component>.Set` with `transition_duration`, halted by `DimStop` (the `DimUp`/`DimDown` ramps
-  are stepped and have no `sweep_time` mapping). Findings: [`docs/shelly-dimming-research.md`](docs/shelly-dimming-research.md).
+  brightness only: each move one `<Component>.Set` with `transition_duration`, halted by `DimStop` (the
+  `DimUp`/`DimDown` ramps are stepped and have no `sweep_time` mapping). Findings:
+  [`docs/integrations/shelly/research/2026-11-08-dimming.md`](docs/integrations/shelly/research/2026-11-08-dimming.md).
   RGBCCT; the records clear the flag.
 - [x] **Device support, part 1** (#262): support levels and contribution lanes in `CONTRIBUTING.md`, the README's "Will it
   work with my device?", and the device report, device request and bug issue forms.
@@ -80,22 +90,20 @@ the RC tag, only flag-only, docs, `scripts/` and rig step-file changes land. The
 - [x] **Retests and Stale tests** (#374): every changed adapter is retested before release (a rig record, a maintainer's
   `_manual.md` line or an accepted report at a release); one left untested at the cut ships live, marked ⚠️ Stale tests,
   with a call for testers in the release notes.
-- [ ] **Shared code proof** (#377): a passing Verified record whose run covered a `core/` change proves it for every
-  adapter, so a core change needs one rig run, not a retest per integration. Ticks once the rig writes the records'
-  `## Shared coverage` table (tracked in the rig repo).
+- [x] **Shared code proof** (#377): superseded by the evidence rules, under which `core/` changes need no device
+  sign-off.
 
 ## After v0.1.0
 
 - [ ] **Code comments cite the bundles**: eight comments under `integrations/` (hue, matter, zha, zigbee2mqtt) still
   cite `docs/integration-internals.md` or `docs/integrations.md`; point each at its bundle's
   `internals.md#tested-behavior` (Z2M `addressing.py`: `index.md#sharp-edges`), which `tests/scripts/test_doc_anchors.py`
-  then checks; widen that test to page-only citations (`docs/….md` with no anchor) too. Held back by the freeze: a
-  comment change stales the records of the code it is in.
+  then checks; widen that test to page-only citations (`docs/….md` with no anchor) too.
 
-- [ ] **Forum announcement**, once v0.1.0 ships: refresh the draft's testers-wanted list from
-  [Help us test](docs/device-compatibility.md#help-us-test) and check every link resolves (the issue forms,
-  `docs/device-compatibility.md`), then post it. After posting, point the "Getting involved" testers link at the heading's
-  anchor, which Discourse names after the post id.
+- [ ] **Forum announcement**, once v0.1.0 ships: refresh the draft's testers-wanted list from [Try it: Experimental
+  features](docs/device-compatibility.md#try-it-experimental-features) and check every link resolves (the issue forms,
+  `docs/device-compatibility.md`), then post it. After posting, point the "Getting involved" testers link at the
+  heading's anchor, which Discourse names after the post id.
 - [ ] **Forum thread links**: add the thread URL as the contact link in `.github/ISSUE_TEMPLATE/config.yml` and set
   `blank_issues_enabled: false` there, and link the thread from `CONTRIBUTING.md` and the README's Contributing
   section.
@@ -103,5 +111,4 @@ the RC tag, only flag-only, docs, `scripts/` and rig step-file changes land. The
   kelvin to color) so RGB and RGBW take color instead of dropping it, and give `status_row` a branch per component
   so `get_attributes` reads Light, CCT, RGB and RGBW light state.
 - **9b** Maintained adapters: the rig kit, so maintainers can commit records for hardware the rig lacks
-  (`docs/design.md`, Release gates). Until then, such work ships as Experimental items and earns Reported from user
-  reports.
+  (`docs/design.md`, Release gates). Until then, they sign off by hand (`docs/evidence.md`).

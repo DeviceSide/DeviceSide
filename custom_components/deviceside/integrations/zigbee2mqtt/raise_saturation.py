@@ -9,4 +9,4 @@ from ...core.transition import SATURATION
 
 class Z2MRaiseSaturation(Z2MRamp):
     action: ClassVar[str] = "raise_saturation"
-    scope: ClassVar[AdapterScope] = ramp_scope(SATURATION, experimental=False)
+    scope: ClassVar[AdapterScope] = ramp_scope(SATURATION)

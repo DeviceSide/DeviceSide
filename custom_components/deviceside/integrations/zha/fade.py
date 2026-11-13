@@ -222,10 +222,8 @@ class HueMove:
     clamped_to: float | None  # the sweep_time used, where it had to be clamped
 
 
-def ramp_scope(attribute: str, *, experimental: bool) -> AdapterScope:
-    return AdapterScope(
-        experimental=experimental, domains=verified("light"), fields=verified(attribute), max_concurrency=2
-    )
+def ramp_scope(attribute: str) -> AdapterScope:
+    return AdapterScope(domains=verified("light"), fields=verified(attribute), max_concurrency=2)
 
 
 class ZHARamp(Adapter[RampRequest]):

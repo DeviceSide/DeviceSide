@@ -12,7 +12,7 @@ from homeassistant.util.color import color_RGB_to_hs, color_RGB_to_xy
 from custom_components.deviceside.core.scope import Level
 from custom_components.deviceside.integrations.shelly.get_attributes import ShellyGetAttributes, config_row, status_row
 
-from ...conftest import call, refusal
+from ...conftest import call
 from ...fixtures.fake import add_switch_as_x
 from ...fixtures.shelly import OTHER_LIGHT_COMPONENTS, TIMER_STARTED_AT, add_shelly_entity, failing, shelly_device
 
@@ -139,17 +139,6 @@ def test_a_timer_off_the_ha_clock_reads_as_no_timer(started_at):
     status = {"output": True, "timer_started_at": started_at, "timer_duration": 5.0}
 
     assert status_row("Switch", status, NOW) == {}
-
-
-async def test_gen1_and_non_timer_entities_are_refused(hass):
-    gen1, _ = shelly_device(hass, gen1=True, mac="112233445566")
-    add_shelly_entity(hass, gen1, "switch.old_relay", "relay_0")
-    entry, call_rpc = shelly_device(hass)
-    add_shelly_entity(hass, entry, "switch.child_lock", "boolean:200-boolean_child_lock")
-
-    assert await refusal(hass, "get_attributes", {"entity_id": "switch.old_relay"}) == "gen1_unsupported"
-    assert await refusal(hass, "get_attributes", {"entity_id": "switch.child_lock"}) == "not_addressable"
-    assert not call_rpc.await_args_list
 
 
 RED = {

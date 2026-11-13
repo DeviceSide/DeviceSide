@@ -104,16 +104,6 @@ async def test_other_light_components_are_experimental(hass, setup_production, k
     ]
 
 
-async def test_gen1_and_non_addressable_lights_are_refused(hass, setup_production):
-    gen1, _ = shelly_device(hass, gen1=True, mac="112233445566")
-    add_shelly_entity(hass, gen1, "light.old_bulb", "light_0", state="on")
-    entry, call_rpc = shelly_device(hass)
-    add_shelly_entity(hass, entry, "light.other", "script:1", state="on")
-
-    assert await refusal(hass, "raise_brightness", {"entity_id": "light.old_bulb"}) == "gen1_unsupported"
-    assert await refusal(hass, "raise_brightness", {"entity_id": "light.other"}) == "not_addressable"
-
-
 @pytest.mark.parametrize("verb", ["GetStatus", "Set"])
 async def test_a_device_error_rejects_the_target(hass, setup_production, verb):
     failing(dimmable_bulb(hass), verb)

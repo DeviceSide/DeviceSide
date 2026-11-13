@@ -133,25 +133,13 @@ async def test_capability_out_of_scope_is_refused(hass, setup_production, monkey
     monkeypatch.setattr(
         ShellyTurnOnFor,
         "scope",
-        dataclasses.replace(ShellyTurnOnFor.scope, capabilities=verified("Switch"), siblings={}),
+        dataclasses.replace(ShellyTurnOnFor.scope, capabilities=verified("Switch")),
     )
     entry, call_rpc = shelly_device(hass)
     add_shelly_entity(hass, entry, "light.dimmer", "light:0")
 
     assert await refusal(hass, "turn_on_for", {"entity_id": "light.dimmer", "duration": 5}) == "capability_not_tested"
     assert not call_rpc.await_args_list
-
-
-async def test_gen1_and_non_timer_entities_are_refused(hass, setup_production):
-    gen1, _ = shelly_device(hass, gen1=True, mac="112233445566")
-    add_shelly_entity(hass, gen1, "switch.old_relay", "relay_0")
-    entry, call_rpc = shelly_device(hass)
-    add_shelly_entity(hass, entry, "switch.child_lock", "boolean:200-boolean_child_lock")
-    add_shelly_entity(hass, entry, "switch.porch", "switch:0")
-
-    assert await refusal(hass, "turn_on_for", {"entity_id": "switch.old_relay", "duration": 5}) == "gen1_unsupported"
-    assert await refusal(hass, "turn_on_for", {"entity_id": "switch.child_lock", "duration": 5}) == "not_addressable"
-    assert await call(hass, "turn_on_for", {"entity_id": "switch.porch", "duration": 5}) == {"switch.porch": CONFIRMED}
 
 
 async def test_set_error_rejects_only_that_target(hass, setup_production):

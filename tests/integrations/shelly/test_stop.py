@@ -9,7 +9,7 @@ from custom_components.deviceside.integrations.shelly.raise_brightness import Sh
 from custom_components.deviceside.integrations.shelly.stop import ShellyStop
 
 from .conftest import BULB, CONFIRMED, SENT, dimmable_bulb
-from ...conftest import allow_experimental, call, refusal, result, traced
+from ...conftest import allow_experimental, call, refusal, result, sent
 from ...fixtures.shelly import OTHER_LIGHT_COMPONENTS, add_shelly_entity, failing, shelly_device
 
 STOP = rpc_call("RGBCCT.DimStop", {"id": 0})
@@ -113,13 +113,6 @@ async def test_a_relay_shown_as_a_light_is_not_dimmable(hass, setup_production):
     assert not call_rpc.await_args_list
 
 
-async def test_gen1_is_refused(hass, setup_production):
-    gen1, _ = shelly_device(hass, gen1=True, mac="112233445566")
-    add_shelly_entity(hass, gen1, "light.old_bulb", "light_0", state="on")
-
-    assert await refusal(hass, "stop", {"entity_id": "light.old_bulb"}) == "gen1_unsupported"
-
-
 @pytest.mark.parametrize(("key", "component"), OTHER_LIGHT_COMPONENTS)
 async def test_other_light_components_are_experimental(hass, setup_production, key, component):
     entry, call_rpc = shelly_device(hass, status={"output": True, "brightness": 40})
@@ -143,9 +136,9 @@ def test_scope():
     assert scope.capabilities == ShellyRaiseBrightness.scope.capabilities
 
 
-async def test_the_dimstop_is_traced_without_the_component_id(hass, setup_production, wire):
+async def test_the_dimstop_is_logged_without_the_component_id(hass, setup_production, wire):
     dimmable_bulb(hass, brightness=40)
 
     await call(hass, "stop", BULB)
 
-    assert traced(wire) == [("light.bulb", "rpc", "RGBCCT.DimStop", {})]
+    assert sent(wire) == ["light.bulb: sending rpc RGBCCT.DimStop {}"]

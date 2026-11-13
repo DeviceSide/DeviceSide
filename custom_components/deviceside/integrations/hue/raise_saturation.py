@@ -9,4 +9,4 @@ from ...core.transition import SATURATION
 
 class HueRaiseSaturation(HueFade):
     action: ClassVar[str] = "raise_saturation"
-    scope: ClassVar[AdapterScope] = fade_scope(SATURATION, experimental=False)
+    scope: ClassVar[AdapterScope] = fade_scope(SATURATION)

@@ -15,7 +15,6 @@ from custom_components.deviceside.core.scope import (
     Level,
     documented,
     experimental,
-    reported,
     verified,
 )
 
@@ -26,13 +25,12 @@ OPTION_READERS = {"const.py", "__init__.py", "config_flow.py", "core/runtime.py"
 
 
 def test_levels_order_weakest_first():
-    assert Level.EXPERIMENTAL < Level.DOCUMENTED < Level.REPORTED < Level.VERIFIED
+    assert Level.EXPERIMENTAL < Level.DOCUMENTED < Level.VERIFIED
 
 
 def test_helpers_merge_into_one_mapping():
-    assert verified("a") | reported("b") | documented("c") | experimental("d") == {
+    assert verified("a") | documented("c") | experimental("d") == {
         "a": Level.VERIFIED,
-        "b": Level.REPORTED,
         "c": Level.DOCUMENTED,
         "d": Level.EXPERIMENTAL,
     }
@@ -58,7 +56,6 @@ def test_level_is_the_weakest_item_touched(domain, capability, level):
     scope = AdapterScope(
         domains=verified("switch") | documented("light"),
         capabilities=verified("Switch") | documented("Light"),
-        siblings={"light": "switch", "Light": "Switch"},
     )
 
     assert scope.level(domain, capability) is level
@@ -68,12 +65,12 @@ def test_level_is_the_weakest_item_touched(domain, capability, level):
     ("fields", "level"),
     [
         ((), Level.VERIFIED),
-        (("brightness",), Level.REPORTED),
+        (("brightness",), Level.VERIFIED),
         (("brightness", "transition"), Level.EXPERIMENTAL),
     ],
 )
 def test_level_folds_in_the_fields_the_call_carries(fields, level):
-    scope = AdapterScope(fields=reported("brightness") | experimental("transition"))
+    scope = AdapterScope(fields=verified("brightness") | experimental("transition"))
 
     assert scope.level("light", None, fields) is level
 
@@ -90,8 +87,8 @@ def test_a_documented_field_is_refused():
         AdapterScope(fields=documented("brightness"))
 
 
-@pytest.mark.parametrize("helper", [verified, reported, experimental])
-def test_a_field_may_be_verified_reported_or_experimental(helper):
+@pytest.mark.parametrize("helper", [verified, experimental])
+def test_a_field_may_be_verified_or_experimental(helper):
     assert AdapterScope(fields=helper("brightness")).fields == helper("brightness")
 
 
@@ -170,8 +167,8 @@ def _covers(stop: AdapterScope | None, items: str, item: str, level: Level) -> b
 
 def test_every_move_has_a_stop_at_least_as_strong():
     """A raise or lower that starts where stop is refused, or gated behind the option, can't be halted. Item levels
-    only: group reach (native_groups against expand_group), refusals in supports() that don't come from scope, and the
-    adapter-level flag (cut-release --release catches a released move with a flagged stop) are not compared."""
+    and the adapter-level flag: group reach (native_groups against expand_group) and refusals in supports() that don't
+    come from scope are not compared."""
     adapters = _adapters()
     stops = {adapter.integration: adapter.scope for adapter in adapters if adapter.action == "stop"}
     gaps = []
@@ -180,6 +177,8 @@ def test_every_move_has_a_stop_at_least_as_strong():
             continue
         stop = stops.get(adapter.integration)
         name = f"{adapter.integration} / {adapter.action}"
+        if stop is not None and stop.experimental and not adapter.scope.experimental:
+            gaps.append(f"{name}: stop is flagged experimental")
         for domain, level in adapter.scope.domains.items():
             if not _covers(stop, "domains", domain, level):
                 gaps.append(f"{name}: domain {domain} ({level.name})")
@@ -191,54 +190,3 @@ def test_every_move_has_a_stop_at_least_as_strong():
             if not _covers(stop, "capabilities", capability, level):
                 gaps.append(f"{name}: capability {capability} ({level.name})")
     assert gaps == []
-
-
-def test_a_documented_item_names_its_sibling():
-    with pytest.raises(ValueError, match="names no sibling"):
-        AdapterScope(domains=verified("switch") | documented("light"))
-
-
-def test_a_sibling_that_is_experimental_is_refused():
-    """A Documented item stands only while its sibling does: its sibling falling is a load-time error."""
-    with pytest.raises(ValueError, match="which is neither Verified nor Reported"):
-        AdapterScope(domains=experimental("switch") | documented("light"), siblings={"light": "switch"})
-
-
-def test_two_documented_items_cannot_ride_each_other():
-    with pytest.raises(ValueError, match="neither Verified nor Reported"):
-        AdapterScope(domains=documented("switch", "light"), siblings={"light": "switch", "switch": "light"})
-
-
-def test_a_sibling_from_the_other_mapping_is_refused():
-    with pytest.raises(ValueError, match="neither Verified nor Reported"):
-        AdapterScope(capabilities=documented("Light"), siblings={"Light": "light"})
-
-
-@pytest.mark.parametrize(
-    "scope",
-    [
-        {"siblings": {"light": "switch"}},
-        {"domains": verified("light", "switch"), "siblings": {"light": "switch"}},
-        {"capabilities": verified("Light", "Switch"), "siblings": {"Light": "Switch"}},
-    ],
-)
-def test_siblings_name_only_documented_items(scope):
-    with pytest.raises(ValueError, match="not Documented"):
-        AdapterScope(**scope)
-
-
-def test_a_name_both_a_domain_and_a_capability_is_refused():
-    with pytest.raises(ValueError, match="both a domain and a capability"):
-        AdapterScope(domains=verified("light"), capabilities=verified("light"))
-
-
-def test_proof_is_an_items_own_level_or_its_siblings():
-    scope = AdapterScope(
-        domains=reported("switch") | documented("light"),
-        capabilities=verified("RGBCCT") | documented("Light"),
-        siblings={"light": "switch", "Light": "RGBCCT"},
-    )
-    assert scope.proof("switch") is Level.REPORTED
-    assert scope.proof("light") is Level.REPORTED
-    assert scope.proof("Light") is Level.VERIFIED
-    assert scope.proof("Unknown") is Level.EXPERIMENTAL

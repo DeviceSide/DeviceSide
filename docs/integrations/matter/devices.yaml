@@ -5,4 +5,3 @@ column: Matter
 column_order: 5
 capabilities:
   light: {phrase: lights, section: Matter lights}
-reports: []

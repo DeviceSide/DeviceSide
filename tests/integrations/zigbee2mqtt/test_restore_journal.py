@@ -149,7 +149,10 @@ async def test_a_refused_replay_stays_owed(hass, setup_production, broker, mqtt_
     await start(hass, setup_production)
 
     assert (await rj.journal(hass)).owed == {"group/7": True}
-    assert "Couldn't put Zigbee2MQTT's hue_native_control back to True for group/7: refused" in caplog.text
+    assert (
+        "Couldn't put Zigbee2MQTT's hue_native_control back to True for a Zigbee2MQTT group with no light: refused"
+        in (caplog.text)
+    )
 
 
 async def test_a_z2m_offline_at_startup_is_paid_when_it_comes_back(
@@ -235,7 +238,11 @@ async def test_a_strike_that_fails_warns(hass, setup_production, broker, mqtt_up
 
     await rj.replay(hass)
 
-    assert "Couldn't strike the hue_native_control restore for device/0x01 off the journal: disk full" in caplog.text
+    assert (
+        "Couldn't strike the hue_native_control restore for a Zigbee2MQTT device with no light off the journal: "
+        "disk full" in caplog.text
+    )
+    assert not [r for r in caplog.records if r.name.startswith("custom_components") and "0x01" in r.getMessage()]
 
 
 async def test_entry_setup_wires_the_replay(hass, setup_production, broker, mqtt_up, hass_storage):

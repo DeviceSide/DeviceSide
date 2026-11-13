@@ -7,7 +7,7 @@ from typing import ClassVar
 from homeassistant.core import HomeAssistant
 
 from .addressing import not_addressable, topic
-from .bridge import publish, publish_set, state_reply, traced_options
+from .bridge import logged_options, publish, publish_set, state_reply
 from .native_control import COLOR_FIELDS, NEED, native_control, settled
 from .set_check import checked, note
 from ...actions.turn_on_for import TurnOnForRequest
@@ -15,7 +15,6 @@ from ...core.adapter import Adapter
 from ...core.models import EntityResult, Status, Target
 from ...core.runtime import get_runtime
 from ...core.scope import AdapterScope, DurationLimits, experimental, verified
-from ...core.wire import wire_enabled, wire_trace
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -54,8 +53,8 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
     integration: ClassVar[str] = "zigbee2mqtt"
     scope: ClassVar[AdapterScope] = AdapterScope(
         # Zigbee plugs and switches rarely honor OnWithTimedOff, and Z2M has no read-back to show it, so switch fails
-        # the Documented conditions (CLAUDE.md, "Release flag"): it takes the same call, so it is Experimental until a
-        # record covers it.
+        # the Documented test (docs/evidence.md, Levels): it takes the same call, so it stays flagged experimental,
+        # untested, until a maintainer judges it ready.
         domains=verified("light") | experimental("switch"),
         duration=_TIMER_LIMITS,
         fields=verified("brightness", "color_temp_kelvin", "hs_color", "rgb_color", "xy_color", "transition"),
@@ -100,8 +99,10 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
         service_data = {"entity_id": target.entity_id, **data}
         published, unsubscribe = await state_reply(hass, target)
         try:
-            if wire_enabled():
-                wire_trace(hass, target.reported_id, "ha", "light.turn_on", data, options=traced_options(hass, target))
+            if _LOGGER.isEnabledFor(logging.DEBUG):
+                _LOGGER.debug(
+                    "%s: sending ha light.turn_on %s with %s", target.reported_id, data, logged_options(hass, target)
+                )
             # HA publishes it as a set, whose failure Z2M logs as any other's.
             await note(hass, target)
             await hass.services.async_call("light", "turn_on", service_data, blocking=True)

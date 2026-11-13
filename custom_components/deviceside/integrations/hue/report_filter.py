@@ -31,7 +31,7 @@ from homeassistant.core import CALLBACK_TYPE, HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
 from .attributes import ATTRIBUTES, event_fields, reported_values, strip
-from .bridge import bridge_api
+from .bridge import bridge_api, entity_name
 from .transition_cache import MIN_BRIGHTNESS_STEP, transition_cache
 from ...core.ha_watch import ALL, Call, Entries
 from ...core.models import Target
@@ -184,6 +184,18 @@ class ReportFilter:
         self.api.events.emit(EventType.RESOURCE_UPDATED, event | event_fields(held))
         self._show_rooms_soon(self._rooms([light_id]))
 
+    def _log_report(self, data: dict, report: Report | None, ending: list) -> None:
+        """One DEBUG line per bridge report, under its entity, never its resource id; the lookup only when logged."""
+        if _LOGGER.isEnabledFor(logging.DEBUG):
+            _LOGGER.debug(
+                "Bridge %s %s %s: %s%s",
+                data.get("type"),
+                entity_name(self.hass, data["id"]) if "id" in data else None,
+                reported_values(data),
+                report,
+                f", ending {ending}" if ending else "",
+            )
+
     def _on_event(self, event_type: EventType, data: dict | None) -> None:
         # Runs inside aiohue's event loop: an exception here would stop core hue's events too.
         try:
@@ -197,14 +209,7 @@ class ReportFilter:
                 return
             report = classify(self.cache, self.api, data)
             ending = real_attributes(self.cache, self.api, data) if report is Report.REAL else []
-            _LOGGER.debug(
-                "Bridge %s %s %s: %s%s",
-                data.get("type"),
-                data.get("id"),
-                reported_values(data),
-                report,
-                f", ending {ending}" if ending else "",
-            )
+            self._log_report(data, report, ending)
             if self.hiding and report is not None:
                 # A real report can carry keys of a prediction it leaves running: those stay ours.
                 self._hide(data, ending)
@@ -261,10 +266,15 @@ class ReportFilter:
                     dimmed := [light.dimming.brightness for light in lit if light.dimming]
                 ):
                     event["dimming"] = {"brightness": mean(dimmed)}
-                _LOGGER.debug("Showing room %s: %s", grouped_light_id, event)
+                if _LOGGER.isEnabledFor(logging.DEBUG):
+                    shown = {key: value for key, value in event.items() if key != "id"}
+                    _LOGGER.debug("Showing room %s: %s", entity_name(self.hass, grouped_light_id), shown)
                 self.api.events.emit(EventType.RESOURCE_UPDATED, event)
         except Exception:
-            _LOGGER.exception("Hue report filter failed showing rooms %s", grouped_light_ids)
+            _LOGGER.exception(
+                "Hue report filter failed showing rooms %s",
+                ", ".join(sorted(entity_name(self.hass, rid) for rid in grouped_light_ids)),
+            )
 
     def lights(self, entry: er.RegistryEntry) -> list[str]:
         """The bridge's lights behind a Hue light, room, zone or scene entity of this bridge."""

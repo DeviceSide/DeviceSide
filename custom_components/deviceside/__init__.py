@@ -21,36 +21,33 @@ from .core.actions import async_setup_services
 from .core.dispatcher import Dispatcher
 from .core.registry import AdapterRegistry
 from .core.runtime import DATA, DeviceSideData, get_runtime
+from .core.scope import CaveatKind
 from .integrations.zigbee2mqtt import bridge_cache, color_modes, restore_journal
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 _LOGGER = logging.getLogger(__name__)
 
 
-def warn_marked(registry: AdapterRegistry) -> None:
-    """One warning per mark per adapter: an unmaintained one stays live, but no one is fixing it; one with stale tests
-    ships changed since anyone last tested it."""
+# The setup warning per caveat (docs/evidence.md, Caveats): integration, action, then the caveat's reason.
+CAVEAT_WARNINGS = {
+    CaveatKind.UNTESTED_FIX: "%s %s ships an untested fix (%s): it changed and no one could test it before this "
+    "release; please report whether it works",
+    CaveatKind.UNMAINTAINED: "%s %s is unmaintained (%s): no one is fixing it; use at your own risk",
+}
+
+
+def warn_caveats(registry: AdapterRegistry) -> None:
+    """One warning per adapter with a caveat; the adapter stays live."""
     for action, integration, adapter in registry.matrix():
-        if adapter is None:
-            continue
-        if reason := adapter.scope.unmaintained:
-            _LOGGER.warning(
-                "%s %s is unmaintained (%s): no one is fixing it; use at your own risk", integration, action, reason
-            )
-        if reason := adapter.scope.stale_tests:
-            _LOGGER.warning(
-                "%s %s has stale tests (%s): changed since anyone last tested it; please report whether it works",
-                integration,
-                action,
-                reason,
-            )
+        if adapter is not None and (caveat := adapter.scope.caveat) is not None:
+            _LOGGER.warning(CAVEAT_WARNINGS[caveat.kind], integration, action, caveat.reason)
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType):
     # Discovery imports every integration module, so it runs in the import executor rather than the event loop.
     registry = await hass.async_add_import_executor_job(AdapterRegistry.discover)
     hass.data[DATA] = runtime = DeviceSideData(registry=registry, dispatcher=Dispatcher(hass, registry))
-    warn_marked(registry)
+    warn_caveats(registry)
 
     @callback
     def stopping(_event: Event) -> None:

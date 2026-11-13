@@ -1,7 +1,6 @@
 """zcl.command against a mock service, and zcl.read_attributes against a fake zha gateway, since the zha library
 isn't a dev dependency."""
 
-import json
 import sys
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
@@ -15,7 +14,7 @@ from pytest_homeassistant_custom_component.common import async_mock_service
 from custom_components.deviceside.integrations.zha import zcl
 from custom_components.deviceside.integrations.zha.addressing import Address
 
-from ...conftest import traced
+from ...conftest import sent
 from ...fixtures.zha import IEEE
 
 ADDR = Address(IEEE, 11)
@@ -224,27 +223,27 @@ async def test_hue_turn_on_lets_an_admin_through(hass, gateway, cluster, hass_ad
     assert await HUE_TURN_ON(hass, ADDR, 1, Context(user_id=hass_admin_user.id), entity_id="light.lamp") is True
 
 
-async def test_command_is_traced_by_entity_without_the_address(hass, wire):
+async def test_command_is_logged_by_entity_without_the_address(hass, wire):
     async_mock_service(hass, "zha", "issue_zigbee_cluster_command")
 
     await zcl.command(hass, ADDR, zcl.LEVEL_CLUSTER, zcl.MOVE_TO_LEVEL, {"level": 40}, None, entity_id="light.lamp")
 
-    assert traced(wire) == [("light.lamp", "zcl", "0x0008/0x00", {"level": 40})]
-    assert IEEE not in json.dumps(wire[0].data)
+    assert sent(wire) == ["light.lamp: sending zcl 0x0008/0x00 {'level': 40}"]
+    assert IEEE not in wire.text
 
 
-async def test_group_command_is_traced_on_the_groups_light(hass, wire):
+async def test_group_command_is_logged_on_the_groups_light(hass, wire):
     async_mock_service(hass, "zha", "issue_zigbee_group_command")
     er.async_get(hass).async_get_or_create("light", "zha", "light_zha_group_0x0002", suggested_object_id="room")
 
     await zcl.group_command(hass, 2, zcl.LEVEL_CLUSTER, zcl.STOP, [], None)
 
-    assert traced(wire) == [("light.room", "zcl", "0x0008/0x03", {"args": []})]
+    assert sent(wire) == ["light.room: sending zcl 0x0008/0x03 []"]
 
 
-async def test_hue_turn_on_is_traced_with_its_payload(hass, gateway, cluster, wire):
+async def test_hue_turn_on_is_logged_with_its_payload(hass, gateway, cluster, wire):
     cluster.request = AsyncMock(return_value=SimpleNamespace(status=0))
 
     await HUE_TURN_ON(hass, ADDR, 1, None, entity_id="light.lamp")
 
-    assert traced(wire) == [("light.lamp", "zcl", "0xfc03/0x00", {"data": "130001010000"})]
+    assert sent(wire) == ["light.lamp: sending zcl 0xfc03/0x00 130001010000"]

@@ -5,6 +5,7 @@ from typing import Literal
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 
 from ...core.errors import Reason
 from ...core.models import Target
@@ -22,6 +23,18 @@ _IEEE_ADDRESS = re.compile(r"^0x[0-9a-fA-F]+$")
 def device_identifier(address: str) -> tuple[str, str]:
     """The device-registry identifier Z2M registers the device or group at this address under."""
     return ("mqtt", f"{IDENTIFIER_PREFIX}{address}")
+
+
+def entity_name(hass: HomeAssistant, kind: Literal["device", "group"], z2m_id: str) -> str:
+    """The light entity HA has for a Z2M device (by IEEE) or group (by ID), for a log line, which never names the
+    IEEE, group ID, friendly name or topic; "a Zigbee2MQTT <kind> with no light" when HA has none."""
+    address = z2m_id if kind == "device" else f"{_ENCODED_BASE_TOPIC}_{z2m_id}"
+    entities = er.async_get(hass)
+    for device in dr.async_get(hass).async_get_devices(identifiers={device_identifier(address)}):
+        for entry in er.async_entries_for_device(entities, device.id):
+            if entry.domain == "light":
+                return entry.entity_id
+    return f"a Zigbee2MQTT {kind} with no light"
 
 
 def z2m_address(device: dr.DeviceEntry) -> str | None:

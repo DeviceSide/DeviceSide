@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from custom_components.deviceside.core.scope import AdapterScope, documented, experimental, reported, verified
+from custom_components.deviceside.core.scope import AdapterScope, documented, experimental, verified
 from scripts import gen_features as gf
 
 LIGHT = '<img src="https://raw.githubusercontent.com/DeviceSide/DeviceSide/main/docs/icons/light.svg"'
@@ -57,12 +57,20 @@ def test_domains_show_at_any_level_and_group_follows_native_groups_or_expand_gro
     registry = FakeRegistry(expand={"zha"})
     zha = adapter("zha", "stop", domains=verified("light"))
     z2m = adapter("zigbee2mqtt", "stop", domains=verified("light"), native_groups=True)
-    matter = adapter("matter", "stop", domains=verified("switch") | documented("light"), siblings={"light": "switch"})
-    reported_light = adapter("matter", "stop", domains=reported("light"))
+    matter = adapter("matter", "stop", domains=verified("switch") | documented("light"))
+    documented_light = adapter("matter", "stop", domains=documented("light"))
     assert gf.keys(zha, registry) == {"light", "group"}
     assert gf.keys(z2m, registry) == {"light", "group"}
     assert gf.keys(matter, registry) == {"light", "switch"}
-    assert gf.keys(reported_light, registry) == {"light"}
+    assert gf.keys(documented_light, registry) == {"light"}
+
+
+def test_a_flagged_adapter_shows_no_icon_until_the_option_is_on(no_blockers):
+    """experimental=True gates the whole adapter at runtime, as an Experimental item is gated."""
+    registry = FakeRegistry(expand={"zha"})
+    flagged = adapter("zha", "stop", experimental=True, domains=verified("light"))
+    assert gf.keys(flagged, registry) == set()
+    assert gf.keys(flagged, registry, experimental=True) == {"light", "group"}
 
 
 def test_an_experimental_domain_shows_no_icon_and_takes_its_group_with_it(no_blockers):

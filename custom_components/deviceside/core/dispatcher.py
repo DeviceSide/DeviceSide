@@ -18,7 +18,6 @@ from .registry import AdapterRegistry
 from .resolver import resolve
 from .runtime import DEADLINE, get_runtime
 from .scope import Level
-from .wire import scope_trace, wire_enabled
 from ..const import ADAPTER_BACKSTOP_S, ADAPTER_TIMEOUT_S, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -134,10 +133,10 @@ class Dispatcher:
         """Plan every target, then run each adapter once per distinct request, every run concurrently.
 
         Planning buckets targets by adapter, expands native groups an adapter can't address, drops the fields each
-        target lacks and checks supports() on what is left. A call that would send something touching an Experimental
-        scope item is refused while the Experimental features option is off. A named target that can't take the
-        action raises then, before anything is sent. Returns a result per target that ran or was left nothing to do,
-        and an unsupported one per indirect target skipped.
+        target lacks and checks supports() on what is left. A flagged call, from an `experimental=True` adapter or
+        touching an Experimental scope item, is refused while the Experimental features option is off. A named target
+        that can't take the action raises then, before anything is sent. Returns a result per target that ran or was
+        left nothing to do, and an unsupported one per indirect target skipped.
         """
         results: list[EntityResult] = []
         buckets: dict[str, tuple[Adapter, list[Target]]] = {}
@@ -163,8 +162,6 @@ class Dispatcher:
                 elif not experimental_on and self._experimental(adapter, reduced, target):
                     results += _skip(target.reported_id, target.named, EXPERIMENTAL_OFF, adapter.integration)
                 else:
-                    if wire_enabled():
-                        self._trace_scope(action_key, adapter, reduced, target)
                     by_dropped.setdefault(dropped, []).append(target)
             runs += [(adapter, request.without(dropped), ready, dropped) for dropped, ready in by_dropped.items()]
 
@@ -173,22 +170,13 @@ class Dispatcher:
         return results
 
     def _experimental(self, adapter: Adapter, request: Request, target: Target) -> bool:
-        """Whether the call touches an Experimental item: its domain, capability or a field it carries. The one place
-        the option gates anything; adapters never read it."""
+        """Whether the call is flagged experimental: the whole adapter (`experimental=True`), or an Experimental item
+        it touches, its domain, capability or a field it carries. The one place the option gates anything; adapters
+        never read it (docs/evidence.md)."""
+        if adapter.scope.experimental:
+            return True
         capability = adapter.capability(self.hass, target)
         return adapter.scope.level(target.domain, capability, request.fields_present()) is Level.EXPERIMENTAL
-
-    def _trace_scope(self, action_key: str, adapter: Adapter, request: Request, target: Target) -> None:
-        """The scope trace of a target about to run: what _experimental weighs, so a record can name what it proved."""
-        scope_trace(
-            self.hass,
-            target.reported_id,
-            action_key,
-            adapter.integration,
-            target.domain,
-            adapter.capability(self.hass, target),
-            request.fields_present(),
-        )
 
     def _expand_native_groups(
         self, adapter: Adapter, bucket: list[Target], results: list[EntityResult]

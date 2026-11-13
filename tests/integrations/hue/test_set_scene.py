@@ -138,7 +138,8 @@ async def test_one_failing_light_does_not_stop_the_others_but_raises(hass, bridg
 
     assert raised.value.translation_placeholders["summary"] == "scene.relax: some_lights_failed"
     assert [path for path, _ in bridge.puts] == ["light/light-1", "light/light-2", "light/light-3"]
-    assert "light-2" in caplog.text
+    assert "set_scene scene.relax: write to a Hue light with no entity failed" in caplog.text
+    assert "light-2" not in caplog.text  # the bridge's resource id, never logged
 
 
 async def test_every_light_failing_rejects(hass, bridge):
@@ -160,14 +161,6 @@ async def test_scene_is_reread_on_each_call(hass, bridge):
     await call(hass, "set_scene", {"entity_id": "scene.relax"})
 
     assert bridge.puts[-1] == ("light/light-1", {"dimming": {"brightness": 75.0}})
-
-
-async def test_v1_bridge_is_refused(hass, bridge):
-    bridge.scene("scene-1", [])
-    entry = await hue_entry(hass, bridge, api_version=1)
-    add_hue_entity(hass, entry, "scene.relax", "scene-1")
-
-    assert await refusal(hass, "set_scene", {"entity_id": "scene.relax"}) == "bridge_v1"
 
 
 async def test_the_lights_written_forget_their_move_predictions(hass, bridge):

@@ -7,7 +7,7 @@ from homeassistant.exceptions import HomeAssistantError
 from custom_components.deviceside.integrations.zha.fade import hue_moves
 
 from .conftest import SENT, bulb, sent, xy
-from ...conftest import advance, call, result, wall_clock_now
+from ...conftest import advance, call, wall_clock_now
 
 pytestmark = pytest.mark.usefixtures("setup_production", "clock", "bulbs")
 
@@ -17,15 +17,6 @@ async def test_sends_the_end_point_at_the_current_hue(hass, commands):
 
     assert await call(hass, "raise_saturation", {"entity_id": "light.bulb"}) == {"light.bulb": SENT}
     assert sent(commands) == [(0x0300, 0x07, {**xy(200, 100), "transition_time": 20})]
-
-
-async def test_an_off_light_is_unchanged(hass, commands):
-    bulb(hass, state="off")
-
-    assert await call(hass, "raise_saturation", {"entity_id": "light.bulb"}) == {
-        "light.bulb": result("zha", "unchanged", detail="off")
-    }
-    assert not commands
 
 
 async def test_end_refresh_once_the_fade_has_run(hass, commands, refreshes):

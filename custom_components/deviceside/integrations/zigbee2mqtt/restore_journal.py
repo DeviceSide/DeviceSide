@@ -13,6 +13,7 @@ from typing import Literal
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.storage import Store
 
+from .addressing import entity_name
 from .bridge import OPTION, ensure_options
 from ...core.runtime import get_runtime
 
@@ -44,12 +45,12 @@ class Journal:
         """Read what a previous run left; an entry that isn't "<device|group>/<ID>": bool is dropped with a warning."""
         loaded = await self._store.async_load() or {}
         if not isinstance(loaded, dict):
-            _LOGGER.warning("Ignored the %s restore journal, which isn't a mapping: %r", OPTION, loaded)
+            _LOGGER.warning("Ignored the %s restore journal, which isn't a mapping: %s", OPTION, type(loaded).__name__)
             return
         for key, value in loaded.items():
             kind, _, z2m_id = str(key).partition("/")
             if kind not in _KINDS or not z2m_id or not isinstance(value, bool):
-                _LOGGER.warning("Skipped a malformed %s restore journal entry: %r: %r", OPTION, key, value)
+                _LOGGER.warning("Skipped a malformed %s restore journal entry", OPTION)
                 continue
             self.owed[key] = value
 
@@ -144,6 +145,7 @@ async def replay(hass: HomeAssistant) -> None:
     for key in list(held.owed):
         kind, z2m_id = key.split("/", 1)
         address: Address = (kind, z2m_id)  # type: ignore[assignment] - load keeps only device and group keys
+        name = entity_name(hass, kind, z2m_id)  # type: ignore[arg-type] - as address above
         async with locks(hass).setdefault(address, asyncio.Lock()):
             if (value := held.owes(address)) is None:
                 continue
@@ -156,10 +158,10 @@ async def replay(hass: HomeAssistant) -> None:
                     lambda _id: None,
                 )
             except Exception as err:  # noqa: BLE001 - kept for the next try
-                _LOGGER.warning("Couldn't put Zigbee2MQTT's %s back to %s for %s: %s", OPTION, value, key, err)
+                _LOGGER.warning("Couldn't put Zigbee2MQTT's %s back to %s for %s: %s", OPTION, value, name, err)
                 continue
             try:
                 await held.strike(address, value)
             except Exception as err:  # noqa: BLE001 - struck in memory; the next start finds it already paid
-                _LOGGER.warning("Couldn't strike the %s restore for %s off the journal: %s", OPTION, key, err)
-        _LOGGER.info("Put Zigbee2MQTT's %s back to %s for %s, left owed by an earlier restore", OPTION, value, key)
+                _LOGGER.warning("Couldn't strike the %s restore for %s off the journal: %s", OPTION, name, err)
+        _LOGGER.info("Put Zigbee2MQTT's %s back to %s for %s, left owed by an earlier restore", OPTION, value, name)

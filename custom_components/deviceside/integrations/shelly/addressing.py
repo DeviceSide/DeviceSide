@@ -38,22 +38,21 @@ COMPONENT_FIELDS = {
 }
 
 # The components every Shelly adapter addresses. Light, CCT, RGB and RGBW take the same <Component>.Set, SetConfig
-# and GetStatus calls as the Verified Switch and RGBCCT, documented identically by Shelly: Documented until a test
-# record covers them (CLAUDE.md, "Release flag").
+# and GetStatus calls as the Verified RGBCCT (whose Set carries brightness as theirs do, Switch.Set doesn't),
+# documented identically by Shelly: Documented (docs/evidence.md, Levels).
 CAPABILITIES = verified("Switch", "RGBCCT") | documented("Light", "CCT", "RGB", "RGBW")
-# The lighting components ride the bulb's call: RGBCCT.Set carries brightness as theirs do, Switch.Set doesn't.
-SIBLINGS = dict.fromkeys(("Light", "CCT", "RGB", "RGBW"), "RGBCCT")
 
 # The components the persistent auto-off / auto-on adapters address. Their GetConfig and SetConfig are the same on
 # every component, documented identically by Shelly, and the adapter confirms the setting it stored by reading it
-# back: the Switch's record proves the call and the rest ride it, RGBCCT included (CLAUDE.md, "Default to Documented").
+# back: the Switch's record proves the call and the rest ride it, RGBCCT included (docs/evidence.md, Levels).
 AUTO_CAPABILITIES = verified("Switch") | documented("Light", "CCT", "RGB", "RGBW", "RGBCCT")
-AUTO_SIBLINGS = dict.fromkeys(("Light", "CCT", "RGB", "RGBW", "RGBCCT"), "Switch")
 
 # The components raise_brightness, lower_brightness and stop address. DimStop halting a Set's fade is the rig's
 # finding on RGBCCT (fw 2.0.3), documented by Shelly for none of them, and one user reports a Gen3 Dimmer jumping on
-# DimStop: the others take the same calls, so they are Experimental until a record covers them. That one unconfirmed
-# report keeps Light from Documented, not from Experimental: the option is opt-in, and a jump is what testers report.
+# DimStop: the others take the same calls, so they stay flagged experimental until a maintainer, with a passing run
+# among the evidence, judges them ready and makes them verified(...). That one unconfirmed report keeps Light from
+# Documented, not from the flag: the option is opt-in, and a jump is what testers report (docs/evidence.md, The
+# experimental flag).
 DIMMING_CAPABILITIES = verified("RGBCCT") | experimental("Light", "CCT", "RGB", "RGBW")
 
 

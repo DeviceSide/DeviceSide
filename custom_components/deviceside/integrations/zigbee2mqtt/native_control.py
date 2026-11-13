@@ -132,7 +132,7 @@ async def _take(hass: HomeAssistant, target: Target, address: Address, need: boo
     async def owe(_z2m_id: str, _options: dict) -> None:
         # As the request goes out, not after: a restart before Z2M answers still finds the user's value owed.
         nonlocal journaled
-        journaled = await _owe(hass, address, not need)
+        journaled = await _owe(hass, address, not need, target.entity_id)
 
     # Shielded so that a cancel mid-set (HA stopping), the journal's save included, still learns whether the option
     # changed, and puts it back.
@@ -143,13 +143,13 @@ async def _take(hass: HomeAssistant, target: Target, address: Address, need: boo
         if await setting:
             await _put_back(hass, target, address, not need)
         elif journaled:
-            await _strike(hass, address, not need)
+            await _strike(hass, address, not need, target.entity_id)
         raise
     if changed:
         return True
     if journaled:
-        await _strike(hass, address, not need)  # refused: the option stands as it was
-    return await _owed(hass, address) is not None
+        await _strike(hass, address, not need, target.entity_id)  # refused: the option stands as it was
+    return await _owed(hass, address, target.entity_id) is not None
 
 
 def _restore_task(hass: HomeAssistant, address: Address, restore: Coroutine[Any, Any, None]) -> None:
@@ -191,38 +191,38 @@ async def _restore(
         lock.release()
 
 
-async def _owe(hass: HomeAssistant, address: Address, value: bool) -> bool:
+async def _owe(hass: HomeAssistant, address: Address, value: bool, entity_id: str) -> bool:
     """Journal the user's value as owed, so a restart before the restore doesn't leave the option flipped; whether
     this call added the entry (an earlier one still owed is kept)."""
     try:
         return await (await journal(hass)).add(address, value)
     except Exception as err:  # noqa: BLE001 - the journal is a safety net; the action goes on without it
-        _LOGGER.warning("Couldn't journal the pending %s restore for %s: %s", OPTION, address, err)
+        _LOGGER.warning("Couldn't journal the pending %s restore for %s: %s", OPTION, entity_id, err)
         return False
 
 
-async def _owed(hass: HomeAssistant, address: Address) -> bool | None:
+async def _owed(hass: HomeAssistant, address: Address, entity_id: str) -> bool | None:
     """The value the journal owes back at the address, or None (none owed, or the journal unreadable)."""
     try:
         return (await journal(hass)).owes(address)
     except Exception as err:  # noqa: BLE001 - as if none were owed
-        _LOGGER.warning("Couldn't read the %s restore journal for %s: %s", OPTION, address, err)
+        _LOGGER.warning("Couldn't read the %s restore journal for %s: %s", OPTION, entity_id, err)
         return None
 
 
-async def _strike(hass: HomeAssistant, address: Address, value: bool) -> None:
+async def _strike(hass: HomeAssistant, address: Address, value: bool, entity_id: str) -> None:
     try:
         await (await journal(hass)).strike(address, value)
     except Exception as err:  # noqa: BLE001 - a stale entry is replayed harmlessly at the next online
-        _LOGGER.warning("Couldn't strike the %s restore for %s off the journal: %s", OPTION, address, err)
+        _LOGGER.warning("Couldn't strike the %s restore for %s off the journal: %s", OPTION, entity_id, err)
 
 
 async def _put_back(hass: HomeAssistant, target: Target, address: Address, fallback: bool) -> None:
     """Restore the user's value, the one the journal owes (fallback when none is), and strike it off once Z2M
     confirmed it."""
-    value = owed if (owed := await _owed(hass, address)) is not None else fallback
+    value = owed if (owed := await _owed(hass, address, target.entity_id)) is not None else fallback
     if await _set(hass, target, address, value, restoring=True):
-        await _strike(hass, address, value)
+        await _strike(hass, address, value, target.entity_id)
 
 
 async def _reply(target: Target, replied: asyncio.Future[None] | None) -> None:

@@ -1,0 +1,24 @@
+# lower_brightness.yaml's fades with predicted_state on: HA's state shows DeviceSide's predictions, so these checks
+# read HA, in 0-255 (60 % is 153).
+action: lower_brightness
+rig_seconds: 75
+options: [predicted_state]
+tests:
+  - name: soft_off_stays_on_until_its_end  # 60 % to off takes 3 s
+    roles: [light_ct, group]
+    setup:
+      - set: {state: on, brightness_pct: 60}
+    steps:
+      - call: {sweep_time: 5}
+      - sample: {attribute: brightness, for: 2, expect: steady, min: 148, max: 158}
+      - expect_state: {state: off, within: 1 + tol}
+
+  - name: lower_to_a_limit  # with predicted_state off HA shows the bridge's reports, and it can leave a room member stale
+    roles: [light_ct, group]
+    steps:
+      - set: {state: on, brightness_pct: 100}
+      - call: {limit: 30, sweep_time: 5}
+      # 100 % to 30 % takes 3.5 s; HA keeps the start until the fade's end, then shows the limit and holds it.
+      - expect_state: {state: on, brightness: {min: 70, max: 84}, within: 4 + tol}
+      - wait: 2
+      - expect_state: {state: on, brightness: {min: 70, max: 84}}

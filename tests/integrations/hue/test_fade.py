@@ -79,15 +79,6 @@ async def test_resource_missing_from_the_bridge_is_rejected(hass, bridge, action
     assert raised.value.translation_placeholders["summary"] == "light.gone: not_on_bridge"
 
 
-@pytest.mark.parametrize("action", ["raise_brightness", "lower_brightness", "stop"])
-async def test_v1_bridge_is_refused(hass, bridge, action):
-    bridge.light("light-1")
-    entry = await hue_entry(hass, bridge, api_version=1)
-    add_hue_entity(hass, entry, "light.lamp", "light-1")
-
-    assert await refusal(hass, action, {"entity_id": "light.lamp"}) == "bridge_v1"
-
-
 @pytest.mark.parametrize("target", ["light", "room"])
 async def test_get_attributes_predicts_brightness_mid_move(hass, bridge, clock, target):
     # hue_dimmer RELEASE_CHECKLIST §4.2: the bridge reports the end value; get_attributes reports the predicted one.

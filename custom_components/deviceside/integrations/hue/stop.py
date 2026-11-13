@@ -40,9 +40,7 @@ class HueStop(Adapter[Request]):
 
     action: ClassVar[str] = "stop"
     integration: ClassVar[str] = "hue"
-    scope: ClassVar[AdapterScope] = AdapterScope(
-        experimental=True, options=frozenset({"predicted_state"}), native_groups=True
-    )
+    scope: ClassVar[AdapterScope] = AdapterScope(options=frozenset({"predicted_state"}), native_groups=True)
 
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:
         if (reason := super().supports(hass, request, target)) is not None:
@@ -138,7 +136,7 @@ def stop_writes(
     """The writes that halt the lights, each with the lights it covers: one to the light or room, or one per light
     while any is in our soft off, which the bridge refuses a dimming stop for (on: true at its predicted brightness
     ends it there instead), or in a saturation fade of ours, halted at its own predicted xy. A write to rid itself is
-    traced as entity_id, the caller's target."""
+    logged as entity_id, the caller's target."""
     fading_off = {light_id for light_id in brightness if in_soft_off(cache, light_id)}
     if not fading_off and not xys:
         return [(list(brightness), lambda: put(hass, api, writer, rid, stops([BRIGHTNESS]), entity_id))]

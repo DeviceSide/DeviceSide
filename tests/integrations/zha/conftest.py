@@ -1,12 +1,16 @@
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
+import probatio
 import pytest
+from homeassistant.core import Context, ServiceCall
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.service import async_register_admin_service
 from homeassistant.util.color import color_hs_to_xy
 from pytest_homeassistant_custom_component.common import async_mock_service
 
+from custom_components.deviceside.const import DOMAIN
 from custom_components.deviceside.integrations.zha import zcl
 from custom_components.deviceside.integrations.zha.fade import transition_cache
 
@@ -56,6 +60,28 @@ def commands(hass):
 @pytest.fixture
 def group_commands(hass):
     return async_mock_service(hass, "zha", "issue_zigbee_group_command")
+
+
+@pytest.fixture
+def admin_command(hass) -> list[ServiceCall]:
+    """ZHA's real registration of its cluster and group commands: admin services, which check the caller's context.
+    The calls that reached either."""
+    calls: list[ServiceCall] = []
+
+    async def handler(service: ServiceCall) -> None:
+        calls.append(service)
+
+    schema = probatio.Schema({}, extra=probatio.ALLOW_EXTRA)
+    for service in ("issue_zigbee_cluster_command", "issue_zigbee_group_command"):
+        async_register_admin_service(hass, "zha", service, handler, schema)
+    return calls
+
+
+async def call_as(hass, user, action: str, data: dict) -> dict:
+    """Call one of our actions as this user, as the frontend or an automation would."""
+    return await hass.services.async_call(
+        DOMAIN, action, data, blocking=True, return_response=True, context=Context(user_id=user.id)
+    )
 
 
 @pytest.fixture

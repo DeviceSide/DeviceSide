@@ -6,10 +6,15 @@ on:
     branches:
       - main
       - "release/**"
-      - "wt/**"
 
 permissions:
   contents: read
+
+# A new push to a pull request cancels its older run. Push, schedule and dispatch runs each get their own group:
+# release gates read push runs, and a shared group would cancel a queued one.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   # A pull request touching only *.md files and docs/ (other than what the generators read) skips pytest. A push never
@@ -58,17 +63,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Full history: the compatibility page is Verified only on records as new as their code, so its check (and the
-      # test pinning the checked-in page) diffs each record's cited commit against HEAD.
+      # A shallow checkout: no test or check here reads the repo's history (the git tests build their own repos).
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
           persist-credentials: false
-
-      # A record cites the commit its rig run deployed, often on a PR branch since squash-merged and deleted. Not under
-      # refs/remotes/pull/: on a pull_request run, checkout already holds refs/remotes/pull/<n>/merge there.
-      - name: Fetch the commits test records cite
-        run: git fetch --quiet origin '+refs/pull/*/head:refs/remotes/pr/*'
 
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
