@@ -10,4 +10,3 @@ capabilities:
   RGB: {phrase: RGB LED controllers, section: Shelly LED controllers}
   RGBW: {phrase: RGBW LED controllers, section: Shelly LED controllers}
   RGBCCT: {phrase: multicolor bulbs, section: Shelly multicolor bulbs}
-reports: []

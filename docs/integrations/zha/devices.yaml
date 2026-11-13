@@ -5,4 +5,3 @@ column: ZHA
 column_order: 1
 capabilities:
   switch: {phrase: plugs and switches, section: Zigbee plugs and switches}
-reports: []

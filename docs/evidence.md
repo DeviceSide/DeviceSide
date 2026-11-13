@@ -3,16 +3,6 @@
 What DeviceSide must know about a device before a feature ships, and what a release needs. This page is the one home
 for these rules; other docs point here. Settled in [the evidence-rules plan](plans/2026-11-12-evidence-rules.md).
 
-## Transition
-
-These rules apply from 2026-11-12. Steps 2–4 of the plan (runtime, rig, release gate) have landed; until step 5 lands,
-the cards' old rules keep running: `gen_compat.py`'s record-freshness rule for Verified (a record counts only while
-its integration's package and `core/` are as at its commit), the "Experimental (in RCs only)" label and its rule
-leaving flagged adapters out of the cards (`IN_RCS`), and the rework into the new tiers. The old rules are in
-CLAUDE.md at `5aae1fe` (§ Release flag).
-
-No RC is cut until step 5 lands.
-
 ## Tenets
 
 1. **User experience is the north star.** Actions make devices do what users expect, quickly. If that holds, nothing
@@ -60,7 +50,7 @@ item ships only behind `experimental`.
   reopens its Documented siblings in the same fix.
 
 Nothing ships unflagged unless it is Verified or Documented. Built and unit-tested code that the maintainer can't
-exercise, and that isn't Documented, ships behind `experimental` as untested ("Help us test" on the cards). A sign-off
+exercise, and that isn't Documented, ships behind `experimental` as untested. A sign-off
 covers only what was exercised; it never signs off untested code.
 
 **Contrary evidence:** a report of misbehavior doesn't change the level. The maintainer root-causes it, and the fix,
@@ -72,19 +62,29 @@ documents identically (`integrations/shelly/addressing.py`).
 
 ## The experimental flag
 
-`experimental` is a flag, not a level. In code it is the per-axis marker `experimental(...)`, beside `verified(...)` and
-`documented(...)`; `experimental=True` on an `AdapterScope` flags the whole adapter. A flagged item is refused unless
-the user turns on the Experimental features option. The dispatcher is the only gate: adapters never read the option, and
-turning it on never changes how any other item behaves. A flagged item may be tested and soaking, or untested: the cards
-tell which from the evidence (a record or `_manual.md` line, or none).
+`experimental` is a flag, not a level: the item is not yet judged ready for everyone. In code it is the per-axis
+marker `experimental(...)`, beside `verified(...)` and `documented(...)`; `experimental=True` on an `AdapterScope` flags
+the whole adapter. A flagged item is refused unless the user turns on the Experimental features option. The dispatcher
+is the only gate: adapters never read the option, and turning it on never changes how any other item behaves.
 
-Every new feature (action, integration, domain, capability or field) starts flagged, so it soaks in RCs and with
-opted-in users. A repo maintainer removes the flag. The directional bar is five working reports from users other than
-the maintainer and no open bugs; nothing counts the reports in code.
+Every new feature (action, integration, domain, capability or field) starts flagged, and soaks behind the flag with
+users who opt in. A passing rig record or `_manual.md` sign-off on a flagged item is evidence a maintainer can use to
+lift its flag for the next release, skipping that soak; it is not a requirement to lift it. Whether to lift is the
+maintainer's judgment, by how complex the feature is and how complete its tests are: a developer may run the first
+few rig cases before the full suite exists, so a flagged item may have passing runs and stay flagged. Lifting makes
+`experimental(...)` into `verified(...)`, or drops `experimental=True`; a flagged item that qualifies as Documented
+becomes `documented(...)` in a PR that argues the sibling case ([Levels](#levels)). Lifting a flag is a change to the
+integration's package, so one of its maintainers approves it, as for any change there
+([CLAUDE.md](../CLAUDE.md#maintainers)).
+
+For an item no maintainer can test, users' working reports, cited in a maintainer's `_manual.md` sign-off, can verify
+it. The maintainer judges how many are enough (tenet 7); nothing counts them in code.
+
+The cards never put a model under Works from a pass on a flagged item while its flag stands (`scripts/gen_compat.py`).
 
 *Example:* Shelly dimming on `Light` is `experimental("Light")`: a user's report of a Gen3 Dimmer jumping on
-`DimStop` keeps it from Documented. Once a maintainer verifies it on a dimmer, it soaks flagged; once a repo
-maintainer judges it has soaked, their PR makes it `verified("Light")`.
+`DimStop` keeps it from Documented. A passing `raise_brightness` run on a Gen3 Dimmer puts no model under Works and
+lets a Shelly maintainer lift the flag, once they judge the tests complete: their PR makes it `verified("Light")`.
 
 ## Caveats
 
@@ -108,7 +108,7 @@ A deprecation gets a hand-written note in that release's notes, not a caveat.
 Each integration whose package (`custom_components/deviceside/integrations/<x>/`) differs from the last release tag
 needs a sign-off at or after its last change. Any change counts, flags included; a reverted one is none.
 
-- **A sign-off** is a passing test record, or a `_manual.md` line, whose commit has the package's last change as an
+- **A sign-off** is a whole passing rig run, or a `_manual.md` line, whose commit has the package's last change as an
   ancestor and holds the package as the release does. It may say "no call changed". It comes from one of the
   integration's maintainers, or a repo maintainer when none responds.
 - **Sign off after merge.** `main` squash-merges, so a PR branch's commits never reach it: a sign-off cites a commit on
@@ -133,14 +133,16 @@ needs a sign-off at or after its last change. Any change counts, flags included;
 - **Coverage:** every module under `core/` and `integrations/`, bar `__init__.py`, needs at least 95% line coverage;
   CI checks it.
 
-*Example:* all five integrations changed since v0.0.1, so v0.1.0 needs five sign-offs. A passing Hue rig record
-whose commit follows Hue's last change signs off Hue; an integration with no change would need none.
+*Example:* all five integrations changed since v0.0.1, so v0.1.0 needs five sign-offs. A passing Hue rig run whose
+commit follows Hue's last change signs off Hue; an integration with no change would need none.
 
 ### Sign-off format
 
-A rig sign-off is the test record the rig writes, `docs/integrations/<x>/test-records/<action>*.md`, with its commit
-and Result. A manual sign-off is a row of the bundle's `test-records/_manual.md`, added in a PR: date, commit, tester,
-model ids (`docs/models.yaml`, never a household's device names) and what passed.
+A rig sign-off is the bundle's test records, `docs/integrations/<x>/test-records/<action>*.md`, when every one cites
+the same commit and passes: one whole run. *Example:* if `stop.md` fails, or cites a later commit than the rest, the
+records are no sign-off until every action passes at one commit. A manual sign-off is a row of the bundle's
+`test-records/_manual.md`, added in a PR: date, commit, tester, model ids (`docs/models.yaml`, never a household's
+device names) and what passed.
 
     | Date | Commit | Tester | Devices | Passed |
     |---|---|---|---|---|
