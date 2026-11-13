@@ -148,7 +148,7 @@ flicker seen by eye.
 - **Fix if it bites:** restore the pin, `{"state": "ON", "brightness", "transition": 0}` at the predicted brightness
   after the stop, but only for a soft off whose native-control set failed (`native_control` reports it; the stop
   picks those lights out). `6710d79` pinned every soft off, from when the stop didn't end the Philips command;
-  #302 made native control per action, and this PR dropped the pin.
+  #302 made native control per action, and #407 dropped the pin.
 
 ### `set_check`
 
