@@ -124,7 +124,8 @@ class Watch:
             else:
                 entity = self.entities[target.entity_id] = _Entity(target.device.name, set(), unsubscribe)
         entity.owners.add(owner)
-        entity.bound_at = self.hass.loop.time() + bound_s
+        # A later no-state publish mustn't cut short the bound an earlier publish still needs.
+        entity.bound_at = max(entity.bound_at, self.hass.loop.time() + bound_s)
         entity.answered = False
 
     def _on_state(self, entity_id: str) -> Callable[[mqtt.ReceiveMessage], None]:

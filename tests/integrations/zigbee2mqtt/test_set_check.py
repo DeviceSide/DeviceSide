@@ -282,6 +282,19 @@ async def test_a_watch_closed_mid_subscribe_drops_the_subscription(hass, broker,
     assert broker.subscribers["zigbee2mqtt/lamp"] == []
 
 
+async def test_a_no_state_publish_keeps_an_earlier_publishs_longer_bound(hass, broker, live):
+    entity_id = light(hass, broker)
+    watch = set_check.Watch(hass, live)
+    lamp = target(hass, entity_id)
+    start = hass.loop.time()
+
+    await watch.note(lamp, entity_id, set_check.BOUND_S)
+    await watch.note(lamp, entity_id, set_check.NO_STATE_BOUND_S)
+
+    assert watch.entities[entity_id].bound_at >= start + set_check.BOUND_S
+    watch.close()
+
+
 async def test_two_sends_noting_one_entity_at_once_both_own_it(hass, broker, live, monkeypatch):
     # A group's send writing a member that is also a target: both subscribes are in flight together.
     entity_id = light(hass, broker)
