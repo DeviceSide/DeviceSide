@@ -1,6 +1,6 @@
 # DeviceSide
 
-[![HACS Default](https://img.shields.io/badge/HACS-Default-orange.svg)](https://hacs.xyz/) [![Latest Version](https://img.shields.io/github/v/release/DeviceSide/DeviceSide?sort=date)](https://github.com/DeviceSide/DeviceSide/releases) ![Installs](https://img.shields.io/badge/dynamic/json?color=blue&label=Installs&query=deviceside.total&url=https://analytics.home-assistant.io/custom_integrations.json) [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/jasonmx)
+[![Latest Version](https://img.shields.io/github/v/release/DeviceSide/DeviceSide?sort=date)](https://github.com/DeviceSide/DeviceSide/releases) ![Installs](https://img.shields.io/badge/dynamic/json?color=blue&label=Installs&query=deviceside.total&url=https://analytics.home-assistant.io/custom_integrations.json) [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/jasonmx)
 
 DeviceSide unlocks native features in your lights, switches and plugs on Zigbee, Shelly, Philips Hue and Matter.
 
@@ -103,7 +103,7 @@ Details per integration are in [docs/integrations.md](https://github.com/DeviceS
 
 1. Open the DeviceSide repository
 
-   [![Open DeviceSide in Marketplace in your Home Assistant instance.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=DeviceSide&repository=DeviceSide&category=integration)
+   [![Open DeviceSide in Marketplace in your Home Assistant instance.](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=DeviceSide&repository=DeviceSide&category=integration)
 
 2. Click **Download**
 
