@@ -5,7 +5,7 @@
 | Result | pass |
 | Ran | 1 passed, 2 skipped |
 | Date | 2026-11-13 |
-| Source | rig run (`scripts/rig.py`), commit `308bd61` |
+| Source | rig run (`scripts/rig.py`), commit `7b50c5b` |
 | Home Assistant | 2026.10.4 |
 | Device | LCA016, firmware `0x01001200` |
 

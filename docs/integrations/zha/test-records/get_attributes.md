@@ -5,9 +5,9 @@
 | Result | pass |
 | Ran | 3 passed, 2 skipped |
 | Date | 2026-11-13 |
-| Source | rig run (`scripts/rig.py`), commit `308bd61` |
+| Source | rig run (`scripts/rig.py`), commit `7b50c5b` |
 | Home Assistant | 2026.10.4 |
-| Device | LTA004, firmware `0x01001416`; LCA016, firmware `0x01001200` |
+| Device | LTA009, firmware `0x01002a00`; LCA016, firmware `0x01001200`; LWA012, firmware `0x01002a00` |
 
 ## Tests
 
