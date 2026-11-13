@@ -75,7 +75,8 @@ class BridgeCache:
             try:
                 parsed = json.loads(payload)
             except ValueError:
-                _LOGGER.debug("Zigbee2MQTT's bridge/%s doesn't parse: %.80s", suffix, payload)
+                # Not the payload: it opens with a device's IEEE and friendly name (docs/logging.md).
+                _LOGGER.debug("Zigbee2MQTT's bridge/%s doesn't parse (%d characters)", suffix, len(payload))
                 parsed = None
             memo = self._parsed[suffix] = (payload, parsed)
         return memo[1]
@@ -176,7 +177,7 @@ def log_error(payload: str) -> str | None:
 # the address a device's <ieee>/<endpoint> or a group's number.
 _ZCL_FAILURE = re.compile(r"ZCL command \S+ (?P<call>\w+\.\w+)\(.*\) failed \((?P<cause>.*)\)'?$")
 # Any other failed set: `Publish 'set' '<key>' to '<friendly name>' failed: '<error>'`.
-_SET_FAILURE = re.compile(r"^Publish '\w+' '[^']*' to '(?P<name>[^']*)' failed: '?(?:Error: )?(?P<error>.*?)'?$")
+_SET_FAILURE = re.compile(r"^Publish '\w+' '[^']*' to '(?P<name>.*?)' failed: '?(?:Error: )?(?P<error>.*?)'?$")
 # The shapes Z2M and herdsman address a device or group in: a bracketed sender (`[ZCL GROUP groupId=7]`), the network
 # address a delivery failed for (`for '<nwk>'`), the address fields of herdsman's timeout (`Timeout - <nwk> - <ep> -
 # <tsn> - <cluster> - <command> after 10000ms`), an IEEE with its endpoint, and a group's number. Only these: the
@@ -190,12 +191,14 @@ _ADDRESSING = (
 )
 
 
-def scrub(text: str, *names: str) -> str:
+def scrub(text: str, *names: str, label: str = "device") -> str:
     """text Z2M wrote, for a log line (docs/logging.md): the addressing Z2M and herdsman put in it taken out, and each
-    of names (a friendly name, the id a request used) replaced where it is quoted."""
+    of names (a friendly name, the id a request used) replaced by <label> where Z2M names a device by it: quoted, or
+    ahead of an endpoint (`lamp/11`). A bare word elsewhere is left, as a name can be one (`on`)."""
     for name in names:
         if name:
-            text = text.replace(f"'{name}'", "'<device>'")
+            text = text.replace(f"'{name}'", f"'<{label}>'")
+            text = re.sub(rf"(?<![\w/]){re.escape(name)}/(?=\d)", f"<{label}>/", text)
     for pattern, replacement in _ADDRESSING:
         text = pattern.sub(replacement, text)
     return text.strip()

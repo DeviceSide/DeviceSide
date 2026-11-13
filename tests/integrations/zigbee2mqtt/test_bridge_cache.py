@@ -403,6 +403,16 @@ async def test_a_malformed_fresh_payload_raises_timeout(hass, broker, monkeypatc
             "No converter available for 'state' on '<device>'",
             id="another_set_failure_gives_its_error",
         ),
+        pytest.param(
+            "Publish 'set' 'state' to 'lamp' failed: 'Error: Command lamp/11 genOnOff.on failed'",
+            "Command <device>/11 genOnOff.on failed",
+            id="a_name_ahead_of_an_endpoint",
+        ),
+        pytest.param(
+            "Publish 'set' 'state' to 'Kid's lamp' failed: 'Error: No converter available for 'state' on 'Kid's lamp''",
+            "No converter available for 'state' on '<device>'",
+            id="a_name_with_an_apostrophe",
+        ),
         pytest.param("Failed to ping 'lamp'", "a failure DeviceSide doesn't parse", id="another_shape"),
     ],
 )
