@@ -260,7 +260,7 @@ def test_a_changed_integration_with_no_signoff_fails(released, monkeypatch, caps
     change = released.commit(f"{FAKE}/stop.py")
     assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
     out, err = capsys.readouterr()
-    line = f"fake: changed at {change[:7]}; no sign-off at or after it, and no Untested fix on fake / stop"
+    line = f"fake: changed at {change[:7]}; no sign-off of its package, and no Untested fix on fake / stop"
     assert out.splitlines() == ["Since v0.1.0:", line]
     assert err.splitlines() == [f"error: {line}"]
 

@@ -6,30 +6,29 @@ The rules are in docs/evidence.md (Release gate, Sign-off format); this is how t
 --coverage coverage.json (pytest --cov-report=json): every module under `core/` and `integrations/`, bar `__init__.py`,
 needs at least 95% line coverage; one missing from the report has none.
 
---signoffs: an integration is changed when its package (`integrations/<key>/`) differs between the last release tag
-(the latest `vX.Y.Z` that is an ancestor of HEAD; with none, every integration is changed) and HEAD, so a reverted
-change is none; its last change is the latest commit touching the package. It needs a sign-off that holds the package
-as HEAD does: its test records as one run, by the Package tree they cite (the tree of `integrations/<key>/` at the
-run's commit, compared to HEAD's, so a run on a branch counts after a squash merge, and a deleted one still does), or
-a `_manual.md` row, by its commit, which is in this checkout. The records are one run when every one cites the same
+--signoffs: an integration is changed when its package (`integrations/<key>/`) differs between the last release tag (the
+latest `vX.Y.Z` that is an ancestor of HEAD; with none, every integration is changed) and HEAD, so a reverted change is
+none; its last change is the latest commit touching the package. It needs a sign-off that holds the package as HEAD
+does: its test records as one run, by the Package tree they cite (the tree of `integrations/<key>/` at the run's commit,
+compared to HEAD's, so a run on a branch counts after a squash merge, even once the branch is deleted), or a
+`_manual.md` row, by its commit, which is in this checkout. The records are one run when every one cites the same
 Package tree, whatever commit it ran at, and passes; a partial run (records citing different trees), a record with no
-Package row or a failing record is none, until a rerun of the missing or failing actions completes it. Without one, a
-⚠️ Untested fix caveat stands in when every changed adapter carries it: each adapter whose module changed, or all of
-the package's when a module that is no adapter's changed (a shared helper). Prints a line per changed integration
-naming its sign-off (kind, commit, tester) or the caveats standing in, and fails on each with neither, saying why its
-records and each manual row were rejected. With --json, prints instead the changed integrations without a sign-off, as
-a JSON list: the rig's run
-selection.
+Package row or a failing record is none, until a rerun of the missing or failing actions completes it. Without one, a ⚠️
+Untested fix caveat stands in when every changed adapter carries it: each adapter whose module changed, or all of the
+package's when a module that is no adapter's changed (a shared helper). Prints a line per changed integration naming its
+sign-off (kind, commit, tester) or the caveats standing in, and fails on each with neither, saying why its records and
+each manual row were rejected. With --json, prints instead the changed integrations without a sign-off, as a JSON list:
+the rig's run selection.
 
 --notes notes.md: writes the release notes' call for testers, with a link to the device report form: the changed
 integrations without a sign-off, and every adapter with an Untested fix caveat. Empty when there are none.
 
 Test records are the rig's, `docs/integrations/<key>/test-records/<action>*.md`: their Source row cites the commit
-(`commit `1a2b3c4``), their Package row the package tree (`| Package | `0123456789ab` |`), their Result row the
-outcome. A file whose name starts with `_` is no record (`_facts.md`), bar
-`_manual.md`, whose table rows are manual sign-offs. Under --signoffs, any other file is an error, named: a record
-without the rig's Source row (`| Source | rig run (`scripts/rig.py`), commit `1a2b3c4` |`) is no rig record. Probe
-findings go in internals.md, manual sign-offs in `_manual.md`:
+(`commit `1a2b3c4``), their Package row the package tree (`| Package | `0123456789ab` |`), their Result row the outcome.
+A file whose name starts with `_` is no record (`_facts.md`), bar `_manual.md`, whose table rows are manual sign-offs.
+Under --signoffs, any other file is an error, named: a record without the rig's Source row (`| Source | rig run
+(`scripts/rig.py`), commit `1a2b3c4` |`) is no rig record. Probe findings go in internals.md, manual sign-offs in
+`_manual.md`:
 
     | Date | Commit | Tester | Devices | Passed |
     |---|---|---|---|---|
@@ -103,8 +102,8 @@ def run(*args: str) -> subprocess.CompletedProcess:
 
 
 def holds(*args: str) -> bool:
-    """For a command whose exit 1 means no (`merge-base --is-ancestor`, `diff --quiet`): whether it exited 0. Raises on
-    any other exit, a git error."""
+    """For a command whose exit 1 means no (`diff --quiet`): whether it exited 0. Raises on any other exit, a git
+    error."""
     done = run(*args)
     if done.returncode > 1:
         raise RuntimeError(f"git {' '.join(args)}: {done.stderr.strip()}")
@@ -313,7 +312,7 @@ def describe(gate: Gate) -> str:
         return f"{head}; no sign-off, Untested fix stands in on every changed adapter: {', '.join(gate.caveated)}"
     rejected = "".join(f" ({why})" for why in gate.rejected)
     bare = ", ".join(gate.uncaveated) or "any adapter"
-    return f"{head}; no sign-off at or after it{rejected}, and no Untested fix on {bare}"
+    return f"{head}; no sign-off of its package{rejected}, and no Untested fix on {bare}"
 
 
 def release_notes(registry, found: list[Gate]) -> str:

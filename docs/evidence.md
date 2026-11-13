@@ -106,13 +106,14 @@ A deprecation gets a hand-written note in that release's notes, not a caveat.
 ## Release gate
 
 Each integration whose package (`custom_components/deviceside/integrations/<x>/`) differs from the last release tag
-needs a sign-off at or after its last change. Any change counts, flags included; a reverted one is none.
+needs a sign-off that holds the package as the release does. Any change counts, flags included; a reverted one is
+none.
 
-- **A sign-off** is a whole passing rig run, or a `_manual.md` line, whose commit has the package's last change as an
-  ancestor and holds the package as the release does. It may say "no call changed". It comes from one of the
-  integration's maintainers, or a repo maintainer when none responds.
-- **Sign off after merge.** `main` squash-merges, so a PR branch's commits never reach it: a sign-off cites a commit on
-  `main` (or a `release/` branch) at or after the change, and lands in a later PR.
+- **A sign-off** is a whole passing rig run or a `_manual.md` line. A run is checked by the Package tree its records
+  cite, so a run on a PR branch still counts once the PR squash-merges, and its records can land in the same PR. A
+  manual line is checked by its commit, which must be on `main` (or a `release/` branch), so it lands after the change
+  merges. It may say "no call changed". It comes from one of the integration's maintainers, or a repo maintainer when
+  none responds.
 - **Prefer the rig.** Where the rig covers an integration, the sign-off is a rig run: it is repeatable and catches what
   a person doesn't. A manual line is the fallback for integrations the rig can't reach, or when the rig is broken; a
   manual sign-off on a rig-covered integration says why in its PR. This is guidance, not a gate check. Rig evidence is
@@ -134,13 +135,20 @@ needs a sign-off at or after its last change. Any change counts, flags included;
   CI checks it.
 
 *Example:* all five integrations changed since v0.0.1, so v0.1.0 needs five sign-offs. A passing Hue rig run whose
-commit follows Hue's last change signs off Hue; an integration with no change would need none.
+Package tree is the release's Hue package signs off Hue; an integration with no change would need none.
 
 ### Sign-off format
 
 A rig sign-off is the bundle's test records, `docs/integrations/<x>/test-records/<action>*.md`, when every one cites
-the same commit and passes: one whole run. *Example:* if `stop.md` fails, or cites a later commit than the rest, the
-records are no sign-off until every action passes at one commit. A manual sign-off is a row of the bundle's
+the same Package tree and passes: one whole run, whatever commit each record ran at. The rig writes the Package row,
+the package's git tree at the run's commit:
+
+    | Source | rig run (`scripts/rig.py`), commit `1a2b3c4` |
+    | Package | `0123456789ab` |
+
+*Example:* if `stop.md` fails, or cites a different Package tree than the rest, the records are no sign-off until every
+action passes at one package tree; a rerun of `stop` on `main` completes a run made on a PR branch when the package
+didn't change between them. A record with no Package row is no sign-off. A manual sign-off is a row of the bundle's
 `test-records/_manual.md`, added in a PR: date, commit, tester, model ids (`docs/models.yaml`, never a household's
 device names) and what passed.
 
