@@ -178,6 +178,11 @@ Each command runs under two semaphores, applied in `Adapter.gather()`: the integ
 (`AdapterScope.max_concurrency`). Hue is 2 because aiohue's cap of 3 is shared with core. `execute` gets all of an
 adapter's targets at once, so native group commands stay possible.
 
+A per-device lock (`LevelFade.guard`, and the stop that shares it) is `gather`'s `hold`, taken before the slot under
+the same deadline, so a call waiting on its device holds no slot; a section under a hold never takes a slot itself.
+Not built, for when more integrations need per-device ordering: a lock-free per-device stop counter (a move that sees
+a stop land during it sends one more halt), or a per-device command queue.
+
 ### services.yaml, strings, icons
 
 - `services.yaml` holds only target filters and field selectors; names and descriptions are in `strings.json`.

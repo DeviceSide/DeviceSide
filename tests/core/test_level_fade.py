@@ -1,7 +1,7 @@
 """LevelFade's own contracts, which the integrations built on it rely on: what a refusal passes on, the guard held
 from the read to the set, and the default duration."""
 
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, nullcontext
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -45,11 +45,15 @@ class PlainFade(LevelFade):
         finally:
             self.steps.append("guard released")
 
-    async def gather(self, hass, targets, send):
-        """Adapter.gather's hand-off, recorded: it is what gives each target its slot, its deadline and its own
-        result."""
+    async def gather(self, hass, targets, send, hold=None):
+        """Adapter.gather's hand-off, recorded: it is what gives each target its hold, its slot, its deadline and its
+        own result."""
         self.steps.append("gather")
-        return [await send(target) for target in targets]
+        results = []
+        for target in targets:
+            async with hold(target) if hold else nullcontext():
+                results.append(await send(target))
+        return results
 
 
 class PlainLower(PlainFade):
@@ -106,6 +110,19 @@ async def test_the_guard_is_held_from_the_read_to_the_set():
 
     assert result.status is Status.SENT
     assert fade.steps == ["gather", "guard taken", "read", ("set", 100, 2.4), "guard released"]
+
+
+async def test_the_guard_is_gathers_hold_not_taken_inside_the_send():
+    """gather() takes it before the slot, so a fade waiting on its light holds no slot another light could use."""
+    fade = PlainFade()
+
+    async def gather_without_hold(hass, targets, send, hold=None):
+        return [await send(target) for target in targets]
+
+    with patch.object(fade, "gather", gather_without_hold):
+        await fade.execute(None, ramp(), [LAMP])
+
+    assert "guard taken" not in fade.steps
 
 
 async def test_the_guard_is_released_when_nothing_is_sent(caplog):

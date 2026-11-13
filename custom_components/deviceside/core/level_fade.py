@@ -55,7 +55,8 @@ class LevelFade(Adapter["RampRequest"]):
         return max(distance / 100 * sweep_time, self.fade_limits.min_s)
 
     def guard(self, hass: HomeAssistant, target: Target) -> AbstractAsyncContextManager:
-        """Held from the read to the set, for an integration whose stop must not slip in between them."""
+        """Held from the read to the set, for an integration whose stop must not slip in between them: its stop passes
+        the same guard as gather()'s `hold`. Taken before the slot, so a call waiting on it holds none."""
         return nullcontext()
 
     def supports(self, hass: HomeAssistant, request: RampRequest, target: Target) -> str | None:
@@ -69,18 +70,17 @@ class LevelFade(Adapter["RampRequest"]):
         clamped_to = sweep_time if sweep_time != request.sweep_time else None
 
         async def move(target: Target) -> EntityResult:
-            async with self.guard(hass, target):
-                lit, level = await self.read(hass, target)
-                current = level if lit else 0.0
-                end = request.end()
-                if not request.up and not lit:
-                    return self._skipped(target, "off", lit, level, end)
-                if (end - current if request.up else current - end) < self.min_step:
-                    return self._skipped(target, "at_limit", lit, level, end)
-                await self.fade_to(hass, target, end, self.seconds(abs(end - current), sweep_time))
+            lit, level = await self.read(hass, target)
+            current = level if lit else 0.0
+            end = request.end()
+            if not request.up and not lit:
+                return self._skipped(target, "off", lit, level, end)
+            if (end - current if request.up else current - end) < self.min_step:
+                return self._skipped(target, "at_limit", lit, level, end)
+            await self.fade_to(hass, target, end, self.seconds(abs(end - current), sweep_time))
             return self.result(target, Status.SENT, clamped_to=clamped_to)
 
-        return await self.gather(hass, targets, move)
+        return await self.gather(hass, targets, move, hold=lambda target: self.guard(hass, target))
 
     def _skipped(self, target: Target, detail: str, lit: bool, level: float, end: float) -> EntityResult:
         """Nothing sent, on what the device reported: logged with the values that decided it."""

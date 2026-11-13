@@ -1,6 +1,7 @@
 """A scripted adapter shared by the fake integrations: tests set outcomes per entity and read back what was sent."""
 
 import asyncio
+from contextlib import nullcontext
 from dataclasses import dataclass, field
 
 from custom_components.deviceside.core.adapter import Adapter
@@ -17,6 +18,9 @@ class Script:
     delays: dict[str, float] = field(default_factory=dict)
     active: int = 0
     max_active: int = 0
+    # Per entity, the lock gather() takes as its hold; entities sharing one are one device.
+    holds: dict[str, asyncio.Lock] = field(default_factory=dict)
+    started: list[str] = field(default_factory=list)
 
     def reset(self) -> None:
         self.__init__()
@@ -32,6 +36,7 @@ class ScriptedAdapter(Adapter):
             raise SCRIPT.execute_error
 
         async def send(target: Target) -> EntityResult:
+            SCRIPT.started.append(target.entity_id)
             SCRIPT.active += 1
             SCRIPT.max_active = max(SCRIPT.max_active, SCRIPT.active)
             try:
@@ -43,4 +48,7 @@ class ScriptedAdapter(Adapter):
             finally:
                 SCRIPT.active -= 1
 
-        return await self.gather(hass, targets, send)
+        def hold(target: Target):
+            return SCRIPT.holds.get(target.entity_id) or nullcontext()
+
+        return await self.gather(hass, targets, send, hold=hold)
