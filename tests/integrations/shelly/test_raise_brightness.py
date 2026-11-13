@@ -27,6 +27,7 @@ def fade(brightness: int, duration: float):
         pytest.param({"limit": 70}, fade(70, 1.5), id="to_a_limit"),
         pytest.param({"sweep_time": 10}, fade(100, 6.0), id="sweep_time_is_the_full_range"),
         pytest.param({"limit": 70.4}, fade(70, 1.52), id="limit_to_a_whole_percent"),
+        pytest.param({"limit": 70.33}, fade(70, 1.52), id="duration_to_a_hundredth_of_a_second"),
     ],
 )
 async def test_reads_the_level_then_sends_the_end_point_with_a_transition(hass, setup_production, data, sent):
