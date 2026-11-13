@@ -96,6 +96,7 @@ Details per integration are in [docs/integrations.md](https://github.com/DeviceS
 
 * Hue Bridges: V2 and Pro; Shelly: Gen 2 and above
 
+<!-- ha-marketplace:exclude-start -->
 ### Install from Marketplace
 
 <details>
@@ -114,6 +115,7 @@ Details per integration are in [docs/integrations.md](https://github.com/DeviceS
    [![Add DeviceSide to your Home Assistant instance.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=deviceside)
 
 </details>
+<!-- ha-marketplace:exclude-end -->
 
 ## Usage
 
