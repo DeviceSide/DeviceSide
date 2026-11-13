@@ -197,8 +197,8 @@ async def test_an_error_reply_warns_and_the_rest_still_go(hass, z2m, caplog):
 
     assert set(sent(z2m)) == {("device", IEEE), ("device", OTHER), ("group", "1")}
     assert (
-        "Couldn't set Zigbee2MQTT's Home Assistant color modes for light.lamp: RuntimeError('refused'), so HA may not show"
-        " its color in either mode" in caplog.text
+        "Couldn't set Zigbee2MQTT's Home Assistant color modes for light.lamp: RuntimeError('refused'), "
+        "so HA may not show its color in either mode" in caplog.text
     )
 
 
