@@ -79,6 +79,18 @@ def test_main_moving_on_isnt_blamed_on_the_pr(pr):
     assert cp.check("main", "pr", "alice", MAINTAINERS) == (True, False)
 
 
+def test_a_pr_that_merged_a_newer_main_is_judged_against_main_s_tip(pr):
+    on_pr(pr, "code.py", "x = 1\n")
+    stale_base = pr.git("rev-parse", "main")
+    pr.commit(cp.README, README.replace("Intro.", "Newer intro."))
+    pr.git("checkout", "-q", "pr")
+    pr.git("merge", "-q", "--no-edit", "main")
+    pr.git("checkout", "-q", "main")
+    assert cp.check("main", "pr", "alice", MAINTAINERS) == (True, False)
+    # Why the workflow passes the checked-out tip, not the event's base.sha:
+    assert cp.check(stale_base, "pr", "alice", MAINTAINERS) == (False, False)
+
+
 def test_main_writes_the_output_and_fails_on_the_readme(pr, tmp_path, monkeypatch, capsys):
     on_pr(pr, cp.README, "rewritten\n")
     on_pr(pr, cp.MANIFEST, "{}\n")

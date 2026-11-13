@@ -18,6 +18,7 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       contents: read
       pull-requests: write
@@ -36,12 +37,14 @@ jobs:
         id: check
         continue-on-error: true
         env:
-          NUMBER: ${{ github.event.pull_request.number }}
-          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           AUTHOR: ${{ github.event.pull_request.user.login }}
+        # Against the checked-out base tip, not the event's base.sha: that can predate a `main` the PR has merged in,
+        # which would blame the PR for `main`'s README edits. The head is the event's commit, not whatever the PR's
+        # ref has moved to since.
         run: |
-          git fetch --quiet --no-tags origin "refs/pull/${NUMBER}/head"
-          python scripts/check_protected.py "$BASE" FETCH_HEAD --author "$AUTHOR"
+          git fetch --quiet --no-tags origin "$HEAD_SHA"
+          python scripts/check_protected.py HEAD "$HEAD_SHA" --author "$AUTHOR"
 
       # Each comment once per PR, kept, not repeated on each push.
       - name: Comment on the PR
@@ -53,7 +56,9 @@ jobs:
           README: ${{ steps.check.outputs.readme }}
           MANIFEST: ${{ steps.check.outputs.manifest }}
         run: |
-          posted=$(gh api "repos/$GH_REPO/issues/$NUMBER/comments" --paginate --jq '.[].body')
+          # The bot's own comments only: a marker anyone else posts doesn't silence it.
+          posted=$(gh api "repos/$GH_REPO/issues/$NUMBER/comments" --paginate \
+            --jq '.[] | select(.user.login == "github-actions[bot]") | .body')
           comment() {  # <marker> <body>
             grep -qF "$1" <<< "$posted" || gh pr comment "$NUMBER" --body "$1"$'\n'"$2"
           }
