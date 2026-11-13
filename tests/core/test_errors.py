@@ -17,6 +17,13 @@ REQUEST = RequestInfo(URL_, "PUT", CIMultiDictProxy(CIMultiDict({"hue-applicatio
 CONNECTION = aiohttp.client_reqrep.ConnectionKey("192.0.2.1", 443, True, True, None, None, None)
 
 
+def verify_failed() -> ssl.SSLCertVerificationError:
+    """A certificate-verify failure as ssl raises it: OpenSSL's code as errno, its reason, the host in its text."""
+    err = ssl.SSLCertVerificationError(1, "[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed for 192.0.2.1")
+    err.reason = "CERTIFICATE_VERIFY_FAILED"
+    return err
+
+
 @pytest.mark.parametrize(
     ("err", "described"),
     [
@@ -49,6 +56,11 @@ CONNECTION = aiohttp.client_reqrep.ConnectionKey("192.0.2.1", 443, True, True, N
             aiohttp.ClientConnectorCertificateError(CONNECTION, ssl.SSLCertVerificationError(1, "192.0.2.1")),
             "ClientConnectorCertificateError()",
             id="an_ssl_error_is_no_errno",
+        ),
+        pytest.param(
+            aiohttp.ClientConnectorCertificateError(CONNECTION, verify_failed()),
+            "ClientConnectorCertificateError(CERTIFICATE_VERIFY_FAILED)",
+            id="an_ssl_error_gives_its_reason",
         ),
         pytest.param(aiohttp.InvalidURL(URL_), "InvalidURL()", id="another_client_error"),
         pytest.param(TimeoutError(), "TimeoutError()", id="any_other_error_is_its_repr"),

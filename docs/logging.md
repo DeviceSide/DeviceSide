@@ -32,9 +32,9 @@ Users paste logs into public issues.
   which errors carry a secret, so one function decides. Most give their repr, as their text is often the diagnosis and
   HA logs them the same way. An HTTP client error's repr holds the request's URL and headers (a Hue bridge's app key)
   and its text the URL or the address it couldn't reach, so `describe` gives only its type, status and reason, or its
-  errno name, for it or an error wrapping it, and its traceback stays out. A new client library whose errors carry
-  addresses or secrets is handled in `describe`. Your own format strings never add an address to them. An import
-  error is ours, not upstream, and is logged as it is.
+  errno name (an SSL error's reason), for it or an error wrapping or grouping it, and its traceback stays out. A new
+  client library whose errors carry addresses or secrets is handled in `describe`. Your own format strings never add
+  an address to them. An integration module's failure to import is ours, not upstream, and is logged as it is.
 - **A message another system wrote is not an upstream error.** An upstream error is an exception a library raises.
   A line another system logs or sends, such as a Zigbee2MQTT `bridge/logging` line, names devices its own way, so log
   the cause it names, never the line (Zigbee2MQTT: `bridge_cache.cause` and `scrub`).
