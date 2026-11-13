@@ -140,7 +140,9 @@ the message's state after the last (`lib/extension/publish.ts`). So a key's fail
 state. raise, lower, stop and turn_on_for settle after their publishes until each entity published to has a state
 publish or a failure line, else 2 s past its last publish; a failure line makes the target `rejected`, with the status
 it names (`busy`) or `send_failed`. set_attributes checks without the settle. The settle never delays a publish.
-`hue_move`, a raw `command` and `on_time` draw no state, so those settles run the 2 s.
+`hue_move`, a raw `command` and `on_time` draw no state, so a publish of one waits only 0.25 s, a groupcast's BUSY:
+waiting the 2 s answered raise_hue 2 s late, and a script that waited, then stopped, ran the hue 2 s on (rig run
+2026-11-13: +92° on a 3 s raise, expected +54°). A unicast's BUSY on them answers `sent`.
 
 ### `color_refresh`
 
