@@ -288,6 +288,17 @@ async def test_a_member_read_before_the_groupcast_lands_is_read_again(
     assert response == {"light.a": CONFIRMED, "light.b": CONFIRMED}
 
 
+async def test_a_member_whose_read_fails_is_not_read_again(
+    hass, setup_production, two_light_group, group_commands, readback
+):
+    readback.side_effect = lambda hass, addr, *args, **kwargs: {} if addr.ieee == B else reads(50)
+
+    response = await call(hass, "turn_on_for", {"entity_id": "light.zha_group", "duration": 5})
+
+    assert response["light.b"]["detail"] == "readback_failed"
+    assert [read.args[1].ieee for read in readback.await_args_list].count(B) == 1
+
+
 async def test_a_unicast_is_read_back_once(hass, setup_production, commands, readback):
     """A unicast returns once the light has taken it, so there is nothing to wait for."""
     add_zha_entity(hass, zha_entry(hass), "light.bulb")
