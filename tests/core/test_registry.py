@@ -3,6 +3,8 @@
 import importlib
 import logging
 from dataclasses import replace
+from itertools import product
+from types import SimpleNamespace
 
 import pytest
 
@@ -11,6 +13,12 @@ from custom_components.deviceside.core.registry import AdapterRegistry
 from custom_components.deviceside.core.scope import verified
 
 from ..conftest import FAKE_INTEGRATIONS
+from ..fakes.fake_integration import ADAPTERS, INTEGRATION, FakeTurnOnFor
+
+
+def _registry(adapters=ADAPTERS, info=INTEGRATION) -> AdapterRegistry:
+    """A registry of the fake integration alone, with these adapters and this info."""
+    return AdapterRegistry(actions.discover(), [SimpleNamespace(INTEGRATION=info, ADAPTERS=adapters)])
 
 
 def test_broken_integration_is_recorded_unavailable_and_others_load():
@@ -41,100 +49,49 @@ def test_import_failure_warns_only_when_our_code_is_out_of_step(monkeypatch, cap
 
 
 def test_matrix_lists_every_pair_sorted():
-    registry = AdapterRegistry(actions.discover(), FAKE_INTEGRATIONS)
+    discovered = actions.discover()
+    registry = AdapterRegistry(discovered, FAKE_INTEGRATIONS)
+    matrix = list(registry.matrix())
 
-    assert [(action, integration, adapter is not None) for action, integration, adapter in registry.matrix()] == [
-        ("clear_auto_off", "broken_integration", False),
-        ("clear_auto_off", "fake", False),
-        ("clear_auto_off", "fake_special", False),
-        ("clear_auto_on", "broken_integration", False),
-        ("clear_auto_on", "fake", False),
-        ("clear_auto_on", "fake_special", False),
-        ("get_attributes", "broken_integration", False),
-        ("get_attributes", "fake", False),
-        ("get_attributes", "fake_special", False),
-        ("lower_brightness", "broken_integration", False),
-        ("lower_brightness", "fake", False),
-        ("lower_brightness", "fake_special", False),
-        ("lower_hue", "broken_integration", False),
-        ("lower_hue", "fake", False),
-        ("lower_hue", "fake_special", False),
-        ("lower_saturation", "broken_integration", False),
-        ("lower_saturation", "fake", False),
-        ("lower_saturation", "fake_special", False),
-        ("raise_brightness", "broken_integration", False),
-        ("raise_brightness", "fake", False),
-        ("raise_brightness", "fake_special", False),
-        ("raise_hue", "broken_integration", False),
-        ("raise_hue", "fake", False),
-        ("raise_hue", "fake_special", False),
-        ("raise_saturation", "broken_integration", False),
-        ("raise_saturation", "fake", False),
-        ("raise_saturation", "fake_special", False),
-        ("set_attributes", "broken_integration", False),
-        ("set_attributes", "fake", True),
-        ("set_attributes", "fake_special", False),
-        ("set_auto_off", "broken_integration", False),
-        ("set_auto_off", "fake", False),
-        ("set_auto_off", "fake_special", False),
-        ("set_auto_on", "broken_integration", False),
-        ("set_auto_on", "fake", False),
-        ("set_auto_on", "fake_special", False),
-        ("set_scene", "broken_integration", False),
-        ("set_scene", "fake", False),
-        ("set_scene", "fake_special", False),
-        ("stop", "broken_integration", False),
-        ("stop", "fake", False),
-        ("stop", "fake_special", False),
-        ("turn_off_for", "broken_integration", False),
-        ("turn_off_for", "fake", True),
-        ("turn_off_for", "fake_special", False),
-        ("turn_on_for", "broken_integration", False),
-        ("turn_on_for", "fake", True),
-        ("turn_on_for", "fake_special", True),
+    keys = sorted(action.key for action in discovered)
+    integrations = ["broken_integration", "fake", "fake_special"]
+    assert [(action, integration) for action, integration, _ in matrix] == list(product(keys, integrations))
+    assert [(action, integration) for action, integration, adapter in matrix if adapter is not None] == [
+        ("set_attributes", "fake"),
+        ("turn_off_for", "fake"),
+        ("turn_on_for", "fake"),
+        ("turn_on_for", "fake_special"),
     ]
 
 
 def test_adapter_for_unknown_action_is_refused():
-    from types import SimpleNamespace
-
-    from ..fakes.fake_integration import INTEGRATION, FakeTurnOnFor
-
     class Stray(FakeTurnOnFor):
         action = "no_such_action"
 
     with pytest.raises(ValueError, match="unknown action"):
-        AdapterRegistry(actions.discover(), [SimpleNamespace(INTEGRATION=INTEGRATION, ADAPTERS=[Stray])])
+        _registry([Stray])
 
 
 def test_an_adapter_naming_capabilities_must_list_them_in_its_scope():
-    from types import SimpleNamespace
-
-    from ..fakes.fake_integration import INTEGRATION, FakeTurnOnFor
-
     class Named(FakeTurnOnFor):
         def capability(self, hass, target):
             return "Switch"
 
     with pytest.raises(ValueError, match="names capabilities but its scope lists none"):
-        AdapterRegistry(actions.discover(), [SimpleNamespace(INTEGRATION=INTEGRATION, ADAPTERS=[Named])])
+        _registry([Named])
 
     class Listed(Named):
         scope = replace(FakeTurnOnFor.scope, capabilities=verified("Switch"))
 
-    AdapterRegistry(actions.discover(), [SimpleNamespace(INTEGRATION=INTEGRATION, ADAPTERS=[Listed])])
+    _registry([Listed])
 
 
 def test_an_adapter_listing_capabilities_must_name_them():
-    from types import SimpleNamespace
-
-    from ..fakes.fake_integration import INTEGRATION, FakeTurnOnFor
-
     class Unnamed(FakeTurnOnFor):
         scope = replace(FakeTurnOnFor.scope, capabilities=verified("Switch"))
 
     with pytest.raises(ValueError, match="lists capabilities in its scope but names none"):
-        AdapterRegistry(actions.discover(), [SimpleNamespace(INTEGRATION=INTEGRATION, ADAPTERS=[Unnamed])])
+        _registry([Unnamed])
 
 
 @pytest.mark.parametrize(
@@ -150,22 +107,12 @@ def test_an_adapter_listing_capabilities_must_name_them():
     ],
 )
 def test_an_integration_must_name_its_maintainers_by_handle(maintainers, error):
-    from types import SimpleNamespace
-
-    from ..fakes.fake_integration import ADAPTERS, INTEGRATION
-
-    info = replace(INTEGRATION, maintainers=maintainers)
     with pytest.raises(ValueError, match=error):
-        AdapterRegistry(actions.discover(), [SimpleNamespace(INTEGRATION=info, ADAPTERS=ADAPTERS)])
+        _registry(info=replace(INTEGRATION, maintainers=maintainers))
 
 
 def test_several_maintainers_are_accepted():
-    from types import SimpleNamespace
-
-    from ..fakes.fake_integration import ADAPTERS, INTEGRATION
-
-    info = replace(INTEGRATION, maintainers=("jasonmx", "a-b", "a" * 39))
-    registry = AdapterRegistry(actions.discover(), [SimpleNamespace(INTEGRATION=info, ADAPTERS=ADAPTERS)])
+    registry = _registry(info=replace(INTEGRATION, maintainers=("jasonmx", "a-b", "a" * 39)))
     assert registry.integrations["fake"].maintainers == ("jasonmx", "a-b", "a" * 39)
 
 

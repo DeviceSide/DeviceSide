@@ -22,9 +22,9 @@ class FakeAdapter:
 
 class FakeRegistry:
     """Adapters by (action, integration), each of a class whose module is `<package>/<action>.py` under the root, and
-    the integrations' infos, maintained by @a unless given."""
+    the integrations' infos, each maintained by @a."""
 
-    def __init__(self, root: Path, monkeypatch, adapters: dict[tuple[str, str], AdapterScope], integrations=()):
+    def __init__(self, root: Path, monkeypatch, adapters: dict[tuple[str, str], AdapterScope]):
         self.adapters = {}
         for (action, integration), scope in adapters.items():
             module = types.ModuleType(f"fake_{integration}_{action}")
@@ -37,7 +37,6 @@ class FakeRegistry:
         self.integrations = {
             key: IntegrationInfo(key=key, title=key.title(), ha_domain=key, maintainers=("a",)) for key in keys
         }
-        self.integrations |= {info.key: info for info in integrations}
 
     def matrix(self):
         yield "turn_off_for", "fake", None
@@ -57,21 +56,11 @@ def fake_repo(repo, monkeypatch):
 # Import failures and the real registry.
 
 
-@pytest.mark.parametrize("argv", [[], ["--signoffs"]])
-def test_an_integration_that_failed_to_import_is_an_error(fake_repo, monkeypatch, capsys, argv):
-    """Its adapters are missing from the registry, so no gate would see them."""
-    broken = IntegrationInfo(
-        key="zha", title="zha", ha_domain="zha", maintainers=(), available=False, unavailable_reason="No module"
-    )
-    fake_repo.commit()
-    assert cr.main(argv, FakeRegistry(fake_repo.path, monkeypatch, {}, [broken])) == 1
-    assert "error: zha: failed to import (No module)" in capsys.readouterr().err.splitlines()
-
-
 def test_a_real_import_failure_reaches_the_gate(monkeypatch, capsys):
+    """Its adapters are missing from the registry, so no gate would see them: the failure is an error itself."""
     registry = AdapterRegistry(discover(), ["custom_components.deviceside.integrations.missing"])
     assert cr.main([], registry) == 1
-    assert "error: missing: failed to import" in capsys.readouterr().err
+    assert "error: missing: failed to import (" in capsys.readouterr().err
 
 
 def test_main_reads_the_real_registry(capsys):
@@ -100,10 +89,16 @@ CORE = "custom_components/deviceside/core"
 HUE = "custom_components/deviceside/integrations/hue"
 
 
+def touch(repo, *files: str) -> None:
+    """Write empty files into the repository without committing them: the coverage bar reads only the tree."""
+    for file in files:
+        (repo.path / file).parent.mkdir(parents=True, exist_ok=True)
+        (repo.path / file).write_text("")
+
+
 def test_the_bar_covers_every_module_under_core_and_integrations_bar_init(fake_repo, tmp_path):
-    for module in [f"{CORE}/__init__.py", f"{CORE}/dispatcher.py", f"{HUE}/__init__.py", f"{HUE}/transport.py"]:
-        fake_repo.commit(module, "")
-    fake_repo.commit("custom_components/deviceside/actions/stop.py", "")
+    modules = [f"{CORE}/__init__.py", f"{CORE}/dispatcher.py", f"{HUE}/__init__.py", f"{HUE}/transport.py"]
+    touch(fake_repo, *modules, "custom_components/deviceside/actions/stop.py")
     report = {f"{CORE}/dispatcher.py": 94, f"{HUE}/transport.py": 95, "custom_components/deviceside/actions/stop.py": 0}
     assert cr.coverage_errors(json.loads(coverage(tmp_path / "c.json", report).read_text())) == [
         f"{CORE}/dispatcher.py: 94.0% line coverage, under 95%"
@@ -111,18 +106,18 @@ def test_the_bar_covers_every_module_under_core_and_integrations_bar_init(fake_r
 
 
 def test_a_module_missing_from_coverage_is_an_error(fake_repo):
-    fake_repo.commit(f"{HUE}/transport.py", "")
+    touch(fake_repo, f"{HUE}/transport.py")
     assert cr.coverage_errors({"files": {}}) == [f"{HUE}/transport.py: 0.0% line coverage, under 95%"]
 
 
 def test_a_module_with_no_statements_is_covered(fake_repo):
-    fake_repo.commit(f"{HUE}/const.py", "")
+    touch(fake_repo, f"{HUE}/const.py")
     empty = {"files": {f"{HUE}/const.py": {"summary": {"covered_lines": 0, "num_statements": 0}}}}
     assert cr.coverage_errors(empty) == []
 
 
 def test_main_fails_under_the_bar(fake_repo, monkeypatch, tmp_path, capsys):
-    fake_repo.commit(f"{HUE}/transport.py", "")
+    touch(fake_repo, f"{HUE}/transport.py")
     registry = FakeRegistry(fake_repo.path, monkeypatch, {})
     assert cr.main(["--coverage", str(coverage(tmp_path / "c.json", {f"{HUE}/transport.py": 100}))], registry) == 0
     assert cr.main(["--coverage", str(coverage(tmp_path / "c.json", {f"{HUE}/transport.py": 50}))], registry) == 1
@@ -224,9 +219,9 @@ OTHER = "custom_components/deviceside/integrations/other"
 @pytest.fixture
 def released(fake_repo):
     """fake and other, each with two adapter modules and a helper, released as v0.1.0, with a later RC tag."""
-    for package in (FAKE, OTHER):
-        for module in ("__init__.py", "turn_on_for.py", "stop.py", "transport.py"):
-            fake_repo.commit(f"{package}/{module}", "")
+    modules = ("__init__.py", "turn_on_for.py", "stop.py", "transport.py")
+    touch(fake_repo, *(f"{package}/{module}" for package in (FAKE, OTHER) for module in modules))
+    fake_repo.commit()
     fake_repo.git("tag", "v0.1.0")
     fake_repo.commit()
     fake_repo.git("tag", "v0.2.0rc1")  # an RC is never the last release

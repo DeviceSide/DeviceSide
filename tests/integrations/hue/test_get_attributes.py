@@ -8,7 +8,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util.color import color_xy_to_hs, color_xy_to_RGB
 
 from .conftest import color_room, hs_xy
-from ...conftest import call, refusal
+from ...conftest import call
 from ...fixtures.hue import add_hue_entity, add_hue_group, hue_entry
 
 pytestmark = pytest.mark.usefixtures("setup_production")
@@ -135,14 +135,6 @@ async def test_query_raises_when_any_target_fails(hass, bridge):
 
     # Any rejected target raises targets_failed, even when others succeeded.
     assert raised.value.translation_placeholders["summary"] == "light.gone: not_on_bridge"
-
-
-async def test_v1_bridge_is_refused(hass, bridge):
-    bridge.light("light-1")
-    entry = await hue_entry(hass, bridge, api_version=1)
-    add_hue_entity(hass, entry, "light.lamp", "light-1")
-
-    assert await refusal(hass, "get_attributes", {"entity_id": "light.lamp"}) == "bridge_v1"
 
 
 @pytest.mark.parametrize("target", ["light.one", "light.room"])

@@ -89,17 +89,21 @@ async def test_subscribes_the_response_topics_before_the_barrier(hass, setup_pro
     assert len(connection.callbacks) == 1
 
 
-async def test_groups_and_devices_come_from_the_cache(hass, setup_production, online, connection, mqtt_up):
+async def test_groups_devices_and_info_come_from_the_cache(hass, setup_production, online, connection, mqtt_up):
     await start(hass, setup_production)
     online.topics.clear()
 
     assert await bridge.group_members(hass, "7") == ["0x01"]
     assert await bridge.has_feature(hass, ["0x01"], "color_hs") is False
+    first = await bridge.retained(hass, "info")
+    assert await bridge.retained(hass, "info") is first
     assert online.topics == []
 
 
-async def test_each_payload_is_parsed_once(hass, setup_production, online, connection, mqtt_up):
-    await start(hass, setup_production)
+async def test_each_payload_is_parsed_once_and_an_empty_one_clears_the_topic(
+    hass, setup_production, online, connection, mqtt_up
+):
+    cache = await start(hass, setup_production)
 
     first = await bridge.retained(hass, "groups")
     assert await bridge.retained(hass, "groups") is first
@@ -110,14 +114,8 @@ async def test_each_payload_is_parsed_once(hass, setup_production, online, conne
     assert second == [{"id": 8, "members": []}]
     assert await bridge.retained(hass, "groups") is second
 
-
-async def test_info_comes_from_the_cache(hass, setup_production, online, connection, mqtt_up):
-    await start(hass, setup_production)
-    online.topics.clear()
-
-    first = await bridge.retained(hass, "info")
-    assert await bridge.retained(hass, "info") is first
-    assert online.topics == []
+    online.deliver(GROUPS, "")
+    assert cache.parsed("groups") is None
 
 
 async def test_an_empty_cache_reads_fresh(hass, setup_production, broker, connection, mqtt_up):
@@ -128,14 +126,6 @@ async def test_an_empty_cache_reads_fresh(hass, setup_production, broker, connec
     with pytest.raises(TimeoutError, match="no bridge/groups from Zigbee2MQTT"):
         await bridge.retained(hass, "groups")
     assert broker.topics == [GROUPS]
-
-
-async def test_an_empty_payload_clears_the_topic(hass, setup_production, online, connection, mqtt_up):
-    cache = await start(hass, setup_production)
-
-    online.deliver(GROUPS, "")
-
-    assert cache.parsed("groups") is None
 
 
 async def test_without_a_cache_everything_reads_fresh(hass, broker):
@@ -166,13 +156,16 @@ async def test_live_replies_reach_the_call_without_its_own_subscription(
     assert cache.pending == {}
 
 
-async def test_a_refused_live_reply_still_raises(hass, setup_production, online, connection, mqtt_up):
+async def test_a_refused_live_reply_still_raises_and_writes_nothing_through(
+    hass, setup_production, online, connection, mqtt_up
+):
     cache = await start(hass, setup_production)
     online.refused.add("0x01")
 
     with pytest.raises(RuntimeError, match="refused"):
         await bridge.ensure_options(hass, "device", ["0x01"], wanted_on, lambda _id: None)
     assert cache.pending == {}
+    assert cache.confirmed == {}
 
 
 async def test_without_the_barrier_each_call_subscribes_for_its_reply(
@@ -266,16 +259,6 @@ async def test_a_disconnect_drops_confirmed_writes(hass, setup_production, onlin
     assert cache.confirmed
 
     connection.lost()
-
-    assert cache.confirmed == {}
-
-
-async def test_a_refused_write_writes_nothing_through(hass, setup_production, online, connection, mqtt_up):
-    cache = await start(hass, setup_production)
-    online.refused.add("0x01")
-
-    with pytest.raises(RuntimeError):
-        await bridge.ensure_options(hass, "device", ["0x01"], wanted_on, lambda _id: None)
 
     assert cache.confirmed == {}
 

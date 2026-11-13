@@ -28,6 +28,17 @@ async def test_color_is_dropped_without_color_hs(hass, broker, action):
     assert commands(broker) == []
 
 
+@pytest.mark.parametrize("action", ["raise_hue", "raise_saturation"])
+async def test_an_off_light_is_unchanged(hass, broker, action):
+    """One row per branch: each lower shares its raise's."""
+    entity_id = light(hass, broker, state="off")
+
+    response = await call(hass, action, {"entity_id": entity_id})
+
+    assert response == {entity_id: result("zigbee2mqtt", "unchanged", detail="off")}
+    assert commands(broker) == []
+
+
 async def test_brightness_moves_without_color_hs(hass, broker):
     entity_id = light(hass, broker, color_hs=False)
 

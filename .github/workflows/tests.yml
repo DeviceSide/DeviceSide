@@ -63,11 +63,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Full history: the compatibility page is Verified only on records as new as their code, so its check (and the
-      # test pinning the checked-in page) diffs each record's cited commit against HEAD.
+      # A shallow checkout: no test or check here reads the repo's history (the git tests build their own repos).
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
           persist-credentials: false
 
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0

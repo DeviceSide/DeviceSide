@@ -46,7 +46,7 @@ def live(hass, setup_production, broker, monkeypatch):
     for kind in bridge_cache.KINDS:
         reply_topic = f"zigbee2mqtt/bridge/response/{kind}/options"
         broker.subscribers.setdefault(reply_topic, []).append(bridge_cache.reply_router(cache.pending))
-    monkeypatch.setattr(set_check, "BOUND_S", 0.2)
+    monkeypatch.setattr(set_check, "BOUND_S", 0.05)
     return cache
 
 
@@ -154,13 +154,14 @@ async def test_a_retained_state_doesnt_answer_a_set(hass, broker):
 
 async def test_the_settle_ends_before_the_dispatchers_deadline(hass, broker, live, monkeypatch):
     monkeypatch.setattr(set_check, "BOUND_S", 30.0)
-    monkeypatch.setattr("custom_components.deviceside.core.dispatcher.ADAPTER_TIMEOUT_S", 0.5)
+    monkeypatch.setattr(set_check, "DEADLINE_MARGIN_S", 0.05)
+    monkeypatch.setattr("custom_components.deviceside.core.dispatcher.ADAPTER_TIMEOUT_S", 0.1)
     entity_id = light(hass, broker)
 
     response, elapsed = await timed(call(hass, "lower_brightness", {"entity_id": entity_id, "limit": 20}))
 
     assert response == {entity_id: SENT}
-    assert 0.5 - set_check.DEADLINE_MARGIN_S <= elapsed < 0.5
+    assert 0.1 - set_check.DEADLINE_MARGIN_S <= elapsed < 0.1
 
 
 async def test_without_a_live_bridge_cache_nothing_is_checked(hass, broker):
@@ -191,7 +192,7 @@ async def test_a_stops_publishes_go_out_back_to_back(hass, broker, live, clock):
         {"brightness_move": "stop"},
         {"state": "ON", "brightness": 76, "transition": 0},
     ]
-    assert stamps[1] - stamps[0] < 0.05 < set_check.BOUND_S <= elapsed
+    assert stamps[1] - stamps[0] < 0.02 < set_check.BOUND_S <= elapsed
 
 
 @pytest.mark.usefixtures("live")

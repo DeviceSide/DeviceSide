@@ -4,7 +4,7 @@ from unittest.mock import call as rpc_call
 
 import pytest
 
-from ...conftest import call, refusal
+from ...conftest import call
 from ...fixtures.shelly import OTHER_LIGHT_COMPONENTS, add_shelly_entity, shelly_device
 
 CONFIRMED = {"status": "confirmed", "integration": "shelly"}
@@ -47,15 +47,3 @@ async def test_documented_components_take_the_same_set(hass, setup_production, k
         rpc_call(f"{component}.Set", {"id": 0, "on": False, "toggle_after": 90.0}),
         rpc_call(f"{component}.GetStatus", {"id": 0}),
     ]
-
-
-async def test_gen1_is_refused(hass, setup_production):
-    gen1, _ = shelly_device(hass, gen1=True, mac="112233445566")
-    add_shelly_entity(hass, gen1, "switch.old_relay", "relay_0")
-    entry, _ = shelly_device(hass)
-    add_shelly_entity(hass, entry, "switch.heater", "switch:0")
-
-    assert await refusal(hass, "turn_off_for", {"entity_id": "switch.old_relay", "duration": 5}) == "gen1_unsupported"
-    assert await call(hass, "turn_off_for", {"entity_id": "switch.heater", "duration": 5}) == {
-        "switch.heater": CONFIRMED
-    }
