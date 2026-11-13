@@ -40,12 +40,19 @@ def test_a_contributor_may_regenerate_the_blocks(pr):
     assert cp.check("main", "pr", "alice", MAINTAINERS) == (True, False)
 
 
-def test_a_contributor_editing_outside_the_blocks_fails(pr):
+def test_a_contributor_may_fix_a_typo_in_a_readme_only_pr(pr):
+    on_pr(pr, cp.README, README.replace("Intro.", "Introduction."))
+    assert cp.check("main", "pr", "alice", MAINTAINERS) == (True, False)
+
+
+def test_a_contributor_editing_outside_the_blocks_alongside_code_fails(pr):
+    on_pr(pr, "code.py", "x = 1\n")
     on_pr(pr, cp.README, README.replace("Intro.", "My intro."))
     assert cp.check("main", "pr", "alice", MAINTAINERS) == (False, False)
 
 
-def test_removing_a_marker_counts_as_an_edit_outside_the_blocks(pr):
+def test_removing_a_marker_alongside_code_counts_as_an_edit_outside_the_blocks(pr):
+    on_pr(pr, "code.py", "x = 1\n")
     on_pr(pr, cp.README, README.replace("<!-- devices:end -->\n", ""))
     assert cp.check("main", "pr", "alice", MAINTAINERS)[0] is False
 

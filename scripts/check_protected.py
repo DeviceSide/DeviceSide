@@ -2,7 +2,9 @@
 """Guard the two files contributors leave alone: README.md, outside its generated blocks, and manifest.json.
 
 The README is the repo maintainers' writing, bar the blocks `gen_features.py` and `gen_compat.py` regenerate, which
-any PR may refresh. A PR from anyone else that changes the text outside those blocks fails. manifest.json changes by
+any PR may refresh. A PR from anyone else that changes the text outside those blocks fails unless README.md is all it
+changes: a typo fix stands alone and is easy to review, while a code PR can't slip prose in. (Hand edits inside the
+blocks fail the generators' `--check` in tests.yml, so this doesn't look at them.) manifest.json changes by
 exception (a core domain in `after_dependencies` slows HA's startup), so a change from anyone else is flagged for the
 workflow to warn about on the PR, not failed. Renovate, which bumps its `requirements`, is exempt from the warning.
 
@@ -63,7 +65,8 @@ def check(base: str, head: str, author: str, maintainers: frozenset[str]) -> tup
     if author in maintainers:
         return True, False
     merge_base = git("merge-base", base, head).strip()
-    readme_ok = authored(show(merge_base, README)) == authored(show(head, README))
+    readme_only = git("diff", "--name-only", merge_base, head).split() == [README]
+    readme_ok = readme_only or authored(show(merge_base, README)) == authored(show(head, README))
     manifest_changed = author not in MANIFEST_EXEMPT and show(merge_base, MANIFEST) != show(head, MANIFEST)
     return readme_ok, manifest_changed
 
@@ -82,11 +85,11 @@ def main(argv: list[str] | None = None) -> int:
         print(f"::warning file={MANIFEST}::manifest.json changes by exception; a repo maintainer will review it")
     if not readme_ok:
         print(
-            f"::error file={README}::README.md is the repo maintainers' to edit outside its generated blocks. "
-            "Revert the change and say in the pull request what it should say; regenerating the blocks is fine.",
+            f"::error file={README}::This pull request changes README.md outside its generated blocks alongside other "
+            "files. Move the README.md change to a pull request of its own; regenerating the blocks here is fine.",
         )
         return 1
-    print("README.md: no change outside its generated blocks, or a repo maintainer's PR")
+    print("README.md: unchanged outside its generated blocks, a README-only PR, or a repo maintainer's")
     return 0
 
 

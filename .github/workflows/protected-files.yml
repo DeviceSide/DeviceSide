@@ -1,7 +1,7 @@
 name: Protected files
 
-# Fails a PR from anyone but a repo maintainer that edits README.md outside its generated blocks, and comments on one
-# that changes manifest.json (scripts/check_protected.py says why each). pull_request_target, so the workflow and the
+# Fails a PR from anyone but a repo maintainer that edits README.md outside its generated blocks alongside other files
+# (a README-only PR passes), and comments on one that changes manifest.json (scripts/check_protected.py says why each). pull_request_target, so the workflow and the
 # script come from the base branch and a PR can't edit its own check away. No step runs the PR's code: its head is
 # fetched and read with `git show`, as data.
 
