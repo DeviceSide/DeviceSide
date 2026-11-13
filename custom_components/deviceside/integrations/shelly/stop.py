@@ -5,9 +5,10 @@ from typing import Any, ClassVar
 from homeassistant.core import HomeAssistant
 
 from .addressing import DIMMING_CAPABILITIES, RpcComponent, address, unsupported_reason
-from .rpc import dim_stop, get_status, read_back
+from .rpc import dim_stop, get_status
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Request, Status, Target
+from ...core.readback import read_back
 from ...core.scope import AdapterScope, verified
 
 

@@ -7,10 +7,9 @@ from homeassistant.core import HomeAssistant
 
 from .addressing import DIMMING_CAPABILITIES, RpcComponent, unsupported_reason
 from .rpc import TRANSITION_LIMITS, get_status, set_fade
-from ...actions.ramp import RampRequest
-from ...core.adapter import Adapter
-from ...core.models import EntityResult, Status, Target
-from ...core.scope import AdapterScope, verified
+from ...core.level_fade import LevelFade
+from ...core.models import Target
+from ...core.scope import AdapterScope, DurationLimits, verified
 from ...core.transition import BRIGHTNESS
 
 # The device keeps brightness in whole percent.
@@ -32,9 +31,9 @@ def fade_seconds(distance: float, sweep_time: float) -> float:
     return round(max(distance / 100 * sweep_time, TRANSITION_LIMITS.min_s), _DURATION_DIGITS)
 
 
-class ShellyFade(RpcComponent, Adapter[RampRequest]):
+class ShellyFade(RpcComponent, LevelFade):
     """A GetStatus for the device's level, then one Set to the limit (or range end) with a transition for the distance
-    left; the device runs the fade.
+    left; the device runs the fade (core.level_fade).
 
     The device reports its level exactly mid-fade (rig, 8 Nov), so a move after a stop or mid-fade starts from where
     the light is, with no prediction kept, and a change made elsewhere can't leave one stale. Raising turns a light
@@ -45,27 +44,19 @@ class ShellyFade(RpcComponent, Adapter[RampRequest]):
     """
 
     integration: ClassVar[str] = "shelly"
+    fade_limits: ClassVar[DurationLimits] = TRANSITION_LIMITS
+    min_step: ClassVar[float] = MIN_STEP
 
-    def supports(self, hass: HomeAssistant, request: RampRequest, target: Target) -> str | None:
-        if (reason := super().supports(hass, request, target)) is not None:
-            return reason
-        # Nothing left to send: the dispatcher reports it unchanged with fields_dropped, whatever the component.
-        return None if request.nothing_to_do() else unsupported_reason(target)
+    def unaddressable(self, target: Target) -> str | None:
+        return unsupported_reason(target)
 
-    async def execute(self, hass: HomeAssistant, request: RampRequest, targets: list[Target]) -> list[EntityResult]:
-        sweep_time = min(max(request.sweep_time, TRANSITION_LIMITS.min_s), TRANSITION_LIMITS.max_s)
-        clamped_to = sweep_time if sweep_time != request.sweep_time else None
+    async def read(self, hass: HomeAssistant, target: Target) -> tuple[bool, float]:
+        status = await get_status(target)
+        lit = bool(status["output"])
+        return lit, status["brightness"] if lit else 0.0
 
-        async def move(target: Target) -> EntityResult:
-            status = await get_status(target)
-            lit = bool(status["output"])
-            if not request.up and not lit:
-                return self.result(target, Status.UNCHANGED, detail="off")
-            current = status["brightness"] if lit else 0.0
-            end = request.end()
-            if (end - current if request.up else current - end) < MIN_STEP:
-                return self.result(target, Status.UNCHANGED, detail="at_limit")
-            await set_fade(hass, target, end, fade_seconds(abs(end - current), sweep_time))
-            return self.result(target, Status.SENT, clamped_to=clamped_to)
+    async def fade_to(self, hass: HomeAssistant, target: Target, end: float, seconds: float) -> None:
+        await set_fade(hass, target, end, seconds)
 
-        return await self.gather(hass, targets, move)
+    def seconds(self, distance: float, sweep_time: float) -> float:
+        return fade_seconds(distance, sweep_time)
