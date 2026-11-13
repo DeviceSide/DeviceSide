@@ -28,14 +28,20 @@ PLACEHOLDER = re.compile(r"%(?:\([^)]*\))?[-#0 +]*[\d*]*(?:\.[\d*]+)?[a-zA-Z]")
 EXEMPT = re.compile(r"#\s*log-ok:\s*\S")
 
 
-def _is_log_call(node: ast.AST) -> bool:
+def _is_logger_method(func: ast.AST) -> bool:
+    """`_LOGGER.warning`, or a conditional choosing between such: `(_LOGGER.warning if x else _LOGGER.debug)`."""
+    if isinstance(func, ast.IfExp):
+        return _is_logger_method(func.body) and _is_logger_method(func.orelse)
     return (
-        isinstance(node, ast.Call)
-        and isinstance(node.func, ast.Attribute)
-        and node.func.attr in LOG_METHODS
-        and isinstance(node.func.value, ast.Name)
-        and node.func.value.id in {"_LOGGER", "logger", "LOGGER"}
+        isinstance(func, ast.Attribute)
+        and func.attr in LOG_METHODS
+        and isinstance(func.value, ast.Name)
+        and func.value.id in {"_LOGGER", "logger", "LOGGER"}
     )
+
+
+def _is_log_call(node: ast.AST) -> bool:
+    return isinstance(node, ast.Call) and _is_logger_method(node.func)
 
 
 def _words(identifier: str) -> set[str]:
@@ -91,7 +97,7 @@ def violations(path: Path) -> list[str]:
 
         fmt, *args = node.args
         if isinstance(fmt, ast.Constant) and isinstance(fmt.value, str):
-            holders = PLACEHOLDER.findall(fmt.value)
+            holders = PLACEHOLDER.findall(fmt.value.replace("%%", ""))
             found.extend(
                 f"{where}: caught exception logged with %s; use %r"
                 for index, arg in enumerate(args)

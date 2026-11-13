@@ -22,6 +22,11 @@ def test_caught_exception_with_percent_s_is_flagged(tmp_path):
     assert len(flagged(tmp_path, body)) == 1
 
 
+def test_a_conditional_log_method_is_seen(tmp_path):
+    body = "def f(err, ours):\n    (_LOGGER.warning if ours else _LOGGER.debug)('x %s', err)\n"
+    assert len(flagged(tmp_path, body)) == 1
+
+
 def test_percent_r_and_other_arguments_pass(tmp_path):
     body = "try:\n    pass\nexcept OSError as boom:\n    _LOGGER.warning('failed for %s: %r', 'x', boom)\n"
     assert flagged(tmp_path, body) == []
