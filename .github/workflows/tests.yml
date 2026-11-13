@@ -80,7 +80,7 @@ jobs:
         run: uv sync --locked
 
       - name: Run tests
-        run: .venv/bin/pytest tests/ --cov=custom_components/deviceside --cov-report=json
+        run: .venv/bin/pytest -n 4 tests/ --cov=custom_components/deviceside --cov-report=json
 
       - name: Check coverage
         run: .venv/bin/python scripts/check_release.py --coverage coverage.json
