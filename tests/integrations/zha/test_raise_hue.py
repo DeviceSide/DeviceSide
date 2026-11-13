@@ -4,7 +4,7 @@ import pytest
 
 from custom_components.deviceside.integrations.zha.fade import hue_moves
 
-from .conftest import SENT, bulb, sent
+from .conftest import SENT, A, B, bulb, sent
 from ...conftest import call
 
 pytestmark = pytest.mark.usefixtures("setup_production", "clock", "bulbs")
@@ -35,3 +35,18 @@ async def test_a_cycle_outside_1_to_65535_s_is_clamped(hass, commands, sweep_tim
     assert sent(commands) == [(0x0300, 0x41, {"move_mode": 1, "rate": rate})]
     expected = SENT if clamped_to is None else {**SENT, "clamped_to": clamped_to}
     assert response == {"light.bulb": expected}
+
+
+async def test_a_groups_members_get_one_enhanced_move_hue_groupcast(hass, two_light_group, commands, group_commands):
+    bulb(hass, "light.a", A)
+    bulb(hass, "light.b", B)
+
+    response = await call(hass, "raise_hue", {"entity_id": "light.zha_group"})
+
+    assert response == {"light.a": SENT, "light.b": SENT}
+    # A groupcast's args are positional: move_mode, then rate, as the unicast's named params.
+    assert [command.data for command in group_commands] == [
+        {"group": 2, "cluster_id": 0x0300, "command": 0x41, "args": [1, 13107]}
+    ]
+    assert not commands
+    assert hue_moves(hass) == {"light.a", "light.b"}

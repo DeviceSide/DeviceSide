@@ -126,6 +126,21 @@ async def test_a_groups_lit_members_get_one_groupcast(hass, two_light_group, com
     assert not commands
 
 
+async def test_a_groups_hue_cycle_gets_one_stop_move_step_groupcast(hass, two_light_group, commands, group_commands):
+    bulb(hass, "light.a", A)
+    bulb(hass, "light.b", B)
+    await call(hass, "raise_hue", {"entity_id": "light.zha_group"})
+
+    assert await call(hass, "stop", {"entity_id": "light.zha_group"}) == {"light.a": SENT, "light.b": SENT}
+    # StopMoveStep's options_mask and options_override, positional, then Level Stop.
+    assert [command.data for command in group_commands[1:]] == [
+        {"group": 2, "cluster_id": 0x0300, "command": 0x47, "args": [0, 0]},
+        {"group": 2, "cluster_id": 0x0008, "command": 0x03, "args": []},
+    ]
+    assert not commands
+    assert hue_moves(hass) == set()
+
+
 async def test_a_group_with_an_off_member_stops_each_lit_one(hass, two_light_group, commands, group_commands):
     bulb(hass, "light.a", A)
     bulb(hass, "light.b", B, state="off")
