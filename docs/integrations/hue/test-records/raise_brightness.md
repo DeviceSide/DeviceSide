@@ -5,7 +5,7 @@
 | Result | pass |
 | Ran | 6 passed, 2 skipped |
 | Date | 2026-11-13 |
-| Source | rig run (`scripts/rig.py`), commit `1b7cc68` |
+| Source | rig run (`scripts/rig.py`), commit `4c074d9` |
 | Home Assistant | 2026.10.4 |
 | Device | Hue ambiance lamp (`LTA009`), firmware `1.163.1`; Zone, firmware `unknown` |
 
