@@ -120,7 +120,7 @@ async def test_a_journal_that_isnt_a_mapping_is_ignored(hass, setup_production, 
 # Replay, on each online from bridge/state
 
 
-async def test_the_retained_online_pays_what_is_owed(hass, setup_production, broker, mqtt_up, hass_storage):
+async def test_the_retained_online_pays_what_is_owed(hass, setup_production, broker, mqtt_up, hass_storage, caplog):
     left_owed(hass_storage, {"device/0x01": False})
     option_is(broker, "0x01", True)
 
@@ -130,9 +130,12 @@ async def test_the_retained_online_pays_what_is_owed(hass, setup_production, bro
     assert (request["id"], request["options"]) == ("0x01", {OPTION: False})
     assert (await rj.journal(hass)).owed == {}
     assert owed_on_disk(hass_storage) == {}
+    assert "Put Zigbee2MQTT's hue_native_control back to False for " in caplog.text
 
 
-async def test_a_value_the_user_set_back_is_left_and_struck(hass, setup_production, broker, mqtt_up, hass_storage):
+async def test_a_value_the_user_set_back_is_left_and_struck(
+    hass, setup_production, broker, mqtt_up, hass_storage, caplog
+):
     left_owed(hass_storage, {"device/0x01": False})
     option_is(broker, "0x01", False)
 
@@ -140,6 +143,8 @@ async def test_a_value_the_user_set_back_is_left_and_struck(hass, setup_producti
 
     assert broker.requests() == []
     assert (await rj.journal(hass)).owed == {}
+    # INFO is for a lasting change, and nothing was written.
+    assert not [r for r in caplog.records if r.name.startswith("custom_components") and r.levelno == logging.INFO]
 
 
 async def test_a_refused_replay_stays_owed(hass, setup_production, broker, mqtt_up, hass_storage, caplog):

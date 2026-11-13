@@ -225,7 +225,17 @@ async def _owed(hass: HomeAssistant, address: Address, entity_id: str, consequen
 
 async def _strike(hass: HomeAssistant, address: Address, value: bool, entity_id: str) -> None:
     try:
-        await (await journal(hass)).strike(address, value)
+        held = await journal(hass)
+    except Exception as err:  # noqa: BLE001 - nothing is struck; the entry is paid again when the journal reads
+        _LOGGER.warning(
+            "Couldn't read Zigbee2MQTT's %s restore journal for %s: %s, so any restore it owes stays owed",
+            OPTION,
+            entity_id,
+            describe(err),
+        )
+        return
+    try:
+        await held.strike(address, value)
     except Exception as err:  # noqa: BLE001 - struck in memory; the next start finds the stale entry already paid
         _LOGGER.warning(
             "Couldn't strike Zigbee2MQTT's %s restore for %s off the journal: %s, so the next start strikes it",
@@ -312,7 +322,7 @@ async def _set(
             return requested and isinstance(err, TimeoutError)
         else:
             _LOGGER.warning(
-                "Couldn't put Zigbee2MQTT's %s back to %s for %s, so it stays %s: %s",
+                "Couldn't put Zigbee2MQTT's %s back to %s for %s, so it may stay %s: %s",
                 OPTION,
                 value,
                 target.entity_id,

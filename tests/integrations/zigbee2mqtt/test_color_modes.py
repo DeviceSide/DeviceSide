@@ -197,7 +197,8 @@ async def test_an_error_reply_warns_and_the_rest_still_go(hass, z2m, caplog):
 
     assert set(sent(z2m)) == {("device", IEEE), ("device", OTHER), ("group", "1")}
     assert (
-        "Couldn't set Zigbee2MQTT's Home Assistant color modes for light.lamp: RuntimeError('refused')" in caplog.text
+        "Couldn't set Zigbee2MQTT's Home Assistant color modes for light.lamp: RuntimeError('refused'), so HA may not show"
+        " its color in either mode" in caplog.text
     )
 
 
@@ -207,7 +208,7 @@ async def test_unexpected_bridge_devices_warns_and_does_nothing(hass, z2m, caplo
     await ensure_color_modes(hass, True)
 
     assert z2m.requests() == []
-    assert "Couldn't read Zigbee2MQTT's devices to check their color modes" in caplog.text
+    assert "so they are checked when Zigbee2MQTT next announces its devices or groups" in caplog.text
 
 
 async def test_watch_runs_at_once_and_again_when_z2m_announces_a_device(hass, z2m):

@@ -195,7 +195,9 @@ async def test_a_failed_restore_warns_and_stays_owed(hass, setup_production, bro
     assert response == {"light.lamp": SENT}
     assert options(broker) == [True, False]
     assert len(broker.timers()) == 1
-    assert "Couldn't put Zigbee2MQTT's hue_native_control back to False for light.lamp, so it stays True" in caplog.text
+    assert (
+        "Couldn't put Zigbee2MQTT's hue_native_control back to False for light.lamp, so it may stay True" in caplog.text
+    )
     assert (await journal(hass)).owed == {f"device/{IEEE}": False}
 
 
@@ -774,11 +776,11 @@ async def test_an_unreadable_journal_runs_as_if_none_were_owed(hass, setup_produ
     await nc.settled(hass, target(hass, "light.lamp"))
 
     assert options(broker) == [True, False]
-    # The put-back's read says what follows from it: it restores the value it found.
-    assert (
-        "Couldn't read Zigbee2MQTT's hue_native_control restore journal for light.lamp: OSError('unreadable'), "
-        "so it puts back False, the value it found"
-    ) in caplog.text
+    # Each read says what follows from it: the put-back restores the value it found, and nothing is struck.
+    read = "Couldn't read Zigbee2MQTT's hue_native_control restore journal for light.lamp: OSError('unreadable'), "
+    assert read + "so it puts back False, the value it found" in caplog.text
+    assert read + "so any restore it owes stays owed" in caplog.text
+    assert "the next start strikes it" not in caplog.text
 
 
 async def test_a_cancelled_set_that_was_refused_strikes_its_entry(hass, setup_production, broker, monkeypatch):

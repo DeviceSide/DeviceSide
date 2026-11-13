@@ -153,7 +153,8 @@ async def ensure_color_modes(hass: HomeAssistant, enabled: bool) -> None:
                 describe(err),
                 "so HA may not show its color in either mode"
                 if enabled
-                else "so Zigbee2MQTT keeps DeviceSide's for it",
+                # A timeout can follow a write Z2M applied, so the off pass's modes may have gone back.
+                else "so Zigbee2MQTT may keep DeviceSide's for it",
             )
 
 
