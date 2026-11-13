@@ -34,8 +34,9 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   - [x] 4. Release gate: `check_release.py --signoffs`; drop `--release` and the rest of `--records`; the
     docstring's CLAUDE.md citations and CLAUDE.md's Layout line on release checks.
   - [x] 5. Cards: `gen_compat.py` tiers for two levels, the flag and caveats, and the docstring's CLAUDE.md citations.
+  - [x] 6. Sign-offs by the Package tree records cite, not commit ancestry, so a run on a PR branch counts (#408).
 - [ ] **Sign-offs** for v0.1.0, one per integration changed since v0.0.1 (`check_release.py --signoffs`), each a rig
-  run from ha-rig `main`. The runs for the formerly release-flagged adapters need these `--profile lab` cases, run
+  run from ha-rig `main` (its records carry the Package row; older records count for none). The runs for the formerly release-flagged adapters need these `--profile lab` cases, run
   watched, the A60 visiting each network: Hue `saturation_down_stop`, `halts_brightness_and_saturation` and
   `sets_color_while_off`; ZHA `hue_cycle_stop`, `saturation_down_stop` and `sets_color_while_off`; Z2M
   `halts_a_lower_to_off`, `hue_cycle_stop`, `saturation_down_stop` and `sets_color_while_off`. Unattended alongside:
