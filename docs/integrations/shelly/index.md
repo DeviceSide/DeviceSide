@@ -88,7 +88,7 @@ turning on, and get attributes. Auto-off and auto-on are Documented on it: see
 Gen2+ dimmers (the `Light` component) take the relay's and bulb's timer, auto-off and auto-on calls
 ([Shelly Light API](https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Light/)). On them, get
 attributes reports the timer, auto-off and auto-on, but not brightness. Smooth dimming is Experimental: see
-[Help us test](#help-us-test).
+[Try it: Experimental features](#try-it-experimental-features).
 
 ### Shelly LED controllers
 
@@ -100,7 +100,7 @@ but not color or color temperature yet ([above](#shelly)). A record proves one c
 Auto-off and auto-on on an `RGBCCT` bulb, such as the [Multicolor Bulb Gen3](#shelly-multicolor-bulb-gen3): the same
 calls the relay test passes, confirmed by reading the stored setting back.
 
-## Help us test
+## Try it: Experimental features
 
 ### Shelly dimmers and LED controllers: smooth dimming
 

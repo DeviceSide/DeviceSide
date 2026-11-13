@@ -61,15 +61,37 @@ deciding when to test.
   call. The PR that claims Documented argues the sibling case, and review checks it. A bug on the Verified sibling
   reopens its Documented siblings in the same fix.
 - Nothing ships unflagged unless it is Verified or Documented. Built and unit-tested code that the maintainer can't
-  exercise, and that isn't Documented, ships behind `experimental` as untested ("Help us test" on the cards). A
-  sign-off covers only what was exercised; it never signs off untested code.
+  exercise, and that isn't Documented, ships behind `experimental` as untested. A sign-off covers only what was
+  exercised; it never signs off untested code.
 - **`experimental`** is a flag, not a level. In code it keeps today's per-axis marker, `experimental(...)`, beside
   `verified(...)` and `documented(...)`; `experimental=True` on the scope flags the whole adapter. A flagged item may be
-  tested and soaking, or untested: the cards tell which from the evidence (a record or `_manual.md` line, or none).
+  tested and soaking, or untested; the cards show both alike (superseded: step 5's follow-ups, then the decision
+  below).
   Removing the flag is one line, `experimental("switch")` to `documented("switch")`. A flagged item is refused unless the user turns on the Experimental
   features option. Every new feature (action, integration, domain, capability or field) starts flagged, so it soaks in
   RCs and with opted-in users. A repo maintainer removes the flag. The directional bar is five working reports from
-  users other than the maintainer and no open bugs. Nothing counts the reports in code.
+  users other than the maintainer and no open bugs. Nothing counts the reports in code. (Superseded: the decision
+  below.)
+- **Decision (Jason, 2026-11-12): a verified run lifts the flag.** The flag means one thing: not yet verified by a
+  maintainer. The PR that lands a maintainer's passing rig run or `_manual.md` sign-off for a flagged item also lifts
+  its flag (`experimental("Light")` to `verified("Light")`, or drops `experimental=True`); the soak is the RC soak
+  every change gets. Lifting a flag is a package change, so the integration's maintainers approve it. The
+  soak-then-five-reports route is gone as the normal path; for an item no maintainer can test, user reports cited in
+  a `_manual.md` sign-off can verify it and lift its flag. A flagged item so never has a passing run on `main`.
+  (Superseded 2026-11-12: the decision below.)
+- **Decision (Jason, 2026-11-12): a passing run is evidence for lifting the flag, not a requirement to lift it.** The
+  flag means the item is not yet judged ready for everyone. A passing rig run or `_manual.md` sign-off on a flagged
+  item lets a maintainer lift the flag for the next release, skipping the flagged soak; lifting stays the
+  maintainer's judgment, by how complex the feature is and how complete its tests are (a developer may run the first
+  few rig cases before the full suite exists). The integration's maintainer approves the lift. For an item no
+  maintainer can test, users' reports cited in a `_manual.md` sign-off can verify it. A flagged item may so have
+  passing runs and stay flagged.
+- **Decision (Jason, 2026-11-12): a pass on a flagged item never puts its model on the cards** under Works until the
+  flag is removed. Records name models and each test's Target domain but not which test reached which model or
+  component, so `gen_compat` is fail-safe: an adapter flagged on any capability or field, or whole, adds no Works
+  models from its records or manual rows; one flagged on a domain counts only records whose passing tests all target
+  unflagged domains, and no `_manual.md` rows. A model can still reach Works through another adapter's evidence.
+  Today's cards are unchanged by it.
 - **Contrary evidence:** a report of misbehavior doesn't change the level. The maintainer root-causes it, and the fix,
   the updated fact or a demotion lands with the finding.
 - **Caveats** (decided 2026-11-12): one field, `AdapterScope.caveat`, with a reason (an issue URL), set and cleared by
@@ -87,9 +109,14 @@ deciding when to test.
 ### Release gate (option B)
 
 - Each integration whose package (`custom_components/deviceside/integrations/<x>/`) changed since the last release tag
-  needs a sign-off at or after its last change. A sign-off is a passing test record or a `_manual.md` line whose commit
-  has the package's last change as an ancestor. Any change counts, flags included; a sign-off may say "no call
+  needs a sign-off at or after its last change. A sign-off is a whole passing rig run or a `_manual.md` line whose
+  commit has the package's last change as an ancestor. Any change counts, flags included; a sign-off may say "no call
   changed".
+- **A record sign-off is a whole passing run** (Jason, 2026-11-12). The integration's records sign it off only when
+  every one (bar `_`-files) cites the same commit and passes; a failing record or a partial run (records citing
+  different commits) is none, and rerunning the failing action at that commit completes the run. One passing record
+  no longer signs off the whole integration. An action removed from the integration leaves its old record to delete
+  by hand. A `_manual.md` line still signs off alone; an integration with no records can only be signed off that way.
 - Who signs off: any of the integration's maintainers, or a repo maintainer when none responds.
 - **Prefer the rig.** Where the rig covers an integration, the sign-off is a rig run: it is repeatable and catches
   what a person doesn't. A manual line is the fallback for integrations the rig can't reach, or when the rig is
@@ -227,6 +254,16 @@ The estimates below are code plus tests.
    - Flagged items show as tested (soaking) or Help us test, from the evidence. Caveat marks replace the Unmaintained
      and Stale tests marks.
    - Drop Reported, siblings and the record-freshness rule for Verified.
+   - Follow-up (Jason, 2026-11-12): one 🧪 tier, no tested/Help us test split. Every flagged item shows alike, with
+     no per-item evidence rule; the legend's 🧪 entry says it's off until Experimental features is on and asks for a
+     report. Whether a flagged item was tested is the judgment of the repo maintainer who removes its flag
+     (superseded 2026-11-12: a flagged item is untested, as the PR landing its verification lifts its flag; that in
+     turn superseded 2026-11-12: a flagged item may have passing runs, and its maintainer judges when to lift it).
+   - Follow-up (Jason, 2026-11-12): drop `reports:` from `devices.yaml`, with its loader, validation and the evidence
+     block's Reports column. The GitHub issue is a report's record; a maintainer who trusts one cites it in a
+     `_manual.md` sign-off.
+   - Follow-up (Jason, 2026-11-12): cards show features, not fields. A flagged (or Documented) field shows on the
+     integration's page and in the evidence block only.
    - Regenerate the README and `docs/device-compatibility.md`.
 6. **v0.1.0.**
    - One sign-off per integration changed since v0.0.1 (`check_release.py --signoffs`), by rig run for every
@@ -255,6 +292,9 @@ concurrency decisions.
   step 2–3b PR together with the rig's; for a rig engine change a step file needs, merge the rig PR first.
 - Each step: an implementer subagent, then a reviewer subagent against this plan; rule questions go to Jason.
 - Step 6 needs Jason and the physical rig: stop there.
+- **Decision (Jason, 2026-11-12): regenerated output follows its inputs.** A PR confined to one integration's package
+  that also regenerates shared generated files needs only that integration's maintainer: CI's `--check` proves the
+  output, so only the inputs need review. CODEOWNERS and `gen_codeowners.py` are unchanged.
 - Known flaky tests, unrelated: ha-rig `tests/test_rig_busy.py` timing; DeviceSide `test_no_z2m_does_nothing_quietly`.
 
 ## Verification

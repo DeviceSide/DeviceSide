@@ -147,7 +147,7 @@ def write_record(repo, name: str, commit: str, result: str = "pass", integration
 def test_a_file_named_with_a_leading_underscore_is_never_a_record(fake_repo, name):
     """The rig's fact results (`_facts.md`) and the manual sign-offs sit beside the records; neither is one."""
     write_record(fake_repo, name, fake_repo.commit())
-    assert cr.record_signoffs("fake") == []
+    assert cr.record_signoff("fake") == (None, None)
 
 
 def test_every_rig_record_in_the_repo_cites_a_commit_the_check_can_read():
@@ -259,26 +259,57 @@ def test_a_changed_integration_with_no_signoff_fails(released, monkeypatch, caps
     assert err.splitlines() == [f"error: {line}"]
 
 
-def test_a_passing_record_at_or_after_the_last_change_signs_off(released, monkeypatch, capsys):
+def test_every_record_passing_at_one_commit_at_or_after_the_last_change_signs_off(released, monkeypatch, capsys):
     change = released.commit(f"{FAKE}/stop.py")
     write_record(released, "stop.md", change)
+    write_record(released, "turn_on_for.md", change)
     assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 0
     assert capsys.readouterr().out.splitlines()[1] == (
-        f"fake: changed at {change[:7]}; signed off by record {RECORDS}/stop.md at {change[:7]}"
+        f"fake: changed at {change[:7]}; signed off by record {RECORDS} at {change[:7]}"
     )
     after = released.commit("README.md")  # a later commit outside the package
     write_record(released, "stop.md", after)
+    write_record(released, "turn_on_for.md", after)
     assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 0
 
 
-def test_a_record_before_the_last_change_or_not_passing_is_no_signoff(released, monkeypatch, capsys):
+def test_records_citing_different_commits_are_a_partial_run_and_no_signoff(released, monkeypatch, capsys):
+    """A run of one action doesn't sign off the rest; rerunning the others at its commit completes the run."""
+    change = released.commit(f"{FAKE}/stop.py")
+    write_record(released, "stop.md", change)
+    write_record(released, "turn_on_for.md", change)
+    later = write_record(released, "lifecycle.md", change)
+    write_record(released, "stop.md", later)
+    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
+    assert f"({change[:7]}: 2, {later[:7]}: 1); a sign-off is one run at one commit)" in capsys.readouterr().out
+    write_record(released, "lifecycle.md", later)
+    write_record(released, "turn_on_for.md", later)
+    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 0
+
+
+def test_records_citing_no_commit_are_no_signoff(released, monkeypatch, capsys):
+    released.commit(f"{FAKE}/stop.py")
+    released.commit(f"{RECORDS}/stop.md", "| Result | pass |\n")
+    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
+    assert f"({RECORDS} at none: not in this checkout; cite a commit on main)" in capsys.readouterr().out
+
+
+def test_a_failing_record_fails_the_run_and_a_rerun_at_its_commit_completes_it(released, monkeypatch, capsys):
+    change = released.commit(f"{FAKE}/stop.py")
+    write_record(released, "stop.md", change)
+    write_record(released, "turn_on_for.md", change, result="fail")
+    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
+    assert f"(turn_on_for.md fails at {change[:7]})" in capsys.readouterr().out
+    write_record(released, "turn_on_for.md", change)
+    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 0
+
+
+def test_a_run_before_the_last_change_is_no_signoff(released, monkeypatch, capsys):
     before = released.commit(f"{FAKE}/stop.py")
     write_record(released, "stop.md", before)
     last = released.commit(f"{FAKE}/transport.py")
     assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
-    assert f"({RECORDS}/stop.md at {before[:7]}: predates the last change {last[:7]})" in capsys.readouterr().out
-    write_record(released, "turn_on_for.md", released.git("rev-parse", "HEAD"), result="fail")
-    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
+    assert f"({RECORDS} at {before[:7]}: predates the last change {last[:7]})" in capsys.readouterr().out
 
 
 def test_a_record_citing_a_commit_off_the_branch_is_no_signoff(released, monkeypatch, capsys):
@@ -292,7 +323,7 @@ def test_a_record_citing_a_commit_off_the_branch_is_no_signoff(released, monkeyp
     write_record(released, "stop.md", "0" * 40)  # one git can't find
     capsys.readouterr()
     assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
-    assert f"({RECORDS}/stop.md at 0000000: not in this checkout; cite a commit on main)" in capsys.readouterr().out
+    assert f"({RECORDS} at 0000000: not in this checkout; cite a commit on main)" in capsys.readouterr().out
 
 
 def test_a_signoff_whose_package_differs_from_heads_is_none(released, monkeypatch, capsys):
@@ -303,7 +334,7 @@ def test_a_signoff_whose_package_differs_from_heads_is_none(released, monkeypatc
     released.git("checkout", "-q", "main")
     write_record(released, "stop.md", side)
     assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
-    assert f"({RECORDS}/stop.md at {side[:7]}: the package differs from HEAD's)" in capsys.readouterr().out
+    assert f"({RECORDS} at {side[:7]}: the package differs from HEAD's)" in capsys.readouterr().out
 
 
 def test_a_reverted_change_is_unchanged(released, monkeypatch, capsys):
