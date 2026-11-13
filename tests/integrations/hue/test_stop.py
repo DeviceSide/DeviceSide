@@ -204,7 +204,10 @@ async def test_a_failed_light_in_a_room_cut_rolls_back_only_its_own_prediction(h
     assert raised.value.translation_placeholders["summary"] == f"{entity_id}: some_lights_failed"
     assert read["light.one"]["brightness"] == pytest.approx(60.0)  # halted where it was
     assert read["light.two"]["brightness"] == pytest.approx(60.0)  # the soft off's own prediction still stands, 4 s in
-    assert "stop on hue failed for light.two in light.room, so they may keep fading" in caplog.text
+    assert (
+        "stop on hue failed for light.two (RuntimeError('bridge refused the write')) in light.room, so they may keep"
+        " fading"
+    ) in caplog.text
 
 
 async def test_a_room_stop_where_every_light_fails_is_rejected(hass, bridge, clock):

@@ -91,9 +91,16 @@ class HueStop(Adapter[Request]):
                 SATURATION, {light_id: value for light_id, value in saturation.items() if light_id in halted}
             )
             if set(halted) != set(brightness):
-                failed = sorted(entity_name(hass, light_id) for light_id in set(brightness) - set(halted))
+                failed = [
+                    (entity_name(hass, light_id), failure)
+                    for (light_ids, _), failure in zip(writes, failures, strict=True)
+                    if failure is not None
+                    for light_id in light_ids
+                ]
                 _LOGGER.warning(
-                    "stop on hue failed for %s in %s, so they may keep fading", ", ".join(failed), target.entity_id
+                    "stop on hue failed for %s in %s, so they may keep fading",
+                    ", ".join(f"{name} ({failure!r})" for name, failure in sorted(failed, key=lambda pair: pair[0])),
+                    target.entity_id,
                 )
                 return self.result(target, Status.REJECTED, detail="some_lights_failed")
             return self.result(target, Status.SENT)

@@ -67,9 +67,10 @@ def entity_name(hass: HomeAssistant, rid: str) -> str:
     return er.async_get(hass).async_get_entity_id("light", "hue", rid) or "a Hue light with no entity"
 
 
-def named(hass: HomeAssistant, values: dict[str, Any]) -> dict[str, Any]:
-    """values keyed by resource id, keyed by entity_name instead, for a log line."""
-    return {entity_name(hass, rid): value for rid, value in values.items()}
+def named(hass: HomeAssistant, values: dict[str, Any]) -> list[tuple[str, Any]]:
+    """values keyed by resource id, as (entity_name, value) pairs for a log line: pairs, not a dict, as every light
+    with no entity has the same name."""
+    return [(entity_name(hass, rid), value) for rid, value in values.items()]
 
 
 def log_write(

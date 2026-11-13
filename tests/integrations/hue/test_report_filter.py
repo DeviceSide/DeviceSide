@@ -286,7 +286,7 @@ async def test_a_failing_filter_never_stops_aiohue_applying_the_event(hass, brid
     await hass.async_block_till_done()
 
     assert bridge.api.lights["one"].dimming.brightness == 90.0
-    assert "Hue report filter failed" in caplog.text
+    assert "Hue report filter failed on a light report for light.one" in caplog.text
 
 
 @pytest.mark.parametrize("brightness", [41.3, 56.13])
