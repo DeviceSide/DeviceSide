@@ -34,5 +34,5 @@
 
 ## New integration only
 
-- [ ] The shared touch points CONTRIBUTING's Fast track step 3 lists, `manifest.json`'s dependencies and the README's Requirements list included
+- [ ] The shared touch points CONTRIBUTING's Fast track step 3 lists
 - [ ] `IntegrationInfo.maintainers` names me

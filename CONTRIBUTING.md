@@ -28,8 +28,6 @@ If you can build a change and test it on your own devices, open a pull request d
    - `docs/integrations.md`: a link to its page
    - `docs/models.yaml`: the models you tested
    - `scripts/gen_features.py`: a `NO_PATH` row for each feature the devices can't support, with the reason, and its explanation in `docs/integrations.md`'s "What can't be done, and why"
-   - `README.md`: the integration in the Requirements list
-   - `custom_components/deviceside/manifest.json`: its HA domain in `after_dependencies` when DeviceSide must load after it, and any library your code imports in `requirements`
    - `pyproject.toml`: any library its tests need, in the `dev` group
    - `custom_components/deviceside/__init__.py`, `const.py`, `strings.json` and `translations/en.json`: only if it adds a setup hook or a user option
 4. **Ship it Experimental.** New actions, domains, capabilities and fields start as `Level.EXPERIMENTAL`. Unit tests pin each payload you send, and every module of your adapter code needs at least 95% line coverage.
