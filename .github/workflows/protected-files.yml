@@ -11,9 +11,8 @@ on:
 
 permissions: {}
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+# No concurrency group: a cancelled run (superseded, or a queued one bumped by a third event) reads as not green to
+# merge gates, and each run checks its own head in seconds. Two runs racing can both post a comment, at worst once.
 
 jobs:
   check:
