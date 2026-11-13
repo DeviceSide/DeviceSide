@@ -5,9 +5,9 @@
 | Result | pass |
 | Ran | 5 passed, 0 skipped |
 | Date | 2026-11-13 |
-| Source | rig run (`scripts/rig.py`), commit `308bd61` |
+| Source | rig run (`scripts/rig.py`), commit `1b7cc68` |
 | Home Assistant | 2026.10.4 |
-| Device | Zigbee LED 9W A19 bulb, dimmable & tunable (`ZL1000100-CCT-US-V1A02`), firmware `2.2`; Group, firmware `Zigbee2MQTT 2.14.3` |
+| Device | Hue white ambiance E27 1100lm with Bluetooth (`9290024684`), firmware `1.163.1`; Group, firmware `Zigbee2MQTT 2.14.3` |
 
 ## Tests
 

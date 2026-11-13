@@ -5,9 +5,9 @@
 | Result | pass |
 | Ran | 4 passed, 3 skipped |
 | Date | 2026-11-13 |
-| Source | rig run (`scripts/rig.py`), commit `308bd61` |
+| Source | rig run (`scripts/rig.py`), commit `1b7cc68` |
 | Home Assistant | 2026.10.4 |
-| Device | Hue ambiance lamp (`LTA009`), firmware `1.163.1`; Room, firmware `unknown`; Hue Essential lamp (`LCA016`), firmware `1.164.2` |
+| Device | Hue ambiance lamp (`LTA009`), firmware `1.163.1`; Zone, firmware `unknown`; Hue Essential lamp (`LCA016`), firmware `1.164.2` |
 
 ## Tests
 
