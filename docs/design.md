@@ -28,7 +28,8 @@ Code and docs use these terms.
 - **Field**: an action parameter, e.g. `brightness`.
 - **Entity domain**: light, switch. "Domain" alone is fine where unambiguous.
 - **Scope**: the entity domains, classes and fields an adapter is built for, each Verified, Documented or untested,
-  and flagged or not, plus the classes it knows don't work. Outside it, calls are refused as not yet supported.
+  and flagged or not, plus the classes it knows don't work. Outside it, calls are refused (`domain_not_tested`,
+  `fields_not_tested`, or `not_supported` for a class).
 - **Level**: how a scope item is proven, Verified or Documented. Rules: [evidence.md](evidence.md#levels). User
   wording: [device-compatibility.md](device-compatibility.md#levels-of-proof).
 - **Experimental**: the flag on a scope item (`experimental(...)`) or a whole adapter (`experimental=True`) not yet
@@ -157,7 +158,9 @@ runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, 
   `AdapterRegistry`'s interface needs the rig's matching change. A failing integration import (its core
   integration isn't installed) records it unavailable and setup carries on.
 - **Classes.** `IntegrationInfo.capability(hass, target) -> str | None` names the target's class: sync and cheap, no
-  I/O, reading only the registry device, the config entry or the integration's data. Every adapter of the integration
+  I/O, reading only the registry device, the config entry or the integration's data. A device it can't place gets the
+  default class; `None` is only for a target it can't class at all (a Shelly entity with no RPC component), which
+  counts as Experimental. Every adapter of the integration
   sees the same class, and maps the classes it serves to its own branch in `execute`; a class is a device class, not a
   call pattern, as patterns are per action. The registry refuses an integration with `capability` unless every
   adapter's scope has `capabilities`, and one without unless none has. `AdapterScope.doesnt_work` maps a class to a
