@@ -3,22 +3,24 @@
 the adapters' scopes, docs/models.yaml and each integration's bundle, docs/integrations/<integration>/. The rules
 the cards show (levels, the `experimental` flag, caveats) are in docs/evidence.md.
 
-**Evidence** for an action is its passing test records (`<action>.md`, `<action>-<option>.md`) and the `_manual.md`
-rows whose Passed names it. A record's Device row gives the models it tested: a group (firmware `unknown`, or named
-Group or Zone) shows as "group", and an entry the format can't read is an error; a manual row's Devices are model ids.
-A record's Tests table may name the class each passing test reached (its Capability column), and a manual row the
-classes it covers (its Capabilities). A level comes from the scope alone (verify, then trust): a record never ages.
+**Evidence** for an action is its passing test records (`<action>.json`, `<action>-<option>.json`, read by
+check_release against docs/test-records.schema.json) and the `_manual.json` rows whose `passed` names it. A format 2
+record gives each passing test's devices, each a model with its firmware and the class it reached; a native group's test
+(its devices are its members) shows as "group". A format 1 record (converted from markdown) gives the run's devices,
+not which test reached which, and its tests the classes they reached, if it recorded them. A manual row's devices are
+model ids, each with its class. A level comes from the scope alone (verify, then trust): a record never ages.
 
 **Cards.** One collapsed section between the README's devices markers, the legend first and a link to the integrations
 page last, with a card per integration: its name, linked to its page (the bundle's index.md), and maintainers
 (`IntegrationInfo.maintainers`; "⚠️ Unmaintained · formerly maintained by" when every adapter is), then the features
 of the adapters with each `caveat` (⚠️ Unmaintained, then ⚠️ Untested fix, linking its reason), then a bullet per tier:
 - Works: the models the evidence tested (rig-tested ones end ✔), and native groups. A pass on a flagged item never
-  puts a model here, and records name a run's models, and each test's Target domain and class, but not which test
-  reached which model, so the rule is fail-safe: an adapter flagged whole, or on any field, adds no models; one
-  flagged on a domain or class adds those of the records whose passing tests all target unflagged domains and, with a
-  class flagged, all name unflagged classes only (a dash names none), and, unless a domain is flagged, those of the
-  `_manual.md` rows whose Capabilities name unflagged classes only. A model can still reach Works through another
+  puts a model here: an adapter flagged whole, or on any field, adds no models. One flagged on a domain or class adds,
+  from a format 2 record, each model a passing test reached on an unflagged domain and, with a class flagged, an
+  unflagged class (a null one is none), and native groups when every member's class is unflagged; from a format 1
+  record, which doesn't say which test reached which model, the run's models only when every passing test targets an
+  unflagged domain and, with a class flagged, names unflagged classes only; and, unless a domain is flagged (a manual
+  row names none), each `_manual.json` model whose class is unflagged. A model can still reach Works through another
   adapter's evidence.
 - Should work: the classes (devices.yaml `capabilities`) unflagged adapters hold as Documented.
 - Experimental features: the classes held as `experimental(...)`, and the features of adapters flagged whole
@@ -31,8 +33,10 @@ integration's name where it leads, as the card's name already gives it. Cards sh
 Documented field shows on the integration's page and in the evidence block only.
 
 **Evidence block.** Per integration, a row per action and level its domains, capabilities and fields hold (an adapter
-flagged whole has one), the first with the evidence's models and records; each row carries the adapter's caveat. The
-prose outside the evidence markers is kept as written.
+flagged whole has one), the first with the evidence's records; each row carries the adapter's caveat. A model tested on
+a class is listed with it, on the row of the level the scope holds that class at, so each class lists only the models
+that reached it, with their firmware; the rest (a format 1 record's, native groups, a class the scope doesn't hold) are
+on the first row. The prose outside the evidence markers is kept as written.
 
 **The coverage check** (`check_release.coverage_gaps`, docs/evidence.md) prints a warning per Verified class no
 record reaches on every run, `--check` included, and never fails here: `check_release.py --signoffs` fails on it at
@@ -59,8 +63,8 @@ Usage: scripts/gen_compat.py [--check]
 
 import argparse
 import copy
-import re
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -72,15 +76,14 @@ sys.path.insert(0, str(REPO))
 from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
 from custom_components.deviceside.core.scope import CaveatKind, Level  # noqa: E402
 from scripts.check_release import (  # noqa: E402
-    BACKTICKS,
     MANUAL,
-    PASSED,
     adapters,
     coverage_gaps,
     manual_rows,
     passing,
     test_records_dir,
 )
+from scripts.check_release import load as read_record  # noqa: E402
 from scripts.gen_features import FEATURES as TABLE_FEATURES  # noqa: E402
 from scripts.gen_features import anchors, bundle, columns, page, slug  # noqa: E402
 
@@ -94,11 +97,7 @@ CARDS = ("<!-- devices:start -->", "<!-- devices:end -->")
 CARDS_TITLE = "Device compatibility by integration"
 EVIDENCE = ("<!-- evidence:start -->", "<!-- evidence:end -->")
 
-DEVICE = re.compile(r"^\| Device \| (.*) \|$", re.MULTILINE)
-ENTRY = re.compile(r"^(?P<name>.*?)(?: \(`(?P<model>[^`]+)`\))?, firmware `(?P<firmware>[^`]+)`$")
 REPORT_URL = "https://github.com/DeviceSide/DeviceSide/issues/new?template=device_report.yml"
-GROUP_NAMES = {"group", "zone"}
-GROUP = "group"
 NOUNS = ("entities", "classes", "fields")  # for a scope's domains, capabilities and fields
 
 # Device types, in a card's order for its Works models.
@@ -310,87 +309,107 @@ def load_broken(entry: dict, known: set[str], data: Data, actions: set[str] | No
     data.doesnt_work.append({**entry, "actions": actions} if actions else entry)
 
 
-def entries(record: Path) -> list[tuple[str, str] | str]:
-    """The devices a record tested, as (model id, firmware) or GROUP, in the order the record lists them. A Device row
-    that is missing or unreadable is an error, not an empty list: a silent gap would pass for a tested model."""
-    if not (row := DEVICE.search(record.read_text())):
-        raise SystemExit(f"{record.relative_to(REPO)}: no Device row")
-    if row[1] == "none":
-        return []
-    found: list[tuple[str, str] | str] = []
-    for item in row[1].split("; "):
-        if entry := ENTRY.match(item.strip()):
-            if entry["firmware"] == "unknown" or entry["name"].lower() in GROUP_NAMES:
+@dataclass(frozen=True)
+class Tested:
+    """A device the evidence tested: its model with its firmware and the class it reached (None: none named), or a
+    native group (no model). `rig` for a record's; a manual row's names no firmware."""
+
+    model: str | None
+    firmware: str | None = None
+    cls: str | None = None
+    rig: bool = True
+
+
+GROUP = Tested(None)
+# Whether a passing test counts toward Works, by the domain it targeted and the classes it reached (a null class is in
+# the set as None; a format 1 test's are its `classes`).
+Clean = Callable[[str | None, set[str | None]], bool]
+
+
+def tested(record: dict, clean: Clean | None = None) -> list[Tested]:
+    """The devices the record's passing tests tested, in its order; with `clean`, only those it accepts. Format 2: each
+    test's devices, each with its class, or GROUP for a native group's test, judged by its members' classes. Format 1
+    names a run's devices, not which test reached which, so `clean` takes all of them or none: all only when the
+    record has a passing test and it accepts every one."""
+    passed = [test for test in record["tests"] if test["result"] == "pass"]
+    if record["format"] == 1:
+        if clean and not (passed and all(clean(test.get("domain"), set(test.get("classes", ()))) for test in passed)):
+            return []
+        return [GROUP if item.get("group") else Tested(item["model"], item["firmware"]) for item in record["devices"]]
+    found = []
+    for test in passed:
+        if test.get("group"):
+            if clean is None or clean(test["domain"], {item["class"] for item in test["devices"]}):
                 found.append(GROUP)
-            else:
-                found.append((entry["model"] or entry["name"], entry["firmware"]))
-        else:
-            raise SystemExit(f"{record.relative_to(REPO)}: can't read Device entry {item!r}")
+            continue
+        found += [
+            Tested(item["model"], item["firmware"], item["class"])
+            for item in test["devices"]
+            if clean is None or clean(test["domain"], {item["class"]})
+        ]
     return found
 
 
 @dataclass
 class Evidence:
-    """An action's evidence on one integration: its passing records and the `_manual.md` rows naming it, each row's
-    model ids and classes."""
+    """An action's evidence on one integration: its passing records, and what they and the `_manual.json` rows naming
+    it tested, each with where it came from."""
 
     records: list[Path]
-    manual: list[tuple[list[str], set[str]]]
+    tested: list[tuple[str, Tested]]
 
     @classmethod
-    def of(cls, adapter) -> Evidence:
-        return cls(passing(adapter.integration, adapter.action), manual_rows(adapter.integration, adapter.action))
+    def of(cls, adapter, clean: Clean | None = None, by_hand: Callable[[str | None], bool] | None = None) -> Evidence:
+        """The adapter's evidence: with `clean`, only the record tests it accepts; with `by_hand`, only the manual
+        devices whose class it accepts."""
+        records = passing(adapter.integration, adapter.action)
+        found = [
+            (path.relative_to(REPO).as_posix(), item) for path in records for item in tested(read_record(path), clean)
+        ]
+        found += [
+            (MANUAL, Tested(model, None, cls, rig=False))
+            for row in manual_rows(adapter.integration, adapter.action)
+            for model, cls in row
+            if by_hand is None or by_hand(cls)
+        ]
+        return cls(records, found)
 
-    def devices(self, data: Data) -> list[tuple[str, str | None] | str]:
-        """The devices tested, each once, as (model id, firmware; None for a manual row) or GROUP: the records' first,
-        then the manual rows', groups last. Every model must be in docs/models.yaml."""
-        found: list[tuple[str, str | None] | str] = []
-        sources = [(record.relative_to(REPO), entries(record)) for record in self.records]
-        sources += [(MANUAL, [(model, None) for model in models]) for models, _ in self.manual]
-        for where, items in sources:
-            for item in items:
-                if item != GROUP:
-                    data.model(item[0], str(where))
-                if item not in found:
-                    found.append(item)
+    def devices(self, data: Data) -> list[Tested]:
+        """What was tested, each once: the records' first, then the manual rows', groups last. Every model must be in
+        docs/models.yaml."""
+        found: list[Tested] = []
+        for where, item in self.tested:
+            if item.model is not None:
+                data.model(item.model, where)
+            if item not in found:
+                found.append(item)
         found.sort(key=lambda item: item == GROUP)
         return found
 
 
-def tests(record: Path) -> list[tuple[str, set[str]]]:
-    """Each passing test of the record, as the domain it targets and the classes its Capability cell lists (none for a
-    dash or a record without the column). A Target with no domain in backticks stays whole, so it matches no domain."""
-    found = []
-    for row in PASSED.finditer(record.read_text()):
-        domain = BACKTICKS.match(row["target"])
-        found.append((domain[1] if domain else row["target"], set(BACKTICKS.findall(row["capability"] or ""))))
-    return found
-
-
 def card_evidence(adapter) -> Evidence:
-    """The evidence a card's Works counts. Fail-safe, as a record names a run's models but not which test reached
-    which: none for an adapter flagged whole or on a field. For one flagged on a domain or class, the records whose
-    passing tests all target unflagged domains and, when a class is flagged, name only unflagged classes; and, unless
-    a domain is flagged (a row names none), the `_manual.md` rows whose Capabilities name only unflagged classes."""
+    """The evidence a card's Works counts. Fail-safe: none for an adapter flagged whole or on a field. For one flagged
+    on a domain or class, the record tests (`tested`) that target unflagged domains and, when a class is flagged, reach
+    only unflagged classes; and, unless a domain is flagged (a manual row names none), the manual devices whose class
+    is unflagged."""
     flagged: dict[str, set[str]] = {}
     for level, item, noun in items(adapter.scope):
         if level is Level.EXPERIMENTAL:
             flagged.setdefault(noun, set()).add(item)
     if adapter.scope.experimental or "fields" in flagged:
         return Evidence([], [])
-    evidence = Evidence.of(adapter)
     if not flagged:
-        return evidence
+        return Evidence.of(adapter)
     domains = set(adapter.scope.domains) - flagged.get("entities", set())
     classes = set(adapter.scope.capabilities or ()) - flagged.get("classes", set())
 
-    def clean(domain: str, reached: set[str]) -> bool:
+    def clean(domain: str | None, reached: set[str | None]) -> bool:
         return domain in domains and ("classes" not in flagged or bool(reached) and reached <= classes)
 
-    records = [record for record in evidence.records if (found := tests(record)) and all(clean(*t) for t in found)]
-    if "entities" in flagged:
-        return Evidence(records, [])
-    return Evidence(records, [row for row in evidence.manual if row[1] and row[1] <= classes])
+    def by_hand(cls: str | None) -> bool:
+        return "entities" not in flagged and ("classes" not in flagged or cls in classes)
+
+    return Evidence.of(adapter, clean, by_hand)
 
 
 def items(scope) -> list[tuple[Level, str, str]]:
@@ -435,12 +454,12 @@ def named(held: list[tuple[str, str]]) -> str:
     return "; ".join(f"{', '.join(names)} {noun}" for noun, names in by_noun.items())
 
 
-def level_rows(scope) -> list[tuple[str, str]]:
+def level_rows(scope) -> list[tuple[Level, str]]:
     """(level, items) per row: a row per level the scope holds, strongest first."""
     found = []
     for level in sorted(Level, reverse=True):
         if held := [(item, noun) for item_level, item, noun in items(scope) if item_level is level]:
-            found.append((level.name.title(), named(held)))
+            found.append((level, named(held)))
     return found
 
 
@@ -448,23 +467,43 @@ def table_row(cells: list[str]) -> str:
     return "|" + "|".join(f" {text} " if text else " " for text in cells) + "|"
 
 
+def described(item: Tested) -> str:
+    """A tested item as the evidence block lists it: "`S3SW-001X8EU` (`Switch`), firmware `1.0`"."""
+    if item == GROUP:
+        return "group"
+    name = f"`{item.model}`" + (f" (`{item.cls}`)" if item.cls else "")
+    if not item.rig:
+        return f"{name}, by hand"
+    return f"{name}, firmware `{item.firmware}`" if item.firmware else f"{name}, firmware unknown"
+
+
 def rows(adapter, data: Data) -> list[str]:
-    """The action's rows: its evidence's models and records on the first."""
+    """The action's rows: its records on the first; each tested model on the row of its class's level, else the
+    first."""
     evidence = Evidence.of(adapter)
-    models = [
-        item if item == GROUP else f"`{item[0]}`, firmware `{item[1]}`" if item[1] else f"`{item[0]}`, by hand"
-        for item in evidence.devices(data)
-    ]
+    levels = level_rows(adapter.scope)
+    index = {level: number for number, (level, _) in enumerate(levels)}
+    class_level = {item: level for level, item, noun in items(adapter.scope) if noun == "classes"}
+    models: list[list[str]] = [[] for _ in levels]
+    for item in evidence.devices(data):
+        models[index.get(class_level.get(item.cls), 0)].append(described(item))
     sources = [link(record, adapter.action) for record in evidence.records]
-    if evidence.manual:
+    if any(where == MANUAL for where, _ in evidence.tested):
         path = test_records_dir(adapter.integration) / MANUAL
         sources.append(f"[by hand]({path.relative_to(REPO / 'docs').as_posix()})")
     marks = [marked(label, reason) for kind, label in MARKS if (reason := caveat_reason(adapter.scope, kind))]
     action = " ".join([f"`{adapter.action}`", *(cell(mark) for mark in marks)])
-    first = ["<br>".join(models) or "none", ", ".join(sources)]
     return [
-        table_row([action, level, held, *(first if index == 0 else ["", ""])])
-        for index, (level, held) in enumerate(level_rows(adapter.scope))
+        table_row(
+            [
+                action,
+                level.name.title(),
+                held,
+                "<br>".join(models[number]) or ("none" if number == 0 else ""),
+                ", ".join(sources) if number == 0 else "",
+            ]
+        )
+        for number, (level, held) in enumerate(levels)
     ]
 
 
@@ -634,8 +673,8 @@ def works(card: Card, key: str, integration_adapters: list, data: Data) -> list[
             if item == GROUP:
                 groups = True
                 continue
-            name = data.models[item[0]]["name"]
-            if item[1] is not None:
+            name = data.models[item.model]["name"]
+            if item.rig:
                 rig.add(name)
             if name not in names:
                 names.append(name)
