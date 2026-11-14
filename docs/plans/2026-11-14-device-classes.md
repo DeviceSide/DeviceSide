@@ -10,8 +10,8 @@ refused in code and named on the cards.
 Touches: docs/evidence.md, docs/design.md, CLAUDE.md (tenet 5's line), docs/device-compatibility.md, CONTRIBUTING.md,
 TODO.md, README.md (regenerated), custom_components/deviceside/core/{scope.py, adapter.py, registry.py,
 dispatcher.py, errors.py}, the five integration packages and their bundles, scripts/gen_compat.py, and their tests.
-Tests-with: the ha-rig PR (step 2) writes the class each test reached into the records. It lands, and Shelly is rerun
-on it, before the core PR (step 3), whose coverage check reads that column.
+Tests-with: ha-rig #84 (step 2, merged) writes the Capability column. A second ha-rig change, after step 3, reads the
+class from each result (Decision 6). It lands before step 4's lab run.
 Depends-on: none. #350 (Control4) gets no comment and no change until step 8. It is `experimental=True` throughout, so
 none of these steps blocks it.
 
@@ -88,10 +88,10 @@ These refine `docs/evidence.md`; they don't replace its tenets.
 
 - The rig writes the class each test reached into the record's Tests table, as a Capability column, from
   `IntegrationInfo.capability`. `_manual.md` rows gain a Capabilities column.
-- **`gen_compat --check` adds the coverage check.** Every class an adapter's scope holds as Verified must appear in a
-  passing record test, or a manual row, for that action. The failure names the gap, for example: "zigbee2mqtt
-  turn_on_for: `other` is Verified but no record reaches it". CI runs it on every PR, so the gap is caught before
-  review.
+- **The coverage check.** Every class an adapter's scope holds as Verified must appear in a passing record test, or a
+  manual row, for that action. Each gap is named, for example: "zigbee2mqtt turn_on_for: `hue` is Verified but no
+  record reaches it". It warns on every PR (`gen_compat --check`), so a developer sees the gap early, and fails only
+  at `cut-release` (`check_release.py`), where the other release gates run (Decision 7).
 - With the class known per test, the Works tier can credit a model only to the classes it reached. The fail-safe rule
   in `gen_compat`'s docstring, where any flagged capability adds no models, goes away.
 
@@ -102,50 +102,69 @@ Experimental (flagged classes), Not yet supported (classes the integration names
 Doesn't work (generated from `doesnt_work`). `devices.yaml` keeps `column`, `column_order` and the class phrases.
 `doesnt_work` and, eventually, `requires` move to code.
 
+## Execution (Jason, 2026-11-14)
+
+- **One implementer per step**, a subagent or session given this plan and the step, and **a separate reviewer
+  subagent** per step. The reviewer gets the plan, the step number, the step's diff, CLAUDE.md and
+  `docs/evidence.md`, never the implementer's conclusions. It judges the diff against this plan's intent and
+  tenets. Its findings are fixed or answered before the next step starts, and a "Plan review" note goes in the step's
+  last commit.
+- Steps 1 and 3 are on the binding-rule surface, so they also get the Opus audit.
+- **Branches:** stacked, one per step, `claude/device-classes-<n>-<name>`, each off the previous, so each can become
+  its own PR in order.
+- **Decisions the plan doesn't settle go to Jason**, asked directly, and are recorded below as they are made.
+- **The rig:** the lab profile is available every step. It has the Hue bulbs on Hue, ZHA and Z2M, the TS011F plug and
+  the Matter WiZ plug, and can take a Sengled bulb or the Shelly color bulb when needed. The house profile, which
+  has the Shelly switch devices, is a day or two away. Each lab run is also that integration's v0.1.0 sign-off if its
+  package doesn't change afterward.
+
 ## Steps
 
-Each step is one PR off `main`, in order, with pytest, pre-commit and the regenerated files as usual. Steps 1 and 3 are
-on the binding-rule surface: Opus audit, repo maintainer. Steps 4–7 are package PRs, each with a rig rerun as its
-sign-off. That rerun is the test of the framework on the current repo scope.
+Each step is one PR, in order, with pytest, pre-commit and the regenerated files as usual.
 
-1. **Rules and design (docs only).**
-   - `docs/evidence.md`: the tenets above; the definition of a class; doesn't work vs not yet supported vs untested;
-     the split rule; the coverage check; an example from Z2M.
-   - `docs/design.md`: glossary entries for Class, Doesn't work and Not yet supported, and the Core contract for
-     `IntegrationInfo.capability` and the refusals.
-   - `CLAUDE.md`: tenet 5's line.
-   - `docs/device-compatibility.md`: the new tier.
-   - CONTRIBUTING: the Fast track asks a new integration to name its classes, or to say it has one.
-   - TODO.md: this plan's steps.
-2. **Rig (ha-rig, private).** Write the Capability column from today's `Adapter.capability()`, and from
-   `IntegrationInfo.capability` once step 3 lands. Rerun Shelly so its records carry the column.
-3. **Core.**
+1. **Rules and design (docs only).** Done: `claude/device-classes-1-rules`.
+2. **Capability column.** Done: `claude/device-classes-2-capability-column`, ha-rig #84 merged.
+3. **Lab probe, before any classifier code (1a).** The implementer first writes a probe spec, in this plan and to
+   Jason. Jason runs it in the lab while step 4 (core) proceeds. Results go in each bundle's `internals.md`, dated.
+   - **Registry strings:** what HA's device registry holds (manufacturer, model, `model_id`, firmware) for each lab
+     device on Hue, ZHA, Z2M and Matter. Vendor and model strings only, never names, IDs or addresses.
+   - **The TS011F probe** (Decision 3).
+   - **The Tuya detection signal** on Z2M and ZHA.
+   - **Sengled, once it's in the lab:** its strings on each network, and whether it honors 0x42. The research puts it
+     in pattern E, no device timer.
+4. **Core** (the plan's former step 3).
    - `IntegrationInfo.capability`, the registry rule, `doesnt_work` and `Reason.DOESNT_WORK`, and the rename.
+   - The class in each result (Decision 6).
    - Shelly moves from its mixin to `IntegrationInfo.capability`. Its scopes don't change.
-   - `gen_compat`: the new tiers, `doesnt_work` read from code, and the coverage check. The check applies only to
-     integrations that define `capability`, so Shelly alone at first.
-   - `models.yaml`'s shared `doesnt_work` (the TS011F) stays until steps 4 and 5 move it.
-4. **Zigbee2MQTT (the driver).**
-   - Classes: `hue` (Philips), `tuya_zcl` (TS011F, TS000x and their white labels), `tuya_mcu` (TS0601), and `other`.
-   - Scopes: `hue` Verified wherever records reach it. `other` is flagged on fades, `stop`, `set_attributes` and
-     `turn_on_for`. `get_attributes` and `stop` can argue Documented in the PR.
-   - `turn_on_for` leaves the two Tuya classes out of scope, so they're refused as not supported. That ends the
-     silent permanent On. The TS011F's entry follows the probe in Decision 3.
-   - First, a cheap probe: what HA's device registry holds for a white-label Tuya device under Z2M, to pick the
-     detection signal (manufacturer, model, or Z2M's `countdown` expose). Record it in `internals.md`.
-   - Rig rerun on the Hue bulbs. The records reach `hue`, so `other` must stay flagged until a non-Hue bulb is run.
-5. **ZHA.** The same class shape. ZHA exposes the raw `_TZ…` manufacturer, so Tuya detection is direct. Rig rerun.
-6. **Hue.** Classes: `hue` and `other` (third-party lights on the bridge), plus `bridge_v1` (not yet supported) and
-   `smart_scene` (doesn't work, on `set_scene`). Remove the five `bridge_v1` checks and the `smart_scene` check.
-   `requires:` can then be generated or kept as display. Rig rerun.
-7. **Matter.** Its only record is a WiZ plug, so the class split (for example `wiz` and `other`) is the maintainer's
-   call in the PR. Manual or rig sign-off.
-8. **Close out.**
-   - Remove `models.yaml`'s shared `doesnt_work` once nothing reads it.
-   - Regenerate the README.
-   - Tick TODO.
-   - Then comment on #350: the classes it will need to leave `experimental`, and what its manual records should note
-     (the Director's driver or proxy type).
+   - `gen_compat`: the new tiers, `doesnt_work` read from code, and the coverage check, warning only (Decision 7).
+     `check_release.py`: the same check, failing.
+   - Decision 5's rule in `docs/evidence.md`.
+   - Exact instructions to Jason for the second ha-rig change, which reads the class from the result.
+5. **Zigbee2MQTT (the driver).**
+   - Classes from the probe's real strings: `hue`, `tuya_zcl`, `tuya_mcu`, `other`, and `sengled` if the Sengled needs
+     its own rule. A one-off test bulb lifts its maker's class, never `other` (Decision 5).
+   - Rules are data, so a later probe changes rule data, not structure.
+   - Scopes as planned. `turn_on_for` refuses the Tuya classes as not supported. `sengled` on `turn_on_for` is not
+     supported if the probe confirms it ignores 0x42. The TS011F's entry follows Decision 3.
+   - **Lab run** on the branch tip, with the Sengled. It tests the classifier, the column, the coverage check, Works
+     credited per class, and the refusals.
+6. **Core fix-ups** from step 5's run, before ZHA and Hue copy the pattern. If a package changes, its lab run is
+   repeated.
+7. **ZHA.** The same shape. Lab run, with the Sengled.
+8. **Hue.** Classes `hue`, `other`, `bridge_v1` (not supported) and `smart_scene` (doesn't work, on `set_scene`).
+   `other` is decided per action (Decision 2). Lab run, with the Sengled on the bridge if it pairs. The `bridge_v1`
+   refusal is unit-tested only.
+9. **Matter.** Lab run on the WiZ plug.
+10. **Close out.**
+    - The house run: Shelly's switch devices, plus the color bulb unless it already ran in the lab.
+    - Repeat any run on the list below.
+    - Remove `models.yaml`'s shared `doesnt_work`, regenerate the README, and tick TODO.
+    - Then, with Jason's go-ahead, comment on #350: the classes it will need to leave `experimental`, and what its
+      manual records should note (the Director's driver or proxy type).
+
+### Runs to repeat
+
+A package changed after its lab run needs that run again before the release. None yet.
 
 ## Deferred until something needs it
 
@@ -181,3 +200,6 @@ sign-off. That rerun is the test of the framework on the current repo scope.
    `integration`, a query's in its entity's data, a native group's as its members' classes. The rig records that
    instead of classifying a stand-in target, so a record holds the class the call really reached. Step 3 adds the
    field; the rig then reads it (ha-rig, after step 3).
+7. **The coverage check warns during development and fails at release.** `gen_compat --check` prints each gap on
+   every PR, so a developer sees it early. `check_release.py` fails on it at `cut-release`, with the other release
+   gates. No allowlist is needed while records catch up (Shelly's house rerun).
