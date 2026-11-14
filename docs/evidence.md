@@ -117,11 +117,8 @@ a call that isn't built would work on it. Not yet supported is for a class today
 - **Split off the exception, not the class.** When devices are known to depart from a class's call, a rule moves them
   into a class of their own, at the level their own evidence supports. The rest of the class keeps its level. The
   whole class drops a level only when no rule can tell the departing devices apart.
-- **A class is keyed on what decides the outcome:** the integration's own routing where it chooses the call, the
-  device's identity where it doesn't. On Zigbee2MQTT, the device definition picks the wire call, so two TS011F plugs
-  can take 0x42 in seconds or a Tuya datapoint: a countdown class keys on the definition, firmware exceptions split
-  off by maker string, and the `countdown` expose is checked at call time as a guard. A light's behavior follows its
-  identity, so identity rules stay. It prevents evidence credited to a call path the device never takes.
+- **Key a class on what decides the outcome:** the integration's routing where it picks the call, otherwise the
+  device's identity.
 - **When a doesn't-work entry harms.** A failure harms when it is deferred and unattended: the device ends in an
   on or off state the user didn't ask for, after they've stopped watching, with no visible cue. So the timed and
   scheduled on/off actions harm when they fail (`turn_on_for`, `turn_off_for`, `set_auto_off`, `set_auto_on`,

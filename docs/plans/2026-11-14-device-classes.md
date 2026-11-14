@@ -65,7 +65,7 @@ These refine `docs/evidence.md`; they don't replace its tenets.
 7. **Split off the exception, not the class** (Decision 25): `docs/evidence.md`, Device classes.
 8. **Where a call is known to harm, a class not yet known is refused** (Decisions 25 and 26): `docs/evidence.md`,
    Device classes.
-9. **A class is keyed on what decides the outcome** (Decision 34): `docs/evidence.md`, Device classes.
+9. **Key a class on what decides the outcome** (Decision 34): `docs/evidence.md`, Device classes.
 
 ## Design
 
@@ -822,11 +822,8 @@ A package changed after its lab run needs that run again before the release. Non
     (`raise_brightness`, `lower_brightness`, `raise_hue`, `lower_hue`, `raise_saturation`, `lower_saturation`),
     `stop`, `set_attributes` and `set_scene` don't, as a wrong result shows at once and one tap fixes it; and
     `get_attributes` only reads. The test's home: `docs/evidence.md`, beside the harm rule.
-34. **A class is keyed on what decides the outcome:** the integration's own routing where it chooses the call, the
-    device's identity where it doesn't. On Zigbee2MQTT the device definition picks the wire call, so a countdown
-    class keys on it, with firmware exceptions split off by maker string and the `countdown` expose checked at call
-    time as a guard; lights keep identity rules. It prevents evidence credited to a call path the device never
-    takes. Home: `docs/evidence.md`, Device classes.
+34. **Key a class on what decides the outcome:** the integration's routing where it picks the call, otherwise the
+    device's identity. Home: `docs/evidence.md`, Device classes.
 
 ## Handoff
 
