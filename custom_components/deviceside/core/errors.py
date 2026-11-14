@@ -28,7 +28,8 @@ class Reason(StrEnum):
     # The target's class rests on what DeviceSide doesn't know yet (a device not yet placed, a native group's
     # membership), or can't be named at all (None), on an adapter whose call harms a class it could be: refused even
     # with Experimental features on (docs/evidence.md, Device classes). Usually transient: a device not yet placed
-    # clears once the integration has reported it; a target with no class (None) stays refused.
+    # clears once the integration has reported it, and a group whose membership isn't listed yet once it is; a target
+    # that can't be classed at all (an entity with no device, a classifier that raised) stays refused.
     CLASS_UNKNOWN = "class_unknown"
 
 

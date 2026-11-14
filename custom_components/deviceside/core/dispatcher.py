@@ -44,7 +44,7 @@ def _classed(result: EntityResult, target: Target, classes: Classes) -> EntityRe
     if not classes or any(name is None or isinstance(name, Unplaced) for name in classes):
         return result
     if target.is_group:
-        return replace(result, classes=tuple(sorted({name for name in classes if name is not None})))
+        return replace(result, classes=tuple(sorted(set(classes))))
     return replace(result, classes=classes[0])
 
 

@@ -24,7 +24,8 @@ Code and docs use these terms.
   Experimental (except where a call is known to harm: there a target whose class rests on information DeviceSide
   doesn't have yet is refused). Rules: [evidence.md](evidence.md#device-classes).
 - **Placed**: a device whose class rests on everything the integration will report about it (Zigbee2MQTT: listed as
-  interviewed, with both Zigbee strings). Until then its class is `Unplaced`: the same class to every adapter, except
+  interviewed, with both Zigbee strings; one the registry puts in `hue` is placed without them:
+  [index.md](integrations/zigbee2mqtt/index.md#tuya)). Until then its class is `Unplaced`: the same class to every adapter, except
   where a call is known to harm, which refuses it (`class_unknown`). Placed or not is apart from which rule matched:
   a device no rule matches is placed in the default class once the integration has reported it. Rules:
   [evidence.md](evidence.md#doesnt-work-not-yet-supported-untested).

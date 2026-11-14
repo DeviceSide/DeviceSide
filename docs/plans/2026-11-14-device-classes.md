@@ -65,6 +65,7 @@ These refine `docs/evidence.md`; they don't replace its tenets.
 7. **Split off the exception, not the class** (Decision 25): `docs/evidence.md`, Device classes.
 8. **Where a call is known to harm, a class not yet known is refused** (Decisions 25 and 26): `docs/evidence.md`,
    Device classes.
+9. **A class is keyed on what decides the outcome** (Decision 34): `docs/evidence.md`, Device classes.
 
 ## Design
 
@@ -798,9 +799,11 @@ A package changed after its lab run needs that run again before the release. Non
 
 ## Decisions (Jason, 2026-11-14, step 6 review)
 
-28. **`None` on a harms adapter stays refused as `class_unknown`.** A target the integration can't class at all
-    could be the harmed class, so it is refused as an `Unplaced` one is; unlike that, it doesn't clear, so the docs
-    call `class_unknown` usually transient, not always. On an integration with a `harms` entry, a device no rule
+28. **`None` on a harms adapter is refused as `class_unknown`.** A target the integration can't class could be the
+    harmed class, so it is refused as an `Unplaced` one is. A group whose membership isn't listed yet is also
+    `(None,)` and clears once the integration lists it (Zigbee2MQTT: `bridge/groups`); a target that can't be classed
+    at all (an entity with no device, a classifier that raised) doesn't clear. So the docs call `class_unknown`
+    usually transient, not always. On an integration with a `harms` entry, a device no rule
     matches gets the default class, never `None` (`IntegrationInfo.capability`).
 29. **Responses leave out a provisional class.** An `Unplaced` class is reported like `None`: no `capability` key
     for that target, and no `capabilities` for a native group with such a member
@@ -819,6 +822,11 @@ A package changed after its lab run needs that run again before the release. Non
     (`raise_brightness`, `lower_brightness`, `raise_hue`, `lower_hue`, `raise_saturation`, `lower_saturation`),
     `stop`, `set_attributes` and `set_scene` don't, as a wrong result shows at once and one tap fixes it; and
     `get_attributes` only reads. The test's home: `docs/evidence.md`, beside the harm rule.
+34. **A class is keyed on what decides the outcome:** the integration's own routing where it chooses the call, the
+    device's identity where it doesn't. On Zigbee2MQTT the device definition picks the wire call, so a countdown
+    class keys on it, with firmware exceptions split off by maker string and the `countdown` expose checked at call
+    time as a guard; lights keep identity rules. It prevents evidence credited to a call path the device never
+    takes. Home: `docs/evidence.md`, Device classes.
 
 ## Handoff
 

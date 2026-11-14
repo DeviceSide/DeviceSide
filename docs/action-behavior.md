@@ -52,8 +52,9 @@ and skipped if not, but it is usually transient: it holds only until the integra
 ([evidence.md](evidence.md#doesnt-work-not-yet-supported-untested)). That usually takes seconds, so an automation firing
 at startup can get it; if the integration never reports it (DeviceSide couldn't connect to it), it holds until
 DeviceSide reloads, and a device that never finishes pairing holds until it is paired again. A target DeviceSide can't
-class at all is refused the same way, for good. A native group with a member refused either way falls back to its
-members, as for any refused member (below): the rest run, and only that one is refused.
+class at all (an entity with no device, a classifier that raised) is refused the same way, for good. A native group
+with a member refused either way falls back to its members, as for any refused member (below): the rest run, and only
+that one is refused.
 
 **Unlisted fields depart from core.** An adapter may name, in `AdapterScope.unlisted`, fields its devices take although
 the light's state says they can't; a light never lacks those for that adapter, where `filter_turn_on_params` would drop

@@ -144,7 +144,7 @@ class EntityResult:
     integration: str | None = None
     # The class the call reached, for an integration that names classes (docs/evidence.md, Device classes): a
     # target's, or a native group's members', sorted. The dispatcher sets it, and leaves it None when it couldn't
-    # name one (for a group: any member's).
+    # name one, or named one not yet placed (for a group: any member's).
     classes: str | tuple[str, ...] | None = None
     clamped_to: float | None = None
     detail: str | None = None
