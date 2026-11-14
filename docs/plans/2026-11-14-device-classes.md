@@ -566,7 +566,9 @@ A package changed after its lab run needs that run again before the release. Non
    Experimental features is off. **Amended during step 5:** a member whose class is Experimental falls back the same
    way while Experimental features is off: the other members run one by one, and the flagged one is skipped with
    `experimental_off`, raised only if it was named itself. With the option on, the group runs whole, as one command.
-   An empty group is skipped silently (docs/action-behavior.md), never gated.
+   An empty group is skipped silently (docs/action-behavior.md), never gated. Amended (audit): a group that falls
+   back has no result of its own; with no member planned it is refused with the fallback's reason. Mechanics:
+   design.md (Groups).
 9. **Shelly `set_attributes` on Light, CCT, RGB and RGBW** is Documented if Shelly's Gen2+ docs say, alike for those
    components, that a `Set` without `on` leaves the output as it is; otherwise `experimental(...)`. RGBCCT stays
    Verified.
