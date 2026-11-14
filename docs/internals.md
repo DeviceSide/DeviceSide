@@ -30,8 +30,9 @@ repeated here; result and detail codes are in the code.
 ## Tested behavior
 
 - **The Tuya TS011F and `OnWithTimedOff` (`0x42`)**, measured 2026-11-14 on two TS011F plugs, `_TZ3000_0zfrhq4i`
-  on Zigbee2MQTT and `_TZ3000_typdpbpg` on ZHA (Home Assistant 2026.10.4, Z2M 2.14.3). Firmware decides this, so
-  other `_TZ3000_…` plugs may differ.
+  on Zigbee2MQTT and `_TZ3000_typdpbpg` on ZHA (Home Assistant 2026.10.4, Z2M 2.14.3). Each firmware was probed on
+  one network only, so where they differ the cause is the firmware or the network's path, not proven firmware; other
+  `_TZ3000_…` plugs may differ again.
   - **Tuya's recipe works on both:** a plain On, then `0x42` with `on_time` and `off_wait_time` both the duration
     in whole seconds. The plug went off by itself 10 s later. Z2M's own `countdown` does the same.
   - **The ZCL call, tenths from off, fails on both, differently.** `_TZ3000_0zfrhq4i` stores `on_time` and stays

@@ -511,6 +511,31 @@ A package changed after its lab run needs that run again before the release. Non
    every PR, so a developer sees it early. `check_release.py` fails on it at `cut-release`, with the other release
    gates. No allowlist is needed while records catch up (Shelly's house rerun).
 
+## Decisions (Jason, 2026-11-14, after the lab probe)
+
+8. **The TS011F: one fact, a `doesnt_work` entry for today's call, no firmware split.** This replaces Decision 3's
+   "its doesn't-work entry goes".
+   - The probe tables live in the dated research file (`zigbee2mqtt/research/2026-11-14-lab-probe.md`).
+     `docs/internals.md` holds one cross-network fact listing both behaviors and citing it. It says the two firmwares
+     were on different networks, so the cause is firmware or path, not proven firmware. The model ids go in
+     `docs/models.yaml`.
+   - The class rule matches the model (`TS011F`), never the `_TZ3000_…` string, so firmwares nobody has probed
+     inherit the refusal. Add a firmware rule only if a later probe finds a different call that works.
+   - Today's call is refused by a `doesnt_work` entry whose source is the research file: on ZHA, 0x42 in tenths from
+     off; on Z2M, `{"state": "ON", "on_time": N}`. Marking it untested isn't enough, because an untested class runs
+     the default call once Experimental features is on. That call switches a `_TZ3000_typdpbpg` plug on about 10×
+     later than asked, and on Z2M it leaves the plug on with no timer. A unit test pins that the refusal holds with
+     Experimental on.
+   - The reason users see names no firmware; it says what they see, e.g. that its timer isn't supported yet. The
+     firmware detail stays in `internals.md`.
+   - There's no separate safety note: the `doesnt_work` entry is the safety mechanism, and the card shows "Doesn't
+     work". The switch-on-later finding goes in the PR body as the rule's evidence, and in TODO as a v0.1.0 blocker.
+   - Timing: the Z2M entry lands in step 5 part 2. The ZHA entry is the dangerous one; it is planned for step 7 and
+     must land before v0.1.0 even if step 7 slips.
+   - Building the countdown pattern (a plain On, then 0x42 with N seconds in both fields; Z2M's `countdown` expose on
+     Z2M) is separate, later work. It would move the class from "Doesn't work" to Verified.
+9. **No same-unit re-pair** of the Z2M TS011F to ZHA.
+
 ## Handoff
 
 2026-11-14, step 3 lab probe, mid-run. Branch `wt/device-classes-3` (off `claude/device-classes-3-lab-probe`),
@@ -528,13 +553,14 @@ there use absolute paths). Decision rule 2: the TS011F is `tuya_zcl`.
    it; `notes/lab-probe-2026-11-14/zha_group_add_sengled.py` does it under `--hold zha` once Jason says yes
    (`DEVICE_SIDE_RIG_RESTRICTED=1`) or the restrictor is off.
 2. Step 5 adds the Sengled to `docs/models.yaml` with its card section (gen_compat needs a heading for each model).
+3. Then step 3 is done: its last commit's "Plan review" note, mark #423 ready per the plan's execution model.
 
 Since the last handoff: the Sengled doesn't pair with the Hue bridge; Hue rooms have a device entry
 (`Room`/`Zone`) and every member resolves, correcting §1's row (`hue/research/2026-11-14-lab-probe-hue.md`); the
 Sengled is back on ZHA, strings unchanged; Z2M logging is back at `warning`.
 
-**Open for Jason:** how to record the C1 firmware variation (`_TZ3000_0zfrhq4i` ignores the timer while off;
-`_TZ3000_typdpbpg` counts down while off and switches on at the end; both are in `docs/internals.md` now); whether
-to re-pair the Z2M plug to ZHA for a same-unit comparison. Step 5's open question is answered: HA's registry holds
-no Tuya strings for a Z2M device (only `TS011F_plug_1`, Z2M's definition), so `capability()` before the first
-`bridge/devices` needs Jason's call. A rig journal from an earlier aborted run needs `--recover` (holds every lock).
+**Settled since:** Decisions 8 and 9 (the TS011F entry, no re-pair); `docs/internals.md` and TODO updated.
+
+**Open for Jason:** step 5's open question has its answer from the probe. HA's registry holds no Tuya strings for a
+Z2M device (only `TS011F_plug_1`, Z2M's definition), so what `capability()` returns before the first
+`bridge/devices` is Jason's call. A rig journal from an earlier aborted run needs `--recover` (holds every lock).
