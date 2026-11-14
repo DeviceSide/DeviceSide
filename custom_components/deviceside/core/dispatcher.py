@@ -158,11 +158,12 @@ class Dispatcher:
         Planning buckets targets by adapter, expands native groups an adapter can't address, drops the fields each
         target lacks and checks supports() on what is left, then the target's class (a native group's: its members'):
         one the scope lists in doesnt_work, or the integration names but the scope doesn't serve, is refused; a
-        native group so refused falls back to its members when the integration can list them (docs/design.md). A
-        flagged call, from an `experimental=True` adapter or touching an Experimental scope item, is refused while the
-        Experimental features option is off. A named target that can't take the action raises then, before anything is
-        sent. Returns a result per target that ran or was left nothing to do, each with its class, and an unsupported
-        one per indirect target skipped.
+        native group so refused falls back to its members when the integration can list them (docs/design.md), and an
+        empty one is skipped silently. A flagged call, from an `experimental=True` adapter or touching an Experimental
+        scope item, is refused while the Experimental features option is off; a native group flagged by a member's
+        class alone falls back to its members instead. A named target that can't take the action raises then, before
+        anything is sent. Returns a result per target that ran or was left nothing to do, each with its class, and an
+        unsupported one per indirect target skipped.
         """
         results: list[EntityResult] = []
         buckets: dict[str, tuple[Adapter, list[Target]]] = {}
@@ -206,7 +207,12 @@ class Dispatcher:
             if reason := adapter.supports(self.hass, reduced, target):
                 results += _skip(target.reported_id, target.named, reason, adapter.integration)
                 continue
-            classes[target.reported_id] = found = self._classes(adapter, target)
+            members = self._listed(adapter, target)
+            if members == []:
+                # Core's group expansion yields nothing for an empty group, so it is skipped silently.
+                results += _skip(target.reported_id, target.named, Reason.EMPTY_GROUP)
+                continue
+            classes[target.reported_id] = found = self._classes(adapter, target, members)
             if reduced.nothing_to_do():
                 results.append(
                     _classed(adapter.result(target, Status.UNCHANGED, detail="fields_dropped"), target, found)
@@ -214,7 +220,7 @@ class Dispatcher:
             elif refused := adapter.scope.refusal(found):
                 # A native group falls back to its members, each judged alone: the good ones run, a refused one is
                 # skipped as indirect. With none left to plan, the group is refused as any target is.
-                if fresh := self._fallback(adapter, target, seen):
+                if fresh := self._fallback(members, seen):
                     _LOGGER.debug(
                         "%s: %s falls back to its members (%s)", adapter.action, target.reported_id, refused[0]
                     )
@@ -223,7 +229,16 @@ class Dispatcher:
                 else:
                     results += _skip(target.reported_id, target.named, refused[0], adapter.integration, refused[1])
             elif not experimental_on and self._experimental(adapter, reduced, target, found):
-                results += _skip(target.reported_id, target.named, EXPERIMENTAL_OFF, adapter.integration)
+                # A native group flagged only by a member's class falls back the same way: the members of Verified
+                # or Documented classes run, the flagged one is skipped (raised only if named on its own).
+                if self._flagged_by_class_alone(adapter, reduced, target) and (fresh := self._fallback(members, seen)):
+                    _LOGGER.debug(
+                        "%s: %s falls back to its members (%s)", adapter.action, target.reported_id, EXPERIMENTAL_OFF
+                    )
+                    seen.update(member.reported_id for member in fresh)
+                    pending.extend(fresh)
+                else:
+                    results += _skip(target.reported_id, target.named, EXPERIMENTAL_OFF, adapter.integration)
             else:
                 by_dropped.setdefault(dropped, []).append(target)
         return [(adapter, request.without(dropped), ready, dropped, classes) for dropped, ready in by_dropped.items()]
@@ -236,15 +251,30 @@ class Dispatcher:
             return True
         return adapter.scope.level(target.domain, classes, request.fields_present()) is Level.EXPERIMENTAL
 
-    def _classes(self, adapter: Adapter, target: Target) -> Classes:
-        """The target's class, or a native group's members' classes, as IntegrationInfo.capability names them;
-        empty for an integration that names none. A group that is empty or whose members can't be listed, and a
-        classifier that raised (logged), give (None,), which the gate weighs as Experimental, as an unknown device."""
+    def _flagged_by_class_alone(self, adapter: Adapter, request: Request, target: Target) -> bool:
+        """Whether a flagged call would pass but for its classes: the adapter isn't flagged whole, nor its domain or
+        a field it carries, so a group's members can run one by one."""
+        if adapter.scope.experimental:
+            return False
+        return adapter.scope.level(target.domain, (), request.fields_present()) is not Level.EXPERIMENTAL
+
+    def _listed(self, adapter: Adapter, target: Target) -> list[Target] | None:
+        """A native group's members, for an integration that names classes: what its classes come from and what it
+        falls back to. None for any other target, or a group whose members can't be listed."""
+        if not target.is_group or self.registry.integrations[adapter.integration].capability is None:
+            return None
+        return self._members(adapter, target)
+
+    def _classes(self, adapter: Adapter, target: Target, members: list[Target] | None) -> Classes:
+        """The target's class, or a native group's members' classes (`members`, as _listed gives them), as
+        IntegrationInfo.capability names them; empty for an integration that names none. A group whose members can't
+        be listed, and a classifier that raised (logged), give (None,), which the gate weighs as Experimental, as an
+        unknown device."""
         if (capability := self.registry.integrations[adapter.integration].capability) is None:
             return ()
-        members = (self._members(adapter, target) or []) if target.is_group else [target]
         try:
-            found: Classes = tuple(capability(self.hass, member) for member in members) or (None,)
+            listed = (members or []) if target.is_group else [target]
+            found: Classes = tuple(capability(self.hass, member) for member in listed) or (None,)
         except Exception:  # noqa: BLE001 - a classifier's bug must not abort the call: the class counts as unknown
             _LOGGER.exception("%s on %s: classing %s failed", adapter.action, adapter.integration, target.reported_id)
             found = (None,)
@@ -262,13 +292,11 @@ class Dispatcher:
             _LOGGER.exception("%s on %s: listing %s failed", adapter.action, adapter.integration, target.reported_id)
             return None
 
-    def _fallback(self, adapter: Adapter, target: Target, seen: set[str]) -> list[Target]:
-        """The members a refused native group falls back to: its available ones not already targets; none for a
-        target that is no group, or a group whose members can't be listed."""
-        if not target.is_group:
-            return []
-        members = self._members(adapter, target) or []
-        return [member for member in members if _available(member.state) and member.reported_id not in seen]
+    @staticmethod
+    def _fallback(members: list[Target] | None, seen: set[str]) -> list[Target]:
+        """The members a refused or class-flagged native group falls back to: its available ones not already targets;
+        none for a target that is no group, or a group whose members can't be listed."""
+        return [member for member in members or [] if _available(member.state) and member.reported_id not in seen]
 
     def _expand_native_groups(
         self, adapter: Adapter, bucket: list[Target], results: list[EntityResult]

@@ -135,14 +135,28 @@ async def test_a_non_hue_light_is_experimental(hass, setup_production, broker):
     assert await call(hass, "turn_on_for", data) == {entity_id: SENT}
 
 
-async def test_a_group_takes_its_weakest_member_s_class(hass, setup_production, broker):
+async def test_a_hue_and_ikea_group_falls_back_while_experimental_is_off(hass, setup_production, broker, caplog):
     entity_id = group(hass, broker, one={}, two={"manufacturer": "IKEA of Sweden"})
     data = {"entity_id": entity_id, "duration": 5}
 
-    assert await refusal(hass, "turn_on_for", data) == "experimental_off"
+    # Off: the Hue bulb runs on its own, the IKEA one is skipped.
+    assert await call_service(hass, "turn_on_for", data) == {"light.one": SENT | {"capability": "hue"}}
+    assert commands(broker) == [(SET.replace(IEEE, "0x01"), {"state": "ON", "on_time": 5.0})]
+    assert "light.two (experimental_off)" in caplog.text
+
+    # On: the group runs whole, one command to its group topic, at its weakest member's class.
+    broker.published.clear()
     allow_experimental(hass)
-    response = await call_service(hass, "turn_on_for", data)  # the class left in
-    assert response == {entity_id: SENT | {"capabilities": ["hue", "other"]}}
+    assert await call_service(hass, "turn_on_for", data) == {entity_id: SENT | {"capabilities": ["hue", "other"]}}
+    assert commands(broker) == [("zigbee2mqtt/7/set", {"state": "ON", "on_time": 5.0})]
+
+
+async def test_a_hue_group_is_verified_on_its_members_class(hass, setup_production, broker):
+    entity_id = group(hass, broker, one={}, two={})
+
+    response = await call_service(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5})
+
+    assert response == {entity_id: SENT | {"capabilities": ["hue"]}}
 
 
 @pytest.fixture
