@@ -3,8 +3,9 @@
 | | |
 |---|---|
 | Result | pass |
-| Date | 2026-11-08 |
-| Source | rig run (`scripts/rig.py`), commit `8aae106` |
+| Ran | 4 passed, 0 skipped |
+| Date | 2026-11-13 |
+| Source | rig run (`scripts/rig.py`), commit `4c074d9` |
 | Home Assistant | 2026.10.4 |
 | Device | Hue Essential lamp (`LCA016`), firmware `1.164.2`; Zone, firmware `unknown` |
 

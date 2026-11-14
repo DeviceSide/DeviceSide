@@ -3,9 +3,10 @@
 | | |
 |---|---|
 | Result | pass |
-| Date | 2026-11-07 |
-| Source | rig run (`scripts/rig.py`), commit `1de5a51` |
-| Home Assistant | 2026.10.2 |
+| Ran | 1 passed, 1 skipped |
+| Date | 2026-11-13 |
+| Source | rig run (`scripts/rig.py`), commit `7b50c5b` |
+| Home Assistant | 2026.10.4 |
 | Device | LCA016, firmware `0x01001200` |
 
 ## Tests

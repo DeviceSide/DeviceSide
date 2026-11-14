@@ -3,8 +3,9 @@
 | | |
 |---|---|
 | Result | pass |
-| Date | 2026-11-11 |
-| Source | rig run (`scripts/rig.py`), commit `a251331` |
+| Ran | 1 passed, 2 skipped |
+| Date | 2026-11-13 |
+| Source | rig run (`scripts/rig.py`), commit `308bd61` |
 | Home Assistant | 2026.10.4 |
 | Device | WiZ Smart Plug (`8979`), firmware `v1.4` |
 

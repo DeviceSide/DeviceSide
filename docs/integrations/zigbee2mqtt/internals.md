@@ -178,7 +178,12 @@ Measured 2026-10-28 on Z2M 2.14.2 with Hue bulbs (a CT bulb and the A60), Home A
 - **Color-mode override.** It deep-merges into the device's options, and Z2M republishes the discovery message at
   once, with no restart; Home Assistant's entity keeps its entity ID and shows `color_temp`, `hs` and `xy`. A
   group's options behave the same. A `null` can't remove it: `supported_color_modes: null` deletes the key from the
-  announcement, `light: null` drops the light from discovery, and `homeassistant: null` the whole device.
+  announcement, `light: null` drops the light from discovery, and `homeassistant: null` the whole device. With it,
+  after `hue_move` and `hue_move: stop` Home Assistant takes Z2M's `hs` state, with no "Invalid color mode" in its
+  log. With Hue native control on, HA's `hs_color`, `xy_color`, `rgb_color` and `color_temp_kelvin` each land on
+  the A60 on cue with no flicker (watched by eye); HA sends `color: {h, s}` for hs and RGB, `{x, y}` for xy and
+  `color_temp` for a temperature. Its rig case, `keeps_and_reads_hs_while_off`, rides in
+  [`get_attributes.md`](test-records/get_attributes.md).
 - **Stops, by eye** (a 10 s fade halted 3 s in). Brightness and hue stops freeze cleanly. Every color temperature
   stop jumps, whichever command halts it, the Hue bridge's own included. With brightness and color temperature in
   one fade, a brightness stop leaves the color temperature fading on to its end. `saturation_move: stop` lets an xy

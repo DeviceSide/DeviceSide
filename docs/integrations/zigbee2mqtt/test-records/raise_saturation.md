@@ -3,8 +3,9 @@
 | | |
 |---|---|
 | Result | pass |
-| Date | 2026-11-09 |
-| Source | rig run (`scripts/rig.py`), commit `8cbd97f` |
+| Ran | 4 passed, 0 skipped |
+| Date | 2026-11-13 |
+| Source | rig run (`scripts/rig.py`), commit `e385562` |
 | Home Assistant | 2026.10.4 |
 | Device | Hue Essential White and Color Ambiance A60 (`8720169392182`), firmware `1.164.2`; Group, firmware `Zigbee2MQTT 2.14.3` |
 
