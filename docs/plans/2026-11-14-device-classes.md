@@ -155,14 +155,18 @@ sign-off. That rerun is the test of the framework on the current repo scope.
 - Building Tuya patterns B and C, and a non-Hue bulb on the rig. The second is the one that lifts `other`'s flag on
   Z2M and ZHA.
 
-## Decisions for Jason
+## Decisions (Jason, 2026-11-14)
 
-1. **Before or after v0.1.0?** Landing before it changes what v0.1.0 ships to non-Hue bulb owners on Z2M, ZHA and Hue:
-   features they use unflagged today move behind `experimental`. Landing after it ships the gap, as the cards show it
-   today.
-2. **Third-party lights on a Hue bridge:** flagged as `other` (the honest default), or argued Documented because the
-   bridge relays the same CLIP call. Nothing seen supports Documented for fades and `stop`.
-3. **The TS011F's shared doesn't-work entry:** one code entry per integration (ZHA and Z2M), with `gen_compat` merging
-   identical entries on the cards, or kept in `models.yaml`. The plan assumes the first.
-4. **The release-note line** for anyone whose devices move behind `experimental`, including how to turn it on and how to
-   report a device.
+1. **Lands before v0.1.0.** Features that non-Hue bulb owners on Z2M, ZHA and Hue use unflagged today move behind
+   `experimental` in v0.1.0.
+2. **Third-party lights on a Hue bridge get the `other` class.** Step 6 decides per action whether `other` is flagged or
+   Documented, by an Opus model's judgment, and argues each choice in the PR body. The bar is `docs/evidence.md`'s
+   Documented test: same capability, differing only in addressing, and no known class of devices departs.
+3. **Probe the TS011F before calling it "doesn't work".** The research suggests it may run the timer, but read our
+   tenths as whole seconds: a 15 s request toggled one after 150 s. Before steps 4 and 5 settle its entry, probe one on
+   the rig. Try off then 0x42 `{on_time N, off_wait 0}` in tenths and in seconds, and the Tuya recipe: plain On, then
+   `{N s, N s}`. Read state and `onTime` each second. Record the result in `internals.md`. If a recipe works, the
+   TS011F is `tuya_zcl`, not yet supported (pattern B, deferred), not doesn't work. Its doesn't-work entry stays only
+   if no recipe works. Whichever way it goes, the shared entry becomes one code entry per integration (ZHA and Z2M),
+   which `gen_compat` merges on the cards.
+4. No release-note line: DeviceSide isn't widely released yet.
