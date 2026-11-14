@@ -14,7 +14,7 @@ from custom_components.deviceside.core.errors import TargetNotSupported
 from custom_components.deviceside.core.models import Target
 from custom_components.deviceside.core.resolver import resolve
 from custom_components.deviceside.core.runtime import get_runtime
-from custom_components.deviceside.core.scope import Level
+from custom_components.deviceside.core.scope import Level, Unplaced
 from custom_components.deviceside.integrations.zigbee2mqtt import (
     ADAPTERS,
     INTEGRATION,
@@ -46,7 +46,7 @@ def interviewed(ieee: str, manufacturer: str, model_id: str) -> dict:
 
 
 def stand_in(hass, manufacturer: str | None, model_id: str | None = None) -> Target:
-    """A target with a registry device alone, as the rig classes one: no config entry or state."""
+    """A target with a registry device alone, no config entry or state, and no bridge cache: the registry alone."""
     config = z2m_entry(hass)
     device = dr.async_get(hass).async_get_or_create(
         config_entry_id=config.entry_id,
@@ -79,7 +79,11 @@ def stand_in(hass, manufacturer: str | None, model_id: str | None = None) -> Tar
     ],
 )
 def test_on_the_registry_alone_a_device_s_class_is_its_first_matching_rule(hass, manufacturer, model_id, expected):
-    assert INTEGRATION.capability(None, stand_in(hass, manufacturer, model_id)) == expected
+    """Placed only in `hue`, which no Zigbee-string rule can override: every other class could still move."""
+    found = INTEGRATION.capability(hass, stand_in(hass, manufacturer, model_id))
+
+    assert found == expected
+    assert isinstance(found, Unplaced) is (expected != "hue")
 
 
 @pytest.mark.parametrize(
@@ -145,7 +149,7 @@ def test_the_bridge_cache_indexes_bridge_devices_once_per_payload():
 def test_a_target_with_no_device_has_no_class(hass):
     target = stand_in(hass, "Philips")
     assert (
-        INTEGRATION.capability(None, Target(target.entity_id, "light", "zigbee2mqtt", target.entry, None, None, None))
+        INTEGRATION.capability(hass, Target(target.entity_id, "light", "zigbee2mqtt", target.entry, None, None, None))
         is None
     )
 
@@ -438,7 +442,14 @@ async def test_a_class_that_needs_an_unbuilt_call_is_not_supported(
 
 
 # Where a call is known to harm, a class not yet known is refused (docs/evidence.md, Doesn't work, not yet supported,
-# untested; Decision 23): turn_on_for refuses a target it can't class, even with Experimental features on.
+# untested; Decisions 23 and 26): turn_on_for refuses a target it can't class, even with Experimental features on.
+# The dispatcher applies it (tests/core/test_dispatcher.py), on the adapters whose entries harm.
+
+
+def test_only_turn_on_for_s_entries_harm_and_each_does():
+    """The Tuya entries mark the harm the rule guards against; no other Z2M adapter refuses an unplaced device."""
+    assert all(entry.harms for entry in classes.TURN_ON_FOR_DOESNT_WORK.values())
+    assert [adapter.action for adapter in ADAPTERS if adapter.scope.harms] == ["turn_on_for"]
 
 
 async def test_turn_on_for_refuses_a_group_of_unknown_membership_with_experimental_on(hass, setup_production, broker):
@@ -481,12 +492,40 @@ async def test_turn_on_for_refuses_a_device_only_the_registry_placed_in_other(ha
     assert await call(hass, "turn_on_for", {"entity_id": ikea, "duration": 5}) == {ikea: SENT}
 
 
-async def test_turn_on_for_refuses_a_group_with_a_member_only_the_registry_placed(hass, setup_production, broker):
+async def test_a_group_with_a_member_only_the_registry_placed_falls_back_to_its_members(
+    hass, setup_production, broker, caplog
+):
+    """Only the member not yet placed is refused (plan step 6): the group isn't sent whole, which would reach it."""
     entity_id = group(hass, broker, one={}, two={"manufacturer": "Lidl", "model_id": "HG06337"})
     del broker.retained[DEVICES]
     allow_experimental(hass)
 
-    assert await refusal(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == "class_unknown"
+    response = await call(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5})
+
+    assert response == {"light.one": SENT}
+    assert commands(broker) == [(SET.replace(IEEE, "0x01"), {"state": "ON", "on_time": 5.0})]
+    assert "light.two (class_unknown)" in caplog.text
+
+
+async def test_a_group_with_no_member_placed_is_refused_as_class_unknown(hass, setup_production, broker):
+    entity_id = group(hass, broker, one={"manufacturer": "IKEA of Sweden"}, two={"manufacturer": "Lidl"})
+    del broker.retained[DEVICES]
+    allow_experimental(hass)
+
+    with pytest.raises(TargetNotSupported) as raised:
+        await call_service(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5})
+
+    assert raised.value.translation_key == "class_unknown"
+    assert raised.value.translation_placeholders["integration"] == "Zigbee2MQTT"
+    assert commands(broker) == []
+
+
+async def test_a_member_not_yet_placed_still_runs_where_the_call_harms_no_class(hass, setup_production, broker):
+    """stop has no harm-based entry, so the group runs whole, with each member at the level its class has."""
+    entity_id = group(hass, broker, one={}, two={"manufacturer": "Lidl", "model_id": "HG06337"})
+    del broker.retained[DEVICES]
+
+    assert await call(hass, "stop", {"entity_id": entity_id}) == {entity_id: SENT}
 
 
 async def test_a_hue_device_and_group_run_before_bridge_devices_arrives(hass, setup_production, broker):
@@ -533,14 +572,38 @@ async def test_turn_on_for_refuses_a_gledopto_badged_tuya_device_until_its_strin
     assert await refusal(hass, "turn_on_for", data) == "doesnt_work"
 
 
-async def test_turn_on_for_refuses_a_hue_group_with_a_gledopto_badged_tuya_member_until_its_strings_arrive(
-    hass, setup_production, broker
+async def test_a_hue_group_with_a_gledopto_badged_tuya_member_runs_only_its_hue_member_until_its_strings_arrive(
+    hass, setup_production, broker, caplog
 ):
+    """Before, the strip would take the group's call; once its strings arrive it is `tuya_mcu`, refused as doesn't
+    work, and the group still falls back."""
+    entity_id = group(hass, broker, one={}, two=GLEDOPTO_TUYA)
+    devices = broker.retained.pop(DEVICES)
+    allow_experimental(hass)
+    data = {"entity_id": entity_id, "duration": 5}
+    hue_only = [(SET.replace(IEEE, "0x01"), {"state": "ON", "on_time": 5.0})]
+
+    assert await call(hass, "turn_on_for", data) == {"light.one": SENT}
+    assert commands(broker) == hue_only
+    assert "light.two (class_unknown)" in caplog.text
+
+    broker.retained[DEVICES] = devices
+    assert await call(hass, "turn_on_for", data) == {"light.one": SENT}
+    assert commands(broker) == hue_only * 2
+    assert "light.two (doesnt_work)" in caplog.text
+
+
+async def test_a_named_member_not_yet_placed_raises_beside_its_group(hass, setup_production, broker):
+    """Named, it is its own target, so it raises before anything is sent, as any named target refused."""
     entity_id = group(hass, broker, one={}, two=GLEDOPTO_TUYA)
     del broker.retained[DEVICES]
     allow_experimental(hass)
 
-    assert await refusal(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == "class_unknown"
+    with pytest.raises(TargetNotSupported) as raised:
+        await call_service(hass, "turn_on_for", {"entity_id": [entity_id, "light.two"], "duration": 5})
+
+    assert raised.value.translation_key == "class_unknown"
+    assert raised.value.translation_placeholders["entity_id"] == "light.two"
     assert commands(broker) == []
 
 

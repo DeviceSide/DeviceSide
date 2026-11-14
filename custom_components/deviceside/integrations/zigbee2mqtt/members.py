@@ -31,7 +31,8 @@ def expand_group(hass: HomeAssistant, target: Target) -> list[Target] | None:
     `[]` only for a group bridge/groups lists with no members, which the dispatcher skips as empty. None, membership
     unknowable, while the cache holds no bridge/groups (before Z2M's publish after a connect), when there is no cache
     (its subscribe failed, which bridge_cache warns of once), when bridge/groups doesn't list the group, or when a
-    member it lists has no device in HA; the group then counts as Experimental, and turn_on_for refuses it.
+    member it lists has no device in HA; the group then counts as Experimental, and the dispatcher refuses it where
+    the call harms a class (turn_on_for).
     """
     if (gid := group_id(target)) is None or (cache := bridge_cache.get(hass)) is None:
         return None

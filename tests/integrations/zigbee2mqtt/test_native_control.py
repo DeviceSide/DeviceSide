@@ -11,7 +11,7 @@ from pytest_homeassistant_custom_component.common import async_mock_service
 
 from custom_components.deviceside.core.models import Target
 from custom_components.deviceside.core.runtime import DATA
-from custom_components.deviceside.integrations.zigbee2mqtt import bridge, bridge_cache, turn_on_for
+from custom_components.deviceside.integrations.zigbee2mqtt import bridge, bridge_cache
 from custom_components.deviceside.integrations.zigbee2mqtt import native_control as nc
 from custom_components.deviceside.integrations.zigbee2mqtt.restore_journal import journal, locks
 
@@ -229,12 +229,11 @@ async def test_group_with_option_on_sends_no_request(hass, setup_production, bro
     assert broker.requests() == []
 
 
-async def test_a_group_bridge_groups_doesn_t_list_is_sent_whole(hass, setup_production, broker, turn_ons, monkeypatch):
-    """turn_on_for refuses a group it can't list (test_classes.py), so its check is patched out: native control
+async def test_a_group_bridge_groups_doesn_t_list_is_sent_whole(hass, setup_production, broker, turn_ons, harmless):
+    """turn_on_for refuses a group it can't list (test_classes.py), so its harm rule is patched out: native control
     leaves the group alone, as a call that isn't turn_on_for's would find it."""
     group_with_member(hass, "Philips")
     broker.retained[GROUPS] = [{"id": 3, "members": []}]
-    monkeypatch.setattr(turn_on_for, "expand_group", lambda hass, target: [])
 
     assert await refusal(hass, "turn_on_for", DOWNSTAIRS) == "experimental_off"
     allow_experimental(hass)
@@ -259,11 +258,10 @@ async def test_a_group_with_no_hue_member_is_left_alone(hass, setup_production, 
     assert len(broker.timers()) == 1
 
 
-async def test_no_bridge_groups_warns_and_still_sends(hass, setup_production, broker, turn_ons, caplog, monkeypatch):
+async def test_no_bridge_groups_warns_and_still_sends(hass, setup_production, broker, turn_ons, caplog, harmless):
     group_with_member(hass, "Philips")
     # bridge/groups isn't held, so the group's members can't be listed: it counts as Experimental, and turn_on_for's
     # refusal of it (test_classes.py) is patched out, to reach native control.
-    monkeypatch.setattr(turn_on_for, "expand_group", lambda hass, target: [])
     allow_experimental(hass)
 
     response = await call(hass, "turn_on_for", DOWNSTAIRS)
