@@ -29,6 +29,7 @@ shared home named in parentheses.
 | Run evidence | `<x>/test-records/` |
 | Why the code does something | the module docstring, a few lines, linking `internals.md` for the evidence |
 | Rule evidence | the PR body |
+| Repo settings and repo-maintainer steps | `docs/repo-maintainers.md` |
 
 `index.md` holds only what changes what a user does or expects, in the shape of Hue's page (Shelly's for "Try it":
 what was tried, on what, one report per class). Timings, odds and why a limit exists go in `internals.md`. A behavior

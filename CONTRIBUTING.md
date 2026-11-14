@@ -39,7 +39,7 @@ If you can build a change and test it on your own devices, open a pull request d
 7. **Audit once, on the final diff:** if you use Claude, run `/audit-code` on it; otherwise ask for an audit in the pull request. After a fix, audit only the fix. Fix every Critical and High finding. Fix a Medium when its fix adds no new state, lock, timer, retry or constant; list the rest with their fix snippet for the maintainer. A finding about how a device *might* behave is a probe to run, not code to write: handle it if the probe shows it, otherwise make sure the log would show it ([docs/logging.md](docs/logging.md)) and list it as open.
 8. **Open the pull request** against `main` (or a `release/vX.Y.Z` branch when one exists for the fix) and fill in the template.
 
-A new integration's pull request names you in its `IntegrationInfo.maintainers`, and once it merges you're its maintainer.
+A new integration's pull request names you in its `IntegrationInfo.maintainers`, and once it merges you're its maintainer: you merge your package's later pull requests yourself with `/merge <sha>` ([what you merge](#maintaining-an-integration)).
 
 ## Maintaining an integration
 
