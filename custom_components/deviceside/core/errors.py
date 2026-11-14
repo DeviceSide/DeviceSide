@@ -25,9 +25,10 @@ class Reason(StrEnum):
     # The target's class (a native group: a member's) needs a call that isn't built: the integration names it, and the
     # adapter's scope holds it in neither capabilities nor doesnt_work.
     NOT_SUPPORTED = "not_supported"
-    # The target's class rests on what DeviceSide doesn't know yet (a device's identifying strings, a native group's
-    # membership), on an adapter whose call harms a class it could be: refused even with Experimental features on
-    # (docs/evidence.md, Device classes). Transient: it clears once the integration has reported the device.
+    # The target's class rests on what DeviceSide doesn't know yet (a device not yet placed, a native group's
+    # membership), or can't be named at all (None), on an adapter whose call harms a class it could be: refused even
+    # with Experimental features on (docs/evidence.md, Device classes). Usually transient: a device not yet placed
+    # clears once the integration has reported it; a target with no class (None) stays refused.
     CLASS_UNKNOWN = "class_unknown"
 
 

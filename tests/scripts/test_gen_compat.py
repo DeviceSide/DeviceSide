@@ -832,7 +832,7 @@ def test_a_manual_device_counts_for_a_class_flagged_adapter_only_with_an_unflagg
 
 
 def test_a_class_an_adapter_serves_in_neither_axis_is_not_yet_supported(root):
-    broken = {"RGB": DoesntWork("Old plug", "No timer", "https://x.y/z")}
+    broken = {"RGB": DoesntWork("Old plug", "No timer", "https://x.y/z", harms=False)}
     card = classed_card(
         adapter("zha", "turn_on_for", AdapterScope(capabilities=verified("Switch", "Light", "CCT", "RGB"))),
         adapter("zha", "set_attributes", AdapterScope(capabilities=verified("Switch"))),
@@ -849,7 +849,7 @@ def test_a_class_an_adapter_serves_in_neither_axis_is_not_yet_supported(root):
 
 
 def test_a_scopes_doesnt_work_reaches_the_card_and_the_evidence_with_its_actions(root):
-    broken = {"RGB": DoesntWork("Old plug", "No timer", "https://x.y/z")}
+    broken = {"RGB": DoesntWork("Old plug", "No timer", "https://x.y/z", harms=False)}
     scope = AdapterScope(capabilities=verified("Switch"), doesnt_work=broken)
     adapters = (adapter("zha", "turn_on_for", scope), adapter("zha", "turn_off_for", scope))
     registry = classed_registry(*adapters)

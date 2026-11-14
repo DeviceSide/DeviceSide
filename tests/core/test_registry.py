@@ -73,7 +73,7 @@ def test_adapter_for_unknown_action_is_refused():
 
 
 CLASSED = replace(INTEGRATION, capability=lambda hass, target: "hue", classes=frozenset({"hue", "tuya", "other"}))
-BROKEN = DoesntWork("Tuya plug", "It never switches on", "https://example.com/source")
+BROKEN = DoesntWork("Tuya plug", "It never switches on", "https://example.com/source", harms=False)
 
 
 class Classed(FakeTurnOnFor):

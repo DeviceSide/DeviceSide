@@ -18,7 +18,7 @@ from .models import FAILED, ActionKind, EntityResult, Request, Status, Target, T
 from .registry import AdapterRegistry
 from .resolver import resolve
 from .runtime import DEADLINE, get_runtime
-from .scope import Level
+from .scope import Level, Unplaced
 from ..const import ADAPTER_BACKSTOP_S, ADAPTER_TIMEOUT_S, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -29,7 +29,8 @@ def _available(state: State | None) -> bool:
 
 
 # A target's class, or a native group's members' classes (core/scope.py, AdapterScope.level); None for one the
-# integration couldn't name, and an Unplaced one for one it named from partial information.
+# integration couldn't name, and an Unplaced one for one it named from partial information. A tuple, one entry per
+# member as capability() returned it: an Unplaced class equals its plain class, so a set would drop the flag.
 type Classes = tuple[str | None, ...]
 # One execute: the adapter, the request its targets get, the targets, the fields dropped, and each target's classes.
 type Run = tuple[Adapter, Request, list[Target], frozenset[str], dict[str, Classes]]
@@ -37,14 +38,14 @@ type Run = tuple[Adapter, Request, list[Target], frozenset[str], dict[str, Class
 
 def _classed(result: EntityResult, target: Target, classes: Classes) -> EntityResult:
     """The result with the class the call reached (docs/action-behavior.md, What a response looks like): a
-    target's, or a native group's members', sorted and each once. None when the integration couldn't name one, for a
-    group any member's, so a group's list never passes for its whole membership. An Unplaced class is reported as
-    the plain class it names, the one the call was planned on."""
-    if not classes or None in classes:
+    target's, or a native group's members', sorted and each once. None when the integration couldn't name one or
+    named it Unplaced, for a group any member's, so a group's list never passes for its whole membership, nor a
+    class that could still move for a known one."""
+    if not classes or any(name is None or isinstance(name, Unplaced) for name in classes):
         return result
     if target.is_group:
-        return replace(result, classes=tuple(sorted({str(name) for name in classes if name is not None})))
-    return replace(result, classes=str(classes[0]))
+        return replace(result, classes=tuple(sorted({name for name in classes if name is not None})))
+    return replace(result, classes=classes[0])
 
 
 def _skip(
@@ -315,6 +316,8 @@ class Dispatcher:
             return ()
         try:
             listed = (members or []) if target.is_group else [target]
+            # Keep each member's class as capability() returned it, never deduplicated: an Unplaced class equals its
+            # plain class, so a set would merge it with a placed member's and lose the flag the harm check reads.
             found: Classes = tuple(capability(self.hass, member) for member in listed) or (None,)
         except Exception:  # noqa: BLE001 - a classifier's bug must not abort the call: the class counts as unknown
             _LOGGER.exception("%s on %s: classing %s failed", adapter.action, adapter.integration, target.reported_id)

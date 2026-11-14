@@ -70,16 +70,17 @@ class DoesntWork:
     fails, and the source, an https URL (scripts/gen_compat.py checks it). The dispatcher refuses it, raising with
     the reason; the card lists it under Doesn't work.
 
-    `harms`: the call acts wrong on the class rather than failing (a plug turned on that stays on). Where an adapter's
-    scope holds one such entry, a target that could still be in that class is refused too, even with Experimental
-    features on (AdapterScope.refusal; docs/evidence.md, where a call is known to harm, a class not yet known is
-    refused).
+    `harms`, which every entry states: whether the call's failure on the class is deferred and unattended, leaving it
+    on or off unasked after the user stopped watching (a plug turned on that stays on), by docs/evidence.md's test,
+    When a doesn't-work entry harms: the timed and auto on/off actions, never dimming, color or a read. Where an
+    adapter's scope holds one such entry, a target that could still be in that class is refused too, even with
+    Experimental features on (AdapterScope.refusal). Required, so no entry leaves the question unanswered by default.
     """
 
     what: str
     reason: str
     source: str
-    harms: bool = False
+    harms: bool = field(kw_only=True)
 
 
 class Unplaced(str):
@@ -89,9 +90,14 @@ class Unplaced(str):
     harms a class (DoesntWork.harms): there AdapterScope.refusal refuses it as class_unknown, as it may be one.
 
     Why a flag on the class, not a class of its own or None: None is a permanent "can't class" (a Shelly entity with
-    no RPC component, a classifier that raised, a group whose members can't be listed), weighed as Experimental; and
-    a class of its own would change what every other adapter does with a device for the seconds until the integration
-    reports it, where only the harmful call needs to wait."""
+    no RPC component, a classifier that raised, a group whose members can't be listed), weighed as Experimental, and
+    refused as class_unknown too where the call harms a class, as it could be the harmed one; and a class of its own
+    would change what every other adapter does with a device for the seconds until the integration reports it, where
+    only the harmful call needs to wait.
+
+    It is equal to its class, so a set or dict built from classes merges it with a placed one of the same class and
+    may keep either: whatever holds classes for the harm check (the dispatcher's Classes) keeps each as capability()
+    returned it, never deduplicated. A response leaves it out, as it does None (dispatcher._classed)."""
 
     __slots__ = ()
 
@@ -206,14 +212,16 @@ class IntegrationInfo:
     # refused (docs/design.md, Groups). None, as the hook or its answer, means membership is unknowable here.
     expand_group: Callable[[HomeAssistant, Target], list[Target] | None] | None = None
     # Names a target's class (docs/evidence.md, Device classes): sync and cheap, no I/O, reading only the target's
-    # registry entries, config entry or the integration's data. A device it can't place gets the default class; one
+    # registry entries, config entry or the integration's data. A device no rule matches gets the default class; one
     # it places from partial information, which a later report could move, its class as Unplaced; None only for a
-    # target it can't class at all. None for an integration with one class, whose scopes then hold no capabilities.
+    # target it can't class at all. On an integration with a `harms` entry (DoesntWork.harms), a device no rule matches
+    # gets the default class, never None: core refuses None there as class_unknown, as it does Unplaced. None for an
+    # integration with one class, whose scopes then hold no capabilities.
     capability: Callable[[HomeAssistant, Target], str | None] | None = None
     # Every class capability() can name, so a scope's typo fails at registration and the cards name the classes an
     # adapter serves in neither its capabilities nor its doesnt_work as not yet supported.
     classes: frozenset[str] = frozenset()
-    # The class capability() gives a device it can't place, one of `classes`; the registry refuses any scope holding it
+    # The class capability() gives a device no rule matches, one of `classes`; the registry refuses any scope holding it
     # as Verified (docs/evidence.md, Device classes). None for an integration whose classes name every target (Shelly).
     default_class: str | None = None
     # Drops what a light or scene call from HA leaves stale (core/ha_watch.py); None holds nothing it could.

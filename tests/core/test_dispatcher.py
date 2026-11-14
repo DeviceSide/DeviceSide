@@ -152,7 +152,7 @@ CLASSED = AdapterScope(
     domains=verified("light", "switch"),
     duration=LIMITS,
     capabilities=verified("A") | experimental("B"),
-    doesnt_work={"D": DoesntWork("Plug D", "It never switches on", "https://example.com/d")},
+    doesnt_work={"D": DoesntWork("Plug D", "It never switches on", "https://example.com/d", harms=False)},
     native_groups=True,
 )
 
@@ -221,15 +221,32 @@ async def test_where_the_call_harms_a_class_one_not_yet_placed_is_refused(hass, 
 
 @pytest.mark.usefixtures("classed")
 async def test_elsewhere_a_class_not_yet_placed_is_the_class_it_names(hass, fake, reset_script):
-    """No harm-based entry, so the call is planned on the class, as Verified A, and reports it plainly."""
+    """No harm-based entry, so the call is planned on the class, as Verified A; the response leaves the class out,
+    as it could still move (plan Decision 29)."""
     add_fake_entity(hass, fake, "switch.pending_a")
     allow_experimental(hass, False)
 
     with patch.object(FakeTurnOffFor, "scope", CLASSED):
         response = await call(hass, "turn_off_for", {"entity_id": "switch.pending_a", "duration": 5})
 
-    assert response == {"switch.pending_a": {"status": "sent", "integration": "fake", "capability": "A"}}
-    assert type(response["switch.pending_a"]["capability"]) is str
+    assert response == {"switch.pending_a": {"status": "sent", "integration": "fake"}}
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_group_with_a_member_not_yet_placed_reports_no_capabilities(hass, fake, reset_script):
+    """Run whole where no call harms a class, the group's list leaves out the provisional class with the rest, as it
+    does a member the integration couldn't name: a list stands only for every member's known class."""
+    members = ["switch.a", "switch.pending_a"]
+    for member in members:
+        add_fake_entity(hass, fake, member)
+    add_fake_native_group(hass, fake, "switch.fake_group", members)
+    allow_experimental(hass, False)
+
+    with patch.object(FakeTurnOffFor, "scope", CLASSED):
+        response = await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
+
+    assert response == {"switch.fake_group": {"status": "sent", "integration": "fake"}}
+    assert [ids for *_, ids in reset_script.calls] == [["switch.fake_group"]]
 
 
 @pytest.mark.usefixtures("classed")
@@ -264,6 +281,24 @@ async def test_a_group_with_a_member_not_yet_placed_falls_back_where_the_call_ha
     }
     assert [ids for *_, ids in reset_script.calls] == [["switch.a", "switch.e"]]
     assert "turn_off_for skipped targets that can't take it: switch.pending_d (class_unknown)" in caplog.text
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_group_with_a_placed_and_an_unplaced_member_of_one_class_falls_back(hass, fake, reset_script, caplog):
+    """The two members' classes are equal, Unplaced("A") == "A": a set of them would keep one and might drop the
+    flag, so the group would run whole and reach the unplaced member. The dispatcher keeps both (Classes)."""
+    members = ["switch.a", "switch.pending_a"]
+    for member in members:
+        add_fake_entity(hass, fake, member)
+    add_fake_native_group(hass, fake, "switch.fake_group", members)
+    allow_experimental(hass)
+
+    with patch.object(FakeTurnOffFor, "scope", HARMED):
+        response = await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
+
+    assert response == {"switch.a": {"status": "sent", "integration": "fake", "capability": "A"}}
+    assert [ids for *_, ids in reset_script.calls] == [["switch.a"]]
+    assert "switch.pending_a (class_unknown)" in caplog.text
 
 
 @pytest.mark.usefixtures("classed")

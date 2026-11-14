@@ -37,12 +37,15 @@ a rule added before the Zigbee-string rules can't become final by accident, and 
 harms a class (the Tuya entries' DoesntWork.harms, turn_on_for's), where the dispatcher refuses it as class_unknown
 (plan Decisions 23 and 26; docs/evidence.md, where a call is known to harm, a class not yet known is refused). A
 group is no device of its own: the dispatcher classes its members (members.expand_group), and falls back to them
-when one isn't placed.
+when one isn't placed. A device whose interview never completes stays Unplaced until it is paired again, so its
+groups fall back for good, one call per member (index.md, Device classes). `capability` logs, at DEBUG, what an
+Unplaced device is waiting for.
 
 Each adapter's scope holds the levels below; why each class sits where it does is in index.md (Device classes) and
 the step 5 PR body (`other`'s Documented actions).
 """
 
+import logging
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -54,6 +57,8 @@ from . import bridge_cache
 from .addressing import z2m_address
 from ...core.models import Target
 from ...core.scope import DoesntWork, Unplaced, documented, experimental, verified
+
+_LOGGER = logging.getLogger(__name__)
 
 # Z2M's vendor string for Hue, which HA's device registry shows as the manufacturer; native_control.py reads it too.
 HUE_MANUFACTURER = "Philips"
@@ -174,24 +179,33 @@ def _listed(hass: HomeAssistant, device: dr.DeviceEntry) -> dict | None:
     return cache.device(ieee)
 
 
-def zigbee_strings(hass: HomeAssistant, device: dr.DeviceEntry) -> dict[str, str]:
-    """The device's Zigbee manufacturer and model from the held bridge/devices, as rule fields, each only when it is a
-    non-empty string (Z2M holds null until the interview reads it); empty while no bridge/devices is held, or for a
-    device it doesn't list."""
-    if (entry := _listed(hass, device)) is None:
+def zigbee_strings(entry: Mapping | None) -> dict[str, str]:
+    """The Zigbee manufacturer and model in a device's bridge/devices entry (`_listed`), as rule fields, each only
+    when it is a non-empty string (Z2M holds null until the interview reads it); empty with no entry."""
+    if entry is None:
         return {}
     return {name: value for name, key in ZIGBEE.items() if isinstance(value := entry.get(key), str) and value}
 
 
-def placed(hass: HomeAssistant, device: dr.DeviceEntry) -> bool:
-    """Whether the device is placed: bridge/devices lists it as interviewed (`interview_completed`) with both Zigbee
-    strings, or its registry class is `hue`."""
-    # `hue` is the one class no Zigbee-string rule can override: its rule comes first and reads the registry alone.
-    if device_class(device) == HUE:
+def placed(found: str, entry: Mapping | None, zigbee: Mapping[str, str]) -> bool:
+    """Whether a device of class `found` is placed: its bridge/devices entry (`_listed`) has it interviewed
+    (`interview_completed`) with both Zigbee strings (`zigbee`, as zigbee_strings reads them), or its class is `hue`."""
+    # `hue` is the one class no Zigbee-string rule can override: its rule comes first, reads the registry alone, and is
+    # the only one naming `hue`, so a device's class is `hue` exactly when its registry shows it (test_classes pins it).
+    if found == HUE:
         return True
-    if (entry := _listed(hass, device)) is None or entry.get("interview_completed") is not True:
-        return False
-    return zigbee_strings(hass, device).keys() == ZIGBEE.keys()
+    return entry is not None and entry.get("interview_completed") is True and zigbee.keys() == ZIGBEE.keys()
+
+
+def _why_unplaced(hass: HomeAssistant, entry: Mapping | None, zigbee: Mapping[str, str]) -> str:
+    """Why `placed` said no, for the DEBUG line: what DeviceSide is still waiting for."""
+    if (cache := bridge_cache.get(hass)) is None:
+        return "no bridge cache"
+    if entry is None:
+        return "no bridge/devices yet" if cache.parsed("devices") is None else "bridge/devices doesn't list it"
+    if entry.get("interview_completed") is not True:
+        return "not interviewed"
+    return "no Zigbee " + " or ".join(key for name, key in ZIGBEE.items() if name not in zigbee)
 
 
 def device_class(device: dr.DeviceEntry, zigbee: Mapping[str, str | None] | None = None) -> str:
@@ -205,5 +219,16 @@ def capability(hass: HomeAssistant, target: Target) -> str | None:
     a target with no device, which no rule can place and no adapter can address."""
     if target.device is None:
         return None
-    found = device_class(target.device, zigbee_strings(hass, target.device))
-    return found if placed(hass, target.device) else Unplaced(found)
+    entry = _listed(hass, target.device)
+    zigbee = zigbee_strings(entry)
+    found = device_class(target.device, zigbee)
+    if placed(found, entry, zigbee):
+        return found
+    if _LOGGER.isEnabledFor(logging.DEBUG):
+        _LOGGER.debug(
+            "%s: class %s is provisional until Zigbee2MQTT reports the device (%s)",
+            target.entity_id,
+            found,
+            _why_unplaced(hass, entry, zigbee),
+        )
+    return Unplaced(found)

@@ -89,7 +89,7 @@ def test_a_class_outside_the_scope_counts_as_experimental():
     assert scope.level("light", ("Switch",)) is Level.EXPERIMENTAL
 
 
-BROKEN = DoesntWork("Tuya plug", "It never switches on", "https://example.com/source")
+BROKEN = DoesntWork("Tuya plug", "It never switches on", "https://example.com/source", harms=False)
 
 
 @pytest.mark.parametrize(
@@ -111,6 +111,15 @@ def test_a_class_that_doesnt_work_or_isnt_served_is_refused(classes, reason):
 
 
 HARMS = DoesntWork("Tuya plug", "It stays on", "https://example.com/source", harms=True)
+
+
+def test_every_doesnt_work_entry_states_whether_its_call_harms():
+    """No default (plan Decision 30): an entry that left it out would pass as harmless and let an unplaced target
+    through the call that harms its class."""
+    with pytest.raises(TypeError):
+        DoesntWork("Tuya plug", "It stays on", "https://example.com/source")  # type: ignore[call-arg]
+    with pytest.raises(TypeError):
+        DoesntWork("Tuya plug", "It stays on", "https://example.com/source", True)  # type: ignore[misc]
 
 
 @pytest.mark.parametrize(

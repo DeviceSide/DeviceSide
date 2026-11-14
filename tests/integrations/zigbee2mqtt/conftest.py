@@ -5,6 +5,7 @@ import pytest
 
 from custom_components.deviceside.core.resolver import resolve
 from custom_components.deviceside.core.runtime import DATA, get_runtime
+from custom_components.deviceside.core.scope import Unplaced
 from custom_components.deviceside.integrations.zigbee2mqtt import (
     INTEGRATION,
     bridge,
@@ -76,16 +77,18 @@ def broker(hass, monkeypatch):
 
 async def call(hass, service: str, data: dict, return_response: bool = True):
     """The response, each entry's class checked and left out, so a test states only what its action decides: every
-    Zigbee2MQTT result names the class its device is, or a group's members' (docs/action-behavior.md)."""
+    Zigbee2MQTT result names the class its device is, or a group's members', unless one isn't placed yet
+    (docs/action-behavior.md)."""
     response = await call_service(hass, service, data, return_response)
     for entity_id, entry in (response or {}).items():
         target = resolve(hass, get_runtime(hass).registry, entity_id)
+        listed = (INTEGRATION.expand_group(hass, target) or []) if target.is_group else [target]
+        found = [INTEGRATION.capability(hass, member) for member in listed]
+        known = bool(found) and not any(name is None or isinstance(name, Unplaced) for name in found)
         if target.is_group:
-            listed = INTEGRATION.expand_group(hass, target) or []
-            classes = sorted({INTEGRATION.capability(hass, member) for member in listed}) or None
-            assert entry.pop("capabilities", None) == classes, entity_id
+            assert entry.pop("capabilities", None) == (sorted(set(found)) if known else None), entity_id
         else:
-            assert entry.pop("capability", None) == INTEGRATION.capability(hass, target), entity_id
+            assert entry.pop("capability", None) == (found[0] if known else None), entity_id
     return response
 
 
