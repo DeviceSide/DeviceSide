@@ -8,7 +8,8 @@ from homeassistant.exceptions import HomeAssistantError
 from custom_components.deviceside.core.scope import Level
 from custom_components.deviceside.integrations.shelly.set_attributes import ShellySetAttributes
 
-from ...conftest import call, refusal, result
+from .conftest import call
+from ...conftest import refusal, result
 from ...fixtures.shelly import add_shelly_entity, failing, shelly_device
 
 KELVIN_RANGE = {"min_color_temp_kelvin": 2700, "max_color_temp_kelvin": 6500}
@@ -108,9 +109,7 @@ async def test_other_components_are_refused(hass, setup_production, key):
     entry, call_rpc = shelly_device(hass)
     add_shelly_entity(hass, entry, "light.other", key)
 
-    assert await refusal(hass, "set_attributes", {"entity_id": "light.other", "brightness": 40}) == (
-        "capability_not_tested"
-    )
+    assert await refusal(hass, "set_attributes", {"entity_id": "light.other", "brightness": 40}) == ("not_supported")
     assert not call_rpc.await_args_list
 
 

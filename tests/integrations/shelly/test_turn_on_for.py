@@ -12,7 +12,8 @@ from custom_components.deviceside.integrations.shelly.addressing import COMPONEN
 from custom_components.deviceside.integrations.shelly.rpc import light_params
 from custom_components.deviceside.integrations.shelly.turn_on_for import ShellyTurnOnFor
 
-from ...conftest import call, refusal
+from .conftest import call
+from ...conftest import refusal
 from ...fixtures.fake import add_switch_as_x
 from ...fixtures.shelly import add_shelly_entity, shelly_device
 
@@ -138,7 +139,7 @@ async def test_capability_out_of_scope_is_refused(hass, setup_production, monkey
     entry, call_rpc = shelly_device(hass)
     add_shelly_entity(hass, entry, "light.dimmer", "light:0")
 
-    assert await refusal(hass, "turn_on_for", {"entity_id": "light.dimmer", "duration": 5}) == "capability_not_tested"
+    assert await refusal(hass, "turn_on_for", {"entity_id": "light.dimmer", "duration": 5}) == "not_supported"
     assert not call_rpc.await_args_list
 
 
@@ -209,7 +210,7 @@ async def test_duration_under_50ms_is_floored_and_reported(hass, setup_productio
     [("Switch", Level.VERIFIED), ("RGBCCT", Level.VERIFIED), ("Light", Level.DOCUMENTED), ("RGBW", Level.DOCUMENTED)],
 )
 def test_component_levels(component, level):
-    assert ShellyTurnOnFor.scope.level("light", component) is level
+    assert ShellyTurnOnFor.scope.level("light", (component,)) is level
 
 
 @pytest.mark.parametrize(("transition", "sent"), [(0.2, 0.5), (3, 3), (20000, 10800)])

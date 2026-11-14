@@ -62,12 +62,11 @@ class RpcAddress:
     id: int
 
 
-class RpcComponent:
-    """Mixed into every Shelly adapter, ahead of Adapter: the capability a call reaches is the entity's RPC
-    component, which the dispatcher weighs against the scope's capabilities."""
-
-    def capability(self, hass: HomeAssistant, target: Target) -> str | None:
-        return rpc.component if (rpc := address(target)) is not None else None
+def capability(hass: HomeAssistant | None, target: Target) -> str | None:
+    """Shelly's IntegrationInfo.capability: a target's class is the RPC component its entity drives, which every
+    adapter's scope holds a level for; None for an entity that drives none. Reads the registry entry alone, so it takes
+    hass=None."""
+    return rpc.component if (rpc := address(target)) is not None else None
 
 
 def rpc_device(target: Target) -> Any | None:

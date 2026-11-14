@@ -51,7 +51,7 @@ The compatibility section below shows which devices are known or likely to work.
 <details>
 <summary><b>Device compatibility by integration</b></summary>
 
-🟢 works · ✔ verified on automated rig · 🟡 should work: same call pattern as a tested device · 🧪 experimental: off until you turn on Experimental features in DeviceSide's Configure > Settings; please [report how it goes](https://github.com/DeviceSide/DeviceSide/issues/new?template=device_report.yml) · 🔴 doesn't work · ⚠️ unmaintained: no one is fixing it; use at your own risk · ⚠️ untested fix: changed, not yet tested; please [report whether it works](https://github.com/DeviceSide/DeviceSide/issues/new?template=device_report.yml)
+🟢 works · ✔ verified on automated rig · 🟡 should work: same call pattern as a tested device · 🧪 experimental: off until you turn on Experimental features in DeviceSide's Configure > Settings; please [report how it goes](https://github.com/DeviceSide/DeviceSide/issues/new?template=device_report.yml) · 🚧 not yet supported: needs a command DeviceSide hasn't built · 🔴 doesn't work · ⚠️ unmaintained: no one is fixing it; use at your own risk · ⚠️ untested fix: changed, not yet tested; please [report whether it works](https://github.com/DeviceSide/DeviceSide/issues/new?template=device_report.yml)
 
 **[ZHA](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/index.md)** · maintained by [@jasonmx](https://github.com/jasonmx)
 
@@ -71,6 +71,7 @@ The compatibility section below shows which devices are known or likely to work.
 - 🟡 [dimmers](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/shelly/index.md#shelly-dimmers), [LED controllers (CCT, RGB, RGBW)](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/shelly/index.md#shelly-led-controllers): turn on with timer, turn off with timer, auto-off/on, get attributes
 - 🟡 [multicolor bulbs](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/shelly/index.md#shelly-multicolor-bulbs): auto-off/on
 - 🧪 [dimmers](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/shelly/index.md#shelly-dimmers), [LED controllers (CCT, RGB, RGBW)](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/shelly/index.md#shelly-led-controllers): smooth dimming
+- 🚧 [dimmers](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/shelly/index.md#shelly-dimmers), [LED controllers (CCT, RGB, RGBW)](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/shelly/index.md#shelly-led-controllers): set without turning on
 
 **[Hue](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/hue/index.md)** (Bridge v2/Pro) · maintained by [@jasonmx](https://github.com/jasonmx)
 

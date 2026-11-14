@@ -140,7 +140,8 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
    - `gen_compat`: the new tiers, `doesnt_work` read from code, and the coverage check, warning only (Decision 7).
      `check_release.py`: the same check, failing.
    - Decision 5's rule in `docs/evidence.md`.
-   - Exact instructions to Jason for the second ha-rig change, which reads the class from the result.
+   - Exact instructions to Jason for the second ha-rig change, which reads the class from the result:
+     [below](#step-4-rig-change-for-jason).
 5. **Zigbee2MQTT (the driver).**
    - Classes from the probe's real strings: `hue`, `tuya_zcl`, `tuya_mcu`, `other`, and `sengled` if the Sengled needs
      its own rule. A one-off test bulb lifts its maker's class, never `other` (Decision 5).
@@ -468,6 +469,40 @@ join `docs/models.yaml`, per its header.
 | Tuya signal | `zigbee2mqtt`, `zha` | the `tuya_zcl` / `tuya_mcu` rules: steps 5 and 7 |
 | Sengled strings and 0x42 | `zigbee2mqtt`, `zha`, `hue` | the `sengled` rule and its `turn_on_for` state: steps 5, 7, 8 |
 | TS011F and Sengled model IDs | `docs/models.yaml` | steps 5, 7, 8 (the cards) |
+
+### Step 4: Rig change for Jason
+
+What ha-rig #84 does today: for an integration that names classes, it fills each test's Capability cell by calling
+`IntegrationInfo.capability(None, target)`, else the adapter's `capability(None, target)`, on a stand-in Target it
+builds from the registry (no hass, config entry or state), and gives a group with any classless member a whole-cell
+dash. Step 4 makes the class part of each result, so the rig reads it from there instead, and the record holds the
+class the call really reached (Decision 6).
+
+1. **Which integrations.** Unchanged: those whose `IntegrationInfo.capability` is not None (Shelly, today). Drop the
+   `Adapter.capability()` fallback: step 4 removes that method, so calling it raises `AttributeError`. If #84 reaches
+   it for any adapter, a rig run on a checkout with step 4 fails until this change lands, so land it before the next
+   run on step 4's branch or `main` after it merges.
+2. **Ask for the response.** Make each DeviceSide call a test step sends with `return_response: true` (commands and
+   settings answer optionally; queries always do). It changes nothing else: DeviceSide raises `no_entities_matched`
+   only when no target ran, which a test that expects a run fails on anyway.
+3. **Read the class** from the entry under the test's target entity ID, the one the Target column names:
+   - `capability` (a string, beside `status` and `integration`; for `get_attributes`, among the entity's data): the
+     cell is that class in backticks, `` `RGBCCT` ``.
+   - `capabilities` (a list, a native group's members' classes, already sorted and each once): the cell is each in
+     backticks, comma-separated, `` `hue`, `other` ``.
+   - Neither key, no entry for the target (it was skipped or refused), or no response: a dash. DeviceSide leaves the
+     key out when it couldn't name a class, for a group when it couldn't for any member, so the rig's whole-cell dash
+     rule is already applied.
+4. **A test with several calls** on its target: the cell is the sorted union of the classes they reported, or a dash
+   if any call that ran reported none. A test step that targets an area or a group helper reads the entries of the
+   entities the Target column names.
+5. **Skipped tests** keep their dash.
+6. **Remove the stand-in Target** and its registry lookup. DeviceSide then no longer needs `capability()` to take
+   `hass=None`; tell the implementer of the next step, who can drop that clause from `IntegrationInfo.capability`'s
+   comment and `docs/design.md`, and the test pinning it (`tests/core/test_registry.py`).
+7. **Test it** in the rig's own unit tests on canned responses: a command entry with `capability`, a group entry with
+   `capabilities`, a query entry with `capability` in its data, an entry with neither, two calls that disagree, and
+   a skipped test. Then one Shelly run in the house profile shows the column filled from results.
 
 ### Runs to repeat
 

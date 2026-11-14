@@ -2,14 +2,14 @@ from typing import ClassVar
 
 from homeassistant.core import HomeAssistant
 
-from .addressing import CAPABILITIES, RpcComponent, unsupported_reason
+from .addressing import CAPABILITIES, unsupported_reason
 from .rpc import TIMER_LIMITS, set_with_timer
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Target, TimedRequest
 from ...core.scope import AdapterScope, verified
 
 
-class ShellyTurnOffFor(RpcComponent, Adapter[TimedRequest]):
+class ShellyTurnOffFor(Adapter[TimedRequest]):
     """One <Component>.Set carrying on=False and toggle_after; the device turns itself back on."""
 
     action: ClassVar[str] = "turn_off_for"

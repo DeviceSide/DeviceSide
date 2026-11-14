@@ -6,22 +6,26 @@ the cards show (levels, the `experimental` flag, caveats) are in docs/evidence.m
 **Evidence** for an action is its passing test records (`<action>.md`, `<action>-<option>.md`) and the `_manual.md`
 rows whose Passed names it. A record's Device row gives the models it tested: a group (firmware `unknown`, or named
 Group or Zone) shows as "group", and an entry the format can't read is an error; a manual row's Devices are model ids.
-A level comes from the scope alone (verify, then trust): a record never ages.
+A record's Tests table may name the class each passing test reached (its Capability column), and a manual row the
+classes it covers (its Capabilities). A level comes from the scope alone (verify, then trust): a record never ages.
 
 **Cards.** One collapsed section between the README's devices markers, the legend first and a link to the integrations
 page last, with a card per integration: its name, linked to its page (the bundle's index.md), and maintainers
 (`IntegrationInfo.maintainers`; "⚠️ Unmaintained · formerly maintained by" when every adapter is), then the features
 of the adapters with each `caveat` (⚠️ Unmaintained, then ⚠️ Untested fix, linking its reason), then a bullet per tier:
 - Works: the models the evidence tested (rig-tested ones end ✔), and native groups. A pass on a flagged item never
-  puts a model here, and records name a run's models and each test's Target domain but not which test reached which
-  model (their Capability column names the class, which this doesn't read yet), so the rule is fail-safe: an adapter
-  flagged whole, or on any capability or field, adds no models; one flagged on a domain adds those of the records
-  whose passing tests all target unflagged domains, and no `_manual.md` row's. A model can still reach Works through
-  another adapter's evidence.
+  puts a model here, and records name a run's models, and each test's Target domain and class, but not which test
+  reached which model, so the rule is fail-safe: an adapter flagged whole, or on any field, adds no models; one
+  flagged on a domain or class adds those of the records whose passing tests all target unflagged domains and, with a
+  class flagged, all name unflagged classes only (a dash names none), and, unless a domain is flagged, those of the
+  `_manual.md` rows whose Capabilities name unflagged classes only. A model can still reach Works through another
+  adapter's evidence.
 - Should work: the classes (devices.yaml `capabilities`) unflagged adapters hold as Documented.
 - Experimental features: the classes held as `experimental(...)`, and the features of adapters flagged whole
   (`experimental=True`), whatever their evidence.
-- Doesn't work: devices.yaml `doesnt_work`.
+- Not yet supported: the classes the integration declares (`IntegrationInfo.classes`) that an adapter holds in
+  neither its `capabilities` nor its `doesnt_work`, and so refuses; only those devices.yaml gives a phrase.
+- Doesn't work: the scopes' `doesnt_work`, with the features whose adapters list them, then devices.yaml's.
 Classes with the same features share an entry, and those of one page section a link. A model or blocker drops the
 integration's name where it leads, as the card's name already gives it. Cards show features, not fields: a flagged or
 Documented field shows on the integration's page and in the evidence block only.
@@ -30,12 +34,18 @@ Documented field shows on the integration's page and in the evidence block only.
 flagged whole has one), the first with the evidence's models and records; each row carries the adapter's caveat. The
 prose outside the evidence markers is kept as written.
 
+**The coverage check** (`check_release.coverage_gaps`, docs/evidence.md) prints a warning per Verified class no
+record reaches on every run, `--check` included, and never fails here: `check_release.py --signoffs` fails on it at
+the cut.
+
 **Data.** docs/models.yaml holds what integrations share: `models`, one entry per physical model (`name`, `ids` across
 integrations, `type`, optional `section`), and `doesnt_work` entries that name their `integrations`. Each bundle's
 devices.yaml holds its integration's: `column` and `column_order` (the README feature table's, read by
 gen_features), `requires` (shown after the card's name), `capabilities` (a `phrase` and `section` per domain or
-capability the scopes hold below Verified) and `doesnt_work` (`what`, `reason`, `source`, optional `section`: devices
-that fail the call DeviceSide sends, not what isn't built). Every integration needs a bundle.
+class the scopes hold below Verified, and per class to name as not yet supported) and `doesnt_work` (`what`, `reason`,
+`source`, optional `section`: devices that fail the call DeviceSide sends, not what isn't built). A scope's
+`doesnt_work` (core/scope.py, DoesntWork) is the code's home for these, and joins them here; the devices.yaml and
+models.yaml entries move to it, class by class. Every integration needs a bundle.
 
 **Links.** A card links each model, class or blocker to the heading its `section` names (default: the model's
 `name`, the blocker's `what`): on the card's integration page when that has the heading; a model's or native groups'
@@ -61,7 +71,16 @@ sys.path.insert(0, str(REPO))
 
 from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
 from custom_components.deviceside.core.scope import CaveatKind, Level  # noqa: E402
-from scripts.check_release import MANUAL, MANUAL_ROW, adapters, result, test_records_dir  # noqa: E402
+from scripts.check_release import (  # noqa: E402
+    BACKTICKS,
+    MANUAL,
+    PASSED,
+    adapters,
+    coverage_gaps,
+    manual_rows,
+    passing,
+    test_records_dir,
+)
 from scripts.gen_features import FEATURES as TABLE_FEATURES  # noqa: E402
 from scripts.gen_features import anchors, bundle, columns, page, slug  # noqa: E402
 
@@ -77,17 +96,10 @@ EVIDENCE = ("<!-- evidence:start -->", "<!-- evidence:end -->")
 
 DEVICE = re.compile(r"^\| Device \| (.*) \|$", re.MULTILINE)
 ENTRY = re.compile(r"^(?P<name>.*?)(?: \(`(?P<model>[^`]+)`\))?, firmware `(?P<firmware>[^`]+)`$")
-BACKTICKS = re.compile(r"`([^`]+)`")
-# A passing row of a record's Tests table: | `test` | `domain` (role) | pass |, or with the Capability column
-# (docs/evidence.md, Sign-off format): | `test` | `domain` (role) | `class`, ... | pass |, or a dash for none.
-PASSED = re.compile(
-    r"^\| `[^`]+` \| (?P<target>[^|\n]*) \|(?: (?P<capability>`[^`|\n]+`(?:, `[^`|\n]+`)*|-) \|)? pass \|$",
-    re.MULTILINE,
-)
 REPORT_URL = "https://github.com/DeviceSide/DeviceSide/issues/new?template=device_report.yml"
 GROUP_NAMES = {"group", "zone"}
 GROUP = "group"
-NOUNS = ("entities", "components", "fields")  # for a scope's domains, capabilities and fields
+NOUNS = ("entities", "classes", "fields")  # for a scope's domains, capabilities and fields
 
 # Device types, in a card's order for its Works models.
 TYPES = ("bulb", "relay", "plug", "dimmer", "LED controller")
@@ -101,6 +113,7 @@ OUTCOMES = (
         "experimental: off until you turn on Experimental features in DeviceSide's Configure > Settings; please"
         f" [report how it goes]({REPORT_URL})",
     ),
+    ("unsupported", "🚧", "not yet supported: needs a command DeviceSide hasn't built"),
     ("no", "🔴", "doesn't work"),
 )
 VERIFIED = "✔"
@@ -124,7 +137,7 @@ SHARED_KEYS = {"models", "doesnt_work"}  # each a list
 BUNDLE_KEYS = {"column", "column_order", "requires", "capabilities", "doesnt_work"}
 MODEL_KEYS = {"name", "ids", "type", "section"}
 CLASS_KEYS = {"phrase", "section"}
-BROKEN_KEYS = {"what", "integrations", "reason", "source", "section"}
+BROKEN_KEYS = {"what", "integrations", "reason", "source", "section", "actions"}  # actions: from code only
 GROUPS_ENTRY = ("native groups", "Native groups")  # (phrase, section) for the groups a record tested
 
 
@@ -241,9 +254,22 @@ def load_raw(raw: dict, registry: AdapterRegistry) -> Data:
         for item, entry in items.items():
             need(entry, f"capabilities {key} {item}", ("phrase", "section"), keys=CLASS_KEYS)
             data.sections.add((key, entry["section"]))
-    for entry in raw["doesnt_work"]:
+    for entry in raw["doesnt_work"] + code_broken(registry):
         load_broken(entry, set(registry.integrations), data)
     return data
+
+
+def code_broken(registry: AdapterRegistry) -> list[dict]:
+    """The scopes' doesnt_work entries as devices.yaml's are, one per integration and entry, with the actions whose
+    adapters list it, in the order the registry gives them."""
+    found: dict[tuple, dict] = {}
+    for _, adapter in adapters(registry):
+        for broken in adapter.scope.doesnt_work.values():
+            entry = {"what": broken.what, "reason": broken.reason, "source": broken.source}
+            key = (adapter.integration, *entry.values())
+            found.setdefault(key, {**entry, "integrations": [adapter.integration], "actions": set()})
+            found[key]["actions"].add(adapter.action)
+    return list(found.values())
 
 
 def load_model(model: dict, data: Data) -> None:
@@ -301,43 +327,24 @@ def entries(record: Path) -> list[tuple[str, str] | str]:
     return found
 
 
-def passing(integration: str, action: str) -> list[Path]:
-    """The adapter's passing test records: `<action>.md`, and `<action>-<option>.md` for a run with an option set."""
-    pattern = re.compile(rf"{re.escape(action)}(-[^.]+)?\.md")
-    found = (path for path in test_records_dir(integration).glob("*.md") if pattern.fullmatch(path.name))
-    return sorted(path for path in found if result(path) == "pass")
-
-
-def manual(integration: str, action: str) -> list[list[str]]:
-    """The model ids of each `_manual.md` row whose Passed names the action. A line that is no row of the format is
-    skipped: `check_release.py --signoffs` reports it."""
-    path = test_records_dir(integration) / MANUAL
-    rows = []
-    for line in path.read_text().splitlines() if path.is_file() else []:
-        if MANUAL_ROW.fullmatch(line := line.strip()):
-            cells = line.strip("|").split("|")
-            if action in BACKTICKS.findall(cells[4]):
-                rows.append(BACKTICKS.findall(cells[3]))
-    return rows
-
-
 @dataclass
 class Evidence:
-    """An action's evidence on one integration: its passing records and the `_manual.md` rows naming it."""
+    """An action's evidence on one integration: its passing records and the `_manual.md` rows naming it, each row's
+    model ids and classes."""
 
     records: list[Path]
-    manual: list[list[str]]
+    manual: list[tuple[list[str], set[str]]]
 
     @classmethod
     def of(cls, adapter) -> Evidence:
-        return cls(passing(adapter.integration, adapter.action), manual(adapter.integration, adapter.action))
+        return cls(passing(adapter.integration, adapter.action), manual_rows(adapter.integration, adapter.action))
 
     def devices(self, data: Data) -> list[tuple[str, str | None] | str]:
         """The devices tested, each once, as (model id, firmware; None for a manual row) or GROUP: the records' first,
         then the manual rows', groups last. Every model must be in docs/models.yaml."""
         found: list[tuple[str, str | None] | str] = []
         sources = [(record.relative_to(REPO), entries(record)) for record in self.records]
-        sources += [(MANUAL, [(model, None) for model in row]) for row in self.manual]
+        sources += [(MANUAL, [(model, None) for model in models]) for models, _ in self.manual]
         for where, items in sources:
             for item in items:
                 if item != GROUP:
@@ -348,28 +355,40 @@ class Evidence:
         return found
 
 
-def targets(record: Path) -> set[str]:
-    """The domains the record's passing tests target. A Target with no domain in backticks stays whole, so it matches
-    no domain."""
-    found = set()
+def tests(record: Path) -> list[tuple[str, set[str]]]:
+    """Each passing test of the record, as the domain it targets and the classes its Capability cell lists (none for a
+    dash or a record without the column). A Target with no domain in backticks stays whole, so it matches no domain."""
+    found = []
     for row in PASSED.finditer(record.read_text()):
         domain = BACKTICKS.match(row["target"])
-        found.add(domain[1] if domain else row["target"])
+        found.append((domain[1] if domain else row["target"], set(BACKTICKS.findall(row["capability"] or ""))))
     return found
 
 
 def card_evidence(adapter) -> Evidence:
-    """The evidence a card's Works counts. Fail-safe, as a record doesn't say which test reached which model: none for
-    an adapter flagged whole or on a capability or field; for one flagged on a domain, the records whose passing tests
-    all target unflagged domains, and no `_manual.md` rows."""
-    flagged = [noun for level, _, noun in items(adapter.scope) if level is Level.EXPERIMENTAL]
-    if adapter.scope.experimental or any(noun != "entities" for noun in flagged):
-        return Evidence([], [])
+    """The evidence a card's Works counts. Fail-safe, as a record names a run's models but not which test reached
+    which: none for an adapter flagged whole or on a field. For one flagged on a domain or class, the records whose
+    passing tests all target unflagged domains and, when a class is flagged, name only unflagged classes; and, unless
+    a domain is flagged (a row names none), the `_manual.md` rows whose Capabilities name only unflagged classes."""
+    flagged: dict[str, set[str]] = {}
+    for level, item, noun in items(adapter.scope):
+        if level is Level.EXPERIMENTAL:
+            flagged.setdefault(noun, set()).add(item)
     evidence = Evidence.of(adapter)
+    if adapter.scope.experimental or "fields" in flagged:
+        return Evidence([], [])
     if not flagged:
         return evidence
-    unflagged = {domain for domain, level in adapter.scope.domains.items() if level is not Level.EXPERIMENTAL}
-    return Evidence([record for record in evidence.records if unflagged >= (found := targets(record)) and found], [])
+    domains = set(adapter.scope.domains) - flagged.get("entities", set())
+    classes = set(adapter.scope.capabilities or ()) - flagged.get("classes", set())
+
+    def clean(domain: str, reached: set[str]) -> bool:
+        return domain in domains and ("classes" not in flagged or bool(reached) and reached <= classes)
+
+    records = [record for record in evidence.records if (found := tests(record)) and all(clean(*t) for t in found)]
+    if "entities" in flagged:
+        return Evidence(records, [])
+    return Evidence(records, [row for row in evidence.manual if row[1] and row[1] <= classes])
 
 
 def items(scope) -> list[tuple[Level, str, str]]:
@@ -471,11 +490,18 @@ def evidence(registry: AdapterRegistry, data: Data) -> str:
         if broken := [entry for entry in data.doesnt_work if key in entry["integrations"]]:
             parts += ["", "| Doesn't work | Why | Source |", "|---|---|---|"]
             parts += [
-                f"| {cell(entry['what'])} | {cell(entry['reason'])} | [source]({entry['source']}) |" for entry in broken
+                f"| {cell(entry['what'])}{actions(entry)} | {cell(entry['reason'])} | [source]({entry['source']}) |"
+                for entry in broken
             ]
         parts.append("")
     parts.append(EVIDENCE[1])
     return "\n".join(parts)
+
+
+def actions(entry: dict) -> str:
+    """A code entry's actions, as the evidence block names them after its `what`; nothing for a devices.yaml one,
+    which names none."""
+    return f" ({', '.join(f'`{action}`' for action in sorted(entry['actions']))})" if entry.get("actions") else ""
 
 
 # The README cards.
@@ -522,7 +548,7 @@ class Card:
         lines = [f"**{title}**{requires} · {status}", ""]
         lines += [f"- {entry}" for entry in self.marks]
         for key, icon, _ in OUTCOMES:
-            if key in ("should", "experimental"):
+            if key in ("should", "experimental", "unsupported"):
                 lines += [f"- {icon} {entry}" for entry in self.lines.get(key, [])]
             elif self.lines.get(key):
                 lines.append(f"- {icon} {' · '.join(self.lines[key])}")
@@ -540,6 +566,19 @@ def classes(key: str, integration_adapters: list, level: Level, data: Data) -> d
             if item_level is level and noun != "fields":
                 if item not in data.capabilities.get(key, {}):
                     fail(f"capabilities: no entry for {key} {item}, which a scope holds as {level.name.title()}")
+                held.setdefault(item, set()).add(adapter.action)
+    return held
+
+
+def unsupported(key: str, classes: frozenset[str], integration_adapters: list, data: Data) -> dict[str, set[str]]:
+    """Each class the integration declares that an adapter holds in neither its capabilities nor its doesnt_work, with
+    the actions that refuse it (`not_supported`), in devices.yaml's order. Only a class devices.yaml gives a phrase is
+    named: Shelly's Switch has none, as a relay has no brightness or color to dim or set."""
+    held: dict[str, set[str]] = {}
+    for item in data.capabilities.get(key, {}):
+        for adapter in integration_adapters:
+            served = adapter.scope.capabilities
+            if item in classes and served is not None and item not in served.keys() | adapter.scope.doesnt_work.keys():
                 held.setdefault(item, set()).add(adapter.action)
     return held
 
@@ -630,10 +669,14 @@ def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: 
         result.lines[tier] = class_entries(key, classes(key, integration_adapters, level, data), data)
     if flagged := {adapter.action for adapter in integration_adapters if adapter.scope.experimental}:
         result.lines["experimental"].append(", ".join(features(flagged)))
+    result.lines["unsupported"] = class_entries(key, unsupported(key, info.classes, integration_adapters, data), data)
     result.lines["no"] = []
     for entry in data.doesnt_work:
         if key in entry["integrations"]:
-            result.lines["no"].append(anchor(result.short(entry["what"]), data.url(key, entry["section"])))
+            label = anchor(result.short(entry["what"]), data.url(key, entry["section"]))
+            result.lines["no"].append(
+                f"{label}: {', '.join(features(entry['actions']))}" if entry.get("actions") else label
+            )
     return result
 
 
@@ -706,6 +749,9 @@ def main(
         text = path.read_text()
         updates[path] = (text, splice(text, markers, block, path.name))
     check_sections(updates[page][1], data)
+    # The coverage check warns here, on every PR, and fails only at cut-release (check_release.py --signoffs).
+    for gap in coverage_gaps(registry):
+        print(f"warning: {gap}", file=sys.stderr)
     stale = [path for path, (text, new) in updates.items() if new != text]
     if not args.check:
         for path in stale:

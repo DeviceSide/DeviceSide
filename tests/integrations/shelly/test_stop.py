@@ -8,8 +8,8 @@ from homeassistant.exceptions import HomeAssistantError
 from custom_components.deviceside.integrations.shelly.raise_brightness import ShellyRaiseBrightness
 from custom_components.deviceside.integrations.shelly.stop import ShellyStop
 
-from .conftest import BULB, CONFIRMED, SENT, dimmable_bulb
-from ...conftest import allow_experimental, call, refusal, result, sent
+from .conftest import BULB, CONFIRMED, SENT, call, dimmable_bulb
+from ...conftest import allow_experimental, refusal, result, sent
 from ...fixtures.shelly import OTHER_LIGHT_COMPONENTS, add_shelly_entity, failing, shelly_device
 
 STOP = rpc_call("RGBCCT.DimStop", {"id": 0})

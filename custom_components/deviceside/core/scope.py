@@ -8,6 +8,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
+from .errors import Reason
 from .fields import LACKABLE
 from .models import Target
 
@@ -63,6 +64,16 @@ class Caveat:
     reason: str
 
 
+@dataclass(frozen=True, slots=True)
+class DoesntWork:
+    """A class that fails the call an adapter sends (docs/evidence.md, Doesn't work): what the card names, why it
+    fails, and the source, an https URL. The dispatcher refuses it; the card lists it under Doesn't work."""
+
+    what: str
+    reason: str
+    source: str
+
+
 # eq=False: compared and hashed by identity, as the mappings it holds can't be hashed.
 @dataclass(frozen=True, slots=True, eq=False)
 class AdapterScope:
@@ -85,11 +96,14 @@ class AdapterScope:
     # Fields the adapter takes though the light's state says it can't (a design gap between the upstream integration
     # and HA): never dropped as lacked on a light. Each must be in `fields`, whose level gates it like any field's.
     unlisted: frozenset[str] = frozenset()
-    # Device-side capabilities (Shelly: RPC component names); None for an adapter with no capability axis, whose
-    # capability() names none (the registry refuses a mismatch either way).
-    # Proof follows the call, so each capability stands on its own evidence: a sibling's untested one is Experimental
-    # unless it is Documented.
+    # The classes the adapter serves (docs/evidence.md, Device classes), as IntegrationInfo.capability names them;
+    # None for an integration that names none (the registry refuses a mismatch either way). Proof follows the call and
+    # the class, so each stands on its own evidence: a sibling's untested one is Experimental unless it is Documented.
+    # A class the integration names in neither this nor doesnt_work is not yet supported, and refused.
     capabilities: Mapping[str, Level] | None = None
+    # Classes that fail this adapter's call, refused with why; never in capabilities. Per adapter, as one class can
+    # fail one action's call and answer another's.
+    doesnt_work: Mapping[str, DoesntWork] = field(default_factory=dict)
     confirmable: bool = False
     # DeviceSide options that change what the adapter does.
     options: frozenset[str] = frozenset()
@@ -101,20 +115,37 @@ class AdapterScope:
         if Level.DOCUMENTED in self.fields.values():
             raise ValueError("fields are never Documented: a field changes the call")
         self._check_unlisted()
+        if both := self.doesnt_work.keys() & (self.capabilities or {}).keys():
+            raise ValueError(f"doesnt_work names classes the scope serves: {sorted(both)}")
+        if bad := sorted(key for key, entry in self.doesnt_work.items() if not entry.source.startswith("https://")):
+            raise ValueError(f"doesnt_work sources must be https URLs: {bad}")
         # Read-only copies: adapters share mappings such as Shelly's CAPABILITIES, and a frozen scope stays frozen.
-        for name in ("domains", "fields", "capabilities"):
+        for name in ("domains", "fields", "capabilities", "doesnt_work"):
             if (items := getattr(self, name)) is not None:
                 object.__setattr__(self, name, MappingProxyType(dict(items)))
 
-    def level(self, domain: str, capability: str | None = None, fields: Collection[str] = ()) -> Level:
-        """The weakest level among the in-scope items a call touches: its domain, its capability (when the scope
-        lists capabilities) and the fields it carries. Domain and fields must be in scope, as supports() has checked;
-        a capability outside the scope, or none (one the adapter couldn't name), counts as Experimental, so a call
-        supports() let past on another ground (one with nothing to do) fails safe instead of raising."""
+    def level(self, domain: str, classes: Collection[str | None] = (), fields: Collection[str] = ()) -> Level:
+        """The weakest level among the in-scope items a call touches: its domain, its classes (when the scope lists
+        capabilities: the target's, or a native group's members') and the fields it carries. Domain and fields must
+        be in scope, as supports() has checked; a class outside the scope, or None (one the integration couldn't
+        name, or a group whose members it can't list), counts as Experimental, so a call let past on another ground
+        fails safe instead of raising."""
         levels = [self.domains[domain], *(self.fields[name] for name in fields)]
         if self.capabilities is not None:
-            levels.append(self.capabilities.get(capability, Level.EXPERIMENTAL))
+            levels += [self.capabilities.get(name, Level.EXPERIMENTAL) for name in classes]
         return min(levels)
+
+    def refusal(self, classes: Collection[str | None]) -> str | None:
+        """Why the scope refuses a target of these classes (a native group's: its members'), or None: `doesnt_work`
+        when one is listed as failing the call, else `not_supported` when one is named but not served. None, a
+        class the integration couldn't name, is no refusal: the gate weighs it as Experimental."""
+        if self.capabilities is None:
+            return None
+        if any(name in self.doesnt_work for name in classes):
+            return Reason.DOESNT_WORK
+        if any(name is not None and name not in self.capabilities for name in classes):
+            return Reason.NOT_SUPPORTED
+        return None
 
     def _check_unlisted(self) -> None:
         if unknown := self.unlisted - LACKABLE:
@@ -137,8 +168,17 @@ class IntegrationInfo:
     detect: Callable[[HomeAssistant, er.RegistryEntry, dr.DeviceEntry | None], bool] | None = None
     # True for an integration-native group (Hue grouped_light, a Z2M or ZHA group entity).
     is_group: Callable[[HomeAssistant, Target], bool] | None = None
-    # Members of a native group, for adapters without native_groups; None means membership is unknowable here.
+    # Members of a native group: for adapters without native_groups, the targets they get; for one with, the members
+    # whose classes the group takes. None means membership is unknowable here.
     expand_group: Callable[[HomeAssistant, Target], list[Target]] | None = None
+    # Names a target's class (docs/evidence.md, Device classes): sync and cheap, no I/O, reading only the target's
+    # registry entries, config entry or the integration's data. A device it can't place gets the default class; None
+    # only for a target it can't class at all. It must take hass=None on a target with no config entry or state: the
+    # rig classes a stand-in. None for an integration with one class, whose scopes then hold no capabilities.
+    capability: Callable[[HomeAssistant, Target], str | None] | None = None
+    # Every class capability() can name, so a scope's typo fails at registration and the cards name the classes an
+    # adapter serves in neither its capabilities nor its doesnt_work as not yet supported.
+    classes: frozenset[str] = frozenset()
     # Drops what a light or scene call from HA leaves stale (core/ha_watch.py); None holds nothing it could.
     call_resolver: CallResolver | None = None
     max_concurrency: int = 4

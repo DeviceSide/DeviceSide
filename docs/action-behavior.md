@@ -36,8 +36,9 @@ an area, device or label, a member of an HA group (`group.*` or a group helper),
 the dispatcher expanded. Core treats a `group.*` member as named; DeviceSide doesn't, because a group is a
 deliberately mixed set. An indirect entity outside the action's domains is never a target, as in core.
 
-**Can never support** is any reason that holds whatever the device's state: no adapter, a domain, capability
-or option nobody has tested, an entity the integration can't address. A field the adapter has never been
+**Can never support** is any reason that holds whatever the device's state: no adapter, a domain or option nobody
+has tested, a class that doesn't work or isn't supported (`doesnt_work`, `not_supported`), an entity the integration
+can't address. A field the adapter has never been
 tested with is in this class too: it is refused, never dropped. **Lacks a field** comes from the target's state, read
 as `filter_turn_on_params` reads it (a color is lacked only without any color mode, color temperature only without
 that or a color mode, since core converts between them first), and from the adapter where only it knows: Hue's
@@ -86,6 +87,11 @@ raises or the entity is skipped.
   `clamped_to`. Skipped targets are left out, as core leaves them out, and `unsupported` or `rejected` never
   reach a response: the call skips or raises instead. A call that has nothing to do succeeds quietly as
   `unchanged` with a `detail`.
+- **The class.** On an integration that names [classes](evidence.md#device-classes) (Shelly), each entry carries the
+  class the call reached, as an attribute would: a command's beside `status` and `integration`, a query's among its
+  data. A target's is `capability` (a string: `"RGBCCT"`); a native group's is `capabilities`, its members' classes
+  once each, sorted (a list: `["hue", "other"]`). The key is absent when the integration couldn't name one, for a
+  group when it couldn't for any member, so a list always stands for the whole group.
 
 ## Replacing hue_dimmer
 

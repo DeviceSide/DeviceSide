@@ -67,9 +67,10 @@ documents identically (`integrations/shelly/addressing.py`).
 
 ## Device classes
 
-A **class** is the set of devices that get the same call and run the same firmware family. The integration names each
-target's class (`IntegrationInfo.capability`, in code a scope's `capabilities`), and every adapter of the integration
-sees the same one; an adapter maps the classes it serves to its own branch. A scope holds a level per class, so each
+A **class** is the set of devices that get the same call and run the same firmware family. The integration declares
+its classes (`IntegrationInfo.classes`) and names each target's (`IntegrationInfo.capability`; in code a scope's
+`capabilities`), and every adapter of the integration sees the same one; an adapter maps the classes it serves to its
+own branch. A scope holds a level per class, so each
 class stands on its own evidence: a record on one class proves nothing about another. On a single-vendor API the class
 is what the call addresses (Shelly: the RPC component). On a multi-vendor protocol the call and the firmware family
 decide the result together, so the class follows the vendor (Zigbee2MQTT: `hue`, `tuya_zcl`, `tuya_mcu`, `other`).
@@ -77,11 +78,21 @@ decide the result together, so the class follows the vendor (Zigbee2MQTT: `hue`,
 - **Unknown is flagged, never Verified.** A device the integration can't place falls in its default class, which no
   record reaches until one does, so until then it runs only behind `experimental`, and placing a device there can only
   make DeviceSide more cautious.
-- **One axis per integration.** An integration that names classes holds them in every adapter's scope; one that names
-  none holds them in none (the registry checks). A new integration names its classes, or its PR argues that it has one:
-that no known device behind it answers the same call differently.
-- **Groups.** A native group takes the weakest level among its members' classes. A member that doesn't work or isn't
-  supported refuses the group, unless the integration can expand it.
+- **The default class is never Verified.** It may be Documented for an action where the [Documented](#levels) test
+  holds (no known class departs), and is otherwise `experimental(...)`. A record on a device outside the named classes
+  lifts a new class named for its maker (Zigbee2MQTT: `ikea` for an IKEA bulb), never the default class: the default
+  class holds every device not yet placed, and one maker's record proves nothing about the rest.
+- **One axis per integration.** An integration that names classes holds them in every adapter's scope, and only the
+  classes it declares; one that names none holds them in none (the registry checks). A new integration names its
+  classes, or its PR argues that it has one: that no known device behind it answers the same call differently.
+- **One fact, one home, in code.** Classes, levels and doesn't-work entries live in the integration's package
+  (`IntegrationInfo.classes`, the scopes), and the cards are generated from it. The bundle's `devices.yaml` keeps only
+  presentation: each class's phrase and section on the card. The `doesnt_work` entries still in `devices.yaml` and
+  `docs/models.yaml` move to the scopes as each integration names its classes.
+- **Groups.** A native group an adapter addresses as one takes the weakest level among its members' classes, as
+  the integration's `expand_group` lists them; one whose members it can't list counts as Experimental. A member that
+  doesn't work or isn't supported refuses the group. An adapter without `native_groups` gets the members instead, each
+  judged on its own.
 
 ### Doesn't work, not yet supported, untested
 
@@ -112,10 +123,13 @@ varied integration, sets the bar. Classes match on manufacturer and model until 
 ### The coverage check
 
 Every class an adapter's scope holds as Verified needs a passing record test, or a `_manual.md` row, for that action
-that reached it. Records name the class each test reached, and manual rows the classes they cover.
-`scripts/gen_compat.py --check` fails on a gap and names it, for example
-"zigbee2mqtt turn_on_for: `other` is Verified but no record reaches it"; CI runs it on every PR. Like every gate, it
-checks that evidence exists, not that it suffices (tenet 7), and it applies to integrations that name classes.
+that reached it. Records name the class each test reached, and manual rows the classes they cover. A native group's
+test credits every class its cell lists, as the one call reached each member; a manual row credits every class it
+lists to every action it passed, so a row whose actions reached different classes is split. A dash credits none.
+`scripts/gen_compat.py` warns on each gap on every PR, so a developer sees it early, and names it, for example
+"zigbee2mqtt turn_on_for: `hue` is Verified but no record reaches it"; `scripts/check_release.py --signoffs` fails on
+it at `cut-release`, with the other release gates. Like every gate, it checks that evidence exists, not that it
+suffices (tenet 7), and it applies to integrations that name classes.
 
 *Example:* with Zigbee2MQTT's classes `hue`, `tuya_zcl`, `tuya_mcu` and `other`, and only Hue bulbs in its records,
 `turn_on_for` can be Verified on `hue` alone; on `other` it is `experimental(...)`, so an IKEA or Innr bulb runs only
@@ -216,22 +230,23 @@ didn't change between them. A record with no Package row is no sign-off. A manua
 `test-records/_manual.md`, added in a PR: date, commit, tester, model ids (`docs/models.yaml`, never a household's
 device names) and what passed.
 
-An integration names classes when its scopes list `capabilities` (Shelly, today). Its records' Tests table has a
-Capability column between Target and Result: the class each test's target reached, as the integration names it
-(`IntegrationInfo.capability`; until that lands, the adapter's `capability()`), in backticks. A native group's cell
-lists its members' classes once each, sorted, comma-separated. A dash means no class: the target, or a group member,
+An integration names classes when it has `IntegrationInfo.capability` (Shelly, today). Its records' Tests table has a
+Capability column between Target and Result: the class each test's target reached, in backticks, as the action's
+result reports it ([action-behavior.md](action-behavior.md#what-a-response-looks-like)). A native group's cell lists
+its members' classes once each, sorted, comma-separated. A dash means no class: the target, or a group member,
 reached none the integration could name, or the test was skipped; a dash credits no class. Other integrations keep
-the three columns.
+the three columns. Its `_manual.md` rows likewise have a Capabilities column between Devices and Passed: the classes
+the row's tests reached, or a dash.
 
     | Test | Target | Capability | Result |
     |---|---|---|---|
     | `on_then_off[switch_plug]` | `switch` (switch_plug) | `Switch` | pass |
 
-    | Date | Commit | Tester | Devices | Passed |
-    |---|---|---|---|---|
-    | 2026-11-12 | `1a2b3c4` | @handle | `S3SW-001X8EU`, `S3BL-C010007AEU` | `turn_on_for`, `set_auto_off` |
+    | Date | Commit | Tester | Devices | Capabilities | Passed |
+    |---|---|---|---|---|---|
+    | 2026-11-12 | `1a2b3c4` | @handle | `S3SW-001X8EU`, `S3BL-C010007AEU` | `Switch`, `RGBCCT` | `turn_on_for` |
 
-A change that sends no new call signs off with a row whose Devices holds a dash and whose Passed holds exactly
-`no call changed`. *Example:* a log-wording change in a Shelly adapter:
+A change that sends no new call signs off with a row whose Devices (and Capabilities) hold a dash and whose Passed
+holds exactly `no call changed`. *Example:* a log-wording change in a Shelly adapter:
 
-    | 2026-11-12 | `1a2b3c4` | @handle | - | no call changed |
+    | 2026-11-12 | `1a2b3c4` | @handle | - | - | no call changed |

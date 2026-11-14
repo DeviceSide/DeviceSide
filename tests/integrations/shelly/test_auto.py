@@ -10,7 +10,8 @@ from custom_components.deviceside.core.scope import Level
 from custom_components.deviceside.integrations.shelly.auto import ShellyClearAuto, ShellySetAuto
 from custom_components.deviceside.integrations.shelly.rpc import AUTO_DELAY_LIMITS
 
-from ...conftest import call, result
+from .conftest import call
+from ...conftest import result
 from ...fixtures.shelly import OTHER_LIGHT_COMPONENTS, add_shelly_entity, failing, shelly_device
 
 pytestmark = pytest.mark.usefixtures("setup_production")

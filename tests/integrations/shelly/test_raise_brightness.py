@@ -9,8 +9,8 @@ from homeassistant.exceptions import HomeAssistantError
 from custom_components.deviceside.core.scope import Level
 from custom_components.deviceside.integrations.shelly.raise_brightness import ShellyRaiseBrightness
 
-from .conftest import BULB, SENT, dimmable_bulb
-from ...conftest import allow_experimental, call, refusal, result
+from .conftest import BULB, SENT, call, dimmable_bulb
+from ...conftest import allow_experimental, refusal, result
 from ...fixtures.shelly import OTHER_LIGHT_COMPONENTS, add_shelly_entity, failing, shelly_device
 
 READ = rpc_call("RGBCCT.GetStatus", {"id": 0})

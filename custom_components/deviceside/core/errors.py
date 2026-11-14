@@ -10,7 +10,8 @@ EXPERIMENTAL_OFF = "experimental_off"
 
 class Reason(StrEnum):
     """Reason keys that core and adapters both return or test for, defined once: the dispatcher's skip-vs-raise
-    turns on the first two (docs/action-behavior.md), so a copy that drifted would change it."""
+    turns on the first two (docs/action-behavior.md), so a copy that drifted would change it. The class refusals
+    (docs/evidence.md, Device classes) are defined here too, raised if named and skipped if not, as any other."""
 
     # The config entry behind the target isn't loaded: unavailable, as core treats an entity whose integration isn't up.
     INTEGRATION_NOT_LOADED = "integration_not_loaded"
@@ -18,6 +19,11 @@ class Reason(StrEnum):
     EMPTY_GROUP = "empty_group"
     # The integration can't address the target (no device address, a nested wrapper): raised if named, else skipped.
     NOT_ADDRESSABLE = "not_addressable"
+    # The target's class (a native group: a member's) fails the adapter's call: AdapterScope.doesnt_work.
+    DOESNT_WORK = "doesnt_work"
+    # The target's class (a native group: a member's) needs a call that isn't built: the integration names it, and the
+    # adapter's scope holds it in neither capabilities nor doesnt_work.
+    NOT_SUPPORTED = "not_supported"
 
 
 class TargetNotSupported(ServiceNotSupported):

@@ -5,7 +5,7 @@ from typing import ClassVar
 
 from homeassistant.core import HomeAssistant
 
-from .addressing import DIMMING_CAPABILITIES, RpcComponent, unsupported_reason
+from .addressing import DIMMING_CAPABILITIES, unsupported_reason
 from .rpc import TRANSITION_LIMITS, get_status, set_fade
 from ...core.level_fade import LevelFade
 from ...core.models import Target
@@ -26,7 +26,7 @@ def fade_scope() -> AdapterScope:
     )
 
 
-class ShellyFade(RpcComponent, LevelFade):
+class ShellyFade(LevelFade):
     """core.level_fade's read and set: a GetStatus for the level, then one Set with a transition for the distance left.
 
     The device reports its level exactly mid-fade (rig, 8 Nov), which is what LevelFade relies on. Lowering to 0 is

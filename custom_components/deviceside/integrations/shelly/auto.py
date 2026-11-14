@@ -4,7 +4,7 @@ from typing import ClassVar, Literal
 
 from homeassistant.core import HomeAssistant
 
-from .addressing import AUTO_CAPABILITIES, RpcComponent, unsupported_reason
+from .addressing import AUTO_CAPABILITIES, unsupported_reason
 from .rpc import AUTO_DELAY_LIMITS, write_auto
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Request, Target, TimedRequest
@@ -13,7 +13,7 @@ from ...core.scope import AdapterScope, verified
 _DOMAINS = verified("light", "switch")
 
 
-class ShellySetAuto(RpcComponent, Adapter[TimedRequest]):
+class ShellySetAuto(Adapter[TimedRequest]):
     """One <Component>.SetConfig carrying auto_<which>: true and its delay."""
 
     integration: ClassVar[str] = "shelly"
@@ -34,7 +34,7 @@ class ShellySetAuto(RpcComponent, Adapter[TimedRequest]):
         )
 
 
-class ShellyClearAuto(RpcComponent, Adapter[Request]):
+class ShellyClearAuto(Adapter[Request]):
     """One <Component>.SetConfig carrying auto_<which>: false."""
 
     integration: ClassVar[str] = "shelly"

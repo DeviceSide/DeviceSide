@@ -4,7 +4,7 @@ from typing import Any, ClassVar
 
 from homeassistant.core import HomeAssistant
 
-from .addressing import DIMMING_CAPABILITIES, RpcComponent, address, unsupported_reason
+from .addressing import DIMMING_CAPABILITIES, address, unsupported_reason
 from .rpc import dim_stop, get_status
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Request, Status, Target
@@ -12,7 +12,7 @@ from ...core.readback import read_back
 from ...core.scope import AdapterScope, verified
 
 
-class ShellyStop(RpcComponent, Adapter[Request]):
+class ShellyStop(Adapter[Request]):
     """DimStop to each target at once, then a GetStatus.
 
     DimStop goes first, with no read before it, so the halt waits on nothing: with no fade running it changes nothing
@@ -29,7 +29,7 @@ class ShellyStop(RpcComponent, Adapter[Request]):
     )
 
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:
-        # Ahead of the capability check, which would refuse a relay as untested rather than say why.
+        # A relay's class is in no dimming scope, so the dispatcher would refuse it as not_supported: say why instead.
         if (rpc := address(target)) is not None and rpc.component == "Switch":
             return "not_dimmable"
         return super().supports(hass, request, target) or unsupported_reason(target)
