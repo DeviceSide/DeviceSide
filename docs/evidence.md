@@ -75,8 +75,10 @@ is what the call addresses (Shelly: the RPC component). On a multi-vendor protoc
 decide the result together, so the class follows the vendor (Zigbee2MQTT: `hue`, `tuya_zcl`, `tuya_mcu`, `other`).
 
 - **Unknown is flagged, never Verified.** A device the integration can't place falls in its default class, which no
-  record reaches until one does, so until then it runs only behind `experimental`, and placing a device there can only
-  make DeviceSide more cautious.
+  record reaches until one does, so until then it runs behind `experimental` or, per action, as Documented. A record
+  on an unplaced device lifts a named class for its maker, not the default one. A class with a `doesnt_work` entry must
+  be placeable from what `capability()` can read when the call is made: a device that falls in the default class
+  instead gets the default call.
 - **One axis per integration.** An integration that names classes holds them in every adapter's scope; one that names
   none holds them in none (the registry checks). A new integration names its classes, or its PR argues that it has one:
 that no known device behind it answers the same call differently.
@@ -93,6 +95,9 @@ Three ways a class can't take an action, each shown differently on the cards:
 - **Not yet supported:** the class needs a call that isn't built. The integration names it, and the adapter's scope
   holds it in neither `capabilities` nor `doesnt_work`. It is refused (`not_supported`) and listed as not yet supported.
 - **Untested:** the default call may work. The class is in scope as `experimental(...)` and runs behind the flag.
+
+A class that today's call harms (it acts wrong rather than refusing) is listed as doesn't work for that call, even when
+a call that isn't built would work on it. Not yet supported is for a class today's call can't serve but doesn't harm.
 
 A refused target raises when named and is skipped when it came indirectly, as `supports()` refusals do
 ([action-behavior.md](action-behavior.md)).
@@ -113,15 +118,16 @@ varied integration, sets the bar. Classes match on manufacturer and model until 
 
 Every class an adapter's scope holds as Verified needs a passing record test, or a `_manual.md` row, for that action
 that reached it. Records name the class each test reached, and manual rows the classes they cover.
-`scripts/gen_compat.py --check` fails on a gap and names it, for example
-"zigbee2mqtt turn_on_for: `other` is Verified but no record reaches it"; CI runs it on every PR. Like every gate, it
+`scripts/gen_compat.py --check` warns on each gap on every PR and names it, for example
+"zigbee2mqtt turn_on_for: `hue` is Verified but no record reaches it"; `scripts/check_release.py` fails on it at
+`cut-release`, with the other release gates. Like every gate, it
 checks that evidence exists, not that it suffices (tenet 7), and it applies to integrations that name classes.
 
 *Example:* with Zigbee2MQTT's classes `hue`, `tuya_zcl`, `tuya_mcu` and `other`, and only Hue bulbs in its records,
 `turn_on_for` can be Verified on `hue` alone; on `other` it is `experimental(...)`, so an IKEA or Innr bulb runs only
 with Experimental features on until a record reaches it. A Tuya class that needs Tuya's own countdown call, which isn't
-built, is refused as not yet supported, rather than sent a call that Zigbee2MQTT turns into a permanent On; it doesn't
-work only if no call is known to work on it.
+built, is refused as not yet supported. The TS011F, which Tuya's call drives but today's call leaves on or switches on
+late, is listed as doesn't work for today's call until the countdown call is built.
 
 ## The experimental flag
 
