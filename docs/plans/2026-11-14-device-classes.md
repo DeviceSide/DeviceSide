@@ -549,9 +549,9 @@ outputs, deviations and scripts: the gitignored `notes/lab-probe-2026-11-14/` (`
 there use absolute paths). Decision rule 2: the TS011F is `tuya_zcl`.
 
 **Next:**
-1. Add the Sengled back to the lab ZHA group (the house profile's group case needs it). The rig restrictor refused
-   it; `notes/lab-probe-2026-11-14/zha_group_add_sengled.py` does it under `--hold zha` once Jason says yes
-   (`DEVICE_SIDE_RIG_RESTRICTED=1`) or the restrictor is off.
+1. Add the Sengled back to the lab ZHA group (the house profile's group case needs it). The rig is out of bounds
+   until Monday 2026-11-16 (Jason); then `notes/lab-probe-2026-11-14/zha_group_add_sengled.py` does it under
+   `--hold zha`, with Jason's yes if the restrictor is still on. It doesn't block step 3's docs.
 2. Step 5 adds the Sengled to `docs/models.yaml` with its card section (gen_compat needs a heading for each model).
 3. Then step 3 is done: its last commit's "Plan review" note, mark #423 ready per the plan's execution model.
 
