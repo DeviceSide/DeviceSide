@@ -377,8 +377,29 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      without polling, and Signify ended its support in 2020
      ([research](../integrations/hue/research/2026-11-14-v1-api.md)).
 9. **Matter.** Lab run on the WiZ plug. `other` is Experimental on `turn_on_for`, and the WiZ plug Verified by the
-   rig on the real call (Decision 75). Until #436 applies Decision 75, Matter's `turn_on_for` still shows
-   Documented on the cards.
+   rig on the real call (Decision 75).
+   - **What decides the call** (read first, recorded in the Matter `internals.md`): nobody routes it. HA never sends
+     `OnWithTimedOff` and the Matter server passes it through, so the endpoint's own On/Off server decides: the
+     device's firmware, named by VendorID and ProductID, or on a bridge the bridge's software. The device type only
+     picks the HA domain; the Lighting feature is the precondition `no_lt_feature` already checks. Certification
+     (TC-OO-2.3) tests the call on every Lighting device, but only with OffWaitTime 300, never DeviceSide's 0, the one
+     value matter.js before v0.17.2 never times off (it stays on). HA's registry holds none of VendorID, device types
+     or clusters; the client's node cache does, sync.
+   - **Built** (`claude/device-classes-9-matter`): `integrations/matter/classes.py`, rules on the node cache, first
+     match winning: `uncertified` (a test VendorID), `bridged` (an Aggregator endpoint), `wiz_plug` (4107/8979), and
+     `other`, the default. Unplaced while a node reports no VendorID; None with no node. The call sends OffWaitTime 1
+     (Decision 46). Levels on both adapters: `other` Documented by certification (Decision 48, the rule in
+     `docs/evidence.md`, Levels); `bridged` and `uncertified` `experimental(...)`; `wiz_plug` Verified on
+     `get_attributes` and Documented on `turn_on_for`, as its record ran OffWaitTime 0. No `doesnt_work` entry: no
+     certified Matter device is known to depart, and the call no longer harms matter.js; so no harm refusal, and
+     every untested class runs with Experimental features on.
+   - **Harm test** on each candidate entry: matter.js with OffWaitTime 0 (on, never off: deferred, unattended, harms)
+     is avoided by the call, so it needs no entry; a matter.js restart dropping a running timer (indigo-matter #203)
+     harms too, but only on a restart mid-timer and on a class already untested, so it is named on the card, not
+     refused (Decision 46); a device without the Lighting feature refuses the command, a visible failure, already
+     refused as `no_lt_feature`.
+   - **Lab run (pending):** the WiZ plug on the new call, `turn_on_for` and `get_attributes`, in format 2, so the
+     records carry `wiz_plug`; it lifts `turn_on_for` on `wiz_plug` to Verified and clears the coverage warning.
 10. **Close out.**
     - The house run: Shelly's switch devices, plus the color bulb unless it already ran in the lab.
     - Repeat any run on the list below.
@@ -1061,6 +1082,21 @@ Decisions 36 to 45, 46 to 55 and 56 to 65 are reserved for steps 7, 9 and 8.
     - **Control4's sign-off waits for skialpine's `_manual.json` row;** it is the sixth of v0.1.0's sign-offs
       (TODO.md, evidence.md's Release gate example).
     - **The rc1 audit record is replaced** with base `b025363` once this stack lands (TODO.md, v0.1.0).
+
+## Decisions (Jason, step 9)
+
+Numbered from 46, as step 7's run from 36; renumber at merge if they collide.
+
+46. **Matter's call sends OffWaitTime 1 (0.1 s), not 0.** Certification's TC-OO-2.3 never sends 0, and matter.js
+    before v0.17.2 turns on for it and stays on; with 1, every version times off and the call is the path
+    certification tests. Chosen over refusing test VendorIDs (it refuses working devices and misses matter.js on a
+    real VendorID) and over both (refusal for the restart loss too). Cost: the WiZ plug is rerun, and an Off mid-timer
+    guards for 0.1 s against another `OnWithTimedOff`. `uncertified` stays `experimental(...)`.
+47. **A Matter class keys on VendorID and ProductID,** which name the firmware (tenet 9, Decision 35): the record
+    lifts `wiz_plug` (4107/8979), not every Signify product.
+48. **`other` on Matter is Documented by certification,** on `turn_on_for` and `get_attributes`, as TC-OO-2.3 tests
+    the exact call and its outcome on every certified device, given Decision 46's call; with OffWaitTime 0 it would
+    have been `experimental(...)`. The rule goes in `docs/evidence.md` (Levels), so it gets the Opus audit.
 
 ## Handoff
 

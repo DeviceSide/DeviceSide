@@ -5,3 +5,8 @@ column: Matter
 column_order: 5
 capabilities:
   light: {phrase: lights, section: Matter lights}
+  # The classes integrations/matter/classes.py names.
+  wiz_plug: {phrase: WiZ Smart Plug, section: WiZ Smart Plug}
+  other: {phrase: certified Matter devices, section: Certified devices}
+  bridged: {phrase: devices behind a Matter bridge, section: Matter bridges}
+  uncertified: {phrase: uncertified Matter devices, section: Uncertified devices}

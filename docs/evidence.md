@@ -57,6 +57,10 @@ item ships only behind `experimental`.
   known class of devices departs. Unit tests pin the payload. A field is never Documented, because it changes the
   call. The PR that claims Documented argues the sibling case, and review checks it. A bug on the Verified sibling
   reopens its Documented siblings in the same fix.
+  A class is also Documented when a certification it is defined by tests DeviceSide's exact call and its outcome on
+  every member, and no known member departs (Matter: certified devices, whose TC-OO-2.3 sends the timer call and
+  checks it ends, [internals](integrations/matter/internals.md#what-decides-the-call)). A call the certification
+  doesn't send, even a field value it never uses, isn't covered.
 
 Nothing ships unflagged unless it is Verified or Documented. Built and unit-tested code that the maintainer can't
 exercise, and that isn't Documented, ships behind `experimental` as untested. A sign-off

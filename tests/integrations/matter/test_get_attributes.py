@@ -11,6 +11,8 @@ from homeassistant.util import dt as dt_util
 from ...conftest import call
 from ...fixtures.matter import NODE_ID, add_matter_entity, matter_device, on_off_or, on_time_reads
 
+WIZ = "wiz_plug"  # the fixture's node: the lab's WiZ Smart Plug
+
 pytestmark = pytest.mark.usefixtures("setup_production")
 
 NOW = datetime(2026, 10, 28, 12, 0, tzinfo=UTC)
@@ -36,7 +38,7 @@ async def test_running_timer_is_read_live(hass, entity_id):
 
     response = await call(hass, "get_attributes", {"entity_id": entity_id})
 
-    assert response == {entity_id: {"timer": timer(12.5)}}
+    assert response == {entity_id: {"capability": WIZ, "timer": timer(12.5)}}
     assert read_attr.await_args_list == [
         mock_call(node_id=NODE_ID, attribute_path=f"{EP}/6/16385"),
         mock_call(node_id=NODE_ID, attribute_path=f"{EP}/6/0"),
@@ -54,7 +56,7 @@ async def test_no_timer_reports_an_empty_row(hass, reads, entity_id):
     read_attr.side_effect, read_attr.return_value = reads.side_effect, reads.return_value
     add_matter_entity(hass, entry, entity_id, endpoint_id=EP)
 
-    assert await call(hass, "get_attributes", {"entity_id": entity_id}) == {entity_id: {}}
+    assert await call(hass, "get_attributes", {"entity_id": entity_id}) == {entity_id: {"capability": WIZ}}
 
 
 async def test_read_error_raises(hass):
@@ -81,4 +83,7 @@ async def test_two_targets_read_in_one_call(hass):
 
     response = await call(hass, "get_attributes", {"entity_id": ["switch.timed", "switch.idle"]})
 
-    assert response == {"switch.timed": {"timer": timer(5.0)}, "switch.idle": {}}
+    assert response == {
+        "switch.timed": {"capability": WIZ, "timer": timer(5.0)},
+        "switch.idle": {"capability": WIZ},
+    }

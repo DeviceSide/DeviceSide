@@ -7,7 +7,8 @@ follows what the adapter reads at runtime:
     hass.config_entries.async_loaded_entries("matter")[0]
         .runtime_data.adapter.matter_client
             .get_node(node_id) -> mock_node
-                .node_data.attributes["{endpoint_id}/6/65532"] -> int feature_map
+                .node_data.attributes: the endpoint's OnOff FeatureMap ("{endpoint_id}/6/65532") and Basic
+                    Information's VendorID and ProductID ("0/40/2", "0/40/4"), a WiZ Smart Plug's unless given
             .send_device_command(node_id, endpoint_id, command) -> None  (AsyncMock)
             .read_attribute(node_id, attribute_path) -> {attribute_path: value}  (AsyncMock; OnOff on, OnTime the
                 last command's onTime, else 1)
@@ -29,13 +30,27 @@ _MATTER_DOMAIN = "matter"
 FABRIC_HEX = "0000000000000001"
 NODE_HEX = "0000000000000002"
 NODE_ID = int(NODE_HEX, 16)
+# The lab's WiZ Smart Plug (zigbee2mqtt/research/2026-11-14-lab-probe.md): the `wiz_plug` class.
+WIZ_VENDOR_ID, WIZ_PRODUCT_ID = 4107, 8979
 
 
-def make_node_mock(endpoint_id: int, feature_map: int = 0x0001) -> MagicMock:
-    """Return a mock MatterNode whose attribute cache holds one endpoint's OnOff FeatureMap."""
+def make_node_mock(
+    endpoint_id: int,
+    feature_map: int = 0x0001,
+    vendor_id: int | None = WIZ_VENDOR_ID,
+    product_id: int | None = WIZ_PRODUCT_ID,
+    attributes: dict | None = None,
+) -> MagicMock:
+    """Return a mock MatterNode whose attribute cache holds one endpoint's OnOff FeatureMap and the node's VendorID
+    and ProductID (left out when None), plus `attributes`."""
     node = MagicMock()
     node.node_id = NODE_ID
-    node.node_data.attributes = {f"{endpoint_id}/6/65532": feature_map}
+    ids = {"0/40/2": vendor_id, "0/40/4": product_id}
+    node.node_data.attributes = (
+        {f"{endpoint_id}/6/65532": feature_map}
+        | {path: value for path, value in ids.items() if value is not None}
+        | (attributes or {})
+    )
     return node
 
 
@@ -55,8 +70,9 @@ def matter_device(
     hass: HomeAssistant,
     endpoint_id: int = 1,
     feature_map: int = 0x0001,
+    **node: object,
 ) -> tuple[MockConfigEntry, AsyncMock, AsyncMock]:
-    """A loaded Matter config entry whose matter_client is fully mocked.
+    """A loaded Matter config entry whose matter_client is fully mocked; `node` goes to make_node_mock.
 
     Returns (entry, send_device_command mock, read_attribute mock).
     """
@@ -69,7 +85,7 @@ def matter_device(
 
     read_attr = AsyncMock(side_effect=read)
 
-    node_mock = make_node_mock(endpoint_id, feature_map)
+    node_mock = make_node_mock(endpoint_id, feature_map, **node)
 
     client = MagicMock()
     client.get_node.return_value = node_mock
