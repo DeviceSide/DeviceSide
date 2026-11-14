@@ -146,12 +146,14 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      its own rule. A one-off test bulb lifts its maker's class, never `other` (Decision 5).
    - Rules are data, so a later probe changes rule data, not structure.
    - Scopes as planned. `turn_on_for` refuses the Tuya classes as not supported. `sengled` on `turn_on_for` is not
-     supported if the probe confirms it ignores 0x42. The TS011F's entry follows Decision 3.
+     supported if the probe confirms it ignores 0x42. The TS011F's entry follows Decision 8.
    - Once the probe's outcome settles the TS011F's entry, update the docs that depend on it: `docs/evidence.md`'s
-     tenets example, the `docs/integrations.md` Zigbee plugs line and the `docs/models.yaml` reason.
-   - **Open question:** what `capability()` returns for a Z2M device before the first `bridge/devices` after a
-     connect. It stays open until the registry-strings probe shows whether HA's device registry already holds the
-     Tuya model string; if it doesn't, bring it to Jason.
+     tenets example, the `docs/integrations.md` Zigbee plugs line and the `docs/models.yaml` reason, then regenerate
+     `docs/device-compatibility.md`. Their "never switches on" is disproven: a `_TZ3000_typdpbpg` plug switched on
+     106 s after a 10 s request on ZHA.
+   - **Open question, Jason's call:** what `capability()` returns for a Z2M device before the first `bridge/devices`
+     after a connect. The probe answered the precondition: HA's device registry holds no Tuya strings for a Z2M
+     device, only Z2M's definition (`TS011F_plug_1`) (`docs/integrations/zigbee2mqtt/internals.md`).
    - **Lab run** on the branch tip, with the Sengled. It tests the classifier, the column, the coverage check, Works
      credited per class, and the refusals.
 6. **Core fix-ups** from step 5's run, before ZHA and Hue copy the pattern. If a package changes, its lab run is
@@ -538,29 +540,17 @@ A package changed after its lab run needs that run again before the release. Non
 
 ## Handoff
 
-2026-11-14, step 3 lab probe, mid-run. Branch `wt/device-classes-3` (off `claude/device-classes-3-lab-probe`),
-worktree `deviceside-wt/device-classes-3`, draft PR #423.
+2026-11-14, step 3 done. Branch `wt/device-classes-3`, worktree `deviceside-wt/device-classes-3`, PR #423.
 
-**Done:** §1 registry strings (all networks, groups bar the Hue room's member count), §2 TS011F (Z2M C1, C2, C5, C6,
-C7; a second TS011F on ZHA, C5 and C1), §4 Sengled on Z2M (registry, C1, C2, C5, C6: it ignores 0x42 in every form).
-Written up in `docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md` (dated, not to be edited again), with
-the §5 facts in `docs/internals.md`, each bundle's `internals.md`, and the TS011F's ids in `docs/models.yaml`. Raw
-outputs, deviations and scripts: the gitignored `notes/lab-probe-2026-11-14/` (`findings.md` first; rig commands
-there use absolute paths). Decision rule 2: the TS011F is `tuya_zcl`.
+**Done:** the lab probe, written up in `docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md` and
+`docs/integrations/hue/research/2026-11-14-lab-probe-hue.md`, with the facts in `docs/internals.md`, each bundle's
+`internals.md` and `docs/models.yaml`; Decisions 8 and 9; the step's plan review (in its last commit).
 
-**Next:**
-1. Add the Sengled back to the lab ZHA group (the house profile's group case needs it). The rig is out of bounds
-   until Monday 2026-11-16 (Jason); then `notes/lab-probe-2026-11-14/zha_group_add_sengled.py` does it under
-   `--hold zha`, with Jason's yes if the restrictor is still on. It doesn't block step 3's docs.
-2. Step 5 adds the Sengled to `docs/models.yaml` with its card section (gen_compat needs a heading for each model).
-3. Then step 3 is done: its last commit's "Plan review" note, mark #423 ready per the plan's execution model.
+**Next:** step 4 (core), on a new branch off this one.
 
-Since the last handoff: the Sengled doesn't pair with the Hue bridge; Hue rooms have a device entry
-(`Room`/`Zone`) and every member resolves, correcting §1's row (`hue/research/2026-11-14-lab-probe-hue.md`); the
-Sengled is back on ZHA, strings unchanged; Z2M logging is back at `warning`.
-
-**Settled since:** Decisions 8 and 9 (the TS011F entry, no re-pair); `docs/internals.md` and TODO updated.
-
-**Open for Jason:** step 5's open question has its answer from the probe. HA's registry holds no Tuya strings for a
-Z2M device (only `TS011F_plug_1`, Z2M's definition), so what `capability()` returns before the first
-`bridge/devices` is Jason's call. A rig journal from an earlier aborted run needs `--recover` (holds every lock).
+**Open:**
+- The Sengled is in the house profile, which is out of bounds until Monday 2026-11-16, so it can't join step 5's lab
+  run until it's back in the lab. Its return to the lab ZHA group is unconfirmed: a group-add call timed out and
+  wasn't checked. Jason checks the group's members before the next ZHA group case. Working notes: the gitignored
+  `notes/lab-probe-2026-11-14/`.
+- Step 5's open question (above) is Jason's call.

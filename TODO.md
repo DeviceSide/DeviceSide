@@ -38,19 +38,22 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
 - [ ] **Device classes**, one PR per step of the [plan](docs/plans/2026-11-14-device-classes.md), before the
   sign-offs below, as it moves non-Hue bulbs on Zigbee2MQTT, ZHA and Hue behind `experimental`:
   - [x] 1. Rules and design, docs only (`docs/evidence.md`, `docs/design.md`).
-  - [ ] 2. Rig (ha-rig): the records' Capability column (its format in `docs/evidence.md`, and `gen_compat`'s parser
-    taking it, land in DeviceSide alongside); Shelly rerun on it.
-  - [ ] 3. Core: `IntegrationInfo.capability`, `doesnt_work`, `not_supported` (and `docs/integrations.md`'s mention);
+  - [x] 2. The records' Capability column (ha-rig #84; its format in `docs/evidence.md` and `gen_compat`'s parser).
+  - [x] 3. Lab probe: registry strings, the TS011F, the Sengled
+    ([results](docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md)).
+  - [ ] 4. Core: `IntegrationInfo.capability`, `doesnt_work`, `not_supported` (and `docs/integrations.md`'s mention);
     Shelly moves to it; `gen_compat`'s tiers and coverage check; `_manual.md`'s Capabilities column in `check_release`;
     "one fact, one home, in code" in `docs/evidence.md`, with CLAUDE.md's devices.yaml row; the Not yet supported tier
     on `docs/device-compatibility.md`; how a group test or a manual row credits
     the classes it lists; the Capability column's "until that lands" clause in `docs/evidence.md`; the class in each
     result (plan Decision 6), then the rig reads it; `other` never Verified (Decision 5).
-  - [ ] 4. Zigbee2MQTT classes, after the TS011F probe and the Tuya detection probe; rig rerun.
-  - [ ] 5. ZHA classes; rig rerun.
-  - [ ] 6. Hue classes, the `bridge_v1` and `smart_scene` checks moved to them; rig rerun.
-  - [ ] 7. Matter classes; manual or rig sign-off.
-  - [ ] 8. Close out: `models.yaml`'s shared `doesnt_work` removed, README regenerated, then the #350 comment.
+  - [ ] 5. Zigbee2MQTT classes; lab run.
+  - [ ] 6. Core fix-ups from step 5's run.
+  - [ ] 7. ZHA classes; lab run.
+  - [ ] 8. Hue classes, the `bridge_v1` and `smart_scene` checks moved to them; lab run.
+  - [ ] 9. Matter classes; lab run.
+  - [ ] 10. Close out: the house run (Shelly on the Capability column), `models.yaml`'s shared `doesnt_work` removed,
+    README regenerated, then the #350 comment.
 - [ ] **TS011F refusal on ZHA and Z2M** (device-classes plan, Decision 8): a `doesnt_work` entry for today's
   `turn_on_for` call, holding with Experimental on. Without it, ZHA's 0x42 in tenths switches a `_TZ3000_typdpbpg`
   plug on about 10× later than asked, and Z2M leaves the plug on with no timer
