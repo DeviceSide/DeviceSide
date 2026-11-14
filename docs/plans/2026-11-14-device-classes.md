@@ -355,8 +355,10 @@ placeholders, typed at run time and never written down.
    {%- set d = device_id('<entity>') %}
    {{ 'yes' if d else 'no' }} | {{ device_attr(d, 'manufacturer') if d else '' }} | {{ device_attr(d, 'model') if d else '' }}
    ```
-   Members resolve when DeviceSide's `get_attributes` on the group answers for each member: record yes or no and the
-   count, never the entities. Z2M registers its groups with manufacturer `Zigbee2MQTT` and model `Group`. No group
+   Members resolve when each member the group's own page lists (the Z2M frontend's group page, ZHA's group page, the
+   Hue app's room) has a device entry in HA, found by the same template on the member's light entity. Record yes or no
+   and the count, never the entities. DeviceSide's `get_attributes` can't show this: on Z2M a group answers as one
+   averaged entry. Z2M registers its groups with manufacturer `Zigbee2MQTT` and model `Group`. No group
    IDs.
 
    | Network | Group | Has a device entry | manufacturer | model | Members resolve (count) |
