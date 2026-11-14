@@ -106,7 +106,11 @@ raises or the entity is skipped.
   data. A target's is `capability` (a string: `"RGBCCT"`); a native group's is `capabilities`, its members' classes
   once each, sorted (a list: `["hue", "other"]`). The key is absent when the integration couldn't name one, or named
   it only provisionally (a device not yet [placed](design.md#glossary)), for a group when that holds for any member,
-  so a list always stands for the whole group and never for a class that could still move.
+  so a list always stands for the whole group and never for a class that could still move. A native group's entry
+  also carries `member_capabilities`, each member's entity_id to its class (a map:
+  `{"light.one": "hue", "light.two": "other"}`), as the one call reached each member. A member with no class, or
+  only a provisional one, is left out of it, and only that member, so a group with one member not yet placed still
+  names the rest; the key is absent when no member has a class.
 
 ## Replacing hue_dimmer
 

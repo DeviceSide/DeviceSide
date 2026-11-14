@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from collections import deque
-from dataclasses import replace
+from dataclasses import dataclass, replace
 
 from homeassistant.const import ATTR_ENTITY_ID, ENTITY_MATCH_ALL, STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, State, split_entity_id
@@ -32,16 +32,39 @@ def _available(state: State | None) -> bool:
 # integration couldn't name, and an Unplaced one for one it named from partial information. A tuple, one entry per
 # member as capability() returned it: an Unplaced class equals its plain class, so a set would drop the flag.
 type Classes = tuple[str | None, ...]
-# One execute: the adapter, the request its targets get, the targets, the fields dropped, and each target's classes.
-type Run = tuple[Adapter, Request, list[Target], frozenset[str], dict[str, Classes]]
 
 
-def _classed(result: EntityResult, target: Target, classes: Classes) -> EntityResult:
+@dataclass(frozen=True, slots=True)
+class Reached:
+    """What a target's call reaches, for planning and its result: its Classes, and for a native group whose members'
+    classes are known, each member's reported_id, paired by position with `classes`. `members` is empty for any
+    other target, and for a group whose classes are unknown, (None,): its membership unlisted, or its classifier
+    raised."""
+
+    classes: Classes
+    members: tuple[str, ...] = ()
+
+
+# One execute: the adapter, the request its targets get, the targets, the fields dropped, and what each reaches.
+type Run = tuple[Adapter, Request, list[Target], frozenset[str], dict[str, Reached]]
+
+
+def _placed(name: str | None) -> bool:
+    return name is not None and not isinstance(name, Unplaced)
+
+
+def _classed(result: EntityResult, target: Target, reached: Reached) -> EntityResult:
     """The result with the class the call reached (docs/action-behavior.md, What a response looks like): a
     target's, or a native group's members', sorted and each once. None when the integration couldn't name one or
     named it Unplaced, for a group any member's, so a group's list never passes for its whole membership, nor a
-    class that could still move for a known one."""
-    if not classes or any(name is None or isinstance(name, Unplaced) for name in classes):
+    class that could still move for a known one. A native group also gets each member's class (plan Decision 66),
+    every member with one: the members the integration couldn't place are left out, and only they."""
+    classes = reached.classes
+    if target.is_group and (
+        by_member := {member: name for member, name in zip(reached.members, classes, strict=False) if _placed(name)}
+    ):
+        result = replace(result, member_classes=dict(sorted(by_member.items())))
+    if not classes or not all(_placed(name) for name in classes):
         return result
     if target.is_group:
         return replace(result, classes=tuple(sorted(set(classes))))
@@ -220,7 +243,7 @@ class Dispatcher:
         of its members was planned or left nothing to do (each refused, gated or unavailable) is the group itself
         refused, with its reason, raised if named, once every target is judged."""
         by_dropped: dict[frozenset[str], list[Target]] = {}
-        classes: dict[str, Classes] = {}
+        reached: dict[str, Reached] = {}
         pending = deque(targets)
         seen = {target.reported_id for target in pending}
         # Each group that fell back, its members and the reason it would be refused with; the targets that answer.
@@ -239,11 +262,13 @@ class Dispatcher:
                 # an entity the caller didn't target (Target.addressable). Its class's refusal comes first, so a
                 # member whose class harms says so. It stands for its whole device, listed by an entity that may not
                 # be the one the group holds, so the skip names the device by it, with no address.
-                reason, why = adapter.scope.refusal(self._classes(adapter, target, None)) or (
+                reason, why = adapter.scope.refusal(self._reached(adapter, target, None).classes) or (
                     Reason.NOT_ADDRESSABLE,
                     None,
                 )
-                results += _skip(f"the device of {target.reported_id}", target.named, reason, adapter.integration, why)
+                results += _skip(
+                    f"the device of {target.reported_id}", target.named, reason, adapter.integration, why, title
+                )
                 continue
             if reason := adapter.supports(self.hass, reduced, target):
                 results += _skip(target.reported_id, target.named, reason, adapter.integration, title=title)
@@ -253,11 +278,12 @@ class Dispatcher:
                 # Core's group expansion yields nothing for an empty group, so it is skipped silently.
                 results += _skip(target.reported_id, target.named, Reason.EMPTY_GROUP)
                 continue
-            classes[target.reported_id] = found = self._classes(adapter, target, members)
+            reached[target.reported_id] = here = self._reached(adapter, target, members)
+            found = here.classes
             if reduced.nothing_to_do():
                 answered.add(target.reported_id)
                 results.append(
-                    _classed(adapter.result(target, Status.UNCHANGED, detail="fields_dropped"), target, found)
+                    _classed(adapter.result(target, Status.UNCHANGED, detail="fields_dropped"), target, here)
                 )
             elif refused := adapter.scope.refusal(found):
                 # A native group falls back to its members, each judged alone: the good ones run, a refused one is
@@ -282,7 +308,7 @@ class Dispatcher:
                 answered.add(target.reported_id)
                 by_dropped.setdefault(dropped, []).append(target)
         results += _unanswered(adapter, fallen, answered, title)
-        return [(adapter, request.without(dropped), ready, dropped, classes) for dropped, ready in by_dropped.items()]
+        return [(adapter, request.without(dropped), ready, dropped, reached) for dropped, ready in by_dropped.items()]
 
     def _experimental(self, adapter: Adapter, request: Request, target: Target, classes: Classes) -> bool:
         """Whether the call is flagged experimental: the whole adapter (`experimental=True`), or an Experimental item
@@ -307,23 +333,30 @@ class Dispatcher:
             return None
         return self._members(adapter, target)
 
-    def _classes(self, adapter: Adapter, target: Target, members: list[Target] | None) -> Classes:
-        """The target's class, or a native group's members' classes (`members`, as _listed gives them), as
-        IntegrationInfo.capability names them; empty for an integration that names none. A group whose members can't
-        be listed, and a classifier that raised (logged), give (None,), which the gate weighs as Experimental, as an
-        unknown device, and which, where the call harms a class, the scope refuses (AdapterScope.refusal)."""
+    def _reached(self, adapter: Adapter, target: Target, members: list[Target] | None) -> Reached:
+        """The target's class, or a native group's members' classes (`members`, as _listed gives them) beside each
+        member's reported_id, as IntegrationInfo.capability names them; no classes for an integration that names
+        none. A group whose members can't be listed, and a classifier that raised (logged), give (None,), which the
+        gate weighs as Experimental, as an unknown device, and which, where the call harms a class, the scope refuses
+        (AdapterScope.refusal)."""
         if (capability := self.registry.integrations[adapter.integration].capability) is None:
-            return ()
+            return Reached(())
+        listed = (members or []) if target.is_group else [target]
         try:
-            listed = (members or []) if target.is_group else [target]
-            # Keep each member's class as capability() returned it, never deduplicated: an Unplaced class equals its
-            # plain class, so a set would merge it with a placed member's and lose the flag the harm check reads.
-            found: Classes = tuple(capability(self.hass, member) for member in listed) or (None,)
+            # Keep each member's class as capability() returned it, in order, never deduplicated: an Unplaced class
+            # equals its plain class, so a set would merge it with a placed member's and lose the flag the harm check
+            # reads, and the order pairs each class with its member.
+            found: Classes = tuple(capability(self.hass, member) for member in listed)
         except Exception:  # noqa: BLE001 - a classifier's bug must not abort the call: the class counts as unknown
             _LOGGER.exception("%s on %s: classing %s failed", adapter.action, adapter.integration, target.reported_id)
-            found = (None,)
-        _LOGGER.debug("%s on %s: %s is class %s", adapter.action, adapter.integration, target.reported_id, found)
-        return found
+            found = ()
+        _LOGGER.debug(
+            "%s on %s: %s is class %s", adapter.action, adapter.integration, target.reported_id, found or (None,)
+        )
+        if not found:
+            return Reached((None,))
+        ids = tuple(member.reported_id for member in listed) if target.is_group else ()
+        return Reached(found, ids)
 
     def _members(self, adapter: Adapter, target: Target) -> list[Target] | None:
         """A native group's members, as the integration's expand_group lists them; None, membership unknowable, when it
@@ -375,7 +408,7 @@ class Dispatcher:
         request: Request,
         targets: list[Target],
         dropped: frozenset[str],
-        classes: dict[str, Classes],
+        reached: dict[str, Reached],
     ) -> list[EntityResult]:
         clamped_to = None
         if isinstance(request, TimedRequest):
@@ -398,7 +431,7 @@ class Dispatcher:
         except Exception:
             _LOGGER.exception("%s on %s failed", adapter.action, adapter.integration)
             return [adapter.result(target, Status.REJECTED, detail="error") for target in targets]
-        return self._reconcile(adapter, targets, raw, clamped_to, dropped, classes)
+        return self._reconcile(adapter, targets, raw, clamped_to, dropped, reached)
 
     def _reconcile(
         self,
@@ -407,7 +440,7 @@ class Dispatcher:
         raw: list[EntityResult],
         clamped_to: float | None,
         dropped: frozenset[str],
-        classes: dict[str, Classes],
+        reached: dict[str, Reached],
     ) -> list[EntityResult]:
         """One result per target: stray ones dropped, missing ones rejected. A run the dispatcher dropped fields
         from says so in detail, unless the adapter gave one. Each carries the class the call reached."""
@@ -428,6 +461,6 @@ class Dispatcher:
                     result = replace(result, detail="fields_dropped")
                 if clamped_to is not None and result.clamped_to is None:
                     result = replace(result, clamped_to=clamped_to)
-                result = _classed(result, target, classes[target.reported_id])
+                result = _classed(result, target, reached[target.reported_id])
             out.append(result)
         return out

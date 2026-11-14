@@ -146,17 +146,24 @@ class EntityResult:
     # target's, or a native group's members', sorted. The dispatcher sets it, and leaves it None when it couldn't
     # name one, or named one not yet placed (for a group: any member's).
     classes: str | tuple[str, ...] | None = None
+    # A native group's members' classes, each member's entity_id to its class (plan Decision 66), set by the
+    # dispatcher beside `classes`: a member it couldn't name, or named not yet placed, is left out, and only it.
+    member_classes: dict[str, str] | None = None
     clamped_to: float | None = None
     detail: str | None = None
     data: dict | None = None
 
     def class_keys(self) -> dict[str, Any]:
-        """The class the call reached, as a response carries it: a target's `capability`, a group's `capabilities`."""
-        if self.classes is None:
-            return {}
+        """The class the call reached, as a response carries it: a target's `capability`, a group's `capabilities`
+        and `member_capabilities`."""
+        keys: dict[str, Any] = {}
         if isinstance(self.classes, str):
-            return {"capability": self.classes}
-        return {"capabilities": list(self.classes)}
+            keys["capability"] = self.classes
+        elif self.classes is not None:
+            keys["capabilities"] = list(self.classes)
+        if self.member_classes:
+            keys["member_capabilities"] = dict(self.member_classes)
+        return keys
 
     def as_response(self) -> dict:
         """A command's status entry. A query's response is its data and class alone (dispatcher), so data is never

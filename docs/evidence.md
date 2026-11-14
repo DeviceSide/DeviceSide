@@ -158,13 +158,14 @@ varied integration, sets the bar. Classes match on manufacturer and model until 
 
 Every class an adapter's scope holds as Verified needs a passing record test, or a `_manual.json` row, for that action
 that reached it. A record names the class each test's devices reached, and a manual row each device's. A native group's
-test credits each member's class, from its members' entries, as the one call reached each member (a null one credits
-none; the cards add "native groups", never the members' models). A group with a null-class member is on no card, as
-"native groups" needs every member's class named and unflagged, while its named members still count here; a manual row
-credits every class it lists to every action it passed, so a row whose actions reached different classes is split. A
-scene's test is a group's, its members the scene's lights. A null class credits none, here or on the cards, as does a
-test that didn't pass. `scripts/gen_compat.py` warns on each gap on every PR, so a developer sees it early, and names
-it, for example "zigbee2mqtt turn_on_for: `hue` is Verified but no record reaches it";
+test credits each member's class, from its members' entries (the response's `member_capabilities`,
+[action-behavior.md](action-behavior.md#what-a-response-looks-like)), as the one call reached each member (a null one
+credits none; the cards add "native groups", never the members' models). A group with a null-class member is on no
+card, as "native groups" needs every member's class named and unflagged, while its named members still count here; a
+manual row credits every class it lists to every action it passed, so a row whose actions reached different classes is
+split. A scene's test is a group's, its members the scene's lights. A null class credits none, here or on the cards, as
+does a test that didn't pass. `scripts/gen_compat.py` warns on each gap on every PR, so a developer sees it early, and
+names it, for example "zigbee2mqtt turn_on_for: `hue` is Verified but no record reaches it";
 `scripts/check_release.py --signoffs` fails on it at `cut-release`, with the other release gates. Like every gate, it
 checks that evidence exists, not that it suffices (tenet 7), and it applies to integrations that name classes.
 

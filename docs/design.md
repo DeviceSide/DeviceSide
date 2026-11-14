@@ -227,7 +227,7 @@ runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, 
   Experimental one is refused as `experimental_off` while the option is off, raising its own message for a named
   target. A call left nothing to send is unchanged, not refused.
 - **Results.** Commands answer optionally, per entity: `{status, integration, capability?, clamped_to?, detail?}`
-  (a native group's `capabilities?` in place of `capability?`), where status is
+  (a native group's `capabilities?` and `member_capabilities?` in place of `capability?`), where status is
   `sent`, `confirmed` (read back from the device) or `unchanged` (nothing to send). Queries answer only, in core's
   shape: each target's data under its entity_id, as `weather.get_forecasts` does, the class among it. The class is
   the one the dispatcher used, for an integration that names classes, so a record holds the class a call reached.

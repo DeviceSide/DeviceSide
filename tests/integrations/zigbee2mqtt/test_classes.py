@@ -639,7 +639,10 @@ async def test_a_hue_and_ikea_group_falls_back_while_experimental_is_off(hass, s
     # On: the group runs whole, one command to its group topic, at its weakest member's class.
     broker.published.clear()
     allow_experimental(hass)
-    assert await call_service(hass, "turn_on_for", data) == {entity_id: SENT | {"capabilities": ["hue", "other"]}}
+    assert await call_service(hass, "turn_on_for", data) == {
+        entity_id: SENT
+        | {"capabilities": ["hue", "other"], "member_capabilities": {"light.one": "hue", "light.two": "other"}}
+    }
     assert commands(broker) == [("zigbee2mqtt/7/set", {"state": "ON", "on_time": 5.0})]
 
 
@@ -648,7 +651,9 @@ async def test_a_hue_group_is_verified_on_its_members_class(hass, setup_producti
 
     response = await call_service(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5})
 
-    assert response == {entity_id: SENT | {"capabilities": ["hue"]}}
+    assert response == {
+        entity_id: SENT | {"capabilities": ["hue"], "member_capabilities": {"light.one": "hue", "light.two": "hue"}}
+    }
 
 
 # The Tuya and Sengled classes.

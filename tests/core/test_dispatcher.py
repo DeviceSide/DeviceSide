@@ -235,7 +235,8 @@ async def test_elsewhere_a_class_not_yet_placed_is_the_class_it_names(hass, fake
 @pytest.mark.usefixtures("classed")
 async def test_a_group_with_a_member_not_yet_placed_reports_no_capabilities(hass, fake, reset_script):
     """Run whole where no call harms a class, the group's list leaves out the provisional class with the rest, as it
-    does a member the integration couldn't name: a list stands only for every member's known class."""
+    does a member the integration couldn't name: a list stands only for every member's known class. Each member's
+    class leaves out only that member (plan Decision 66)."""
     members = ["switch.a", "switch.pending_a"]
     for member in members:
         add_fake_entity(hass, fake, member)
@@ -245,8 +246,58 @@ async def test_a_group_with_a_member_not_yet_placed_reports_no_capabilities(hass
     with patch.object(FakeTurnOffFor, "scope", CLASSED):
         response = await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
 
-    assert response == {"switch.fake_group": {"status": "sent", "integration": "fake"}}
+    assert response == {
+        "switch.fake_group": {"status": "sent", "integration": "fake", "member_capabilities": {"switch.a": "A"}}
+    }
     assert [ids for *_, ids in reset_script.calls] == [["switch.fake_group"]]
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_group_with_a_member_the_integration_cant_name_reports_the_rest(hass, fake, reset_script):
+    """Run whole with Experimental features on, the unnamed member voids the group's list and only its own entry."""
+    members = ["switch.a", "switch.unknown", "light.e"]
+    for member in members:
+        add_fake_entity(hass, fake, member)
+    add_fake_native_group(hass, fake, "switch.fake_group", members)
+    allow_experimental(hass)
+
+    with patch.object(FakeTurnOffFor, "scope", replace(CLASSED, capabilities=verified("A", "E"))):
+        response = await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
+
+    assert response == {
+        "switch.fake_group": {
+            "status": "sent",
+            "integration": "fake",
+            "member_capabilities": {"light.e": "E", "switch.a": "A"},
+        }
+    }
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_group_whose_classifier_raised_reports_no_member_classes(hass, fake, reset_script):
+    add_fake_entity(hass, fake, "switch.a")
+    add_fake_native_group(hass, fake, "switch.fake_group", ["switch.a"])
+    registry = get_runtime(hass).registry
+
+    def fail(hass, target):
+        raise RuntimeError("classifier bug")
+
+    registry.integrations["fake"] = replace(registry.integrations["fake"], capability=fail)
+    allow_experimental(hass)
+
+    with patch.object(FakeTurnOffFor, "scope", CLASSED):
+        response = await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
+
+    assert response == {"switch.fake_group": {"status": "sent", "integration": "fake"}}
+
+
+async def test_a_group_on_an_integration_that_names_no_classes_reports_none(hass, fake, reset_script):
+    add_fake_entity(hass, fake, "switch.a")
+    add_fake_native_group(hass, fake, "switch.fake_group", ["switch.a"])
+
+    response = await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
+
+    assert response == {"switch.fake_group": {"status": "sent", "integration": "fake"}}
 
 
 @pytest.mark.usefixtures("classed")
@@ -372,8 +423,63 @@ async def test_a_native_group_takes_its_members_classes(hass, fake, reset_script
     with patch.object(FakeTurnOffFor, "scope", scope):
         response = await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
 
-    # Sorted, each once.
-    assert response == {"switch.fake_group": {"status": "sent", "integration": "fake", "capabilities": ["A", "E"]}}
+    # Sorted, each once; and each member's, two members of one class each named.
+    assert response == {
+        "switch.fake_group": {
+            "status": "sent",
+            "integration": "fake",
+            "capabilities": ["A", "E"],
+            "member_capabilities": {"light.a": "A", "switch.a": "A", "switch.e": "E"},
+        }
+    }
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_native_group_of_one_class_names_it_once_and_each_member_s(hass, fake, reset_script):
+    members = ["switch.a", "light.a"]
+    for member in members:
+        add_fake_entity(hass, fake, member)
+    add_fake_native_group(hass, fake, "switch.fake_group", members)
+
+    with patch.object(FakeTurnOffFor, "scope", CLASSED):
+        response = await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
+
+    assert response == {
+        "switch.fake_group": {
+            "status": "sent",
+            "integration": "fake",
+            "capabilities": ["A"],
+            "member_capabilities": {"light.a": "A", "switch.a": "A"},
+        }
+    }
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_native_group_left_nothing_to_do_names_its_members_classes(hass, fake, reset_script):
+    """Answered at planning, unchanged, it carries the same keys as one that ran."""
+    onoff = {"supported_color_modes": [ColorMode.ONOFF]}
+    for member in ("light.a", "light.pending_b"):
+        add_fake_entity(hass, fake, member, attributes=onoff)
+    add_fake_entity(
+        hass,
+        fake,
+        "light.fake_group",
+        attributes={"fake_members": ["light.a", "light.pending_b"], **onoff},
+        unique_id="group:light.fake_group",
+    )
+    scope = replace(FakeSetAttributes.scope, capabilities=CLASSED.capabilities, native_groups=True)
+
+    with patch.object(FakeSetAttributes, "scope", scope):
+        response = await call(hass, "set_attributes", {"entity_id": "light.fake_group", "brightness": 50})
+
+    assert response == {
+        "light.fake_group": {
+            "status": "unchanged",
+            "integration": "fake",
+            "detail": "fields_dropped",
+            "member_capabilities": {"light.a": "A"},
+        }
+    }
 
 
 @pytest.mark.usefixtures("classed")
