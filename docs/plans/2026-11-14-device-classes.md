@@ -288,9 +288,11 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      - `color_modes.md`, a probe with two rig cases and no action of its own, moved to Zigbee2MQTT's
        `research/2026-10-28-color-modes.md`: it fit none of the three files, and as a non-rig file in
        `test-records/` it kept Zigbee2MQTT's records from ever signing off.
-     - Format 2 crediting: a model counts toward Works when its own test passed on an unflagged domain and class; a
-       native group's test adds "native groups" (never its members' models, as the group's call isn't theirs) when
-       every member's class is unflagged. Where the integration names classes, a null-class device credits nothing,
+     - Format 2 crediting: a model counts toward Works when its own test passed on an unflagged domain and class. A
+       native group's test credits each member's class, from its members' entries (Jason, 2026-11-14: each member
+       carries its own `class`, no `classes` list on the test; core's `member_capabilities`, #431, gives the rig
+       each member's real class), and adds "native groups" to Works (never its members' models, as the group's call
+       isn't theirs) when every member's class is named and unflagged. Where the integration names classes, a null-class device credits nothing,
        flagged or not. The evidence block lists a classed model with its class, on the row of the weakest level its
        class and its test's domain hold; a null-class one is on no row.
      - Checks: a `pass` record may hold no failing test (the schema); every model any test-records file names, in

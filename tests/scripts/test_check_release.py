@@ -616,6 +616,14 @@ def test_a_format_2_test_credits_its_devices_classes_and_a_group_test_its_member
     assert (cr.reached("fake", "turn_on_for"), cr.reached("fake", "stop")) == ({"hue"}, {"hue", "ikea"})
 
 
+def test_a_group_test_credits_each_members_class_from_its_own_entry(fake_repo, monkeypatch):
+    """A mixed group: each member's class is credited from its own entry, and a null one credits none."""
+    members = (device("LTA009", "1", "hue"), device("LCA001", "1", None), device("LWA012", "1", "other"))
+    classes_record_v2(fake_repo, "stop", ran("light", *members, group=True, role="group"))
+    classed(fake_repo, monkeypatch, stop=SCOPE)
+    assert cr.reached("fake", "stop") == {"hue", "other"}
+
+
 def test_a_failing_record_reaches_nothing_and_a_manual_row_with_a_class_does(fake_repo, monkeypatch):
     classes_record(fake_repo, "turn_on_for", ["hue"], ["ikea"], result="fail")
     sha = fake_repo.commit()

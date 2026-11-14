@@ -792,6 +792,18 @@ def test_a_scenes_test_credits_native_groups_never_its_members(root):
     ]
 
 
+def test_a_mixed_groups_members_credit_coverage_per_class_and_the_card_only_native_groups(root, monkeypatch):
+    # Each member's class from its own entry reaches the coverage check gen_compat warns with; the card gains
+    # "native groups", never the members' models.
+    members = (device("P1", "1", "Switch"), device("LTA009", "2", "Light"))
+    record2(root, "zha", "turn_on_for", ran("light", *members, group=True, role="group"))
+    scope = AdapterScope(capabilities=verified("Switch", "Light", "CCT"))
+    found = classed_registry(adapter("zha", "turn_on_for", scope))
+    assert gc.coverage_gaps(found) == ["zha turn_on_for: `CCT` is Verified but no record reaches it"]
+    card = classed_card(adapter("zha", "turn_on_for", scope))
+    assert card.lines["works"] == [f"[native groups]({URL}#native-groups) ✔"]
+
+
 def test_a_group_test_counts_toward_works_only_when_every_members_class_is_unflagged(root):
     members = (device("P1", "1", "Switch"), device("LTA009", "2", "Light"))
     record2(root, "zha", "turn_on_for", ran("light", *members, group=True, role="group"))
