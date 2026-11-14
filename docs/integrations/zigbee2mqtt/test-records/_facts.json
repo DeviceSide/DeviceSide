@@ -8,6 +8,7 @@
       "test": "halts_a_lower_to_off[light_ct] observed",
       "kind": "observed",
       "result": "pass",
+      "converted": true,
       "devices": [
         {
           "model": "LTA009",

@@ -367,6 +367,17 @@ def test_a_file_that_is_no_json_record_fails_by_name(released, monkeypatch, caps
     )
 
 
+def test_a_dotfile_in_the_records_folder_is_ignored(released):
+    """An editor's or the OS's file (`.DS_Store`, a swap file) is no record, and blocks no sign-off."""
+    change = released.commit(f"{FAKE}/stop.py")
+    write_record(released, "stop.json", change)
+    (released.path / RECORDS / ".DS_Store").write_bytes(b"\0")
+    (released.path / RECORDS / ".stop.json.swp").write_text("x")
+    signoff, why = cr.record_signoff("fake")
+    assert signoff is not None and why is None
+    assert [path.name for path in cr.records("fake")] == ["stop.json"]
+
+
 def test_a_folder_of_rig_records_still_signs_off(released):
     change = released.commit(f"{FAKE}/stop.py")
     write_record(released, "stop.json", change)
@@ -584,7 +595,7 @@ SCOPE = AdapterScope(capabilities=verified("hue", "ikea") | experimental("other"
 
 
 def test_a_verified_class_no_format_1_record_reaches_is_a_gap(fake_repo, monkeypatch):
-    classes_record(fake_repo, "turn_on_for", ["hue"], [], (["ikea"], "fail"))  # a dash or a failing test: none
+    classes_record(fake_repo, "turn_on_for", ["hue"], [])  # a dash: none
     classes_record(fake_repo, "stop", ["hue", "ikea"])  # a group's cell credits each class it lists
     found = classed(fake_repo, monkeypatch, turn_on_for=SCOPE, stop=SCOPE)
     assert cr.coverage_gaps(found) == ["fake turn_on_for: `ikea` is Verified but no record reaches it"]
@@ -596,7 +607,6 @@ def test_a_format_2_test_credits_its_devices_classes_and_a_group_test_its_member
         "turn_on_for",
         ran("light", device("LTA009", "1", "hue")),
         ran("light", device("LWA012", "1", None)),  # a null class credits none
-        ran("light", device("LCA001", "1", "ikea"), result="fail"),
         skipped(),
     )
     members = (device("LTA009", "1", "hue"), device("LCA001", "1", "ikea"))

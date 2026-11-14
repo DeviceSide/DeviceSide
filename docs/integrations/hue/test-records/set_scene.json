@@ -21,13 +21,15 @@
       "id": "sets_while_off[scene]",
       "domain": "scene",
       "role": "scene",
-      "result": "pass"
+      "result": "pass",
+      "group": true
     },
     {
       "id": "applies_while_on[scene]",
       "domain": "scene",
       "role": "scene",
-      "result": "pass"
+      "result": "pass",
+      "group": true
     }
   ]
 }

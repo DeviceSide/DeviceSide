@@ -123,16 +123,43 @@ def test_a_format_2_record_tested_each_passing_tests_devices_with_their_classes(
         "stop",
         ran("light", signify),
         ran("light", device("LCA016", "0x01", "hue"), device("LTA009", "1.2", "hue"), group=True),
-        ran("light", device("LWA012", "3"), result="fail"),  # a failing test tested nothing that counts
         skipped(),
     )
-    assert what_it_tested(path) == [gc.Tested("LTA009", "1.2", "hue"), gc.GROUP]
+    assert what_it_tested(path) == [
+        gc.Tested("LTA009", "1.2", "hue", domain="light"),
+        gc.Tested(None, domain="light"),  # a group
+    ]
 
 
 def test_a_model_a_record_names_must_be_in_models_yaml(root):
     record(root, "zha", "stop", devices=[old_device("NEW1", "1")])
-    with pytest.raises(SystemExit, match="model 'NEW1' is not in docs/models.yaml"):
-        gc.rows(adapter("zha", "stop"), data())
+    with pytest.raises(SystemExit, match="stop.json: model 'NEW1' is not in docs/models.yaml"):
+        gc.check_models(FakeRegistry(), data())
+
+
+@pytest.mark.parametrize(
+    "test",
+    [
+        ran("light", device("NEW2", "1", None)),  # a null class, which credits nothing
+        ran("light", device("NEW2", "1"), result="fail"),  # a failing test
+    ],
+    ids=["null class", "failing"],
+)
+def test_every_model_a_record_names_must_be_in_models_yaml_whether_or_not_it_credits(root, test):
+    record2(root, "zha", "stop", test, result=test["result"])
+    with pytest.raises(SystemExit, match="model 'NEW2' is not in docs/models.yaml"):
+        gc.check_models(FakeRegistry(), data())
+
+
+def test_a_fact_rows_models_must_be_in_models_yaml_and_a_dotfile_is_skipped(root):
+    facts = {"format": 2, "integration": "zha", "facts": [{
+        "date": "2026-11-14", "suite": "stop", "test": "t[r]", "kind": "automated", "result": "pass",
+        "devices": [device("NEW3", "1")],
+    }]}  # fmt: skip
+    write(records_dir(root, "zha") / "_facts.json", facts)
+    (records_dir(root, "zha") / ".DS_Store").write_bytes(b"\0")
+    with pytest.raises(SystemExit, match="_facts.json: model 'NEW3' is not in docs/models.yaml"):
+        gc.check_models(FakeRegistry(), data())
 
 
 @pytest.mark.parametrize(
@@ -200,14 +227,39 @@ def test_each_class_lists_only_the_models_that_reached_it_on_its_levels_row(root
         "turn_on_for",
         ran("switch", device("P1", "1", "Switch"), role="switch_plug"),
         ran("light", device("LTA009", "2", "Light")),
-        ran("light", device("LTA009", "2", None)),  # no class: the first row
+        ran("light", device("LWA012", "2", None)),  # a null class credits nothing: on no row
     )
     scope = AdapterScope(domains=verified("light", "switch"), capabilities=verified("Switch") | experimental("Light"))
     assert gc.rows(adapter("zha", "turn_on_for", scope), data(classed_registry())) == [
         "| `turn_on_for` | Verified | light, switch entities; Switch classes"
-        " | `P1` (`Switch`), firmware `1`<br>`LTA009`, firmware `2`"
+        " | `P1` (`Switch`), firmware `1`"
         " | [record](integrations/zha/test-records/turn_on_for.json) |",
         "| `turn_on_for` | Experimental | Light classes | `LTA009` (`Light`), firmware `2` | |",
+    ]
+
+
+def test_a_tested_model_sits_on_the_row_of_the_weakest_level_its_class_and_domain_hold(root):
+    # Without classes (Hue), the domain decides; with them, the weaker of the class and the domain.
+    record2(
+        root,
+        "hue",
+        "stop",
+        ran("light", device("LTA009", "2")),
+        ran("switch", device("P1", "1"), role="switch_plug"),
+        ran("switch", device("P1", "1"), group=True, role="group"),
+    )
+    scope = AdapterScope(domains=verified("light") | experimental("switch"))
+    assert gc.rows(adapter("hue", "stop", scope), data()) == [
+        "| `stop` | Verified | light entities | `LTA009`, firmware `2`"
+        " | [record](integrations/hue/test-records/stop.json) |",
+        "| `stop` | Experimental | switch entities | `P1`, firmware `1`<br>group | |",
+    ]
+    record2(root, "zha", "stop", ran("switch", device("P1", "1", "Switch"), role="switch_plug"))
+    classed = AdapterScope(domains=verified("light") | experimental("switch"), capabilities=verified("Switch"))
+    assert gc.rows(adapter("zha", "stop", classed), data(classed_registry())) == [
+        "| `stop` | Verified | light entities; Switch classes | none"
+        " | [record](integrations/zha/test-records/stop.json) |",
+        "| `stop` | Experimental | switch entities | `P1` (`Switch`), firmware `1` | |",
     ]
 
 
@@ -254,7 +306,7 @@ def test_a_manual_row_is_evidence_for_the_actions_it_passed(root):
 def test_a_manual_row_names_models_in_models_yaml(root):
     manual_file(root, rows=[signoff(devices=(("NEW", None),), passed=("stop",))])
     with pytest.raises(SystemExit, match="model 'NEW' is not in docs/models.yaml"):
-        gc.rows(adapter("zha", "stop"), data())
+        gc.check_models(FakeRegistry(), data())
 
 
 def test_the_evidence_groups_by_integration_skips_unsupported_pairs_and_lists_what_doesnt_work(root):
@@ -701,6 +753,42 @@ def test_a_mixed_class_format_2_record_puts_under_works_only_the_models_that_rea
     assert classed_card(adapter("zha", "turn_on_for", both)).lines["works"] == [
         f"[Hue lamp]({URL}#hue-lamp) ✔",
         f"[Plug]({URL}#plug) ✔",
+    ]
+
+
+def test_a_null_class_device_never_reaches_works_where_the_integration_names_classes(root):
+    # A Shelly 1 Mini Gen4 whose class the run didn't name: no adapter flag needed to keep it off Works.
+    record2(
+        root,
+        "zha",
+        "turn_on_for",
+        ran("switch", device("P1", "1", None), role="switch_plug"),
+        ran("light", device("LTA009", "1", "Light"), device("P1", "1", None), group=True, role="group"),
+        ran("light", device("LTA009", "2", "Light")),
+    )
+    manual_file(root, rows=[signoff(tester="jasonmx", devices=(("P1", None),), passed=("turn_on_for",))])
+    unflagged = AdapterScope(domains=verified("light", "switch"), capabilities=verified("Switch", "Light"))
+    assert classed_card(adapter("zha", "turn_on_for", unflagged)).lines["works"] == [f"[Hue lamp]({URL}#hue-lamp) ✔"]
+    flagged_domain = AdapterScope(
+        domains=verified("light") | experimental("switch"), capabilities=verified("Light", "Switch")
+    )
+    assert classed_card(adapter("zha", "turn_on_for", flagged_domain)).lines["works"] == [
+        f"[Hue lamp]({URL}#hue-lamp) ✔"
+    ]
+    # An integration that names no classes has only null ones, and they count.
+    record2(root, "hue", "turn_on_for", ran("switch", device("P1", "1"), role="switch_plug"))
+    plain = gc.card("hue", FakeRegistry(), [adapter("hue", "turn_on_for")], data())
+    assert plain.lines["works"] == [f"[Plug]({URL}#plug) ✔"]
+
+
+def test_a_scenes_test_credits_native_groups_never_its_members(root):
+    members = (device("LTA009", "1"), device("P1", "1"))
+    record2(root, "hue", "set_scene", ran("scene", *members, group=True, role="scene"))
+    scope = AdapterScope(domains=verified("scene"))
+    card = gc.card("hue", FakeRegistry(), [adapter("hue", "set_scene", scope)], data())
+    assert card.lines["works"] == [f"[native groups]({URL}#native-groups) ✔"]
+    assert gc.rows(adapter("hue", "set_scene", scope), data()) == [
+        "| `set_scene` | Verified | scene entities | group | [record](integrations/hue/test-records/set_scene.json) |"
     ]
 
 

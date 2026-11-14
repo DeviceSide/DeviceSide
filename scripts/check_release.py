@@ -34,9 +34,9 @@ Test records are JSON, in `docs/integrations/<key>/test-records/`, each checked 
 another integration than its folder's, is an error. A rig record per suite (`<action>.json`, `<action>-<option>.json`,
 read as the action's evidence; another suite's, as `lifecycle.json`, counts only toward the run), `_manual.json`, whose
 rows are manual sign-offs, and `_facts.json`, the fact cases' results, which nothing here reads. Under --signoffs, a
-file there that isn't JSON (a markdown record) is no record, named. A manual row's tester must be one of the
-integration's maintainers or a repo maintainer (`REPO_MAINTAINERS`), and its devices may name a class only on an
-integration that names classes. A record names no tester: review of the PR that lands it checks who ran it.
+file there that isn't JSON (a markdown record) is no record, named; a dotfile is ignored. A manual row's tester must be
+one of the integration's maintainers or a repo maintainer (`REPO_MAINTAINERS`), and its devices may name a class only on
+an integration that names classes. A record names no tester: review of the PR that lands it checks who ran it.
 
 Exits 1 on an integration that failed to import, whatever the options, and on any failure of the checks asked for. A
 git error fails the run rather than pass a gate unseen.
@@ -156,10 +156,15 @@ def load(path: Path) -> dict:
     return data
 
 
+def listed(integration: str) -> list[Path]:
+    """The files in the integration's test-records folder, dotfiles (an editor's or the OS's) left out."""
+    folder = test_records_dir(integration)
+    return sorted(path for path in folder.glob("*") if path.is_file() and not path.name.startswith("."))
+
+
 def records(integration: str) -> list[Path]:
     """The integration's rig records, every suite's: the JSON files not named with a leading `_`."""
-    folder = test_records_dir(integration)
-    return sorted(path for path in folder.glob("*.json") if not path.name.startswith("_"))
+    return [path for path in listed(integration) if path.suffix == ".json" and not path.name.startswith("_")]
 
 
 def passing(integration: str, action: str) -> list[Path]:
@@ -249,7 +254,7 @@ class SignOff:
     source: str  # the records' folder, or the manual row as `<file>:<line>`
     commit: str  # a manual row's commit; a record's most common one, for the printout
     tester: str | None = None  # a manual row's handle; a record names none
-    tree: str | None = None  # a record's cited Package tree, which it is checked by; a manual row has none
+    tree: str | None = None  # the package tree a record cites (`package`), its check; a manual row has none
 
 
 @dataclass(frozen=True)
@@ -286,9 +291,9 @@ def last_change(integration: str, base: str | None) -> str | None:
 def record_signoff(integration: str) -> tuple[SignOff | None, str | None]:
     """The integration's test records as one sign-off when they are one passing run of format 2, every record citing
     the same package tree; else None and why not, or no reason when there are no records. A file in the folder that
-    isn't JSON is no record, and stops the sign-off."""
+    isn't JSON is no record, and stops the sign-off; a dotfile is none of the run's."""
     folder = test_records_dir(integration)
-    if foreign := sorted(path.name for path in folder.glob("*") if path.is_file() and path.suffix != ".json"):
+    if foreign := [path.name for path in listed(integration) if path.suffix != ".json"]:
         return None, (
             f"{', '.join(foreign)}: not test records, which are JSON (docs/test-records.schema.json); probe findings go"
             " in internals.md, manual sign-offs in _manual.json"
@@ -330,7 +335,7 @@ def manual_signoffs(
 
 def rejection(signoff: SignOff, integration: str) -> str | None:
     """Why the sign-off doesn't hold the integration's package as HEAD does, or None when it does. A record is
-    checked by its Package tree, a manual row by its commit, which must be in this checkout."""
+    checked by the package tree it cites, a manual row by its commit, which must be in this checkout."""
     if signoff.tree:
         if not git("rev-parse", f"HEAD:{package(integration)}").startswith(signoff.tree):
             return f"{signoff.source} at package {signoff.tree}: the package differs from HEAD's"

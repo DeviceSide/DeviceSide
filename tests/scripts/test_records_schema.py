@@ -15,7 +15,7 @@ STEPS = cr.REPO / "tests"
 
 
 def files():
-    return sorted(cr.BUNDLES.glob("*/test-records/*"))
+    return [path for folder in sorted(cr.BUNDLES.glob("*/test-records")) for path in cr.listed(folder.parent.name)]
 
 
 def test_the_schema_is_a_valid_json_schema():
@@ -68,7 +68,7 @@ FACTS = {
             "test": "takes_the_bounds[switch_plug]",
             "kind": "automated",
             "result": "pass",
-            "devices": [{"model": "S3SW-001X8EU", "firmware": "1", "class": "Switch"}],
+            "devices": [{"model": "S3SW-001X8EU", "manufacturer": None, "firmware": "1", "class": "Switch"}],
         }
     ],
 }
@@ -91,9 +91,33 @@ def changed(data, change):
     return data
 
 
-def test_a_converted_fact_row_may_lack_a_class_and_keep_a_name():
+def test_a_converted_fact_row_says_so_lacks_a_class_and_keeps_a_name():
+    """A row converted from _facts.md has no manufacturer or class; one the rig writes has both, so it says which."""
     row = {"model": "S3SW-001X8EU", "name": "Shelly 1 Mini Gen3", "firmware": "1"}
-    assert errors(changed(FACTS, lambda d: d["facts"][0].update(devices=[row]))) == []
+    assert errors(changed(FACTS, lambda d: d["facts"][0].update(converted=True, devices=[row]))) == []
+    assert "'class' is a required property" in errors(changed(FACTS, lambda d: d["facts"][0].update(devices=[row])))
+    classed = changed(FACTS, lambda d: d["facts"][0].update(converted=True))
+    assert any("should not be valid" in message for message in errors(classed))
+
+
+def test_a_passing_record_holds_no_failing_test():
+    """A record's result is its tests': a pass with a failing test would sign off a run that failed."""
+    failing = changed(RECORD, lambda d: d["tests"][0].update(result="fail"))
+    assert any("is not one of ['pass', 'skipped', 'not observed']" in message for message in errors(failing))
+    assert errors(changed(failing, lambda d: d.update(result="fail"))) == []
+    assert errors(changed(OLD, lambda d: d["tests"][0].update(result="fail"))) != []  # format 1 alike
+
+
+def test_a_scenes_test_is_a_groups():
+    """A scene's one call is the scene's, not its members' (Decision 27), so its test carries `group`."""
+    scene = {"id": "t[scene]", "domain": "scene", "role": "scene", "result": "pass", "devices": [HUE]}
+    assert "'group' is a required property" in errors(changed(RECORD, lambda d: d["tests"].append(scene)))
+    assert errors(changed(RECORD, lambda d: d["tests"].append(scene | {"group": True}))) == []
+    old = {"id": "t[scene]", "domain": "scene", "role": "scene", "result": "pass"}
+    assert "'group' is a required property" in errors(changed(OLD, lambda d: d["tests"].append(old)))
+    assert errors(changed(OLD, lambda d: d["tests"].append(old | {"group": True}))) == []
+    unrun = {"id": "t[scene]", "role": "scene", "result": "skipped", "reason": "none in the profile"}
+    assert errors(changed(RECORD, lambda d: d["tests"].append(unrun))) == []
 
 
 def test_a_manufacturer_is_a_string_or_null():

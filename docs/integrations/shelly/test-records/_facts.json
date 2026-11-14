@@ -8,6 +8,7 @@
       "test": "takes_the_bounds[switch_plug]",
       "kind": "automated",
       "result": "pass",
+      "converted": true,
       "devices": [
         {
           "model": "S3SW-001X8EU",
@@ -22,6 +23,7 @@
       "test": "takes_the_bounds[switch_plug]",
       "kind": "automated",
       "result": "pass",
+      "converted": true,
       "devices": [
         {
           "model": "S3SW-001X8EU",
@@ -36,6 +38,7 @@
       "test": "turn_on_for_shorter_wins_per_call[switch_plug]",
       "kind": "automated",
       "result": "pass",
+      "converted": true,
       "devices": [
         {
           "model": "S3SW-001X8EU",
@@ -50,6 +53,7 @@
       "test": "turn_on_for_longer_wins_per_call[switch_plug]",
       "kind": "automated",
       "result": "pass",
+      "converted": true,
       "devices": [
         {
           "model": "S3SW-001X8EU",
@@ -64,6 +68,7 @@
       "test": "countdown_survives_a_clear[switch_plug]",
       "kind": "automated",
       "result": "pass",
+      "converted": true,
       "devices": [
         {
           "model": "S3SW-001X8EU",

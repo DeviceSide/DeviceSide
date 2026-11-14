@@ -30,7 +30,7 @@
         "integration": {"$ref": "#/$defs/integration"},
         "action": {"description": "The action the suite tests: its step file's `action`.", "$ref": "#/$defs/action"},
         "options": {"description": "The step file's `options`, sorted; absent when it has none.", "type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}},
-        "result": {"description": "pass when every test passed or was skipped.", "enum": ["pass", "fail"]},
+        "result": {"description": "pass when no test failed; a pass record whose tests hold a fail is invalid.", "enum": ["pass", "fail"]},
         "date": {"$ref": "#/$defs/date"},
         "source": {
           "type": "object",
@@ -47,6 +47,12 @@
         "tests": {"type": "array", "minItems": 1, "items": true}
       },
       "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {"properties": {"result": {"const": "pass"}}},
+          "then": {"properties": {"tests": {"items": {"properties": {"result": {"description": "A pass record holds no failing test.", "enum": ["pass", "skipped", "not observed"]}}}}}}
+        }
+      ],
       "if": {"properties": {"format": {"const": 1}}},
       "then": {
         "required": ["devices"],
@@ -88,7 +94,12 @@
       },
       "allOf": [
         {"if": {"required": ["reason"]}, "then": {"properties": {"result": {"const": "skipped"}}}},
-        {"if": {"required": ["fact"]}, "then": {"properties": {"result": {"const": "skipped"}}}}
+        {"if": {"required": ["fact"]}, "then": {"properties": {"result": {"const": "skipped"}}}},
+        {
+          "description": "A scene's test is a group's: the one call is the scene's, not its members' (device-classes plan, Decision 27).",
+          "if": {"properties": {"role": {"const": "scene"}, "result": {"not": {"const": "skipped"}}}, "required": ["role", "result"]},
+          "then": {"required": ["group"]}
+        }
       ]
     },
 
@@ -97,6 +108,7 @@
       "$ref": "#/$defs/test_common",
       "unevaluatedProperties": false,
       "properties": {
+        "group": {"description": "The target was a native group or a scene; added in conversion for a scene's test, whose devices are the record's.", "const": true},
         "classes": {"description": "The markdown's Capability cell: the classes a passing test reached (a group's members', each once), empty for a dash; absent when the record had no Capability column.", "type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
       }
     },
@@ -106,7 +118,7 @@
       "$ref": "#/$defs/test_common",
       "unevaluatedProperties": false,
       "properties": {
-        "group": {"description": "The target was a native group: devices are its members, each with its manufacturer and class.", "const": true},
+        "group": {"description": "The target was a native group, or a scene (whose test always carries it): devices are its members, each with its manufacturer and class.", "const": true},
         "devices": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/test_device"}}
       },
       "if": {"properties": {"result": {"const": "skipped"}}},
@@ -193,12 +205,16 @@
         "test": {"description": "The case's id.", "type": "string", "minLength": 1},
         "kind": {"description": "How the fact was seen: automated (a firmware fact's case that passed or failed) or observed (a watched case a person answered).", "enum": ["automated", "observed"]},
         "result": {"enum": ["pass", "fail"]},
+        "converted": {"description": "The row was converted from _facts.md (device-classes plan, step 5b): its devices have no manufacturer or class, and keep the name their record gave the model.", "const": true},
         "devices": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/fact_device"}}
-      }
+      },
+      "if": {"required": ["converted"]},
+      "then": {"properties": {"devices": {"items": {"not": {"anyOf": [{"required": ["manufacturer"]}, {"required": ["class"]}]}}}}},
+      "else": {"properties": {"devices": {"items": {"required": ["manufacturer", "class"], "not": {"required": ["name"]}}}}}
     },
 
     "fact_device": {
-      "description": "A device the case ran on. The rig writes its manufacturer and class; a row converted from markdown has neither, and keeps the name its record gave the model.",
+      "description": "A device the case ran on: with its manufacturer and class, or, on a converted row, with neither and the name its record gave the model.",
       "type": "object",
       "required": ["model", "firmware"],
       "additionalProperties": false,
