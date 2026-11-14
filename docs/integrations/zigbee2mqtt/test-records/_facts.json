@@ -1,0 +1,20 @@
+{
+  "format": 2,
+  "integration": "zigbee2mqtt",
+  "facts": [
+    {
+      "date": "2026-11-13",
+      "suite": "stop",
+      "test": "halts_a_lower_to_off[light_ct] observed",
+      "kind": "observed",
+      "result": "pass",
+      "devices": [
+        {
+          "model": "LTA009",
+          "name": "Hue white ambiance E27 1100lm with Bluetooth",
+          "firmware": "1.163.1"
+        }
+      ]
+    }
+  ]
+}

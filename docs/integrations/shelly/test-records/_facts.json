@@ -1,0 +1,76 @@
+{
+  "format": 2,
+  "integration": "shelly",
+  "facts": [
+    {
+      "date": "2026-11-11",
+      "suite": "set_auto_on",
+      "test": "takes_the_bounds[switch_plug]",
+      "kind": "automated",
+      "result": "pass",
+      "devices": [
+        {
+          "model": "S3SW-001X8EU",
+          "name": "Shelly 1 Mini Gen3",
+          "firmware": "20261026-122213/2.0.3-g4601943"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-11",
+      "suite": "set_auto_off",
+      "test": "takes_the_bounds[switch_plug]",
+      "kind": "automated",
+      "result": "pass",
+      "devices": [
+        {
+          "model": "S3SW-001X8EU",
+          "name": "Shelly 1 Mini Gen3",
+          "firmware": "20261026-122213/2.0.3-g4601943"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-11",
+      "suite": "set_auto_off",
+      "test": "turn_on_for_shorter_wins_per_call[switch_plug]",
+      "kind": "automated",
+      "result": "pass",
+      "devices": [
+        {
+          "model": "S3SW-001X8EU",
+          "name": "Shelly 1 Mini Gen3",
+          "firmware": "20261026-122213/2.0.3-g4601943"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-11",
+      "suite": "set_auto_off",
+      "test": "turn_on_for_longer_wins_per_call[switch_plug]",
+      "kind": "automated",
+      "result": "pass",
+      "devices": [
+        {
+          "model": "S3SW-001X8EU",
+          "name": "Shelly 1 Mini Gen3",
+          "firmware": "20261026-122213/2.0.3-g4601943"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-11",
+      "suite": "clear_auto_off",
+      "test": "countdown_survives_a_clear[switch_plug]",
+      "kind": "automated",
+      "result": "pass",
+      "devices": [
+        {
+          "model": "S3SW-001X8EU",
+          "name": "Shelly 1 Mini Gen3",
+          "firmware": "20261026-122213/2.0.3-g4601943"
+        }
+      ]
+    }
+  ]
+}

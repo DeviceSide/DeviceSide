@@ -1,0 +1,81 @@
+{
+  "format": 1,
+  "integration": "zha",
+  "action": "get_attributes",
+  "result": "pass",
+  "date": "2026-11-08",
+  "source": {
+    "kind": "rig",
+    "commit": "8aae106"
+  },
+  "home_assistant": "2026.10.4",
+  "devices": [
+    {
+      "model": "LTA009",
+      "firmware": "0x01002a00"
+    },
+    {
+      "name": "ZBDongle-E",
+      "firmware": null,
+      "group": true
+    },
+    {
+      "model": "LCA016",
+      "firmware": "0x01001200"
+    },
+    {
+      "model": "LWA012",
+      "firmware": "0x01002502"
+    }
+  ],
+  "tests": [
+    {
+      "id": "reads_while_off[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass"
+    },
+    {
+      "id": "reads_while_off[group]",
+      "domain": "light",
+      "role": "group",
+      "result": "pass"
+    },
+    {
+      "id": "reads_color_while_off[light_color]",
+      "domain": "light",
+      "role": "light_color",
+      "result": "pass"
+    },
+    {
+      "id": "reads_a_running_timer[switch_plug]",
+      "role": "switch_plug",
+      "result": "skipped",
+      "reason": "none in the profile"
+    },
+    {
+      "id": "reads_a_running_timer[light_onoff]",
+      "role": "light_onoff",
+      "result": "skipped",
+      "reason": "none in the profile"
+    },
+    {
+      "id": "reads_a_running_timer[light_wrapped]",
+      "role": "light_wrapped",
+      "result": "skipped",
+      "reason": "none in the profile"
+    },
+    {
+      "id": "reads_a_running_timer[light_dimmable]",
+      "domain": "light",
+      "role": "light_dimmable",
+      "result": "pass"
+    },
+    {
+      "id": "reads_no_timer_after_a_turn_off[switch_plug]",
+      "role": "switch_plug",
+      "result": "skipped",
+      "reason": "none in the profile"
+    }
+  ]
+}

@@ -1,0 +1,67 @@
+{
+  "format": 1,
+  "integration": "shelly",
+  "action": "stop",
+  "result": "pass",
+  "date": "2026-11-13",
+  "source": {
+    "kind": "rig",
+    "commit": "5aa4aa4"
+  },
+  "home_assistant": "2026.10.4",
+  "devices": [
+    {
+      "model": "S3BL-C010007AEU",
+      "name": "Shelly Multicolor Bulb Gen3",
+      "firmware": "20261026-122229/2.0.3-g4601943"
+    }
+  ],
+  "tests": [
+    {
+      "id": "halts_a_raise[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass"
+    },
+    {
+      "id": "halts_a_raise[group]",
+      "role": "group",
+      "result": "skipped",
+      "reason": "none in the profile"
+    },
+    {
+      "id": "halts_a_lower_to_off[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass"
+    },
+    {
+      "id": "halts_a_lower_to_off[group]",
+      "role": "group",
+      "result": "skipped",
+      "reason": "none in the profile"
+    },
+    {
+      "id": "stop_when_idle[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass"
+    },
+    {
+      "id": "halts_brightness_and_saturation[light_color]",
+      "role": "light_color",
+      "result": "skipped"
+    },
+    {
+      "id": "halts_brightness_and_saturation[light_color] observed",
+      "role": "light_color",
+      "result": "skipped",
+      "fact": true
+    },
+    {
+      "id": "halts_brightness_and_saturation[group_color]",
+      "role": "group_color",
+      "result": "skipped"
+    }
+  ]
+}

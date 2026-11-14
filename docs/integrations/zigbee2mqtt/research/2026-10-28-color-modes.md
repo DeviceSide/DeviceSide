@@ -2,7 +2,7 @@
 
 DeviceSide's `z2m_color_modes` option (on by default): a full-color light announced to Home Assistant with both
 color modes. Not an action, so it has no suite of its own; its rig cases ride in
-[`get_attributes.md`](get_attributes.md), and the rest comes from the probe in
+[`get_attributes.json`](../test-records/get_attributes.json), and the rest comes from the probe in
 [internals.md](../internals.md#tested-behavior).
 
 | | |

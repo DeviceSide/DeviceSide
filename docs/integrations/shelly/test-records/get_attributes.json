@@ -1,0 +1,62 @@
+{
+  "format": 1,
+  "integration": "shelly",
+  "action": "get_attributes",
+  "result": "pass",
+  "date": "2026-11-13",
+  "source": {
+    "kind": "rig",
+    "commit": "5aa4aa4"
+  },
+  "home_assistant": "2026.10.4",
+  "devices": [
+    {
+      "model": "S3BL-C010007AEU",
+      "name": "Shelly Multicolor Bulb Gen3",
+      "firmware": "20261026-122229/2.0.3-g4601943"
+    },
+    {
+      "model": "S3SW-001X8EU",
+      "name": "Shelly 1 Mini Gen3",
+      "firmware": "20261026-122213/2.0.3-g4601943"
+    }
+  ],
+  "tests": [
+    {
+      "id": "reads_while_off[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass"
+    },
+    {
+      "id": "reads_rgb_while_off[light_color]",
+      "domain": "light",
+      "role": "light_color",
+      "result": "pass"
+    },
+    {
+      "id": "reads_a_running_timer[switch_plug]",
+      "domain": "switch",
+      "role": "switch_plug",
+      "result": "pass"
+    },
+    {
+      "id": "reads_a_running_timer[light_dimmable]",
+      "domain": "light",
+      "role": "light_dimmable",
+      "result": "pass"
+    },
+    {
+      "id": "reads_no_timer_after_a_turn_off[switch_plug]",
+      "domain": "switch",
+      "role": "switch_plug",
+      "result": "pass"
+    },
+    {
+      "id": "reads_an_auto_on_timer[switch_plug]",
+      "domain": "switch",
+      "role": "switch_plug",
+      "result": "pass"
+    }
+  ]
+}

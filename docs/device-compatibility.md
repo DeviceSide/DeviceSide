@@ -57,7 +57,7 @@ bridge's earlier report (rig runs, 2026-11-11: Hue [Tested behavior](integration
 A color bulb, rig-tested on Hue, ZHA and Zigbee2MQTT: `LCA016` on Hue and ZHA, `8720169392182` on Zigbee2MQTT
 ([zigbee-herdsman-converters](https://github.com/Koenkk/zigbee-herdsman-converters/blob/master/src/devices/philips.ts)).
 It carries the smooth saturation and hue tests, and Zigbee2MQTT's color mode override
-([record](integrations/zigbee2mqtt/test-records/color_modes.md)). Turning that option off is unit-tested only: the rig can't
+([record](integrations/zigbee2mqtt/research/2026-10-28-color-modes.md)). Turning that option off is unit-tested only: the rig can't
 cleanly remove the override the option writes.
 
 ### Hue White A60 B22

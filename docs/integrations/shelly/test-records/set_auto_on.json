@@ -1,0 +1,33 @@
+{
+  "format": 1,
+  "integration": "shelly",
+  "action": "set_auto_on",
+  "result": "pass",
+  "date": "2026-11-13",
+  "source": {
+    "kind": "rig",
+    "commit": "5aa4aa4"
+  },
+  "home_assistant": "2026.10.4",
+  "devices": [
+    {
+      "model": "S3SW-001X8EU",
+      "name": "Shelly 1 Mini Gen3",
+      "firmware": "20261026-122213/2.0.3-g4601943"
+    }
+  ],
+  "tests": [
+    {
+      "id": "applies_to_any_turn_off[switch_plug]",
+      "domain": "switch",
+      "role": "switch_plug",
+      "result": "pass"
+    },
+    {
+      "id": "takes_the_bounds[switch_plug]",
+      "role": "switch_plug",
+      "result": "skipped",
+      "fact": true
+    }
+  ]
+}
