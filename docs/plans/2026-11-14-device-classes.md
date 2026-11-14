@@ -206,7 +206,27 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      a class of its own, `tuya_ts011f`, as `tuya_zcl` stays not supported on `turn_on_for` and a scope entry is per
      class. `other` is Documented on `raise_brightness`, `lower_brightness` and `stop`, and `experimental(...)` on the
      rest (argued in the PR body). The `sengled` audit of Level commands sent from off is in the Z2M `internals.md`
-     (`classes`); no behavior changed beyond the scopes.
+     (`classes`); no behavior changed beyond the scopes. Fix-ups from its plan review and audit, and Decisions 19 to
+     21, land before part 3.
+   - **Part 3, the Tuya countdown on Z2M (Decision 22),** after part 2's fix-ups:
+     1. **Read first:** in zigbee-herdsman-converters, whether every definition that exposes `countdown` uses one
+        converter (the same attribute and units). If it does, one class covers them all; if not, a class per
+        converter. Record it in the Z2M `internals.md`, citing the source.
+     2. **Probe** ([spec below](#step-5-part-3-probe-spec)), on the lab TS011F on Z2M, before any code. Its answers
+        settle the read-back and the cancel behavior.
+     3. **Classes:** the class rule matches the `countdown` expose in `bridge/devices` (Z2M's own statement that the
+        device takes the call), not a firmware string. A Tuya device without it keeps today's refusal. While the
+        cache is empty, the registry fallback can't see exposes, so the device keeps today's refusal until it fills.
+     4. **The call:** a branch in Z2M's `turn_on_for` for the class, `{"state": "ON", "countdown": N}` (or as the
+        probe shows), with no `on_time`. Brightness with it follows the probe.
+     5. **Duration limits per class** (from Deferred): whole seconds, 1 to 43,200 s unless the probe shows other
+        bounds; out of range raises as core does, rounding is reported in `clamped_to`. Core change, so an Opus
+        audit.
+     6. **Read-back** per the probe: `confirmed` only if the device reports the countdown; otherwise `sent`.
+        `get_attributes` time left likewise.
+     7. **Level:** `experimental(...)` until the lab run, then Verified for the class the record covers. The cards
+        and `index.md` move the TS011F from Doesn't work.
+     8. **Lab run:** the TS011F on Z2M, added to step 5's lab run.
 6. **Core fix-ups** from step 5's run, before ZHA and Hue copy the pattern. If a package changes, its lab run is
    repeated.
 7. **ZHA.** The same shape. Lab run, with the Sengled.
@@ -523,16 +543,34 @@ join `docs/models.yaml`, per its header.
 | Sengled strings and 0x42 | `zigbee2mqtt`, `zha`, `hue` | the `sengled` rule and its `turn_on_for` state: steps 5, 7, 8 |
 | TS011F and Sengled model IDs | `docs/models.yaml` | steps 5, 7, 8 (the cards) |
 
+### Step 5 part 3: probe spec
+
+On Z2M, the lab TS011F (`_TZ3000_0zfrhq4i`), from Developer Tools, MQTT publish to `zigbee2mqtt/<plug>/set`; times
+from Z2M's log. Known already (lab probe, C7): `{"state": "ON", "countdown": 10}` from off turns it on and off 10 s
+later. One row each; record the Z2M state payload after each publish.
+
+| Case | Pre-state | Publish | Answers |
+|---|---|---|---|
+| P1 | on | `{"countdown": 10}` alone | whether a countdown starts without `state` |
+| P2 | off | `{"state": "ON", "countdown": 30}`, then at 5 s `{"countdown": 10}` | replace or extend: off at ~15 s or ~35 s |
+| P3 | off | `{"state": "ON", "countdown": 30}`, then at 5 s `{"state": "OFF"}`, then `{"state": "ON"}` | whether off cancels it: still on after 35 s? |
+| P4 | off | `{"state": "ON", "countdown": 30}`, then at 5 s `{"countdown": 0}` | whether 0 cancels it |
+| P5 | off | `{"state": "ON", "countdown": 30}`, then at 5 s the plug's button twice | whether a local toggle cancels it |
+| P6 | off | `{"state": "ON", "countdown": 30}`, then at 5 s `{"countdown": ""}` on `/get` | whether time left can be read, and whether state reports it unprompted |
+| P7 | off | `countdown` 1, then 43200, then 43201 | the bounds: accepted, rejected or clamped (cancel each with P3 or P4's way) |
+
+Results go in a dated research file, `zigbee2mqtt/research/<date>-tuya-countdown-probe.md`, and the facts in the Z2M
+`internals.md`.
+
 ### Runs to repeat
 
 A package changed after its lab run needs that run again before the release. None yet.
 
 ## Deferred until something needs it
 
-- Per-class `duration` limits: needed by the Tuya countdown pattern (whole seconds, 43,200 s cap) once it's built.
 - Firmware matching in the classifier: needed the first time a firmware boundary decides behavior, such as the Sonoff
   ZBMINIR2 at 1.1.0.
-- Building Tuya patterns B and C, and a non-Hue bulb on the rig. The second lifts that maker's own class on Z2M and
+- Building Tuya pattern B on ZHA and pattern C, and a non-Hue bulb on the rig. The second lifts that maker's own class on Z2M and
   ZHA, never `other` (Decision 5).
 - A query's own `capability` or `capabilities` data key: the class would overwrite it in the response. No query has
   one; a check is built when one would.
@@ -624,6 +662,16 @@ A package changed after its lab run needs that run again before the release. Non
     rejected because a rebadged plug would land in `other` and, with Experimental features on, take today's call
     and stay on. This is a structure change confined to the Z2M package: the classifier reads one cache it already
     has.
+19. **`other` stays Documented on `raise_brightness`, `lower_brightness` and `stop`** on Z2M, as part 2 built it:
+    they send the same standard ZCL commands as the Verified Hue call, pinned by a unit test. The rest stays
+    `experimental(...)`.
+20. **`tuya_zcl` and `tuya_mcu` are "doesn't work" on Z2M `turn_on_for`, not "not supported":** today's call turns
+    them on with no timer, so they stay on, which `docs/evidence.md` counts as harm. Each gets a `doesnt_work` entry
+    with that reason, sourced to the lab probe and the Z2M converter research.
+21. **The TS011F keeps its own class, `tuya_ts011f`.**
+22. **The Tuya countdown on Z2M ships in v0.1.0, as step 5 part 3.** Tuya plugs are popular, the probe showed Z2M's
+    `countdown` works, and the lab has the plug. Z2M only: ZHA keeps its refusal (Decision 16), as it would need
+    Tuya's raw recipe.
 
 ## Handoff
 
