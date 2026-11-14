@@ -2,49 +2,116 @@
 what each class's level does to a call."""
 
 import pytest
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
 from custom_components.deviceside.core.models import Target
 from custom_components.deviceside.core.resolver import resolve
 from custom_components.deviceside.core.runtime import get_runtime
-from custom_components.deviceside.integrations.zigbee2mqtt import INTEGRATION, classes, native_control
-from custom_components.deviceside.integrations.zigbee2mqtt.classes import CLASSES, RULES, Rule
+from custom_components.deviceside.core.scope import Level
+from custom_components.deviceside.integrations.zigbee2mqtt import (
+    ADAPTERS,
+    INTEGRATION,
+    bridge_cache,
+    classes,
+    native_control,
+)
+from custom_components.deviceside.integrations.zigbee2mqtt.classes import RULES, Rule
 
-from .conftest import SENT, SET, call, commands, group, light
+from .conftest import DEVICES, SENT, SET, call, commands, group, light
 from ...conftest import allow_experimental, refusal
 from ...conftest import call as call_service
 from ...fixtures.zigbee2mqtt import GROUPS, IEEE, add_z2m_entity, add_z2m_group, z2m_entry
 
-TUYA = "_TZ3000_abcdefgh"  # a Tuya ZCL manufacturer string's shape, as Tuya's firmware reports it
+# Strings of the shapes the lab probe saw (research/2026-11-14-lab-probe.md, §1): the Zigbee manufacturer a Tuya
+# device reports in bridge/devices, and the vendor and definition Z2M registers for a TS011F.
+TUYA = "_TZ3000_abcdefgh"
+TUYA_MCU = "_TZE200_abcdefgh"
+PLUG = ("Tuya", "TS011F_plug_1")
 
 
-def stand_in(hass, manufacturer: str | None, model: str | None = None) -> Target:
+def stand_in(hass, manufacturer: str | None, model_id: str | None = None) -> Target:
     """A target with a registry device alone, as the rig classes one: no config entry or state."""
     config = z2m_entry(hass)
     device = dr.async_get(hass).async_get_or_create(
         config_entry_id=config.entry_id,
         identifiers={("mqtt", f"zigbee2mqtt_{IEEE}")},
         manufacturer=manufacturer,
-        model=model,
+        model_id=model_id,
     )
     entry = er.async_get(hass).async_get_or_create("light", "mqtt", IEEE, device_id=device.id)
     return Target(entry.entity_id, "light", "zigbee2mqtt", entry, device, None, None)
 
 
 @pytest.mark.parametrize(
-    ("manufacturer", "model", "expected"),
+    ("manufacturer", "model_id", "expected"),
     [
-        ("Philips", "Hue White A60 B22 (9290018217)", "hue"),
+        ("Philips", "9290018217", "hue"),
         ("Philips Lighting", None, "other"),  # the whole string, not a prefix
-        ("IKEA of Sweden", "TRADFRI bulb E27 (LED1836G9)", "other"),
-        (TUYA, "TS011F", "other"),  # no Tuya class until the lab probe gives its rule (plan, step 5 part 2)
-        ("Sengled", "E11-G13", "other"),  # nor a Sengled one
+        ("IKEA of Sweden", "LED1836G9", "other"),
+        ("Sengled", "E11-G13", "sengled"),
+        (*PLUG, "tuya_ts011f"),
+        ("Tuya", "TS011F", "tuya_ts011f"),
+        ("Tuya", "TS0601_switch", "tuya_mcu"),
+        ("Tuya", "TS0001_switch_module", "tuya_zcl"),
+        ("Tuya", "ZG-101Z", "tuya_zcl"),  # Tuya's own vendor string
+        ("Moes", "TS0002", "tuya_zcl"),  # a Tuya definition model under another vendor
+        ("Lidl", "HG06337", "other"),  # a rebadged Tuya plug the registry can't show: bridge/devices does
         (None, None, "other"),
     ],
 )
-def test_a_device_s_class_is_its_first_matching_rule_or_the_default(hass, manufacturer, model, expected):
-    assert INTEGRATION.capability(None, stand_in(hass, manufacturer, model)) == expected
+def test_on_the_registry_alone_a_device_s_class_is_its_first_matching_rule(hass, manufacturer, model_id, expected):
+    assert INTEGRATION.capability(None, stand_in(hass, manufacturer, model_id)) == expected
+
+
+@pytest.mark.parametrize(
+    ("registry", "zigbee", "expected"),
+    [
+        (("Lidl", "HG06337"), (TUYA, "TS011F"), "tuya_ts011f"),
+        (("Lidl", "HG06337"), (TUYA, "TS0001"), "tuya_zcl"),
+        (("Lidl", "HG06337"), ("_TYZB01_abcdefgh", "HG06337"), "tuya_zcl"),
+        (("Moes", "ZM-105"), (TUYA_MCU, "TS0601"), "tuya_mcu"),
+        (("Moes", "ZM-105"), (TUYA_MCU, "ZM-105"), "tuya_mcu"),
+        (("Moes", "ZM-105"), ("Moes", "TS0601"), "tuya_mcu"),
+        (("Philips", "9290018217"), ("Signify Netherlands B.V.", "LWA012"), "hue"),
+        (("Sengled", "E11-G13"), ("sengled", "E11-G13"), "sengled"),
+        (("IKEA of Sweden", "LED1836G9"), ("IKEA of Sweden", "TRADFRI bulb E27 WW 806lm"), "other"),
+    ],
+)
+async def test_the_zigbee_strings_in_bridge_devices_place_a_rebadged_tuya_device(
+    hass, setup_production, broker, registry, zigbee, expected
+):
+    entity_id = light(hass, broker, manufacturer=registry[0], model_id=registry[1], zigbee=zigbee)
+
+    assert INTEGRATION.capability(hass, resolve(hass, get_runtime(hass).registry, entity_id)) == expected
+
+
+async def test_until_bridge_devices_arrives_the_registry_places_the_device(hass, setup_production, broker):
+    entity_id = light(hass, broker, manufacturer="Lidl", model_id="HG06337", zigbee=(TUYA, "TS011F"))
+    target = resolve(hass, get_runtime(hass).registry, entity_id)
+    del broker.retained[DEVICES]
+
+    assert INTEGRATION.capability(hass, target) == "other"
+
+
+async def test_a_device_bridge_devices_does_not_list_yet_is_placed_by_the_registry(hass, setup_production, broker):
+    entity_id = light(hass, broker, manufacturer=PLUG[0], model_id=PLUG[1])
+    broker.retained[DEVICES] = [{"ieee_address": "0x09", "manufacturer": TUYA_MCU, "model_id": "TS0601"}]
+
+    assert INTEGRATION.capability(hass, resolve(hass, get_runtime(hass).registry, entity_id)) == "tuya_ts011f"
+
+
+def test_the_bridge_cache_indexes_bridge_devices_once_per_payload():
+    cache = bridge_cache.BridgeCache()
+    cache._payloads["devices"] = '[{"ieee_address": "0x01", "model_id": "TS011F"}, "junk", {"model_id": "x"}]'
+
+    first = cache.device("0x01")
+    assert first == {"ieee_address": "0x01", "model_id": "TS011F"}
+    assert cache.device("0x01") is first
+    assert cache.device("0x02") is None
+    cache._payloads["devices"] = '{"not": "a list"}'
+    assert cache.device("0x01") is None
 
 
 def test_a_target_with_no_device_has_no_class(hass):
@@ -69,14 +136,42 @@ def test_the_hue_rule_and_native_control_read_one_string():
         (lambda: Rule("hue", {}), "tests nothing"),
     ],
 )
-def test_a_rule_names_a_declared_class_and_registry_fields(rule, error):
+def test_a_rule_names_a_declared_class_and_known_fields(rule, error):
     with pytest.raises(ValueError, match=error):
         rule()
 
 
 def test_the_default_class_is_other_and_held_below_verified():
     assert INTEGRATION.default_class == "other"
-    assert INTEGRATION.classes == {"hue", "other"}
+    assert INTEGRATION.classes == {"hue", "tuya_zcl", "tuya_ts011f", "tuya_mcu", "sengled", "other"}
+
+
+def _scopes() -> dict:
+    return {adapter.action: adapter.scope for adapter in ADAPTERS}
+
+
+def test_other_is_documented_on_brightness_fades_and_stop_alone():
+    documented = {action for action, scope in _scopes().items() if scope.capabilities["other"] is Level.DOCUMENTED}
+    assert documented == {"raise_brightness", "lower_brightness", "stop"}
+
+
+@pytest.mark.parametrize(
+    ("capability", "refused"),
+    [
+        ("tuya_zcl", {"turn_on_for"}),
+        ("tuya_ts011f", {"turn_on_for"}),
+        ("tuya_mcu", {"turn_on_for", "get_attributes", "set_attributes"}),
+        ("sengled", {"turn_on_for"}),
+    ],
+)
+def test_where_each_class_is_refused_and_elsewhere_untested(capability, refused):
+    scopes = _scopes()
+    assert {action for action, scope in scopes.items() if capability not in scope.capabilities} == refused
+    assert {scope.capabilities[capability] for action, scope in scopes.items() if action not in refused} == {
+        Level.EXPERIMENTAL
+    }
+    expected = {"turn_on_for"} if capability == "tuya_ts011f" else set()
+    assert {action for action, scope in scopes.items() if capability in scope.doesnt_work} == expected
 
 
 # Group members, from the bridge cache.
@@ -121,6 +216,33 @@ async def test_only_a_group_listed_with_no_members_is_empty(hass, setup_producti
     assert INTEGRATION.expand_group(hass, resolve(hass, get_runtime(hass).registry, entity_id)) == expected
 
 
+@pytest.mark.parametrize(
+    "missing",
+    [
+        pytest.param({"ieee_address": "0x09"}, id="no_device"),
+        pytest.param({"ieee_address": "0x03"}, id="no_light"),
+    ],
+)
+async def test_a_group_with_a_member_ha_has_no_light_for_is_unknowable(hass, setup_production, broker, missing):
+    """A Tuya plug Z2M exposes as a switch, in a group of Hue bulbs, would otherwise leave the group Verified on the
+    Hue bulbs alone."""
+    entity_id = group(hass, broker, one={}, two={})
+    add_z2m_entity(hass, hass.config_entries.async_entries("mqtt")[0], "switch.plug", ieee="0x03", manufacturer="Tuya")
+    broker.retained[GROUPS][0]["members"].append(missing)
+
+    assert INTEGRATION.expand_group(hass, resolve(hass, get_runtime(hass).registry, entity_id)) is None
+    assert await refusal(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == "experimental_off"
+
+
+async def test_a_member_on_two_endpoints_counts_once(hass, setup_production, broker):
+    entity_id = group(hass, broker, one={}, two={})
+    broker.retained[GROUPS][0]["members"].append({"ieee_address": "0x01", "endpoint": 2})
+
+    members = INTEGRATION.expand_group(hass, resolve(hass, get_runtime(hass).registry, entity_id))
+
+    assert [member.entity_id for member in members] == ["light.one", "light.two"]
+
+
 # What a class's level does to a call.
 
 
@@ -141,13 +263,26 @@ async def test_a_non_hue_light_is_experimental(hass, setup_production, broker):
     assert await call_service(hass, "turn_on_for", data) == {entity_id: SENT | {"capability": "other"}}
 
 
-async def test_a_ramp_runs_on_another_brand_with_experimental_on(hass, setup_production, broker):
+async def test_a_brightness_fade_and_stop_run_on_another_brand_as_documented(hass, setup_production, broker):
+    """The call a Hue bulb gets, pinned: the same publish, to an IKEA bulb's topic, with Experimental features off."""
     entity_id = light(hass, broker, manufacturer="IKEA of Sweden")
-    data = {"entity_id": entity_id, "limit": 80, "sweep_time": 10}
 
-    assert await refusal(hass, "raise_brightness", data) == "experimental_off"
+    response = await call_service(hass, "raise_brightness", {"entity_id": entity_id, "limit": 80, "sweep_time": 10})
+    assert response == {entity_id: SENT | {"capability": "other"}}
+    assert commands(broker) == [(SET, {"state": "ON", "brightness": 203, "transition": 2.0})]
+
+    broker.published.clear()
+    assert await call_service(hass, "stop", {"entity_id": entity_id}) == {entity_id: SENT | {"capability": "other"}}
+    assert commands(broker) == [(SET, {"brightness_move": "stop"})]
+
+
+async def test_a_hue_fade_runs_on_another_brand_with_experimental_on(hass, setup_production, broker):
+    entity_id = light(hass, broker, manufacturer="IKEA of Sweden")
+    data = {"entity_id": entity_id, "sweep_time": 10}
+
+    assert await refusal(hass, "raise_hue", data) == "experimental_off"
     allow_experimental(hass)
-    assert await call_service(hass, "raise_brightness", data) == {entity_id: SENT | {"capability": "other"}}
+    assert await call_service(hass, "raise_hue", data) == {entity_id: SENT | {"capability": "other"}}
     assert commands(broker)
 
 
@@ -175,31 +310,56 @@ async def test_a_hue_group_is_verified_on_its_members_class(hass, setup_producti
     assert response == {entity_id: SENT | {"capabilities": ["hue"]}}
 
 
-@pytest.fixture
-def tuya_rule(monkeypatch):
-    """A stand-in Tuya class and rule, so a class an adapter doesn't serve shows its refusal; part 2 adds the real
-    ones. Its field is a guess: Tuya's firmware reports `_TZ3000_…` as its Zigbee manufacturer, but Z2M's discovery
-    likely registers its definition's vendor there, and the probe decides which field holds it."""
-    monkeypatch.setattr(classes, "CLASSES", CLASSES | {"tuya_zcl"})
-    monkeypatch.setattr(classes, "RULES", (*RULES, Rule("tuya_zcl", {"manufacturer": "_TZ3000_.*"})))
+# The Tuya and Sengled classes.
 
 
-@pytest.mark.usefixtures("tuya_rule")
-async def test_turn_on_for_refuses_a_tuya_device_as_not_supported(hass, setup_production, broker):
-    """Rather than send `on_time`, which Z2M turns into a plain On that never ends on Tuya firmware."""
+async def test_turn_on_for_refuses_a_ts011f_as_doesnt_work_with_experimental_on(hass, setup_production, broker):
+    """Z2M has no on_time converter for it, so today's call would turn the plug on with no timer
+    (research/2026-11-14-lab-probe.md, §2): refused, not flagged, so Experimental features can't send it."""
     allow_experimental(hass)
-    add_z2m_entity(hass, z2m_entry(hass), "switch.plug", manufacturer=TUYA)
+    add_z2m_entity(hass, z2m_entry(hass), "switch.plug", manufacturer=PLUG[0], model_id=PLUG[1])
 
-    assert await refusal(hass, "turn_on_for", {"entity_id": "switch.plug", "duration": 5}) == "not_supported"
+    assert await refusal(hass, "turn_on_for", {"entity_id": "switch.plug", "duration": 5}) == "doesnt_work"
     assert commands(broker) == []
 
 
-@pytest.mark.usefixtures("tuya_rule")
-async def test_a_group_with_a_tuya_member_falls_back_to_its_members(hass, setup_production, broker, caplog):
-    entity_id = group(hass, broker, one={}, two={"manufacturer": TUYA})
+async def test_the_ts011f_s_refusal_says_what_the_user_sees(hass, setup_production, broker):
+    allow_experimental(hass)
+    add_z2m_entity(hass, z2m_entry(hass), "switch.plug", manufacturer=PLUG[0], model_id=PLUG[1])
+
+    with pytest.raises(HomeAssistantError) as raised:
+        await call_service(hass, "turn_on_for", {"entity_id": "switch.plug", "duration": 5})
+    assert raised.value.translation_placeholders["why"] == classes.TURN_ON_FOR_DOESNT_WORK["tuya_ts011f"].reason
+    assert "no timer, so it stays on" in raised.value.translation_placeholders["why"]
+
+
+@pytest.mark.parametrize(
+    ("registry", "action", "data"),
+    [
+        pytest.param(("Tuya", "TS0001_switch_module"), "turn_on_for", {"duration": 5}, id="tuya_zcl"),
+        pytest.param(("Tuya", "TS0601_switch"), "turn_on_for", {"duration": 5}, id="tuya_mcu"),
+        pytest.param(("Tuya", "TS0601_dimmer"), "get_attributes", {}, id="tuya_mcu_read"),
+        pytest.param(("Tuya", "TS0601_dimmer"), "set_attributes", {"brightness": 50}, id="tuya_mcu_write"),
+        pytest.param(("Sengled", "E11-G13"), "turn_on_for", {"duration": 5}, id="sengled"),
+    ],
+)
+async def test_a_class_that_needs_an_unbuilt_call_is_not_supported(
+    hass, setup_production, broker, registry, action, data
+):
+    """Rather than send `on_time`, which Z2M turns into a plain On that never ends on Tuya firmware and the Sengled
+    ignores, or raw ZCL a datapoint device can't take."""
+    allow_experimental(hass)
+    entity_id = light(hass, broker, manufacturer=registry[0], model_id=registry[1])
+
+    assert await refusal(hass, action, {"entity_id": entity_id, **data}) == "not_supported"
+    assert commands(broker) == []
+
+
+async def test_a_group_with_a_ts011f_member_falls_back_to_its_members(hass, setup_production, broker, caplog):
+    entity_id = group(hass, broker, one={}, two={"manufacturer": "Lidl", "zigbee": (TUYA, "TS011F")})
 
     response = await call(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5})
 
     assert response == {"light.one": SENT}
     assert commands(broker) == [(SET.replace(IEEE, "0x01"), {"state": "ON", "on_time": 5.0})]
-    assert "light.two (not_supported)" in caplog.text
+    assert "light.two (doesnt_work)" in caplog.text

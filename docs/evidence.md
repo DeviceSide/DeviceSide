@@ -34,9 +34,11 @@ device classes in [the device-classes plan](plans/2026-11-14-device-classes.md).
 7. **Maintainers judge sufficiency.** Tooling records evidence, and maintainers decide what's enough. Gates check that a
    sign-off exists, not how thorough it was.
 
-*Example (tenets 4 and 5):* the rig found that a Tuya TS011F plug stores the Zigbee timed-on timer as a countdown and
-never switches on ([integrations](integrations.md#zigbee-plugs-and-switches)). That reopened "a Zigbee switch takes the
-light's timed-on call", so the `switch` domain stays untested on ZHA and Zigbee2MQTT `turn_on_for`. Research then found
+*Example (tenets 4 and 5):* the rig found that a Tuya TS011F plug doesn't run the Zigbee timed-on timer it is given.
+That reopened "a Zigbee switch takes the light's timed-on call", so the `switch` domain stays untested on ZHA and
+Zigbee2MQTT `turn_on_for`. A lab probe then root-caused it: the plug runs the timer only Tuya's way, and given the
+light's call one plug stayed off while another switched on about ten times later than asked and stayed on
+([internals](internals.md#tested-behavior)). Research also found
 that even lights given the identical call differ by firmware: Hue replaces a running timer where the spec keeps the longer one,
 and some IKEA and Hue models turn on and never off
 ([2026-11-14](integrations/zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md)). So a Hue bulb's record proves the
@@ -73,7 +75,8 @@ its classes (`IntegrationInfo.classes`) and names each target's (`IntegrationInf
 own branch. A scope holds a level per class, so each
 class stands on its own evidence: a record on one class proves nothing about another. On a single-vendor API the class
 is what the call addresses (Shelly: the RPC component). On a multi-vendor protocol the call and the firmware family
-decide the result together, so the class follows the vendor (Zigbee2MQTT: `hue`, `other`).
+decide the result together, so the class follows the vendor (Zigbee2MQTT: `hue`, `tuya_zcl`, `tuya_ts011f`,
+`tuya_mcu`, `sengled`, `other`).
 
 - **Unknown is flagged, never Verified.** A device the integration can't place falls in its default class
   (`IntegrationInfo.default_class`), which the registry refuses at Verified in any scope, so placing a device there
@@ -132,12 +135,12 @@ lists to every action it passed, so a row whose actions reached different classe
 it at `cut-release`, with the other release gates. Like every gate, it checks that evidence exists, not that it
 suffices (tenet 7), and it applies to integrations that name classes.
 
-*Example:* with Zigbee2MQTT's classes `hue` and `other`, and only Hue bulbs in its records, `turn_on_for` can be
-Verified on `hue` alone; on `other` it is `experimental(...)`, so an IKEA or Innr bulb runs only with Experimental
-features on. A record on an IKEA bulb adds an `ikea` class, Verified on its own evidence, and `other` stays as it is.
-A class that needs a call which isn't built (for example, a class for Tuya plugs, which want Tuya's own countdown) is
-refused as not yet supported, rather than sent a call that Zigbee2MQTT turns into a permanent On; it doesn't work
-only if no call is known to work on it.
+*Example:* with Zigbee2MQTT's classes `hue`, `tuya_zcl`, `tuya_ts011f`, `tuya_mcu`, `sengled` and `other`, and only
+Hue bulbs in its records, `turn_on_for` can be Verified on `hue` alone; on `other` it is `experimental(...)`, so an
+IKEA or Innr bulb runs only with Experimental features on. A record on an IKEA bulb adds an `ikea` class, Verified on
+its own evidence, and `other` stays as it is. A Tuya class that needs Tuya's own countdown call, which isn't built, is
+refused as not yet supported. The TS011F (`tuya_ts011f`), which Tuya's call drives but today's call leaves on or
+switches on late, is listed as doesn't work for today's call until the countdown call is built.
 
 ## The experimental flag
 

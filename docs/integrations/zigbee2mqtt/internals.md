@@ -28,6 +28,29 @@ Only devices Z2M registered through MQTT discovery are found: the device carries
 
 One section per adapter module, named after it.
 
+### `classes`
+
+The class rules read the registry device (Z2M's vendor and definition) and, for a device the bridge cache's
+`bridge/devices` lists, its Zigbee `manufacturer` and `model_id` there, indexed by IEEE once per payload. A Tuya rule
+on the Zigbee strings goes first; registry rules after them place a Tuya device by the vendor `Tuya` or a definition
+model starting `TS` while `bridge/devices` isn't held, as after a connect (Tested behavior: the registry holds no
+Zigbee strings).
+
+Which adapters send a Level command to a light that is off, as a Sengled E11-G13 jumps to full on `MoveToLevel`
+while off on ZHA ([ZHA internals](../zha/internals.md), Tested behavior). Read from the code, 2026-11-14; nothing
+probed on Z2M:
+
+- `set_attributes`: `MoveToLevel` with `ExecuteIfOff`, then its kept-level publish,
+  `{"state": null, "brightness", "transition"}`, a `MoveToLevel` without it. The E11-G13 jumped on both on ZHA.
+- `raise_brightness` from off: `{"state": "ON", "brightness": 1, "transition": 0}`, which Z2M sends as
+  `moveToLevelWithOnOff`, then the fade, the same.
+- `turn_on_for` with brightness: Home Assistant's `light.turn_on`, `{"state": "ON", "brightness"}`, also
+  `moveToLevelWithOnOff`.
+- `lower_brightness`, the hue and saturation ramps and `stop` send no Level command to an off light.
+
+`moveToLevelWithOnOff` from off is untested on the Sengled. Every `sengled` scope entry is `experimental(...)`, or
+left out on `turn_on_for`, until the Sengled lab run.
+
 ### `color_modes`
 
 The Home Assistant override is set to `xy`, `hs` and, where present, `color_temp`, on lights
