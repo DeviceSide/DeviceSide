@@ -130,7 +130,7 @@ sign-off. That rerun is the test of the framework on the current repo scope.
    - Scopes: `hue` Verified wherever records reach it. `other` is flagged on fades, `stop`, `set_attributes` and
      `turn_on_for`. `get_attributes` and `stop` can argue Documented in the PR.
    - `turn_on_for` leaves the two Tuya classes out of scope, so they're refused as not supported. That ends the
-     silent permanent On. The TS011F's doesn't-work entry moves into code.
+     silent permanent On. The TS011F's entry follows the probe in Decision 3.
    - First, a cheap probe: what HA's device registry holds for a white-label Tuya device under Z2M, to pick the
      detection signal (manufacturer, model, or Z2M's `countdown` expose). Record it in `internals.md`.
    - Rig rerun on the Hue bulbs. The records reach `hue`, so `other` must stay flagged until a non-Hue bulb is run.
