@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Check the release gates: the coverage bar, and a sign-off for each integration changed since the last release.
+"""Check the release gates: the coverage bar, a sign-off for each integration changed since the last release, and the
+classes' coverage check.
 
 The rules are in docs/evidence.md (Release gate, Sign-off format); this is how the checks read them.
 
@@ -18,7 +19,11 @@ Untested fix caveat stands in when every changed adapter carries it: each adapte
 package's when a module that is no adapter's changed (a shared helper). Prints a line per changed integration naming its
 sign-off (kind, commit, tester) or the caveats standing in, and fails on each with neither, saying why its records and
 each manual row were rejected. With --json, prints instead the changed integrations without a sign-off, as a JSON list:
-the rig's run selection.
+the rig's run selection. It also runs the coverage check, failing on each gap: for an integration that names classes
+(`IntegrationInfo.capability`), every class an adapter not flagged whole holds as Verified needs a passing test that
+reached it in a passing record of the action (the Tests table's Capability cell; a native group's credits each class it
+lists, a dash none), or a `_manual.md` row whose Passed names the action and whose Capabilities lists it.
+`scripts/gen_compat.py` prints the same gaps as warnings on every run (`coverage_gaps`).
 
 --notes notes.md: writes the release notes' call for testers, with a link to the device report form: the changed
 integrations without a sign-off, and every adapter with an Untested fix caveat. Empty when there are none.
@@ -35,7 +40,9 @@ Under --signoffs, any other file is an error, named: a record without the rig's 
     | 2026-11-12 | `1a2b3c4` | @handle | `S3SW-001X8EU`, `S3BL-C010007AEU` | `turn_on_for`, `set_auto_off` |
     | 2026-11-12 | `1a2b3c4` | @handle | - | no call changed |
 
-Prose and headings around the table are ignored. Under --signoffs, any other `|` line is an error, as is a tester who
+An integration that names classes adds a Capabilities column before Passed: the classes the row's tests reached, or a
+dash for none (`| Date | Commit | Tester | Devices | Capabilities | Passed |`; `| - | - | no call changed |`). Prose and
+headings around the table are ignored. Under --signoffs, any other `|` line is an error, as is a tester who
 is neither one of the integration's maintainers nor a repo maintainer (`REPO_MAINTAINERS`). A record names no tester:
 review of the PR that lands it checks who ran it.
 
@@ -61,7 +68,7 @@ sys.path.insert(0, str(REPO))
 
 from custom_components.deviceside.config_flow import REPORT_URL  # noqa: E402
 from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
-from custom_components.deviceside.core.scope import CaveatKind  # noqa: E402
+from custom_components.deviceside.core.scope import CaveatKind, Level  # noqa: E402
 from scripts.check_tag import git as git_in  # noqa: E402
 from scripts.check_tag import releases  # noqa: E402
 from scripts.gen_codeowners import REPO_MAINTAINERS  # noqa: E402
@@ -74,11 +81,26 @@ CITED_COMMIT = re.compile(r"^\| Source \|.*\bcommit `([0-9a-f]{7,40})`", re.MULT
 CITED_TREE = re.compile(r"^\| Package \| `([0-9a-f]{12,40})` \|", re.MULTILINE)
 RESULT = re.compile(r"^\| Result \| (\S+) \|", re.MULTILINE)
 MANUAL = "_manual.md"
-MANUAL_HEADER = ("| Date | Commit | Tester | Devices | Passed |", "|---|---|---|---|---|")
+# The header and its rule, without and with the Capabilities column of an integration that names classes.
+MANUAL_HEADER = (
+    "| Date | Commit | Tester | Devices | Passed |",
+    "|---|---|---|---|---|",
+    "| Date | Commit | Tester | Devices | Capabilities | Passed |",
+    "|---|---|---|---|---|---|",
+)
 BACKTICKED = r"`[^`|]+`(?:, `[^`|]+`)*"
+# Groups: commit, tester, then the Devices, Capabilities and Passed cells (None for a "no call changed" row, and
+# Capabilities for a row without the column).
 MANUAL_ROW = re.compile(
     rf"\| \d{{4}}-\d{{2}}-\d{{2}} \| `([0-9a-f]{{7,40}})` \| @([A-Za-z0-9-]+)"
-    rf" \| (?:{BACKTICKED} \| {BACKTICKED}|- \| no call changed) \|"
+    rf" \| (?:({BACKTICKED})(?: \| ({BACKTICKED}|-))? \| ({BACKTICKED})|-(?: \| -)? \| no call changed) \|"
+)
+BACKTICKS = re.compile(r"`([^`]+)`")
+# A passing row of a record's Tests table: | `test` | `domain` (role) | pass |, or with the Capability column
+# (docs/evidence.md, Sign-off format): | `test` | `domain` (role) | `class`, ... | pass |, or a dash for none.
+PASSED = re.compile(
+    r"^\| `[^`]+` \| (?P<target>[^|\n]*) \|(?: (?P<capability>`[^`|\n]+`(?:, `[^`|\n]+`)*|-) \|)? pass \|$",
+    re.MULTILINE,
 )
 DEVICE_REPORT = f"{REPORT_URL}?template=device_report.yml"
 
@@ -134,6 +156,54 @@ def test_records_dir(integration: str) -> Path:
 def result(record: Path) -> str | None:
     """The record's Result row (`pass`, `fail`, ...), or None if it has none."""
     return m[1] if (m := RESULT.search(record.read_text())) else None
+
+
+def passing(integration: str, action: str) -> list[Path]:
+    """The adapter's passing test records: `<action>.md`, and `<action>-<option>.md` for a run with an option set."""
+    pattern = re.compile(rf"{re.escape(action)}(-[^.]+)?\.md")
+    found = (path for path in test_records_dir(integration).glob("*.md") if pattern.fullmatch(path.name))
+    return sorted(path for path in found if result(path) == "pass")
+
+
+def manual_rows(integration: str, action: str) -> list[tuple[list[str], set[str]]]:
+    """The model ids and classes of each `_manual.md` row whose Passed names the action. A line that is no row of the
+    format is skipped: `--signoffs` reports it."""
+    path = test_records_dir(integration) / MANUAL
+    rows = []
+    for line in path.read_text().splitlines() if path.is_file() else []:
+        if (row := MANUAL_ROW.fullmatch(line.strip())) and row[5] and action in BACKTICKS.findall(row[5]):
+            rows.append((BACKTICKS.findall(row[3]), set(BACKTICKS.findall(row[4] or ""))))
+    return rows
+
+
+# The coverage check (docs/evidence.md, The coverage check).
+
+
+def reached(integration: str, action: str) -> set[str]:
+    """The classes the action's evidence reached: each passing test's Capability cell in a passing record, and each
+    `_manual.md` row's Capabilities. A group's cell credits every class it lists; a dash credits none."""
+    found = set()
+    for record in passing(integration, action):
+        for row in PASSED.finditer(record.read_text()):
+            found.update(BACKTICKS.findall(row["capability"] or ""))
+    for _, classes in manual_rows(integration, action):
+        found |= classes
+    return found
+
+
+def coverage_gaps(registry) -> list[str]:
+    """Each class an adapter of an integration that names classes holds as Verified, with no passing record test or
+    manual row for its action that reached it. An adapter flagged whole holds none as Verified."""
+    gaps = []
+    for _, adapter in adapters(registry):
+        if registry.integrations[adapter.integration].capability is None or adapter.scope.experimental:
+            continue
+        held = [item for item, level in adapter.scope.capabilities.items() if level is Level.VERIFIED]
+        missing = sorted(set(held) - reached(adapter.integration, adapter.action))
+        gaps += [
+            f"{adapter.integration} {adapter.action}: `{item}` is Verified but no record reaches it" for item in missing
+        ]
+    return gaps
 
 
 # Coverage.
@@ -367,6 +437,7 @@ def main(argv: list[str] | None = None, registry: AdapterRegistry | None = None)
         if args.signoffs:
             errors += manual_errors
             errors += [describe(gate) for gate in found if not gate.passes]
+            errors += coverage_gaps(registry)
             lines = [f"Since {base or 'the first commit'}:", *(describe(gate) for gate in found)]
             if args.json:
                 print(json.dumps([gate.integration for gate in found if gate.signoff is None]))

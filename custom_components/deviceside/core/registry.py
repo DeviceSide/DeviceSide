@@ -27,6 +27,24 @@ def check_maintainers(info: IntegrationInfo) -> None:
         raise ValueError(f"{info.key}: maintainers lists a handle twice")
 
 
+def check_classes(cls: type[Adapter], info: IntegrationInfo) -> None:
+    """One class axis per integration (docs/evidence.md, Device classes): an integration that names classes holds
+    them in every adapter's scope, and one that names none in none. Otherwise an adapter that skipped the axis would
+    let every class through at its domain's level, and one an integration can't name would refuse every call as
+    Experimental. Each class a scope holds is one the integration declares, so a typo fails here."""
+    held = cls.scope.capabilities
+    if info.capability is None:
+        if held is not None or cls.scope.doesnt_work:
+            raise ValueError(f"{cls.__name__} holds classes, but {info.key} names none (IntegrationInfo.capability)")
+        return
+    if held is None:
+        raise ValueError(f"{cls.__name__}: {info.key} names classes, but its scope holds none (capabilities)")
+    if unknown := sorted((held.keys() | cls.scope.doesnt_work.keys()) - info.classes):
+        raise ValueError(
+            f"{cls.__name__} holds classes {info.key} doesn't declare (IntegrationInfo.classes): {unknown}"
+        )
+
+
 class AdapterRegistry:
     """Actions, integrations and the adapters joining them, built from module data with no side effects and no hass.
 
@@ -65,19 +83,15 @@ class AdapterRegistry:
                 return
         info: IntegrationInfo = module.INTEGRATION
         check_maintainers(info)
+        if (info.capability is None) != (not info.classes):
+            raise ValueError(f"{info.key}: IntegrationInfo.capability and classes come together")
         self.integrations[info.key] = info
         for cls in module.ADAPTERS:
             if cls.integration != info.key:
                 raise ValueError(f"{cls.__name__} declares integration {cls.integration}, module is {info.key}")
             if cls.action not in self.actions:
                 raise ValueError(f"{cls.__name__} serves unknown action {cls.action}")
-            if cls.capability is not Adapter.capability and cls.scope.capabilities is None:
-                # None means no capability axis, so every capability the adapter named would pass unweighed: a new
-                # one would widen its Verified scope with no diff.
-                raise ValueError(f"{cls.__name__} names capabilities but its scope lists none")
-            if cls.capability is Adapter.capability and cls.scope.capabilities is not None:
-                # Its calls would name no capability, which level() weighs as Experimental: every call refused.
-                raise ValueError(f"{cls.__name__} lists capabilities in its scope but names none")
+            check_classes(cls, info)
             self._adapters[(cls.action, info.key)] = cls()
 
     def _add_unavailable(self, key: str, reason: str) -> None:

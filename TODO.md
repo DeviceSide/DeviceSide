@@ -39,13 +39,15 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   sign-offs below, as it moves non-Hue bulbs on Zigbee2MQTT, ZHA and Hue behind `experimental`:
   - [x] 1. Rules and design, docs only (`docs/evidence.md`, `docs/design.md`).
   - [ ] 2. Rig (ha-rig): the records' Capability column (its format in `docs/evidence.md`, and `gen_compat`'s parser
-    taking it, land in DeviceSide alongside); Shelly rerun on it.
-  - [ ] 3. Core: `IntegrationInfo.capability`, `doesnt_work`, `not_supported` (and `docs/integrations.md`'s mention);
-    Shelly moves to it; `gen_compat`'s tiers and coverage check; `_manual.md`'s Capabilities column in `check_release`;
-    "one fact, one home, in code" in `docs/evidence.md`, with CLAUDE.md's devices.yaml row; the Not yet supported tier
-    on `docs/device-compatibility.md`; how a group test or a manual row credits
-    the classes it lists; the Capability column's "until that lands" clause in `docs/evidence.md`; the class in each
-    result (plan Decision 6), then the rig reads it; `other` never Verified (Decision 5).
+    taking it, land in DeviceSide alongside); the rig reads the class from each result (the plan's "Rig change for
+    Jason", step 4); Shelly rerun on it.
+  - [x] 3. Core: `IntegrationInfo.capability` and `classes`, `doesnt_work`, `not_supported` (and
+    `docs/integrations.md`'s mention); Shelly moves to it; `gen_compat`'s tiers and coverage check (warning), failing
+    in `check_release --signoffs`; `_manual.md`'s Capabilities column; "one fact, one home, in code" in
+    `docs/evidence.md`, with CLAUDE.md's devices.yaml row; the Not yet supported tier on
+    `docs/device-compatibility.md`; how a group test or a manual row credits the classes it lists; the Capability
+    column's "until that lands" clause; the class in each result (plan Decision 6); `other` never Verified
+    (Decision 5).
   - [ ] 4. Zigbee2MQTT classes, after the TS011F probe and the Tuya detection probe; rig rerun.
   - [ ] 5. ZHA classes; rig rerun.
   - [ ] 6. Hue classes, the `bridge_v1` and `smart_scene` checks moved to them; rig rerun.

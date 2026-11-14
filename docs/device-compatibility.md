@@ -15,8 +15,9 @@ same command differently. Each claim is at one of two levels of proof:
   differing only in addressing, and no known class of devices handles it differently.
 
 New features ship as **Experimental** until a maintainer judges them ready for everyone: they stay off until you
-turn on **Experimental features** in **Configure > Settings**. Whether they work or not, please tell us with **Report a
-device test result or bug** in the same menu: your reports help ship them to everyone. How we decide:
+turn on **Experimental features** in **Configure > Settings**, and so does a device DeviceSide can't place in a known
+class. Whether they work or not, please tell us with **Report a device test result or bug** in the same menu: your
+reports help ship them to everyone. How we decide:
 [evidence rules](evidence.md).
 
 ## Maintainers
@@ -89,6 +90,12 @@ Turn on with timer and get attributes on a ZHA or Zigbee2MQTT `switch`. A plug w
 Zigbee timed-on command, and few do: Sonoff and Tuya plugs often run their own countdown instead, and the
 [Tuya TS011F](#tuya-ts011f) never switches on. ZHA and Zigbee2MQTT each need their own report.
 
+## Not yet supported
+
+A class of device that needs a command DeviceSide hasn't built yet. DeviceSide refuses it, rather than send a command
+that would leave it doing something you didn't ask for, and each card lists them. If you'd like one built,
+[propose it](../CONTRIBUTING.md#how-to-help).
+
 ## Doesn't work
 
 ### Tuya TS011F
@@ -98,7 +105,7 @@ switches on. Found on the rig ([integrations](integrations.md#zigbee-plugs-and-s
 
 ## Evidence
 
-Per integration, a row per action and level of proof its entities, components and fields hold, with the models and
+Per integration, a row per action and level of proof its entities, classes and fields hold, with the models and
 records behind the action (a rig record, or a maintainer's test by hand); ⚠️ Unmaintained and ⚠️ Untested fix mark an
 action's caveat. A group is a native group of the integration (a Hue zone, a ZHA or Zigbee2MQTT group).
 
@@ -151,27 +158,27 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 
 | Action | Level | Items | Tested models | Records |
 |---|---|---|---|---|
-| `clear_auto_off` | Verified | light, switch entities; Switch components | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](integrations/shelly/test-records/clear_auto_off.md) |
-| `clear_auto_off` | Documented | Light, CCT, RGB, RGBW, RGBCCT components | | |
-| `clear_auto_on` | Verified | light, switch entities; Switch components | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](integrations/shelly/test-records/clear_auto_on.md) |
-| `clear_auto_on` | Documented | Light, CCT, RGB, RGBW, RGBCCT components | | |
-| `get_attributes` | Verified | light, switch entities; Switch, RGBCCT components | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943`<br>`S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](integrations/shelly/test-records/get_attributes.md) |
-| `get_attributes` | Documented | Light, CCT, RGB, RGBW components | | |
-| `lower_brightness` | Verified | light entities; RGBCCT components; brightness fields | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/lower_brightness.md) |
-| `lower_brightness` | Experimental | Light, CCT, RGB, RGBW components | | |
-| `raise_brightness` | Verified | light entities; RGBCCT components; brightness fields | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/raise_brightness.md) |
-| `raise_brightness` | Experimental | Light, CCT, RGB, RGBW components | | |
-| `set_attributes` | Verified | light entities; RGBCCT components; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, min_brightness, max_brightness fields | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/set_attributes.md) |
-| `set_auto_off` | Verified | light, switch entities; Switch components | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](integrations/shelly/test-records/set_auto_off.md) |
-| `set_auto_off` | Documented | Light, CCT, RGB, RGBW, RGBCCT components | | |
-| `set_auto_on` | Verified | light, switch entities; Switch components | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](integrations/shelly/test-records/set_auto_on.md) |
-| `set_auto_on` | Documented | Light, CCT, RGB, RGBW, RGBCCT components | | |
-| `stop` | Verified | light entities; RGBCCT components | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/stop.md) |
-| `stop` | Experimental | Light, CCT, RGB, RGBW components | | |
-| `turn_off_for` | Verified | light, switch entities; Switch, RGBCCT components | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943`<br>`S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/turn_off_for.md) |
-| `turn_off_for` | Documented | Light, CCT, RGB, RGBW components | | |
-| `turn_on_for` | Verified | light, switch entities; Switch, RGBCCT components; brightness, color_temp_kelvin, hs_color, rgb_color, transition, xy_color fields | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943`<br>`S4SW-001X8EU`, firmware `20261026-122156/2.0.3-g4601943`<br>`S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/turn_on_for.md) |
-| `turn_on_for` | Documented | Light, CCT, RGB, RGBW components | | |
+| `clear_auto_off` | Verified | light, switch entities; Switch classes | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](integrations/shelly/test-records/clear_auto_off.md) |
+| `clear_auto_off` | Documented | Light, CCT, RGB, RGBW, RGBCCT classes | | |
+| `clear_auto_on` | Verified | light, switch entities; Switch classes | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](integrations/shelly/test-records/clear_auto_on.md) |
+| `clear_auto_on` | Documented | Light, CCT, RGB, RGBW, RGBCCT classes | | |
+| `get_attributes` | Verified | light, switch entities; Switch, RGBCCT classes | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943`<br>`S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](integrations/shelly/test-records/get_attributes.md) |
+| `get_attributes` | Documented | Light, CCT, RGB, RGBW classes | | |
+| `lower_brightness` | Verified | light entities; RGBCCT classes; brightness fields | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/lower_brightness.md) |
+| `lower_brightness` | Experimental | Light, CCT, RGB, RGBW classes | | |
+| `raise_brightness` | Verified | light entities; RGBCCT classes; brightness fields | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/raise_brightness.md) |
+| `raise_brightness` | Experimental | Light, CCT, RGB, RGBW classes | | |
+| `set_attributes` | Verified | light entities; RGBCCT classes; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, min_brightness, max_brightness fields | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/set_attributes.md) |
+| `set_auto_off` | Verified | light, switch entities; Switch classes | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](integrations/shelly/test-records/set_auto_off.md) |
+| `set_auto_off` | Documented | Light, CCT, RGB, RGBW, RGBCCT classes | | |
+| `set_auto_on` | Verified | light, switch entities; Switch classes | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](integrations/shelly/test-records/set_auto_on.md) |
+| `set_auto_on` | Documented | Light, CCT, RGB, RGBW, RGBCCT classes | | |
+| `stop` | Verified | light entities; RGBCCT classes | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/stop.md) |
+| `stop` | Experimental | Light, CCT, RGB, RGBW classes | | |
+| `turn_off_for` | Verified | light, switch entities; Switch, RGBCCT classes | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943`<br>`S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/turn_off_for.md) |
+| `turn_off_for` | Documented | Light, CCT, RGB, RGBW classes | | |
+| `turn_on_for` | Verified | light, switch entities; Switch, RGBCCT classes; brightness, color_temp_kelvin, hs_color, rgb_color, transition, xy_color fields | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943`<br>`S4SW-001X8EU`, firmware `20261026-122156/2.0.3-g4601943`<br>`S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/turn_on_for.md) |
+| `turn_on_for` | Documented | Light, CCT, RGB, RGBW classes | | |
 
 ### Hue
 

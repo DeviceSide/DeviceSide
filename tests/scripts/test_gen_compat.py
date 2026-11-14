@@ -11,6 +11,7 @@ from custom_components.deviceside.core.scope import (
     AdapterScope,
     Caveat,
     CaveatKind,
+    DoesntWork,
     documented,
     experimental,
     verified,
@@ -51,8 +52,8 @@ def record(root, integration, name, *, result="pass", device="Hue lamp (`LTA009`
 
 class FakeRegistry:
     integrations = {
-        "zha": SimpleNamespace(title="ZHA", maintainers=("jasonmx",)),
-        "hue": SimpleNamespace(title="Hue", maintainers=("jasonmx", "other")),
+        "zha": SimpleNamespace(title="ZHA", maintainers=("jasonmx",), capability=None, classes=frozenset()),
+        "hue": SimpleNamespace(title="Hue", maintainers=("jasonmx", "other"), capability=None, classes=frozenset()),
     }
 
     def __init__(self, *adapters):
@@ -163,12 +164,12 @@ def test_an_adapters_rows_hold_each_level_its_scope_holds_strongest_first_with_i
         fields=verified("brightness") | experimental("transition"),
     )
     assert gc.rows(adapter("zha", "stop", scope), data()) == [
-        "| `stop` | Verified | light entities; Light components; brightness fields"
+        "| `stop` | Verified | light entities; Light classes; brightness fields"
         " | `LTA009`, firmware `1.2.3`<br>group"
         " | [predicted state](integrations/zha/test-records/stop-predicted_state.md),"
         " [record](integrations/zha/test-records/stop.md) |",
-        "| `stop` | Documented | CCT components | | |",
-        "| `stop` | Experimental | switch entities; RGB components; transition fields | | |",
+        "| `stop` | Documented | CCT classes | | |",
+        "| `stop` | Experimental | switch entities; RGB classes; transition fields | | |",
     ]
 
 
@@ -214,8 +215,8 @@ def test_a_manual_row_is_evidence_for_the_actions_it_passed(root):
         "| `stop` | Experimental | light entities | `P1`, by hand<br>`LTA009`, by hand"
         " | [by hand](integrations/zha/test-records/_manual.md) |"
     ]
-    assert gc.manual("zha", "lower_hue") == []
-    assert gc.manual("hue", "stop") == []
+    assert cr.manual_rows("zha", "lower_hue") == []
+    assert cr.manual_rows("hue", "stop") == []
 
 
 def test_a_manual_row_names_models_in_models_yaml(root):
@@ -517,7 +518,7 @@ def test_the_legend_leads_the_cards(root):
         "🟢 works · ✔ verified on automated rig · 🟡 should work: same call pattern as a tested device · "
         "🧪 experimental: off until you turn on Experimental features in DeviceSide's Configure > Settings; please"
         f" [report how it goes]({gc.REPORT_URL}) · "
-        "🔴 doesn't work · "
+        "🚧 not yet supported: needs a command DeviceSide hasn't built · 🔴 doesn't work · "
         "⚠️ unmaintained: no one is fixing it; use at your own risk · "
         f"⚠️ untested fix: changed, not yet tested; please [report whether it works]({gc.REPORT_URL})"
     )
@@ -630,6 +631,94 @@ def test_a_tests_table_with_the_capability_column_parses_as_without_it(root):
         ("`fan` (fan)", "not a class", "pass"),
     ]
     path = record(root, "zha", "turn_on_for", tests=rows)
-    assert gc.targets(path) == {"switch", "light"}
+    assert gc.tests(path) == [("switch", {"Switch"}), ("light", {"hue", "other"}), ("light", set())]
     assert [row["capability"] for row in gc.PASSED.finditer(path.read_text())] == ["`Switch`", "`hue`, `other`", "-"]
     assert [row["capability"] for row in gc.PASSED.finditer("| `t` | `light` (light_ct) | pass |")] == [None]
+
+
+# Classes (docs/evidence.md, Device classes).
+
+
+def classed_registry(*adapters) -> FakeRegistry:
+    """FakeRegistry whose zha names the classes Switch, Light, CCT and RGB."""
+    registry = FakeRegistry(*adapters)
+    registry.integrations = {
+        **registry.integrations,
+        "zha": SimpleNamespace(
+            title="ZHA", maintainers=("jasonmx",), capability=len, classes=frozenset({"Switch", "Light", "CCT", "RGB"})
+        ),
+    }
+    return registry
+
+
+def classed_card(*adapters, **changes):
+    registry = classed_registry(*adapters)
+    return gc.card("zha", registry, list(adapters), data(registry, **changes))
+
+
+def test_an_adapter_flagged_on_a_class_counts_only_records_whose_tests_reached_unflagged_ones(root):
+    # Shelly smooth dimming: a pass on a Gen3 Dimmer's Light must not make it work; one on RGBCCT alone does.
+    record(
+        root, "zha", "raise_brightness", device="Plug (`P1`), firmware `1`", tests=[("`light` (d)", "`Light`", "pass")]
+    )
+    record(root, "zha", "lower_brightness", tests=[("`light` (bulb)", "`Switch`", "pass")])
+    record(root, "zha", "stop", tests=[("`light` (bulb)", "-", "pass")])  # a dash reached no class
+    dimming = AdapterScope(capabilities=verified("Switch") | experimental("Light"))
+    card = classed_card(
+        *(adapter("zha", action, dimming) for action in ("raise_brightness", "lower_brightness", "stop"))
+    )
+    assert card.lines["works"] == [f"[Hue lamp]({URL}#hue-lamp) ✔"]
+
+
+def test_a_manual_row_counts_for_a_class_flagged_adapter_only_with_unflagged_capabilities(root):
+    path = root / "docs" / "integrations" / "zha" / "test-records" / "_manual.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        "| Date | Commit | Tester | Devices | Capabilities | Passed |\n|---|---|---|---|---|---|\n"
+        "| 2026-11-12 | `1a2b3c4` | @jasonmx | `P1` | `Switch` | `stop` |\n"
+        "| 2026-11-12 | `1a2b3c4` | @jasonmx | `LTA009` | `Switch`, `Light` | `stop` |\n"
+    )
+    scope = AdapterScope(capabilities=verified("Switch") | experimental("Light"))
+    assert classed_card(adapter("zha", "stop", scope)).lines["works"] == [f"[Plug]({URL}#plug)"]
+    flagged_domain = AdapterScope(domains=verified("light") | experimental("switch"), capabilities=verified("Switch"))
+    assert classed_card(adapter("zha", "stop", flagged_domain)).lines["works"] == []  # a row names no domain
+
+
+def test_a_class_an_adapter_serves_in_neither_axis_is_not_yet_supported(root):
+    broken = {"RGB": DoesntWork("Old plug", "No timer", "https://x.y/z")}
+    card = classed_card(
+        adapter("zha", "turn_on_for", AdapterScope(capabilities=verified("Switch", "Light", "CCT", "RGB"))),
+        adapter("zha", "set_attributes", AdapterScope(capabilities=verified("Switch"))),
+        adapter("zha", "turn_off_for", AdapterScope(capabilities=verified("Switch"), doesnt_work=broken)),
+    )
+    # Switch has no phrase, so it's never named; RGB doesn't work on turn_off_for, so it isn't unsupported there.
+    assert card.lines["unsupported"] == [
+        f"[dimmers, CCT controllers]({URL}#dimmers): turn off with timer, set without turning on",
+    ]
+    assert card.render().splitlines()[2:] == [
+        f"- 🚧 {card.lines['unsupported'][0]}",
+        f"- 🔴 {' · '.join(card.lines['no'])}",
+    ]
+
+
+def test_a_scopes_doesnt_work_reaches_the_card_and_the_evidence_with_its_actions(root):
+    broken = {"RGB": DoesntWork("Old plug", "No timer", "https://x.y/z")}
+    scope = AdapterScope(capabilities=verified("Switch"), doesnt_work=broken)
+    adapters = (adapter("zha", "turn_on_for", scope), adapter("zha", "turn_off_for", scope))
+    registry = classed_registry(*adapters)
+    found = data(registry, doesnt_work=[])
+    # One entry per integration and entry, whichever adapters list it.
+    assert gc.card("zha", registry, list(adapters), found).lines["no"] == [
+        f"[Old plug]({URL}#old-plug): turn on with timer, turn off with timer"
+    ]
+    assert "| Old plug (`turn_off_for`, `turn_on_for`) | No timer | [source](https://x.y/z) |" in gc.evidence(
+        registry, found
+    )
+
+
+def test_main_warns_on_each_coverage_gap_and_still_passes(root, capsys, monkeypatch):
+    registry = classed_registry(adapter("zha", "stop", AdapterScope(capabilities=verified("Switch"))))
+    run = write_files(root, registry, monkeypatch)
+    assert run([]) == 0
+    assert run(["--check"]) == 0
+    assert capsys.readouterr().err.count("warning: zha stop: `Switch` is Verified but no record reaches it\n") == 2

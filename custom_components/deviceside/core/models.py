@@ -137,14 +137,29 @@ class EntityResult:
     entity_id: str
     status: Status
     integration: str | None = None
+    # The class the call reached, for an integration that names classes (docs/evidence.md, Device classes), or a
+    # native group's members' classes, sorted. The dispatcher sets them, and leaves both None when it couldn't name
+    # one (for a group: any member's).
+    capability: str | None = None
+    capabilities: tuple[str, ...] | None = None
     clamped_to: float | None = None
     detail: str | None = None
     data: dict | None = None
 
+    def classes(self) -> dict[str, Any]:
+        """The class the call reached, as a response carries it: `capability`, or a native group's `capabilities`."""
+        if self.capabilities is not None:
+            return {"capabilities": list(self.capabilities)}
+        return {} if self.capability is None else {"capability": self.capability}
+
     def as_response(self) -> dict:
-        """A command's status entry. A query's response is its data alone (dispatcher), so data is never here."""
+        """A command's status entry. A query's response is its data and class alone (dispatcher), so data is never
+        here."""
         response: dict[str, Any] = {"status": self.status.value}
-        for name in ("integration", "clamped_to", "detail"):
+        if self.integration is not None:
+            response["integration"] = self.integration
+        response |= self.classes()
+        for name in ("clamped_to", "detail"):
             if (value := getattr(self, name)) is not None:
                 response[name] = value
         return response

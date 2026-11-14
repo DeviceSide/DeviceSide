@@ -1,15 +1,24 @@
-"""scripts/check_release.py: the coverage bar, a sign-off for each changed integration, and the call for testers."""
+"""scripts/check_release.py: the coverage bar, a sign-off for each changed integration, the classes' coverage check,
+and the call for testers."""
 
 import json
 import sys
 import types
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
 from custom_components.deviceside.actions import discover
 from custom_components.deviceside.core.registry import AdapterRegistry
-from custom_components.deviceside.core.scope import AdapterScope, Caveat, CaveatKind, IntegrationInfo
+from custom_components.deviceside.core.scope import (
+    AdapterScope,
+    Caveat,
+    CaveatKind,
+    IntegrationInfo,
+    experimental,
+    verified,
+)
 from scripts import check_release as cr
 
 ISSUE = "https://github.com/DeviceSide/DeviceSide/issues/9"
@@ -170,7 +179,7 @@ MANUAL = f"{RECORDS}/_manual.md"
 
 
 def manual(*rows: str) -> str:
-    return "# Fake · manual sign-offs\n\nProse is ignored.\n\n" + "\n".join([*cr.MANUAL_HEADER, *rows]) + "\n"
+    return "# Fake · manual sign-offs\n\nProse is ignored.\n\n" + "\n".join([*cr.MANUAL_HEADER[:2], *rows]) + "\n"
 
 
 def manual_row(commit: str, tester: str = "a", devices: str = "`LCA001`", passed: str = "`turn_on_for`") -> str:
@@ -509,3 +518,63 @@ def test_notes_are_empty_with_nothing_to_test(released, monkeypatch, tmp_path):
     notes = tmp_path / "notes.md"
     assert cr.main(["--notes", str(notes)], registry(released, monkeypatch)) == 0
     assert notes.read_text() == ""
+
+
+# The coverage check.
+
+
+def classed(repo, monkeypatch, **scopes: AdapterScope) -> FakeRegistry:
+    """fake naming classes hue, ikea and other, with the scopes given by action."""
+    found = FakeRegistry(repo.path, monkeypatch, {(action, "fake"): scope for action, scope in scopes.items()})
+    found.integrations["fake"] = replace(
+        found.integrations["fake"], capability=lambda hass, target: "hue", classes=frozenset({"hue", "ikea", "other"})
+    )
+    return found
+
+
+def classes_record(repo, action: str, *cells: str, result: str = "pass") -> None:
+    """A record of the action whose Tests table has a passing test per Capability cell."""
+    rows = "".join(f"| `t{index}` | `light` (bulb) | {cell} | pass |\n" for index, cell in enumerate(cells))
+    path = repo.path / RECORDS / f"{action}.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(f"| | |\n|---|---|\n| Result | {result} |\n\n| Test | Target | Capability | Result |\n{rows}")
+
+
+SCOPE = AdapterScope(capabilities=verified("hue", "ikea") | experimental("other"))
+
+
+def test_a_verified_class_no_record_reaches_is_a_gap(fake_repo, monkeypatch):
+    classes_record(fake_repo, "turn_on_for", "`hue`", "-")  # a dash credits no class
+    classes_record(fake_repo, "stop", "`hue`, `ikea`")  # a group's cell credits each class it lists
+    found = classed(fake_repo, monkeypatch, turn_on_for=SCOPE, stop=SCOPE)
+    assert cr.coverage_gaps(found) == ["fake turn_on_for: `ikea` is Verified but no record reaches it"]
+
+
+def test_a_failing_record_reaches_nothing_and_a_manual_row_with_capabilities_does(fake_repo, monkeypatch):
+    classes_record(fake_repo, "turn_on_for", "`hue`", "`ikea`", result="fail")
+    sha = fake_repo.commit()
+    rows = [
+        "| Date | Commit | Tester | Devices | Capabilities | Passed |",
+        "|---|---|---|---|---|---|",
+        f"| 2026-11-12 | `{sha[:7]}` | @a | `LCA001` | `hue` | `turn_on_for`, `stop` |",
+        f"| 2026-11-12 | `{sha[:7]}` | @a | - | - | no call changed |",
+    ]
+    (fake_repo.path / MANUAL).write_text("\n".join(rows) + "\n")
+    found = classed(fake_repo, monkeypatch, turn_on_for=SCOPE)
+    assert cr.coverage_gaps(found) == ["fake turn_on_for: `ikea` is Verified but no record reaches it"]
+    assert cr.manual_signoffs("fake", ("a",)) == (
+        [cr.SignOff("manual", f"{MANUAL}:3", sha[:7], "a"), cr.SignOff("manual", f"{MANUAL}:4", sha[:7], "a")],
+        [],
+    )
+
+
+def test_an_adapter_flagged_whole_or_an_integration_naming_no_classes_has_no_gap(fake_repo, monkeypatch):
+    flagged = AdapterScope(experimental=True, capabilities=verified("hue"))
+    assert cr.coverage_gaps(classed(fake_repo, monkeypatch, turn_on_for=flagged)) == []
+    assert cr.coverage_gaps(FakeRegistry(fake_repo.path, monkeypatch, {("turn_on_for", "fake"): AdapterScope()})) == []
+
+
+def test_signoffs_fail_on_a_gap(released, monkeypatch, capsys):
+    classes_record(released, "turn_on_for", "`hue`")
+    assert cr.main(["--signoffs"], classed(released, monkeypatch, turn_on_for=SCOPE)) == 1
+    assert "error: fake turn_on_for: `ikea` is Verified but no record reaches it" in capsys.readouterr().err

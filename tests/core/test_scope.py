@@ -1,4 +1,5 @@
-"""AdapterScope levels: each domain, capability and field carries one; a call's level is the weakest it touches.
+"""AdapterScope levels: each domain, class and field carries one; a call's level is the weakest it touches. A class
+that doesn't work, or isn't served, is refused.
 
 The scopes of the real adapters are checked here too: the invariants the dispatcher's gate relies on.
 """
@@ -9,9 +10,11 @@ from pathlib import Path
 import pytest
 
 from custom_components.deviceside.core.adapter import Adapter
+from custom_components.deviceside.core.errors import Reason
 from custom_components.deviceside.core.registry import AdapterRegistry
 from custom_components.deviceside.core.scope import (
     AdapterScope,
+    DoesntWork,
     Level,
     documented,
     experimental,
@@ -40,25 +43,28 @@ def test_defaults_are_a_verified_light_with_every_capability():
     scope = AdapterScope()
 
     assert scope.domains == {"light": Level.VERIFIED}
-    assert scope.level("light", "anything") is Level.VERIFIED
+    assert scope.level("light", ("anything",)) is Level.VERIFIED
 
 
 @pytest.mark.parametrize(
-    ("domain", "capability", "level"),
+    ("domain", "classes", "level"),
     [
-        ("switch", None, Level.EXPERIMENTAL),  # a capability the adapter couldn't name fails safe
-        ("switch", "Switch", Level.VERIFIED),
-        ("switch", "Light", Level.DOCUMENTED),  # the weaker capability lowers a Verified domain
-        ("light", "Switch", Level.DOCUMENTED),  # and a Documented domain lowers a Verified capability
+        ("switch", (None,), Level.EXPERIMENTAL),  # a class the integration couldn't name fails safe
+        ("switch", ("Switch",), Level.VERIFIED),
+        ("switch", ("Light",), Level.DOCUMENTED),  # the weaker class lowers a Verified domain
+        ("light", ("Switch",), Level.DOCUMENTED),  # and a Documented domain lowers a Verified class
+        ("switch", ("Switch", "Light"), Level.DOCUMENTED),  # a native group takes its weakest member's
+        ("switch", ("Switch", None), Level.EXPERIMENTAL),
+        ("switch", (), Level.VERIFIED),  # an empty group has no class to weigh
     ],
 )
-def test_level_is_the_weakest_item_touched(domain, capability, level):
+def test_level_is_the_weakest_item_touched(domain, classes, level):
     scope = AdapterScope(
         domains=verified("switch") | documented("light"),
         capabilities=verified("Switch") | documented("Light"),
     )
 
-    assert scope.level(domain, capability) is level
+    assert scope.level(domain, classes) is level
 
 
 @pytest.mark.parametrize(
@@ -72,14 +78,51 @@ def test_level_is_the_weakest_item_touched(domain, capability, level):
 def test_level_folds_in_the_fields_the_call_carries(fields, level):
     scope = AdapterScope(fields=verified("brightness") | experimental("transition"))
 
-    assert scope.level("light", None, fields) is level
+    assert scope.level("light", (), fields) is level
 
 
-def test_a_capability_outside_the_scope_counts_as_experimental():
-    """supports() lets a call with nothing to do past whatever its capability; the gate must not raise on it."""
+def test_a_class_outside_the_scope_counts_as_experimental():
+    """The gate must not raise on a class the refusal didn't stop."""
     scope = AdapterScope(capabilities=verified("RGBCCT"))
 
-    assert scope.level("light", "Switch") is Level.EXPERIMENTAL
+    assert scope.level("light", ("Switch",)) is Level.EXPERIMENTAL
+
+
+BROKEN = DoesntWork("Tuya plug", "It never switches on", "https://example.com/source")
+
+
+@pytest.mark.parametrize(
+    ("classes", "reason"),
+    [
+        (("hue",), None),
+        ((None,), None),  # unnamed: the gate weighs it, as Experimental
+        ((), None),
+        (("tuya_mcu",), Reason.NOT_SUPPORTED),  # named, in neither capabilities nor doesnt_work
+        (("tuya_zcl",), Reason.DOESNT_WORK),
+        (("hue", "tuya_mcu"), Reason.NOT_SUPPORTED),  # one member refuses the group
+        (("tuya_mcu", "tuya_zcl", "hue"), Reason.DOESNT_WORK),  # doesn't work wins
+    ],
+)
+def test_a_class_that_doesnt_work_or_isnt_served_is_refused(classes, reason):
+    scope = AdapterScope(capabilities=verified("hue"), doesnt_work={"tuya_zcl": BROKEN})
+
+    assert scope.refusal(classes) == reason
+
+
+def test_a_scope_without_classes_refuses_none():
+    assert AdapterScope().refusal(("anything",)) is None
+
+
+@pytest.mark.parametrize(
+    ("doesnt_work", "error"),
+    [
+        ({"hue": BROKEN}, "classes the scope serves"),
+        ({"tuya": DoesntWork("Tuya plug", "why", "http://example.com")}, "https URLs"),
+    ],
+)
+def test_a_doesnt_work_entry_is_checked(doesnt_work, error):
+    with pytest.raises(ValueError, match=error):
+        AdapterScope(capabilities=verified("hue"), doesnt_work=doesnt_work)
 
 
 def test_a_documented_field_is_refused():
@@ -144,16 +187,6 @@ def test_only_the_dispatcher_and_entry_setup_read_the_experimental_option():
         or (isinstance(node, ast.Constant) and node.value == "experimental_features")
     ]
     assert found == []
-
-
-def test_an_adapter_with_capabilities_names_the_one_a_call_reaches():
-    """Without capability(), the gate would weigh only the domain and fields, and let an Experimental capability by."""
-    missing = [
-        f"{adapter.integration} / {adapter.action}"
-        for adapter in _adapters()
-        if adapter.scope.capabilities is not None and type(adapter).capability is Adapter.capability
-    ]
-    assert missing == []
 
 
 def _covers(stop: AdapterScope | None, items: str, item: str, level: Level) -> bool:

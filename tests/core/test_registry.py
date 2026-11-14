@@ -7,13 +7,15 @@ from itertools import product
 from types import SimpleNamespace
 
 import pytest
+from homeassistant.helpers import entity_registry as er
 
 from custom_components.deviceside import actions
+from custom_components.deviceside.core.models import Target
 from custom_components.deviceside.core.registry import AdapterRegistry
-from custom_components.deviceside.core.scope import verified
+from custom_components.deviceside.core.scope import DoesntWork, experimental, verified
 
 from ..conftest import FAKE_INTEGRATIONS
-from ..fakes.fake_integration import ADAPTERS, INTEGRATION, FakeTurnOnFor
+from ..fakes.fake_integration import ADAPTERS, INTEGRATION, FakeTurnOffFor, FakeTurnOnFor
 
 
 def _registry(adapters=ADAPTERS, info=INTEGRATION) -> AdapterRegistry:
@@ -72,26 +74,63 @@ def test_adapter_for_unknown_action_is_refused():
         _registry([Stray])
 
 
-def test_an_adapter_naming_capabilities_must_list_them_in_its_scope():
-    class Named(FakeTurnOnFor):
-        def capability(self, hass, target):
-            return "Switch"
-
-    with pytest.raises(ValueError, match="names capabilities but its scope lists none"):
-        _registry([Named])
-
-    class Listed(Named):
-        scope = replace(FakeTurnOnFor.scope, capabilities=verified("Switch"))
-
-    _registry([Listed])
+CLASSED = replace(INTEGRATION, capability=lambda hass, target: "hue", classes=frozenset({"hue", "tuya", "other"}))
+BROKEN = DoesntWork("Tuya plug", "It never switches on", "https://example.com/source")
 
 
-def test_an_adapter_listing_capabilities_must_name_them():
-    class Unnamed(FakeTurnOnFor):
-        scope = replace(FakeTurnOnFor.scope, capabilities=verified("Switch"))
+class Classed(FakeTurnOnFor):
+    scope = replace(FakeTurnOnFor.scope, capabilities=verified("hue") | experimental("other"))
 
-    with pytest.raises(ValueError, match="lists capabilities in its scope but names none"):
-        _registry([Unnamed])
+
+def test_an_integration_naming_classes_needs_them_in_every_scope():
+    _registry([Classed], CLASSED)
+    with pytest.raises(ValueError, match="names classes, but its scope holds none"):
+        _registry([Classed, FakeTurnOffFor], CLASSED)
+
+
+@pytest.mark.parametrize(
+    "scope",
+    [
+        pytest.param(replace(FakeTurnOnFor.scope, capabilities=verified("hue")), id="capabilities"),
+        pytest.param(replace(FakeTurnOnFor.scope, doesnt_work={"tuya": BROKEN}), id="doesnt_work"),
+    ],
+)
+def test_an_integration_naming_no_classes_needs_them_in_no_scope(scope):
+    class Stray(FakeTurnOnFor):
+        pass
+
+    Stray.scope = scope
+    with pytest.raises(ValueError, match="holds classes, but fake names none"):
+        _registry([Stray])
+
+
+def test_a_scope_holds_only_classes_its_integration_declares():
+    class Typo(FakeTurnOnFor):
+        scope = replace(Classed.scope, doesnt_work={"tuya_zcl": BROKEN})
+
+    with pytest.raises(ValueError, match=r"doesn't declare \(IntegrationInfo.classes\): \['tuya_zcl'\]"):
+        _registry([Typo], CLASSED)
+
+
+@pytest.mark.parametrize(
+    "info",
+    [replace(INTEGRATION, classes=frozenset({"hue"})), replace(CLASSED, classes=frozenset())],
+    ids=["classes_alone", "capability_alone"],
+)
+def test_capability_and_classes_come_together(info):
+    with pytest.raises(ValueError, match="capability and classes come together"):
+        _registry([FakeTurnOnFor], info)
+
+
+async def test_every_capability_classes_a_stand_in_target_with_no_hass(hass):
+    """The rig classes a stand-in Target (hass None, no config entry or state) until it reads the class from each
+    result (docs/plans/2026-11-14-device-classes.md, step 4): a capability() that read either would break its runs."""
+    classed = [info for info in AdapterRegistry.discover().available_integrations() if info.capability is not None]
+    found = {}
+    for info in classed:
+        entry = er.async_get(hass).async_get_or_create("light", info.ha_domain, "aabbccddeeff-rgbcct:0")
+        found[info.key] = info.capability(None, Target(entry.entity_id, "light", info.key, entry, None, None, None))
+    assert found == {"shelly": "RGBCCT"}
 
 
 @pytest.mark.parametrize(

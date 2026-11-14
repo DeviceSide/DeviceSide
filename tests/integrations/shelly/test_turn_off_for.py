@@ -4,7 +4,7 @@ from unittest.mock import call as rpc_call
 
 import pytest
 
-from ...conftest import call
+from .conftest import call
 from ...fixtures.shelly import OTHER_LIGHT_COMPONENTS, add_shelly_entity, shelly_device
 
 CONFIRMED = {"status": "confirmed", "integration": "shelly"}
