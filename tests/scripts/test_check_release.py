@@ -603,6 +603,7 @@ def test_a_format_2_test_credits_its_devices_classes_and_a_group_test_its_member
     classes_record_v2(fake_repo, "stop", ran("light", *members, group=True, role="group"))
     found = classed(fake_repo, monkeypatch, turn_on_for=SCOPE, stop=SCOPE)
     assert cr.coverage_gaps(found) == ["fake turn_on_for: `ikea` is Verified but no record reaches it"]
+    assert (cr.reached("fake", "turn_on_for"), cr.reached("fake", "stop")) == ({"hue"}, {"hue", "ikea"})
 
 
 def test_a_failing_record_reaches_nothing_and_a_manual_row_with_a_class_does(fake_repo, monkeypatch):
