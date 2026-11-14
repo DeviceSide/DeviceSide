@@ -524,13 +524,14 @@ outputs, deviations and scripts: the gitignored `notes/lab-probe-2026-11-14/` (`
 there use absolute paths). Decision rule 2: the TS011F is `tuya_zcl`.
 
 **Next:**
-1. Sengled to the Hue bridge (Jason pairs; record "doesn't pair" and the bridge version if it won't), §1 on it, then
-   back to ZHA and into its ZHA group (the house profile's group case needs it).
-2. Hue room member count (§1.5).
-3. Those results go in a second dated research file (`research/<date>-lab-probe-hue.md`), plus a line in
-   `hue/internals.md`.
-4. Z2M log level back to `warning` (Jason set `debug` in the frontend for the probe).
-5. Step 5 adds the Sengled to `docs/models.yaml` with its card section (gen_compat needs a heading for each model).
+1. Add the Sengled back to the lab ZHA group (the house profile's group case needs it). The rig restrictor refused
+   it; `notes/lab-probe-2026-11-14/zha_group_add_sengled.py` does it under `--hold zha` once Jason says yes
+   (`DEVICE_SIDE_RIG_RESTRICTED=1`) or the restrictor is off.
+2. Step 5 adds the Sengled to `docs/models.yaml` with its card section (gen_compat needs a heading for each model).
+
+Since the last handoff: the Sengled doesn't pair with the Hue bridge; Hue rooms have a device entry
+(`Room`/`Zone`) and every member resolves, correcting §1's row (`hue/research/2026-11-14-lab-probe-hue.md`); the
+Sengled is back on ZHA, strings unchanged; Z2M logging is back at `warning`.
 
 **Open for Jason:** how to record the C1 firmware variation (`_TZ3000_0zfrhq4i` ignores the timer while off;
 `_TZ3000_typdpbpg` counts down while off and switches on at the end; both are in `docs/internals.md` now); whether

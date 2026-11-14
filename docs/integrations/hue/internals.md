@@ -107,7 +107,10 @@ Assistant 2026.10.2, aiohue 4.9.0, unless dated otherwise. Home Assistant shows 
 - **Device strings** (2026-11-14, Home Assistant 2026.10.4): Hue bulbs register as manufacturer `Signify
   Netherlands B.V.`, a product-name model (`Hue ambiance lamp`), the model ID in `model_id` (`LTA009`), and the
   firmware as `sw_version`. Their `product_data` has `certified` true and `product_archetype` `sultan_bulb` or
-  `classic_bulb`. Probe: [lab-probe](../zigbee2mqtt/research/2026-11-14-lab-probe.md), §1.
+  `classic_bulb`. A room's or zone's light entity has its own device, `Signify Netherlands B.V.` / `Room` (or
+  `Zone`), and a room's member devices each have theirs. A Sengled E11-G13 doesn't pair with a `BSB002` on software
+  `6.3.1978545030`. Probes: [lab-probe](../zigbee2mqtt/research/2026-11-14-lab-probe.md), §1;
+  [rooms and the Sengled](research/2026-11-14-lab-probe-hue.md).
 
 ## Upstream defects
 
