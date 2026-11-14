@@ -104,6 +104,11 @@ Assistant 2026.10.2, aiohue 4.9.0, unless dated otherwise. Home Assistant shows 
   sends it a Leave, as Z2M's and ZHA's removes do, and it joins the next network in about 10 s. On older firmware,
   a v1 light delete left it on no network, until a delete in the Hue app released it.
 
+- **Device strings** (2026-11-14, Home Assistant 2026.10.4): Hue bulbs register as manufacturer `Signify
+  Netherlands B.V.`, a product-name model (`Hue ambiance lamp`), the model ID in `model_id` (`LTA009`), and the
+  firmware as `sw_version`. Their `product_data` has `certified` true and `product_archetype` `sultan_bulb` or
+  `classic_bulb`. Probe: [lab-probe](../zigbee2mqtt/research/2026-11-14-lab-probe.md), §1.
+
 ## Upstream defects
 
 Workarounds the adapters carry for behavior upstream that could be fixed there. Only the issues our code already
