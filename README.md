@@ -37,9 +37,9 @@ DeviceSide unlocks native features in your lights, switches and plugs on Zigbee,
 
 ### Why DeviceSide exists
 
-Many on-device features aren't supported by HA core because manufacturers implement them inconsistently. So if you want auto-off or smooth dimming, you have to dig through forum threads for low-level YAML or blueprint recipes, then get them working yourself.
+Many on-device features aren't supported by HA core, because they're implemented inconsistently by device makers. So if you want auto-off or smooth dimming, you have to dig through forums for low-level YAML recipes, then get them working yourself.
 
-DeviceSide turns the most popular of those recipes into simple HA actions. Anyone can [contribute](CONTRIBUTING.md) a recipe that works for their device or integration, and once one person has found it, everyone benefits.
+DeviceSide turns the most popular of these into simple HA actions, built on crowd-sourced knowledge from the HA user community.
 
 ### Will it work with my device?
 
