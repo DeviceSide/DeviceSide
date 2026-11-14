@@ -82,8 +82,8 @@ The compatibility section below shows which devices are known or likely to work.
 
 **[Hue](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/hue/index.md)** (Bridge v2/Pro) · maintained by [@jasonmx](https://github.com/jasonmx)
 
-- 🟢 [White Ambiance E27 1100lm](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#hue-white-ambiance-e27-1100lm) ✔ · [Essential White and Color Ambiance A60](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#hue-essential-white-and-color-ambiance-a60) ✔ · [native groups](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#native-groups) ✔
-- 🔴 [smart scenes](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/hue/index.md#hue-smart-scenes)
+- 🧪 [other brands](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/hue/index.md#other-brands): smooth dimming, smooth saturation, set without turning on, scenes, get attributes
+- 🔴 [smart scenes](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/hue/index.md#hue-smart-scenes): scenes
 
 **[Matter](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/matter/index.md)** · maintained by [@jasonmx](https://github.com/jasonmx)
 

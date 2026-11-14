@@ -199,18 +199,26 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 
 | Action | Level | Items | Tested models | Records |
 |---|---|---|---|---|
-| `get_attributes` | Verified | light entities | `LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>group | [record](integrations/hue/test-records/get_attributes.json) |
-| `lower_brightness` | Verified | light entities; brightness fields | `LTA009`, firmware `1.163.1`<br>group | [predicted state](integrations/hue/test-records/lower_brightness-predicted_state.json), [record](integrations/hue/test-records/lower_brightness.json) |
-| `lower_saturation` | Verified | light entities; saturation fields | `LCA016`, firmware `1.164.2`<br>group | [record](integrations/hue/test-records/lower_saturation.json) |
-| `raise_brightness` | Verified | light entities; brightness fields | `LTA009`, firmware `1.163.1`<br>group | [predicted state](integrations/hue/test-records/raise_brightness-predicted_state.json), [record](integrations/hue/test-records/raise_brightness.json) |
-| `raise_saturation` | Verified | light entities; saturation fields | `LCA016`, firmware `1.164.2`<br>group | [record](integrations/hue/test-records/raise_saturation.json) |
-| `set_attributes` | Verified | light entities; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, min_brightness, max_brightness fields | `LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>group | [record](integrations/hue/test-records/set_attributes.json) |
-| `set_scene` | Verified | scene entities | group | [record](integrations/hue/test-records/set_scene.json) |
-| `stop` | Verified | light entities | `LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>group | [predicted state](integrations/hue/test-records/stop-predicted_state.json), [record](integrations/hue/test-records/stop.json) |
+| `get_attributes` | Verified | light entities; hue classes | `LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>group | [record](integrations/hue/test-records/get_attributes.json) |
+| `get_attributes` | Experimental | other classes | | |
+| `lower_brightness` | Verified | light entities; hue classes; brightness fields | `LTA009`, firmware `1.163.1`<br>group | [predicted state](integrations/hue/test-records/lower_brightness-predicted_state.json), [record](integrations/hue/test-records/lower_brightness.json) |
+| `lower_brightness` | Experimental | other classes | | |
+| `lower_saturation` | Verified | light entities; hue classes; saturation fields | `LCA016`, firmware `1.164.2`<br>group | [record](integrations/hue/test-records/lower_saturation.json) |
+| `lower_saturation` | Experimental | other classes | | |
+| `raise_brightness` | Verified | light entities; hue classes; brightness fields | `LTA009`, firmware `1.163.1`<br>group | [predicted state](integrations/hue/test-records/raise_brightness-predicted_state.json), [record](integrations/hue/test-records/raise_brightness.json) |
+| `raise_brightness` | Experimental | other classes | | |
+| `raise_saturation` | Verified | light entities; hue classes; saturation fields | `LCA016`, firmware `1.164.2`<br>group | [record](integrations/hue/test-records/raise_saturation.json) |
+| `raise_saturation` | Experimental | other classes | | |
+| `set_attributes` | Verified | light entities; hue classes; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, min_brightness, max_brightness fields | `LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>group | [record](integrations/hue/test-records/set_attributes.json) |
+| `set_attributes` | Experimental | other classes | | |
+| `set_scene` | Verified | scene entities; hue classes | group | [record](integrations/hue/test-records/set_scene.json) |
+| `set_scene` | Experimental | other classes | | |
+| `stop` | Verified | light entities; hue classes | `LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>group | [predicted state](integrations/hue/test-records/stop-predicted_state.json), [record](integrations/hue/test-records/stop.json) |
+| `stop` | Experimental | other classes | | |
 
 | Doesn't work | Why | Source |
 |---|---|---|
-| Hue smart scenes | A smart (All-Day) scene changes with the time of day, so it has no fixed settings to write | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/hue/index.md#flash-free-turn-on) |
+| Hue smart scenes (`set_scene`) | A smart (All-Day) scene changes with the time of day, so it has no fixed settings to write | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/hue/index.md#hue-smart-scenes) |
 
 ### Matter
 

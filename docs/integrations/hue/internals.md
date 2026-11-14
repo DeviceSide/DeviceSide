@@ -15,6 +15,51 @@ a light entity. Reads come from aiohue's copy of the bridge's state, kept curren
 - **No auto-off or auto-on adapter.** CLIP v2 stores neither on a light or `grouped_light`, and lacks the v1 rule
   engine that could build one, which Signify is retiring.
 
+## Device classes
+
+What decides a call's outcome on Hue (docs/evidence.md, key a class on what decides the outcome), checked
+2026-11-14 in Home Assistant 2026.10.2 and aiohue 4.9.0, the versions in `pyproject.toml`'s lock:
+
+- **DeviceSide's request is the same for every light.** aiohue's `set_state` builds the CLIP v2 PUT from its
+  arguments alone, with no branch on the light, bar effects, which DeviceSide never sends
+  ([`v2/controllers/lights.py`](https://github.com/home-assistant-libs/aiohue/blob/4.9.0/aiohue/v2/controllers/lights.py#L74-L105)).
+  The bridge picks the Zigbee command, and its firmware is closed: nothing in CLIP v2 shows which command it sent, nor
+  routes a light by a field DeviceSide could read. So the class keys on identity.
+- **Hue's results are the bridge's and Signify's firmware together.** On the bridge a Hue bulb's soft off keeps its
+  stored brightness and a raise from off starts at the bottom (Tested behavior); on ZHA the same bulb given the plain
+  ZCL call is left at level 1 after a soft off and raises from its stored level ([ZHA internals](../zha/internals.md)).
+  So the bridge sends Hue bulbs more than the plain call, and what it sends another brand can't be seen.
+- **`product_data.certified`** is the one routing core's hue integration does by device: it trusts `mirek_valid`
+  (color temperature mode) only from a certified light, as "non-official lights do not" set it
+  ([`v2/light.py`](https://github.com/home-assistant/core/blob/2026.10.2/homeassistant/components/hue/v2/light.py#L160-L164)),
+  and skips its availability workaround for one
+  ([`v2/entity.py`](https://github.com/home-assistant/core/blob/2026.10.2/homeassistant/components/hue/v2/entity.py#L166-L170)).
+  It decides how a light's state reads, not the call. Whether a Friends of Hue light reports `certified` true is
+  unverified, so it can't stand for Signify's firmware: `hue` keys on the manufacturer, `Signify Netherlands B.V.`,
+  which core registers from `product_data.manufacturer_name`
+  ([`v2/device.py`](https://github.com/home-assistant/core/blob/2026.10.2/homeassistant/components/hue/v2/device.py#L64-L71)).
+- **Per-light data changes the payload, not the call:** a light's gamut (aiohue leaves `gamut` None for many
+  non-Hue lights, [`v2/models/feature.py`](https://github.com/home-assistant-libs/aiohue/blob/4.9.0/aiohue/v2/models/feature.py#L310-L311)),
+  where `colors.clamp_to_gamut` sends the xy unclamped; its `mirek_schema`; and its features, which drop fields
+  (`fields_dropped`, `not_dimmable`). None needs a class. `product_archetype`, `min_dim_level`, `dynamics` and `mode`
+  route nothing.
+
+So `other` holds every other maker's light, and no action is Documented on it, as each depends on what the bridge
+sends and known brands depart from the commands it plausibly sends:
+
+- **Writes while off** (`set_attributes`, `set_scene`): a Sengled E11-G13 jumps to full on `MoveToLevel` while off
+  ([ZHA internals](../zha/internals.md)); a Gledopto turns on when its color is set while off
+  ([research](../zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md), §5); IKEA bulbs take a transition on
+  one attribute at a time (Zigbee2MQTT's
+  [LED1624G9 page](https://github.com/Koenkk/zigbee2mqtt.io/blob/master/docs/devices/LED1624G9.md), read 2026-11-14).
+- **Soft off and fades** (`lower_brightness`, `raise_brightness`, `stop`): core's hue integration carries a
+  workaround for `on: false` with a transition resetting brightness to 1 on some lights (`v2/light.py`, in
+  `async_turn_on`); IKEA firmware may not turn off mid-transition (the LED1624G9 page). Stop's xy halt and its
+  soft-off cut are writes mid-transition, measured only on Hue bulbs.
+- **Color fades** (`raise_saturation`, `lower_saturation`): the payload differs where a light reports no gamut.
+- **`get_attributes`**: reads `mirek_valid`, which non-certified lights don't set reliably (above;
+  [core PR #97263](https://github.com/home-assistant/core/pull/97263)).
+
 ## Modules
 
 One section per adapter module, named after it.

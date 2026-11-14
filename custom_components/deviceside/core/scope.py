@@ -260,3 +260,9 @@ class IntegrationInfo:
     max_concurrency: int = 4
     available: bool = True
     unavailable_reason: str | None = None
+    # Why DeviceSide never supports this integration's targets, for one declared only to refuse them: a different
+    # gateway or API on a sibling's ha_domain (docs/evidence.md, The split rule), whose `detect` hook claims its
+    # entities, as the Hue v1 bridge's beside Hue. The sibling's module lists it in UNSUPPORTED (core/registry.py); it
+    # has no adapters, and the dispatcher refuses every target it claims as integration_not_supported, with this as the
+    # reason a named one raises with. None for every integration that has adapters.
+    unsupported: str | None = None

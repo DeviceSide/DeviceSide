@@ -17,6 +17,9 @@ class Reason(StrEnum):
     INTEGRATION_NOT_LOADED = "integration_not_loaded"
     # A group with no members holds nothing to act on, which is not a reason it can't: it is skipped, never raised.
     EMPTY_GROUP = "empty_group"
+    # No integration DeviceSide has takes the entity's platform, or one declared only to refuse a gateway or API claims
+    # it (IntegrationInfo.unsupported, whose reason a named target raises with).
+    INTEGRATION_NOT_SUPPORTED = "integration_not_supported"
     # The integration can't address the target (no device address, a nested wrapper, a group member it can't address
     # on its own: Target.addressable): raised if named, else skipped.
     NOT_ADDRESSABLE = "not_addressable"

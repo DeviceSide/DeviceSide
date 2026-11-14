@@ -2,8 +2,8 @@
 
 import pytest
 
-from .conftest import SENT, fade_put, lamp, mixed_room, room
-from ...conftest import call, result
+from .conftest import SENT, call, fade_put, lamp, mixed_room, room
+from ...conftest import result
 
 pytestmark = pytest.mark.usefixtures("setup_production")
 

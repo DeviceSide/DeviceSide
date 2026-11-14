@@ -1,9 +1,13 @@
 import pytest
 from homeassistant.util.color import color_hs_to_xy
 
+from custom_components.deviceside.core.resolver import resolve
+from custom_components.deviceside.core.runtime import get_runtime
+from custom_components.deviceside.integrations.hue import INTEGRATION
 from custom_components.deviceside.integrations.hue.transition_cache import transition_cache
 
 from ...conftest import Clock, unload_mock_entries
+from ...conftest import call as call_service
 from ...fixtures.hue import HueBridge, add_hue_entity, add_hue_group, hue_entry, light_action
 
 
@@ -20,6 +24,22 @@ def bridge() -> HueBridge:
 
 
 unload_mock_hue_entries = unload_mock_entries("hue")
+
+
+async def call(hass, service: str, data: dict, return_response: bool = True):
+    """The response, each entry's class checked and left out, so a test states only what its action decides: every
+    Hue result names the class its light, scene or room's members are (docs/action-behavior.md)."""
+    response = await call_service(hass, service, data, return_response)
+    for entity_id, entry in (response or {}).items():
+        target = resolve(hass, get_runtime(hass).registry, entity_id)
+        listed = (INTEGRATION.expand_group(hass, target) or []) if target.is_group else [target]
+        found = [INTEGRATION.capability(hass, member) for member in listed]
+        known = bool(found) and None not in found
+        if target.is_group:
+            assert entry.pop("capabilities", None) == (sorted(set(found)) if known else None), entity_id
+        else:
+            assert entry.pop("capability", None) == (found[0] if known else None), entity_id
+    return response
 
 
 async def setup_room(hass, bridge):

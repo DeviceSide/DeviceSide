@@ -188,8 +188,11 @@ runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, 
   and `harms`, which must be true, as an unharmed one needs no entry); a class is in at most one of `capabilities`,
   `doesnt_work` and `not_supported`.
 - **Resolver.** Candidates are the available integrations whose `ha_domain` is the entity's registry platform;
-  one with a `detect` hook wins first (Z2M over plain MQTT). A `switch_as_x` light resolves to the switch it wraps,
-  and results report the light.
+  one with a `detect` hook wins first (Z2M over plain MQTT). A gateway or API DeviceSide never supports is an
+  integration of its own, declared only to refuse (`IntegrationInfo.unsupported`, listed in its sibling's module as
+  `UNSUPPORTED`, and kept out of the cards and gates): its `detect` hook claims the entities, and the dispatcher refuses
+  each as `integration_not_supported`, with its reason (the Hue v1 bridge). A `switch_as_x` light resolves to the
+  switch it wraps, and results report the light.
 - **Groups.** HA groups are always expanded, in one place, because no device can address them; members carry
   `via_group`. Native groups (Hue `grouped_light`, Z2M and ZHA groups) pass through as one target. An adapter with
   `native_groups` gets the group; for one without, the dispatcher calls the integration's `expand_group`, or refuses

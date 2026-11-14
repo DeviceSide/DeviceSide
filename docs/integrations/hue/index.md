@@ -5,10 +5,12 @@ to every integration is in [integrations.md](../../integrations.md); which devic
 on the [device compatibility page](../../device-compatibility.md); how the calls work, and what was measured, is
 in [internals.md](internals.md).
 
-A Hue Bridge v2 or Bridge Pro on the core `hue` integration. The v1 bridge isn't built: it lacks the v2 API and
-event stream DeviceSide uses, and Signify no longer supports it
-([Home Assistant](https://www.home-assistant.io/integrations/hue/#support-for-legacy-v1-hue-bridges)), so it is
-refused (`bridge_v1`). Rooms and zones are targets in their own right.
+A Hue Bridge v2 or Bridge Pro on the core `hue` integration. Rooms and zones are targets in their own right.
+
+**The v1 (round) bridge isn't supported, and won't be.** Its API can't change a light while it's off, so neither
+flash-free turn-on can work, and it has no push updates, so Home Assistant learns of a change only when it next polls,
+up to 5 s later. Signify ended its support in 2020 ([research](research/2026-11-14-v1-api.md)). Every action refuses
+its lights and scenes (`integration_not_supported`), saying why.
 
 **No `turn_on_for` or `turn_off_for`**: see [what can't be done](../../integrations.md#what-cant-be-done-and-why).
 
@@ -16,6 +18,28 @@ refused (`bridge_v1`). Rooms and zones are targets in their own right.
 engine to build one from. The v1 rule engine could, but Signify advises against it as "it will not be available long
 term" ([Hue API V2](https://developers.meethue.com/develop/hue-api-v2/)). A timer kept by Home Assistant wouldn't
 survive it going offline, which is the point of auto-off.
+
+## Device classes
+
+The bridge sends each light its own commands, and lights of other brands can answer them differently, so a test on a
+Hue light proves nothing about another brand's. DeviceSide tells them apart by the manufacturer the bridge reports for
+each light. Every feature says how well it is proven for each
+([levels of proof](../../device-compatibility.md#levels-of-proof)).
+
+- **Hue lights** (manufacturer `Signify Netherlands B.V.`) are tested: every feature on this page has passed on them.
+- A **scene** is proven as far as its lights: one with a light of another brand counts as that brand's.
+- A **room or zone** is proven as far as its weakest light. With Experimental features off, one with a light of
+  another brand falls back to its lights, each on its own, so the Hue lights still run; with them on, it runs as one
+  room. A light the bridge has in the room but Home Assistant has no light entity for still counts, as the room's
+  command reaches it.
+
+### Other brands
+
+Lights of other brands paired to the bridge (IKEA, Innr, LEDVANCE and the rest, Friends of Hue ones included) are
+untested, so every feature runs on them only with Experimental features on. The Hue lights' tests don't prove them,
+as other brands are known to answer the same Zigbee commands differently: some take only one of brightness and color
+at a time, some come on when written while off, and some don't report color temperature as Hue lights do
+([internals](internals.md#device-classes)). A test on one adds a class for its brand.
 
 ## Smooth dimming
 
@@ -39,8 +63,8 @@ Assistant's color space, a little short of the deepest colors the Hue app can re
 
 - **`set_attributes`** writes a room light by light, as a room write misses lights that are off.
 - **`set_scene`** reads the scene live, so edits in the Hue app apply. A light the scene turns off is turned off.
-  Dynamic scenes set their first frame; gradients and effects are skipped. Smart (All-Day) scenes are refused
-  (`smart_scene`). Lights are written one after another: an 8-light scene takes under a second.
+  Dynamic scenes set their first frame; gradients and effects are skipped. Smart (All-Day) scenes
+  [don't work](#hue-smart-scenes). Lights are written one after another: an 8-light scene takes under a second.
 
 ## Get attributes
 
@@ -60,4 +84,4 @@ when every light is off, as the Hue integration shows it.
 ### Hue smart scenes
 
 A smart (All-Day) scene switches between scenes by time of day, so it has no fixed settings to write. Set scene
-refuses it (`smart_scene`) ([flash-free turn-on](#flash-free-turn-on)).
+refuses it (`doesnt_work`), saying why ([flash-free turn-on](#flash-free-turn-on)).
