@@ -187,9 +187,9 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
        `set_attributes`, whose state the Sengled lab run decides (Decision 13).
      - **Documented for `other`,** settled per adapter, not only `stop`, once the Tuya rules take those devices
        out of `other`.
-     - **Group members with no light:** `expand_group` answers None (membership unknowable) when a member address
-       resolves to no device or no entity in the group's domain, so a switch-exposed Tuya plug in a Hue group can't
-       leave the group Verified on its Hue members alone.
+     - **Group members with no light:** `expand_group` answers None (membership unknowable) when some member
+       address resolves to no device or no entity in the group's domain, so a switch-exposed Tuya plug in a Hue group
+       can't leave the group Verified on its Hue members alone. (When none resolves, it already answers None.)
      - **Docs:** `docs/evidence.md`'s tenets example (the TS011F), the `docs/integrations.md` Zigbee plugs and
        switches line, `docs/models.yaml`'s TS011F reason (or the entry's move into code, one per integration), the
        TS011F and Sengled model IDs in `docs/models.yaml`, and `index.md`'s Other brands paragraph on Tuya and

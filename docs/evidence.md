@@ -88,8 +88,8 @@ decide the result together, so the class follows the vendor (Zigbee2MQTT: `hue`,
   the cards are generated from them; where each piece goes is CLAUDE.md's
   [Where facts go](../CLAUDE.md#where-facts-go).
 - **Groups.** A native group takes the weakest level among its members' classes. One with a member that doesn't work
-  or isn't supported, or one that is Experimental while Experimental features is off, falls back to its members, each
-  judged on its own, when the integration can list them; one it can't list counts as Experimental: refused while
+  or isn't supported, or a member whose class is Experimental, while Experimental features is off (the domain and
+  fields not flagged), falls back to its members, each judged on its own, when the integration can list them; one it can't list counts as Experimental: refused while
   Experimental features is off ([design.md](design.md#core-contract), Groups).
 
 ### Doesn't work, not yet supported, untested

@@ -16,7 +16,7 @@ from custom_components.deviceside.integrations.zigbee2mqtt import native_control
 from custom_components.deviceside.integrations.zigbee2mqtt.restore_journal import journal, locks
 
 from .conftest import SET, call, light
-from ...conftest import allow_experimental
+from ...conftest import allow_experimental, refusal
 from ...fixtures.zigbee2mqtt import GROUPS, IEEE, INFO, add_z2m_entity, add_z2m_group, z2m_entry
 
 SENT = {"status": "sent", "integration": "zigbee2mqtt"}
@@ -223,6 +223,20 @@ async def test_group_with_option_on_sends_no_request(hass, setup_production, bro
     await call(hass, "turn_on_for", DOWNSTAIRS)
 
     assert broker.requests() == []
+
+
+async def test_a_group_bridge_groups_doesn_t_list_is_experimental_and_sent_whole(
+    hass, setup_production, broker, turn_ons
+):
+    group_with_member(hass, "Philips")
+    broker.retained[GROUPS] = [{"id": 3, "members": []}]
+
+    assert await refusal(hass, "turn_on_for", DOWNSTAIRS) == "experimental_off"
+    allow_experimental(hass)
+    await call(hass, "turn_on_for", DOWNSTAIRS)
+
+    assert broker.requests() == []
+    assert len(broker.timers()) == 1
 
 
 async def test_a_group_with_no_hue_member_is_left_alone(hass, setup_production, broker, turn_ons):

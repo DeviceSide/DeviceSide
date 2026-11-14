@@ -106,11 +106,19 @@ async def test_without_the_bridge_cache_membership_is_unknowable(hass, setup_pro
     assert INTEGRATION.expand_group(hass, resolve(hass, get_runtime(hass).registry, "light.room")) is None
 
 
-async def test_a_group_bridge_groups_doesn_t_list_has_no_members(hass, setup_production, broker):
+@pytest.mark.parametrize(
+    ("groups", "expected"),
+    [
+        pytest.param([{"id": 3, "members": [{"ieee_address": "0x01"}]}], None, id="unlisted"),
+        pytest.param([{"id": 7, "members": [{"ieee_address": "0x09"}]}], None, id="no_member_in_ha"),
+        pytest.param([{"id": 7, "members": []}], [], id="listed_empty"),
+    ],
+)
+async def test_only_a_group_listed_with_no_members_is_empty(hass, setup_production, broker, groups, expected):
     entity_id = group(hass, broker, one={}, two={})
-    broker.retained[GROUPS] = [{"id": 3, "members": [{"ieee_address": "0x01"}]}]
+    broker.retained[GROUPS] = groups
 
-    assert INTEGRATION.expand_group(hass, resolve(hass, get_runtime(hass).registry, entity_id)) == []
+    assert INTEGRATION.expand_group(hass, resolve(hass, get_runtime(hass).registry, entity_id)) == expected
 
 
 # What a class's level does to a call.

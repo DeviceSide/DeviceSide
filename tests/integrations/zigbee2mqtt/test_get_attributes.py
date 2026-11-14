@@ -430,15 +430,22 @@ async def test_member_failure_fails_the_group(hass, broker):
     assert raised.value.translation_key == "targets_failed"
 
 
-@pytest.mark.parametrize("groups", [[{"id": 7, "members": []}], [{"id": 3, "members": []}]])
-async def test_empty_group_is_skipped_silently(hass, broker, caplog, groups):
+async def test_empty_group_is_skipped_silently(hass, broker, caplog):
     group(hass, broker, one={}, two={}, members=[])
-    broker.retained[GROUPS] = groups
+    broker.retained[GROUPS] = [{"id": 7, "members": []}]
 
     response = await call(hass, "get_attributes", {"entity_id": ["light.room", "light.one"]})
 
     assert response == {"light.one": ROW}
     assert "skipped" not in caplog.text
+
+
+async def test_a_group_bridge_groups_doesn_t_list_is_experimental(hass, broker):
+    """Membership unknown, not empty: Z2M may not have published the group yet."""
+    group(hass, broker, one={}, two={}, members=[])
+    broker.retained[GROUPS] = [{"id": 3, "members": []}]
+
+    assert await refusal(hass, "get_attributes", {"entity_id": "light.room"}) == "experimental_off"
 
 
 async def test_no_bridge_groups_fails_the_group(hass, broker):
