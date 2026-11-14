@@ -516,21 +516,24 @@ A package changed after its lab run needs that run again before the release. Non
 2026-11-14, step 3 lab probe, mid-run. Branch `wt/device-classes-3` (off `claude/device-classes-3-lab-probe`),
 worktree `deviceside-wt/device-classes-3`, draft PR #423.
 
-**Done:** §1 registry strings (all networks, groups bar the Hue room's member count), §2 TS011F on Z2M (C1, C2, C5,
-C6, C7) and on a second TS011F already on ZHA (C5, C1), §4 Sengled on Z2M (registry, C1, C6). Results, deviations
-from the spec and the scripts are in the worktree's gitignored `notes/lab-probe-2026-11-14/` (`findings.md` first);
-the household entity IDs are there and in the rig's `lab_tuya` profile, never in the repo. Headline: decision rule 2,
-the TS011F is `tuya_zcl` (C5, Tuya's recipe, works on both firmwares; C1 fails on both, differently).
+**Done:** §1 registry strings (all networks, groups bar the Hue room's member count), §2 TS011F (Z2M C1, C2, C5, C6,
+C7; a second TS011F on ZHA, C5 and C1), §4 Sengled on Z2M (registry, C1, C2, C5, C6: it ignores 0x42 in every form).
+Written up in `docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md` (dated, not to be edited again), with
+the §5 facts in `docs/internals.md`, each bundle's `internals.md`, and the TS011F's ids in `docs/models.yaml`. Raw
+outputs, deviations and scripts: the gitignored `notes/lab-probe-2026-11-14/` (`findings.md` first; rig commands
+there use absolute paths). Decision rule 2: the TS011F is `tuya_zcl`.
 
 **Next:**
-1. Sengled on Z2M: C2 and C5 (`--onoff-only`; it has no timer attributes), per §4.3.
-2. Sengled to the Hue bridge (Jason pairs; record "doesn't pair" and the bridge version if it won't), §1 on it, then
+1. Sengled to the Hue bridge (Jason pairs; record "doesn't pair" and the bridge version if it won't), §1 on it, then
    back to ZHA and into its ZHA group (the house profile's group case needs it).
-3. Hue room member count (§1.5).
-4. Z2M log level back to `warning` (it was `warning` before the probe; Jason set `debug` in the frontend).
-5. Write the dated research file and the §5 facts (`docs/internals.md` for the TS011F's 0x42, bundle `internals.md`
-   rows, `docs/models.yaml`), commit on this branch, push.
+2. Hue room member count (§1.5).
+3. Those results go in a second dated research file (`research/<date>-lab-probe-hue.md`), plus a line in
+   `hue/internals.md`.
+4. Z2M log level back to `warning` (Jason set `debug` in the frontend for the probe).
+5. Step 5 adds the Sengled to `docs/models.yaml` with its card section (gen_compat needs a heading for each model).
 
 **Open for Jason:** how to record the C1 firmware variation (`_TZ3000_0zfrhq4i` ignores the timer while off;
-`_TZ3000_typdpbpg` counts down while off and switches on at the end); whether to re-pair the Z2M plug to ZHA for a
-same-unit comparison. A rig journal from an earlier aborted run needs `--recover` (holds every lock).
+`_TZ3000_typdpbpg` counts down while off and switches on at the end; both are in `docs/internals.md` now); whether
+to re-pair the Z2M plug to ZHA for a same-unit comparison. Step 5's open question is answered: HA's registry holds
+no Tuya strings for a Z2M device (only `TS011F_plug_1`, Z2M's definition), so `capability()` before the first
+`bridge/devices` needs Jason's call. A rig journal from an earlier aborted run needs `--recover` (holds every lock).
