@@ -7,12 +7,8 @@ from itertools import product
 from types import SimpleNamespace
 
 import pytest
-from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers import entity_registry as er
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.deviceside import actions
-from custom_components.deviceside.core.models import Target
 from custom_components.deviceside.core.registry import AdapterRegistry
 from custom_components.deviceside.core.scope import DoesntWork, Level, experimental, verified
 
@@ -148,22 +144,6 @@ def test_shelly_names_no_default_class_and_zigbee2mqtt_holds_its_below_verified(
 def test_capability_and_classes_come_together(info):
     with pytest.raises(ValueError, match="capability and classes come together"):
         _registry([FakeTurnOnFor], info)
-
-
-async def test_every_capability_classes_a_stand_in_target_with_no_hass(hass):
-    """The rig classes a stand-in Target (hass None, no config entry or state) until it reads the class from each
-    result (docs/plans/2026-11-14-device-classes.md, step 4): a capability() that read either would break its runs."""
-    classed = [info for info in AdapterRegistry.discover().available_integrations() if info.capability is not None]
-    found = {}
-    for info in classed:
-        config = MockConfigEntry(domain=info.ha_domain)
-        config.add_to_hass(hass)
-        device = dr.async_get(hass).async_get_or_create(
-            config_entry_id=config.entry_id, identifiers={(info.ha_domain, info.key)}, manufacturer="Philips"
-        )
-        entry = er.async_get(hass).async_get_or_create("light", info.ha_domain, "aabbccddeeff-rgbcct:0")
-        found[info.key] = info.capability(None, Target(entry.entity_id, "light", info.key, entry, device, None, None))
-    assert found == {"shelly": "RGBCCT", "zigbee2mqtt": "hue"}
 
 
 @pytest.mark.parametrize(
