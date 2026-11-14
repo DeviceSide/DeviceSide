@@ -618,3 +618,16 @@ def test_a_card_marks_untested_fixes_after_unmaintained_ones(root):
     # An untested fix is not unmaintained: the heading still names the maintainers.
     assert "formerly maintained" not in heading(card)
     assert "⚠️" not in zha_card(adapter("zha", "stop")).render()  # no caveat, no mark
+
+
+def test_a_tests_table_with_the_capability_column_parses_as_without_it(root):
+    # docs/evidence.md, Sign-off format: the rig adds the class each test reached between Target and Result.
+    rows = [
+        ("`switch` (switch_plug) | `Switch`", "pass"),
+        ("`light` (light_group) | `hue`, `other`", "pass"),
+        ("`light` (light_ct) | -", "fail"),
+    ]
+    path = record(root, "zha", "turn_on_for", tests=rows)
+    assert gc.targets(path) == {"switch", "light"}
+    assert [row["capability"] for row in gc.PASSED.finditer(path.read_text())] == ["`Switch`", "`hue`, `other`"]
+    assert [row["capability"] for row in gc.PASSED.finditer("| `t` | `light` (light_ct) | pass |")] == [None]

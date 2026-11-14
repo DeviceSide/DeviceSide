@@ -210,6 +210,17 @@ the package's git tree at the run's commit:
     | Source | rig run (`scripts/rig.py`), commit `1a2b3c4` |
     | Package | `0123456789ab` |
 
+For an integration that names classes, the record's Tests table has a Capability column between Target and Result:
+the class each test's target reached, in backticks, as the integration names it (`IntegrationInfo.capability`; until
+that lands, the adapter's `capability()`). A native group's cell lists each member's class once, comma-separated. A
+dash means the call reached no class the integration could name. An integration that names no classes keeps the three
+columns.
+
+    | Test | Target | Capability | Result |
+    |---|---|---|---|
+    | `on_then_off[switch_plug]` | `switch` (switch_plug) | `Switch` | pass |
+    | `bulb_on_then_off[light_dimmable]` | `light` (light_dimmable) | `RGBCCT` | pass |
+
 *Example:* if `stop.md` fails, or cites a different Package tree than the rest, the records are no sign-off until every
 action passes at one package tree; a rerun of `stop` on `main` completes a run made on a PR branch when the package
 didn't change between them. A record with no Package row is no sign-off. A manual sign-off is a row of the bundle's
