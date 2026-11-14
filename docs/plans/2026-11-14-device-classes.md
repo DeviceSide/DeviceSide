@@ -240,11 +240,16 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      3. **Classes:** the class rule matches the `countdown` expose in `bridge/devices` (Z2M's own statement that the
         device takes the call), not a firmware string. A Tuya device without it keeps today's refusal. While the
         cache is empty, the registry fallback can't see exposes, so the device keeps today's refusal until it fills.
+        The 0x42 path's strings follow Decision 35's rubric. The datapoint path is its own class (Decision 67),
+        keyed on the call path with Decision 67's guard: a settable `s` countdown, a `state` of the same suffix
+        paired by property name, and its exclusions.
      4. **The call:** a branch in Z2M's `turn_on_for` for the class, `{"state": "ON", "countdown": N}` (or as the
-        probe shows), with no `on_time`. Brightness with it follows the probe.
+        probe shows), with no `on_time`. Brightness with it follows the probe. On the datapoint path, Decision 67's
+        safe pattern instead of one payload: send the state, wait for the device to report it, only then send the
+        countdown, and if the report doesn't come, arm nothing and report that.
      5. **Duration limits per class** (from Deferred): whole seconds, 1 to 43,200 s unless the probe shows other
-        bounds; out of range raises as core does, rounding is reported in `clamped_to`. Core change, so an Opus
-        audit.
+        bounds; on the datapoint path, at most the expose's own `value_max` (Decision 67). Out of range raises as
+        core does, rounding is reported in `clamped_to`. Core change, so an Opus audit.
      6. **Read-back** per the probe: `confirmed` only if the device reports the countdown; otherwise `sent`.
         `get_attributes` time left likewise.
      7. **Level:** `experimental(...)` until the lab run, then Verified for the class the record covers. The cards
@@ -321,6 +326,9 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
    - **Step 6's review round** (Decisions 28 to 33): a response leaves out an `Unplaced` class; `DoesntWork.harms`
      has no default; the dispatcher's `Classes` keeps each member's class undeduplicated, as `Unplaced` equals its
      class; Z2M's `capability` reads bridge/devices once and logs at DEBUG what an unplaced device waits for.
+   - **Group crediting** (Decision 66): a native group's result adds `member_capabilities`, each placed member's
+     entity_id to its class, beside the unchanged `capabilities`; the dispatcher keeps each class paired with its
+     member (`Reached`). The rig's side is ha-rig #89.
 7. **ZHA.** The same shape. Lab run, with the Sengled.
 8. **Hue.** Classes `hue`, `other` and `smart_scene` (doesn't work, on `set_scene`). `other` is decided per action
    (Decision 2). Lab run, with the Sengled on the bridge if it pairs.
@@ -834,6 +842,50 @@ A package changed after its lab run needs that run again before the release. Non
     #9786 `_TZ3000_okaz9tjs`), so tenet 5 can't carry the lab plug's record to the class. A string with a record or
     manual row is Verified; a string reported failing is doesn't work, `harms`. Part 3 settles the mechanism. Seed
     list: a triage of upstream issues since 2023-11 (part 3, step 1).
+    **Amended (Jason, 2026-11-14), the rubric for Tuya plugs on the 0x42 path** (converter A,
+    [research](../integrations/zigbee2mqtt/research/2026-11-14-tuya-countdown.md), §1):
+    - **Verified:** the maintainer's lab plug, `_TZ3000_0zfrhq4i`, once its lab run passes.
+    - **Doesn't work, `harms`:** `_TZ3000_gjnozsaz` (Z2M #30493) and `_TZ3000_dg7fdg92` (Z2M #25434), reported
+      failing on the 0x42 path (research, §3).
+    - **Experimental:** every other converter A definition.
+    - **No upstream inclusions:** upstream "works" reports are too thin to Verify a string. A later credible report
+      becomes a `_manual.json` row, and so Verified by its own evidence.
+    - **ZHA's `_TZ3000_typdpbpg` is not banned.** It failed because ZHA sends the spec's tenths, which Tuya firmware
+      reads as seconds: the fix is the call (step 7), not the device.
+
+## Decisions (Jason, 2026-11-14, step 6's group crediting and part 3's datapoint class)
+
+Decisions 36 to 45, 46 to 55 and 56 to 65 are reserved for steps 7, 9 and 8.
+
+66. **A native group's result reports each member's class,** in `member_capabilities`, a map from each member's
+    entity_id to its class ([action-behavior.md](../action-behavior.md#what-a-response-looks-like)); chosen over a
+    test-level `classes` list on the record. A native group's call reaches each member and each member's firmware
+    carries it out (Decision 27), and the rig observes each member's state, so the credit follows the member. A
+    test-level list can be derived from the per-member map, but not the reverse; the map fills the per-member `class`
+    field format 2's schema already requires of a group's members; and an unplaced member, or one the integration
+    can't name, voids only itself (Decision 29), where it voids the group's `capabilities`, which keeps its
+    whole-group invariant. The change is additive. The rig (ha-rig #89) writes each member's class from
+    `member_capabilities`; `docs/evidence.md`'s coverage check credits each member's class from its members' entries.
+67. **The Tuya datapoint countdown class on Zigbee2MQTT, Experimental** (converter B,
+    [research](../integrations/zigbee2mqtt/research/2026-11-14-tuya-datapoint-countdown.md)). The reading found 81
+    definitions mapping a datapoint to `countdown`, 46 of them (about 142 maker strings) a timer in seconds beside an
+    on/off `state`, mostly wall switches and dimmers, plus a few plugs, relays and valves; the rest count in minutes
+    or hours, are enums, read-only, or have no `state`.
+    - **Key and guard:** the call path (a definition whose countdown is a Tuya datapoint), not the TS0601 model ID
+      (Decision 34). A definition qualifies when it exposes a settable countdown in unit `s`; an on/off `state` has
+      the same suffix, paired by property name (`state_l1` with `countdown_l1`), not by endpoint, as six
+      definitions name the gang in the property with no endpoint field; and DeviceSide sends at most the expose's own
+      `value_max`, not a fixed 43200, which admits the 86400 s timers.
+    - **Excluded:** Tuya LYAI-14 (its source says it ignores the countdown); the circuit breaker ZBN-DJ-63 and
+      `TS0601_fan_switch` ("Max ON time") until a credible report; timers in minutes or hours, the enum timer, the
+      garage opener; and Manhot MH03 and Moes ZS-D, whose `countdown_1` beside `state_l1` fails in one payload, which
+      the pairing rule already leaves out.
+    - **Valves in seconds are included:** FK_V02, FK-BV05 and ZVL-PRO. ZG-308Z is not: it has no `state`.
+    - **The safe call pattern** (Jason), for every countdown armed on the Tuya datapoint path, not only TS0601's: a
+      datapoint countdown toggles at zero, so one armed while the device is off turns it on. (1) Send the state;
+      (2) wait for the device to report that state; (3) only then send the countdown; (4) if the report doesn't
+      come, don't arm it, and report that rather than sending. This replaces Z2M's single combined payload.
+    - Step 5 part 3 builds it (its steps 3 to 5).
 
 ## Handoff
 
