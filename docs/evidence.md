@@ -61,11 +61,18 @@ Nothing ships unflagged unless it is Verified or Documented. Built and unit-test
 exercise, and that isn't Documented, ships behind `experimental` as untested. A sign-off
 covers only what was exercised; it never signs off untested code.
 
-**Contrary evidence:** a credible report of a failure that [harms](#doesnt-work-not-yet-supported-untested), an
-upstream issue or a DeviceSide issue, bans the manufacturer string it names: a doesn't-work entry with `harms` may
-rest on that report alone, cited as its source. Any other report of misbehavior changes no level until a maintainer
-confirms it: they root-cause it, and the fix, the updated fact or a demotion lands with the finding
-([plan Decision 68](plans/2026-11-14-device-classes.md)).
+**Contrary evidence:** a credible report of a [harmful](#doesnt-work-not-yet-supported-untested) failure, upstream
+or a DeviceSide issue, on the call DeviceSide sends, lets an integration maintainer land a doesn't-work entry,
+`harms`, for that action, moving only that identity, on the report alone, cited as its source; credibility is theirs
+to judge (tenet 7). The identity is the most specific one the report names that a class rule can key on: the model
+ID with the manufacturer string, and the firmware where that is what decides. A vendor name alone never moves: Hue's
+or IKEA's manufacturer string, or HA's registry manufacturer "Tuya", is never banned whole (Split off the exception,
+not the class, [below](#doesnt-work-not-yet-supported-untested)). A failure reported on a different call, an external
+converter's or another frame, is evidence about that call, not the device: ZHA's `_TZ3000_typdpbpg` failed on the
+spec's tenths, which its firmware reads as seconds, so the fix is the call, not a ban (plan Decision 35). A report
+that contradicts the identity's own passing record or manual row doesn't ban it by itself: the maintainer retests,
+or weighs the two. Any other report changes no level until a maintainer confirms it: they root-cause it, and the
+fix, the updated fact or a demotion lands with the finding ([plan Decision 68](plans/2026-11-14-device-classes.md)).
 
 *Example:* Shelly's `turn_on_for` and `turn_off_for` calls are Verified on the `Switch` and `RGBCCT` components and
 Documented on `Light`, `CCT`, `RGB` and `RGBW`: the same call, addressed to another component, which Shelly's API
@@ -197,8 +204,9 @@ becomes `documented(...)` in a PR that argues the sibling case ([Levels](#levels
 integration's package, so one of its maintainers approves it, as for any change there
 ([CLAUDE.md](../CLAUDE.md#maintainers)).
 
-For an item no maintainer can test, users' working reports, cited in a maintainer's `_manual.json` sign-off, can verify
-it. The maintainer judges how many are enough (tenet 7); nothing counts them in code.
+For an item no maintainer can test, users' working reports can verify it through a maintainer's `_manual.json`
+sign-off, whose PR body cites them ([CLAUDE.md](../CLAUDE.md#where-facts-go): rule evidence goes in the PR body). The
+maintainer judges how many are enough (tenet 7); nothing counts them in code.
 
 The cards never put a model under Works from a pass on a flagged item while its flag stands (`scripts/gen_compat.py`).
 

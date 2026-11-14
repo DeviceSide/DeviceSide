@@ -331,17 +331,21 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      member (`Reached`). The rig's side is ha-rig #89.
 7. **ZHA.** The same shape. Lab run, with the Sengled.
 
-7a. **Units groundwork (before v0.1.0)** (Decision 69; source: the research note
-   `docs/research/2026-11-14-timer-units-at-scale.md` on `claude/device-classes-units-research`, §7, not committed
-   here while its home is open). Each item names the failure it prevents:
+7a. **Units groundwork (before v0.1.0)** (Decision 69; source:
+   [research](../research/2026-11-14-timer-units-at-scale.md), §7). Each item names the failure it prevents:
    - **The report form prefills the Zigbee manufacturer string** (`config_flow._device_facts`): Z2M's from
      `bridge/devices`, ZHA's raw Basic-cluster string, not HA's registry manufacturer, which on Z2M is the
      definition's vendor. Without it a Tuya report can't be matched to the string Decision 35 keys on. A shared
-     file, so a repo maintainer.
+     file, so a repo maintainer. This narrows the research's prefill (the string, model ID, firmware and placed
+     class) to the string: the model ID and firmware already prefill from HA's registry, and the placed class
+     follows from the string and model ID by the integration's rules.
    - **The mined converter seed list,** committed as a dated research file in `zigbee2mqtt/research/`: the seed
      list Decision 35 asks for (step 5 part 3, step 1) and the probe targets. Research, never level weight.
    - **The `turn_on_for` DEBUG line carries the OnTime read-back** where the adapter reads it
-     ([logging.md](../logging.md)), so the first report of a seconds device holds the diagnosis (tenet 4).
+     ([logging.md](../logging.md)), so the first report of a seconds device holds the diagnosis (tenet 4): ZHA's,
+     which reads OnOff and OnTime back per light. Z2M's `turn_on_for` reads back only `state`, so it can't deliver
+     OnTime; its part is at most the state read-backs' timing in the DEBUG line (off after N seconds, or never), the
+     one unit signal Z2M gives.
 
 8. **Hue.** Classes `hue`, `other` and `smart_scene` (doesn't work, on `set_scene`). `other` is decided per action
    (Decision 2). Lab run, with the Sengled on the bridge if it pairs.
@@ -863,7 +867,8 @@ A package changed after its lab run needs that run again before the release. Non
       is enough (Decision 68).
     - **Experimental:** every other converter A definition.
     - **No upstream inclusions:** upstream "works" reports are too thin to Verify a string. A later credible report
-      becomes a `_manual.json` row, and so Verified by its own evidence.
+      can back a maintainer's `_manual.json` row, its sign-off PR body citing it (Decision 69 declined a `reports`
+      field), and so Verified by its own evidence.
     - **ZHA's `_TZ3000_typdpbpg` is not banned.** It failed because ZHA sends the spec's tenths, which Tuya firmware
       reads as seconds: the fix is the call (step 7), not the device.
 
@@ -878,10 +883,16 @@ Decisions 36 to 45, 46 to 55 and 56 to 65 are reserved for steps 7, 9 and 8.
     test-level list can be derived from the per-member map, but not the reverse; the map fills the per-member `class`
     field format 2's schema already requires of a group's members; and an unplaced member, or one the integration
     can't name, voids only itself (Decision 29), where it voids the group's `capabilities`, which keeps its
-    whole-group invariant. A member the rig can't observe is left out of the map too, though its class still counts
-    in `capabilities`: one that is unavailable, and one with no entity of its own (Z2M's stand-in for a plug in a
-    light group), whose key would be the group's own entity_id, crediting a class no member's state showed. The
-    change is additive. The rig (ha-rig #89) writes each member's class from
+    whole-group invariant. The map names only a member core reached through its own available entity (availability
+    judged at planning time); every other member is left out, though its class still counts in `capabilities`: one
+    that is unavailable; one core resolves only through a stand-in (Z2M's, for a plug in a light group, whether HA
+    exposes it as a switch or a `switch_as_x` light wraps it, and for a disabled member), whose key would be the
+    group's own entity_id, crediting a class no member's state showed; and a Z2M device with more than one entity in
+    the group's domain, disabled ones included, as bridge/groups names the member's endpoint by a number nothing Z2M
+    publishes maps to an entity, so its first entity may not be the one the call reached (`Target.own_entity`;
+    matching the endpoint was set aside as not reliably mappable). The map can sit on an `unchanged` entry too, as
+    `capabilities` can, where the call sent nothing: a reader crediting evidence credits only an entry whose status
+    shows a send. The change is additive. The rig (ha-rig #89) writes each member's class from
     `member_capabilities`; `docs/evidence.md`'s coverage check credits each member's class from its members' entries.
 67. **The Tuya datapoint countdown class on Zigbee2MQTT, Experimental** (converter B,
     [research](../integrations/zigbee2mqtt/research/2026-11-14-tuya-datapoint-countdown.md)). The reading found 81
@@ -911,14 +922,24 @@ Decisions 36 to 45, 46 to 55 and 56 to 65 are reserved for steps 7, 9 and 8.
       (2) wait for the device to report that state; (3) only then send the countdown; (4) if the report doesn't
       come, don't arm it, and report that rather than sending. This replaces Z2M's single combined payload.
     - Step 5 part 3 builds it (its steps 3 to 5).
-68. **A report of a harmful failure bans a maker string** ([evidence.md](../evidence.md#levels), Contrary
-    evidence): its doesn't-work entry, with `harms`, may rest on a credible report alone, an upstream issue or a
-    DeviceSide issue, cited as its source. A false "works" leaves a device on or off unattended; a false ban costs a
-    refusal a later record lifts. A plain failure, one that doesn't harm, still changes no level until a maintainer
-    confirms it. This settles the research note's open question 1 (step 7a), where evidence.md and Decision 35 read
-    differently.
-69. **Units groundwork before v0.1.0** (step 7a): the form prefill of the Zigbee manufacturer string, the mined seed
-    list and the OnTime read-back in the DEBUG line. **Declined:** the optional `manual_row.reports` field of issue
+68. **A report of a harmful failure moves the identity it names** ([evidence.md](../evidence.md#levels), Contrary
+    evidence): a credible report of a harmful failure, upstream or a DeviceSide issue, on the call DeviceSide sends,
+    lets an integration maintainer land a doesn't-work entry, `harms`, for that action, moving only that identity,
+    on the report alone, cited as its source; credibility is theirs to judge (tenet 7). A false "works" leaves a
+    device on or off unattended; a false ban costs a refusal a later record lifts.
+    - **Scope:** the identity is the most specific one the report names that a class rule can key on, out of its
+      class: the model ID with the manufacturer string, and the firmware where that is what decides. A vendor name
+      alone never moves: Hue's or IKEA's manufacturer string, or HA's registry manufacturer "Tuya", is never banned
+      whole (Split off the exception, not the class: Decision 25).
+    - **The call:** a failure reported on a different call, an external converter's or another frame, is evidence
+      about that call, not the device: ZHA's `_TZ3000_typdpbpg` is fixed in the call, not banned (Decision 35).
+    - **Against a record:** a report that contradicts the identity's own passing record or manual row doesn't ban it
+      by itself: the maintainer retests, or weighs the two.
+    - **Any other report**, a plain failure that doesn't harm, changes no level until a maintainer confirms it.
+    This settles the research note's open question 1 (step 7a), where evidence.md and Decision 35 read differently.
+69. **Units groundwork before v0.1.0** (step 7a; [research](../research/2026-11-14-timer-units-at-scale.md), §7):
+    the form prefill of the Zigbee manufacturer string, the mined seed list and the OnTime read-back in the DEBUG
+    line. **Declined:** the optional `manual_row.reports` field of issue
     URLs, as most Z2M reports will come through Issues.
 
 ## Handoff

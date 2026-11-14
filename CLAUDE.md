@@ -26,7 +26,7 @@ shared home named in parentheses.
 | Classes, levels, doesn't-work entries | the package's code: `IntegrationInfo.classes` and the scopes (`scripts/gen_compat.py` regenerates the cards; entries not yet moved: `<x>/devices.yaml`, shared `docs/models.yaml`) |
 | A class's card phrase and section | `<x>/devices.yaml` |
 | Models across integrations | `docs/models.yaml` |
-| Dated sources, never edited after | `<x>/research/` |
+| Dated sources, never edited after | `<x>/research/` (shared: `docs/research/`) |
 | Run evidence | `<x>/test-records/*.json`, in the shape `docs/test-records.schema.json` gives |
 | Why the code does something | the module docstring, a few lines, linking `internals.md` for the evidence |
 | Rule evidence | the PR body |
