@@ -194,6 +194,8 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
        switches line, `docs/models.yaml`'s TS011F reason (or the entry's move into code, one per integration), the
        TS011F and Sengled model IDs in `docs/models.yaml`, and `index.md`'s Other brands paragraph on Tuya and
        Sengled.
+     - **Restore the class names** in `docs/evidence.md` (Device classes, and the coverage check's example) and
+       `docs/design.md` (glossary, Class) once the Tuya classes land: they name only `hue` and `other` until then.
      - **TODO and the rerun:** tick step 5 in `TODO.md`, and the lab run below, which restores the card's Works
        line and clears the ten coverage warnings.
 6. **Core fix-ups** from step 5's run, before ZHA and Hue copy the pattern. If a package changes, its lab run is
