@@ -825,6 +825,12 @@ A package changed after its lab run needs that run again before the release. Non
 34. **Key a class on what decides the outcome:** the integration's routing where it picks the call, otherwise the
     device's identity. Home: `docs/evidence.md`, Device classes.
 
+35. **The Tuya countdown on Z2M stays Experimental; a maker string is Verified only by its own evidence.** Upstream
+    issues show plugs Z2M routes to the 0x42 countdown that don't honor it (Z2M #30493 `_TZ3000_gjnozsaz`, ZHC
+    #9786 `_TZ3000_okaz9tjs`), so tenet 5 can't carry the lab plug's record to the class. A string with a record or
+    manual row is Verified; a string reported failing is doesn't work, `harms`. Part 3 settles the mechanism. Seed
+    list: a triage of upstream issues since 2023-11 (part 3, step 1).
+
 ## Handoff
 
 2026-11-14, step 3 done. Branch `wt/device-classes-3`, worktree `deviceside-wt/device-classes-3`, PR #423.
