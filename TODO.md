@@ -43,7 +43,8 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   - [ ] 3. Core: `IntegrationInfo.capability`, `doesnt_work`, `not_supported` (and `docs/integrations.md`'s mention);
     Shelly moves to it; `gen_compat`'s tiers and coverage check; `_manual.md`'s Capabilities column in `check_release`;
     "one fact, one home, in code" in `docs/evidence.md`, with CLAUDE.md's devices.yaml row; the Not yet supported tier
-    on `docs/device-compatibility.md`.
+    on `docs/device-compatibility.md`; how a group test or a manual row credits
+    the classes it lists; the Capability column's "until that lands" clause in `docs/evidence.md`.
   - [ ] 4. Zigbee2MQTT classes, after the TS011F probe and the Tuya detection probe; rig rerun.
   - [ ] 5. ZHA classes; rig rerun.
   - [ ] 6. Hue classes, the `bridge_v1` and `smart_scene` checks moved to them; rig rerun.

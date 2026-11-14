@@ -14,9 +14,10 @@ page last, with a card per integration: its name, linked to its page (the bundle
 of the adapters with each `caveat` (⚠️ Unmaintained, then ⚠️ Untested fix, linking its reason), then a bullet per tier:
 - Works: the models the evidence tested (rig-tested ones end ✔), and native groups. A pass on a flagged item never
   puts a model here, and records name a run's models and each test's Target domain but not which test reached which
-  model or component, so the rule is fail-safe: an adapter flagged whole, or on any capability or field, adds no
-  models; one flagged on a domain adds those of the records whose passing tests all target unflagged domains, and no
-  `_manual.md` row's. A model can still reach Works through another adapter's evidence.
+  model (their Capability column names the class, which this doesn't read yet), so the rule is fail-safe: an adapter
+  flagged whole, or on any capability or field, adds no models; one flagged on a domain adds those of the records
+  whose passing tests all target unflagged domains, and no `_manual.md` row's. A model can still reach Works through
+  another adapter's evidence.
 - Should work: the classes (devices.yaml `capabilities`) unflagged adapters hold as Documented.
 - Experimental features: the classes held as `experimental(...)`, and the features of adapters flagged whole
   (`experimental=True`), whatever their evidence.
@@ -78,8 +79,11 @@ DEVICE = re.compile(r"^\| Device \| (.*) \|$", re.MULTILINE)
 ENTRY = re.compile(r"^(?P<name>.*?)(?: \(`(?P<model>[^`]+)`\))?, firmware `(?P<firmware>[^`]+)`$")
 BACKTICKS = re.compile(r"`([^`]+)`")
 # A passing row of a record's Tests table: | `test` | `domain` (role) | pass |, or with the Capability column
-# (docs/evidence.md, Sign-off format): | `test` | `domain` (role) | `class`, ... | pass |
-PASSED = re.compile(r"^\| `[^`]+` \| (?P<target>[^|]*) \|(?: (?P<capability>[^|]*) \|)? pass \|$", re.MULTILINE)
+# (docs/evidence.md, Sign-off format): | `test` | `domain` (role) | `class`, ... | pass |, or a dash for none.
+PASSED = re.compile(
+    r"^\| `[^`]+` \| (?P<target>[^|\n]*) \|(?: (?P<capability>`[^`|\n]+`(?:, `[^`|\n]+`)*|-) \|)? pass \|$",
+    re.MULTILINE,
+)
 REPORT_URL = "https://github.com/DeviceSide/DeviceSide/issues/new?template=device_report.yml"
 GROUP_NAMES = {"group", "zone"}
 GROUP = "group"

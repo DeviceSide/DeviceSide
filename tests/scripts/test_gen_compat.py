@@ -41,10 +41,10 @@ PROSE = "# Page\n\n" + "".join(
 
 
 def record(root, integration, name, *, result="pass", device="Hue lamp (`LTA009`), firmware `1.2.3`", tests=()):
-    """A record; `tests` are its Tests table's (Target, Result) rows."""
+    """A record; `tests` are its Tests table's (Target, Result) rows, or (Target, Capability, Result) rows."""
     path = root / "docs" / "integrations" / integration / "test-records" / f"{name}.md"
     path.parent.mkdir(parents=True, exist_ok=True)
-    rows = "".join(f"| `t{index}` | {target} | {outcome} |\n" for index, (target, outcome) in enumerate(tests))
+    rows = "".join(f"| `t{index}` | {' | '.join(cells)} |\n" for index, cells in enumerate(tests))
     path.write_text(f"# t\n\n| | |\n|---|---|\n| Result | {result} |\n| Device | {device} |\n\n{rows}")
     return path
 
@@ -623,11 +623,13 @@ def test_a_card_marks_untested_fixes_after_unmaintained_ones(root):
 def test_a_tests_table_with_the_capability_column_parses_as_without_it(root):
     # docs/evidence.md, Sign-off format: the rig adds the class each test reached between Target and Result.
     rows = [
-        ("`switch` (switch_plug) | `Switch`", "pass"),
-        ("`light` (light_group) | `hue`, `other`", "pass"),
-        ("`light` (light_ct) | -", "fail"),
+        ("`switch` (switch_plug)", "`Switch`", "pass"),
+        ("`light` (light_group)", "`hue`, `other`", "pass"),
+        ("`light` (light_wrapped)", "-", "pass"),
+        ("`cover` (cover)", "`Cover`", "fail"),
+        ("`fan` (fan)", "not a class", "pass"),
     ]
     path = record(root, "zha", "turn_on_for", tests=rows)
     assert gc.targets(path) == {"switch", "light"}
-    assert [row["capability"] for row in gc.PASSED.finditer(path.read_text())] == ["`Switch`", "`hue`, `other`"]
+    assert [row["capability"] for row in gc.PASSED.finditer(path.read_text())] == ["`Switch`", "`hue`, `other`", "-"]
     assert [row["capability"] for row in gc.PASSED.finditer("| `t` | `light` (light_ct) | pass |")] == [None]
