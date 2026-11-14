@@ -6,6 +6,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
+from custom_components.deviceside.core.errors import TargetNotSupported
 from custom_components.deviceside.core.models import Target
 from custom_components.deviceside.core.resolver import resolve
 from custom_components.deviceside.core.runtime import get_runtime
@@ -15,6 +16,7 @@ from custom_components.deviceside.integrations.zigbee2mqtt import (
     INTEGRATION,
     bridge_cache,
     classes,
+    members,
     native_control,
 )
 from custom_components.deviceside.integrations.zigbee2mqtt.classes import RULES, Rule
@@ -29,6 +31,8 @@ from ...fixtures.zigbee2mqtt import GROUPS, IEEE, add_z2m_entity, add_z2m_group,
 TUYA = "_TZ3000_abcdefgh"
 TUYA_MCU = "_TZE200_abcdefgh"
 PLUG = ("Tuya", "TS011F_plug_1")
+# Gledopto's GL-SPI-206P: Gledopto's definition, Tuya datapoint firmware (classes.py, rule order 2).
+GLEDOPTO_TUYA = {"manufacturer": "Gledopto", "model_id": "GL-SPI-206P", "zigbee": (TUYA_MCU, "TS0601")}
 
 
 def stand_in(hass, manufacturer: str | None, model_id: str | None = None) -> Target:
@@ -252,6 +256,18 @@ async def test_a_member_ha_has_no_light_for_is_classed_by_its_device(hass, setup
     # The plug's stand-in is the group's own entity, with its device and no state, so no action reaches it.
     assert classed == {"light.one": "hue", "light.two": "hue", entity_id: "tuya_ts011f"}
     assert [member.state for member in members if member.entity_id == entity_id] == [None]
+
+
+async def test_a_stand_in_is_left_out_of_the_member_lights_and_logged(hass, setup_production, broker, caplog):
+    """The plug's stand-in has no state, so no action reads or commands it; the debug log says why it is missing."""
+    caplog.set_level("DEBUG", logger=members.__name__)
+    entity_id = plug_in_group(hass, broker)
+    group_target = resolve(hass, get_runtime(hass).registry, entity_id)
+
+    lights = await members.member_lights(hass, group_target)
+
+    assert [member.entity_id for member in lights] == ["light.one", "light.two"]
+    assert f"{entity_id}: a member device (switch.plug) has no light entity" in caplog.text
 
 
 async def test_a_group_with_a_member_that_doesnt_work_falls_back_with_experimental_on(hass, setup_production, broker):
@@ -480,3 +496,108 @@ async def test_a_group_with_a_ts011f_member_falls_back_to_its_members(hass, setu
     assert response == {"light.one": SENT}
     assert commands(broker) == [(SET.replace(IEEE, "0x01"), {"state": "ON", "on_time": 5.0})]
     assert "light.two (doesnt_work)" in caplog.text
+
+
+def test_only_hue_and_the_tuya_classes_are_final_without_the_zigbee_strings():
+    """Derived from the rules: no Zigbee-string rule comes before `hue`'s, and the strings only move a Tuya class to
+    another; every other class a Tuya rule on the strings could override."""
+    assert classes.FINAL == {"hue", "tuya_zcl", "tuya_ts011f", "tuya_mcu"}
+
+
+async def test_turn_on_for_refuses_a_gledopto_badged_tuya_device_until_its_strings_arrive(
+    hass, setup_production, broker
+):
+    """The audit's H1 (round 2): the registry alone put the GL-SPI-206P in `gledopto`, which with Experimental
+    features on took today's call; its Zigbee strings make it `tuya_mcu`, which the call leaves on."""
+    entity_id = light(hass, broker, "light.strip", "0x03", **GLEDOPTO_TUYA)
+    allow_experimental(hass)
+    data = {"entity_id": entity_id, "duration": 5}
+
+    devices = broker.retained.pop(DEVICES)
+    assert await refusal(hass, "turn_on_for", data) == "class_unknown"
+    assert commands(broker) == []
+    broker.retained[DEVICES] = devices
+    assert await refusal(hass, "turn_on_for", data) == "doesnt_work"
+
+
+async def test_turn_on_for_refuses_a_hue_group_with_a_gledopto_badged_tuya_member_until_its_strings_arrive(
+    hass, setup_production, broker
+):
+    entity_id = group(hass, broker, one={}, two=GLEDOPTO_TUYA)
+    del broker.retained[DEVICES]
+    allow_experimental(hass)
+
+    assert await refusal(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == "class_unknown"
+    assert commands(broker) == []
+
+
+@pytest.mark.parametrize(
+    ("registry", "expected"),
+    [
+        pytest.param(("Tuya", "TS0001_switch_module"), "doesnt_work", id="tuya_final"),
+        pytest.param(("Sengled", "E11-G13"), "class_unknown", id="sengled_overridable"),
+    ],
+)
+async def test_without_the_strings_a_final_class_stands_and_any_other_waits(
+    hass, setup_production, broker, registry, expected
+):
+    entity_id = light(hass, broker, manufacturer=registry[0], model_id=registry[1])
+    del broker.retained[DEVICES]
+    allow_experimental(hass)
+
+    assert await refusal(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == expected
+
+
+@pytest.mark.parametrize(
+    ("zigbee", "expected"),
+    [
+        # Mid-interview: Z2M lists the device with null strings until it reads them.
+        pytest.param(None, "class_unknown", id="no_strings"),
+        pytest.param((None, "TS011F"), "doesnt_work", id="model_read"),
+        pytest.param((TUYA, "TS011F"), "doesnt_work", id="interviewed"),
+    ],
+)
+async def test_a_device_listed_with_null_strings_is_not_placed(hass, setup_production, broker, zigbee, expected):
+    """The audit's M (round 2): Lidl's HG06337 mid-interview, `manufacturer: null`, once counted as placed in
+    `other`, so it took today's call with Experimental features on."""
+    entity_id = light(hass, broker, manufacturer="Lidl", model_id="HG06337", zigbee=zigbee)
+    allow_experimental(hass)
+
+    assert await refusal(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == expected
+
+
+async def test_another_brand_listed_with_null_strings_waits_and_with_them_runs(hass, setup_production, broker):
+    ikea = light(hass, broker, manufacturer="IKEA of Sweden", zigbee=None)
+    allow_experimental(hass)
+    data = {"entity_id": ikea, "duration": 5}
+
+    assert await refusal(hass, "turn_on_for", data) == "class_unknown"
+    broker.retained[DEVICES][0] |= {"manufacturer": "IKEA of Sweden", "model_id": "TRADFRI bulb E27 WW 806lm"}
+    assert await call(hass, "turn_on_for", data) == {ikea: SENT}
+
+
+async def test_class_unknown_says_it_clears_once_zigbee2mqtt_reports_the_device(hass, setup_production, broker):
+    entity_id = light(hass, broker, **GLEDOPTO_TUYA)
+    del broker.retained[DEVICES]
+    allow_experimental(hass)
+
+    with pytest.raises(TargetNotSupported) as raised:
+        await call_service(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5})
+
+    assert raised.value.translation_key == "class_unknown"
+    assert raised.value.translation_placeholders == {
+        "entity_id": entity_id,
+        "reason": "class_unknown",
+        "integration": "Zigbee2MQTT",
+    }
+
+
+async def test_an_indirect_target_of_unknown_class_is_skipped_and_the_rest_run(hass, setup_production, broker, caplog):
+    """Refused as core refuses a target: skipped and logged when it came indirectly, here through `all`."""
+    lamp = light(hass, broker, "light.lamp", "0x01")
+    strip = light(hass, broker, "light.strip", "0x03", **GLEDOPTO_TUYA)
+    del broker.retained[DEVICES]
+    allow_experimental(hass)
+
+    assert await call(hass, "turn_on_for", {"entity_id": "all", "duration": 5}) == {lamp: SENT}
+    assert f"{strip} (class_unknown)" in caplog.text

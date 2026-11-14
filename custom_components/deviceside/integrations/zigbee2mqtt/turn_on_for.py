@@ -14,6 +14,7 @@ from .native_control import COLOR_FIELDS, NEED, native_control, settled
 from .set_check import checked, note
 from ...actions.turn_on_for import TurnOnForRequest
 from ...core.adapter import Adapter
+from ...core.errors import Reason
 from ...core.models import EntityResult, Status, Target
 from ...core.runtime import get_runtime
 from ...core.scope import AdapterScope, DurationLimits, experimental, verified
@@ -23,9 +24,6 @@ _LOGGER = logging.getLogger(__name__)
 # Zigbee OnWithTimedOff: on_time in tenths of a second (uint16), range 1-65534 tenths.
 # 65534 tenths = 6553.4 s. The 50 ms floor from core/duration.py handles the effective minimum.
 _TIMER_LIMITS = DurationLimits(min_s=0, max_s=6553.4)
-
-# A target refused as one DeviceSide can't class (plan Decision 23).
-CLASS_UNKNOWN = "class_unknown"
 
 # Read-back delays in seconds. The second end read allows for a bulb clock that runs slow on a long timer.
 _ON_READ_S = 1.0
@@ -143,19 +141,19 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
 
 
 def _unknown(hass: HomeAssistant, target: Target) -> str | None:
-    """CLASS_UNKNOWN for a target DeviceSide can't class, even with Experimental features on (docs/evidence.md,
-    Device classes: where a call is known to harm, unknown is refused); else None.
+    """`class_unknown` for a target whose class rests on what DeviceSide doesn't know yet, even with Experimental
+    features on (docs/evidence.md, Device classes: where a call is known to harm, unknown is refused); else None.
 
     The failure it prevents: a Tuya plug left on. Today's call turns the Tuya classes on with no timer
-    (TURN_ON_FOR_DOESNT_WORK), so one that reached it as `other`, or inside a group run as one, would stay on. That is
-    a device the registry alone put in `other` (classes.unplaced: bridge/devices doesn't list it yet, so a rebadged
-    Tuya plug looks like another brand), and a group whose membership is unknown or that has such a member. Each runs
-    once the bridge cache fills, as Zigbee2MQTT publishes right after a connect; with no cache (its subscribe failed,
-    logged), they stay refused.
+    (TURN_ON_FOR_DOESNT_WORK), so one that reached it in another class, or inside a group run as one, would stay on.
+    That is a device whose Zigbee strings haven't arrived, in a class they could still change (classes.unplaced: a
+    rebadged Tuya plug looks like another brand until they do), and a group whose membership is unknown or that has
+    such a member. Each runs once the bridge cache fills, as Zigbee2MQTT publishes right after a connect; with no cache
+    (its subscribe failed, logged), they stay refused. A device placed in `other` from its strings stays Experimental.
     """
     if not target.is_group:
-        return CLASS_UNKNOWN if unplaced(hass, target) else None
+        return Reason.CLASS_UNKNOWN if unplaced(hass, target) else None
     members = expand_group(hass, target)
     if members is None or any(unplaced(hass, member) for member in members):
-        return CLASS_UNKNOWN
+        return Reason.CLASS_UNKNOWN
     return None

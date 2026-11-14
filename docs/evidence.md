@@ -80,8 +80,8 @@ decide the result together, so the class follows the vendor (Zigbee2MQTT: `hue`,
 
 - **Unknown is flagged, never Verified.** A device the integration can't place falls in its default class
   (`IntegrationInfo.default_class`), which the registry refuses at Verified in any scope, so placing a device there
-  can only make DeviceSide more cautious. Its one exception: where a call is known to harm, unknown is refused
-  ([below](#doesnt-work-not-yet-supported-untested)). The default class may be Documented for an action where the
+  can only make DeviceSide more cautious. Its one exception: where a call is known to harm, a class DeviceSide can't
+  name yet is refused ([below](#doesnt-work-not-yet-supported-untested)). The default class may be Documented for an action where the
   [Documented](#levels) test holds (no known class departs), and is otherwise `experimental(...)`. Nothing lifts it: a record on a device outside the named classes adds a new class named for its
   maker (Zigbee2MQTT: `ikea` for an IKEA bulb), as the default class holds every device not yet placed, and one maker's
   record proves nothing about the rest.
@@ -95,8 +95,8 @@ decide the result together, so the class follows the vendor (Zigbee2MQTT: `hue`,
   or isn't supported, or a member whose class is Experimental, while Experimental features is off (the adapter,
   domain and fields not flagged), falls back to its members, each judged on its own, when the integration can list
   them; one it can't list counts as Experimental: refused while Experimental features is off, and with them on where
-  a call is known to harm ([below](#doesnt-work-not-yet-supported-untested); [design.md](design.md#core-contract),
-  Groups).
+  a call is known to harm, as its class rests on a membership DeviceSide doesn't have yet
+  ([below](#doesnt-work-not-yet-supported-untested); [design.md](design.md#core-contract), Groups).
 
 ### Doesn't work, not yet supported, untested
 
@@ -115,11 +115,16 @@ a call that isn't built would work on it. Not yet supported is for a class today
 - **Split off the exception, not the class.** When devices are known to depart from a class's call, a rule moves them
   into a class of their own, at the level their own evidence supports. The rest of the class keeps its level. The
   whole class drops a level only when no rule can tell the departing devices apart.
-- **Where a call is known to harm, unknown is refused.** For an action where some class is listed as doesn't work
-  because the call harms it, DeviceSide refuses a target it can't class, even with Experimental features on. The same
-  goes for a group whose members it can't all class. Everywhere else, unknown stays Experimental (Unknown is flagged,
-  never Verified, above). Zigbee2MQTT's `turn_on_for` refuses one as `class_unknown`: a group whose members it can't
-  list, and a device only the registry placed, in `other`, before `bridge/devices` arrives.
+- **Where a call is known to harm, a class not yet known is refused.** An adapter whose scope lists a class as
+  doesn't work because the call harms it refuses a target whose class rests on information DeviceSide doesn't have
+  yet, even with Experimental features on: a group whose membership isn't listed, or a device whose identifying
+  strings haven't been received while they could still move it into a harmed class, and a group with such a device
+  among its members. A target placed in the default
+  class from full information stays Experimental, as does every target of an action no class is harmed by (Unknown
+  is flagged, never Verified, above). The refusal is `class_unknown`, and it clears once the integration has
+  reported what it lacked. Zigbee2MQTT applies it today ([its page](integrations/zigbee2mqtt/index.md#device-classes));
+  the rule moves to core in step 6 of the [device classes plan](plans/2026-11-14-device-classes.md), and ZHA, Hue
+  and Matter apply it in steps 7 to 9.
 
 A refused target raises when named and is skipped when it came indirectly, as `supports()` refusals do
 ([action-behavior.md](action-behavior.md)).

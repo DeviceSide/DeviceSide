@@ -47,6 +47,11 @@ ported or recorded for another is dropped there, not refused (`color_temp_kelvin
 light field, so a timed call still runs its timer. A call left nothing to do by dropping is `unchanged` with
 `fields_dropped`. An empty group is skipped silently, as core's group expansion yields nothing for one.
 
+**Not yet classed** (`class_unknown`) is refused the same way, raised if named and skipped if not, but it is
+transient: it holds only until the integration has reported the device or group
+([evidence.md](evidence.md#doesnt-work-not-yet-supported-untested)), so an automation firing at startup can get it
+for a few seconds.
+
 **Unlisted fields depart from core.** An adapter may name, in `AdapterScope.unlisted`, fields its devices take
 although the light's state says they can't; a light never lacks those for that adapter, where
 `filter_turn_on_params` would drop them. Why: DeviceSide fills design gaps between an upstream integration and HA,

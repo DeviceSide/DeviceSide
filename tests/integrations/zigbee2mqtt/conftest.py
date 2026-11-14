@@ -102,6 +102,10 @@ def clock(hass, setup_production) -> Clock:
     return clock
 
 
+class REGISTRY:
+    """light()'s default Zigbee strings: the registry's vendor, and no model."""
+
+
 def light(
     hass,
     broker,
@@ -116,9 +120,14 @@ def light(
     color: dict | None = None,
     manufacturer: str | None = "Philips",
     model_id: str | None = None,
-    zigbee: tuple[str, str] | None = None,
+    zigbee: tuple[str | None, str | None] | None | type[REGISTRY] = REGISTRY,
 ) -> str:
-    """A Z2M color light HA lists with xy, whose definition exposes color_hs, answering color reads with COLOR."""
+    """A Z2M color light HA lists with xy, whose definition exposes color_hs, answering color reads with COLOR.
+
+    Its bridge/devices entry holds the Zigbee manufacturer and model `zigbee` names. By default, REGISTRY, the
+    registry's manufacturer and no model: an interviewed device of that vendor that shows no Tuya string. None writes
+    an entry with neither, as Zigbee2MQTT lists a device mid-interview, which the classifier can't place by them.
+    """
     name = entity_id.split(".")[1]
     entries = hass.config_entries.async_entries("mqtt")
     entry = entries[0] if entries else z2m_entry(hass)
@@ -140,8 +149,10 @@ def light(
     broker.retained[INFO]["config"]["devices"].setdefault(ieee, {})
     features = [{"name": "state"}, {"name": "brightness"}] + ([{"name": "color_hs"}] if color_hs else [])
     device = {"ieee_address": ieee, "definition": {"exposes": [{"type": "light", "features": features}]}}
-    if zigbee is not None:  # its own Zigbee manufacturer and model, which the classifier reads
-        device |= {"manufacturer": zigbee[0], "model_id": zigbee[1]}
+    if zigbee is REGISTRY:
+        zigbee = (manufacturer, None)
+    # Its own Zigbee manufacturer and model, which the classifier reads; Z2M holds null for one it hasn't read.
+    device |= dict(zip(("manufacturer", "model_id"), zigbee or (None, None), strict=True))
     broker.retained.setdefault(DEVICES, []).append(device)
     return entity_id
 

@@ -43,7 +43,9 @@ These refine `docs/evidence.md`; they don't replace its tenets.
    `capability()` names it. Code that sends the same call to the same class inherits the evidence.
 2. **Unknown is flagged, never Verified.** A device the classifier can't place falls in the integration's default
    class, which no record reaches until one does. So it runs only behind `experimental`. A misclassification can only
-   make something more cautious. The exception is tenet 8: where a call is known to harm, unknown is refused.
+   make something more cautious. The exception is tenet 8: where a call is known to harm, a target whose class rests
+   on information DeviceSide doesn't have yet is refused, even with Experimental features on; one placed in the
+   default class from full information stays Experimental.
 3. **Three ways a class can't take an action, each shown differently.**
    - *Doesn't work:* it fails the call we send. Refused in code, listed with a reason and source.
    - *Not yet supported:* it needs a call we haven't built. Refused, listed as not yet supported.
@@ -61,7 +63,8 @@ These refine `docs/evidence.md`; they don't replace its tenets.
    manufacturer and model until a real departure needs firmware. No matcher, setting or tier is added ahead of an
    integration that uses it.
 7. **Split off the exception, not the class** (Decision 25): `docs/evidence.md`, Device classes.
-8. **Where a call is known to harm, unknown is refused** (Decision 25): `docs/evidence.md`, Device classes.
+8. **Where a call is known to harm, a class not yet known is refused** (Decisions 25 and 26): `docs/evidence.md`,
+   Device classes.
 
 ## Design
 
@@ -216,6 +219,14 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      leaves membership unknown; Z2M `turn_on_for` refuses, as `class_unknown` and with Experimental features on, a
      group of unknown membership and a device only the registry placed in `other` (or a group with one). The rule
      order's one home is the `classes.py` docstring.
+   - **Part 2's fix-ups, round 2, built** (same branch), from the round's plan review and audit, and Decision 26. A
+     device with no Zigbee strings yet (none held, not listed, or listed with null strings, as mid-interview) is
+     unplaced in any registry class a Zigbee-string rule could override: only `hue` and the Tuya classes are final
+     (`classes.FINAL`, derived from the rules), so a Gledopto-badged Tuya device in `gledopto`, or a Sengled, waits
+     for the strings. `class_unknown` is core's `Reason`, with its own translation, saying it clears once the
+     integration has reported the device; `docs/action-behavior.md` calls it transient. The harm rule's wording in
+     `docs/evidence.md`, `docs/design.md` and the tenets says what it requires: a class resting on information
+     DeviceSide doesn't have yet. The Tuya entries' reason says what the user sees.
    - **Part 3, the Tuya countdown on Z2M (Decision 22),** after part 2's fix-ups:
      1. **Read first:** in zigbee-herdsman-converters, whether every definition that exposes `countdown` uses one
         converter (the same attribute and units). If it does, one class covers them all; if not, a class per
@@ -237,6 +248,11 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      8. **Lab run:** the TS011F on Z2M, added to step 5's lab run.
 6. **Core fix-ups** from step 5's run, before ZHA and Hue copy the pattern. If a package changes, its lab run is
    repeated.
+   - **The harm rule moves to core (Decision 26):** a `harms` flag on `DoesntWork`, and the classifier answering
+     `None` for "can't place yet"; the dispatcher then refuses `class_unknown` for an adapter whose scope holds a
+     `harms` entry, and Z2M's `supports()` check goes.
+   - **A group with one unplaced member falls back to its members** in core, with only that member refused
+     (`class_unknown`), instead of the whole group being refused as Z2M's `supports()` does today.
 7. **ZHA.** The same shape. Lab run, with the Sengled.
 8. **Hue.** Classes `hue`, `other`, `bridge_v1` (not supported) and `smart_scene` (doesn't work, on `set_scene`).
    `other` is decided per action (Decision 2). Lab run, with the Sengled on the bridge if it pairs. The `bridge_v1`
@@ -675,7 +691,7 @@ A package changed after its lab run needs that run again before the release. Non
     `experimental(...)`.
 20. **`tuya_zcl` and `tuya_mcu` are "doesn't work" on Z2M `turn_on_for`, not "not supported":** today's call turns
     them on with no timer, so they stay on, which `docs/evidence.md` counts as harm. Each gets a `doesnt_work` entry
-    with that reason, sourced to the lab probe and the Z2M converter research.
+    with that reason, sourced to the Z2M converter research (`tuya_ts011f`'s, Decision 16, to the lab probe).
 21. **The TS011F keeps its own class, `tuya_ts011f`.**
 22. **The Tuya countdown on Z2M ships in v0.1.0, as step 5 part 3.** Tuya plugs are popular, the probe showed Z2M's
     `countdown` works, and the lab has the plug. Z2M only: ZHA keeps its refusal (Decision 16), as it would need
@@ -694,6 +710,10 @@ A package changed after its lab run needs that run again before the release. Non
 25. **Two rules in `docs/evidence.md`, Device classes:** split off the exception, not the class; and where a call is
     known to harm, unknown is refused (tenet 2's exception). Z2M applies the second in Decision 23; ZHA, Hue and
     Matter apply it in their own steps (7 to 9).
+26. **The harm rule moves to core in step 6,** before ZHA copies the pattern: a `harms` flag on `DoesntWork` marks
+    the entries whose call harms the class, and the classifier answers `None` for a target it can't place yet, which
+    the dispatcher refuses as `class_unknown` on an adapter with a `harms` entry. Until then Z2M's `turn_on_for`
+    applies it in `supports()`.
 
 ## Handoff
 

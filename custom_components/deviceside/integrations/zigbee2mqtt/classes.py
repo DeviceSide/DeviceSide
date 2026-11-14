@@ -24,12 +24,14 @@ match two rules (`hue`'s vendor is Z2M's own Philips string, which no Tuya rule 
 3. Among the Tuya rules on the registry, the models go before the vendor `Tuya` and the catch-all `TS.*`, which a
    `TS011F_…` or `TS0601_…` definition also matches; all of them go last, as they only stand in for the Zigbee strings.
 
-The registry fallback's limit: until bridge/devices arrives after a connect, or for a device it doesn't list yet, the
-Tuya rules on the Zigbee strings can't match, so the registry rules place what the registry can show: vendor `Tuya`,
-or a definition model that starts `TS`. A Tuya device under another vendor's definition (Lidl's `HG06337`) shows
-neither, so it lands in `other` until the cache fills; `unplaced` names that case, which turn_on_for refuses (plan
-Decision 23). With hass None (the rig's stand-in target, until its second change reads the class from the result)
-only the registry is read. A group is no device of its own: the dispatcher classes its members (members.expand_group).
+The registry fallback's limit: until bridge/devices arrives after a connect, for a device it doesn't list yet, or for
+one it lists without its strings (mid-interview), the Tuya rules on the Zigbee strings can't match, so the registry
+rules place what the registry can show: vendor `Tuya`, or a definition model that starts `TS`. A Tuya device under
+another vendor's definition shows neither: Lidl's `HG06337` lands in `other`, and Gledopto's GL-SPI-206P in
+`gledopto`, until the strings arrive. `unplaced` names that case, a registry class a Zigbee-string rule could still
+override (`FINAL` holds the ones none can), which turn_on_for refuses (plan Decision 23). With hass None (the rig's
+stand-in target, until its second change reads the class from the result) only the registry is read. A group is no
+device of its own: the dispatcher classes its members (members.expand_group).
 
 Each adapter's scope holds the levels below; why each class sits where it does is in index.md (Device classes) and
 the step 5 PR body (`other`'s Documented actions).
@@ -108,8 +110,8 @@ RULES: tuple[Rule, ...] = (
     Rule(TUYA_ZCL, {"zigbee_manufacturer": _TUYA_ZCL_MANUFACTURER}),
     Rule(TUYA_ZCL, {"zigbee_model": r"TS\d{4}.*"}),
     Rule(SENGLED, {"manufacturer": "Sengled"}),
-    # Z2M's vendor is `Gledopto`, and the devices' own Zigbee string `GLEDOPTO` (zigbee-herdsman-converters
-    # src/devices/gledopto.ts, at the research file's commit), so either case matches.
+    # The registry manufacturer: Z2M's vendor `Gledopto`, in any case, as the devices' own Zigbee string is
+    # `GLEDOPTO` (zigbee-herdsman-converters src/devices/gledopto.ts, at the research file's commit).
     Rule(GLEDOPTO, {"manufacturer": "(?i:gledopto)"}),
     # The registry, for a Tuya device bridge/devices doesn't show yet: Z2M's definition (`TS011F_plug_1`) and vendor.
     Rule(TUYA_TS011F, {"model_id": "TS011F(_.*)?"}),
@@ -137,7 +139,7 @@ TURN_ON_FOR = verified(HUE) | experimental(OTHER, GLEDOPTO)
 # The Tuya classes are harmed by today's call (plan Decision 20): Z2M has no `on_time` converter for a definition built
 # with `onOffCountdown`, or for a datapoint device, so it sends a plain On and the device stays on.
 _RESEARCH = "https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/"
-_STAYS_ON = "Its timer isn't supported yet: Zigbee2MQTT turns it on with no timer, so it stays on"
+_STAYS_ON = "Zigbee2MQTT turns it on with no timer, so it stays on"
 TURN_ON_FOR_DOESNT_WORK = {
     # Measured (Decision 16), and matched by its model so every firmware inherits the refusal.
     TUYA_TS011F: DoesntWork(what="Tuya TS011F", reason=_STAYS_ON, source=_RESEARCH + "2026-11-14-lab-probe.md"),
@@ -150,21 +152,37 @@ TURN_ON_FOR_DOESNT_WORK = {
 }
 
 
-def zigbee_strings(hass: HomeAssistant | None, device: dr.DeviceEntry) -> dict[str, str | None]:
-    """The device's Zigbee manufacturer and model from the held bridge/devices, as rule fields; empty with hass None,
-    while no bridge/devices is held, or for a device it doesn't list."""
+def _is_zigbee(rule: Rule) -> bool:
+    return not rule.conditions.keys().isdisjoint(ZIGBEE)
+
+
+# The registry classes no Zigbee-string rule can change to one treated differently, so final without the strings:
+# those of the rules before the first Zigbee-string rule (`hue`), and the classes the Zigbee-string rules name (the
+# Tuya ones), which the strings only refine to another Tuya class. Every other (`sengled`, `gledopto`, `other`) a
+# Tuya rule on the strings could override.
+_FIRST_ZIGBEE = next(index for index, rule in enumerate(RULES) if _is_zigbee(rule))
+FINAL = frozenset(rule.capability for rule in RULES[:_FIRST_ZIGBEE]) | {
+    rule.capability for rule in RULES if _is_zigbee(rule)
+}
+
+
+def zigbee_strings(hass: HomeAssistant | None, device: dr.DeviceEntry) -> dict[str, str]:
+    """The device's Zigbee manufacturer and model from the held bridge/devices, as rule fields, each only when it is a
+    string (Z2M holds null until the interview reads it); empty with hass None, while no bridge/devices is held, or
+    for a device it doesn't list."""
     if hass is None or (ieee := z2m_address(device)) is None or (cache := bridge_cache.get(hass)) is None:
         return {}
     if (entry := cache.device(ieee)) is None:
         return {}
-    return {name: entry.get(key) for name, key in ZIGBEE.items()}
+    return {name: value for name, key in ZIGBEE.items() if isinstance(value := entry.get(key), str) and value}
 
 
 def unplaced(hass: HomeAssistant, target: Target) -> bool:
-    """Whether the registry alone put the target's device in `other`, as bridge/devices doesn't list it (none held,
-    or not yet the device): a Tuya device under another vendor's definition lands there until it does."""
-    device = target.device
-    return device is not None and not zigbee_strings(hass, device) and device_class(device) == OTHER
+    """Whether the target's device has no Zigbee strings yet (bridge/devices not held, not listing it, or listing it
+    with none) and the registry alone put it in a class a Zigbee-string rule could override: a Tuya device under
+    another vendor's definition sits there until the strings arrive. The caller has refused a target with no device
+    (not_addressable)."""
+    return not zigbee_strings(hass, target.device) and device_class(target.device) not in FINAL
 
 
 def device_class(device: dr.DeviceEntry, zigbee: Mapping[str, str | None] | None = None) -> str:

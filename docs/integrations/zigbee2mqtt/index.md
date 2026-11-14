@@ -24,7 +24,8 @@ it connects. Every feature says how well it is proven for each
   its groups, which it does as the connection comes up, DeviceSide can't tell a group's members: the group counts as
   Experimental, and turn on with timer refuses it (`class_unknown`), as a Tuya plug in it would stay on. If DeviceSide
   can't subscribe to Zigbee2MQTT's bridge at all, it logs a warning, groups run only with Experimental features on,
-  and turn on with timer refuses them.
+  and, until the integration reloads, turn on with timer refuses every group and every light, plug or switch of a
+  brand other than Hue or Tuya (IKEA's included), as it can't tell which is a rebadged Tuya device.
 
 ### Tuya
 
@@ -46,10 +47,12 @@ plug it is tested.
 Tuya devices that speak only Tuya's own protocol (model `TS0601`). Turn on with timer doesn't work, as above, and they
 take no standard Zigbee reads or writes, so get attributes and set attributes aren't supported on them either.
 
-Until Zigbee2MQTT publishes its devices after Home Assistant connects to MQTT, DeviceSide knows a rebadged Tuya device
-only by what Home Assistant shows: the vendor `Tuya`, or a model starting `TS`. One shown under another brand looks
-like another brand for those first moments, so turn on with timer refuses every light it can't place yet
-(`class_unknown`), even with Experimental features on.
+Until Zigbee2MQTT publishes its devices after Home Assistant connects to MQTT, or while it is still pairing one,
+DeviceSide knows a rebadged Tuya device only by what Home Assistant shows: the vendor `Tuya`, or a model starting
+`TS`. One shown under another brand, as another brand's device (Lidl's, or Gledopto's GL-SPI-206P, which runs Tuya's
+own protocol), can't be told apart from that brand's own devices for those first moments, so turn on with timer
+refuses every light, plug or switch it can't place yet (`class_unknown`), even with Experimental features on: every
+brand but Hue and Tuya.
 
 ### Sengled
 
