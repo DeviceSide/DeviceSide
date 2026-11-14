@@ -12,7 +12,7 @@ TODO.md, README.md (regenerated), custom_components/deviceside/core/{scope.py, a
 dispatcher.py, errors.py}, the five integration packages and their bundles, scripts/gen_compat.py, and their tests.
 Tests-with: ha-rig #84 (step 2, merged) writes the Capability column. A second ha-rig change, after step 3, reads the
 class from each result (Decision 6). It lands before step 4's lab run.
-Depends-on: none. #350 (Control4) gets no comment and no change until step 8. It is `experimental=True` throughout, so
+Depends-on: #423. #350 (Control4) gets no comment and no change until step 8. It is `experimental=True` throughout, so
 none of these steps blocks it.
 
 ## Why
