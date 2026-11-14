@@ -252,18 +252,20 @@ This section says what each file holds and why; the schema gives the exact shape
   `tests`. Each test has its case `id`, `role`, `domain` and `result`; a skipped one says why (`reason`) or is a fact
   case (`fact`, its result in `_facts.json`). A test that ran lists the `devices` it reached, each with its `model`
   (the Zigbee model ID for a Zigbee device on every integration, else the integration's; `docs/models.yaml` must list
-  it), its `firmware` as the integration reports it, and the `class` the call reached, as the action's result reports
-  it ([action-behavior.md](action-behavior.md#what-a-response-looks-like)), or null where the integration named none.
+  it), its `manufacturer` (the Zigbee manufacturer string, else HA's registry manufacturer, since one model ID can
+  carry many makers' strings; null where none was reported), its `firmware` as the integration reports it, and the
+  `class` the call reached, as the action's result reports it
+  ([action-behavior.md](action-behavior.md#what-a-response-looks-like)), or null where the integration named none.
   A native group's test (`group`) lists its members. Counts are derived from the tests, never stored.
 - **Format 1** is a markdown record converted once (device-classes plan, step 5b): the same, but the run's devices sit
   on the record, not on each test, and a test's `classes` hold the old Capability column. It credits the cards as
   the markdown did, and is no sign-off; a rerun replaces it with format 2.
 - **`_manual.json`**: a maintainer's hand tests, a row each in `signoffs`, added in a PR: `date`, `commit`, `tester`
-  (a handle), the `devices`, each a model id (never a household's device name) with the class it reached, and the
-  actions that `passed`. A change that sends no new call signs off with a row holding `no_call_changed` instead of
-  devices and actions.
+  (a handle), the `devices`, each a model id (never a household's device name) with its `manufacturer` and the class
+  it reached, and the actions that `passed`. A change that sends no new call signs off with a row holding
+  `no_call_changed` instead of devices and actions.
 - **`_facts.json`**: the fact cases' results, a row each, only ever added: date, suite, test, how it was seen
-  (`automated` or `observed`), result, and the devices with their firmware and class.
+  (`automated` or `observed`), result, and the devices with their manufacturer, firmware and class.
 
 A rig sign-off is the bundle's records when every one is format 2, cites the same `package` and passes: one whole run,
 whatever commit each record ran at. *Example:* if `stop.json` fails, or cites a different package tree than the rest,
@@ -274,10 +276,11 @@ or is still format 1, the records are no sign-off until every action passes at o
 `S3BL-C010007AEU` to `RGBCCT`, each only under its own class:
 
     {"id": "on_then_off[switch_plug]", "domain": "switch", "role": "switch_plug", "result": "pass",
-     "devices": [{"model": "S3SW-001X8EU", "firmware": "1.7.4", "class": "Switch"}]}
+     "devices": [{"model": "S3SW-001X8EU", "manufacturer": "Shelly", "firmware": "1.7.4", "class": "Switch"}]}
 
 and a hand test of both, with a log-wording change's row after it:
 
     {"date": "2026-11-12", "commit": "1a2b3c4", "tester": "handle", "passed": ["turn_on_for"],
-     "devices": [{"model": "S3SW-001X8EU", "class": "Switch"}, {"model": "S3BL-C010007AEU", "class": "RGBCCT"}]}
+     "devices": [{"model": "S3SW-001X8EU", "manufacturer": "Shelly", "class": "Switch"},
+                 {"model": "S3BL-C010007AEU", "manufacturer": "Shelly", "class": "RGBCCT"}]}
     {"date": "2026-11-12", "commit": "1a2b3c4", "tester": "handle", "no_call_changed": true}

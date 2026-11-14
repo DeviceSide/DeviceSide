@@ -116,11 +116,12 @@ def test_a_format_1_record_tested_its_runs_devices_and_a_group_is_no_model(root)
 
 
 def test_a_format_2_record_tested_each_passing_tests_devices_with_their_classes(root):
+    signify = device("LTA009", "1.2", "hue", manufacturer="Signify Netherlands B.V.")  # read, not yet on the cards
     path = record2(
         root,
         "hue",
         "stop",
-        ran("light", device("LTA009", "1.2", "hue")),
+        ran("light", signify),
         ran("light", device("LCA016", "0x01", "hue"), device("LTA009", "1.2", "hue"), group=True),
         ran("light", device("LWA012", "3"), result="fail"),  # a failing test tested nothing that counts
         skipped(),

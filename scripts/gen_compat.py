@@ -5,10 +5,11 @@ the cards show (levels, the `experimental` flag, caveats) are in docs/evidence.m
 
 **Evidence** for an action is its passing test records (`<action>.json`, `<action>-<option>.json`, read by
 check_release against docs/test-records.schema.json) and the `_manual.json` rows whose `passed` names it. A format 2
-record gives each passing test's devices, each a model with its firmware and the class it reached; a native group's test
-(its devices are its members) shows as "group". A format 1 record (converted from markdown) gives the run's devices,
-not which test reached which, and its tests the classes they reached, if it recorded them. A manual row's devices are
-model ids, each with its class. A level comes from the scope alone (verify, then trust): a record never ages.
+record gives each passing test's devices, each a model with its firmware and the class it reached (and its
+manufacturer, which the cards don't show yet); a native group's test (its devices are its members) shows as "group". A
+format 1 record (converted from markdown) gives the run's devices, not which test reached which, and its tests the
+classes they reached, if it recorded them. A manual row's devices are model ids, each with its class. A level comes
+from the scope alone (verify, then trust): a record never ages.
 
 **Cards.** One collapsed section between the README's devices markers, the legend first and a link to the integrations
 page last, with a card per integration: its name, linked to its page (the bundle's index.md), and maintainers

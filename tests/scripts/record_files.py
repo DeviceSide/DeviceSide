@@ -4,9 +4,11 @@ import json
 from pathlib import Path
 
 
-def device(model: str = "LTA009", firmware: str | None = "1.2.3", cls: str | None = None) -> dict:
+def device(
+    model: str = "LTA009", firmware: str | None = "1.2.3", cls: str | None = None, manufacturer: str | None = None
+) -> dict:
     """A format 2 test's device."""
-    return {"model": model, "firmware": firmware, "class": cls}
+    return {"model": model, "manufacturer": manufacturer, "firmware": firmware, "class": cls}
 
 
 def ran(domain: str, *devices: dict, result: str = "pass", group: bool = False, role: str = "light_ct") -> dict:
@@ -71,7 +73,10 @@ def signoff(commit: str = "1a2b3c4", tester: str = "a", devices=(("LCA001", None
     row = {"date": "2026-11-12", "commit": commit[:7], "tester": tester}
     if passed is None:
         return row | {"no_call_changed": True}
-    return row | {"devices": [{"model": m, "class": c} for m, c in devices], "passed": list(passed)}
+    return row | {
+        "devices": [{"model": m, "manufacturer": None, "class": c} for m, c in devices],
+        "passed": list(passed),
+    }
 
 
 def manual(integration: str, *rows: dict) -> dict:

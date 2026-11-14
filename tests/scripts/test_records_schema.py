@@ -56,6 +56,7 @@ RECORD = record_v2(
         {"id": "t[light_ct] observed", "role": "light_ct", "result": "skipped", "fact": True},
     ],
 )
+MEMBER = {"model": "LWA012", "firmware": "1.163.1", "class": "hue"}  # a group member without its manufacturer
 OLD = record_v1("zha", "stop", tests=[{"id": "t[r]", "role": "r", "domain": "light", "result": "pass", "classes": []}])
 FACTS = {
     "format": 2,
@@ -95,6 +96,16 @@ def test_a_converted_fact_row_may_lack_a_class_and_keep_a_name():
     assert errors(changed(FACTS, lambda d: d["facts"][0].update(devices=[row]))) == []
 
 
+def test_a_manufacturer_is_a_string_or_null():
+    """Null where none was reported or recorded; a string names the maker the run tested."""
+    named = changed(RECORD, lambda d: d["tests"][0]["devices"][0].update(manufacturer="Signify Netherlands B.V."))
+    assert errors(named) == []
+    assert RECORD["tests"][0]["devices"][0]["manufacturer"] is None
+    assert MANUAL["signoffs"][0]["devices"][0]["manufacturer"] is None
+    assert errors(changed(MANUAL, lambda d: d["signoffs"][0]["devices"][0].update(manufacturer="Shelly"))) == []
+    assert errors(changed(FACTS, lambda d: d["facts"][0]["devices"][0].update(manufacturer=None))) == []
+
+
 @pytest.mark.parametrize(
     ("data", "error"),
     [
@@ -103,6 +114,9 @@ def test_a_converted_fact_row_may_lack_a_class_and_keep_a_name():
         (changed(RECORD, lambda d: d["tests"][0].pop("devices")), "'devices' is a required property"),
         (changed(RECORD, lambda d: d["tests"][0].pop("domain")), "'domain' is a required property"),
         (changed(RECORD, lambda d: d["tests"][0]["devices"][0].pop("class")), "'class' is a required property"),
+        (changed(RECORD, lambda d: d["tests"][0]["devices"][0].pop("manufacturer")), "'manufacturer' is a required"),
+        (changed(RECORD, lambda d: d["tests"][1].update(devices=[MEMBER])), "'manufacturer' is a required"),  # group
+        (changed(RECORD, lambda d: d["tests"][0]["devices"][0].update(manufacturer="")), "should be non-empty"),
         (changed(RECORD, lambda d: d["tests"][0].update(classes=["hue"])), "'classes' was unexpected"),
         (changed(RECORD, lambda d: d["tests"][2].pop("reason")), "is not valid under any of the given schemas"),
         (changed(RECORD, lambda d: d["tests"][2].update(devices=[HUE])), "should not be valid"),
@@ -117,6 +131,7 @@ def test_a_converted_fact_row_may_lack_a_class_and_keep_a_name():
         (changed(MANUAL, lambda d: d["signoffs"][1].update(passed=["stop"])), "should not be valid"),
         (changed(MANUAL, lambda d: d["signoffs"][0].pop("passed")), "'passed' is a required property"),
         (changed(MANUAL, lambda d: d["signoffs"][0]["devices"][0].update(firmware="1")), "'firmware' was unexpected"),
+        (changed(MANUAL, lambda d: d["signoffs"][0]["devices"][0].pop("manufacturer")), "'manufacturer' is a required"),
         (changed(FACTS, lambda d: d["facts"][0].update(kind="watched")), "is not one of"),
         (changed(FACTS, lambda d: d["facts"][0].update(devices=[])), "should be non-empty"),
     ],

@@ -201,7 +201,7 @@ def test_a_manual_row_by_a_maintainer_or_repo_maintainer_is_a_signoff(fake_repo)
     ("change", "error"),
     [
         ({"devices": ["LCA001"]}, "'LCA001' is not of type 'object'"),
-        ({"devices": [{"model": "LCA001"}]}, "'class' is a required property"),
+        ({"devices": [{"model": "LCA001", "manufacturer": None}]}, "'class' is a required property"),
         ({"devices": []}, "should be non-empty"),
         ({"passed": []}, "should be non-empty"),
         ({"no_call_changed": True}, "should not be valid"),  # with devices and passed

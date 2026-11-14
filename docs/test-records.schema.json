@@ -18,6 +18,7 @@
     "commit": {"description": "A commit, abbreviated or full.", "type": "string", "pattern": "^[0-9a-f]{7,40}$"},
     "model": {"description": "The model ID: a Zigbee device's Basic-cluster model (e.g. LWA012) on every integration, else the integration's model ID; docs/models.yaml must list it.", "type": "string", "minLength": 1},
     "firmware": {"description": "As the integration reports it; null when it reports none.", "type": ["string", "null"], "minLength": 1},
+    "manufacturer": {"description": "The Zigbee manufacturer string as the integration reports it (Z2M bridge/devices `manufacturer`, ZHA's device manufacturer, the Hue bridge's `product_data.manufacturer_name`), else HA's registry manufacturer; null where none was reported or recorded. Never a device name.", "type": ["string", "null"], "minLength": 1},
     "class": {"description": "The class the call reached (IntegrationInfo.capability, as the action's result reports it); null where the integration named none, or names no classes.", "type": ["string", "null"], "minLength": 1},
 
     "record": {
@@ -105,7 +106,7 @@
       "$ref": "#/$defs/test_common",
       "unevaluatedProperties": false,
       "properties": {
-        "group": {"description": "The target was a native group: devices are its members, each with its class.", "const": true},
+        "group": {"description": "The target was a native group: devices are its members, each with its manufacturer and class.", "const": true},
         "devices": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/test_device"}}
       },
       "if": {"properties": {"result": {"const": "skipped"}}},
@@ -118,10 +119,11 @@
 
     "test_device": {
       "type": "object",
-      "required": ["model", "firmware", "class"],
+      "required": ["model", "manufacturer", "firmware", "class"],
       "additionalProperties": false,
       "properties": {
         "model": {"$ref": "#/$defs/model"},
+        "manufacturer": {"$ref": "#/$defs/manufacturer"},
         "firmware": {"$ref": "#/$defs/firmware"},
         "class": {"$ref": "#/$defs/class"}
       }
@@ -158,12 +160,13 @@
     },
 
     "manual_device": {
-      "description": "A model id (docs/models.yaml, never a household's device name) and the class it reached.",
+      "description": "A model id (docs/models.yaml, never a household's device name), its manufacturer string and the class it reached.",
       "type": "object",
-      "required": ["model", "class"],
+      "required": ["model", "manufacturer", "class"],
       "additionalProperties": false,
       "properties": {
         "model": {"$ref": "#/$defs/model"},
+        "manufacturer": {"$ref": "#/$defs/manufacturer"},
         "class": {"$ref": "#/$defs/class"}
       }
     },
@@ -195,12 +198,13 @@
     },
 
     "fact_device": {
-      "description": "A device the case ran on. The rig writes its class; a row converted from markdown has none, and keeps the name its record gave the model.",
+      "description": "A device the case ran on. The rig writes its manufacturer and class; a row converted from markdown has neither, and keeps the name its record gave the model.",
       "type": "object",
       "required": ["model", "firmware"],
       "additionalProperties": false,
       "properties": {
         "model": {"$ref": "#/$defs/model"},
+        "manufacturer": {"$ref": "#/$defs/manufacturer"},
         "name": {"type": "string", "minLength": 1},
         "firmware": {"$ref": "#/$defs/firmware"},
         "class": {"$ref": "#/$defs/class"}
