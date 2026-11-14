@@ -38,10 +38,12 @@ def old_group(name: str = "Zone", firmware: str | None = None) -> dict:
     return {"name": name, "firmware": firmware, "group": True}
 
 
-def envelope(integration: str, action: str, result: str, commit: str) -> dict:
+def envelope(integration: str, action: str, result: str, commit: str, options=()) -> dict:
+    """A record's fields bar its tests; `options` as its file name gives them (none: absent)."""
     return {
         "integration": integration,
         "action": action,
+        **({"options": sorted(options)} if options else {}),
         "result": result,
         "date": "2026-11-14",
         "source": {"kind": "rig", "commit": commit[:7]},
@@ -49,10 +51,17 @@ def envelope(integration: str, action: str, result: str, commit: str) -> dict:
 
 
 def record_v2(
-    integration: str, action: str, tests: list[dict], *, result: str = "pass", commit: str = "1a2b3c4", package=None
+    integration: str,
+    action: str,
+    tests: list[dict],
+    *,
+    result: str = "pass",
+    commit: str = "1a2b3c4",
+    package=None,
+    options=(),
 ) -> dict:
-    found = {"format": 2, **envelope(integration, action, result, commit), "package": package or "0123456789ab"}
-    return found | {"home_assistant": "2026.10.4", "tests": tests}
+    found = {"format": 2, **envelope(integration, action, result, commit, options)}
+    return found | {"package": package or "0123456789ab", "home_assistant": "2026.10.4", "tests": tests}
 
 
 def record_v1(
@@ -63,8 +72,9 @@ def record_v1(
     devices: list[dict] | None = None,
     tests: list[dict] | None = None,
     commit: str = "1a2b3c4",
+    options=(),
 ) -> dict:
-    found = {"format": 1, **envelope(integration, action, result, commit), "home_assistant": "2026.10.4"}
+    found = {"format": 1, **envelope(integration, action, result, commit, options), "home_assistant": "2026.10.4"}
     return found | {"devices": [old_device()] if devices is None else devices, "tests": tests or [old_test()]}
 
 

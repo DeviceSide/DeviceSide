@@ -162,11 +162,13 @@ def write_record(
     `tree` when given one; with `tree` None it is format 1, converted from markdown."""
     if tree == "package":
         tree = tree_of(repo, commit, integration)
-    action = Path(name).stem.lstrip("_").split("-")[0]
+    action, *options = Path(name).stem.lstrip("_").split("-")
     if tree is None:
-        data = record_v1(integration, action, result=result, commit=commit)
+        data = record_v1(integration, action, result=result, commit=commit, options=options)
     else:
-        data = record_v2(integration, action, [ran("light")], result=result, commit=commit, package=tree)
+        data = record_v2(
+            integration, action, [ran("light")], result=result, commit=commit, package=tree, options=options
+        )
     return repo.commit(f"docs/integrations/{integration}/test-records/{name}", text(data))
 
 
@@ -231,9 +233,21 @@ def test_every_manual_row_in_the_repo_is_in_format():
     errors = [
         error
         for key, info in registry.integrations.items()
-        for error in cr.manual_signoffs(key, (*info.maintainers, *cr.REPO_MAINTAINERS), info.capability is not None)[1]
+        for error in cr.manual_signoffs(key, (*info.maintainers, *cr.REPO_MAINTAINERS), key in cr.classed(registry))[1]
     ]
     assert errors == []
+
+
+def test_names_classes_is_the_integrations_capability_for_every_adapter():
+    """gen_compat and check_release read "names classes" from the scope; it must agree with IntegrationInfo."""
+    registry = AdapterRegistry.discover()
+    found = {(name, cr.names_classes(adapter)) for name, adapter in cr.adapters(registry)}
+    expected = {
+        (name, registry.integrations[adapter.integration].capability is not None)
+        for name, adapter in cr.adapters(registry)
+    }
+    assert found == expected
+    assert cr.classed(registry) == {key for key, info in registry.integrations.items() if info.capability is not None}
 
 
 # The release gate.
@@ -354,6 +368,50 @@ def test_a_file_of_the_wrong_kind_or_integration_stops_the_check(released, name,
     write_record(released, name, released.commit(f"{FAKE}/stop.py"))
     with pytest.raises(SystemExit, match=error):
         cr.manual_signoffs("fake", ("a",)) if name.startswith("_") else cr.record_signoff("other")
+
+
+def test_a_json_file_named_with_another_leading_underscore_stops_the_check_naming_it(released):
+    """Only `_manual.json` and `_facts.json` take the `_`: any other would drop out of the sign-off unseen."""
+    write_record(released, "stop.json", released.commit(f"{FAKE}/stop.py"))
+    write_record(released, "_stop.json", released.commit())
+    with pytest.raises(SystemExit, match=f"{RECORDS}/_stop.json: a leading `_` is for _manual.json and _facts.json"):
+        cr.record_signoff("fake")
+    with pytest.raises(SystemExit, match="_stop.json"):
+        cr.passing("fake", "stop")
+
+
+@pytest.mark.parametrize(
+    ("name", "change", "error"),
+    [
+        ("stop.json", {"action": "turn_on_for"}, "action 'turn_on_for', options None, but its name says action 'stop'"),
+        (
+            "stop.json",
+            {"options": ["predicted_state"]},
+            r"action .stop., options \['predicted_state'\], but .* options None",
+        ),
+        (
+            "stop-predicted_state.json",
+            {"options": None},
+            r"action .stop., options None, but .* options \['predicted_state'\]",
+        ),
+        ("stop-predicted_state.json", {"options": ["other"]}, r"action .stop., options \['other'\], but its name says"),
+    ],
+)
+def test_a_record_whose_action_or_options_its_name_contradicts_stops_the_check(fake_repo, name, change, error):
+    """A record credits the action its name says: one that tested another would credit a call never made."""
+    write_record(fake_repo, name, fake_repo.commit(), tree="0123456789ab")
+    path = fake_repo.path / RECORDS / name
+    data = {key: value for key, value in (json.loads(path.read_text()) | change).items() if value is not None}
+    path.write_text(text(data))
+    with pytest.raises(SystemExit, match=f"{RECORDS}/{name}: {error}"):
+        cr.passing("fake", "stop")
+
+
+def test_a_record_whose_name_and_options_agree_is_the_actions(fake_repo):
+    """A suite named for no action (`lifecycle`) is none's evidence, whatever action it ran."""
+    for name in ("stop.json", "stop-predicted_state.json", "lifecycle.json", "stop_x.json"):
+        write_record(fake_repo, name, fake_repo.commit(), tree="0123456789ab")
+    assert [path.name for path in cr.passing("fake", "stop")] == ["stop-predicted_state.json", "stop.json"]
 
 
 def test_a_file_that_is_no_json_record_fails_by_name(released, monkeypatch, capsys):
@@ -601,27 +659,21 @@ def test_a_verified_class_no_format_1_record_reaches_is_a_gap(fake_repo, monkeyp
     assert cr.coverage_gaps(found) == ["fake turn_on_for: `ikea` is Verified but no record reaches it"]
 
 
-def test_a_format_2_test_credits_its_devices_classes_and_a_group_test_its_members(fake_repo, monkeypatch):
+def test_a_format_2_test_credits_its_devices_classes_and_a_group_test_each_members(fake_repo, monkeypatch):
+    """A mixed group: each member's class is credited from its own entry; a null class credits none, a device's or a
+    member's."""
     classes_record_v2(
         fake_repo,
         "turn_on_for",
         ran("light", device("LTA009", "1", "hue")),
-        ran("light", device("LWA012", "1", None)),  # a null class credits none
+        ran("light", device("LWA012", "1", None)),
         skipped(),
     )
-    members = (device("LTA009", "1", "hue"), device("LCA001", "1", "ikea"))
+    members = (device("LTA009", "1", "hue"), device("LCA001", "1", None), device("LWA012", "1", "ikea"))
     classes_record_v2(fake_repo, "stop", ran("light", *members, group=True, role="group"))
     found = classed(fake_repo, monkeypatch, turn_on_for=SCOPE, stop=SCOPE)
     assert cr.coverage_gaps(found) == ["fake turn_on_for: `ikea` is Verified but no record reaches it"]
     assert (cr.reached("fake", "turn_on_for"), cr.reached("fake", "stop")) == ({"hue"}, {"hue", "ikea"})
-
-
-def test_a_group_test_credits_each_members_class_from_its_own_entry(fake_repo, monkeypatch):
-    """A mixed group: each member's class is credited from its own entry, and a null one credits none."""
-    members = (device("LTA009", "1", "hue"), device("LCA001", "1", None), device("LWA012", "1", "other"))
-    classes_record_v2(fake_repo, "stop", ran("light", *members, group=True, role="group"))
-    classed(fake_repo, monkeypatch, stop=SCOPE)
-    assert cr.reached("fake", "stop") == {"hue", "other"}
 
 
 def test_a_failing_record_reaches_nothing_and_a_manual_row_with_a_class_does(fake_repo, monkeypatch):
@@ -642,6 +694,25 @@ def test_a_failing_record_reaches_nothing_and_a_manual_row_with_a_class_does(fak
         [signoffs[2]],
         [f"{MANUAL} row {number}: a class, but fake names no classes" for number in (1, 2)],
     )
+
+
+def test_a_record_naming_a_class_on_an_integration_that_names_none_is_an_error(released, monkeypatch, capsys):
+    """As a manual row's is: nothing there could have reached a class, so the record was read wrong."""
+    change = released.commit(f"{FAKE}/stop.py")
+    write_record(released, "stop.json", change)
+    write_record(released, "turn_on_for.json", change)
+    path = released.path / RECORDS / "turn_on_for.json"
+    data = json.loads(path.read_text())
+    data["tests"].append(ran("light", device("LTA009", "1", "hue"), role="light_dimmable"))
+    path.write_text(text(data))
+    error = f"{RECORDS}/turn_on_for.json test 2 (t[light_dimmable]): a class, but fake names no classes"
+    assert cr.record_class_errors("fake") == [error]
+    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
+    assert f"error: {error}" in capsys.readouterr().err
+    # Format 1 names its classes on the test; an integration that names classes takes them.
+    classes_record(released, "stop", ["hue"])
+    assert cr.record_class_errors("fake")[0].startswith(f"{RECORDS}/stop.json test 1 (t[r]): a class")
+    assert cr.gates(classed(released, monkeypatch, stop=SCOPE, turn_on_for=SCOPE))[2] == []
 
 
 def test_an_adapter_flagged_whole_or_an_integration_naming_no_classes_has_no_gap(fake_repo, monkeypatch):

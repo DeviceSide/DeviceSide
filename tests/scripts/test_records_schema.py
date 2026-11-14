@@ -120,6 +120,24 @@ def test_a_scenes_test_is_a_groups():
     assert errors(changed(RECORD, lambda d: d["tests"].append(unrun))) == []
 
 
+@pytest.mark.parametrize("role", ["group", "group_color"])
+def test_a_group_roles_test_is_a_groups(role):
+    """Without `group`, a group's test would credit each member as tested on its own."""
+    test = ran("light", HUE, role=role)
+    assert "'group' is a required property" in errors(changed(RECORD, lambda d: d["tests"].append(test)))
+    assert errors(changed(RECORD, lambda d: d["tests"].append(test | {"group": True}))) == []
+    assert errors(changed(RECORD, lambda d: d["tests"].append(skipped(role)))) == []
+
+
+def test_a_passing_record_holds_a_passing_test():
+    """An all-skipped run made no call, so it signs nothing off."""
+    unrun = changed(RECORD, lambda d: d.update(tests=[skipped()]))
+    assert any("does not contain items" in message for message in errors(unrun))
+    assert errors(changed(unrun, lambda d: d.update(result="fail"))) == []
+    old = changed(OLD, lambda d: d["tests"][0].update(result="skipped", reason="none in the profile"))
+    assert any("does not contain items" in message for message in errors(old))  # format 1 alike
+
+
 def test_a_manufacturer_is_a_string_or_null():
     """Null where none was reported or recorded; a string names the maker the run tested."""
     named = changed(RECORD, lambda d: d["tests"][0]["devices"][0].update(manufacturer="Signify Netherlands B.V."))

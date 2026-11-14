@@ -83,10 +83,13 @@ from custom_components.deviceside.core.scope import CaveatKind, Level  # noqa: E
 from scripts.check_release import (  # noqa: E402
     MANUAL,
     adapters,
+    classed,
     coverage_gaps,
     listed,
     manual_rows,
+    names_classes,
     passing,
+    record_class_errors,
     test_records_dir,
 )
 from scripts.check_release import load as read_record  # noqa: E402
@@ -376,20 +379,20 @@ class Evidence:
     @classmethod
     def of(cls, adapter, clean: Clean | None = None, by_hand: Callable[[str | None], bool] | None = None) -> Evidence:
         """The adapter's evidence: with `clean`, only the record tests it accepts; with `by_hand`, only the manual
-        devices whose class it accepts. Where the integration names classes (the scope holds them), a device with a
+        devices whose class it accepts. Where the integration names classes (`names_classes`), a device with a
         null class credits nothing, flagged or not (docs/evidence.md, The coverage check), so it is left out."""
-        classed = adapter.scope.capabilities is not None
+        names = names_classes(adapter)
         records = passing(adapter.integration, adapter.action)
         found = [
             (path.relative_to(REPO).as_posix(), item)
             for path in records
-            for item in tested(read_record(path), clean, classed)
+            for item in tested(read_record(path), clean, names)
         ]
         found += [
             (MANUAL, Tested(model, None, cls, rig=False))
             for row in manual_rows(adapter.integration, adapter.action)
             for model, cls in row
-            if not (classed and cls is None) and (by_hand is None or by_hand(cls))
+            if not (names and cls is None) and (by_hand is None or by_hand(cls))
         ]
         return cls(records, found)
 
@@ -407,7 +410,13 @@ class Evidence:
 def check_models(registry: AdapterRegistry, data: Data) -> None:
     """Every model a test-records file names is in docs/models.yaml: each device of every record, whatever its test's
     result or class, and of `_manual.json` and `_facts.json`, so a model missing from it fails on the PR that lands
-    the file, not later, when a test of it first credits a card."""
+    the file, not later, when a test of it first credits a card. And, as check_release does at the cut, no record of
+    an integration that names no classes names one (`record_class_errors`), so it fails on the PR too."""
+    names = classed(registry)
+    if errors := [
+        error for key in sorted(registry.integrations) if key not in names for error in record_class_errors(key)
+    ]:
+        raise SystemExit("\n".join(errors))
     for key in sorted(registry.integrations):
         for path in listed(key):
             if path.suffix != ".json":
@@ -511,7 +520,7 @@ def described(item: Tested) -> str:
     return f"{name}, firmware `{item.firmware}`" if item.firmware else f"{name}, firmware unknown"
 
 
-def rows(adapter, data: Data) -> list[str]:
+def rows(adapter) -> list[str]:
     """The action's rows: its records on the first; each tested model, and each group, on the row of the weakest
     level the scope holds its class and its test's domain at, else (neither held nor named: a format 1 record's) the
     first. A device with a null class, where the integration names classes, credits nothing (`Evidence.of`), so is on
@@ -566,7 +575,7 @@ def evidence(registry: AdapterRegistry, data: Data) -> str:
         parts.append("| Action | Level | Items | Tested models | Records |")
         parts.append("|---|---|---|---|---|")
         for adapter in integration_adapters:
-            parts += rows(adapter, data)
+            parts += rows(adapter)
         if broken := [entry for entry in data.doesnt_work if key in entry["integrations"]]:
             parts += ["", "| Doesn't work | Why | Source |", "|---|---|---|"]
             parts += [

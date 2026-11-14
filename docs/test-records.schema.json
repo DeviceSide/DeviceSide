@@ -50,7 +50,14 @@
       "allOf": [
         {
           "if": {"properties": {"result": {"const": "pass"}}},
-          "then": {"properties": {"tests": {"items": {"properties": {"result": {"description": "A pass record holds no failing test.", "enum": ["pass", "skipped", "not observed"]}}}}}}
+          "then": {
+            "properties": {
+              "tests": {
+                "items": {"properties": {"result": {"description": "A pass record holds no failing test.", "enum": ["pass", "skipped", "not observed"]}}},
+                "contains": {"description": "A pass record holds a passing test: one whose every test was skipped made no call.", "properties": {"result": {"const": "pass"}}, "required": ["result"]}
+              }
+            }
+          }
         }
       ],
       "if": {"properties": {"format": {"const": 1}}},
@@ -126,7 +133,14 @@
         "not": {"anyOf": [{"required": ["devices"]}, {"required": ["group"]}]},
         "anyOf": [{"required": ["reason"]}, {"required": ["fact"]}]
       },
-      "else": {"required": ["domain", "devices"]}
+      "else": {"required": ["domain", "devices"]},
+      "allOf": [
+        {
+          "description": "A group role's test that ran is a group's, as a scene's is: without `group`, its devices, the members, would each be credited as tested on its own. Format 1 names no device per test, so the rule is format 2's.",
+          "if": {"properties": {"role": {"enum": ["group", "group_color"]}, "result": {"not": {"const": "skipped"}}}, "required": ["role", "result"]},
+          "then": {"required": ["group"]}
+        }
+      ]
     },
 
     "test_device": {

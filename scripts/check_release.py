@@ -35,8 +35,10 @@ another integration than its folder's, is an error. A rig record per suite (`<ac
 read as the action's evidence; another suite's, as `lifecycle.json`, counts only toward the run), `_manual.json`, whose
 rows are manual sign-offs, and `_facts.json`, the fact cases' results, which nothing here reads. Under --signoffs, a
 file there that isn't JSON (a markdown record) is no record, named; a dotfile is ignored. A manual row's tester must be
-one of the integration's maintainers or a repo maintainer (`REPO_MAINTAINERS`), and its devices may name a class only on
-an integration that names classes. A record names no tester: review of the PR that lands it checks who ran it.
+one of the integration's maintainers or a repo maintainer (`REPO_MAINTAINERS`). A manual row's devices, and a record's
+tests, may name a class only on an integration that names classes (`names_classes`, which gen_compat shares). A record
+names no tester: review of the PR that lands it checks who ran it. A `.json` named with a leading `_` other than those
+two, or a record whose `action` or `options` its name contradicts, is an error naming the file.
 
 Exits 1 on an integration that failed to import, whatever the options, and on any failure of the checks asked for. A
 git error fails the run rather than pass a gate unseen.
@@ -86,6 +88,18 @@ def adapters(registry: AdapterRegistry) -> list[tuple[str, object]]:
         for action, integration, adapter in registry.matrix()
         if adapter is not None
     ]
+
+
+def names_classes(adapter) -> bool:
+    """Whether the adapter's integration names classes (`IntegrationInfo.capability`): the registry holds every
+    adapter's scope to it, classes in each or in none (`check_classes`), so the scope answers for the integration. The
+    one definition gen_compat and the checks here share."""
+    return adapter.scope.capabilities is not None
+
+
+def classed(registry) -> set[str]:
+    """The integrations that name classes, by their adapters (`names_classes`)."""
+    return {adapter.integration for _, adapter in adapters(registry) if names_classes(adapter)}
 
 
 def git(*args: str) -> str:
@@ -157,9 +171,18 @@ def load(path: Path) -> dict:
 
 
 def listed(integration: str) -> list[Path]:
-    """The files in the integration's test-records folder, dotfiles (an editor's or the OS's) left out."""
+    """The files in the integration's test-records folder, dotfiles (an editor's or the OS's) left out. A `.json`
+    named with a leading `_` other than `_manual.json` and `_facts.json` stops the run, naming it: it is no record, and
+    would drop out of the sign-off unseen."""
     folder = test_records_dir(integration)
-    return sorted(path for path in folder.glob("*") if path.is_file() and not path.name.startswith("."))
+    found = sorted(path for path in folder.glob("*") if path.is_file() and not path.name.startswith("."))
+    for path in found:
+        if path.suffix == ".json" and path.name.startswith("_") and path.name not in (MANUAL, FACTS):
+            raise SystemExit(
+                f"{where(path)}: a leading `_` is for {MANUAL} and {FACTS} only; a rig record is named for its suite"
+                " (docs/test-records.schema.json)"
+            )
+    return found
 
 
 def records(integration: str) -> list[Path]:
@@ -168,9 +191,21 @@ def records(integration: str) -> list[Path]:
 
 
 def passing(integration: str, action: str) -> list[Path]:
-    """The action's passing test records: `<action>.json`, and `<action>-<option>.json` for a run with an option set."""
-    pattern = re.compile(rf"{re.escape(action)}(-[^.]+)?\.json")
-    return [path for path in records(integration) if pattern.fullmatch(path.name) and load(path)["result"] == "pass"]
+    """The action's passing test records: `<action>.json`, and `<action>-<option>.json` for a run with an option set
+    (several options `-`-joined, sorted, as a step file's `options` are). A file is credited by its name, so one whose
+    `action` or `options` say otherwise stops the run, naming it, rather than credit an action it didn't test."""
+    pattern = re.compile(rf"{re.escape(action)}(?:-([^.]+))?\.json")
+    found = []
+    for path in records(integration):
+        if not (match := pattern.fullmatch(path.name)):
+            continue
+        record, options = load(path), match[1].split("-") if match[1] else None
+        if (record["action"], record.get("options")) != (action, options):
+            held = f"action {record['action']!r}, options {record.get('options')}"
+            raise SystemExit(f"{where(path)}: {held}, but its name says action {action!r}, options {options}")
+        if record["result"] == "pass":
+            found.append(path)
+    return found
 
 
 def manual(integration: str) -> list[dict]:
@@ -212,7 +247,7 @@ def coverage_gaps(registry) -> list[str]:
     manual row for its action that reached it. An adapter flagged whole holds none as Verified."""
     gaps = []
     for _, adapter in adapters(registry):
-        if registry.integrations[adapter.integration].capability is None or adapter.scope.experimental:
+        if not names_classes(adapter) or adapter.scope.experimental:
             continue
         held = [item for item, level in adapter.scope.capabilities.items() if level is Level.VERIFIED]
         missing = sorted(set(held) - reached(adapter.integration, adapter.action))
@@ -363,13 +398,33 @@ def changed_adapters(registry, integration: str, base: str | None) -> list[tuple
     return [(name, adapter) for name, adapter in own if modules[name].as_posix() in changed]
 
 
+def record_class_errors(integration: str) -> list[str]:
+    """For an integration that names no classes: each rig record test that names one, a device's `class` (format 2)
+    or a `classes` entry (format 1), as `_manual.json` rows are held (`manual_signoffs`). A class there is a record
+    read wrong, as nothing could have reached it."""
+    errors = []
+    for path in records(integration):
+        record = load(path)
+        for number, test in enumerate(record["tests"], 1):
+            named = test.get("classes", []) + [item["class"] for item in test.get("devices", ())]
+            if any(cls is not None for cls in named):
+                errors.append(
+                    f"{where(path)} test {number} ({test['id']}): a class, but {integration} names no classes"
+                )
+    return errors
+
+
 def gates(registry) -> tuple[str | None, list[Gate], list[str]]:
-    """The last release tag, a gate per changed integration, and the `_manual.json` errors."""
+    """The last release tag, a gate per changed integration, and the test-records errors: a `_manual.json` row's, or a
+    class named on an integration that names none."""
     base = last_release()
     found, errors = [], []
+    names = classed(registry)
     for key, info in registry.integrations.items():
-        manual, problems = manual_signoffs(key, (*info.maintainers, *REPO_MAINTAINERS), info.capability is not None)
+        manual, problems = manual_signoffs(key, (*info.maintainers, *REPO_MAINTAINERS), key in names)
         errors += problems
+        if key not in names:
+            errors += record_class_errors(key)
         if not (last := last_change(key, base)):
             continue
         run, why = record_signoff(key)

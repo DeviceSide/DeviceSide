@@ -61,14 +61,15 @@ def records_dir(root, integration):
 
 def record(root, integration, name, *, result="pass", devices=None, tests=None):
     """A format 1 record (converted from markdown): the run's `devices`, and `tests` without devices."""
-    action = name.split("-")[0]
-    data = record_v1(integration, action, result=result, devices=devices, tests=tests)
+    action, *options = name.split("-")
+    data = record_v1(integration, action, result=result, devices=devices, tests=tests, options=options)
     return write(records_dir(root, integration) / f"{name}.json", data)
 
 
 def record2(root, integration, name, *tests, result="pass"):
     """A format 2 record: the devices each test reached."""
-    data = record_v2(integration, name.split("-")[0], list(tests), result=result)
+    action, *options = name.split("-")
+    data = record_v2(integration, action, list(tests), result=result, options=options)
     return write(records_dir(root, integration) / f"{name}.json", data)
 
 
@@ -151,6 +152,15 @@ def test_every_model_a_record_names_must_be_in_models_yaml_whether_or_not_it_cre
         gc.check_models(FakeRegistry(), data())
 
 
+def test_a_record_naming_a_class_fails_on_an_integration_that_names_none(root):
+    """On the PR that lands it, not first at the cut (check_release --signoffs)."""
+    record2(root, "zha", "stop", ran("light", device("P1", "1", "Switch")))
+    with pytest.raises(SystemExit, match="stop.json test 1 .*: a class, but zha names no classes"):
+        gc.check_models(FakeRegistry(), data())
+    classed = adapter("zha", "stop", AdapterScope(capabilities=verified("Switch")))
+    gc.check_models(classed_registry(classed), data())  # an integration that names classes takes it
+
+
 def test_a_fact_rows_models_must_be_in_models_yaml_and_a_dotfile_is_skipped(root):
     facts = {"format": 2, "integration": "zha", "facts": [{
         "date": "2026-11-14", "suite": "stop", "test": "t[r]", "kind": "automated", "result": "pass",
@@ -209,7 +219,7 @@ def test_an_adapters_rows_hold_each_level_its_scope_holds_strongest_first_with_i
         capabilities=verified("Light") | documented("CCT") | experimental("RGB"),
         fields=verified("brightness") | experimental("transition"),
     )
-    assert gc.rows(adapter("zha", "stop", scope), data()) == [
+    assert gc.rows(adapter("zha", "stop", scope)) == [
         "| `stop` | Verified | light entities; Light classes; brightness fields"
         " | `LTA009`, firmware `1.2.3`<br>group"
         " | [predicted state](integrations/zha/test-records/stop-predicted_state.json),"
@@ -230,7 +240,7 @@ def test_each_class_lists_only_the_models_that_reached_it_on_its_levels_row(root
         ran("light", device("LWA012", "2", None)),  # a null class credits nothing: on no row
     )
     scope = AdapterScope(domains=verified("light", "switch"), capabilities=verified("Switch") | experimental("Light"))
-    assert gc.rows(adapter("zha", "turn_on_for", scope), data(classed_registry())) == [
+    assert gc.rows(adapter("zha", "turn_on_for", scope)) == [
         "| `turn_on_for` | Verified | light, switch entities; Switch classes"
         " | `P1` (`Switch`), firmware `1`"
         " | [record](integrations/zha/test-records/turn_on_for.json) |",
@@ -249,14 +259,14 @@ def test_a_tested_model_sits_on_the_row_of_the_weakest_level_its_class_and_domai
         ran("switch", device("P1", "1"), group=True, role="group"),
     )
     scope = AdapterScope(domains=verified("light") | experimental("switch"))
-    assert gc.rows(adapter("hue", "stop", scope), data()) == [
+    assert gc.rows(adapter("hue", "stop", scope)) == [
         "| `stop` | Verified | light entities | `LTA009`, firmware `2`"
         " | [record](integrations/hue/test-records/stop.json) |",
         "| `stop` | Experimental | switch entities | `P1`, firmware `1`<br>group | |",
     ]
     record2(root, "zha", "stop", ran("switch", device("P1", "1", "Switch"), role="switch_plug"))
     classed = AdapterScope(domains=verified("light") | experimental("switch"), capabilities=verified("Switch"))
-    assert gc.rows(adapter("zha", "stop", classed), data(classed_registry())) == [
+    assert gc.rows(adapter("zha", "stop", classed)) == [
         "| `stop` | Verified | light entities; Switch classes | none"
         " | [record](integrations/zha/test-records/stop.json) |",
         "| `stop` | Experimental | switch entities | `P1` (`Switch`), firmware `1` | |",
@@ -265,7 +275,7 @@ def test_a_tested_model_sits_on_the_row_of_the_weakest_level_its_class_and_domai
 
 def test_a_level_comes_from_the_scope_not_from_the_records(root):
     # No record and Verified: the scope decides (verify, then trust).
-    assert gc.rows(adapter("hue", "stop"), data()) == ["| `stop` | Verified | light entities | none | |"]
+    assert gc.rows(adapter("hue", "stop")) == ["| `stop` | Verified | light entities | none | |"]
 
 
 def test_records_are_the_action_and_its_options(root):
@@ -277,9 +287,7 @@ def test_records_are_the_action_and_its_options(root):
 
 def test_an_adapter_flagged_whole_has_one_experimental_row(root):
     scope = AdapterScope(experimental=True, domains=verified("light") | documented("switch"))
-    assert gc.rows(adapter("zha", "stop", scope), data()) == [
-        "| `stop` | Experimental | light, switch entities | none | |"
-    ]
+    assert gc.rows(adapter("zha", "stop", scope)) == ["| `stop` | Experimental | light, switch entities | none | |"]
 
 
 MANUAL = (
@@ -295,7 +303,7 @@ def manual_file(root, integration="zha", rows=MANUAL):
 def test_a_manual_row_is_evidence_for_the_actions_it_passed(root):
     manual_file(root)
     flagged = adapter("zha", "stop", AdapterScope(experimental=True))
-    assert gc.rows(flagged, data()) == [
+    assert gc.rows(flagged) == [
         "| `stop` | Experimental | light entities | `P1`, by hand<br>`LTA009`, by hand"
         " | [by hand](integrations/zha/test-records/_manual.json) |"
     ]
@@ -369,9 +377,8 @@ def test_an_adapter_flagged_on_a_domain_counts_only_records_whose_passing_tests_
     record(root, "zha", "turn_on_for", tests=[light, old_test(None, "skipped")])
     record(root, "zha", "turn_on_for-option", devices=[old_device("P1", "1")], tests=[light, old_test("switch")])
     record(root, "zha", "stop", tests=[old_test(None)])  # a passing test with no domain
-    record(root, "zha", "lower_hue", devices=[old_device("P1", "1")], tests=[old_test(None, "skipped")])  # none pass
     scope = AdapterScope(domains=verified("light") | experimental("switch"))
-    card = zha_card(*(adapter("zha", action, scope) for action in ("turn_on_for", "stop", "lower_hue")))
+    card = zha_card(*(adapter("zha", action, scope) for action in ("turn_on_for", "stop")))
     # Not Plug, whose format 1 record also passed on a switch, nor the manual rows; Hue lamp from the light-only one.
     assert card.lines["works"] == [f"[Hue lamp]({URL}#hue-lamp) ✔"]
 
@@ -680,12 +687,12 @@ def test_a_card_whose_adapters_are_all_unmaintained_says_formerly_maintained(roo
 
 def test_every_evidence_row_of_an_adapter_with_a_caveat_is_marked(root):
     scope = AdapterScope(domains=verified("light") | experimental("switch"), caveat=unmaintained("a | b"))
-    assert [row.split(" | ")[:2] for row in gc.rows(adapter("zha", "stop", scope), data())] == [
+    assert [row.split(" | ")[:2] for row in gc.rows(adapter("zha", "stop", scope))] == [
         ["| `stop` ⚠️ Unmaintained (a \\| b)", "Verified"],
         ["| `stop` ⚠️ Unmaintained (a \\| b)", "Experimental"],
     ]
     linked = adapter("zha", "stop", AdapterScope(caveat=untested_fix(ISSUE_REASON)))
-    assert gc.rows(linked, data())[0].startswith(f"| `stop` [⚠️ Untested fix]({ISSUE_REASON}) | Verified |")
+    assert gc.rows(linked)[0].startswith(f"| `stop` [⚠️ Untested fix]({ISSUE_REASON}) | Verified |")
 
 
 def test_a_card_marks_untested_fixes_after_unmaintained_ones(root):
@@ -787,19 +794,16 @@ def test_a_scenes_test_credits_native_groups_never_its_members(root):
     scope = AdapterScope(domains=verified("scene"))
     card = gc.card("hue", FakeRegistry(), [adapter("hue", "set_scene", scope)], data())
     assert card.lines["works"] == [f"[native groups]({URL}#native-groups) ✔"]
-    assert gc.rows(adapter("hue", "set_scene", scope), data()) == [
+    assert gc.rows(adapter("hue", "set_scene", scope)) == [
         "| `set_scene` | Verified | scene entities | group | [record](integrations/hue/test-records/set_scene.json) |"
     ]
 
 
-def test_a_mixed_groups_members_credit_coverage_per_class_and_the_card_only_native_groups(root, monkeypatch):
-    # Each member's class from its own entry reaches the coverage check gen_compat warns with; the card gains
-    # "native groups", never the members' models.
+def test_a_mixed_groups_test_puts_native_groups_on_the_card_never_its_members(root):
+    """The members' classes credit coverage (check_release's tests); the card gains "native groups" alone."""
     members = (device("P1", "1", "Switch"), device("LTA009", "2", "Light"))
     record2(root, "zha", "turn_on_for", ran("light", *members, group=True, role="group"))
     scope = AdapterScope(capabilities=verified("Switch", "Light", "CCT"))
-    found = classed_registry(adapter("zha", "turn_on_for", scope))
-    assert gc.coverage_gaps(found) == ["zha turn_on_for: `CCT` is Verified but no record reaches it"]
     card = classed_card(adapter("zha", "turn_on_for", scope))
     assert card.lines["works"] == [f"[native groups]({URL}#native-groups) ✔"]
 

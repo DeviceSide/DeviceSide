@@ -148,13 +148,14 @@ varied integration, sets the bar. Classes match on manufacturer and model until 
 Every class an adapter's scope holds as Verified needs a passing record test, or a `_manual.json` row, for that action
 that reached it. A record names the class each test's devices reached, and a manual row each device's. A native group's
 test credits each member's class, from its members' entries, as the one call reached each member (a null one credits
-none; the cards add "native groups", never the members' models); a manual row credits every class it lists to every
-action it passed, so a row whose actions reached different classes is split. A scene's test is a group's, its members
-the scene's lights. A null class credits none, here or on the cards, as does a test that didn't pass.
-`scripts/gen_compat.py` warns on each gap on every PR, so a developer sees it early, and names it, for example
-"zigbee2mqtt turn_on_for: `hue` is Verified but no record reaches it"; `scripts/check_release.py --signoffs` fails on
-it at `cut-release`, with the other release gates. Like every gate, it checks that evidence exists, not that it
-suffices (tenet 7), and it applies to integrations that name classes.
+none; the cards add "native groups", never the members' models). A group with a null-class member is on no card, as
+"native groups" needs every member's class named and unflagged, while its named members still count here; a manual row
+credits every class it lists to every action it passed, so a row whose actions reached different classes is split. A
+scene's test is a group's, its members the scene's lights. A null class credits none, here or on the cards, as does a
+test that didn't pass. `scripts/gen_compat.py` warns on each gap on every PR, so a developer sees it early, and names
+it, for example "zigbee2mqtt turn_on_for: `hue` is Verified but no record reaches it";
+`scripts/check_release.py --signoffs` fails on it at `cut-release`, with the other release gates. Like every gate, it
+checks that evidence exists, not that it suffices (tenet 7), and it applies to integrations that name classes.
 
 *Example:* with Zigbee2MQTT's classes `hue`, `tuya_zcl`, `tuya_ts011f`, `tuya_mcu`, `sengled`, `gledopto` and `other`,
 and only Hue bulbs in its records, `turn_on_for` can be Verified on `hue` alone; on `other` it is `experimental(...)`,
@@ -248,13 +249,15 @@ Test records are JSON files in the bundle's `test-records/`, one schema for all 
 and which gives each field. The rules it serves:
 
 - **A rig record**, `<suite>.json`, is named for its step file (`<action>.json`, or `<action>-<option>.json` for a run
-  with an option set). It cites the package tree its run held (`package`), which is what a sign-off is checked by. It
-  passes only when no test failed; counts are derived from the tests, never stored.
+  with an option set), and credits the action its name gives only when its `action` and `options` agree; a leading
+  `_` is `_manual.json`'s and `_facts.json`'s alone. It cites the package tree its run held (`package`), which is what
+  a sign-off is checked by. It passes only when no test failed and one passed; counts are derived from the tests,
+  never stored.
 - **A test names the devices it reached** and the class the call reached on each, as the action's result reports it
-  ([action-behavior.md](action-behavior.md#what-a-response-looks-like)), or null where the integration named none. A
-  Zigbee device is named by its Zigbee model ID on every integration, and with its manufacturer string, as one model
-  ID carries many makers' strings; every model a file names must be in `docs/models.yaml`. A native group's test, and
-  a scene's, lists the members.
+  ([action-behavior.md](action-behavior.md#what-a-response-looks-like)), or null where the integration named none;
+  always null on an integration that names no classes. A Zigbee device is named by its Zigbee model ID on every
+  integration, and with its manufacturer string, as one model ID carries many makers' strings; every model a file
+  names must be in `docs/models.yaml`. A native group's test, and a scene's, lists the members and carries `group`.
 - **Format 1** is a markdown record converted once (device-classes plan, step 5b): the run's devices sit on the record,
   not on each test. It credits the cards as the markdown did, and is no sign-off; a rerun replaces it with format 2.
 - **`_manual.json`**: a maintainer's hand tests, a row each, added in a PR: each device a model id (never a household's
