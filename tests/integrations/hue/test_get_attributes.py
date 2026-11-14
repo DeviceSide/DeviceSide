@@ -161,6 +161,9 @@ async def test_color_mid_saturation_fade_reads_the_predicted_xy(hass, bridge, cl
         pytest.param(True, "xy", False, id="valid_but_ha_shows_xy"),
         pytest.param(False, "color_temp", True, id="invalid_but_ha_shows_color_temp"),
         pytest.param(True, None, False, id="no_color_mode"),
+        # Core shows no color mode while a light is off: the bridge's flag is all there is.
+        pytest.param(True, "off", True, id="off_follows_the_flag"),
+        pytest.param(False, "off", False, id="off_flag_unset"),
     ],
 )
 async def test_another_makers_light_reads_color_temperature_by_its_ha_color_mode(
@@ -171,8 +174,9 @@ async def test_another_makers_light_reads_color_temperature_by_its_ha_color_mode
     allow_experimental(hass)
     bridge.light("light-1", mirek=370, mirek_valid=mirek_valid, manufacturer="IKEA of Sweden")
     entry = await hue_entry(hass, bridge)
-    attributes = {"color_mode": color_mode} if color_mode else {}
-    add_hue_entity(hass, entry, "light.lamp", "light-1", state="on", attributes=attributes)
+    state = "off" if color_mode == "off" else "on"
+    attributes = {"color_mode": color_mode} if color_mode and state == "on" else {}
+    add_hue_entity(hass, entry, "light.lamp", "light-1", state=state, attributes=attributes)
 
     response = await call(hass, "get_attributes", {"entity_id": "light.lamp"})
 

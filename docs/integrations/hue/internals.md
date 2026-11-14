@@ -22,7 +22,8 @@ What decides a call's outcome on Hue (docs/evidence.md, key a class on what deci
 
 - **DeviceSide's request is the same for every light.** aiohue's `set_state` builds the CLIP v2 PUT from its
   arguments alone, with no branch on the light, bar effects, which DeviceSide never sends
-  ([`v2/controllers/lights.py`](https://github.com/home-assistant-libs/aiohue/blob/4.9.0/aiohue/v2/controllers/lights.py#L74-L105)).
+  ([`v2/controllers/lights.py`](https://github.com/home-assistant-libs/aiohue/blob/4.9.0/aiohue/v2/controllers/lights.py#L74-L105)),
+  and `stop`'s raw PUT (`bridge.put`) sends its body as given.
   The bridge picks the Zigbee command, and its firmware is closed: nothing in CLIP v2 shows which command it sent, nor
   routes a light by a field DeviceSide could read. So the class keys on identity.
 - **Hue's results are the bridge's and Signify's firmware together.** On the bridge a Hue bulb's soft off keeps its
@@ -52,15 +53,14 @@ sends and known brands depart from the commands it plausibly sends:
   ([research](../zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md), §5); IKEA bulbs take a transition on
   one attribute at a time (Zigbee2MQTT's
   [LED1624G9 page](https://github.com/Koenkk/zigbee2mqtt.io/blob/master/docs/devices/LED1624G9.md), read 2026-11-14).
-- **Soft off and fades** (`lower_brightness`, `raise_brightness`, `stop`): core's hue integration carries a
-  workaround for `on: false` with a transition resetting brightness to 1 on some lights (`v2/light.py`, in
-  `async_turn_on`); IKEA firmware may not turn off mid-transition (the LED1624G9 page). Stop's xy halt and its
+- **Soft off and fades** (`lower_brightness`, `raise_brightness`, `stop`): IKEA firmware may not turn off
+  mid-transition (the LED1624G9 page). Stop's xy halt and its
   soft-off cut are writes mid-transition, measured only on Hue bulbs.
 - **Color fades** (`raise_saturation`, `lower_saturation`): the payload differs where a light reports no gamut.
 - **`get_attributes`**: a non-certified light doesn't set `mirek_valid` reliably (above;
   [core PR #97263](https://github.com/home-assistant/core/pull/97263)), so its color temperature mode is read as
-  core decides it, from the color mode core shows (plan Decision 56), which follows core's last command and misses a
-  change from the Hue app. Untested on such a light.
+  core decides it, from the color mode core shows while the light is on (plan Decision 56), which follows core's last
+  command, so misses a DeviceSide write and a change from the Hue app. Untested on such a light.
 
 ## Modules
 
@@ -81,8 +81,8 @@ takes 3 requests at once and aiohue retries the rest.
 ### `get_attributes`
 
 `get_attributes` leaves out `color_temp_kelvin` in color mode, as the bridge's value is stale, and with a mirek of 0
-or none, as core does. Color temperature mode is core's: a certified light's `mirek_valid`, and for any other the color
-mode core shows (Device classes). A room with a
+or none, which core treats as no value. Color temperature mode is core's: a certified light's `mirek_valid`, and for
+any other the color mode core shows while it is on, else the flag (Device classes). A room with a
 light on uses the bridge's brightness and averages color over lit lights; with all off, over all of them.
 
 ### `fade`

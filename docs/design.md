@@ -124,7 +124,7 @@ docs, data and records are its bundle, `docs/integrations/<integration>/`, which
 - **`set_scene`**: a scene's settings, written to each light while it's off. A Zigbee scene recall turns lights on, so
   Zigbee would follow the same pattern.
 
-Not built yet: turn-on defaults (`OnLevel`), Shelly Gen1, Hue bridge v1, other domains (cover, valve, lock) and other
+Not built yet: turn-on defaults (`OnLevel`), Shelly Gen1, other domains (cover, valve, lock) and other
 integrations (Z-Wave JS, Tuya, ESPHome, Tasmota, TP-Link Kasa). Each is weighed against the broad-appeal principle
 in [CONTRIBUTING.md](../CONTRIBUTING.md#development-principles). Per device class:
 [device-compatibility.md](device-compatibility.md).

@@ -5,6 +5,7 @@ from statistics import mean
 from typing import TYPE_CHECKING, ClassVar
 
 from homeassistant.components.light import ATTR_COLOR_MODE, ColorMode
+from homeassistant.const import STATE_ON
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 from homeassistant.util.color import color_temperature_mired_to_kelvin
@@ -37,15 +38,19 @@ def light_row(hass: HomeAssistant, api: HueBridgeV2, cache: HueTransitionCache, 
 def in_color_temp_mode(hass: HomeAssistant, api: HueBridgeV2, light: Light) -> bool:
     """Whether the light is in color temperature mode, as core's hue integration decides it (v2/light.py,
     color_temp_active; internals.md, Device classes): a certified light's `mirek_valid`; for one that isn't, which
-    doesn't set the flag reliably, the color mode core shows for it, which follows core's own last command. Never with
-    no mirek, or 0, which core shows no color temperature for (and which would divide by zero)."""
+    doesn't set the flag reliably, the color mode core shows for it while it is on, which follows core's own last
+    command (so not a DeviceSide set_attributes write, nor the Hue app's), else the flag. Never with no mirek, or 0,
+    which core treats as no value (and which would divide by zero)."""
     if not (feature := light.color_temperature) or not feature.mirek:
         return False
     if (device := api.devices.get(light.owner.rid)) is None or device.product_data.certified:
         return feature.mirek_valid
     entity_id = er.async_get(hass).async_get_entity_id("light", "hue", light.id)
-    state = hass.states.get(entity_id) if entity_id else None
-    return state is not None and state.attributes.get(ATTR_COLOR_MODE) == ColorMode.COLOR_TEMP
+    if (state := hass.states.get(entity_id) if entity_id else None) is None or state.state != STATE_ON:
+        # Core shows no color mode for a light that is off, or one it has no entity for: the bridge's flag is all
+        # there is, as for a certified light.
+        return feature.mirek_valid
+    return state.attributes.get(ATTR_COLOR_MODE) == ColorMode.COLOR_TEMP
 
 
 def attributes(hass: HomeAssistant, api: HueBridgeV2, cache: HueTransitionCache, lights: Iterable[Light]) -> dict:

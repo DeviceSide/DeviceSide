@@ -165,9 +165,35 @@ async def test_a_room_light_with_no_entity_still_classes_the_room(hass, bridge):
     assert response == {"light.one": SENT}
 
 
-async def test_a_room_light_ha_has_no_device_for_leaves_membership_unknown(hass, bridge):
+async def test_a_room_light_ha_has_no_device_for_classes_the_room_unknown(hass, bridge):
+    # Its class can't be named, so the room counts as Experimental: with the option off it falls back to its lights
+    # that have entities, and set_attributes still writes them.
     await mixed_room(hass, bridge, entity_for_two=False)
     devices = dr.async_get(hass)
     devices.async_remove_device(devices.async_get_device_by_identifier(("hue", "device-two"), get_entry(hass)).id)
+    members = INTEGRATION.expand_group(hass, resolve(hass, get_runtime(hass).registry, "light.room"))
 
-    assert INTEGRATION.expand_group(hass, resolve(hass, get_runtime(hass).registry, "light.room")) is None
+    assert [INTEGRATION.capability(hass, member) for member in members] == ["hue", None]
+    assert await call(hass, "stop", {"entity_id": "light.room"}) == {"light.one": SENT}
+    bridge.puts.clear()
+    assert await call(hass, "set_attributes", {"entity_id": "light.room", "brightness": 40}) == {"light.one": SENT}
+    assert [path for path, _ in bridge.puts] == ["light/one"]
+
+
+async def test_set_attributes_on_a_mixed_room_writes_its_hue_lights_alone(hass, bridge):
+    # set_attributes takes a room's members (no native groups); another brand's is skipped with the option off.
+    await mixed_room(hass, bridge)
+
+    response = await call(hass, "set_attributes", {"entity_id": "light.room", "brightness": 40})
+
+    assert response == {"light.one": SENT}
+    assert [path for path, _ in bridge.puts] == ["light/one"]
+
+
+async def test_get_attributes_on_a_mixed_room_answers_for_its_hue_lights(hass, bridge):
+    # With the option off the room falls back, so the response is keyed by its Hue light, not the room.
+    await mixed_room(hass, bridge)
+
+    response = await call(hass, "get_attributes", {"entity_id": "light.room"})
+
+    assert list(response) == ["light.one"]

@@ -121,8 +121,6 @@ class AdapterRegistry:
             raise ValueError(f"{info.key}: listed in UNSUPPORTED without a reason (IntegrationInfo.unsupported)")
         if info.detect is None or info.ha_domain != sibling.ha_domain:
             raise ValueError(f"{info.key}: an unsupported integration needs a detect hook on {sibling.ha_domain}")
-        if info.capability is not None or info.classes or info.is_group is not None or info.expand_group is not None:
-            raise ValueError(f"{info.key}: an unsupported integration classes and groups nothing")
         if info.key in self.integrations or info.key in self.unsupported:
             raise ValueError(f"{info.key}: declared twice")
         self.unsupported[info.key] = info

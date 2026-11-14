@@ -2,8 +2,10 @@
 adapter sees one. Unit tests only: there is no v1 bridge on the rig (plan Decision 32)."""
 
 import pytest
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.helpers import entity_registry as er
 
+from custom_components.deviceside import config_flow
 from custom_components.deviceside.core.errors import TargetNotSupported
 from custom_components.deviceside.core.resolver import resolve
 from custom_components.deviceside.core.runtime import get_runtime
@@ -11,15 +13,33 @@ from custom_components.deviceside.integrations.hue import v1
 
 from .conftest import call
 from ...conftest import call as call_service
-from ...fixtures.hue import HueBridge, add_hue_entity, hue_entry
+from ...fixtures.hue import HueBridge, add_hue_entity, add_hue_group, hue_entry
 
 pytestmark = pytest.mark.usefixtures("setup_production")
 
 
+class NoV2API:
+    """A v1 bridge's api: any read of it fails the test, so no adapter, reading or writing, can have reached it."""
+
+    def __getattr__(self, name):
+        raise AssertionError(f"a v1 bridge's api was read: {name}")
+
+
+async def v1_entry(hass, bridge):
+    """A v1 entry, its entities made while the fixture's api stands in, then the api swapped for one that fails."""
+    return await hue_entry(hass, bridge, api_version=1)
+
+
+def seal(entry) -> None:
+    entry.runtime_data.api = NoV2API()
+
+
 async def v1_lamp(hass, bridge, entity_id: str = "light.lamp") -> str:
     bridge.light("light-1", on=True)
-    entry = await hue_entry(hass, bridge, api_version=1)
-    return add_hue_entity(hass, entry, entity_id, "light-1", state="on")
+    entry = await v1_entry(hass, bridge)
+    entity_id = add_hue_entity(hass, entry, entity_id, "light-1", state="on")
+    seal(entry)
+    return entity_id
 
 
 @pytest.mark.parametrize(
@@ -41,8 +61,9 @@ async def v1_lamp(hass, bridge, entity_id: str = "light.lamp") -> str:
 async def test_a_named_v1_target_raises_naming_the_v1_bridge(hass, bridge, action, data):
     if action == "set_scene":
         bridge.scene("scene-1", [])
-        entry = await hue_entry(hass, bridge, api_version=1)
+        entry = await v1_entry(hass, bridge)
         entity_id = add_hue_entity(hass, entry, "scene.relax", "scene-1")
+        seal(entry)
     else:
         entity_id = await v1_lamp(hass, bridge)
 
@@ -102,3 +123,39 @@ async def test_detect_claims_only_a_v1_config_entry(hass, bridge):
     assert v1.detect(hass, entities.async_get(old), None)
     assert not v1.detect(hass, entities.async_get(new), None)
     assert not v1.detect(hass, orphan, None)
+
+
+async def test_a_v1_room_is_refused_as_v1_not_as_a_room(hass, bridge):
+    bridge.light("light-1", on=True)
+    bridge.room("grouped-1", ["light-1"])
+    entry = await v1_entry(hass, bridge)
+    add_hue_entity(hass, entry, "light.one", "light-1", state="on")
+    add_hue_group(hass, entry, "light.room", "grouped-1", ["light.one"])
+    seal(entry)
+
+    with pytest.raises(TargetNotSupported) as raised:
+        await call_service(hass, "stop", {"entity_id": "light.room"})
+
+    assert raised.value.reason == "integration_not_supported"
+
+
+async def test_a_switch_as_x_light_over_a_v1_light_is_refused_as_v1(hass, bridge):
+    # A wrapper resolves to what it wraps; v1 has no switches today, so a v1 light stands in.
+    await v1_lamp(hass, bridge, "light.old")
+    wrapper = er.async_get(hass).async_get_or_create("light", "switch_as_x", "wrapper", suggested_object_id="wrapped")
+    er.async_get(hass).async_update_entity_options(wrapper.entity_id, "switch_as_x", {"entity_id": "light.old"})
+    hass.states.async_set(wrapper.entity_id, "on")
+
+    with pytest.raises(TargetNotSupported) as raised:
+        await call_service(hass, "stop", {"entity_id": wrapper.entity_id})
+
+    assert raised.value.reason == "integration_not_supported"
+
+
+async def test_a_device_report_names_a_v1_light_hue_v1_loaded_or_not(hass, bridge):
+    old = await v1_lamp(hass, bridge, "light.old")
+    entry = er.async_get(hass).async_get(old)
+
+    assert config_flow._integration(hass, entry, None) == "hue_v1"
+    hass.config_entries.async_get_entry(entry.config_entry_id).mock_state(hass, ConfigEntryState.NOT_LOADED)
+    assert config_flow._integration(hass, entry, None) == "hue_v1"

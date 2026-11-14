@@ -38,8 +38,8 @@ deliberately mixed set. An indirect entity outside the action's domains is never
 
 **Can never support** is any reason that holds whatever the device's state: no adapter, an integration or gateway
 DeviceSide doesn't support (`integration_not_supported`; a named Hue v1 bridge light raises saying why), a domain or
-option nobody has tested, a class that doesn't work or isn't supported (`doesnt_work`, `not_supported`), an entity the integration can't
-address. A field the adapter has never been tested with is in this class too: it is refused, never dropped. **Lacks a
+option nobody has tested, a class that doesn't work or isn't supported (`doesnt_work`, `not_supported`), an entity
+the integration can't address. A field the adapter has never been tested with is in this class too: it is refused, never dropped. **Lacks a
 field** comes from the target's state, read as `filter_turn_on_params` reads it (a color is lacked only without any
 color mode, color temperature only without that or a color mode, since core converts between them first), and from the
 adapter where only it knows: Hue's gamut, `AdapterScope.drops`, and a Shelly component's fields. A field tested on one

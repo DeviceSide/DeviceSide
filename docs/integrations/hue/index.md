@@ -37,7 +37,7 @@ each light. Every feature says how well it is proven for each
 
 Lights of other brands paired to the bridge (IKEA, Innr, LEDVANCE and the rest, Friends of Hue ones included) are
 untested, so every feature runs on them only with Experimental features on. The Hue lights' tests don't prove them,
-as other brands are known to answer the same Zigbee commands differently: some take only one of brightness and color
+as other brands are known to answer the same Zigbee commands differently: some fade only one of brightness and color
 at a time, some come on when written while off, and some don't report color temperature as Hue lights do
 ([internals](internals.md#device-classes)). A test on one adds a class for its brand.
 

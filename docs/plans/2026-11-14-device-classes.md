@@ -395,7 +395,8 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
        `UNSUPPORTED` and kept in `AdapterRegistry.unsupported`, out of the cards, gates and CODEOWNERS. `hue_v1`'s
        `detect` claims a config entry with `api_version` 1; the dispatcher refuses each such target, every action
        alike, as `integration_not_supported` with the reason, raised if named. Before, a target on an integration
-       with no adapters got a bare `no_adapter`. The five `bridge_v1` checks and `bridge_api`'s None go.
+       with no adapters got a bare `no_adapter`. The five `bridge_v1` checks and `bridge_api`'s None go. A core
+       change, so outside the Hue package (a repo maintainer's), with the Opus audit.
      - `get_attributes` reads color temperature mode as core does (Decision 56).
 9. **Matter.** Lab run on the WiZ plug. `other` is Experimental on `turn_on_for`, and the WiZ plug Verified by the
    rig on the real call (Decision 75). Until #436 applies Decision 75, Matter's `turn_on_for` still shows
@@ -1086,8 +1087,8 @@ Decisions 36 to 45, 46 to 55 and 56 to 65 are reserved for steps 7, 9 and 8.
 ## Decisions (Jason, step 8)
 
 56. **Hue `get_attributes` reads color temperature mode as core does:** a certified light's `mirek_valid`; for any
-    other, the color mode core shows for it, as core trusts `mirek_valid` only from certified lights. A mirek of 0 or
-    none reports no color temperature. Built now, though untested on a non-certified light, which stays
+    other, the color mode core shows for it while it is on (else the flag), as core trusts `mirek_valid` only from
+    certified lights. A mirek of 0 or none reports no color temperature. Built now, though untested on a non-certified light, which stays
     Experimental.
 
 ## Handoff

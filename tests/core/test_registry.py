@@ -269,7 +269,6 @@ def test_an_unsupported_integration_is_kept_apart_from_the_integrations():
         pytest.param({"unsupported": ""}, "without a reason", id="no_reason"),
         pytest.param({"detect": None}, "needs a detect hook", id="no_detect"),
         pytest.param({"ha_domain": "elsewhere"}, "needs a detect hook", id="other_domain"),
-        pytest.param({"is_group": lambda hass, target: False}, "classes and groups nothing", id="groups"),
         pytest.param({"key": INTEGRATION.key}, "declared twice", id="its_siblings_key"),
         pytest.param({"maintainers": ()}, "maintainers", id="no_maintainers"),
     ],
