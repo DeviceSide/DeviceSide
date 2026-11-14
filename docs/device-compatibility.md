@@ -197,4 +197,12 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 | `turn_on_for` | Verified | switch entities | `8979`, firmware `v1.4` | [record](integrations/matter/test-records/turn_on_for.md) |
 | `turn_on_for` | Documented | light entities | | |
 
+### Control4
+
+| Action | Level | Items | Tested models | Records |
+|---|---|---|---|---|
+| `lower_brightness` | Experimental | light entities; brightness fields | none | |
+| `raise_brightness` | Experimental | light entities; brightness fields | none | |
+| `stop` | Experimental | light entities | none | |
+
 <!-- evidence:end -->

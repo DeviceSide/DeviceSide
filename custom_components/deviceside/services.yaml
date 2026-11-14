@@ -172,6 +172,8 @@ raise_brightness:
   target: &hue_mqtt_shelly_zha
     entity:
       - domain: light
+        integration: control4
+      - domain: light
         integration: hue
       - domain: light
         integration: mqtt

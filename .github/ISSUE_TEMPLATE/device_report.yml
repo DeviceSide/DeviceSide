@@ -12,6 +12,7 @@ body:
       description: The integration of each device you tested. Its maintainers are assigned to the report.
       multiple: true
       options:
+        - Control4
         - Hue
         - Matter
         - Shelly

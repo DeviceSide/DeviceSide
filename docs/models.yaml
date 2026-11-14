@@ -29,6 +29,9 @@ models:
   - name: WiZ Smart Plug
     ids: ["8979"]
     type: plug
+  - name: Hue White Ambiance 5/6" Retrofit Downlight
+    ids: [LTD010, "5996411U5"]
+    type: bulb
 
 # Devices that fail the call DeviceSide sends on several integrations, and why. One integration's go in its bundle.
 doesnt_work:
