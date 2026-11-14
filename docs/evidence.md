@@ -74,11 +74,11 @@ class stands on its own evidence: a record on one class proves nothing about ano
 is what the call addresses (Shelly: the RPC component). On a multi-vendor protocol the call and the firmware family
 decide the result together, so the class follows the vendor (Zigbee2MQTT: `hue`, `tuya_zcl`, `tuya_mcu`, `other`).
 
-- **Unknown is flagged, never Verified.** A device the integration can't place falls in its default class, which no
+- **Unknown is never Verified.** A device the integration can't place falls in its default class, which no
   record reaches until one does, so until then it runs behind `experimental` or, per action, as Documented. A record
   on an unplaced device lifts a named class for its maker, not the default one. A class with a `doesnt_work` entry must
   be placeable from what `capability()` can read when the call is made: a device that falls in the default class
-  instead gets the default call.
+  instead gets the default call, which the entry exists to stop (a TS011F left on).
 - **One axis per integration.** An integration that names classes holds them in every adapter's scope; one that names
   none holds them in none (the registry checks). A new integration names its classes, or its PR argues that it has one:
 that no known device behind it answers the same call differently.
@@ -89,8 +89,8 @@ that no known device behind it answers the same call differently.
 
 Three ways a class can't take an action, each shown differently on the cards:
 
-- **Doesn't work:** the class fails the call DeviceSide sends. The adapter's scope lists it in `doesnt_work`, with what,
-  why and a source; the dispatcher refuses it (`doesnt_work`), and the card lists it under Doesn't work. It is per
+- **Doesn't work:** the class fails, or is harmed by, the call DeviceSide sends. The adapter's scope lists it in
+  `doesnt_work`, with what, why and a source; the dispatcher refuses it (`doesnt_work`), and the card lists it under Doesn't work. It is per
   adapter, as one class can fail one action's call and answer another's.
 - **Not yet supported:** the class needs a call that isn't built. The integration names it, and the adapter's scope
   holds it in neither `capabilities` nor `doesnt_work`. It is refused (`not_supported`) and listed as not yet supported.
