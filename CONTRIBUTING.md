@@ -4,7 +4,7 @@ Everybody is invited and welcome to contribute.
 
 ## How to help
 
-* **Share your know-how:** if you've got a DeviceSide feature working for other integrations (e.g. Z-Wave, TP-Link, Sonoff) or devices on Home Assistant, help us add it to DeviceSide: Integrations > [DeviceSide](https://my.home-assistant.io/redirect/integration/?domain=deviceside) > Configure > Propose a device or integration. If you'd rather code it yourself, follow the [Fast track](#fast-track-build-it-yourself).
+* **Share your know-how:** if you've got a DeviceSide feature working for other integrations (e.g. Z-Wave, TP-Link, Sonoff) or devices on Home Assistant, help us add it to DeviceSide: Integrations > [DeviceSide](https://my.home-assistant.io/redirect/integration/?domain=deviceside) > Configure > Propose a device or integration. Or [build it yourself](#fast-track-build-it-yourself).
 * **Test your devices:** if you discover a device that works on DeviceSide and isn't on the [compatible list](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md) or doesn't work as expected, please tell us. Go to Integrations > [DeviceSide](https://my.home-assistant.io/redirect/integration/?domain=deviceside) > Configure > Report a device test result or bug.
 * **Report bugs:** for a bug that isn't about a device, open a [blank issue](https://github.com/DeviceSide/DeviceSide/issues/new).
 
