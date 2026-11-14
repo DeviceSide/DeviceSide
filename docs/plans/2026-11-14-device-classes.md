@@ -132,6 +132,7 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
    - **The Tuya detection signal** on Z2M and ZHA.
    - **Sengled, once it's in the lab:** its strings on each network, and whether it honors 0x42. The research puts it
      in pattern E, no device timer.
+   - **Probe spec:** [below](#step-3-probe-spec).
 4. **Core** (the plan's former step 3).
    - `IntegrationInfo.capability`, the registry rule, `doesnt_work` and `Reason.DOESNT_WORK`, and the rename.
    - The class in each result (Decision 6).
@@ -161,6 +162,271 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
     - Remove `models.yaml`'s shared `doesnt_work`, regenerate the README, and tick TODO.
     - Then, with Jason's go-ahead, comment on #350: the classes it will need to leave `experimental`, and what its
       manual records should note (the Director's driver or proxy type).
+
+### Step 3: probe spec
+
+A runbook for the lab, at a Home Assistant instance with Developer Tools, the Z2M frontend and ZHA's device pages.
+N is 10 s throughout: short, and a 10× misreading (100 s) still lands inside a 125 s watch.
+
+**The repo is public.** Record only vendor, model, firmware and cluster strings, Tuya's `_TZ3000_…`-style
+manufacturer strings included (they name a firmware, not a unit). Never a device name, friendly name, entity ID,
+IEEE or MAC address, network address, serial number or hostname. Z2M and ZHA logs carry the IEEE and friendly name on
+every line: transcribe values into the tables, never paste a log line. `<device>`, `<ieee>` and `<entity>` below are
+placeholders, typed at run time and never written down.
+
+#### 0. Prepare
+
+1. Note the versions for every table: Home Assistant (Settings > About), Z2M and zigbee-herdsman-converters (Z2M
+   frontend > Settings > About).
+2. Z2M debug log, in Developer Tools > Actions (YAML mode):
+   ```yaml
+   action: mqtt.publish
+   data:
+     topic: zigbee2mqtt/bridge/request/options
+     payload: '{"options": {"advanced": {"log_level": "debug"}}}'
+   ```
+   Set it back to `info` the same way when done.
+3. ZHA debug log:
+   ```yaml
+   action: logger.set_level
+   data:
+     homeassistant.components.zha: debug
+   ```
+4. Two lab-only scripts (Settings > Automations & scenes > Scripts > Add > Edit in YAML; save them as
+   `script.probe_onoff_z2m` and `script.probe_onoff_zha`; delete them after). Each sends the pre-state, waits 5 s,
+   sends the case's command, then polls once a second for `seconds`.
+   ```yaml
+   alias: probe_onoff_z2m
+   mode: single
+   fields:
+     device: {description: "Z2M friendly name or IEEE"}
+     pre: {description: "ON or OFF"}
+     command: {description: "The case's payload, as a mapping"}
+     seconds: {description: "Reads after the command", default: 125}
+   sequence:
+     - action: mqtt.publish
+       data:
+         topic: "zigbee2mqtt/{{ device }}/set"
+         payload: '{"state": "{{ pre }}"}'
+     - delay: 5
+     - repeat:
+         count: 3
+         sequence:
+           - action: mqtt.publish
+             data:
+               topic: "zigbee2mqtt/{{ device }}/set"
+               payload: '{"read": {"cluster": "genOnOff", "attributes": ["onOff", "onTime", "offWaitTime"]}}'
+           - delay: 1
+     - action: mqtt.publish
+       data:
+         topic: "zigbee2mqtt/{{ device }}/set"
+         payload: "{{ command | to_json }}"
+     - repeat:
+         count: "{{ seconds | int(125) }}"
+         sequence:
+           - action: mqtt.publish
+             data:
+               topic: "zigbee2mqtt/{{ device }}/set"
+               payload: '{"read": {"cluster": "genOnOff", "attributes": ["onOff", "onTime", "offWaitTime"]}}'
+           - delay: 1
+   ```
+   ```yaml
+   alias: probe_onoff_zha
+   mode: single
+   fields:
+     ieee: {description: "The device's IEEE, from its Zigbee info card"}
+     entity: {description: "Its switch or light entity"}
+     pre: {description: "on or off"}
+     params: {description: "on_off_control, on_time, off_wait_time, as a mapping"}
+     seconds: {description: "State polls after the command", default: 125}
+   sequence:
+     - action: zha.issue_zigbee_cluster_command
+       data:
+         ieee: "{{ ieee }}"
+         endpoint_id: 1
+         cluster_id: 6
+         cluster_type: in
+         command_type: server
+         command: "{{ 1 if pre == 'on' else 0 }}"
+         params: {}
+     - delay: 5
+     - action: zha.issue_zigbee_cluster_command
+       data:
+         ieee: "{{ ieee }}"
+         endpoint_id: 1
+         cluster_id: 6
+         cluster_type: in
+         command_type: server
+         command: 66
+         params: "{{ params }}"
+     - repeat:
+         count: "{{ seconds | int(125) }}"
+         sequence:
+           - action: homeassistant.update_entity
+             target: {entity_id: "{{ entity }}"}
+           - delay: 1
+   ```
+   Run one with `script.turn_on`, so Developer Tools doesn't block for two minutes:
+   ```yaml
+   action: script.turn_on
+   target: {entity_id: script.probe_onoff_z2m}
+   data:
+     variables:
+       device: "<device>"
+       pre: "OFF"
+       command: {command: {cluster: genOnOff, command: onWithTimedOff, payload: {ctrlbits: 0, ontime: 100, offwaittime: 0}}}
+   ```
+5. Where each reading comes from:
+   - **Z2M:** each read answers in the Z2M log (frontend > Logs, filtered on the device, or the add-on or container
+     log) as `Received Zigbee message from '…', type 'readResponse', cluster 'genOnOff', data '{"offWaitTime":…,
+     "onOff":…,"onTime":…}'`. t = 0 is the log's `Received MQTT message on 'zigbee2mqtt/…/set'` line carrying the
+     case's command. A command the device refuses logs `Publish 'set' '<key>' to '…' failed: …` with the ZCL status.
+     If the three-attribute read itself fails, read each attribute on its own.
+   - **ZHA:** state from the entity's history (the script polls it each second). `on_time` and `off_wait_time` by
+     hand: device page > ⋮ > Manage Zigbee device > Clusters > endpoint 1, OnOff (0x0006) > Attributes > Read, at
+     t ≈ 3 s, t ≈ 15 s and after each state change. The command's status is in HA's log on the
+     `homeassistant.components.zha` debug line for the issued command. t = 0 is that line.
+
+#### 1. Registry strings
+
+1. Developer Tools > Template, paste:
+   ```jinja
+   | integration | manufacturer | model | model_id | sw_version | hw_version | domains |
+   |---|---|---|---|---|---|---|
+   {%- for integ in ['hue', 'zha', 'mqtt', 'matter'] %}
+     {%- set seen = namespace(ids=[]) %}
+     {%- for e in integration_entities(integ) %}
+       {%- set d = device_id(e) %}
+       {%- if d and d not in seen.ids %}{% set seen.ids = seen.ids + [d] %}{% endif %}
+     {%- endfor %}
+     {%- for d in seen.ids %}
+       {%- set z = namespace(z2m=false) %}
+       {%- for i in device_attr(d, 'identifiers') %}
+         {%- if i[0] == 'mqtt' and i[1].startswith('zigbee2mqtt_0x') %}{% set z.z2m = true %}{% endif %}
+       {%- endfor %}
+       {%- if integ != 'mqtt' or z.z2m %}
+   | {{ 'zigbee2mqtt' if integ == 'mqtt' else integ }} | {{ device_attr(d, 'manufacturer') }} | {{ device_attr(d, 'model') }} | {{ device_attr(d, 'model_id') }} | {{ device_attr(d, 'sw_version') }} | {{ device_attr(d, 'hw_version') }} | {{ device_entities(d) | map('regex_replace', '[.].*', '') | unique | sort | join(', ') }} |
+       {%- endif %}
+     {%- endfor %}
+   {%- endfor %}
+   ```
+   It prints one row per device: the five registry fields and its entity domains, never a name, ID or address.
+   MQTT rows are kept only for Z2M devices (identifier `zigbee2mqtt_0x…`), which drops Z2M groups, the Z2M bridge
+   and other MQTT devices. Bridges, rooms and coordinators that have entities show too: drop those rows.
+2. Copy the rows for the lab devices into this table, adding a generic role (`Hue bulb`, `TS011F plug`, `WiZ plug`,
+   `Sengled bulb`), never the device's name:
+
+   | Date | Network | Role | manufacturer | model | model_id | sw_version | hw_version | Versions (HA, Z2M/ZHC) |
+   |---|---|---|---|---|---|---|---|---|
+   | | | | | | | | | |
+
+3. For each Zigbee device, also note what the stack shows beyond the registry:
+   - Z2M frontend > the device > About: *Zigbee model*, *Zigbee manufacturer*, the definition's model and vendor;
+     Exposes tab: whether `countdown` is listed.
+   - ZHA device page > Zigbee info: the *Quirk* line; Manage Zigbee device > Clusters: endpoint 1's input clusters
+     (ids only).
+
+   | Network | Role | Zigbee model | Zigbee manufacturer | Definition model / vendor (Z2M) or quirk (ZHA) | Endpoint 1 in-clusters (ZHA) | `countdown` expose (Z2M) |
+   |---|---|---|---|---|---|---|
+   | | | | | | | |
+
+#### 2. The TS011F probe (Decision 3)
+
+**Networks.** Run every case on Z2M, where the reads can be scripted once a second; then remove the plug, reset and
+pair it on ZHA (on most TS011F, hold the button about 5 s until the LED flashes fast) and run C1, C5 and any case
+that worked. ZHA's `TuyaZBOnOffAttributeCluster` passes 0x42 through raw (research, §2), so the plug gets the same
+frame; the ZHA run checks that, and ZHA's `on_time` reads are by hand. If the plug is on ZHA now, start there with the
+same subset and do the full table on Z2M.
+
+**Cases.** Each starts from a baseline: the script's three reads before the command must show `onTime` 0 and
+`offWaitTime` 0. If not, wait until they do or 130 s pass, then power-cycle the plug (10 s unplugged) and rerun the
+case. 0x42 payload fields are `(on_off_control, on_time, off_wait_time)`; ZCL units are tenths.
+
+| Case | Pre | 0x42 fields | What it tests |
+|---|---|---|---|
+| C1 | off | `(0, 100, 0)` | DeviceSide's call: 10 s in tenths |
+| C2 | off | `(0, 10, 0)` | 10 s in whole seconds |
+| C3 | off | `(0, 0, 10)` | off wait only |
+| C4 | on | `(0, 10, 0)` | on, then `on_time` in seconds |
+| C5 | on | `(0, 10, 10)` | Tuya's recipe: plain On, then both fields in seconds |
+| C6 (Z2M) | off | none: publishes `{"state": "ON", "on_time": 10}` | DeviceSide's actual Z2M publish |
+| C7 (Z2M, only with a `countdown` expose) | off | none: publishes `{"state": "ON", "countdown": 10}` | Z2M's own Tuya converter |
+
+Z2M `command` mapping per case (the script's `command` variable; `pre` is `"OFF"` or `"ON"`):
+
+- C1: `{command: {cluster: genOnOff, command: onWithTimedOff, payload: {ctrlbits: 0, ontime: 100, offwaittime: 0}}}`
+- C2: the same with `ontime: 10, offwaittime: 0`; C3: `ontime: 0, offwaittime: 10`; C4: `ontime: 10,
+  offwaittime: 0` with `pre: "ON"`; C5: `ontime: 10, offwaittime: 10` with `pre: "ON"`.
+- C6: `{state: "ON", on_time: 10}`; C7: `{state: "ON", countdown: 10}`.
+
+ZHA `params` per case (the script's `params` variable; `pre` is `off` or `on`):
+`{on_off_control: 0, on_time: 100, off_wait_time: 0}` for C1, and the table's fields for the rest.
+
+**C6, did the converter drop `on_time`?** The research found TS011F_plug_1 has no `on_time` converter (§2, §3 Tuya
+row). It did if the Z2M log shows `No converter available for 'on_time'` after the publish and the herdsman debug
+lines that follow name only `genOnOff.on`, no `onWithTimedOff`. For C7, note which ZCL commands those debug lines
+name, in order, with their fields.
+
+**Results**, one row per case and network. Outcome is one of: `works` (on within 2 s of the last call, off by itself
+at 10 ± 2 s), `none`, `delayed on at t`, `delayed off at t`, `on, never off`, `rejected <status>`.
+
+| Date | Network | Case | Status (log) | Baseline onTime / offWaitTime | First read after: onTime / offWaitTime | Counts down per s (by 10, by 1, no) | State changes (t s: state) | State at 125 s | Outcome |
+|---|---|---|---|---|---|---|---|---|---|
+| | | | | | | | | | |
+
+For the research file, also each case's reads where any value changed, plus the first and last: `t | onOff | onTime |
+offWaitTime`.
+
+**Decision rule** (Decision 3):
+
+1. **C1 works** on either network: this contradicts the rig's "never switches on". Repeat C1 twice; if it holds,
+   stop and take it to Jason, as Decision 3 doesn't cover it.
+2. **Else, any of C2–C5 or C7 works:** the TS011F is `tuya_zcl`, not yet supported on `turn_on_for` (pattern B,
+   deferred), and its doesn't-work entry goes. Record which case worked and its unit: that is the recipe pattern B
+   would build.
+3. **Else, nothing works:** the doesn't-work entry stays, one code entry each for ZHA and Z2M. Its reason is C1's
+   outcome on that network; on Z2M, C6's converter drop if the log shows it.
+4. **Z2M and ZHA disagree on the same case:** record both and take it to Jason (tenet 4).
+
+#### 3. The Tuya detection signal
+
+What the research and the stacks' code suggest, to confirm or correct ([inferred] until a lab row shows it):
+
+| Network | Tuya ZCL (TS011F, TS000x, white labels) | Tuya MCU (TS0601) | Readable by `capability()` without I/O? |
+|---|---|---|---|
+| ZHA | registry manufacturer is the Zigbee one (`_TZ3000_…`, `_TZ3210_…`, `_TYZB01_…`), model `TS011F` / `TS000x`; a `zhaquirks.tuya` quirk | model `TS0601`, manufacturer `_TZE2xx_…`; cluster `0xEF00`; a `zhaquirks.tuya.mcu` or quirk-builder quirk | registry: yes. The quirk and clusters live in ZHA's runtime, not the registry |
+| Z2M | registry carries Z2M's definition (vendor `Tuya` or a white-label vendor, model e.g. `TS011F_plug_1`), not the Zigbee strings; `bridge/devices` holds the Zigbee `model_id` and `manufacturer`, and the definition's exposes (`countdown` on `onOffCountdown` definitions) | `bridge/devices` `model_id` `TS0601`, manufacturer `_TZE2xx_…`; DP exposes such as `countdown_l1` | registry: yes. `bridge/devices`: yes, sync from `bridge_cache.py`'s `parsed("devices")`, which `bridge.has_feature` already reads, except before the first `bridge/devices` after a connect |
+
+The lab's TS011F confirms, from §1's tables: which registry field carries `TS011F` and the `_TZ3000_…` string on each
+network; whether Z2M's registry lacks them (so a Z2M rule needs `bridge/devices`); whether its definition exposes
+`countdown`; and its ZHA quirk. Inferred, staying so: every TS0601 signal, white-label vendor strings on Z2M,
+TS000x and TS0726, and the `_TZ3000_cicwjqth` TS011F, whose definition has no `countdown` (research §3).
+
+#### 4. The Sengled
+
+1. Pair it on Z2M, then ZHA, then the Hue bridge (Hue app > add lights). A bridge that won't take it: record "doesn't
+   pair" and the bridge's software version.
+2. On each network it joins, run §1 and add its rows.
+3. On Z2M: C1 and C6, with the bulb's light entity; on ZHA: C1. The research expects `rejected
+   UNSUP_CLUSTER_COMMAND` and no state change, as the rig's E11-G13 answered on ZHA (`zha/internals.md`, Groups). If
+   any case is accepted or the bulb changes state, run C2–C5 as well. Use §2's results table.
+4. Command discovery: neither ZHA's cluster page nor Z2M's frontend shows what the device advertises (ZHA lists
+   zigpy's command definitions), so skip it unless zha-toolkit is already installed; then its device scan's received
+   commands for cluster `0x0006`, ids only.
+
+#### 5. Where results go
+
+Each result is a dated fact under the bundle's `## Tested behavior`, citing a dated research file in the same bundle
+that holds the filled tables (`research/<date>-lab-probe.md`, never edited after).
+
+| Result | Bundle(s) | Consumed by |
+|---|---|---|
+| Registry strings, Hue bulbs | `hue`, `zha`, `zigbee2mqtt` | the `hue` class rules: step 5 (Z2M), 7 (ZHA), 8 (Hue) |
+| Registry strings, WiZ plug | `matter` | step 9 |
+| TS011F cases | `zigbee2mqtt`, `zha` (each its own network's rows) | step 4 (the `doesnt_work` entry shape), steps 5 and 7 (the TS011F's entry, per Decision 3) |
+| C6 converter drop | `zigbee2mqtt`, under Upstream defects if confirmed | step 5 (the Z2M reason) |
+| Tuya signal | `zigbee2mqtt`, `zha` | the `tuya_zcl` / `tuya_mcu` rules: steps 5 and 7 |
+| Sengled strings and 0x42 | `zigbee2mqtt`, `zha`, `hue` | the `sengled` rule and its `turn_on_for` state: steps 5, 7, 8 |
 
 ### Runs to repeat
 
