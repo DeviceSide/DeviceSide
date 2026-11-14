@@ -1,4 +1,4 @@
-"""scripts/gen_compat.py: evidence from the records and `_manual.md`, models from devices.yaml, the README cards, the
+"""scripts/gen_compat.py: evidence from the records and `_manual.json`, models from devices.yaml, the README cards, the
 evidence block, and the stale check."""
 
 from types import SimpleNamespace
@@ -19,6 +19,20 @@ from custom_components.deviceside.core.scope import (
 from scripts import check_release as cr
 from scripts import gen_compat as gc
 from scripts import gen_features as gf
+
+from .record_files import (
+    device,
+    manual,
+    old_device,
+    old_group,
+    old_test,
+    ran,
+    record_v1,
+    record_v2,
+    signoff,
+    skipped,
+    write,
+)
 
 URL = gc.PAGE_URL
 DATA = {
@@ -41,13 +55,21 @@ PROSE = "# Page\n\n" + "".join(
 )
 
 
-def record(root, integration, name, *, result="pass", device="Hue lamp (`LTA009`), firmware `1.2.3`", tests=()):
-    """A record; `tests` are its Tests table's (Target, Result) rows, or (Target, Capability, Result) rows."""
-    path = root / "docs" / "integrations" / integration / "test-records" / f"{name}.md"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    rows = "".join(f"| `t{index}` | {' | '.join(cells)} |\n" for index, cells in enumerate(tests))
-    path.write_text(f"# t\n\n| | |\n|---|---|\n| Result | {result} |\n| Device | {device} |\n\n{rows}")
-    return path
+def records_dir(root, integration):
+    return root / "docs" / "integrations" / integration / "test-records"
+
+
+def record(root, integration, name, *, result="pass", devices=None, tests=None):
+    """A format 1 record (converted from markdown): the run's `devices`, and `tests` without devices."""
+    action = name.split("-")[0]
+    data = record_v1(integration, action, result=result, devices=devices, tests=tests)
+    return write(records_dir(root, integration) / f"{name}.json", data)
+
+
+def record2(root, integration, name, *tests, result="pass"):
+    """A format 2 record: the devices each test reached."""
+    data = record_v2(integration, name.split("-")[0], list(tests), result=result)
+    return write(records_dir(root, integration) / f"{name}.json", data)
 
 
 class FakeRegistry:
@@ -82,36 +104,32 @@ def root(tmp_path, monkeypatch):
     return tmp_path
 
 
-def test_entries_are_model_ids_with_their_firmware_and_groups_are_not_models(root):
-    path = record(
+def what_it_tested(path):
+    return gc.tested(cr.load(path))
+
+
+def test_a_format_1_record_tested_its_runs_devices_and_a_group_is_no_model(root):
+    devices = [old_device("LTA009", "1.2"), old_device("LCA016", "0x01"), old_group(), old_group("Group", "Z2M 2.1")]
+    path = record(root, "hue", "stop", devices=devices)
+    assert what_it_tested(path) == [gc.Tested("LTA009", "1.2"), gc.Tested("LCA016", "0x01"), gc.GROUP, gc.GROUP]
+    assert what_it_tested(record(root, "hue", "set_scene", devices=[])) == []
+
+
+def test_a_format_2_record_tested_each_passing_tests_devices_with_their_classes(root):
+    path = record2(
         root,
         "hue",
         "stop",
-        device="Hue lamp (`LTA009`), firmware `1.2`; LCA016, firmware `0x01`; Zone, firmware `unknown`; "
-        "Group, firmware `Zigbee2MQTT 2.1`",
+        ran("light", device("LTA009", "1.2", "hue")),
+        ran("light", device("LCA016", "0x01", "hue"), device("LTA009", "1.2", "hue"), group=True),
+        ran("light", device("LWA012", "3"), result="fail"),  # a failing test tested nothing that counts
+        skipped(),
     )
-    assert gc.entries(path) == [("LTA009", "1.2"), ("LCA016", "0x01"), "group", "group"]
-
-
-def test_a_record_with_no_device_lists_no_models(root):
-    assert gc.entries(record(root, "hue", "set_scene", device="none")) == []
-
-
-@pytest.mark.parametrize("device", ["a lamp", "a temporary group holding only it"])
-def test_a_device_entry_that_cannot_be_read_is_an_error(root, device):
-    with pytest.raises(SystemExit, match="can't read Device entry"):
-        gc.entries(record(root, "hue", "stop", device=device))
-
-
-def test_a_missing_device_row_is_an_error(root):
-    path = record(root, "hue", "lower_hue")
-    path.write_text("| Result | pass |\n")
-    with pytest.raises(SystemExit, match="no Device row"):
-        gc.entries(path)
+    assert what_it_tested(path) == [gc.Tested("LTA009", "1.2", "hue"), gc.GROUP]
 
 
 def test_a_model_a_record_names_must_be_in_models_yaml(root):
-    record(root, "zha", "stop", device="Bulb (`NEW1`), firmware `1`")
+    record(root, "zha", "stop", devices=[old_device("NEW1", "1")])
     with pytest.raises(SystemExit, match="model 'NEW1' is not in docs/models.yaml"):
         gc.rows(adapter("zha", "stop"), data())
 
@@ -156,8 +174,8 @@ def test_devices_yaml_is_validated(changes, error):  # a clean error, never a Ke
 
 def test_an_adapters_rows_hold_each_level_its_scope_holds_strongest_first_with_its_evidence_on_the_first(root):
     record(root, "zha", "stop")
-    record(root, "zha", "stop-predicted_state", device="Zone, firmware `unknown`")
-    record(root, "zha", "stop-other", result="fail", device="Plug (`P1`), firmware `1`")
+    record(root, "zha", "stop-predicted_state", devices=[old_group()])
+    record(root, "zha", "stop-other", result="fail", devices=[old_device("P1", "1")])
     scope = AdapterScope(
         domains=verified("light") | experimental("switch"),
         capabilities=verified("Light") | documented("CCT") | experimental("RGB"),
@@ -166,10 +184,29 @@ def test_an_adapters_rows_hold_each_level_its_scope_holds_strongest_first_with_i
     assert gc.rows(adapter("zha", "stop", scope), data()) == [
         "| `stop` | Verified | light entities; Light classes; brightness fields"
         " | `LTA009`, firmware `1.2.3`<br>group"
-        " | [predicted state](integrations/zha/test-records/stop-predicted_state.md),"
-        " [record](integrations/zha/test-records/stop.md) |",
+        " | [predicted state](integrations/zha/test-records/stop-predicted_state.json),"
+        " [record](integrations/zha/test-records/stop.json) |",
         "| `stop` | Documented | CCT classes | | |",
         "| `stop` | Experimental | switch entities; RGB classes; transition fields | | |",
+    ]
+
+
+def test_each_class_lists_only_the_models_that_reached_it_on_its_levels_row(root):
+    # A Shelly-like record: a relay on its Switch component, a bulb on its RGBCCT one, both in one run.
+    record2(
+        root,
+        "zha",
+        "turn_on_for",
+        ran("switch", device("P1", "1", "Switch"), role="switch_plug"),
+        ran("light", device("LTA009", "2", "Light")),
+        ran("light", device("LTA009", "2", None)),  # no class: the first row
+    )
+    scope = AdapterScope(domains=verified("light", "switch"), capabilities=verified("Switch") | experimental("Light"))
+    assert gc.rows(adapter("zha", "turn_on_for", scope), data(classed_registry())) == [
+        "| `turn_on_for` | Verified | light, switch entities; Switch classes"
+        " | `P1` (`Switch`), firmware `1`<br>`LTA009`, firmware `2`"
+        " | [record](integrations/zha/test-records/turn_on_for.json) |",
+        "| `turn_on_for` | Experimental | Light classes | `LTA009` (`Light`), firmware `2` | |",
     ]
 
 
@@ -182,7 +219,7 @@ def test_records_are_the_action_and_its_options(root):
     for name in ["turn_on_for", "turn_on_for-predicted_state", "turn_on_for_x", "turn_off_for"]:
         record(root, "zha", name)
     names = [path.name for path in gc.passing("zha", "turn_on_for")]
-    assert names == ["turn_on_for-predicted_state.md", "turn_on_for.md"]
+    assert names == ["turn_on_for-predicted_state.json", "turn_on_for.json"]
 
 
 def test_an_adapter_flagged_whole_has_one_experimental_row(root):
@@ -192,20 +229,14 @@ def test_an_adapter_flagged_whole_has_one_experimental_row(root):
     ]
 
 
-MANUAL = """# Manual sign-offs
-
-| Date | Commit | Tester | Devices | Passed |
-|---|---|---|---|---|
-| 2026-11-12 | `1a2b3c4` | @jasonmx | `P1`, `LTA009` | `stop`, `turn_on_for` |
-| 2026-11-12 | `1a2b3c4` | @jasonmx | - | no call changed |
-| not a row |
-"""
+MANUAL = (
+    signoff(tester="jasonmx", devices=(("P1", None), ("LTA009", None)), passed=("stop", "turn_on_for")),
+    signoff(tester="jasonmx", passed=None),
+)
 
 
-def manual_file(root, integration="zha"):
-    path = root / "docs" / "integrations" / integration / "test-records" / "_manual.md"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(MANUAL)
+def manual_file(root, integration="zha", rows=MANUAL):
+    write(records_dir(root, integration) / "_manual.json", manual(integration, *rows))
 
 
 def test_a_manual_row_is_evidence_for_the_actions_it_passed(root):
@@ -213,15 +244,14 @@ def test_a_manual_row_is_evidence_for_the_actions_it_passed(root):
     flagged = adapter("zha", "stop", AdapterScope(experimental=True))
     assert gc.rows(flagged, data()) == [
         "| `stop` | Experimental | light entities | `P1`, by hand<br>`LTA009`, by hand"
-        " | [by hand](integrations/zha/test-records/_manual.md) |"
+        " | [by hand](integrations/zha/test-records/_manual.json) |"
     ]
     assert cr.manual_rows("zha", "lower_hue") == []
     assert cr.manual_rows("hue", "stop") == []
 
 
 def test_a_manual_row_names_models_in_models_yaml(root):
-    manual_file(root)
-    (root / "docs" / "integrations" / "zha" / "test-records" / "_manual.md").write_text(MANUAL.replace("`P1`", "`NEW`"))
+    manual_file(root, rows=[signoff(devices=(("NEW", None),), passed=("stop",))])
     with pytest.raises(SystemExit, match="model 'NEW' is not in docs/models.yaml"):
         gc.rows(adapter("zha", "stop"), data())
 
@@ -242,8 +272,8 @@ def zha_card(*adapters, **changes):
 
 
 def test_a_card_lists_tested_models_once_each_by_their_name_then_native_groups(root):
-    record(root, "zha", "stop", device="Plug (`P1`), firmware `1`; Hue lamp (`LTA009`), firmware `1`")
-    record(root, "zha", "turn_on_for", device="Hue lamp (`9290024684`), firmware `2`; Group, firmware `x`")
+    record(root, "zha", "stop", devices=[old_device("P1", "1"), old_device("LTA009", "1")])
+    record(root, "zha", "turn_on_for", devices=[old_device("9290024684", "2"), old_group("Group", "x")])
     card = zha_card(adapter("zha", "stop"), adapter("zha", "turn_on_for"))
     assert card.lines["works"] == [
         f"[Hue lamp]({URL}#hue-lamp) ✔",  # bulbs before plugs; two ids, one model
@@ -259,14 +289,14 @@ def test_a_card_lists_tested_models_once_each_by_their_name_then_native_groups(r
 
 def test_a_model_tested_by_hand_works_without_the_rig_mark(root):
     manual_file(root)
-    record(root, "zha", "turn_on_for", device="Hue lamp (`LTA009`), firmware `1`")
+    record(root, "zha", "turn_on_for", devices=[old_device("LTA009", "1")])
     card = zha_card(adapter("zha", "stop"), adapter("zha", "turn_on_for"))
     assert card.lines["works"] == [f"[Hue lamp]({URL}#hue-lamp) ✔", f"[Plug]({URL}#plug)"]
 
 
 def test_a_card_puts_flagged_adapters_under_experimental_features_and_leaves_out_failing_records(root):
     record(root, "zha", "stop")
-    record(root, "zha", "turn_on_for", result="fail", device="Plug (`P1`), firmware `1`")
+    record(root, "zha", "turn_on_for", result="fail", devices=[old_device("P1", "1")])
     scope = AdapterScope(experimental=True, domains=verified("light") | documented("switch"))
     card = zha_card(
         adapter("zha", "stop", scope),
@@ -282,27 +312,28 @@ def test_a_card_puts_flagged_adapters_under_experimental_features_and_leaves_out
 
 def test_an_adapter_flagged_on_a_domain_counts_only_records_whose_passing_tests_all_target_unflagged_ones(root):
     manual_file(root)
-    light = ("`light` (light_ct)", "pass")
-    record(root, "zha", "turn_on_for", tests=[light, ("switch_plug: none in the profile", "skipped")])
-    record(
-        root,
-        "zha",
-        "turn_on_for-option",
-        device="Plug (`P1`), firmware `1`",
-        tests=[light, ("`switch` (plug)", "pass")],
-    )
-    record(root, "zha", "stop", tests=[("a target with no domain", "pass")])
-    record(root, "zha", "lower_hue", device="Plug (`P1`), firmware `1`")  # no passing tests
+    light = old_test("light")
+    record(root, "zha", "turn_on_for", tests=[light, old_test(None, "skipped")])
+    record(root, "zha", "turn_on_for-option", devices=[old_device("P1", "1")], tests=[light, old_test("switch")])
+    record(root, "zha", "stop", tests=[old_test(None)])  # a passing test with no domain
+    record(root, "zha", "lower_hue", devices=[old_device("P1", "1")], tests=[old_test(None, "skipped")])  # none pass
     scope = AdapterScope(domains=verified("light") | experimental("switch"))
     card = zha_card(*(adapter("zha", action, scope) for action in ("turn_on_for", "stop", "lower_hue")))
-    # Not Plug, whose record also passed on a switch, nor the manual rows; Hue lamp from the light-only record.
+    # Not Plug, whose format 1 record also passed on a switch, nor the manual rows; Hue lamp from the light-only one.
     assert card.lines["works"] == [f"[Hue lamp]({URL}#hue-lamp) ✔"]
+
+
+def test_a_format_2_record_puts_under_works_only_the_models_whose_tests_reached_an_unflagged_domain(root):
+    record2(root, "zha", "turn_on_for", ran("light", device("LTA009")), ran("switch", device("P1", "1")))
+    scope = AdapterScope(domains=verified("light") | experimental("switch"))
+    # The same run as format 1 would add no model, as it can't say which test reached which.
+    assert zha_card(adapter("zha", "turn_on_for", scope)).lines["works"] == [f"[Hue lamp]({URL}#hue-lamp) ✔"]
 
 
 def test_a_pass_on_a_flagged_capability_puts_no_model_under_works(root):
     # Shelly smooth dimming: a pass on a Gen3 Dimmer's Light component must not make it work.
-    record(root, "zha", "raise_brightness", device="Plug (`P1`), firmware `1`", tests=[("`light` (dimmer)", "pass")])
-    record(root, "zha", "turn_on_for", tests=[("`light` (bulb)", "pass")])
+    record(root, "zha", "raise_brightness", devices=[old_device("P1", "1")])
+    record(root, "zha", "turn_on_for")
     dimming = AdapterScope(capabilities=verified("RGBCCT") | experimental("Light"))
     card = zha_card(adapter("zha", "raise_brightness", dimming), adapter("zha", "turn_on_for"))
     assert card.lines["works"] == [f"[Hue lamp]({URL}#hue-lamp) ✔"]  # from the unflagged adapter alone
@@ -621,21 +652,6 @@ def test_a_card_marks_untested_fixes_after_unmaintained_ones(root):
     assert "⚠️" not in zha_card(adapter("zha", "stop")).render()  # no caveat, no mark
 
 
-def test_a_tests_table_with_the_capability_column_parses_as_without_it(root):
-    # docs/evidence.md, Sign-off format: the rig adds the class each test reached between Target and Result.
-    rows = [
-        ("`switch` (switch_plug)", "`Switch`", "pass"),
-        ("`light` (light_group)", "`hue`, `other`", "pass"),
-        ("`light` (light_wrapped)", "-", "pass"),
-        ("`cover` (cover)", "`Cover`", "fail"),
-        ("`fan` (fan)", "not a class", "pass"),
-    ]
-    path = record(root, "zha", "turn_on_for", tests=rows)
-    assert gc.tests(path) == [("switch", {"Switch"}), ("light", {"hue", "other"}), ("light", set())]
-    assert [row["capability"] for row in gc.PASSED.finditer(path.read_text())] == ["`Switch`", "`hue`, `other`", "-"]
-    assert [row["capability"] for row in gc.PASSED.finditer("| `t` | `light` (light_ct) | pass |")] == [None]
-
-
 # Classes (docs/evidence.md, Device classes).
 
 
@@ -656,28 +672,54 @@ def classed_card(*adapters, **changes):
     return gc.card("zha", registry, list(adapters), data(registry, **changes))
 
 
-def test_an_adapter_flagged_on_a_class_counts_only_records_whose_tests_reached_unflagged_ones(root):
+def test_an_adapter_flagged_on_a_class_counts_only_format_1_records_whose_tests_reached_unflagged_ones(root):
     # Shelly smooth dimming: a pass on a Gen3 Dimmer's Light must not make it work; one on RGBCCT alone does.
-    record(
-        root, "zha", "raise_brightness", device="Plug (`P1`), firmware `1`", tests=[("`light` (d)", "`Light`", "pass")]
-    )
-    record(root, "zha", "lower_brightness", tests=[("`light` (bulb)", "`Switch`", "pass")])
-    record(root, "zha", "stop", tests=[("`light` (bulb)", "-", "pass")])  # a dash reached no class
+    record(root, "zha", "raise_brightness", devices=[old_device("P1", "1")], tests=[old_test(classes=["Light"])])
+    record(root, "zha", "lower_brightness", tests=[old_test(classes=["Switch"])])
+    record(root, "zha", "stop", tests=[old_test(classes=[])])  # a dash reached no class
+    record(root, "zha", "lower_hue", devices=[old_device("P1", "1")], tests=[old_test()])  # no Capability column
     dimming = AdapterScope(capabilities=verified("Switch") | experimental("Light"))
-    card = classed_card(
-        *(adapter("zha", action, dimming) for action in ("raise_brightness", "lower_brightness", "stop"))
-    )
+    actions = ("raise_brightness", "lower_brightness", "stop", "lower_hue")
+    card = classed_card(*(adapter("zha", action, dimming) for action in actions))
     assert card.lines["works"] == [f"[Hue lamp]({URL}#hue-lamp) ✔"]
 
 
-def test_a_manual_row_counts_for_a_class_flagged_adapter_only_with_unflagged_capabilities(root):
-    path = root / "docs" / "integrations" / "zha" / "test-records" / "_manual.md"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        "| Date | Commit | Tester | Devices | Capabilities | Passed |\n|---|---|---|---|---|---|\n"
-        "| 2026-11-12 | `1a2b3c4` | @jasonmx | `P1` | `Switch` | `stop` |\n"
-        "| 2026-11-12 | `1a2b3c4` | @jasonmx | `LTA009` | `Switch`, `Light` | `stop` |\n"
+def test_a_mixed_class_format_2_record_puts_under_works_only_the_models_that_reached_an_unflagged_class(root):
+    # A Shelly-like run: a relay on Switch and a bulb on a flagged class, in one record. Format 1 would credit neither.
+    record2(
+        root,
+        "zha",
+        "turn_on_for",
+        ran("switch", device("P1", "1", "Switch"), role="switch_plug"),
+        ran("light", device("LTA009", "2", "Light")),
     )
+    lights = verified("light", "switch")
+    flagged = AdapterScope(domains=lights, capabilities=verified("Switch") | experimental("Light"))
+    assert classed_card(adapter("zha", "turn_on_for", flagged)).lines["works"] == [f"[Plug]({URL}#plug) ✔"]
+    both = AdapterScope(domains=lights, capabilities=verified("Switch", "Light"))
+    assert classed_card(adapter("zha", "turn_on_for", both)).lines["works"] == [
+        f"[Hue lamp]({URL}#hue-lamp) ✔",
+        f"[Plug]({URL}#plug) ✔",
+    ]
+
+
+def test_a_group_test_counts_toward_works_only_when_every_members_class_is_unflagged(root):
+    members = (device("P1", "1", "Switch"), device("LTA009", "2", "Light"))
+    record2(root, "zha", "turn_on_for", ran("light", *members, group=True, role="group"))
+    groups = f"[native groups]({URL}#native-groups) ✔"
+    flagged = AdapterScope(capabilities=verified("Switch") | experimental("Light"))
+    assert classed_card(adapter("zha", "turn_on_for", flagged)).lines["works"] == []
+    # Its members are no models of their own: the group's call isn't theirs.
+    both = AdapterScope(capabilities=verified("Switch", "Light"))
+    assert classed_card(adapter("zha", "turn_on_for", both)).lines["works"] == [groups]
+
+
+def test_a_manual_device_counts_for_a_class_flagged_adapter_only_with_an_unflagged_class(root):
+    rows = [
+        signoff(tester="jasonmx", devices=(("P1", "Switch"), ("LTA009", "Light")), passed=("stop",)),
+        signoff(tester="jasonmx", devices=(("LTA009", None),), passed=("stop",)),  # no class: none
+    ]
+    manual_file(root, rows=rows)
     scope = AdapterScope(capabilities=verified("Switch") | experimental("Light"))
     assert classed_card(adapter("zha", "stop", scope)).lines["works"] == [f"[Plug]({URL}#plug)"]
     flagged_domain = AdapterScope(domains=verified("light") | experimental("switch"), capabilities=verified("Switch"))
