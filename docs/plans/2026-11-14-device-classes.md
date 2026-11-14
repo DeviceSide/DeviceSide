@@ -147,6 +147,8 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      later.
    - **Accepted:** `check_release --signoffs` fails on Shelly's coverage gaps until its house rerun records the
      Capability column. No release is cut before that rerun.
+   - `gen_compat`'s Capability-cell regex captures any cell, so a malformed cell fails loudly instead of dropping
+     a pass (PR #423 audit, Low).
 5. **Zigbee2MQTT (the driver).**
    - Classes from the probe's real strings: `hue`, `tuya_zcl`, `tuya_mcu`, `other`, and `sengled` if the Sengled needs
      its own rule. A one-off test bulb lifts its maker's class, never `other` (Decision 5).

@@ -21,9 +21,11 @@ Code and docs use these terms.
   (Shelly: the RPC component; Zigbee2MQTT: `hue`, `other`). Each class stands on its own
   evidence, and a device the integration can't place is in its default class, which is never Verified: a record on
   another maker's device adds that maker's class. Rules: [evidence.md](evidence.md#device-classes).
-- **Doesn't work**: a class that fails the call DeviceSide sends for an action. Listed in the adapter's
+- **Doesn't work**: a class that fails, or is harmed by, the call DeviceSide sends for an action, even when an unbuilt
+  call would work. Listed in the adapter's
   `AdapterScope.doesnt_work` with a reason and source, refused (`doesnt_work`) and named on the card.
-- **Not yet supported**: a class that needs a call DeviceSide hasn't built for an action. The integration names it,
+- **Not yet supported**: a class that needs a call DeviceSide hasn't built for an action, and that today's call
+  doesn't harm. The integration names it,
   the adapter's scope doesn't hold it, and it is refused (`not_supported`) and named on the card.
 - **Field**: an action parameter, e.g. `brightness`.
 - **Entity domain**: light, switch. "Domain" alone is fine where unambiguous.
