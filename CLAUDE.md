@@ -29,6 +29,7 @@ shared home named in parentheses.
 | Run evidence | `<x>/test-records/` |
 | Why the code does something | the module docstring, a few lines, linking `internals.md` for the evidence |
 | Rule evidence | the PR body |
+| Repo settings and repo-maintainer steps | `docs/repo-maintainers.md` |
 
 `index.md` holds only what changes what a user does or expects, in the shape of Hue's page (Shelly's for "Try it":
 what was tried, on what, one report per class). Timings, odds and why a limit exists go in `internals.md`. A behavior
@@ -57,9 +58,9 @@ to one package needs one maintainer's approval or `/merge`, and green CI; anythi
 shared generated files (README, `docs/device-compatibility.md`, CODEOWNERS) still needs only its maintainer, as CI's
 `--check` proves them. A package PR merges when one of its maintainers comments `/merge <sha>`, even on their own PR
 (`scripts/check_maintainer_merge.py` says what it refuses), or when a repo maintainer merges it; repo maintainers merge
-every other PR. A repo maintainer grants an integration's maintainers Triage when it merges, so issues can be assigned
-to them; GitHub ignores their names in `.github/CODEOWNERS` (from `scripts/gen_codeowners.py`), as Triage isn't write
-access. A contributor PR follows CONTRIBUTING's Fast track.
+every other PR. Integration maintainers hold Triage (`docs/repo-maintainers.md`), so GitHub ignores their names in
+`.github/CODEOWNERS` (from `scripts/gen_codeowners.py`), as Triage isn't write access. A contributor PR follows
+CONTRIBUTING's Fast track.
 
 **Caveats** (⚠️ Untested fix, ⚠️ Unmaintained) are set and cleared by a repo maintainer: `docs/evidence.md`.
 

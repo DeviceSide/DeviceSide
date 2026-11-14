@@ -7,8 +7,8 @@ name: Maintainer merge
 # GITHUB_TOKEN starts no workflows, and tests.yml and lint.yml run on push to main.
 # issue_comment runs the default branch's workflow and script, so a PR can't edit its own check. No step runs the
 # PR's code: its head is fetched and read with `git show`, as data. The App's key is in the maintainer-merge
-# environment, which only the merge job reads, after the check passes. Keep that environment's deployment branches
-# limited to main: issue_comment runs there, and a workflow pushed on any other branch then can't read the key.
+# environment, which only the merge job reads, after the check passes. The App and environment settings, and how to
+# switch this off: docs/repo-maintainers.md.
 
 on:
   issue_comment: # zizmor: ignore[dangerous-triggers] runs only base-branch code; the PR head is read as data
