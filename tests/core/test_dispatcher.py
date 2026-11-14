@@ -281,23 +281,52 @@ async def test_a_native_group_with_a_refused_member_falls_back_to_its_members(
 
 
 @pytest.mark.usefixtures("classed")
-async def test_a_refused_group_with_no_member_left_to_plan_is_refused_as_any_target(hass, fake, reset_script, caplog):
+@pytest.mark.parametrize("flagged", ["switch.c", "switch.b"])  # not supported, Experimental
+async def test_a_group_whose_member_is_already_a_target_is_answered_by_it(hass, fake, reset_script, caplog, flagged):
+    """Naming a member beside its group changes nothing: switch.a, already a target, answers for the group, and
+    the flagged member is unavailable."""
     add_fake_entity(hass, fake, "switch.a")
-    add_fake_entity(hass, fake, "switch.c", state="unavailable")
-    add_fake_native_group(hass, fake, "switch.fake_group", ["switch.a", "switch.c"])
+    add_fake_entity(hass, fake, flagged, state="unavailable")
+    add_fake_native_group(hass, fake, "switch.fake_group", ["switch.a", flagged])
     area_id = in_area(hass, "Den", "switch.fake_group")
-    scope = replace(CLASSED, capabilities=verified("A"))
+    allow_experimental(hass, False)
+    expected = {"switch.a": {"status": "sent", "integration": "fake", "capability": "A"}}
 
-    with patch.object(FakeTurnOffFor, "scope", scope):
-        # switch.a is already a target and switch.c unavailable: named, the group raises with its member's reason.
-        data = {"entity_id": ["switch.a", "switch.fake_group"], "duration": 5}
-        assert await refusal(hass, "turn_off_for", data) == "not_supported"
-        assert reset_script.calls == []
-        # Indirect, it is skipped and logged.
-        response = await call(hass, "turn_off_for", {"area_id": area_id, "entity_id": "switch.a", "duration": 5})
+    with patch.object(FakeTurnOffFor, "scope", CLASSED):
+        alone = await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
+        both = await call(hass, "turn_off_for", {"entity_id": ["switch.a", "switch.fake_group"], "duration": 5})
+        indirect = await call(hass, "turn_off_for", {"area_id": area_id, "entity_id": "switch.a", "duration": 5})
 
-    assert response == {"switch.a": {"status": "sent", "integration": "fake", "capability": "A"}}
-    assert "turn_off_for skipped targets that can't take it: switch.fake_group (not_supported)" in caplog.text
+    assert alone == both == indirect == expected
+    assert "skipped" not in caplog.text
+
+
+@pytest.mark.usefixtures("classed")
+@pytest.mark.parametrize(
+    ("members", "reason"),
+    [
+        (["switch.b", "switch.unknown"], "experimental_off"),  # an Experimental class, and none
+        (["switch.d"], "doesnt_work"),
+        (["switch.c", "switch.b"], "not_supported"),  # refused first, then gated
+        (["switch.d", "switch.unknown"], "doesnt_work"),
+    ],
+)
+async def test_a_group_whose_members_all_fail_is_refused_with_its_reason(
+    hass, fake, reset_script, caplog, members, reason
+):
+    for member in members:
+        add_fake_entity(hass, fake, member)
+    add_fake_native_group(hass, fake, "switch.fake_group", members)
+    area_id = in_area(hass, "Den", "switch.fake_group")
+    allow_experimental(hass, False)
+
+    with patch.object(FakeTurnOffFor, "scope", CLASSED):
+        assert await refusal(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5}) == reason
+        # Indirect, the group and its members are skipped and logged.
+        assert await call(hass, "turn_off_for", {"area_id": area_id, "duration": 5}, return_response=False) is None
+
+    assert reset_script.calls == []
+    assert f"switch.fake_group ({reason})" in caplog.text
 
 
 async def test_an_expand_group_that_raises_is_logged_and_the_group_not_supported(hass, fake, reset_script, caplog):
@@ -373,11 +402,9 @@ async def test_a_classifier_that_raises_is_logged_and_counts_as_unknown(hass, fa
     data = {"entity_id": "switch.fake_group", "duration": 5}
 
     with patch.object(FakeTurnOffFor, "scope", CLASSED):
-        if broken == "expand_group":
-            assert await refusal(hass, "turn_off_for", data) == "experimental_off"
-        else:
-            # Listed, the group falls back to its member, whose class is unknown too: skipped, nothing sent.
-            assert await call(hass, "turn_off_for", data, return_response=False) is None
+        # Listed, the group falls back to its member, classed again, whose class is unknown too: with no member
+        # planned, the named group raises. Unlisted, it is gated as Experimental.
+        assert await refusal(hass, "turn_off_for", data) == "experimental_off"
     assert reset_script.calls == []
 
     failed = [record.getMessage() for record in caplog.records if record.exc_info]
@@ -387,6 +414,112 @@ async def test_a_classifier_that_raises_is_logged_and_counts_as_unknown(hass, fa
         assert failed == [
             f"turn_off_for on fake: classing {entity_id} failed" for entity_id in ("switch.fake_group", "switch.a")
         ]
+
+
+@pytest.mark.usefixtures("classed")
+async def test_an_expand_group_answering_none_gates_a_classed_group(hass, fake, reset_script):
+    add_fake_entity(hass, fake, "switch.a")
+    add_fake_native_group(hass, fake, "switch.fake_group", ["switch.a"])
+    registry = get_runtime(hass).registry
+    registry.integrations["fake"] = replace(registry.integrations["fake"], expand_group=lambda hass, target: None)
+    allow_experimental(hass, False)
+    data = {"entity_id": "switch.fake_group", "duration": 5}
+
+    with patch.object(FakeTurnOffFor, "scope", CLASSED):
+        assert await refusal(hass, "turn_off_for", data) == "experimental_off"
+        allow_experimental(hass)
+        assert await call(hass, "turn_off_for", data) == {
+            "switch.fake_group": {"status": "sent", "integration": "fake"}
+        }
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_named_empty_group_alone_is_skipped_silently(hass, fake, reset_script, caplog):
+    add_fake_native_group(hass, fake, "switch.fake_group", [])
+
+    with patch.object(FakeTurnOffFor, "scope", CLASSED):
+        data = {"entity_id": "switch.fake_group", "duration": 5}
+        assert await call(hass, "turn_off_for", data, return_response=False) is None
+
+    assert reset_script.calls == []
+    assert "skipped" not in caplog.text
+
+
+FALLS_BACK = "turn_off_for: switch.fake_group falls back to its members"
+
+
+@pytest.mark.usefixtures("classed")
+@pytest.mark.parametrize(
+    "scope",
+    [
+        pytest.param(replace(CLASSED, domains=experimental("switch")), id="domain"),
+        pytest.param(replace(CLASSED, experimental=True), id="adapter"),
+    ],
+)
+async def test_a_group_flagged_by_more_than_its_classes_does_not_fall_back(hass, fake, reset_script, caplog, scope):
+    caplog.set_level(logging.DEBUG, logger="custom_components.deviceside")
+    for member in ("switch.a", "switch.b"):
+        add_fake_entity(hass, fake, member)
+    add_fake_native_group(hass, fake, "switch.fake_group", ["switch.a", "switch.b"])
+    allow_experimental(hass, False)
+
+    with patch.object(FakeTurnOffFor, "scope", scope):
+        assert await refusal(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5}) == (
+            "experimental_off"
+        )
+
+    assert FALLS_BACK not in caplog.text
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_group_flagged_by_a_field_does_not_fall_back(hass, fake, reset_script, caplog):
+    caplog.set_level(logging.DEBUG, logger="custom_components.deviceside")
+    modes = {"supported_color_modes": [ColorMode.BRIGHTNESS], "brightness": 100}
+    add_fake_entity(hass, fake, "light.a", attributes=modes)
+    add_fake_entity(
+        hass,
+        fake,
+        "light.fake_group",
+        attributes={"fake_members": ["light.a"], **modes},
+        unique_id="group:light.fake_group",
+    )
+    allow_experimental(hass, False)
+    scope = replace(CLASSED, fields=experimental("brightness"), domains=verified("light"))
+
+    with patch.object(FakeTurnOnFor, "scope", scope):
+        data = {"entity_id": "light.fake_group", "duration": 5, "brightness": 50}
+        assert await refusal(hass, "turn_on_for", data) == "experimental_off"
+
+    assert "turn_on_for: light.fake_group falls back" not in caplog.text
+
+
+@pytest.mark.usefixtures("classed")
+async def test_two_groups_sharing_a_member_send_it_once(hass, fake, reset_script):
+    for member in ("switch.a", "switch.b", "switch.c"):
+        add_fake_entity(hass, fake, member)
+    add_fake_native_group(hass, fake, "switch.one", ["switch.a", "switch.b"])
+    add_fake_native_group(hass, fake, "switch.two", ["switch.a", "switch.c"])
+    allow_experimental(hass, False)
+
+    with patch.object(FakeTurnOffFor, "scope", CLASSED):
+        response = await call(hass, "turn_off_for", {"entity_id": ["switch.one", "switch.two"], "duration": 5})
+
+    assert response == {"switch.a": {"status": "sent", "integration": "fake", "capability": "A"}}
+    assert [ids for *_, ids in reset_script.calls] == [["switch.a"]]
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_group_with_refused_and_experimental_members_falls_back_with_experimental_on(hass, fake, reset_script):
+    for member in ("switch.a", "switch.b", "switch.c"):
+        add_fake_entity(hass, fake, member)
+    add_fake_native_group(hass, fake, "switch.fake_group", ["switch.a", "switch.b", "switch.c"])
+    allow_experimental(hass)
+
+    with patch.object(FakeTurnOffFor, "scope", CLASSED):
+        response = await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
+
+    # switch.c isn't supported, so the group falls back; with the option on, switch.b runs beside switch.a.
+    assert sorted(response) == ["switch.a", "switch.b"]
 
 
 @pytest.mark.usefixtures("classed")

@@ -58,6 +58,18 @@ def _skip(
     return [EntityResult(entity_id, Status.UNSUPPORTED, integration=integration, detail=reason)]
 
 
+def _unanswered(
+    adapter: Adapter, fallen: list[tuple[Target, list[Target], str, str | None]], answered: set[str]
+) -> list[EntityResult]:
+    """Each group that fell back with no member planned or left nothing to do, refused with its reason: raised if
+    named, else skipped. A group a member answers for gets no result of its own."""
+    results: list[EntityResult] = []
+    for group, members, reason, why in fallen:
+        if not any(member.reported_id in answered for member in members):
+            results += _skip(group.reported_id, group.named, reason, adapter.integration, why)
+    return results
+
+
 class Dispatcher:
     def __init__(self, hass: HomeAssistant, registry: AdapterRegistry):
         self.hass = hass
@@ -193,11 +205,18 @@ class Dispatcher:
         experimental_on: bool,
     ) -> list[Run]:
         """One adapter's runs, one per set of dropped fields so every target in a run gets the same request; each
-        target skipped or left nothing to do goes in results instead."""
+        target skipped or left nothing to do goes in results instead.
+
+        A native group that falls back to its members gets no result of its own: they answer for it. Only when none
+        of its members was planned or left nothing to do (each refused, gated or unavailable) is the group itself
+        refused, with its reason, raised if named, once every target is judged."""
         by_dropped: dict[frozenset[str], list[Target]] = {}
         classes: dict[str, Classes] = {}
         pending = deque(targets)
         seen = {target.reported_id for target in pending}
+        # Each group that fell back, its members and the reason it would be refused with; the targets that answer.
+        fallen: list[tuple[Target, list[Target], str, str | None]] = []
+        answered: set[str] = set()
         while pending:
             target = pending.popleft()
             dropped = lacking(target, request, adapter.scope.unlisted) | (
@@ -214,33 +233,30 @@ class Dispatcher:
                 continue
             classes[target.reported_id] = found = self._classes(adapter, target, members)
             if reduced.nothing_to_do():
+                answered.add(target.reported_id)
                 results.append(
                     _classed(adapter.result(target, Status.UNCHANGED, detail="fields_dropped"), target, found)
                 )
             elif refused := adapter.scope.refusal(found):
                 # A native group falls back to its members, each judged alone: the good ones run, a refused one is
-                # skipped as indirect. With none left to plan, the group is refused as any target is.
-                if fresh := self._fallback(members, seen):
-                    _LOGGER.debug(
-                        "%s: %s falls back to its members (%s)", adapter.action, target.reported_id, refused[0]
-                    )
-                    seen.update(member.reported_id for member in fresh)
-                    pending.extend(fresh)
+                # skipped as indirect.
+                if members is not None:
+                    fallen.append((target, members, *refused))
+                    pending.extend(self._fallback(adapter, target, members, seen, refused[0]))
                 else:
                     results += _skip(target.reported_id, target.named, refused[0], adapter.integration, refused[1])
             elif not experimental_on and self._experimental(adapter, reduced, target, found):
                 # A native group flagged only by a member's class falls back the same way: the members of Verified
                 # or Documented classes run, the flagged one is skipped (raised only if named on its own).
-                if self._flagged_by_class_alone(adapter, reduced, target) and (fresh := self._fallback(members, seen)):
-                    _LOGGER.debug(
-                        "%s: %s falls back to its members (%s)", adapter.action, target.reported_id, EXPERIMENTAL_OFF
-                    )
-                    seen.update(member.reported_id for member in fresh)
-                    pending.extend(fresh)
+                if members is not None and self._flagged_by_class_alone(adapter, reduced, target):
+                    fallen.append((target, members, EXPERIMENTAL_OFF, None))
+                    pending.extend(self._fallback(adapter, target, members, seen, EXPERIMENTAL_OFF))
                 else:
                     results += _skip(target.reported_id, target.named, EXPERIMENTAL_OFF, adapter.integration)
             else:
+                answered.add(target.reported_id)
                 by_dropped.setdefault(dropped, []).append(target)
+        results += _unanswered(adapter, fallen, answered)
         return [(adapter, request.without(dropped), ready, dropped, classes) for dropped, ready in by_dropped.items()]
 
     def _experimental(self, adapter: Adapter, request: Request, target: Target, classes: Classes) -> bool:
@@ -260,7 +276,8 @@ class Dispatcher:
 
     def _listed(self, adapter: Adapter, target: Target) -> list[Target] | None:
         """A native group's members, for an integration that names classes: what its classes come from and what it
-        falls back to. None for any other target, or a group whose members can't be listed."""
+        falls back to. `[]` only for a group known to have no members; None when unknown, and for any other
+        target."""
         if not target.is_group or self.registry.integrations[adapter.integration].capability is None:
             return None
         return self._members(adapter, target)
@@ -293,10 +310,13 @@ class Dispatcher:
             return None
 
     @staticmethod
-    def _fallback(members: list[Target] | None, seen: set[str]) -> list[Target]:
-        """The members a refused or class-flagged native group falls back to: its available ones not already targets;
-        none for a target that is no group, or a group whose members can't be listed."""
-        return [member for member in members or [] if _available(member.state) and member.reported_id not in seen]
+    def _fallback(adapter: Adapter, group: Target, members: list[Target], seen: set[str], reason: str) -> list[Target]:
+        """The members a refused or class-flagged native group falls back to, marked seen: its available ones not
+        already targets, which a target already answers for."""
+        fresh = [member for member in members if _available(member.state) and member.reported_id not in seen]
+        _LOGGER.debug("%s: %s falls back to its members (%s)", adapter.action, group.reported_id, reason)
+        seen.update(member.reported_id for member in fresh)
+        return fresh
 
     def _expand_native_groups(
         self, adapter: Adapter, bucket: list[Target], results: list[EntityResult]

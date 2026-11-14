@@ -19,15 +19,18 @@ def expand_group(hass: HomeAssistant, target: Target) -> list[Target] | None:
     bridge cache's bridge/groups, so sync and with no I/O. The dispatcher classes a group by them, and falls back to
     them when one's class is refused, or Experimental with the option off (docs/design.md, Groups).
 
-    None, membership unknowable, while the cache holds no bridge/groups (before Z2M's publish after a connect), or
-    when there is no cache (its subscribe failed, which bridge_cache warns of once); the group then counts as
-    Experimental.
+    `[]` only for a group bridge/groups lists with no members, which the dispatcher skips as empty. None, membership
+    unknowable, while the cache holds no bridge/groups (before Z2M's publish after a connect), when there is no cache
+    (its subscribe failed, which bridge_cache warns of once), when bridge/groups doesn't list the group, or when no
+    member it lists has an entity in the group's domain; the group then counts as Experimental.
     """
     if (gid := group_id(target)) is None or (cache := bridge_cache.get(hass)) is None:
         return None
-    if (groups := cache.parsed("groups")) is None:
+    if (groups := cache.parsed("groups")) is None or not any(str(g.get("id")) == gid for g in groups):
         return None
-    return _members(hass, target, members_of(groups, gid))
+    addresses = members_of(groups, gid)
+    members = _members(hass, target, addresses)
+    return None if addresses and not members else members
 
 
 async def member_lights(hass: HomeAssistant, group: Target) -> list[Target]:
