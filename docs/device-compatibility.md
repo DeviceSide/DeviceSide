@@ -160,7 +160,7 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 | `stop` | Verified | light entities; hue classes | `9290024684`, firmware `1.163.1`<br>`8720169392182`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/stop.md) |
 | `stop` | Documented | other classes | | |
 | `stop` | Experimental | tuya_zcl, tuya_ts011f, tuya_mcu, sengled, gledopto classes | | |
-| `turn_on_for` | Verified | light entities; hue classes; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, transition fields | `LWA012`, firmware `1.104.2`<br>`LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2` | [record](integrations/zigbee2mqtt/test-records/turn_on_for.md) |
+| `turn_on_for` | Verified | light entities; hue classes; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, transition fields | `9290018217`, firmware `1.163.1`<br>`9290024684`, firmware `1.163.1`<br>`8720169392182`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/turn_on_for.md) |
 | `turn_on_for` | Experimental | switch entities; other, gledopto classes | | |
 
 | Doesn't work | Why | Source |
