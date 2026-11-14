@@ -77,8 +77,9 @@ EVIDENCE = ("<!-- evidence:start -->", "<!-- evidence:end -->")
 DEVICE = re.compile(r"^\| Device \| (.*) \|$", re.MULTILINE)
 ENTRY = re.compile(r"^(?P<name>.*?)(?: \(`(?P<model>[^`]+)`\))?, firmware `(?P<firmware>[^`]+)`$")
 BACKTICKS = re.compile(r"`([^`]+)`")
-# A passing row of a record's Tests table: | `test` | `domain` (role) | pass |
-PASSED = re.compile(r"^\| `[^`]+` \| (?P<target>[^|]*) \| pass \|$", re.MULTILINE)
+# A passing row of a record's Tests table: | `test` | `domain` (role) | pass |, or with the Capability column
+# (docs/evidence.md, Sign-off format): | `test` | `domain` (role) | `class`, ... | pass |
+PASSED = re.compile(r"^\| `[^`]+` \| (?P<target>[^|]*) \|(?: (?P<capability>[^|]*) \|)? pass \|$", re.MULTILINE)
 REPORT_URL = "https://github.com/DeviceSide/DeviceSide/issues/new?template=device_report.yml"
 GROUP_NAMES = {"group", "zone"}
 GROUP = "group"
