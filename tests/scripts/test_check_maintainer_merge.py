@@ -130,6 +130,28 @@ def test_an_unreadable_maintainers_list_is_refused(pr):
     assert refused() == "it changes `acme`'s maintainers"
 
 
+def test_a_second_integration_binding_is_refused(pr):
+    pr.commit(INIT, init() + init(("alice", "mallory")))
+    assert refused() == "it changes `acme`'s maintainers"
+
+
+def test_deleting_the_package_is_refused(pr):
+    pr.git("rm", "-q", "-r", PKG)
+    pr.git("commit", "-q", "-m", "delete")
+    assert refused() == "it changes `acme`'s maintainers"
+
+
+def test_a_path_with_a_space_is_read_whole(pr):
+    path = f"README.md {PKG}evil.sh"
+    pr.commit(path, "x\n")
+    assert refused() == f"it changes files outside an integration's package: {path}"
+
+
+def test_a_non_ascii_path_in_the_package_is_allowed(pr):
+    pr.commit("docs/integrations/acme/café.md", "x\n")
+    assert check() == "acme"
+
+
 def test_an_empty_pr_is_refused(pr):
     assert refused() == "it changes nothing"
 

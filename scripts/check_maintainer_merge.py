@@ -89,7 +89,7 @@ def caveats(text: str, path: str) -> list[str]:
 def check(base: str, head: str, commenter: str, templates: tuple[str, ...]) -> str:
     """The integration key when the PR may merge this way; raises Refused otherwise."""
     merge_base = git("merge-base", base, head).strip()
-    files = git("diff", "--name-only", "--no-renames", merge_base, head).split()
+    files = [path for path in git("diff", "-z", "--name-only", "--no-renames", merge_base, head).split("\0") if path]
     if not files:
         raise Refused("it changes nothing")
     keys = {key for path in files if (key := package_of(path, templates))}

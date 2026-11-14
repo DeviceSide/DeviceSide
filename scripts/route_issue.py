@@ -36,9 +36,20 @@ def read(init: Path) -> Integration:
     return parse(init.read_text(), init)
 
 
+def names(node: ast.Assign | ast.AnnAssign) -> list[str | None]:
+    """The names an assignment binds."""
+    targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+    return [getattr(target, "id", None) for target in targets]
+
+
 def parse(text: str, init: Path | str) -> Integration:
-    """`read`, on the text of an `__init__.py` (`init` names it in errors)."""
-    for node in ast.parse(text).body:
+    """`read`, on the text of an `__init__.py` (`init` names it in errors). The registry takes the last binding, so a
+    second one is refused rather than read past."""
+    body = ast.parse(text).body
+    bindings = [node for node in body if isinstance(node, ast.Assign | ast.AnnAssign) and "INTEGRATION" in names(node)]
+    if len(bindings) > 1:
+        raise SystemExit(f"{init}: INTEGRATION is bound {len(bindings)} times")
+    for node in bindings:
         if (
             isinstance(node, ast.Assign)
             and [getattr(target, "id", None) for target in node.targets] == ["INTEGRATION"]
