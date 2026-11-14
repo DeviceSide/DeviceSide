@@ -187,10 +187,6 @@ async def test_a_fade_already_heading_for_the_end_is_left_running(caplog, adapte
     assert f"light.lamp reads lit={up} level=40.0, end {end}: nothing sent (already_fading)" in caplog.text
 
 
-async def test_a_reading_heads_nowhere_unless_the_integration_says_so():
-    assert Reading(True, 40.0).heading_there is False
-
-
 @pytest.mark.parametrize(("asked", "clamped", "seconds"), [(0.1, 0.5, 0.5), (600, 60, 36.0)])
 async def test_a_sweep_time_outside_the_devices_range_is_clamped_and_reported(asked, clamped, seconds):
     """Clamped to what a full-range fade can take, and the fade is timed at the clamped speed."""

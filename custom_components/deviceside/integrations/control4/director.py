@@ -87,7 +87,7 @@ class LightLevel:
     @property
     def ramping(self) -> bool:
         """True while the level is still on its way to a target."""
-        # The Director holds whole percents, so level and target are equal at rest (Tested behavior).
+        # At rest the Director holds a whole percent, equal to the target (Tested behavior).
         return self.target is not None and self.target != self.brightness
 
 

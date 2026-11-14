@@ -2,6 +2,7 @@
 a stop behind the move it follows."""
 
 import asyncio
+from types import SimpleNamespace
 
 import pytest
 from homeassistant.exceptions import HomeAssistantError
@@ -336,3 +337,14 @@ def test_color_temperature_is_a_whole_kelvin_in_color_temperature_mode_only(held
 def test_capabilities_that_cant_be_read_are_named_in_the_error():
     with pytest.raises(ValueError, match="'not json'"):
         kelvin_range(capabilities("not json"))
+
+
+def test_an_expired_own_ramp_is_forgotten_and_logged_once(hass, wire):
+    target = SimpleNamespace(
+        reported_id="light.lamp", config_entry=SimpleNamespace(entry_id="e"), entry=SimpleNamespace(unique_id="100")
+    )
+    director_module._ramp_ends(hass)[("e", 100)] = (100, hass.loop.time())
+
+    assert director_module.own_ramp_end(hass, target) is None
+    assert director_module.own_ramp_end(hass, target) is None
+    assert wire.text.count("ran its time") == 1

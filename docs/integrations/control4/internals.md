@@ -71,7 +71,7 @@ sent.
 ### `get_attributes`
 
 Core's entity shows the level as of its last poll of the Director (`DEFAULT_SCAN_INTERVAL`, 5 s, a user option), and
-no color temperature; this reads the Director itself. One read of `Brightness Percent`,
+no color temperature; this reads the Director itself. One read of `Brightness Percent`, `LIGHT_LEVEL` (see Level),
 `LIGHT_STATE`, `Current CCT` and `Current Color Mode`, logged with its values as every read of the Director's
 variables is (`director.read_variables`). Brightness is reported when above 0; `color_temp_kelvin` when the mode is 1
 (color temperature, the only mode measured) and the light reports one. An off light with neither returns an empty row,
@@ -161,7 +161,7 @@ hardware and versions, sent and timed in-process by a probe in Home Assistant. N
   100, with a 60 s `RAMP_TO_LEVEL` to 100 sent straight to the Director and running, a raise read 28.03 and 100,
   logged no ramp of its own on record, halted it at 29 and sent its own ramp. A `stop` was `confirmed` at 67.
 - **Core's fractional turn-on, 2026-11-14.** `light.turn_on` with brightness 128 (core sends 50.196 %) left the group
-  at level 50, target 50: the Director holds whole percents.
+  at level 50, target 50: at rest the Director holds a whole percent.
 - **Rate ceilings.** Each light's `Navigator Dynamic Capabilities` variable gives `brightness_rate_max`: 65535 on a
   bulb, 86400000 on the group, both in milliseconds. Both give `supports_brightness_stop: true`.
 - **A variable an item lacks, 2026-11-13.** A read of the group and of one bulb naming `LIGHT_LEVEL`, `Brightness

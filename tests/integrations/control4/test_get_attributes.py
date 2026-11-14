@@ -71,6 +71,19 @@ async def test_a_read_that_finds_no_variables_rejects_the_target(hass):
     assert raised.value.translation_key == "targets_failed"
 
 
+async def test_a_light_reporting_light_level_alone_is_rejected_and_logged(hass, caplog):
+    director = dimmable_lamp(hass)
+    director.send_get_request.side_effect = None
+    director.send_get_request.return_value = (
+        '[{"varName": "LIGHT_LEVEL", "value": 40}, {"varName": "LIGHT_STATE", "value": 1}]'
+    )
+
+    with pytest.raises(HomeAssistantError):
+        await call(hass, "get_attributes", LAMP)
+
+    assert "'LIGHT_LEVEL': 40" in caplog.text
+
+
 async def test_values_reported_as_text_are_read_as_numbers(hass):
     director = dimmable_lamp(hass, brightness=40)
     director.text = True
