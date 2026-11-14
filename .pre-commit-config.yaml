@@ -63,6 +63,9 @@ repos:
     rev: v1.32.0
     hooks:
       - id: zizmor
+        # Offline: a token in the env (cloud sandboxes set one) turns on online audits, which fail without API
+        # access. workflow-lint.yml runs those.
+        args: [--offline]
 
   # -------------------------
   # Shell scripts (actionlint only checks `run:` blocks)
