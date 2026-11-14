@@ -330,6 +330,19 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      entity_id to its class, beside the unchanged `capabilities`; the dispatcher keeps each class paired with its
      member (`Reached`). The rig's side is ha-rig #89.
 7. **ZHA.** The same shape. Lab run, with the Sengled.
+
+7a. **Units groundwork (before v0.1.0)** (Decision 69; source: the research note
+   `docs/research/2026-11-14-timer-units-at-scale.md` on `claude/device-classes-units-research`, §7, not committed
+   here while its home is open). Each item names the failure it prevents:
+   - **The report form prefills the Zigbee manufacturer string** (`config_flow._device_facts`): Z2M's from
+     `bridge/devices`, ZHA's raw Basic-cluster string, not HA's registry manufacturer, which on Z2M is the
+     definition's vendor. Without it a Tuya report can't be matched to the string Decision 35 keys on. A shared
+     file, so a repo maintainer.
+   - **The mined converter seed list,** committed as a dated research file in `zigbee2mqtt/research/`: the seed
+     list Decision 35 asks for (step 5 part 3, step 1) and the probe targets. Research, never level weight.
+   - **The `turn_on_for` DEBUG line carries the OnTime read-back** where the adapter reads it
+     ([logging.md](../logging.md)), so the first report of a seconds device holds the diagnosis (tenet 4).
+
 8. **Hue.** Classes `hue`, `other` and `smart_scene` (doesn't work, on `set_scene`). `other` is decided per action
    (Decision 2). Lab run, with the Sengled on the bridge if it pairs.
    - **The v1 bridge is never supported (Decision 32),** and is refused in one place as a separate integration: a
@@ -845,8 +858,9 @@ A package changed after its lab run needs that run again before the release. Non
     **Amended (Jason, 2026-11-14), the rubric for Tuya plugs on the 0x42 path** (converter A,
     [research](../integrations/zigbee2mqtt/research/2026-11-14-tuya-countdown.md), §1):
     - **Verified:** the maintainer's lab plug, `_TZ3000_0zfrhq4i`, once its lab run passes.
-    - **Doesn't work, `harms`:** `_TZ3000_gjnozsaz` (Z2M #30493) and `_TZ3000_dg7fdg92` (Z2M #25434), reported
-      failing on the 0x42 path (research, §3).
+    - **Doesn't work, `harms`:** `_TZ3000_gjnozsaz` (Z2M #30493), `_TZ3000_dg7fdg92` (Z2M #25434) and
+      `_TZ3000_okaz9tjs` (ZHC #9786), reported failing on the 0x42 path (research, §3); a harmful failure's report
+      is enough (Decision 68).
     - **Experimental:** every other converter A definition.
     - **No upstream inclusions:** upstream "works" reports are too thin to Verify a string. A later credible report
       becomes a `_manual.json` row, and so Verified by its own evidence.
@@ -864,28 +878,48 @@ Decisions 36 to 45, 46 to 55 and 56 to 65 are reserved for steps 7, 9 and 8.
     test-level list can be derived from the per-member map, but not the reverse; the map fills the per-member `class`
     field format 2's schema already requires of a group's members; and an unplaced member, or one the integration
     can't name, voids only itself (Decision 29), where it voids the group's `capabilities`, which keeps its
-    whole-group invariant. The change is additive. The rig (ha-rig #89) writes each member's class from
+    whole-group invariant. A member the rig can't observe is left out of the map too, though its class still counts
+    in `capabilities`: one that is unavailable, and one with no entity of its own (Z2M's stand-in for a plug in a
+    light group), whose key would be the group's own entity_id, crediting a class no member's state showed. The
+    change is additive. The rig (ha-rig #89) writes each member's class from
     `member_capabilities`; `docs/evidence.md`'s coverage check credits each member's class from its members' entries.
 67. **The Tuya datapoint countdown class on Zigbee2MQTT, Experimental** (converter B,
     [research](../integrations/zigbee2mqtt/research/2026-11-14-tuya-datapoint-countdown.md)). The reading found 81
-    definitions mapping a datapoint to `countdown`, 46 of them (about 142 maker strings) a timer in seconds beside an
-    on/off `state`, mostly wall switches and dimmers, plus a few plugs, relays and valves; the rest count in minutes
-    or hours, are enums, read-only, or have no `state`.
+    definitions mapping a datapoint to `countdown`. Under the rule adopted below (unit `s`, N at most the expose's
+    own `value_max`, the state paired by property name), 54 qualify, about 152 maker strings counted per definition
+    (a string can sit in two): the research's 46 under its strict `value_max` 43200 test (about 142 strings), plus
+    the 11 with max 86400 (15 strings), less the three excluded below that the rule admits (ZBN-DJ-63,
+    `TS0601_fan_switch`, `TS0601_smart_temperature_switch`: 5 strings). They are mostly wall switches and dimmers,
+    plus a few plugs, relays and valves; the rest count in minutes or hours, are enums, read-only, have no `state`,
+    or don't pair.
     - **Key and guard:** the call path (a definition whose countdown is a Tuya datapoint), not the TS0601 model ID
       (Decision 34). A definition qualifies when it exposes a settable countdown in unit `s`; an on/off `state` has
       the same suffix, paired by property name (`state_l1` with `countdown_l1`), not by endpoint, as six
       definitions name the gang in the property with no endpoint field; and DeviceSide sends at most the expose's own
       `value_max`, not a fixed 43200, which admits the 86400 s timers.
-    - **Excluded:** Tuya LYAI-14 (its source says it ignores the countdown); the circuit breaker ZBN-DJ-63 and
-      `TS0601_fan_switch` ("Max ON time") until a credible report; timers in minutes or hours, the enum timer, the
-      garage opener; and Manhot MH03 and Moes ZS-D, whose `countdown_1` beside `state_l1` fails in one payload, which
-      the pairing rule already leaves out.
+    - **Excluded:** Tuya LYAI-14 (its source says it ignores the countdown); the circuit breaker ZBN-DJ-63,
+      `TS0601_fan_switch` ("Max ON time") and `TS0601_smart_temperature_switch` until a credible report, the last
+      as its auto mode can drive the output and override the timer, leaving the device unattended; timers in
+      minutes or hours, the enum timer, the garage opener; and Manhot MH03 and Moes ZS-D, as the pairing rule
+      doesn't pair their `countdown_1` with `state_l1`.
+    - **Nous D5Z is included,** though it publishes `countdown: 0` whenever its state changes, so its readback shows
+      0 while the timer runs (research, §3). Harmless: the safe call pattern below waits on `state`, not on the
+      countdown.
     - **Valves in seconds are included:** FK_V02, FK-BV05 and ZVL-PRO. ZG-308Z is not: it has no `state`.
     - **The safe call pattern** (Jason), for every countdown armed on the Tuya datapoint path, not only TS0601's: a
       datapoint countdown toggles at zero, so one armed while the device is off turns it on. (1) Send the state;
       (2) wait for the device to report that state; (3) only then send the countdown; (4) if the report doesn't
       come, don't arm it, and report that rather than sending. This replaces Z2M's single combined payload.
     - Step 5 part 3 builds it (its steps 3 to 5).
+68. **A report of a harmful failure bans a maker string** ([evidence.md](../evidence.md#levels), Contrary
+    evidence): its doesn't-work entry, with `harms`, may rest on a credible report alone, an upstream issue or a
+    DeviceSide issue, cited as its source. A false "works" leaves a device on or off unattended; a false ban costs a
+    refusal a later record lifts. A plain failure, one that doesn't harm, still changes no level until a maintainer
+    confirms it. This settles the research note's open question 1 (step 7a), where evidence.md and Decision 35 read
+    differently.
+69. **Units groundwork before v0.1.0** (step 7a): the form prefill of the Zigbee manufacturer string, the mined seed
+    list and the OnTime read-back in the DEBUG line. **Declined:** the optional `manual_row.reports` field of issue
+    URLs, as most Z2M reports will come through Issues.
 
 ## Handoff
 

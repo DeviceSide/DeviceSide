@@ -61,8 +61,11 @@ Nothing ships unflagged unless it is Verified or Documented. Built and unit-test
 exercise, and that isn't Documented, ships behind `experimental` as untested. A sign-off
 covers only what was exercised; it never signs off untested code.
 
-**Contrary evidence:** a report of misbehavior doesn't change the level. The maintainer root-causes it, and the fix,
-the updated fact or a demotion lands with the finding.
+**Contrary evidence:** a credible report of a failure that [harms](#doesnt-work-not-yet-supported-untested), an
+upstream issue or a DeviceSide issue, bans the manufacturer string it names: a doesn't-work entry with `harms` may
+rest on that report alone, cited as its source. Any other report of misbehavior changes no level until a maintainer
+confirms it: they root-cause it, and the fix, the updated fact or a demotion lands with the finding
+([plan Decision 68](plans/2026-11-14-device-classes.md)).
 
 *Example:* Shelly's `turn_on_for` and `turn_off_for` calls are Verified on the `Switch` and `RGBCCT` components and
 Documented on `Light`, `CCT`, `RGB` and `RGBW`: the same call, addressed to another component, which Shelly's API
