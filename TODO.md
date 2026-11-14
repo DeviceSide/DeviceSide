@@ -59,7 +59,8 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   - [x] 5b. Test records as JSON, format 2 (`docs/test-records.schema.json`): a device per test with its class,
     validated in CI; the markdown records converted to format 1, which `check_release --signoffs` rejects; the
     rig's paired change writes format 2.
-  - [ ] 6. Core fix-ups from step 5's run.
+  - [ ] 6. Core fix-ups from step 5's run. Built on `claude/device-classes-6-core`: the harm rule in core
+    (`DoesntWork.harms`, `Unplaced`), and a group with a member not yet placed falling back to its members.
   - [ ] 7. ZHA classes; rig rerun.
   - [ ] 8. Hue classes, the `bridge_v1` and `smart_scene` checks moved to them; rig rerun.
   - [ ] 9. Matter classes; manual or rig sign-off.
