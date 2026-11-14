@@ -165,25 +165,37 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
    - **Lab run** on the branch tip, with the Sengled. It tests the classifier, the column, the coverage check, Works
      credited per class, and the refusals. Fixture: the A60 on Z2M, then the Sengled E11-G13 on Z2M in its place.
    - **Part 1, done** (`claude/device-classes-5-z2m`): everything that needs no probe string. The classifier
-     (`integrations/zigbee2mqtt/classes.py`) with the `hue` rule (manufacturer `Philips`, the constant
-     `native_control` reads too) and placeholder Tuya and Sengled rules that match nothing; `expand_group` from the
-     bridge cache's `bridge/groups` (every Z2M adapter has `native_groups`, so it serves classing and the fallback
-     only); `IntegrationInfo.default_class`, `other` on Z2M, refused at Verified by the registry; scopes: `hue`
-     Verified, the rest `experimental(...)`, and `turn_on_for` holding neither Tuya class nor `sengled`; the bundle's
-     class phrases and sections. `models.yaml`'s TS011F entry stays until part 2, as Decision 3 decides its fate.
+     (`integrations/zigbee2mqtt/classes.py`), rules as data, with the `hue` rule alone (manufacturer `Philips`, the
+     constant `native_control` reads too) and classes `hue` and `other`; `expand_group` from the bridge cache's
+     `bridge/groups` (every Z2M adapter has `native_groups`, so it serves classing and the fallback only);
+     `IntegrationInfo.default_class`, `other` on Z2M, refused at Verified by the registry; scopes `hue` Verified and
+     `other` `experimental(...)` on every adapter. Core, after the plan review: an empty group is skipped, and a group
+     with an Experimental member falls back while the option is off (Decision 8). `models.yaml`'s TS011F entry stays
+     until part 2, as Decision 3 decides its fate.
    - **Part 2, from the probe:**
-     - Rule data in `classes.py`: the `tuya_zcl`, `tuya_mcu` and `sengled` placeholders' conditions, from §1's
-       registry strings and §3's Tuya signal. If a signal is only in `bridge/devices` (not the registry), that is a
-       structure change, and goes to Jason with the open question above.
-     - Scope entries: the TS011F per Decision 3 (`doesnt_work` on `turn_on_for` for its own class, or nothing more:
-       `tuya_zcl` already refuses it as not supported); `sengled` on `turn_on_for` (stays out of scope if §4 shows it
-       ignores 0x42, else `experimental`); whether `sengled` on `set_attributes` doesn't work (the E11-G13 jumps to
-       full on `MoveToLevel` while off, research §3); whether `tuya_mcu` leaves `get_attributes` and
-       `set_attributes` (raw ZCL reads and writes a TS0601 can't take); whether `stop` on `other` is Documented once
-       the Tuya rules carve those devices out.
-     - Docs: `docs/evidence.md`'s tenets example (the TS011F), the `docs/integrations.md` Zigbee plugs and switches
-       line, `docs/models.yaml`'s TS011F reason (or the entry's move into code, one per integration), the TS011F and
-       Sengled model IDs in `docs/models.yaml`, and `index.md`'s "doesn't recognize them yet" lines.
+     - **Classes and rules,** each class added with its rule, from §1's registry strings and §3's Tuya signal:
+       `tuya_zcl`, `tuya_mcu`, and `sengled` if the Sengled needs its own. If a signal is only in `bridge/devices`
+       (not the registry), that is a structure change, and goes to Jason with the open question above. Each class
+       gets its `devices.yaml` phrase and section and its `index.md` entry, and the cards are regenerated.
+     - **Scope entries:** `tuya_zcl` and `tuya_mcu` left out of `turn_on_for` (not supported: Z2M turns `on_time`
+       into a plain On that never ends); `tuya_mcu` left out of `get_attributes` and `set_attributes` too (Decision
+       12); the rest `experimental(...)`. The TS011F per Decision 3 (`doesnt_work` on `turn_on_for`, or nothing more,
+       as `tuya_zcl` refuses it as not supported). `sengled` on `turn_on_for`: out of scope (not supported). The
+       E11-G13 already refuses 0x42 with `UNSUP_CLUSTER_COMMAND` on ZHA (`zha/internals.md`, Groups), so §4 only
+       confirms it on Z2M. `sengled` while off: the E11-G13 jumps to full on `MoveToLevel` while off (research §3),
+       so check every adapter that sends it from off (the raise ramps, `turn_on_for` with brightness), not just
+       `set_attributes`, whose state the Sengled lab run decides (Decision 13).
+     - **Documented for `other`,** settled per adapter, not only `stop`, once the Tuya rules take those devices
+       out of `other`.
+     - **Group members with no light:** `expand_group` answers None (membership unknowable) when a member address
+       resolves to no device or no entity in the group's domain, so a switch-exposed Tuya plug in a Hue group can't
+       leave the group Verified on its Hue members alone.
+     - **Docs:** `docs/evidence.md`'s tenets example (the TS011F), the `docs/integrations.md` Zigbee plugs and
+       switches line, `docs/models.yaml`'s TS011F reason (or the entry's move into code, one per integration), the
+       TS011F and Sengled model IDs in `docs/models.yaml`, and `index.md`'s Other brands paragraph on Tuya and
+       Sengled.
+     - **TODO and the rerun:** tick step 5 in `TODO.md`, and the lab run below, which restores the card's Works
+       line and clears the ten coverage warnings.
 6. **Core fix-ups** from step 5's run, before ZHA and Hue copy the pattern. If a package changes, its lab run is
    repeated.
 7. **ZHA.** The same shape. Lab run, with the Sengled.
@@ -559,3 +571,11 @@ A package changed after its lab run needs that run again before the release. Non
 10. **Z2M groups get sync member listing in step 5**, from the bridge cache's `bridge/groups`.
 11. **The "ZHA bulb" is the Sengled E11-G13**, already paired on ZHA, sharing one lab fixture with the A60 and the
     Shelly color bulb.
+
+## Decisions (Jason, 2026-11-14, during step 5)
+
+12. **`tuya_mcu` is not supported on `get_attributes` and `set_attributes`:** they send raw ZCL reads and writes,
+    which a TS0601 can't take.
+13. **The Sengled's `set_attributes` state** is decided by the Sengled lab run.
+14. **Parts 1 and 2 of step 5 ship as one PR.**
+15. **The Z2M card's Works line is lost until the lab rerun** fills the Capability column: accepted.

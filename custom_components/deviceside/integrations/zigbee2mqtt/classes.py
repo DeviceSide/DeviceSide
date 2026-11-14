@@ -23,11 +23,10 @@ from ...core.scope import experimental, verified
 HUE_MANUFACTURER = "Philips"
 
 HUE = "hue"
-TUYA_ZCL = "tuya_zcl"  # Tuya firmware speaking ZCL OnOff: TS011F, TS000x and their white labels
-TUYA_MCU = "tuya_mcu"  # Tuya MCU firmware behind cluster 0xEF00 datapoints: TS0601
-SENGLED = "sengled"
 OTHER = "other"  # the default class, never Verified (IntegrationInfo.default_class)
-CLASSES = frozenset({HUE, TUYA_ZCL, TUYA_MCU, SENGLED, OTHER})
+# A class joins with its rule, from a probe of the strings Z2M registers (docs/plans/2026-11-14-device-classes.md,
+# step 5 part 2: the Tuya classes and Sengled's).
+CLASSES = frozenset({HUE, OTHER})
 
 # The registry fields a rule may test.
 _FIELDS = frozenset({"manufacturer", "model", "model_id"})
@@ -36,8 +35,7 @@ _FIELDS = frozenset({"manufacturer", "model", "model_id"})
 @dataclass(frozen=True, slots=True)
 class Rule:
     """A class and the registry fields that place a device in it, each a regex the field must fully match; every
-    condition must hold. A rule with no conditions matches nothing: the placeholder for a class whose strings no
-    probe has shown yet."""
+    condition must hold, and there is at least one."""
 
     capability: str
     conditions: Mapping[str, str] = field(default_factory=dict)
@@ -45,28 +43,23 @@ class Rule:
     def __post_init__(self) -> None:
         if self.capability not in CLASSES - {OTHER}:
             raise ValueError(f"a rule names {self.capability!r}, no class but the default's")
+        if not self.conditions:
+            raise ValueError(f"a rule for {self.capability!r} tests nothing")
         if unknown := self.conditions.keys() - _FIELDS:
             raise ValueError(f"a rule tests {sorted(unknown)}, which the device registry doesn't hold")
 
     def matches(self, device: dr.DeviceEntry) -> bool:
-        return bool(self.conditions) and all(
+        return all(
             (value := getattr(device, name)) is not None and re.fullmatch(pattern, value)
             for name, pattern in self.conditions.items()
         )
 
 
-RULES: tuple[Rule, ...] = (
-    Rule(HUE, {"manufacturer": re.escape(HUE_MANUFACTURER)}),
-    # Placeholders, matching nothing until step 5 part 2 fills them from the lab probe's registry strings
-    # (docs/plans/2026-11-14-device-classes.md, step 3).
-    Rule(TUYA_ZCL),
-    Rule(TUYA_MCU),
-    Rule(SENGLED),
-)
+RULES: tuple[Rule, ...] = (Rule(HUE, {"manufacturer": re.escape(HUE_MANUFACTURER)}),)
 
-# The levels each adapter's scope holds, but turn_on_for's: Verified on Hue, whose bulbs every record ran on, and the
-# rest untested (docs/integrations/zigbee2mqtt/index.md, Device classes).
-CAPABILITIES = verified(HUE) | experimental(OTHER, TUYA_ZCL, TUYA_MCU, SENGLED)
+# The levels every adapter's scope holds: Verified on Hue, whose bulbs every record ran on, and the rest untested
+# (docs/integrations/zigbee2mqtt/index.md, Device classes).
+CAPABILITIES = verified(HUE) | experimental(OTHER)
 
 
 def device_class(device: dr.DeviceEntry) -> str:

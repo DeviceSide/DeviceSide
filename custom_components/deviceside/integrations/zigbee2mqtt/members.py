@@ -17,10 +17,11 @@ from ...core.runtime import get_runtime
 def expand_group(hass: HomeAssistant, target: Target) -> list[Target] | None:
     """Zigbee2MQTT's IntegrationInfo.expand_group: the group's members that have an entity in its domain, from the
     bridge cache's bridge/groups, so sync and with no I/O. The dispatcher classes a group by them, and falls back to
-    them when one's class is refused (docs/design.md, Groups).
+    them when one's class is refused, or Experimental with the option off (docs/design.md, Groups).
 
-    None, membership unknowable, while the cache holds no bridge/groups (before Z2M's first publish after a connect),
-    or for a group on another base topic; the group then counts as Experimental.
+    None, membership unknowable, while the cache holds no bridge/groups (before Z2M's publish after a connect), or
+    when there is no cache (its subscribe failed, which bridge_cache warns of once); the group then counts as
+    Experimental.
     """
     if (gid := group_id(target)) is None or (cache := bridge_cache.get(hass)) is None:
         return None
