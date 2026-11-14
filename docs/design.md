@@ -177,18 +177,20 @@ runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, 
   with `group_not_supported` when there is none. A native group an adapter addresses as one takes its members'
   classes, from `expand_group`, its weakest member's level for the gate. An empty one (`expand_group` lists no
   members) is skipped silently, named or not, as core skips an empty group. One whose members can't be listed (no
-  `expand_group`, it answered `None`, or it raised, logged) counts as Experimental. When a member's class doesn't
-  work or isn't supported, or, while Experimental features is off, is Experimental (the adapter, domain and fields not
-  flagged), the group falls back to its members: each available one not already a target is planned on its own,
-  indirect, so the good ones run and a refused or flagged one is skipped and logged (a member also named raises, as
-  its own target). A classifier that raised (logged) leaves the group's class unknown, so it falls back too, and each
-  member is classed again. With Experimental features on, a group whose weakest member is Experimental runs whole, as
-  one command. A group that falls back gets no result of its own: its planned members answer for it, including one
-  already a target, so naming a member beside its group changes nothing. Only when none of its members is planned
+  `expand_group`, it answered `None`, or it raised, logged) counts as Experimental: refused while Experimental
+  features is off. When a member's class doesn't work or isn't supported, or, while Experimental features is off, is
+  Experimental (the adapter, domain and fields not flagged), the group falls back to its members: each available one
+  not already a target is planned on its own, indirect, so the good ones run and a refused or flagged one is skipped
+  and logged (a member also named raises, as its own target). While Experimental features is off, a classifier that
+  raised (logged) leaves the group's class unknown, so it falls back too, and each member is classed again. With
+  Experimental features on, a group whose weakest member is Experimental, or whose class is unknown, runs whole, as
+  one command; a member named beside it then gets its own command as well as the group's. A group that falls back
+  gets no result of its own: its planned members answer for it, including one already a target, so naming a member
+  beside a group that falls back changes nothing. Only when none of its members is planned or left nothing to do
   (each refused, gated or unavailable) is the group itself refused, with its reason (the refused member's, or
-  `experimental_off`): raised if named, skipped and logged if not. A group whose members can't be listed can't show a
-  refused member, so it counts as Experimental: refused while Experimental features is off. For an adapter without `native_groups`, an `expand_group` that answers `None` or raises (logged)
-  leaves membership unknowable, so the group is refused as `group_not_supported`, as with none.
+  `experimental_off`): raised if named, skipped and logged if not. For an adapter without `native_groups`, an
+  `expand_group` that answers `None` or raises (logged) leaves membership unknowable, so the group is refused as
+  `group_not_supported`, as with none.
 - **Dispatcher.** Buckets targets by adapter, drops fields a target lacks, checks `supports()` (domain and fields in
   scope, and the adapter's own reasons), then the class (`AdapterScope.refusal`: a class in `doesnt_work` is refused as
   `doesnt_work`, one in neither it nor `capabilities` as `not_supported`; a call left nothing to send is first), clamps

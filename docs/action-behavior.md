@@ -88,7 +88,8 @@ raises or the entity is skipped.
   reach a response: the call skips or raises instead. A call that has nothing to do succeeds quietly as
   `unchanged` with a `detail`, checked before the target's class, so nothing-to-do wins over doesn't-work or not
   supported. A native group with a refused member, or an Experimental one while Experimental features is off, falls
-  back to its members where the integration can list them
+  back to its members where the integration can list them. A group that falls back has no entry of its own: its
+  members' entries answer for it, and it raises only when none of its members runs
   ([design.md](design.md#core-contract), Groups). A named target whose class doesn't work raises with the reason why.
 - **The class.** On an integration that names [classes](evidence.md#device-classes), each entry carries the
   class the call reached, as an attribute would: a command's beside `status` and `integration`, a query's among its

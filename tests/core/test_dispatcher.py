@@ -15,6 +15,7 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import floor_registry as fr
 from homeassistant.helpers import label_registry as lr
 
+from custom_components.deviceside.core.errors import TargetNotSupported
 from custom_components.deviceside.core.models import EntityResult, Status, TimedRequest
 from custom_components.deviceside.core.runtime import get_runtime
 from custom_components.deviceside.core.scope import (
@@ -321,12 +322,43 @@ async def test_a_group_whose_members_all_fail_is_refused_with_its_reason(
     allow_experimental(hass, False)
 
     with patch.object(FakeTurnOffFor, "scope", CLASSED):
-        assert await refusal(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5}) == reason
+        with pytest.raises(TargetNotSupported) as raised:
+            await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
+        assert raised.value.reason == reason
+        if members == ["switch.d"]:
+            # The refused member's own why, as a named target's.
+            assert raised.value.translation_key == "doesnt_work"
+            assert raised.value.translation_placeholders["why"] == "It never switches on"
         # Indirect, the group and its members are skipped and logged.
         assert await call(hass, "turn_off_for", {"area_id": area_id, "duration": 5}, return_response=False) is None
 
     assert reset_script.calls == []
     assert f"switch.fake_group ({reason})" in caplog.text
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_fallen_group_whose_member_has_nothing_to_do_is_answered_by_it(hass, fake, reset_script):
+    """light.a lacks brightness, so it is unchanged, and that answers for the group beside the refused light.d."""
+    modes = {"supported_color_modes": [ColorMode.BRIGHTNESS], "brightness": 100}
+    add_fake_entity(hass, fake, "light.a", attributes={"supported_color_modes": [ColorMode.ONOFF]})
+    add_fake_entity(hass, fake, "light.d", attributes=modes)
+    add_fake_entity(
+        hass,
+        fake,
+        "light.fake_group",
+        attributes={"fake_members": ["light.a", "light.d"], **modes},
+        unique_id="group:light.fake_group",
+    )
+    scope = replace(FakeSetAttributes.scope, capabilities=CLASSED.capabilities, doesnt_work=CLASSED.doesnt_work)
+    scope = replace(scope, native_groups=True)
+
+    with patch.object(FakeSetAttributes, "scope", scope):
+        response = await call(hass, "set_attributes", {"entity_id": "light.fake_group", "brightness": 50})
+
+    assert response == {
+        "light.a": {"status": "unchanged", "integration": "fake", "capability": "A", "detail": "fields_dropped"}
+    }
+    assert reset_script.calls == []
 
 
 async def test_an_expand_group_that_raises_is_logged_and_the_group_not_supported(hass, fake, reset_script, caplog):
