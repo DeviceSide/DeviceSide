@@ -18,7 +18,7 @@ Code and docs use these terms.
 - **Capability**: the code's name for a Class: `IntegrationInfo.capability` names a target's, `IntegrationInfo.classes`
   declares them, `AdapterScope.capabilities` holds a level per class, and a result reports it as `capability`.
 - **Class**: the set of devices that get the same call and run the same firmware family, as the integration names it
-  (Shelly: the RPC component; Zigbee2MQTT: `hue`, `tuya_zcl`, `tuya_mcu`, `other`). Each class stands on its own
+  (Shelly: the RPC component; Zigbee2MQTT: `hue`, `other`). Each class stands on its own
   evidence, and a device the integration can't place is in its default class, which is never Verified: a record on
   another maker's device adds that maker's class. Rules: [evidence.md](evidence.md#device-classes).
 - **Doesn't work**: a class that fails the call DeviceSide sends for an action. Listed in the adapter's
