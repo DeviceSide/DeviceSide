@@ -212,14 +212,12 @@ class Dispatcher:
                     _classed(adapter.result(target, Status.UNCHANGED, detail="fields_dropped"), target, found)
                 )
             elif refused := adapter.scope.refusal(found):
-                if target.is_group and (members := self._members(adapter, target)):
-                    # Each member is judged alone: the good ones run, a refused one is skipped as indirect.
+                # A native group falls back to its members, each judged alone: the good ones run, a refused one is
+                # skipped as indirect. With none left to plan, the group is refused as any target is.
+                if fresh := self._fallback(adapter, target, seen):
                     _LOGGER.debug(
                         "%s: %s falls back to its members (%s)", adapter.action, target.reported_id, refused[0]
                     )
-                    fresh = [
-                        member for member in members if _available(member.state) and member.reported_id not in seen
-                    ]
                     seen.update(member.reported_id for member in fresh)
                     pending.extend(fresh)
                 else:
@@ -244,7 +242,7 @@ class Dispatcher:
         classifier that raised (logged), give (None,), which the gate weighs as Experimental, as an unknown device."""
         if (capability := self.registry.integrations[adapter.integration].capability) is None:
             return ()
-        members = self._members(adapter, target) if target.is_group else [target]
+        members = (self._members(adapter, target) or []) if target.is_group else [target]
         try:
             found: Classes = tuple(capability(self.hass, member) for member in members) or (None,)
         except Exception:  # noqa: BLE001 - a classifier's bug must not abort the call: the class counts as unknown
@@ -253,32 +251,40 @@ class Dispatcher:
         _LOGGER.debug("%s on %s: %s is class %s", adapter.action, adapter.integration, target.reported_id, found)
         return found
 
-    def _members(self, adapter: Adapter, target: Target) -> list[Target]:
-        """A native group's members, as the integration's expand_group lists them; none when it has no expand_group,
-        or when it raised, which is logged."""
+    def _members(self, adapter: Adapter, target: Target) -> list[Target] | None:
+        """A native group's members, as the integration's expand_group lists them; None, membership unknowable, when it
+        has no expand_group or it raised, which is logged."""
         if (expand := self.registry.integrations[adapter.integration].expand_group) is None:
-            return []
+            return None
         try:
             return expand(self.hass, target)
         except Exception:  # noqa: BLE001 - one group's listing must not abort the call
             _LOGGER.exception("%s on %s: listing %s failed", adapter.action, adapter.integration, target.reported_id)
+            return None
+
+    def _fallback(self, adapter: Adapter, target: Target, seen: set[str]) -> list[Target]:
+        """The members a refused native group falls back to: its available ones not already targets; none for a
+        target that is no group, or a group whose members can't be listed."""
+        if not target.is_group:
             return []
+        members = self._members(adapter, target) or []
+        return [member for member in members if _available(member.state) and member.reported_id not in seen]
 
     def _expand_native_groups(
         self, adapter: Adapter, bucket: list[Target], results: list[EntityResult]
     ) -> list[Target]:
         if adapter.scope.native_groups or not any(target.is_group for target in bucket):
             return bucket
-        expand = self.registry.integrations[adapter.integration].expand_group
         expanded: list[Target] = []
         for target in bucket:
             if not target.is_group:
                 expanded.append(target)
-            elif expand is None:
+            elif (members := self._members(adapter, target)) is None:
+                # No expand_group, or one that raised (logged): membership is unknowable here.
                 results += _skip(target.reported_id, target.named, "group_not_supported", adapter.integration)
             else:
                 # Members are indirect, so an unavailable one is skipped quietly, as core skips one in an area.
-                expanded += [member for member in expand(self.hass, target) if _available(member.state)]
+                expanded += [member for member in members if _available(member.state)]
         # One copy per entity. A member the caller also named stays named, whichever copy came first, so it raises
         # rather than skips, as a named target does.
         by_id: dict[str, Target] = {}

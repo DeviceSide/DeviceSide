@@ -255,6 +255,44 @@ async def test_a_native_group_with_a_refused_member_falls_back_to_its_members(
 
 
 @pytest.mark.usefixtures("classed")
+async def test_a_refused_group_with_no_member_left_to_plan_is_refused_as_any_target(hass, fake, reset_script, caplog):
+    add_fake_entity(hass, fake, "switch.a")
+    add_fake_entity(hass, fake, "switch.c", state="unavailable")
+    add_fake_native_group(hass, fake, "switch.fake_group", ["switch.a", "switch.c"])
+    area_id = in_area(hass, "Den", "switch.fake_group")
+    scope = replace(CLASSED, capabilities=verified("A"))
+
+    with patch.object(FakeTurnOffFor, "scope", scope):
+        # switch.a is already a target and switch.c unavailable: named, the group raises with its member's reason.
+        data = {"entity_id": ["switch.a", "switch.fake_group"], "duration": 5}
+        assert await refusal(hass, "turn_off_for", data) == "not_supported"
+        assert reset_script.calls == []
+        # Indirect, it is skipped and logged.
+        response = await call(hass, "turn_off_for", {"area_id": area_id, "entity_id": "switch.a", "duration": 5})
+
+    assert response == {"switch.a": {"status": "sent", "integration": "fake", "capability": "A"}}
+    assert "turn_off_for skipped targets that can't take it: switch.fake_group (not_supported)" in caplog.text
+
+
+async def test_an_expand_group_that_raises_is_logged_and_the_group_not_supported(hass, fake, reset_script, caplog):
+    add_fake_entity(hass, fake, "light.a")
+    add_fake_native_group(hass, fake, "light.fake_group", ["light.a"])
+    registry = get_runtime(hass).registry
+
+    def fail(hass, target):
+        raise RuntimeError("listing bug")
+
+    registry.integrations["fake"] = replace(registry.integrations["fake"], expand_group=fail)
+    data = {"entity_id": "light.fake_group", "duration": 5}
+
+    assert await refusal(hass, "turn_on_for", data) == "group_not_supported"
+    assert [record.getMessage() for record in caplog.records if record.exc_info] == [
+        "turn_on_for on fake: listing light.fake_group failed"
+    ]
+    assert reset_script.calls == []
+
+
+@pytest.mark.usefixtures("classed")
 async def test_a_named_target_that_doesnt_work_raises_with_why(hass, fake, reset_script):
     add_fake_entity(hass, fake, "light.d")
 

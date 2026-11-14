@@ -177,8 +177,11 @@ runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, 
   classes, from `expand_group`, its weakest member's level for the gate. One that is empty, whose members can't be
   listed (no `expand_group`, or it raised), or whose classifier raised (logged) counts as Experimental. When a
   member's class doesn't work or isn't supported, the group falls back to its members: each available one not
-  already a target is planned on its own, indirect, so the good ones run and a refused one is skipped and logged. A
-  group whose members can't be listed can't show a refused member: it is refused unless Experimental features is on.
+  already a target is planned on its own, indirect, so the good ones run and a refused one is skipped and logged.
+  When none is left to plan (every member unavailable or already a target), the group itself is refused with the
+  refused member's reason: raised if named, skipped and logged if not. A group whose members can't be listed can't
+  show a refused member, so it counts as Experimental: refused while Experimental features is off. For an adapter without `native_groups`, an `expand_group` that raises
+  (logged) leaves membership unknowable, so the group is refused as `group_not_supported`, as with none.
 - **Dispatcher.** Buckets targets by adapter, drops fields a target lacks, checks `supports()` (domain and fields in
   scope, and the adapter's own reasons), then the class (`AdapterScope.refusal`: a class in `doesnt_work` is refused as
   `doesnt_work`, one in neither it nor `capabilities` as `not_supported`; a call left nothing to send is first), clamps
