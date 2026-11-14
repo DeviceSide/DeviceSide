@@ -186,14 +186,14 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
        `tuya_zcl`, `tuya_mcu`, and `sengled` if the Sengled needs its own. If a signal is only in `bridge/devices`
        (not the registry), that is a structure change, and goes to Jason with the open question above. Each class
        gets its `devices.yaml` phrase and section and its `index.md` entry, and the cards are regenerated.
-     - **Scope entries:** `tuya_zcl` and `tuya_mcu` left out of `turn_on_for` (not supported: Z2M turns `on_time`
-       into a plain On that never ends); `tuya_mcu` left out of `get_attributes` and `set_attributes` too (Decision
-       12); the rest `experimental(...)`. The TS011F per Decision 16: a `doesnt_work` entry on `turn_on_for`, matched on the model, holding with
-       Experimental on. `sengled` on `turn_on_for`: out of scope (not supported). The
-       E11-G13 already refuses 0x42 with `UNSUP_CLUSTER_COMMAND` on ZHA (`zha/internals.md`, Groups), so §4 only
-       confirms it on Z2M. `sengled` while off: the E11-G13 jumps to full on `MoveToLevel` while off (research §3),
-       so check every adapter that sends it from off (the raise ramps, `turn_on_for` with brightness), not just
-       `set_attributes`, whose state the Sengled lab run decides (Decision 13).
+     - **Scope entries:** `tuya_zcl` and `tuya_mcu` left out of `turn_on_for` (not supported: Z2M turns `on_time` into a
+       plain On that never ends); `tuya_mcu` left out of `get_attributes` and `set_attributes` too (Decision 12); the
+       rest `experimental(...)`. The TS011F per Decision 16: a `doesnt_work` entry on `turn_on_for`, matched on the
+       model, holding with Experimental on. `sengled` on `turn_on_for`: out of scope (not supported). The E11-G13
+       already refuses 0x42 with `UNSUP_CLUSTER_COMMAND` on ZHA (`zha/internals.md`, Groups), so §4 only confirms it on
+       Z2M. `sengled` while off: the E11-G13 jumps to full on `MoveToLevel` while off (research §3), so check every
+       adapter that sends it from off (the raise ramps, `turn_on_for` with brightness), not just `set_attributes`, whose
+       state the Sengled lab run decides (Decision 13).
      - **Documented for `other`,** settled per adapter, not only `stop`, once the Tuya rules take those devices
        out of `other`.
      - **Group members with no light:** `expand_group` answers None (membership unknowable) when some member
@@ -317,10 +317,19 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      existing fallback; one of unknown membership is refused whole. `capability` no longer takes `hass=None`.
      Z2M's package changed (the group fallback is its one behavior change), so step 5's pending lab run, on this
      branch's tip or later, covers it.
+   - **Step 6's review round** (Decisions 28 to 33): a response leaves out an `Unplaced` class; `DoesntWork.harms`
+     has no default; the dispatcher's `Classes` keeps each member's class undeduplicated, as `Unplaced` equals its
+     class; Z2M's `capability` reads bridge/devices once and logs at DEBUG what an unplaced device waits for.
 7. **ZHA.** The same shape. Lab run, with the Sengled.
-8. **Hue.** Classes `hue`, `other`, `bridge_v1` (not supported) and `smart_scene` (doesn't work, on `set_scene`).
-   `other` is decided per action (Decision 2). Lab run, with the Sengled on the bridge if it pairs. The `bridge_v1`
-   refusal is unit-tested only.
+8. **Hue.** Classes `hue`, `other` and `smart_scene` (doesn't work, on `set_scene`). `other` is decided per action
+   (Decision 2). Lab run, with the Sengled on the bridge if it pairs.
+   - **The v1 bridge is never supported (Decision 32),** and is refused in one place as a separate integration: a
+     `detect` hook on the `hue` domain picks it for a v1 config entry (`api_version` 1), as the tenets' "a different
+     gateway or API is a separate integration" says, not a `bridge_v1` class beside `hue` and `other`. Its refusal is
+     unit-tested only.
+   - The Hue `index.md` reason is corrected to the accurate one: v1 can't write to an off light or report changes
+     without polling, and Signify ended its support in 2020
+     ([research](../integrations/hue/research/2026-11-14-v1-api.md)).
 9. **Matter.** Lab run on the WiZ plug.
 10. **Close out.**
     - The house run: Shelly's switch devices, plus the color bulb unless it already ran in the lab.
@@ -449,10 +458,11 @@ placeholders, typed at run time and never written down.
      "onOff":…,"onTime":…}'`. t = 0 is the log's `Received MQTT message on 'zigbee2mqtt/…/set'` line carrying the
      case's command. A command the device refuses logs `Publish 'set' '<key>' to '…' failed: …` with the ZCL status.
      If the three-attribute read itself fails, read each attribute on its own.
-   - **ZHA:** state from the entity's history (the script polls it each second). `on_time` and `off_wait_time` by
-     hand: device page > ⋮ > Manage Zigbee device > Clusters > the OnOff endpoint, OnOff (0x0006) > Attributes >
-     Read. The script makes no baseline reads, so read both there before starting it, then at t ≈ 3 s, t ≈ 15 s and after each state change. The command's status is in HA's log on the
-     `homeassistant.components.zha` debug line for the issued command. t = 0 is that line.
+   - **ZHA:** state from the entity's history (the script polls it each second). `on_time` and `off_wait_time` by hand:
+     device page > ⋮ > Manage Zigbee device > Clusters > the OnOff endpoint, OnOff (0x0006) > Attributes > Read. The
+     script makes no baseline reads, so read both there before starting it, then at t ≈ 3 s, t ≈ 15 s and after each
+     state change. The command's status is in HA's log on the `homeassistant.components.zha` debug line for the issued
+     command. t = 0 is that line.
 
 #### 1. Registry strings
 
@@ -658,8 +668,8 @@ A package changed after its lab run needs that run again before the release. Non
 
 - Firmware matching in the classifier: needed the first time a firmware boundary decides behavior, such as the Sonoff
   ZBMINIR2 at 1.1.0.
-- Building Tuya pattern B on ZHA and pattern C, and a non-Hue bulb on the rig. The second lifts that maker's own class on Z2M and
-  ZHA, never `other` (Decision 5).
+- Building Tuya pattern B on ZHA and pattern C, and a non-Hue bulb on the rig. The second lifts that maker's own class
+  on Z2M and ZHA, never `other` (Decision 5).
 - Tuya's legacy `_TYST11_…` manufacturer strings: the Tuya rules don't match them, so such a device with a model
   that isn't `TS…` lands in `other`. Check how many devices that covers before adding a rule.
 - A query's own `capability` or `capabilities` data key: the class would overwrite it in the response. No query has
@@ -779,10 +789,36 @@ A package changed after its lab run needs that run again before the release. Non
 26. **The harm rule moves to core in step 6,** before ZHA copies the pattern: a `harms` flag on `DoesntWork` marks
     the entries whose call harms the class, and the classifier answers `None` for a target it can't place yet, which
     the dispatcher refuses as `class_unknown` on an adapter with a `harms` entry. Until then Z2M's `turn_on_for`
-    applies it in `supports()`.
+    applies it in `supports()`. *Superseded in part:* step 6's built note (Steps, 6) replaces "the classifier answers
+    `None`": a device not yet placed is answered as `Unplaced`, its class with a flag, and `None` keeps its meaning
+    of "can't class at all" (Decision 28).
 27. **Test records become JSON, format 2 (step 5b):** a device per test with its class, the Zigbee model ID, a
     format field, and one schema for rig records, `_manual` and `_facts`. Records are read only by code and Claude;
     the cards are the human view.
+
+## Decisions (Jason, 2026-11-14, step 6 review)
+
+28. **`None` on a harms adapter stays refused as `class_unknown`.** A target the integration can't class at all
+    could be the harmed class, so it is refused as an `Unplaced` one is; unlike that, it doesn't clear, so the docs
+    call `class_unknown` usually transient, not always. On an integration with a `harms` entry, a device no rule
+    matches gets the default class, never `None` (`IntegrationInfo.capability`).
+29. **Responses leave out a provisional class.** An `Unplaced` class is reported like `None`: no `capability` key
+    for that target, and no `capabilities` for a native group with such a member
+    ([action-behavior.md](../action-behavior.md#what-a-response-looks-like)).
+30. **`DoesntWork.harms` is a required keyword with no default.** Every entry states whether its call harms, by
+    Decision 33's test.
+31. **Step 6 stays unticked in TODO** until step 5's lab run on this branch's tip or later.
+32. **Hue v1 bridges are never supported.** The research
+    ([2026-11-14-v1-api.md](../integrations/hue/research/2026-11-14-v1-api.md)) found that v1 can do only a degraded
+    brightness raise, lower and stop: it can't write to an off light, has no push updates, and Signify ended its
+    support in 2020. Step 8 refuses it in one place as a separate integration, by a `detect` hook on the `hue`
+    domain, not as a `bridge_v1` class, and corrects the Hue `index.md` reason. Not built until step 8.
+33. **When a doesn't-work entry harms:** when its failure is deferred and unattended, leaving the device on or off
+    unasked after the user stopped watching, with no visible cue. So `turn_on_for`, `turn_off_for`, `set_auto_off`,
+    `set_auto_on`, `clear_auto_off` and `clear_auto_on` harm on failure; dimming and color
+    (`raise_brightness`, `lower_brightness`, `raise_hue`, `lower_hue`, `raise_saturation`, `lower_saturation`),
+    `stop`, `set_attributes` and `set_scene` don't, as a wrong result shows at once and one tap fixes it; and
+    `get_attributes` only reads. The test's home: `docs/evidence.md`, beside the harm rule.
 
 ## Handoff
 
@@ -790,7 +826,8 @@ A package changed after its lab run needs that run again before the release. Non
 
 **Done:** the lab probe, written up in `docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md` and
 `docs/integrations/hue/research/2026-11-14-lab-probe-hue.md`, with the facts in `docs/internals.md`, each bundle's
-`internals.md` and `docs/models.yaml`; Decisions 16 and 17 (numbered 8 and 9 on that branch); the step's plan review (in its last commit).
+`internals.md` and `docs/models.yaml`; Decisions 16 and 17 (numbered 8 and 9 on that branch); the step's plan review (in
+its last commit).
 
 **Next:** merged into step 5's branch after steps 4 and 5 part 1; step 5 part 2 follows.
 

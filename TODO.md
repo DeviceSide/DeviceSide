@@ -16,11 +16,11 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
 
 - [x] **RC audit**: `/rc-audit v0.1.0rc1` over `967bec0..HEAD` (rc1 was never tagged), fixes landed (#316). A second
   pass before the RC covers what lands after it.
-- [x] **Docs sign-off** by the repo maintainers, before the freeze, as it may change the design: README, `CONTRIBUTING.md`,
-  `docs/device-compatibility.md` and its "Help us test", `docs/integrations.md`, `docs/design.md`,
+- [x] **Docs sign-off** by the repo maintainers, before the freeze, as it may change the design: README,
+  `CONTRIBUTING.md`, `docs/device-compatibility.md` and its "Help us test", `docs/integrations.md`, `docs/design.md`,
   `docs/action-behavior.md`; the GitHub issue flows end to end (`.github/ISSUE_TEMPLATE/`, and the options flow's
-  "Report a device" step as a user meets it in HA); the forum draft (#319–#322). Each design change it raised
-  landed before the freeze.
+  "Report a device" step as a user meets it in HA); the forum draft (#319–#322). Each design change it raised landed
+  before the freeze.
 - [x] **Z2M `turn_on_for` late off**: `bulb_transition_then_off[light_dimmable]` was a step-file timing bug (the off
   window closed before DeviceSide's end read), not the bulb or DeviceSide; fixed in ha-rig #47.
 - [x] **Freeze** at `075895f`; lifted by the evidence-rules plan.
@@ -60,9 +60,11 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
     validated in CI; the markdown records converted to format 1, which `check_release --signoffs` rejects; the
     rig's paired change writes format 2.
   - [ ] 6. Core fix-ups from step 5's run. Built on `claude/device-classes-6-core`: the harm rule in core
-    (`DoesntWork.harms`, `Unplaced`), and a group with a member not yet placed falling back to its members.
+    (`DoesntWork.harms`, `Unplaced`), and a group with a member not yet placed falling back to its members. Open
+    until step 5's lab run on this branch's tip or later.
   - [ ] 7. ZHA classes; rig rerun.
-  - [ ] 8. Hue classes, the `bridge_v1` and `smart_scene` checks moved to them; rig rerun.
+  - [ ] 8. Hue classes, the `smart_scene` check moved to them, and the v1 bridge refused as a separate integration
+    (plan Decision 32); rig rerun.
   - [ ] 9. Matter classes; manual or rig sign-off.
   - [ ] 10. Close out: `models.yaml`'s shared `doesnt_work` removed, README regenerated, then the #350 comment.
 - [ ] **TS011F refusal on ZHA and Z2M** (device-classes plan, Decision 16): a `doesnt_work` entry for today's
@@ -75,20 +77,21 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   Every light or switch of a device with several in its domain is now refused as `not_addressable`
   ([internals](docs/integrations/zigbee2mqtt/internals.md#addressing)). Future work: address each
   endpoint, by its topic with the endpoint names Z2M 2.6.0+ publishes, and read its suffixed state keys back.
-- [ ] **Sign-offs** for v0.1.0, one per integration changed since v0.0.1 (`check_release.py --signoffs`), each a rig
-  run from ha-rig `main` (its records are format 2; format 1 records, converted from markdown, count for none). The runs for the formerly release-flagged adapters need these `--profile lab` cases, run
-  watched, the A60 visiting each network: Hue `saturation_down_stop`, `halts_brightness_and_saturation` and
-  `sets_color_while_off`; ZHA `hue_cycle_stop`, `saturation_down_stop` and `sets_color_while_off`; Z2M
-  `halts_a_lower_to_off`, `hue_cycle_stop`, `saturation_down_stop` and `sets_color_while_off`. Unattended alongside:
-  Z2M `lower_hue` `cycles_down_the_wheel[group_color]` (#222).
+- [ ] **Sign-offs** for v0.1.0, one per integration changed since v0.0.1 (`check_release.py --signoffs`), each a rig run
+  from ha-rig `main` (its records are format 2; format 1 records, converted from markdown, count for none). The runs for
+  the formerly release-flagged adapters need these `--profile lab` cases, run watched, the A60 visiting each network:
+  Hue `saturation_down_stop`, `halts_brightness_and_saturation` and `sets_color_while_off`; ZHA `hue_cycle_stop`,
+  `saturation_down_stop` and `sets_color_while_off`; Z2M `halts_a_lower_to_off`, `hue_cycle_stop`,
+  `saturation_down_stop` and `sets_color_while_off`. Unattended alongside: Z2M `lower_hue`
+  `cycles_down_the_wheel[group_color]` (#222).
   - [ ] Hue
   - [ ] Matter
   - [ ] Shelly. Accepted until then: `check_release --signoffs` fails on Shelly's class coverage gaps, as its
     records are format 1, with no class per test; no release is cut before its house rerun.
   - [ ] ZHA
   - [ ] Zigbee2MQTT
-- [ ] **Release notes**: hand-written v0.1.0 notes in `notes/`, signed off by the repo maintainers, after the RC installs cleanly
-  and before `cut-release`, so they describe what the RC ships.
+- [ ] **Release notes**: hand-written v0.1.0 notes in `notes/`, signed off by the repo maintainers, after the RC
+  installs cleanly and before `cut-release`, so they describe what the RC ships.
 - [ ] **v0.1.0**: `/rc-audit` over the new range, the RC and its HACS install, then `cut-release` with every
   integration signed off (`check_release.py --signoffs`). The release steps are in the `release` skill; the release
   body gets the signed-off notes.
@@ -103,8 +106,8 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   `DimUp`/`DimDown` ramps are stepped and have no `sweep_time` mapping). Findings:
   [`docs/integrations/shelly/research/2026-11-08-dimming.md`](docs/integrations/shelly/research/2026-11-08-dimming.md).
   RGBCCT; the records clear the flag.
-- [x] **Device support, part 1** (#262): support levels and contribution lanes in `CONTRIBUTING.md`, the README's "Will it
-  work with my device?", and the device report, device request and bug issue forms.
+- [x] **Device support, part 1** (#262): support levels and contribution lanes in `CONTRIBUTING.md`, the README's "Will
+  it work with my device?", and the device report, device request and bug issue forms.
 - [x] **Device support, part 2**: `scripts/gen_compat.py` generates `docs/compatibility.md` (levels and tested
   models per action and integration) and CI checks it is current. The README table, its "Will it work with my
   device?", `CONTRIBUTING.md` and the bug and device report forms link to it instead of `docs/test-records/`.
@@ -118,20 +121,21 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
 - [x] **Device compatibility cards** (#309): a generated card per integration in the README, from the records, scopes
   and `docs/devices.yaml`, backed by `docs/device-compatibility.md`, which replaces `docs/compatibility.md` and
   `docs/hardware-the-rig-lacks.md`.
-- [x] **Single report form** (#313): one device report form for results and bugs, several devices per report; the Support
-  field and the options flow's action step are gone.
+- [x] **Single report form** (#313): one device report form for results and bugs, several devices per report; the
+  Support field and the options flow's action step are gone.
 - [x] **Maintainers per integration** (#359): `IntegrationInfo.maintainers` on the cards, `.github/CODEOWNERS` and
   issue routing; `Support` retired; ⚠️ Unmaintained.
 - [x] **Docs bundles** (#362): each integration's user page, internals, device data, research and test records in
   `docs/integrations/<integration>/`, which its maintainers own; shared pages keep what spans integrations, and
   `docs/models.yaml` the models.
-- [x] **Code-owner enforcement** (#370): outside maintainers hold Triage, and CODEOWNERS keeps naming
-  them; review requests go out by hand until that becomes a bottleneck.
-- [x] **Fast track** (#370): a contributor who builds and tests on their own hardware opens a PR directly, with no
-  issue (CONTRIBUTING, PR template); an Experimental item moves to Reported, on its maintainer's request, after five working reports from other users.
+- [x] **Code-owner enforcement** (#370): outside maintainers hold Triage, and CODEOWNERS keeps naming them; review
+  requests go out by hand until that becomes a bottleneck.
+- [x] **Fast track** (#370): a contributor who builds and tests on their own hardware opens a PR directly, with no issue
+  (CONTRIBUTING, PR template); an Experimental item moves to Reported, on its maintainer's request, after five working
+  reports from other users.
 - [x] **Retests and Stale tests** (#374): every changed adapter is retested before release (a rig record, a maintainer's
-  `_manual.json` row or an accepted report at a release); one left untested at the cut ships live, marked ⚠️ Stale tests,
-  with a call for testers in the release notes.
+  `_manual.json` row or an accepted report at a release); one left untested at the cut ships live, marked ⚠️ Stale
+  tests, with a call for testers in the release notes.
 - [x] **Shared code proof** (#377): superseded by the evidence rules, under which `core/` changes need no device
   sign-off.
 
@@ -139,8 +143,9 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
 
 - [ ] **Code comments cite the bundles**: eight comments under `integrations/` (hue, matter, zha, zigbee2mqtt) still
   cite `docs/integration-internals.md` or `docs/integrations.md`; point each at its bundle's
-  `internals.md#tested-behavior` (Z2M `addressing.py`: `index.md#sharp-edges`), which `tests/scripts/test_doc_anchors.py`
-  then checks; widen that test to page-only citations (`docs/….md` with no anchor) too.
+  `internals.md#tested-behavior` (Z2M `addressing.py`: `index.md#sharp-edges`), which
+  `tests/scripts/test_doc_anchors.py` then checks; widen that test to page-only citations (`docs/….md` with no anchor)
+  too.
 
 - [ ] **Forum announcement**, once v0.1.0 ships: refresh the draft's testers-wanted list from [Try it: Experimental
   features](docs/device-compatibility.md#try-it-experimental-features) and check every link resolves (the issue forms,
