@@ -12,8 +12,8 @@ TODO.md, README.md (regenerated), custom_components/deviceside/core/{scope.py, a
 dispatcher.py, errors.py}, the five integration packages and their bundles, scripts/gen_compat.py, and their tests.
 Tests-with: the ha-rig PR (step 2) writes the class each test reached into the records. It lands, and Shelly is rerun
 on it, before the core PR (step 3), whose coverage check reads that column.
-Depends-on: none. #350 (Control4) gets no comment and no change until step 8. It is `experimental=True` throughout, so
-none of these steps blocks it.
+Depends-on: none. #350 (Control4) has been warned, and gets no change until step 8. It is `experimental=True`
+throughout, so none of these steps blocks it.
 
 ## Why
 
@@ -144,8 +144,17 @@ sign-off. That rerun is the test of the framework on the current repo scope.
    - Remove `models.yaml`'s shared `doesnt_work` once nothing reads it.
    - Regenerate the README.
    - Tick TODO.
-   - Then comment on #350: the classes it will need to leave `experimental`, and what its manual records should note
-     (the Director's driver or proxy type).
+   - Then follow up on #350, whose maintainer was warned before step 1 and asked whether to propose the change
+     themselves or have a PR drafted for them to check against their hardware. Either way, Control4 needs, to leave
+     `experimental`:
+     - An `IntegrationInfo.capability` naming the class from the Director's driver or proxy type: Zigbee bulb driver,
+       light group, wired dimmer. They already differ in measured behavior (65,535 ms against 86,400,000 ms for the
+       longest ramp). Confirm first that the type can be read with no I/O, from the device registry or the item list
+       core caches at setup; if it can't, `capability` can't classify Control4 as specified.
+     - A Control4 light group is one Director item on its own driver, not a native group in this plan's sense, so it
+       is its own class; the weakest-member rule doesn't apply to it.
+     - `scope.capabilities` on all five adapters, and the class in each manual record.
+     - Optional: `stop`'s `not_dimmable` check could become a per-class `doesnt_work` entry.
 
 ## Deferred until something needs it
 
