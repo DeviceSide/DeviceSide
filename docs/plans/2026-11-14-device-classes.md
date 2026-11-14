@@ -139,7 +139,8 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
    - Shelly moves from its mixin to `IntegrationInfo.capability`. Its scopes don't change.
    - `gen_compat`: the new tiers, `doesnt_work` read from code, and the coverage check, warning only (Decision 7).
      `check_release.py`: the same check, failing.
-   - Decision 5's rule in `docs/evidence.md`.
+   - `gen_compat`'s Capability-cell regex captures any cell, so a malformed cell fails loudly instead of dropping
+     a pass (PR #423 audit, Low).
    - Exact instructions to Jason for the second ha-rig change, which reads the class from the result.
 5. **Zigbee2MQTT (the driver).**
    - Classes from the probe's real strings: `hue`, `tuya_zcl`, `tuya_mcu`, `other`, and `sengled` if the Sengled needs
@@ -503,12 +504,13 @@ A package changed after its lab run needs that run again before the release. Non
 
 5. **The default class is never Verified.** `other` can be Documented per action where `docs/evidence.md`'s Documented
    test holds (no known class departs), and is otherwise `experimental(...)`. A record on a non-Hue device lifts a new
-   named class for its maker (for example `ikea`), not `other`. Step 3 writes the rule into `docs/evidence.md`.
+   named class for its maker (for example `ikea`), not `other`.
+   Written into `docs/evidence.md` by step 3's PR audit fixes.
 6. **The class a call used is reported in its response.** `IntegrationInfo.capability(hass, target)` stays as
    designed. Each target's result carries the class the dispatcher used: a command's beside `status` and
    `integration`, a query's in its entity's data, a native group's as its members' classes. The rig records that
-   instead of classifying a stand-in target, so a record holds the class the call really reached. Step 3 adds the
-   field; the rig then reads it (ha-rig, after step 3).
+   instead of classifying a stand-in target, so a record holds the class the call really reached.
+   Step 4 (formerly 3) adds the field; the rig then reads it (ha-rig, after step 4).
 7. **The coverage check warns during development and fails at release.** `gen_compat --check` prints each gap on
    every PR, so a developer sees it early. `check_release.py` fails on it at `cut-release`, with the other release
    gates. No allowlist is needed while records catch up (Shelly's house rerun).
