@@ -292,6 +292,17 @@ async def test_an_expand_group_that_raises_is_logged_and_the_group_not_supported
     assert reset_script.calls == []
 
 
+async def test_an_expand_group_that_can_t_list_the_group_leaves_it_not_supported(hass, fake, reset_script):
+    """None is its answer for membership unknowable now (Zigbee2MQTT's, before bridge/groups arrives)."""
+    add_fake_entity(hass, fake, "light.a")
+    add_fake_native_group(hass, fake, "light.fake_group", ["light.a"])
+    registry = get_runtime(hass).registry
+    registry.integrations["fake"] = replace(registry.integrations["fake"], expand_group=lambda hass, target: None)
+
+    assert await refusal(hass, "turn_on_for", {"entity_id": "light.fake_group", "duration": 5}) == "group_not_supported"
+    assert reset_script.calls == []
+
+
 @pytest.mark.usefixtures("classed")
 async def test_a_named_target_that_doesnt_work_raises_with_why(hass, fake, reset_script):
     add_fake_entity(hass, fake, "light.d")

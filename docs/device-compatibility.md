@@ -15,9 +15,9 @@ same command differently. Each claim is at one of two levels of proof:
   differing only in addressing, and no known class of devices handles it differently.
 
 New features ship as **Experimental** until a maintainer judges them ready for everyone: they stay off until you
-turn on **Experimental features** in **Configure > Settings**. Whether they work or not, please tell us with **Report a
-device test result or bug** in the same menu: your reports help ship them to everyone. How we decide:
-[evidence rules](evidence.md).
+turn on **Experimental features** in **Configure > Settings**, and so does a device DeviceSide can't place in a known
+class. Whether they work or not, please tell us with **Report a device test result or bug** in the same menu: your
+reports help ship them to everyone. How we decide: [evidence rules](evidence.md).
 
 ## Maintainers
 
@@ -136,18 +136,26 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 
 | Action | Level | Items | Tested models | Records |
 |---|---|---|---|---|
-| `get_attributes` | Verified | light entities | `9290024684`, firmware `1.163.1`<br>`8720169392182`, firmware `1.164.2`<br>`9290018217`, firmware `1.122.2`<br>group | [record](integrations/zigbee2mqtt/test-records/get_attributes.md) |
-| `get_attributes` | Experimental | switch entities | | |
-| `lower_brightness` | Verified | light entities; brightness fields | `9290024684`, firmware `1.163.1`<br>group | [record](integrations/zigbee2mqtt/test-records/lower_brightness.md) |
-| `lower_hue` | Verified | light entities; hue fields | `8720169392182`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/lower_hue.md) |
-| `lower_saturation` | Verified | light entities; saturation fields | `8720169392182`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/lower_saturation.md) |
-| `raise_brightness` | Verified | light entities; brightness fields | `9290024684`, firmware `1.163.1`<br>group | [record](integrations/zigbee2mqtt/test-records/raise_brightness.md) |
-| `raise_hue` | Verified | light entities; hue fields | `8720169392182`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/raise_hue.md) |
-| `raise_saturation` | Verified | light entities; saturation fields | `8720169392182`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/raise_saturation.md) |
-| `set_attributes` | Verified | light entities; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, min_brightness, max_brightness fields | `9290024684`, firmware `1.163.1`<br>`8720169392182`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/set_attributes.md) |
-| `stop` | Verified | light entities | `9290024684`, firmware `1.163.1`<br>`8720169392182`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/stop.md) |
-| `turn_on_for` | Verified | light entities; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, transition fields | `LWA012`, firmware `1.104.2`<br>`LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2` | [record](integrations/zigbee2mqtt/test-records/turn_on_for.md) |
-| `turn_on_for` | Experimental | switch entities | | |
+| `get_attributes` | Verified | light entities; hue classes | `9290024684`, firmware `1.163.1`<br>`8720169392182`, firmware `1.164.2`<br>`9290018217`, firmware `1.122.2`<br>group | [record](integrations/zigbee2mqtt/test-records/get_attributes.md) |
+| `get_attributes` | Experimental | switch entities; other, tuya_zcl, tuya_mcu, sengled classes | | |
+| `lower_brightness` | Verified | light entities; hue classes; brightness fields | `9290024684`, firmware `1.163.1`<br>group | [record](integrations/zigbee2mqtt/test-records/lower_brightness.md) |
+| `lower_brightness` | Experimental | other, tuya_zcl, tuya_mcu, sengled classes | | |
+| `lower_hue` | Verified | light entities; hue classes; hue fields | `8720169392182`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/lower_hue.md) |
+| `lower_hue` | Experimental | other, tuya_zcl, tuya_mcu, sengled classes | | |
+| `lower_saturation` | Verified | light entities; hue classes; saturation fields | `8720169392182`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/lower_saturation.md) |
+| `lower_saturation` | Experimental | other, tuya_zcl, tuya_mcu, sengled classes | | |
+| `raise_brightness` | Verified | light entities; hue classes; brightness fields | `9290024684`, firmware `1.163.1`<br>group | [record](integrations/zigbee2mqtt/test-records/raise_brightness.md) |
+| `raise_brightness` | Experimental | other, tuya_zcl, tuya_mcu, sengled classes | | |
+| `raise_hue` | Verified | light entities; hue classes; hue fields | `8720169392182`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/raise_hue.md) |
+| `raise_hue` | Experimental | other, tuya_zcl, tuya_mcu, sengled classes | | |
+| `raise_saturation` | Verified | light entities; hue classes; saturation fields | `8720169392182`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/raise_saturation.md) |
+| `raise_saturation` | Experimental | other, tuya_zcl, tuya_mcu, sengled classes | | |
+| `set_attributes` | Verified | light entities; hue classes; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, min_brightness, max_brightness fields | `9290024684`, firmware `1.163.1`<br>`8720169392182`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/set_attributes.md) |
+| `set_attributes` | Experimental | other, tuya_zcl, tuya_mcu, sengled classes | | |
+| `stop` | Verified | light entities; hue classes | `9290024684`, firmware `1.163.1`<br>`8720169392182`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/stop.md) |
+| `stop` | Experimental | other, tuya_zcl, tuya_mcu, sengled classes | | |
+| `turn_on_for` | Verified | light entities; hue classes; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, transition fields | `LWA012`, firmware `1.104.2`<br>`LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2` | [record](integrations/zigbee2mqtt/test-records/turn_on_for.md) |
+| `turn_on_for` | Experimental | switch entities; other classes | | |
 
 | Doesn't work | Why | Source |
 |---|---|---|

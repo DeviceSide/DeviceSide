@@ -31,12 +31,14 @@ def add_z2m_entity(
     ieee: str = IEEE,
     state: str = "off",
     attributes: dict | None = None,
-    manufacturer: str | None = None,
+    manufacturer: str | None = "Philips",
     name: str | None = None,
 ) -> str:
     """Register one Z2M device entity with the identifier Z2M writes via MQTT discovery.
 
-    Each device has its own device-registry entry (keyed by ieee); all share one config entry.
+    Each device has its own device-registry entry (keyed by ieee); all share one config entry. It is a Hue device
+    unless the manufacturer says otherwise, as every record's is, so its class is Verified (integrations/zigbee2mqtt/
+    classes.py).
     """
     domain, object_id = entity_id.split(".")
     device = dr.async_get(hass).async_get_or_create(
@@ -72,7 +74,9 @@ def add_z2m_group(
     group ID (getDevicePayload and getEncodedBaseTopic in lib/extension/homeassistant.ts).
     """
     encoded = "".join(str(ord(c)) for c in base_topic)
-    return add_z2m_entity(hass, entry, entity_id, ieee=f"{encoded}_{group_id}", state=state, name=name)
+    return add_z2m_entity(
+        hass, entry, entity_id, ieee=f"{encoded}_{group_id}", state=state, manufacturer="Zigbee2MQTT", name=name
+    )
 
 
 class Broker:
