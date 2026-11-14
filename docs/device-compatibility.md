@@ -15,9 +15,8 @@ same command differently. Each claim is at one of two levels of proof:
   differing only in addressing, and no known class of devices handles it differently.
 
 New features ship as **Experimental** until a maintainer judges them ready for everyone: they stay off until you
-turn on **Experimental features** in **Configure > Settings**, and so does a device DeviceSide can't place in a known
-class. Whether they work or not, please tell us with **Report a device test result or bug** in the same menu: your
-reports help ship them to everyone. How we decide:
+turn on **Experimental features** in **Configure > Settings**. Whether they work or not, please tell us with **Report a
+device test result or bug** in the same menu: your reports help ship them to everyone. How we decide:
 [evidence rules](evidence.md).
 
 ## Maintainers

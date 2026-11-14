@@ -137,7 +137,7 @@ SHARED_KEYS = {"models", "doesnt_work"}  # each a list
 BUNDLE_KEYS = {"column", "column_order", "requires", "capabilities", "doesnt_work"}
 MODEL_KEYS = {"name", "ids", "type", "section"}
 CLASS_KEYS = {"phrase", "section"}
-BROKEN_KEYS = {"what", "integrations", "reason", "source", "section", "actions"}  # actions: from code only
+BROKEN_KEYS = {"what", "integrations", "reason", "source", "section"}
 GROUPS_ENTRY = ("native groups", "Native groups")  # (phrase, section) for the groups a record tested
 
 
@@ -254,8 +254,13 @@ def load_raw(raw: dict, registry: AdapterRegistry) -> Data:
         for item, entry in items.items():
             need(entry, f"capabilities {key} {item}", ("phrase", "section"), keys=CLASS_KEYS)
             data.sections.add((key, entry["section"]))
-    for entry in raw["doesnt_work"] + code_broken(registry):
+    for entry in raw["doesnt_work"]:
         load_broken(entry, set(registry.integrations), data)
+    for entry in code_broken(registry):
+        # Validated as a devices.yaml entry is, so a scope's actions never pass for a key devices.yaml may hold.
+        actions = entry.pop("actions")
+        load_broken(entry, set(registry.integrations), data)
+        entry["actions"] = actions
     return data
 
 
@@ -374,9 +379,9 @@ def card_evidence(adapter) -> Evidence:
     for level, item, noun in items(adapter.scope):
         if level is Level.EXPERIMENTAL:
             flagged.setdefault(noun, set()).add(item)
-    evidence = Evidence.of(adapter)
     if adapter.scope.experimental or "fields" in flagged:
         return Evidence([], [])
+    evidence = Evidence.of(adapter)
     if not flagged:
         return evidence
     domains = set(adapter.scope.domains) - flagged.get("entities", set())
