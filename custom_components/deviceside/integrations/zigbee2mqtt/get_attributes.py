@@ -39,11 +39,7 @@ class Z2MGetAttributes(Adapter[Request]):
     )
 
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:
-        if (reason := super().supports(hass, request, target)) is not None:
-            return reason
-        if (reason := not_addressable(target, reads_state=True)) is not None:
-            return reason
-        return None
+        return super().supports(hass, request, target) or not_addressable(target, reads_state=True)
 
     async def execute(self, hass: HomeAssistant, request: Request, targets: list[Target]) -> list[EntityResult]:
         async def read(target: Target) -> EntityResult:

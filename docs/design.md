@@ -18,9 +18,10 @@ Code and docs use these terms.
 - **Capability**: the code's name for a Class: `IntegrationInfo.capability` names a target's, `IntegrationInfo.classes`
   declares them, `AdapterScope.capabilities` holds a level per class, and a result reports it as `capability`.
 - **Class**: the set of devices that get the same call and run the same firmware family, as the integration names it
-  (Shelly: the RPC component; Zigbee2MQTT: `hue`, `tuya_zcl`, `tuya_ts011f`, `tuya_mcu`, `sengled`, `other`). Each
-  class stands on its own evidence, and a device the integration can't place is in its default class, which is never Verified: a record on
-  another maker's device adds that maker's class. Rules: [evidence.md](evidence.md#device-classes).
+  (Shelly: the RPC component; Zigbee2MQTT: `hue`, `tuya_zcl`, `tuya_ts011f`, `tuya_mcu`, `sengled`, `gledopto`,
+  `other`). Each class stands on its own evidence, and a device the integration can't place is in its default class,
+  which is never Verified (except where a call is known to harm: there unknown is refused): a record on another
+  maker's device adds that maker's class. Rules: [evidence.md](evidence.md#device-classes).
 - **Doesn't work**: a class that fails, or is harmed by, the call DeviceSide sends for an action, even when an unbuilt
   call would work. Listed in the adapter's
   `AdapterScope.doesnt_work` with a reason and source, refused (`doesnt_work`) and named on the card.
@@ -161,16 +162,19 @@ runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, 
   integration isn't installed) records it unavailable and setup carries on.
 - **Classes.** `IntegrationInfo.capability(hass, target) -> str | None` names the target's class: sync and cheap, no
   I/O, reading only the registry device, the config entry or the integration's data (Zigbee2MQTT: the bridge cache's
-  `bridge/devices`, for a device's Zigbee strings, with the registry as fallback). A device it can't place gets the
-  default class; `None` is only for a target it can't class at all (a Shelly entity with no RPC component), which
-  counts as Experimental. It takes `hass=None` on a target with no config entry or state, so the rig can class a
-  stand-in (Zigbee2MQTT then reads the registry alone), until the rig reads the class from the result. Every adapter of the integration
-  sees the same class, and maps the classes it serves to its own branch in `execute`; a class is a device class, not a
-  call pattern, as patterns are per action. `IntegrationInfo.classes` declares every class it can name. The registry
-  refuses an integration with `capability` unless every adapter's scope has `capabilities`, one without unless none
-  has, a scope class the integration doesn't declare, and a scope holding `IntegrationInfo.default_class` (the class
-  a device it can't place gets; none on Shelly) as Verified. `AdapterScope.doesnt_work` maps a class to a
-  `DoesntWork` (what, reason, source); a class in it is never in `capabilities`.
+  `bridge/devices`, for a device's Zigbee strings, with the registry as fallback, which can't place a Tuya device under
+  another vendor's definition, so that lands in `other` until the cache fills). A device it can't place gets the default
+  class; `None` is only for a target it can't class at all (a Shelly entity with no RPC component), which counts as
+  Experimental. Where a call is known to harm, the adapter refuses either
+  ([evidence.md](evidence.md#doesnt-work-not-yet-supported-untested)). It takes `hass=None` on a target with no config
+  entry or state, so the rig can class a stand-in (Zigbee2MQTT then reads the registry alone), until the rig reads the
+  class from the result. Every adapter of the integration sees the same class, and maps the classes it serves to its own
+  branch in `execute`; a class is a device class, not a call pattern, as patterns are per action.
+  `IntegrationInfo.classes` declares every class it can name. The registry refuses an integration with `capability`
+  unless every adapter's scope has `capabilities`, one without unless none has, a scope class the integration doesn't
+  declare, and a scope holding `IntegrationInfo.default_class` (the class a device it can't place gets; none on Shelly)
+  as Verified. `AdapterScope.doesnt_work` maps a class to a `DoesntWork` (what, reason, source); a class in it is never
+  in `capabilities`.
 - **Resolver.** Candidates are the available integrations whose `ha_domain` is the entity's registry platform;
   one with a `detect` hook wins first (Z2M over plain MQTT). A `switch_as_x` light resolves to the switch it wraps,
   and results report the light.
@@ -181,7 +185,8 @@ runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, 
   classes, from `expand_group`, its weakest member's level for the gate. An empty one (`expand_group` lists no
   members) is skipped silently, named or not, as core skips an empty group. One whose members can't be listed (no
   `expand_group`, it answered `None`, or it raised, logged) counts as Experimental: refused while Experimental
-  features is off. When a member's class doesn't work or isn't supported, or, while Experimental features is off, is
+  features is off, and, where a call is known to harm, by that adapter's `supports()` with them on
+  ([evidence.md](evidence.md#doesnt-work-not-yet-supported-untested)). When a member's class doesn't work or isn't supported, or, while Experimental features is off, is
   Experimental (the adapter, domain and fields not flagged), the group falls back to its members: each available one
   not already a target is planned on its own, indirect, so the good ones run and a refused or flagged one is skipped
   and logged (a member also named raises, as its own target). While Experimental features is off, a classifier that

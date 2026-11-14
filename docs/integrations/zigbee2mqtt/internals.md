@@ -31,10 +31,9 @@ One section per adapter module, named after it.
 ### `classes`
 
 The class rules read the registry device (Z2M's vendor and definition) and, for a device the bridge cache's
-`bridge/devices` lists, its Zigbee `manufacturer` and `model_id` there, indexed by IEEE once per payload. A Tuya rule
-on the Zigbee strings goes first; registry rules after them place a Tuya device by the vendor `Tuya` or a definition
-model starting `TS` while `bridge/devices` isn't held, as after a connect (Tested behavior: the registry holds no
-Zigbee strings).
+`bridge/devices` lists, its Zigbee `manufacturer` and `model_id` there, indexed by IEEE once per payload (Tested
+behavior: the registry holds no Zigbee strings). The rules, their order and the registry fallback's limit are in the
+`classes.py` docstring.
 
 Which adapters send a Level command to a light that is off, as a Sengled E11-G13 jumps to full on `MoveToLevel`
 while off on ZHA ([ZHA internals](../zha/internals.md), Tested behavior). Read from the code, 2026-11-14; nothing
