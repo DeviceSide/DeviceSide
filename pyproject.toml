@@ -42,6 +42,8 @@ ignore-words-list = "hass,currenty"
 dev = [
     # The version HA's hue manifest requires in the HA build pytest-homeassistant-custom-component pins.
     "aiohue==4.9.0",
+    # The test records' schema (docs/test-records.schema.json), which check_release and gen_compat validate against.
+    "jsonschema>=4.26.0",
     "pytest-homeassistant-custom-component==0.13.373",
     "pytest-randomly>=5.1.0",
     # CI runs the suite on one worker per runner vCPU (`-n auto`), about half the serial time.
