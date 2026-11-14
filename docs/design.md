@@ -165,17 +165,19 @@ runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, 
   I/O, reading only the registry device, the config entry or the integration's data (Zigbee2MQTT's sources and when
   a device counts as placed: [its page](integrations/zigbee2mqtt/index.md#device-classes)). A device it can't place
   gets the default class; `None` is only for a target it can't class at all (a Shelly entity with no RPC component),
-  which counts as Experimental. Where a call is known to harm, the adapter refuses a target whose class rests on
-  information DeviceSide doesn't have yet, even with Experimental features on; one placed in the default class from
-  full information stays Experimental ([evidence.md](evidence.md#doesnt-work-not-yet-supported-untested)). It takes `hass=None` on a target with no config
-  entry or state, so the rig can class a stand-in (Zigbee2MQTT then reads the registry alone), until the rig reads the
-  class from the result. Every adapter of the integration sees the same class, and maps the classes it serves to its own
-  branch in `execute`; a class is a device class, not a call pattern, as patterns are per action.
+  which counts as Experimental. A device it placed from partial information, whose class a later report could move,
+  gets its class as `Unplaced` (`core/scope.py`), a flag on the class: every adapter takes it as that class except
+  one whose scope holds a `doesnt_work` entry marked `harms` (its call acts wrong on that class), where the
+  dispatcher refuses it, and `None`, as `class_unknown`, even with Experimental features on; one placed in the
+  default class from full information stays Experimental
+  ([evidence.md](evidence.md#doesnt-work-not-yet-supported-untested)). Every adapter of the integration sees the same
+  class, and maps the classes it serves to its own branch in `execute`; a class is a device class, not a call
+  pattern, as patterns are per action.
   `IntegrationInfo.classes` declares every class it can name. The registry refuses an integration with `capability`
   unless every adapter's scope has `capabilities`, one without unless none has, a scope class the integration doesn't
   declare, and a scope holding `IntegrationInfo.default_class` (the class a device it can't place gets; none on Shelly)
-  as Verified. `AdapterScope.doesnt_work` maps a class to a `DoesntWork` (what, reason, source); a class in it is never
-  in `capabilities`.
+  as Verified. `AdapterScope.doesnt_work` maps a class to a `DoesntWork` (what, reason, source, and `harms`); a class
+  in it is never in `capabilities`.
 - **Resolver.** Candidates are the available integrations whose `ha_domain` is the entity's registry platform;
   one with a `detect` hook wins first (Z2M over plain MQTT). A `switch_as_x` light resolves to the switch it wraps,
   and results report the light.
@@ -186,14 +188,15 @@ runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, 
   classes, from `expand_group`, its weakest member's level for the gate. An empty one (`expand_group` lists no
   members) is skipped silently, named or not, as core skips an empty group. One whose members can't be listed (no
   `expand_group`, it answered `None`, or it raised, logged) counts as Experimental: refused while Experimental
-  features is off, and, where a call is known to harm, by that adapter's `supports()` with them on
-  ([evidence.md](evidence.md#doesnt-work-not-yet-supported-untested)). When a member's class doesn't work or isn't supported, or, while Experimental features is off, is
+  features is off, and, where a call is known to harm, as `class_unknown` with them on
+  ([evidence.md](evidence.md#doesnt-work-not-yet-supported-untested)). When a member's class doesn't work or isn't
+  supported, or isn't placed yet where a call is known to harm, or, while Experimental features is off, is
   Experimental (the adapter, domain and fields not flagged), the group falls back to its members: each available one
   not already a target is planned on its own, indirect, so the good ones run and a refused or flagged one is skipped
-  and logged (a member also named raises, as its own target). While Experimental features is off, a classifier that
-  raised (logged) leaves the group's class unknown, so it falls back too, and each member is classed again. With
-  Experimental features on, a group whose weakest member is Experimental, or whose class is unknown, runs whole, as
-  one command; a member named beside it then gets its own command as well as the group's. A group that falls back
+  and logged (a member also named raises, as its own target). While Experimental features is off, or where a call is
+  known to harm, a classifier that raised (logged) leaves the group's class unknown, so it falls back too, and each
+  member is classed again. With Experimental features on, a group whose weakest member is Experimental, or whose
+  class is unknown where no call is known to harm, runs whole, as one command; a member named beside it then gets its own command as well as the group's. A group that falls back
   gets no result of its own: its planned members answer for it, including one already a target, so naming a member
   beside a group that falls back changes nothing. Only when none of its members is planned or left nothing to do
   (each refused, gated or unavailable) is the group itself refused, with its reason (the refused member's, or
@@ -201,8 +204,9 @@ runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, 
   `expand_group` that answers `None` or raises (logged) leaves membership unknowable, so the group is refused as
   `group_not_supported`, as with none.
 - **Dispatcher.** Buckets targets by adapter, drops fields a target lacks, checks `supports()` (domain and fields in
-  scope, and the adapter's own reasons), then the class (`AdapterScope.refusal`: a class in `doesnt_work` is refused as
-  `doesnt_work`, one in neither it nor `capabilities` as `not_supported`; a call left nothing to send is first), clamps
+  scope, and the adapter's own reasons), then the class (`AdapterScope.refusal`: where a `doesnt_work` entry `harms`,
+  one `Unplaced` or `None` is refused as `class_unknown`; a class in `doesnt_work` is refused as `doesnt_work`, one
+  in neither it nor `capabilities` as `not_supported`; a call left nothing to send is first), clamps
   durations to `AdapterScope.duration`, then runs every adapter concurrently under
   `ADAPTER_TIMEOUT_S`: `Adapter.slot` (which `gather` runs each target in) rejects with `timeout` only the targets
   not done by then, so those that finished keep their results. An adapter exception rejects its targets. A named

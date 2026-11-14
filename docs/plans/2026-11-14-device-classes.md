@@ -260,6 +260,15 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      harm-based `doesnt_work` entry.
    - **A group with one unplaced member falls back to its members** in core, with only that member refused
      (`class_unknown`), instead of the whole group being refused as Z2M's `supports()` does today.
+   - **Step 6, built** (`claude/device-classes-6-core`). The sentinel is a flag on the class: `core/scope.py`'s
+     `Unplaced`, a `str` subclass equal to the class it names, so every adapter without a `harms` entry plans on
+     that class as before; `AdapterScope.refusal` refuses an `Unplaced` class, or `None`, as `class_unknown` where
+     `AdapterScope.harms` (any entry with `DoesntWork.harms`), before `doesnt_work`. The Z2M Tuya `turn_on_for`
+     entries set `harms`; Z2M's `capability` answers `Unplaced` by round 3's rule (`classes.placed`), and
+     `turn_on_for`'s `supports()` check is gone. A group with a member not yet placed falls back through core's
+     existing fallback; one of unknown membership is refused whole. `capability` no longer takes `hass=None`.
+     Z2M's package changed (the group fallback is its one behavior change), so step 5's pending lab run, on this
+     branch's tip or later, covers it.
 7. **ZHA.** The same shape. Lab run, with the Sengled.
 8. **Hue.** Classes `hue`, `other`, `bridge_v1` (not supported) and `smart_scene` (doesn't work, on `set_scene`).
    `other` is decided per action (Decision 2). Lab run, with the Sengled on the bridge if it pairs. The `bridge_v1`

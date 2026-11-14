@@ -49,7 +49,8 @@ light field, so a timed call still runs its timer. A call left nothing to do by 
 
 **Not yet classed** (`class_unknown`) is refused the same way, raised if named and skipped if not, but it is
 transient: it holds only until the integration has reported the device or group
-([evidence.md](evidence.md#doesnt-work-not-yet-supported-untested)). That usually takes seconds, so an automation
+([evidence.md](evidence.md#doesnt-work-not-yet-supported-untested)). A native group with such a member falls back
+to its members, as for any refused member (below): the rest run, and only that one is refused. That usually takes seconds, so an automation
 firing at startup can get it; if the integration never reports it (DeviceSide couldn't connect to it), it holds
 until DeviceSide reloads.
 
@@ -93,8 +94,8 @@ raises or the entity is skipped.
   `clamped_to`. Skipped targets are left out, as core leaves them out, and `unsupported` or `rejected` never
   reach a response: the call skips or raises instead. A call that has nothing to do succeeds quietly as
   `unchanged` with a `detail`, checked before the target's class, so nothing-to-do wins over doesn't-work or not
-  supported. A native group with a refused member, or an Experimental one while Experimental features is off, falls
-  back to its members where the integration can list them. A group that falls back has no entry of its own: its
+  supported. A native group with a refused member (`class_unknown` included), or an Experimental one while
+  Experimental features is off, falls back to its members where the integration can list them. A group that falls back has no entry of its own: its
   members' entries answer for it, and it raises only when none of its members runs
   ([design.md](design.md#core-contract), Groups). A named target whose class doesn't work raises with the reason why.
 - **The class.** On an integration that names [classes](evidence.md#device-classes), each entry carries the

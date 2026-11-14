@@ -94,8 +94,9 @@ decide the result together, so the class follows the vendor (Zigbee2MQTT: `hue`,
 - **Groups.** A native group takes the weakest level among its members' classes. One with a member that doesn't work
   or isn't supported, or a member whose class is Experimental, while Experimental features is off (the adapter,
   domain and fields not flagged), falls back to its members, each judged on its own, when the integration can list
-  them; one it can't list counts as Experimental: refused while Experimental features is off, and with them on where
-  a call is known to harm, as its class rests on a membership DeviceSide doesn't have yet
+  them, a member not yet placed among them where a call is known to harm; one it can't list counts as Experimental:
+  refused while Experimental features is off, and with them on where a call is known to harm, as its class rests on
+  a membership DeviceSide doesn't have yet
   ([below](#doesnt-work-not-yet-supported-untested); [design.md](design.md#core-contract), Groups).
 
 ### Doesn't work, not yet supported, untested
@@ -118,13 +119,14 @@ a call that isn't built would work on it. Not yet supported is for a class today
 - **Where a call is known to harm, a class not yet known is refused.** An adapter whose scope lists a class as
   doesn't work because the call harms it refuses a target whose class rests on information DeviceSide doesn't have
   yet, even with Experimental features on: a group whose membership isn't listed, or a device whose identifying
-  strings haven't been received while they could still move it into a harmed class, and a group with such a device
-  among its members. A target placed in the default
+  strings haven't been received while they could still move it into a harmed class. A group with such a device
+  among its members falls back to them, so only that member is refused. A target placed in the default
   class from full information stays Experimental, as does every target of an action no class is harmed by (Unknown
   is flagged, never Verified, above). The refusal is `class_unknown`, and it clears once the integration has
-  reported what it lacked. Zigbee2MQTT applies it today ([its page](integrations/zigbee2mqtt/index.md#device-classes));
-  the rule moves to core in step 6 of the [device classes plan](plans/2026-11-14-device-classes.md), and ZHA, Hue
-  and Matter apply it in steps 7 to 9.
+  reported what it lacked. Core applies it: the harm is a `doesnt_work` entry marked `harms`, and the integration's
+  `capability` answers a device it placed from partial information as `Unplaced` (when a device counts as placed:
+  each integration's page, as [Zigbee2MQTT's](integrations/zigbee2mqtt/index.md#device-classes)). ZHA, Hue and
+  Matter mark their entries in steps 7 to 9 of the [device classes plan](plans/2026-11-14-device-classes.md).
 
 A refused target raises when named and is skipped when it came indirectly, as `supports()` refusals do
 ([action-behavior.md](action-behavior.md)).
