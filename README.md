@@ -41,7 +41,7 @@ Many lights and switches can run timers and smooth fades on their own, but maker
 
 DeviceSide turns those recipes into ordinary actions, like *Turn on with timer* or *Smooth dimming*, that you can pick in the automation editor. Because features run on the device, timers still fire if HA restarts, and dimming stays smooth.
 
-The first features were developed and tested on real devices using an automated test rig. Now we're inviting the community to bring more integrations and devices: [contribute](CONTRIBUTING.md) a recipe that works on your device, or a test report for an untested one.
+The first features were developed and tested on real devices using an automated test rig. Now we're inviting the community to [bring more integrations and devices](CONTRIBUTING.md#how-to-help).
 
 ### Will it work with my device?
 
