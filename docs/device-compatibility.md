@@ -6,14 +6,17 @@ comes from, and the evidence behind every claim.
 
 ## Levels of proof
 
-Claims follow evidence, at one of two levels of proof:
+Claims follow evidence, per class of device: devices that get the same command and run the same family of firmware,
+such as Hue bulbs on Zigbee2MQTT. A test on one class says nothing about another, because makers' firmware answers the
+same command differently. Each claim is at one of two levels of proof:
 
 - **Verified:** a maintainer tested it on a real device, on the automated rig or by hand.
 - **Documented:** no device of the class has been tested, but DeviceSide sends it the same call as a Verified device,
   differing only in addressing, and no known class of devices handles it differently.
 
 New features ship as **Experimental** until a maintainer judges them ready for everyone: they stay off until you
-turn on **Experimental features** in **Configure > Settings**. Whether they work or not, please tell us with **Report a
+turn on **Experimental features** in **Configure > Settings**, and so does a device DeviceSide can't place in a known
+class. Whether they work or not, please tell us with **Report a
 device test result or bug** in the same menu: your reports help ship them to everyone. How we decide:
 [evidence rules](evidence.md).
 
@@ -86,6 +89,12 @@ they work or not: your report helps get them fixed or shipped to everyone.
 Turn on with timer and get attributes on a ZHA or Zigbee2MQTT `switch`. A plug works only if its firmware honors the
 Zigbee timed-on command, and few do: Sonoff and Tuya plugs often run their own countdown instead, and the
 [Tuya TS011F](#tuya-ts011f) never switches on. ZHA and Zigbee2MQTT each need their own report.
+
+## Not yet supported
+
+A class of device that needs a command DeviceSide hasn't built yet. DeviceSide refuses it, rather than send a command
+that would leave it doing something you didn't ask for, and each card lists them. If you'd like one built,
+[propose it](../CONTRIBUTING.md#how-to-help).
 
 ## Doesn't work
 

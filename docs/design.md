@@ -15,12 +15,20 @@ Code and docs use these terms.
 - **Bridge**: a separate system between the integration and the device, named only when the integration alone
   doesn't say how the device is reached (Zigbee2MQTT behind MQTT). The Hue Bridge is not counted.
 - **Adapter**: one action on one integration (or bridge).
-- **Capability**: the device-side functional unit the adapter's call reaches, in vendor terms (Shelly component,
-  Zigbee or Matter cluster).
+- **Capability**: the code's name for a Class: `IntegrationInfo.capability` names a target's, and
+  `AdapterScope.capabilities` holds a level per class.
+- **Class**: the set of devices that get the same call and run the same firmware family, as the integration names it
+  (Shelly: the RPC component; Zigbee2MQTT: `hue`, `tuya_zcl`, `tuya_mcu`, `other`). Each class stands on its own
+  evidence, and a device the integration can't place is in its default class, which stays flagged until a record
+  reaches it. Rules: [evidence.md](evidence.md#device-classes).
+- **Doesn't work**: a class that fails the call DeviceSide sends for an action. Listed in the adapter's
+  `AdapterScope.doesnt_work` with a reason and source, refused (`doesnt_work`) and named on the card.
+- **Not yet supported**: a class that needs a call DeviceSide hasn't built for an action. The integration names it,
+  the adapter's scope doesn't hold it, and it is refused (`not_supported`) and named on the card.
 - **Field**: an action parameter, e.g. `brightness`.
 - **Entity domain**: light, switch. "Domain" alone is fine where unambiguous.
-- **Scope**: the entity domains, capabilities and fields an adapter is built for, each Verified, Documented or untested,
-  and flagged or not. Outside it, calls are refused as not yet tested.
+- **Scope**: the entity domains, classes and fields an adapter is built for, each Verified, Documented or untested,
+  and flagged or not, plus the classes it knows don't work. Outside it, calls are refused as not yet supported.
 - **Level**: how a scope item is proven, Verified or Documented. Rules: [evidence.md](evidence.md#levels). User
   wording: [device-compatibility.md](device-compatibility.md#levels-of-proof).
 - **Experimental**: the flag on a scope item (`experimental(...)`) or a whole adapter (`experimental=True`) not yet
@@ -148,22 +156,30 @@ runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, 
   `check_release.py` and the rig, from outside the repo, import the registry without `hass`, so a change to
   `AdapterRegistry`'s interface needs the rig's matching change. A failing integration import (its core
   integration isn't installed) records it unavailable and setup carries on.
+- **Classes.** `IntegrationInfo.capability(hass, target) -> str | None` names the target's class: sync and cheap, no
+  I/O, reading only the registry device, the config entry or the integration's data. Every adapter of the integration
+  sees the same class, and maps the classes it serves to its own branch in `execute`; a class is a device class, not a
+  call pattern, as patterns are per action. The registry refuses an integration with `capability` unless every
+  adapter's scope has `capabilities`, and one without unless none has. `AdapterScope.doesnt_work` maps a class to a
+  `DoesntWork` (what, reason, source); a class in it is never in `capabilities`.
 - **Resolver.** Candidates are the available integrations whose `ha_domain` is the entity's registry platform;
   one with a `detect` hook wins first (Z2M over plain MQTT). A `switch_as_x` light resolves to the switch it wraps,
   and results report the light.
 - **Groups.** HA groups are always expanded, in one place, because no device can address them; members carry
   `via_group`. Native groups (Hue `grouped_light`, Z2M and ZHA groups) pass through as one target. An adapter with
   `native_groups` gets the group; for one without, the dispatcher calls the integration's `expand_group`, or refuses
-  with `group_not_supported` when there is none.
+  with `group_not_supported` when there is none. A native group whose member's class doesn't work or isn't supported
+  is refused, unless the integration can expand it.
 - **Dispatcher.** Buckets targets by adapter, drops fields a target lacks, checks `supports()` (domain, fields and
-  capabilities in scope), clamps durations to `AdapterScope.duration`, then runs every adapter concurrently under
+  class in scope; a class in `doesnt_work` is refused as `doesnt_work`, one outside both as `not_supported`), clamps
+  durations to `AdapterScope.duration`, then runs every adapter concurrently under
   `ADAPTER_TIMEOUT_S`: `Adapter.slot` (which `gather` runs each target in) rejects with `timeout` only the targets
   not done by then, so those that finished keep their results. An adapter exception rejects its targets. A named
   target that can never take the action raises before anything is sent; an indirect one is skipped and logged; a
   device failure raises once every target has run.
 - **Experimental items** are gated here, at runtime. After `supports()` passes a target and fields are dropped,
-  `Dispatcher.run_adapters` takes the call's level from its domain, the capability `Adapter.capability()` names
-  (Shelly: the RPC component; one it can't name counts as Experimental) and the fields it still carries. An
+  `Dispatcher.run_adapters` takes the call's level from its domain, the class `IntegrationInfo.capability` names (one
+  it can't name counts as Experimental; a native group takes its members' weakest) and the fields it still carries. An
   Experimental one is refused as `experimental_off` while the option is off, raising its own message for a named
   target. A call left nothing to send is unchanged, not refused.
 - **Results.** Commands answer optionally, per entity: `{status, integration, clamped_to?, detail?}`, where status is
