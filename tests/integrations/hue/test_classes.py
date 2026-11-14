@@ -146,7 +146,28 @@ async def test_a_room_runs_whole_with_experimental_features(hass, bridge):
 
     response = await call_service(hass, "stop", {"entity_id": "light.room"})
 
-    assert response == {"light.room": result("hue", "sent", capabilities=["hue", "other"])}
+    assert response == {
+        "light.room": result(
+            "hue",
+            "sent",
+            capabilities=["hue", "other"],
+            member_capabilities={"light.one": "hue", "light.two": "other"},
+        )
+    }
+    assert bridge.puts == [("grouped_light/grouped-1", STOP)]
+
+
+async def test_a_room_light_with_no_entity_is_left_out_of_the_member_map(hass, bridge):
+    # Its class counts in the room's capabilities, as the room's write reaches it, but it has no entity of its own to
+    # show the call reached it, so member_capabilities names only the light that has one (docs/action-behavior.md).
+    await mixed_room(hass, bridge, entity_for_two=False)
+    allow_experimental(hass)
+
+    response = await call_service(hass, "stop", {"entity_id": "light.room"})
+
+    assert response == {
+        "light.room": result("hue", "sent", capabilities=["hue", "other"], member_capabilities={"light.one": "hue"})
+    }
     assert bridge.puts == [("grouped_light/grouped-1", STOP)]
 
 

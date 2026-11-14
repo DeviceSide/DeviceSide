@@ -28,17 +28,26 @@ unload_mock_hue_entries = unload_mock_entries("hue")
 
 async def call(hass, service: str, data: dict, return_response: bool = True):
     """The response, each entry's class checked and left out, so a test states only what its action decides: every
-    Hue result names the class its light, scene or room's members are (docs/action-behavior.md)."""
+    Hue result names the class its light, scene or room's members are (docs/action-behavior.md). A room's
+    `member_capabilities` is checked against the rule, not rebuilt: each key is a member with an available state of
+    its own, never the room (so never a stand-in), and maps to the class that member has classed alone. A test that
+    states the map in full calls the service directly."""
     response = await call_service(hass, service, data, return_response)
+    registry = get_runtime(hass).registry
     for entity_id, entry in (response or {}).items():
-        target = resolve(hass, get_runtime(hass).registry, entity_id)
+        target = resolve(hass, registry, entity_id)
         listed = (INTEGRATION.expand_group(hass, target) or []) if target.is_group else [target]
         found = [INTEGRATION.capability(hass, member) for member in listed]
         known = bool(found) and None not in found
-        if target.is_group:
-            assert entry.pop("capabilities", None) == (sorted(set(found)) if known else None), entity_id
-        else:
+        if not target.is_group:
             assert entry.pop("capability", None) == (found[0] if known else None), entity_id
+            continue
+        assert entry.pop("capabilities", None) == (sorted(set(found)) if known else None), entity_id
+        for member, name in entry.pop("member_capabilities", {}).items():
+            state = hass.states.get(member)
+            assert member != entity_id and state is not None and state.state != "unavailable", (entity_id, member)
+            assert INTEGRATION.capability(hass, resolve(hass, registry, member)) == name, (entity_id, member)
+            assert name in found, (entity_id, member)
     return response
 
 
