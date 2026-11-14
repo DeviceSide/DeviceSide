@@ -152,8 +152,8 @@ sign-off. That rerun is the test of the framework on the current repo scope.
 - Per-class `duration` limits: needed by the Tuya countdown pattern (whole seconds, 43,200 s cap) once it's built.
 - Firmware matching in the classifier: needed the first time a firmware boundary decides behavior, such as the Sonoff
   ZBMINIR2 at 1.1.0.
-- Building Tuya patterns B and C, and a non-Hue bulb on the rig. The second is the one that lifts `other`'s flag on
-  Z2M and ZHA.
+- Building Tuya patterns B and C, and a non-Hue bulb on the rig. The second lifts that maker's own class on Z2M and
+  ZHA, never `other` (Decision 5).
 
 ## Decisions (Jason, 2026-11-14)
 
@@ -170,3 +170,14 @@ sign-off. That rerun is the test of the framework on the current repo scope.
    if no recipe works. Whichever way it goes, the shared entry becomes one code entry per integration (ZHA and Z2M),
    which `gen_compat` merges on the cards.
 4. No release-note line: DeviceSide isn't widely released yet.
+
+## Decisions (Jason, 2026-11-14, during steps 1–2)
+
+5. **The default class is never Verified.** `other` can be Documented per action where `docs/evidence.md`'s Documented
+   test holds (no known class departs), and is otherwise `experimental(...)`. A record on a non-Hue device lifts a new
+   named class for its maker (for example `ikea`), not `other`. Step 3 writes the rule into `docs/evidence.md`.
+6. **The class a call used is reported in its response.** `IntegrationInfo.capability(hass, target)` stays as
+   designed. Each target's result carries the class the dispatcher used: a command's beside `status` and
+   `integration`, a query's in its entity's data, a native group's as its members' classes. The rig records that
+   instead of classifying a stand-in target, so a record holds the class the call really reached. Step 3 adds the
+   field; the rig then reads it (ha-rig, after step 3).
