@@ -8,7 +8,7 @@ from homeassistant.core import HomeAssistant
 
 from .addressing import not_addressable, topic
 from .bridge import logged_options, publish, publish_set, state_reply
-from .classes import HUE, OTHER
+from .classes import CAPABILITIES
 from .native_control import COLOR_FIELDS, NEED, native_control, settled
 from .set_check import checked, note
 from ...actions.turn_on_for import TurnOnForRequest
@@ -57,10 +57,7 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
         # the Documented test (docs/evidence.md, Levels): it takes the same call, so it stays flagged experimental,
         # untested, until a maintainer judges it ready.
         domains=verified("light") | experimental("switch"),
-        # The Tuya classes are left out, so refused as not yet supported: their firmware wants Tuya's own countdown
-        # call, which isn't built, and Z2M turns ours into a plain On that never ends (research, 2026-11-14, §2).
-        # sengled waits on the lab probe (docs/plans/2026-11-14-device-classes.md, step 5 part 2), refused until then.
-        capabilities=verified(HUE) | experimental(OTHER),
+        capabilities=CAPABILITIES,
         duration=_TIMER_LIMITS,
         fields=verified("brightness", "color_temp_kelvin", "hs_color", "rgb_color", "xy_color", "transition"),
         confirmable=False,
