@@ -510,3 +510,27 @@ A package changed after its lab run needs that run again before the release. Non
 7. **The coverage check warns during development and fails at release.** `gen_compat --check` prints each gap on
    every PR, so a developer sees it early. `check_release.py` fails on it at `cut-release`, with the other release
    gates. No allowlist is needed while records catch up (Shelly's house rerun).
+
+## Handoff
+
+2026-11-14, step 3 lab probe, mid-run. Branch `wt/device-classes-3` (off `claude/device-classes-3-lab-probe`),
+worktree `deviceside-wt/device-classes-3`, draft PR #423.
+
+**Done:** §1 registry strings (all networks, groups bar the Hue room's member count), §2 TS011F on Z2M (C1, C2, C5,
+C6, C7) and on a second TS011F already on ZHA (C5, C1), §4 Sengled on Z2M (registry, C1, C6). Results, deviations
+from the spec and the scripts are in the worktree's gitignored `notes/lab-probe-2026-11-14/` (`findings.md` first);
+the household entity IDs are there and in the rig's `lab_tuya` profile, never in the repo. Headline: decision rule 2,
+the TS011F is `tuya_zcl` (C5, Tuya's recipe, works on both firmwares; C1 fails on both, differently).
+
+**Next:**
+1. Sengled on Z2M: C2 and C5 (`--onoff-only`; it has no timer attributes), per §4.3.
+2. Sengled to the Hue bridge (Jason pairs; record "doesn't pair" and the bridge version if it won't), §1 on it, then
+   back to ZHA and into its ZHA group (the house profile's group case needs it).
+3. Hue room member count (§1.5).
+4. Z2M log level back to `warning` (it was `warning` before the probe; Jason set `debug` in the frontend).
+5. Write the dated research file and the §5 facts (`docs/internals.md` for the TS011F's 0x42, bundle `internals.md`
+   rows, `docs/models.yaml`), commit on this branch, push.
+
+**Open for Jason:** how to record the C1 firmware variation (`_TZ3000_0zfrhq4i` ignores the timer while off;
+`_TZ3000_typdpbpg` counts down while off and switches on at the end); whether to re-pair the Z2M plug to ZHA for a
+same-unit comparison. A rig journal from an earlier aborted run needs `--recover` (holds every lock).
