@@ -103,7 +103,11 @@ def clock(hass, setup_production) -> Clock:
 
 
 class REGISTRY:
-    """light()'s default Zigbee strings: the registry's vendor, and no model."""
+    """light()'s default Zigbee strings: the registry's vendor, and ZIGBEE_MODEL."""
+
+
+# A Zigbee model no rule matches.
+ZIGBEE_MODEL = "bulb"
 
 
 def light(
@@ -121,12 +125,14 @@ def light(
     manufacturer: str | None = "Philips",
     model_id: str | None = None,
     zigbee: tuple[str | None, str | None] | None | type[REGISTRY] = REGISTRY,
+    interviewed: bool | None = None,
 ) -> str:
     """A Z2M color light HA lists with xy, whose definition exposes color_hs, answering color reads with COLOR.
 
     Its bridge/devices entry holds the Zigbee manufacturer and model `zigbee` names. By default, REGISTRY, the
-    registry's manufacturer and no model: an interviewed device of that vendor that shows no Tuya string. None writes
-    an entry with neither, as Zigbee2MQTT lists a device mid-interview, which the classifier can't place by them.
+    registry's manufacturer and ZIGBEE_MODEL: an interviewed device of that vendor that shows no Tuya string. None
+    writes an entry with neither, as Zigbee2MQTT lists a device mid-interview, which the classifier can't place by
+    them. `interview_completed` is `interviewed`, by default whether `zigbee` names any string.
     """
     name = entity_id.split(".")[1]
     entries = hass.config_entries.async_entries("mqtt")
@@ -150,9 +156,10 @@ def light(
     features = [{"name": "state"}, {"name": "brightness"}] + ([{"name": "color_hs"}] if color_hs else [])
     device = {"ieee_address": ieee, "definition": {"exposes": [{"type": "light", "features": features}]}}
     if zigbee is REGISTRY:
-        zigbee = (manufacturer, None)
+        zigbee = (manufacturer, ZIGBEE_MODEL)
     # Its own Zigbee manufacturer and model, which the classifier reads; Z2M holds null for one it hasn't read.
     device |= dict(zip(("manufacturer", "model_id"), zigbee or (None, None), strict=True))
+    device["interview_completed"] = zigbee is not None if interviewed is None else interviewed
     broker.retained.setdefault(DEVICES, []).append(device)
     return entity_id
 

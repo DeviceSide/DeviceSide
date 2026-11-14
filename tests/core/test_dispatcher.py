@@ -1194,3 +1194,14 @@ NO_FEATURES = {"supported_features": 0}
 
 def test_timed_request_is_what_adapters_see():
     assert TimedRequest(duration_s=1).fields_present() == frozenset()
+
+
+def test_class_unknown_names_the_integration_by_its_title_or_gets_the_plain_refusal():
+    """Its message names the integration; with no title it never names an untranslated stand-in."""
+    named = TargetNotSupported("light.a", "class_unknown", integration="Zigbee2MQTT")
+    assert named.translation_key == "class_unknown"
+    assert named.translation_placeholders["integration"] == "Zigbee2MQTT"
+
+    untitled = TargetNotSupported("light.a", "class_unknown")
+    assert untitled.translation_key == "target_not_supported"
+    assert untitled.translation_placeholders == {"entity_id": "light.a", "reason": "class_unknown"}

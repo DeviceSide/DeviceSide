@@ -34,14 +34,15 @@ class TargetNotSupported(ServiceNotSupported):
     """A target the caller named can't take the action: core's ServiceNotSupported, with our reason in it. A target
     refused for experimental_off gets a message of its own, saying how to let it through, and one whose class doesn't
     work a message carrying why (`why`, the scope's DoesntWork.reason). One refused as class_unknown gets one saying
-    it clears once the integration (`integration`, its title) has reported the device."""
+    it clears once the integration (`integration`, its title, which the dispatcher always passes) has reported the
+    device; without the title it gets the plain refusal, never an untranslated name."""
 
     def __init__(self, entity_id: str, reason: str, why: str | None = None, integration: str | None = None) -> None:
         placeholders = {"entity_id": entity_id, "reason": reason}
         if reason == EXPERIMENTAL_OFF:
             key = EXPERIMENTAL_OFF
-        elif reason == Reason.CLASS_UNKNOWN:
-            key, placeholders["integration"] = Reason.CLASS_UNKNOWN.value, integration or "its integration"
+        elif reason == Reason.CLASS_UNKNOWN and integration is not None:
+            key, placeholders["integration"] = Reason.CLASS_UNKNOWN.value, integration
         elif why is not None:
             key, placeholders["why"] = Reason.DOESNT_WORK.value, why
         else:
