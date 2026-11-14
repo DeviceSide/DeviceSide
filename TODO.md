@@ -48,7 +48,8 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
     `docs/device-compatibility.md`; how a group test or a manual row credits the classes it lists; the Capability
     column's "until that lands" clause; the class in each result (plan Decision 6); `other` never Verified
     (Decision 5).
-  - [ ] 4. Zigbee2MQTT classes, after the TS011F probe and the Tuya detection probe; rig rerun.
+  - [ ] 4. Zigbee2MQTT classes, after the TS011F probe and the Tuya detection probe; the first default class, so
+    `docs/device-compatibility.md` regains "and so does a device DeviceSide can't place in a known class"; rig rerun.
   - [ ] 5. ZHA classes; rig rerun.
   - [ ] 6. Hue classes, the `bridge_v1` and `smart_scene` checks moved to them; rig rerun.
   - [ ] 7. Matter classes; manual or rig sign-off.
