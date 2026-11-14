@@ -57,8 +57,10 @@ sends and known brands depart from the commands it plausibly sends:
   `async_turn_on`); IKEA firmware may not turn off mid-transition (the LED1624G9 page). Stop's xy halt and its
   soft-off cut are writes mid-transition, measured only on Hue bulbs.
 - **Color fades** (`raise_saturation`, `lower_saturation`): the payload differs where a light reports no gamut.
-- **`get_attributes`**: reads `mirek_valid`, which non-certified lights don't set reliably (above;
-  [core PR #97263](https://github.com/home-assistant/core/pull/97263)).
+- **`get_attributes`**: a non-certified light doesn't set `mirek_valid` reliably (above;
+  [core PR #97263](https://github.com/home-assistant/core/pull/97263)), so its color temperature mode is read as
+  core decides it, from the color mode core shows (plan Decision 56), which follows core's last command and misses a
+  change from the Hue app. Untested on such a light.
 
 ## Modules
 
@@ -78,7 +80,9 @@ takes 3 requests at once and aiohue retries the rest.
 
 ### `get_attributes`
 
-`get_attributes` leaves out `color_temp_kelvin` in color mode, as the bridge's value is stale. A room with a
+`get_attributes` leaves out `color_temp_kelvin` in color mode, as the bridge's value is stale, and with a mirek of 0
+or none, as core does. Color temperature mode is core's: a certified light's `mirek_valid`, and for any other the color
+mode core shows (Device classes). A room with a
 light on uses the bridge's brightness and averages color over lit lights; with all off, over all of them.
 
 ### `fade`

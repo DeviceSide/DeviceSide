@@ -376,6 +376,27 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
    - The Hue `index.md` reason is corrected to the accurate one: v1 can't write to an off light or report changes
      without polling, and Signify ended its support in 2020
      ([research](../integrations/hue/research/2026-11-14-v1-api.md)).
+   - **Built** (`claude/device-classes-8-hue`), the lab run pending (fixture: the A60 on the bridge; the Sengled if
+     it pairs, which failed once in step 3).
+     - **Classes** (`integrations/hue/classes.py`): a light by its registry device's manufacturer (`Signify
+       Netherlands B.V.`: `hue`; any other maker, Friends of Hue included: `other`, the default); a scene by the
+       lights it writes (`other` if any is); `smart_scene` for an All-Day scene. A room by its members, a light with
+       no light entity through a stand-in, as Z2M's. No `Unplaced`: HA registers every bridge device in full at load,
+       and no Hue entry `harms`.
+     - **What decides the call** (tenet 9): the bridge, unseen. aiohue sends one PUT shape for every light, and no
+       CLIP v2 field routes a light to another call; `product_data.certified` routes only how core reads a light's
+       state, so the key is identity. Recorded in the Hue `internals.md`, Device classes, citing HA 2026.10.2 and
+       aiohue 4.9.0 at their tags.
+     - **`other`** is `experimental(...)` on all eight adapters, by an Opus judgment (Decision 2), argued in the PR
+       body: Hue's results are the bridge's and Signify's firmware together, and known brands depart from the
+       calls the bridge plausibly sends.
+     - **The harm test:** `smart_scene` on `set_scene` is `harms=False`, the one Hue entry.
+     - **v1:** core's `IntegrationInfo.unsupported`, an integration declared only to refuse, listed in its sibling's
+       `UNSUPPORTED` and kept in `AdapterRegistry.unsupported`, out of the cards, gates and CODEOWNERS. `hue_v1`'s
+       `detect` claims a config entry with `api_version` 1; the dispatcher refuses each such target, every action
+       alike, as `integration_not_supported` with the reason, raised if named. Before, a target on an integration
+       with no adapters got a bare `no_adapter`. The five `bridge_v1` checks and `bridge_api`'s None go.
+     - `get_attributes` reads color temperature mode as core does (Decision 56).
 9. **Matter.** Lab run on the WiZ plug. `other` is Experimental on `turn_on_for`, and the WiZ plug Verified by the
    rig on the real call (Decision 75). Until #436 applies Decision 75, Matter's `turn_on_for` still shows
    Documented on the cards.
@@ -1061,6 +1082,13 @@ Decisions 36 to 45, 46 to 55 and 56 to 65 are reserved for steps 7, 9 and 8.
     - **Control4's sign-off waits for skialpine's `_manual.json` row;** it is the sixth of v0.1.0's sign-offs
       (TODO.md, evidence.md's Release gate example).
     - **The rc1 audit record is replaced** with base `b025363` once this stack lands (TODO.md, v0.1.0).
+
+## Decisions (Jason, step 8)
+
+56. **Hue `get_attributes` reads color temperature mode as core does:** a certified light's `mirek_valid`; for any
+    other, the color mode core shows for it, as core trusts `mirek_valid` only from certified lights. A mirek of 0 or
+    none reports no color temperature. Built now, though untested on a non-certified light, which stays
+    Experimental.
 
 ## Handoff
 
