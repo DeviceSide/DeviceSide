@@ -5,8 +5,9 @@
 # A model's `type` orders a card's Works line: bulb, relay, plug, dimmer or LED controller. Its `section` (default:
 # its `name`) is the heading a card links to; gen_compat's docstring says where it may be.
 
-# One entry per physical model, with its ids across integrations: a Hue bulb is `LTA009` on Hue and ZHA and
-# `9290024684` on Zigbee2MQTT (zigbee-herdsman-converters, src/devices/philips.ts, maps one to the other).
+# One entry per physical model, with its ids: a record names a Zigbee device by its Zigbee model ID on every
+# integration (a Hue bulb is `LTA009`); Zigbee2MQTT's own product code (`9290024684`, which zigbee-herdsman-converters,
+# src/devices/philips.ts, maps to it) is listed too, for a report that names the model as Zigbee2MQTT shows it.
 models:
   - name: Hue White Ambiance E27 1100lm
     ids: [LTA009, "9290024684"]

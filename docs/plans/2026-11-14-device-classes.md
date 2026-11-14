@@ -260,6 +260,12 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      class only the models that reached it, with their firmware; a manual row pairs each device with its class.
    - **The Zigbee model ID** (the device's Basic-cluster model, e.g. `LWA012`) names a Zigbee device on every
      integration, not Z2M's product code; firmware stays as each integration reports it.
+   - **The manufacturer string (Decision 35):** each device also names its `manufacturer`, the Zigbee manufacturer
+     string (else HA's registry manufacturer; null where none was reported), as one model ID carries many makers'
+     strings and a maker string is Verified only by its own evidence (Decision 35, numbered on step 6's branch). The
+     cards don't show it yet; a class keyed on it can be credited from it once one is.
+   - **A scene's test is a group's** (Jason, 2026-11-14): a `scene`-role test carries `group: true`, credited as
+     native groups and never as its members' models, as the scene's call isn't theirs (Decision 27).
    - **`"format": 2`.** Existing markdown records convert once, by a script run in this step and then deleted, to
      JSON `"format": 1`, which keeps their record-level devices and credits them as today, until each is rerun.
      `check_release --signoffs` accepts only format 2.
@@ -276,15 +282,19 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      - The converter (`scripts/convert_records.py`, in one commit, deleted in the next) turned all 45 records and
        both `_facts.md` into JSON, dropping only what is derived (title, Ran counts, notes, the fact bullets, each
        checked against `_facts.md`), and mapped Zigbee2MQTT's product codes to the Zigbee model IDs
-       `docs/models.yaml` pairs them with. Converted fact rows have no class and keep the model's name. The cards
+       `docs/models.yaml` pairs them with. Converted fact rows say so (`"converted": true`), have no
+       manufacturer or class and keep the model's name; a row without it needs both. The cards
        came out identical; the evidence block differs only in its `.json` links and those IDs.
      - `color_modes.md`, a probe with two rig cases and no action of its own, moved to Zigbee2MQTT's
        `research/2026-10-28-color-modes.md`: it fit none of the three files, and as a non-rig file in
        `test-records/` it kept Zigbee2MQTT's records from ever signing off.
      - Format 2 crediting: a model counts toward Works when its own test passed on an unflagged domain and class; a
        native group's test adds "native groups" (never its members' models, as the group's call isn't theirs) when
-       every member's class is unflagged. The evidence block lists a classed model with its class, on the row of the
-       level its class holds.
+       every member's class is unflagged. Where the integration names classes, a null-class device credits nothing,
+       flagged or not. The evidence block lists a classed model with its class, on the row of the weakest level its
+       class and its test's domain hold; a null-class one is on no row.
+     - Checks: a `pass` record may hold no failing test (the schema); every model any test-records file names, in
+       any test, must be in `docs/models.yaml` (`gen_compat.check_models`); dotfiles in `test-records/` are ignored.
 6. **Core fix-ups** from step 5's run, before ZHA and Hue copy the pattern. If a package changes, its lab run is
    repeated.
    - **The harm rule moves to core (Decision 26):** a `harms` flag on `DoesntWork`, and the classifier answering

@@ -42,8 +42,8 @@ result](https://github.com/DeviceSide/DeviceSide/issues/new?template=device_repo
 
 ### Hue White Ambiance E27 1100lm
 
-A color temperature bulb, rig-tested on Hue, ZHA and Zigbee2MQTT. It is `LTA009` on Hue and ZHA, and `9290024684` on
-Zigbee2MQTT, which maps one to the other
+A color temperature bulb, rig-tested on Hue, ZHA and Zigbee2MQTT. Its Zigbee model ID is `LTA009`, which the records
+name it by on every integration; Zigbee2MQTT shows it as `9290024684`, mapping one to the other
 ([zigbee-herdsman-converters](https://github.com/Koenkk/zigbee-herdsman-converters/blob/master/src/devices/philips.ts)).
 Smooth dimming is tested on all three, and turn on with timer on ZHA and Zigbee2MQTT (the Hue bridge has no usable
 timer: see [integrations](integrations/hue/index.md)).
@@ -54,16 +54,17 @@ bridge's earlier report (rig runs, 2026-11-11: Hue [Tested behavior](integration
 
 ### Hue Essential White and Color Ambiance A60
 
-A color bulb, rig-tested on Hue, ZHA and Zigbee2MQTT: `LCA016` on Hue and ZHA, `8720169392182` on Zigbee2MQTT
+A color bulb, rig-tested on Hue, ZHA and Zigbee2MQTT: Zigbee model ID `LCA016`, which Zigbee2MQTT shows as
+`8720169392182`
 ([zigbee-herdsman-converters](https://github.com/Koenkk/zigbee-herdsman-converters/blob/master/src/devices/philips.ts)).
 It carries the smooth saturation and hue tests, and Zigbee2MQTT's color mode override
-([record](integrations/zigbee2mqtt/research/2026-10-28-color-modes.md)). Turning that option off is unit-tested only: the rig can't
+([research](integrations/zigbee2mqtt/research/2026-10-28-color-modes.md)). Turning that option off is unit-tested only: the rig can't
 cleanly remove the override the option writes.
 
 ### Hue White A60 B22
 
-A white (dimmable) bulb, rig-tested with turn on with timer and get attributes on ZHA and Zigbee2MQTT: `LWA012` on
-ZHA, `9290018217` on Zigbee2MQTT
+A white (dimmable) bulb, rig-tested with turn on with timer and get attributes on ZHA and Zigbee2MQTT: Zigbee model
+ID `LWA012`, which Zigbee2MQTT shows as `9290018217`
 ([zigbee-herdsman-converters](https://github.com/Koenkk/zigbee-herdsman-converters/blob/master/src/devices/philips.ts)).
 
 ### Native groups

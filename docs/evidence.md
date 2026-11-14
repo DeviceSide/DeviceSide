@@ -148,8 +148,9 @@ varied integration, sets the bar. Classes match on manufacturer and model until 
 Every class an adapter's scope holds as Verified needs a passing record test, or a `_manual.json` row, for that action
 that reached it. A record names the class each test's devices reached, and a manual row each device's. A native
 group's test credits each member's class, as the one call reached each member; a manual row credits every class it
-lists to every action it passed, so a row whose actions reached different classes is split. A null class credits none,
-as does a test that didn't pass.
+lists to every action it passed, so a row whose actions reached different classes is split. A scene's test is a
+group's, its members the scene's lights. A null class credits none, here or on the cards, as does a test that didn't
+pass.
 `scripts/gen_compat.py` warns on each gap on every PR, so a developer sees it early, and names it, for example
 "zigbee2mqtt turn_on_for: `hue` is Verified but no record reaches it"; `scripts/check_release.py --signoffs` fails on
 it at `cut-release`, with the other release gates. Like every gate, it checks that evidence exists, not that it
@@ -212,9 +213,9 @@ Each integration whose package (`custom_components/deviceside/integrations/<x>/`
 needs a sign-off that holds the package as the release does. Any change counts, flags included; a reverted one is
 none.
 
-- **A sign-off** is a whole passing rig run or a `_manual.json` row. A run is checked by the Package tree its records
-  cite, so a run on a PR branch still counts once the PR squash-merges, and its records can land in the same PR. A
-  manual row is checked by its commit, which must be in the release's checkout and hold the package as the release
+- **A sign-off** is a whole passing rig run or a `_manual.json` row. A run is checked by the package tree its
+  records cite (`package`), so a run on a PR branch still counts once the PR squash-merges, and its records can land in
+  the same PR. A manual row is checked by its commit, which must be in the release's checkout and hold the package as the release
   does: cite one on `main` (or a `release/` branch), as a PR branch's is gone once it squash-merges, so the row lands
   after the change merges. It may say "no call changed". It comes from one of the integration's maintainers, or a repo maintainer when
   none responds.
@@ -238,34 +239,29 @@ none.
   CI checks it.
 
 *Example:* all five integrations changed since v0.0.1, so v0.1.0 needs five sign-offs. A passing Hue rig run whose
-Package tree is the release's Hue package signs off Hue; an integration with no change would need none.
+package tree is the release's Hue package signs off Hue; an integration with no change would need none.
 
 ### Sign-off format
 
 Test records are JSON files in the bundle's `test-records/`, one schema for all of them:
-[`docs/test-records.schema.json`](test-records.schema.json), the format's one home, which CI checks every file against.
-This section says what each file holds and why; the schema gives the exact shape.
+[`docs/test-records.schema.json`](test-records.schema.json), the format's one home, which CI checks every file against
+and which gives each field. The rules it serves:
 
-- **A rig record**, `<suite>.json`, named for its step file (`<action>.json`, or `<action>-<option>.json` for a run
-  with an option set): its `format`, `integration`, `action` and `options`, the run's `result`, `date`, `source` (the
-  rig and the commit it ran), `package` (the package's git tree at that commit) and Home Assistant's version, then its
-  `tests`. Each test has its case `id`, `role`, `domain` and `result`; a skipped one says why (`reason`) or is a fact
-  case (`fact`, its result in `_facts.json`). A test that ran lists the `devices` it reached, each with its `model`
-  (the Zigbee model ID for a Zigbee device on every integration, else the integration's; `docs/models.yaml` must list
-  it), its `manufacturer` (the Zigbee manufacturer string, else HA's registry manufacturer, since one model ID can
-  carry many makers' strings; null where none was reported), its `firmware` as the integration reports it, and the
-  `class` the call reached, as the action's result reports it
-  ([action-behavior.md](action-behavior.md#what-a-response-looks-like)), or null where the integration named none.
-  A native group's test (`group`) lists its members. Counts are derived from the tests, never stored.
-- **Format 1** is a markdown record converted once (device-classes plan, step 5b): the same, but the run's devices sit
-  on the record, not on each test, and a test's `classes` hold the old Capability column. It credits the cards as
-  the markdown did, and is no sign-off; a rerun replaces it with format 2.
-- **`_manual.json`**: a maintainer's hand tests, a row each in `signoffs`, added in a PR: `date`, `commit`, `tester`
-  (a handle), the `devices`, each a model id (never a household's device name) with its `manufacturer` and the class
-  it reached, and the actions that `passed`. A change that sends no new call signs off with a row holding
-  `no_call_changed` instead of devices and actions.
-- **`_facts.json`**: the fact cases' results, a row each, only ever added: date, suite, test, how it was seen
-  (`automated` or `observed`), result, and the devices with their manufacturer, firmware and class.
+- **A rig record**, `<suite>.json`, is named for its step file (`<action>.json`, or `<action>-<option>.json` for a run
+  with an option set). It cites the package tree its run held (`package`), which is what a sign-off is checked by. It
+  passes only when no test failed; counts are derived from the tests, never stored.
+- **A test names the devices it reached** and the class the call reached on each, as the action's result reports it
+  ([action-behavior.md](action-behavior.md#what-a-response-looks-like)), or null where the integration named none. A
+  Zigbee device is named by its Zigbee model ID on every integration, and with its manufacturer string, as one model
+  ID carries many makers' strings; every model a file names must be in `docs/models.yaml`. A native group's test, and
+  a scene's, lists the members.
+- **Format 1** is a markdown record converted once (device-classes plan, step 5b): the run's devices sit on the record,
+  not on each test. It credits the cards as the markdown did, and is no sign-off; a rerun replaces it with format 2.
+- **`_manual.json`**: a maintainer's hand tests, a row each, added in a PR: each device a model id (never a household's
+  device name) with the class it reached, and the actions that passed on all of them. A change that sends no new call
+  signs off with a `no_call_changed` row instead.
+- **`_facts.json`**: the fact cases' results, a row each, only ever added. A row converted from markdown says so and
+  has no class.
 
 A rig sign-off is the bundle's records when every one is format 2, cites the same `package` and passes: one whole run,
 whatever commit each record ran at. *Example:* if `stop.json` fails, or cites a different package tree than the rest,
@@ -273,14 +269,5 @@ or is still format 1, the records are no sign-off until every action passes at o
 `main` completes a run made on a PR branch when the package didn't change between them.
 
 *Example:* a Shelly run in which a relay and a bulb each pass `turn_on_for` credits `S3SW-001X8EU` to `Switch` and
-`S3BL-C010007AEU` to `RGBCCT`, each only under its own class:
-
-    {"id": "on_then_off[switch_plug]", "domain": "switch", "role": "switch_plug", "result": "pass",
-     "devices": [{"model": "S3SW-001X8EU", "manufacturer": "Shelly", "firmware": "1.7.4", "class": "Switch"}]}
-
-and a hand test of both, with a log-wording change's row after it:
-
-    {"date": "2026-11-12", "commit": "1a2b3c4", "tester": "handle", "passed": ["turn_on_for"],
-     "devices": [{"model": "S3SW-001X8EU", "manufacturer": "Shelly", "class": "Switch"},
-                 {"model": "S3BL-C010007AEU", "manufacturer": "Shelly", "class": "RGBCCT"}]}
-    {"date": "2026-11-12", "commit": "1a2b3c4", "tester": "handle", "no_call_changed": true}
+`S3BL-C010007AEU` to `RGBCCT`, each only under its own class; a maintainer's hand test of both is one `_manual.json`
+row naming each with its class, and a log-wording change's is a `no_call_changed` row.
