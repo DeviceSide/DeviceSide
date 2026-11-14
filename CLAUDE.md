@@ -41,7 +41,8 @@ every integration shares is in `docs/integrations.md`: add your value there, don
 3. Verify, then trust: a verified fact stands across firmware, HA and code changes until evidence contradicts it.
 4. Surprises reopen facts: root-cause a bug, record the finding, and log so the first report holds the diagnosis.
 5. Proof follows the call: code that sends the same call inherits its evidence; unit tests pin the call.
-6. Simplify relentlessly: a new rule or guardrail names the user-visible failure it prevents and what it replaces.
+6. Simplify relentlessly: a new guardrail needs evidence its failure happens; a new rule or guardrail names the
+   user-visible failure it prevents and what it replaces.
 7. Maintainers judge sufficiency: gates check that a sign-off exists, not how thorough it was.
 
 The levels (Verified, Documented), the `experimental` flag, caveats, the release gate and the sign-off format:
