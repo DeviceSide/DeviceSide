@@ -16,6 +16,7 @@ from custom_components.deviceside.core.scope import (
     AdapterScope,
     DoesntWork,
     Level,
+    Unplaced,
     documented,
     experimental,
     verified,
@@ -107,6 +108,39 @@ def test_a_class_that_doesnt_work_or_isnt_served_is_refused(classes, reason):
     scope = AdapterScope(capabilities=verified("hue"), doesnt_work={"tuya_zcl": BROKEN})
 
     assert scope.refusal(classes) == reason
+
+
+HARMS = DoesntWork("Tuya plug", "It stays on", "https://example.com/source", harms=True)
+
+
+@pytest.mark.parametrize(
+    ("classes", "reason"),
+    [
+        ((Unplaced("hue"),), (Reason.CLASS_UNKNOWN, None)),  # it could still move into the harmed class
+        ((None,), (Reason.CLASS_UNKNOWN, None)),  # unnamed, or a group of unknown membership
+        (("hue", Unplaced("hue")), (Reason.CLASS_UNKNOWN, None)),  # one member refuses the group
+        ((Unplaced("tuya_zcl"), "tuya_zcl"), (Reason.CLASS_UNKNOWN, None)),  # before doesn't work
+        (("tuya_zcl",), (Reason.DOESNT_WORK, "It stays on")),
+        (("hue",), None),
+    ],
+)
+def test_where_the_call_harms_a_class_one_not_yet_placed_is_refused(classes, reason):
+    scope = AdapterScope(capabilities=verified("hue"), doesnt_work={"tuya_zcl": HARMS})
+
+    assert scope.harms
+    assert scope.refusal(classes) == reason
+
+
+def test_elsewhere_an_unplaced_class_is_the_class_it_names():
+    scope = AdapterScope(capabilities=verified("hue"), doesnt_work={"tuya_zcl": BROKEN})
+
+    assert not scope.harms
+    assert scope.refusal((Unplaced("hue"),)) is None
+    assert scope.refusal((Unplaced("tuya_zcl"),)) == (Reason.DOESNT_WORK, "It never switches on")
+    assert scope.level("light", (Unplaced("hue"),)) is Level.VERIFIED
+    assert Unplaced("hue") == "hue"
+    assert hash(Unplaced("hue")) == hash("hue")
+    assert repr(Unplaced("hue")) == "Unplaced('hue')"
 
 
 def test_a_scope_without_classes_refuses_none():

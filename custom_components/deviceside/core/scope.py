@@ -68,11 +68,35 @@ class Caveat:
 class DoesntWork:
     """A class that fails the call an adapter sends (docs/evidence.md, Doesn't work): what the card names, why it
     fails, and the source, an https URL (scripts/gen_compat.py checks it). The dispatcher refuses it, raising with
-    the reason; the card lists it under Doesn't work."""
+    the reason; the card lists it under Doesn't work.
+
+    `harms`: the call acts wrong on the class rather than failing (a plug turned on that stays on). Where an adapter's
+    scope holds one such entry, a target that could still be in that class is refused too, even with Experimental
+    features on (AdapterScope.refusal; docs/evidence.md, where a call is known to harm, a class not yet known is
+    refused).
+    """
 
     what: str
     reason: str
     source: str
+    harms: bool = False
+
+
+class Unplaced(str):
+    """A class IntegrationInfo.capability named from partial information (the integration hasn't reported all it
+    will about the device), which could still move once it has. It is that class everywhere (it equals and hashes as
+    the plain string, so a scope's levels and doesnt_work read it as they would), except where an adapter's call
+    harms a class (DoesntWork.harms): there AdapterScope.refusal refuses it as class_unknown, as it may be one.
+
+    Why a flag on the class, not a class of its own or None: None is a permanent "can't class" (a Shelly entity with
+    no RPC component, a classifier that raised, a group whose members can't be listed), weighed as Experimental; and
+    a class of its own would change what every other adapter does with a device for the seconds until the integration
+    reports it, where only the harmful call needs to wait."""
+
+    __slots__ = ()
+
+    def __repr__(self) -> str:
+        return f"Unplaced({str.__repr__(self)})"
 
 
 # eq=False: compared and hashed by identity, as the mappings it holds can't be hashed.
@@ -134,13 +158,22 @@ class AdapterScope:
             levels += [self.capabilities.get(name, Level.EXPERIMENTAL) for name in classes]
         return min(levels)
 
+    @property
+    def harms(self) -> bool:
+        """Whether the adapter's call harms a class it could reach: a doesnt_work entry with DoesntWork.harms."""
+        return any(entry.harms for entry in self.doesnt_work.values())
+
     def refusal(self, classes: Collection[str | None]) -> tuple[str, str | None] | None:
         """Why the scope refuses a target of these classes (a native group's: its members'), with the reason the user
-        reads, or None: `doesnt_work` and its DoesntWork.reason when one is listed as failing the call, else
-        `not_supported` when one is named but not served. None, a class the integration couldn't name, is no refusal:
-        the gate weighs it as Experimental."""
+        reads, or None. Where the call harms a class (`harms`), first `class_unknown` when one is Unplaced, or None
+        (the integration couldn't name it, or a group's membership is unknown), as it could be the harmed class, with
+        Experimental features on or off. Then `doesnt_work` and its DoesntWork.reason when one is listed as failing
+        the call, else `not_supported` when one is named but not served. Elsewhere None is no refusal: the gate
+        weighs it as Experimental, and an Unplaced class as the class it names."""
         if self.capabilities is None:
             return None
+        if self.harms and any(name is None or isinstance(name, Unplaced) for name in classes):
+            return Reason.CLASS_UNKNOWN, None
         if broken := next((self.doesnt_work[name] for name in classes if name in self.doesnt_work), None):
             return Reason.DOESNT_WORK, broken.reason
         if any(name is not None and name not in self.capabilities for name in classes):
@@ -173,10 +206,10 @@ class IntegrationInfo:
     # refused (docs/design.md, Groups). None, as the hook or its answer, means membership is unknowable here.
     expand_group: Callable[[HomeAssistant, Target], list[Target] | None] | None = None
     # Names a target's class (docs/evidence.md, Device classes): sync and cheap, no I/O, reading only the target's
-    # registry entries, config entry or the integration's data. A device it can't place gets the default class; None
-    # only for a target it can't class at all. It must take hass=None on a target with no config entry or state: the
-    # rig classes a stand-in. None for an integration with one class, whose scopes then hold no capabilities.
-    capability: Callable[[HomeAssistant | None, Target], str | None] | None = None
+    # registry entries, config entry or the integration's data. A device it can't place gets the default class; one
+    # it places from partial information, which a later report could move, its class as Unplaced; None only for a
+    # target it can't class at all. None for an integration with one class, whose scopes then hold no capabilities.
+    capability: Callable[[HomeAssistant, Target], str | None] | None = None
     # Every class capability() can name, so a scope's typo fails at registration and the cards name the classes an
     # adapter serves in neither its capabilities nor its doesnt_work as not yet supported.
     classes: frozenset[str] = frozenset()

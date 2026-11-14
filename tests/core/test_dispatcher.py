@@ -21,6 +21,7 @@ from custom_components.deviceside.core.runtime import get_runtime
 from custom_components.deviceside.core.scope import (
     AdapterScope,
     DoesntWork,
+    Unplaced,
     documented,
     experimental,
     verified,
@@ -128,8 +129,11 @@ async def test_an_experimental_field_is_gated_only_when_the_call_carries_it(hass
 
 
 def by_name(hass, target):
-    """A class per light, from its object id: light.a is class "A"; light.unknown is unnamed."""
+    """A class per light, from its object id: light.a is class "A"; light.pending_a is "A", not yet placed
+    (Unplaced); light.unknown is unnamed."""
     name = target.entity_id.partition(".")[2]
+    if name.startswith("pending_"):
+        return Unplaced(name.removeprefix("pending_").upper())
     return None if name in ("unknown", "fake_group") else name.upper()
 
 
@@ -189,6 +193,121 @@ async def test_a_class_that_doesnt_work_or_isnt_served_is_refused_and_none_is_ga
     assert "skipped targets that can't take it: light.c (not_supported), light.d (doesnt_work)" in caplog.text
     assert "turn_on_for on fake: light.c is class ('C',)" in caplog.text
     assert reset_script.calls == [("fake", "turn_on_for", reset_script.calls[0][2], ["light.a"])]
+
+
+# Where a call is known to harm, a class not yet known is refused (docs/evidence.md, Device classes): on an adapter
+# whose scope holds a harm-based doesnt_work entry, a target not yet placed is refused as class_unknown.
+HARMED = replace(CLASSED, doesnt_work={"D": DoesntWork("Plug D", "It stays on", "https://example.com/d", harms=True)})
+
+
+@pytest.mark.usefixtures("classed")
+@pytest.mark.parametrize("entity_id", ["switch.pending_a", "switch.unknown"])  # Unplaced, and None
+@pytest.mark.parametrize("on", [False, True])
+async def test_where_the_call_harms_a_class_one_not_yet_placed_is_refused(hass, fake, reset_script, entity_id, on):
+    add_fake_entity(hass, fake, entity_id)
+    allow_experimental(hass, on)
+
+    with patch.object(FakeTurnOffFor, "scope", HARMED), pytest.raises(TargetNotSupported) as raised:
+        await call(hass, "turn_off_for", {"entity_id": entity_id, "duration": 5})
+
+    assert raised.value.translation_key == "class_unknown"
+    assert raised.value.translation_placeholders == {
+        "entity_id": entity_id,
+        "reason": "class_unknown",
+        "integration": "Fake",
+    }
+    assert reset_script.calls == []
+
+
+@pytest.mark.usefixtures("classed")
+async def test_elsewhere_a_class_not_yet_placed_is_the_class_it_names(hass, fake, reset_script):
+    """No harm-based entry, so the call is planned on the class, as Verified A, and reports it plainly."""
+    add_fake_entity(hass, fake, "switch.pending_a")
+    allow_experimental(hass, False)
+
+    with patch.object(FakeTurnOffFor, "scope", CLASSED):
+        response = await call(hass, "turn_off_for", {"entity_id": "switch.pending_a", "duration": 5})
+
+    assert response == {"switch.pending_a": {"status": "sent", "integration": "fake", "capability": "A"}}
+    assert type(response["switch.pending_a"]["capability"]) is str
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_harmful_entry_refuses_a_placed_class_that_doesnt_work_as_doesnt_work(hass, fake, reset_script):
+    add_fake_entity(hass, fake, "switch.d")
+    allow_experimental(hass)
+
+    with patch.object(FakeTurnOffFor, "scope", HARMED):
+        assert await refusal(hass, "turn_off_for", {"entity_id": "switch.d", "duration": 5}) == "doesnt_work"
+
+
+@pytest.mark.usefixtures("classed")
+@pytest.mark.parametrize("on", [False, True])
+async def test_a_group_with_a_member_not_yet_placed_falls_back_where_the_call_harms_a_class(
+    hass, fake, reset_script, caplog, on
+):
+    """Only that member is refused; the group isn't sent whole, which would reach it."""
+    members = ["switch.a", "switch.pending_d", "switch.e"]
+    for member in members:
+        add_fake_entity(hass, fake, member)
+    add_fake_native_group(hass, fake, "switch.fake_group", members)
+    allow_experimental(hass, on)
+    scope = replace(HARMED, capabilities=verified("A", "E"))
+
+    with patch.object(FakeTurnOffFor, "scope", scope):
+        # Named, the group doesn't raise: its members are indirect, so the refused one is skipped and logged.
+        response = await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
+
+    assert response == {
+        "switch.a": {"status": "sent", "integration": "fake", "capability": "A"},
+        "switch.e": {"status": "sent", "integration": "fake", "capability": "E"},
+    }
+    assert [ids for *_, ids in reset_script.calls] == [["switch.a", "switch.e"]]
+    assert "turn_off_for skipped targets that can't take it: switch.pending_d (class_unknown)" in caplog.text
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_group_whose_members_none_of_them_placed_is_refused_as_class_unknown(hass, fake, reset_script):
+    for member in ("switch.pending_a", "switch.pending_e"):
+        add_fake_entity(hass, fake, member)
+    add_fake_native_group(hass, fake, "switch.fake_group", ["switch.pending_a", "switch.pending_e"])
+    allow_experimental(hass)
+
+    with patch.object(FakeTurnOffFor, "scope", HARMED), pytest.raises(TargetNotSupported) as raised:
+        await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
+
+    assert raised.value.translation_key == "class_unknown"
+    assert raised.value.translation_placeholders["entity_id"] == "switch.fake_group"
+    assert raised.value.translation_placeholders["integration"] == "Fake"
+    assert reset_script.calls == []
+
+
+@pytest.mark.usefixtures("classed")
+@pytest.mark.parametrize("broken", ["capability", "expand_group", "unknown"])
+async def test_a_group_of_unknown_class_is_refused_where_the_call_harms_a_class(
+    hass, fake, reset_script, caplog, broken
+):
+    """Its membership unknown (expand_group raised, or answered None), or every member's class: refused with
+    Experimental features on, where elsewhere it would run whole."""
+    add_fake_entity(hass, fake, "switch.a")
+    add_fake_native_group(hass, fake, "switch.fake_group", ["switch.a"])
+    registry = get_runtime(hass).registry
+
+    def fail(hass, target):
+        raise RuntimeError("classifier bug")
+
+    if broken == "unknown":
+        registry.integrations["fake"] = replace(registry.integrations["fake"], expand_group=lambda hass, target: None)
+    else:
+        registry.integrations["fake"] = replace(registry.integrations["fake"], **{broken: fail})
+    allow_experimental(hass)
+    data = {"entity_id": "switch.fake_group", "duration": 5}
+
+    with patch.object(FakeTurnOffFor, "scope", HARMED):
+        assert await refusal(hass, "turn_off_for", data) == "class_unknown"
+        assert reset_script.calls == []
+    with patch.object(FakeTurnOffFor, "scope", CLASSED):
+        assert list(await call(hass, "turn_off_for", data)) == ["switch.fake_group"]
 
 
 @pytest.mark.usefixtures("classed")

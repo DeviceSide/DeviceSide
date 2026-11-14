@@ -29,7 +29,7 @@ def _available(state: State | None) -> bool:
 
 
 # A target's class, or a native group's members' classes (core/scope.py, AdapterScope.level); None for one the
-# integration couldn't name.
+# integration couldn't name, and an Unplaced one for one it named from partial information.
 type Classes = tuple[str | None, ...]
 # One execute: the adapter, the request its targets get, the targets, the fields dropped, and each target's classes.
 type Run = tuple[Adapter, Request, list[Target], frozenset[str], dict[str, Classes]]
@@ -38,12 +38,13 @@ type Run = tuple[Adapter, Request, list[Target], frozenset[str], dict[str, Class
 def _classed(result: EntityResult, target: Target, classes: Classes) -> EntityResult:
     """The result with the class the call reached (docs/action-behavior.md, What a response looks like): a
     target's, or a native group's members', sorted and each once. None when the integration couldn't name one, for a
-    group any member's, so a group's list never passes for its whole membership."""
+    group any member's, so a group's list never passes for its whole membership. An Unplaced class is reported as
+    the plain class it names, the one the call was planned on."""
     if not classes or None in classes:
         return result
     if target.is_group:
-        return replace(result, classes=tuple(sorted({name for name in classes if name is not None})))
-    return replace(result, classes=classes[0])
+        return replace(result, classes=tuple(sorted({str(name) for name in classes if name is not None})))
+    return replace(result, classes=str(classes[0]))
 
 
 def _skip(
@@ -64,14 +65,14 @@ def _skip(
 
 
 def _unanswered(
-    adapter: Adapter, fallen: list[tuple[Target, list[Target], str, str | None]], answered: set[str]
+    adapter: Adapter, fallen: list[tuple[Target, list[Target], str, str | None]], answered: set[str], title: str
 ) -> list[EntityResult]:
     """Each group that fell back with no member planned or left nothing to do, refused with its reason: raised if
     named, else skipped. A group a member answers for gets no result of its own."""
     results: list[EntityResult] = []
     for group, members, reason, why in fallen:
         if not any(member.reported_id in answered for member in members):
-            results += _skip(group.reported_id, group.named, reason, adapter.integration, why)
+            results += _skip(group.reported_id, group.named, reason, adapter.integration, why, title)
     return results
 
 
@@ -174,13 +175,14 @@ class Dispatcher:
 
         Planning buckets targets by adapter, expands native groups an adapter can't address, drops the fields each
         target lacks and checks supports() on what is left, then the target's class (a native group's: its members'):
-        one the scope lists in doesnt_work, or the integration names but the scope doesn't serve, is refused; a
-        native group so refused falls back to its members when the integration can list them (docs/design.md), and an
-        empty one is skipped silently. A flagged call, from an `experimental=True` adapter or touching an Experimental
-        scope item, is refused while the Experimental features option is off; a native group flagged by a member's
-        class alone falls back to its members instead. A named target that can't take the action raises then, before
-        anything is sent. Returns a result per target that ran or was left nothing to do, each with its class, and an
-        unsupported one per indirect target skipped.
+        where the adapter's call harms a class, one not yet placed (Unplaced, or None) is refused as class_unknown,
+        with Experimental features on or off; one the scope lists in doesnt_work, or the integration names but the
+        scope doesn't serve, is refused; a native group so refused falls back to its members when the integration can
+        list them (docs/design.md), and an empty one is skipped silently. A flagged call, from an
+        `experimental=True` adapter or touching an Experimental scope item, is refused while the Experimental features
+        option is off; a native group flagged by a member's class alone falls back to its members instead. A named
+        target that can't take the action raises then, before anything is sent. Returns a result per target that ran
+        or was left nothing to do, each with its class, and an unsupported one per indirect target skipped.
         """
         results: list[EntityResult] = []
         buckets: dict[str, tuple[Adapter, list[Target]]] = {}
@@ -222,6 +224,8 @@ class Dispatcher:
         # Each group that fell back, its members and the reason it would be refused with; the targets that answer.
         fallen: list[tuple[Target, list[Target], str, str | None]] = []
         answered: set[str] = set()
+        # The integration's title, which a class_unknown message names.
+        title = self.registry.integrations[adapter.integration].title
         while pending:
             target = pending.popleft()
             dropped = lacking(target, request, adapter.scope.unlisted) | (
@@ -229,7 +233,6 @@ class Dispatcher:
             )
             reduced = request.without(dropped)
             if reason := adapter.supports(self.hass, reduced, target):
-                title = self.registry.integrations[adapter.integration].title
                 results += _skip(target.reported_id, target.named, reason, adapter.integration, title=title)
                 continue
             members = self._listed(adapter, target)
@@ -245,12 +248,15 @@ class Dispatcher:
                 )
             elif refused := adapter.scope.refusal(found):
                 # A native group falls back to its members, each judged alone: the good ones run, a refused one is
-                # skipped as indirect.
+                # skipped as indirect. So a group with one member not yet placed runs the rest, where the call harms
+                # a class; one of unknown membership can't fall back, and is refused whole.
                 if members is not None:
                     fallen.append((target, members, *refused))
                     pending.extend(self._fallback(adapter, target, members, seen, refused[0]))
                 else:
-                    results += _skip(target.reported_id, target.named, refused[0], adapter.integration, refused[1])
+                    results += _skip(
+                        target.reported_id, target.named, refused[0], adapter.integration, refused[1], title
+                    )
             elif not experimental_on and self._experimental(adapter, reduced, target, found):
                 # A native group flagged only by a member's class falls back the same way: the members of Verified
                 # or Documented classes run, the flagged one is skipped (raised only if named on its own).
@@ -262,7 +268,7 @@ class Dispatcher:
             else:
                 answered.add(target.reported_id)
                 by_dropped.setdefault(dropped, []).append(target)
-        results += _unanswered(adapter, fallen, answered)
+        results += _unanswered(adapter, fallen, answered, title)
         return [(adapter, request.without(dropped), ready, dropped, classes) for dropped, ready in by_dropped.items()]
 
     def _experimental(self, adapter: Adapter, request: Request, target: Target, classes: Classes) -> bool:
@@ -292,7 +298,7 @@ class Dispatcher:
         """The target's class, or a native group's members' classes (`members`, as _listed gives them), as
         IntegrationInfo.capability names them; empty for an integration that names none. A group whose members can't
         be listed, and a classifier that raised (logged), give (None,), which the gate weighs as Experimental, as an
-        unknown device."""
+        unknown device, and which, where the call harms a class, the scope refuses (AdapterScope.refusal)."""
         if (capability := self.registry.integrations[adapter.integration].capability) is None:
             return ()
         try:
