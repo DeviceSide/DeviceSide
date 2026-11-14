@@ -191,6 +191,22 @@ Measured 2026-10-28 on Z2M 2.14.2 with Hue bulbs (a CT bulb and the A60), Home A
 - **After an xy stop,** Z2M's read-back carries its cached end-point x/y, not where the bulb halted; a
   `{"color": ""}` get publishes the halted x/y.
 
+Device strings and timers, 2026-11-14 on Z2M 2.14.3 (ZHC 26.125.0), Home Assistant 2026.10.4. Probe:
+[research/2026-11-14-lab-probe.md](research/2026-11-14-lab-probe.md).
+
+- **The registry holds Z2M's definition, not the Zigbee strings.** A TS011F plug registers as manufacturer `Tuya`,
+  model `Smart plug (with power monitoring)`, `model_id` `TS011F_plug_1`; its Zigbee model `TS011F` and manufacturer
+  `_TZ3000_…` are only in `bridge/devices`, with the `countdown` expose. A Sengled E11-G13 registers as `Sengled`,
+  `Element classic (A19)`, `model_id` `E11-G13`, and `sw_version` is Z2M's own version. A group registers as
+  `Zigbee2MQTT` / `Group`, and its members each resolve to a device.
+- **`TS011F_plug_1` has no `on_time` converter:** `{"state": "ON", "on_time": 10}` logs `No converter available for
+  'on_time'` and turns the plug on with no timer. Tuya's own recipe and `countdown` work: shared
+  [internals.md](../../internals.md), Tested behavior.
+- **A Sengled E11-G13 ignores `0x42` silently** (ZHA rejects it, [ZHA internals](../zha/internals.md)): in tenths
+  or whole seconds, from off or after a plain On, Z2M logs it invoked and the bulb doesn't change state. It has no
+  `onTime` or `offWaitTime` (`UNSUPPORTED_ATTRIBUTE`). So `{"state": "ON", "on_time": 10}`, which the light
+  converter sends as `0x42` alone, leaves it off.
+
 ## Upstream defects
 
 Workarounds the adapters carry for behavior upstream that could be fixed there. Only the issues our code already

@@ -26,6 +26,9 @@ models:
   - name: Shelly Multicolor Bulb Gen3
     ids: [S3BL-C010007AEU]
     type: bulb
+  - name: Tuya TS011F
+    ids: [TS011F, TS011F_plug_1]
+    type: plug
   - name: WiZ Smart Plug
     ids: ["8979"]
     type: plug
