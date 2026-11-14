@@ -56,6 +56,9 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
     `gledopto`, `other`; the Tuya classes' `doesnt_work` on `turn_on_for`, which refuses unknown; `other` Documented
     on brightness fades and stop). Open until the lab run on
     the branch tip, with the Sengled, which restores the card's Works line and clears the coverage warnings.
+  - [x] 5b. Test records as JSON, format 2 (`docs/test-records.schema.json`): a device per test with its class,
+    validated in CI; the markdown records converted to format 1, which `check_release --signoffs` rejects; the
+    rig's paired change writes format 2.
   - [ ] 6. Core fix-ups from step 5's run.
   - [ ] 7. ZHA classes; rig rerun.
   - [ ] 8. Hue classes, the `bridge_v1` and `smart_scene` checks moved to them; rig rerun.
@@ -67,7 +70,7 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   ([probe](docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md)). Z2M in step 5 (built), ZHA in step 7;
   blocks v0.1.0 even if step 7 slips.
 - [ ] **Sign-offs** for v0.1.0, one per integration changed since v0.0.1 (`check_release.py --signoffs`), each a rig
-  run from ha-rig `main` (its records carry the Package row; older records count for none). The runs for the formerly release-flagged adapters need these `--profile lab` cases, run
+  run from ha-rig `main` (its records are format 2; format 1 records, converted from markdown, count for none). The runs for the formerly release-flagged adapters need these `--profile lab` cases, run
   watched, the A60 visiting each network: Hue `saturation_down_stop`, `halts_brightness_and_saturation` and
   `sets_color_while_off`; ZHA `hue_cycle_stop`, `saturation_down_stop` and `sets_color_while_off`; Z2M
   `halts_a_lower_to_off`, `hue_cycle_stop`, `saturation_down_stop` and `sets_color_while_off`. Unattended alongside:
@@ -75,7 +78,7 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   - [ ] Hue
   - [ ] Matter
   - [ ] Shelly. Accepted until then: `check_release --signoffs` fails on Shelly's class coverage gaps, as its
-    records lack the Capability column; no release is cut before its house rerun.
+    records are format 1, with no class per test; no release is cut before its house rerun.
   - [ ] ZHA
   - [ ] Zigbee2MQTT
 - [ ] **Release notes**: hand-written v0.1.0 notes in `notes/`, signed off by the repo maintainers, after the RC installs cleanly
@@ -121,7 +124,7 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
 - [x] **Fast track** (#370): a contributor who builds and tests on their own hardware opens a PR directly, with no
   issue (CONTRIBUTING, PR template); an Experimental item moves to Reported, on its maintainer's request, after five working reports from other users.
 - [x] **Retests and Stale tests** (#374): every changed adapter is retested before release (a rig record, a maintainer's
-  `_manual.md` line or an accepted report at a release); one left untested at the cut ships live, marked ⚠️ Stale tests,
+  `_manual.json` row or an accepted report at a release); one left untested at the cut ships live, marked ⚠️ Stale tests,
   with a call for testers in the release notes.
 - [x] **Shared code proof** (#377): superseded by the evidence rules, under which `core/` changes need no device
   sign-off.

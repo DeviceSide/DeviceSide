@@ -11,7 +11,7 @@ device classes in [the device-classes plan](plans/2026-11-14-device-classes.md).
 2. **Probe before you build.** When unsure how a device responds to a call, run a cheap probe rather than assume.
    Record what it shows as a fact (the bundle's `internals.md`, dated). Where its source goes depends on whether a
    shipped call depends on the fact staying true:
-   - **Yes: a fact test.** The rig re-runs it (`--facts`) when that call changes, and `test-records/_facts.md` keeps
+   - **Yes: a fact test.** The rig re-runs it (`--facts`) when that call changes, and `test-records/_facts.json` keeps
      each dated result. A watched test covers what only a person can see.
    - **No: `research/`.** The fact decided scope or design, and no shipped call depends on it. A dated file, never
      edited; if evidence suggests it has changed, repeat the probe by hand in a new file.
@@ -143,10 +143,11 @@ varied integration, sets the bar. Classes match on manufacturer and model until 
 
 ### The coverage check
 
-Every class an adapter's scope holds as Verified needs a passing record test, or a `_manual.md` row, for that action
-that reached it. Records name the class each test reached, and manual rows the classes they cover. A native group's
-test credits every class its cell lists, as the one call reached each member; a manual row credits every class it
-lists to every action it passed, so a row whose actions reached different classes is split. A dash credits none.
+Every class an adapter's scope holds as Verified needs a passing record test, or a `_manual.json` row, for that action
+that reached it. A record names the class each test's devices reached, and a manual row each device's. A native
+group's test credits each member's class, as the one call reached each member; a manual row credits every class it
+lists to every action it passed, so a row whose actions reached different classes is split. A null class credits none,
+as does a test that didn't pass.
 `scripts/gen_compat.py` warns on each gap on every PR, so a developer sees it early, and names it, for example
 "zigbee2mqtt turn_on_for: `hue` is Verified but no record reaches it"; `scripts/check_release.py --signoffs` fails on
 it at `cut-release`, with the other release gates. Like every gate, it checks that evidence exists, not that it
@@ -168,7 +169,7 @@ the whole adapter. A flagged item is refused unless the user turns on the Experi
 is the only gate: adapters never read the option, and turning it on never changes how any other item behaves.
 
 Every new feature (action, integration, domain, capability or field) starts flagged, and soaks behind the flag with
-users who opt in. A passing rig record or `_manual.md` sign-off on a flagged item is evidence a maintainer can use to
+users who opt in. A passing rig record or `_manual.json` sign-off on a flagged item is evidence a maintainer can use to
 lift its flag for the next release, skipping that soak; it is not a requirement to lift it. Whether to lift is the
 maintainer's judgment, by how complex the feature is and how complete its tests are: a developer may run the first
 few rig cases before the full suite exists, so a flagged item may have passing runs and stay flagged. Lifting makes
@@ -177,7 +178,7 @@ becomes `documented(...)` in a PR that argues the sibling case ([Levels](#levels
 integration's package, so one of its maintainers approves it, as for any change there
 ([CLAUDE.md](../CLAUDE.md#maintainers)).
 
-For an item no maintainer can test, users' working reports, cited in a maintainer's `_manual.md` sign-off, can verify
+For an item no maintainer can test, users' working reports, cited in a maintainer's `_manual.json` sign-off, can verify
 it. The maintainer judges how many are enough (tenet 7); nothing counts them in code.
 
 The cards never put a model under Works from a pass on a flagged item while its flag stands (`scripts/gen_compat.py`).
@@ -193,7 +194,7 @@ are about evidence, caveats about risk and people. Each gives one setup warning,
 line:
 
 - **⚠️ Untested fix:** changed, and nobody could test it before the release. It ships live, with a call for testers
-  in the release notes. A sign-off clears it, including a maintainer's `_manual.md` line citing a user's working
+  in the release notes. A sign-off clears it, including a maintainer's `_manual.json` row citing a user's working
   report.
 - **⚠️ Unmaintained:** nobody is fixing it. It ships live. Cleared when someone fixes the adapter or adopts the
   integration. An integration whose maintainers are all gone gets it on every adapter.
@@ -201,7 +202,7 @@ line:
 A deprecation gets a hand-written note in that release's notes, not a caveat.
 
 *Example:* a low-risk fix to a broken adapter whose devices no maintainer has lands before the cut. It ships with
-⚠️ Untested fix and the issue URL; a user's working report, cited in a maintainer's `_manual.md` line, clears it.
+⚠️ Untested fix and the issue URL; a user's working report, cited in a maintainer's `_manual.json` row, clears it.
 
 ## Release gate
 
@@ -209,14 +210,14 @@ Each integration whose package (`custom_components/deviceside/integrations/<x>/`
 needs a sign-off that holds the package as the release does. Any change counts, flags included; a reverted one is
 none.
 
-- **A sign-off** is a whole passing rig run or a `_manual.md` line. A run is checked by the Package tree its records
+- **A sign-off** is a whole passing rig run or a `_manual.json` row. A run is checked by the Package tree its records
   cite, so a run on a PR branch still counts once the PR squash-merges, and its records can land in the same PR. A
-  manual line is checked by its commit, which must be in the release's checkout and hold the package as the release
-  does: cite one on `main` (or a `release/` branch), as a PR branch's is gone once it squash-merges, so the line lands
+  manual row is checked by its commit, which must be in the release's checkout and hold the package as the release
+  does: cite one on `main` (or a `release/` branch), as a PR branch's is gone once it squash-merges, so the row lands
   after the change merges. It may say "no call changed". It comes from one of the integration's maintainers, or a repo maintainer when
   none responds.
 - **Prefer the rig.** Where the rig covers an integration, the sign-off is a rig run: it is repeatable and catches what
-  a person doesn't. A manual line is the fallback for integrations the rig can't reach, or when the rig is broken; a
+  a person doesn't. A manual row is the fallback for integrations the rig can't reach, or when the rig is broken; a
   manual sign-off on a rig-covered integration says why in its PR. This is guidance, not a gate check. Rig evidence is
   no separate level: the cards keep their ✔ for rig-tested models, and `--signoffs` prints each sign-off's kind (record
   or manual) for the RC audit.
@@ -231,7 +232,6 @@ none.
   to work for users (tenet 1): hold the fix back (revert it, or leave it out of the release branch) when the current
   code mostly works; ship it marked ⚠️ Untested fix when the current code is broken and the fix is low-risk; or, when
   it is risky, put it behind `experimental` and mark it ⚠️ Untested fix.
-- Records keep a `Covers` row as information if the rig writes one. Nothing checks it.
 - **Coverage:** every module under `core/` and `integrations/`, bar `__init__.py`, needs at least 95% line coverage;
   CI checks it.
 
@@ -240,36 +240,42 @@ Package tree is the release's Hue package signs off Hue; an integration with no 
 
 ### Sign-off format
 
-A rig sign-off is the bundle's test records, `docs/integrations/<x>/test-records/<action>*.md`, when every one cites
-the same Package tree and passes: one whole run, whatever commit each record ran at. The rig writes the Package row,
-the package's git tree at the run's commit:
+Test records are JSON files in the bundle's `test-records/`, one schema for all of them:
+[`docs/test-records.schema.json`](test-records.schema.json), the format's one home, which CI checks every file against.
+This section says what each file holds and why; the schema gives the exact shape.
 
-    | Source | rig run (`scripts/rig.py`), commit `1a2b3c4` |
-    | Package | `0123456789ab` |
+- **A rig record**, `<suite>.json`, named for its step file (`<action>.json`, or `<action>-<option>.json` for a run
+  with an option set): its `format`, `integration`, `action` and `options`, the run's `result`, `date`, `source` (the
+  rig and the commit it ran), `package` (the package's git tree at that commit) and Home Assistant's version, then its
+  `tests`. Each test has its case `id`, `role`, `domain` and `result`; a skipped one says why (`reason`) or is a fact
+  case (`fact`, its result in `_facts.json`). A test that ran lists the `devices` it reached, each with its `model`
+  (the Zigbee model ID for a Zigbee device on every integration, else the integration's; `docs/models.yaml` must list
+  it), its `firmware` as the integration reports it, and the `class` the call reached, as the action's result reports
+  it ([action-behavior.md](action-behavior.md#what-a-response-looks-like)), or null where the integration named none.
+  A native group's test (`group`) lists its members. Counts are derived from the tests, never stored.
+- **Format 1** is a markdown record converted once (device-classes plan, step 5b): the same, but the run's devices sit
+  on the record, not on each test, and a test's `classes` hold the old Capability column. It credits the cards as
+  the markdown did, and is no sign-off; a rerun replaces it with format 2.
+- **`_manual.json`**: a maintainer's hand tests, a row each in `signoffs`, added in a PR: `date`, `commit`, `tester`
+  (a handle), the `devices`, each a model id (never a household's device name) with the class it reached, and the
+  actions that `passed`. A change that sends no new call signs off with a row holding `no_call_changed` instead of
+  devices and actions.
+- **`_facts.json`**: the fact cases' results, a row each, only ever added: date, suite, test, how it was seen
+  (`automated` or `observed`), result, and the devices with their firmware and class.
 
-*Example:* if `stop.md` fails, or cites a different Package tree than the rest, the records are no sign-off until every
-action passes at one package tree; a rerun of `stop` on `main` completes a run made on a PR branch when the package
-didn't change between them. A record with no Package row is no sign-off. A manual sign-off is a row of the bundle's
-`test-records/_manual.md`, added in a PR: date, commit, tester, model ids (`docs/models.yaml`, never a household's
-device names) and what passed.
+A rig sign-off is the bundle's records when every one is format 2, cites the same `package` and passes: one whole run,
+whatever commit each record ran at. *Example:* if `stop.json` fails, or cites a different package tree than the rest,
+or is still format 1, the records are no sign-off until every action passes at one package tree; a rerun of `stop` on
+`main` completes a run made on a PR branch when the package didn't change between them.
 
-An integration names classes when it has `IntegrationInfo.capability` (Shelly and Zigbee2MQTT, today). Its records' Tests table has a
-Capability column between Target and Result: the class each test's target reached, in backticks, as the action's
-result reports it ([action-behavior.md](action-behavior.md#what-a-response-looks-like)). A native group's cell lists
-its members' classes once each, sorted, comma-separated. A dash means no class: the target, or a group member,
-reached none the integration could name, or the test was skipped; a dash credits no class. Other integrations keep
-the three columns. Its `_manual.md` rows likewise have a Capabilities column between Devices and Passed: the classes
-the row's tests reached, or a dash.
+*Example:* a Shelly run in which a relay and a bulb each pass `turn_on_for` credits `S3SW-001X8EU` to `Switch` and
+`S3BL-C010007AEU` to `RGBCCT`, each only under its own class:
 
-    | Test | Target | Capability | Result |
-    |---|---|---|---|
-    | `on_then_off[switch_plug]` | `switch` (switch_plug) | `Switch` | pass |
+    {"id": "on_then_off[switch_plug]", "domain": "switch", "role": "switch_plug", "result": "pass",
+     "devices": [{"model": "S3SW-001X8EU", "firmware": "1.7.4", "class": "Switch"}]}
 
-    | Date | Commit | Tester | Devices | Capabilities | Passed |
-    |---|---|---|---|---|---|
-    | 2026-11-12 | `1a2b3c4` | @handle | `S3SW-001X8EU`, `S3BL-C010007AEU` | `Switch`, `RGBCCT` | `turn_on_for` |
+and a hand test of both, with a log-wording change's row after it:
 
-A change that sends no new call signs off with a row whose Devices (and Capabilities) hold a dash and whose Passed
-holds exactly `no call changed`. *Example:* a log-wording change in a Shelly adapter:
-
-    | 2026-11-12 | `1a2b3c4` | @handle | - | - | no call changed |
+    {"date": "2026-11-12", "commit": "1a2b3c4", "tester": "handle", "passed": ["turn_on_for"],
+     "devices": [{"model": "S3SW-001X8EU", "class": "Switch"}, {"model": "S3BL-C010007AEU", "class": "RGBCCT"}]}
+    {"date": "2026-11-12", "commit": "1a2b3c4", "tester": "handle", "no_call_changed": true}

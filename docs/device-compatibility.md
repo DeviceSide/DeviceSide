@@ -35,7 +35,7 @@ On the cards, ✔ marks what the automated rig verified; a model without it was 
 
 ## Tested devices
 
-A model works on the integrations and features its records and maintainers' hand tests (`_manual.md`) cover; the
+A model works on the integrations and features its records and maintainers' hand tests (`_manual.json`) cover; the
 [evidence](#evidence) lists them per action, with the firmware tested. Other models may work too, but makers implement
 these features inconsistently: if yours isn't here, please try it and [report the
 result](https://github.com/DeviceSide/DeviceSide/issues/new?template=device_report.yml), whether it works or not.

@@ -38,7 +38,7 @@ def test_every_record_is_its_step_files_action_and_options():
         integration = path.parent.parent.name
         found = [STEPS / "rig" / "steps" / path.with_suffix(".yaml").name]
         found.append(STEPS / "integrations" / integration / "rig" / path.with_suffix(".yaml").name)
-        (step,) = [step for step in found if step.is_file()]
+        (step,) = (step for step in found if step.is_file())
         steps, record = yaml.safe_load(step.read_text()), cr.load(path)
         assert (record["action"], record.get("options")) == (steps["action"], steps.get("options")), path.name
 
