@@ -9,7 +9,7 @@ from custom_components.deviceside.core.scope import Level
 from custom_components.deviceside.integrations.shelly.set_attributes import ShellySetAttributes
 
 from .conftest import call
-from ...conftest import refusal, result
+from ...conftest import allow_experimental, refusal, result
 from ...fixtures.shelly import add_shelly_entity, failing, shelly_device
 
 KELVIN_RANGE = {"min_color_temp_kelvin": 2700, "max_color_temp_kelvin": 6500}
@@ -104,13 +104,27 @@ async def test_a_failed_set_fails_the_call(hass, setup_production):
         await call(hass, "set_attributes", {**BULB, "brightness": 40})
 
 
-@pytest.mark.parametrize("key", ["light:0", "cct:0", "rgb:0", "rgbw:0", "switch:0"])
-async def test_other_components_are_refused(hass, setup_production, key):
+async def test_a_relay_is_not_supported(hass, setup_production):
     entry, call_rpc = shelly_device(hass)
-    add_shelly_entity(hass, entry, "light.other", key)
+    add_shelly_entity(hass, entry, "light.other", "switch:0")
 
-    assert await refusal(hass, "set_attributes", {"entity_id": "light.other", "brightness": 40}) == ("not_supported")
+    assert await refusal(hass, "set_attributes", {"entity_id": "light.other", "brightness": 40}) == "not_supported"
     assert not call_rpc.await_args_list
+
+
+@pytest.mark.parametrize(
+    ("key", "component"), [("light:0", "Light"), ("cct:0", "CCT"), ("rgb:0", "RGB"), ("rgbw:0", "RGBW")]
+)
+async def test_other_light_components_are_experimental(hass, setup_production, key, component):
+    entry, call_rpc = shelly_device(hass, status={"output": False, "brightness": 40})
+    add_shelly_entity(hass, entry, "light.other", key, attributes={"supported_color_modes": ["brightness"]})
+    data = {"entity_id": "light.other", "brightness": 40}
+
+    assert await refusal(hass, "set_attributes", data) == "experimental_off"
+    assert not call_rpc.await_args_list
+    allow_experimental(hass)
+    assert await call(hass, "set_attributes", data) == {"light.other": CONFIRMED}
+    assert rpc_call(f"{component}.Set", {"id": 0, "brightness": 40}) in call_rpc.await_args_list
 
 
 @pytest.mark.parametrize(
@@ -154,5 +168,8 @@ async def test_limits_with_a_color_still_send_the_color(hass, setup_production):
     assert rpc_call("RGBCCT.Set", {"id": 0, "ct": 3000, "mode": "cct"}) in call_rpc.await_args_list
 
 
-def test_rgbcct_is_the_only_capability_in_scope():
-    assert dict(ShellySetAttributes.scope.capabilities) == {"RGBCCT": Level.VERIFIED}
+def test_rgbcct_alone_is_verified_and_the_other_light_components_are_flagged():
+    assert dict(ShellySetAttributes.scope.capabilities) == {
+        "RGBCCT": Level.VERIFIED,
+        **dict.fromkeys(("Light", "CCT", "RGB", "RGBW"), Level.EXPERIMENTAL),
+    }

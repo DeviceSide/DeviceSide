@@ -74,6 +74,9 @@
     "target_not_supported": {
       "message": "{entity_id} can't take this action ({reason})."
     },
+    "doesnt_work": {
+      "message": "{entity_id} can't take this action ({reason}): {why}"
+    },
     "targets_failed": {
       "message": "The command failed on: {summary}"
     },

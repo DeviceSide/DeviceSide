@@ -86,7 +86,9 @@ raises or the entity is skipped.
   that ran: `confirmed`, `sent` or `unchanged`, with `integration` and, where they apply, `detail` and
   `clamped_to`. Skipped targets are left out, as core leaves them out, and `unsupported` or `rejected` never
   reach a response: the call skips or raises instead. A call that has nothing to do succeeds quietly as
-  `unchanged` with a `detail`.
+  `unchanged` with a `detail`, checked before the target's class, so nothing-to-do wins over doesn't-work or not
+  supported. A native group with a refused member falls back to its members where the integration can list them
+  ([design.md](design.md#core-contract), Groups). A named target whose class doesn't work raises with the reason why.
 - **The class.** On an integration that names [classes](evidence.md#device-classes) (Shelly), each entry carries the
   class the call reached, as an attribute would: a command's beside `status` and `integration`, a query's among its
   data. A target's is `capability` (a string: `"RGBCCT"`); a native group's is `capabilities`, its members' classes

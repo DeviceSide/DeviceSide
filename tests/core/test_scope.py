@@ -97,10 +97,10 @@ BROKEN = DoesntWork("Tuya plug", "It never switches on", "https://example.com/so
         (("hue",), None),
         ((None,), None),  # unnamed: the gate weighs it, as Experimental
         ((), None),
-        (("tuya_mcu",), Reason.NOT_SUPPORTED),  # named, in neither capabilities nor doesnt_work
-        (("tuya_zcl",), Reason.DOESNT_WORK),
-        (("hue", "tuya_mcu"), Reason.NOT_SUPPORTED),  # one member refuses the group
-        (("tuya_mcu", "tuya_zcl", "hue"), Reason.DOESNT_WORK),  # doesn't work wins
+        (("tuya_mcu",), (Reason.NOT_SUPPORTED, None)),  # named, in neither capabilities nor doesnt_work
+        (("tuya_zcl",), (Reason.DOESNT_WORK, "It never switches on")),  # with the reason the user reads
+        (("hue", "tuya_mcu"), (Reason.NOT_SUPPORTED, None)),  # one member refuses the group
+        (("tuya_mcu", "tuya_zcl", "hue"), (Reason.DOESNT_WORK, "It never switches on")),  # doesn't work wins
     ],
 )
 def test_a_class_that_doesnt_work_or_isnt_served_is_refused(classes, reason):
@@ -113,16 +113,9 @@ def test_a_scope_without_classes_refuses_none():
     assert AdapterScope().refusal(("anything",)) is None
 
 
-@pytest.mark.parametrize(
-    ("doesnt_work", "error"),
-    [
-        ({"hue": BROKEN}, "classes the scope serves"),
-        ({"tuya": DoesntWork("Tuya plug", "why", "http://example.com")}, "https URLs"),
-    ],
-)
-def test_a_doesnt_work_entry_is_checked(doesnt_work, error):
-    with pytest.raises(ValueError, match=error):
-        AdapterScope(capabilities=verified("hue"), doesnt_work=doesnt_work)
+def test_a_class_never_both_serves_and_doesnt_work():
+    with pytest.raises(ValueError, match="classes the scope serves"):
+        AdapterScope(capabilities=verified("hue"), doesnt_work={"hue": BROKEN})
 
 
 def test_a_documented_field_is_refused():

@@ -1,5 +1,5 @@
-"""Shelly set_attributes: one RGBCCT.Set without `on`, so a bulb that is off stores the values and stays off, then a
-GetStatus that confirms what the device kept."""
+"""Shelly set_attributes: one <Component>.Set without `on`, so a light that is off stores the values and stays off,
+then a GetStatus that confirms what the device kept."""
 
 from dataclasses import replace
 from typing import Any, ClassVar
@@ -11,9 +11,16 @@ from .rpc import get_status, light_params, set_and_read_back, whole_percent
 from ...actions.set_attributes import SetAttributesRequest
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Status, Target
-from ...core.scope import AdapterScope, verified
+from ...core.scope import AdapterScope, experimental, verified
 
 NOT_STORED = "not_stored"
+# The components set_attributes addresses. RGBCCT's Set without `on` keeping the output as it is, and storing the
+# values, is the rig's finding (probe of 8 Nov). Light, CCT, RGB and RGBW take the same <Component>.Set
+# (shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Light, /CCT, /RGB, /RGBW), but whether their docs say alike
+# that a Set without `on` leaves the output as it is wasn't checked (the docs host was out of reach), so they stay
+# flagged rather than Documented; their color and ct are also not ported (addressing.COMPONENT_FIELDS)
+# (docs/evidence.md, Levels).
+SET_CAPABILITIES = verified("RGBCCT") | experimental("Light", "CCT", "RGB", "RGBW")
 
 
 def _clamped(current: float, request: SetAttributesRequest) -> int | None:
@@ -34,7 +41,7 @@ def _expected(params: dict[str, Any]) -> dict[str, Any]:
 
 
 class ShellySetAttributes(Adapter[SetAttributesRequest]):
-    """One RGBCCT.Set with brightness, ct or rgb and no `on`, then a GetStatus.
+    """One <Component>.Set with brightness, ct or rgb and no `on`, then a GetStatus (RGBCCT Verified, the rest flagged).
 
     On a Multicolor Bulb Gen3 a Set without `on` leaves the bulb as it is, on or off, and stores the values: the next
     plain on comes up with them (probe of 8 Nov). The device answers a Set with null, so only the read-back says it
@@ -52,7 +59,7 @@ class ShellySetAttributes(Adapter[SetAttributesRequest]):
         fields=verified(
             "brightness", "color_temp_kelvin", "hs_color", "rgb_color", "xy_color", "min_brightness", "max_brightness"
         ),
-        capabilities=verified("RGBCCT"),
+        capabilities=SET_CAPABILITIES,
         confirmable=True,
     )
 

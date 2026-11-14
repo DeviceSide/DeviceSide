@@ -640,12 +640,12 @@ def test_a_tests_table_with_the_capability_column_parses_as_without_it(root):
 
 
 def classed_registry(*adapters) -> FakeRegistry:
-    """FakeRegistry whose zha names the classes Switch, Light, CCT and RGB."""
+    """FakeRegistry whose zha names the classes Switch, Light and CCT."""
     registry = FakeRegistry(*adapters)
     registry.integrations = {
         **registry.integrations,
         "zha": SimpleNamespace(
-            title="ZHA", maintainers=("jasonmx",), capability=len, classes=frozenset({"Switch", "Light", "CCT", "RGB"})
+            title="ZHA", maintainers=("jasonmx",), capability=len, classes=frozenset({"Switch", "Light", "CCT"})
         ),
     }
     return registry
@@ -722,3 +722,10 @@ def test_main_warns_on_each_coverage_gap_and_still_passes(root, capsys, monkeypa
     assert run([]) == 0
     assert run(["--check"]) == 0
     assert capsys.readouterr().err.count("warning: zha stop: `Switch` is Verified but no record reaches it\n") == 2
+
+
+def test_a_declared_class_no_scope_holds_needs_a_phrase(root):
+    registry = classed_registry(adapter("zha", "stop", AdapterScope(capabilities=verified("Light"))))
+    registry.integrations["zha"].classes = frozenset({"Light", "Hidden"})
+    with pytest.raises(SystemExit, match="no entry for zha Hidden, which no scope holds"):
+        gc.card("zha", registry, list(registry._adapters), data(registry))

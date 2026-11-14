@@ -82,7 +82,7 @@ def address(target: Target) -> RpcAddress | None:
 
 
 def unsupported_reason(target: Target) -> str | None:
-    """Why this entity can't take an RPC call at all, or None. Adapter.supports checks the capability in scope."""
+    """Why this entity can't take an RPC call at all, or None. The dispatcher then checks its class (capability())."""
     if rpc_device(target) is None:
         return "gen1_unsupported"
     if address(target) is None:

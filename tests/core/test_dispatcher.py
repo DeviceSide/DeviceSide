@@ -212,8 +212,6 @@ async def test_an_adapters_own_refusal_and_nothing_to_do_come_before_the_class(h
         (["switch.e", "switch.a", "light.a"], ["A", "E"]),  # sorted, each once
         (["switch.a", "switch.b"], "experimental_off"),  # the weakest member's level
         (["switch.a", "switch.unknown"], "experimental_off"),  # a classless member's: Experimental
-        (["switch.a", "switch.c"], "not_supported"),
-        (["switch.a", "switch.d"], "doesnt_work"),
     ],
 )
 async def test_a_native_group_takes_its_members_classes(hass, fake, reset_script, members, outcome):
@@ -232,6 +230,77 @@ async def test_a_native_group_takes_its_members_classes(hass, fake, reset_script
         response = await call(hass, "turn_off_for", data)
 
     assert response == {"switch.fake_group": {"status": "sent", "integration": "fake", "capabilities": outcome}}
+
+
+@pytest.mark.usefixtures("classed")
+@pytest.mark.parametrize(("bad", "reason"), [("switch.c", "not_supported"), ("switch.d", "doesnt_work")])
+async def test_a_native_group_with_a_refused_member_falls_back_to_its_members(
+    hass, fake, reset_script, caplog, bad, reason
+):
+    for member in ("switch.a", "switch.e", bad):
+        add_fake_entity(hass, fake, member)
+    add_fake_native_group(hass, fake, "switch.fake_group", ["switch.a", bad, "switch.e"])
+    scope = replace(CLASSED, capabilities=verified("A", "E"))
+
+    with patch.object(FakeTurnOffFor, "scope", scope):
+        # Named, the group doesn't raise: its members are indirect, so the refused one is skipped and logged.
+        response = await call(hass, "turn_off_for", {"entity_id": ["switch.fake_group", "switch.a"], "duration": 5})
+
+    assert response == {
+        "switch.a": {"status": "sent", "integration": "fake", "capability": "A"},
+        "switch.e": {"status": "sent", "integration": "fake", "capability": "E"},
+    }
+    assert reset_script.calls[0][3] == ["switch.a", "switch.e"]  # switch.a once, though named and a member
+    assert f"turn_off_for skipped targets that can't take it: {bad} ({reason})" in caplog.text
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_named_target_that_doesnt_work_raises_with_why(hass, fake, reset_script):
+    add_fake_entity(hass, fake, "light.d")
+
+    with patch.object(FakeTurnOnFor, "scope", CLASSED), pytest.raises(ServiceNotSupported) as err:
+        await call(hass, "turn_on_for", {"entity_id": "light.d", "duration": 5})
+
+    assert err.value.translation_key == "doesnt_work"
+    assert err.value.translation_placeholders == {
+        "entity_id": "light.d",
+        "reason": "doesnt_work",
+        "why": "It never switches on",
+    }
+
+
+@pytest.mark.usefixtures("classed")
+async def test_an_empty_native_group_is_gated_as_experimental(hass, fake, reset_script):
+    add_fake_native_group(hass, fake, "switch.fake_group", [])
+    allow_experimental(hass, False)
+
+    with patch.object(FakeTurnOffFor, "scope", CLASSED):
+        assert await refusal(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5}) == (
+            "experimental_off"
+        )
+
+
+@pytest.mark.usefixtures("classed")
+@pytest.mark.parametrize("broken", ["capability", "expand_group"])
+async def test_a_classifier_that_raises_is_logged_and_counts_as_unknown(hass, fake, reset_script, caplog, broken):
+    add_fake_entity(hass, fake, "switch.a")
+    add_fake_native_group(hass, fake, "switch.fake_group", ["switch.a"])
+    registry = get_runtime(hass).registry
+
+    def fail(hass, target):
+        raise RuntimeError("classifier bug")
+
+    registry.integrations["fake"] = replace(registry.integrations["fake"], **{broken: fail})
+    allow_experimental(hass, False)
+    data = {"entity_id": "switch.fake_group", "duration": 5}
+
+    with patch.object(FakeTurnOffFor, "scope", CLASSED):
+        assert await refusal(hass, "turn_off_for", data) == "experimental_off"
+
+    failed = [record for record in caplog.records if record.exc_info]
+    assert [record.getMessage() for record in failed] == [
+        f"turn_off_for on fake: {'classing' if broken == 'capability' else 'listing'} switch.fake_group failed"
+    ]
 
 
 @pytest.mark.usefixtures("classed")

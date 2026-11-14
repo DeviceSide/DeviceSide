@@ -89,11 +89,12 @@ MANUAL_HEADER = (
     "|---|---|---|---|---|---|",
 )
 BACKTICKED = r"`[^`|]+`(?:, `[^`|]+`)*"
-# Groups: commit, tester, then the Devices, Capabilities and Passed cells (None for a "no call changed" row, and
-# Capabilities for a row without the column).
+# The Devices, Capabilities and Passed cells are None in a "no call changed" row, whose dash Capabilities cell is
+# `unchanged_capabilities`; `capabilities` is None in a row without the column.
 MANUAL_ROW = re.compile(
-    rf"\| \d{{4}}-\d{{2}}-\d{{2}} \| `([0-9a-f]{{7,40}})` \| @([A-Za-z0-9-]+)"
-    rf" \| (?:({BACKTICKED})(?: \| ({BACKTICKED}|-))? \| ({BACKTICKED})|-(?: \| -)? \| no call changed) \|"
+    rf"\| \d{{4}}-\d{{2}}-\d{{2}} \| `(?P<commit>[0-9a-f]{{7,40}})` \| @(?P<tester>[A-Za-z0-9-]+)"
+    rf" \| (?:(?P<devices>{BACKTICKED})(?: \| (?P<capabilities>{BACKTICKED}|-))? \| (?P<passed>{BACKTICKED})"
+    r"|-(?P<unchanged_capabilities> \| -)? \| no call changed) \|"
 )
 BACKTICKS = re.compile(r"`([^`]+)`")
 # A passing row of a record's Tests table: | `test` | `domain` (role) | pass |, or with the Capability column
@@ -171,8 +172,8 @@ def manual_rows(integration: str, action: str) -> list[tuple[list[str], set[str]
     path = test_records_dir(integration) / MANUAL
     rows = []
     for line in path.read_text().splitlines() if path.is_file() else []:
-        if (row := MANUAL_ROW.fullmatch(line.strip())) and row[5] and action in BACKTICKS.findall(row[5]):
-            rows.append((BACKTICKS.findall(row[3]), set(BACKTICKS.findall(row[4] or ""))))
+        if (row := MANUAL_ROW.fullmatch(line.strip())) and row["passed"] and action in BACKTICKS.findall(row["passed"]):
+            rows.append((BACKTICKS.findall(row["devices"]), set(BACKTICKS.findall(row["capabilities"] or ""))))
     return rows
 
 
@@ -296,9 +297,12 @@ def record_signoff(integration: str) -> tuple[SignOff | None, str | None]:
     return SignOff("record", str(folder.relative_to(REPO)), commits.most_common(1)[0][0], tree=tree), None
 
 
-def manual_signoffs(integration: str, testers: tuple[str, ...]) -> tuple[list[SignOff], list[str]]:
+def manual_signoffs(
+    integration: str, testers: tuple[str, ...], names_classes: bool = False
+) -> tuple[list[SignOff], list[str]]:
     """The integration's `_manual.md` rows, and the errors in it: a `|` line that is neither the header nor a row of
-    the format, or a row whose tester may not sign off. A row in error is no sign-off."""
+    the format, a Capabilities cell on an integration that names no classes, or a row whose tester may not sign off.
+    A row in error is no sign-off."""
     path = test_records_dir(integration) / MANUAL
     if not path.is_file():
         return [], []
@@ -311,10 +315,13 @@ def manual_signoffs(integration: str, testers: tuple[str, ...]) -> tuple[list[Si
             continue
         if not (row := MANUAL_ROW.fullmatch(line)):
             errors.append(f"{label}:{number}: not a row of `{MANUAL_HEADER[0]}`: {line}")
-        elif row[2].casefold() not in allowed:
-            errors.append(f"{label}:{number}: tester @{row[2]} is neither a maintainer of {integration} nor a repo one")
+        elif not names_classes and (row["capabilities"] or row["unchanged_capabilities"]):
+            errors.append(f"{label}:{number}: a Capabilities cell, but {integration} names no classes")
+        elif row["tester"].casefold() not in allowed:
+            tester = row["tester"]
+            errors.append(f"{label}:{number}: tester @{tester} is neither a maintainer of {integration} nor a repo one")
         else:
-            found.append(SignOff("manual", f"{label}:{number}", row[1], row[2]))
+            found.append(SignOff("manual", f"{label}:{number}", row["commit"], row["tester"]))
     return found, errors
 
 
@@ -353,7 +360,7 @@ def gates(registry) -> tuple[str | None, list[Gate], list[str]]:
     base = last_release()
     found, errors = [], []
     for key, info in registry.integrations.items():
-        manual, problems = manual_signoffs(key, (*info.maintainers, *REPO_MAINTAINERS))
+        manual, problems = manual_signoffs(key, (*info.maintainers, *REPO_MAINTAINERS), info.capability is not None)
         errors += problems
         if not (last := last_change(key, base)):
             continue

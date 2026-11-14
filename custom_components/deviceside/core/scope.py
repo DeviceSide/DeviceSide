@@ -67,7 +67,8 @@ class Caveat:
 @dataclass(frozen=True, slots=True)
 class DoesntWork:
     """A class that fails the call an adapter sends (docs/evidence.md, Doesn't work): what the card names, why it
-    fails, and the source, an https URL. The dispatcher refuses it; the card lists it under Doesn't work."""
+    fails, and the source, an https URL (scripts/gen_compat.py checks it). The dispatcher refuses it, raising with
+    the reason; the card lists it under Doesn't work."""
 
     what: str
     reason: str
@@ -117,8 +118,7 @@ class AdapterScope:
         self._check_unlisted()
         if both := self.doesnt_work.keys() & (self.capabilities or {}).keys():
             raise ValueError(f"doesnt_work names classes the scope serves: {sorted(both)}")
-        if bad := sorted(key for key, entry in self.doesnt_work.items() if not entry.source.startswith("https://")):
-            raise ValueError(f"doesnt_work sources must be https URLs: {bad}")
+
         # Read-only copies: adapters share mappings such as Shelly's CAPABILITIES, and a frozen scope stays frozen.
         for name in ("domains", "fields", "capabilities", "doesnt_work"):
             if (items := getattr(self, name)) is not None:
@@ -135,16 +135,17 @@ class AdapterScope:
             levels += [self.capabilities.get(name, Level.EXPERIMENTAL) for name in classes]
         return min(levels)
 
-    def refusal(self, classes: Collection[str | None]) -> str | None:
-        """Why the scope refuses a target of these classes (a native group's: its members'), or None: `doesnt_work`
-        when one is listed as failing the call, else `not_supported` when one is named but not served. None, a
-        class the integration couldn't name, is no refusal: the gate weighs it as Experimental."""
+    def refusal(self, classes: Collection[str | None]) -> tuple[str, str | None] | None:
+        """Why the scope refuses a target of these classes (a native group's: its members'), with the reason the user
+        reads, or None: `doesnt_work` and its DoesntWork.reason when one is listed as failing the call, else
+        `not_supported` when one is named but not served. None, a class the integration couldn't name, is no refusal:
+        the gate weighs it as Experimental."""
         if self.capabilities is None:
             return None
-        if any(name in self.doesnt_work for name in classes):
-            return Reason.DOESNT_WORK
+        if broken := next((self.doesnt_work[name] for name in classes if name in self.doesnt_work), None):
+            return Reason.DOESNT_WORK, broken.reason
         if any(name is not None and name not in self.capabilities for name in classes):
-            return Reason.NOT_SUPPORTED
+            return Reason.NOT_SUPPORTED, None
         return None
 
     def _check_unlisted(self) -> None:
@@ -168,14 +169,15 @@ class IntegrationInfo:
     detect: Callable[[HomeAssistant, er.RegistryEntry, dr.DeviceEntry | None], bool] | None = None
     # True for an integration-native group (Hue grouped_light, a Z2M or ZHA group entity).
     is_group: Callable[[HomeAssistant, Target], bool] | None = None
-    # Members of a native group: for adapters without native_groups, the targets they get; for one with, the members
-    # whose classes the group takes. None means membership is unknowable here.
+    # Members of a native group, sync and with no I/O: for adapters without native_groups, the targets they get; for
+    # one with, the members whose classes the group takes, and the targets it falls back to when a member's class is
+    # refused (docs/design.md, Groups). None means membership is unknowable here.
     expand_group: Callable[[HomeAssistant, Target], list[Target]] | None = None
     # Names a target's class (docs/evidence.md, Device classes): sync and cheap, no I/O, reading only the target's
     # registry entries, config entry or the integration's data. A device it can't place gets the default class; None
     # only for a target it can't class at all. It must take hass=None on a target with no config entry or state: the
     # rig classes a stand-in. None for an integration with one class, whose scopes then hold no capabilities.
-    capability: Callable[[HomeAssistant, Target], str | None] | None = None
+    capability: Callable[[HomeAssistant | None, Target], str | None] | None = None
     # Every class capability() can name, so a scope's typo fails at registration and the cards name the classes an
     # adapter serves in neither its capabilities nor its doesnt_work as not yet supported.
     classes: frozenset[str] = frozenset()
