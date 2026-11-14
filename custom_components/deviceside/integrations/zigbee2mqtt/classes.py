@@ -28,14 +28,16 @@ The registry fallback's limit: until bridge/devices arrives after a connect, for
 one it lists without its strings (mid-interview), the Tuya rules on the Zigbee strings can't match, so the registry
 rules place what the registry can show: vendor `Tuya`, or a definition model that starts `TS`. A Tuya device under
 another vendor's definition shows neither: Lidl's `HG06337` lands in `other`, and Gledopto's GL-SPI-206P in
-`gledopto`, until the strings arrive. `unplaced` names that case, which turn_on_for refuses (plan Decision 23), by one
-rule: a device is placed once bridge/devices lists it with `interview_completed` true and both Zigbee strings
+`gledopto`, until the strings arrive. `capability` answers that case with the class as core's Unplaced, by one rule
+(`placed`): a device is placed once bridge/devices lists it with `interview_completed` true and both Zigbee strings
 (Z2M's bridge/devices, https://www.zigbee2mqtt.io/guide/usage/mqtt_topics_and_messages.html), or when the registry
 puts it in `hue`, which no Zigbee-string rule can override. So a registry Tuya class waits too (refused either way),
 a rule added before the Zigbee-string rules can't become final by accident, and a class a later call serves (part
-3's countdown) still waits for the full strings. With hass None (the rig's stand-in target, until its second change
-reads the class from the result) only the registry is read. A group is no device of its own: the dispatcher classes
-its members (members.expand_group).
+3's countdown) still waits for the full strings. An Unplaced class is that class to every adapter but one whose call
+harms a class (the Tuya entries' DoesntWork.harms, turn_on_for's), where the dispatcher refuses it as class_unknown
+(plan Decisions 23 and 26; docs/evidence.md, where a call is known to harm, a class not yet known is refused). A
+group is no device of its own: the dispatcher classes its members (members.expand_group), and falls back to them
+when one isn't placed.
 
 Each adapter's scope holds the levels below; why each class sits where it does is in index.md (Device classes) and
 the step 5 PR body (`other`'s Documented actions).
@@ -51,7 +53,7 @@ from homeassistant.helpers import device_registry as dr
 from . import bridge_cache
 from .addressing import z2m_address
 from ...core.models import Target
-from ...core.scope import DoesntWork, documented, experimental, verified
+from ...core.scope import DoesntWork, Unplaced, documented, experimental, verified
 
 # Z2M's vendor string for Hue, which HA's device registry shows as the manufacturer; native_control.py reads it too.
 HUE_MANUFACTURER = "Philips"
@@ -141,48 +143,55 @@ READ_WRITE = verified(HUE) | experimental(OTHER, TUYA_ZCL, TUYA_TS011F, SENGLED,
 # depart (some never switch off), so `other` and `gledopto` are untested. The Tuya classes are listed as doesn't work.
 TURN_ON_FOR = verified(HUE) | experimental(OTHER, GLEDOPTO)
 # The Tuya classes are harmed by today's call (plan Decision 20): Z2M has no `on_time` converter for a definition built
-# with `onOffCountdown`, or for a datapoint device, so it sends a plain On and the device stays on.
+# with `onOffCountdown`, or for a datapoint device, so it sends a plain On and the device stays on. `harms`, so the
+# dispatcher refuses a device not yet placed as well, which could be one of them (plan Decision 26).
 _RESEARCH = "https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/"
 _STAYS_ON = "Zigbee2MQTT turns it on with no timer, so it stays on"
 TURN_ON_FOR_DOESNT_WORK = {
     # Measured (Decision 16), and matched by its model so every firmware inherits the refusal.
-    TUYA_TS011F: DoesntWork(what="Tuya TS011F", reason=_STAYS_ON, source=_RESEARCH + "2026-11-14-lab-probe.md"),
+    TUYA_TS011F: DoesntWork(
+        what="Tuya TS011F", reason=_STAYS_ON, source=_RESEARCH + "2026-11-14-lab-probe.md", harms=True
+    ),
     TUYA_ZCL: DoesntWork(
-        what="Tuya plugs and switches", reason=_STAYS_ON, source=_RESEARCH + "2026-11-14-timed-on-call-patterns.md"
+        what="Tuya plugs and switches",
+        reason=_STAYS_ON,
+        source=_RESEARCH + "2026-11-14-timed-on-call-patterns.md",
+        harms=True,
     ),
     TUYA_MCU: DoesntWork(
-        what="Tuya datapoint devices", reason=_STAYS_ON, source=_RESEARCH + "2026-11-14-timed-on-call-patterns.md"
+        what="Tuya datapoint devices",
+        reason=_STAYS_ON,
+        source=_RESEARCH + "2026-11-14-timed-on-call-patterns.md",
+        harms=True,
     ),
 }
 
 
-def _listed(hass: HomeAssistant | None, device: dr.DeviceEntry) -> dict | None:
-    """The device's entry in the held bridge/devices; None with hass None, while none is held, or for a device it
-    doesn't list."""
-    if hass is None or (ieee := z2m_address(device)) is None or (cache := bridge_cache.get(hass)) is None:
+def _listed(hass: HomeAssistant, device: dr.DeviceEntry) -> dict | None:
+    """The device's entry in the held bridge/devices; None while none is held, or for a device it doesn't list."""
+    if (ieee := z2m_address(device)) is None or (cache := bridge_cache.get(hass)) is None:
         return None
     return cache.device(ieee)
 
 
-def zigbee_strings(hass: HomeAssistant | None, device: dr.DeviceEntry) -> dict[str, str]:
+def zigbee_strings(hass: HomeAssistant, device: dr.DeviceEntry) -> dict[str, str]:
     """The device's Zigbee manufacturer and model from the held bridge/devices, as rule fields, each only when it is a
-    non-empty string (Z2M holds null until the interview reads it); empty with hass None, while no bridge/devices is
-    held, or for a device it doesn't list."""
+    non-empty string (Z2M holds null until the interview reads it); empty while no bridge/devices is held, or for a
+    device it doesn't list."""
     if (entry := _listed(hass, device)) is None:
         return {}
     return {name: value for name, key in ZIGBEE.items() if isinstance(value := entry.get(key), str) and value}
 
 
-def unplaced(hass: HomeAssistant, target: Target) -> bool:
-    """Whether the target's device isn't placed yet: bridge/devices doesn't list it as interviewed
-    (`interview_completed`) with both Zigbee strings, and its registry class isn't `hue`. The caller has refused a
-    target with no device (not_addressable)."""
+def placed(hass: HomeAssistant, device: dr.DeviceEntry) -> bool:
+    """Whether the device is placed: bridge/devices lists it as interviewed (`interview_completed`) with both Zigbee
+    strings, or its registry class is `hue`."""
     # `hue` is the one class no Zigbee-string rule can override: its rule comes first and reads the registry alone.
-    if device_class(target.device) == HUE:
-        return False
-    if (entry := _listed(hass, target.device)) is None or entry.get("interview_completed") is not True:
+    if device_class(device) == HUE:
         return True
-    return zigbee_strings(hass, target.device).keys() != ZIGBEE.keys()
+    if (entry := _listed(hass, device)) is None or entry.get("interview_completed") is not True:
+        return False
+    return zigbee_strings(hass, device).keys() == ZIGBEE.keys()
 
 
 def device_class(device: dr.DeviceEntry, zigbee: Mapping[str, str | None] | None = None) -> str:
@@ -191,9 +200,10 @@ def device_class(device: dr.DeviceEntry, zigbee: Mapping[str, str | None] | None
     return next((rule.capability for rule in RULES if rule.matches(strings)), OTHER)
 
 
-def capability(hass: HomeAssistant | None, target: Target) -> str | None:
-    """Zigbee2MQTT's IntegrationInfo.capability: the target's device's class; None for a target with no device,
-    which no rule can place and no adapter can address."""
+def capability(hass: HomeAssistant, target: Target) -> str | None:
+    """Zigbee2MQTT's IntegrationInfo.capability: the target's device's class, Unplaced until it is `placed`; None for
+    a target with no device, which no rule can place and no adapter can address."""
     if target.device is None:
         return None
-    return device_class(target.device, zigbee_strings(hass, target.device))
+    found = device_class(target.device, zigbee_strings(hass, target.device))
+    return found if placed(hass, target.device) else Unplaced(found)

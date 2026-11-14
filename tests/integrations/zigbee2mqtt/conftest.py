@@ -1,3 +1,4 @@
+from dataclasses import replace
 from types import SimpleNamespace
 
 import pytest
@@ -15,12 +16,23 @@ from custom_components.deviceside.integrations.zigbee2mqtt import (
     set_attributes,
 )
 from custom_components.deviceside.integrations.zigbee2mqtt.fade import transition_cache
+from custom_components.deviceside.integrations.zigbee2mqtt.turn_on_for import Z2MTurnOnFor
 
 from ...conftest import Clock, unload_mock_entries
 from ...conftest import call as call_service
 from ...fixtures.zigbee2mqtt import GROUPS, IEEE, INFO, Broker, add_z2m_entity, add_z2m_group, z2m_entry
 
 unload_mock_mqtt_entries = unload_mock_entries("mqtt")
+
+
+@pytest.fixture
+def harmless(monkeypatch):
+    """turn_on_for with its doesnt_work entries not marked as harming, for a test of its call alone on a group bridge/
+    groups doesn't list: the dispatcher otherwise refuses it as class_unknown (test_classes.py), and still counts it
+    as Experimental."""
+    scope = Z2MTurnOnFor.scope
+    entries = {name: replace(entry, harms=False) for name, entry in scope.doesnt_work.items()}
+    monkeypatch.setattr(Z2MTurnOnFor, "scope", replace(scope, doesnt_work=entries))
 
 
 @pytest.fixture(autouse=True)
