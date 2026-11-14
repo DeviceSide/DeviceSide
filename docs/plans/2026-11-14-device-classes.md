@@ -157,7 +157,7 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      tenets example, the `docs/integrations.md` Zigbee plugs line and the `docs/models.yaml` reason, then regenerate
      `docs/device-compatibility.md`. Their "never switches on" is disproven: a `_TZ3000_typdpbpg` plug switched on
      106 s after a 10 s request on ZHA.
-   - **Open question, Jason's call:** what `capability()` returns for a Z2M device before the first `bridge/devices`
+   - **Answered (Decision 18):** what `capability()` returns for a Z2M device before the first `bridge/devices`
      after a connect. The probe answered the precondition: HA's device registry holds no Tuya strings for a Z2M
      device, only Z2M's definition (`TS011F_plug_1`) (`docs/integrations/zigbee2mqtt/internals.md`).
    - **Group members, sync:** Z2M has no `expand_group`. It gets one, listing a group's members from the bridge
@@ -610,6 +610,13 @@ A package changed after its lab run needs that run again before the release. Non
    - Building the countdown pattern (a plain On, then 0x42 with N seconds in both fields; Z2M's `countdown` expose on
      Z2M) is separate, later work. It would move the class from "Doesn't work" to Verified.
 17. **No same-unit re-pair** of the Z2M TS011F to ZHA.
+18. **The Tuya signal on Z2M: the bridge cache first, the registry as fallback.** Answers step 5's open question. The
+    classifier reads the Zigbee manufacturer and model from the `bridge/devices` cache DeviceSide already keeps for
+    group members, so rebadged Tuya devices are caught (`_TZ3000_…`, `_TZE…`). Until that cache fills after a
+    connect, it falls back to the registry: manufacturer `Tuya`, or a `model_id` starting `TS`. Registry-only was
+    rejected because a rebadged plug would land in `other` and, with Experimental features on, take today's call
+    and stay on. This is a structure change confined to the Z2M package: the classifier reads one cache it already
+    has.
 
 ## Handoff
 
