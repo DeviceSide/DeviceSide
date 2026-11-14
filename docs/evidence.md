@@ -26,9 +26,11 @@ for these rules; other docs point here. Settled in [the evidence-rules plan](pla
    sent, what the device answered, and which way DeviceSide went because of it.
 5. **Proof follows the call.** Evidence is about how a device responds to a call. Any code that sends the same call
    inherits it, and unit tests pin the call.
-6. **Simplify relentlessly.** Prefer fewer calls, fewer round trips and less machinery. A guardrail stays until
-   evidence shows the failure it guards against doesn't happen; meanwhile, look for ways to make it cheaper. A new
-   rule or guardrail names the user-visible failure it prevents and what it replaces.
+6. **Simplify relentlessly.** Prefer fewer calls, fewer round trips and less machinery. A new guardrail needs
+   evidence that its failure happens (a probe, record or report), and names the user-visible failure it prevents and
+   what it replaces; until then, log so the first report would show the failure. An existing guardrail stays until
+   evidence shows its failure doesn't happen; meanwhile, look for ways to make it cheaper. A new rule names the
+   user-visible failure it prevents and what it replaces.
 7. **Maintainers judge sufficiency.** Tooling records evidence, and maintainers decide what's enough. Gates check that a
    sign-off exists, not how thorough it was.
 

@@ -39,7 +39,7 @@ Get cheap ground truth before reading code:
 - While they run, do spot checks of your own (test timings, obvious duplication with `rg`), not their slices.
 
 **Shared reviewer brief** (adapt the slice-specific hints):
-> READ-ONLY: no edits, no commits, no network. Search with `rg`. Read <CLAUDE.md> first; its binding rules are audit criteria: <list>. Your slice, read IN FULL: <files>. Find real defects and debt in (1) architecture: coupling, misplaced or duplicated business logic, god functions, circular imports; (2) security and error handling: injection (SQL, HTML/XSS, formula, prompt), unvalidated URLs or paths from external data, secrets, swallowed exceptions, missing loud failures, silent default values standing in for missing data; (3) performance: N+1 queries, row-at-a-time writes, missing indexes, unbounded memory, races (including check-then-act), redundant fetches, no-op or repeated updates, independent calls run serially, reads broader than needed; (4) readability: duplication and copy-paste with slight variation, redundant or derivable state, parameter sprawl, leaky abstractions, stringly-typed values where a constant or enum exists, deep nesting, overlong functions (give line counts), dead code, misleading names, comments that restate the code. Verify every finding by reading the exact code and quote it. No speculative findings. For each: severity, category, file:line, function, one-sentence defect, concrete failure scenario, effort (S/M/L), and a minimal fix snippet for Critical/High. Note what's notably good in one line each. Under ~1500 words.
+> READ-ONLY: no edits, no commits, no network. Search with `rg`. Read <CLAUDE.md> first; its binding rules are audit criteria: <list>. Your slice, read IN FULL: <files>. Find real defects and debt in (1) architecture: coupling, misplaced or duplicated business logic, god functions, circular imports; (2) security and error handling: injection (SQL, HTML/XSS, formula, prompt), unvalidated URLs or paths from external data, secrets, swallowed exceptions, missing loud failures, silent default values standing in for missing data; (3) performance: N+1 queries, row-at-a-time writes, missing indexes, unbounded memory, races (including check-then-act), redundant fetches, no-op or repeated updates, independent calls run serially, reads broader than needed; (4) readability: duplication and copy-paste with slight variation, redundant or derivable state, parameter sprawl, leaky abstractions, stringly-typed values where a constant or enum exists, deep nesting, overlong functions (give line counts), dead code, misleading names, comments that restate the code; (5) unearned machinery: code that guards a failure with no cited evidence (docstring, design or internals doc, test record, issue), such as state, locks, timers, retries or constants added for it, reported as Low `simplify` (remove it, or cite the evidence). Verify every finding by reading the exact code and quote it. No speculative findings. For each: severity, category, file:line, function, one-sentence defect, concrete failure scenario, effort (S/M/L), and a minimal fix snippet for Critical/High. Note what's notably good in one line each. Under ~1500 words.
 
 **Tests reviewer brief** covers: duplicated or redundant tests (the same behaviour asserted in several files, copy-pasted helpers that belong in shared fixtures, near-identical tests that should be one parametrised test); coverage at and across boundaries (edge values, None vs zero, empty pages, error statuses, the seams between modules, and whether the repo's invariants are tested with fake clocks rather than real waits); real sleeps, network access, shared on-disk or global state, and order dependence that would block running in parallel; and weak or misleading assertions.
 
@@ -48,16 +48,16 @@ Get cheap ground truth before reading code:
 ## 4. Verify before you report
 
 Reviewer reports are model output, not facts. They overstate severity, miss mitigations and miscount. Before writing:
-- **Re-read the code for every Critical and High, and any Medium on a high-frequency path.** Use targeted `sed -n` / `rg -n`, not whole files. Drop anything that doesn't hold; correct line numbers that drifted.
-- **Calibrate severity against context.** A data-driven XSS behind authenticated access with pipeline-built URLs is Medium, not High. A latent crash on a default parameter that no caller uses is Medium. A breach of the repo's binding rule is High even when it looks small.
+- **Re-read the code for every finding you'll fix.** Use targeted `sed -n` / `rg -n`, not whole files. Drop anything that doesn't hold; correct line numbers that drifted.
+- **Calibrate severity against context.** A data-driven XSS behind authenticated access with pipeline-built URLs is Medium, not High. A latent crash on a default parameter that no caller uses is Medium. A breach of the repo's binding rule is High even when it looks small. A trigger is evidence, not a constructed interleaving: a probe, record, report or log, or a path a normal user action reaches; security and data loss keep their severity without one.
 - **Prefer your own numbers** (test counts, timings, line counts) over a reviewer's.
 - Merge duplicates across reviewers, and fold related findings into one when they share a fix.
 
 Severity rubric:
 - **Critical**: exploitable now, data loss or corruption, secrets exposed, or an external party harmed (e.g. rate limits breached at scale).
 - **High**: wrong output in a real path; a failure reported as success (an exit code of 0, a swallowed exception, a default value standing in for missing data); a binding-rule breach.
-- **Medium**: a latent bug with no current trigger, defence-in-depth gaps, or duplicated business logic that will drift.
-- **Low**: dead code, naming, small duplication, style.
+- **Medium**: a bug whose trigger normal use reaches but rarely hits, defence-in-depth gaps on a security boundary, or duplicated business logic that will drift.
+- **Low**: dead code, naming, small duplication, style; a failure whose trigger nobody has observed and normal use doesn't reach (an interleaving nobody has seen, a device behavior assumed but not probed), whatever its impact.
 
 ## 5. Report
 
@@ -75,10 +75,12 @@ Use these six sections, in this order. Lead with a two-or-three-sentence verdict
 ## 6. Prioritised action plan
 ```
 
-Section 6 is a table ranked by severity, then impact per unit of effort: `# | Severity | Item | Effort | Impact/effort`. Then, for **every Critical and High, and any Medium on a high-frequency path**, give:
+Section 6 is a table ranked by severity, then impact per unit of effort: `# | Severity | Item | Effort | Impact/effort`. Then, for **every Critical and High, and any Medium whose fix adds no new state, lock, timer, retry or constant**, give:
 - the exact `file:line` and function
 - why it matters (the risk or the debt) in one or two sentences
 - a minimal, concrete fix snippet in the repo's own idiom, short enough to apply as-is
+
+For a finding with no trigger, the fix is, in order: list it; a log line so the first report would show it; a probe. Never new state, a timer, a retry or an unmeasured constant.
 
 For a diff target, keep the same sections but say "nothing found" in a single line rather than padding a section.
 
