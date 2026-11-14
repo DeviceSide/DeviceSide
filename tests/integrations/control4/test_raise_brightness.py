@@ -81,10 +81,7 @@ async def test_a_ramp_that_wont_halt_is_moved_from_the_level_last_read(hass, wir
 
     assert await call(hass, "raise_brightness", LAMP) == {"light.lamp": SENT}
     assert director.send_post_request.await_args_list == [HALT, ramp(100, 3000)]
-    assert (
-        "light.lamp: ramping to 0.0, not the adapter's own to 100 (last sent 0); halting it to read where it is"
-        in wire.text
-    )
+    assert "light.lamp: ramping to 0.0, not the adapter's own to 100 (last sent 0); halting it" in wire.text
     assert "light.lamp: director still shows a ramp; moving from the level it reports" in wire.text
 
 
@@ -95,9 +92,9 @@ async def test_a_repeat_of_the_call_mid_ramp_sends_nothing_and_leaves_the_ramp_i
     await call(hass, action, LAMP)
     director.send_post_request.reset_mock()
 
-    assert await call(hass, action, LAMP) == {"light.lamp": SENT}
+    assert await call(hass, action, LAMP) == {"light.lamp": result("control4", "unchanged", detail="already_fading")}
     assert not director.send_post_request.await_args_list
-    assert f"light.lamp: already ramping to {100 if action == 'raise_brightness' else 0}; nothing sent" in wire.text
+    assert "nothing sent (already_fading)" in wire.text
 
 
 async def test_a_ramp_the_same_way_to_another_end_is_halted_and_moved_from_where_it_stopped(hass):
@@ -119,7 +116,9 @@ async def test_the_adapters_own_ramp_is_its_own_only_while_it_can_still_be_runni
     assert director_module.OWN_RAMP_GRACE_S == 2.0
 
     monkeypatch.setattr(hass.loop, "time", lambda: now + 3 + director_module.OWN_RAMP_GRACE_S - 0.5)
-    assert await call(hass, "raise_brightness", LAMP) == {"light.lamp": SENT}
+    assert await call(hass, "raise_brightness", LAMP) == {
+        "light.lamp": result("control4", "unchanged", detail="already_fading")
+    }
     assert not director.send_post_request.await_args_list
 
     monkeypatch.setattr(hass.loop, "time", lambda: now + 3 + director_module.OWN_RAMP_GRACE_S + 0.5)
@@ -157,16 +156,22 @@ async def test_a_ramp_that_failed_to_send_is_not_remembered_and_a_stop_that_fail
     director.send_post_request.side_effect = respond
     director.send_post_request.reset_mock()
 
-    assert await call(hass, "raise_brightness", LAMP) == {"light.lamp": SENT}
+    assert await call(hass, "raise_brightness", LAMP) == {
+        "light.lamp": result("control4", "unchanged", detail="already_fading")
+    }
     assert not director.send_post_request.await_args_list
 
 
-async def test_a_repeat_to_a_fractional_limit_is_the_same_whole_percent(hass):
+@pytest.mark.parametrize(("action", "limit"), [("raise_brightness", 70.4), ("lower_brightness", 0.3)])
+async def test_a_repeat_to_a_fractional_limit_is_the_same_whole_percent(hass, action, limit):
+    """0.3 is sent as 1, not 0, so the repeat must compare it the same way."""
     director = dimmable_lamp(hass, brightness=40)
-    await call(hass, "raise_brightness", {**LAMP, "limit": 70.4})
+    await call(hass, action, {**LAMP, "limit": limit})
     director.send_post_request.reset_mock()
 
-    assert await call(hass, "raise_brightness", {**LAMP, "limit": 70.4}) == {"light.lamp": SENT}
+    assert await call(hass, action, {**LAMP, "limit": limit}) == {
+        "light.lamp": result("control4", "unchanged", detail="already_fading")
+    }
     assert not director.send_post_request.await_args_list
 
 

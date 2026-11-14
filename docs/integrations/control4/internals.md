@@ -52,24 +52,23 @@ The adapter sends `SET_BRIGHTNESS_STOP` and reads again after 0.1 s and, if the 
 the second read would have shown 19 of the 20 timed halts). Those waits are inside the light's lock and the move's
 concurrency slot, which is why they are cut short; if the Director still shows a ramp after them, the move starts from
 that read. One ramp is left running: the adapter's own to the end this call asks for. Nothing is sent then, so a
-repeated call can't re-time the ramp from a stale level, and the call reports `sent`: the ramp it asks for is running,
-though an earlier call sent it. Whose ramp it is comes from the last command the adapter sent the light
-(`director.own_ramp_end`: the level of its last `RAMP_TO_LEVEL`, cleared by its `stop` and forgotten once that ramp's
-time plus 2 s has passed, so a ramp to the same level after that time, from a scene or from core's own turn-on, is not
-taken for it; one that replaces the adapter's ramp inside that time still is, and runs on at its own speed), held in
-memory and never used as the light's level. The record is per item: a stop sent to a group doesn't clear a member
-bulb's. A lower to the very limit a raise is ramping to counts as the same ramp. What the Director shows can't say: it
-goes on showing a ramp for a moment after a `stop` has halted it, so a press right behind a stop finds a ramp that is
-no longer the adapter's own, sends a second `SET_BRIGHTNESS_STOP` (which changes nothing on a halted light) and waits
-for the halt to show. A ramp halted from Control4 inside that same moment is the one case still read as running. For
-up to about 70 ms after a ramp is sent the Director still shows the light at rest (Ramp start, below), so an opposite
-move that arrives in that window, as two calls an automation fires together, is not halted and moves from the level
-shown. The halt-then-ramp sequence ran on hardware (DeviceSide's own actions, below). Then one `RAMP_TO_LEVEL {LEVEL,
-TIME}`, sent as a whole percent and whole milliseconds (the adapter's rounding; core sends fractions) for the distance
-left at the `sweep_time`'s speed, at most 65535 ms for a full range (`RAMP_LIMITS`). `LEVEL` 0 ends off, as core's own
-turn-off sends it (`ramp_to_level(0, ...)`); a limit above 0 is sent as at least 1. From off the level reads 0, so the
-whole range is the distance. An on/off light lacks brightness, so the dispatcher leaves it unchanged
-(`fields_dropped`).
+repeated call can't re-time the ramp from a stale level: `unchanged` (`already_fading`). Whose ramp it is comes from
+the last command the adapter sent the light (`director.own_ramp_end`: the level of its last `RAMP_TO_LEVEL`, cleared
+by its `stop` and forgotten once that ramp's time plus 2 s has passed, so a ramp to the same level after that time,
+from a scene or from core's own turn-on, is not taken for it; one that replaces the adapter's ramp inside that time
+still is, and runs on at its own speed), held in memory and never used as the light's level. The record is per item: a
+stop sent to a group doesn't clear a member bulb's. A lower to the very limit a raise is ramping to counts as the same
+ramp. What the Director shows can't say: it goes on showing a ramp for a moment after a `stop` has halted it, so a
+press right behind a stop finds a ramp that is no longer the adapter's own, sends a second `SET_BRIGHTNESS_STOP`
+(which changes nothing on a halted light) and waits for the halt to show. A ramp halted from Control4 inside that same
+moment is the one case still read as running. For up to about 70 ms after a ramp is sent the Director still shows the
+light at rest (Ramp start, below), so an opposite move that arrives in that window, as two calls an automation fires
+together, is not halted and moves from the level shown. The halt-then-ramp sequence ran on hardware (DeviceSide's own
+actions, below). Then one `RAMP_TO_LEVEL {LEVEL, TIME}`, sent as a whole percent and whole milliseconds (the adapter's
+rounding; core sends fractions) for the distance left at the `sweep_time`'s speed, at most 65535 ms for a full range
+(`RAMP_LIMITS`). `LEVEL` 0 ends off, as core's own turn-off sends it (`ramp_to_level(0, ...)`); a limit above 0 is
+sent as at least 1. From off the level reads 0, so the whole range is the distance. An on/off light lacks brightness,
+so the dispatcher leaves it unchanged (`fields_dropped`).
 
 ### `stop`
 
