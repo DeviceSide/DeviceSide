@@ -28,10 +28,10 @@ Code and docs use these terms.
   integration maintainer lifts it when they judge it ready; a passing run is evidence for that, not a trigger. Rules:
   [evidence.md](evidence.md#the-experimental-flag).
 - **Maintainer**: a GitHub handle in an integration's `IntegrationInfo.maintainers`. Maintainers look after that
-  integration's package: they get its bug reports and approve changes to it. Rules:
+  integration's package: they get its bug reports, and approve and merge changes to it. Rules:
   [CLAUDE.md](../CLAUDE.md#maintainers). User wording: [device-compatibility.md](device-compatibility.md#maintainers).
 - **Repo maintainer**: a handle in `REPO_MAINTAINERS` (`scripts/gen_codeowners.py`), with admin on the repo. Repo
-  maintainers own shared code, merge every PR and set caveats. Distinct from an
+  maintainers own shared code, merge any PR and set caveats. Distinct from an
   integration's Maintainer.
 - **Caveat**: a risk mark on an adapter (`AdapterScope.caveat`, an issue URL), ⚠️ Untested fix or ⚠️ Unmaintained,
   set by a repo maintainer. It ships live; setup warns, its card shows the mark and the release notes say why. Rules:

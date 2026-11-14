@@ -27,7 +27,7 @@ from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: 
 
 CODEOWNERS = REPO / ".github" / "CODEOWNERS"
 MANIFEST = REPO / "custom_components" / "deviceside" / "manifest.json"
-# The repo maintainers: admin on the repo, owners of shared code, merging every PR. The one source of their handles;
+# The repo maintainers: admin on the repo, owners of shared code, merging any PR. The one source of their handles;
 # manifest.json's codeowners must match it.
 REPO_MAINTAINERS: tuple[str, ...] = ("jasonmx",)
 # Each integration's paths, relative to the repo, by its key; a path that doesn't exist yet is left out.

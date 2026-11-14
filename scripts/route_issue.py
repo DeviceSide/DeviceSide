@@ -33,7 +33,12 @@ class Integration:
 
 def read(init: Path) -> Integration:
     """The integration's key, title and maintainers, from the literal `INTEGRATION = IntegrationInfo(...)` call."""
-    for node in ast.parse(init.read_text()).body:
+    return parse(init.read_text(), init)
+
+
+def parse(text: str, init: Path | str) -> Integration:
+    """`read`, on the text of an `__init__.py` (`init` names it in errors)."""
+    for node in ast.parse(text).body:
         if (
             isinstance(node, ast.Assign)
             and [getattr(target, "id", None) for target in node.targets] == ["INTEGRATION"]
