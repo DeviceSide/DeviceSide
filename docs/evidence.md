@@ -40,11 +40,10 @@ device classes in [the device-classes plan](plans/2026-11-14-device-classes.md).
 That reopened "a Zigbee switch takes the light's timed-on call", so the `switch` domain stays untested on ZHA and
 Zigbee2MQTT `turn_on_for`. A lab probe then root-caused it: the plug runs the timer only Tuya's way, and given the
 light's call one plug stayed off while another switched on about ten times later than asked and stayed on
-([internals](internals.md#tested-behavior)). Research also found
-that even lights given the identical call differ by firmware: Hue replaces a running timer where the spec keeps the longer one,
-and some IKEA and Hue models turn on and never off
-([2026-11-14](integrations/zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md)). So a Hue bulb's record proves the
-call on the `hue` class, not on every Zigbee light.
+([internals](internals.md#tested-behavior)). Research also found that even lights given the identical call differ by
+firmware: Hue replaces a running timer where the spec keeps the longer one, and some IKEA and Hue models turn on and
+never off ([2026-11-14](integrations/zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md)). So a Hue bulb's record
+proves the call on the `hue` class, not on every Zigbee light.
 
 ## Levels
 
@@ -80,12 +79,13 @@ is what the call addresses (Shelly: the RPC component). On a multi-vendor protoc
 decide the result together, so the class follows the vendor (Zigbee2MQTT: `hue`, `tuya_zcl`, `tuya_ts011f`,
 `tuya_mcu`, `sengled`, `gledopto`, `other`).
 
-- **Unknown is flagged, never Verified.** A device the integration can't place falls in its default class
+- **Unknown is flagged, never Verified.** A device no rule matches gets the default class
   (`IntegrationInfo.default_class`), which the registry refuses at Verified in any scope, so placing a device there
   can only make DeviceSide more cautious. Its one exception: where a call is known to harm, a class DeviceSide can't
-  name yet is refused ([below](#doesnt-work-not-yet-supported-untested)). The default class may be Documented for an action where the
-  [Documented](#levels) test holds (no known class departs), and is otherwise `experimental(...)`. Nothing lifts it: a record on a device outside the named classes adds a new class named for its
-  maker (Zigbee2MQTT: `ikea` for an IKEA bulb), as the default class holds every device not yet placed, and one maker's
+  name yet is refused ([below](#doesnt-work-not-yet-supported-untested)). The default class may be Documented for an
+  action where the [Documented](#levels) test holds (no known class departs), and is otherwise `experimental(...)`.
+  Nothing lifts it: a record on a device outside the named classes adds a new class named for its maker
+  (Zigbee2MQTT: `ikea` for an IKEA bulb), as the default class holds every device no rule matches, and one maker's
   record proves nothing about the rest.
 - **One axis per integration.** An integration that names classes holds them in every adapter's scope, and only the
   classes it declares; one that names none holds them in none (the registry checks). A new integration names its
@@ -94,20 +94,19 @@ decide the result together, so the class follows the vendor (Zigbee2MQTT: `hue`,
   the cards are generated from them; where each piece goes is CLAUDE.md's
   [Where facts go](../CLAUDE.md#where-facts-go).
 - **Groups.** A native group takes the weakest level among its members' classes. One with a member that doesn't work
-  or isn't supported, or a member whose class is Experimental, while Experimental features is off (the adapter,
+  or isn't supported, or a member whose class is Experimental while Experimental features is off (the adapter,
   domain and fields not flagged), falls back to its members, each judged on its own, when the integration can list
-  them, a member not yet placed among them where a call is known to harm; one it can't list counts as Experimental:
-  refused while Experimental features is off, and with them on where a call is known to harm, as its class rests on
-  a membership DeviceSide doesn't have yet
-  ([below](#doesnt-work-not-yet-supported-untested); [design.md](design.md#core-contract), Groups).
+  them, including, where a call is known to harm, a group with a member not yet placed; one it can't list counts as
+  Experimental: refused while Experimental features is off, and with them on where a call is known to harm, as its
+  class rests on a membership DeviceSide doesn't have yet ([below](#doesnt-work-not-yet-supported-untested)).
 
 ### Doesn't work, not yet supported, untested
 
 Three ways a class can't take an action, each shown differently on the cards:
 
 - **Doesn't work:** the class fails, or is harmed by, the call DeviceSide sends. The adapter's scope lists it in
-  `doesnt_work`, with what, why and a source; the dispatcher refuses it (`doesnt_work`), and the card lists it under Doesn't work. It is per
-  adapter, as one class can fail one action's call and answer another's.
+  `doesnt_work`, with what, why and a source; the dispatcher refuses it (`doesnt_work`), and the card lists it under
+  Doesn't work. It is per adapter, as one class can fail one action's call and answer another's.
 - **Not yet supported:** the class needs a call that isn't built. The integration names it, and the adapter's scope
   holds it in neither `capabilities` nor `doesnt_work`. It is refused (`not_supported`) and listed as not yet supported.
 - **Untested:** the default call may work. The class is in scope as `experimental(...)` and runs behind the flag.
@@ -118,17 +117,25 @@ a call that isn't built would work on it. Not yet supported is for a class today
 - **Split off the exception, not the class.** When devices are known to depart from a class's call, a rule moves them
   into a class of their own, at the level their own evidence supports. The rest of the class keeps its level. The
   whole class drops a level only when no rule can tell the departing devices apart.
+- **When a doesn't-work entry harms.** A failure harms when it is deferred and unattended: the device ends in an
+  on or off state the user didn't ask for, after they've stopped watching, with no visible cue. So the timed and
+  scheduled on/off actions harm when they fail (`turn_on_for`, `turn_off_for`, `set_auto_off`, `set_auto_on`,
+  `clear_auto_off`, `clear_auto_on`); dimming and color (`raise_brightness`, `lower_brightness`, `raise_hue`,
+  `lower_hue`, `raise_saturation`, `lower_saturation`), `stop`, `set_attributes` and `set_scene` don't, as a wrong
+  result shows at once and one tap fixes it; and `get_attributes` only reads, so it never harms. Each `doesnt_work`
+  entry answers it (`DoesntWork.harms`, which has no default).
 - **Where a call is known to harm, a class not yet known is refused.** An adapter whose scope lists a class as
   doesn't work because the call harms it refuses a target whose class rests on information DeviceSide doesn't have
-  yet, even with Experimental features on: a group whose membership isn't listed, or a device whose identifying
-  strings haven't been received while they could still move it into a harmed class. A group with such a device
-  among its members falls back to them, so only that member is refused. A target placed in the default
-  class from full information stays Experimental, as does every target of an action no class is harmed by (Unknown
-  is flagged, never Verified, above). The refusal is `class_unknown`, and it clears once the integration has
-  reported what it lacked. Core applies it: the harm is a `doesnt_work` entry marked `harms`, and the integration's
-  `capability` answers a device it placed from partial information as `Unplaced` (when a device counts as placed:
-  each integration's page, as [Zigbee2MQTT's](integrations/zigbee2mqtt/index.md#device-classes)). ZHA, Hue and
-  Matter mark their entries in steps 7 to 9 of the [device classes plan](plans/2026-11-14-device-classes.md).
+  yet, even with Experimental features on: a group whose membership isn't listed, or a device not yet placed (its
+  identifying strings haven't been received, so they could still move it into a harmed class). A target DeviceSide
+  can't class at all is refused the same way. A group with a member not yet placed falls back to its members, so
+  only that member is refused. A device no rule matches gets the default class, and one placed there from full
+  information stays Experimental, as does every target of an action no class is harmed by (Unknown is flagged,
+  never Verified, above). The refusal is `class_unknown`; for a target not yet placed it clears once the integration
+  has reported what it lacked. How core applies it: [design.md](design.md#core-contract), Classes; when a device
+  counts as placed: each integration's page, as [Zigbee2MQTT's](integrations/zigbee2mqtt/index.md#device-classes).
+  ZHA, Hue and Matter mark their entries in steps 7 to 9 of the
+  [device classes plan](plans/2026-11-14-device-classes.md).
 
 A refused target raises when named and is skipped when it came indirectly, as `supports()` refusals do
 ([action-behavior.md](action-behavior.md)).
@@ -216,12 +223,12 @@ Each integration whose package (`custom_components/deviceside/integrations/<x>/`
 needs a sign-off that holds the package as the release does. Any change counts, flags included; a reverted one is
 none.
 
-- **A sign-off** is a whole passing rig run or a `_manual.json` row. A run is checked by the package tree its
-  records cite (`package`), so a run on a PR branch still counts once the PR squash-merges, and its records can land in
-  the same PR. A manual row is checked by its commit, which must be in the release's checkout and hold the package as the release
+- **A sign-off** is a whole passing rig run or a `_manual.json` row. A run is checked by the package tree its records
+  cite (`package`), so a run on a PR branch still counts once the PR squash-merges, and its records can land in the same
+  PR. A manual row is checked by its commit, which must be in the release's checkout and hold the package as the release
   does: cite one on `main` (or a `release/` branch), as a PR branch's is gone once it squash-merges, so the row lands
-  after the change merges. It may say "no call changed". It comes from one of the integration's maintainers, or a repo maintainer when
-  none responds.
+  after the change merges. It may say "no call changed". It comes from one of the integration's maintainers, or a repo
+  maintainer when none responds.
 - **Prefer the rig.** Where the rig covers an integration, the sign-off is a rig run: it is repeatable and catches what
   a person doesn't. A manual row is the fallback for integrations the rig can't reach, or when the rig is broken; a
   manual sign-off on a rig-covered integration says why in its PR. This is guidance, not a gate check. Rig evidence is

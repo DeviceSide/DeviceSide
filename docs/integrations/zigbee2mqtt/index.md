@@ -53,7 +53,8 @@ DeviceSide knows a rebadged Tuya device only by what Home Assistant shows: the v
 own protocol), can't be told apart from that brand's own devices for those first moments. So turn on with timer
 refuses every light, plug or switch but a Hue one (`class_unknown`), even with Experimental features on, until
 Zigbee2MQTT lists it as fully paired (interviewed), with its own Zigbee manufacturer and model. A group with such a
-light in it runs its other lights, each on its own.
+light in it runs its other lights, each on its own, one command per light. A device whose pairing never completes stays
+refused until you pair it again in Zigbee2MQTT, and until then its groups run their other lights one by one.
 
 ### Sengled
 

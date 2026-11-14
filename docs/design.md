@@ -19,10 +19,15 @@ Code and docs use these terms.
   declares them, `AdapterScope.capabilities` holds a level per class, and a result reports it as `capability`.
 - **Class**: the set of devices that get the same call and run the same firmware family, as the integration names it
   (Shelly: the RPC component; Zigbee2MQTT: `hue`, `tuya_zcl`, `tuya_ts011f`, `tuya_mcu`, `sengled`, `gledopto`,
-  `other`). Each class stands on its own evidence, and a device the integration can't place is in its default class,
+  `other`). Each class stands on its own evidence, and a device no rule matches gets the integration's default class,
   which is never Verified: a record on another maker's device adds that maker's class. Where untested, it is
   Experimental (except where a call is known to harm: there a target whose class rests on information DeviceSide
   doesn't have yet is refused). Rules: [evidence.md](evidence.md#device-classes).
+- **Placed**: a device whose class rests on everything the integration will report about it (Zigbee2MQTT: listed as
+  interviewed, with both Zigbee strings). Until then its class is `Unplaced`: the same class to every adapter, except
+  where a call is known to harm, which refuses it (`class_unknown`). Placed or not is apart from which rule matched:
+  a device no rule matches is placed in the default class once the integration has reported it. Rules:
+  [evidence.md](evidence.md#doesnt-work-not-yet-supported-untested).
 - **Doesn't work**: a class that fails, or is harmed by, the call DeviceSide sends for an action, even when an unbuilt
   call would work. Listed in the adapter's
   `AdapterScope.doesnt_work` with a reason and source, refused (`doesnt_work`) and named on the card.
@@ -164,19 +169,19 @@ runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, 
   integration isn't installed) records it unavailable and setup carries on.
 - **Classes.** `IntegrationInfo.capability(hass, target) -> str | None` names the target's class: sync and cheap, no
   I/O, reading only the registry device, the config entry or the integration's data (Zigbee2MQTT's sources and when
-  a device counts as placed: [its page](integrations/zigbee2mqtt/index.md#device-classes)). A device it can't place
+  a device counts as placed: [its page](integrations/zigbee2mqtt/index.md#device-classes)). A device no rule matches
   gets the default class; `None` is only for a target it can't class at all (a Shelly entity with no RPC component),
-  which counts as Experimental. A device it placed from partial information, whose class a later report could move,
-  gets its class as `Unplaced` (`core/scope.py`), a flag on the class: every adapter takes it as that class except
-  one whose scope holds a `doesnt_work` entry marked `harms` (its call acts wrong on that class), where the
-  dispatcher refuses it, and `None`, as `class_unknown`, even with Experimental features on; one placed in the
-  default class from full information stays Experimental
-  ([evidence.md](evidence.md#doesnt-work-not-yet-supported-untested)). Every adapter of the integration sees the same
-  class, and maps the classes it serves to its own branch in `execute`; a class is a device class, not a call
-  pattern, as patterns are per action.
+  which counts as Experimental. A device not yet [placed](#glossary), whose class a later report could move, gets its
+  class as `Unplaced` (`core/scope.py`), a flag on the class: every adapter takes it as that class except one whose
+  scope holds a `doesnt_work` entry marked `harms` (its call acts wrong on that class), where the dispatcher refuses
+  it as `class_unknown`, as it does `None`, even with Experimental features on (the rule:
+  [evidence.md](evidence.md#doesnt-work-not-yet-supported-untested)). A response leaves out an `Unplaced` class, as it
+  does `None` ([action-behavior.md](action-behavior.md#what-a-response-looks-like)). Every adapter of the integration
+  sees the same class, and maps the classes it serves to its own branch in `execute`; a class is a device class, not
+  a call pattern, as patterns are per action.
   `IntegrationInfo.classes` declares every class it can name. The registry refuses an integration with `capability`
   unless every adapter's scope has `capabilities`, one without unless none has, a scope class the integration doesn't
-  declare, and a scope holding `IntegrationInfo.default_class` (the class a device it can't place gets; none on Shelly)
+  declare, and a scope holding `IntegrationInfo.default_class` (the class a device no rule matches gets; none on Shelly)
   as Verified. `AdapterScope.doesnt_work` maps a class to a `DoesntWork` (what, reason, source, and `harms`); a class
   in it is never in `capabilities`.
 - **Resolver.** Candidates are the available integrations whose `ha_domain` is the entity's registry platform;
@@ -185,27 +190,26 @@ runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, 
 - **Groups.** HA groups are always expanded, in one place, because no device can address them; members carry
   `via_group`. Native groups (Hue `grouped_light`, Z2M and ZHA groups) pass through as one target. An adapter with
   `native_groups` gets the group; for one without, the dispatcher calls the integration's `expand_group`, or refuses
-  with `group_not_supported` when there is none. A native group an adapter addresses as one takes its members'
-  classes, from `expand_group`, its weakest member's level for the gate. An empty one (`expand_group` lists no
-  members) is skipped silently, named or not, as core skips an empty group. One whose members can't be listed (no
-  `expand_group`, it answered `None`, or it raised, logged) counts as Experimental: refused while Experimental
-  features is off, and, where a call is known to harm, as `class_unknown` with them on
+  with `group_not_supported` when there is none. A native group an adapter addresses as one takes its members' classes,
+  from `expand_group`, its weakest member's level for the gate. An empty one (`expand_group` lists no members) is
+  skipped silently, named or not, as core skips an empty group. One whose members can't be listed (no `expand_group`, it
+  answered `None`, or it raised, logged) counts as Experimental: refused while Experimental features is off, and, where
+  a call is known to harm, as `class_unknown` with them on
   ([evidence.md](evidence.md#doesnt-work-not-yet-supported-untested)). When a member's class doesn't work or isn't
-  supported, or isn't placed yet where a call is known to harm, or, while Experimental features is off, is
-  Experimental (the adapter, domain and fields not flagged), the group falls back to its members: each available one
-  not already a target is planned on its own, indirect, so the good ones run and a refused or flagged one is skipped
-  and logged (a member also named raises, as its own target). A member `expand_group` lists for its class but the
-  integration can't address on its own (`Target.addressable` false: a Z2M device with several lights) is skipped,
-  with its class's refusal if it has one, else `not_addressable`, named by its device, and answers for nothing.
-  While Experimental features is off, or where a call is known to harm, a classifier that raised (logged) leaves the
-  group's class unknown, so it falls back too, and each member is classed again. With Experimental features on, a
-  group whose weakest member is Experimental, or whose class is unknown where no call is known to harm, runs whole,
-  as one command; a member named beside it then gets its own command as well as the group's. A group that falls back
-  gets no result of its own: its planned members answer for it, including one already a target, so naming a member
-  beside a group that falls back changes nothing. Only when none of its members is planned or left nothing to do
-  (each refused, gated or unavailable) is the group itself refused, with its reason (the refused member's, or
-  `experimental_off`): raised if named, skipped and logged if not. For an adapter without `native_groups`, an
-  `expand_group` that answers `None` or raises (logged) leaves membership unknowable, so the group is refused as
+  supported, or isn't placed yet where a call is known to harm, or, while Experimental features is off, is Experimental
+  (the adapter, domain and fields not flagged), the group falls back to its members: each available one not already a
+  target is planned on its own, indirect, so the good ones run and a refused or flagged one is skipped and logged (a
+  member also named raises, as its own target). A member `expand_group` lists for its class but the integration can't
+  address on its own (`Target.addressable` false: a Z2M device with several lights) is skipped, with its class's
+  refusal if it has one, else `not_addressable`, named by its device, and answers for nothing. While Experimental features is off, or where a call is known to harm, a
+  classifier that raised (logged) leaves the group's class unknown, so it falls back too, and each member is classed
+  again. With Experimental features on, a group whose weakest member is Experimental, or whose class is unknown where no
+  call is known to harm, runs whole, as one command; a member named beside it then gets its own command as well as the
+  group's. A group that falls back gets no result of its own: its planned members answer for it, including one already a
+  target, so naming a member beside a group that falls back changes nothing. Only when none of its members is planned or
+  left nothing to do (each refused, gated or unavailable) is the group itself refused, with its reason (the refused
+  member's, or `experimental_off`): raised if named, skipped and logged if not. For an adapter without `native_groups`,
+  an `expand_group` that answers `None` or raises (logged) leaves membership unknowable, so the group is refused as
   `group_not_supported`, as with none.
 - **Dispatcher.** Buckets targets by adapter, drops fields a target lacks, checks `supports()` (domain and fields in
   scope, and the adapter's own reasons), then the class (`AdapterScope.refusal`: where a `doesnt_work` entry `harms`,
