@@ -55,8 +55,8 @@ On a Multicolor Bulb (RGBCCT) `set_attributes` sends one `RGBCCT.Set` without `o
 values and stays off, and the next plain on comes up with them. The device answers a `Set` with nothing, so DeviceSide
 reads the status back: brightness, color temperature and mode must read as written, or the call fails (`not_stored`).
 A color is not compared, only the mode it switches to. `min_brightness` and `max_brightness` clamp the brightness the
-bulb has stored, read first, so they work while it is off; a bulb already within them is `unchanged`. Other Shelly
-lights don't take `set_attributes` yet.
+bulb has stored, read first, so they work while it is off; a bulb already within them is `unchanged`. On dimmers and
+CCT, RGB and RGBW LED controllers it sends the same `<Component>.Set`, untested, so it is experimental there.
 
 ## Get attributes
 

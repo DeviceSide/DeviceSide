@@ -39,8 +39,8 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   sign-offs below, as it moves non-Hue bulbs on Zigbee2MQTT, ZHA and Hue behind `experimental`:
   - [x] 1. Rules and design, docs only (`docs/evidence.md`, `docs/design.md`).
   - [ ] 2. Rig (ha-rig): the records' Capability column (its format in `docs/evidence.md`, and `gen_compat`'s parser
-    taking it, land in DeviceSide alongside); the rig reads the class from each result (the plan's "Rig change for
-    Jason", step 4); Shelly rerun on it.
+    taking it, land in DeviceSide alongside); the rig reads the class from each result (the second rig change, given
+    to Jason directly), before any rig run on step 3's branch or later; Shelly rerun on it.
   - [x] 3. Core: `IntegrationInfo.capability` and `classes`, `doesnt_work`, `not_supported` (and
     `docs/integrations.md`'s mention); Shelly moves to it; `gen_compat`'s tiers and coverage check (warning), failing
     in `check_release --signoffs`; `_manual.md`'s Capabilities column; "one fact, one home, in code" in
@@ -62,7 +62,8 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   Z2M `lower_hue` `cycles_down_the_wheel[group_color]` (#222).
   - [ ] Hue
   - [ ] Matter
-  - [ ] Shelly
+  - [ ] Shelly. Accepted until then: `check_release --signoffs` fails on Shelly's class coverage gaps, as its
+    records lack the Capability column; no release is cut before its house rerun.
   - [ ] ZHA
   - [ ] Zigbee2MQTT
 - [ ] **Release notes**: hand-written v0.1.0 notes in `notes/`, signed off by the repo maintainers, after the RC installs cleanly

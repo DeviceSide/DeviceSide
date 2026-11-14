@@ -168,6 +168,7 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 | `raise_brightness` | Verified | light entities; RGBCCT classes; brightness fields | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/raise_brightness.md) |
 | `raise_brightness` | Experimental | Light, CCT, RGB, RGBW classes | | |
 | `set_attributes` | Verified | light entities; RGBCCT classes; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, min_brightness, max_brightness fields | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/set_attributes.md) |
+| `set_attributes` | Experimental | Light, CCT, RGB, RGBW classes | | |
 | `set_auto_off` | Verified | light, switch entities; Switch classes | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](integrations/shelly/test-records/set_auto_off.md) |
 | `set_auto_off` | Documented | Light, CCT, RGB, RGBW, RGBCCT classes | | |
 | `set_auto_on` | Verified | light, switch entities; Switch classes | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](integrations/shelly/test-records/set_auto_on.md) |

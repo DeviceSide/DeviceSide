@@ -70,8 +70,7 @@ The compatibility section below shows which devices are known or likely to work.
 - 🟢 [Multicolor Bulb Gen3](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/shelly/index.md#shelly-multicolor-bulb-gen3) ✔ · [1 Mini Gen3](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/shelly/index.md#shelly-1-mini-gen3) ✔ · [1 Mini Gen4](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/shelly/index.md#shelly-1-mini-gen4) ✔
 - 🟡 [dimmers](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/shelly/index.md#shelly-dimmers), [LED controllers (CCT, RGB, RGBW)](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/shelly/index.md#shelly-led-controllers): turn on with timer, turn off with timer, auto-off/on, get attributes
 - 🟡 [multicolor bulbs](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/shelly/index.md#shelly-multicolor-bulbs): auto-off/on
-- 🧪 [dimmers](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/shelly/index.md#shelly-dimmers), [LED controllers (CCT, RGB, RGBW)](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/shelly/index.md#shelly-led-controllers): smooth dimming
-- 🚧 [dimmers](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/shelly/index.md#shelly-dimmers), [LED controllers (CCT, RGB, RGBW)](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/shelly/index.md#shelly-led-controllers): set without turning on
+- 🧪 [dimmers](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/shelly/index.md#shelly-dimmers), [LED controllers (CCT, RGB, RGBW)](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/shelly/index.md#shelly-led-controllers): smooth dimming, set without turning on
 
 **[Hue](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/hue/index.md)** (Bridge v2/Pro) · maintained by [@jasonmx](https://github.com/jasonmx)
 

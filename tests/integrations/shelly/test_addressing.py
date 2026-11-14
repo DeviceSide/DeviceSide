@@ -1,6 +1,10 @@
 """Shelly addressing: a Gen1 device, and a component no action reaches, are refused by every adapter before any RPC."""
 
 import pytest
+from homeassistant.helpers import entity_registry as er
+
+from custom_components.deviceside.core.models import Target
+from custom_components.deviceside.integrations.shelly import INTEGRATION
 
 from ...conftest import refusal
 from ...fixtures.shelly import add_shelly_entity, shelly_device
@@ -38,3 +42,11 @@ async def test_gen1_and_a_component_out_of_reach_are_refused(hass, action, domai
     assert await refusal(hass, action, {"entity_id": OUT_OF_REACH[domain][0], **data}) == "not_addressable"
     assert not gen1_rpc.await_args_list
     assert not call_rpc.await_args_list
+
+
+@pytest.mark.parametrize(("key", "component"), [("switch:0", "Switch"), ("rgbcct:0", "RGBCCT"), ("script:1", None)])
+def test_a_class_is_the_rpc_component_its_key_names(hass, key, component):
+    """Literal mappings, so a change to the key table shows here rather than in a conftest that derives them."""
+    entry = er.async_get(hass).async_get_or_create("light", "shelly", f"aabbccddeeff-{key}")
+    stand_in = Target(entry.entity_id, "light", "shelly", entry, None, None, None)
+    assert INTEGRATION.capability(None, stand_in) == component

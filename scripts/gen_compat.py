@@ -256,24 +256,20 @@ def load_raw(raw: dict, registry: AdapterRegistry) -> Data:
             data.sections.add((key, entry["section"]))
     for entry in raw["doesnt_work"]:
         load_broken(entry, set(registry.integrations), data)
-    for entry in code_broken(registry):
-        # Validated as a devices.yaml entry is, so a scope's actions never pass for a key devices.yaml may hold.
-        actions = entry.pop("actions")
-        load_broken(entry, set(registry.integrations), data)
-        entry["actions"] = actions
+    for entry, actions in code_broken(registry):
+        load_broken(entry, set(registry.integrations), data, actions)
     return data
 
 
-def code_broken(registry: AdapterRegistry) -> list[dict]:
-    """The scopes' doesnt_work entries as devices.yaml's are, one per integration and entry, with the actions whose
-    adapters list it, in the order the registry gives them."""
-    found: dict[tuple, dict] = {}
+def code_broken(registry: AdapterRegistry) -> list[tuple[dict, set[str]]]:
+    """The scopes' doesnt_work entries as devices.yaml's are, one per integration and entry, each with the actions
+    whose adapters list it, in the order the registry gives them."""
+    found: dict[tuple, tuple[dict, set[str]]] = {}
     for _, adapter in adapters(registry):
         for broken in adapter.scope.doesnt_work.values():
             entry = {"what": broken.what, "reason": broken.reason, "source": broken.source}
             key = (adapter.integration, *entry.values())
-            found.setdefault(key, {**entry, "integrations": [adapter.integration], "actions": set()})
-            found[key]["actions"].add(adapter.action)
+            found.setdefault(key, ({**entry, "integrations": [adapter.integration]}, set()))[1].add(adapter.action)
     return list(found.values())
 
 
@@ -293,7 +289,8 @@ def load_model(model: dict, data: Data) -> None:
     data.sections.add((None, model["section"]))
 
 
-def load_broken(entry: dict, known: set[str], data: Data) -> None:
+def load_broken(entry: dict, known: set[str], data: Data, actions: set[str] | None = None) -> None:
+    """A doesnt_work entry validated, with the actions whose adapters list it when it comes from a scope."""
     need(
         entry,
         f"doesnt_work {entry.get('what') if isinstance(entry, dict) else entry!r}",
@@ -310,7 +307,7 @@ def load_broken(entry: dict, known: set[str], data: Data) -> None:
             fail(f"doesnt_work {entry['what']!r} needs a {key}")
     entry.setdefault("section", entry["what"])
     data.sections.update((key, entry["section"]) for key in entry["integrations"])
-    data.doesnt_work.append(entry)
+    data.doesnt_work.append({**entry, "actions": actions} if actions else entry)
 
 
 def entries(record: Path) -> list[tuple[str, str] | str]:
@@ -578,7 +575,17 @@ def classes(key: str, integration_adapters: list, level: Level, data: Data) -> d
 def unsupported(key: str, classes: frozenset[str], integration_adapters: list, data: Data) -> dict[str, set[str]]:
     """Each class the integration declares that an adapter holds in neither its capabilities nor its doesnt_work, with
     the actions that refuse it (`not_supported`), in devices.yaml's order. Only a class devices.yaml gives a phrase is
-    named: Shelly's Switch has none, as a relay has no brightness or color to dim or set."""
+    named: Shelly's Switch has none, as a relay has no brightness or color to dim or set. A class no scope holds at
+    all must have one, or the card would hide it."""
+    phrased = data.capabilities.get(key, {})
+    served = [
+        (adapter.scope.capabilities or {}).keys() | adapter.scope.doesnt_work.keys() for adapter in integration_adapters
+    ]
+    if hidden := sorted(classes - set().union(*served) - phrased.keys()):
+        fail(
+            f"capabilities: no entry for {key} {', '.join(hidden)}, which no scope holds, so the card lists it as not"
+            " yet supported"
+        )
     held: dict[str, set[str]] = {}
     for item in data.capabilities.get(key, {}):
         for adapter in integration_adapters:

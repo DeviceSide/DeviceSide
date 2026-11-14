@@ -225,7 +225,7 @@ def test_every_manual_row_in_the_repo_is_in_format():
     errors = [
         error
         for key, info in registry.integrations.items()
-        for error in cr.manual_signoffs(key, (*info.maintainers, *cr.REPO_MAINTAINERS))[1]
+        for error in cr.manual_signoffs(key, (*info.maintainers, *cr.REPO_MAINTAINERS), info.capability is not None)[1]
     ]
     assert errors == []
 
@@ -533,8 +533,11 @@ def classed(repo, monkeypatch, **scopes: AdapterScope) -> FakeRegistry:
 
 
 def classes_record(repo, action: str, *cells: str, result: str = "pass") -> None:
-    """A record of the action whose Tests table has a passing test per Capability cell."""
-    rows = "".join(f"| `t{index}` | `light` (bulb) | {cell} | pass |\n" for index, cell in enumerate(cells))
+    """A record of the action whose Tests table has a test per Capability cell: passing, or (cell, result)."""
+    rows = "".join(
+        f"| `t{index}` | `light` (bulb) | {' | '.join((cell, 'pass') if isinstance(cell, str) else cell)} |\n"
+        for index, cell in enumerate(cells)
+    )
     path = repo.path / RECORDS / f"{action}.md"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(f"| | |\n|---|---|\n| Result | {result} |\n\n| Test | Target | Capability | Result |\n{rows}")
@@ -544,7 +547,7 @@ SCOPE = AdapterScope(capabilities=verified("hue", "ikea") | experimental("other"
 
 
 def test_a_verified_class_no_record_reaches_is_a_gap(fake_repo, monkeypatch):
-    classes_record(fake_repo, "turn_on_for", "`hue`", "-")  # a dash credits no class
+    classes_record(fake_repo, "turn_on_for", "`hue`", "-", ("`ikea`", "fail"))  # a dash or a failing test: none
     classes_record(fake_repo, "stop", "`hue`, `ikea`")  # a group's cell credits each class it lists
     found = classed(fake_repo, monkeypatch, turn_on_for=SCOPE, stop=SCOPE)
     assert cr.coverage_gaps(found) == ["fake turn_on_for: `ikea` is Verified but no record reaches it"]
@@ -557,14 +560,18 @@ def test_a_failing_record_reaches_nothing_and_a_manual_row_with_capabilities_doe
         "| Date | Commit | Tester | Devices | Capabilities | Passed |",
         "|---|---|---|---|---|---|",
         f"| 2026-11-12 | `{sha[:7]}` | @a | `LCA001` | `hue` | `turn_on_for`, `stop` |",
+        f"| 2026-11-12 | `{sha[:7]}` | @a | `LCA001` | `ikea` | `stop` |",  # another action's: nothing here
         f"| 2026-11-12 | `{sha[:7]}` | @a | - | - | no call changed |",
     ]
     (fake_repo.path / MANUAL).write_text("\n".join(rows) + "\n")
     found = classed(fake_repo, monkeypatch, turn_on_for=SCOPE)
     assert cr.coverage_gaps(found) == ["fake turn_on_for: `ikea` is Verified but no record reaches it"]
+    signoffs = [cr.SignOff("manual", f"{MANUAL}:{line}", sha[:7], "a") for line in (3, 4, 5)]
+    assert cr.manual_signoffs("fake", ("a",), names_classes=True) == (signoffs, [])
+    # An integration that names no classes takes no Capabilities cell.
     assert cr.manual_signoffs("fake", ("a",)) == (
-        [cr.SignOff("manual", f"{MANUAL}:3", sha[:7], "a"), cr.SignOff("manual", f"{MANUAL}:4", sha[:7], "a")],
         [],
+        [f"{MANUAL}:{line}: a Capabilities cell, but fake names no classes" for line in (3, 4, 5)],
     )
 
 

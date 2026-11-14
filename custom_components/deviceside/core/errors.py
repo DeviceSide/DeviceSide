@@ -28,14 +28,19 @@ class Reason(StrEnum):
 
 class TargetNotSupported(ServiceNotSupported):
     """A target the caller named can't take the action: core's ServiceNotSupported, with our reason in it. A target
-    refused for experimental_off gets a message of its own, saying how to let it through."""
+    refused for experimental_off gets a message of its own, saying how to let it through, and one whose class doesn't
+    work a message carrying why (`why`, the scope's DoesntWork.reason)."""
 
-    def __init__(self, entity_id: str, reason: str) -> None:
+    def __init__(self, entity_id: str, reason: str, why: str | None = None) -> None:
+        placeholders = {"entity_id": entity_id, "reason": reason}
+        if reason == EXPERIMENTAL_OFF:
+            key = EXPERIMENTAL_OFF
+        elif why is not None:
+            key, placeholders["why"] = Reason.DOESNT_WORK.value, why
+        else:
+            key = "target_not_supported"
         # Skips ServiceNotSupported.__init__, which would set core's own translation key.
         ServiceValidationError.__init__(
-            self,
-            translation_domain=DOMAIN,
-            translation_key=EXPERIMENTAL_OFF if reason == EXPERIMENTAL_OFF else "target_not_supported",
-            translation_placeholders={"entity_id": entity_id, "reason": reason},
+            self, translation_domain=DOMAIN, translation_key=key, translation_placeholders=placeholders
         )
         self.reason = reason

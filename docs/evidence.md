@@ -75,24 +75,21 @@ class stands on its own evidence: a record on one class proves nothing about ano
 is what the call addresses (Shelly: the RPC component). On a multi-vendor protocol the call and the firmware family
 decide the result together, so the class follows the vendor (Zigbee2MQTT: `hue`, `tuya_zcl`, `tuya_mcu`, `other`).
 
-- **Unknown is flagged, never Verified.** A device the integration can't place falls in its default class, which no
-  record reaches until one does, so until then it runs only behind `experimental`, and placing a device there can only
-  make DeviceSide more cautious.
-- **The default class is never Verified.** It may be Documented for an action where the [Documented](#levels) test
-  holds (no known class departs), and is otherwise `experimental(...)`. A record on a device outside the named classes
-  lifts a new class named for its maker (Zigbee2MQTT: `ikea` for an IKEA bulb), never the default class: the default
-  class holds every device not yet placed, and one maker's record proves nothing about the rest.
+- **Unknown is flagged, never Verified.** A device the integration can't place falls in its default class, which is
+  never Verified, so placing a device there can only make DeviceSide more cautious. The default class may be
+  Documented for an action where the [Documented](#levels) test holds (no known class departs), and is otherwise
+  `experimental(...)`. Nothing lifts it: a record on a device outside the named classes adds a new class named for its
+  maker (Zigbee2MQTT: `ikea` for an IKEA bulb), as the default class holds every device not yet placed, and one maker's
+  record proves nothing about the rest.
 - **One axis per integration.** An integration that names classes holds them in every adapter's scope, and only the
   classes it declares; one that names none holds them in none (the registry checks). A new integration names its
   classes, or its PR argues that it has one: that no known device behind it answers the same call differently.
-- **One fact, one home, in code.** Classes, levels and doesn't-work entries live in the integration's package
-  (`IntegrationInfo.classes`, the scopes), and the cards are generated from it. The bundle's `devices.yaml` keeps only
-  presentation: each class's phrase and section on the card. The `doesnt_work` entries still in `devices.yaml` and
-  `docs/models.yaml` move to the scopes as each integration names its classes.
-- **Groups.** A native group an adapter addresses as one takes the weakest level among its members' classes, as
-  the integration's `expand_group` lists them; one whose members it can't list counts as Experimental. A member that
-  doesn't work or isn't supported refuses the group. An adapter without `native_groups` gets the members instead, each
-  judged on its own.
+- **One fact, one home, in code.** Classes, levels and doesn't-work entries live in the integration's package, and
+  the cards are generated from them; where each piece goes is CLAUDE.md's
+  [Where facts go](../CLAUDE.md#where-facts-go).
+- **Groups.** A native group takes the weakest level among its members' classes. One with a member that doesn't work
+  or isn't supported falls back to its members, each judged on its own, when the integration can list them; one it
+  can't list counts as Experimental ([design.md](design.md#core-contract), Groups).
 
 ### Doesn't work, not yet supported, untested
 

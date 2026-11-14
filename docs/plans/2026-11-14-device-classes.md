@@ -10,8 +10,8 @@ refused in code and named on the cards.
 Touches: docs/evidence.md, docs/design.md, CLAUDE.md (tenet 5's line), docs/device-compatibility.md, CONTRIBUTING.md,
 TODO.md, README.md (regenerated), custom_components/deviceside/core/{scope.py, adapter.py, registry.py,
 dispatcher.py, errors.py}, the five integration packages and their bundles, scripts/gen_compat.py, and their tests.
-Tests-with: ha-rig #84 (step 2, merged) writes the Capability column. A second ha-rig change, after step 3, reads the
-class from each result (Decision 6). It lands before step 4's lab run.
+Tests-with: ha-rig #84 (step 2, merged) writes the Capability column. A second ha-rig change, after step 4, reads the
+class from each result (Decision 6). It lands before any rig run on step 4's branch or later.
 Depends-on: none. #350 (Control4) gets no comment and no change until step 8. It is `experimental=True` throughout, so
 none of these steps blocks it.
 
@@ -92,8 +92,9 @@ These refine `docs/evidence.md`; they don't replace its tenets.
   manual row, for that action. Each gap is named, for example: "zigbee2mqtt turn_on_for: `hue` is Verified but no
   record reaches it". It warns on every PR (`gen_compat --check`), so a developer sees the gap early, and fails only
   at `cut-release` (`check_release.py`), where the other release gates run (Decision 7).
-- With the class known per test, the Works tier can credit a model only to the classes it reached. The fail-safe rule
-  in `gen_compat`'s docstring, where any flagged capability adds no models, goes away.
+- With the class known per test, the Works tier credits classes per record: a record still can't map a test to a
+  model, so an adapter flagged on a class counts a record's models only when every passing test reached an
+  unflagged class. That replaces the rule where any flagged capability added no models.
 
 ### Cards
 
@@ -109,14 +110,16 @@ Doesn't work (generated from `doesnt_work`). `devices.yaml` keeps `column`, `col
   `docs/evidence.md`, never the implementer's conclusions. It judges the diff against this plan's intent and
   tenets. Its findings are fixed or answered before the next step starts, and a "Plan review" note goes in the step's
   last commit.
-- Steps 1 and 3 are on the binding-rule surface, so they also get the Opus audit.
+- Steps 1 and 4 are on the binding-rule surface, so they also get the Opus audit.
 - **Branches:** stacked, one per step, `claude/device-classes-<n>-<name>`, each off the previous, so each can become
   its own PR in order.
 - **Decisions the plan doesn't settle go to Jason**, asked directly, and are recorded below as they are made.
 - **The rig:** the lab profile is available every step. It has the Hue bulbs on Hue, ZHA and Z2M, the TS011F plug and
   the Matter WiZ plug, and can take a Sengled bulb or the Shelly color bulb when needed. The house profile, which
   has the Shelly switch devices, is a day or two away. Each lab run is also that integration's v0.1.0 sign-off if its
-  package doesn't change afterward.
+  package doesn't change afterward. The A60, the Sengled E11-G13 (the "ZHA bulb", paired on ZHA) and the Shelly color
+  bulb share one lab fixture and are swapped by hand, so each lab run names which bulb goes in the fixture and on which
+  network.
 
 ## Steps
 
@@ -140,8 +143,10 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
    - `gen_compat`: the new tiers, `doesnt_work` read from code, and the coverage check, warning only (Decision 7).
      `check_release.py`: the same check, failing.
    - Decision 5's rule in `docs/evidence.md`.
-   - Exact instructions to Jason for the second ha-rig change, which reads the class from the result:
-     [below](#step-4-rig-change-for-jason).
+   - Second rig change: instructions given to Jason directly. It lands before any rig run on step 4's branch or
+     later, and looks up any old hook with `getattr`, so an integration that names no classes doesn't crash.
+   - **Accepted:** `check_release --signoffs` fails on Shelly's coverage gaps until its house rerun records the
+     Capability column. No release is cut before that rerun.
 5. **Zigbee2MQTT (the driver).**
    - Classes from the probe's real strings: `hue`, `tuya_zcl`, `tuya_mcu`, `other`, and `sengled` if the Sengled needs
      its own rule. A one-off test bulb lifts its maker's class, never `other` (Decision 5).
@@ -153,6 +158,10 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
    - **Open question:** what `capability()` returns for a Z2M device before the first `bridge/devices` after a
      connect. It stays open until the registry-strings probe shows whether HA's device registry already holds the
      Tuya model string; if it doesn't, bring it to Jason.
+   - **Group members, sync:** Z2M has no `expand_group`. It gets one, listing a group's members from the bridge
+     cache's `bridge/groups`, so a group takes its members' classes and falls back to them (Decision 10).
+   - **The default class in code (Decision 5):** an `IntegrationInfo` field naming the default class, which the
+     registry refuses at Verified in any scope.
    - **Lab run** on the branch tip, with the Sengled. It tests the classifier, the column, the coverage check, Works
      credited per class, and the refusals.
 6. **Core fix-ups** from step 5's run, before ZHA and Hue copy the pattern. If a package changes, its lab run is
@@ -449,7 +458,8 @@ TS000x and TS0726, and the `_TZ3000_cicwjqth` TS011F, whose definition has no `c
 2. On each network it joins, run §1 and add its rows.
 3. On Z2M: C1 and C6, with `<device>`. Skip ZHA: the E11-G13's ZHA C1 is already a rig fact (`UNSUP_CLUSTER_COMMAND`
    by unicast, `zha/internals.md`, Groups). The research expects the same rejection on Z2M and no state change. If
-   any case is accepted or the bulb changes state, run C2 and C5 as well. Use §2's results table.
+   any case is accepted or the bulb changes state, run C2 and C5 as well. Use §2's results table. Its ZHA step is
+   only §1's template read, as it is already paired there.
 
 #### 5. Where results go
 
@@ -470,40 +480,6 @@ join `docs/models.yaml`, per its header.
 | Sengled strings and 0x42 | `zigbee2mqtt`, `zha`, `hue` | the `sengled` rule and its `turn_on_for` state: steps 5, 7, 8 |
 | TS011F and Sengled model IDs | `docs/models.yaml` | steps 5, 7, 8 (the cards) |
 
-### Step 4: Rig change for Jason
-
-What ha-rig #84 does today: for an integration that names classes, it fills each test's Capability cell by calling
-`IntegrationInfo.capability(None, target)`, else the adapter's `capability(None, target)`, on a stand-in Target it
-builds from the registry (no hass, config entry or state), and gives a group with any classless member a whole-cell
-dash. Step 4 makes the class part of each result, so the rig reads it from there instead, and the record holds the
-class the call really reached (Decision 6).
-
-1. **Which integrations.** Unchanged: those whose `IntegrationInfo.capability` is not None (Shelly, today). Drop the
-   `Adapter.capability()` fallback: step 4 removes that method, so calling it raises `AttributeError`. If #84 reaches
-   it for any adapter, a rig run on a checkout with step 4 fails until this change lands, so land it before the next
-   run on step 4's branch or `main` after it merges.
-2. **Ask for the response.** Make each DeviceSide call a test step sends with `return_response: true` (commands and
-   settings answer optionally; queries always do). It changes nothing else: DeviceSide raises `no_entities_matched`
-   only when no target ran, which a test that expects a run fails on anyway.
-3. **Read the class** from the entry under the test's target entity ID, the one the Target column names:
-   - `capability` (a string, beside `status` and `integration`; for `get_attributes`, among the entity's data): the
-     cell is that class in backticks, `` `RGBCCT` ``.
-   - `capabilities` (a list, a native group's members' classes, already sorted and each once): the cell is each in
-     backticks, comma-separated, `` `hue`, `other` ``.
-   - Neither key, no entry for the target (it was skipped or refused), or no response: a dash. DeviceSide leaves the
-     key out when it couldn't name a class, for a group when it couldn't for any member, so the rig's whole-cell dash
-     rule is already applied.
-4. **A test with several calls** on its target: the cell is the sorted union of the classes they reported, or a dash
-   if any call that ran reported none. A test step that targets an area or a group helper reads the entries of the
-   entities the Target column names.
-5. **Skipped tests** keep their dash.
-6. **Remove the stand-in Target** and its registry lookup. DeviceSide then no longer needs `capability()` to take
-   `hass=None`; tell the implementer of the next step, who can drop that clause from `IntegrationInfo.capability`'s
-   comment and `docs/design.md`, and the test pinning it (`tests/core/test_registry.py`).
-7. **Test it** in the rig's own unit tests on canned responses: a command entry with `capability`, a group entry with
-   `capabilities`, a query entry with `capability` in its data, an entry with neither, two calls that disagree, and
-   a skipped test. Then one Shelly run in the house profile shows the column filled from results.
-
 ### Runs to repeat
 
 A package changed after its lab run needs that run again before the release. None yet.
@@ -515,6 +491,8 @@ A package changed after its lab run needs that run again before the release. Non
   ZBMINIR2 at 1.1.0.
 - Building Tuya patterns B and C, and a non-Hue bulb on the rig. The second lifts that maker's own class on Z2M and
   ZHA, never `other` (Decision 5).
+- A query's own `capability` or `capabilities` data key: the class would overwrite it in the response. No query has
+  one; a check is built when one would.
 
 ## Decisions (Jason, 2026-11-14)
 
@@ -545,3 +523,16 @@ A package changed after its lab run needs that run again before the release. Non
 7. **The coverage check warns during development and fails at release.** `gen_compat --check` prints each gap on
    every PR, so a developer sees it early. `check_release.py` fails on it at `cut-release`, with the other release
    gates. No allowlist is needed while records catch up (Shelly's house rerun).
+
+## Decisions (Jason, 2026-11-14, during step 4)
+
+8. **A native group with a member that doesn't work or isn't supported falls back to its members** when the
+   integration has `expand_group`: each member is judged alone, the good ones run, and the refused one is reported
+   refused. With no `expand_group` the group can't be judged by member, and is refused (today: counted Experimental,
+   as its classes are unknown).
+9. **Shelly `set_attributes` on Light, CCT, RGB and RGBW** is Documented if Shelly's Gen2+ docs say, alike for those
+   components, that a `Set` without `on` leaves the output as it is; otherwise `experimental(...)`. RGBCCT stays
+   Verified.
+10. **Z2M groups get sync member listing in step 5**, from the bridge cache's `bridge/groups`.
+11. **The "ZHA bulb" is the Sengled E11-G13**, already paired on ZHA, sharing one lab fixture with the A60 and the
+    Shelly color bulb.

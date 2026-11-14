@@ -19,8 +19,8 @@ Code and docs use these terms.
   declares them, `AdapterScope.capabilities` holds a level per class, and a result reports it as `capability`.
 - **Class**: the set of devices that get the same call and run the same firmware family, as the integration names it
   (Shelly: the RPC component; Zigbee2MQTT: `hue`, `tuya_zcl`, `tuya_mcu`, `other`). Each class stands on its own
-  evidence, and a device the integration can't place is in its default class, which stays flagged until a record
-  reaches it. Rules: [evidence.md](evidence.md#device-classes).
+  evidence, and a device the integration can't place is in its default class, which is never Verified: a record on
+  another maker's device adds that maker's class. Rules: [evidence.md](evidence.md#device-classes).
 - **Doesn't work**: a class that fails the call DeviceSide sends for an action. Listed in the adapter's
   `AdapterScope.doesnt_work` with a reason and source, refused (`doesnt_work`) and named on the card.
 - **Not yet supported**: a class that needs a call DeviceSide hasn't built for an action. The integration names it,
@@ -174,7 +174,11 @@ runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, 
   `via_group`. Native groups (Hue `grouped_light`, Z2M and ZHA groups) pass through as one target. An adapter with
   `native_groups` gets the group; for one without, the dispatcher calls the integration's `expand_group`, or refuses
   with `group_not_supported` when there is none. A native group an adapter addresses as one takes its members'
-  classes, from `expand_group`; one whose member's class doesn't work or isn't supported is refused.
+  classes, from `expand_group`, its weakest member's level for the gate. One that is empty, whose members can't be
+  listed (no `expand_group`, or it raised), or whose classifier raised (logged) counts as Experimental. When a
+  member's class doesn't work or isn't supported, the group falls back to its members: each available one not
+  already a target is planned on its own, indirect, so the good ones run and a refused one is skipped and logged. A
+  group whose members can't be listed can't show a refused member: it is refused unless Experimental features is on.
 - **Dispatcher.** Buckets targets by adapter, drops fields a target lacks, checks `supports()` (domain and fields in
   scope, and the adapter's own reasons), then the class (`AdapterScope.refusal`: a class in `doesnt_work` is refused as
   `doesnt_work`, one in neither it nor `capabilities` as `not_supported`; a call left nothing to send is first), clamps
