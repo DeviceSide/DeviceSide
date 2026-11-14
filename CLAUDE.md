@@ -27,8 +27,12 @@ shared home named in parentheses.
 | Models across integrations | `docs/models.yaml` |
 | Dated sources, never edited after | `<x>/research/` |
 | Run evidence | `<x>/test-records/` |
-| Why the code does something | the module docstring |
+| Why the code does something | the module docstring, a few lines, linking `internals.md` for the evidence |
 | Rule evidence | the PR body |
+
+`index.md` holds only what changes what a user does or expects, in the shape of Hue's page (Shelly's for "Try it":
+what was tried, on what, one report per class). Timings, odds and why a limit exists go in `internals.md`. A behavior
+every integration shares is in `docs/integrations.md`: add your value there, don't restate it.
 
 ## Evidence
 
@@ -37,7 +41,8 @@ shared home named in parentheses.
 3. Verify, then trust: a verified fact stands across firmware, HA and code changes until evidence contradicts it.
 4. Surprises reopen facts: root-cause a bug, record the finding, and log so the first report holds the diagnosis.
 5. Proof follows the call: code that sends the same call inherits its evidence; unit tests pin the call.
-6. Simplify relentlessly: a new rule or guardrail names the user-visible failure it prevents and what it replaces.
+6. Simplify relentlessly: a new guardrail needs evidence its failure happens; a new rule or guardrail names the
+   user-visible failure it prevents and what it replaces.
 7. Maintainers judge sufficiency: gates check that a sign-off exists, not how thorough it was.
 
 The levels (Verified, Documented), the `experimental` flag, caveats, the release gate and the sign-off format:
