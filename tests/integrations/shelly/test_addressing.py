@@ -48,5 +48,5 @@ async def test_gen1_and_a_component_out_of_reach_are_refused(hass, action, domai
 def test_a_class_is_the_rpc_component_its_key_names(hass, key, component):
     """Literal mappings, so a change to the key table shows here rather than in a conftest that derives them."""
     entry = er.async_get(hass).async_get_or_create("light", "shelly", f"aabbccddeeff-{key}")
-    stand_in = Target(entry.entity_id, "light", "shelly", entry, None, None, None)
-    assert INTEGRATION.capability(None, stand_in) == component
+    target = Target(entry.entity_id, "light", "shelly", entry, None, None, None)
+    assert INTEGRATION.capability(hass, target) == component

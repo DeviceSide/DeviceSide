@@ -62,10 +62,10 @@ class RpcAddress:
     id: int
 
 
-def capability(hass: HomeAssistant | None, target: Target) -> str | None:
+def capability(hass: HomeAssistant, target: Target) -> str | None:
     """Shelly's IntegrationInfo.capability: a target's class is the RPC component its entity drives, which every
-    adapter's scope holds a level for; None for an entity that drives none. Reads the registry entry alone, so it takes
-    hass=None."""
+    adapter's scope holds a level for; None for an entity that drives none. Reads the registry entry alone, so every
+    class it names is placed."""
     return rpc.component if (rpc := address(target)) is not None else None
 
 
