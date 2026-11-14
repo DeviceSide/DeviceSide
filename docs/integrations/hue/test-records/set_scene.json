@@ -1,0 +1,33 @@
+{
+  "format": 1,
+  "integration": "hue",
+  "action": "set_scene",
+  "result": "pass",
+  "date": "2026-11-08",
+  "source": {
+    "kind": "rig",
+    "commit": "8aae106"
+  },
+  "home_assistant": "2026.10.4",
+  "devices": [
+    {
+      "name": "Zone",
+      "firmware": null,
+      "group": true
+    }
+  ],
+  "tests": [
+    {
+      "id": "sets_while_off[scene]",
+      "domain": "scene",
+      "role": "scene",
+      "result": "pass"
+    },
+    {
+      "id": "applies_while_on[scene]",
+      "domain": "scene",
+      "role": "scene",
+      "result": "pass"
+    }
+  ]
+}

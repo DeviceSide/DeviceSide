@@ -1,0 +1,103 @@
+{
+  "format": 1,
+  "integration": "hue",
+  "action": "stop",
+  "result": "pass",
+  "date": "2026-11-07",
+  "source": {
+    "kind": "rig",
+    "commit": "1de5a51"
+  },
+  "home_assistant": "2026.10.2",
+  "devices": [
+    {
+      "model": "LTA009",
+      "name": "Hue ambiance lamp",
+      "firmware": "1.163.1"
+    },
+    {
+      "name": "Zone",
+      "firmware": null,
+      "group": true
+    },
+    {
+      "model": "LCA016",
+      "name": "Hue Essential lamp",
+      "firmware": "1.164.2"
+    }
+  ],
+  "tests": [
+    {
+      "id": "halts_a_raise[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass"
+    },
+    {
+      "id": "halts_a_raise[group]",
+      "domain": "light",
+      "role": "group",
+      "result": "pass"
+    },
+    {
+      "id": "halts_a_lower_to_off[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass"
+    },
+    {
+      "id": "halts_a_lower_to_off[group]",
+      "domain": "light",
+      "role": "group",
+      "result": "pass"
+    },
+    {
+      "id": "stop_when_idle[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass"
+    },
+    {
+      "id": "stop_when_idle[group]",
+      "domain": "light",
+      "role": "group",
+      "result": "pass"
+    },
+    {
+      "id": "saturation_down_stop[light_color]",
+      "domain": "light",
+      "role": "light_color",
+      "result": "pass"
+    },
+    {
+      "id": "saturation_down_stop[light_color] observed",
+      "domain": "light",
+      "role": "light_color",
+      "result": "not observed"
+    },
+    {
+      "id": "saturation_down_stop[group_color]",
+      "domain": "light",
+      "role": "group_color",
+      "result": "pass"
+    },
+    {
+      "id": "halts_brightness_and_saturation[light_color]",
+      "domain": "light",
+      "role": "light_color",
+      "result": "pass"
+    },
+    {
+      "id": "halts_brightness_and_saturation[light_color] observed",
+      "domain": "light",
+      "role": "light_color",
+      "result": "not observed"
+    },
+    {
+      "id": "halts_brightness_and_saturation[group_color]",
+      "domain": "light",
+      "role": "group_color",
+      "result": "pass"
+    }
+  ]
+}

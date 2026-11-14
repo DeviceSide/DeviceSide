@@ -1,0 +1,41 @@
+{
+  "format": 1,
+  "integration": "hue",
+  "action": "lower_brightness",
+  "options": [
+    "predicted_state"
+  ],
+  "result": "pass",
+  "date": "2026-11-08",
+  "source": {
+    "kind": "rig",
+    "commit": "8aae106"
+  },
+  "home_assistant": "2026.10.4",
+  "devices": [
+    {
+      "model": "LTA009",
+      "name": "Hue ambiance lamp",
+      "firmware": "1.163.1"
+    },
+    {
+      "name": "Zone",
+      "firmware": null,
+      "group": true
+    }
+  ],
+  "tests": [
+    {
+      "id": "soft_off_stays_on_until_its_end[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass"
+    },
+    {
+      "id": "soft_off_stays_on_until_its_end[group]",
+      "domain": "light",
+      "role": "group",
+      "result": "pass"
+    }
+  ]
+}

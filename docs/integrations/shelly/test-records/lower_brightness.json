@@ -1,0 +1,39 @@
+{
+  "format": 1,
+  "integration": "shelly",
+  "action": "lower_brightness",
+  "result": "pass",
+  "date": "2026-11-13",
+  "source": {
+    "kind": "rig",
+    "commit": "5aa4aa4"
+  },
+  "home_assistant": "2026.10.4",
+  "devices": [
+    {
+      "model": "S3BL-C010007AEU",
+      "name": "Shelly Multicolor Bulb Gen3",
+      "firmware": "20261026-122229/2.0.3-g4601943"
+    }
+  ],
+  "tests": [
+    {
+      "id": "lower_to_off[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass"
+    },
+    {
+      "id": "lower_to_off[group]",
+      "role": "group",
+      "result": "skipped",
+      "reason": "none in the profile"
+    },
+    {
+      "id": "light_raised_mid_room_lower[group]",
+      "role": "group",
+      "result": "skipped",
+      "reason": "none in the profile"
+    }
+  ]
+}

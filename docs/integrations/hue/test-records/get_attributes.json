@@ -1,0 +1,91 @@
+{
+  "format": 1,
+  "integration": "hue",
+  "action": "get_attributes",
+  "result": "pass",
+  "date": "2026-11-08",
+  "source": {
+    "kind": "rig",
+    "commit": "8aae106"
+  },
+  "home_assistant": "2026.10.4",
+  "devices": [
+    {
+      "model": "LTA009",
+      "name": "Hue ambiance lamp",
+      "firmware": "1.163.1"
+    },
+    {
+      "name": "Zone",
+      "firmware": null,
+      "group": true
+    },
+    {
+      "model": "LCA016",
+      "name": "Hue Essential lamp",
+      "firmware": "1.164.2"
+    }
+  ],
+  "tests": [
+    {
+      "id": "reads_while_off[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass"
+    },
+    {
+      "id": "reads_while_off[group]",
+      "domain": "light",
+      "role": "group",
+      "result": "pass"
+    },
+    {
+      "id": "predicts_mid_move[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass"
+    },
+    {
+      "id": "predicts_mid_move[group]",
+      "domain": "light",
+      "role": "group",
+      "result": "pass"
+    },
+    {
+      "id": "reads_color_while_off[light_color]",
+      "domain": "light",
+      "role": "light_color",
+      "result": "pass"
+    },
+    {
+      "id": "reads_a_running_timer[switch_plug]",
+      "role": "switch_plug",
+      "result": "skipped",
+      "reason": "none in the profile"
+    },
+    {
+      "id": "reads_a_running_timer[light_onoff]",
+      "role": "light_onoff",
+      "result": "skipped",
+      "reason": "none in the profile"
+    },
+    {
+      "id": "reads_a_running_timer[light_wrapped]",
+      "role": "light_wrapped",
+      "result": "skipped",
+      "reason": "none in the profile"
+    },
+    {
+      "id": "reads_a_running_timer[light_dimmable]",
+      "role": "light_dimmable",
+      "result": "skipped",
+      "reason": "none in the profile"
+    },
+    {
+      "id": "reads_no_timer_after_a_turn_off[switch_plug]",
+      "role": "switch_plug",
+      "result": "skipped",
+      "reason": "none in the profile"
+    }
+  ]
+}

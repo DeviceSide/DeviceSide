@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "integration": "hue",
+  "action": "lower_saturation",
+  "result": "pass",
+  "date": "2026-11-08",
+  "source": {
+    "kind": "rig",
+    "commit": "8aae106"
+  },
+  "home_assistant": "2026.10.4",
+  "devices": [
+    {
+      "model": "LCA016",
+      "name": "Hue Essential lamp",
+      "firmware": "1.164.2"
+    },
+    {
+      "name": "Zone",
+      "firmware": null,
+      "group": true
+    }
+  ],
+  "tests": [
+    {
+      "id": "saturation_to_a_limit[light_color]",
+      "domain": "light",
+      "role": "light_color",
+      "result": "pass"
+    },
+    {
+      "id": "saturation_to_a_limit[group_color]",
+      "domain": "light",
+      "role": "group_color",
+      "result": "pass"
+    }
+  ]
+}
