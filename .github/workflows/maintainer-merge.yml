@@ -1,0 +1,116 @@
+name: Maintainer merge
+
+# An integration maintainer's `/merge <sha>` comment merges a pull request confined to their integration's package
+# (scripts/check_maintainer_merge.py says what it refuses). The SHA is the head they reviewed: one pushed after the
+# comment doesn't match it, so it can't ride the merge. The merge goes through the ruleset like any other, so it
+# still needs green, up-to-date checks. It merges as the maintainer-merge GitHub App, not GITHUB_TOKEN: a push from
+# GITHUB_TOKEN starts no workflows, and tests.yml and lint.yml run on push to main.
+# issue_comment runs the default branch's workflow and script, so a PR can't edit its own check. No step runs the
+# PR's code: its head is fetched and read with `git show`, as data. The App's key is in the maintainer-merge
+# environment, which only the merge job reads, after the check passes. Keep that environment's deployment branches
+# limited to main: issue_comment runs there, and a workflow pushed on any other branch then can't read the key.
+
+on:
+  issue_comment: # zizmor: ignore[dangerous-triggers] runs only base-branch code; the PR head is read as data
+    types: [created]
+
+permissions: {}
+
+jobs:
+  check:
+    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '/merge')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+    outputs:
+      head: ${{ steps.pr.outputs.head }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+
+      # The head checked is the one merged: the merge passes its SHA, so a push after this fails the merge.
+      - name: Read the pull request
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.issue.number }}
+          BODY: ${{ github.event.comment.body }}
+        run: |
+          read -r draft base head < <(gh pr view "$NUMBER" --json isDraft,baseRefName,headRefOid \
+            --jq '"\(.isDraft) \(.baseRefName) \(.headRefOid)"')
+          if [ "$draft" != false ] || [ "$base" != main ]; then
+            echo "reason=Only a pull request against main, marked ready for review, merges this way." >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          want=${BODY#/merge }
+          if ! [[ "$want" =~ ^[0-9a-f]{7,40}$ && "$head" == "$want"* ]]; then
+            echo "reason=Comment \`/merge <sha>\` with the head you reviewed; it is now ${head:0:7}." >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          echo "head=$head" >> "$GITHUB_OUTPUT"
+
+      - name: Check it is the commenter's to merge
+        id: check
+        env:
+          HEAD_SHA: ${{ steps.pr.outputs.head }}
+          COMMENTER: ${{ github.event.comment.user.login }}
+        run: |
+          git fetch --quiet --no-tags origin "$HEAD_SHA"
+          python scripts/check_maintainer_merge.py HEAD "$HEAD_SHA" --commenter "$COMMENTER"
+
+      - name: Say why not
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.issue.number }}
+          REASON: ${{ steps.pr.outputs.reason || steps.check.outputs.reason || 'The check failed; see the workflow run.' }}
+        run: |
+          gh pr comment "$NUMBER" --body "❌ \`/merge\`: $REASON"
+
+  merge:
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: maintainer-merge
+    permissions:
+      pull-requests: write
+
+    steps:
+      - uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        id: app
+        with:
+          app-id: ${{ vars.MAINTAINER_MERGE_APP_ID }}
+          private-key: ${{ secrets.MAINTAINER_MERGE_APP_KEY }}
+          # Merging needs contents write; reading the pull request needs pull requests read.
+          permission-contents: write
+          permission-pull-requests: read
+
+      - name: Merge
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          GH_REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.issue.number }}
+          HEAD_SHA: ${{ needs.check.outputs.head }}
+        run: gh api -X PUT "repos/$GH_REPO/pulls/$NUMBER/merge" -f merge_method=squash -f sha="$HEAD_SHA" --silent
+
+      - name: Say why not
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.issue.number }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh pr comment "$NUMBER" --body "❌ \`/merge\`: GitHub refused the merge. Usually a required check isn't green
+          yet, or the branch is behind main; update it and try again. Details: $RUN"
