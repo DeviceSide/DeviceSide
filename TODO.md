@@ -56,9 +56,9 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
     `gledopto`, `other`; the Tuya classes' `doesnt_work` on `turn_on_for`, which refuses unknown; `other` Documented
     on brightness fades and stop). Open until the lab run on
     the branch tip, with the Sengled, which restores the card's Works line and clears the coverage warnings.
-  - [x] 5b. Test records as JSON, format 2 (`docs/test-records.schema.json`): a device per test with its class,
+  - [ ] 5b. Test records as JSON, format 2 (`docs/test-records.schema.json`): a device per test with its class,
     validated in CI; the markdown records converted to format 1, which `check_release --signoffs` rejects; the
-    rig's paired change writes format 2.
+    rig's paired change writes format 2. Open until the paired rig PR merges.
   - [ ] 6. Core fix-ups from step 5's run.
   - [ ] 7. ZHA classes; rig rerun.
   - [ ] 8. Hue classes, the `bridge_v1` and `smart_scene` checks moved to them; rig rerun.
