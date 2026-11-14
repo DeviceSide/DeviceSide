@@ -401,6 +401,8 @@ async def test_group_leaves_out_unavailable_members_and_those_ha_lacks(hass, bro
         members=[{"ieee_address": "0x01"}, {"ieee_address": "0x02"}, {"ieee_address": "0x03"}, {}],
     )
     hass.states.async_set("light.two", "unavailable")
+    # A member HA lacks leaves membership unknowable (members.expand_group), so the group runs only flagged.
+    allow_experimental(hass)
 
     response = await call(hass, "get_attributes", {"entity_id": "light.room"})
 

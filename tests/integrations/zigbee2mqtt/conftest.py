@@ -8,6 +8,7 @@ from custom_components.deviceside.integrations.zigbee2mqtt import (
     INTEGRATION,
     bridge,
     bridge_cache,
+    classes,
     members,
     native_control,
     read,
@@ -57,6 +58,7 @@ def broker(hass, monkeypatch):
         return HeldGroups(fake) if DATA in hass.data else None
 
     monkeypatch.setattr(members, "bridge_cache", SimpleNamespace(get=held))
+    monkeypatch.setattr(classes, "bridge_cache", SimpleNamespace(get=held))
     return fake
 
 
@@ -76,14 +78,15 @@ async def call(hass, service: str, data: dict, return_response: bool = True):
 
 
 class HeldGroups(bridge_cache.BridgeCache):
-    """A bridge cache holding bridge/groups alone, as the broker has it now, for members.expand_group."""
+    """A bridge cache holding bridge/groups and bridge/devices, as the broker has them now, for members.expand_group
+    and the classifier."""
 
     def __init__(self, broker) -> None:
         super().__init__()
         self.broker = broker
 
     def parsed(self, suffix: str):
-        return self.broker.retained.get(GROUPS) if suffix == "groups" else None
+        return self.broker.retained.get({"groups": GROUPS, "devices": DEVICES}.get(suffix))
 
 
 DEVICES = "zigbee2mqtt/bridge/devices"
@@ -112,6 +115,8 @@ def light(
     color_hs: bool = True,
     color: dict | None = None,
     manufacturer: str | None = "Philips",
+    model_id: str | None = None,
+    zigbee: tuple[str, str] | None = None,
 ) -> str:
     """A Z2M color light HA lists with xy, whose definition exposes color_hs, answering color reads with COLOR."""
     name = entity_id.split(".")[1]
@@ -121,12 +126,22 @@ def light(
     if state == "on":
         attributes |= {"brightness": brightness, "hs_color": hs}
     add_z2m_entity(
-        hass, entry, entity_id, ieee=ieee, state=state, attributes=attributes, name=name, manufacturer=manufacturer
+        hass,
+        entry,
+        entity_id,
+        ieee=ieee,
+        state=state,
+        attributes=attributes,
+        name=name,
+        manufacturer=manufacturer,
+        model_id=model_id,
     )
     broker.devices[ieee] = (name, {"lightingColorCtrl": {**COLOR, **(color or {})}})
     broker.retained[INFO]["config"]["devices"].setdefault(ieee, {})
     features = [{"name": "state"}, {"name": "brightness"}] + ([{"name": "color_hs"}] if color_hs else [])
     device = {"ieee_address": ieee, "definition": {"exposes": [{"type": "light", "features": features}]}}
+    if zigbee is not None:  # its own Zigbee manufacturer and model, which the classifier reads
+        device |= {"manufacturer": zigbee[0], "model_id": zigbee[1]}
     broker.retained.setdefault(DEVICES, []).append(device)
     return entity_id
 

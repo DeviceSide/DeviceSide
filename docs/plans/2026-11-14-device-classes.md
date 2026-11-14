@@ -202,6 +202,11 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
        `docs/design.md` (glossary, Class) once the Tuya classes land: they name only `hue` and `other` until then.
      - **TODO and the rerun:** tick step 5 in `TODO.md`, and the lab run below, which restores the card's Works
        line and clears the ten coverage warnings.
+   - **Part 2, built** (`claude/device-classes-5-z2m`), the lab run pending. The TS011F's `doesnt_work` is keyed by
+     a class of its own, `tuya_ts011f`, as `tuya_zcl` stays not supported on `turn_on_for` and a scope entry is per
+     class. `other` is Documented on `raise_brightness`, `lower_brightness` and `stop`, and `experimental(...)` on the
+     rest (argued in the PR body). The `sengled` audit of Level commands sent from off is in the Z2M `internals.md`
+     (`classes`); no behavior changed beyond the scopes.
 6. **Core fix-ups** from step 5's run, before ZHA and Hue copy the pattern. If a package changes, its lab run is
    repeated.
 7. **ZHA.** The same shape. Lab run, with the Sengled.

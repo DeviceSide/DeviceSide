@@ -52,6 +52,9 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
     (Decision 5).
   - [ ] 5. Zigbee2MQTT classes, after the TS011F probe and the Tuya detection probe; the first default class, so
     `docs/device-compatibility.md` regains "and so does a device DeviceSide can't place in a known class"; rig rerun.
+    Built on `claude/device-classes-5-z2m` (classes `hue`, `tuya_zcl`, `tuya_ts011f`, `tuya_mcu`, `sengled`,
+    `other`; the TS011F's `doesnt_work`; `other` Documented on brightness fades and stop). Open until the lab run on
+    the branch tip, with the Sengled, which restores the card's Works line and clears the coverage warnings.
   - [ ] 6. Core fix-ups from step 5's run.
   - [ ] 7. ZHA classes; rig rerun.
   - [ ] 8. Hue classes, the `bridge_v1` and `smart_scene` checks moved to them; rig rerun.
@@ -60,8 +63,8 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
 - [ ] **TS011F refusal on ZHA and Z2M** (device-classes plan, Decision 16): a `doesnt_work` entry for today's
   `turn_on_for` call, holding with Experimental on. Without it, ZHA's 0x42 in tenths switches a `_TZ3000_typdpbpg`
   plug on about 10× later than asked, and Z2M leaves the plug on with no timer
-  ([probe](docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md)). Z2M in step 5, ZHA in step 7; blocks
-  v0.1.0 even if step 7 slips.
+  ([probe](docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md)). Z2M in step 5 (built), ZHA in step 7;
+  blocks v0.1.0 even if step 7 slips.
 - [ ] **Sign-offs** for v0.1.0, one per integration changed since v0.0.1 (`check_release.py --signoffs`), each a rig
   run from ha-rig `main` (its records carry the Package row; older records count for none). The runs for the formerly release-flagged adapters need these `--profile lab` cases, run
   watched, the A60 visiting each network: Hue `saturation_down_stop`, `halts_brightness_and_saturation` and

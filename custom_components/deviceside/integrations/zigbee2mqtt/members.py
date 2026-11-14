@@ -21,16 +21,17 @@ def expand_group(hass: HomeAssistant, target: Target) -> list[Target] | None:
 
     `[]` only for a group bridge/groups lists with no members, which the dispatcher skips as empty. None, membership
     unknowable, while the cache holds no bridge/groups (before Z2M's publish after a connect), when there is no cache
-    (its subscribe failed, which bridge_cache warns of once), when bridge/groups doesn't list the group, or when no
-    member it lists has an entity in the group's domain; the group then counts as Experimental.
+    (its subscribe failed, which bridge_cache warns of once), when bridge/groups doesn't list the group, or when any
+    member it lists has no device or no entity in the group's domain that HA resolves; the group then counts as
+    Experimental. A member left out would leave its class out too: a Tuya plug Z2M exposes as a switch, in a group of
+    Hue bulbs, would get the group's light command at the Hue bulbs' level.
     """
     if (gid := group_id(target)) is None or (cache := bridge_cache.get(hass)) is None:
         return None
     if (groups := cache.parsed("groups")) is None or not any(str(g.get("id")) == gid for g in groups):
         return None
-    addresses = members_of(groups, gid)
-    members = _members(hass, target, addresses)
-    return None if addresses and not members else members
+    members, complete = _members(hass, target, members_of(groups, gid))
+    return members if complete else None
 
 
 async def member_lights(hass: HomeAssistant, group: Target) -> list[Target]:
@@ -39,7 +40,7 @@ async def member_lights(hass: HomeAssistant, group: Target) -> list[Target]:
     An unavailable member is left out, as the dispatcher leaves one out when it expands a group, and so is one HA
     has no light for.
     """
-    members = _members(hass, group, await group_members(hass, group_id(group)))
+    members, _complete = _members(hass, group, await group_members(hass, group_id(group)))
     return [
         member
         for member in members
@@ -47,13 +48,22 @@ async def member_lights(hass: HomeAssistant, group: Target) -> list[Target]:
     ]
 
 
-def _members(hass: HomeAssistant, group: Target, addresses: Iterable[str]) -> list[Target]:
-    """The member at each address that HA has an entity for in the group's domain, one per device."""
+def _members(hass: HomeAssistant, group: Target, addresses: Iterable[str]) -> tuple[list[Target], bool]:
+    """The member at each address that HA has an entity for in the group's domain, one per device, and whether every
+    address gave one that resolves (a device on two endpoints is listed twice, and counts once)."""
     entities = er.async_get(hass)
-    unique_ids = []
+    unique_ids: list[str] = []
+    complete = True
     for address in addresses:
-        if (device := z2m_device(hass, group, address)) is None:
-            continue
-        lights = [e for e in er.async_entries_for_device(entities, device.id) if e.domain == group.domain]
-        unique_ids += [lights[0].unique_id] if lights else []
-    return resolve_members(hass, get_runtime(hass).registry, group, "mqtt", unique_ids)
+        device = z2m_device(hass, group, address)
+        lights = (
+            []
+            if device is None
+            else [e for e in er.async_entries_for_device(entities, device.id) if e.domain == group.domain]
+        )
+        if not lights:
+            complete = False
+        elif lights[0].unique_id not in unique_ids:
+            unique_ids.append(lights[0].unique_id)
+    members = resolve_members(hass, get_runtime(hass).registry, group, "mqtt", unique_ids)
+    return members, complete and len(members) == len(unique_ids)

@@ -8,7 +8,7 @@ from homeassistant.core import HomeAssistant
 
 from .addressing import not_addressable, topic
 from .bridge import logged_options, publish, publish_set, state_reply
-from .classes import CAPABILITIES
+from .classes import TURN_ON_FOR, TURN_ON_FOR_DOESNT_WORK
 from .native_control import COLOR_FIELDS, NEED, native_control, settled
 from .set_check import checked, note
 from ...actions.turn_on_for import TurnOnForRequest
@@ -57,7 +57,8 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
         # the Documented test (docs/evidence.md, Levels): it takes the same call, so it stays flagged experimental,
         # untested, until a maintainer judges it ready.
         domains=verified("light") | experimental("switch"),
-        capabilities=CAPABILITIES,
+        capabilities=TURN_ON_FOR,
+        doesnt_work=TURN_ON_FOR_DOESNT_WORK,
         duration=_TIMER_LIMITS,
         fields=verified("brightness", "color_temp_kelvin", "hs_color", "rgb_color", "xy_color", "transition"),
         confirmable=False,

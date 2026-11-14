@@ -33,6 +33,7 @@ def add_z2m_entity(
     attributes: dict | None = None,
     manufacturer: str | None = "Philips",
     name: str | None = None,
+    model_id: str | None = None,
 ) -> str:
     """Register one Z2M device entity with the identifier Z2M writes via MQTT discovery.
 
@@ -45,6 +46,7 @@ def add_z2m_entity(
         config_entry_id=entry.entry_id,
         identifiers={("mqtt", f"zigbee2mqtt_{ieee}")},
         manufacturer=manufacturer,
+        model_id=model_id,
         name=name,
     )
     er.async_get(hass).async_get_or_create(
