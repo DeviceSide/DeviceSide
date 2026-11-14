@@ -646,17 +646,21 @@ join `docs/models.yaml`, per its header.
 
 On Z2M, the lab TS011F (`_TZ3000_0zfrhq4i`), from Developer Tools, MQTT publish to `zigbee2mqtt/<plug>/set`; times
 from Z2M's log. Known already (lab probe, C7): `{"state": "ON", "countdown": 10}` from off turns it on and off 10 s
-later. One row each; record the Z2M state payload after each publish.
+later. One row each; record the Z2M state payload after each publish. What Z2M sends for each publish is from the
+converter reading ([research](../integrations/zigbee2mqtt/research/2026-11-14-tuya-countdown.md), §1); the plug's
+answer is what the probe adds. Key order needn't vary: the TS011F's converter reads both keys and sends On before 0x42
+whatever their order.
 
 | Case | Pre-state | Publish | Answers |
 |---|---|---|---|
-| P1 | on | `{"countdown": 10}` alone | whether a countdown starts without `state` |
+| P1 | on | `{"countdown": 10}` alone | whether a countdown starts without `state`. Z2M sends only 0x42 and publishes no state, so read state with `/get` or from the plug's reports |
+| P1b | off | `{"countdown": 10}` alone | whether 0x42 alone turns the plug on, as P1 |
 | P2 | off | `{"state": "ON", "countdown": 30}`, then at 5 s `{"countdown": 10}` | replace or extend: off at ~15 s or ~35 s |
-| P3 | off | `{"state": "ON", "countdown": 30}`, then at 5 s `{"state": "OFF"}`, then `{"state": "ON"}` | whether off cancels it: still on after 35 s? |
-| P4 | off | `{"state": "ON", "countdown": 30}`, then at 5 s `{"countdown": 0}` | whether 0 cancels it |
+| P3 | off | `{"state": "ON", "countdown": 30}`, then at 5 s `{"state": "OFF"}`, then `{"state": "ON"}` | whether off cancels it: still on after 35 s? Z2M publishes `countdown: 0` on any `state` set, so only the plug's behavior over the next 35 s answers |
+| P4 | off | `{"state": "ON", "countdown": 30}`, then at 5 s `{"countdown": 0}` | whether 0 cancels it; Z2M sends 0x42 `{0, 0, 0}` |
 | P5 | off | `{"state": "ON", "countdown": 30}`, then at 5 s the plug's button twice | whether a local toggle cancels it |
-| P6 | off | `{"state": "ON", "countdown": 30}`, then at 5 s `{"countdown": ""}` on `/get` | whether time left can be read, and whether state reports it unprompted |
-| P7 | off | `countdown` 1, then 43200, then 43201 | the bounds: accepted, rejected or clamped (cancel each with P3 or P4's way) |
+| P6 | off | `{"state": "ON", "countdown": 150}`, then at 5 s `{"countdown": ""}` on `/get` | whether time left can be read, and whether state reports it unprompted: `onTime` reports come every 60 s (converter comment), so run 120 s or more |
+| P7 | off | `countdown` 1, then 43200, then 43201 | the bounds: 1 and 43200 reach the plug (cancel each with P3 or P4's way); 43201 only checks that Z2M refuses it, as it rejects anything above 43200 or not an integer before sending |
 
 Results go in a dated research file, `zigbee2mqtt/research/<date>-tuya-countdown-probe.md`, and the facts in the Z2M
 `internals.md`.
