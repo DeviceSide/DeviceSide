@@ -225,17 +225,10 @@ async def test_group_with_option_on_sends_no_request(hass, setup_production, bro
     assert broker.requests() == []
 
 
-@pytest.mark.parametrize(
-    ("manufacturer", "groups"),
-    [
-        pytest.param("IKEA of Sweden", BRIDGE_GROUPS, id="no_hue_member"),
-        pytest.param("Philips", [{"id": 3, "members": []}], id="not_in_bridge_groups"),
-    ],
-)
-async def test_group_is_left_alone(hass, setup_production, broker, turn_ons, manufacturer, groups):
-    group_with_member(hass, manufacturer)
-    broker.retained[GROUPS] = groups
-    allow_experimental(hass)  # an `other` member, or none listed
+async def test_a_group_with_no_hue_member_is_left_alone(hass, setup_production, broker, turn_ons):
+    group_with_member(hass, "IKEA of Sweden")
+    broker.retained[GROUPS] = BRIDGE_GROUPS
+    allow_experimental(hass)  # an `other` member
 
     await call(hass, "turn_on_for", DOWNSTAIRS)
 
@@ -245,7 +238,7 @@ async def test_group_is_left_alone(hass, setup_production, broker, turn_ons, man
 
 async def test_no_bridge_groups_warns_and_still_sends(hass, setup_production, broker, turn_ons, caplog):
     group_with_member(hass, "Philips")
-    # A group whose members aren't listed counts as Experimental (core/dispatcher.py, Dispatcher._classes).
+    # bridge/groups isn't held, so the group's members can't be listed: it counts as Experimental.
     allow_experimental(hass)
 
     response = await call(hass, "turn_on_for", DOWNSTAIRS)

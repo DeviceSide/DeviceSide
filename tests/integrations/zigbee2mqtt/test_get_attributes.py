@@ -434,8 +434,6 @@ async def test_member_failure_fails_the_group(hass, broker):
 async def test_empty_group_is_skipped_silently(hass, broker, caplog, groups):
     group(hass, broker, one={}, two={}, members=[])
     broker.retained[GROUPS] = groups
-    # A group whose members aren't listed counts as Experimental (core/dispatcher.py, Dispatcher._classes).
-    allow_experimental(hass)
 
     response = await call(hass, "get_attributes", {"entity_id": ["light.room", "light.one"]})
 

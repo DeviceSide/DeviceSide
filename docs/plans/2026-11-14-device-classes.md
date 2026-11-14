@@ -549,7 +549,10 @@ A package changed after its lab run needs that run again before the release. Non
 8. **A native group with a member that doesn't work or isn't supported falls back to its members** when the
    integration has `expand_group`: each member is judged alone, the good ones run, and the refused one is reported
    refused. With no `expand_group` the group can't be judged by member, so it counts as Experimental: refused while
-   Experimental features is off.
+   Experimental features is off. **Amended during step 5:** a member whose class is Experimental falls back the same
+   way while Experimental features is off: the other members run one by one, and the flagged one is skipped with
+   `experimental_off`, raised only if it was named itself. With the option on, the group runs whole, as one command.
+   An empty group is skipped silently (docs/action-behavior.md), never gated.
 9. **Shelly `set_attributes` on Light, CCT, RGB and RGBW** is Documented if Shelly's Gen2+ docs say, alike for those
    components, that a `Set` without `on` leaves the output as it is; otherwise `experimental(...)`. RGBCCT stays
    Verified.
