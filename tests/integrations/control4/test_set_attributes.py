@@ -68,14 +68,6 @@ async def test_the_kelvin_is_clamped_to_the_lights_own_range_and_reported(hass, 
     assert response == {"light.lamp": CONFIRMED if asked == sent else {**CONFIRMED, "clamped_to": sent}}
 
 
-async def test_capabilities_held_as_json_text_are_read(hass):
-    director = dimmable_lamp(hass)
-    director.capabilities_as_text = True
-
-    assert await call(hass, "set_attributes", {**LAMP, "color_temp_kelvin": 2700}) == {"light.lamp": CONFIRMED}
-    assert director.send_post_request.await_args_list == [color(2700)]
-
-
 async def test_a_light_not_yet_showing_the_kelvin_as_current_is_confirmed_by_its_target(hass):
     """The Director shows a new color temperature as current most of a second late; the target shows it first."""
     director = dimmable_lamp(hass)
@@ -120,10 +112,10 @@ async def test_every_write_is_sent_before_any_read_back(hass):
     assert [command for command, _ in log[:12]].count("SET_COLOR_TARGET") == 6
 
 
-@pytest.mark.parametrize("legacy", [False, True], ids=["says_it_takes_none", "no_capabilities_variable"])
-async def test_a_light_with_no_color_temperature_lacks_the_field_and_nothing_is_sent(hass, legacy):
+@pytest.mark.parametrize("no_target", [False, True], ids=["says_it_takes_none", "no_capabilities_variable"])
+async def test_a_light_with_no_color_temperature_lacks_the_field_and_nothing_is_sent(hass, no_target):
     """As a white bulb in a mixed room is: unchanged, so the call goes on to the lights that take it."""
-    director = dimmable_lamp(hass, legacy=legacy)
+    director = dimmable_lamp(hass, no_target=no_target)
     director.kelvin_span = None
 
     assert await call(hass, "set_attributes", {**LAMP, "color_temp_kelvin": 2700}) == {

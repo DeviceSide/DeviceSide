@@ -7,7 +7,7 @@ from homeassistant.core import HomeAssistant
 
 from .addressing import DIMMING_CAPABILITIES, RpcComponent, unsupported_reason
 from .rpc import TRANSITION_LIMITS, get_status, set_fade
-from ...core.level_fade import LevelFade
+from ...core.level_fade import LevelFade, Reading
 from ...core.models import Target
 from ...core.scope import AdapterScope, verified
 from ...core.transition import BRIGHTNESS
@@ -41,9 +41,9 @@ class ShellyFade(RpcComponent, LevelFade):
     def unaddressable(self, target: Target) -> str | None:
         return unsupported_reason(target)
 
-    async def read(self, hass: HomeAssistant, target: Target) -> tuple[bool, float]:
+    async def read(self, hass: HomeAssistant, target: Target, end: float) -> Reading:
         status = await get_status(target)
-        return bool(status["output"]), status["brightness"]
+        return Reading(bool(status["output"]), status["brightness"])
 
     async def fade_to(self, hass: HomeAssistant, target: Target, end: float, seconds: float) -> None:
         await set_fade(hass, target, end, seconds)

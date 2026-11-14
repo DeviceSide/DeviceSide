@@ -9,7 +9,7 @@ import pytest
 
 from custom_components.deviceside.actions.ramp import RampRequest
 from custom_components.deviceside.core.adapter import Adapter
-from custom_components.deviceside.core.level_fade import LevelFade
+from custom_components.deviceside.core.level_fade import LevelFade, Reading
 from custom_components.deviceside.core.models import Status
 from custom_components.deviceside.core.scope import DurationLimits
 
@@ -30,9 +30,11 @@ class PlainFade(LevelFade):
     def unaddressable(self, target):
         return "not_addressable"
 
-    async def read(self, hass, target):
-        self.steps.append("read")
-        return self.lit, 40.0
+    heading_there = False
+
+    async def read(self, hass, target, end):
+        self.steps.append(("read", end))
+        return Reading(self.lit, 40.0, self.heading_there)
 
     async def fade_to(self, hass, target, end, seconds):
         self.steps.append(("set", end, seconds))
@@ -109,7 +111,7 @@ async def test_the_guard_is_held_from_the_read_to_the_set():
     [result] = await fade.execute(None, ramp(), [LAMP])
 
     assert result.status is Status.SENT
-    assert fade.steps == ["gather", "guard taken", "read", ("set", 100, 2.4), "guard released"]
+    assert fade.steps == ["gather", "guard taken", ("read", 100), ("set", 100, 2.4), "guard released"]
 
 
 async def test_the_guard_is_gathers_hold_not_taken_inside_the_send():
@@ -134,7 +136,7 @@ async def test_the_guard_is_released_when_nothing_is_sent(caplog):
     [result] = await fade.execute(None, ramp(up=False), [LAMP])
 
     assert (result.status, result.detail) == (Status.UNCHANGED, "off")
-    assert fade.steps == ["gather", "guard taken", "read", "guard released"]
+    assert fade.steps == ["gather", "guard taken", ("read", 0.0), "guard released"]
     assert "lower_brightness on fake: light.lamp reads lit=False level=40.0, end 0.0: nothing sent (off)" in caplog.text
 
 
@@ -155,7 +157,7 @@ async def test_less_than_a_step_left_is_at_the_limit():
     [result] = await fade.execute(None, ramp(limit=40.5), [LAMP])
 
     assert (result.status, result.detail) == (Status.UNCHANGED, "at_limit")
-    assert fade.steps == ["gather", "guard taken", "read", "guard released"]
+    assert fade.steps == ["gather", "guard taken", ("read", 40.5), "guard released"]
 
 
 async def test_a_light_already_at_the_limit_is_unchanged(caplog):
@@ -168,6 +170,21 @@ async def test_a_light_already_at_the_limit_is_unchanged(caplog):
     assert (
         "raise_brightness on fake: light.lamp reads lit=True level=40.0, end 40: nothing sent (at_limit)" in caplog.text
     )
+
+
+@pytest.mark.parametrize(("adapter", "up", "end"), [(PlainFade, True, 100.0), (PlainLower, False, 0.0)])
+async def test_a_fade_already_heading_for_the_end_is_left_running(caplog, adapter, up, end):
+    """Nothing sent, logged, and ahead of off and at_limit."""
+    fade = adapter()
+    fade.heading_there = True
+    fade.lit = up
+    caplog.set_level("DEBUG")
+
+    [result] = await fade.execute(None, ramp(up=up), [LAMP])
+
+    assert (result.status, result.detail) == (Status.UNCHANGED, "already_fading")
+    assert fade.steps == ["gather", "guard taken", ("read", end), "guard released"]
+    assert f"light.lamp reads lit={up} level=40.0, end {end}: nothing sent (already_fading)" in caplog.text
 
 
 @pytest.mark.parametrize(("asked", "clamped", "seconds"), [(0.1, 0.5, 0.5), (600, 60, 36.0)])

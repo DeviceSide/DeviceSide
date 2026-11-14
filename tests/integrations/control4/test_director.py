@@ -2,13 +2,11 @@
 a stop behind the move it follows."""
 
 import asyncio
-from unittest.mock import AsyncMock
-from unittest.mock import call as director_call
+from types import SimpleNamespace
 
 import pytest
 from homeassistant.exceptions import HomeAssistantError
 
-from custom_components.deviceside.core.runtime import get_runtime
 from custom_components.deviceside.integrations.control4 import director as director_module
 from custom_components.deviceside.integrations.control4.director import MOVE_SETTLE_DELAYS_S as SHIPPED_MOVE_DELAYS_S
 from custom_components.deviceside.integrations.control4.director import SETTLE_DELAYS_S as SHIPPED_DELAYS_S
@@ -21,210 +19,20 @@ from custom_components.deviceside.integrations.control4.director import (
     whole_percent,
 )
 
-from .conftest import CONFIRMED, LAMP, SENT, dimmable_lamp, ramp
+from .conftest import CONFIRMED, LAMP, SENT, dimmable_lamp
 from ...conftest import call
-from ...fixtures.control4 import ITEM, BadToken, FakeDirector, add_control4_light, control4_entry, failing
+from ...fixtures.control4 import ITEM, BadToken, FakeDirector, add_control4_light, control4_entry
 
 
-def director_call_ramp(item: int):
-    return director_call(f"/api/v1/items/{item}/commands", "RAMP_TO_LEVEL", {"LEVEL": 100, "TIME": 3000})
-
-
-def expired(director: FakeDirector, method: str = "send_get_request") -> None:
-    """Make the Director refuse every `method` request as core's does once its token has expired."""
-    getattr(director, method).side_effect = BadToken("expired")
-
-
-def core_refresh(monkeypatch, hass, fresh: FakeDirector | None) -> AsyncMock:
-    """Stand in for the entity update, on which core's poll swaps a fresh Director into the entry."""
-
-    async def swap(hass, entity_id) -> None:
-        # Yields first, as core's poll does, so calls refused together are all waiting before the swap lands.
-        await asyncio.sleep(0)
-        if fresh is not None:
-            hass.config_entries.async_entries("control4")[0].runtime_data.director = fresh
-
-    update = AsyncMock(side_effect=swap)
-    monkeypatch.setattr(director_module, "async_update_entity", update)
-    return update
-
-
-@pytest.mark.parametrize("method", ["send_get_request", "send_post_request"])
-async def test_an_expired_token_is_refreshed_and_the_request_retried(hass, monkeypatch, method):
-    """Core refreshes the token only from its own polling, so a call landing first asks it to."""
-    old, fresh = dimmable_lamp(hass, brightness=40), FakeDirector(brightness=40)
-    expired(old, method)
-    update = core_refresh(monkeypatch, hass, fresh)
-
-    assert await call(hass, "raise_brightness", LAMP) == {"light.lamp": SENT}
-    assert update.await_count == 1
-    assert fresh.send_post_request.await_args_list == [ramp(100, 3000)]
-
-
-async def test_a_token_refused_again_after_the_refresh_rejects_the_target(hass, monkeypatch):
-    old, fresh = dimmable_lamp(hass, brightness=40), FakeDirector(brightness=40)
-    expired(old)
-    expired(fresh)
-    update = core_refresh(monkeypatch, hass, fresh)
-
-    with pytest.raises(HomeAssistantError) as raised:
-        await call(hass, "raise_brightness", LAMP)
-
-    assert raised.value.translation_key == "targets_failed"
-    assert update.await_count == 1
-    assert (old.send_get_request.await_count, fresh.send_get_request.await_count) == (1, 1)
-
-
-async def test_an_expired_token_core_doesnt_refresh_rejects_the_target(hass, monkeypatch, wire):
-    """Core swapped no Director in: the refusal stands, the stale one isn't asked again, and the log says so."""
-    old = dimmable_lamp(hass, brightness=40)
-    expired(old)
-    update = core_refresh(monkeypatch, hass, None)
-
-    with pytest.raises(HomeAssistantError):
-        await call(hass, "raise_brightness", LAMP)
-
-    assert update.await_args.args[1] == "light.lamp"
-    assert old.send_get_request.await_count == 1
-    assert "light.lamp: director refused an expired token (BadToken('expired')); core swapped no Director in" in (
-        wire.text
-    )
-
-
-async def test_lights_refused_together_ask_core_once_and_all_retry(hass, monkeypatch):
-    """Core's coordinator debounces a second ask, which would swap nothing in: the rest wait and find it swapped."""
-    old, fresh = FakeDirector(brightness=40), FakeDirector(brightness=40)
-    expired(old)
-    entry = control4_entry(hass, old)
-    lamps = [add_control4_light(hass, entry, f"light.lamp_{n}", unique_id=str(200 + n)) for n in range(3)]
-    update = core_refresh(monkeypatch, hass, fresh)
-
-    assert await call(hass, "raise_brightness", {"entity_id": lamps}) == dict.fromkeys(lamps, SENT)
-    assert update.await_count == 1
-    # The fake holds one light for every item, so the later lamps find the first one's ramp and halt it first.
-    assert [command for command, _ in fresh.log].count("RAMP_TO_LEVEL") == 3
-
-
-async def test_the_refresh_runs_outside_the_lights_lock(hass, monkeypatch):
-    """The lock covers the read and the ramp only: a stop for the light isn't held up by the cloud round trip."""
-    old, fresh = dimmable_lamp(hass, brightness=40), FakeDirector(brightness=40)
-    expired(old)
-    entry = hass.config_entries.async_entries("control4")[0]
-    locked: list[bool] = []
-
-    async def swap(hass, entity_id) -> None:
-        locks = get_runtime(hass).integration_state["control4_item_locks"]
-        locked.extend(lock.locked() for lock in locks.values())
-        entry.runtime_data.director = fresh
-
-    monkeypatch.setattr(director_module, "async_update_entity", AsyncMock(side_effect=swap))
-
-    assert await call(hass, "raise_brightness", LAMP) == {"light.lamp": SENT}
-    assert locked == [False]
-
-
-async def test_a_refresh_that_outlasts_the_deadline_rejects_the_target(hass, monkeypatch, wire):
-    old = dimmable_lamp(hass, brightness=40)
-    expired(old)
-
-    async def stuck(hass, entity_id) -> None:
-        raise TimeoutError
-
-    monkeypatch.setattr(director_module, "async_update_entity", AsyncMock(side_effect=stuck))
-
-    with pytest.raises(HomeAssistantError) as raised:
-        await call(hass, "raise_brightness", LAMP)
-
-    assert raised.value.translation_placeholders == {"summary": "light.lamp: timeout"}
-    assert "raise_brightness on control4 timed out for light.lamp: director refused an expired token" in wire.text
-
-
-async def test_a_refused_light_is_retried_under_its_lock_and_the_others_keep_their_results(hass, monkeypatch, wire):
-    """One entry's token has expired, another's hasn't: each light's own result comes back, the healthy one sent
-    once, and the retry holds the light's lock as the first try did."""
-    old, fresh, healthy = dimmable_lamp(hass, brightness=40), FakeDirector(brightness=40), FakeDirector(brightness=40)
-    expired(old)
-    far = control4_entry(hass, healthy, controller="00:0f:ff:00:00:02")
-    add_control4_light(hass, far, "light.far", unique_id="201")
-    update = core_refresh(monkeypatch, hass, fresh)
-    locked: list[bool] = []
-    read = fresh.send_get_request.side_effect
-
-    async def get(uri):
-        locks = get_runtime(hass).integration_state["control4_item_locks"]
-        locked.append(next(lock for (_, item), lock in locks.items() if item == ITEM).locked())
-        return await read(uri)
-
-    fresh.send_get_request.side_effect = get
-
-    assert await call(hass, "raise_brightness", {"entity_id": ["light.far", "light.lamp"]}) == {
-        "light.far": SENT,
-        "light.lamp": SENT,
-    }
-    assert update.await_count == 1
-    assert healthy.send_post_request.await_args_list == [director_call_ramp(201)]
-    assert fresh.send_post_request.await_args_list == [ramp(100, 3000)]
-    assert locked == [True]
-    assert "light.lamp: director refused an expired token; core refreshed it, retrying" in wire.text
-
-
-async def test_a_light_refused_again_after_the_refresh_is_logged_as_failed(hass, monkeypatch, caplog):
-    old, fresh = dimmable_lamp(hass, brightness=40), FakeDirector(brightness=40)
-    expired(old)
-    expired(fresh)
-    core_refresh(monkeypatch, hass, fresh)
+async def test_an_expired_token_rejects_the_target_until_core_refreshes_it(hass, caplog):
+    """As for core's own commands: the WARNING names the error, and core's next poll refreshes the token."""
+    director = dimmable_lamp(hass, brightness=40)
+    director.send_get_request.side_effect = BadToken("expired")
 
     with pytest.raises(HomeAssistantError):
         await call(hass, "raise_brightness", LAMP)
 
     assert "raise_brightness on control4 failed for light.lamp: BadToken('expired')" in caplog.text
-
-
-async def test_an_error_that_isnt_an_expired_token_asks_core_for_nothing(hass, monkeypatch):
-    director = dimmable_lamp(hass, brightness=40)
-    failing(director, "send_get_request")
-    update = core_refresh(monkeypatch, hass, FakeDirector())
-
-    with pytest.raises(HomeAssistantError):
-        await call(hass, "raise_brightness", LAMP)
-
-    assert update.await_count == 0
-    assert director.send_get_request.await_count == 1
-
-
-async def test_an_entry_unloaded_during_the_refresh_rejects_the_target(hass, monkeypatch, wire):
-    """Core's poll left no Director at all: the refusal stands, and nothing is asked of None."""
-    old = dimmable_lamp(hass, brightness=40)
-    expired(old)
-    entry = hass.config_entries.async_entries("control4")[0]
-
-    async def unload(hass, entity_id) -> None:
-        entry.runtime_data.director = None
-
-    monkeypatch.setattr(director_module, "async_update_entity", AsyncMock(side_effect=unload))
-
-    with pytest.raises(HomeAssistantError) as raised:
-        await call(hass, "raise_brightness", LAMP)
-
-    assert raised.value.translation_key == "targets_failed"
-    assert old.send_get_request.await_count == 1
-    assert "core swapped no Director in" in wire.text
-
-
-async def test_a_refusal_that_lands_after_another_calls_refresh_retries_on_the_fresh_director(hass, monkeypatch):
-    """The Director a call used is what it compares with, so a swap made meanwhile isn't mistaken for none."""
-    old, fresh = dimmable_lamp(hass, brightness=40), FakeDirector(brightness=40)
-    entry = hass.config_entries.async_entries("control4")[0]
-
-    async def refused_after_the_swap(uri):
-        entry.runtime_data.director = fresh
-        raise BadToken("expired")
-
-    old.send_get_request.side_effect = refused_after_the_swap
-    update = core_refresh(monkeypatch, hass, fresh)
-
-    assert await call(hass, "raise_brightness", LAMP) == {"light.lamp": SENT}
-    assert update.await_count == 0
 
 
 @pytest.mark.parametrize("level", ["NaN", 101, -1, "Infinity"])
@@ -335,16 +143,15 @@ def test_only_zero_is_off(percent, level):
     ("brightness", "target", "ramping"),
     [
         (40, 40, False),
-        (40, 40.4, False),
-        (40, 40.45, False),
-        (40, 40.5, True),
-        (40.5, 40, True),
+        (40, 41, True),
+        (41, 40, True),
+        (99.6, 100, True),
+        (40.4, 40, True),
         (0, 100, True),
         (40, None, False),
     ],
 )
-def test_a_light_is_ramping_from_half_a_percent_off_its_target(brightness, target, ramping):
-    """RAMP_TO_LEVEL is sent whole percents, so a level within half of one of its target is there."""
+def test_a_light_is_ramping_while_its_level_isnt_its_target(brightness, target, ramping):
     assert LightLevel(brightness=brightness, target=target).ramping is ramping
 
 
@@ -367,15 +174,6 @@ async def test_a_stop_isnt_confirmed_from_a_target_that_cant_be_read(hass):
     )
 
     assert await call(hass, "stop", LAMP) == {"light.lamp": {**SENT, "detail": "halt_not_reported"}}
-
-
-async def test_a_reply_already_parsed_is_read_as_it_is(hass):
-    director = dimmable_lamp(hass, brightness=40)
-    director.send_get_request.side_effect = None
-    director.send_get_request.return_value = [{"varName": "Brightness Percent", "value": 40}]
-
-    assert await call(hass, "raise_brightness", LAMP) == {"light.lamp": SENT}
-    assert director.send_post_request.await_args_list == [ramp(100, 3000)]
 
 
 async def test_a_move_held_on_one_light_doesnt_hold_a_stop_on_another(hass):
@@ -421,12 +219,6 @@ async def test_a_move_that_halts_a_ramp_first_waits_only_the_brief_schedule(hass
     await call(hass, "raise_brightness", LAMP)
 
     assert events == ["read", 0.1, "read", 0.15, "read"]
-
-
-def test_brightness_percent_is_read_ahead_of_light_level():
-    """The tested lights report Brightness Percent; LIGHT_LEVEL is the fallback when it is absent."""
-    assert parse_level({"LIGHT_LEVEL": 10, "Brightness Percent": 40}).brightness == 40
-    assert parse_level({"LIGHT_LEVEL": 10}).brightness == 10
 
 
 CCT = "supports_color_correlated_temperature"
@@ -540,3 +332,19 @@ def test_color_temperature_is_a_whole_kelvin_in_color_temperature_mode_only(held
     found = color_temperature(held)
     assert found == kelvin
     assert type(found) is type(kelvin)
+
+
+def test_capabilities_that_cant_be_read_are_named_in_the_error():
+    with pytest.raises(ValueError, match="'not json'"):
+        kelvin_range(capabilities("not json"))
+
+
+def test_an_expired_own_ramp_is_forgotten_and_logged_once(hass, wire):
+    target = SimpleNamespace(
+        reported_id="light.lamp", config_entry=SimpleNamespace(entry_id="e"), entry=SimpleNamespace(unique_id="100")
+    )
+    director_module._ramp_ends(hass)[("e", 100)] = (100, hass.loop.time())
+
+    assert director_module.own_ramp_end(hass, target) is None
+    assert director_module.own_ramp_end(hass, target) is None
+    assert wire.text.count("ran its time") == 1

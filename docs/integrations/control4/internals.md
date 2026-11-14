@@ -17,24 +17,12 @@ One section per adapter module, named after it.
 
 ### `director`
 
-- **Token.** Core refreshes an expired Director token only from its own polling, so a send the Director refuses with
-  `BadToken` first leaves its light's lock and its concurrency slot (`DirectorAdapter.gather`). Then Home Assistant is
-  asked to update the light's entity (`async_update_entity`), under the dispatcher's deadline: core's poll meets the
-  same refusal and swaps a new Director into `runtime_data`, and the refused targets are sent once more. So a light's
-  lock covers only its read and its command, never the cloud round trip. Calls refused together ask once, under one
-  lock per config entry, as core's coordinator debounces a second ask; the rest find the Director swapped. A target
-  core swaps no new Director in for is rejected, with a WARNING, as happens when the ask lands inside the cooldown
-  core's coordinator keeps after its own refresh; one whose refresh outlasts the deadline is rejected with `timeout`.
-  A refused send has left its lock, so a stop sent during the refresh can land ahead of the retried move. The refresh
-  rests on core's code as read (2026.10.2); it has not been run against an expired token. A read-back's reads run
-  outside `gather`: one refused there reports `sent` (`readback_failed`). Core's refresh helper is not imported, which
-  would need `control4` in `after_dependencies`.
-- **Level.** `Brightness Percent` (0 to 100), read on the tested lights. Core also reads `LIGHT_LEVEL`
-  (`CONTROL4_DIMMER_VARS` in its `control4/light.py`), which the tested lights don't report, so DeviceSide falls back
-  to it, reading `Brightness Percent` first where core reads `LIGHT_LEVEL` first: the measured variable leads. Lit
-  means a level above 0. `Brightness Target Percent` is where a ramp is heading and equals the level at rest. That a
-  light reporting only `LIGHT_LEVEL` reports no target is assumed, not tested: none was available. A value arrives as
-  a number, or as text for a light that has never reported. A level outside 0 to 100 rejects the target.
+- **Token.** An expired Director token (`BadToken`) fails the call with `error` until core's own poll refreshes it, as
+  for core's own commands.
+- **Level.** `Brightness Percent` (0 to 100). The tested lights report no `LIGHT_LEVEL`; it is read only so a light
+  that reports it alone shows in the log. Lit means a level above 0. `Brightness Target Percent` is where a ramp is
+  heading, equal to the level at rest. Values arrive as numbers, or as text for a light that has never reported. A
+  level outside 0 to 100 rejects the target.
 - **Ordering.** One lock per item, held by a move from its read to its ramp (a halt of a ramp already running
   included) and by a stop for its halt. Core takes it before the concurrency slot (`gather`'s `hold`), so a call
   waiting on a busy light holds no slot, and nothing under it takes a slot. With it, a stop that arrives during a move
@@ -45,36 +33,35 @@ One section per adapter module, named after it.
 
 `raise_brightness` and `lower_brightness`. A read first: the Director holds the level, refreshed about once a second
 mid-ramp and exact once a ramp has halted, so no transition cache is kept and no call resolver is needed. A read that
-shows a ramp (level and target half a percent or more apart) is not moved from: its level may be a second old, and a
-ramp just begun still reads the level it left (0 for a ramp from off, 11 ms in), which a lower would pass by as off.
-The adapter sends `SET_BRIGHTNESS_STOP` and reads again after 0.1 s and, if the ramp still shows, after 0.15 s more
+shows a ramp (level and target apart) is not moved from: its level may be a second old, and a ramp just begun still
+reads the level it left (0 for a ramp from off, 11 ms in), which a lower would pass by as off. The adapter sends
+`SET_BRIGHTNESS_STOP` and reads again after 0.1 s and, if the ramp still shows, after 0.15 s more
 (`MOVE_SETTLE_DELAYS_S`, the first two waits of `stop`'s schedule; counted from the stop's reply, as these waits are,
 the second read would have shown 19 of the 20 timed halts). Those waits are inside the light's lock and the move's
 concurrency slot, which is why they are cut short; if the Director still shows a ramp after them, the move starts from
 that read. One ramp is left running: the adapter's own to the end this call asks for. Nothing is sent then, so a
-repeated call can't re-time the ramp from a stale level, and the call reports `sent`: the ramp it asks for is running,
-though an earlier call sent it. Whose ramp it is comes from the last command the adapter sent the light
-(`director.own_ramp_end`: the level of its last `RAMP_TO_LEVEL`, cleared by its `stop` and forgotten once that ramp's
-time plus 2 s has passed, so a ramp to the same level after that time, from a scene or from core's own turn-on, is not
-taken for it; one that replaces the adapter's ramp inside that time still is, and runs on at its own speed), held in
-memory and never used as the light's level. The record is per item: a stop sent to a group doesn't clear a member
-bulb's. A lower to the very limit a raise is ramping to counts as the same ramp. What the Director shows can't say: it
-goes on showing a ramp for a moment after a `stop` has halted it, so a press right behind a stop finds a ramp that is
-no longer the adapter's own, sends a second `SET_BRIGHTNESS_STOP` (which changes nothing on a halted light) and waits
-for the halt to show. A ramp halted from Control4 inside that same moment is the one case still read as running. For
-up to about 70 ms after a ramp is sent the Director still shows the light at rest (Ramp start, below), so an opposite
-move that arrives in that window, as two calls an automation fires together, is not halted and moves from the level
-shown. The halt-then-ramp sequence ran on hardware (DeviceSide's own actions, below). Then one `RAMP_TO_LEVEL {LEVEL,
-TIME}`, sent as a whole percent and whole milliseconds (the adapter's rounding; core sends fractions) for the distance
-left at the `sweep_time`'s speed, at most 65535 ms for a full range (`RAMP_LIMITS`). `LEVEL` 0 ends off, as core's own
-turn-off sends it (`ramp_to_level(0, ...)`); a limit above 0 is sent as at least 1. From off the level reads 0, so the
-whole range is the distance. An on/off light lacks brightness, so the dispatcher leaves it unchanged
-(`fields_dropped`).
+repeated call can't re-time the ramp from a stale level: `unchanged` (`already_fading`). Whose ramp it is comes from
+the last command the adapter sent the light (`director.own_ramp_end`: the level of its last `RAMP_TO_LEVEL`, cleared
+by its `stop` and forgotten once that ramp's time has passed, so a ramp to the same level after that time, from a
+scene or from core's own turn-on, is not taken for it; one that replaces the adapter's ramp inside that time still is,
+and runs on at its own speed), held in memory and never used as the light's level. The record is per item: a stop sent
+to a group doesn't clear a member bulb's. A lower to the very limit a raise is ramping to counts as the same ramp.
+What the Director shows can't say: it goes on showing a ramp for a moment after a `stop` has halted it, so a press
+right behind a stop finds a ramp that is no longer the adapter's own, sends a second `SET_BRIGHTNESS_STOP` (which
+changes nothing on a halted light) and waits for the halt to show. A ramp halted from Control4 inside that same moment
+is the one case still read as running. For up to about 70 ms after a ramp is sent the Director still shows the light
+at rest (Ramp start, below), so an opposite move that arrives in that window, as two calls an automation fires
+together, is not halted and moves from the level shown. The halt-then-ramp sequence ran on hardware (DeviceSide's own
+actions, below). Then one `RAMP_TO_LEVEL {LEVEL, TIME}`, sent as a whole percent and whole milliseconds (the adapter's
+rounding; core sends fractions) for the distance left at the `sweep_time`'s speed, at most 65535 ms for a full range
+(`RAMP_LIMITS`). `LEVEL` 0 ends off, as core's own turn-off sends it (`ramp_to_level(0, ...)`); a limit above 0 is
+sent as at least 1. From off the level reads 0, so the whole range is the distance. An on/off light lacks brightness,
+so the dispatcher leaves it unchanged (`fields_dropped`).
 
 ### `stop`
 
 `SET_BRIGHTNESS_STOP`, with no parameters, to every target first. Then up to four reads per target, after waits of
-0.1, 0.15, 0.3 and 0.6 s, ending at the first that shows level and target within half a percent (`SETTLE_DELAYS_S`,
+0.1, 0.15, 0.3 and 0.6 s, ending at the first that shows level and target equal (`SETTLE_DELAYS_S`,
 sized from the stop timings below); the waits hold no concurrency slot. `confirmed` when lit with level and target
 equal, `sent` (`still_fading`) when they still differ (Control4 hadn't shown the halt yet, the driver ignored the
 stop, or a new move began meanwhile), `sent` (`halt_not_reported`) on
@@ -84,7 +71,7 @@ sent.
 ### `get_attributes`
 
 Core's entity shows the level as of its last poll of the Director (`DEFAULT_SCAN_INTERVAL`, 5 s, a user option), and
-no color temperature; this reads the Director itself. One read of `Brightness Percent` (or `LIGHT_LEVEL`),
+no color temperature; this reads the Director itself. One read of `Brightness Percent`, `LIGHT_LEVEL` (see Level),
 `LIGHT_STATE`, `Current CCT` and `Current Color Mode`, logged with its values as every read of the Director's
 variables is (`director.read_variables`). Brightness is reported when above 0; `color_temp_kelvin` when the mode is 1
 (color temperature, the only mode measured) and the light reports one. An off light with neither returns an empty row,
@@ -173,6 +160,8 @@ hardware and versions, sent and timed in-process by a probe in Home Assistant. N
   limit already, reported `unchanged` (`at_limit`). Then a ramp not DeviceSide's own: 17 s after a 1.86 s raise to
   100, with a 60 s `RAMP_TO_LEVEL` to 100 sent straight to the Director and running, a raise read 28.03 and 100,
   logged no ramp of its own on record, halted it at 29 and sent its own ramp. A `stop` was `confirmed` at 67.
+- **Core's fractional turn-on, 2026-11-14.** `light.turn_on` with brightness 128 (core sends 50.196 %) left the group
+  at level 50, target 50: at rest the Director holds a whole percent.
 - **Rate ceilings.** Each light's `Navigator Dynamic Capabilities` variable gives `brightness_rate_max`: 65535 on a
   bulb, 86400000 on the group, both in milliseconds. Both give `supports_brightness_stop: true`.
 - **A variable an item lacks, 2026-11-13.** A read of the group and of one bulb naming `LIGHT_LEVEL`, `Brightness
