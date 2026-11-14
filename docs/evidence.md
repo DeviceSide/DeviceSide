@@ -96,12 +96,15 @@ decide the result together, so the class follows the vendor (Zigbee2MQTT: `hue`,
 
 Three ways a class can't take an action, each shown differently on the cards:
 
-- **Doesn't work:** the class fails the call DeviceSide sends. The adapter's scope lists it in `doesnt_work`, with what,
-  why and a source; the dispatcher refuses it (`doesnt_work`), and the card lists it under Doesn't work. It is per
+- **Doesn't work:** the class fails, or is harmed by, the call DeviceSide sends. The adapter's scope lists it in
+  `doesnt_work`, with what, why and a source; the dispatcher refuses it (`doesnt_work`), and the card lists it under Doesn't work. It is per
   adapter, as one class can fail one action's call and answer another's.
 - **Not yet supported:** the class needs a call that isn't built. The integration names it, and the adapter's scope
   holds it in neither `capabilities` nor `doesnt_work`. It is refused (`not_supported`) and listed as not yet supported.
 - **Untested:** the default call may work. The class is in scope as `experimental(...)` and runs behind the flag.
+
+A class that today's call harms (it acts wrong rather than refusing) is listed as doesn't work for that call, even when
+a call that isn't built would work on it. Not yet supported is for a class today's call can't serve but doesn't harm.
 
 A refused target raises when named and is skipped when it came indirectly, as `supports()` refusals do
 ([action-behavior.md](action-behavior.md)).
