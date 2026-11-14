@@ -102,7 +102,7 @@ jobs:
           ref: ${{ needs.check.outputs.target }}
           persist-credentials: false
 
-      # The tag ruleset's only bypass is the deploy key: GITHUB_TOKEN can't bypass a ruleset on a personal repo.
+      # The tag ruleset's only bypass is the deploy key: GITHUB_TOKEN can't be a ruleset bypass actor.
       # The key exists only in this step, in a file only the runner user can read, and github.com's host keys come
       # from the API over TLS rather than trust on first use.
       - name: Tag and publish the release
