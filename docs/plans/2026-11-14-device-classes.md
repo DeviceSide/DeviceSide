@@ -163,7 +163,27 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
    - **The default class in code (Decision 5):** an `IntegrationInfo` field naming the default class, which the
      registry refuses at Verified in any scope.
    - **Lab run** on the branch tip, with the Sengled. It tests the classifier, the column, the coverage check, Works
-     credited per class, and the refusals.
+     credited per class, and the refusals. Fixture: the A60 on Z2M, then the Sengled E11-G13 on Z2M in its place.
+   - **Part 1, done** (`claude/device-classes-5-z2m`): everything that needs no probe string. The classifier
+     (`integrations/zigbee2mqtt/classes.py`) with the `hue` rule (manufacturer `Philips`, the constant
+     `native_control` reads too) and placeholder Tuya and Sengled rules that match nothing; `expand_group` from the
+     bridge cache's `bridge/groups` (every Z2M adapter has `native_groups`, so it serves classing and the fallback
+     only); `IntegrationInfo.default_class`, `other` on Z2M, refused at Verified by the registry; scopes: `hue`
+     Verified, the rest `experimental(...)`, and `turn_on_for` holding neither Tuya class nor `sengled`; the bundle's
+     class phrases and sections. `models.yaml`'s TS011F entry stays until part 2, as Decision 3 decides its fate.
+   - **Part 2, from the probe:**
+     - Rule data in `classes.py`: the `tuya_zcl`, `tuya_mcu` and `sengled` placeholders' conditions, from §1's
+       registry strings and §3's Tuya signal. If a signal is only in `bridge/devices` (not the registry), that is a
+       structure change, and goes to Jason with the open question above.
+     - Scope entries: the TS011F per Decision 3 (`doesnt_work` on `turn_on_for` for its own class, or nothing more:
+       `tuya_zcl` already refuses it as not supported); `sengled` on `turn_on_for` (stays out of scope if §4 shows it
+       ignores 0x42, else `experimental`); whether `sengled` on `set_attributes` doesn't work (the E11-G13 jumps to
+       full on `MoveToLevel` while off, research §3); whether `tuya_mcu` leaves `get_attributes` and
+       `set_attributes` (raw ZCL reads and writes a TS0601 can't take); whether `stop` on `other` is Documented once
+       the Tuya rules carve those devices out.
+     - Docs: `docs/evidence.md`'s tenets example (the TS011F), the `docs/integrations.md` Zigbee plugs and switches
+       line, `docs/models.yaml`'s TS011F reason (or the entry's move into code, one per integration), the TS011F and
+       Sengled model IDs in `docs/models.yaml`, and `index.md`'s "doesn't recognize them yet" lines.
 6. **Core fix-ups** from step 5's run, before ZHA and Hue copy the pattern. If a package changes, its lab run is
    repeated.
 7. **ZHA.** The same shape. Lab run, with the Sengled.

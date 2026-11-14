@@ -75,10 +75,10 @@ class stands on its own evidence: a record on one class proves nothing about ano
 is what the call addresses (Shelly: the RPC component). On a multi-vendor protocol the call and the firmware family
 decide the result together, so the class follows the vendor (Zigbee2MQTT: `hue`, `tuya_zcl`, `tuya_mcu`, `other`).
 
-- **Unknown is flagged, never Verified.** A device the integration can't place falls in its default class, which is
-  never Verified, so placing a device there can only make DeviceSide more cautious. The default class may be
-  Documented for an action where the [Documented](#levels) test holds (no known class departs), and is otherwise
-  `experimental(...)`. Nothing lifts it: a record on a device outside the named classes adds a new class named for its
+- **Unknown is flagged, never Verified.** A device the integration can't place falls in its default class
+  (`IntegrationInfo.default_class`), which the registry refuses at Verified in any scope, so placing a device there
+  can only make DeviceSide more cautious. The default class may be Documented for an action where the
+  [Documented](#levels) test holds (no known class departs), and is otherwise `experimental(...)`. Nothing lifts it: a record on a device outside the named classes adds a new class named for its
   maker (Zigbee2MQTT: `ikea` for an IKEA bulb), as the default class holds every device not yet placed, and one maker's
   record proves nothing about the rest.
 - **One axis per integration.** An integration that names classes holds them in every adapter's scope, and only the
@@ -228,7 +228,7 @@ didn't change between them. A record with no Package row is no sign-off. A manua
 `test-records/_manual.md`, added in a PR: date, commit, tester, model ids (`docs/models.yaml`, never a household's
 device names) and what passed.
 
-An integration names classes when it has `IntegrationInfo.capability` (Shelly, today). Its records' Tests table has a
+An integration names classes when it has `IntegrationInfo.capability` (Shelly and Zigbee2MQTT, today). Its records' Tests table has a
 Capability column between Target and Result: the class each test's target reached, in backticks, as the action's
 result reports it ([action-behavior.md](action-behavior.md#what-a-response-looks-like)). A native group's cell lists
 its members' classes once each, sorted, comma-separated. A dash means no class: the target, or a group member,

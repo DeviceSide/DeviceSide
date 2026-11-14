@@ -165,7 +165,8 @@ runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, 
   sees the same class, and maps the classes it serves to its own branch in `execute`; a class is a device class, not a
   call pattern, as patterns are per action. `IntegrationInfo.classes` declares every class it can name. The registry
   refuses an integration with `capability` unless every adapter's scope has `capabilities`, one without unless none
-  has, and a scope class the integration doesn't declare. `AdapterScope.doesnt_work` maps a class to a
+  has, a scope class the integration doesn't declare, and a scope holding `IntegrationInfo.default_class` (the class
+  a device it can't place gets; none on Shelly) as Verified. `AdapterScope.doesnt_work` maps a class to a
   `DoesntWork` (what, reason, source); a class in it is never in `capabilities`.
 - **Resolver.** Candidates are the available integrations whose `ha_domain` is the entity's registry platform;
   one with a `detect` hook wins first (Z2M over plain MQTT). A `switch_as_x` light resolves to the switch it wraps,
@@ -174,14 +175,15 @@ runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, 
   `via_group`. Native groups (Hue `grouped_light`, Z2M and ZHA groups) pass through as one target. An adapter with
   `native_groups` gets the group; for one without, the dispatcher calls the integration's `expand_group`, or refuses
   with `group_not_supported` when there is none. A native group an adapter addresses as one takes its members'
-  classes, from `expand_group`, its weakest member's level for the gate. One that is empty, whose members can't be
-  listed (no `expand_group`, or it raised), or whose classifier raised (logged) counts as Experimental. When a
+  classes, from `expand_group` (sync: Zigbee2MQTT's reads the bridge cache's `bridge/groups`, and can't list a group
+  before Z2M has published it), its weakest member's level for the gate. One that is empty, whose members can't be
+  listed (no `expand_group`, it answered `None`, or it raised), or whose classifier raised (logged) counts as Experimental. When a
   member's class doesn't work or isn't supported, the group falls back to its members: each available one not
   already a target is planned on its own, indirect, so the good ones run and a refused one is skipped and logged.
   When none is left to plan (every member unavailable or already a target), the group itself is refused with the
   refused member's reason: raised if named, skipped and logged if not. A group whose members can't be listed can't
-  show a refused member, so it counts as Experimental: refused while Experimental features is off. For an adapter without `native_groups`, an `expand_group` that raises
-  (logged) leaves membership unknowable, so the group is refused as `group_not_supported`, as with none.
+  show a refused member, so it counts as Experimental: refused while Experimental features is off. For an adapter without `native_groups`, an `expand_group`
+  that answers `None` or raises (logged) leaves membership unknowable, so the group is refused as `group_not_supported`, as with none.
 - **Dispatcher.** Buckets targets by adapter, drops fields a target lacks, checks `supports()` (domain and fields in
   scope, and the adapter's own reasons), then the class (`AdapterScope.refusal`: a class in `doesnt_work` is refused as
   `doesnt_work`, one in neither it nor `capabilities` as `not_supported`; a call left nothing to send is first), clamps

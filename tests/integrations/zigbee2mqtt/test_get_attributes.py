@@ -11,7 +11,8 @@ from homeassistant.util import dt as dt_util
 
 from custom_components.deviceside.integrations.zigbee2mqtt import read
 
-from ...conftest import allow_experimental, call, refusal, sent
+from .conftest import call
+from ...conftest import allow_experimental, refusal, sent
 from ...fixtures.zigbee2mqtt import GROUPS, IEEE, INFO, add_z2m_entity, add_z2m_group, z2m_entry
 
 pytestmark = pytest.mark.usefixtures("setup_production")
@@ -433,6 +434,8 @@ async def test_member_failure_fails_the_group(hass, broker):
 async def test_empty_group_is_skipped_silently(hass, broker, caplog, groups):
     group(hass, broker, one={}, two={}, members=[])
     broker.retained[GROUPS] = groups
+    # A group whose members aren't listed counts as Experimental (core/dispatcher.py, Dispatcher._classes).
+    allow_experimental(hass)
 
     response = await call(hass, "get_attributes", {"entity_id": ["light.room", "light.one"]})
 
@@ -443,6 +446,8 @@ async def test_empty_group_is_skipped_silently(hass, broker, caplog, groups):
 async def test_no_bridge_groups_fails_the_group(hass, broker):
     group(hass, broker, one={}, two={})
     del broker.retained[GROUPS]
+    assert await refusal(hass, "get_attributes", {"entity_id": "light.room"}) == "experimental_off"
+    allow_experimental(hass)
 
     with pytest.raises(HomeAssistantError) as raised:
         await call(hass, "get_attributes", {"entity_id": "light.room"})

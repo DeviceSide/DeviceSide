@@ -6,7 +6,8 @@ from homeassistant.util.color import color_RGB_to_xy, color_xy_to_hs
 
 from custom_components.deviceside.integrations.zigbee2mqtt import set_attributes
 
-from ...conftest import call, refusal, result
+from .conftest import call
+from ...conftest import allow_experimental, refusal, result
 from ...fixtures.zigbee2mqtt import GROUPS, IEEE, INFO, add_z2m_entity, add_z2m_group, z2m_entry
 
 pytestmark = pytest.mark.usefixtures("setup_production")
@@ -369,6 +370,8 @@ async def test_a_group_whose_members_are_all_within_limits_is_unchanged(hass, br
 
 async def test_an_empty_group_is_skipped(hass, broker):
     group(hass, broker, members=[])
+    # A group whose members aren't listed counts as Experimental (core/dispatcher.py, Dispatcher._classes).
+    allow_experimental(hass)
 
     response = await call(hass, "set_attributes", {"entity_id": ["light.room", "light.one"], "brightness": 40})
 

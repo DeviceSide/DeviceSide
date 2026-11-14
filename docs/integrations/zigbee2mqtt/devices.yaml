@@ -5,3 +5,8 @@ column: Z2M
 column_order: 2
 capabilities:
   switch: {phrase: plugs and switches, section: Zigbee plugs and switches}
+  # The classes integrations/zigbee2mqtt/classes.py names, but hue: Verified, it needs no phrase.
+  other: {phrase: other brands, section: Other brands}
+  tuya_zcl: {phrase: Tuya ZCL, section: Tuya devices}
+  tuya_mcu: {phrase: Tuya MCU, section: Tuya devices}
+  sengled: {phrase: Sengled bulbs, section: Sengled bulbs}

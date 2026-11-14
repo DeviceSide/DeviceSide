@@ -61,8 +61,10 @@ The compatibility section below shows which devices are known or likely to work.
 
 **[Zigbee2MQTT](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md)** · maintained by [@jasonmx](https://github.com/jasonmx)
 
-- 🟢 [Hue White Ambiance E27 1100lm](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#hue-white-ambiance-e27-1100lm) ✔ · [Hue Essential White and Color Ambiance A60](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#hue-essential-white-and-color-ambiance-a60) ✔ · [Hue White A60 B22](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#hue-white-a60-b22) ✔ · [native groups](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#native-groups) ✔
 - 🧪 [plugs and switches](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#zigbee-plugs-and-switches): turn on with timer, get attributes
+- 🧪 [other brands](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#other-brands): turn on with timer, smooth dimming, smooth saturation, smooth hue, set without turning on, get attributes
+- 🧪 [Tuya ZCL, Tuya MCU](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#tuya-devices), [Sengled bulbs](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#sengled-bulbs): smooth dimming, smooth saturation, smooth hue, set without turning on, get attributes
+- 🚧 [Tuya ZCL, Tuya MCU](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#tuya-devices), [Sengled bulbs](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#sengled-bulbs): turn on with timer
 - 🔴 [Tuya TS011F](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#tuya-ts011f)
 
 **[Shelly](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/shelly/index.md)** (Gen2+) · maintained by [@jasonmx](https://github.com/jasonmx)

@@ -253,7 +253,7 @@ class Dispatcher:
 
     def _members(self, adapter: Adapter, target: Target) -> list[Target] | None:
         """A native group's members, as the integration's expand_group lists them; None, membership unknowable, when it
-        has no expand_group or it raised, which is logged."""
+        has no expand_group, or it answered None or raised, which is logged."""
         if (expand := self.registry.integrations[adapter.integration].expand_group) is None:
             return None
         try:
@@ -280,7 +280,7 @@ class Dispatcher:
             if not target.is_group:
                 expanded.append(target)
             elif (members := self._members(adapter, target)) is None:
-                # No expand_group, or one that raised (logged): membership is unknowable here.
+                # No expand_group, or one that answered None or raised (logged): membership is unknowable here.
                 results += _skip(target.reported_id, target.named, "group_not_supported", adapter.integration)
             else:
                 # Members are indirect, so an unavailable one is skipped quietly, as core skips one in an area.

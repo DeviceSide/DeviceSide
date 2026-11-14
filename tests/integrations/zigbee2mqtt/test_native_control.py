@@ -15,8 +15,8 @@ from custom_components.deviceside.integrations.zigbee2mqtt import bridge, bridge
 from custom_components.deviceside.integrations.zigbee2mqtt import native_control as nc
 from custom_components.deviceside.integrations.zigbee2mqtt.restore_journal import journal, locks
 
-from .conftest import SET, light
-from ...conftest import call
+from .conftest import SET, call, light
+from ...conftest import allow_experimental
 from ...fixtures.zigbee2mqtt import GROUPS, IEEE, INFO, add_z2m_entity, add_z2m_group, z2m_entry
 
 SENT = {"status": "sent", "integration": "zigbee2mqtt"}
@@ -106,6 +106,7 @@ async def test_device_missing_from_settings_gets_it(hass, setup_production, brok
 
 async def test_other_brands_are_left_alone(hass, setup_production, broker, turn_ons):
     hue_bulb(hass, manufacturer="IKEA of Sweden")
+    allow_experimental(hass)  # class `other`
 
     await call(hass, "turn_on_for", RED)
 
@@ -234,6 +235,7 @@ async def test_group_with_option_on_sends_no_request(hass, setup_production, bro
 async def test_group_is_left_alone(hass, setup_production, broker, turn_ons, manufacturer, groups):
     group_with_member(hass, manufacturer)
     broker.retained[GROUPS] = groups
+    allow_experimental(hass)  # an `other` member, or none listed
 
     await call(hass, "turn_on_for", DOWNSTAIRS)
 
@@ -243,6 +245,8 @@ async def test_group_is_left_alone(hass, setup_production, broker, turn_ons, man
 
 async def test_no_bridge_groups_warns_and_still_sends(hass, setup_production, broker, turn_ons, caplog):
     group_with_member(hass, "Philips")
+    # A group whose members aren't listed counts as Experimental (core/dispatcher.py, Dispatcher._classes).
+    allow_experimental(hass)
 
     response = await call(hass, "turn_on_for", DOWNSTAIRS)
 

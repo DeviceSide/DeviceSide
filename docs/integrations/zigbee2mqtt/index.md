@@ -7,6 +7,40 @@ in [internals.md](internals.md).
 
 Lights that Zigbee2MQTT announced to Home Assistant through MQTT discovery.
 
+## Device classes
+
+Zigbee devices given the same command can answer it differently, by brand and firmware
+([research](research/2026-11-14-timed-on-call-patterns.md)), so a test on one brand proves nothing about another.
+DeviceSide tells them apart by the manufacturer and model Zigbee2MQTT registers in Home Assistant, and every feature
+says how well it is proven for each ([levels of proof](../../device-compatibility.md#levels-of-proof)).
+
+- **Hue bulbs** (manufacturer `Philips`) are tested: every feature on this page has passed on them.
+- A **group** is proven as far as its weakest light. One with a light a feature refuses falls back to its lights, each
+  on its own. Until Zigbee2MQTT has published its groups since it last connected, a group counts as Experimental.
+
+### Other brands
+
+Lights, plugs and switches of any brand DeviceSide doesn't tell apart yet, such as IKEA, Innr or Ledvance. Their
+features are untested, so they run only with Experimental features on
+([try it](../../device-compatibility.md#try-it-experimental-features)). Brands differ most on turn on with timer:
+some turn on and never off, or ignore the timer. If you try one, please report it whether it works or not:
+Integrations > [DeviceSide](https://my.home-assistant.io/redirect/integration/?domain=deviceside) > Configure >
+Report a device test result or bug. A brand with a passing report gets its own entry here.
+
+### Tuya devices
+
+Tuya firmware runs its own countdown instead of the Zigbee timer: on the TS011F and TS000x plugs and switches and
+their white labels (Tuya ZCL devices), and on TS0601 devices, which speak only Tuya's own datapoints (Tuya MCU
+devices). Zigbee2MQTT turns DeviceSide's timer into a plain on that never ends, so turn on with timer refuses them as
+not yet supported, rather than leave one on. Their other features are untested, as for other brands. DeviceSide
+doesn't recognize Tuya devices yet: until a lab test confirms the strings Zigbee2MQTT registers for them, they count
+as other brands.
+
+### Sengled bulbs
+
+DeviceSide doesn't recognize Sengled bulbs yet: until a lab test confirms the strings Zigbee2MQTT registers for them,
+they count as other brands.
+
 ## What DeviceSide changes in Zigbee2MQTT
 
 DeviceSide sets three Zigbee2MQTT options:
