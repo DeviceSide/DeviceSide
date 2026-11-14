@@ -12,10 +12,10 @@ refused (`bridge_v1`). Rooms and zones are targets in their own right.
 
 **No `turn_on_for` or `turn_off_for`**: see [what can't be done](../../integrations.md#what-cant-be-done-and-why).
 
-**No auto-off or auto-on.** Neither a light nor a room stores one in the CLIP v2 API, and v2 has no programmable rule engine to
-build one from. The v1 rule engine could, but Signify advises against it as "it will not be available long term"
-([Hue API V2](https://developers.meethue.com/develop/hue-api-v2/)). A timer kept by Home Assistant wouldn't survive
-it going offline, which is the point of auto-off.
+**No auto-off or auto-on.** Neither a light nor a room stores one in the CLIP v2 API, and v2 has no programmable rule
+engine to build one from. The v1 rule engine could, but Signify advises against it as "it will not be available long
+term" ([Hue API V2](https://developers.meethue.com/develop/hue-api-v2/)). A timer kept by Home Assistant wouldn't
+survive it going offline, which is the point of auto-off.
 
 ## Smooth dimming
 
@@ -31,9 +31,9 @@ options to see the bridge's own reports.
 
 ## Smooth color changes
 
-There are no hue moves ([why](../../integrations.md#what-cant-be-done-and-why)). Saturation keeps each light's current hue, so a white
-deepens toward its own tint (a warm white toward amber). 100 % saturation is the edge of Home Assistant's color
-space, a little short of the deepest colors the Hue app can reach.
+There are no hue moves ([why](../../integrations.md#what-cant-be-done-and-why)). Saturation keeps each light's current
+hue, so a white deepens toward its own tint (a warm white toward amber). 100 % saturation is the edge of Home
+Assistant's color space, a little short of the deepest colors the Hue app can reach.
 
 ## Flash-free turn-on
 
