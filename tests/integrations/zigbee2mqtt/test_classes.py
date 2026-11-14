@@ -293,10 +293,75 @@ async def test_a_group_with_a_member_that_doesnt_work_falls_back_with_experiment
     entity_id = plug_in_group(hass, broker)
     allow_experimental(hass)
 
-    response = await call(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5})
+    response = await call_service(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5})
 
-    assert response == {"light.one": SENT, "light.two": SENT}
+    # A group that fell back has no entry, so no member map: each member's entry names its own class.
+    assert response == {"light.one": SENT | {"capability": "hue"}, "light.two": SENT | {"capability": "hue"}}
     assert {topic for topic, _ in commands(broker)} == {SET.replace(IEEE, "0x01"), SET.replace(IEEE, "0x02")}
+
+
+# What a native group's member_capabilities holds (docs/action-behavior.md, The class).
+
+HUE_PAIR = {"light.one": "hue", "light.two": "hue"}
+
+
+@pytest.mark.parametrize("service", ["stop", "set_attributes"])
+async def test_a_stand_in_is_left_out_of_the_member_map_and_its_class_kept(hass, setup_production, broker, service):
+    """The audit's H1 on #431: the plug's stand-in is keyed on the group's own entity_id, so the map once credited
+    tuya_ts011f to light.room, a class whose state the rig never sees."""
+    entity_id = plug_in_group(hass, broker)
+    allow_experimental(hass)
+    data = {"entity_id": entity_id} | ({"brightness": 50} if service == "set_attributes" else {})
+
+    response = await call_service(hass, service, data)
+
+    assert response[entity_id]["capabilities"] == ["hue", "tuya_ts011f"]
+    assert response[entity_id]["member_capabilities"] == HUE_PAIR
+
+
+async def test_two_stand_ins_in_one_group_are_both_left_out(hass, setup_production, broker):
+    """Two plugs would both be keyed on the group's entity_id: one would hide the other's class."""
+    entity_id = plug_in_group(hass, broker)
+    add_z2m_entity(
+        hass,
+        hass.config_entries.async_entries("mqtt")[0],
+        "switch.plug_two",
+        ieee="0x04",
+        manufacturer="Tuya",
+        model_id="TS0001_switch_module",
+    )
+    broker.retained[DEVICES].append(interviewed("0x04", TUYA, "TS0001"))
+    broker.retained[GROUPS][0]["members"].append({"ieee_address": "0x04"})
+    allow_experimental(hass)
+
+    response = await call_service(hass, "stop", {"entity_id": entity_id})
+
+    assert response[entity_id]["capabilities"] == ["hue", "tuya_ts011f", "tuya_zcl"]
+    assert response[entity_id]["member_capabilities"] == HUE_PAIR
+
+
+async def test_an_unavailable_member_is_left_out_of_the_member_map(hass, setup_production, broker):
+    """Its state can't show the call reached it; its class, kept from the registry, still counts in the list."""
+    entity_id = group(hass, broker, one={}, two={"manufacturer": "IKEA of Sweden"})
+    hass.states.async_set("light.two", "unavailable")
+    allow_experimental(hass)
+
+    response = await call_service(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5})
+
+    assert response == {
+        entity_id: SENT | {"capabilities": ["hue", "other"], "member_capabilities": {"light.one": "hue"}}
+    }
+
+
+async def test_a_member_named_beside_its_group_is_in_the_map_and_has_its_own_entry(hass, setup_production, broker):
+    entity_id = group(hass, broker, one={}, two={})
+
+    response = await call_service(hass, "turn_on_for", {"entity_id": [entity_id, "light.one"], "duration": 5})
+
+    assert response == {
+        entity_id: SENT | {"capabilities": ["hue"], "member_capabilities": HUE_PAIR},
+        "light.one": SENT | {"capability": "hue"},
+    }
 
 
 async def test_a_member_with_no_device_leaves_membership_unknowable(hass, setup_production, broker):

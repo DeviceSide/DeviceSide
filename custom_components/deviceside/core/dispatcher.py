@@ -37,12 +37,13 @@ type Classes = tuple[str | None, ...]
 @dataclass(frozen=True, slots=True)
 class Reached:
     """What a target's call reaches, for planning and its result: its Classes, and for a native group whose members'
-    classes are known, each member's reported_id, paired by position with `classes`. `members` is empty for any
-    other target, and for a group whose classes are unknown, (None,): its membership unlisted, or its classifier
-    raised."""
+    classes are known, `members`, paired by position with `classes`: each member's reported_id, or None for one that
+    can't show the call reached it, as it has no available state of its own (unavailable, or a stand-in classed by
+    its device alone, which has no state). `members` is empty for any other target, and for a group whose classes
+    are unknown, which has `classes` (None,): its membership unlisted, or its classifier raised."""
 
     classes: Classes
-    members: tuple[str, ...] = ()
+    members: tuple[str | None, ...] = ()
 
 
 # One execute: the adapter, the request its targets get, the targets, the fields dropped, and what each reaches.
@@ -58,10 +59,15 @@ def _classed(result: EntityResult, target: Target, reached: Reached) -> EntityRe
     target's, or a native group's members', sorted and each once. None when the integration couldn't name one or
     named it Unplaced, for a group any member's, so a group's list never passes for its whole membership, nor a
     class that could still move for a known one. A native group also gets each member's class (plan Decision 66),
-    every member with one: the members the integration couldn't place are left out, and only they."""
+    every member with one that has its own available state: a member the integration couldn't place, and one with
+    no available state of its own (Reached), is left out, and only they."""
     classes = reached.classes
-    if target.is_group and (
-        by_member := {member: name for member, name in zip(reached.members, classes, strict=False) if _placed(name)}
+    if reached.members and (
+        by_member := {
+            member: name
+            for member, name in zip(reached.members, classes, strict=True)
+            if member is not None and _placed(name)
+        }
     ):
         result = replace(result, member_classes=dict(sorted(by_member.items())))
     if not classes or not all(_placed(name) for name in classes):
@@ -355,7 +361,13 @@ class Dispatcher:
         )
         if not found:
             return Reached((None,))
-        ids = tuple(member.reported_id for member in listed) if target.is_group else ()
+        # A member is credited only with a state of its own to show the call reached it, as _fallback reaches only
+        # an available one; a stand-in has no state (zigbee2mqtt/members.py, _stand_in).
+        ids = (
+            tuple(member.reported_id if _available(member.state) else None for member in listed)
+            if target.is_group
+            else ()
+        )
         return Reached(found, ids)
 
     def _members(self, adapter: Adapter, target: Target) -> list[Target] | None:

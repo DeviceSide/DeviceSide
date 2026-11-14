@@ -147,7 +147,8 @@ class EntityResult:
     # name one, or named one not yet placed (for a group: any member's).
     classes: str | tuple[str, ...] | None = None
     # A native group's members' classes, each member's entity_id to its class (plan Decision 66), set by the
-    # dispatcher beside `classes`: a member it couldn't name, or named not yet placed, is left out, and only it.
+    # dispatcher beside `classes`: a member it couldn't name, or named not yet placed, is left out, and so is one with
+    # no available state of its own (unavailable, or with no entity of its own), and only they.
     member_classes: dict[str, str] | None = None
     clamped_to: float | None = None
     detail: str | None = None

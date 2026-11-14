@@ -13,6 +13,7 @@ from custom_components.deviceside.integrations.zigbee2mqtt import read
 
 from .conftest import call
 from ...conftest import allow_experimental, refusal, sent
+from ...conftest import call as call_service
 from ...fixtures.zigbee2mqtt import GROUPS, IEEE, INFO, add_z2m_entity, add_z2m_group, z2m_entry
 
 pytestmark = pytest.mark.usefixtures("setup_production")
@@ -373,6 +374,17 @@ async def test_group_averages_its_lit_members(hass, broker):
     assert [topic for topic, _ in broker.reads()] == ["zigbee2mqtt/0x01/set"] * 3 + ["zigbee2mqtt/0x02/set"] * 2
     [request] = broker.requests()  # one bridge/info read covers both members; the second already has the key
     assert request["payload"]["id"] == "0x01"
+
+
+async def test_a_group_s_member_classes_sit_among_its_data(hass, broker):
+    """A query's entry is its data and class alone: the group's classes are keys beside its row."""
+    group(hass, broker, one={}, two={})
+
+    response = await call_service(hass, "get_attributes", {"entity_id": "light.room"})
+
+    assert response == {
+        "light.room": ROW | {"capabilities": ["hue"], "member_capabilities": {"light.one": "hue", "light.two": "hue"}}
+    }
 
 
 async def test_group_with_every_member_off_averages_them_all(hass, broker):

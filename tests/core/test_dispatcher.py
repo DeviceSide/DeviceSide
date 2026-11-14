@@ -274,6 +274,27 @@ async def test_a_group_with_a_member_the_integration_cant_name_reports_the_rest(
 
 
 @pytest.mark.usefixtures("classed")
+async def test_a_group_leaves_an_unavailable_member_out_of_its_member_map(hass, fake, reset_script):
+    """Its state can't show the call reached it, so it isn't credited, as _fallback never reaches it; its class
+    still counts in the group's list."""
+    add_fake_entity(hass, fake, "switch.a")
+    add_fake_entity(hass, fake, "light.e", state="unavailable")
+    add_fake_native_group(hass, fake, "switch.fake_group", ["switch.a", "light.e"])
+
+    with patch.object(FakeTurnOffFor, "scope", replace(CLASSED, capabilities=verified("A", "E"))):
+        response = await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
+
+    assert response == {
+        "switch.fake_group": {
+            "status": "sent",
+            "integration": "fake",
+            "capabilities": ["A", "E"],
+            "member_capabilities": {"switch.a": "A"},
+        }
+    }
+
+
+@pytest.mark.usefixtures("classed")
 async def test_a_group_whose_classifier_raised_reports_no_member_classes(hass, fake, reset_script):
     add_fake_entity(hass, fake, "switch.a")
     add_fake_native_group(hass, fake, "switch.fake_group", ["switch.a"])

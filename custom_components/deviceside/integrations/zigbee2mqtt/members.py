@@ -140,5 +140,6 @@ def _members(hass: HomeAssistant, group: Target, addresses: Iterable[str]) -> tu
 
 def _stand_in(group: Target, device: dr.DeviceEntry) -> Target:
     """A member HA has no entity for in the group's domain, for its class alone: the group's own entity with the
-    member's device, and no state, so the dispatcher never falls back to it and member_lights leaves it out."""
+    member's device, and no state, so the dispatcher never falls back to it or names it in a group's
+    member_capabilities, and member_lights leaves it out."""
     return replace(group, device=device, state=None, via_group=group.entity_id, is_group=False)
