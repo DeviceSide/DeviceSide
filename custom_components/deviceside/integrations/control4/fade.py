@@ -9,7 +9,6 @@ from homeassistant.core import HomeAssistant
 
 from .director import (
     RAMP_LIMITS,
-    DirectorAdapter,
     LightLevel,
     item_lock,
     own_ramp_end,
@@ -32,7 +31,7 @@ def fade_scope() -> AdapterScope:
     return AdapterScope(experimental=True, domains=experimental("light"), fields=experimental(BRIGHTNESS))
 
 
-class Control4Fade(DirectorAdapter, LevelFade):
+class Control4Fade(LevelFade):
     """The Director's level is up to a second old mid-ramp, so a ramp is halted and read again before a move is
     sized, unless it is the adapter's own ramp to this end (director.own_ramp_end)."""
 

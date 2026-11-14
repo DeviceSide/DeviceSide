@@ -70,8 +70,8 @@ async def test_a_ramp_still_running_after_the_stop_is_only_sent(hass):
 
 
 async def test_a_light_that_reports_no_target_cant_show_a_halt(hass):
-    """LIGHT_LEVEL alone says nothing of a ramp, so the command is sent and never read as confirmed."""
-    director = dimmable_lamp(hass, brightness=40, legacy=True)
+    """No target, no halt to read: sent, never confirmed."""
+    director = dimmable_lamp(hass, brightness=40, no_target=True)
 
     assert await call(hass, "stop", LAMP) == {"light.lamp": {**SENT, "detail": "halt_not_reported"}}
     assert director.send_get_request.await_count == 1
@@ -146,7 +146,7 @@ async def test_one_lights_failed_stop_doesnt_keep_the_others_from_theirs(hass):
 
 
 async def test_an_off_light_that_reports_no_target_is_off_not_unreported(hass):
-    director = dimmable_lamp(hass, on=False, legacy=True)
+    director = dimmable_lamp(hass, on=False, no_target=True)
 
     assert await call(hass, "stop", LAMP) == {"light.lamp": result("control4", "unchanged", detail="off")}
     assert director.send_get_request.await_count == 1

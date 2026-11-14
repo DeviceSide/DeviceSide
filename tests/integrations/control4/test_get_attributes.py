@@ -40,14 +40,14 @@ async def test_a_light_in_full_color_mode_reports_no_color_temperature(hass):
     assert await call(hass, "get_attributes", LAMP) == {"light.lamp": {"brightness": 40.0}}
 
 
-async def test_a_light_on_an_older_driver_reports_brightness_alone(hass):
-    dimmable_lamp(hass, brightness=40, legacy=True)
+async def test_a_light_that_reports_no_target_reports_brightness_alone(hass):
+    dimmable_lamp(hass, brightness=40, no_target=True)
 
     assert await call(hass, "get_attributes", LAMP) == {"light.lamp": {"brightness": 40.0}}
 
 
 async def test_an_off_light_with_nothing_to_report_returns_an_empty_row(hass):
-    dimmable_lamp(hass, on=False, legacy=True)
+    dimmable_lamp(hass, on=False, no_target=True)
 
     assert await call(hass, "get_attributes", LAMP) == {"light.lamp": {}}
 
