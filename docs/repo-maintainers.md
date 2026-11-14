@@ -1,8 +1,8 @@
 # Repo maintainers
 
-What only a repo maintainer can do: the repo settings the workflows rely on, and the steps that come with merging. A
-repo maintainer is a handle in `REPO_MAINTAINERS` (`scripts/gen_codeowners.py`), with admin on the repo. Who merges
-what is in [CLAUDE.md](../CLAUDE.md#maintainers); cutting releases is in the `release` skill.
+What only a [repo maintainer](design.md#glossary) can do: the repo settings the workflows rely on, and the steps that
+come with merging. Who merges what is in [CLAUDE.md](../CLAUDE.md#maintainers); cutting releases is in the `release`
+skill.
 
 ## When a new integration merges
 
@@ -15,8 +15,8 @@ merge; `/merge` needs no role.
 - **Ruleset on `main` and `release/*`:** changes go through a pull request, with no required approvals. The required
   checks (`lint`, `secrets-history`, `pytest`, `validate-hacs`, `validate`) must pass, and the branch must be up to
   date. Force pushes are blocked. There are no bypass actors.
-- **Ruleset on tags:** only the deploy key can create, move or delete a tag, so release tags come from the cut
-  workflows alone.
+- **Ruleset on tags:** only a deploy key can create, move or delete a tag. The cut workflows'
+  `RELEASE_TAG_DEPLOY_KEY` is the only one, so release tags come from those workflows alone.
 - **Actions allow-list (org):** selected actions, pinned by full SHA. A new action needs an entry there before a
   workflow can use it.
 
@@ -28,8 +28,8 @@ merge; `/merge` needs no role.
   requests read. Webhook off.
 - **The `maintainer-merge` environment:** holds the variable `MAINTAINER_MERGE_APP_ID` and the secret
   `MAINTAINER_MERGE_APP_KEY` (the App's private key). Keep its deployment branches limited to `main`.
-  `issue_comment` runs there, so the merge job still gets the key, but a workflow pushed on any other branch can't
+  `issue_comment` runs on `main`, so the merge job still gets the key, but a workflow pushed on any other branch can't
   read it.
-- **Switching it off:** disable the "Maintainer merge" workflow in the Actions tab. Every `/merge` stops at once, and
-  repo maintainers merge everything until it's re-enabled.
+- **Switching it off:** disable the "Maintainer merge" workflow in the Actions tab, and cancel any run already in
+  progress. No new `/merge` runs, and repo maintainers merge everything until it's re-enabled.
 - **If the key leaks:** generate a new key on the App's page, replace the secret, then delete the old key.

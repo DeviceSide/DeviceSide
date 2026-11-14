@@ -32,4 +32,4 @@
 
 - [ ] The shared touch points CONTRIBUTING's Fast track step 3 lists
 - [ ] `IntegrationInfo.maintainers` names me
-- [ ] Repo maintainer, after merge: maintainers invited to Triage ([docs/repo-maintainers.md](https://github.com/DeviceSide/DeviceSide/blob/main/docs/repo-maintainers.md))
+- [ ] Not yours to tick: a repo maintainer invites the maintainers to Triage after merge ([docs/repo-maintainers.md](https://github.com/DeviceSide/DeviceSide/blob/main/docs/repo-maintainers.md))
