@@ -288,6 +288,19 @@ async def test_a_logged_read_error_raises_at_once(hass, broker, monkeypatch, cap
     assert "lightingColorCtrl.read() failed (UNSUPPORTED_ATTRIBUTE)" in caplog.text
 
 
+async def test_the_fake_broker_logs_a_read_of_an_attribute_the_bulb_lacks_as_failed(hass, broker, caplog):
+    """The fixture's own reply (tests/fixtures/zigbee2mqtt.py, Broker._read), as Zigbee2MQTT answers for a bulb
+    without the attribute: a failed read on bridge/logging, not a reply."""
+    bulb(hass, broker)
+    del broker.devices[IEEE][1]["genOnOff"]["onTime"]
+
+    with pytest.raises(HomeAssistantError) as raised:
+        await call(hass, "get_attributes", {"entity_id": "light.lamp"})
+
+    assert raised.value.translation_key == "targets_failed"
+    assert "genOnOff.read() failed (UNSUPPORTED_ATTRIBUTE)" in caplog.text
+
+
 async def test_a_delivery_failure_is_read_again(hass, broker, caplog):
     bulb(hass, broker)
     broker.read_errors_then_reply[(IEEE, "genOnOff")] = ["Delivery failed for '1'"]

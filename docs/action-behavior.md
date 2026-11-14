@@ -49,8 +49,9 @@ light field, so a timed call still runs its timer. A call left nothing to do by 
 
 **Not yet classed** (`class_unknown`) is refused the same way, raised if named and skipped if not, but it is
 transient: it holds only until the integration has reported the device or group
-([evidence.md](evidence.md#doesnt-work-not-yet-supported-untested)), so an automation firing at startup can get it
-for a few seconds.
+([evidence.md](evidence.md#doesnt-work-not-yet-supported-untested)). That usually takes seconds, so an automation
+firing at startup can get it; if the integration never reports it (DeviceSide couldn't connect to it), it holds
+until DeviceSide reloads.
 
 **Unlisted fields depart from core.** An adapter may name, in `AdapterScope.unlisted`, fields its devices take
 although the light's state says they can't; a light never lacks those for that adapter, where

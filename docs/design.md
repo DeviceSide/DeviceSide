@@ -162,14 +162,12 @@ runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, 
   `AdapterRegistry`'s interface needs the rig's matching change. A failing integration import (its core
   integration isn't installed) records it unavailable and setup carries on.
 - **Classes.** `IntegrationInfo.capability(hass, target) -> str | None` names the target's class: sync and cheap, no
-  I/O, reading only the registry device, the config entry or the integration's data (Zigbee2MQTT: the bridge cache's
-  `bridge/devices`, for a device's Zigbee strings, with the registry as fallback, which can't place a Tuya device under
-  another vendor's definition, so that lands in `other` until the cache fills). A device it can't place gets the default
-  class; `None` is only for a target it can't class at all (a Shelly entity with no RPC component), which counts as
-  Experimental. Where a call is known to harm, the adapter refuses a target whose class rests on information
-  DeviceSide doesn't have yet (Zigbee2MQTT: a device whose Zigbee strings haven't arrived, in a class they could still
-  change), even with Experimental features on; one placed in the default class from full information stays
-  Experimental ([evidence.md](evidence.md#doesnt-work-not-yet-supported-untested)). It takes `hass=None` on a target with no config
+  I/O, reading only the registry device, the config entry or the integration's data (Zigbee2MQTT's sources and when
+  a device counts as placed: [its page](integrations/zigbee2mqtt/index.md#device-classes)). A device it can't place
+  gets the default class; `None` is only for a target it can't class at all (a Shelly entity with no RPC component),
+  which counts as Experimental. Where a call is known to harm, the adapter refuses a target whose class rests on
+  information DeviceSide doesn't have yet, even with Experimental features on; one placed in the default class from
+  full information stays Experimental ([evidence.md](evidence.md#doesnt-work-not-yet-supported-untested)). It takes `hass=None` on a target with no config
   entry or state, so the rig can class a stand-in (Zigbee2MQTT then reads the registry alone), until the rig reads the
   class from the result. Every adapter of the integration sees the same class, and maps the classes it serves to its own
   branch in `execute`; a class is a device class, not a call pattern, as patterns are per action.

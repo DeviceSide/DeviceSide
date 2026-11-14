@@ -219,12 +219,15 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      leaves membership unknown; Z2M `turn_on_for` refuses, as `class_unknown` and with Experimental features on, a
      group of unknown membership and a device only the registry placed in `other` (or a group with one). The rule
      order's one home is the `classes.py` docstring.
-   - **Part 2's fix-ups, round 2, built** (same branch), from the round's plan review and audit, and Decision 26. A
-     device with no Zigbee strings yet (none held, not listed, or listed with null strings, as mid-interview) is
-     unplaced in any registry class a Zigbee-string rule could override: only `hue` and the Tuya classes are final
-     (`classes.FINAL`, derived from the rules), so a Gledopto-badged Tuya device in `gledopto`, or a Sengled, waits
-     for the strings. `class_unknown` is core's `Reason`, with its own translation, saying it clears once the
-     integration has reported the device; `docs/action-behavior.md` calls it transient. The harm rule's wording in
+   - **Part 2's fix-ups, rounds 2 and 3, built** (same branch), from each round's plan review and audit, and
+     Decision 26. On Z2M `turn_on_for` a device is placed by one rule (round 3, replacing round 2's `classes.FINAL`):
+     bridge/devices lists it with `interview_completed` true and both Zigbee strings non-empty, or the registry puts
+     it in `hue`, the one class no Zigbee-string rule can override. Every other device waits, so a Gledopto-badged
+     Tuya device in `gledopto`, a Sengled, and a registry-only Tuya device (now `class_unknown` rather than
+     `doesnt_work`, a refusal either way) wait for the strings, and part 3's countdown class will too.
+     `class_unknown` is core's `Reason`, with its own translation, saying it clears once the integration has
+     reported the device (usually seconds; a reload if it never does), and always naming the integration's title;
+     `docs/action-behavior.md` calls it transient. The harm rule's wording in
      `docs/evidence.md`, `docs/design.md` and the tenets says what it requires: a class resting on information
      DeviceSide doesn't have yet. The Tuya entries' reason says what the user sees.
    - **Part 3, the Tuya countdown on Z2M (Decision 22),** after part 2's fix-ups:
@@ -251,6 +254,10 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
    - **The harm rule moves to core (Decision 26):** a `harms` flag on `DoesntWork`, and the classifier answering
      `None` for "can't place yet"; the dispatcher then refuses `class_unknown` for an adapter whose scope holds a
      `harms` entry, and Z2M's `supports()` check goes.
+   - **"Not placed yet" gets its own sentinel** (a pending class, or a flag on the target's classes), not `None`.
+     `None` already means a permanent "can't class": a Shelly entity with no RPC component, a classifier that raised,
+     a group whose members can't be listed. Core then refuses a pending target only where the adapter's scope has a
+     harm-based `doesnt_work` entry.
    - **A group with one unplaced member falls back to its members** in core, with only that member refused
      (`class_unknown`), instead of the whole group being refused as Z2M's `supports()` does today.
 7. **ZHA.** The same shape. Lab run, with the Sengled.
@@ -596,6 +603,8 @@ A package changed after its lab run needs that run again before the release. Non
   ZBMINIR2 at 1.1.0.
 - Building Tuya pattern B on ZHA and pattern C, and a non-Hue bulb on the rig. The second lifts that maker's own class on Z2M and
   ZHA, never `other` (Decision 5).
+- Tuya's legacy `_TYST11_…` manufacturer strings: the Tuya rules don't match them, so such a device with a model
+  that isn't `TS…` lands in `other`. Check how many devices that covers before adding a rule.
 - A query's own `capability` or `capabilities` data key: the class would overwrite it in the response. No query has
   one; a check is built when one would.
 

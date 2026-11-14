@@ -231,11 +231,10 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry, on_online: Callab
         await cache.subscribe(hass)
     except Exception as err:  # noqa: BLE001 - each caller reads fresh, as without the cache
         # Without the cache, a group's members can't be listed sync (members.expand_group), so every group counts
-        # as Experimental, and turn_on_for refuses it and every device the registry alone can't place for good
-        # (classes.unplaced: every brand but Hue and Tuya).
+        # as Experimental, and turn_on_for refuses it and every device but a Hue one for good (classes.unplaced).
         _LOGGER.warning(
             "Couldn't subscribe to Zigbee2MQTT's bridge, so each action reads it fresh, Zigbee2MQTT groups run "
-            "only with Experimental features on, and turn on with timer refuses them and other brands' devices: %r",
+            "only with Experimental features on, and turn on with timer refuses them and every device but Hue's: %r",
             err,
         )
         cache.stop()

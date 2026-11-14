@@ -142,14 +142,16 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
 
 def _unknown(hass: HomeAssistant, target: Target) -> str | None:
     """`class_unknown` for a target whose class rests on what DeviceSide doesn't know yet, even with Experimental
-    features on (docs/evidence.md, Device classes: where a call is known to harm, unknown is refused); else None.
+    features on (docs/evidence.md, Doesn't work, not yet supported, untested: where a call is known to harm, a class
+    not yet known is refused); else None.
 
     The failure it prevents: a Tuya plug left on. Today's call turns the Tuya classes on with no timer
     (TURN_ON_FOR_DOESNT_WORK), so one that reached it in another class, or inside a group run as one, would stay on.
-    That is a device whose Zigbee strings haven't arrived, in a class they could still change (classes.unplaced: a
-    rebadged Tuya plug looks like another brand until they do), and a group whose membership is unknown or that has
-    such a member. Each runs once the bridge cache fills, as Zigbee2MQTT publishes right after a connect; with no cache
-    (its subscribe failed, logged), they stay refused. A device placed in `other` from its strings stays Experimental.
+    That is a device bridge/devices doesn't yet list as interviewed with both Zigbee strings, unless the registry puts
+    it in `hue` (classes.unplaced: a rebadged Tuya plug looks like another brand until then), and a group whose
+    membership is unknown or that has such a member. Each runs once the bridge cache fills, as Zigbee2MQTT publishes
+    right after a connect; with no cache (its subscribe failed, logged), they stay refused. A device placed in `other`
+    from its strings stays Experimental.
     """
     if not target.is_group:
         return Reason.CLASS_UNKNOWN if unplaced(hass, target) else None

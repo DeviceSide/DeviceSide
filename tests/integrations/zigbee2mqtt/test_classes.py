@@ -1,6 +1,10 @@
 """Zigbee2MQTT's device classes: the rules that name a device's class, the group members its classes come from, and
 what each class's level does to a call."""
 
+import json
+from pathlib import Path
+from types import SimpleNamespace
+
 import pytest
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
@@ -26,6 +30,7 @@ from ...conftest import allow_experimental, refusal
 from ...conftest import call as call_service
 from ...fixtures.zigbee2mqtt import GROUPS, IEEE, add_z2m_entity, add_z2m_group, z2m_entry
 
+STRINGS = Path(__file__).parents[3] / "custom_components" / "deviceside" / "strings.json"
 # Strings of the shapes the lab probe saw (research/2026-11-14-lab-probe.md, §1): the Zigbee manufacturer a Tuya
 # device reports in bridge/devices, and the vendor and definition Z2M registers for a TS011F.
 TUYA = "_TZ3000_abcdefgh"
@@ -33,6 +38,11 @@ TUYA_MCU = "_TZE200_abcdefgh"
 PLUG = ("Tuya", "TS011F_plug_1")
 # Gledopto's GL-SPI-206P: Gledopto's definition, Tuya datapoint firmware (classes.py, rule order 2).
 GLEDOPTO_TUYA = {"manufacturer": "Gledopto", "model_id": "GL-SPI-206P", "zigbee": (TUYA_MCU, "TS0601")}
+
+
+def interviewed(ieee: str, manufacturer: str, model_id: str) -> dict:
+    """A device's bridge/devices entry once Zigbee2MQTT has interviewed it."""
+    return {"ieee_address": ieee, "manufacturer": manufacturer, "model_id": model_id, "interview_completed": True}
 
 
 def stand_in(hass, manufacturer: str | None, model_id: str | None = None) -> Target:
@@ -241,7 +251,7 @@ def plug_in_group(hass, broker) -> str:
     entity_id = group(hass, broker, one={}, two={})
     entry = hass.config_entries.async_entries("mqtt")[0]
     add_z2m_entity(hass, entry, "switch.plug", ieee="0x03", manufacturer=PLUG[0], model_id=PLUG[1])
-    broker.retained[DEVICES].append({"ieee_address": "0x03", "manufacturer": TUYA, "model_id": "TS011F"})
+    broker.retained[DEVICES].append(interviewed("0x03", TUYA, "TS011F"))
     broker.retained[GROUPS][0]["members"].append({"ieee_address": "0x03"})
     return entity_id
 
@@ -373,6 +383,7 @@ async def test_turn_on_for_refuses_a_ts011f_as_doesnt_work_with_experimental_on(
     (research/2026-11-14-lab-probe.md, §2): refused, not flagged, so Experimental features can't send it."""
     allow_experimental(hass)
     add_z2m_entity(hass, z2m_entry(hass), "switch.plug", manufacturer=PLUG[0], model_id=PLUG[1])
+    broker.retained[DEVICES] = [interviewed(IEEE, TUYA, "TS011F")]
 
     assert await refusal(hass, "turn_on_for", {"entity_id": "switch.plug", "duration": 5}) == "doesnt_work"
     assert commands(broker) == []
@@ -381,6 +392,7 @@ async def test_turn_on_for_refuses_a_ts011f_as_doesnt_work_with_experimental_on(
 async def test_the_ts011f_s_refusal_says_what_the_user_sees(hass, setup_production, broker):
     allow_experimental(hass)
     add_z2m_entity(hass, z2m_entry(hass), "switch.plug", manufacturer=PLUG[0], model_id=PLUG[1])
+    broker.retained[DEVICES] = [interviewed(IEEE, TUYA, "TS011F")]
 
     with pytest.raises(HomeAssistantError) as raised:
         await call_service(hass, "turn_on_for", {"entity_id": "switch.plug", "duration": 5})
@@ -425,8 +437,8 @@ async def test_a_class_that_needs_an_unbuilt_call_is_not_supported(
     assert commands(broker) == []
 
 
-# Where a call is known to harm, unknown is refused (Decision 23): turn_on_for refuses a target it can't class, even
-# with Experimental features on.
+# Where a call is known to harm, a class not yet known is refused (docs/evidence.md, Doesn't work, not yet supported,
+# untested; Decision 23): turn_on_for refuses a target it can't class, even with Experimental features on.
 
 
 async def test_turn_on_for_refuses_a_group_of_unknown_membership_with_experimental_on(hass, setup_production, broker):
@@ -498,10 +510,11 @@ async def test_a_group_with_a_ts011f_member_falls_back_to_its_members(hass, setu
     assert "light.two (doesnt_work)" in caplog.text
 
 
-def test_only_hue_and_the_tuya_classes_are_final_without_the_zigbee_strings():
-    """Derived from the rules: no Zigbee-string rule comes before `hue`'s, and the strings only move a Tuya class to
-    another; every other class a Tuya rule on the strings could override."""
-    assert classes.FINAL == {"hue", "tuya_zcl", "tuya_ts011f", "tuya_mcu"}
+def test_hue_s_rule_comes_first_and_reads_the_registry_alone():
+    """Why a registry `hue` is placed without the Zigbee strings (classes.unplaced): no Zigbee-string rule can come
+    before it and override it."""
+    assert RULES[0].capability == "hue"
+    assert RULES[0].conditions.keys() <= classes.REGISTRY
 
 
 async def test_turn_on_for_refuses_a_gledopto_badged_tuya_device_until_its_strings_arrive(
@@ -532,47 +545,81 @@ async def test_turn_on_for_refuses_a_hue_group_with_a_gledopto_badged_tuya_membe
 
 
 @pytest.mark.parametrize(
-    ("registry", "expected"),
+    "registry",
     [
-        pytest.param(("Tuya", "TS0001_switch_module"), "doesnt_work", id="tuya_final"),
-        pytest.param(("Sengled", "E11-G13"), "class_unknown", id="sengled_overridable"),
+        pytest.param(("Tuya", "TS0001_switch_module"), id="tuya"),
+        pytest.param(("Sengled", "E11-G13"), id="sengled"),
+        pytest.param(("IKEA of Sweden", "LED1836G9"), id="other"),
     ],
 )
-async def test_without_the_strings_a_final_class_stands_and_any_other_waits(
-    hass, setup_production, broker, registry, expected
-):
+async def test_without_the_strings_only_a_hue_device_runs(hass, setup_production, broker, registry):
+    """A registry Tuya class waits as well: refused either way, and part 3's countdown class must wait for the
+    strings that decide it."""
     entity_id = light(hass, broker, manufacturer=registry[0], model_id=registry[1])
     del broker.retained[DEVICES]
     allow_experimental(hass)
 
-    assert await refusal(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == expected
+    assert await refusal(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == "class_unknown"
+
+
+async def test_a_hue_device_runs_with_no_bridge_cache(hass, setup_production, broker, monkeypatch):
+    lamp = light(hass, broker, manufacturer="Philips")
+    monkeypatch.setattr(classes, "bridge_cache", SimpleNamespace(get=lambda hass: None))
+
+    assert await call(hass, "turn_on_for", {"entity_id": lamp, "duration": 5}) == {lamp: SENT}
 
 
 @pytest.mark.parametrize(
-    ("zigbee", "expected"),
+    ("zigbee", "interviewed", "expected"),
     [
         # Mid-interview: Z2M lists the device with null strings until it reads them.
-        pytest.param(None, "class_unknown", id="no_strings"),
-        pytest.param((None, "TS011F"), "doesnt_work", id="model_read"),
-        pytest.param((TUYA, "TS011F"), "doesnt_work", id="interviewed"),
+        pytest.param(None, False, "class_unknown", id="no_strings"),
+        pytest.param((None, "TS011F"), True, "class_unknown", id="model_only"),
+        pytest.param((TUYA, "TS011F"), False, "class_unknown", id="mid_interview"),
+        pytest.param((TUYA, "TS011F"), True, "doesnt_work", id="interviewed"),
     ],
 )
-async def test_a_device_listed_with_null_strings_is_not_placed(hass, setup_production, broker, zigbee, expected):
+async def test_a_device_listed_with_null_strings_is_not_placed(
+    hass, setup_production, broker, zigbee, interviewed, expected
+):
     """The audit's M (round 2): Lidl's HG06337 mid-interview, `manufacturer: null`, once counted as placed in
     `other`, so it took today's call with Experimental features on."""
-    entity_id = light(hass, broker, manufacturer="Lidl", model_id="HG06337", zigbee=zigbee)
+    entity_id = light(hass, broker, manufacturer="Lidl", model_id="HG06337", zigbee=zigbee, interviewed=interviewed)
     allow_experimental(hass)
 
     assert await refusal(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == expected
 
 
-async def test_another_brand_listed_with_null_strings_waits_and_with_them_runs(hass, setup_production, broker):
-    ikea = light(hass, broker, manufacturer="IKEA of Sweden", zigbee=None)
+IKEA = ("IKEA of Sweden", "TRADFRI bulb E27 WW 806lm")
+
+
+@pytest.mark.parametrize(
+    ("zigbee", "interviewed"),
+    [
+        pytest.param((IKEA[0], None), True, id="no_model"),
+        pytest.param((None, IKEA[1]), True, id="no_manufacturer"),
+        pytest.param((IKEA[0], ""), True, id="empty_model"),
+        pytest.param(("", IKEA[1]), True, id="empty_manufacturer"),
+        pytest.param(IKEA, False, id="mid_interview"),
+    ],
+)
+async def test_another_brand_waits_until_interviewed_with_both_strings(
+    hass, setup_production, broker, zigbee, interviewed
+):
+    """A Tuya device could still show its string in the one missing, or finish its interview as another."""
+    ikea = light(hass, broker, manufacturer=IKEA[0], zigbee=zigbee, interviewed=interviewed)
+    allow_experimental(hass)
+
+    assert await refusal(hass, "turn_on_for", {"entity_id": ikea, "duration": 5}) == "class_unknown"
+
+
+async def test_another_brand_listed_with_null_strings_waits_and_once_interviewed_runs(hass, setup_production, broker):
+    ikea = light(hass, broker, manufacturer=IKEA[0], zigbee=None)
     allow_experimental(hass)
     data = {"entity_id": ikea, "duration": 5}
 
     assert await refusal(hass, "turn_on_for", data) == "class_unknown"
-    broker.retained[DEVICES][0] |= {"manufacturer": "IKEA of Sweden", "model_id": "TRADFRI bulb E27 WW 806lm"}
+    broker.retained[DEVICES][0] |= {"manufacturer": IKEA[0], "model_id": IKEA[1], "interview_completed": True}
     assert await call(hass, "turn_on_for", data) == {ikea: SENT}
 
 
@@ -590,6 +637,9 @@ async def test_class_unknown_says_it_clears_once_zigbee2mqtt_reports_the_device(
         "reason": "class_unknown",
         "integration": "Zigbee2MQTT",
     }
+    # Without the bridge it never clears in seconds, so the message doesn't promise them.
+    message = json.loads(STRINGS.read_text())["exceptions"]["class_unknown"]["message"]
+    assert "usually takes seconds; if it doesn't, reload DeviceSide" in message
 
 
 async def test_an_indirect_target_of_unknown_class_is_skipped_and_the_rest_run(hass, setup_production, broker, caplog):
