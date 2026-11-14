@@ -154,8 +154,9 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      106 s after a 10 s request on ZHA.
    - **Open question, Jason's call:** what `capability()` returns for a Z2M device before the first `bridge/devices`
      after a connect. The probe answered the precondition: HA's device registry holds no Tuya strings for a Z2M
-     device, only Z2M's definition (`TS011F_plug_1`) (`docs/integrations/zigbee2mqtt/internals.md`). The answer is bound
-     by `docs/evidence.md`'s placeability rule: a `doesnt_work` class can't fall into `other` in that window.
+     device, only Z2M's definition (`TS011F_plug_1`) (`docs/integrations/zigbee2mqtt/internals.md`). Step 5 decides it,
+     with the risk the PR #423 audit raised: a TS011F that falls into `other` in that window gets today's call, which
+     its `doesnt_work` entry exists to stop.
    - **Lab run** on the branch tip, with the Sengled. It tests the classifier, the column, the coverage check, Works
      credited per class, and the refusals.
 6. **Core fix-ups** from step 5's run, before ZHA and Hue copy the pattern. If a package changes, its lab run is

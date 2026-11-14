@@ -76,9 +76,7 @@ decide the result together, so the class follows the vendor (Zigbee2MQTT: `hue`,
 
 - **Unknown is never Verified.** A device the integration can't place falls in its default class, which no
   record reaches until one does, so until then it runs behind `experimental` or, per action, as Documented. A record
-  on an unplaced device lifts a named class for its maker, not the default one. A class with a `doesnt_work` entry must
-  be placeable from what `capability()` can read when the call is made: a device that falls in the default class
-  instead gets the default call, which the entry exists to stop (a TS011F left on).
+  on an unplaced device lifts a named class for its maker, not the default one.
 - **One axis per integration.** An integration that names classes holds them in every adapter's scope; one that names
   none holds them in none (the registry checks). A new integration names its classes, or its PR argues that it has one:
 that no known device behind it answers the same call differently.
