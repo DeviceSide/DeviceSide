@@ -862,9 +862,14 @@ A package changed after its lab run needs that run again before the release. Non
     **Amended (Jason, 2026-11-14), the rubric for Tuya plugs on the 0x42 path** (converter A,
     [research](../integrations/zigbee2mqtt/research/2026-11-14-tuya-countdown.md), §1):
     - **Verified:** the maintainer's lab plug, `_TZ3000_0zfrhq4i`, once its lab run passes.
-    - **Doesn't work, `harms`:** `_TZ3000_gjnozsaz` (Z2M #30493), `_TZ3000_dg7fdg92` (Z2M #25434) and
-      `_TZ3000_okaz9tjs` (ZHC #9786), reported failing on the 0x42 path (research, §3); a harmful failure's report
-      is enough (Decision 68).
+    - **Doesn't work, `harms`:** `_TZ3000_gjnozsaz` (Z2M #30493), reported on converter A, the call DeviceSide
+      sends, with harm: the time left jumps back at random, so the off can be pushed out indefinitely (research,
+      §3); a harmful failure's report is enough (Decision 68).
+    - **Experimental, not banned (Jason, 2026-11-14):** `_TZ3000_dg7fdg92` (Z2M #25434) and `_TZ3000_okaz9tjs`
+      (ZHC #9786). Both reports used an external converter, not DeviceSide's call, and a ban needs a failure "on the
+      call DeviceSide sends" (Decision 68). #25434's converter sent the standard `onOff()` call, which mirrors
+      ZHA's `_TZ3000_typdpbpg` below: a wrong call, not a bad device. #9786 shows no harm. This corrects the
+      decision's citing ZHC #9786 above as a 0x42 plug that doesn't honor the countdown.
     - **Experimental:** every other converter A definition.
     - **No upstream inclusions:** upstream "works" reports are too thin to Verify a string. A later credible report
       can back a maintainer's `_manual.json` row, its sign-off PR body citing it (Decision 69 declined a `reports`
