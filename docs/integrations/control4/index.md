@@ -16,8 +16,8 @@ The light runs the ramp itself, and `stop` reads back where it halted.
 - A ramp takes at most about 65 s, so a longer `sweep_time` is clamped.
 - Changing direction, or the limit, mid-ramp with no `stop` between costs that move up to a quarter of a second: the
   light is halted first, then moved from where it stopped.
-- Calling the same raise or lower again while its ramp runs, as a remote that repeats while held does, sends nothing.
-  The ramp keeps its speed.
+- Calling the same raise or lower again while its ramp runs, as a remote that repeats while held does, sends nothing
+  (`already_fading`). The ramp keeps its speed.
 
 ## Flash-free turn-on
 

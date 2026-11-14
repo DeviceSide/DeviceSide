@@ -40,14 +40,14 @@ async def test_a_light_in_full_color_mode_reports_no_color_temperature(hass):
     assert await call(hass, "get_attributes", LAMP) == {"light.lamp": {"brightness": 40.0}}
 
 
-async def test_a_light_on_an_older_driver_reports_brightness_alone(hass):
-    dimmable_lamp(hass, brightness=40, legacy=True)
+async def test_a_light_that_reports_no_target_reports_brightness_alone(hass):
+    dimmable_lamp(hass, brightness=40, no_target=True)
 
     assert await call(hass, "get_attributes", LAMP) == {"light.lamp": {"brightness": 40.0}}
 
 
 async def test_an_off_light_with_nothing_to_report_returns_an_empty_row(hass):
-    dimmable_lamp(hass, on=False, legacy=True)
+    dimmable_lamp(hass, on=False, no_target=True)
 
     assert await call(hass, "get_attributes", LAMP) == {"light.lamp": {}}
 
@@ -69,6 +69,19 @@ async def test_a_read_that_finds_no_variables_rejects_the_target(hass):
         await call(hass, "get_attributes", LAMP)
 
     assert raised.value.translation_key == "targets_failed"
+
+
+async def test_a_light_reporting_light_level_alone_is_rejected_and_logged(hass, caplog):
+    director = dimmable_lamp(hass)
+    director.send_get_request.side_effect = None
+    director.send_get_request.return_value = (
+        '[{"varName": "LIGHT_LEVEL", "value": 40}, {"varName": "LIGHT_STATE", "value": 1}]'
+    )
+
+    with pytest.raises(HomeAssistantError):
+        await call(hass, "get_attributes", LAMP)
+
+    assert "'LIGHT_LEVEL': 40" in caplog.text
 
 
 async def test_values_reported_as_text_are_read_as_numbers(hass):

@@ -15,7 +15,6 @@ from .director import (
     LEVEL_VARIABLES,
     TARGET_CCT,
     TARGET_COLOR_MODE,
-    DirectorAdapter,
     LightLevel,
     heading_for,
     kelvin_range,
@@ -26,6 +25,7 @@ from .director import (
     unsupported_reason,
 )
 from ...actions.set_attributes import SetAttributesRequest
+from ...core.adapter import Adapter
 from ...core.models import EntityResult, Status, Target
 from ...core.readback import read_back
 from ...core.scope import AdapterScope, experimental
@@ -35,7 +35,7 @@ _LOGGER = logging.getLogger(__name__)
 _READ_BACK = (*LEVEL_VARIABLES, CURRENT_CCT, COLOR_MODE, TARGET_CCT, TARGET_COLOR_MODE)
 
 
-class Control4SetAttributes(DirectorAdapter):
+class Control4SetAttributes(Adapter[SetAttributesRequest]):
     """Color temperature alone: a read of the light's own range, one SET_COLOR_TARGET, then a read-back.
 
     Core shows a Control4 light as brightness-only, so the color temperature is unlisted on the entity and only the

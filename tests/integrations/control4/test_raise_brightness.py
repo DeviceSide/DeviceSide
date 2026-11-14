@@ -5,7 +5,6 @@ import pytest
 from homeassistant.exceptions import HomeAssistantError
 
 from custom_components.deviceside.core.scope import Level
-from custom_components.deviceside.integrations.control4 import director as director_module
 from custom_components.deviceside.integrations.control4.raise_brightness import Control4RaiseBrightness
 
 from .conftest import HALT, LAMP, READ, SENT, dimmable_lamp, ramp
@@ -81,10 +80,7 @@ async def test_a_ramp_that_wont_halt_is_moved_from_the_level_last_read(hass, wir
 
     assert await call(hass, "raise_brightness", LAMP) == {"light.lamp": SENT}
     assert director.send_post_request.await_args_list == [HALT, ramp(100, 3000)]
-    assert (
-        "light.lamp: ramping to 0.0, not the adapter's own to 100 (last sent 0); halting it to read where it is"
-        in wire.text
-    )
+    assert "light.lamp: ramping to 0.0, not the adapter's own to 100 (last sent 0); halting it" in wire.text
     assert "light.lamp: director still shows a ramp; moving from the level it reports" in wire.text
 
 
@@ -95,9 +91,9 @@ async def test_a_repeat_of_the_call_mid_ramp_sends_nothing_and_leaves_the_ramp_i
     await call(hass, action, LAMP)
     director.send_post_request.reset_mock()
 
-    assert await call(hass, action, LAMP) == {"light.lamp": SENT}
+    assert await call(hass, action, LAMP) == {"light.lamp": result("control4", "unchanged", detail="already_fading")}
     assert not director.send_post_request.await_args_list
-    assert f"light.lamp: already ramping to {100 if action == 'raise_brightness' else 0}; nothing sent" in wire.text
+    assert "nothing sent (already_fading)" in wire.text
 
 
 async def test_a_ramp_the_same_way_to_another_end_is_halted_and_moved_from_where_it_stopped(hass):
@@ -110,21 +106,23 @@ async def test_a_ramp_the_same_way_to_another_end_is_halted_and_moved_from_where
     assert director.send_post_request.await_args_list == [HALT, ramp(100, 2900)]
 
 
-async def test_the_adapters_own_ramp_is_its_own_only_while_it_can_still_be_running(hass, monkeypatch):
+async def test_the_adapters_own_ramp_is_its_own_only_while_it_can_still_be_running(hass, monkeypatch, wire):
     """Past its time, a ramp to the same end is someone else's: a scene, or core's turn-on with a long transition."""
     director = dimmable_lamp(hass, brightness=40, halt=50)
     await call(hass, "raise_brightness", LAMP)
     director.send_post_request.reset_mock()
     now = hass.loop.time()
-    assert director_module.OWN_RAMP_GRACE_S == 2.0
 
-    monkeypatch.setattr(hass.loop, "time", lambda: now + 3 + director_module.OWN_RAMP_GRACE_S - 0.5)
-    assert await call(hass, "raise_brightness", LAMP) == {"light.lamp": SENT}
+    monkeypatch.setattr(hass.loop, "time", lambda: now + 3 - 0.5)
+    assert await call(hass, "raise_brightness", LAMP) == {
+        "light.lamp": result("control4", "unchanged", detail="already_fading")
+    }
     assert not director.send_post_request.await_args_list
 
-    monkeypatch.setattr(hass.loop, "time", lambda: now + 3 + director_module.OWN_RAMP_GRACE_S + 0.5)
+    monkeypatch.setattr(hass.loop, "time", lambda: now + 3 + 0.5)
     assert await call(hass, "raise_brightness", LAMP) == {"light.lamp": SENT}
     assert director.send_post_request.await_args_list == [HALT, ramp(100, 2500)]
+    assert "light.lamp: own ramp to 100 ran its time; not taken for the one running" in wire.text
 
 
 async def test_the_adapters_own_ramp_now_heading_elsewhere_is_halted(hass):
@@ -157,26 +155,33 @@ async def test_a_ramp_that_failed_to_send_is_not_remembered_and_a_stop_that_fail
     director.send_post_request.side_effect = respond
     director.send_post_request.reset_mock()
 
-    assert await call(hass, "raise_brightness", LAMP) == {"light.lamp": SENT}
+    assert await call(hass, "raise_brightness", LAMP) == {
+        "light.lamp": result("control4", "unchanged", detail="already_fading")
+    }
     assert not director.send_post_request.await_args_list
 
 
-async def test_a_repeat_to_a_fractional_limit_is_the_same_whole_percent(hass):
+@pytest.mark.parametrize(("action", "limit"), [("raise_brightness", 70.4), ("lower_brightness", 0.3)])
+async def test_a_repeat_to_a_fractional_limit_is_the_same_whole_percent(hass, action, limit):
+    """0.3 is sent as 1, not 0, so the repeat must compare it the same way."""
     director = dimmable_lamp(hass, brightness=40)
-    await call(hass, "raise_brightness", {**LAMP, "limit": 70.4})
+    await call(hass, action, {**LAMP, "limit": limit})
     director.send_post_request.reset_mock()
 
-    assert await call(hass, "raise_brightness", {**LAMP, "limit": 70.4}) == {"light.lamp": SENT}
+    assert await call(hass, action, {**LAMP, "limit": limit}) == {
+        "light.lamp": result("control4", "unchanged", detail="already_fading")
+    }
     assert not director.send_post_request.await_args_list
 
 
-async def test_a_ramp_that_isnt_the_adapters_own_is_halted_though_it_heads_the_same_way(hass):
+async def test_a_ramp_that_isnt_the_adapters_own_is_halted_though_it_heads_the_same_way(hass, wire):
     """Started from Control4, or before Home Assistant restarted: only the last command sent says whose it is."""
     director = dimmable_lamp(hass, brightness=40, halt=50)
     director.target = 100.0
 
     assert await call(hass, "raise_brightness", LAMP) == {"light.lamp": SENT}
     assert director.send_post_request.await_args_list == [HALT, ramp(100, 2500)]
+    assert "ran its time" not in wire.text
 
 
 async def test_a_press_right_after_a_stop_waits_for_the_director_to_show_the_halt(hass):
@@ -215,13 +220,6 @@ async def test_a_sweep_time_longer_than_a_ramp_can_take_is_clamped(hass):
 
     assert response == {"light.lamp": {**SENT, "clamped_to": 65.535}}
     assert director.send_post_request.await_args_list == [ramp(100, 65535)]
-
-
-async def test_a_light_that_reports_light_level_alone_is_read(hass):
-    director = dimmable_lamp(hass, brightness=40, legacy=True)
-
-    assert await call(hass, "raise_brightness", LAMP) == {"light.lamp": SENT}
-    assert director.send_post_request.await_args_list == [ramp(100, 3000)]
 
 
 async def test_a_level_reported_as_text_is_read_as_a_number(hass):

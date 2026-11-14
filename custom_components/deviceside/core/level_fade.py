@@ -4,6 +4,7 @@ then send one timed set for the distance left. The device runs the fade, and not
 import logging
 from abc import abstractmethod
 from contextlib import AbstractAsyncContextManager, nullcontext
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, ClassVar
 
 from homeassistant.core import HomeAssistant
@@ -18,14 +19,24 @@ if TYPE_CHECKING:  # core doesn't import actions at run time
 _LOGGER = logging.getLogger(__name__)
 
 
+@dataclass(frozen=True, slots=True)
+class Reading:
+    """A light as its device reports it now. `heading_there`: a running fade already heads for the call's end."""
+
+    lit: bool
+    level: float
+    heading_there: bool = False
+
+
 class LevelFade(Adapter["RampRequest"]):
     """A read of the device's level, then one set to the limit (or range end) with a time for the distance left.
 
     The level is the device's own, so a move after a stop or mid-fade starts from where the light is, and a change
     made elsewhere can't leave a prediction stale. Raising turns a light that is off on, fading in from the bottom;
     lowering passes it by, unchanged with off. A move with less than `min_step` left is unchanged with at_limit. A
-    sweep_time outside what a full-range fade can take on the device (`fade_limits`) is clamped, with clamped_to; a
-    fade shorter than the device's shortest runs at that, unreported.
+    light already fading to the call's end is unchanged with already_fading. A sweep_time outside what a full-range
+    fade can take on the device (`fade_limits`) is clamped, with clamped_to; a fade shorter than the device's
+    shortest runs at that, unreported.
     """
 
     # The device's brightness resolution, in percent: a shorter distance is nothing to send.
@@ -42,9 +53,9 @@ class LevelFade(Adapter["RampRequest"]):
         """Why the integration can't send this target a call at all, or None. Sync and cheap: no I/O."""
 
     @abstractmethod
-    async def read(self, hass: HomeAssistant, target: Target) -> tuple[bool, float]:
-        """Whether the light is lit, and its level in percent, as the device reports them now. The level of a light
-        that isn't lit is ignored: a raise starts it from 0."""
+    async def read(self, hass: HomeAssistant, target: Target, end: float) -> Reading:
+        """The light as the device reports it now, and whether a running fade heads for `end`. The level of a
+        light that isn't lit is ignored: a raise starts it from 0."""
 
     @abstractmethod
     async def fade_to(self, hass: HomeAssistant, target: Target, end: float, seconds: float) -> None:
@@ -70,9 +81,12 @@ class LevelFade(Adapter["RampRequest"]):
         clamped_to = sweep_time if sweep_time != request.sweep_time else None
 
         async def move(target: Target) -> EntityResult:
-            lit, level = await self.read(hass, target)
-            current = level if lit else 0.0
             end = request.end()
+            reading = await self.read(hass, target, end)
+            lit, level = reading.lit, reading.level
+            current = level if lit else 0.0
+            if reading.heading_there:
+                return self._skipped(target, "already_fading", lit, level, end)
             if not request.up and not lit:
                 return self._skipped(target, "off", lit, level, end)
             if (end - current if request.up else current - end) < self.min_step:

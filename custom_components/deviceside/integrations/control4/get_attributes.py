@@ -10,12 +10,12 @@ from .director import (
     CURRENT_CCT,
     LIGHT_LEVEL,
     LIGHT_STATE,
-    DirectorAdapter,
     color_temperature,
     parse_level,
     read_variables,
     unsupported_reason,
 )
+from ...core.adapter import Adapter
 from ...core.models import EntityResult, Request, Status, Target
 from ...core.scope import AdapterScope, experimental
 
@@ -39,7 +39,7 @@ def attributes_row(held: dict[str, Any]) -> dict:
     return row
 
 
-class Control4GetAttributes(DirectorAdapter):
+class Control4GetAttributes(Adapter[Request]):
     """One read of the light's variables per target. Core shows a Control4 light's brightness only, as of its last
     poll of the Director (every 5 s by default, its DEFAULT_SCAN_INTERVAL); this reads the Director itself, whose
     level is at most about a second old mid-ramp, and adds the color temperature. A light whose level can't be read

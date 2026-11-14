@@ -21,9 +21,9 @@ class FakeDirector:
     is that one light.
 
     RAMP_TO_LEVEL sets the target and leaves the level where it is, as a ramp just begun does. SET_BRIGHTNESS_STOP
-    halts a ramp in flight at `halt` (the level it had reached) and changes nothing on a light at rest. `legacy`
-    lights report LIGHT_LEVEL alone, the variable core also reads and no tested light reports; `text` reports each
-    value as text, as the Director does for a light that has never reported.
+    halts a ramp in flight at `halt` (the level it had reached) and changes nothing on a light at rest. `no_target`
+    lights report no ramp target and no capabilities; `text` reports each value as text, as the Director does for a
+    light that has never reported.
     """
 
     def __init__(
@@ -31,7 +31,7 @@ class FakeDirector:
         brightness: float = 40,
         on: bool = True,
         halt: float | None = None,
-        legacy: bool = False,
+        no_target: bool = False,
         log: list | None = None,
     ):
         # Each request as ("get" | command, item), in the order the Director took them; shared between Directors.
@@ -52,14 +52,12 @@ class FakeDirector:
         self.color_mode = 1
         self.target_color_mode = 1
         self.halt = halt
-        self.legacy = legacy
+        self.no_target = no_target
         self.text = False
         self.ignore_stop = False
         self.ignore_color = False
         # An on/off light as this fake models one: LIGHT_STATE alone. None has been read on hardware.
         self.on_off = False
-        # The capabilities variable as the JSON text of the object, not the object.
-        self.capabilities_as_text = False
         # Reads after a stop that still show the ramp, as a Director that hasn't heard from the light yet does.
         self.lag_reads = 0
         self._lagging: int | None = None
@@ -90,8 +88,8 @@ class FakeDirector:
         on = 1 if self.brightness > 0 else 0
         if self.on_off:
             rows = {"LIGHT_STATE": on}
-        elif self.legacy:
-            rows = {"LIGHT_LEVEL": self.brightness}
+        elif self.no_target:
+            rows = {"Brightness Percent": self.brightness, "LIGHT_STATE": on}
         else:
             rows = {
                 "Brightness Percent": self.brightness,
@@ -103,17 +101,20 @@ class FakeDirector:
                 "Current Color Mode": self.color_mode,
             }
         found = [{"id": item, "varName": name, "value": self._value(value)} for name, value in rows.items()]
-        if not self.legacy and not self.on_off:
+        if not self.no_target and not self.on_off:
             span = self.kelvin_span or (0, 0)
             capabilities = {
                 "supports_color_correlated_temperature": self.kelvin_span is not None,
                 "color_correlated_temperature_min": span[0],
                 "color_correlated_temperature_max": span[1],
             }
-            value = {"DynamicCapabilities": capabilities}
-            if self.capabilities_as_text:
-                value = json.dumps(value)
-            found.append({"id": item, "varName": "Navigator Dynamic Capabilities", "value": value})
+            found.append(
+                {
+                    "id": item,
+                    "varName": "Navigator Dynamic Capabilities",
+                    "value": {"DynamicCapabilities": capabilities},
+                }
+            )
         wanted = [unquote(name) for name in uri.partition("varnames=")[2].split(",")]
         return json.dumps([row for row in found if row["varName"] in wanted])
 
@@ -166,7 +167,7 @@ def failing(director: FakeDirector, method: str, after: int = 0) -> None:
 
 
 class BadToken(Exception):
-    """pyControl4's error for an expired Director token, which the adapters know by its name alone."""
+    """pyControl4's error for an expired Director token."""
 
 
 def control4_entry(hass: HomeAssistant, director: FakeDirector | None, controller: str = CONTROLLER) -> MockConfigEntry:

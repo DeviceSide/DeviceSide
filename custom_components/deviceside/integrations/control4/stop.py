@@ -6,7 +6,6 @@ from typing import ClassVar
 from homeassistant.core import HomeAssistant
 
 from .director import (
-    DirectorAdapter,
     LightLevel,
     dimmable,
     item_lock,
@@ -15,12 +14,13 @@ from .director import (
     stop_brightness,
     unsupported_reason,
 )
+from ...core.adapter import Adapter
 from ...core.models import EntityResult, Request, Status, Target
 from ...core.readback import read_back
 from ...core.scope import AdapterScope, experimental
 
 
-class Control4Stop(DirectorAdapter):
+class Control4Stop(Adapter[Request]):
     """A SET_BRIGHTNESS_STOP to every target first, then the read-backs.
 
     Each one goes with no read before it, so the halt waits on nothing: with no ramp running it changes nothing.
