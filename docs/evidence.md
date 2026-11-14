@@ -89,7 +89,7 @@ decide the result together, so the class follows the vendor (Zigbee2MQTT: `hue`,
   [Where facts go](../CLAUDE.md#where-facts-go).
 - **Groups.** A native group takes the weakest level among its members' classes. One with a member that doesn't work
   or isn't supported falls back to its members, each judged on its own, when the integration can list them; one it
-  can't list counts as Experimental ([design.md](design.md#core-contract), Groups).
+  can't list counts as Experimental: refused while Experimental features is off ([design.md](design.md#core-contract), Groups).
 
 ### Doesn't work, not yet supported, untested
 
@@ -130,7 +130,8 @@ suffices (tenet 7), and it applies to integrations that name classes.
 
 *Example:* with Zigbee2MQTT's classes `hue`, `tuya_zcl`, `tuya_mcu` and `other`, and only Hue bulbs in its records,
 `turn_on_for` can be Verified on `hue` alone; on `other` it is `experimental(...)`, so an IKEA or Innr bulb runs only
-with Experimental features on until a record reaches it. A Tuya class that needs Tuya's own countdown call, which isn't
+with Experimental features on. A record on an IKEA bulb adds an `ikea` class, Verified on its own evidence, and
+`other` stays as it is. A Tuya class that needs Tuya's own countdown call, which isn't
 built, is refused as not yet supported, rather than sent a call that Zigbee2MQTT turns into a permanent On; it doesn't
 work only if no call is known to work on it.
 

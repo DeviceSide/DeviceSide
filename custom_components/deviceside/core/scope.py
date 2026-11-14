@@ -118,7 +118,6 @@ class AdapterScope:
         self._check_unlisted()
         if both := self.doesnt_work.keys() & (self.capabilities or {}).keys():
             raise ValueError(f"doesnt_work names classes the scope serves: {sorted(both)}")
-
         # Read-only copies: adapters share mappings such as Shelly's CAPABILITIES, and a frozen scope stays frozen.
         for name in ("domains", "fields", "capabilities", "doesnt_work"):
             if (items := getattr(self, name)) is not None:

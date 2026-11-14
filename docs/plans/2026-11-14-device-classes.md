@@ -144,7 +144,7 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      `check_release.py`: the same check, failing.
    - Decision 5's rule in `docs/evidence.md`.
    - Second rig change: instructions given to Jason directly. It lands before any rig run on step 4's branch or
-     later, and looks up any old hook with `getattr`, so an integration that names no classes doesn't crash.
+     later.
    - **Accepted:** `check_release --signoffs` fails on Shelly's coverage gaps until its house rerun records the
      Capability column. No release is cut before that rerun.
 5. **Zigbee2MQTT (the driver).**
@@ -498,11 +498,11 @@ A package changed after its lab run needs that run again before the release. Non
 
 1. **Lands before v0.1.0.** Features that non-Hue bulb owners on Z2M, ZHA and Hue use unflagged today move behind
    `experimental` in v0.1.0.
-2. **Third-party lights on a Hue bridge get the `other` class.** Step 6 decides per action whether `other` is flagged or
+2. **Third-party lights on a Hue bridge get the `other` class.** Step 8 decides per action whether `other` is flagged or
    Documented, by an Opus model's judgment, and argues each choice in the PR body. The bar is `docs/evidence.md`'s
    Documented test: same capability, differing only in addressing, and no known class of devices departs.
 3. **Probe the TS011F before calling it "doesn't work".** The research suggests it may run the timer, but read our
-   tenths as whole seconds: a 15 s request toggled one after 150 s. Before steps 4 and 5 settle its entry, probe one on
+   tenths as whole seconds: a 15 s request toggled one after 150 s. Before steps 5 and 7 settle its entry, probe one on
    the rig. Try off then 0x42 `{on_time N, off_wait 0}` in tenths and in seconds, and the Tuya recipe: plain On, then
    `{N s, N s}`. Read state and `onTime` each second. Record the result in `internals.md`. If a recipe works, the
    TS011F is `tuya_zcl`, not yet supported (pattern B, deferred), not doesn't work. Its doesn't-work entry stays only
@@ -514,12 +514,12 @@ A package changed after its lab run needs that run again before the release. Non
 
 5. **The default class is never Verified.** `other` can be Documented per action where `docs/evidence.md`'s Documented
    test holds (no known class departs), and is otherwise `experimental(...)`. A record on a non-Hue device lifts a new
-   named class for its maker (for example `ikea`), not `other`. Step 3 writes the rule into `docs/evidence.md`.
+   named class for its maker (for example `ikea`), not `other`. Step 4 writes the rule into `docs/evidence.md`.
 6. **The class a call used is reported in its response.** `IntegrationInfo.capability(hass, target)` stays as
    designed. Each target's result carries the class the dispatcher used: a command's beside `status` and
    `integration`, a query's in its entity's data, a native group's as its members' classes. The rig records that
-   instead of classifying a stand-in target, so a record holds the class the call really reached. Step 3 adds the
-   field; the rig then reads it (ha-rig, after step 3).
+   instead of classifying a stand-in target, so a record holds the class the call really reached. Step 4 adds the
+   field; the rig then reads it (ha-rig, after step 4).
 7. **The coverage check warns during development and fails at release.** `gen_compat --check` prints each gap on
    every PR, so a developer sees it early. `check_release.py` fails on it at `cut-release`, with the other release
    gates. No allowlist is needed while records catch up (Shelly's house rerun).
@@ -528,8 +528,8 @@ A package changed after its lab run needs that run again before the release. Non
 
 8. **A native group with a member that doesn't work or isn't supported falls back to its members** when the
    integration has `expand_group`: each member is judged alone, the good ones run, and the refused one is reported
-   refused. With no `expand_group` the group can't be judged by member, and is refused (today: counted Experimental,
-   as its classes are unknown).
+   refused. With no `expand_group` the group can't be judged by member, so it counts as Experimental: refused while
+   Experimental features is off.
 9. **Shelly `set_attributes` on Light, CCT, RGB and RGBW** is Documented if Shelly's Gen2+ docs say, alike for those
    components, that a `Set` without `on` leaves the output as it is; otherwise `experimental(...)`. RGBCCT stays
    Verified.

@@ -40,20 +40,22 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   - [x] 1. Rules and design, docs only (`docs/evidence.md`, `docs/design.md`).
   - [ ] 2. Rig (ha-rig): the records' Capability column (its format in `docs/evidence.md`, and `gen_compat`'s parser
     taking it, land in DeviceSide alongside); the rig reads the class from each result (the second rig change, given
-    to Jason directly), before any rig run on step 3's branch or later; Shelly rerun on it.
-  - [x] 3. Core: `IntegrationInfo.capability` and `classes`, `doesnt_work`, `not_supported` (and
+    to Jason directly), before any rig run on step 4's branch or later; Shelly rerun on it.
+  - [ ] 3. Lab probe: the spec is in the plan; Jason runs it, and its results land in the bundles.
+  - [x] 4. Core: `IntegrationInfo.capability` and `classes`, `doesnt_work`, `not_supported` (and
     `docs/integrations.md`'s mention); Shelly moves to it; `gen_compat`'s tiers and coverage check (warning), failing
     in `check_release --signoffs`; `_manual.md`'s Capabilities column; "one fact, one home, in code" in
     `docs/evidence.md`, with CLAUDE.md's devices.yaml row; the Not yet supported tier on
     `docs/device-compatibility.md`; how a group test or a manual row credits the classes it lists; the Capability
     column's "until that lands" clause; the class in each result (plan Decision 6); `other` never Verified
     (Decision 5).
-  - [ ] 4. Zigbee2MQTT classes, after the TS011F probe and the Tuya detection probe; the first default class, so
+  - [ ] 5. Zigbee2MQTT classes, after the TS011F probe and the Tuya detection probe; the first default class, so
     `docs/device-compatibility.md` regains "and so does a device DeviceSide can't place in a known class"; rig rerun.
-  - [ ] 5. ZHA classes; rig rerun.
-  - [ ] 6. Hue classes, the `bridge_v1` and `smart_scene` checks moved to them; rig rerun.
-  - [ ] 7. Matter classes; manual or rig sign-off.
-  - [ ] 8. Close out: `models.yaml`'s shared `doesnt_work` removed, README regenerated, then the #350 comment.
+  - [ ] 6. Core fix-ups from step 5's run.
+  - [ ] 7. ZHA classes; rig rerun.
+  - [ ] 8. Hue classes, the `bridge_v1` and `smart_scene` checks moved to them; rig rerun.
+  - [ ] 9. Matter classes; manual or rig sign-off.
+  - [ ] 10. Close out: `models.yaml`'s shared `doesnt_work` removed, README regenerated, then the #350 comment.
 - [ ] **Sign-offs** for v0.1.0, one per integration changed since v0.0.1 (`check_release.py --signoffs`), each a rig
   run from ha-rig `main` (its records carry the Package row; older records count for none). The runs for the formerly release-flagged adapters need these `--profile lab` cases, run
   watched, the A60 visiting each network: Hue `saturation_down_stop`, `halts_brightness_and_saturation` and
