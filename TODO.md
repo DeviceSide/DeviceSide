@@ -35,6 +35,17 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
     docstring's CLAUDE.md citations and CLAUDE.md's Layout line on release checks.
   - [x] 5. Cards: `gen_compat.py` tiers for two levels, the flag and caveats, and the docstring's CLAUDE.md citations.
   - [x] 6. Sign-offs by the Package tree records cite, not commit ancestry, so a run on a PR branch counts (#408).
+- [ ] **Device classes**, one PR per step of the [plan](docs/plans/2026-11-14-device-classes.md), before the
+  sign-offs below, as it moves non-Hue bulbs on Zigbee2MQTT, ZHA and Hue behind `experimental`:
+  - [x] 1. Rules and design, docs only (`docs/evidence.md`, `docs/design.md`).
+  - [ ] 2. Rig (ha-rig): the records' Capability column; Shelly rerun on it.
+  - [ ] 3. Core: `IntegrationInfo.capability`, `doesnt_work`, `not_supported`; Shelly moves to it; `gen_compat`'s
+    tiers and coverage check.
+  - [ ] 4. Zigbee2MQTT classes, after the TS011F probe and the Tuya detection probe; rig rerun.
+  - [ ] 5. ZHA classes; rig rerun.
+  - [ ] 6. Hue classes, the `bridge_v1` and `smart_scene` checks moved to them; rig rerun.
+  - [ ] 7. Matter classes; manual or rig sign-off.
+  - [ ] 8. Close out: `models.yaml`'s shared `doesnt_work` removed, README regenerated, then the #350 comment.
 - [ ] **Sign-offs** for v0.1.0, one per integration changed since v0.0.1 (`check_release.py --signoffs`), each a rig
   run from ha-rig `main` (its records carry the Package row; older records count for none). The runs for the formerly release-flagged adapters need these `--profile lab` cases, run
   watched, the A60 visiting each network: Hue `saturation_down_stop`, `halts_brightness_and_saturation` and

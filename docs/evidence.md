@@ -24,8 +24,9 @@ for these rules; other docs point here. Settled in [the evidence-rules plan](pla
 4. **Surprises reopen facts.** A bug or unexplained behavior triggers a root-cause dive. The finding joins the fact
    base and is then trusted in turn. Log so that the first bug report already holds the diagnosis: what DeviceSide
    sent, what the device answered, and which way DeviceSide went because of it.
-5. **Proof follows the call.** Evidence is about how a device responds to a call. Any code that sends the same call
-   inherits it, and unit tests pin the call.
+5. **Proof follows the call and the class.** Evidence is about how a class of devices responds to a call
+   ([device classes](#device-classes)). Any code that sends the same call to the same class inherits it, and unit tests
+   pin the call.
 6. **Simplify relentlessly.** Prefer fewer calls, fewer round trips and less machinery. A guardrail stays until
    evidence shows the failure it guards against doesn't happen; meanwhile, look for ways to make it cheaper. A new
    rule or guardrail names the user-visible failure it prevents and what it replaces.
@@ -34,12 +35,15 @@ for these rules; other docs point here. Settled in [the evidence-rules plan](pla
 
 *Example (tenets 4 and 5):* the rig found that a Tuya TS011F plug stores the Zigbee timed-on timer as a countdown and
 never switches on ([integrations](integrations.md#zigbee-plugs-and-switches)). That reopened "a Zigbee switch takes the
-light's timed-on call", so the `switch` domain stays untested on ZHA and Zigbee2MQTT `turn_on_for` while the `light`
-domain keeps its proof.
+light's timed-on call", so the `switch` domain stays untested on ZHA and Zigbee2MQTT `turn_on_for`. Research then found
+that even lights given the identical call differ by firmware: Hue replaces a running timer where the spec says extend,
+and some IKEA and Hue models turn on and never off
+([2026-11-14](integrations/zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md)). So a Hue bulb's record proves the
+call on the `hue` class, not on every Zigbee light.
 
 ## Levels
 
-A scope item (an entity domain, capability or field of an adapter) is Verified, Documented, or untested; an untested
+A scope item (an entity domain, class or field of an adapter) is Verified, Documented, or untested; an untested
 item ships only behind `experimental`.
 
 - **Verified:** a maintainer has verified the call on a real device, by rig record or by manual test. How it was
@@ -59,6 +63,62 @@ the updated fact or a demotion lands with the finding.
 *Example:* Shelly's `turn_on_for` and `turn_off_for` calls are Verified on the `Switch` and `RGBCCT` components and
 Documented on `Light`, `CCT`, `RGB` and `RGBW`: the same call, addressed to another component, which Shelly's API
 documents identically (`integrations/shelly/addressing.py`).
+
+## Device classes
+
+A **class** is the set of devices that get the same call and run the same firmware family. The integration names each
+target's class (`IntegrationInfo.capability`, in code a scope's `capabilities`), and every adapter of the integration
+sees the same one; an adapter maps the classes it serves to its own branch. A scope holds a level per class, so each
+class stands on its own evidence: a record on one class proves nothing about another. On a single-vendor API the class
+is what the call addresses (Shelly: the RPC component). On a multi-vendor protocol the call and the firmware family
+decide the result together, so the class follows the vendor (Zigbee2MQTT: `hue`, `tuya_zcl`, `tuya_mcu`, `other`).
+
+- **Unknown is flagged, never Verified.** A device the integration can't place falls in its default class, which no
+  record reaches until one does, so it runs only behind `experimental`. A misclassification can only make DeviceSide
+  more cautious.
+- **One axis per integration.** An integration that names classes holds them in every adapter's scope; one that names
+  none holds them in none (the registry checks). A new integration names its classes, or says it has one.
+- **Groups.** A native group takes the weakest level among its members' classes. A member that doesn't work or isn't
+  supported refuses the group, unless the integration can expand it.
+
+### Doesn't work, not yet supported, untested
+
+Three ways a class can't take an action, each shown differently on the cards:
+
+- **Doesn't work:** the class fails the call DeviceSide sends. The adapter's scope lists it in `doesnt_work`, with what,
+  why and a source; the dispatcher refuses it (`doesnt_work`), and the card lists it under Doesn't work. It is per
+  adapter, as one class can fail one action's call and answer another's.
+- **Not yet supported:** the class needs a call that isn't built. The integration names it, and the adapter's scope
+  holds it in neither `capabilities` nor `doesnt_work`. It is refused (`not_supported`) and listed as not yet supported.
+- **Untested:** the default call may work. The class is in scope as `experimental(...)` and runs behind the flag.
+
+A refused target raises when named and is skipped when it came indirectly, as every refusal does
+([action-behavior.md](action-behavior.md)).
+
+### The split rule
+
+- A different gateway or API is a separate integration, with a `detect` hook on the same `ha_domain`, as Zigbee2MQTT is
+  beside MQTT. *Example:* a Hue v1 bridge.
+- A different device behind the same API is a class.
+- A class that needs a different payload is a branch inside the adapter.
+- An adapter splits only when a class needs a different result contract. A different duration limit is a per-class
+  setting first.
+
+No matcher, per-class setting or card tier is built before an integration needs it (tenet 6): Zigbee2MQTT, the most
+varied integration, sets the bar. Classes match on manufacturer and model until a firmware boundary decides behavior.
+
+### The coverage check
+
+Every class an adapter's scope holds as Verified needs a passing record test, or a `_manual.md` row, for that action
+that reached it. Records name the class each test reached, and manual rows the classes they cover
+([sign-off format](#sign-off-format)). `scripts/gen_compat.py --check` fails on a gap and names it, for example
+"zigbee2mqtt turn_on_for: `other` is Verified but no record reaches it"; CI runs it on every PR. Like every gate, it
+checks that evidence exists, not that it suffices (tenet 7), and it applies to integrations that name classes.
+
+*Example:* every Zigbee2MQTT record is a Hue bulb, so `turn_on_for` is Verified on `hue` and `experimental("other")`:
+an IKEA or Innr bulb runs only with Experimental features on, until a record reaches `other`. Tuya plugs need Tuya's
+own countdown call, which isn't built, so `tuya_zcl` and `tuya_mcu` are refused as not yet supported, rather than sent
+a call that Zigbee2MQTT turns into a permanent On.
 
 ## The experimental flag
 
@@ -147,17 +207,25 @@ the package's git tree at the run's commit:
     | Source | rig run (`scripts/rig.py`), commit `1a2b3c4` |
     | Package | `0123456789ab` |
 
+For an integration that names classes, the record's Tests table has a Capability column, between Target and Result,
+holding the class each test reached (`IntegrationInfo.capability` on its target), in backticks; a native group's lists
+each member's class once, comma-separated; `-` means the test reached no class it could name:
+
+    | Test | Target | Capability | Result |
+    |---|---|---|---|
+    | `on_then_off[switch_plug]` | `switch` (switch_plug) | `Switch` | pass |
+
 *Example:* if `stop.md` fails, or cites a different Package tree than the rest, the records are no sign-off until every
 action passes at one package tree; a rerun of `stop` on `main` completes a run made on a PR branch when the package
 didn't change between them. A record with no Package row is no sign-off. A manual sign-off is a row of the bundle's
 `test-records/_manual.md`, added in a PR: date, commit, tester, model ids (`docs/models.yaml`, never a household's
-device names) and what passed.
+device names), the classes they reached (a dash for an integration that names none) and what passed.
 
-    | Date | Commit | Tester | Devices | Passed |
-    |---|---|---|---|---|
-    | 2026-11-12 | `1a2b3c4` | @handle | `S3SW-001X8EU`, `S3BL-C010007AEU` | `turn_on_for`, `set_auto_off` |
+    | Date | Commit | Tester | Devices | Capabilities | Passed |
+    |---|---|---|---|---|---|
+    | 2026-11-12 | `1a2b3c4` | @handle | `S3SW-001X8EU`, `S3BL-C010007AEU` | `Switch`, `RGBCCT` | `turn_on_for`, `set_auto_off` |
 
-A change that sends no new call signs off with a row whose Devices holds a dash and whose Passed holds exactly
-`no call changed`. *Example:* a log-wording change in a Shelly adapter:
+A change that sends no new call signs off with a row whose Devices and Capabilities hold a dash and whose Passed holds
+exactly `no call changed`. *Example:* a log-wording change in a Shelly adapter:
 
-    | 2026-11-12 | `1a2b3c4` | @handle | - | no call changed |
+    | 2026-11-12 | `1a2b3c4` | @handle | - | - | no call changed |
