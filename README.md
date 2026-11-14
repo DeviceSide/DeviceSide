@@ -37,9 +37,11 @@ DeviceSide unlocks native features in your lights, switches and plugs on Zigbee,
 
 ### Why DeviceSide exists
 
-Many on-device features aren't supported by HA core, because they're implemented inconsistently by device makers. So if you want auto-off or smooth dimming, you have to dig through forums for low-level YAML recipes, then get them working yourself.
+Many lights and switches can run timers and smooth fades on their own, but makers implement them inconsistently. Each HA integration is maintained by a few volunteers, so features that need testing device by device don't have a natural home there. Until now, using these features meant hunting forum threads for YAML recipes and adapting them to your device.
 
-DeviceSide turns the most popular of these into simple HA actions, built on crowd-sourced knowledge from the HA user community.
+DeviceSide turns those recipes into ordinary actions, like *Turn on with timer* or *Smooth dimming*, that you can pick in the automation editor. Because features run on the device, timers still fire if HA restarts, and dimming stays smooth.
+
+The first features were developed and tested on real devices using an automated test rig. Now we're inviting the community to bring more integrations and devices: [contribute](CONTRIBUTING.md) a recipe that works on your device, or a test report for an untested one.
 
 ### Will it work with my device?
 
