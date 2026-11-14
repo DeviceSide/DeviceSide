@@ -410,6 +410,19 @@ async def test_group_leaves_out_unavailable_members_and_those_ha_lacks(hass, bro
     assert {topic for topic, _ in broker.reads()} == {"zigbee2mqtt/0x01/set"}
 
 
+async def test_a_group_whose_members_are_all_unavailable_is_skipped_as_empty(hass, broker):
+    """The dispatcher plans it, as bridge/groups lists members, but there is no light to read: nothing answers."""
+    group(hass, broker, one={}, two={})
+    hass.states.async_set("light.one", "unavailable")
+    hass.states.async_set("light.two", "unavailable")
+
+    with pytest.raises(HomeAssistantError) as raised:
+        await call(hass, "get_attributes", {"entity_id": "light.room"})
+
+    assert raised.value.translation_key == "no_entities_matched"
+    assert broker.reads() == []
+
+
 async def test_a_member_given_the_key_is_logged_when_the_next_one_fails(hass, broker, caplog):
     group(hass, broker, one={}, two={})
     broker.refused = {"0x02"}

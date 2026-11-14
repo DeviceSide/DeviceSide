@@ -53,7 +53,8 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   - [ ] 5. Zigbee2MQTT classes, after the TS011F probe and the Tuya detection probe; the first default class, so
     `docs/device-compatibility.md` regains "and so does a device DeviceSide can't place in a known class"; rig rerun.
     Built on `claude/device-classes-5-z2m` (classes `hue`, `tuya_zcl`, `tuya_ts011f`, `tuya_mcu`, `sengled`,
-    `other`; the TS011F's `doesnt_work`; `other` Documented on brightness fades and stop). Open until the lab run on
+    `gledopto`, `other`; the Tuya classes' `doesnt_work` on `turn_on_for`, which refuses unknown; `other` Documented
+    on brightness fades and stop). Open until the lab run on
     the branch tip, with the Sengled, which restores the card's Works line and clears the coverage warnings.
   - [ ] 6. Core fix-ups from step 5's run.
   - [ ] 7. ZHA classes; rig rerun.

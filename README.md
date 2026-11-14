@@ -65,10 +65,11 @@ The compatibility section below shows which devices are known or likely to work.
 - 🧪 [plugs and switches](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#zigbee-plugs-and-switches): turn on with timer, get attributes
 - 🧪 [other brands](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#other-brands): turn on with timer, smooth saturation, smooth hue, set without turning on, get attributes
 - 🧪 [Tuya plugs and switches, Tuya TS011F](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#tuya), [Sengled bulbs](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#sengled): smooth dimming, smooth saturation, smooth hue, set without turning on, get attributes
+- 🧪 [Gledopto lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#gledopto): turn on with timer, smooth dimming, smooth saturation, smooth hue, set without turning on, get attributes
 - 🧪 [Tuya datapoint devices](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#tuya): smooth dimming, smooth saturation, smooth hue
-- 🚧 [Tuya plugs and switches](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#tuya), [Sengled bulbs](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#sengled): turn on with timer
-- 🚧 [Tuya datapoint devices](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#tuya): turn on with timer, set without turning on, get attributes
-- 🔴 [Tuya TS011F](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#tuya-ts011f): turn on with timer
+- 🚧 [Tuya datapoint devices](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#tuya): set without turning on, get attributes
+- 🚧 [Sengled bulbs](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#sengled): turn on with timer
+- 🔴 [Tuya TS011F](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#tuya-ts011f): turn on with timer · [Tuya plugs and switches](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#tuya-plugs-and-switches): turn on with timer · [Tuya datapoint devices](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#tuya-datapoint-devices): turn on with timer
 
 **[Shelly](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/shelly/index.md)** (Gen2+) · maintained by [@jasonmx](https://github.com/jasonmx)
 

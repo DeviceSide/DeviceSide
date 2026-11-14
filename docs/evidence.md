@@ -76,11 +76,12 @@ own branch. A scope holds a level per class, so each
 class stands on its own evidence: a record on one class proves nothing about another. On a single-vendor API the class
 is what the call addresses (Shelly: the RPC component). On a multi-vendor protocol the call and the firmware family
 decide the result together, so the class follows the vendor (Zigbee2MQTT: `hue`, `tuya_zcl`, `tuya_ts011f`,
-`tuya_mcu`, `sengled`, `other`).
+`tuya_mcu`, `sengled`, `gledopto`, `other`).
 
 - **Unknown is flagged, never Verified.** A device the integration can't place falls in its default class
   (`IntegrationInfo.default_class`), which the registry refuses at Verified in any scope, so placing a device there
-  can only make DeviceSide more cautious. The default class may be Documented for an action where the
+  can only make DeviceSide more cautious. Its one exception: where a call is known to harm, unknown is refused
+  ([below](#doesnt-work-not-yet-supported-untested)). The default class may be Documented for an action where the
   [Documented](#levels) test holds (no known class departs), and is otherwise `experimental(...)`. Nothing lifts it: a record on a device outside the named classes adds a new class named for its
   maker (Zigbee2MQTT: `ikea` for an IKEA bulb), as the default class holds every device not yet placed, and one maker's
   record proves nothing about the rest.
@@ -93,7 +94,9 @@ decide the result together, so the class follows the vendor (Zigbee2MQTT: `hue`,
 - **Groups.** A native group takes the weakest level among its members' classes. One with a member that doesn't work
   or isn't supported, or a member whose class is Experimental, while Experimental features is off (the adapter,
   domain and fields not flagged), falls back to its members, each judged on its own, when the integration can list
-  them; one it can't list counts as Experimental: refused while Experimental features is off ([design.md](design.md#core-contract), Groups).
+  them; one it can't list counts as Experimental: refused while Experimental features is off, and with them on where
+  a call is known to harm ([below](#doesnt-work-not-yet-supported-untested); [design.md](design.md#core-contract),
+  Groups).
 
 ### Doesn't work, not yet supported, untested
 
@@ -108,6 +111,15 @@ Three ways a class can't take an action, each shown differently on the cards:
 
 A class that today's call harms (it acts wrong rather than refusing) is listed as doesn't work for that call, even when
 a call that isn't built would work on it. Not yet supported is for a class today's call can't serve but doesn't harm.
+
+- **Split off the exception, not the class.** When devices are known to depart from a class's call, a rule moves them
+  into a class of their own, at the level their own evidence supports. The rest of the class keeps its level. The
+  whole class drops a level only when no rule can tell the departing devices apart.
+- **Where a call is known to harm, unknown is refused.** For an action where some class is listed as doesn't work
+  because the call harms it, DeviceSide refuses a target it can't class, even with Experimental features on. The same
+  goes for a group whose members it can't all class. Everywhere else, unknown stays Experimental (Unknown is flagged,
+  never Verified, above). Zigbee2MQTT's `turn_on_for` refuses one as `class_unknown`: a group whose members it can't
+  list, and a device only the registry placed, in `other`, before `bridge/devices` arrives.
 
 A refused target raises when named and is skipped when it came indirectly, as `supports()` refusals do
 ([action-behavior.md](action-behavior.md)).
@@ -135,12 +147,13 @@ lists to every action it passed, so a row whose actions reached different classe
 it at `cut-release`, with the other release gates. Like every gate, it checks that evidence exists, not that it
 suffices (tenet 7), and it applies to integrations that name classes.
 
-*Example:* with Zigbee2MQTT's classes `hue`, `tuya_zcl`, `tuya_ts011f`, `tuya_mcu`, `sengled` and `other`, and only
-Hue bulbs in its records, `turn_on_for` can be Verified on `hue` alone; on `other` it is `experimental(...)`, so an
-IKEA or Innr bulb runs only with Experimental features on. A record on an IKEA bulb adds an `ikea` class, Verified on
-its own evidence, and `other` stays as it is. A Tuya class that needs Tuya's own countdown call, which isn't built, is
-refused as not yet supported. The TS011F (`tuya_ts011f`), which Tuya's call drives but today's call leaves on or
-switches on late, is listed as doesn't work for today's call until the countdown call is built.
+*Example:* with Zigbee2MQTT's classes `hue`, `tuya_zcl`, `tuya_ts011f`, `tuya_mcu`, `sengled`, `gledopto` and `other`,
+and only Hue bulbs in its records, `turn_on_for` can be Verified on `hue` alone; on `other` it is `experimental(...)`,
+so an IKEA or Innr bulb runs only with Experimental features on. A record on an IKEA bulb adds an `ikea` class,
+Verified on its own evidence, and `other` stays as it is. The Tuya classes, which Tuya's own countdown call drives but
+today's call leaves on (Zigbee2MQTT turns it into a plain on), are listed as doesn't work for today's call until the
+countdown call is built; the Sengled, which ignores today's call, needs a call that isn't built, so it is not yet
+supported.
 
 ## The experimental flag
 

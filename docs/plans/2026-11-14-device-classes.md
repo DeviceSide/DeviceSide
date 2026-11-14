@@ -43,7 +43,7 @@ These refine `docs/evidence.md`; they don't replace its tenets.
    `capability()` names it. Code that sends the same call to the same class inherits the evidence.
 2. **Unknown is flagged, never Verified.** A device the classifier can't place falls in the integration's default
    class, which no record reaches until one does. So it runs only behind `experimental`. A misclassification can only
-   make something more cautious.
+   make something more cautious. The exception is tenet 8: where a call is known to harm, unknown is refused.
 3. **Three ways a class can't take an action, each shown differently.**
    - *Doesn't work:* it fails the call we send. Refused in code, listed with a reason and source.
    - *Not yet supported:* it needs a call we haven't built. Refused, listed as not yet supported.
@@ -60,6 +60,8 @@ These refine `docs/evidence.md`; they don't replace its tenets.
 6. **Build only what Z2M needs.** Z2M is the most varied integration, so it sets the bar. Rules match on
    manufacturer and model until a real departure needs firmware. No matcher, setting or tier is added ahead of an
    integration that uses it.
+7. **Split off the exception, not the class** (Decision 25): `docs/evidence.md`, Device classes.
+8. **Where a call is known to harm, unknown is refused** (Decision 25): `docs/evidence.md`, Device classes.
 
 ## Design
 
@@ -208,6 +210,12 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      rest (argued in the PR body). The `sengled` audit of Level commands sent from off is in the Z2M `internals.md`
      (`classes`); no behavior changed beyond the scopes. Fix-ups from its plan review and audit, and Decisions 19 to
      21, land before part 3.
+   - **Part 2's fix-ups, built** (same branch): Decisions 20, 23, 24 and 25. The Tuya classes are doesn't work on
+     `turn_on_for`; a `gledopto` class, `experimental(...)` everywhere; a group member with a device but no entity in
+     the group's domain is classed by its device (a stand-in no action reaches), and only a member with no device
+     leaves membership unknown; Z2M `turn_on_for` refuses, as `class_unknown` and with Experimental features on, a
+     group of unknown membership and a device only the registry placed in `other` (or a group with one). The rule
+     order's one home is the `classes.py` docstring.
    - **Part 3, the Tuya countdown on Z2M (Decision 22),** after part 2's fix-ups:
      1. **Read first:** in zigbee-herdsman-converters, whether every definition that exposes `countdown` uses one
         converter (the same attribute and units). If it does, one class covers them all; if not, a class per
@@ -672,6 +680,20 @@ A package changed after its lab run needs that run again before the release. Non
 22. **The Tuya countdown on Z2M ships in v0.1.0, as step 5 part 3.** Tuya plugs are popular, the probe showed Z2M's
     `countdown` works, and the lab has the plug. Z2M only: ZHA keeps its refusal (Decision 16), as it would need
     Tuya's raw recipe.
+
+## Decisions (Jason, 2026-11-14, part 2's fix-ups)
+
+23. **On Z2M, `turn_on_for` refuses unknown, even with Experimental features on.** Audit H1, M1 and M2: a TS011F got
+    today's call with Experimental on in a group where it had no light entity, in any group before `bridge/groups`
+    arrived, and as a rebadged definition before `bridge/devices` arrived. A group member with a device is classed
+    by it; `supports()` refuses a group of unknown membership and a device only the registry placed in `other`.
+24. **A `gledopto` class.** Gledopto's converter sends GL-S-007ZS and GL-C-009 a plain On, a 1 s sleep, then the
+    brightness command (timed-on research, §3), so `other`'s Documented actions (Decision 19) would cover a known
+    departure. Registry manufacturer `Gledopto`, any case; `experimental(...)` on every adapter. `other` stays
+    Documented on those three.
+25. **Two rules in `docs/evidence.md`, Device classes:** split off the exception, not the class; and where a call is
+    known to harm, unknown is refused (tenet 2's exception). Z2M applies the second in Decision 23; ZHA, Hue and
+    Matter apply it in their own steps (7 to 9).
 
 ## Handoff
 

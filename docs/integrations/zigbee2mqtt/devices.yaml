@@ -10,4 +10,5 @@ capabilities:
   tuya_ts011f: {phrase: Tuya TS011F, section: Tuya}
   tuya_mcu: {phrase: Tuya datapoint devices, section: Tuya}
   sengled: {phrase: Sengled bulbs, section: Sengled}
+  gledopto: {phrase: Gledopto lights, section: Gledopto}
   other: {phrase: other brands, section: Other brands}

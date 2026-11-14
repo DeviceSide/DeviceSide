@@ -8,7 +8,8 @@ from homeassistant.core import HomeAssistant
 
 from .addressing import not_addressable, topic
 from .bridge import logged_options, publish, publish_set, state_reply
-from .classes import TURN_ON_FOR, TURN_ON_FOR_DOESNT_WORK
+from .classes import TURN_ON_FOR, TURN_ON_FOR_DOESNT_WORK, unplaced
+from .members import expand_group
 from .native_control import COLOR_FIELDS, NEED, native_control, settled
 from .set_check import checked, note
 from ...actions.turn_on_for import TurnOnForRequest
@@ -22,6 +23,9 @@ _LOGGER = logging.getLogger(__name__)
 # Zigbee OnWithTimedOff: on_time in tenths of a second (uint16), range 1-65534 tenths.
 # 65534 tenths = 6553.4 s. The 50 ms floor from core/duration.py handles the effective minimum.
 _TIMER_LIMITS = DurationLimits(min_s=0, max_s=6553.4)
+
+# A target refused as one DeviceSide can't class (plan Decision 23).
+CLASS_UNKNOWN = "class_unknown"
 
 # Read-back delays in seconds. The second end read allows for a bulb clock that runs slow on a long timer.
 _ON_READ_S = 1.0
@@ -66,11 +70,7 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
     )
 
     def supports(self, hass: HomeAssistant, request: TurnOnForRequest, target: Target) -> str | None:
-        if (reason := super().supports(hass, request, target)) is not None:
-            return reason
-        if (reason := not_addressable(target)) is not None:
-            return reason
-        return None
+        return super().supports(hass, request, target) or not_addressable(target) or _unknown(hass, target)
 
     async def execute(
         self, hass: HomeAssistant, request: TurnOnForRequest, targets: list[Target]
@@ -140,3 +140,22 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
         get_runtime(hass).schedule(
             hass, f"{self.integration}:{self.action}:{target.entity_id}", ((delay, read) for delay in delays)
         )
+
+
+def _unknown(hass: HomeAssistant, target: Target) -> str | None:
+    """CLASS_UNKNOWN for a target DeviceSide can't class, even with Experimental features on (docs/evidence.md,
+    Device classes: where a call is known to harm, unknown is refused); else None.
+
+    The failure it prevents: a Tuya plug left on. Today's call turns the Tuya classes on with no timer
+    (TURN_ON_FOR_DOESNT_WORK), so one that reached it as `other`, or inside a group run as one, would stay on. That is
+    a device the registry alone put in `other` (classes.unplaced: bridge/devices doesn't list it yet, so a rebadged
+    Tuya plug looks like another brand), and a group whose membership is unknown or that has such a member. Each runs
+    once the bridge cache fills, as Zigbee2MQTT publishes right after a connect; with no cache (its subscribe failed,
+    logged), they stay refused.
+    """
+    if not target.is_group:
+        return CLASS_UNKNOWN if unplaced(hass, target) else None
+    members = expand_group(hass, target)
+    if members is None or any(unplaced(hass, member) for member in members):
+        return CLASS_UNKNOWN
+    return None

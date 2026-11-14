@@ -8,16 +8,28 @@ never this structure.
 A rule reads two sources, both sync and with no I/O:
 
 - The registry device, which Z2M fills from its definition at discovery: the vendor as manufacturer, the definition's
-  model as `model_id` (research/2026-11-14-lab-probe.md, §1). Enough for Hue and Sengled.
+  model as `model_id` (research/2026-11-14-lab-probe.md, §1). Enough for Hue, Sengled and Gledopto.
 - The device's Zigbee strings, its own manufacturer and model, from the bridge cache's bridge/devices
   (bridge_cache.py, the one members.py lists groups from). Only they show a Tuya device under another vendor's
   definition (`_TZ3000_…`, `_TZE…`), which the registry doesn't (plan Decision 18): one that fell into `other` would
   take turn_on_for's call with Experimental features on, and Zigbee2MQTT would leave it on.
 
-Until bridge/devices arrives after a connect, or for a device it doesn't list yet, the Tuya rules on the Zigbee strings
-can't match, so registry rules after them place what the registry can show: vendor `Tuya`, or a definition model that
-starts `TS`. With hass None (the rig's stand-in target, until its second change reads the class from the result) only
-the registry is read. A group is no device of its own: the dispatcher classes its members (members.expand_group).
+The rule order, the one home for it (internals.md points here). It matters in three places; elsewhere no device can
+match two rules (`hue`'s vendor is Z2M's own Philips string, which no Tuya rule matches):
+
+1. Among the Tuya rules on the Zigbee strings, the models go first: a TS011F's manufacturer (`_TZ3000_…`) matches
+   `tuya_zcl`'s, and a TS0601's model matches `tuya_zcl`'s `TS` and four digits.
+2. Every Tuya rule on the Zigbee strings goes before the vendor rules (`sengled`, `gledopto`), so a Tuya device sold
+   under another vendor's definition (Gledopto's GL-SPI-206P runs Tuya datapoints) takes its Tuya class.
+3. Among the Tuya rules on the registry, the models go before the vendor `Tuya` and the catch-all `TS.*`, which a
+   `TS011F_…` or `TS0601_…` definition also matches; all of them go last, as they only stand in for the Zigbee strings.
+
+The registry fallback's limit: until bridge/devices arrives after a connect, or for a device it doesn't list yet, the
+Tuya rules on the Zigbee strings can't match, so the registry rules place what the registry can show: vendor `Tuya`,
+or a definition model that starts `TS`. A Tuya device under another vendor's definition (Lidl's `HG06337`) shows
+neither, so it lands in `other` until the cache fills; `unplaced` names that case, which turn_on_for refuses (plan
+Decision 23). With hass None (the rig's stand-in target, until its second change reads the class from the result)
+only the registry is read. A group is no device of its own: the dispatcher classes its members (members.expand_group).
 
 Each adapter's scope holds the levels below; why each class sits where it does is in index.md (Device classes) and
 the step 5 PR body (`other`'s Documented actions).
@@ -47,8 +59,11 @@ TUYA_TS011F = "tuya_ts011f"
 # A Tuya datapoint device (TS0601): no Zigbee On/Off cluster, so no raw ZCL read or write reaches it (Decision 12).
 TUYA_MCU = "tuya_mcu"
 SENGLED = "sengled"
+# Gledopto's controllers and bulbs: its converter departs from the standard calls (research/2026-11-14-timed-on-call-
+# patterns.md, §3), so `other`'s Documented actions don't cover it (plan Decision 24).
+GLEDOPTO = "gledopto"
 OTHER = "other"  # the default class, never Verified (IntegrationInfo.default_class)
-CLASSES = frozenset({HUE, TUYA_ZCL, TUYA_TS011F, TUYA_MCU, SENGLED, OTHER})
+CLASSES = frozenset({HUE, TUYA_ZCL, TUYA_TS011F, TUYA_MCU, SENGLED, GLEDOPTO, OTHER})
 
 # The fields a rule may test: the registry device's, and the Zigbee manufacturer and model bridge/devices holds.
 REGISTRY = frozenset({"manufacturer", "model", "model_id"})
@@ -93,6 +108,9 @@ RULES: tuple[Rule, ...] = (
     Rule(TUYA_ZCL, {"zigbee_manufacturer": _TUYA_ZCL_MANUFACTURER}),
     Rule(TUYA_ZCL, {"zigbee_model": r"TS\d{4}.*"}),
     Rule(SENGLED, {"manufacturer": "Sengled"}),
+    # Z2M's vendor is `Gledopto`, and the devices' own Zigbee string `GLEDOPTO` (zigbee-herdsman-converters
+    # src/devices/gledopto.ts, at the research file's commit), so either case matches.
+    Rule(GLEDOPTO, {"manufacturer": "(?i:gledopto)"}),
     # The registry, for a Tuya device bridge/devices doesn't show yet: Z2M's definition (`TS011F_plug_1`) and vendor.
     Rule(TUYA_TS011F, {"model_id": "TS011F(_.*)?"}),
     Rule(TUYA_MCU, {"model_id": "TS0601(_.*)?"}),
@@ -101,9 +119,9 @@ RULES: tuple[Rule, ...] = (
 )
 
 # The levels each adapter's scope holds (index.md, Device classes): Verified on Hue, whose bulbs every record ran on;
-# `other` Documented where the call is the Verified one and no known class departs, else untested; the Tuya and
-# Sengled classes untested, or left out where they're not yet supported.
-_UNTESTED = experimental(TUYA_ZCL, TUYA_TS011F, TUYA_MCU, SENGLED)
+# `other` Documented where the call is the Verified one and no known class departs, else untested; the Tuya, Sengled
+# and Gledopto classes untested, or left out where they're not yet supported or don't work.
+_UNTESTED = experimental(TUYA_ZCL, TUYA_TS011F, TUYA_MCU, SENGLED, GLEDOPTO)
 # Brightness fades and stop: the ZCL Level and Color commands Hue's are (native_control turns Philips' own off for a
 # brightness fade), and no class known to depart from them.
 FADE_BRIGHTNESS = STOP = verified(HUE) | documented(OTHER) | _UNTESTED
@@ -112,18 +130,23 @@ FADE_BRIGHTNESS = STOP = verified(HUE) | documented(OTHER) | _UNTESTED
 FADE_COLOR = verified(HUE) | experimental(OTHER) | _UNTESTED
 # Raw ZCL reads and writes, which a datapoint device can't take. Other brands depart: a bulb without `onTime` can fail
 # the read, and some come on, or at full, when written while off.
-READ_WRITE = verified(HUE) | experimental(OTHER, TUYA_ZCL, TUYA_TS011F, SENGLED)
-# turn_on_for: the Tuya classes need Tuya's countdown and the Sengled a host-side off, neither built, so they are not
-# yet supported; every other brand may depart (some never switch off), so `other` is untested.
-TURN_ON_FOR = verified(HUE) | experimental(OTHER)
-# The TS011F fails today's call: Z2M has no `on_time` converter for it, so the plug comes on with no timer.
+READ_WRITE = verified(HUE) | experimental(OTHER, TUYA_ZCL, TUYA_TS011F, SENGLED, GLEDOPTO)
+# turn_on_for: the Sengled needs a host-side off, which isn't built, so it is not yet supported; every other brand may
+# depart (some never switch off), so `other` and `gledopto` are untested. The Tuya classes are listed as doesn't work.
+TURN_ON_FOR = verified(HUE) | experimental(OTHER, GLEDOPTO)
+# The Tuya classes are harmed by today's call (plan Decision 20): Z2M has no `on_time` converter for a definition built
+# with `onOffCountdown`, or for a datapoint device, so it sends a plain On and the device stays on.
+_RESEARCH = "https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/"
+_STAYS_ON = "Its timer isn't supported yet: Zigbee2MQTT turns it on with no timer, so it stays on"
 TURN_ON_FOR_DOESNT_WORK = {
-    TUYA_TS011F: DoesntWork(
-        what="Tuya TS011F",
-        reason="Its timer isn't supported yet: Zigbee2MQTT turns it on with no timer, so it stays on",
-        source="https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/"
-        "2026-11-14-lab-probe.md",
-    )
+    # Measured (Decision 16), and matched by its model so every firmware inherits the refusal.
+    TUYA_TS011F: DoesntWork(what="Tuya TS011F", reason=_STAYS_ON, source=_RESEARCH + "2026-11-14-lab-probe.md"),
+    TUYA_ZCL: DoesntWork(
+        what="Tuya plugs and switches", reason=_STAYS_ON, source=_RESEARCH + "2026-11-14-timed-on-call-patterns.md"
+    ),
+    TUYA_MCU: DoesntWork(
+        what="Tuya datapoint devices", reason=_STAYS_ON, source=_RESEARCH + "2026-11-14-timed-on-call-patterns.md"
+    ),
 }
 
 
@@ -135,6 +158,13 @@ def zigbee_strings(hass: HomeAssistant | None, device: dr.DeviceEntry) -> dict[s
     if (entry := cache.device(ieee)) is None:
         return {}
     return {name: entry.get(key) for name, key in ZIGBEE.items()}
+
+
+def unplaced(hass: HomeAssistant, target: Target) -> bool:
+    """Whether the registry alone put the target's device in `other`, as bridge/devices doesn't list it (none held,
+    or not yet the device): a Tuya device under another vendor's definition lands there until it does."""
+    device = target.device
+    return device is not None and not zigbee_strings(hass, device) and device_class(device) == OTHER
 
 
 def device_class(device: dr.DeviceEntry, zigbee: Mapping[str, str | None] | None = None) -> str:

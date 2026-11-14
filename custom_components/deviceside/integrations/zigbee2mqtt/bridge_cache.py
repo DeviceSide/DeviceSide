@@ -88,7 +88,9 @@ class BridgeCache:
         if not isinstance(devices := self.parsed("devices"), list):
             return None
         if self._devices is None or self._devices[0] is not devices:
-            index = {d["ieee_address"]: d for d in devices if isinstance(d, dict) and "ieee_address" in d}
+            index = {
+                d["ieee_address"]: d for d in devices if isinstance(d, dict) and isinstance(d.get("ieee_address"), str)
+            }
             self._devices = (devices, index)
         return self._devices[1].get(ieee)
 
@@ -229,10 +231,10 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry, on_online: Callab
         await cache.subscribe(hass)
     except Exception as err:  # noqa: BLE001 - each caller reads fresh, as without the cache
         # Without the cache, a group's members can't be listed sync (members.expand_group), so every group counts
-        # as Experimental.
+        # as Experimental, and turn_on_for refuses it and every device the registry alone puts in `other`.
         _LOGGER.warning(
-            "Couldn't subscribe to Zigbee2MQTT's bridge, so each action reads it fresh, and Zigbee2MQTT groups run "
-            "only with Experimental features on: %r",
+            "Couldn't subscribe to Zigbee2MQTT's bridge, so each action reads it fresh, Zigbee2MQTT groups run "
+            "only with Experimental features on, and turn on with timer refuses them and other brands' lights: %r",
             err,
         )
         cache.stop()
