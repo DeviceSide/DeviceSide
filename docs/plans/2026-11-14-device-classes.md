@@ -152,12 +152,14 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      its own rule. A one-off test bulb lifts its maker's class, never `other` (Decision 5).
    - Rules are data, so a later probe changes rule data, not structure.
    - Scopes as planned. `turn_on_for` refuses the Tuya classes as not supported. `sengled` on `turn_on_for` is not
-     supported if the probe confirms it ignores 0x42. The TS011F's entry follows Decision 3.
+     supported if the probe confirms it ignores 0x42. The TS011F's entry follows Decision 16.
    - Once the probe's outcome settles the TS011F's entry, update the docs that depend on it: `docs/evidence.md`'s
-     tenets example, the `docs/integrations.md` Zigbee plugs line and the `docs/models.yaml` reason.
-   - **Open question:** what `capability()` returns for a Z2M device before the first `bridge/devices` after a
-     connect. It stays open until the registry-strings probe shows whether HA's device registry already holds the
-     Tuya model string; if it doesn't, bring it to Jason.
+     tenets example, the `docs/integrations.md` Zigbee plugs line and the `docs/models.yaml` reason, then regenerate
+     `docs/device-compatibility.md`. Their "never switches on" is disproven: a `_TZ3000_typdpbpg` plug switched on
+     106 s after a 10 s request on ZHA.
+   - **Open question, Jason's call:** what `capability()` returns for a Z2M device before the first `bridge/devices`
+     after a connect. The probe answered the precondition: HA's device registry holds no Tuya strings for a Z2M
+     device, only Z2M's definition (`TS011F_plug_1`) (`docs/integrations/zigbee2mqtt/internals.md`).
    - **Group members, sync:** Z2M has no `expand_group`. It gets one, listing a group's members from the bridge
      cache's `bridge/groups`, so a group takes its members' classes and falls back to them (Decision 10).
    - **The default class in code (Decision 5):** an `IntegrationInfo` field naming the default class, which the
@@ -171,7 +173,7 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      `IntegrationInfo.default_class`, `other` on Z2M, refused at Verified by the registry; scopes `hue` Verified and
      `other` `experimental(...)` on every adapter. Core, after the plan review: an empty group is skipped, and a group
      with an Experimental member falls back while the option is off (Decision 8). `models.yaml`'s TS011F entry stays
-     until part 2, as Decision 3 decides its fate.
+     until part 2, which moves it into code per Decision 16.
    - **Part 2, from the probe:**
      - **Classes and rules,** each class added with its rule, from §1's registry strings and §3's Tuya signal:
        `tuya_zcl`, `tuya_mcu`, and `sengled` if the Sengled needs its own. If a signal is only in `bridge/devices`
@@ -179,8 +181,8 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
        gets its `devices.yaml` phrase and section and its `index.md` entry, and the cards are regenerated.
      - **Scope entries:** `tuya_zcl` and `tuya_mcu` left out of `turn_on_for` (not supported: Z2M turns `on_time`
        into a plain On that never ends); `tuya_mcu` left out of `get_attributes` and `set_attributes` too (Decision
-       12); the rest `experimental(...)`. The TS011F per Decision 3 (`doesnt_work` on `turn_on_for`, or nothing more,
-       as `tuya_zcl` refuses it as not supported). `sengled` on `turn_on_for`: out of scope (not supported). The
+       12); the rest `experimental(...)`. The TS011F per Decision 16: a `doesnt_work` entry on `turn_on_for`, matched on the model, holding with
+       Experimental on. `sengled` on `turn_on_for`: out of scope (not supported). The
        E11-G13 already refuses 0x42 with `UNSUP_CLUSTER_COMMAND` on ZHA (`zha/internals.md`, Groups), so §4 only
        confirms it on Z2M. `sengled` while off: the E11-G13 jumps to full on `MoveToLevel` while off (research §3),
        so check every adapter that sends it from off (the raise ramps, `turn_on_for` with brightness), not just
@@ -508,7 +510,7 @@ join `docs/models.yaml`, per its header.
 |---|---|---|
 | Registry strings and groups | `hue`, `zha`, `zigbee2mqtt` | the `hue` class rules: step 5 (Z2M), 7 (ZHA), 8 (Hue) |
 | Registry strings, WiZ plug | `matter` | step 9 |
-| TS011F response to 0x42 | shared `docs/internals.md`; `zigbee2mqtt`, `zha` keep their own network's rows | step 4 (the `doesnt_work` entry shape), steps 5 and 7 (the TS011F's entry, per Decision 3) |
+| TS011F response to 0x42 | shared `docs/internals.md`; `zigbee2mqtt`, `zha` keep their own network's rows | step 4 (the `doesnt_work` entry shape), steps 5 and 7 (the TS011F's entry, per Decision 16) |
 | C6 converter drop | `zigbee2mqtt`, under Upstream defects if confirmed | step 5 (the Z2M reason) |
 | Tuya signal | `zigbee2mqtt`, `zha` | the `tuya_zcl` / `tuya_mcu` rules: steps 5 and 7 |
 | Sengled strings and 0x42 | `zigbee2mqtt`, `zha`, `hue` | the `sengled` rule and its `turn_on_for` state: steps 5, 7, 8 |
@@ -583,3 +585,45 @@ A package changed after its lab run needs that run again before the release. Non
 13. **The Sengled's `set_attributes` state** is decided by the Sengled lab run.
 14. **Parts 1 and 2 of step 5 ship as one PR.**
 15. **The Z2M card's Works line is lost until the lab rerun** fills the Capability column: accepted.
+
+## Decisions (Jason, 2026-11-14, after the lab probe)
+
+16. **The TS011F: one fact, a `doesnt_work` entry for today's call, no firmware split.** This replaces Decision 3's
+   "its doesn't-work entry goes".
+   - The probe tables live in the dated research file (`zigbee2mqtt/research/2026-11-14-lab-probe.md`).
+     `docs/internals.md` holds one cross-network fact listing both behaviors and citing it. It says the two firmwares
+     were on different networks, so the cause is firmware or path, not proven firmware. The model ids go in
+     `docs/models.yaml`.
+   - The class rule matches the model (`TS011F`), never the `_TZ3000_…` string, so firmwares nobody has probed
+     inherit the refusal. Add a firmware rule only if a later probe finds a different call that works.
+   - Today's call is refused by a `doesnt_work` entry whose source is the research file: on ZHA, 0x42 in tenths from
+     off; on Z2M, `{"state": "ON", "on_time": N}`. Marking it untested isn't enough, because an untested class runs
+     the default call once Experimental features is on. That call switches a `_TZ3000_typdpbpg` plug on about 10×
+     later than asked, and on Z2M it leaves the plug on with no timer. A unit test pins that the refusal holds with
+     Experimental on.
+   - The reason users see names no firmware; it says what they see, e.g. that its timer isn't supported yet. The
+     firmware detail stays in `internals.md`.
+   - There's no separate safety note: the `doesnt_work` entry is the safety mechanism, and the card shows "Doesn't
+     work". The switch-on-later finding goes in the PR body as the rule's evidence, and in TODO as a v0.1.0 blocker.
+   - Timing: the Z2M entry lands in step 5 part 2. The ZHA entry is the dangerous one; it is planned for step 7 and
+     must land before v0.1.0 even if step 7 slips.
+   - Building the countdown pattern (a plain On, then 0x42 with N seconds in both fields; Z2M's `countdown` expose on
+     Z2M) is separate, later work. It would move the class from "Doesn't work" to Verified.
+17. **No same-unit re-pair** of the Z2M TS011F to ZHA.
+
+## Handoff
+
+2026-11-14, step 3 done. Branch `wt/device-classes-3`, worktree `deviceside-wt/device-classes-3`, PR #423.
+
+**Done:** the lab probe, written up in `docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md` and
+`docs/integrations/hue/research/2026-11-14-lab-probe-hue.md`, with the facts in `docs/internals.md`, each bundle's
+`internals.md` and `docs/models.yaml`; Decisions 16 and 17 (numbered 8 and 9 on that branch); the step's plan review (in its last commit).
+
+**Next:** merged into step 5's branch after steps 4 and 5 part 1; step 5 part 2 follows.
+
+**Open:**
+- The Sengled is in the house profile, which is out of bounds until Monday 2026-11-16, so it can't join step 5's lab
+  run until it's back in the lab. Its return to the lab ZHA group is unconfirmed: a group-add call timed out and
+  wasn't checked. Jason checks the group's members before the next ZHA group case. Working notes: the gitignored
+  `notes/lab-probe-2026-11-14/`.
+- Step 5's open question (above) is Jason's call.
