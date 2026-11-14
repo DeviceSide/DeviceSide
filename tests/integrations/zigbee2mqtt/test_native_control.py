@@ -106,7 +106,8 @@ async def test_device_missing_from_settings_gets_it(hass, setup_production, brok
 
 async def test_other_brands_are_left_alone(hass, setup_production, broker, turn_ons):
     hue_bulb(hass, manufacturer="IKEA of Sweden")
-    broker.retained[DEVICES] = [{"ieee_address": IEEE}]  # placed, so turn_on_for takes it as `other`
+    # Placed by its Zigbee strings, so turn_on_for takes it as `other`.
+    broker.retained[DEVICES] = [{"ieee_address": IEEE, "manufacturer": "IKEA of Sweden", "model_id": "TRADFRI"}]
     allow_experimental(hass)  # class `other`
 
     await call(hass, "turn_on_for", RED)
@@ -244,7 +245,8 @@ async def test_a_group_bridge_groups_doesn_t_list_is_sent_whole(hass, setup_prod
 async def test_a_group_with_no_hue_member_is_left_alone(hass, setup_production, broker, turn_ons):
     group_with_member(hass, "IKEA of Sweden")
     broker.retained[GROUPS] = BRIDGE_GROUPS
-    broker.retained[DEVICES] = [{"ieee_address": MEMBER}]  # placed, so turn_on_for takes it as `other`
+    # Placed by its Zigbee strings, so turn_on_for takes it as `other`.
+    broker.retained[DEVICES] = [{"ieee_address": MEMBER, "manufacturer": "IKEA of Sweden", "model_id": "TRADFRI"}]
     allow_experimental(hass)  # an `other` member
 
     await call(hass, "turn_on_for", DOWNSTAIRS)

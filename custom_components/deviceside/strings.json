@@ -77,6 +77,9 @@
     "doesnt_work": {
       "message": "{entity_id} can't take this action ({reason}): {why}"
     },
+    "class_unknown": {
+      "message": "{entity_id} can't take this action yet: DeviceSide hasn't learned what device it is from {integration}. It can once {integration} has reported the device, usually seconds after it connects."
+    },
     "targets_failed": {
       "message": "The command failed on: {summary}"
     },

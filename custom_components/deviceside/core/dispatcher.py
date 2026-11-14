@@ -47,14 +47,19 @@ def _classed(result: EntityResult, target: Target, classes: Classes) -> EntityRe
 
 
 def _skip(
-    entity_id: str, named: bool, reason: str, integration: str | None = None, why: str | None = None
+    entity_id: str,
+    named: bool,
+    reason: str,
+    integration: str | None = None,
+    why: str | None = None,
+    title: str | None = None,
 ) -> list[EntityResult]:
-    """A target that can never take the action: raise if the caller named it (with `why`, a doesn't-work entry's
-    reason), else the result that skips it."""
+    """A target that can't take the action: raise if the caller named it (with `why`, a doesn't-work entry's reason,
+    and `title`, the integration's, which a class_unknown message names), else the result that skips it."""
     if reason == Reason.EMPTY_GROUP:
         return []
     if named:
-        raise TargetNotSupported(entity_id, reason, why)
+        raise TargetNotSupported(entity_id, reason, why, title)
     return [EntityResult(entity_id, Status.UNSUPPORTED, integration=integration, detail=reason)]
 
 
@@ -224,7 +229,8 @@ class Dispatcher:
             )
             reduced = request.without(dropped)
             if reason := adapter.supports(self.hass, reduced, target):
-                results += _skip(target.reported_id, target.named, reason, adapter.integration)
+                title = self.registry.integrations[adapter.integration].title
+                results += _skip(target.reported_id, target.named, reason, adapter.integration, title=title)
                 continue
             members = self._listed(adapter, target)
             if members == []:

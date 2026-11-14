@@ -307,7 +307,7 @@ async def test_a_failed_subscribe_warns_and_holds_nothing(
     assert not any(broker.listening(topic) for topic in HELD_TOPICS)
     assert (
         "Couldn't subscribe to Zigbee2MQTT's bridge, so each action reads it fresh, Zigbee2MQTT groups run only "
-        "with Experimental features on, and turn on with timer refuses them and other brands' lights" in caplog.text
+        "with Experimental features on, and turn on with timer refuses them and other brands' devices" in caplog.text
     )
 
 

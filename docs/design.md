@@ -20,8 +20,9 @@ Code and docs use these terms.
 - **Class**: the set of devices that get the same call and run the same firmware family, as the integration names it
   (Shelly: the RPC component; Zigbee2MQTT: `hue`, `tuya_zcl`, `tuya_ts011f`, `tuya_mcu`, `sengled`, `gledopto`,
   `other`). Each class stands on its own evidence, and a device the integration can't place is in its default class,
-  which is never Verified (except where a call is known to harm: there unknown is refused): a record on another
-  maker's device adds that maker's class. Rules: [evidence.md](evidence.md#device-classes).
+  which is never Verified: a record on another maker's device adds that maker's class. Where untested, it is
+  Experimental (except where a call is known to harm: there a target whose class rests on information DeviceSide
+  doesn't have yet is refused). Rules: [evidence.md](evidence.md#device-classes).
 - **Doesn't work**: a class that fails, or is harmed by, the call DeviceSide sends for an action, even when an unbuilt
   call would work. Listed in the adapter's
   `AdapterScope.doesnt_work` with a reason and source, refused (`doesnt_work`) and named on the card.
@@ -165,8 +166,10 @@ runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, 
   `bridge/devices`, for a device's Zigbee strings, with the registry as fallback, which can't place a Tuya device under
   another vendor's definition, so that lands in `other` until the cache fills). A device it can't place gets the default
   class; `None` is only for a target it can't class at all (a Shelly entity with no RPC component), which counts as
-  Experimental. Where a call is known to harm, the adapter refuses either
-  ([evidence.md](evidence.md#doesnt-work-not-yet-supported-untested)). It takes `hass=None` on a target with no config
+  Experimental. Where a call is known to harm, the adapter refuses a target whose class rests on information
+  DeviceSide doesn't have yet (Zigbee2MQTT: a device whose Zigbee strings haven't arrived, in a class they could still
+  change), even with Experimental features on; one placed in the default class from full information stays
+  Experimental ([evidence.md](evidence.md#doesnt-work-not-yet-supported-untested)). It takes `hass=None` on a target with no config
   entry or state, so the rig can class a stand-in (Zigbee2MQTT then reads the registry alone), until the rig reads the
   class from the result. Every adapter of the integration sees the same class, and maps the classes it serves to its own
   branch in `execute`; a class is a device class, not a call pattern, as patterns are per action.

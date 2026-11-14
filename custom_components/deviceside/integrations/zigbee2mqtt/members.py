@@ -1,5 +1,6 @@
 """A Z2M group's member lights, as targets: only Z2M's bridge/groups knows who they are."""
 
+import logging
 from collections.abc import Iterable
 from dataclasses import replace
 
@@ -14,6 +15,8 @@ from .bridge import group_members, members_of
 from ...core.models import Target
 from ...core.resolver import resolve_members
 from ...core.runtime import get_runtime
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def expand_group(hass: HomeAssistant, target: Target) -> list[Target] | None:
@@ -55,7 +58,7 @@ async def member_lights(hass: HomeAssistant, group: Target) -> list[Target]:
 def _members(hass: HomeAssistant, group: Target, addresses: Iterable[str]) -> tuple[list[Target], bool]:
     """A target per member device HA has, sorted by entity_id: its entity in the group's domain, or a stand-in when
     HA resolves none; and whether every address has a device. A device on two endpoints is listed twice, and counts
-    once."""
+    once, keyed by its device."""
     entities = er.async_get(hass)
     registry = get_runtime(hass).registry
     members: dict[str, Target] = {}
@@ -64,15 +67,24 @@ def _members(hass: HomeAssistant, group: Target, addresses: Iterable[str]) -> tu
         if (device := z2m_device(hass, group, address)) is None:
             complete = False
             continue
-        if device.id in members:
-            continue
-        lights = [e for e in er.async_entries_for_device(entities, device.id) if e.domain == group.domain]
+        own = er.async_entries_for_device(entities, device.id)
+        lights = [e for e in own if e.domain == group.domain]
         resolved = resolve_members(hass, registry, group, "mqtt", [lights[0].unique_id]) if lights else []
-        members[device.id] = resolved[0] if resolved else _stand_in(group, device)
+        if resolved:
+            members[device.id] = resolved[0]
+            continue
+        # The first report of "my plug wasn't in the group's fallback" holds why.
+        _LOGGER.debug(
+            "%s: a member device (%s) has no %s entity, so it is classed by its device and left out of any fallback",
+            group.entity_id,
+            ", ".join(e.entity_id for e in own) or "no entities",
+            group.domain,
+        )
+        members[device.id] = _stand_in(group, device)
     return sorted(members.values(), key=lambda member: member.entity_id), complete
 
 
 def _stand_in(group: Target, device: dr.DeviceEntry) -> Target:
     """A member HA has no entity for in the group's domain, for its class alone: the group's own entity with the
     member's device, and no state, so the dispatcher never falls back to it and member_lights leaves it out."""
-    return replace(group, device=device, state=None, via_group=group.entity_id, is_group=False, named=False)
+    return replace(group, device=device, state=None, via_group=group.entity_id, is_group=False)

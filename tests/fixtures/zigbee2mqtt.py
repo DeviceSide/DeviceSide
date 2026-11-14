@@ -176,7 +176,11 @@ class Broker:
         name, clusters = self.devices[ieee]
         cluster = read["cluster"]
         failures = self.read_errors_then_reply.get((ieee, cluster))
-        if status := (failures.pop(0) if failures else self.read_errors.get((ieee, cluster))):
+        status = failures.pop(0) if failures else self.read_errors.get((ieee, cluster))
+        # A bulb set up without the attribute answers as one lacking it would: Z2M logs the read as failed.
+        if not status and not set(read["attributes"]) <= set(clusters.get(cluster, {})):
+            status = "UNSUPPORTED_ATTRIBUTE"
+        if status:
             message = f"Publish 'set' 'read' to '{name}' failed: ZCL command {ieee}/11 {cluster}.read() failed"
             message += f" ({status})"
             self.deliver("zigbee2mqtt/bridge/logging", json.dumps({"level": "error", "message": message}))
