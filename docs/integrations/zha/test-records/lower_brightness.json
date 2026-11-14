@@ -1,0 +1,79 @@
+{
+  "format": 1,
+  "integration": "zha",
+  "action": "lower_brightness",
+  "result": "pass",
+  "date": "2026-11-08",
+  "source": {
+    "kind": "rig",
+    "commit": "8aae106"
+  },
+  "home_assistant": "2026.10.4",
+  "devices": [
+    {
+      "model": "LTA009",
+      "firmware": "0x01002a00"
+    },
+    {
+      "name": "ZBDongle-E",
+      "firmware": null,
+      "group": true
+    }
+  ],
+  "tests": [
+    {
+      "id": "lower_to_off[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass"
+    },
+    {
+      "id": "lower_to_off[group]",
+      "domain": "light",
+      "role": "group",
+      "result": "pass"
+    },
+    {
+      "id": "soft_off_keeps_level[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass"
+    },
+    {
+      "id": "soft_off_keeps_level[group]",
+      "domain": "light",
+      "role": "group",
+      "result": "pass"
+    },
+    {
+      "id": "lower_to_a_limit[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass"
+    },
+    {
+      "id": "lower_to_a_limit[group]",
+      "domain": "light",
+      "role": "group",
+      "result": "pass"
+    },
+    {
+      "id": "lower_stop_lower[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass"
+    },
+    {
+      "id": "lower_stop_lower[group]",
+      "domain": "light",
+      "role": "group",
+      "result": "pass"
+    },
+    {
+      "id": "light_raised_mid_room_lower[group]",
+      "domain": "light",
+      "role": "group",
+      "result": "pass"
+    }
+  ]
+}

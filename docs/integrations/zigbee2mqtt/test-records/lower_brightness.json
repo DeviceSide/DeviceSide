@@ -1,0 +1,56 @@
+{
+  "format": 1,
+  "integration": "zigbee2mqtt",
+  "action": "lower_brightness",
+  "result": "pass",
+  "date": "2026-11-13",
+  "source": {
+    "kind": "rig",
+    "commit": "a47b753"
+  },
+  "home_assistant": "2026.10.4",
+  "devices": [
+    {
+      "model": "LTA009",
+      "name": "Hue white ambiance E27 1100lm with Bluetooth",
+      "firmware": "1.163.1"
+    },
+    {
+      "name": "Group",
+      "firmware": "Zigbee2MQTT 2.14.3",
+      "group": true
+    }
+  ],
+  "tests": [
+    {
+      "id": "lower_to_off[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass"
+    },
+    {
+      "id": "lower_to_off[group]",
+      "domain": "light",
+      "role": "group",
+      "result": "pass"
+    },
+    {
+      "id": "lower_to_a_limit[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass"
+    },
+    {
+      "id": "lower_to_a_limit[group]",
+      "domain": "light",
+      "role": "group",
+      "result": "pass"
+    },
+    {
+      "id": "light_raised_mid_room_lower[group]",
+      "domain": "light",
+      "role": "group",
+      "result": "pass"
+    }
+  ]
+}

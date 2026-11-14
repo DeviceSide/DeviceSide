@@ -1,0 +1,83 @@
+{
+  "format": 1,
+  "integration": "zha",
+  "action": "turn_on_for",
+  "result": "pass",
+  "date": "2026-11-08",
+  "source": {
+    "kind": "rig",
+    "commit": "8aae106"
+  },
+  "home_assistant": "2026.10.4",
+  "devices": [
+    {
+      "model": "LWA012",
+      "firmware": "0x01002502"
+    },
+    {
+      "model": "LTA009",
+      "firmware": "0x01002a00"
+    },
+    {
+      "name": "ZBDongle-E",
+      "firmware": null,
+      "group": true
+    }
+  ],
+  "tests": [
+    {
+      "id": "on_then_off[switch_plug]",
+      "role": "switch_plug",
+      "result": "skipped",
+      "reason": "none in the profile"
+    },
+    {
+      "id": "on_then_off[light_onoff]",
+      "role": "light_onoff",
+      "result": "skipped",
+      "reason": "none in the profile"
+    },
+    {
+      "id": "on_then_off[light_wrapped]",
+      "role": "light_wrapped",
+      "result": "skipped",
+      "reason": "none in the profile"
+    },
+    {
+      "id": "drops_brightness_on_a_wrapper[light_wrapped]",
+      "role": "light_wrapped",
+      "result": "skipped",
+      "reason": "none in the profile"
+    },
+    {
+      "id": "bulb_on_then_off[light_dimmable]",
+      "domain": "light",
+      "role": "light_dimmable",
+      "result": "pass"
+    },
+    {
+      "id": "bulb_brightness_then_off[light_dimmable]",
+      "domain": "light",
+      "role": "light_dimmable",
+      "result": "pass"
+    },
+    {
+      "id": "bulb_color_temp_then_off[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass"
+    },
+    {
+      "id": "group_on_then_off[group]",
+      "domain": "light",
+      "role": "group",
+      "result": "pass"
+    },
+    {
+      "id": "group_brightness_then_off[group]",
+      "domain": "light",
+      "role": "group",
+      "result": "pass"
+    }
+  ]
+}

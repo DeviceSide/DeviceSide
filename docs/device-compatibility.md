@@ -35,7 +35,7 @@ On the cards, ✔ marks what the automated rig verified; a model without it was 
 
 ## Tested devices
 
-A model works on the integrations and features its records and maintainers' hand tests (`_manual.md`) cover; the
+A model works on the integrations and features its records and maintainers' hand tests (`_manual.json`) cover; the
 [evidence](#evidence) lists them per action, with the firmware tested. Other models may work too, but makers implement
 these features inconsistently: if yours isn't here, please try it and [report the
 result](https://github.com/DeviceSide/DeviceSide/issues/new?template=device_report.yml), whether it works or not.
@@ -57,7 +57,7 @@ bridge's earlier report (rig runs, 2026-11-11: Hue [Tested behavior](integration
 A color bulb, rig-tested on Hue, ZHA and Zigbee2MQTT: `LCA016` on Hue and ZHA, `8720169392182` on Zigbee2MQTT
 ([zigbee-herdsman-converters](https://github.com/Koenkk/zigbee-herdsman-converters/blob/master/src/devices/philips.ts)).
 It carries the smooth saturation and hue tests, and Zigbee2MQTT's color mode override
-([record](integrations/zigbee2mqtt/test-records/color_modes.md)). Turning that option off is unit-tested only: the rig can't
+([record](integrations/zigbee2mqtt/research/2026-10-28-color-modes.md)). Turning that option off is unit-tested only: the rig can't
 cleanly remove the override the option writes.
 
 ### Hue White A60 B22
@@ -118,17 +118,17 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 
 | Action | Level | Items | Tested models | Records |
 |---|---|---|---|---|
-| `get_attributes` | Verified | light entities | `LTA009`, firmware `0x01002a00`<br>`LCA016`, firmware `0x01001200`<br>`LWA012`, firmware `0x01002502`<br>group | [record](integrations/zha/test-records/get_attributes.md) |
+| `get_attributes` | Verified | light entities | `LTA009`, firmware `0x01002a00`<br>`LCA016`, firmware `0x01001200`<br>`LWA012`, firmware `0x01002502`<br>group | [record](integrations/zha/test-records/get_attributes.json) |
 | `get_attributes` | Experimental | switch entities | | |
-| `lower_brightness` | Verified | light entities; brightness fields | `LTA009`, firmware `0x01002a00`<br>group | [record](integrations/zha/test-records/lower_brightness.md) |
-| `lower_hue` | Verified | light entities; hue fields | `LCA016`, firmware `0x01001200` | [record](integrations/zha/test-records/lower_hue.md) |
-| `lower_saturation` | Verified | light entities; saturation fields | `LCA016`, firmware `0x01001200` | [record](integrations/zha/test-records/lower_saturation.md) |
-| `raise_brightness` | Verified | light entities; brightness fields | `LTA009`, firmware `0x01002a00`<br>group | [record](integrations/zha/test-records/raise_brightness.md) |
-| `raise_hue` | Verified | light entities; hue fields | `LCA016`, firmware `0x01001200` | [record](integrations/zha/test-records/raise_hue.md) |
-| `raise_saturation` | Verified | light entities; saturation fields | `LCA016`, firmware `0x01001200` | [record](integrations/zha/test-records/raise_saturation.md) |
-| `set_attributes` | Verified | light entities; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, min_brightness, max_brightness fields | `LCA016`, firmware `0x01001200` | [record](integrations/zha/test-records/set_attributes.md) |
-| `stop` | Verified | light entities | `LTA009`, firmware `0x01002a00`<br>`LCA016`, firmware `0x01001200`<br>group | [record](integrations/zha/test-records/stop.md) |
-| `turn_on_for` | Verified | light entities; brightness, color_temp_kelvin fields | `LWA012`, firmware `0x01002502`<br>`LTA009`, firmware `0x01002a00`<br>group | [record](integrations/zha/test-records/turn_on_for.md) |
+| `lower_brightness` | Verified | light entities; brightness fields | `LTA009`, firmware `0x01002a00`<br>group | [record](integrations/zha/test-records/lower_brightness.json) |
+| `lower_hue` | Verified | light entities; hue fields | `LCA016`, firmware `0x01001200` | [record](integrations/zha/test-records/lower_hue.json) |
+| `lower_saturation` | Verified | light entities; saturation fields | `LCA016`, firmware `0x01001200` | [record](integrations/zha/test-records/lower_saturation.json) |
+| `raise_brightness` | Verified | light entities; brightness fields | `LTA009`, firmware `0x01002a00`<br>group | [record](integrations/zha/test-records/raise_brightness.json) |
+| `raise_hue` | Verified | light entities; hue fields | `LCA016`, firmware `0x01001200` | [record](integrations/zha/test-records/raise_hue.json) |
+| `raise_saturation` | Verified | light entities; saturation fields | `LCA016`, firmware `0x01001200` | [record](integrations/zha/test-records/raise_saturation.json) |
+| `set_attributes` | Verified | light entities; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, min_brightness, max_brightness fields | `LCA016`, firmware `0x01001200` | [record](integrations/zha/test-records/set_attributes.json) |
+| `stop` | Verified | light entities | `LTA009`, firmware `0x01002a00`<br>`LCA016`, firmware `0x01001200`<br>group | [record](integrations/zha/test-records/stop.json) |
+| `turn_on_for` | Verified | light entities; brightness, color_temp_kelvin fields | `LWA012`, firmware `0x01002502`<br>`LTA009`, firmware `0x01002a00`<br>group | [record](integrations/zha/test-records/turn_on_for.json) |
 | `turn_on_for` | Experimental | switch entities | | |
 
 | Doesn't work | Why | Source |
@@ -139,28 +139,28 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 
 | Action | Level | Items | Tested models | Records |
 |---|---|---|---|---|
-| `get_attributes` | Verified | light entities; hue classes | `9290024684`, firmware `1.163.1`<br>`8720169392182`, firmware `1.164.2`<br>`9290018217`, firmware `1.122.2`<br>group | [record](integrations/zigbee2mqtt/test-records/get_attributes.md) |
+| `get_attributes` | Verified | light entities; hue classes | `LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>`LWA012`, firmware `1.122.2`<br>group | [record](integrations/zigbee2mqtt/test-records/get_attributes.json) |
 | `get_attributes` | Experimental | switch entities; other, tuya_zcl, tuya_ts011f, sengled, gledopto classes | | |
-| `lower_brightness` | Verified | light entities; hue classes; brightness fields | `9290024684`, firmware `1.163.1`<br>group | [record](integrations/zigbee2mqtt/test-records/lower_brightness.md) |
+| `lower_brightness` | Verified | light entities; hue classes; brightness fields | `LTA009`, firmware `1.163.1`<br>group | [record](integrations/zigbee2mqtt/test-records/lower_brightness.json) |
 | `lower_brightness` | Documented | other classes | | |
 | `lower_brightness` | Experimental | tuya_zcl, tuya_ts011f, tuya_mcu, sengled, gledopto classes | | |
-| `lower_hue` | Verified | light entities; hue classes; hue fields | `8720169392182`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/lower_hue.md) |
+| `lower_hue` | Verified | light entities; hue classes; hue fields | `LCA016`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/lower_hue.json) |
 | `lower_hue` | Experimental | other, tuya_zcl, tuya_ts011f, tuya_mcu, sengled, gledopto classes | | |
-| `lower_saturation` | Verified | light entities; hue classes; saturation fields | `8720169392182`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/lower_saturation.md) |
+| `lower_saturation` | Verified | light entities; hue classes; saturation fields | `LCA016`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/lower_saturation.json) |
 | `lower_saturation` | Experimental | other, tuya_zcl, tuya_ts011f, tuya_mcu, sengled, gledopto classes | | |
-| `raise_brightness` | Verified | light entities; hue classes; brightness fields | `9290024684`, firmware `1.163.1`<br>group | [record](integrations/zigbee2mqtt/test-records/raise_brightness.md) |
+| `raise_brightness` | Verified | light entities; hue classes; brightness fields | `LTA009`, firmware `1.163.1`<br>group | [record](integrations/zigbee2mqtt/test-records/raise_brightness.json) |
 | `raise_brightness` | Documented | other classes | | |
 | `raise_brightness` | Experimental | tuya_zcl, tuya_ts011f, tuya_mcu, sengled, gledopto classes | | |
-| `raise_hue` | Verified | light entities; hue classes; hue fields | `8720169392182`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/raise_hue.md) |
+| `raise_hue` | Verified | light entities; hue classes; hue fields | `LCA016`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/raise_hue.json) |
 | `raise_hue` | Experimental | other, tuya_zcl, tuya_ts011f, tuya_mcu, sengled, gledopto classes | | |
-| `raise_saturation` | Verified | light entities; hue classes; saturation fields | `8720169392182`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/raise_saturation.md) |
+| `raise_saturation` | Verified | light entities; hue classes; saturation fields | `LCA016`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/raise_saturation.json) |
 | `raise_saturation` | Experimental | other, tuya_zcl, tuya_ts011f, tuya_mcu, sengled, gledopto classes | | |
-| `set_attributes` | Verified | light entities; hue classes; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, min_brightness, max_brightness fields | `9290024684`, firmware `1.163.1`<br>`8720169392182`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/set_attributes.md) |
+| `set_attributes` | Verified | light entities; hue classes; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, min_brightness, max_brightness fields | `LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/set_attributes.json) |
 | `set_attributes` | Experimental | other, tuya_zcl, tuya_ts011f, sengled, gledopto classes | | |
-| `stop` | Verified | light entities; hue classes | `9290024684`, firmware `1.163.1`<br>`8720169392182`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/stop.md) |
+| `stop` | Verified | light entities; hue classes | `LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/stop.json) |
 | `stop` | Documented | other classes | | |
 | `stop` | Experimental | tuya_zcl, tuya_ts011f, tuya_mcu, sengled, gledopto classes | | |
-| `turn_on_for` | Verified | light entities; hue classes; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, transition fields | `9290018217`, firmware `1.163.1`<br>`9290024684`, firmware `1.163.1`<br>`8720169392182`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/turn_on_for.md) |
+| `turn_on_for` | Verified | light entities; hue classes; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, transition fields | `LWA012`, firmware `1.163.1`<br>`LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/turn_on_for.json) |
 | `turn_on_for` | Experimental | switch entities; other, gledopto classes | | |
 
 | Doesn't work | Why | Source |
@@ -173,41 +173,41 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 
 | Action | Level | Items | Tested models | Records |
 |---|---|---|---|---|
-| `clear_auto_off` | Verified | light, switch entities; Switch classes | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](integrations/shelly/test-records/clear_auto_off.md) |
+| `clear_auto_off` | Verified | light, switch entities; Switch classes | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](integrations/shelly/test-records/clear_auto_off.json) |
 | `clear_auto_off` | Documented | Light, CCT, RGB, RGBW, RGBCCT classes | | |
-| `clear_auto_on` | Verified | light, switch entities; Switch classes | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](integrations/shelly/test-records/clear_auto_on.md) |
+| `clear_auto_on` | Verified | light, switch entities; Switch classes | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](integrations/shelly/test-records/clear_auto_on.json) |
 | `clear_auto_on` | Documented | Light, CCT, RGB, RGBW, RGBCCT classes | | |
-| `get_attributes` | Verified | light, switch entities; Switch, RGBCCT classes | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943`<br>`S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](integrations/shelly/test-records/get_attributes.md) |
+| `get_attributes` | Verified | light, switch entities; Switch, RGBCCT classes | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943`<br>`S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](integrations/shelly/test-records/get_attributes.json) |
 | `get_attributes` | Documented | Light, CCT, RGB, RGBW classes | | |
-| `lower_brightness` | Verified | light entities; RGBCCT classes; brightness fields | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/lower_brightness.md) |
+| `lower_brightness` | Verified | light entities; RGBCCT classes; brightness fields | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/lower_brightness.json) |
 | `lower_brightness` | Experimental | Light, CCT, RGB, RGBW classes | | |
-| `raise_brightness` | Verified | light entities; RGBCCT classes; brightness fields | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/raise_brightness.md) |
+| `raise_brightness` | Verified | light entities; RGBCCT classes; brightness fields | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/raise_brightness.json) |
 | `raise_brightness` | Experimental | Light, CCT, RGB, RGBW classes | | |
-| `set_attributes` | Verified | light entities; RGBCCT classes; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, min_brightness, max_brightness fields | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/set_attributes.md) |
+| `set_attributes` | Verified | light entities; RGBCCT classes; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, min_brightness, max_brightness fields | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/set_attributes.json) |
 | `set_attributes` | Experimental | Light, CCT, RGB, RGBW classes | | |
-| `set_auto_off` | Verified | light, switch entities; Switch classes | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](integrations/shelly/test-records/set_auto_off.md) |
+| `set_auto_off` | Verified | light, switch entities; Switch classes | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](integrations/shelly/test-records/set_auto_off.json) |
 | `set_auto_off` | Documented | Light, CCT, RGB, RGBW, RGBCCT classes | | |
-| `set_auto_on` | Verified | light, switch entities; Switch classes | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](integrations/shelly/test-records/set_auto_on.md) |
+| `set_auto_on` | Verified | light, switch entities; Switch classes | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943` | [record](integrations/shelly/test-records/set_auto_on.json) |
 | `set_auto_on` | Documented | Light, CCT, RGB, RGBW, RGBCCT classes | | |
-| `stop` | Verified | light entities; RGBCCT classes | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/stop.md) |
+| `stop` | Verified | light entities; RGBCCT classes | `S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/stop.json) |
 | `stop` | Experimental | Light, CCT, RGB, RGBW classes | | |
-| `turn_off_for` | Verified | light, switch entities; Switch, RGBCCT classes | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943`<br>`S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/turn_off_for.md) |
+| `turn_off_for` | Verified | light, switch entities; Switch, RGBCCT classes | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943`<br>`S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/turn_off_for.json) |
 | `turn_off_for` | Documented | Light, CCT, RGB, RGBW classes | | |
-| `turn_on_for` | Verified | light, switch entities; Switch, RGBCCT classes; brightness, color_temp_kelvin, hs_color, rgb_color, transition, xy_color fields | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943`<br>`S4SW-001X8EU`, firmware `20261026-122156/2.0.3-g4601943`<br>`S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/turn_on_for.md) |
+| `turn_on_for` | Verified | light, switch entities; Switch, RGBCCT classes; brightness, color_temp_kelvin, hs_color, rgb_color, transition, xy_color fields | `S3SW-001X8EU`, firmware `20261026-122213/2.0.3-g4601943`<br>`S4SW-001X8EU`, firmware `20261026-122156/2.0.3-g4601943`<br>`S3BL-C010007AEU`, firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/turn_on_for.json) |
 | `turn_on_for` | Documented | Light, CCT, RGB, RGBW classes | | |
 
 ### Hue
 
 | Action | Level | Items | Tested models | Records |
 |---|---|---|---|---|
-| `get_attributes` | Verified | light entities | `LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>group | [record](integrations/hue/test-records/get_attributes.md) |
-| `lower_brightness` | Verified | light entities; brightness fields | `LTA009`, firmware `1.163.1`<br>group | [predicted state](integrations/hue/test-records/lower_brightness-predicted_state.md), [record](integrations/hue/test-records/lower_brightness.md) |
-| `lower_saturation` | Verified | light entities; saturation fields | `LCA016`, firmware `1.164.2`<br>group | [record](integrations/hue/test-records/lower_saturation.md) |
-| `raise_brightness` | Verified | light entities; brightness fields | `LTA009`, firmware `1.163.1`<br>group | [predicted state](integrations/hue/test-records/raise_brightness-predicted_state.md), [record](integrations/hue/test-records/raise_brightness.md) |
-| `raise_saturation` | Verified | light entities; saturation fields | `LCA016`, firmware `1.164.2`<br>group | [record](integrations/hue/test-records/raise_saturation.md) |
-| `set_attributes` | Verified | light entities; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, min_brightness, max_brightness fields | `LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>group | [record](integrations/hue/test-records/set_attributes.md) |
-| `set_scene` | Verified | scene entities | group | [record](integrations/hue/test-records/set_scene.md) |
-| `stop` | Verified | light entities | `LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>group | [predicted state](integrations/hue/test-records/stop-predicted_state.md), [record](integrations/hue/test-records/stop.md) |
+| `get_attributes` | Verified | light entities | `LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>group | [record](integrations/hue/test-records/get_attributes.json) |
+| `lower_brightness` | Verified | light entities; brightness fields | `LTA009`, firmware `1.163.1`<br>group | [predicted state](integrations/hue/test-records/lower_brightness-predicted_state.json), [record](integrations/hue/test-records/lower_brightness.json) |
+| `lower_saturation` | Verified | light entities; saturation fields | `LCA016`, firmware `1.164.2`<br>group | [record](integrations/hue/test-records/lower_saturation.json) |
+| `raise_brightness` | Verified | light entities; brightness fields | `LTA009`, firmware `1.163.1`<br>group | [predicted state](integrations/hue/test-records/raise_brightness-predicted_state.json), [record](integrations/hue/test-records/raise_brightness.json) |
+| `raise_saturation` | Verified | light entities; saturation fields | `LCA016`, firmware `1.164.2`<br>group | [record](integrations/hue/test-records/raise_saturation.json) |
+| `set_attributes` | Verified | light entities; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, min_brightness, max_brightness fields | `LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>group | [record](integrations/hue/test-records/set_attributes.json) |
+| `set_scene` | Verified | scene entities | group | [record](integrations/hue/test-records/set_scene.json) |
+| `stop` | Verified | light entities | `LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>group | [predicted state](integrations/hue/test-records/stop-predicted_state.json), [record](integrations/hue/test-records/stop.json) |
 
 | Doesn't work | Why | Source |
 |---|---|---|
@@ -217,9 +217,9 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 
 | Action | Level | Items | Tested models | Records |
 |---|---|---|---|---|
-| `get_attributes` | Verified | switch entities | `8979`, firmware `v1.4` | [record](integrations/matter/test-records/get_attributes.md) |
+| `get_attributes` | Verified | switch entities | `8979`, firmware `v1.4` | [record](integrations/matter/test-records/get_attributes.json) |
 | `get_attributes` | Documented | light entities | | |
-| `turn_on_for` | Verified | switch entities | `8979`, firmware `v1.4` | [record](integrations/matter/test-records/turn_on_for.md) |
+| `turn_on_for` | Verified | switch entities | `8979`, firmware `v1.4` | [record](integrations/matter/test-records/turn_on_for.json) |
 | `turn_on_for` | Documented | light entities | | |
 
 <!-- evidence:end -->

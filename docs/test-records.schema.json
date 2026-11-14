@@ -1,0 +1,210 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/DeviceSide/DeviceSide/blob/main/docs/test-records.schema.json",
+  "title": "DeviceSide test records",
+  "description": "The files in docs/integrations/<integration>/test-records/: a rig record per suite (<suite>.json, the step file's name: <action>.json or <action>-<option>.json), the maintainers' manual sign-offs (_manual.json) and the facts the rig's fact cases found (_facts.json). The rules they serve are docs/evidence.md's (Sign-off format, The coverage check); scripts/check_release.py and scripts/gen_compat.py read them. A file's integration is its folder's.",
+  "type": "object",
+  "if": {"required": ["signoffs"]},
+  "then": {"$ref": "#/$defs/manual"},
+  "else": {
+    "if": {"required": ["facts"]},
+    "then": {"$ref": "#/$defs/facts"},
+    "else": {"$ref": "#/$defs/record"}
+  },
+  "$defs": {
+    "integration": {"description": "The integration's key, its bundle's folder name.", "type": "string", "pattern": "^[a-z0-9_]+$"},
+    "action": {"description": "An action's key.", "type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+    "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "commit": {"description": "A commit, abbreviated or full.", "type": "string", "pattern": "^[0-9a-f]{7,40}$"},
+    "model": {"description": "The model ID: a Zigbee device's Basic-cluster model (e.g. LWA012) on every integration, else the integration's model ID; docs/models.yaml must list it.", "type": "string", "minLength": 1},
+    "firmware": {"description": "As the integration reports it; null when it reports none.", "type": ["string", "null"], "minLength": 1},
+    "class": {"description": "The class the call reached (IntegrationInfo.capability, as the action's result reports it); null where the integration named none, or names no classes.", "type": ["string", "null"], "minLength": 1},
+
+    "record": {
+      "description": "A rig run of one suite. Format 2 is what the rig writes: the devices each test reached. Format 1 is a markdown record converted once (device-classes plan, step 5b), with the run's devices on the record, not per test; it credits as the markdown did and is no sign-off.",
+      "type": "object",
+      "required": ["format", "integration", "action", "result", "date", "source", "home_assistant", "tests"],
+      "properties": {
+        "format": {"enum": [1, 2]},
+        "integration": {"$ref": "#/$defs/integration"},
+        "action": {"description": "The action the suite tests: its step file's `action`.", "$ref": "#/$defs/action"},
+        "options": {"description": "The step file's `options`, sorted; absent when it has none.", "type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}},
+        "result": {"description": "pass when every test passed or was skipped.", "enum": ["pass", "fail"]},
+        "date": {"$ref": "#/$defs/date"},
+        "source": {
+          "type": "object",
+          "required": ["kind", "commit"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {"description": "Who ran it: the rig (scripts/rig.py).", "const": "rig"},
+            "commit": {"description": "The deviceside commit the run tested.", "$ref": "#/$defs/commit"}
+          }
+        },
+        "package": {"description": "The git tree of integrations/<integration>/ at the run's commit, which check_release compares with the release's.", "type": "string", "pattern": "^[0-9a-f]{12,40}$"},
+        "home_assistant": {"description": "Home Assistant's version.", "type": "string", "minLength": 1},
+        "devices": {"description": "Format 1 only: the run's devices, in the order the record listed them.", "type": "array", "items": {"$ref": "#/$defs/record_device"}},
+        "tests": {"type": "array", "minItems": 1, "items": true}
+      },
+      "additionalProperties": false,
+      "if": {"properties": {"format": {"const": 1}}},
+      "then": {
+        "required": ["devices"],
+        "properties": {"tests": {"items": {"$ref": "#/$defs/test_v1"}}}
+      },
+      "else": {
+        "required": ["package"],
+        "not": {"required": ["devices"]},
+        "properties": {"tests": {"items": {"$ref": "#/$defs/test_v2"}}}
+      }
+    },
+
+    "record_device": {
+      "description": "Format 1: a device of the run, or a native group (its own entry, not its members).",
+      "type": "object",
+      "required": ["firmware"],
+      "additionalProperties": false,
+      "properties": {
+        "model": {"$ref": "#/$defs/model"},
+        "name": {"description": "The name HA's registry gave the model, where the record named one.", "type": "string", "minLength": 1},
+        "firmware": {"$ref": "#/$defs/firmware"},
+        "group": {"const": true}
+      },
+      "if": {"required": ["group"]},
+      "then": {"required": ["name"], "not": {"required": ["model"]}},
+      "else": {"required": ["model"], "properties": {"firmware": {"type": "string"}}}
+    },
+
+    "test_common": {
+      "type": "object",
+      "required": ["id", "role", "result"],
+      "properties": {
+        "id": {"description": "The case: `<test>[<role>]`, with ` observed` for a watched case.", "type": "string", "minLength": 1},
+        "domain": {"description": "The domain of the entity the case targeted; absent when it targeted none.", "type": "string", "pattern": "^[a-z_]+$"},
+        "role": {"description": "The profile role the case targets.", "type": "string", "pattern": "^[a-z_]+$"},
+        "result": {"description": "not observed: a watched case nobody watched.", "enum": ["pass", "fail", "skipped", "not observed"]},
+        "reason": {"description": "Why a skipped case didn't run, e.g. none in the profile.", "type": "string", "minLength": 1},
+        "fact": {"description": "A fact case (a watched case, or a firmware fact's): it runs only with --facts and its result is a row of _facts.json, so a record lists it skipped.", "const": true}
+      },
+      "allOf": [
+        {"if": {"required": ["reason"]}, "then": {"properties": {"result": {"const": "skipped"}}}},
+        {"if": {"required": ["fact"]}, "then": {"properties": {"result": {"const": "skipped"}}}}
+      ]
+    },
+
+    "test_v1": {
+      "description": "Format 1: a test as the markdown Tests table held it.",
+      "$ref": "#/$defs/test_common",
+      "unevaluatedProperties": false,
+      "properties": {
+        "classes": {"description": "The markdown's Capability cell: the classes a passing test reached (a group's members', each once), empty for a dash; absent when the record had no Capability column.", "type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+      }
+    },
+
+    "test_v2": {
+      "description": "Format 2: a test with the devices it reached. A test that ran lists them, and its domain; a skipped one lists none and says why, unless it is a fact case.",
+      "$ref": "#/$defs/test_common",
+      "unevaluatedProperties": false,
+      "properties": {
+        "group": {"description": "The target was a native group: devices are its members, each with its class.", "const": true},
+        "devices": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/test_device"}}
+      },
+      "if": {"properties": {"result": {"const": "skipped"}}},
+      "then": {
+        "not": {"anyOf": [{"required": ["devices"]}, {"required": ["group"]}]},
+        "anyOf": [{"required": ["reason"]}, {"required": ["fact"]}]
+      },
+      "else": {"required": ["domain", "devices"]}
+    },
+
+    "test_device": {
+      "type": "object",
+      "required": ["model", "firmware", "class"],
+      "additionalProperties": false,
+      "properties": {
+        "model": {"$ref": "#/$defs/model"},
+        "firmware": {"$ref": "#/$defs/firmware"},
+        "class": {"$ref": "#/$defs/class"}
+      }
+    },
+
+    "manual": {
+      "description": "_manual.json: a maintainer's hand tests, a row each, added in a PR. A row is a sign-off by its commit (docs/evidence.md, Release gate).",
+      "type": "object",
+      "required": ["format", "integration", "signoffs"],
+      "additionalProperties": false,
+      "properties": {
+        "format": {"const": 2},
+        "integration": {"$ref": "#/$defs/integration"},
+        "signoffs": {"type": "array", "items": {"$ref": "#/$defs/manual_row"}}
+      }
+    },
+
+    "manual_row": {
+      "description": "Either the devices tested, each with the class it reached, and the actions that passed on all of them (a row credits each class to each action, so split a row whose actions reached different classes), or a change that sends no new call: no_call_changed.",
+      "type": "object",
+      "required": ["date", "commit", "tester"],
+      "additionalProperties": false,
+      "properties": {
+        "date": {"$ref": "#/$defs/date"},
+        "commit": {"description": "The commit tested: on main or a release/ branch, holding the package as the release does.", "$ref": "#/$defs/commit"},
+        "tester": {"description": "A GitHub handle, without the @: one of the integration's maintainers or a repo maintainer.", "type": "string", "pattern": "^[A-Za-z0-9-]+$"},
+        "devices": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/manual_device"}},
+        "passed": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/action"}},
+        "no_call_changed": {"const": true}
+      },
+      "if": {"required": ["no_call_changed"]},
+      "then": {"not": {"anyOf": [{"required": ["devices"]}, {"required": ["passed"]}]}},
+      "else": {"required": ["devices", "passed"]}
+    },
+
+    "manual_device": {
+      "description": "A model id (docs/models.yaml, never a household's device name) and the class it reached.",
+      "type": "object",
+      "required": ["model", "class"],
+      "additionalProperties": false,
+      "properties": {
+        "model": {"$ref": "#/$defs/model"},
+        "class": {"$ref": "#/$defs/class"}
+      }
+    },
+
+    "facts": {
+      "description": "_facts.json: what the rig's fact cases found, dated, a row each; rows are only ever added, as each is a fact that stands until evidence contradicts it.",
+      "type": "object",
+      "required": ["format", "integration", "facts"],
+      "additionalProperties": false,
+      "properties": {
+        "format": {"const": 2},
+        "integration": {"$ref": "#/$defs/integration"},
+        "facts": {"type": "array", "items": {"$ref": "#/$defs/fact"}}
+      }
+    },
+
+    "fact": {
+      "type": "object",
+      "required": ["date", "suite", "test", "kind", "result", "devices"],
+      "additionalProperties": false,
+      "properties": {
+        "date": {"$ref": "#/$defs/date"},
+        "suite": {"description": "The suite's name (its record's file name): case ids repeat across suites.", "type": "string", "minLength": 1},
+        "test": {"description": "The case's id.", "type": "string", "minLength": 1},
+        "kind": {"description": "How the fact was seen: automated (a firmware fact's case that passed or failed) or observed (a watched case a person answered).", "enum": ["automated", "observed"]},
+        "result": {"enum": ["pass", "fail"]},
+        "devices": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/fact_device"}}
+      }
+    },
+
+    "fact_device": {
+      "description": "A device the case ran on. The rig writes its class; a row converted from markdown has none, and keeps the name its record gave the model.",
+      "type": "object",
+      "required": ["model", "firmware"],
+      "additionalProperties": false,
+      "properties": {
+        "model": {"$ref": "#/$defs/model"},
+        "name": {"type": "string", "minLength": 1},
+        "firmware": {"$ref": "#/$defs/firmware"},
+        "class": {"$ref": "#/$defs/class"}
+      }
+    }
+  }
+}

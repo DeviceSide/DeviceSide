@@ -1,0 +1,45 @@
+{
+  "format": 1,
+  "integration": "hue",
+  "action": "get_attributes",
+  "result": "pass",
+  "date": "2026-11-07",
+  "source": {
+    "kind": "rig",
+    "commit": "cbc2156"
+  },
+  "home_assistant": "2026.10.4",
+  "devices": [
+    {
+      "model": "LTA009",
+      "name": "Hue ambiance lamp",
+      "firmware": "1.163.1"
+    }
+  ],
+  "tests": [
+    {
+      "id": "works_after_a_reload[switch_plug]",
+      "role": "switch_plug",
+      "result": "skipped",
+      "reason": "none in the profile"
+    },
+    {
+      "id": "works_after_a_reload[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass"
+    },
+    {
+      "id": "refuses_while_disabled[switch_plug]",
+      "role": "switch_plug",
+      "result": "skipped",
+      "reason": "none in the profile"
+    },
+    {
+      "id": "refuses_while_disabled[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass"
+    }
+  ]
+}

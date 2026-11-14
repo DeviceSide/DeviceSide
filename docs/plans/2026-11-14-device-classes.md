@@ -249,6 +249,42 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      7. **Level:** `experimental(...)` until the lab run, then Verified for the class the record covers. The cards
         and `index.md` move the TS011F from Doesn't work.
      8. **Lab run:** the TS011F on Z2M, added to step 5's lab run.
+5b. **Test records, format 2 (Decision 27),** before the rest of step 5's lab run, so its records and the Shelly
+   house run are written in it. Branch `claude/device-classes-5b-records`, stacked on step 5, its own PR, paired
+   with a rig change (`Tests-with`).
+   - **JSON, one schema.** Every `test-records/` file (rig records, `_manual`, `_facts`) becomes `.json`, validated
+     in CI against `docs/test-records.schema.json`, the contract's one home; `docs/evidence.md` (Sign-off format)
+     describes it and points there. Cards and README stay markdown, generated as now.
+   - **A device per test.** Each test carries its devices (a group: its members), each with `model`, `firmware` and
+     `class` (`null` where the integration named none). The record-level device list goes. The cards list under each
+     class only the models that reached it, with their firmware; a manual row pairs each device with its class.
+   - **The Zigbee model ID** (the device's Basic-cluster model, e.g. `LWA012`) names a Zigbee device on every
+     integration, not Z2M's product code; firmware stays as each integration reports it.
+   - **`"format": 2`.** Existing markdown records convert once, by a script run in this step and then deleted, to
+     JSON `"format": 1`, which keeps their record-level devices and credits them as today, until each is rerun.
+     `check_release --signoffs` accepts only format 2.
+   - **The rig** writes format 2 when the target checkout has the schema file, else markdown as today, so it stays
+     compatible with `main`; it reads the Zigbee model ID (Z2M `bridge/devices` `model_id`, ZHA's device model, the
+     Hue bridge's `product_data.model_id`). Rig PR first, then this one, per the rig's CLAUDE.md.
+   - **Built** (branch `claude/device-classes-5b-records`):
+     - `docs/test-records.schema.json` (JSON Schema 2020-12, checked by `jsonschema`, now in the `dev` group) covers
+       the rig record (formats 1 and 2), `_manual.json` and `_facts.json`; `check_release.load` checks every read
+       against it, the file's name and its folder's integration, and `tests/scripts/test_records_schema.py` checks
+       every file in the repo. Beyond the sketch: `options` (the `-predicted_state` suites), a test's `role`,
+       `reason` and `fact` (a fact case, skipped in its record), `not observed` as a result, and `format` on
+       `_manual.json` and `_facts.json`.
+     - The converter (`scripts/convert_records.py`, in one commit, deleted in the next) turned all 45 records and
+       both `_facts.md` into JSON, dropping only what is derived (title, Ran counts, notes, the fact bullets, each
+       checked against `_facts.md`), and mapped Zigbee2MQTT's product codes to the Zigbee model IDs
+       `docs/models.yaml` pairs them with. Converted fact rows have no class and keep the model's name. The cards
+       came out identical; the evidence block differs only in its `.json` links and those IDs.
+     - `color_modes.md`, a probe with two rig cases and no action of its own, moved to Zigbee2MQTT's
+       `research/2026-10-28-color-modes.md`: it fit none of the three files, and as a non-rig file in
+       `test-records/` it kept Zigbee2MQTT's records from ever signing off.
+     - Format 2 crediting: a model counts toward Works when its own test passed on an unflagged domain and class; a
+       native group's test adds "native groups" (never its members' models, as the group's call isn't theirs) when
+       every member's class is unflagged. The evidence block lists a classed model with its class, on the row of the
+       level its class holds.
 6. **Core fix-ups** from step 5's run, before ZHA and Hue copy the pattern. If a package changes, its lab run is
    repeated.
    - **The harm rule moves to core (Decision 26):** a `harms` flag on `DoesntWork`, and the classifier answering
@@ -723,6 +759,9 @@ A package changed after its lab run needs that run again before the release. Non
     the entries whose call harms the class, and the classifier answers `None` for a target it can't place yet, which
     the dispatcher refuses as `class_unknown` on an adapter with a `harms` entry. Until then Z2M's `turn_on_for`
     applies it in `supports()`.
+27. **Test records become JSON, format 2 (step 5b):** a device per test with its class, the Zigbee model ID, a
+    format field, and one schema for rig records, `_manual` and `_facts`. Records are read only by code and Claude;
+    the cards are the human view.
 
 ## Handoff
 

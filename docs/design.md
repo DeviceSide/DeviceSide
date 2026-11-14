@@ -49,7 +49,7 @@ Code and docs use these terms.
 - **Caveat**: a risk mark on an adapter (`AdapterScope.caveat`, an issue URL), ⚠️ Untested fix or ⚠️ Unmaintained,
   set by a repo maintainer. It ships live; setup warns, its card shows the mark and the release notes say why. Rules:
   [evidence.md](evidence.md#caveats).
-- **Sign-off**: a whole passing rig run (every test record at one package tree) or a `_manual.md` line from one of an
+- **Sign-off**: a whole passing rig run (every test record at one package tree) or a `_manual.json` row from one of an
   integration's Maintainers (or a Repo maintainer when none responds), holding the package as the release does, which a
   release needs for each integration changed since the last tag. Rules: [evidence.md](evidence.md#release-gate).
 - **Experimental features**: the option (`experimental_features`, off by default) that lets calls touching a flagged
@@ -57,10 +57,11 @@ Code and docs use these terms.
 - **Rig**: a tool that tests DeviceSide's features automatically with real hardware on a live Home Assistant instance,
   and writes up the results as test records.
 - **Test record**: the evidence that an adapter works on real hardware, from a rig run:
-  `docs/integrations/<integration>/test-records/<action>*.md`. A maintainer's hand test goes in the same folder's
-  `_manual.md`, one line per run; either can be a sign-off ([release gate](evidence.md#release-gate)).
+  `docs/integrations/<integration>/test-records/<action>*.json` ([format](evidence.md#sign-off-format)). A
+  maintainer's hand test goes in the same folder's `_manual.json`, one row per run; either can be a sign-off
+  ([release gate](evidence.md#release-gate)).
 - **Device report**: a user's "works" or "doesn't work" for an action on a model, filed with the device report form;
-  the GitHub issue is its record. A maintainer who trusts a "works" report may cite it in a `_manual.md` line as a
+  the GitHub issue is its record. A maintainer who trusts a "works" report may cite it in a `_manual.json` row as a
   sign-off, which for an item no maintainer can test verifies it; a "doesn't work" is evidence for
   a fix or for leaving the item out.
 - **Profile**: one test setup on the rig's HA, the entities a run may move by integration and role; a record names the
@@ -258,6 +259,6 @@ workflow named.
   Shelly RPC, the Matter client, aiohue) against a real `hass`. The rig runs against a live HA and writes the test
   records.
 
-**Hardware the rig lacks:** a maintainer verifies by hand and signs off with a `_manual.md` line. After v0.1.0, a
+**Hardware the rig lacks:** a maintainer verifies by hand and signs off with a `_manual.json` row. After v0.1.0, a
 published rig kit lets maintainers run the rig on their own devices and commit attributed test records under
 `docs/integrations/<integration>/test-records/`.

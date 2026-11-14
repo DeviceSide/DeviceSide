@@ -1,0 +1,71 @@
+{
+  "format": 1,
+  "integration": "hue",
+  "action": "raise_brightness",
+  "options": [
+    "predicted_state"
+  ],
+  "result": "pass",
+  "date": "2026-11-08",
+  "source": {
+    "kind": "rig",
+    "commit": "8aae106"
+  },
+  "home_assistant": "2026.10.4",
+  "devices": [
+    {
+      "model": "LTA009",
+      "name": "Hue ambiance lamp",
+      "firmware": "1.163.1"
+    },
+    {
+      "name": "Zone",
+      "firmware": null,
+      "group": true
+    }
+  ],
+  "tests": [
+    {
+      "id": "holds_the_start_then_shows_the_end[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass"
+    },
+    {
+      "id": "holds_the_start_then_shows_the_end[group]",
+      "domain": "light",
+      "role": "group",
+      "result": "pass"
+    },
+    {
+      "id": "up_from_off_shows_the_dimmest[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass"
+    },
+    {
+      "id": "up_from_off_shows_the_dimmest[group]",
+      "domain": "light",
+      "role": "group",
+      "result": "pass"
+    },
+    {
+      "id": "ha_change_mid_fade_shows_at_once[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass"
+    },
+    {
+      "id": "ha_change_mid_fade_shows_at_once[group]",
+      "domain": "light",
+      "role": "group",
+      "result": "pass"
+    },
+    {
+      "id": "bridge_scene_recall_mid_fade_shows_at_once[group]",
+      "domain": "light",
+      "role": "group",
+      "result": "pass"
+    }
+  ]
+}

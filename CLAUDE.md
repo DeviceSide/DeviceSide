@@ -27,7 +27,7 @@ shared home named in parentheses.
 | A class's card phrase and section | `<x>/devices.yaml` |
 | Models across integrations | `docs/models.yaml` |
 | Dated sources, never edited after | `<x>/research/` |
-| Run evidence | `<x>/test-records/` |
+| Run evidence | `<x>/test-records/*.json`, in the shape `docs/test-records.schema.json` gives |
 | Why the code does something | the module docstring |
 | Rule evidence | the PR body |
 
@@ -70,7 +70,8 @@ Cutting, tagging and fixing RCs and releases: the `release` skill (`.claude/skil
 - Before each push: `.venv/bin/pytest` and `pre-commit run --all-files` (ruff and the household check).
 - Audits: as the global `## Code audits` rule says. The binding-rule surface that puts an Opus auditor on the PR
   audit is `docs/evidence.md`, the `experimental` flag and `AdapterScope`, `Level.DOCUMENTED`,
-  `scripts/check_release.py`, `docs/integrations/*/test-records/`, and rule text in `CLAUDE.md` or `docs/design.md`.
+  `scripts/check_release.py`, `docs/test-records.schema.json`, `docs/integrations/*/test-records/`, and rule text in
+  `CLAUDE.md` or `docs/design.md`.
 
 ## The rig
 
