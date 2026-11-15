@@ -7,8 +7,10 @@ command (zigbee-herdsman-converters src/lib/philips.ts); with it off, as ZCL com
   color first.
 - A brightness fade needs it off: sent native, a long raise runs about 2.3x faster than its transition, and a soft off
   reports `onOff: 0` at once while the bulb still fades.
+- A saturation fade needs it off: its color has no hue, which the native command turns to xy, so the fade would
+  run as MoveToColor, and jump at a stop.
 
-The rest work either way and leave it alone: a saturation fade holds its hue, and a stop, a hue move and a read or
+The rest work either way and leave it alone: a stop, a hue move and a read or
 write of settings pass on the rig with the option on and off.
 
 The option belongs to the user. An action that needs it the other way sets it, publishes, and puts the user's value
@@ -44,6 +46,8 @@ NEED: dict[str, bool] = {
     "turn_on_for": True,  # with a color; without one it works either way
     "raise_brightness": False,
     "lower_brightness": False,
+    "raise_saturation": False,  # native, Z2M turns a hueless color to xy
+    "lower_saturation": False,
 }
 _HUE_MANUFACTURER = "Philips"  # Z2M's vendor string for Hue, which HA's device registry shows
 _REPLY_CAP_S = 1.0

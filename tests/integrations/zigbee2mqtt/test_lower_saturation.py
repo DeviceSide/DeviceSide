@@ -1,4 +1,4 @@
-"""Zigbee2MQTT lower_saturation: a color at the current hue with the end saturation."""
+"""Zigbee2MQTT lower_saturation: a color with the end saturation and no hue (MoveToSaturation)."""
 
 import pytest
 
@@ -11,10 +11,10 @@ pytestmark = pytest.mark.usefixtures("setup_production", "clock")
 @pytest.mark.parametrize(
     ("data", "payload"),
     [
-        pytest.param({}, {"color": {"hue": 200.0, "saturation": 0.0}, "transition": 3.0}, id="to_white"),
+        pytest.param({}, {"color": {"saturation": 0.0}, "transition": 3.0}, id="to_white"),
         pytest.param(
             {"limit": 20, "sweep_time": 10},
-            {"color": {"hue": 200.0, "saturation": 20.0}, "transition": 4.0},
+            {"color": {"saturation": 20.0}, "transition": 4.0},
             id="to_a_limit",
         ),
     ],

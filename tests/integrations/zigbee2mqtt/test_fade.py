@@ -85,7 +85,7 @@ async def test_a_saturation_move_starts_from_its_prediction(hass, broker, clock)
 
     await call(hass, "lower_saturation", {"entity_id": entity_id})
 
-    assert commands(broker)[-1] == (SET, {"color": {"hue": 200.0, "saturation": 0.0}, "transition": 4.0})
+    assert commands(broker)[-1] == (SET, {"color": {"saturation": 0.0}, "transition": 4.0})
 
 
 async def test_an_empty_group_is_skipped(hass, broker):

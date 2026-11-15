@@ -64,6 +64,7 @@ def light(
     color_hs: bool = True,
     color: dict | None = None,
     manufacturer: str | None = None,
+    color_mode: str = "xy",
 ) -> str:
     """A Z2M color light HA lists with xy, whose definition exposes color_hs, answering color reads with COLOR."""
     name = entity_id.split(".")[1]
@@ -71,7 +72,7 @@ def light(
     entry = entries[0] if entries else z2m_entry(hass)
     attributes: dict = {"supported_color_modes": XY if modes is None else modes}
     if state == "on":
-        attributes |= {"brightness": brightness, "hs_color": hs}
+        attributes |= {"brightness": brightness, "hs_color": hs, "color_mode": color_mode}
     add_z2m_entity(
         hass, entry, entity_id, ieee=ieee, state=state, attributes=attributes, name=name, manufacturer=manufacturer
     )
