@@ -128,9 +128,9 @@ def _members(hass: HomeAssistant, group: Target, addresses: Iterable[str]) -> tu
                 )
             members[device.id] = replace(resolved[0], addressable=len(several) == 1)
             continue
-        # The first report of "my plug wasn't in the group's fallback" holds why.
+        # The first report of "my plug was skipped in the group's fallback" holds why.
         _LOGGER.debug(
-            "%s: a member device (%s) has no %s entity, so it is classed by its device and left out of any fallback",
+            "%s: a member device (%s) has no %s entity, so it is classed by its device and skipped by any fallback",
             group.entity_id,
             ", ".join(e.entity_id for e in own) or "no entities",
             group.domain,
@@ -141,6 +141,6 @@ def _members(hass: HomeAssistant, group: Target, addresses: Iterable[str]) -> tu
 
 def _stand_in(group: Target, device: dr.DeviceEntry) -> Target:
     """A member HA has no entity for in the group's domain, for its class alone: the group's own entity with the
-    member's device, not addressable and with no state, so the dispatcher never falls back to it or names it in a
-    group's member_capabilities, and member_lights leaves it out."""
+    member's device, not addressable and with no state, so the dispatcher never addresses it or names it in a
+    group's member_capabilities (a group that falls back skips it), and member_lights leaves it out."""
     return replace(group, device=device, state=None, via_group=group.entity_id, is_group=False, addressable=False)

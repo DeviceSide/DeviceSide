@@ -289,7 +289,7 @@ async def test_a_member_ha_has_no_light_for_is_classed_by_its_device(hass, setup
 
     classed = {member.entity_id: INTEGRATION.capability(hass, member) for member in members}
     # The plug's stand-in is the group's own entity, with its device, no state and not addressable, so no action
-    # reaches it, and the fallback (which takes only an available member) never addresses it.
+    # reaches it: a group that falls back skips it (not_addressable).
     assert classed == {"light.one": "hue", "light.two": "hue", entity_id: "tuya_ts011f"}
     assert [(member.state, member.addressable) for member in members if member.entity_id == entity_id] == [
         (None, False)

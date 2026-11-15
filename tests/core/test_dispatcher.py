@@ -132,7 +132,9 @@ async def test_an_experimental_field_is_gated_only_when_the_call_carries_it(hass
 
 def by_name(hass, target):
     """A class per light, from its object id: light.a is class "A"; light.pending_a is "A", not yet placed
-    (Unplaced); light.unknown is unnamed."""
+    (Unplaced); light.unknown is unnamed. A stand-in is classed by its device: device_e is "E"."""
+    if target.state is None and not target.addressable:
+        return target.device.id.removeprefix("device_").upper()
     name = target.entity_id.partition(".")[2]
     if name.startswith("pending_"):
         return Unplaced(name.removeprefix("pending_").upper())
@@ -1740,3 +1742,62 @@ async def test_an_own_call_group_whose_members_cant_be_addressed_alone_raises_th
         await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
 
     assert raised.value.reason == "not_addressable"
+
+
+def add_group_with_stand_ins(hass, fake, members, stand_ins):
+    """switch.fake_group, holding members and a stand-in per class in stand_ins (fake_integration, expand_group)."""
+    add_fake_entity(
+        hass,
+        fake,
+        "switch.fake_group",
+        attributes={"fake_members": members, "fake_stand_ins": stand_ins},
+        unique_id="group:switch.fake_group",
+    )
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_fallen_group_skips_a_stand_in_member(hass, fake, reset_script, caplog):
+    """A member device listed by a stand-in (#440's re-review: a plug in a Z2M light group) gets an entry saying the
+    call didn't reach it, though the group was named: not_addressable, or its class's refusal, named by the group it
+    is a member of, as its reported_id is the group's own."""
+    add_fake_entity(hass, fake, "switch.a")
+    add_group_with_stand_ins(hass, fake, ["switch.a"], ["e", "d"])
+
+    with patch.object(FakeTurnOffFor, "scope", OWN_CALL):
+        response = await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
+
+    assert response == {"switch.a": {"status": "sent", "integration": "fake", "capability": "A"}}
+    assert (
+        "skipped targets that can't take it: a member device of switch.fake_group (not_addressable),"
+        " a member device of switch.fake_group (doesnt_work)" in caplog.text
+    )
+    assert [ids for *_, ids in reset_script.calls] == [["switch.a"]]
+
+
+@pytest.mark.usefixtures("classed")
+async def test_an_own_call_group_whose_only_runnable_members_are_stand_ins_raises_their_reason(
+    hass, fake, reset_script
+):
+    """The stand-in's not_addressable, which says the call can't reach it, not own_call's, which reads as
+    temporary; the unavailable member gives no reason."""
+    add_fake_entity(hass, fake, "switch.a", state="unavailable")
+    add_group_with_stand_ins(hass, fake, ["switch.a"], ["e"])
+
+    with patch.object(FakeTurnOffFor, "scope", OWN_CALL), pytest.raises(TargetNotSupported) as raised:
+        await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
+
+    assert raised.value.reason == "not_addressable"
+    assert reset_script.calls == []
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_stand_in_is_judged_after_a_member_named_beside_its_group(hass, fake, reset_script, caplog):
+    """A stand-in's reported_id is its group's, which is seen as a target; the fallback still skips it."""
+    add_fake_entity(hass, fake, "switch.a")
+    add_group_with_stand_ins(hass, fake, ["switch.a"], ["e"])
+
+    with patch.object(FakeTurnOffFor, "scope", OWN_CALL):
+        response = await call(hass, "turn_off_for", {"entity_id": ["switch.fake_group", "switch.a"], "duration": 5})
+
+    assert response == {"switch.a": {"status": "sent", "integration": "fake", "capability": "A"}}
+    assert "a member device of switch.fake_group (not_addressable)" in caplog.text

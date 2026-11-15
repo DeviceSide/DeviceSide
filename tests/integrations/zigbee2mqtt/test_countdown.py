@@ -11,7 +11,7 @@ from custom_components.deviceside.core.scope import DurationLimits, Level, Unpla
 from custom_components.deviceside.integrations.zigbee2mqtt import INTEGRATION, classes, turn_on_for
 from custom_components.deviceside.integrations.zigbee2mqtt.turn_on_for import Z2MTurnOnFor
 
-from .conftest import DEVICES, SET, call, commands, group
+from .conftest import DEVICES, GROUPS, SET, call, commands, group
 from .test_set_check import answer, failure, live  # noqa: F401 - live is a fixture
 from ...conftest import allow_experimental, refusal
 from ...conftest import call as call_service
@@ -206,6 +206,26 @@ async def test_a_group_with_a_countdown_plug_falls_back_so_each_gets_its_own_cal
         (SET.replace(IEEE, "0x01"), {"state": "ON", "on_time": 5.0}),
         (SET.replace(IEEE, "0x02"), {"state": "ON", "countdown": 5}),
     ]
+
+
+async def test_a_light_group_skips_a_countdown_plug_it_shows_as_a_switch(hass, setup_production, broker, caplog):
+    """#440's re-review: a plug Z2M exposes as a switch is the group's stand-in, classed by its device, so the group
+    falls back for its countdown, and the plug, which no light entity addresses, gets a skip saying the call didn't
+    reach it, not silence while the lights take their timer."""
+    entity_id = group(hass, broker, one={}, two={})
+    entry = hass.config_entries.async_entries("mqtt")[0]
+    add_z2m_entity(hass, entry, "switch.plug", ieee="0x03", manufacturer="Tuya", model_id="TS011F_plug_1")
+    broker.retained[DEVICES].append(listed("0x03", LAB))
+    broker.retained[GROUPS][0]["members"].append({"ieee_address": "0x03"})
+
+    response = await call(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5})
+
+    assert set(response) == {"light.one", "light.two"}
+    assert sorted(commands(broker), key=lambda command: command[0]) == [
+        (SET.replace(IEEE, "0x01"), {"state": "ON", "on_time": 5.0}),
+        (SET.replace(IEEE, "0x02"), {"state": "ON", "on_time": 5.0}),
+    ]
+    assert f"skipped targets that can't take it: a member device of {entity_id} (not_addressable)" in caplog.text
 
 
 @pytest.mark.usefixtures("live")

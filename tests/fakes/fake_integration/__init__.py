@@ -1,6 +1,7 @@
 """Integration "fake": a generic integration with native groups whose members it can list."""
 
 from dataclasses import replace
+from types import SimpleNamespace
 
 from custom_components.deviceside.core.resolver import resolve
 from custom_components.deviceside.core.scope import AdapterScope, DurationLimits, IntegrationInfo, verified
@@ -19,10 +20,17 @@ def expand_group(hass, target):
     members = target.state.attributes.get("fake_members", []) if target.state else []
     # Members it can list but not address on their own (Target.addressable).
     unaddressable = target.state.attributes.get("fake_unaddressable", []) if target.state else []
+    # Member devices it has no entity for in the group's domain, each listed by a stand-in, as Zigbee2MQTT's
+    # members.py lists a plug in a light group: the group's own entity with the member's device (here, its class),
+    # no state, and not addressable.
+    stand_ins = target.state.attributes.get("fake_stand_ins", []) if target.state else []
     return [
         replace(t, addressable=m not in unaddressable)
         for m in members
         if not isinstance(t := resolve(hass, registry, m, target.entity_id), str)
+    ] + [
+        replace(target, device=SimpleNamespace(id=f"device_{c}"), state=None, is_group=False, addressable=False)
+        for c in stand_ins
     ]
 
 

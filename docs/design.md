@@ -205,7 +205,10 @@ runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, 
   target is planned on its own, indirect, so the good ones run and a refused or flagged one is skipped and logged (a
   member also named raises, as its own target). A member `expand_group` lists for its class but the integration can't
   address on its own (`Target.addressable` false: a Z2M device with several lights) is skipped, with its class's
-  refusal if it has one, else `not_addressable`, named by its device, and answers for nothing. While Experimental features is off, or where a call is known to harm, a
+  refusal if it has one, else `not_addressable`, named by its device, and answers for nothing. So is a stand-in (a
+  member device with no entity in the group's domain, listed by the group's own entity with no state: a plug in a
+  Z2M light group), named as a member device of the group, unavailable or not, so the device the group's call would
+  have reached gets an entry saying it didn't. Every member the fallback plans is indirect. While Experimental features is off, or where a call is known to harm, a
   classifier that raised (logged) leaves the group's class unknown, so it falls back too, and each member is classed
   again. With Experimental features on, a group whose weakest member is Experimental, or whose class is unknown where no
   call is known to harm, runs whole, as one command; a member named beside it then gets its own command as well as the

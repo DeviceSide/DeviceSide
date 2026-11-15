@@ -142,7 +142,9 @@ once every member is.
 `{"state": "ON", "countdown": N}`, N whole seconds from 1 to 43200 (`COUNTDOWN_LIMITS`; core rounds and clamps, and
 reports either in `clamped_to`). No `on_time` (it has no converter there, Tested behavior) and no state reads: the plug
 reports its state at expiry (probe P1, P2, P6, P7), and the time left can't be read, so the result is `sent`. A Z2M
-group's call carries `on_time`, so a group with such a plug falls back to its members (`AdapterScope.own_calls`).
+group's call carries `on_time`, so a group with such a plug falls back to its members (`AdapterScope.own_calls`). A
+plug Z2M exposes as a switch is the group's stand-in (`members._stand_in`), which no light entity addresses, so the
+fallback skips it (`not_addressable`).
 
 - **What Z2M sends.** `tuya.tz.on_off_countdown` (ZHC
   [`src/lib/tuya.ts#L3351-L3407`](https://github.com/Koenkk/zigbee-herdsman-converters/blob/afdaa028a0972d801da762196ddfb2df631ea0cc/src/lib/tuya.ts#L3351-L3407),

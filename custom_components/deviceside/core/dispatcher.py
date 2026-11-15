@@ -80,6 +80,20 @@ def _classed(result: EntityResult, target: Target, reached: Reached) -> EntityRe
     return replace(result, classes=classes[0])
 
 
+def _stand_in(member: Target) -> bool:
+    """A member listed for its class alone, with no entity of its own in the group's domain (Target.addressable): no
+    state to judge it by, and the group's own reported_id (zigbee2mqtt/members.py, _stand_in)."""
+    return not member.addressable and member.state is None
+
+
+def _device_of(member: Target) -> str:
+    """What an unaddressable member's skip is named by: its device, as the entity it is listed by may not be the one
+    the group holds, and a stand-in's is the group's own."""
+    if _stand_in(member):
+        return f"a member device of {member.reported_id}"
+    return f"the device of {member.reported_id}"
+
+
 def _skip(
     entity_id: str,
     named: bool,
@@ -116,8 +130,11 @@ def _unanswered(
         if any(member.addressable and member.reported_id in answered for member in members):
             continue
         if reason == Reason.OWN_CALL:
-            # An unaddressable member's skip names its device by it (_plan), so match that form too.
-            ids = {name for member in members for name in (member.reported_id, f"the device of {member.reported_id}")}
+            # An unaddressable member's skip names its device (_device_of), so match that form too; a stand-in's
+            # reported_id is the group's own, so only that form names it.
+            ids = {_device_of(member) for member in members} | {
+                member.reported_id for member in members if not _stand_in(member)
+            }
             details = [r.detail for r in skipped if r.entity_id in ids and r.status is Status.UNSUPPORTED and r.detail]
             reason = EXPERIMENTAL_OFF if EXPERIMENTAL_OFF in details else next(iter(details), reason)
         results += _skip(group.reported_id, group.named, reason, adapter.integration, why, title)
@@ -285,15 +302,13 @@ class Dispatcher:
             if not target.addressable:
                 # A member a group fell back to that the integration can't address on its own: the call could reach
                 # an entity the caller didn't target (Target.addressable). Its class's refusal comes first, so a
-                # member whose class harms says so. It stands for its whole device, listed by an entity that may not
-                # be the one the group holds, so the skip names the device by it, with no address.
+                # member whose class harms says so. It stands for its whole device, so the skip names the device
+                # (_device_of), with no address.
                 reason, why = adapter.scope.refusal(self._reached(adapter, target, None).classes) or (
                     Reason.NOT_ADDRESSABLE,
                     None,
                 )
-                results += _skip(
-                    f"the device of {target.reported_id}", target.named, reason, adapter.integration, why, title
-                )
+                results += _skip(_device_of(target), target.named, reason, adapter.integration, why, title)
                 continue
             if reason := adapter.supports(self.hass, reduced, target):
                 results += _skip(target.reported_id, target.named, reason, adapter.integration, title=title)
@@ -406,11 +421,17 @@ class Dispatcher:
 
     @staticmethod
     def _fallback(adapter: Adapter, group: Target, members: list[Target], seen: set[str], reason: str) -> list[Target]:
-        """The members a refused or class-flagged native group falls back to, marked seen: its available ones not
-        already targets, which a target already answers for."""
-        fresh = [member for member in members if _available(member.state) and member.reported_id not in seen]
+        """The members a refused or class-flagged native group falls back to, marked seen and indirect: its available
+        ones not already targets, which a target already answers for, and each stand-in (_stand_in), which _plan
+        skips, so the device the group's call would have reached gets an entry saying it didn't. A stand-in has no
+        state to judge it unavailable by, and its reported_id is the group's, so it is never seen."""
+        fresh = [
+            replace(member, named=False)
+            for member in members
+            if _stand_in(member) or (_available(member.state) and member.reported_id not in seen)
+        ]
         _LOGGER.debug("%s: %s falls back to its members (%s)", adapter.action, group.reported_id, reason)
-        seen.update(member.reported_id for member in fresh)
+        seen.update(member.reported_id for member in fresh if not _stand_in(member))
         return fresh
 
     def _expand_native_groups(
