@@ -100,9 +100,9 @@ that would leave it doing something you didn't ask for, and each card lists them
 ### Tuya TS011F
 
 A Zigbee plug whose timer runs only Tuya's way, so DeviceSide's timer can leave it off, or turn it on long after the
-time asked and leave it on. Tuya's own call would serve it, and isn't built yet. On Zigbee2MQTT, DeviceSide refuses
-turn on with timer on it until it builds that call. ZHA doesn't refuse it yet, so don't give one a timer there. What
-was measured: [internals](internals.md#tested-behavior).
+time asked and leave it on. Tuya's own call would serve it, and isn't built yet. On Zigbee2MQTT and ZHA, DeviceSide
+refuses turn on with timer on it, even with Experimental features on, until it builds that call. What was measured:
+[internals](internals.md#tested-behavior).
 
 ## Evidence
 
