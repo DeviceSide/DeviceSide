@@ -87,8 +87,9 @@ def _skip(
     why: str | None = None,
     title: str | None = None,
 ) -> list[EntityResult]:
-    """A target that can't take the action: raise if the caller named it (with `why`, a doesn't-work entry's reason,
-    and `title`, the integration's, which a class_unknown message names), else the result that skips it."""
+    """A target that can't take the action: raise if the caller named it (with `why`, a doesn't-work or not yet
+    supported entry's reason, and `title`, the integration's, which a class_unknown message names), else the result
+    that skips it."""
     if reason == Reason.EMPTY_GROUP:
         return []
     if named:

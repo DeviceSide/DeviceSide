@@ -142,7 +142,7 @@ def test_where_the_call_harms_a_class_one_not_yet_placed_is_refused(classes, rea
     assert scope.refusal(classes) == reason
 
 
-UNBUILT = NotSupported("Its timer isn't supported yet", "https://example.com/source", harms=True)
+UNBUILT = NotSupported("It would stay on", "https://example.com/source", harms=True)
 
 
 @pytest.mark.parametrize(
@@ -152,7 +152,7 @@ UNBUILT = NotSupported("Its timer isn't supported yet", "https://example.com/sou
         ((None,), (Reason.CLASS_UNKNOWN, None)),  # unnamed, or a group of unknown membership
         (("hue", Unplaced("hue")), (Reason.CLASS_UNKNOWN, None)),
         ((Unplaced("tuya_zcl"),), (Reason.CLASS_UNKNOWN, None)),
-        (("tuya_zcl",), (Reason.NOT_SUPPORTED, "Its timer isn't supported yet")),  # placed: with the reason
+        (("tuya_zcl",), (Reason.NOT_SUPPORTED, "It would stay on")),  # placed: with the reason
         (("tuya_mcu",), (Reason.NOT_SUPPORTED, None)),  # left out, with no entry
         (("hue",), None),
     ],
@@ -166,15 +166,15 @@ def test_a_not_supported_class_the_call_harms_refuses_one_not_yet_placed(classes
     assert scope.refusal(classes) == reason
 
 
-def test_a_not_supported_entry_states_whether_the_call_harms_and_stays_out_of_the_other_two():
+def test_a_not_supported_entry_harms_and_stays_out_of_the_other_two():
     with pytest.raises(TypeError):
-        NotSupported("Its timer isn't supported yet", "https://example.com/source")  # type: ignore[call-arg]
+        NotSupported("It would stay on", "https://example.com/source")  # type: ignore[call-arg]
     for other in ({"capabilities": verified("tuya_zcl")}, {"doesnt_work": {"tuya_zcl": BROKEN}}):
         with pytest.raises(ValueError, match="not_supported names classes"):
             AdapterScope(**{"capabilities": {}, **other}, not_supported={"tuya_zcl": UNBUILT})
-    harmless = AdapterScope(capabilities=verified("hue"), not_supported={"tuya_zcl": replace(UNBUILT, harms=False)})
-    assert not harmless.harms
-    assert harmless.refusal((Unplaced("hue"),)) is None
+    # An unharmed not yet supported class needs no entry: leaving it out refuses it the same way.
+    with pytest.raises(ValueError, match=r"not_supported entries \['tuya_zcl'\] don't harm"):
+        AdapterScope(capabilities=verified("hue"), not_supported={"tuya_zcl": replace(UNBUILT, harms=False)})
 
 
 def test_elsewhere_an_unplaced_class_is_the_class_it_names():

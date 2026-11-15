@@ -23,7 +23,7 @@ shared home named in parentheses.
 |---|---|
 | User-facing limits and device classes | `<x>/index.md` (shared: `docs/device-compatibility.md`) |
 | Wire calls, measurements, upstream defects | `<x>/internals.md` (shared: `docs/internals.md`, core HA: `docs/defects.md`) |
-| Classes, levels, doesn't-work entries | the package's code: `IntegrationInfo.classes` and the scopes (`scripts/gen_compat.py` regenerates the cards; entries not yet moved: `<x>/devices.yaml`, shared `docs/models.yaml`) |
+| Classes, levels, doesn't-work and not-yet-supported entries | the package's code: `IntegrationInfo.classes` and the scopes' `doesnt_work` and `not_supported` (`scripts/gen_compat.py` regenerates the cards; entries not yet moved: `<x>/devices.yaml`, shared `docs/models.yaml`) |
 | A class's card phrase and section | `<x>/devices.yaml` |
 | Models across integrations | `docs/models.yaml` |
 | Dated sources, never edited after | `<x>/research/` (shared: `docs/research/`) |
@@ -84,7 +84,7 @@ Cutting, tagging and fixing RCs and releases: the `release` skill (`.claude/skil
 ## The rig
 
 The rig, which drives the live HA and writes the records in `docs/integrations/<integration>/test-records/`, is a
-separate repo (jasonmx/ha-rig, now public) kept out of this one: no rig code or rig docs here. The rig's test plan, its
+separate repo (jasonmx/ha-rig, public) kept out of this one: no rig code or rig docs here. The rig's test plan, its
 step files, named for the action they test and landed with that action, has two homes: shared ones in `tests/rig/steps/`
 need a repo maintainer; an integration's own in `tests/integrations/<x>/rig/`, run on `<x>` alone, belong to its
 maintainers, and repo maintainers may adopt them into the shared files. Before adding a case, name what it catches that

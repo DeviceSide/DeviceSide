@@ -63,25 +63,25 @@ exercise, and that isn't Documented, ships behind `experimental` as untested. A 
 covers only what was exercised; it never signs off untested code.
 
 **Contrary evidence:** a credible report of a [harmful](#doesnt-work-not-yet-supported-untested) failure, upstream
-or a DeviceSide issue, on the call DeviceSide sends, lets an integration maintainer land a doesn't-work entry,
-`harms`, moving only the identity the report names (below), on the report alone, cited as its source; credibility is
-theirs to judge (tenet 7). As proof follows the call (tenet 5), the entry may cover every action that sends that call
-to that identity, such as `turn_on_for`, `set_auto_off` and `turn_off_for` where they send the same frame. The
-identity is the most specific one the report names that a class rule can key on: the model ID with the manufacturer
-string, and the firmware where that is what decides. On a report alone, a vendor name never moves: Hue's or IKEA's
-manufacturer string, or HA's registry manufacturer "Tuya", is never banned whole on one (Split off the exception, not
-the class, [below](#doesnt-work-not-yet-supported-untested)); a class rule keyed on a vendor rests on research, as
-Zigbee2MQTT's registry "Tuya" rule does (plan Decision 20). A credible harmful report naming only a vendor is "any
-other report" below: the maintainer root-causes it. A failure reported on a different call, an external converter's
-or another frame, is evidence about that call, not the device: Z2M #25434's `_TZ3000_dg7fdg92` failed under an
-external converter that sent a plain `onOff()`, so it stays Experimental, not banned (plan Decision 35). Where
-DeviceSide's own call harms a device that another call would serve, the harm rule holds instead
-([below](#doesnt-work-not-yet-supported-untested)): ZHA's `_TZ3000_typdpbpg` reads the spec's tenths as seconds, so
-it is not yet supported, with `harms`, until Tuya's recipe is built; the fix is the call, and the entry lifts when the
-call changes. A report that contradicts the
-identity's own passing record or manual row doesn't ban it by itself: the maintainer retests, or weighs the two. Any
-other report changes no level until a maintainer confirms it: they root-cause it, and the fix, the updated fact or a
-demotion lands with the finding ([plan Decision 68](plans/2026-11-14-device-classes.md)).
+or a DeviceSide issue, on the call DeviceSide sends, lets an integration maintainer land a doesn't-work or
+not-yet-supported entry with `harms`, by the definitions [below](#doesnt-work-not-yet-supported-untested), moving only
+the identity the report names, on the report alone, cited as its source; credibility is theirs to judge (tenet 7).
+Which label depends on whether a known call would serve the identity. ZHA's `_TZ3000_typdpbpg` reads the spec's
+tenths as seconds, and Tuya's recipe would serve it, so it is not yet supported, with `harms`: the fix is the call,
+and the entry lifts when the call changes. Zigbee2MQTT's `_TZ3000_gjnozsaz` fails the very call that serves its
+siblings, so it doesn't work, with `harms`. As proof follows the call (tenet 5), the entry may cover every action that
+sends that call to that identity, such as `turn_on_for`, `set_auto_off` and `turn_off_for` where they send the same
+frame. The identity is the most specific one the report names that a class rule can key on: the model ID with the
+manufacturer string, and the firmware where that is what decides. On a report alone, a vendor name never moves: Hue's
+or IKEA's manufacturer string, or HA's registry manufacturer "Tuya", is never banned whole on one (Split off the
+exception, not the class, [below](#doesnt-work-not-yet-supported-untested)); a class rule keyed on a vendor rests on
+research, as Zigbee2MQTT's registry "Tuya" rule does (plan Decision 20). A credible harmful report naming only a
+vendor is "any other report" below: the maintainer root-causes it. A failure reported on a different call, an external
+converter's or another frame, is evidence about that call, not the device: Z2M #25434's `_TZ3000_dg7fdg92` failed
+under an external converter that sent a plain `onOff()`, so it stays Experimental, not banned (plan Decision 35). A
+report that contradicts the identity's own passing record or manual row doesn't ban it by itself: the maintainer
+retests, or weighs the two. Any other report changes no level until a maintainer confirms it: they root-cause it, and
+the fix, the updated fact or a demotion lands with the finding ([plan Decision 68](plans/2026-11-14-device-classes.md)).
 
 *Example:* Shelly's `turn_on_for` and `turn_off_for` calls are Verified on the `Switch` and `RGBCCT` components and
 Documented on `Light`, `CCT`, `RGB` and `RGBW`: the same call, addressed to another component, which Shelly's API
@@ -109,9 +109,9 @@ decide the result together, so the class follows the vendor (Zigbee2MQTT: `hue`,
 - **One axis per integration.** An integration that names classes holds them in every adapter's scope, and only the
   classes it declares; one that names none holds them in none (the registry checks). A new integration names its
   classes, or its PR argues that it has one: that no known device behind it answers the same call differently.
-- **One fact, one home, in code.** Classes, levels and doesn't-work entries live in the integration's package, and
-  the cards are generated from them; where each piece goes is CLAUDE.md's
-  [Where facts go](../CLAUDE.md#where-facts-go).
+- **One fact, one home, in code.** Classes, levels, and doesn't-work (`doesnt_work`) and not-yet-supported
+  (`not_supported`) entries live in the integration's package, and the cards are generated from them; where each
+  piece goes is CLAUDE.md's [Where facts go](../CLAUDE.md#where-facts-go).
 - **Groups.** A native group takes the weakest level among its members' classes. One with a member that doesn't work
   or isn't supported, or a member whose class is Experimental while Experimental features is off (the adapter,
   domain and fields not flagged), falls back to its members, each judged on its own, when the integration can list
@@ -152,15 +152,15 @@ does any other. A not yet supported class that today's call leaves unharmed need
 - **Where a call is known to harm, a class not yet known is refused.** An adapter whose scope holds an entry with
   `harms`, doesn't work or not yet supported alike, refuses a target whose class rests on information DeviceSide
   doesn't have yet, even with Experimental features on: a group whose membership isn't listed, or a device not yet
-  placed (its identifying strings haven't been received, so they could still move it into a harmed class). A target DeviceSide
-  can't class at all is refused the same way. A group with a member not yet placed falls back to its members, so
-  only that member is refused. A device no rule matches gets the default class, and one placed there from full
-  information stays Experimental, as does every target of an action no class is harmed by (Unknown is flagged,
-  never Verified, above). The refusal is `class_unknown`; for a target not yet placed it clears once the integration
-  has reported what it lacked. How core applies it: [design.md](design.md#core-contract), Classes; when a device
-  counts as placed: each integration's page, as [Zigbee2MQTT's](integrations/zigbee2mqtt/index.md#device-classes).
-  ZHA, Hue and Matter mark their entries in steps 7 to 9 of the
-  [device classes plan](plans/2026-11-14-device-classes.md).
+  placed (its identifying strings haven't been received, so they could still move it into a harmed class). A
+  target DeviceSide can't class at all is refused the same way. A group with a member not yet placed falls back to
+  its members, so only that member is refused. A device no rule matches gets the default class, and one placed there
+  from full information stays Experimental, as does every target of an action no class is harmed by (Unknown is
+  flagged, never Verified, above). The refusal is `class_unknown`; for a target not yet placed it clears once the
+  integration has reported what it lacked. How core applies it: [design.md](design.md#core-contract), Classes; when a
+  device counts as placed: each integration's page, as
+  [Zigbee2MQTT's](integrations/zigbee2mqtt/index.md#device-classes). ZHA, Hue and Matter mark their entries in steps
+  7 to 9 of the [device classes plan](plans/2026-11-14-device-classes.md).
 
 A refused target raises when named and is skipped when it came indirectly, as `supports()` refusals do
 ([action-behavior.md](action-behavior.md)).
@@ -275,8 +275,9 @@ none.
 - **Coverage:** every module under `core/` and `integrations/`, bar `__init__.py`, needs at least 95% line coverage;
   CI checks it.
 
-*Example:* all five integrations changed since v0.0.1, so v0.1.0 needs five sign-offs. A passing Hue rig run whose
-package tree is the release's Hue package signs off Hue; an integration with no change would need none.
+*Example:* all six integrations, Control4 among them, changed since v0.0.1, so v0.1.0 needs six sign-offs. A passing
+Hue rig run whose package tree is the release's Hue package signs off Hue; an integration with no change would need
+none.
 
 ### Sign-off format
 

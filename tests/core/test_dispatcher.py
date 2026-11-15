@@ -202,7 +202,7 @@ async def test_a_class_that_doesnt_work_or_isnt_served_is_refused_and_none_is_ga
 HARMED = replace(CLASSED, doesnt_work={"D": DoesntWork("Plug D", "It stays on", "https://example.com/d", harms=True)})
 # The same rule from a not yet supported class today's call would harm (plan Decision 70).
 HARMED_UNSUPPORTED = replace(
-    CLASSED, not_supported={"C": NotSupported("Its timer isn't supported yet", "https://example.com/c", harms=True)}
+    CLASSED, not_supported={"C": NotSupported("It would stay on", "https://example.com/c", harms=True)}
 )
 
 
@@ -368,10 +368,11 @@ async def test_a_harmful_not_supported_entry_refuses_its_placed_class_with_why(h
     with patch.object(FakeTurnOffFor, "scope", HARMED_UNSUPPORTED), pytest.raises(TargetNotSupported) as raised:
         await call(hass, "turn_off_for", {"entity_id": "switch.c", "duration": 5})
 
+    assert raised.value.translation_key == "not_supported"  # its own message, which reads "yet"
     assert raised.value.translation_placeholders == {
         "entity_id": "switch.c",
         "reason": "not_supported",
-        "why": "Its timer isn't supported yet",
+        "why": "It would stay on",
     }
     assert reset_script.calls == []
 
@@ -381,8 +382,35 @@ async def test_a_harmful_entry_refuses_a_placed_class_that_doesnt_work_as_doesnt
     add_fake_entity(hass, fake, "switch.d")
     allow_experimental(hass)
 
-    with patch.object(FakeTurnOffFor, "scope", HARMED):
-        assert await refusal(hass, "turn_off_for", {"entity_id": "switch.d", "duration": 5}) == "doesnt_work"
+    with patch.object(FakeTurnOffFor, "scope", HARMED), pytest.raises(TargetNotSupported) as raised:
+        await call(hass, "turn_off_for", {"entity_id": "switch.d", "duration": 5})
+
+    assert raised.value.translation_key == "doesnt_work"
+    assert raised.value.translation_placeholders["why"] == "It stays on"
+
+
+@pytest.mark.usefixtures("classed")
+@pytest.mark.parametrize("on", [False, True])
+async def test_a_group_with_a_member_a_harmful_not_supported_entry_names_falls_back(
+    hass, fake, reset_script, caplog, on
+):
+    """Plan Decisions 8 and 70: the not yet supported member is skipped with its reason, and the rest sent, never the
+    group whole, which would reach it."""
+    members = ["switch.a", "switch.c", "switch.e"]
+    for member in members:
+        add_fake_entity(hass, fake, member)
+    add_fake_native_group(hass, fake, "switch.fake_group", members)
+    allow_experimental(hass, on)
+
+    with patch.object(FakeTurnOffFor, "scope", replace(HARMED_UNSUPPORTED, capabilities=verified("A", "E"))):
+        response = await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
+
+    assert response == {
+        "switch.a": {"status": "sent", "integration": "fake", "capability": "A"},
+        "switch.e": {"status": "sent", "integration": "fake", "capability": "E"},
+    }
+    assert [ids for *_, ids in reset_script.calls] == [["switch.a", "switch.e"]]
+    assert "turn_off_for skipped targets that can't take it: switch.c (not_supported)" in caplog.text
 
 
 @pytest.mark.usefixtures("classed")

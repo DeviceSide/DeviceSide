@@ -155,12 +155,15 @@ TURN_ON_FOR = verified(HUE) | experimental(OTHER, GLEDOPTO)
 # docs/plans/2026-11-15-tuya-datapoint-countdown.md). `harms`, so the dispatcher refuses a device not yet placed as
 # well, which could be one of them (plan Decision 26).
 _RESEARCH = "https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/"
-_STAYS_ON = "Its timer isn't supported yet: Zigbee2MQTT would turn it on with no timer, so it would stay on"
+# What the user reads after core's "can't take this action yet" (errors.py, the not_supported key).
+_STAYS_ON = "Zigbee2MQTT would turn it on with no timer, so it would stay on"
 TURN_ON_FOR_NOT_SUPPORTED = {
     # Measured (Decision 16), and matched by its model so every firmware inherits the refusal.
     TUYA_TS011F: NotSupported(reason=_STAYS_ON, source=_RESEARCH + "2026-11-14-lab-probe.md", harms=True),
     TUYA_ZCL: NotSupported(reason=_STAYS_ON, source=_RESEARCH + "2026-11-14-timed-on-call-patterns.md", harms=True),
-    TUYA_MCU: NotSupported(reason=_STAYS_ON, source=_RESEARCH + "2026-11-14-tuya-datapoint-countdown.md", harms=True),
+    # The harm today: a datapoint device's definition has no `on_time` converter either, so it gets a plain On
+    # (timed-on call patterns); the call that would serve it is the datapoint countdown (its research note).
+    TUYA_MCU: NotSupported(reason=_STAYS_ON, source=_RESEARCH + "2026-11-14-timed-on-call-patterns.md", harms=True),
 }
 
 

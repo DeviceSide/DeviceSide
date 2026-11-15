@@ -29,10 +29,11 @@ of the adapters with each `caveat` (⚠️ Unmaintained, then ⚠️ Untested fi
 - Experimental features: the classes held as `experimental(...)`, and the features of adapters flagged whole
   (`experimental=True`), whatever their evidence.
 - Not yet supported: the classes the integration declares (`IntegrationInfo.classes`) that an adapter holds in
-  neither its `capabilities` nor its `doesnt_work`, and so refuses; only those devices.yaml gives a phrase.
+  neither its `capabilities` nor its `doesnt_work`, and so refuses; only those devices.yaml gives a phrase. Then
+  docs/models.yaml's `not_supported` entries, by their `what`.
 - Doesn't work: the scopes' `doesnt_work`, with the features whose adapters list them, then devices.yaml's.
-  A scope's `not_supported` entry that harms (core/scope.py, NotSupported) is listed as not yet supported, as above;
-  the evidence block adds a table of them, with why and the source.
+  A scope's `not_supported` entry (core/scope.py, NotSupported, one today's call harms) is listed as not yet
+  supported, as above; the evidence block adds a table of them and of models.yaml's, with why and the source.
 Classes with the same features share an entry, and those of one page section a link. A model or blocker drops the
 integration's name where it leads, as the card's name already gives it. Cards show features, not fields: a flagged or
 Documented field shows on the integration's page and in the evidence block only.
@@ -50,13 +51,15 @@ record reaches on every run, `--check` included, and never fails here: `check_re
 the cut.
 
 **Data.** docs/models.yaml holds what integrations share: `models`, one entry per physical model (`name`, `ids` across
-integrations, `type`, optional `section`), and `doesnt_work` entries that name their `integrations`. Each bundle's
+integrations, `type`, optional `section`), and `doesnt_work` and `not_supported` entries that name their
+`integrations` (`what`, `reason`, `source`, optional `section`), a `not_supported` one for a device today's call
+harms on an integration that doesn't class it yet, as an unharmed one needs no entry. Each bundle's
 devices.yaml holds its integration's: `column` and `column_order` (the README feature table's, read by
 gen_features), `requires` (shown after the card's name), `capabilities` (a `phrase` and `section` per domain or
 class the scopes hold below Verified, and per class to name as not yet supported) and `doesnt_work` (`what`, `reason`,
 `source`, optional `section`: devices that fail the call DeviceSide sends, not what isn't built). A scope's
-`doesnt_work` (core/scope.py, DoesntWork) is the code's home for these, and joins them here; the devices.yaml and
-models.yaml entries move to it, class by class. Every integration needs a bundle.
+`doesnt_work` (core/scope.py, DoesntWork) and `not_supported` (NotSupported) are the code's home for these, and join
+them here; the devices.yaml and models.yaml entries move to them, class by class. Every integration needs a bundle.
 
 **Links.** A card links each model, class or blocker to the heading its `section` names (default: the model's
 `name`, the blocker's `what`): on the card's integration page when that has the heading; a model's or native groups'
@@ -143,7 +146,7 @@ CARDS_LEGEND = " · ".join(
 GITHUB = "https://github.com/"
 INTEGRATIONS_URL = "https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations.md"
 # The keys each devices.yaml entry may hold, so a typo fails instead of being ignored.
-SHARED_KEYS = {"models", "doesnt_work"}  # each a list
+SHARED_KEYS = {"models", "doesnt_work", "not_supported"}  # each a list
 BUNDLE_KEYS = {"column", "column_order", "requires", "capabilities", "doesnt_work"}
 MODEL_KEYS = {"name", "ids", "type", "section"}
 CLASS_KEYS = {"phrase", "section"}
@@ -172,6 +175,8 @@ class Data:
     models: dict[str, dict]  # by each of its ids
     capabilities: dict[str, dict[str, dict]]
     doesnt_work: list[dict]
+    # models.yaml's not yet supported devices today's call harms, on integrations whose code doesn't class them yet.
+    not_supported: list[dict] = field(default_factory=list)
     # Every heading an entry links to, with the integration whose card links it (None: any card, as for a model).
     sections: set[tuple[str | None, str]] = field(default_factory=set)
     # The heading anchors of each integration's page; a section on none of them is on PAGE.
@@ -218,6 +223,7 @@ def merge(shared: dict, bundles: dict[str, dict]) -> dict:
     need(shared, "docs/models.yaml", lists=tuple(sorted(SHARED_KEYS & set(shared))), keys=SHARED_KEYS)
     raw: dict = {"requires": {}, "capabilities": {}, "models": shared.get("models") or []}
     raw["doesnt_work"] = list(shared.get("doesnt_work") or [])
+    raw["not_supported"] = list(shared.get("not_supported") or [])
     for key, data in bundles.items():
         where = f"docs/integrations/{key}/devices.yaml"
         if extra := set(data) - BUNDLE_KEYS:
@@ -268,6 +274,8 @@ def load_raw(raw: dict, registry: AdapterRegistry) -> Data:
         load_broken(entry, set(registry.integrations), data)
     for entry, actions in code_broken(registry):
         load_broken(entry, set(registry.integrations), data, actions)
+    for entry in raw.get("not_supported") or []:
+        load_broken(entry, set(registry.integrations), data, kind="not_supported")
     return data
 
 
@@ -284,14 +292,13 @@ def code_broken(registry: AdapterRegistry) -> list[tuple[dict, set[str]]]:
 
 
 def code_unbuilt(key: str, integration_adapters: list, data: Data) -> list[dict]:
-    """The scopes' not_supported entries that harm (core/scope.py, NotSupported), each named by its class's
-    devices.yaml phrase, with the actions whose adapters list it, for the evidence block: the card lists the class as
-    not yet supported, as it does any other, and this keeps the harm's source. One per class, reason and source."""
+    """The scopes' not_supported entries (core/scope.py, NotSupported, each one today's call harms), each named by
+    its class's devices.yaml phrase, with the actions whose adapters list it, for the evidence block: the card lists
+    the class as not yet supported, as it does any other, and this keeps the harm's source. One per class, reason and
+    source."""
     found: dict[tuple, dict] = {}
     for adapter in integration_adapters:
         for name, entry in adapter.scope.not_supported.items():
-            if not entry.harms:
-                continue
             if not entry.source.startswith("https://"):
                 fail(f"not_supported {key} {name}: source must be an https URL")
             if not entry.reason:
@@ -320,25 +327,28 @@ def load_model(model: dict, data: Data) -> None:
     data.sections.add((None, model["section"]))
 
 
-def load_broken(entry: dict, known: set[str], data: Data, actions: set[str] | None = None) -> None:
-    """A doesnt_work entry validated, with the actions whose adapters list it when it comes from a scope."""
+def load_broken(
+    entry: dict, known: set[str], data: Data, actions: set[str] | None = None, kind: str = "doesnt_work"
+) -> None:
+    """A doesnt_work entry (or, with `kind`, a models.yaml not_supported one, of the same shape) validated, with the
+    actions whose adapters list it when it comes from a scope."""
     need(
         entry,
-        f"doesnt_work {entry.get('what') if isinstance(entry, dict) else entry!r}",
+        f"{kind} {entry.get('what') if isinstance(entry, dict) else entry!r}",
         ("what",),
         ("integrations",),
         BROKEN_KEYS,
     )
     if not str(entry.get("source", "")).startswith("https://"):
-        fail(f"doesnt_work {entry['what']!r}: source must be an https URL")
+        fail(f"{kind} {entry['what']!r}: source must be an https URL")
     if unknown := set(entry["integrations"]) - known:
-        fail(f"doesnt_work {entry['what']!r}: no integration {', '.join(sorted(unknown))}")
+        fail(f"{kind} {entry['what']!r}: no integration {', '.join(sorted(unknown))}")
     for key in ("reason", "source"):
         if not entry.get(key):
-            fail(f"doesnt_work {entry['what']!r} needs a {key}")
+            fail(f"{kind} {entry['what']!r} needs a {key}")
     entry.setdefault("section", entry["what"])
     data.sections.update((key, entry["section"]) for key in entry["integrations"])
-    data.doesnt_work.append({**entry, "actions": actions} if actions else entry)
+    getattr(data, kind).append({**entry, "actions": actions} if actions else entry)
 
 
 @dataclass(frozen=True)
@@ -605,7 +615,8 @@ def evidence(registry: AdapterRegistry, data: Data) -> str:
                 f"| {cell(entry['what'])}{actions(entry)} | {cell(entry['reason'])} | [source]({entry['source']}) |"
                 for entry in broken
             ]
-        if unbuilt := code_unbuilt(key, integration_adapters, data):
+        shared = [entry for entry in data.not_supported if key in entry["integrations"]]
+        if unbuilt := code_unbuilt(key, integration_adapters, data) + shared:
             parts += ["", "| Not yet supported, harmed by today's call | Why | Source |", "|---|---|---|"]
             parts += [
                 f"| {cell(entry['what'])}{actions(entry)} | {cell(entry['reason'])} | [source]({entry['source']}) |"
@@ -798,6 +809,11 @@ def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: 
     if flagged := {adapter.action for adapter in integration_adapters if adapter.scope.experimental}:
         result.lines["experimental"].append(", ".join(features(flagged)))
     result.lines["unsupported"] = class_entries(key, unsupported(key, info.classes, integration_adapters, data), data)
+    result.lines["unsupported"] += [
+        anchor(result.short(entry["what"]), data.url(key, entry["section"]))
+        for entry in data.not_supported
+        if key in entry["integrations"]
+    ]
     result.lines["no"] = []
     for entry in data.doesnt_work:
         if key in entry["integrations"]:

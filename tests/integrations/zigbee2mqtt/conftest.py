@@ -28,12 +28,10 @@ unload_mock_mqtt_entries = unload_mock_entries("mqtt")
 
 @pytest.fixture
 def harmless(monkeypatch):
-    """turn_on_for with its not_supported entries not marked as harming, for a test of its call alone on a group
-    bridge/groups doesn't list: the dispatcher otherwise refuses it as class_unknown (test_classes.py), and still
-    counts it as Experimental."""
-    scope = Z2MTurnOnFor.scope
-    entries = {name: replace(entry, harms=False) for name, entry in scope.not_supported.items()}
-    monkeypatch.setattr(Z2MTurnOnFor, "scope", replace(scope, not_supported=entries))
+    """turn_on_for without its not_supported entries, as if today's call harmed no class, for a test of its call
+    alone on a group bridge/groups doesn't list: the dispatcher otherwise refuses it as class_unknown
+    (test_classes.py), and still counts it as Experimental. The classes stay refused, left out of the scope."""
+    monkeypatch.setattr(Z2MTurnOnFor, "scope", replace(Z2MTurnOnFor.scope, not_supported={}))
 
 
 @pytest.fixture(autouse=True)

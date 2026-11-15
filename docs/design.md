@@ -32,9 +32,9 @@ Code and docs use these terms.
 - **Doesn't work**: a class no known call works on for an action, a device limit. Listed in the adapter's
   `AdapterScope.doesnt_work` with a reason and source, refused (`doesnt_work`) and named on the card.
 - **Not yet supported**: a class a known or plausible call would serve for an action, but that DeviceSide hasn't
-  built. The integration names it, the adapter's scope doesn't hold it, and it is refused (`not_supported`) and named
-  on the card. Where today's call would harm it, `AdapterScope.not_supported` lists it with a reason, a source and
-  `harms`.
+  built. The integration names it, the adapter's scope holds it in neither `capabilities` nor `doesnt_work`, and it is
+  refused (`not_supported`) and named on the card. It may sit in `AdapterScope.not_supported`, with a reason, a source
+  and `harms`, and does exactly when today's call would harm it.
 - **Field**: an action parameter, e.g. `brightness`.
 - **Entity domain**: light, switch. "Domain" alone is fine where unambiguous.
 - **Scope**: the entity domains, classes and fields an adapter is built for, each Verified, Documented or untested,
@@ -185,7 +185,8 @@ runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, 
   declare, and a scope holding `IntegrationInfo.default_class` (the class a device no rule matches gets; none on Shelly)
   as Verified. `AdapterScope.doesnt_work` maps a class to a `DoesntWork` (what, reason, source, and `harms`), and
   `AdapterScope.not_supported` a not yet supported class today's call would harm to a `NotSupported` (reason, source,
-  and `harms`); a class is in at most one of them and `capabilities`.
+  and `harms`, which must be true, as an unharmed one needs no entry); a class is in at most one of `capabilities`,
+  `doesnt_work` and `not_supported`.
 - **Resolver.** Candidates are the available integrations whose `ha_domain` is the entity's registry platform;
   one with a `detect` hook wins first (Z2M over plain MQTT). A `switch_as_x` light resolves to the switch it wraps,
   and results report the light.

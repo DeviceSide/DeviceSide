@@ -174,8 +174,9 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      cache's `bridge/groups`, so a group takes its members' classes and falls back to them (Decision 10).
    - **The default class in code (Decision 5):** an `IntegrationInfo` field naming the default class, which the
      registry refuses at Verified in any scope.
-   - **Lab run** on the branch tip, with the Sengled. It tests the classifier, the column, the coverage check, Works
-     credited per class, and the refusals. Fixture: the A60 on Z2M, then the Sengled E11-G13 on Z2M in its place.
+   - **Lab run** on the branch tip. It tests the classifier, the column, the coverage check, Works credited per
+     class, and the refusals. Fixture: the A60 on Z2M. The Sengled sits it out (Decision 77): no gate needs it, as
+     its classes are flagged or not yet supported.
    - **Part 1, done** (`claude/device-classes-5-z2m`): everything that needs no probe string. The classifier
      (`integrations/zigbee2mqtt/classes.py`), rules as data, with the `hue` rule alone (manufacturer `Philips`, the
      constant `native_control` reads too) and classes `hue` and `other`; `expand_group` from the bridge cache's
@@ -340,7 +341,12 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      `AdapterScope.not_supported`, counted by `AdapterScope.harms` and `refusal`; the Z2M Tuya entries moved there
      from `doesnt_work`; gen_compat's evidence block lists them with why and the source; evidence.md, design.md and
      action-behavior.md carry the two definitions.
-7. **ZHA.** The same shape. Lab run, with the Sengled.
+   - **#431's audit round** (Jason, 2026-11-15): `models.yaml` gains a shared `not_supported` list, as gen_compat
+     couldn't express a shared not-yet-supported `harms` entry, and ZHA's TS011F moves to it from `doesnt_work`, a
+     🚧 on the card, until step 7 moves it into ZHA's code; `AdapterScope` rejects `NotSupported(harms=False)`; a
+     `not_supported` refusal carries its own translation key; Decision 73 restated and `NO_PATH` made consistent;
+     Decision 77.
+7. **ZHA.** The same shape. Lab run, without the Sengled (Decision 77).
    - **No Tuya plug support in v0.1.0 (Decision 74).** ZHA's Tuya classes are not yet supported on `turn_on_for`,
      with `harms`, as today's 0x42 in tenths harms them. The Tuya recipe (a plain On, then 0x42 with N seconds in
      both fields) is parked for after v0.1.0; its findings stay in ZHA's `internals.md` and this plan.
@@ -362,7 +368,7 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      one unit signal Z2M gives.
 
 8. **Hue.** Classes `hue`, `other` and `smart_scene` (doesn't work, on `set_scene`). `other` is decided per action
-   (Decision 2). Lab run, with the Sengled on the bridge if it pairs.
+   (Decision 2). Lab run, without the Sengled (Decision 77).
    - **The v1 bridge is never supported (Decision 32),** and is refused in one place as a separate integration: a
      `detect` hook on the `hue` domain picks it for a v1 config entry (`api_version` 1), as the tenets' "a different
      gateway or API is a separate integration" says, not a `bridge_v1` class beside `hue` and `other`. Its refusal is
@@ -371,11 +377,13 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      without polling, and Signify ended its support in 2020
      ([research](../integrations/hue/research/2026-11-14-v1-api.md)).
 9. **Matter.** Lab run on the WiZ plug. `other` is Experimental on `turn_on_for`, and the WiZ plug Verified by the
-   rig on the real call (Decision 75).
+   rig on the real call (Decision 75). Until #436 applies Decision 75, Matter's `turn_on_for` still shows
+   Documented on the cards.
 10. **Close out.**
     - The house run: Shelly's switch devices, plus the color bulb unless it already ran in the lab.
     - Repeat any run on the list below.
-    - Remove `models.yaml`'s shared `doesnt_work`, regenerate the README, and tick TODO.
+    - Remove `models.yaml`'s shared entries (step 7 moves its last, ZHA's TS011F `not_supported`, into ZHA's code),
+      regenerate the README, and tick TODO.
     - Then, with Jason's go-ahead, comment on #350: the classes it will need to leave `experimental`, and what its
       manual records should note (the Director's driver or proxy type).
 
@@ -956,8 +964,10 @@ Decisions 36 to 45, 46 to 55 and 56 to 65 are reserved for steps 7, 9 and 8.
       [plan](2026-11-15-tuya-datapoint-countdown.md).
 68. **A report of a harmful failure moves the identity it names** ([evidence.md](../evidence.md#levels), Contrary
     evidence): a credible report of a harmful failure, upstream or a DeviceSide issue, on the call DeviceSide sends,
-    lets an integration maintainer land a doesn't-work entry, `harms`, moving only the identity the report names
-    (Scope, below), on the report alone, cited as its source; credibility is theirs to judge (tenet 7). The entry may
+    lets an integration maintainer land a doesn't-work or not-yet-supported entry with `harms`, by Decision 70's
+    definitions, moving only the identity the report names (Scope, below), on the report alone, cited as its source;
+    credibility is theirs to judge (tenet 7). Which label depends on whether a known call would serve the identity:
+    `_TZ3000_gjnozsaz` stays doesn't work, as it fails the very call that serves its siblings. The entry may
     cover every action that sends that call to that identity (tenet 5), such as `turn_on_for`, `set_auto_off` and
     `turn_off_for` where they send the same frame. A false "works" leaves a
     device on or off unattended; a false ban costs a refusal a later record lifts.
@@ -1007,8 +1017,8 @@ Decisions 36 to 45, 46 to 55 and 56 to 65 are reserved for steps 7, 9 and 8.
       that serves its siblings, so no known call works on it.
     - **Shelly:** no entry. A `Switch` component is left out of the dimming and `set_attributes` scopes, which a relay
       can't take; the card names it nowhere, so no label shows (gen_compat, `unsupported`).
-    - **Core:** no class entries of its own; `models.yaml`'s shared ZHA TS011F entry moves to ZHA's code in step 7,
-      as not yet supported with `harms` (Decision 74).
+    - **Core:** no class entries of its own; `models.yaml`'s shared ZHA TS011F entry is not yet supported with
+      `harms` (its `not_supported` list, #431's audit round), and moves to ZHA's code in step 7 (Decision 74).
     - Any class with no known working call stays doesn't work.
 72. **Step 5 part 3, reshaped for v0.1.0:** converter A only, TS011F-family plugs on Z2M, `turn_on_for` only, sent as
     Z2M's `countdown` key the way converter A does. Experimental for every converter A definition; Verified per maker
@@ -1016,15 +1026,24 @@ Decisions 36 to 45, 46 to 55 and 56 to 65 are reserved for steps 7, 9 and 8.
     (Decision 35). `_TZ3000_gjnozsaz` stays banned. Blocked on the countdown probe, P1 and P3 at least. Not built in
     this round: the plan text only (Steps, 5, Part 3).
 73. **Deferred to v0.1.x: the Tuya datapoint countdown class (Decision 67) and `turn_off_for` on Zigbee.**
-    `turn_off_for` becomes doable only for Tuya datapoint devices on Z2M, as their countdown toggles at zero; it uses
-    Decision 67's safe pattern (send OFF, wait for the report, then arm the countdown). Converter A's 0x42 is
-    On-With-Timed-Off, so it can't give `turn_off_for`, and every non-datapoint Zigbee device stays without it
-    (docs/integrations.md, What can't be done; `gen_features.NO_PATH` keeps Z2M groups and every ZHA target). Plan:
-    [2026-11-15-tuya-datapoint-countdown.md](2026-11-15-tuya-datapoint-countdown.md).
+    (Restated in #431's audit round, Jason, 2026-11-15.) `turn_off_for` is plausible on Tuya Zigbee devices, on ZHA
+    and Z2M alike: via the datapoint countdown, which toggles at zero (on Z2M its `countdown` key, on ZHA a raw 0xEF00
+    `dataRequest`), with Decision 67's safe pattern (send OFF, wait for the report, then arm the countdown); and
+    possibly via 0x42's toggle, which varies by firmware. Tuya ZCL firmware may toggle on 0x42 from off: Z2M #22182's
+    TS011F toggled after 150 s, from on or off
+    ([research](../integrations/zigbee2mqtt/research/2026-11-14-tuya-countdown.md)), and the lab probe's
+    `_TZ3000_typdpbpg` on ZHA switched on from off at the timer's end, while `_TZ3000_0zfrhq4i` ignores it from off
+    ([lab probe](../integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md)). Under Decision 70, plausible means
+    not yet supported, not impossible: `gen_features.NO_PATH` marks only Zigbee groups, whose call is the spec's, and
+    ZHA's and Z2M's lights and switches are blank, not built yet. Non-Tuya Zigbee devices still have no call for it,
+    as the spec's 0x42 turns on, then off; docs/integrations.md, What can't be done, says so in prose, as the cell no
+    longer can. Plan: [2026-11-15-tuya-datapoint-countdown.md](2026-11-15-tuya-datapoint-countdown.md), which holds
+    the 0x42 toggle as a probe question.
 74. **ZHA for v0.1.0: no Tuya plug support.** The reason is scope, not units: ZHA's recipe sends converter A's exact
     frames (a plain On, then 0x42 `{0, N, N}` in seconds), and dropping it removes a lab run and a code path from the
     critical path. ZHA's Tuya classes are not yet supported on `turn_on_for`, with `harms`. The recipe is parked for
-    after v0.1.0; the findings stay in ZHA's `internals.md` and this plan. Step 7 builds it on #435.
+    after v0.1.0; the findings stay in ZHA's `internals.md` and this plan. Step 7 builds the not-yet-supported
+    `harms` refusal on #435, not the recipe.
 75. **Matter: Decision 48's "Documented by certification" is withdrawn for `turn_on_for`.** Certification
     (TC-OO-2.3) tests OffWaitTime 300, and DeviceSide sends 1, so it isn't like for like. `other` is Experimental on
     `turn_on_for`, and the WiZ plug becomes Verified by the rig on the real call. `get_attributes` stays Documented
@@ -1032,6 +1051,16 @@ Decisions 36 to 45, 46 to 55 and 56 to 65 are reserved for steps 7, 9 and 8.
     carries it on #436, where Decision 48 and the basis live.
 76. **The rig is a separate public repo** (jasonmx/ha-rig): CLAUDE.md says so, and still keeps rig code and rig docs
     out of this one.
+
+## Decisions (Jason, 2026-11-15, #431's audit round)
+
+77. **Lab runs, sign-offs and the RC audit for v0.1.0.**
+    - **The Sengled sits out the lab runs** (steps 5, 7 and 8): no gate needs it, as its
+      classes are flagged or not yet supported.
+    - **Part 3 stays in v0.1.0,** as Decision 72 says, built after Jason's countdown probe.
+    - **Control4's sign-off waits for skialpine's `_manual.json` row;** it is the sixth of v0.1.0's sign-offs
+      (TODO.md, evidence.md's Release gate example).
+    - **The rc1 audit record is replaced** with base `b025363` once this stack lands (TODO.md, v0.1.0).
 
 ## Handoff
 

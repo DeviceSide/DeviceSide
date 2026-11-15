@@ -36,7 +36,8 @@ class Reason(StrEnum):
 class TargetNotSupported(ServiceNotSupported):
     """A target the caller named can't take the action: core's ServiceNotSupported, with our reason in it. A target
     refused for experimental_off gets a message of its own, saying how to let it through, and one whose class doesn't
-    work, or isn't supported and has an entry, a message carrying why (`why`, the entry's reason). One refused as
+    work, or isn't supported yet and has an entry, a message carrying why (`why`, the entry's reason), each under its
+    reason's own key (`doesnt_work`, `not_supported`; any other reason with a why reads as doesn't work). One refused as
     class_unknown gets one saying it clears once the integration (`integration`, its title, which the dispatcher always
     passes) has reported the device; without the title it gets the plain refusal, never an untranslated name."""
 
@@ -47,7 +48,9 @@ class TargetNotSupported(ServiceNotSupported):
         elif reason == Reason.CLASS_UNKNOWN and integration is not None:
             key, placeholders["integration"] = Reason.CLASS_UNKNOWN.value, integration
         elif why is not None:
-            key, placeholders["why"] = Reason.DOESNT_WORK.value, why
+            # A not yet supported class reads "yet"; a doesn't-work one doesn't, as no known call works on it.
+            key = Reason.NOT_SUPPORTED.value if reason == Reason.NOT_SUPPORTED else Reason.DOESNT_WORK.value
+            placeholders["why"] = why
         else:
             key = "target_not_supported"
         # Skips ServiceNotSupported.__init__, which would set core's own translation key.

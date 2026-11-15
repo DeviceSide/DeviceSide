@@ -14,8 +14,8 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
 
 ## To go
 
-- [x] **RC audit**: `/rc-audit v0.1.0rc1` over `967bec0..HEAD` (rc1 was never tagged), fixes landed (#316). A second
-  pass before the RC covers what lands after it.
+- [x] **RC audit**: `/rc-audit v0.1.0rc1` over `a518efe..a43bc1e`, in the four passes its record lists (rc1 was never
+  tagged), fixes landed (#316). A second pass before the RC covers what lands after it.
 - [x] **Docs sign-off** by the repo maintainers, before the freeze, as it may change the design: README,
   `CONTRIBUTING.md`, `docs/device-compatibility.md` and its "Help us test", `docs/integrations.md`, `docs/design.md`,
   `docs/action-behavior.md`; the GitHub issue flows end to end (`.github/ISSUE_TEMPLATE/`, and the options flow's
@@ -53,9 +53,11 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   - [ ] 5. Zigbee2MQTT classes, after the TS011F probe and the Tuya detection probe; the first default class, so
     `docs/device-compatibility.md` regains "and so does a device DeviceSide can't place in a known class"; rig rerun.
     Built on `claude/device-classes-5-z2m` (classes `hue`, `tuya_zcl`, `tuya_ts011f`, `tuya_mcu`, `sengled`,
-    `gledopto`, `other`; the Tuya classes' `doesnt_work` on `turn_on_for`, which refuses unknown; `other` Documented
-    on brightness fades and stop). Open until the lab run on
-    the branch tip, with the Sengled, which restores the card's Works line and clears the coverage warnings.
+    `gledopto`, `other`; the Tuya classes not yet supported on `turn_on_for`, with `harms`, which refuses unknown
+    (step 6); `other` Documented on brightness fades and stop). Open until the lab run on the branch tip, which
+    restores the card's Works line and clears the coverage warnings; the Sengled sits it out, as no gate needs it
+    (its classes are flagged or not yet supported). Part 3, the TS011F countdown (plan Decision 72), stays in v0.1.0,
+    built after Jason's countdown probe.
   - [x] 5b. Test records as JSON, format 2 (`docs/test-records.schema.json`): a device per test with its class,
     validated in CI; the markdown records converted to format 1, which `check_release --signoffs` rejects; the
     rig's paired change writes format 2.
@@ -67,7 +69,8 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   - [ ] 8. Hue classes, the `smart_scene` check moved to them, and the v1 bridge refused as a separate integration
     (plan Decision 32); rig rerun.
   - [ ] 9. Matter classes; manual or rig sign-off.
-  - [ ] 10. Close out: `models.yaml`'s shared `doesnt_work` removed, README regenerated, then the #350 comment.
+  - [ ] 10. Close out: `models.yaml`'s shared entries removed (step 7 moves ZHA's TS011F, its last, into ZHA's code),
+    README regenerated, then the #350 comment.
 - [ ] **TS011F refusal on ZHA and Z2M** (device-classes plan, Decisions 16 and 70): a not yet supported entry with
   `harms` for today's `turn_on_for` call, holding with Experimental on. Without it, ZHA's 0x42 in tenths switches a `_TZ3000_typdpbpg`
   plug on about 10× later than asked, and Z2M leaves the plug on with no timer
@@ -85,6 +88,7 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   `saturation_down_stop` and `sets_color_while_off`; Z2M `halts_a_lower_to_off`, `hue_cycle_stop`,
   `saturation_down_stop` and `sets_color_while_off`. Unattended alongside: Z2M `lower_hue`
   `cycles_down_the_wheel[group_color]` (#222).
+  - [ ] Control4: waits for skialpine's `_manual.json` row.
   - [ ] Hue
   - [ ] Matter
   - [ ] Shelly. Accepted until then: `check_release --signoffs` fails on Shelly's class coverage gaps, as its
@@ -95,7 +99,8 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   installs cleanly and before `cut-release`, so they describe what the RC ships.
 - [ ] **v0.1.0**: `/rc-audit` over the new range, the RC and its HACS install, then `cut-release` with every
   integration signed off (`check_release.py --signoffs`). The release steps are in the `release` skill; the release
-  body gets the signed-off notes.
+  body gets the signed-off notes. Once the device-classes stack lands, the rc1 audit record
+  (`docs/audits/v0.1.0rc1.md`) is replaced by a new one with base `b025363`.
 - [x] **Raise/lower rig run**: the six actions and `stop` on Hue and Z2M, rerun in the lab reruns (#297, #299).
 - [x] **Lab rerun**: the first lab run's failures fixed (#160–#163, #172) and rerun (#297, #299); the Z2M failures
   it found fixed by #302.

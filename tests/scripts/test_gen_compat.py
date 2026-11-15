@@ -879,6 +879,41 @@ def test_a_harmful_not_supported_entry_is_not_yet_supported_on_the_card_and_sour
     assert "| CCT controllers (`turn_off_for`, `turn_on_for`) | No timer yet | [source](https://x.y/z) |" in evidence
 
 
+@pytest.mark.parametrize(
+    ("name", "entry", "message"),
+    [
+        (
+            "CCT",
+            NotSupported("No timer yet", "http://x.y/z", harms=True),
+            "not_supported zha CCT: source must be an https",
+        ),
+        ("CCT", NotSupported("", "https://x.y/z", harms=True), "not_supported zha CCT needs a reason"),
+        ("Switch", NotSupported("No timer yet", "https://x.y/z", harms=True), "no entry for zha Switch, which a scope"),
+    ],
+    ids=["non_https_source", "empty_reason", "no_phrase"],
+)
+def test_a_scopes_not_supported_entry_needs_a_reason_an_https_source_and_a_phrase(root, name, entry, message):
+    scope = AdapterScope(capabilities=verified("Light"), not_supported={name: entry})
+    registry = classed_registry(adapter("zha", "turn_on_for", scope))
+    with pytest.raises(SystemExit, match=message):
+        gc.code_unbuilt("zha", list(registry._adapters), data(registry))
+
+
+def test_a_shared_not_supported_entry_is_not_yet_supported_on_its_cards_and_sourced_in_the_evidence(root):
+    """models.yaml's `not_supported`: a device today's call harms, on an integration that doesn't class it yet."""
+    shared = [{"what": "Old plug", "integrations": ["zha"], "reason": "It stays on", "source": "https://x.y/z"}]
+    registry = FakeRegistry(adapter("zha", "turn_on_for"))
+    found = data(registry, doesnt_work=[], not_supported=shared)
+    card = gc.card("zha", registry, list(registry._adapters), found)
+    assert card.lines["no"] == []
+    assert card.lines["unsupported"] == [f"[Old plug]({URL}#old-plug)"]
+    evidence = gc.evidence(registry, found)
+    assert "| Not yet supported, harmed by today's call | Why | Source |" in evidence
+    assert "| Old plug | It stays on | [source](https://x.y/z) |" in evidence
+    with pytest.raises(SystemExit, match="not_supported 'Old plug': source must be an https URL"):
+        data(registry, not_supported=[{**shared[0], "source": "x.y/z"}])
+
+
 def test_main_warns_on_each_coverage_gap_and_still_passes(root, capsys, monkeypatch):
     registry = classed_registry(adapter("zha", "stop", AdapterScope(capabilities=verified("Switch"))))
     run = write_files(root, registry, monkeypatch)

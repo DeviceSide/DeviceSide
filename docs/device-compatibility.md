@@ -97,14 +97,12 @@ A class of device that needs a command DeviceSide hasn't built yet. DeviceSide r
 that would leave it doing something you didn't ask for, and each card lists them. If you'd like one built,
 [propose it](../CONTRIBUTING.md#how-to-help).
 
-## Doesn't work
-
 ### Tuya TS011F
 
 A Zigbee plug whose timer runs only Tuya's way, so DeviceSide's timer can leave it off, or turn it on long after the
-time asked and leave it on. On Zigbee2MQTT, DeviceSide refuses turn on with timer on it until it builds Tuya's call.
-ZHA doesn't refuse it yet, so don't give one a timer there. What was measured:
-[internals](internals.md#tested-behavior).
+time asked and leave it on. Tuya's own call would serve it, and isn't built yet. On Zigbee2MQTT, DeviceSide refuses
+turn on with timer on it until it builds that call. ZHA doesn't refuse it yet, so don't give one a timer there. What
+was measured: [internals](internals.md#tested-behavior).
 
 ## Evidence
 
@@ -132,9 +130,9 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 | `turn_on_for` | Verified | light entities; brightness, color_temp_kelvin fields | `LWA012`, firmware `0x01002502`<br>`LTA009`, firmware `0x01002a00`<br>group | [record](integrations/zha/test-records/turn_on_for.json) |
 | `turn_on_for` | Experimental | switch entities | | |
 
-| Doesn't work | Why | Source |
+| Not yet supported, harmed by today's call | Why | Source |
 |---|---|---|
-| Tuya TS011F | Its timer isn't supported yet. DeviceSide's timer can leave it off, or turn it on long after the time asked and leave it on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md) |
+| Tuya TS011F | DeviceSide's timer can leave it off, or turn it on long after the time asked and leave it on; Tuya's own call would serve it, which isn't built | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md) |
 
 ### Zigbee2MQTT
 
@@ -166,9 +164,9 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 
 | Not yet supported, harmed by today's call | Why | Source |
 |---|---|---|
-| Tuya TS011F (`turn_on_for`) | Its timer isn't supported yet: Zigbee2MQTT would turn it on with no timer, so it would stay on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md) |
-| Tuya plugs and switches (`turn_on_for`) | Its timer isn't supported yet: Zigbee2MQTT would turn it on with no timer, so it would stay on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md) |
-| Tuya datapoint devices (`turn_on_for`) | Its timer isn't supported yet: Zigbee2MQTT would turn it on with no timer, so it would stay on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-tuya-datapoint-countdown.md) |
+| Tuya TS011F (`turn_on_for`) | Zigbee2MQTT would turn it on with no timer, so it would stay on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md) |
+| Tuya plugs and switches (`turn_on_for`) | Zigbee2MQTT would turn it on with no timer, so it would stay on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md) |
+| Tuya datapoint devices (`turn_on_for`) | Zigbee2MQTT would turn it on with no timer, so it would stay on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md) |
 
 ### Shelly
 

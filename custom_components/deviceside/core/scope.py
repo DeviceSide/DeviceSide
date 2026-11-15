@@ -90,10 +90,11 @@ class NotSupported:
     source, an https URL (scripts/gen_compat.py checks it); the dispatcher refuses it as `not_supported` with the
     reason, and the card lists it as not yet supported, as it does a class a scope leaves out.
 
-    `harms`, required as DoesntWork's is: with it, the adapter's call harms the class (When today's call harms a
-    class), so AdapterScope.refusal refuses a target that could still be in it as class_unknown, exactly as for a
-    DoesntWork entry with `harms`. A class today's call would leave unharmed needs no entry: leaving it out of the
-    scope refuses it the same way.
+    `harms`, required as DoesntWork's is: the adapter's call harms the class (When today's call harms a class), so
+    AdapterScope.refusal refuses a target that could still be in it as class_unknown, exactly as for a DoesntWork
+    entry with `harms`. It must be True, which AdapterScope checks: a class today's call would leave unharmed needs
+    no entry, as leaving it out of the scope refuses it the same way, and an entry saying so would be a second home
+    for that refusal.
     """
 
     reason: str
@@ -153,8 +154,8 @@ class AdapterScope:
     # Classes no known call works on, refused with why; never in capabilities. Per adapter, as one class can fail one
     # action's call and answer another's.
     doesnt_work: Mapping[str, DoesntWork] = field(default_factory=dict)
-    # Not yet supported classes the adapter's call would harm, refused with why; in neither of the above. Any other not
-    # yet supported class is simply left out.
+    # Not yet supported classes the adapter's call would harm, refused with why (each entry's harms is True); in neither
+    # of the above. Any other not yet supported class is simply left out.
     not_supported: Mapping[str, NotSupported] = field(default_factory=dict)
     confirmable: bool = False
     # DeviceSide options that change what the adapter does.
@@ -171,6 +172,10 @@ class AdapterScope:
             raise ValueError(f"doesnt_work names classes the scope serves: {sorted(both)}")
         if both := self.not_supported.keys() & ((self.capabilities or {}).keys() | self.doesnt_work.keys()):
             raise ValueError(f"not_supported names classes the scope serves or lists as doesn't work: {sorted(both)}")
+        if unharmed := sorted(name for name, entry in self.not_supported.items() if not entry.harms):
+            raise ValueError(
+                f"not_supported entries {unharmed} don't harm: an unharmed not yet supported class needs no entry"
+            )
         # Read-only copies: adapters share mappings such as Shelly's CAPABILITIES, and a frozen scope stays frozen.
         for name in ("domains", "fields", "capabilities", "doesnt_work", "not_supported"):
             if (items := getattr(self, name)) is not None:

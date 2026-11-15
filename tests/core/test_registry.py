@@ -10,7 +10,7 @@ import pytest
 
 from custom_components.deviceside import actions
 from custom_components.deviceside.core.registry import AdapterRegistry
-from custom_components.deviceside.core.scope import DoesntWork, Level, experimental, verified
+from custom_components.deviceside.core.scope import DoesntWork, Level, NotSupported, experimental, verified
 
 from ..conftest import FAKE_INTEGRATIONS
 from ..fakes.fake_integration import ADAPTERS, INTEGRATION, FakeTurnOffFor, FakeTurnOnFor
@@ -74,6 +74,7 @@ def test_adapter_for_unknown_action_is_refused():
 
 CLASSED = replace(INTEGRATION, capability=lambda hass, target: "hue", classes=frozenset({"hue", "tuya", "other"}))
 BROKEN = DoesntWork("Tuya plug", "It never switches on", "https://example.com/source", harms=False)
+UNBUILT = NotSupported("It would stay on", "https://example.com/source", harms=True)
 
 
 class Classed(FakeTurnOnFor):
@@ -91,6 +92,7 @@ def test_an_integration_naming_classes_needs_them_in_every_scope():
     [
         pytest.param(replace(FakeTurnOnFor.scope, capabilities=verified("hue")), id="capabilities"),
         pytest.param(replace(FakeTurnOnFor.scope, doesnt_work={"tuya": BROKEN}), id="doesnt_work"),
+        pytest.param(replace(FakeTurnOnFor.scope, not_supported={"tuya": UNBUILT}), id="not_supported"),
     ],
 )
 def test_an_integration_naming_no_classes_needs_them_in_no_scope(scope):
@@ -102,9 +104,10 @@ def test_an_integration_naming_no_classes_needs_them_in_no_scope(scope):
         _registry([Stray])
 
 
-def test_a_scope_holds_only_classes_its_integration_declares():
+@pytest.mark.parametrize("entries", [{"doesnt_work": {"tuya_zcl": BROKEN}}, {"not_supported": {"tuya_zcl": UNBUILT}}])
+def test_a_scope_holds_only_classes_its_integration_declares(entries):
     class Typo(FakeTurnOnFor):
-        scope = replace(Classed.scope, doesnt_work={"tuya_zcl": BROKEN})
+        scope = replace(Classed.scope, **entries)
 
     with pytest.raises(ValueError, match=r"doesn't declare \(IntegrationInfo.classes\): \['tuya_zcl'\]"):
         _registry([Typo], CLASSED)

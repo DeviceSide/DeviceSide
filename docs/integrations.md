@@ -33,10 +33,12 @@ measured on real bulbs, is in [internals.md](internals.md) and each integration'
 The README's prohibited signs mark these. Each is a limit of the device protocol or the bridge, not a feature
 waiting to be built.
 
-- **Turn off with timer on ZHA, Zigbee2MQTT and Matter.** The Zigbee and Matter timer command (`OnWithTimedOff`)
-  turns a device on, then off. There is no command for off, then on. The one exception is Tuya's datapoint devices
-  (model `TS0601`) on Zigbee2MQTT, whose own countdown toggles the device when it ends: DeviceSide plans to build
-  turn off with timer for them after v0.1.0.
+- **Turn off with timer on Zigbee groups and Matter, and on Zigbee devices other than Tuya's.** The Zigbee and
+  Matter timer command (`OnWithTimedOff`) turns a device on, then off. There is no command for off, then on, so
+  non-Tuya Zigbee lights and switches have no call for it either, though the README's table leaves their ZHA and
+  Zigbee2MQTT cells blank. Tuya's Zigbee devices may have one: Tuya's own countdown toggles the device when it ends,
+  and some Tuya firmware toggles on `OnWithTimedOff` from off too, though not all (one TS011F ignores it when off).
+  DeviceSide plans to probe and build turn off with timer for them after v0.1.0.
 - **Turn on or off with timer on Hue.** The bridge's own timers keep running through a plain on or off, from Home
   Assistant, the Hue app or a dimmer switch, and the Hue app doesn't show them. To time Hue bulbs, pair them with
   ZHA, Zigbee2MQTT or Matter.
