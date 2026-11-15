@@ -29,12 +29,12 @@ Code and docs use these terms.
   where a call is known to harm, which refuses it (`class_unknown`). Placed or not is apart from which rule matched:
   a device no rule matches is placed in the default class once the integration has reported it. Rules:
   [evidence.md](evidence.md#doesnt-work-not-yet-supported-untested).
-- **Doesn't work**: a class that fails, or is harmed by, the call DeviceSide sends for an action, even when an unbuilt
-  call would work. Listed in the adapter's
+- **Doesn't work**: a class no known call works on for an action, a device limit. Listed in the adapter's
   `AdapterScope.doesnt_work` with a reason and source, refused (`doesnt_work`) and named on the card.
-- **Not yet supported**: a class that needs a call DeviceSide hasn't built for an action, and that today's call
-  doesn't harm. The integration names it,
-  the adapter's scope doesn't hold it, and it is refused (`not_supported`) and named on the card.
+- **Not yet supported**: a class a known or plausible call would serve for an action, but that DeviceSide hasn't
+  built. The integration names it, the adapter's scope doesn't hold it, and it is refused (`not_supported`) and named
+  on the card. Where today's call would harm it, `AdapterScope.not_supported` lists it with a reason, a source and
+  `harms`.
 - **Field**: an action parameter, e.g. `brightness`.
 - **Entity domain**: light, switch. "Domain" alone is fine where unambiguous.
 - **Scope**: the entity domains, classes and fields an adapter is built for, each Verified, Documented or untested,
@@ -174,8 +174,8 @@ runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, 
   gets the default class; `None` is only for a target it can't class at all (a Shelly entity with no RPC component),
   which counts as Experimental. A device not yet [placed](#glossary), whose class a later report could move, gets its
   class as `Unplaced` (`core/scope.py`), a flag on the class: every adapter takes it as that class except one whose
-  scope holds a `doesnt_work` entry marked `harms` (its call acts wrong on that class), where the dispatcher refuses
-  it as `class_unknown`, as it does `None`, even with Experimental features on (the rule:
+  scope holds a `doesnt_work` or `not_supported` entry marked `harms` (its call harms that class), where the
+  dispatcher refuses it as `class_unknown`, as it does `None`, even with Experimental features on (the rule:
   [evidence.md](evidence.md#doesnt-work-not-yet-supported-untested)). A response leaves out an `Unplaced` class, as it
   does `None` ([action-behavior.md](action-behavior.md#what-a-response-looks-like)). Every adapter of the integration
   sees the same class, and maps the classes it serves to its own branch in `execute`; a class is a device class, not
@@ -183,8 +183,9 @@ runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, 
   `IntegrationInfo.classes` declares every class it can name. The registry refuses an integration with `capability`
   unless every adapter's scope has `capabilities`, one without unless none has, a scope class the integration doesn't
   declare, and a scope holding `IntegrationInfo.default_class` (the class a device no rule matches gets; none on Shelly)
-  as Verified. `AdapterScope.doesnt_work` maps a class to a `DoesntWork` (what, reason, source, and `harms`); a class
-  in it is never in `capabilities`.
+  as Verified. `AdapterScope.doesnt_work` maps a class to a `DoesntWork` (what, reason, source, and `harms`), and
+  `AdapterScope.not_supported` a not yet supported class today's call would harm to a `NotSupported` (reason, source,
+  and `harms`); a class is in at most one of them and `capabilities`.
 - **Resolver.** Candidates are the available integrations whose `ha_domain` is the entity's registry platform;
   one with a `detect` hook wins first (Z2M over plain MQTT). A `switch_as_x` light resolves to the switch it wraps,
   and results report the light.
@@ -213,9 +214,10 @@ runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, 
   an `expand_group` that answers `None` or raises (logged) leaves membership unknowable, so the group is refused as
   `group_not_supported`, as with none.
 - **Dispatcher.** Buckets targets by adapter, drops fields a target lacks, checks `supports()` (domain and fields in
-  scope, and the adapter's own reasons), then the class (`AdapterScope.refusal`: where a `doesnt_work` entry `harms`,
-  one `Unplaced` or `None` is refused as `class_unknown`; a class in `doesnt_work` is refused as `doesnt_work`, one
-  in neither it nor `capabilities` as `not_supported`; a call left nothing to send is first), clamps
+  scope, and the adapter's own reasons), then the class (`AdapterScope.refusal`: where a `doesnt_work` or
+  `not_supported` entry `harms`, one `Unplaced` or `None` is refused as `class_unknown`; a class in `doesnt_work` is
+  refused as `doesnt_work`, one in neither it nor `capabilities` as `not_supported`, with its `NotSupported.reason`
+  where it has an entry; a call left nothing to send is first), clamps
   durations to `AdapterScope.duration`, then runs every adapter concurrently under
   `ADAPTER_TIMEOUT_S`: `Adapter.slot` (which `gather` runs each target in) rejects with `timeout` only the targets
   not done by then, so those that finished keep their results. An adapter exception rejects its targets. A named

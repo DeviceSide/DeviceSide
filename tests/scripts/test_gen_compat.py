@@ -12,6 +12,7 @@ from custom_components.deviceside.core.scope import (
     Caveat,
     CaveatKind,
     DoesntWork,
+    NotSupported,
     documented,
     experimental,
     verified,
@@ -861,6 +862,21 @@ def test_a_scopes_doesnt_work_reaches_the_card_and_the_evidence_with_its_actions
     assert "| Old plug (`turn_off_for`, `turn_on_for`) | No timer | [source](https://x.y/z) |" in gc.evidence(
         registry, found
     )
+
+
+def test_a_harmful_not_supported_entry_is_not_yet_supported_on_the_card_and_sourced_in_the_evidence(root):
+    """Plan Decision 70: the card lists it as any not yet supported class; the evidence block keeps why and where."""
+    unbuilt = {"CCT": NotSupported("No timer yet", "https://x.y/z", harms=True)}
+    scope = AdapterScope(capabilities=verified("Switch"), not_supported=unbuilt)
+    adapters = (adapter("zha", "turn_on_for", scope), adapter("zha", "turn_off_for", scope))
+    registry = classed_registry(*adapters)
+    found = data(registry, doesnt_work=[])
+    card = gc.card("zha", registry, list(adapters), found)
+    assert card.lines["no"] == []
+    assert any(line.endswith("turn on with timer, turn off with timer") for line in card.lines["unsupported"])
+    evidence = gc.evidence(registry, found)
+    assert "| Not yet supported, harmed by today's call | Why | Source |" in evidence
+    assert "| CCT controllers (`turn_off_for`, `turn_on_for`) | No timer yet | [source](https://x.y/z) |" in evidence
 
 
 def test_main_warns_on_each_coverage_gap_and_still_passes(root, capsys, monkeypatch):

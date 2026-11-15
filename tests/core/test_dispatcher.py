@@ -21,6 +21,7 @@ from custom_components.deviceside.core.runtime import get_runtime
 from custom_components.deviceside.core.scope import (
     AdapterScope,
     DoesntWork,
+    NotSupported,
     Unplaced,
     documented,
     experimental,
@@ -196,18 +197,26 @@ async def test_a_class_that_doesnt_work_or_isnt_served_is_refused_and_none_is_ga
 
 
 # Where a call is known to harm, a class not yet known is refused (docs/evidence.md, Device classes): on an adapter
-# whose scope holds a harm-based doesnt_work entry, a target not yet placed is refused as class_unknown.
+# whose scope holds a harm-based doesnt_work or not_supported entry, a target not yet placed is refused as
+# class_unknown.
 HARMED = replace(CLASSED, doesnt_work={"D": DoesntWork("Plug D", "It stays on", "https://example.com/d", harms=True)})
+# The same rule from a not yet supported class today's call would harm (plan Decision 70).
+HARMED_UNSUPPORTED = replace(
+    CLASSED, not_supported={"C": NotSupported("Its timer isn't supported yet", "https://example.com/c", harms=True)}
+)
 
 
 @pytest.mark.usefixtures("classed")
+@pytest.mark.parametrize("scope", [HARMED, HARMED_UNSUPPORTED], ids=["doesnt_work", "not_supported"])
 @pytest.mark.parametrize("entity_id", ["switch.pending_a", "switch.unknown"])  # Unplaced, and None
 @pytest.mark.parametrize("on", [False, True])
-async def test_where_the_call_harms_a_class_one_not_yet_placed_is_refused(hass, fake, reset_script, entity_id, on):
+async def test_where_the_call_harms_a_class_one_not_yet_placed_is_refused(
+    hass, fake, reset_script, scope, entity_id, on
+):
     add_fake_entity(hass, fake, entity_id)
     allow_experimental(hass, on)
 
-    with patch.object(FakeTurnOffFor, "scope", HARMED), pytest.raises(TargetNotSupported) as raised:
+    with patch.object(FakeTurnOffFor, "scope", scope), pytest.raises(TargetNotSupported) as raised:
         await call(hass, "turn_off_for", {"entity_id": entity_id, "duration": 5})
 
     assert raised.value.translation_key == "class_unknown"
@@ -349,6 +358,22 @@ async def test_a_group_on_an_integration_that_names_no_classes_reports_none(hass
     response = await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
 
     assert response == {"switch.fake_group": {"status": "sent", "integration": "fake"}}
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_harmful_not_supported_entry_refuses_its_placed_class_with_why(hass, fake, reset_script):
+    add_fake_entity(hass, fake, "switch.c")
+    allow_experimental(hass)
+
+    with patch.object(FakeTurnOffFor, "scope", HARMED_UNSUPPORTED), pytest.raises(TargetNotSupported) as raised:
+        await call(hass, "turn_off_for", {"entity_id": "switch.c", "duration": 5})
+
+    assert raised.value.translation_placeholders == {
+        "entity_id": "switch.c",
+        "reason": "not_supported",
+        "why": "Its timer isn't supported yet",
+    }
+    assert reset_script.calls == []
 
 
 @pytest.mark.usefixtures("classed")

@@ -35,12 +35,12 @@ def check_classes(cls: type[Adapter], info: IntegrationInfo) -> None:
     which holds every device not yet placed, is never Verified: one maker's record proves nothing about the rest."""
     held = cls.scope.capabilities
     if info.capability is None:
-        if held is not None or cls.scope.doesnt_work:
+        if held is not None or cls.scope.doesnt_work or cls.scope.not_supported:
             raise ValueError(f"{cls.__name__} holds classes, but {info.key} names none (IntegrationInfo.capability)")
         return
     if held is None:
         raise ValueError(f"{cls.__name__}: {info.key} names classes, but its scope holds none (capabilities)")
-    if unknown := sorted((held.keys() | cls.scope.doesnt_work.keys()) - info.classes):
+    if unknown := sorted((held.keys() | cls.scope.doesnt_work.keys() | cls.scope.not_supported.keys()) - info.classes):
         raise ValueError(
             f"{cls.__name__} holds classes {info.key} doesn't declare (IntegrationInfo.classes): {unknown}"
         )

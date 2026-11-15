@@ -66,13 +66,13 @@ class Caveat:
 
 @dataclass(frozen=True, slots=True)
 class DoesntWork:
-    """A class that fails the call an adapter sends (docs/evidence.md, Doesn't work): what the card names, why it
+    """A class no known call works on, a device limit (docs/evidence.md, Doesn't work): what the card names, why it
     fails, and the source, an https URL (scripts/gen_compat.py checks it). The dispatcher refuses it, raising with
     the reason; the card lists it under Doesn't work.
 
     `harms`, which every entry states: whether the call's failure on the class is deferred and unattended, leaving it
     on or off unasked after the user stopped watching (a plug turned on that stays on), by docs/evidence.md's test,
-    When a doesn't-work entry harms: the timed and auto on/off actions, never dimming, color or a read. Where an
+    When today's call harms a class: the timed and auto on/off actions, never dimming, color or a read. Where an
     adapter's scope holds one such entry, a target that could still be in that class is refused too, even with
     Experimental features on (AdapterScope.refusal). Required, so no entry leaves the question unanswered by default.
     """
@@ -83,11 +83,29 @@ class DoesntWork:
     harms: bool = field(kw_only=True)
 
 
+@dataclass(frozen=True, slots=True)
+class NotSupported:
+    """A class not yet supported (docs/evidence.md, Not yet supported), declared because the adapter's call would
+    harm it: a call that would work is known or plausible, but isn't built. Why the user can't have it yet, and the
+    source, an https URL (scripts/gen_compat.py checks it); the dispatcher refuses it as `not_supported` with the
+    reason, and the card lists it as not yet supported, as it does a class a scope leaves out.
+
+    `harms`, required as DoesntWork's is: with it, the adapter's call harms the class (When today's call harms a
+    class), so AdapterScope.refusal refuses a target that could still be in it as class_unknown, exactly as for a
+    DoesntWork entry with `harms`. A class today's call would leave unharmed needs no entry: leaving it out of the
+    scope refuses it the same way.
+    """
+
+    reason: str
+    source: str
+    harms: bool = field(kw_only=True)
+
+
 class Unplaced(str):
     """A class IntegrationInfo.capability named from partial information (the integration hasn't reported all it
     will about the device), which could still move once it has. It is that class everywhere (it equals and hashes as
     the plain string, so a scope's levels and doesnt_work read it as they would), except where an adapter's call
-    harms a class (DoesntWork.harms): there AdapterScope.refusal refuses it as class_unknown, as it may be one.
+    harms a class (AdapterScope.harms): there AdapterScope.refusal refuses it as class_unknown, as it may be one.
 
     Why a flag on the class, not a class of its own or None: None is a permanent "can't class" (a Shelly entity with
     no RPC component, a classifier that raised, a group whose members can't be listed), weighed as Experimental, and
@@ -132,9 +150,12 @@ class AdapterScope:
     # the class, so each stands on its own evidence: a sibling's untested one is Experimental unless it is Documented.
     # A class the integration names in neither this nor doesnt_work is not yet supported, and refused.
     capabilities: Mapping[str, Level] | None = None
-    # Classes that fail this adapter's call, refused with why; never in capabilities. Per adapter, as one class can
-    # fail one action's call and answer another's.
+    # Classes no known call works on, refused with why; never in capabilities. Per adapter, as one class can fail one
+    # action's call and answer another's.
     doesnt_work: Mapping[str, DoesntWork] = field(default_factory=dict)
+    # Not yet supported classes the adapter's call would harm, refused with why; in neither of the above. Any other not
+    # yet supported class is simply left out.
+    not_supported: Mapping[str, NotSupported] = field(default_factory=dict)
     confirmable: bool = False
     # DeviceSide options that change what the adapter does.
     options: frozenset[str] = frozenset()
@@ -148,8 +169,10 @@ class AdapterScope:
         self._check_unlisted()
         if both := self.doesnt_work.keys() & (self.capabilities or {}).keys():
             raise ValueError(f"doesnt_work names classes the scope serves: {sorted(both)}")
+        if both := self.not_supported.keys() & ((self.capabilities or {}).keys() | self.doesnt_work.keys()):
+            raise ValueError(f"not_supported names classes the scope serves or lists as doesn't work: {sorted(both)}")
         # Read-only copies: adapters share mappings such as Shelly's CAPABILITIES, and a frozen scope stays frozen.
-        for name in ("domains", "fields", "capabilities", "doesnt_work"):
+        for name in ("domains", "fields", "capabilities", "doesnt_work", "not_supported"):
             if (items := getattr(self, name)) is not None:
                 object.__setattr__(self, name, MappingProxyType(dict(items)))
 
@@ -166,22 +189,25 @@ class AdapterScope:
 
     @property
     def harms(self) -> bool:
-        """Whether the adapter's call harms a class it could reach: a doesnt_work entry with DoesntWork.harms."""
-        return any(entry.harms for entry in self.doesnt_work.values())
+        """Whether the adapter's call harms a class it could reach: a doesnt_work or not_supported entry with harms."""
+        return any(entry.harms for entry in (*self.doesnt_work.values(), *self.not_supported.values()))
 
     def refusal(self, classes: Collection[str | None]) -> tuple[str, str | None] | None:
         """Why the scope refuses a target of these classes (a native group's: its members'), with the reason the user
         reads, or None. Where the call harms a class (`harms`), first `class_unknown` when one is Unplaced, or None
         (the integration couldn't name it, or a group's membership is unknown), as it could be the harmed class, with
         Experimental features on or off. Then `doesnt_work` and its DoesntWork.reason when one is listed as failing
-        the call, else `not_supported` when one is named but not served. Elsewhere None is no refusal: the gate
-        weighs it as Experimental, and an Unplaced class as the class it names."""
+        the call, else `not_supported` when one is named but not served, with its NotSupported.reason when it has an
+        entry. Elsewhere None is no refusal: the gate weighs it as Experimental, and an Unplaced class as the class it
+        names."""
         if self.capabilities is None:
             return None
         if self.harms and any(name is None or isinstance(name, Unplaced) for name in classes):
             return Reason.CLASS_UNKNOWN, None
         if broken := next((self.doesnt_work[name] for name in classes if name in self.doesnt_work), None):
             return Reason.DOESNT_WORK, broken.reason
+        if entry := next((self.not_supported[name] for name in classes if name in self.not_supported), None):
+            return Reason.NOT_SUPPORTED, entry.reason
         if any(name is not None and name not in self.capabilities for name in classes):
             return Reason.NOT_SUPPORTED, None
         return None
@@ -214,9 +240,9 @@ class IntegrationInfo:
     # Names a target's class (docs/evidence.md, Device classes): sync and cheap, no I/O, reading only the target's
     # registry entries, config entry or the integration's data. A device no rule matches gets the default class; one
     # it places from partial information, which a later report could move, its class as Unplaced; None only for a
-    # target it can't class at all. On an integration with a `harms` entry (DoesntWork.harms), a device no rule matches
-    # gets the default class, never None: core refuses None there as class_unknown, as it does Unplaced. None for an
-    # integration with one class, whose scopes then hold no capabilities.
+    # target it can't class at all. On an integration with a `harms` entry (AdapterScope.harms), a device no rule
+    # matches gets the default class, never None: core refuses None there as class_unknown, as it does Unplaced. None
+    # for an integration with one class, whose scopes then hold no capabilities.
     capability: Callable[[HomeAssistant, Target], str | None] | None = None
     # Every class capability() can name, so a scope's typo fails at registration and the cards name the classes an
     # adapter serves in neither its capabilities nor its doesnt_work as not yet supported.

@@ -75,9 +75,10 @@ Zigbee2MQTT's registry "Tuya" rule does (plan Decision 20). A credible harmful r
 other report" below: the maintainer root-causes it. A failure reported on a different call, an external converter's
 or another frame, is evidence about that call, not the device: Z2M #25434's `_TZ3000_dg7fdg92` failed under an
 external converter that sent a plain `onOff()`, so it stays Experimental, not banned (plan Decision 35). Where
-DeviceSide's own call harms a device, the harm rule holds instead ([below](#doesnt-work-not-yet-supported-untested)):
-ZHA's `_TZ3000_typdpbpg` reads the spec's tenths as seconds, so it stays doesn't work for that call until step 7
-ships Tuya's recipe; the fix is the call, and the entry lifts when the call changes. A report that contradicts the
+DeviceSide's own call harms a device that another call would serve, the harm rule holds instead
+([below](#doesnt-work-not-yet-supported-untested)): ZHA's `_TZ3000_typdpbpg` reads the spec's tenths as seconds, so
+it is not yet supported, with `harms`, until Tuya's recipe is built; the fix is the call, and the entry lifts when the
+call changes. A report that contradicts the
 identity's own passing record or manual row doesn't ban it by itself: the maintainer retests, or weighs the two. Any
 other report changes no level until a maintainer confirms it: they root-cause it, and the fix, the updated fact or a
 demotion lands with the finding ([plan Decision 68](plans/2026-11-14-device-classes.md)).
@@ -122,32 +123,36 @@ decide the result together, so the class follows the vendor (Zigbee2MQTT: `hue`,
 
 Three ways a class can't take an action, each shown differently on the cards:
 
-- **Doesn't work:** the class fails, or is harmed by, the call DeviceSide sends. The adapter's scope lists it in
-  `doesnt_work`, with what, why and a source; the dispatcher refuses it (`doesnt_work`), and the card lists it under
-  Doesn't work. It is per adapter, as one class can fail one action's call and answer another's.
-- **Not yet supported:** the class needs a call that isn't built. The integration names it, and the adapter's scope
-  holds it in neither `capabilities` nor `doesnt_work`. It is refused (`not_supported`) and listed as not yet supported.
+- **Doesn't work:** no known call works on the class: a device limit, which the label tells users not to ask
+  DeviceSide to build. The adapter's scope lists it in `doesnt_work`, with what, why and a source; the dispatcher
+  refuses it (`doesnt_work`), and the card lists it under Doesn't work. It is per adapter, as one class can fail one
+  action's call and answer another's.
+- **Not yet supported:** a call that would work on the class is known or plausible, but isn't built. The integration
+  names it, and the adapter's scope holds it in neither `capabilities` nor `doesnt_work`. It is refused
+  (`not_supported`) and listed as not yet supported.
 - **Untested:** the default call may work. The class is in scope as `experimental(...)` and runs behind the flag.
 
-A class that today's call harms (it acts wrong rather than refusing) is listed as doesn't work for that call, even when
-a call that isn't built would work on it. Not yet supported is for a class today's call can't serve but doesn't harm.
+Either refused label may carry `harms`, when today's call would harm the class (below): a doesn't-work entry states it
+(`DoesntWork.harms`), and a not yet supported class today's call would harm gets an entry of its own in the scope's
+`not_supported` (`NotSupported`, with why, a source and `harms`), which the card lists as not yet supported, as it
+does any other. A not yet supported class that today's call leaves unharmed needs no entry.
 
 - **Split off the exception, not the class.** When devices are known to depart from a class's call, a rule moves them
   into a class of their own, at the level their own evidence supports. The rest of the class keeps its level. The
   whole class drops a level only when no rule can tell the departing devices apart.
 - **Key a class on what decides the outcome:** the integration's routing where it picks the call, otherwise the
   device's identity.
-- **When a doesn't-work entry harms.** A failure harms when it is deferred and unattended: the device ends in an
+- **When today's call harms a class.** A failure harms when it is deferred and unattended: the device ends in an
   on or off state the user didn't ask for, after they've stopped watching, with no visible cue. So the timed and
   scheduled on/off actions harm when they fail (`turn_on_for`, `turn_off_for`, `set_auto_off`, `set_auto_on`,
   `clear_auto_off`, `clear_auto_on`); dimming and color (`raise_brightness`, `lower_brightness`, `raise_hue`,
   `lower_hue`, `raise_saturation`, `lower_saturation`), `stop`, `set_attributes` and `set_scene` don't, as a wrong
   result shows at once and one tap fixes it; and `get_attributes` only reads, so it never harms. Each `doesnt_work`
-  entry answers it (`DoesntWork.harms`, which has no default).
-- **Where a call is known to harm, a class not yet known is refused.** An adapter whose scope lists a class as
-  doesn't work because the call harms it refuses a target whose class rests on information DeviceSide doesn't have
-  yet, even with Experimental features on: a group whose membership isn't listed, or a device not yet placed (its
-  identifying strings haven't been received, so they could still move it into a harmed class). A target DeviceSide
+  and `not_supported` entry answers it (`harms`, which has no default).
+- **Where a call is known to harm, a class not yet known is refused.** An adapter whose scope holds an entry with
+  `harms`, doesn't work or not yet supported alike, refuses a target whose class rests on information DeviceSide
+  doesn't have yet, even with Experimental features on: a group whose membership isn't listed, or a device not yet
+  placed (its identifying strings haven't been received, so they could still move it into a harmed class). A target DeviceSide
   can't class at all is refused the same way. A group with a member not yet placed falls back to its members, so
   only that member is refused. A device no rule matches gets the default class, and one placed there from full
   information stays Experimental, as does every target of an action no class is harmed by (Unknown is flagged,
@@ -191,9 +196,9 @@ checks that evidence exists, not that it suffices (tenet 7), and it applies to i
 and only Hue bulbs in its records, `turn_on_for` can be Verified on `hue` alone; on `other` it is `experimental(...)`,
 so an IKEA or Innr bulb runs only with Experimental features on. A record on an IKEA bulb adds an `ikea` class,
 Verified on its own evidence, and `other` stays as it is. The Tuya classes, which Tuya's own countdown call drives but
-today's call leaves on (Zigbee2MQTT turns it into a plain on), are listed as doesn't work for today's call until the
+today's call leaves on (Zigbee2MQTT turns it into a plain on), are not yet supported, with `harms`, until the
 countdown call is built; the Sengled, which ignores today's call, needs a call that isn't built, so it is not yet
-supported.
+supported too, with no entry, as today's call leaves it unharmed.
 
 ## The experimental flag
 

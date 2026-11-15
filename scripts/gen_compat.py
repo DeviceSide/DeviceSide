@@ -31,6 +31,8 @@ of the adapters with each `caveat` (⚠️ Unmaintained, then ⚠️ Untested fi
 - Not yet supported: the classes the integration declares (`IntegrationInfo.classes`) that an adapter holds in
   neither its `capabilities` nor its `doesnt_work`, and so refuses; only those devices.yaml gives a phrase.
 - Doesn't work: the scopes' `doesnt_work`, with the features whose adapters list them, then devices.yaml's.
+  A scope's `not_supported` entry that harms (core/scope.py, NotSupported) is listed as not yet supported, as above;
+  the evidence block adds a table of them, with why and the source.
 Classes with the same features share an entry, and those of one page section a link. A model or blocker drops the
 integration's name where it leads, as the card's name already gives it. Cards show features, not fields: a flagged or
 Documented field shows on the integration's page and in the evidence block only.
@@ -278,6 +280,27 @@ def code_broken(registry: AdapterRegistry) -> list[tuple[dict, set[str]]]:
             entry = {"what": broken.what, "reason": broken.reason, "source": broken.source}
             key = (adapter.integration, *entry.values())
             found.setdefault(key, ({**entry, "integrations": [adapter.integration]}, set()))[1].add(adapter.action)
+    return list(found.values())
+
+
+def code_unbuilt(key: str, integration_adapters: list, data: Data) -> list[dict]:
+    """The scopes' not_supported entries that harm (core/scope.py, NotSupported), each named by its class's
+    devices.yaml phrase, with the actions whose adapters list it, for the evidence block: the card lists the class as
+    not yet supported, as it does any other, and this keeps the harm's source. One per class, reason and source."""
+    found: dict[tuple, dict] = {}
+    for adapter in integration_adapters:
+        for name, entry in adapter.scope.not_supported.items():
+            if not entry.harms:
+                continue
+            if not entry.source.startswith("https://"):
+                fail(f"not_supported {key} {name}: source must be an https URL")
+            if not entry.reason:
+                fail(f"not_supported {key} {name} needs a reason")
+            if name not in data.capabilities.get(key, {}):
+                fail(f"capabilities: no entry for {key} {name}, which a scope lists as not yet supported")
+            what = data.capabilities[key][name]["phrase"]
+            row = {"what": what, "reason": entry.reason, "source": entry.source, "actions": set()}
+            found.setdefault((name, entry.reason, entry.source), row)["actions"].add(adapter.action)
     return list(found.values())
 
 
@@ -581,6 +604,12 @@ def evidence(registry: AdapterRegistry, data: Data) -> str:
             parts += [
                 f"| {cell(entry['what'])}{actions(entry)} | {cell(entry['reason'])} | [source]({entry['source']}) |"
                 for entry in broken
+            ]
+        if unbuilt := code_unbuilt(key, integration_adapters, data):
+            parts += ["", "| Not yet supported, harmed by today's call | Why | Source |", "|---|---|---|"]
+            parts += [
+                f"| {cell(entry['what'])}{actions(entry)} | {cell(entry['reason'])} | [source]({entry['source']}) |"
+                for entry in unbuilt
             ]
         parts.append("")
     parts.append(EVIDENCE[1])
