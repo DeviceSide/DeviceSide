@@ -382,12 +382,13 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      `OnWithTimedOff` and the Matter server passes it through, so the endpoint's own On/Off server decides: the
      device's firmware, named by VendorID and ProductID, or on a bridge the bridge's software. The device type only
      picks the HA domain; the Lighting feature is the precondition `no_lt_feature` already checks. Certification
-     (TC-OO-2.3) tests the call on every Lighting device, but only with OffWaitTime 300, never DeviceSide's 0, the one
+     (TC-OO-2.3) tests the call on every Lighting device, but only with OffWaitTime 300, never DeviceSide's former 0, the one
      value matter.js before v0.17.2 never times off (it stays on). HA's registry holds none of VendorID, device types
      or clusters; the client's node cache does, sync.
    - **Built** (`claude/device-classes-9-matter`): `integrations/matter/classes.py`, rules on the node cache, first
-     match winning: `uncertified` (a test VendorID), `bridged` (an Aggregator endpoint), `wiz_plug` (4107/8979), and
-     `other`, the default. A node with no VendorID yet is `uncertified`, Unplaced; None with no node. The call sends OffWaitTime 1
+     match winning: `uncertified` (a test VendorID), `bridged` (an Aggregator or Bridged Node endpoint, Bridged
+     Device Basic Information, or a DeviceTypeList it can't read), `wiz_plug` (4107/8979), `multi_endpoint` (more
+     than one On/Off endpoint, as certification tests one; `experimental(...)` on both), and `other`, the default. A node with no VendorID yet is `uncertified`, Unplaced; None with no node. The call sends OffWaitTime 1
      (Decision 46). Levels: on `get_attributes`, `other` Documented by certification (Decision 48 as narrowed by
      Decision 75, the rule in `docs/evidence.md`, Levels) and `wiz_plug` Verified; on `turn_on_for`, every class
      `experimental(...)` until the WiZ rerun makes `wiz_plug` Verified (Decision 75); `bridged` and `uncertified`

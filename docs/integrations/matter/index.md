@@ -37,12 +37,17 @@ features on until the plug is tested with it again.
 
 ### Certified devices
 
-A device certified by the Connectivity Standards Alliance has passed a test of the timer reads that get attributes
-makes, so get attributes runs on it with Experimental features off. The certification test sends the timer command
+A device certified by the Connectivity Standards Alliance, with one on/off part, has passed a test of the timer reads
+that get attributes makes, so get attributes runs on it with Experimental features off. The certification test sends the timer command
 with other settings than DeviceSide's, so turn on with timer is untested and runs only with Experimental features on.
 DeviceSide counts a device as certified by its vendor ID, which an uncertified product from a registered vendor also
 carries: that is the case this can't catch. Like every Matter device here, it needs the On/Off cluster's Lighting
 feature.
+
+### Multi-outlet devices
+
+A certified device with more than one on/off part, such as a power strip or a two-gang switch. Certification tests
+one of its parts, and DeviceSide can't tell which, so both features run only with Experimental features on.
 
 ### Matter bridges
 

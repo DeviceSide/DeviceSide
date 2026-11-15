@@ -9,6 +9,7 @@ from custom_components.deviceside.core.scope import Level, Unplaced
 from custom_components.deviceside.integrations.matter import INTEGRATION
 from custom_components.deviceside.integrations.matter.classes import (
     BRIDGED,
+    MULTI_ENDPOINT,
     OTHER,
     UNCERTIFIED,
     WIZ_PLUG,
@@ -45,6 +46,11 @@ AGGREGATOR = {"1/29/0": [{"0": 14, "1": 1}], "2/29/0": [{"0": 19, "1": 1}, {"0":
         ({"0/40/2": 4874, "2/57/5": "a name"}, BRIDGED),  # Bridged Device Basic Information
         ({"0/40/2": 4874, "1/29/0": [266]}, BRIDGED),
         ({"0/40/2": 4874, "1/29/0": None}, BRIDGED),
+        # Certification tests one On/Off endpoint, so a device with more is untested beyond it.
+        ({"0/40/2": 4874, "1/6/65532": 1}, OTHER),
+        ({"0/40/2": 4874, "1/6/65532": 1, "2/6/65532": 1}, MULTI_ENDPOINT),
+        (WIZ | {"1/6/65532": 1, "2/6/65532": 1}, WIZ_PLUG),  # a measured product's own record covers it
+        ({"0/40/2": 4757, "1/6/65532": 1, "2/6/65532": 1} | AGGREGATOR, BRIDGED),
         ({}, UNCERTIFIED),  # no VendorID yet: the cautious class
         ({"0/40/2": "4874"}, UNCERTIFIED),
     ],
@@ -105,7 +111,7 @@ def test_levels():
     for adapter in (MatterTurnOnFor, MatterGetAttributes):
         held = adapter.scope.capabilities
         assert held.keys() == INTEGRATION.classes
-        assert held[BRIDGED] is held[UNCERTIFIED] is Level.EXPERIMENTAL
+        assert held[BRIDGED] is held[UNCERTIFIED] is held[MULTI_ENDPOINT] is Level.EXPERIMENTAL
         assert not adapter.scope.doesnt_work
     assert set(MatterTurnOnFor.scope.capabilities.values()) == {Level.EXPERIMENTAL}
     assert MatterGetAttributes.scope.capabilities[WIZ_PLUG] is Level.VERIFIED
@@ -142,13 +148,15 @@ BRIDGE_NODE = {"vendor_id": 4757, "attributes": AGGREGATOR}
     [
         (UNCERTIFIED_NODE, UNCERTIFIED, "get_attributes"),
         (BRIDGE_NODE, BRIDGED, "get_attributes"),
+        # A second On/Off endpoint beside the fixture's endpoint 1.
+        ({"vendor_id": 4874, "product_id": 80, "attributes": {"2/6/65532": 1}}, MULTI_ENDPOINT, "get_attributes"),
         # The timer call is untested on every class until the WiZ plug's rerun (plan Decision 75).
         (UNCERTIFIED_NODE, UNCERTIFIED, "turn_on_for"),
         (BRIDGE_NODE, BRIDGED, "turn_on_for"),
         ({}, WIZ_PLUG, "turn_on_for"),
         ({"vendor_id": 4874, "product_id": 80}, OTHER, "turn_on_for"),
     ],
-    ids=["uncertified-read", "bridged-read", "uncertified", "bridged", "wiz_plug", "other"],
+    ids=["uncertified-read", "bridged-read", "multi_endpoint-read", "uncertified", "bridged", "wiz_plug", "other"],
 )
 async def test_untested_classes_wait_for_experimental(hass, node, expected, action):
     """No Matter class is harmed by a call, so an untested one runs once Experimental features is on."""

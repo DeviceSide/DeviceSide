@@ -33,9 +33,15 @@ Read 2026-11-14, for the device classes (plan step 9). Sources at a commit: Home
   AcceptedCommandList (`<endpoint>/6/65529`, e.g. `[0, 1, 2, 64, 65, 66]`) lists `66` with it; nothing reads it, as
   the feature already says so.
 - **Certification** tests the command and the reads on every device with the feature: TC-OO-2.3 (PICS `OO.S.F00`)
-  sends `OnWithTimedOff` 15 times, reads OnTime and OnOff after each, and checks that the device turns off when OnTime runs out (step 24c reads OnOff false
+  sends `OnWithTimedOff` 15 times, reads OnTime and OnOff after each, on one configured endpoint (`endpoint: 1`), and checks that the device turns off when OnTime runs out (step 24c reads OnOff false
   after 40 s), always with OffWaitTime 300, never 0
-  ([`Test_TC_OO_2_3.yaml`](https://github.com/project-chip/connectedhomeip/blob/c55ddad4480afad31f249af5356c16e8b53416c6/src/app/tests/suites/certification/Test_TC_OO_2_3.yaml)). So certification
+  ([`Test_TC_OO_2_3.yaml`](https://github.com/project-chip/connectedhomeip/blob/c55ddad4480afad31f249af5356c16e8b53416c6/src/app/tests/suites/certification/Test_TC_OO_2_3.yaml)). The same steps, reads and
+  values are in the Matter 1.0 test
+  ([`v1.0.0`](https://github.com/project-chip/connectedhomeip/blob/561d23d0db215a99705ff0696e73853c8edf11b2/src/app/tests/suites/certification/Test_TC_OO_2_3.yaml)),
+  so every certified Lighting device passed them. PICS are per endpoint, but nothing found says a lab runs the test
+  on every On/Off endpoint of a device: the question is open upstream
+  ([esp-matter #1921](https://github.com/espressif/esp-matter/issues/1921)). So the basis covers a device with one
+  On/Off endpoint, and one with more is `multi_endpoint`. So certification
   covers DeviceSide's reads of OnTime and OnOff, which carry no field values, but not its command, whose OffWaitTime
   is 1 (plan Decision 75; docs/evidence.md, Levels). In the reference server OffWaitTime branches only as zero or not
   (`HandleOnWithTimedOff`), so 1 likely acts as 300 does, but that is inference, not a test. It clears OffWaitTime when

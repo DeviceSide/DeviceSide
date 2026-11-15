@@ -57,12 +57,14 @@ item ships only behind `experimental`.
   known class of devices departs. Unit tests pin the payload. A field is never Documented, because it changes the
   call. The PR that claims Documented argues the sibling case, and review checks it. A bug on the Verified sibling
   reopens its Documented siblings in the same fix.
-  A read is also Documented on a class when a certification tests that read on every certified device, the class's
-  rule keys on a marker every certified device carries and the known uncertified sources don't, and no known member
-  departs: a read carries no field values, so the read certification sends is the one DeviceSide sends. A command
-  isn't covered this way, as the test's field values are its own: Matter's TC-OO-2.3 sends the timer command with
-  OffWaitTime 300, DeviceSide with 1, so the timer call stays untested on certified devices (plan Decision 75). The PR
-  names the marker and what slips past it (Matter: certified devices, by a non-test VendorID, whose TC-OO-2.3 reads
+  A read is also Documented on a class when a certification tests that read on every certified device DeviceSide
+  sends it to, the class's rule keys on a marker every such device carries and the known uncertified sources don't,
+  and no known member departs: a read carries no field values, so the read certification sends is the one DeviceSide
+  sends. A write or command isn't covered this way, as the test's field values are its own: Matter's TC-OO-2.3 sends
+  the timer command with OffWaitTime 300, DeviceSide with 1, so the timer call stays untested on certified devices
+  (plan Decision 75). Where the test runs on one part of a device (Matter: one configured endpoint), the class holds
+  only devices with that one part. The PR names the marker and what slips past it (Matter: certified devices with
+  one On/Off endpoint and the Lighting feature, which `no_lt_feature` checks, by a non-test VendorID; TC-OO-2.3 reads
   OnTime and OnOff, [internals](integrations/matter/internals.md#what-decides-the-call)).
 
 Nothing ships unflagged unless it is Verified or Documented. Built and unit-tested code that the maintainer can't
@@ -163,8 +165,8 @@ does any other. A not yet supported class that today's call leaves unharmed need
   target DeviceSide can't class at all is refused the same way. A group with a member not yet placed falls back to
   its members, so only that member is refused. A device no rule matches gets the default class, and one placed there
   from full information isn't refused but runs at its class's level, as does every target of an action no class is
-  harmed by (Unknown is flagged, never Verified, above). The refusal is `class_unknown`; for a target not yet placed it clears once the
-  integration has reported what it lacked. How core applies it: [design.md](design.md#core-contract), Classes; when a
+  harmed by (one it can't class, as Experimental; Unknown is flagged, never Verified, above). The refusal is
+  `class_unknown`; for a target not yet placed it clears once the integration has reported what it lacked. How core applies it: [design.md](design.md#core-contract), Classes; when a
   device counts as placed: each integration's page, as
   [Zigbee2MQTT's](integrations/zigbee2mqtt/index.md#device-classes). ZHA, Hue and Matter mark their entries in steps
   7 to 9 of the [device classes plan](plans/2026-11-14-device-classes.md).

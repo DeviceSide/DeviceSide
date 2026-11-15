@@ -87,11 +87,9 @@ The compatibility section below shows which devices are known or likely to work.
 
 **[Matter](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/matter/index.md)** · maintained by [@jasonmx](https://github.com/jasonmx)
 
-- 🟡 [lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/matter/index.md#matter-lights): turn on with timer, get attributes
-- 🟡 [certified Matter devices](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/matter/index.md#certified-devices): get attributes
-- 🟡 [plugs](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/matter/index.md#certified-devices): turn on with timer
-- 🧪 [devices behind a Matter bridge](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/matter/index.md#matter-bridges), [uncertified Matter devices](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/matter/index.md#uncertified-devices): turn on with timer, get attributes
-- 🧪 [WiZ Smart Plug](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/matter/index.md#wiz-smart-plug), [certified Matter devices](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/matter/index.md#certified-devices): turn on with timer
+- 🟡 [lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/matter/index.md#matter-lights), [certified Matter devices](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/matter/index.md#certified-devices): get attributes
+- 🧪 [multi-outlet Matter devices](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/matter/index.md#multi-outlet-devices), [devices behind a Matter bridge](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/matter/index.md#matter-bridges), [uncertified Matter devices](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/matter/index.md#uncertified-devices): turn on with timer, get attributes
+- 🧪 [plugs, certified Matter devices](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/matter/index.md#certified-devices), [lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/matter/index.md#matter-lights), [WiZ Smart Plug](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/matter/index.md#wiz-smart-plug): turn on with timer
 
 **[Control4](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/control4/index.md)** · maintained by [@skialpine](https://github.com/skialpine)
 

@@ -12,6 +12,7 @@ from custom_components.deviceside.core.scope import (
     Caveat,
     CaveatKind,
     DoesntWork,
+    Level,
     NotSupported,
     documented,
     experimental,
@@ -423,6 +424,21 @@ def test_documented_and_flagged_classes_share_an_entry_per_feature_set_and_name_
         f"- 🧪 {card.lines['experimental'][0]}",
         f"- 🔴 {card.lines['no'][0]}",
     ]
+
+
+def test_a_domains_line_takes_at_most_the_level_of_the_strongest_class_it_serves():
+    """A call runs at the weaker of its domain and class (AdapterScope.level), so a domain whose every class is
+    Experimental shows Experimental, while one strong class is enough for the domain to keep its own level."""
+    flagged = AdapterScope(domains=documented("switch"), capabilities=experimental("Switch", "Light"))
+    one_strong = AdapterScope(domains=documented("switch"), capabilities=verified("Switch") | experimental("Light"))
+    assert [item for item in gc.card_items(flagged) if item[2] == "entities"] == [
+        (Level.EXPERIMENTAL, "switch", "entities")
+    ]
+    assert [item for item in gc.card_items(one_strong) if item[2] == "entities"] == [
+        (Level.DOCUMENTED, "switch", "entities")
+    ]
+    # No classes, no cap.
+    assert gc.card_items(AdapterScope(domains=documented("switch")))[0][0] is Level.DOCUMENTED
 
 
 def test_classes_of_one_section_say_their_shared_ending_once():
