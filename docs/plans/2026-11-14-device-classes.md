@@ -383,8 +383,8 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
    - **Groupcast only when it covers the group** (Decision 37): `turn_on_for` groupcasts a ZHA group's members only
      when they are every device endpoint in the Zigbee group but the coordinator, and every member takes the spec's
      call; otherwise each gets its own call.
-   - **Lab run:** the A60 on ZHA, then the Sengled E11-G13 in its place (its `turn_on_for` refusal); the lab TS011F
-     (`_TZ3000_typdpbpg`) on ZHA for its refusal; a ZHA group with a plug in it, for the fallback to unicasts.
+   - **Lab run:** the A60 on ZHA; the lab TS011F (`_TZ3000_typdpbpg`) on ZHA for its refusal; a ZHA group with a plug
+     in it, for the fallback to unicasts. No Sengled (Decision 77): its refusal is unit-tested only.
 
 7a. **Units groundwork (before v0.1.0)** (Decision 69; source:
    [research](../research/2026-11-14-timer-units-at-scale.md), §7). Each item names the failure it prevents:

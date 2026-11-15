@@ -117,22 +117,40 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 
 | Action | Level | Items | Tested models | Records |
 |---|---|---|---|---|
-| `get_attributes` | Verified | light entities | `LTA009`, firmware `0x01002a00`<br>`LCA016`, firmware `0x01001200`<br>`LWA012`, firmware `0x01002502`<br>group | [record](integrations/zha/test-records/get_attributes.json) |
-| `get_attributes` | Experimental | switch entities | | |
-| `lower_brightness` | Verified | light entities; brightness fields | `LTA009`, firmware `0x01002a00`<br>group | [record](integrations/zha/test-records/lower_brightness.json) |
-| `lower_hue` | Verified | light entities; hue fields | `LCA016`, firmware `0x01001200` | [record](integrations/zha/test-records/lower_hue.json) |
-| `lower_saturation` | Verified | light entities; saturation fields | `LCA016`, firmware `0x01001200` | [record](integrations/zha/test-records/lower_saturation.json) |
-| `raise_brightness` | Verified | light entities; brightness fields | `LTA009`, firmware `0x01002a00`<br>group | [record](integrations/zha/test-records/raise_brightness.json) |
-| `raise_hue` | Verified | light entities; hue fields | `LCA016`, firmware `0x01001200` | [record](integrations/zha/test-records/raise_hue.json) |
-| `raise_saturation` | Verified | light entities; saturation fields | `LCA016`, firmware `0x01001200` | [record](integrations/zha/test-records/raise_saturation.json) |
-| `set_attributes` | Verified | light entities; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, min_brightness, max_brightness fields | `LCA016`, firmware `0x01001200` | [record](integrations/zha/test-records/set_attributes.json) |
-| `stop` | Verified | light entities | `LTA009`, firmware `0x01002a00`<br>`LCA016`, firmware `0x01001200`<br>group | [record](integrations/zha/test-records/stop.json) |
-| `turn_on_for` | Verified | light entities; brightness, color_temp_kelvin fields | `LWA012`, firmware `0x01002502`<br>`LTA009`, firmware `0x01002a00`<br>group | [record](integrations/zha/test-records/turn_on_for.json) |
-| `turn_on_for` | Experimental | switch entities | | |
+| `get_attributes` | Verified | light entities; hue classes | `LTA009`, firmware `0x01002a00`<br>`LCA016`, firmware `0x01001200`<br>`LWA012`, firmware `0x01002502`<br>group | [record](integrations/zha/test-records/get_attributes.json) |
+| `get_attributes` | Experimental | switch entities; other, tuya_countdown, tuya_countdown_harmed, tuya_zcl, sengled, sonoff_swv classes | | |
+| `lower_brightness` | Verified | light entities; hue classes; brightness fields | `LTA009`, firmware `0x01002a00`<br>group | [record](integrations/zha/test-records/lower_brightness.json) |
+| `lower_brightness` | Documented | other classes | | |
+| `lower_brightness` | Experimental | tuya_countdown, tuya_countdown_harmed, tuya_zcl, sengled, sonoff_swv classes | | |
+| `lower_hue` | Verified | light entities; hue classes; hue fields | `LCA016`, firmware `0x01001200` | [record](integrations/zha/test-records/lower_hue.json) |
+| `lower_hue` | Experimental | other, tuya_countdown, tuya_countdown_harmed, tuya_zcl, sengled, sonoff_swv classes | | |
+| `lower_saturation` | Verified | light entities; hue classes; saturation fields | `LCA016`, firmware `0x01001200` | [record](integrations/zha/test-records/lower_saturation.json) |
+| `lower_saturation` | Experimental | other, tuya_countdown, tuya_countdown_harmed, tuya_zcl, sengled, sonoff_swv classes | | |
+| `raise_brightness` | Verified | light entities; hue classes; brightness fields | `LTA009`, firmware `0x01002a00`<br>group | [record](integrations/zha/test-records/raise_brightness.json) |
+| `raise_brightness` | Experimental | other, tuya_countdown, tuya_countdown_harmed, tuya_zcl, sengled, sonoff_swv classes | | |
+| `raise_hue` | Verified | light entities; hue classes; hue fields | `LCA016`, firmware `0x01001200` | [record](integrations/zha/test-records/raise_hue.json) |
+| `raise_hue` | Experimental | other, tuya_countdown, tuya_countdown_harmed, tuya_zcl, sengled, sonoff_swv classes | | |
+| `raise_saturation` | Verified | light entities; hue classes; saturation fields | `LCA016`, firmware `0x01001200` | [record](integrations/zha/test-records/raise_saturation.json) |
+| `raise_saturation` | Experimental | other, tuya_countdown, tuya_countdown_harmed, tuya_zcl, sengled, sonoff_swv classes | | |
+| `set_attributes` | Verified | light entities; hue classes; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, min_brightness, max_brightness fields | `LCA016`, firmware `0x01001200` | [record](integrations/zha/test-records/set_attributes.json) |
+| `set_attributes` | Experimental | other, tuya_countdown, tuya_countdown_harmed, tuya_zcl, sengled, sonoff_swv classes | | |
+| `stop` | Verified | light entities; hue classes | `LTA009`, firmware `0x01002a00`<br>`LCA016`, firmware `0x01001200`<br>group | [record](integrations/zha/test-records/stop.json) |
+| `stop` | Documented | other classes | | |
+| `stop` | Experimental | tuya_countdown, tuya_countdown_harmed, tuya_zcl, sengled, sonoff_swv classes | | |
+| `turn_on_for` | Verified | light entities; hue classes; brightness, color_temp_kelvin fields | `LWA012`, firmware `0x01002502`<br>`LTA009`, firmware `0x01002a00`<br>group | [record](integrations/zha/test-records/turn_on_for.json) |
+| `turn_on_for` | Experimental | switch entities; other classes | | |
+
+| Doesn't work | Why | Source |
+|---|---|---|
+| Reported Tuya plugs (`turn_on_for`) | Its timer is reported to jump back at random, so it may not turn off when asked | [source](https://github.com/Koenkk/zigbee2mqtt/issues/30493) |
 
 | Not yet supported, harmed by today's call | Why | Source |
 |---|---|---|
-| Tuya TS011F | DeviceSide's timer can leave it off, or turn it on long after the time asked and leave it on; Tuya's own call would serve it, which isn't built | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md) |
+| Tuya plugs and switches (`turn_on_for`) | ZHA's timer can turn it on long after the time asked and leave it on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md) |
+| other Tuya devices (`turn_on_for`) | ZHA's timer can turn it on or off long after the time asked | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md) |
+| Tuya datapoint devices (`turn_on_for`) | ZHA refuses its timer, so with brightness or a color temperature it would turn on and stay on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/internals.md#classes) |
+| Sengled bulbs (`turn_on_for`) | It refuses the timer, so with brightness, a color temperature or in a group it would stay on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/internals.md#tested-behavior) |
+| Sonoff SWV (`turn_on_for`) | It reads ZHA's timer in seconds, so it would stay open about ten times longer than asked | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-tuya-countdown.md) |
 
 ### Zigbee2MQTT
 

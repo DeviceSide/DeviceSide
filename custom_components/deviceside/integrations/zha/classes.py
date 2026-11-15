@@ -115,36 +115,35 @@ TURN_ON_FOR_DOESNT_WORK = {
     ),
 }
 # A call that would work is known or plausible, but isn't built (plan Decisions 70 and 74).
-_NOT_YET = "Its timer isn't supported yet: "
 TURN_ON_FOR_NOT_SUPPORTED = {
     # Tuya's recipe works on the lab plug (research/2026-11-14-lab-probe.md, §2, C5), parked until after v0.1.0;
     # today's tenths from off switched a TS011F on 106 s after a 10 s request and left it on (C1).
     TUYA_COUNTDOWN: NotSupported(
-        reason=_NOT_YET + "ZHA's timer can turn it on long after the time asked and leave it on",
+        reason="ZHA's timer can turn it on long after the time asked and leave it on",
         source=_RESEARCH + "2026-11-14-lab-probe.md",
         harms=True,
     ),
     # The recipe or a countdown is plausible; the spec's tenths may be read as seconds, as the countdown models do.
     TUYA_ZCL: NotSupported(
-        reason=_NOT_YET + "ZHA's timer can turn it on or off long after the time asked",
+        reason="ZHA's timer can turn it on or off long after the time asked",
         source=_RESEARCH + "2026-11-14-timed-on-call-patterns.md",
         harms=True,
     ),
     # A datapoint countdown is plausible; the quirk refuses 0x42, and with fields the light.turn_on before it stays on.
     TUYA_MCU: NotSupported(
-        reason=_NOT_YET + "ZHA refuses it, so with brightness or a color temperature it would turn on and stay on",
+        reason="ZHA refuses its timer, so with brightness or a color temperature it would turn on and stay on",
         source=_INTERNALS + "#classes",
         harms=True,
     ),
     # A host-side off would serve it; it refuses 0x42 by unicast and misses it by groupcast (Tested behavior).
     SENGLED: NotSupported(
-        reason=_NOT_YET + "with brightness, a color temperature or in a group it would turn on and stay on",
+        reason="It refuses the timer, so with brightness, a color temperature or in a group it would stay on",
         source=_INTERNALS + "#tested-behavior",
         harms=True,
     ),
     # Z2M's call in whole seconds (on_off_fixed_on_time) works on it; ZHA's tenths would run ten times as long.
     SONOFF_SWV: NotSupported(
-        reason=_NOT_YET + "it reads ZHA's timer in seconds, so it would stay open about ten times longer than asked",
+        reason="It reads ZHA's timer in seconds, so it would stay open about ten times longer than asked",
         source=_RESEARCH + "2026-11-14-tuya-countdown.md",
         harms=True,
     ),
