@@ -6,8 +6,8 @@ from homeassistant.exceptions import HomeAssistantError
 
 from custom_components.deviceside.integrations.zha.fade import hue_moves
 
-from .conftest import SENT, bulb, sent, xy
-from ...conftest import advance, call, wall_clock_now
+from .conftest import SENT, bulb, call, sent, xy
+from ...conftest import advance, wall_clock_now
 
 pytestmark = pytest.mark.usefixtures("setup_production", "clock", "bulbs")
 

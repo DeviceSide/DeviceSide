@@ -269,7 +269,7 @@ async def test_a_plain_mqtt_device_reports_as_mqtt(hass: HomeAssistant):
 
 async def test_a_report_for_two_devices_lists_one_line_each(hass: HomeAssistant, zha):
     entry = await load_entry(hass)
-    add_zha_entity(hass, zha, "light.a")
+    add_zha_entity(hass, zha, "light.a", strings=(None, None))
     add_mqtt_light(hass, "tasmota_ABC123")
 
     fields, url = await report_for(hass, entry, ["light.a", "light.desk"])
@@ -282,8 +282,8 @@ async def test_a_report_for_two_devices_lists_one_line_each(hass: HomeAssistant,
 
 async def test_two_entities_of_one_device_give_one_line(hass: HomeAssistant, zha):
     entry = await load_entry(hass)
-    add_zha_entity(hass, zha, "light.a")
-    add_zha_entity(hass, zha, "switch.b", unique_id=f"{IEEE}-12")
+    add_zha_entity(hass, zha, "light.a", strings=(None, None))
+    add_zha_entity(hass, zha, "switch.b", unique_id=f"{IEEE}-12", strings=(None, None))
 
     fields, _ = await report_for(hass, entry, ["light.a", "switch.b"])
 

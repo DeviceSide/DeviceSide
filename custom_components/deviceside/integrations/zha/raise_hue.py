@@ -2,6 +2,7 @@
 
 from typing import ClassVar
 
+from . import classes
 from .fade import ZHARamp, ramp_scope
 from ...actions.ramp import HUE
 from ...core.scope import AdapterScope
@@ -9,4 +10,4 @@ from ...core.scope import AdapterScope
 
 class ZHARaiseHue(ZHARamp):
     action: ClassVar[str] = "raise_hue"
-    scope: ClassVar[AdapterScope] = ramp_scope(HUE)
+    scope: ClassVar[AdapterScope] = ramp_scope(HUE, classes.FADE_COLOR)

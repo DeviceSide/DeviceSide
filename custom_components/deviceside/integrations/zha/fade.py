@@ -4,7 +4,7 @@ action's adapter is a ZHARamp."""
 
 import asyncio
 import logging
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from statistics import mean
 from typing import Any, ClassVar
@@ -22,7 +22,7 @@ from ...core.adapter import Adapter, DeadlinePassed
 from ...core.ha_watch import ALL, Call, Entries
 from ...core.models import EntityResult, Status, Target
 from ...core.runtime import Job, get_runtime
-from ...core.scope import AdapterScope, verified
+from ...core.scope import AdapterScope, Level, verified
 from ...core.transition import BRIGHTNESS, SATURATION, TransitionCache, hs_color, light_brightness, lit
 
 _LOGGER = logging.getLogger(__name__)
@@ -222,8 +222,10 @@ class HueMove:
     clamped_to: float | None  # the sweep_time used, where it had to be clamped
 
 
-def ramp_scope(attribute: str) -> AdapterScope:
-    return AdapterScope(domains=verified("light"), fields=verified(attribute), max_concurrency=2)
+def ramp_scope(attribute: str, capabilities: Mapping[str, Level]) -> AdapterScope:
+    return AdapterScope(
+        domains=verified("light"), fields=verified(attribute), capabilities=capabilities, max_concurrency=2
+    )
 
 
 class ZHARamp(Adapter[RampRequest]):

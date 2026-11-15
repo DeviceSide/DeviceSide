@@ -11,9 +11,9 @@ from pytest_homeassistant_custom_component.common import async_mock_service
 from custom_components.deviceside.integrations.zha import turn_on_for, zcl
 from custom_components.deviceside.integrations.zha.addressing import address
 
-from .conftest import call_as
-from ...conftest import allow_experimental, call, refusal, sent
-from ...fixtures.zha import IEEE, add_zha_entity, zha_entry, zha_group
+from .conftest import call, call_as
+from ...conftest import allow_experimental, refusal, sent
+from ...fixtures.zha import IEEE, StandardOnOff, add_zha_entity, quirk_on_off, zha_entry, zha_group
 
 CONFIRMED = {"status": "confirmed", "integration": "zha"}
 
@@ -141,7 +141,7 @@ async def test_failed_read_is_sent(hass, setup_production, commands, readback, r
     ("on", "expected"),
     [
         (True, CONFIRMED),
-        # The rig's Tuya TS011F: it keeps OnTime as a countdown and stays off.
+        # A plug that keeps OnTime but stays off.
         (False, {"status": "sent", "integration": "zha", "detail": "not_on"}),
     ],
 )
@@ -370,3 +370,136 @@ async def test_the_fields_and_the_timer_are_logged_in_order(hass, setup_producti
         "light.bulb: sending ha light.turn_on {'brightness': 128}",
         "light.bulb: sending zcl 0x0006/0x42 {'on_off_control': 0, 'on_time': 50, 'off_wait_time': 0}",
     ]
+
+
+# Device classes (classes.py): the entries for classes the call harms hold with Experimental features on.
+
+TS011F = ("_TZ3000_typdpbpg", "TS011F")
+C = "00:00:00:00:00:00:00:0c"
+
+
+@pytest.mark.parametrize(
+    ("strings", "on_off", "domain", "reason"),
+    [
+        # Tuya's recipe would serve it, but is parked (plan Decision 74).
+        (TS011F, StandardOnOff, "switch", "not_supported"),
+        (("_TZ3000_abcdefgh", "TS0001"), StandardOnOff, "switch", "not_supported"),
+        # A Tuya bulb outside the countdown models: nobody has probed its timer.
+        (("_TZ3210_abcdefgh", "TS0505B"), StandardOnOff, "light", "not_supported"),
+        (("_TZE200_abcdefgh", "TS0601"), StandardOnOff, "light", "not_supported"),
+        (("_TZ3210_0jxeoadc", "TS0049"), quirk_on_off("zhaquirks.tuya.mcu"), "switch", "not_supported"),
+        (("sengled", "E11-G13"), StandardOnOff, "light", "not_supported"),
+        (("SONOFF", "SWV"), StandardOnOff, "switch", "not_supported"),
+        # Fails the very call that serves its siblings: no known call works.
+        (("_TZ3000_gjnozsaz", "TS011F"), StandardOnOff, "switch", "doesnt_work"),
+    ],
+)
+async def test_a_class_the_call_harms_is_refused_with_experimental_on(
+    hass, setup_production, commands, turn_ons, strings, on_off, domain, reason
+):
+    add_zha_entity(hass, zha_entry(hass), f"{domain}.device", strings=strings, on_off=on_off)
+    allow_experimental(hass)
+
+    assert await refusal(hass, "turn_on_for", {"entity_id": f"{domain}.device", "duration": 5}) == reason
+    assert not commands
+    assert not turn_ons
+
+
+async def test_a_tuya_member_in_a_group_is_refused_and_the_rest_get_their_own(
+    hass, setup_production, two_light_group, zha_groups, commands, group_commands
+):
+    """The Tuya light is refused, and a groupcast would still reach it, so the Hue bulbs get one command each."""
+    add_zha_entity(hass, two_light_group, "light.strip", ieee=C, strings=("_TZ3000_abcdefgh", "TS0001"))
+    zha_groups[2] = zha_group((A, 11), (B, 11), (C, 11))
+    allow_experimental(hass)
+
+    response = await call(hass, "turn_on_for", {"entity_id": "light.zha_group", "duration": 5})
+
+    assert response == {"light.a": CONFIRMED, "light.b": CONFIRMED}
+    assert not group_commands
+    assert sorted(command.data["ieee"] for command in commands) == [A, B]
+
+
+async def test_a_device_whose_strings_werent_read_is_refused_with_experimental_on(hass, setup_production, commands):
+    """It could be a Tuya datapoint device, so where the call harms a class it is refused as class_unknown."""
+    add_zha_entity(hass, zha_entry(hass), "switch.plug", strings=(None, None))
+    allow_experimental(hass)
+
+    assert await refusal(hass, "turn_on_for", {"entity_id": "switch.plug", "duration": 5}) == "class_unknown"
+    assert not commands
+
+
+async def test_another_brand_runs_only_with_experimental_on(hass, setup_production, commands):
+    add_zha_entity(hass, zha_entry(hass), "light.ikea", strings=("IKEA of Sweden", "TRADFRI bulb E27 WS opal 980lm"))
+    data = {"entity_id": "light.ikea", "duration": 5}
+
+    assert await refusal(hass, "turn_on_for", data) == "experimental_off"
+    assert not commands
+
+    allow_experimental(hass)
+    assert await call(hass, "turn_on_for", data) == {"light.ikea": CONFIRMED}
+    assert commands[0].data["params"] == {"on_off_control": 0, "on_time": 50, "off_wait_time": 0}
+
+
+async def test_a_group_with_a_harmed_member_runs_its_others_one_by_one(
+    hass, setup_production, two_light_group, zha_groups, commands, group_commands
+):
+    """The Sengled is refused, and a groupcast would reach it, so the Hue bulbs get one command each."""
+    add_zha_entity(hass, two_light_group, "light.sengled", ieee=C, strings=("sengled", "E11-G13"))
+    zha_groups[2] = zha_group((A, 11), (B, 11), (C, 11))
+
+    response = await call(hass, "turn_on_for", {"entity_id": "light.zha_group", "duration": 5})
+
+    assert response == {"light.a": CONFIRMED, "light.b": CONFIRMED}
+    assert not group_commands
+    assert sorted(command.data["ieee"] for command in commands) == [A, B]
+
+
+async def test_a_plug_with_no_light_in_the_group_stops_the_groupcast(
+    hass, setup_production, two_light_group, zha_groups, commands, group_commands
+):
+    """ZHA's group light reaches only its lights, but a groupcast reaches the plug too."""
+    add_zha_entity(hass, two_light_group, "switch.plug", ieee=C, unique_id=f"{C}-1", strings=("_TZE200_x", "TS0601"))
+    zha_groups[2] = zha_group((A, 11), (B, 11), (C, 1))
+
+    response = await call(hass, "turn_on_for", {"entity_id": "light.zha_group", "duration": 5})
+
+    assert response == {"light.a": CONFIRMED, "light.b": CONFIRMED}
+    assert not group_commands
+    assert sorted(command.data["ieee"] for command in commands) == [A, B]
+
+
+async def test_a_member_zha_doesnt_know_stops_the_groupcast(
+    hass, setup_production, two_light_group, zha_groups, commands, group_commands
+):
+    zha_groups[2] = zha_group((A, 11), (B, 11), unknown=1)
+
+    await call(hass, "turn_on_for", {"entity_id": "light.zha_group", "duration": 5})
+
+    assert not group_commands
+    assert sorted(command.data["ieee"] for command in commands) == [A, B]
+
+
+async def test_the_coordinator_in_the_group_keeps_the_groupcast(
+    hass, setup_production, two_light_group, zha_groups, commands, group_commands
+):
+    zha_groups[2] = zha_group((A, 11), (B, 11), coordinator=C)
+
+    await call(hass, "turn_on_for", {"entity_id": "light.zha_group", "duration": 5})
+
+    assert len(group_commands) == 1
+    assert not commands
+
+
+async def test_a_flagged_member_left_out_stops_the_groupcast(
+    hass, setup_production, two_light_group, zha_groups, commands, group_commands
+):
+    """With Experimental features off, another brand's bulb is skipped, and a groupcast would still reach it."""
+    add_zha_entity(hass, two_light_group, "light.ikea", ieee=C, strings=("IKEA of Sweden", "TRADFRI bulb"))
+    zha_groups[2] = zha_group((A, 11), (B, 11), (C, 11))
+
+    response = await call(hass, "turn_on_for", {"entity_id": "light.zha_group", "duration": 5})
+
+    assert response == {"light.a": CONFIRMED, "light.b": CONFIRMED}
+    assert not group_commands
+    assert sorted(command.data["ieee"] for command in commands) == [A, B]

@@ -350,6 +350,41 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
    - **No Tuya plug support in v0.1.0 (Decision 74).** ZHA's Tuya classes are not yet supported on `turn_on_for`,
      with `harms`, as today's 0x42 in tenths harms them. The Tuya recipe (a plain On, then 0x42 with N seconds in
      both fields) is parked for after v0.1.0; its findings stay in ZHA's `internals.md` and this plan.
+   - **What decides the call (first job):** the ZHA `internals.md`, `classes`, from zha 2.3.1, zigpy 2.3.0 and
+     zha-quirks 2.3.0 at their commits. Every command goes through the cluster the quirk puts on the endpoint. Tuya's
+     ZCL quirks (the TS011F's `zhaquirks.tuya.ts011f_plug:Plug`, matched by model and endpoints) keep zigpy's
+     command, so `0x42` reaches the device as raw `uint16` fields and the firmware reads DeviceSide's tenths as
+     seconds (the probe's 106 s). Tuya's datapoint quirks route On/Off themselves and answer `0x42` with
+     `UNSUP_CLUSTER_COMMAND`, sending nothing. A v2 quirk's friendly name can replace the registry's strings, so the
+     classifier reads zigpy's raw strings and the On/Off cluster's quirk through the gateway, never the registry.
+   - **Built** (`claude/device-classes-7-zha`), the lab run pending. `integrations/zha/classes.py`: classes `hue`,
+     `tuya_countdown`, `tuya_countdown_harmed`, `tuya_zcl`, `tuya_mcu`, `sengled`, `sonoff_swv` and `other` (the
+     default). `tuya_mcu` keys on the routing (the module that defines the On/Off cluster's `command` is zha-quirks'
+     Tuya package), then on `TS0601` or `_TZE…`; the rest key on the raw manufacturer and model. A device whose strings
+     weren't read, or that the gateway doesn't hold, is None, never Unplaced: zigpy fixes the strings and quirk in the
+     interview, before ZHA makes entities.
+     - `turn_on_for`: `hue` Verified; `other` Experimental; not yet supported, `harms` (Decisions 70 and 74):
+       `tuya_countdown` (the recipe would serve it, parked), `tuya_zcl` (the recipe or a countdown is plausible),
+       `tuya_mcu` (a datapoint call), `sengled` (a host-side off; with fields, or in a group, it stays on today) and
+       `sonoff_swv` (a call in seconds, as Z2M's `on_off_fixed_on_time`); doesn't work, `harms`:
+       `tuya_countdown_harmed`, `_TZ3000_gjnozsaz` on `TS011F` (Decision 35), which fails the recipe's own frame.
+     - The rest: `hue` Verified, `other` Documented on `lower_brightness` and `stop` (Decision 39), `tuya_mcu` left
+       out (not supported: its quirk answers every call itself), the others Experimental. `get_attributes` reads a
+       `tuya_countdown` OnTime as seconds. The E11-G13's `set_attributes` refusal (`execute_if_off_unsupported`)
+       stays a model check.
+     - No class for the ZBMINIR2: its quirk keeps the standard frame, firmware 1.1.0 honors it, and 1.0.1 would
+       refuse it at once. Nor for the IKEA LED2005R5 and LED2106R3 (unicast on, never off, z2m#29158): the report
+       gives product codes, not the Zigbee model strings ZHA holds, so no rule can key on them yet.
+     - `docs/models.yaml`'s shared ZHA TS011F entry moved into code as `tuya_countdown`'s, and the page's Tuya TS011F
+       section to Not yet supported.
+     - Tuya's recipe (a plain On, then `0x42` with the seconds in both fields, converter A's frame) was built, then
+       taken out for v0.1.0 (Decision 74); the findings stay in ZHA's `internals.md`, `turn_on_for`. When it returns,
+       `tuya_countdown` goes Experimental on it, and the lab plug's own string Verified by its record (Decision 35).
+   - **Groupcast only when it covers the group** (Decision 37): `turn_on_for` groupcasts a ZHA group's members only
+     when they are every device endpoint in the Zigbee group but the coordinator, and every member takes the spec's
+     call; otherwise each gets its own call.
+   - **Lab run:** the A60 on ZHA, then the Sengled E11-G13 in its place (its `turn_on_for` refusal); the lab TS011F
+     (`_TZ3000_typdpbpg`) on ZHA for its refusal; a ZHA group with a plug in it, for the fallback to unicasts.
 
 7a. **Units groundwork (before v0.1.0)** (Decision 69; source:
    [research](../research/2026-11-14-timer-units-at-scale.md), §7). Each item names the failure it prevents:
@@ -1051,6 +1086,36 @@ Decisions 36 to 45, 46 to 55 and 56 to 65 are reserved for steps 7, 9 and 8.
     carries it on #436, where Decision 48 and the basis live.
 76. **The rig is a separate public repo** (jasonmx/ha-rig): CLAUDE.md says so, and still keeps rig code and rig docs
     out of this one.
+## Decisions (Jason, step 7)
+
+Numbered from 36; step 9 numbers from 46, so these renumber at merge if needed.
+
+36. **Tuya ZCL devices on ZHA get Tuya's recipe, not a refusal.** *Superseded for v0.1.0 by Decision 74:* the recipe is
+    parked, and the Tuya classes are not yet supported, with `harms`. Supersedes Decision 16's ZHA entry. The 106 s
+    failure comes from the call, the spec's tenths from off, not from the device: the probe's C5 (a plain On, then
+    `0x42` with the seconds in both fields) worked on the same plug on ZHA, and Z2M sends that recipe to all 49 of its
+    countdown definitions. So the Tuya ZCL class (`tuya_countdown`, narrowed by Decision 40) is a branch in ZHA's `turn_on_for` (tenet 5's split rule): whole seconds,
+    at least 1, rounding in `clamped_to`, read back in seconds. It is Experimental: the upstream reports of firmwares
+    misreading `on_time` were all on the spec's call. The lab plug's string becomes Verified by its own record; a
+    string reported failing on the recipe gets a doesn't-work entry that `harms`. Datapoint devices (`tuya_mcu`) get
+    no branch and are refused (doesn't work, `harms`) until they have evidence. The class keys on what the first job
+    found decides the call: the raw strings for the ZCL classes, the quirk for `tuya_mcu`.
+37. **Groupcast only when it reaches no device it shouldn't.** A ZHA group's `turn_on_for` is one groupcast only when
+    the call's targets are every device in the Zigbee group but the coordinator, all on the spec's call; otherwise
+    every light gets its own call. A groupcast reaches every device that stores the group ID, so subgroups would need
+    Zigbee groups DeviceSide creates on the devices. Not planned.
+38. **The ZHA card's Works line is lost until the step 7 lab run** fills the class per test, as Decision 15 accepted
+    on Z2M.
+39. **`other` on ZHA: Documented on `lower_brightness` and `stop`, Experimental on `raise_brightness`.** From off, a
+    Hue bulb is turned on by Signify's multiColor and any other light by `MoveToLevel` with `ExecuteIfOff`, a call no
+    record has run, so raise fails the Documented test; lower and stop send `other` the Hue bulbs' commands, pinned by
+    a unit test.
+40. **Tuya's recipe only for the countdown models.** *Amended by Decisions 70 and 74:* both classes are not yet
+    supported, with `harms`, on `turn_on_for`; the split stands for when the recipe returns. The seconds evidence covers plugs and switches: TS011F, and the
+    models Z2M drives by Tuya's countdown (TS0001 to TS0004, TS0011, TS0726). Those are `tuya_countdown`, on the
+    recipe, Experimental. Tuya's other ZCL devices (bulbs such as TS0505B, dimmers, white labels) are `tuya_zcl`,
+    doesn't work and `harms` on `turn_on_for` until probed: a spec bulb given seconds would turn off about ten times
+    early, and a Tuya plug outside the list given tenths could switch on long after.
 
 ## Decisions (Jason, 2026-11-15, #431's audit round)
 

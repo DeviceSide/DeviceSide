@@ -8,8 +8,9 @@ from typing import ClassVar
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import Unauthorized
 
-from . import zcl
+from . import classes, zcl
 from .addressing import Address, address, unsupported_reason, via_zha_group
+from .groups import covers
 from ...actions.turn_on_for import TurnOnForRequest
 from ...core.adapter import Adapter, DeadlinePassed
 from ...core.models import EntityResult, Status, Target
@@ -38,8 +39,10 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
     """Send OnWithTimedOff on the OnOff cluster; light.turn_on first when fields are present.
 
     The dispatcher expands a ZHA group entity into its member lights (groups.expand_group). Members that came from
-    the same group get one groupcast, so they start in lockstep: one light.turn_on on the group entity for fields,
-    then one OnWithTimedOff to the group. Expanding them into one command each would start them a slot apart under
+    the same group get one groupcast when they are every member it reaches (groups.covers), so they start in
+    lockstep: one light.turn_on on the group entity for fields, then one OnWithTimedOff to the group. Otherwise each
+    gets its own, so a member that was refused, flagged or left out (a Tuya plug with only a switch entity) never
+    takes the timer. Expanding them into one command each would start them a slot apart under
     max_concurrency, visibly so in a large group (docs/integration-internals.md, ZHA tested behavior). Every other
     target gets its own command.
 
@@ -50,17 +53,22 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
     it silently. So each light is read back either way: a new timer replaces a running one, so reading OnTime
     straight back shows whether ours is running: CONFIRMED when it sits within _READBACK_SLACK_TENTHS under the
     request and OnOff reads on, otherwise SENT with a detail. OnTime alone is not proof: a Tuya TS011F plug stores
-    it as its own countdown and stays off. A group member that reads no timer is read again, as its read can
-    overtake the groupcast.
+    it as its own countdown (internals.md, Tested behavior). A group member that reads no timer is read again, as its
+    read can overtake the groupcast.
     """
 
     action: ClassVar[str] = "turn_on_for"
     integration: ClassVar[str] = "zha"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        # Zigbee plugs and switches rarely honor OnWithTimedOff (the rig's Tuya TS011F stores OnTime as a countdown
-        # and never switches on), so switch fails the Documented test (docs/evidence.md, Levels): it takes the same
-        # call, so it stays flagged experimental, untested, until a maintainer judges it ready.
+        # Zigbee plugs and switches rarely honor OnWithTimedOff (research/2026-11-14-timed-on-call-patterns.md), so
+        # switch fails the Documented test (docs/evidence.md, Levels): it stays flagged experimental, untested, until
+        # a maintainer judges it ready.
         domains=verified("light") | experimental("switch"),
+        # Verified on Hue, whose bulbs every record ran on; every other brand may depart (some never switch off). The
+        # classes the call harms are refused (classes.TURN_ON_FOR_DOESNT_WORK and TURN_ON_FOR_NOT_SUPPORTED).
+        capabilities=classes.TURN_ON_FOR,
+        doesnt_work=classes.TURN_ON_FOR_DOESNT_WORK,
+        not_supported=classes.TURN_ON_FOR_NOT_SUPPORTED,
         duration=_TIMER_LIMITS,
         fields=verified("brightness", "color_temp_kelvin"),
         max_concurrency=2,
@@ -81,6 +89,10 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
                 groups.setdefault((target.via_group, gid), []).append(target)
             else:
                 singles.append(target)
+        # A groupcast reaches every member, so a group whose members aren't all here (one refused, flagged or
+        # unavailable, or a plug with no light entity) gets one command per light instead.
+        for key in [key for key, members in groups.items() if not covers(hass, key[1], members)]:
+            singles += groups.pop(key)
 
         async def send(target: Target) -> EntityResult:
             return await self._unicast(hass, request, target, on_time)

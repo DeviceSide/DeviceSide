@@ -32,6 +32,20 @@ async def test_members_in_the_group_entitys_domain(hass, setup_production, zha_g
     assert {member.via_group for member in members} == {"light.zha_group"}
 
 
+async def test_a_multi_endpoint_member_is_its_endpoints_own_light(hass, setup_production, zha_groups):
+    """ZHA names each light by its endpoint ("{ieee}-{endpoint}") and a Zigbee group holds endpoints, so a two-gang
+    device's member is the gang the group holds, addressable on its own (unlike Zigbee2MQTT's, Target.addressable)."""
+    entry = zha_entry(hass)
+    add_zha_entity(hass, entry, "light.zha_group", unique_id="light_zha_group_0x0002")
+    add_zha_entity(hass, entry, "light.gang_1", ieee=A, unique_id=f"{A}-1")
+    add_zha_entity(hass, entry, "light.gang_2", ieee=A, unique_id=f"{A}-2")
+    zha_groups[2] = zha_group((A, 2))
+
+    members = expand_group(hass, _group_target(hass))
+
+    assert [(m.entity_id, m.addressable) for m in members] == [("light.gang_2", True)]
+
+
 async def test_a_member_that_cannot_resolve_is_dropped(hass, setup_production, zha_groups):
     entry = zha_entry(hass)
     add_zha_entity(hass, entry, "light.zha_group", unique_id="light_zha_group_0x0002")
