@@ -98,11 +98,11 @@ def _members(hass: HomeAssistant, group: Target, addresses: Iterable[str]) -> tu
 
     A device with more than one Z2M entity in the group's domain, disabled ones counted (`addressing.endpoints`, the
     count addressing.not_addressable refuses such a device's entities by when targeted themselves), is listed by its
-    first, not addressable (Target.addressable) and no own_entity: its class counts, but no action addresses it on its
-    own, and the group's member_capabilities never names it. The group holds one endpoint of it, and DeviceSide's set
-    and get topics name the device alone, so Z2M would send the call to the device's default endpoint, maybe a gang the
-    user didn't target (docs/integrations/zigbee2mqtt/internals.md, Multi-endpoint devices). A groupcast still reaches
-    the right one."""
+    first, not addressable (Target.addressable): its class counts, but no action addresses it on its own, and the
+    group's member_capabilities never names it. The group holds one endpoint of it, and DeviceSide's set and get
+    topics name the device alone, so Z2M would send the call to the device's default endpoint, maybe a gang the user
+    didn't target (docs/integrations/zigbee2mqtt/internals.md, Multi-endpoint devices). A groupcast still reaches the
+    right one."""
     entities = er.async_get(hass)
     registry = get_runtime(hass).registry
     members: dict[str, Target] = {}
@@ -126,8 +126,7 @@ def _members(hass: HomeAssistant, group: Target, addresses: Iterable[str]) -> tu
                     ", ".join(e.entity_id for e in several),
                     group.domain,
                 )
-            alone = len(several) == 1
-            members[device.id] = replace(resolved[0], addressable=alone, own_entity=alone)
+            members[device.id] = replace(resolved[0], addressable=len(several) == 1)
             continue
         # The first report of "my plug wasn't in the group's fallback" holds why.
         _LOGGER.debug(
@@ -142,6 +141,6 @@ def _members(hass: HomeAssistant, group: Target, addresses: Iterable[str]) -> tu
 
 def _stand_in(group: Target, device: dr.DeviceEntry) -> Target:
     """A member HA has no entity for in the group's domain, for its class alone: the group's own entity with the
-    member's device, and no state, so the dispatcher never falls back to it or names it in a group's
-    member_capabilities, and member_lights leaves it out."""
-    return replace(group, device=device, state=None, via_group=group.entity_id, is_group=False, own_entity=False)
+    member's device, not addressable and with no state, so the dispatcher never falls back to it or names it in a
+    group's member_capabilities, and member_lights leaves it out."""
+    return replace(group, device=device, state=None, via_group=group.entity_id, is_group=False, addressable=False)

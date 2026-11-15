@@ -295,9 +295,9 @@ async def test_a_group_leaves_an_unavailable_member_out_of_its_member_map(hass, 
 
 
 @pytest.mark.usefixtures("classed")
-async def test_a_group_leaves_a_member_not_listed_by_its_own_entity_out_of_its_member_map(hass, fake, reset_script):
-    """An integration that lists a member by an entity the group's call may not have reached (Target.own_entity:
-    a Z2M device with several lights) keeps its class in the group's list and out of the map."""
+async def test_a_group_leaves_a_member_it_cant_address_alone_out_of_its_member_map(hass, fake, reset_script):
+    """An integration that lists a member by an entity the group's call may not have reached (Target.addressable
+    false: a Z2M device with several lights) keeps its class in the group's list and out of the map."""
     add_fake_entity(hass, fake, "switch.a")
     add_fake_entity(hass, fake, "light.e")
     add_fake_native_group(hass, fake, "switch.fake_group", ["switch.a", "light.e"])
@@ -305,7 +305,9 @@ async def test_a_group_leaves_a_member_not_listed_by_its_own_entity_out_of_its_m
     info = registry.integrations["fake"]
 
     def expand(hass, target):
-        return [replace(member, own_entity=member.entity_id != "light.e") for member in info.expand_group(hass, target)]
+        return [
+            replace(member, addressable=member.entity_id != "light.e") for member in info.expand_group(hass, target)
+        ]
 
     registry.integrations["fake"] = replace(info, expand_group=expand)
 

@@ -270,9 +270,12 @@ async def test_a_member_ha_has_no_light_for_is_classed_by_its_device(hass, setup
     members = INTEGRATION.expand_group(hass, resolve(hass, get_runtime(hass).registry, entity_id))
 
     classed = {member.entity_id: INTEGRATION.capability(hass, member) for member in members}
-    # The plug's stand-in is the group's own entity, with its device and no state, so no action reaches it.
+    # The plug's stand-in is the group's own entity, with its device, no state and not addressable, so no action
+    # reaches it, and the fallback (which takes only an available member) never addresses it.
     assert classed == {"light.one": "hue", "light.two": "hue", entity_id: "tuya_ts011f"}
-    assert [member.state for member in members if member.entity_id == entity_id] == [None]
+    assert [(member.state, member.addressable) for member in members if member.entity_id == entity_id] == [
+        (None, False)
+    ]
 
 
 async def test_a_stand_in_is_left_out_of_the_member_lights_and_logged(hass, setup_production, broker, caplog):
@@ -691,10 +694,7 @@ async def test_a_device_with_two_lights_is_listed_out_of_the_map_and_unaddressab
 
     listed = INTEGRATION.expand_group(hass, resolve(hass, get_runtime(hass).registry, entity_id))
 
-    assert [(member.entity_id, member.own_entity, member.addressable) for member in listed] == [
-        ("light.one", False, False),
-        ("light.two", True, True),
-    ]
+    assert [(member.entity_id, member.addressable) for member in listed] == [("light.one", False), ("light.two", True)]
 
 
 # What a class's level does to a call.

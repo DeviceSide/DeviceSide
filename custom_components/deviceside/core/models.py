@@ -126,14 +126,11 @@ class Target:
     # The caller listed this entity_id. Anything reached through an area, device, label or group is indirect.
     named: bool = False
     # False for a native group's member the integration can't address on its own: a device with several entities in
-    # the group's domain, whose call would reach its default one, maybe not the one the group holds
-    # (zigbee2mqtt/members.py). Its class still counts in the group's; when the group falls back to its members, the
-    # dispatcher skips it, with its class's refusal if it has one, else as not_addressable.
+    # the group's domain, whose call would reach its default one, maybe not the one the group holds, and a stand-in
+    # classed by its device alone (zigbee2mqtt/members.py). Its class still counts in the group's `capabilities`, but
+    # not in `member_capabilities`; when the group falls back to its members, the dispatcher skips it, with its class's
+    # refusal if it has one, else as not_addressable.
     addressable: bool = True
-    # False for a native group's member listed by an entity the group's call may not have reached: a stand-in, or one
-    # of a device's several entities in the group's domain (zigbee2mqtt/members.py). Its class still counts in the
-    # group's `capabilities`; its `member_capabilities` leaves it out.
-    own_entity: bool = True
 
     @property
     def reported_id(self) -> str:
@@ -152,7 +149,7 @@ class EntityResult:
     classes: str | tuple[str, ...] | None = None
     # A native group's members' classes, each member's entity_id to its class (plan Decision 66), set by the
     # dispatcher beside `classes`: a member it couldn't name, or named not yet placed, is left out, and so is one core
-    # didn't reach through its own available entity (Target.own_entity), and only they.
+    # didn't reach through its own available entity (Target.addressable, and available), and only they.
     member_classes: dict[str, str] | None = None
     clamped_to: float | None = None
     detail: str | None = None

@@ -38,8 +38,8 @@ type Classes = tuple[str | None, ...]
 class Reached:
     """What a target's call reaches, for planning and its result: its Classes, and for a native group whose members'
     classes are known, `members`, paired by position with `classes`: each member's reported_id, or None for one that
-    can't show the call reached it, as core didn't reach it through its own available entity (unavailable, a
-    stand-in classed by its device alone, or one of a device's several entities: Target.own_entity). Availability is
+    can't show the call reached it, as core didn't reach it through its own available entity (unavailable, or not
+    addressable: a stand-in classed by its device alone, or one of a device's several entities). Availability is
     judged at planning time, from the state the member had then. `members` is empty for any other target, and for a
     group whose classes are unknown, which has `classes` (None,): its membership unlisted, or its classifier
     raised."""
@@ -366,7 +366,7 @@ class Dispatcher:
         # A member is credited only through its own entity, with a state to show the call reached it, as _fallback
         # reaches only an available one; a stand-in has neither (zigbee2mqtt/members.py, _stand_in).
         ids = (
-            tuple(member.reported_id if member.own_entity and _available(member.state) else None for member in listed)
+            tuple(member.reported_id if member.addressable and _available(member.state) else None for member in listed)
             if target.is_group
             else ()
         )
