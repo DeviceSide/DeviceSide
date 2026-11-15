@@ -99,12 +99,13 @@ def bulb(
     hs: tuple[float, float] = (200.0, 60.0),
     modes: list[str] | None = None,
     model: str | None = None,
+    color_mode: str = "xy",
 ) -> str:
     entries = hass.config_entries.async_entries("zha")
     entry = entries[0] if entries else zha_entry(hass)
     attributes: dict = {"supported_color_modes": COLOR_MODES if modes is None else modes}
     if state == "on":
-        attributes |= {"brightness": brightness, "hs_color": hs}
+        attributes |= {"brightness": brightness, "hs_color": hs, "color_mode": color_mode}
     add_zha_entity(hass, entry, entity_id, ieee=ieee, state=state, attributes=attributes)
     if model is not None:
         device_id = er.async_get(hass).async_get(entity_id).device_id
@@ -146,11 +147,17 @@ class Bulbs:
         return {zcl.CURRENT_LEVEL: self.levels[addr.ieee]}
 
 
+# The A60's ColorCapabilities: hue and saturation, enhanced hue, color loop, xy and color temperature (probe 13a).
+A60_CAPABILITIES = 0x1F
+# A color light with xy and color temperature only.
+XY_ONLY = 0x18
+
+
 @pytest.fixture
 def bulbs(monkeypatch) -> Bulbs:
     fake = Bulbs()
     monkeypatch.setattr(zcl, "read_attributes", fake.read)
-    monkeypatch.setattr(zcl, "enhanced_hue", AsyncMock(return_value=True))
+    monkeypatch.setattr(zcl, "color_capabilities", AsyncMock(return_value=A60_CAPABILITIES))
     return fake
 
 
