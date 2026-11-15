@@ -33,7 +33,9 @@ COLOR_MODE = 0x0008
 ENHANCED_CURRENT_HUE = 0x4000
 ENHANCED_COLOR_MODE = 0x4001
 COLOR_CAPABILITIES = 0x400A
+HUE_SATURATION = 0x01  # ColorCapabilities bit 0
 ENHANCED_HUE = 0x02  # ColorCapabilities bit 1
+MOVE_TO_SATURATION = 0x03
 MOVE_TO_HUE_AND_SATURATION = 0x06
 MOVE_TO_COLOR = 0x07
 MOVE_TO_COLOR_TEMP = 0x0A
@@ -200,12 +202,11 @@ async def hue_turn_on(
     return True
 
 
-async def enhanced_hue(hass: HomeAssistant, addr: Address) -> bool:
-    """Whether the light's ColorCapabilities report enhanced hue, so it takes EnhancedMoveHue; False without a Color
-    cluster.
+async def color_capabilities(hass: HomeAssistant, addr: Address) -> int:
+    """The light's ColorCapabilities bits (HUE_SATURATION, ENHANCED_HUE, ...); 0 without a Color cluster.
 
     Read from zigpy's attribute cache, as it never changes, else once off the device. A read that fails raises, as
-    read_attributes does: a light that didn't answer may still have enhanced hue, so it isn't taken to lack it.
+    read_attributes does: a light that didn't answer may still have a capability, so it isn't taken to lack it.
     """
     from zigpy.types import EUI64
 
@@ -214,7 +215,7 @@ async def enhanced_hue(hass: HomeAssistant, addr: Address) -> bool:
     try:
         cluster = device.async_get_cluster(addr.endpoint_id, COLOR_CLUSTER, cluster_type="in")
     except KeyError:
-        return False
+        return 0
     if (capabilities := cluster.get(COLOR_CAPABILITIES)) is None:
         capabilities = (await read_attributes(hass, addr, COLOR_CLUSTER, (COLOR_CAPABILITIES,)))[COLOR_CAPABILITIES]
-    return bool(capabilities & ENHANCED_HUE)
+    return int(capabilities)

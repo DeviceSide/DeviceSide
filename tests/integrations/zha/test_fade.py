@@ -14,7 +14,7 @@ from custom_components.deviceside.core.transition import BRIGHTNESS, SATURATION
 from custom_components.deviceside.integrations.zha import zcl
 from custom_components.deviceside.integrations.zha.fade import hue_moves, soft_off_restores, transition_cache
 
-from .conftest import BOTTOM, RESTORE_60, SENT, A, B, bulb, call_as, on_off_reads, sent, xy
+from .conftest import BOTTOM, RESTORE_60, SENT, XY_ONLY, A, B, bulb, call_as, on_off_reads, sent, xy
 from ...conftest import advance, call, result, wall_clock_now
 from ...fixtures.zha import IEEE
 
@@ -32,7 +32,7 @@ async def test_brightness_and_saturation_are_separate_fades(hass, commands, cloc
     await call(hass, "raise_brightness", {"entity_id": "light.bulb"})
     await call(hass, "raise_saturation", {"entity_id": "light.bulb"})
 
-    assert [command[:2] for command in sent(commands)] == [(0x0008, 0x04), (0x0300, 0x07)]
+    assert [command[:2] for command in sent(commands)] == [(0x0008, 0x04), (0x0300, 0x03)]
     clock.now += 1
     cache = transition_cache(hass)
     assert cache.value("light.bulb", BRIGHTNESS, 0) == pytest.approx(80)
@@ -53,7 +53,8 @@ async def test_brightness_and_saturation_are_separate_fades(hass, commands, cloc
 async def test_nothing_to_make_is_unchanged(hass, commands, action, light, detail):
     """One row per branch: the lower and raise of an attribute share it, so lower_hue and lower_saturation have none
     of their own."""
-    zcl.enhanced_hue.return_value = detail != "fields_dropped"
+    if detail == "fields_dropped":
+        zcl.color_capabilities.return_value = zcl.HUE_SATURATION
     bulb(hass, **light)
 
     assert await call(hass, action, {"entity_id": "light.bulb"}) == {
@@ -426,7 +427,21 @@ async def test_a_failed_hue_move_marks_no_cycle(hass):
     assert hue_moves(hass) == {"light.a"}
 
 
-async def test_mixed_hues_in_a_group_each_fade_at_their_own(hass, two_light_group, commands, group_commands):
+async def test_mixed_hues_in_a_group_share_one_groupcast(hass, two_light_group, commands, group_commands):
+    """MoveToSaturation carries no hue: each bulb fades at its own."""
+    bulb(hass, "light.a", A, hs=(200.0, 60.0))
+    bulb(hass, "light.b", B, hs=(100.0, 60.0))
+
+    await call(hass, "raise_saturation", {"entity_id": "light.zha_group"})
+
+    assert not commands
+    assert [service.data["args"] for service in group_commands] == [[254, 20]]
+
+
+async def test_lights_without_hue_and_saturation_fade_in_xy_at_their_own_hue(
+    hass, two_light_group, commands, group_commands
+):
+    zcl.color_capabilities.return_value = XY_ONLY
     bulb(hass, "light.a", A, hs=(200.0, 60.0))
     bulb(hass, "light.b", B, hs=(100.0, 60.0))
 
@@ -441,9 +456,11 @@ async def test_mixed_hues_in_a_group_each_fade_at_their_own(hass, two_light_grou
     }
 
 
-async def test_one_hue_in_a_group_fades_by_groupcast(hass, two_light_group, commands, group_commands):
+async def test_one_hue_in_a_group_fades_in_xy_by_groupcast(hass, two_light_group, commands, group_commands):
     bulb(hass, "light.a", A)
     bulb(hass, "light.b", B)
+
+    zcl.color_capabilities.return_value = XY_ONLY
 
     await call(hass, "raise_saturation", {"entity_id": "light.zha_group"})
 
@@ -452,13 +469,15 @@ async def test_one_hue_in_a_group_fades_by_groupcast(hass, two_light_group, comm
     assert [service.data["args"] for service in group_commands] == [[point["color_x"], point["color_y"], 20]]
 
 
-async def test_an_unread_color_capabilities_rejects_a_hue_move(hass, commands, monkeypatch, caplog):
-    """#10: a light that didn't answer may have enhanced hue, so the move is rejected rather than dropped."""
-    monkeypatch.setattr(zcl, "enhanced_hue", AsyncMock(side_effect=LookupError("no answer")))
+@pytest.mark.parametrize("action", ["raise_hue", "raise_saturation"])
+async def test_an_unread_color_capabilities_rejects_the_move(hass, commands, monkeypatch, caplog, action):
+    """#10: a light that didn't answer may have enhanced hue, or hue and saturation, so the move is rejected rather
+    than dropped or sent another way."""
+    monkeypatch.setattr(zcl, "color_capabilities", AsyncMock(side_effect=LookupError("no answer")))
     bulb(hass)
 
     with pytest.raises(HomeAssistantError) as raised:
-        await call(hass, "raise_hue", {"entity_id": "light.bulb"})
+        await call(hass, action, {"entity_id": "light.bulb"})
 
     assert raised.value.translation_placeholders["summary"] == "light.bulb: error"
     assert not commands
