@@ -265,10 +265,9 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
         to Works and the rest to Experimental.
      9. **Lab run:** every Tuya variant on Jason's Z2M network (Decision 77), added to step 5's lab run.
         - **Plugs, one per maker string (Jason, 2026-11-15):** `_TZ3000_0zfrhq4i` in the lab profile, pre-authorized;
-          `_TZ3000_typdpbpg` and `_TZ3000_gznh2xla` (on no seed list: converter A by `TS011F_plug_1`'s catch-all) in
-          a new `plugs` profile, `pre_authorized: false`. `_TZ3000_okaz9tjs` (a Girier white label) runs only if a
-          plug that isn't an appliance carries it online; otherwise it stays Experimental. Jason confirms the list
-          just before the run.
+          `_TZ3000_typdpbpg`, `_TZ3000_gznh2xla` (on no seed list: converter A by `TS011F_plug_1`'s catch-all) and
+          `_TZ3000_okaz9tjs` (a Girier white label; its plug switches a light, so it is safe to test) in a new `plugs`
+          profile, `pre_authorized: false`. Jason confirms the list just before the run.
         - **Rig change, paired (`Tests-with`), merged first:** a profile takes only the first entity for each role
           and integration (`Profile.entity`), so a profile of three `switch_plug` plugs tests one. The cases for a
           role run once per listed entity, each a test reaching its own device, so one run gives each maker string
