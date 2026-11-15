@@ -265,11 +265,12 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
         (Decision 41). The cards and `index.md` move each Verified string
         to Works and the rest to Experimental.
      9. **Lab run:** every Tuya variant on Jason's Z2M network (Decision 77), added to step 5's lab run.
-        - **Plugs, one per maker string (Jason, 2026-11-15; Decision 88):** one run, in a `plugs` profile that is a
-          superset of lab (all of lab's entities and roam, plus three TS011F plugs), `pre_authorized: false`, so one
-          record covers all four strings: `_TZ3000_0zfrhq4i` (lab's plug), `_TZ3000_typdpbpg`, `_TZ3000_gznh2xla` (on
-          no seed list: converter A by `TS011F_plug_1`'s catch-all) and `_TZ3000_okaz9tjs` (a Girier white label; its
-          plug switches a light, so it is safe to test). Jason confirms the list just before the run.
+        - **Plugs, one per maker string (Jason, 2026-11-15; Decision 88):** one run of the lab profile, so one record
+          covers all four strings: `_TZ3000_0zfrhq4i` (lab's plug, first), then `_TZ3000_typdpbpg`, `_TZ3000_gznh2xla`
+          (on no seed list: converter A by `TS011F_plug_1`'s catch-all) and `_TZ3000_okaz9tjs` (a Girier white label;
+          its plug switches a light, so it is safe to test), each with `pre_authorized: false` (per entity, ha-rig
+          #92). A run whose cases touch them is restricted; other lab runs stay unrestricted. Jason confirms the list
+          just before the run.
         - **Rig change, paired (`Tests-with`), merged first:** a profile takes only the first entity for each role
           and integration (`Profile.entity`), so a profile of three `switch_plug` plugs tests one. The cases for a
           role run once per listed entity, each a test reaching its own device, so one run gives each maker string
@@ -277,7 +278,7 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      - **Built** (`claude/device-classes-5c-tuya-countdown`), the lab run pending:
        - **Classes** (`classes.py`): `tuya_countdown`, a TS011F whose bridge/devices definition exposes a top-level
          `countdown` and isn't `ZOT60`; a class per Verified maker string on the same rule plus its string
-         (`string_class`: `tuya_countdown_tz3000_0zfrhq4i` and the plugs profile's three); `tuya_countdown_harmed` for
+         (`string_class`: `tuya_countdown_tz3000_0zfrhq4i` and the three other lab plugs'); `tuya_countdown_harmed` for
          `_TZ3000_gjnozsaz` (Z2M #30493), not yet supported, `harms`, on `turn_on_for`. A TS011F without the expose, a
          multi-gang one (an expose per endpoint) and the ZOT60 stay `tuya_ts011f`; before bridge/devices lists a plug
          it is `tuya_ts011f`, Unplaced, so `class_unknown`. Elsewhere every new class is Experimental, as
@@ -303,7 +304,9 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
          `switch` alone. The coverage check (gen_compat's warning, `check_release --signoffs`) asks a scoped Verified
          class for a record in each of its domains; a manual row, which names none, covers each. The cards' Works
          credits a test by its domain's level; the evidence block names a scoped entry `hue on light`. Follow-up:
-         the adapter-wide domain axis could reduce to the unknown default, once every integration scopes its classes.
+         the adapter-wide domain axis could reduce to the unknown default, once every integration scopes its classes;
+         and an optional `domain` on `_manual.json` rows, so a manual row can credit a scoped class on the card (not
+         now, Jason, 2026-11-15).
        - **Rig:** three `switch_plug` cases in the shared `turn_on_for.yaml`, `only: [zigbee2mqtt]`, the probe's
          firmware facts per string: from on it ends off (P1), a new call replaces (P2), an off cancels (P3);
          `on_then_off` covers the call from off. Shared, not Zigbee2MQTT's own file: a record is named for its step
@@ -1219,8 +1222,11 @@ Numbered from 36; step 9 numbers from 46, so these renumber at merge if needed.
     to one record per (class, domain) for a scoped entry; the cards show the scoped entries. The user-visible failure it
     prevents: a Hue plug run unflagged, and shown as Works, on a bulb's record; it replaces per-domain classes such as a
     `hue_plug`. The adapter-wide domain axis stays for now.
-88. **Part 3's Z2M run is one run, one record.** The rig writes one record per integration and suite, so the run uses
-    a `plugs` profile that is a superset of lab. Each `switch_plug` entity gets its own test, `<test>[switch_plug]`
+88. **Part 3's Z2M run is one run, one record.** The rig writes one record per integration and suite, and a record
+    holds one profile's plugs, so the three plugs join the lab profile, after lab's own, each with `pre_authorized:
+    false` (the rig's per-entity flag, ha-rig #92): a run whose cases touch them is restricted, other lab runs stay
+    unrestricted. No separate `plugs` profile: a superset profile would leave every later lab run of those suites
+    Kept. Each `switch_plug` entity gets its own test, `<test>[switch_plug]`
     for the first and `<test>[switch_plug-<n>]` for the rest in profile order, each with one device (ha-rig #92); the
     schema's `id` description says so, with no schema change.
 
