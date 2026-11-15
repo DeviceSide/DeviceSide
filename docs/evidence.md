@@ -57,13 +57,13 @@ item ships only behind `experimental`.
   known class of devices departs. Unit tests pin the payload. A field is never Documented, because it changes the
   call. The PR that claims Documented argues the sibling case, and review checks it. A bug on the Verified sibling
   reopens its Documented siblings in the same fix.
-  A class is also Documented when a certification tests DeviceSide's call and the outcome it relies on, on every
-  certified device, the class's rule keys on a marker every certified device carries and the known uncertified
-  sources don't, and no known member departs. The call counts as the one tested when it is the same command and each
-  field value is one the spec treats alike to the test's; a value the spec treats differently (Matter: OffWaitTime 0)
-  isn't covered. The PR names the equivalence, the marker and what slips past it (Matter: certified devices, by a
-  non-test VendorID, whose TC-OO-2.3 sends the timer call and checks it ends,
-  [internals](integrations/matter/internals.md#what-decides-the-call)).
+  A read is also Documented on a class when a certification tests that read on every certified device, the class's
+  rule keys on a marker every certified device carries and the known uncertified sources don't, and no known member
+  departs: a read carries no field values, so the read certification sends is the one DeviceSide sends. A command
+  isn't covered this way, as the test's field values are its own: Matter's TC-OO-2.3 sends the timer command with
+  OffWaitTime 300, DeviceSide with 1, so the timer call stays untested on certified devices (plan Decision 75). The PR
+  names the marker and what slips past it (Matter: certified devices, by a non-test VendorID, whose TC-OO-2.3 reads
+  OnTime and OnOff, [internals](integrations/matter/internals.md#what-decides-the-call)).
 
 Nothing ships unflagged unless it is Verified or Documented. Built and unit-tested code that the maintainer can't
 exercise, and that isn't Documented, ships behind `experimental` as untested. A sign-off

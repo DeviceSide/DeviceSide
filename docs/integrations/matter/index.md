@@ -32,15 +32,17 @@ pairs: its vendor and product IDs, and whether it is a bridge. Every feature say
 
 A Matter plug, rig-tested with turn on with timer and get attributes. It never reports its running timer on its own,
 so DeviceSide reads it back ([turn on with timer](#turn-on-with-timer)). Turn on with timer now sends a slightly
-different command (a 0.1 s off wait, [internals](internals.md#turn_on_for)), so it counts as proven by certification,
-like other certified devices, until the plug is tested with it again.
+different command (a 0.1 s off wait, [internals](internals.md#turn_on_for)), so it runs only with Experimental
+features on until the plug is tested with it again.
 
 ### Certified devices
 
-A device certified by the Connectivity Standards Alliance has passed a test of the timer command DeviceSide sends,
-including that it turns off when the time runs out, so turn on with timer and get attributes run on it with
-Experimental features off. DeviceSide counts a device as certified by its vendor ID, which an uncertified product
-from a registered vendor also carries: that is the case this can't catch. Like every Matter device here, it needs the On/Off cluster's Lighting feature.
+A device certified by the Connectivity Standards Alliance has passed a test of the timer reads that get attributes
+makes, so get attributes runs on it with Experimental features off. The certification test sends the timer command
+with other settings than DeviceSide's, so turn on with timer is untested and runs only with Experimental features on.
+DeviceSide counts a device as certified by its vendor ID, which an uncertified product from a registered vendor also
+carries: that is the case this can't catch. Like every Matter device here, it needs the On/Off cluster's Lighting
+feature.
 
 ### Matter bridges
 
@@ -51,16 +53,15 @@ features run only with Experimental features on. A bridge's own light or plug co
 ### Uncertified devices
 
 A device that reports a test vendor ID, or none yet: development kits, apps that share other devices on Matter
-(Matterbridge-style apps, bridge or not), and the odd uncertified product. Nothing has tested its timer, so both features run only with Experimental features on. An
-app built on matter.js forgets a running timer when it restarts, and the device stays on
-([internals](internals.md#upstream-defects)).
-
+(Matterbridge-style apps, bridge or not), and the odd uncertified product. Nothing has tested its timer, so both
+features run only with Experimental features on. An app built on matter.js forgets a running timer when it restarts,
+and the device stays on ([internals](internals.md#upstream-defects)).
 
 ## Should work
 
 ### Matter lights
 
-A Matter light takes the plug's `OnWithTimedOff` command, so turn on with timer and get attributes are Documented on
-it, at most as proven as its class above. Its endpoint needs the On/Off cluster's Lighting feature, which the timer
+A Matter light takes the plug's `OnWithTimedOff` command and reads, so they are Documented on it, at most as proven
+as its class above. Its endpoint needs the On/Off cluster's Lighting feature, which the timer
 needs; one without it is refused (`no_lt_feature`). On/off only: brightness and color are refused on a Matter light
 until tested.

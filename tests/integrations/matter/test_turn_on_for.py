@@ -6,7 +6,7 @@ from homeassistant.exceptions import HomeAssistantError
 from custom_components.deviceside.core.scope import Level
 from custom_components.deviceside.integrations.matter.turn_on_for import MatterTurnOnFor
 
-from ...conftest import call, sent
+from ...conftest import allow_experimental, call, sent
 from ...fixtures.matter import (
     NODE_ID,
     add_matter_entity,
@@ -19,6 +19,13 @@ CONFIRMED = {"status": "confirmed", "integration": "matter", "capability": WIZ}
 EP = 1  # endpoint_id used across tests
 
 pytestmark = pytest.mark.usefixtures("mock_chip", "setup_production")
+
+
+@pytest.fixture(autouse=True)
+def experimental_on(hass, setup_production):
+    """turn_on_for is untested on every Matter class until the WiZ plug's rerun on OffWaitTime 1 (plan Decision 75);
+    test_classes pins that refusal, so these tests run the call with Experimental features on."""
+    allow_experimental(hass)
 
 
 @pytest.mark.parametrize("entity_id", ["switch.plug", "light.bulb"])

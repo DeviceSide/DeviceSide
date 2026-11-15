@@ -32,13 +32,13 @@ Read 2026-11-14, for the device classes (plan step 9). Sources at a commit: Home
   (Addressing), not a class: a device without it refuses the command, so it can't be harmed. A device's
   AcceptedCommandList (`<endpoint>/6/65529`, e.g. `[0, 1, 2, 64, 65, 66]`) lists `66` with it; nothing reads it, as
   the feature already says so.
-- **Certification** tests the call on every device with the feature: TC-OO-2.3 (PICS `OO.S.F00`) sends
-  `OnWithTimedOff` 15 times and checks that the device turns off when OnTime runs out (step 24c reads OnOff false
+- **Certification** tests the command and the reads on every device with the feature: TC-OO-2.3 (PICS `OO.S.F00`)
+  sends `OnWithTimedOff` 15 times, reads OnTime and OnOff after each, and checks that the device turns off when OnTime runs out (step 24c reads OnOff false
   after 40 s), always with OffWaitTime 300, never 0
-  ([`Test_TC_OO_2_3.yaml`](https://github.com/project-chip/connectedhomeip/blob/c55ddad4480afad31f249af5356c16e8b53416c6/src/app/tests/suites/certification/Test_TC_OO_2_3.yaml)). DeviceSide's call is
-  the test's in the spec's terms, so certification covers it (docs/evidence.md, Levels): the reference server
-  branches on OffWaitTime only as zero or not (`HandleOnWithTimedOff`), and on OnTime only as zero or not, within the
-  0xFFFE cap the command enforces; DeviceSide sends OffWaitTime 1 and OnTime 1 to 0xFFFE. It clears OffWaitTime when
+  ([`Test_TC_OO_2_3.yaml`](https://github.com/project-chip/connectedhomeip/blob/c55ddad4480afad31f249af5356c16e8b53416c6/src/app/tests/suites/certification/Test_TC_OO_2_3.yaml)). So certification
+  covers DeviceSide's reads of OnTime and OnOff, which carry no field values, but not its command, whose OffWaitTime
+  is 1 (plan Decision 75; docs/evidence.md, Levels). In the reference server OffWaitTime branches only as zero or not
+  (`HandleOnWithTimedOff`), so 1 likely acts as 300 does, but that is inference, not a test. It clears OffWaitTime when
   OnTime runs out (`TimerFired`), so a non-zero one acts only after an Off mid-timer: the endpoint ignores another
   `OnWithTimedOff` for that long
   ([`OnOffLightingCluster.cpp`](https://github.com/project-chip/connectedhomeip/blob/c55ddad4480afad31f249af5356c16e8b53416c6/src/app/clusters/on-off-server/OnOffLightingCluster.cpp)).
@@ -71,8 +71,8 @@ reads of `OnOff.OnTime` and `OnOff.OnOff`, one path per `read_attribute`: `confi
 is at most the time sent and no more than 3 s under it, as on ZHA. OnTime alone is not proof: a device can hold a
 stale OnTime while off.
 
-OffWaitTime is 1 (0.1 s), not 0, since 2026-11-14 (plan Decision 46): it puts the call on the path certification tests
-(What decides the call), and matter.js before v0.17.2 never turns off on OffWaitTime 0 (Upstream defects). The
+OffWaitTime is 1 (0.1 s), not 0, since 2026-11-14 (plan Decision 46): matter.js before v0.17.2 never turns off on
+OffWaitTime 0 (Upstream defects), and a non-zero value is the branch certification exercises (What decides the call). The
 2026-10-28 and 2026-11-11 records ran OffWaitTime 0.
 
 ### `get_attributes`

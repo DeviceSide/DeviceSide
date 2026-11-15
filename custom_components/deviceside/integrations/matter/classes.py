@@ -10,7 +10,7 @@ bridge the bridge's software. The rules, first match winning:
    native would run at `other`'s level; a hub's own native light gets the bridge's, the cautious side.
 3. `wiz_plug`: VendorID 4107 and ProductID 8979, the one product a record covers (plan Decision 47).
 4. `other`, the default: a real VendorID on a node with no sign of a bridge. A real VendorID is the proxy for
-   certification, which tests the call (docs/evidence.md, Levels): every certified product has one, and the known
+   certification, which tests the timer reads (docs/evidence.md, Levels): every certified product has one, and the known
    uncertified sources (development kits, apps that share devices on Matter) report a test one by default.
 
 The rules read the node's attribute cache, as addressing.lt_feature does: sync, no I/O. A node holds every attribute
@@ -46,10 +46,11 @@ _TEST_VENDOR_IDS = range(0xFFF1, 0xFFF4 + 1)
 _PRODUCTS = {(4107, 8979): WIZ_PLUG}
 
 
-# The levels each adapter's scope holds (index.md, Device classes; plan Decisions 46 to 48): `other` Documented by
-# certification (docs/evidence.md, Levels); a bridge or an uncertified node untested; the WiZ plug Verified on the read
-# its record ran, and on turn_on_for Documented like `other` until its rerun, as its record ran OffWaitTime 0.
-TURN_ON_FOR = documented(WIZ_PLUG, OTHER) | experimental(BRIDGED, UNCERTIFIED)
+# The levels each adapter's scope holds (index.md, Device classes; plan Decisions 46 to 48 and 75): get_attributes's
+# reads Documented on `other` by certification (docs/evidence.md, Levels), Verified on the WiZ plug by its record; the
+# timer call untested on every class, as certification sends another OffWaitTime and the WiZ plug's record ran 0, until
+# the plug's rerun on the call makes it Verified there.
+TURN_ON_FOR = experimental(WIZ_PLUG, OTHER, BRIDGED, UNCERTIFIED)
 GET_ATTRIBUTES = verified(WIZ_PLUG) | documented(OTHER) | experimental(BRIDGED, UNCERTIFIED)
 
 

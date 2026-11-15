@@ -99,21 +99,20 @@ async def test_capability_is_none_when_the_node_lookup_raises(hass):
 
 
 def test_levels():
-    """WiZ plug: Verified on the read its record ran, Documented on the new timed call until its rerun; `other`
-    Documented by certification; bridges and uncertified nodes untested."""
+    """get_attributes: the WiZ plug Verified by its record, `other` Documented by certification of the reads. The timer
+    call untested on every class until the plug's rerun on it (plan Decision 75). Bridges and uncertified nodes
+    untested on both."""
     for adapter in (MatterTurnOnFor, MatterGetAttributes):
         held = adapter.scope.capabilities
         assert held.keys() == INTEGRATION.classes
-        assert held[OTHER] is Level.DOCUMENTED
         assert held[BRIDGED] is held[UNCERTIFIED] is Level.EXPERIMENTAL
         assert not adapter.scope.doesnt_work
-    assert MatterTurnOnFor.scope.capabilities[WIZ_PLUG] is Level.DOCUMENTED
+    assert set(MatterTurnOnFor.scope.capabilities.values()) == {Level.EXPERIMENTAL}
     assert MatterGetAttributes.scope.capabilities[WIZ_PLUG] is Level.VERIFIED
-    # The WiZ plug's records ran OffWaitTime 0, so the switch domain waits for its rerun on turn_on_for too.
-    assert MatterTurnOnFor.scope.level("switch", [WIZ_PLUG]) is Level.DOCUMENTED
+    assert MatterGetAttributes.scope.capabilities[OTHER] is Level.DOCUMENTED
     assert MatterGetAttributes.scope.level("switch", [WIZ_PLUG]) is Level.VERIFIED
     assert MatterGetAttributes.scope.level("light", [OTHER]) is Level.DOCUMENTED
-    assert MatterTurnOnFor.scope.level("light", [BRIDGED]) is Level.EXPERIMENTAL
+    assert MatterGetAttributes.scope.level("light", [BRIDGED]) is Level.EXPERIMENTAL
 
 
 @pytest.mark.usefixtures("mock_chip", "setup_production")
@@ -123,24 +122,34 @@ def test_levels():
     ids=["wiz_plug", "other"],
 )
 @pytest.mark.parametrize("entity_id", ["switch.plug", "light.bulb"])
-@pytest.mark.parametrize("action", ["turn_on_for", "get_attributes"])
-async def test_certified_runs_with_experimental_off(hass, node, expected, entity_id, action):
-    entry, send_cmd, read_attr = matter_device(hass, **node)
+async def test_certified_reads_with_experimental_off(hass, node, expected, entity_id):
+    entry, _, read_attr = matter_device(hass, **node)
     add_matter_entity(hass, entry, entity_id)
 
-    response = await call(hass, action, _data(action, entity_id))
+    response = await call(hass, "get_attributes", _data("get_attributes", entity_id))
 
     assert response[entity_id]["capability"] == expected
-    assert (send_cmd if action == "turn_on_for" else read_attr).await_count == (1 if action == "turn_on_for" else 2)
+    assert read_attr.await_count == 2
+
+
+UNCERTIFIED_NODE = {"vendor_id": 0xFFF1}
+BRIDGE_NODE = {"vendor_id": 4757, "attributes": AGGREGATOR}
 
 
 @pytest.mark.usefixtures("mock_chip", "setup_production")
 @pytest.mark.parametrize(
-    ("node", "expected"),
-    [({"vendor_id": 0xFFF1}, UNCERTIFIED), ({"vendor_id": 4757, "attributes": AGGREGATOR}, BRIDGED)],
-    ids=["uncertified", "bridged"],
+    ("node", "expected", "action"),
+    [
+        (UNCERTIFIED_NODE, UNCERTIFIED, "get_attributes"),
+        (BRIDGE_NODE, BRIDGED, "get_attributes"),
+        # The timer call is untested on every class until the WiZ plug's rerun (plan Decision 75).
+        (UNCERTIFIED_NODE, UNCERTIFIED, "turn_on_for"),
+        (BRIDGE_NODE, BRIDGED, "turn_on_for"),
+        ({}, WIZ_PLUG, "turn_on_for"),
+        ({"vendor_id": 4874, "product_id": 80}, OTHER, "turn_on_for"),
+    ],
+    ids=["uncertified-read", "bridged-read", "uncertified", "bridged", "wiz_plug", "other"],
 )
-@pytest.mark.parametrize("action", ["turn_on_for", "get_attributes"])
 async def test_untested_classes_wait_for_experimental(hass, node, expected, action):
     """No Matter class is harmed by a call, so an untested one runs once Experimental features is on."""
     entry, send_cmd, read_attr = matter_device(hass, **node)
