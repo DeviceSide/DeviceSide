@@ -376,8 +376,9 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
    - The Hue `index.md` reason is corrected to the accurate one: v1 can't write to an off light or report changes
      without polling, and Signify ended its support in 2020
      ([research](../integrations/hue/research/2026-11-14-v1-api.md)).
-   - **Built** (`claude/device-classes-8-hue`), the lab run pending (fixture: the A60 on the bridge; the Sengled
-     sits out, Decision 77).
+   - **Built** (`claude/device-classes-8-hue`), and its lab run passed at `bc27094` (2026-11-15; the A60 on the
+     bridge, the Sengled sitting out, Decision 77): the records cite that package tree and sign Hue off, with no
+     coverage gap.
      - **Classes** (`integrations/hue/classes.py`): a light by its registry device's manufacturer (`Signify
        Netherlands B.V.`: `hue`; any other maker, Friends of Hue included: `other`, the default); a scene by the
        lights it writes (`other` if any is); `smart_scene` for an All-Day scene. A room by its members, a light with
