@@ -42,7 +42,7 @@ class Z2MGetAttributes(Adapter[Request]):
         return (
             super().supports(hass, request, target)
             or not_addressable(target, reads_state=True)
-            or unaddressable(hass, target)
+            or unaddressable(hass, target, every=False)
         )
 
     async def execute(self, hass: HomeAssistant, request: Request, targets: list[Target]) -> list[EntityResult]:

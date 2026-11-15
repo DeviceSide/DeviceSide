@@ -127,8 +127,8 @@ class Target:
     named: bool = False
     # False for a native group's member the integration can't address on its own: a device with several entities in
     # the group's domain, whose call would reach its default one, maybe not the one the group holds
-    # (zigbee2mqtt/members.py). Its class still counts in the group's; the dispatcher skips it as not_addressable when
-    # the group falls back to its members.
+    # (zigbee2mqtt/members.py). Its class still counts in the group's; when the group falls back to its members, the
+    # dispatcher skips it, with its class's refusal if it has one, else as not_addressable.
     addressable: bool = True
 
     @property

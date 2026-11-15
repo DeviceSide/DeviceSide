@@ -362,7 +362,32 @@ async def test_a_fallen_group_skips_a_member_it_cant_address_alone(hass, fake, r
         assert await refusal(hass, "turn_off_for", data) == "not_supported"
 
     assert response == {"switch.e": {"status": "sent", "integration": "fake", "capability": "E"}}
-    assert "skipped targets that can't take it: switch.a (not_addressable), switch.c (not_supported)" in caplog.text
+    assert (
+        "skipped targets that can't take it: the device of switch.a (not_addressable), switch.c (not_supported)"
+        in caplog.text
+    )
+    assert [ids for *_, ids in reset_script.calls] == [["switch.e"]]
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_member_it_cant_address_alone_whose_class_doesnt_work_says_so(hass, fake, reset_script, caplog):
+    """switch.d's class D doesn't work, which is the harm the user needs to read, so its class's refusal wins over
+    not_addressable; the skip names its device, as the entity it is listed by may not be the one the group holds."""
+    for member in ("switch.d", "switch.e"):
+        add_fake_entity(hass, fake, member)
+    add_fake_entity(
+        hass,
+        fake,
+        "switch.fake_group",
+        attributes={"fake_members": ["switch.d", "switch.e"], "fake_unaddressable": ["switch.d"]},
+        unique_id="group:switch.fake_group",
+    )
+
+    with patch.object(FakeTurnOffFor, "scope", replace(CLASSED, capabilities=verified("A", "E"))):
+        response = await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
+
+    assert response == {"switch.e": {"status": "sent", "integration": "fake", "capability": "E"}}
+    assert "skipped targets that can't take it: the device of switch.d (doesnt_work)" in caplog.text
     assert [ids for *_, ids in reset_script.calls] == [["switch.e"]]
 
 

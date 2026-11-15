@@ -231,8 +231,14 @@ class Dispatcher:
             reduced = request.without(dropped)
             if not target.addressable:
                 # A member a group fell back to that the integration can't address on its own: the call could reach
-                # an entity the caller didn't target (Target.addressable).
-                results += _skip(target.reported_id, target.named, Reason.NOT_ADDRESSABLE, adapter.integration)
+                # an entity the caller didn't target (Target.addressable). Its class's refusal comes first, so a
+                # member whose class harms says so. It stands for its whole device, listed by an entity that may not
+                # be the one the group holds, so the skip names the device by it, with no address.
+                reason, why = adapter.scope.refusal(self._classes(adapter, target, None)) or (
+                    Reason.NOT_ADDRESSABLE,
+                    None,
+                )
+                results += _skip(f"the device of {target.reported_id}", target.named, reason, adapter.integration, why)
                 continue
             if reason := adapter.supports(self.hass, reduced, target):
                 title = self.registry.integrations[adapter.integration].title

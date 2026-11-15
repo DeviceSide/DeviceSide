@@ -34,10 +34,12 @@ Only devices Z2M registered through MQTT discovery are found: the device carries
   absent in 2.5.1), and Z2M's discovery gives that entity unique_id `<ieee>_<domain>_<name>_<base topic>` (object_id
   `light_l1`, `lib/extension/homeassistant.ts`). Matching it is no use until the call can reach that endpoint, which
   also needs the endpoint's suffixed state keys read back. So `members.py` lists a member device with more than one
-  entity in the group's domain, disabled ones counted, by its first, not addressable (`Target.addressable`): its
-  class counts; a group that falls back skips it as `not_addressable`; `member_lights` leaves it out, and fade, stop,
-  set attributes and get attributes refuse a group with no other light as `not_addressable`. A groupcast reaches the
-  endpoint the group holds, so it is unaffected.
+  Z2M (`mqtt` platform) entity in the group's domain, disabled ones counted, by its first, not addressable
+  (`Target.addressable`): its class counts; a group that falls back skips it as `not_addressable`; `member_lights`
+  leaves it out (logged at DEBUG). Fade, stop and set attributes plan from every member's state while the groupcast
+  still reaches that endpoint, so they refuse a group with such an available member as `not_addressable`; get
+  attributes averages the others, and refuses a group with no other available light. A groupcast-only action
+  (`turn_on_for`) reaches the endpoint the group holds, so it is unaffected.
 
 ## Modules
 

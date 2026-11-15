@@ -148,7 +148,7 @@ class Z2MSetAttributes(Adapter[SetAttributesRequest]):
     def supports(self, hass: HomeAssistant, request: SetAttributesRequest, target: Target) -> str | None:
         if (reason := super().supports(hass, request, target)) is not None:
             return reason
-        return not_addressable(target, reads_state=True) or unaddressable(hass, target)
+        return not_addressable(target, reads_state=True) or unaddressable(hass, target, every=True)
 
     async def execute(
         self, hass: HomeAssistant, request: SetAttributesRequest, targets: list[Target]

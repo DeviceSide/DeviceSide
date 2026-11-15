@@ -367,6 +367,20 @@ async def test_member_lights_leave_out_a_device_with_several_lights(hass, setup_
 
     assert [member.entity_id for member in lights] == ["light.one", "light.two"]
     assert f"{entity_id}: a member device (light.gang_1, light.gang_2) has several light entities" in caplog.text
+    assert f"{entity_id}: leaving out the devices of light.gang_1, each with several light entities" in caplog.text
+
+
+async def test_a_switch_as_x_light_beside_a_z2m_light_leaves_its_device_addressable(hass, setup_production, broker):
+    """Only Z2M's own entities are endpoints: a switch_as_x light on the same device is no second light."""
+    entity_id = group(hass, broker, one={}, two={})
+    device_id = er.async_get(hass).async_get("light.one").device_id
+    er.async_get(hass).async_get_or_create(
+        "light", "switch_as_x", "wrapper", suggested_object_id="one_wrapper", device_id=device_id
+    )
+
+    listed = INTEGRATION.expand_group(hass, resolve(hass, get_runtime(hass).registry, entity_id))
+
+    assert {member.entity_id: member.addressable for member in listed} == {"light.one": True, "light.two": True}
 
 
 async def test_a_fallback_skips_a_device_with_several_lights_as_not_addressable(hass, setup_production, broker, caplog):
@@ -378,7 +392,7 @@ async def test_a_fallback_skips_a_device_with_several_lights_as_not_addressable(
 
     assert response == {"light.one": SENT}
     assert commands(broker) == [(SET.replace(IEEE, "0x01"), {"state": "ON", "on_time": 5.0})]
-    assert "light.gang_1 (not_addressable)" in caplog.text
+    assert "the device of light.gang_1 (not_addressable)" in caplog.text
 
 
 async def test_a_groupcast_still_reaches_a_device_with_several_lights(hass, setup_production, broker):
@@ -414,6 +428,54 @@ async def test_a_group_of_only_devices_with_several_lights_refuses_a_call_throug
     """Each of these reaches the group's lights one by one, and it has none it can address: refused before anything is
     sent, as core refuses a group none of whose members runs."""
     entity_id = gang_alone(hass, broker)
+
+    assert await refusal(hass, service, {"entity_id": entity_id, **data}) == "not_addressable"
+    assert commands(broker) == []
+
+
+@pytest.mark.parametrize(
+    ("service", "data"),
+    [
+        ("raise_brightness", {"sweep_time": 10}),
+        ("lower_brightness", {"sweep_time": 10}),
+        ("stop", {}),
+        ("set_attributes", {"brightness": 50}),
+    ],
+)
+async def test_a_group_holding_a_device_with_several_lights_refuses_a_call_that_plans_from_each(
+    hass, setup_production, broker, service, data
+):
+    """The audit's M1: these plan from each member's state, the groupcast reaches the gang the plan can't see. A raise
+    from an off bulb and a lit gang would send the bottom-out groupcast and dip the gang; a lower or stop would
+    answer off while the gang is lit and moving; set_attributes would confirm a level it never read back."""
+    entity_id = group(hass, broker, one={"state": "off"}, two={"state": "off"})
+    two_gang(hass, broker)
+
+    assert await refusal(hass, service, {"entity_id": entity_id, **data}) == "not_addressable"
+    assert commands(broker) == []
+
+
+async def test_get_attributes_reads_a_group_holding_a_device_with_several_lights_from_the_others(
+    hass, setup_production, broker
+):
+    """Averaging the members it can read answers for the group, so only a group with no other light is refused."""
+    entity_id = group(hass, broker, one={}, two={})
+    two_gang(hass, broker)
+    target = resolve(hass, get_runtime(hass).registry, entity_id)
+
+    assert members.unaddressable(hass, target, every=False) is None
+    assert members.unaddressable(hass, target, every=True) == "not_addressable"
+
+
+@pytest.mark.parametrize(("service", "data"), [("get_attributes", {}), ("raise_brightness", {"sweep_time": 10})])
+async def test_a_group_of_a_device_with_several_lights_and_an_unavailable_bulb_is_refused(
+    hass, setup_production, broker, service, data
+):
+    """The audit's L8: judged on available members, so the bulb can't hide the gang and leave the call nothing to
+    address, skipped silently as an empty group."""
+    entity_id = gang_alone(hass, broker)
+    light(hass, broker, "light.away", "0x06", state="unavailable")
+    broker.retained[GROUPS][-1]["members"].append({"ieee_address": "0x06"})
 
     assert await refusal(hass, service, {"entity_id": entity_id, **data}) == "not_addressable"
     assert commands(broker) == []

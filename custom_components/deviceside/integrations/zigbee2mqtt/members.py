@@ -48,31 +48,46 @@ async def member_lights(hass: HomeAssistant, group: Target) -> list[Target]:
 
     An unavailable member is left out, as the dispatcher leaves one out when it expands a group, and so is one HA
     has no light for, and one with several lights (`_members`), which the call could reach only on its default
-    endpoint, maybe a light the user didn't target.
+    endpoint, maybe a light the user didn't target. Raise, lower, stop and set_attributes refuse a group holding one
+    (`unaddressable`), so only get_attributes reads a group without it, averaging the others; each one left out is
+    logged at DEBUG.
     """
     members, _complete = _members(hass, group, await group_members(hass, group_id(group)))
-    return [
-        member
-        for member in members
-        if member.addressable
-        and member.state is not None
-        and member.state.state != STATE_UNAVAILABLE
-        and state_topic(member) is not None
-    ]
+    lights = [member for member in members if _available(member) and state_topic(member) is not None]
+    if dropped := [member for member in lights if not member.addressable]:
+        # The first report of "my group's reading leaves out my two-gang" holds why.
+        _LOGGER.debug(
+            "%s: leaving out the devices of %s, each with several %s entities, which can't be addressed on their own",
+            group.entity_id,
+            ", ".join(member.entity_id for member in dropped),
+            group.domain,
+        )
+    return [member for member in lights if member.addressable]
 
 
-def unaddressable(hass: HomeAssistant, target: Target) -> str | None:
-    """not_addressable for a group an action reaches through its member lights (member_lights) when every member
-    with a light is a device with several (`_members`), so the call has none to address; None for anything else, and
-    when the bridge cache can't list the members. A groupcast still reaches such a group: only the actions that
-    address members one by one check this, before anything is sent, so a named group raises, as core's rule for a
-    group none of whose members runs has it."""
+def unaddressable(hass: HomeAssistant, target: Target, *, every: bool) -> str | None:
+    """not_addressable for a group an action reaches through its member lights (member_lights) when an available
+    member light is a device with several (`_members`), which the call can't address on its own; None for anything
+    else, and when the bridge cache can't list the members.
+
+    `every` is for an action that plans from every member's state (raise, lower, stop, set_attributes): one such
+    member refuses the group, as the groupcast still reaches its gang while the plan can't see it (a raise from a
+    lit gang and an off bulb would dip the gang to the bottom; a lower or stop would answer off while the gang is
+    lit). Without it (get_attributes, which averages the members it can read), only a group with no other available
+    light is refused. A groupcast-only action never checks this. Checked before anything is sent, so a named group
+    raises, as core's rule for a group none of whose members runs has it."""
     if not target.is_group or not (listed := expand_group(hass, target)):
         return None
-    lights = [member for member in listed if member.state is not None]
-    if lights and not any(member.addressable for member in lights):
-        return Reason.NOT_ADDRESSABLE
-    return None
+    lights = [member for member in listed if _available(member)]
+    if not lights:
+        return None
+    fails = any if every else all
+    return Reason.NOT_ADDRESSABLE if fails(not member.addressable for member in lights) else None
+
+
+def _available(member: Target) -> bool:
+    """A member with a light HA has and can reach: a stand-in has no state."""
+    return member.state is not None and member.state.state != STATE_UNAVAILABLE
 
 
 def _members(hass: HomeAssistant, group: Target, addresses: Iterable[str]) -> tuple[list[Target], bool]:
@@ -80,7 +95,7 @@ def _members(hass: HomeAssistant, group: Target, addresses: Iterable[str]) -> tu
     HA resolves none; and whether every address has a device. A device on two endpoints is listed twice, and counts
     once, keyed by its device.
 
-    A device with more than one entity in the group's domain, disabled ones counted (a two-gang switch, a dual
+    A device with more than one Z2M entity in the group's domain, disabled ones counted (a two-gang switch, a dual
     Gledopto), is listed by its first, not addressable (Target.addressable): its class counts, but no action addresses
     it on its own. The group holds one endpoint of it, and DeviceSide's set and get topics name the device alone, so
     Z2M would send the call to the device's default endpoint, maybe a gang the user didn't target
@@ -94,13 +109,14 @@ def _members(hass: HomeAssistant, group: Target, addresses: Iterable[str]) -> tu
             complete = False
             continue
         own = er.async_entries_for_device(entities, device.id)
-        lights = [e for e in own if e.domain == group.domain]
+        # Only Z2M's own entities: a switch_as_x light on the same device is no endpoint of it.
+        lights = [e for e in own if e.domain == group.domain and e.platform == "mqtt"]
         resolved = resolve_members(hass, registry, group, "mqtt", [lights[0].unique_id]) if lights else []
         if resolved:
             several = [
                 e
                 for e in er.async_entries_for_device(entities, device.id, include_disabled_entities=True)
-                if e.domain == group.domain
+                if e.domain == group.domain and e.platform == "mqtt"
             ]
             if len(several) > 1:
                 # The first report of "my two-gang's other gang turned on", or "it was skipped", holds why.
