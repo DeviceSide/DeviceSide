@@ -147,8 +147,8 @@ _TUYA_ZCL_MANUFACTURER = r"_TZ\d{4}_.*|_TYZB\d{2}_.*"
 
 # Tuya's countdown, converter A, on a TS011F: the definition exposes `countdown` for the whole device (Z2M's own
 # statement that it takes the key; a multi-gang one exposes one per endpoint, `countdown_l1`, so isn't matched) and
-# isn't the ZOT60, whose `countdown` is a
-# datapoint, converter B (research/2026-11-14-tuya-countdown.md, §1, The expose doesn't tell A from B).
+# isn't the ZOT60, whose `countdown` is a datapoint, converter B (research/2026-11-14-tuya-countdown.md, §1, The
+# expose doesn't tell A from B).
 _COUNTDOWN = {"zigbee_model": "TS011F", "exposes": "countdown", "definition_model": "(?!ZOT60$).*"}
 
 RULES: tuple[Rule, ...] = (

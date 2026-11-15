@@ -75,7 +75,7 @@
       "message": "{entity_id} can't take this action ({reason})."
     },
     "own_call": {
-      "message": "{entity_id} can't take this action as a group: its members each take a call of their own, and none of them can take it now."
+      "message": "{entity_id} can't take this action as a group: a member takes a call of its own, so its members are each called alone, and none of them can take it now."
     },
     "doesnt_work": {
       "message": "{entity_id} can't take this action ({reason}): {why}"

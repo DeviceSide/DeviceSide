@@ -213,9 +213,8 @@ runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, 
   target, so naming a member beside a group that falls back changes nothing. Only when none of its members is planned or
   left nothing to do (each refused, gated or unavailable) is the group itself refused, with its reason (the refused
   member's, or `experimental_off`; for `own_call`, a skipped member's, `experimental_off` first): raised if named,
-  skipped and logged if not. For an adapter without `native_groups`,
-  an `expand_group` that answers `None` or raises (logged) leaves membership unknowable, so the group is refused as
-  `group_not_supported`, as with none.
+  skipped and logged if not. For an adapter without `native_groups`, an `expand_group` that answers `None` or raises
+  (logged) leaves membership unknowable, so the group is refused as `group_not_supported`, as with none.
 - **Dispatcher.** Buckets targets by adapter, drops fields a target lacks, checks `supports()` (domain and fields in
   scope, and the adapter's own reasons), then the class (`AdapterScope.refusal`: where a `doesnt_work` or
   `not_supported` entry `harms`, one `Unplaced` or `None` is refused as `class_unknown`; a class in `doesnt_work` is

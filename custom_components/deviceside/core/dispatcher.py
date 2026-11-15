@@ -116,7 +116,8 @@ def _unanswered(
         if any(member.addressable and member.reported_id in answered for member in members):
             continue
         if reason == Reason.OWN_CALL:
-            ids = {member.reported_id for member in members}
+            # An unaddressable member's skip names its device by it (_plan), so match that form too.
+            ids = {name for member in members for name in (member.reported_id, f"the device of {member.reported_id}")}
             details = [r.detail for r in skipped if r.entity_id in ids and r.status is Status.UNSUPPORTED and r.detail]
             reason = EXPERIMENTAL_OFF if EXPERIMENTAL_OFF in details else next(iter(details), reason)
         results += _skip(group.reported_id, group.named, reason, adapter.integration, why, title)

@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field, fields, replace
 from enum import StrEnum
-from typing import Any, Self
+from typing import TYPE_CHECKING, Any, Self
 
 import probatio
 from homeassistant.components.light.const import LIGHT_TURN_ON_SCHEMA
@@ -10,6 +10,9 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
 from ..const import LIGHT_FIELDS
+
+if TYPE_CHECKING:
+    from .scope import DurationLimits  # scope.py imports this module
 
 
 class Status(StrEnum):
@@ -113,7 +116,7 @@ class TimedRequest(Request):
     """
 
     duration_s: float
-    limits: Any = field(default=None, kw_only=True)  # DurationLimits | None; scope.py imports this module
+    limits: DurationLimits | None = field(default=None, kw_only=True)
 
 
 @dataclass(frozen=True, slots=True)

@@ -7,7 +7,7 @@ from custom_components.deviceside.actions.turn_on_for import TurnOnForRequest
 from custom_components.deviceside.core.errors import TargetNotSupported
 from custom_components.deviceside.core.resolver import resolve
 from custom_components.deviceside.core.runtime import get_runtime
-from custom_components.deviceside.core.scope import Level, Unplaced
+from custom_components.deviceside.core.scope import DurationLimits, Level, Unplaced
 from custom_components.deviceside.integrations.zigbee2mqtt import INTEGRATION, classes, turn_on_for
 from custom_components.deviceside.integrations.zigbee2mqtt.turn_on_for import Z2MTurnOnFor
 
@@ -243,5 +243,18 @@ async def test_execute_branches_on_the_limits_the_dispatcher_planned_not_a_fresh
     del broker.retained[DEVICES]  # the plug is no longer placed as a countdown class
 
     await adapter.execute(hass, planned, [target])
+
+    assert commands(broker) == [(SET, {"state": "ON", "countdown": 30})]
+
+
+async def test_execute_takes_an_equal_copy_of_the_countdown_limits_as_them(hass, setup_production, broker):
+    """The dispatcher groups runs by equality, so a copy must take the countdown too, not a plain on_time On."""
+    entity_id = plug(hass, broker, UNLISTED)
+    registry = get_runtime(hass).registry
+    adapter = registry.adapter("turn_on_for", "zigbee2mqtt")
+    copy = DurationLimits(min_s=1, max_s=43200, step_s=1)
+    assert copy is not turn_on_for.COUNTDOWN_LIMITS
+
+    await adapter.execute(hass, TurnOnForRequest(duration_s=30, limits=copy), [resolve(hass, registry, entity_id)])
 
     assert commands(broker) == [(SET, {"state": "ON", "countdown": 30})]

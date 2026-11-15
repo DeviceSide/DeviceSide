@@ -280,9 +280,9 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
          `countdown` and isn't `ZOT60`; a class per Verified maker string on the same rule plus its string
          (`string_class`: `tuya_countdown_tz3000_0zfrhq4i` and the three other lab plugs'); `tuya_countdown_harmed` for
          `_TZ3000_gjnozsaz` (Z2M #30493), not yet supported, `harms`, on `turn_on_for`. A TS011F without the expose, a
-         multi-gang one (an expose per endpoint, property `countdown_l1`) and the ZOT60 stay `tuya_ts011f`; before bridge/devices lists a plug
-         it is `tuya_ts011f`, Unplaced, so `class_unknown`. Elsewhere every new class is Experimental, as
-         `tuya_ts011f` is.
+         multi-gang one (an expose per endpoint, property `countdown_l1`) and the ZOT60 stay `tuya_ts011f`; before
+         bridge/devices lists a plug it is `tuya_ts011f`, Unplaced, so `class_unknown`. Elsewhere every new class is
+         Experimental, as `tuya_ts011f` is.
        - **Item 8, a string's level:** a class per string, so the coverage check asks each Verified string for its own
          record, and a record credits only the string its test reached. The record shape is format 2 unchanged: each
          test's device carries its `manufacturer` and its string's class, one test per plug (Decision 88). The four lab

@@ -84,6 +84,12 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   Every light or switch of a device with several in its domain is now refused as `not_addressable`
   ([internals](docs/integrations/zigbee2mqtt/internals.md#addressing)). Future work: address each
   endpoint, by its topic with the endpoint names Z2M 2.6.0+ publishes, and read its suffixed state keys back.
+- [ ] **A group's stand-in member gets no entry** (#440's re-review): a Zigbee2MQTT light group holding a plug Z2M
+  shows as a switch (its stand-in, classed by its device) falls back for the plug's class, and the fallback plans only
+  available members, so the plug gets neither the call nor a skip: `turn_on_for` on the group turns its lights on for
+  the time asked and leaves the plug as it was, with no warning saying so. The fix is in core's fallback (`_fallback`),
+  so every integration's stand-ins: skip one with its class's refusal, or `not_addressable`, as an unaddressable
+  member is.
 - [ ] **Sign-offs** for v0.1.0, one per integration changed since v0.0.1 (`check_release.py --signoffs`), each a rig run
   from ha-rig `main` (its records are format 2; format 1 records, converted from markdown, count for none). The runs for
   the formerly release-flagged adapters need these `--profile lab` cases, run watched, the A60 visiting each network:

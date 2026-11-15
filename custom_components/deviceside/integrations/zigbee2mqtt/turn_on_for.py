@@ -88,9 +88,10 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
         self, hass: HomeAssistant, request: TurnOnForRequest, targets: list[Target]
     ) -> list[EntityResult]:
         async def send(target: Target) -> EntityResult:
-            if request.limits is COUNTDOWN_LIMITS:
+            if request.limits == COUNTDOWN_LIMITS:
                 # The dispatcher planned the run on a countdown class and fitted the duration to its limits; branching
                 # on them, not a fresh capability(), keeps the two together if bridge/devices moves the plug between.
+                # By equality, as the dispatcher groups runs by it: an equal copy is the same limits.
                 # A plug has no light fields to apply.
                 await publish_set(hass, target, {"state": "ON", "countdown": int(request.duration_s)})
                 return self.result(target, Status.SENT)
