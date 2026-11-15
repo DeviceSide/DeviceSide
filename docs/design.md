@@ -204,20 +204,24 @@ runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, 
   (the adapter, domain and fields not flagged), the group falls back to its members: each available one not already a
   target is planned on its own, indirect, so the good ones run and a refused or flagged one is skipped and logged (a
   member also named raises, as its own target). A member `expand_group` lists for its class but the integration can't
-  address on its own (`Target.addressable` false: a Z2M device with several lights) is skipped, with its class's
-  refusal if it has one, else `not_addressable`, named by its device, and answers for nothing. So is a stand-in (a
-  member device with no entity in the group's domain, listed by the group's own entity with no state: a plug in a
-  Z2M light group), named as a member device of the group, unavailable or not, so the device the group's call would
-  have reached gets an entry saying it didn't. Every member the fallback plans is indirect. While Experimental features is off, or where a call is known to harm, a
-  classifier that raised (logged) leaves the group's class unknown, so it falls back too, and each member is classed
-  again. With Experimental features on, a group whose weakest member is Experimental, or whose class is unknown where no
-  call is known to harm, runs whole, as one command; a member named beside it then gets its own command as well as the
-  group's. A group that falls back gets no result of its own: its planned members answer for it, including one already a
-  target, so naming a member beside a group that falls back changes nothing. Only when none of its members is planned or
-  left nothing to do (each refused, gated or unavailable) is the group itself refused, with its reason (the refused
-  member's, or `experimental_off`; for `own_call`, a skipped member's, `experimental_off` first): raised if named,
-  skipped and logged if not. For an adapter without `native_groups`, an `expand_group` that answers `None` or raises
-  (logged) leaves membership unknowable, so the group is refused as `group_not_supported`, as with none.
+  address on its own (`Target.addressable` false: a Z2M device with several lights) is skipped, with its class's refusal
+  if it has one, else `not_addressable`, named by its device, and answers for nothing. So is a stand-in
+  (`Target.stand_in`: a member device with no entity in the group's domain, listed by the group's own entity with no
+  state, as a plug in a Z2M light group), named as a member device of the group, available or not, so the device the
+  group's call would have reached gets an entry saying it didn't; unless a target on its device was planned too, which
+  answers for it, the group included. Any other member known unavailable is left out quietly, and every member the
+  fallback plans is indirect. While Experimental features is off, or where a call is known to harm, a classifier that
+  raised (logged) leaves the group's class unknown, so it falls back too, and each member is classed again. With
+  Experimental features on, a group whose weakest member is Experimental, or whose class is unknown where no call is
+  known to harm, runs whole, as one command; a member named beside it then gets its own command as well as the group's.
+  A group that falls back gets no result of its own: its planned members answer for it, including one already a target,
+  so naming a member beside a group that falls back changes nothing. Only when none of its members is planned or left
+  nothing to do (each refused, gated or unavailable) is the group itself refused, with its reason (the refused member's,
+  or `experimental_off`; for `own_call`, a skipped member's: `experimental_off` first, then a class's refusal, then any
+  other, `not_addressable` last): raised if named, skipped and logged if not. For an adapter without `native_groups`,
+  core plans a group's members itself, as the fallback does (stand-ins skipped, the unavailable left out, each
+  indirect), and an `expand_group` that answers `None` or raises (logged) leaves membership unknowable, so the group is
+  refused as `group_not_supported`, as with none.
 - **Dispatcher.** Buckets targets by adapter, drops fields a target lacks, checks `supports()` (domain and fields in
   scope, and the adapter's own reasons), then the class (`AdapterScope.refusal`: where a `doesnt_work` or
   `not_supported` entry `harms`, one `Unplaced` or `None` is refused as `class_unknown`; a class in `doesnt_work` is

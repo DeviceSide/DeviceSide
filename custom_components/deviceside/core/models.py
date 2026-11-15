@@ -140,6 +140,10 @@ class Target:
     # not in `member_capabilities`; when the group falls back to its members, the dispatcher skips it, with its class's
     # refusal if it has one, else as not_addressable.
     addressable: bool = True
+    # A native group's member listed for its class alone: a device with no entity in the group's domain, listed by
+    # the group's own entity with that device and no state, not addressable (zigbee2mqtt/members.py, _stand_in). Its
+    # reported_id is the group's; a group that falls back skips it, unless a target on its device answers for it.
+    stand_in: bool = False
 
     @property
     def reported_id(self) -> str:

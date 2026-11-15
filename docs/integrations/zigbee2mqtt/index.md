@@ -18,17 +18,18 @@ it connects. Every feature says how well it is proven for each
 
 - **Hue bulbs** (manufacturer `Philips`) are tested: every feature on this page has passed on them. A Hue smart plug
   hasn't: turn on with timer runs on it only with Experimental features on.
-- A **group** is proven as far as its weakest light. One with a light a feature refuses, or, with Experimental
-  features off, one of another brand, falls back to its lights, each on its own; with them on, it runs as one group.
-  A member Home Assistant has no light for (a plug Zigbee2MQTT shows as a switch, say) counts by its device, so a Tuya
-  plug in a group makes it fall back too. So does a TS011F plug on Tuya's countdown for turn on with timer, as the
-  group's timer isn't the plug's: each light gets its own, and so does a plug Zigbee2MQTT shows as a light. One it
-  shows as a switch is skipped (`not_addressable`), with a warning, as no light reaches it: target its switch. Right after Home Assistant connects to MQTT, until Zigbee2MQTT republishes
-  its groups, which it does as the connection comes up, DeviceSide can't tell a group's members: the group counts as
+- A **group** is proven as far as its weakest light. One with a light a feature refuses, or, with Experimental features
+  off, one of another brand, falls back to its lights, each on its own; with them on, it runs as one group. A member
+  Home Assistant has no light for (a plug Zigbee2MQTT shows as a switch, say) counts by its device, so a Tuya plug in a
+  group makes it fall back too. So does a TS011F plug on Tuya's countdown for turn on with timer, as the group's timer
+  isn't the plug's: each light gets its own, and so does a plug Zigbee2MQTT shows as a light. One it shows as a switch
+  is skipped (`not_addressable`), with a warning, as no light reaches it: target its switch beside the group, and it
+  gets its countdown, with no warning. Right after Home Assistant connects to MQTT, until Zigbee2MQTT republishes its
+  groups, which it does as the connection comes up, DeviceSide can't tell a group's members: the group counts as
   Experimental, and turn on with timer refuses it (`class_unknown`), as a Tuya plug in it would stay on. If DeviceSide
-  can't subscribe to Zigbee2MQTT's bridge at all, it logs a warning, groups run only with Experimental features on,
-  and, until the integration reloads, turn on with timer refuses every group and every light, plug or switch but
-  Hue's (IKEA's included), as it can't tell which is a rebadged Tuya device.
+  can't subscribe to Zigbee2MQTT's bridge at all, it logs a warning, groups run only with Experimental features on, and,
+  until the integration reloads, turn on with timer refuses every group and every light, plug or switch but Hue's
+  (IKEA's included), as it can't tell which is a rebadged Tuya device.
 
 ### Tuya
 

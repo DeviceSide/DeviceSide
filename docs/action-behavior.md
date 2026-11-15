@@ -101,10 +101,11 @@ raises or the entity is skipped.
   a call of its own (`own_call`), falls back to its members where the integration can list them. A group that falls back
   has no entry of its own: its members' entries answer for it, though a member it can't address alone answers for
   nothing and is skipped (a plug in a light group too, which HA shows as a switch, skipped whether or not it is
-  available, as its state can't be seen), while any other member known unavailable is left out quietly. Every member
-  a group falls back to is indirect, so none raises, and the group raises only when none of its members runs
-  ([design.md](design.md#core-contract), Groups). A named target whose class doesn't work, or isn't supported yet and
-  is harmed by today's call, raises with the reason why.
+  available, as its state can't be seen, unless the plug is a target itself), while any other member known unavailable
+  is left out quietly. Every member a group falls back to is indirect, so none raises, and the group raises only when
+  none of its members runs, with the most useful member's reason: `experimental_off`, then a class's refusal, then any
+  other, `not_addressable` last ([design.md](design.md#core-contract), Groups). A named target whose class doesn't work,
+  or isn't supported yet and is harmed by today's call, raises with the reason why.
 - **The class.** On an integration that names [classes](evidence.md#device-classes), each entry carries the
   class the call reached, as an attribute would: a command's beside `status` and `integration`, a query's among its
   data. A target's is `capability` (a string: `"RGBCCT"`); a native group's is `capabilities`, its members' classes

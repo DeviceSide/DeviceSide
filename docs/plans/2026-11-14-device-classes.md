@@ -301,10 +301,12 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
          clamps, as action-behavior.md has it.
        - **Stand-ins in a fallback** (Built, `claude/device-classes-5d-standin-fallback`, #440's re-review): a plug in
          a Z2M light group that HA shows as a switch is the group's stand-in, so the own_call fallback once planned
-         only the lights and left the plug with neither the call nor a skip. Core's `_fallback` now keeps each
-         stand-in (no state, never `seen`, as its reported_id is the group's) and marks every member it plans
-         indirect; `_plan` skips it as an unaddressable member, its class's refusal or `not_addressable`, named "a
-         member device of" the group, and `_unanswered` takes that reason over own_call's.
+         only the lights and left the plug with neither the call nor a skip. A stand-in is now marked
+         (`Target.stand_in`); core plans it in the fallback and in its own group expansion (no `native_groups`), each
+         member indirect, and `_plan` skips it as an unaddressable member, its class's refusal or `not_addressable`,
+         named "a member device of" the group, unless a target on its device was planned too, which answers for it.
+         A group refused for own_call takes its members' most useful reason (`_rank`: `experimental_off`, a class's
+         refusal, any other, `not_addressable` last).
        - **Per-domain class levels (Decision 87):** `verified(..., domains=...)` holds a class's level on those domains
          alone (core's `OnDomains`); elsewhere it counts as Experimental. Z2M `turn_on_for`'s `switch` is Verified,
          `hue` on `light` alone (every record ran on a bulb, so a Hue plug stays flagged), and each Verified string on

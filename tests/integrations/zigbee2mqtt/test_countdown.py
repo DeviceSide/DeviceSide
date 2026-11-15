@@ -208,15 +208,21 @@ async def test_a_group_with_a_countdown_plug_falls_back_so_each_gets_its_own_cal
     ]
 
 
-async def test_a_light_group_skips_a_countdown_plug_it_shows_as_a_switch(hass, setup_production, broker, caplog):
-    """#440's re-review: a plug Z2M exposes as a switch is the group's stand-in, classed by its device, so the group
-    falls back for its countdown, and the plug, which no light entity addresses, gets a skip saying the call didn't
-    reach it, not silence while the lights take their timer."""
+def switch_plug_in_group(hass, broker) -> str:
+    """light.room, of two Hue bulbs and a lab TS011F plug (0x03) Z2M exposes as a switch, switch.plug."""
     entity_id = group(hass, broker, one={}, two={})
     entry = hass.config_entries.async_entries("mqtt")[0]
     add_z2m_entity(hass, entry, "switch.plug", ieee="0x03", manufacturer="Tuya", model_id="TS011F_plug_1")
     broker.retained[DEVICES].append(listed("0x03", LAB))
     broker.retained[GROUPS][0]["members"].append({"ieee_address": "0x03"})
+    return entity_id
+
+
+async def test_a_light_group_skips_a_countdown_plug_it_shows_as_a_switch(hass, setup_production, broker, caplog):
+    """#440's re-review: a plug Z2M exposes as a switch is the group's stand-in, classed by its device, so the group
+    falls back for its countdown, and the plug, which no light entity addresses, gets a skip saying the call didn't
+    reach it, not silence while the lights take their timer."""
+    entity_id = switch_plug_in_group(hass, broker)
 
     response = await call(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5})
 
@@ -226,6 +232,20 @@ async def test_a_light_group_skips_a_countdown_plug_it_shows_as_a_switch(hass, s
         (SET.replace(IEEE, "0x02"), {"state": "ON", "on_time": 5.0}),
     ]
     assert f"skipped targets that can't take it: a member device of {entity_id} (not_addressable)" in caplog.text
+
+
+async def test_a_switch_plug_named_beside_its_light_group_gets_its_countdown_and_no_skip(
+    hass, setup_production, broker, caplog
+):
+    """#441's review: the plug, named itself, answers for the group's stand-in on its device, so no warning says the
+    call didn't reach it."""
+    entity_id = switch_plug_in_group(hass, broker)
+
+    response = await call(hass, "turn_on_for", {"entity_id": [entity_id, "switch.plug"], "duration": 5})
+
+    assert set(response) == {"light.one", "light.two", "switch.plug"}
+    assert (SET.replace(IEEE, "0x03"), {"state": "ON", "countdown": 5}) in commands(broker)
+    assert "skipped targets" not in caplog.text
 
 
 @pytest.mark.usefixtures("live")
