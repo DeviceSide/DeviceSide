@@ -264,6 +264,15 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
         (Decision 41). The cards and `index.md` move each Verified string
         to Works and the rest to Experimental.
      9. **Lab run:** every Tuya variant on Jason's Z2M network (Decision 77), added to step 5's lab run.
+        - **Plugs, one per maker string (Jason, 2026-11-15):** `_TZ3000_0zfrhq4i` in the lab profile, pre-authorized;
+          `_TZ3000_typdpbpg` and `_TZ3000_gznh2xla` (on no seed list: converter A by `TS011F_plug_1`'s catch-all) in
+          a new `plugs` profile, `pre_authorized: false`. `_TZ3000_okaz9tjs` (a Girier white label) runs only if a
+          plug that isn't an appliance carries it online; otherwise it stays Experimental. Jason confirms the list
+          just before the run.
+        - **Rig change, paired (`Tests-with`), merged first:** a profile takes only the first entity for each role
+          and integration (`Profile.entity`), so a profile of three `switch_plug` plugs tests one. The cases for a
+          role run once per listed entity, each a test reaching its own device, so one run gives each maker string
+          its record; part 3 settles the record's shape (item 8). The rig's plan goes on its `wt/` branch first.
 5b. **Test records, format 2 (Decision 27),** before the rest of step 5's lab run, so its records and the Shelly
    house run are written in it. Branch `claude/device-classes-5b-records`, stacked on step 5, its own PR, paired
    with a rig change (`Tests-with`).
