@@ -41,12 +41,16 @@ def covers(hass: HomeAssistant, gid: int, targets: Iterable[Target]) -> bool:
     """Whether the targets are every device endpoint a groupcast to the group reaches, so none gets a command it was
     refused or never asked for. The coordinator, which has nothing to switch, is left out. False for a group ZHA
     doesn't know, or one zigpy holds a member of that ZHA doesn't (zha's Group.members drops it, but the groupcast
-    still reaches it).
+    still reaches it), or with no gateway.
 
     A group's light entity reaches only its lights, but a groupcast reaches every member: a Tuya plug in a light group,
     with only a switch entity, would take the light group's OnWithTimedOff (internals.md, `turn_on_for`).
     """
-    if (group := zcl.gateway(hass).get_group(gid)) is None:
+    try:
+        group = zcl.gateway(hass).get_group(gid)
+    except ValueError:  # the gateway went away after planning: each target's own command then fails alone
+        return False
+    if group is None:
         return False
     if len(group.members) != len(group.zigpy_group.members):
         return False

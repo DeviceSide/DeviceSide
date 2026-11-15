@@ -11,7 +11,9 @@ strings for a device whose quirk is missing. Every other rule reads the Zigbee m
 
 Both come from zigpy's device (zcl.zigpy_device), never the registry: ZHA writes the registry from its own device's
 `manufacturer` and `model`, which a v2 quirk's friendly name replaces (zha-quirks zhaquirks/builder/device.py), so a
-Tuya device could show there under another maker. Reading the gateway is sync, with no I/O.
+Tuya device could show there under another maker. A v2 quirk leaves zigpy's strings; a v1 quirk's `replacement` can
+rewrite them (BaseCustomDevice's set_device_attr), which no Tuya quirk does at the pinned commit (internals.md). Reading
+the gateway is sync, with no I/O.
 
 RULES is ordered, the first match winning, and `other`, the default class, takes a device none places. The order
 matters in four places: the datapoint rules go before the ZCL ones (a TS0601's model matches `tuya_zcl`'s `TS` and
@@ -37,13 +39,11 @@ from ...core.models import Target
 from ...core.scope import DoesntWork, NotSupported, documented, experimental, verified
 
 HUE = "hue"
-# Tuya's ZCL plugs and switches whose timer is Tuya's countdown, in whole seconds, which Tuya's recipe drives (parked
-# until after v0.1.0, plan Decision 74): the models Zigbee2MQTT drives that way (zigbee2mqtt/research/2026-11-14-
-# timed-on-call-patterns.md, §3, Tuya ZCL row) and the lab probe ran.
+# Tuya's ZCL plugs and switches whose timer is Tuya's countdown, in whole seconds (internals.md, `classes`; Tuya's
+# recipe for them is parked: internals.md, "Tuya's recipe, parked", and plan Decision 74).
 TUYA_COUNTDOWN = "tuya_countdown"
-# A countdown plug reported harmed on the recipe's own frame (plan Decision 35, amended; docs/evidence.md, Contrary
-# evidence): the TS011F `_TZ3000_gjnozsaz`, whose time left jumps back at random (Z2M #30493, on Z2M's converter A,
-# whose frame the recipe sends).
+# A countdown plug reported harmed on the recipe's own frame, the TS011F `_TZ3000_gjnozsaz` (plan Decision 35;
+# docs/evidence.md, Contrary evidence).
 TUYA_COUNTDOWN_HARMED = "tuya_countdown_harmed"
 # Every other Tuya device on the Zigbee On/Off cluster (bulbs, dimmers, white labels), whose timer nobody has probed:
 # the spec's tenths may be read as seconds, as the countdown models do, and the recipe as a bulb's tenths.
@@ -55,6 +55,8 @@ SENGLED = "sengled"
 SONOFF_SWV = "sonoff_swv"
 OTHER = "other"  # the default class, never Verified (IntegrationInfo.default_class)
 CLASSES = frozenset({HUE, TUYA_COUNTDOWN, TUYA_COUNTDOWN_HARMED, TUYA_ZCL, TUYA_MCU, SENGLED, SONOFF_SWV, OTHER})
+# The classes whose OnTime counts Tuya's countdown, in whole seconds, not the spec's tenths (get_attributes).
+COUNTS_SECONDS = frozenset({TUYA_COUNTDOWN, TUYA_COUNTDOWN_HARMED})
 
 # Tuya's Zigbee manufacturer strings, as Zigbee2MQTT's rules read them (zigbee2mqtt/classes.py): `_TZE…` for
 # datapoint devices, `_TZ3000_…`, `_TZ3210_…` and `_TYZB01_…` for ZCL ones.
@@ -86,7 +88,7 @@ RULES: tuple[tuple[str, str, str], ...] = (
 
 # The levels each adapter's scope holds (index.md, Device classes): Verified on Hue, whose bulbs every record ran on;
 # `other` Documented where it gets the Verified call and no known class departs, else untested; the Tuya ZCL, Sengled
-# and Sonoff classes untested, or refused on turn_on_for. `tuya_mcu` is in none but turn_on_for's doesnt_work: its
+# and Sonoff classes untested, or refused on turn_on_for. `tuya_mcu` is in no scope but turn_on_for's not_supported: its
 # quirk answers what DeviceSide sends itself (reads from its cache, a Level move without its transition), so it needs
 # a datapoint call that isn't built (not yet supported).
 _UNTESTED = experimental(TUYA_COUNTDOWN, TUYA_COUNTDOWN_HARMED, TUYA_ZCL, SENGLED, SONOFF_SWV)
@@ -116,8 +118,8 @@ TURN_ON_FOR_DOESNT_WORK = {
 }
 # A call that would work is known or plausible, but isn't built (plan Decisions 70 and 74).
 TURN_ON_FOR_NOT_SUPPORTED = {
-    # Tuya's recipe works on the lab plug (research/2026-11-14-lab-probe.md, §2, C5), parked until after v0.1.0;
-    # today's tenths from off switched a TS011F on 106 s after a 10 s request and left it on (C1).
+    # Tuya's recipe would serve it, parked (internals.md, "Tuya's recipe, parked"); today's tenths harm it (Tested
+    # behavior, the TS011F).
     TUYA_COUNTDOWN: NotSupported(
         reason="ZHA's timer can turn it on long after the time asked and leave it on",
         source=_RESEARCH + "2026-11-14-lab-probe.md",
@@ -173,5 +175,5 @@ def _command_module(device, endpoint_id: int) -> str | None:
     endpoint = device.endpoints.get(endpoint_id)
     if (cluster := endpoint.in_clusters.get(zcl.ON_OFF_CLUSTER) if endpoint is not None else None) is None:
         return None
-    owner = next((cls for cls in type(cluster).__mro__ if "command" in vars(cls)), None)
-    return owner.__module__ if owner is not None else None
+    # Every zigpy Cluster defines `command`, so some class in the MRO does.
+    return next(cls for cls in type(cluster).__mro__ if "command" in vars(cls)).__module__

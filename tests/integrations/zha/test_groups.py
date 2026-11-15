@@ -5,8 +5,9 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.deviceside.core.resolver import resolve
 from custom_components.deviceside.core.runtime import get_runtime
+from custom_components.deviceside.integrations.zha import zcl
 from custom_components.deviceside.integrations.zha.addressing import group_id
-from custom_components.deviceside.integrations.zha.groups import expand_group, light_members
+from custom_components.deviceside.integrations.zha.groups import covers, expand_group, light_members
 
 from ...fixtures.zha import add_zha_entity, zha_entry, zha_group
 
@@ -86,3 +87,21 @@ async def test_light_members_are_every_light_the_group_holds(hass, setup_product
 )
 def test_group_id(unique_id, expected):
     assert group_id(unique_id) == expected
+
+
+async def test_covers_a_group_zha_no_longer_knows_is_false(hass, setup_production, zha_groups):
+    add_zha_entity(hass, zha_entry(hass), "light.a", ieee=A)
+
+    assert not covers(hass, 2, [resolve(hass, get_runtime(hass).registry, "light.a")])
+
+
+async def test_covers_with_no_gateway_is_false(hass, setup_production, monkeypatch):
+    """The gateway went away after planning: the members get their own commands, which fail one by one."""
+    add_zha_entity(hass, zha_entry(hass), "light.a", ieee=A)
+
+    def gone(hass):
+        raise ValueError("No ZHA gateway")
+
+    monkeypatch.setattr(zcl, "gateway", gone)
+
+    assert not covers(hass, 2, [resolve(hass, get_runtime(hass).registry, "light.a")])

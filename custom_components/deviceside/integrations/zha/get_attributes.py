@@ -75,7 +75,7 @@ class ZHAGetAttributes(Adapter[Request]):
             modes = set(target.state.attributes.get("supported_color_modes") or ()) if target.state else set()
             read = await zcl.read_attributes(hass, addr, zcl.ON_OFF_CLUSTER, (zcl.ON_OFF,), optional=(zcl.ON_TIME,))
             attributes = named(zcl.ON_OFF_CLUSTER, read)
-            if "onTime" in attributes and classes.capability(hass, target) == classes.TUYA_COUNTDOWN:
+            if "onTime" in attributes and classes.capability(hass, target) in classes.COUNTS_SECONDS:
                 # Tuya's countdown counts whole seconds, not the spec's tenths (internals.md, `classes`).
                 attributes["onTime"] *= 10
             if modes - {"onoff"}:

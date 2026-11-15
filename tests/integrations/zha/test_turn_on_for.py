@@ -503,3 +503,19 @@ async def test_a_flagged_member_left_out_stops_the_groupcast(
     assert response == {"light.a": CONFIRMED, "light.b": CONFIRMED}
     assert not group_commands
     assert sorted(command.data["ieee"] for command in commands) == [A, B]
+
+
+async def test_a_group_member_that_cant_be_classed_is_skipped_and_the_rest_get_their_own(
+    hass, setup_production, two_light_group, zha_groups, commands, group_commands
+):
+    """A member whose strings weren't read could be a harmed class: skipped as class_unknown, even with Experimental
+    features on; the others get one command each, as a groupcast would reach it."""
+    add_zha_entity(hass, two_light_group, "light.unread", ieee=C, strings=(None, None))
+    zha_groups[2] = zha_group((A, 11), (B, 11), (C, 11))
+    allow_experimental(hass)
+
+    response = await call(hass, "turn_on_for", {"entity_id": "light.zha_group", "duration": 5})
+
+    assert response == {"light.a": CONFIRMED, "light.b": CONFIRMED}
+    assert not group_commands
+    assert sorted(command.data["ieee"] for command in commands) == [A, B]

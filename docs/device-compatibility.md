@@ -87,9 +87,9 @@ they work or not: your report helps get them fixed or shipped to everyone.
 ### Zigbee plugs and switches
 
 Turn on with timer and get attributes on a ZHA or Zigbee2MQTT `switch`. A plug works only if its firmware honors the
-Zigbee timed-on command, and few do: Sonoff and Tuya plugs often run their own countdown instead. On Zigbee2MQTT,
-DeviceSide refuses it on Tuya plugs, which would turn on and stay on; the [Tuya TS011F](#tuya-ts011f) runs only Tuya's
-own timer. ZHA and Zigbee2MQTT each need their own report.
+Zigbee timed-on command, and few do: Sonoff and Tuya plugs often run their own countdown instead. On Zigbee2MQTT
+and ZHA, DeviceSide refuses it on Tuya plugs, which would turn on and stay on, or on long after the time asked; the
+[Tuya TS011F](#tuya-ts011f) runs only Tuya's own timer. ZHA and Zigbee2MQTT each need their own report.
 
 ## Not yet supported
 

@@ -73,7 +73,11 @@ zigpy 2.3.0, zha-quirks 2.3.0; links at those commits), 2026-11-14:
   `unk_manufacturer` and `unk_model` when the interview couldn't read them), and a v2 quirk with a friendly name
   replaces both ([builder/device.py](https://github.com/zigpy/zha-device-handlers/blob/d6fcec59eff9f63f154723500be9378be926d927/zhaquirks/builder/device.py#L53-L61)). No Tuya quirk sets one at that
   commit, and the lab's registry held the raw strings (Tested behavior), but one could, hiding `_TZ3000_…`. zigpy's
-  device keeps the raw strings ([`Device.device`](https://github.com/zigpy/zha/blob/0ea5e1adb01692b7014d6f77b8255787af899d36/zha/zigbee/device.py#L465-L467)).
+  device ([`Device.device`](https://github.com/zigpy/zha/blob/0ea5e1adb01692b7014d6f77b8255787af899d36/zha/zigbee/device.py#L465-L467))
+  holds the strings a quirk leaves it: a v2 quirk leaves them; a v1 quirk's `replacement` can rewrite them
+  (`BaseCustomDevice`'s `set_device_attr`,
+  [device.py](https://github.com/zigpy/zha-device-handlers/blob/d6fcec59eff9f63f154723500be9378be926d927/zhaquirks/device.py#L51-L60)),
+  which no Tuya quirk does at that commit.
 - **The strings and quirk are final once entities exist.** zigpy reads the Basic manufacturer and model in the
   interview ([device.py](https://github.com/zigpy/zigpy/blob/fb63170d520e42c77ecd73e9dfc3061f980fc20d/zigpy/device.py#L835-L853))
   and picks the quirk once, when the device is initialized
