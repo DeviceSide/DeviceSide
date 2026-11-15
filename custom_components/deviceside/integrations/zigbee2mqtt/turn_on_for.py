@@ -8,7 +8,7 @@ from homeassistant.core import HomeAssistant
 
 from .addressing import not_addressable, topic
 from .bridge import logged_options, publish, publish_set, state_reply
-from .classes import TURN_ON_FOR, TURN_ON_FOR_DOESNT_WORK
+from .classes import TURN_ON_FOR, TURN_ON_FOR_NOT_SUPPORTED
 from .native_control import COLOR_FIELDS, NEED, native_control, settled
 from .set_check import checked, note
 from ...actions.turn_on_for import TurnOnForRequest
@@ -60,7 +60,7 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
         capabilities=TURN_ON_FOR,
         # Each harms its class (a Tuya plug left on), so the dispatcher refuses a device not yet placed, and a group of
         # unknown membership, as class_unknown, even with Experimental features on (classes.py).
-        doesnt_work=TURN_ON_FOR_DOESNT_WORK,
+        not_supported=TURN_ON_FOR_NOT_SUPPORTED,
         duration=_TIMER_LIMITS,
         fields=verified("brightness", "color_temp_kelvin", "hs_color", "rgb_color", "xy_color", "transition"),
         confirmable=False,

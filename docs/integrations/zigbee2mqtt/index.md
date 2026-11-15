@@ -31,7 +31,7 @@ it connects. Every feature says how well it is proven for each
 
 Tuya plugs, switches and lights, including those sold under other brands (Lidl, Moes, BlitzWolf and more). Most run
 Tuya's own countdown instead of the Zigbee timer, and Zigbee2MQTT turns DeviceSide's timer into a plain on, so turn
-on with timer doesn't work on them: the device would turn on and stay on
+on with timer isn't supported on them yet: today's call would turn the device on and leave it on
 ([research](research/2026-11-14-timed-on-call-patterns.md)). DeviceSide refuses it, even with Experimental features
 on, until it builds Tuya's countdown. Their other features are untested, so they run only with Experimental features
 on.
@@ -39,13 +39,14 @@ on.
 #### Tuya plugs and switches
 
 Tuya devices on the standard Zigbee on/off commands: plugs, switches and relays (models `TS0001` to `TS0004`, and white
-labels). Turn on with timer doesn't work, as above; on the [Tuya TS011F](../../device-compatibility.md#tuya-ts011f)
-plug it is tested.
+labels). Turn on with timer isn't supported yet, as above; on the
+[Tuya TS011F](../../device-compatibility.md#tuya-ts011f) plug today's call was tested and left it on.
 
 #### Tuya datapoint devices
 
-Tuya devices that speak only Tuya's own protocol (model `TS0601`). Turn on with timer doesn't work, as above, and they
-take no standard Zigbee reads or writes, so get attributes and set attributes aren't supported on them either.
+Tuya devices that speak only Tuya's own protocol (model `TS0601`). Turn on with timer isn't supported yet, as above,
+and they take no standard Zigbee reads or writes, so get attributes and set attributes aren't supported on them
+either.
 
 Until Zigbee2MQTT publishes its devices after Home Assistant connects to MQTT, or while it is still pairing one,
 DeviceSide knows a rebadged Tuya device only by what Home Assistant shows: the vendor `Tuya`, or a model starting

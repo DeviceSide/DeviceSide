@@ -42,8 +42,8 @@ models:
     type: bulb
 
 # Devices that fail the call DeviceSide sends on several integrations, and why. One integration's go in its bundle,
-# or in its scopes' code (core/scope.py, DoesntWork): Zigbee2MQTT's TS011F entry is there; ZHA's moves there in the
-# device-classes plan's step 7.
+# or in its scopes' code (core/scope.py, DoesntWork or NotSupported): Zigbee2MQTT's TS011F entry is there, as not yet
+# supported (plan Decision 70); ZHA's moves there in the device-classes plan's step 7.
 doesnt_work:
   - what: Tuya TS011F
     integrations: [zha]

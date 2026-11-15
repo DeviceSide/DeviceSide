@@ -191,21 +191,24 @@ def test_other_is_documented_on_brightness_fades_and_stop_alone():
 
 
 @pytest.mark.parametrize(
-    ("capability", "doesnt_work", "not_supported"),
+    ("capability", "harmed", "not_supported"),
     [
-        ("tuya_zcl", {"turn_on_for"}, set()),
-        ("tuya_ts011f", {"turn_on_for"}, set()),
-        ("tuya_mcu", {"turn_on_for"}, {"get_attributes", "set_attributes"}),
+        # Not yet supported on turn_on_for, with an entry: today's call would leave them on (Decision 70).
+        ("tuya_zcl", {"turn_on_for"}, {"turn_on_for"}),
+        ("tuya_ts011f", {"turn_on_for"}, {"turn_on_for"}),
+        ("tuya_mcu", {"turn_on_for"}, {"turn_on_for", "get_attributes", "set_attributes"}),
         ("sengled", set(), {"turn_on_for"}),
         # Its converter departs from the brightness commands `other` is Documented on (Decision 24).
         ("gledopto", set(), set()),
     ],
 )
-def test_where_each_class_is_refused_and_elsewhere_untested(capability, doesnt_work, not_supported):
+def test_where_each_class_is_refused_and_elsewhere_untested(capability, harmed, not_supported):
+    """No Z2M class is doesn't work: each refused one has a call that would work, not yet built."""
     scopes = _scopes()
-    assert {action for action, scope in scopes.items() if capability in scope.doesnt_work} == doesnt_work
+    assert not any(capability in scope.doesnt_work for scope in scopes.values())
+    assert {action for action, scope in scopes.items() if capability in scope.not_supported} == harmed
     refused = {action for action, scope in scopes.items() if capability not in scope.capabilities}
-    assert refused - doesnt_work == not_supported
+    assert refused == not_supported
     assert {scope.capabilities[capability] for action, scope in scopes.items() if action not in refused} == {
         Level.EXPERIMENTAL
     }
@@ -290,7 +293,7 @@ async def test_a_stand_in_is_left_out_of_the_member_lights_and_logged(hass, setu
     assert f"{entity_id}: a member device (switch.plug) has no light entity" in caplog.text
 
 
-async def test_a_group_with_a_member_that_doesnt_work_falls_back_with_experimental_on(hass, setup_production, broker):
+async def test_a_group_with_a_member_harmed_by_the_call_falls_back_with_experimental_on(hass, setup_production, broker):
     """The audit's H1: the plug once left the membership unknown, so with Experimental features on the group ran
     whole, and the plug took the group's timer and stayed on."""
     entity_id = plug_in_group(hass, broker)
@@ -772,14 +775,14 @@ async def test_a_hue_group_is_verified_on_its_members_class(hass, setup_producti
 # The Tuya and Sengled classes.
 
 
-async def test_turn_on_for_refuses_a_ts011f_as_doesnt_work_with_experimental_on(hass, setup_production, broker):
+async def test_turn_on_for_refuses_a_ts011f_as_not_supported_with_experimental_on(hass, setup_production, broker):
     """Z2M has no on_time converter for it, so today's call would turn the plug on with no timer
     (research/2026-11-14-lab-probe.md, §2): refused, not flagged, so Experimental features can't send it."""
     allow_experimental(hass)
     add_z2m_entity(hass, z2m_entry(hass), "switch.plug", manufacturer=PLUG[0], model_id=PLUG[1])
     broker.retained[DEVICES] = [interviewed(IEEE, TUYA, "TS011F")]
 
-    assert await refusal(hass, "turn_on_for", {"entity_id": "switch.plug", "duration": 5}) == "doesnt_work"
+    assert await refusal(hass, "turn_on_for", {"entity_id": "switch.plug", "duration": 5}) == "not_supported"
     assert commands(broker) == []
 
 
@@ -790,8 +793,8 @@ async def test_the_ts011f_s_refusal_says_what_the_user_sees(hass, setup_producti
 
     with pytest.raises(HomeAssistantError) as raised:
         await call_service(hass, "turn_on_for", {"entity_id": "switch.plug", "duration": 5})
-    assert raised.value.translation_placeholders["why"] == classes.TURN_ON_FOR_DOESNT_WORK["tuya_ts011f"].reason
-    assert "no timer, so it stays on" in raised.value.translation_placeholders["why"]
+    assert raised.value.translation_placeholders["why"] == classes.TURN_ON_FOR_NOT_SUPPORTED["tuya_ts011f"].reason
+    assert "no timer, so it would stay on" in raised.value.translation_placeholders["why"]
 
 
 @pytest.mark.parametrize(
@@ -801,14 +804,14 @@ async def test_the_ts011f_s_refusal_says_what_the_user_sees(hass, setup_producti
         pytest.param(("Tuya", "TS0601_switch"), id="tuya_mcu"),
     ],
 )
-async def test_turn_on_for_refuses_every_tuya_class_as_doesnt_work_with_experimental_on(
+async def test_turn_on_for_refuses_every_tuya_class_as_not_supported_with_experimental_on(
     hass, setup_production, broker, registry
 ):
     """Z2M turns `on_time` into a plain On on Tuya firmware (Decision 20), so the device would stay on."""
     allow_experimental(hass)
     entity_id = light(hass, broker, manufacturer=registry[0], model_id=registry[1])
 
-    assert await refusal(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == "doesnt_work"
+    assert await refusal(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == "not_supported"
     assert commands(broker) == []
 
 
@@ -838,7 +841,7 @@ async def test_a_class_that_needs_an_unbuilt_call_is_not_supported(
 
 def test_only_turn_on_for_s_entries_harm_and_each_does():
     """The Tuya entries mark the harm the rule guards against; no other Z2M adapter refuses an unplaced device."""
-    assert all(entry.harms for entry in classes.TURN_ON_FOR_DOESNT_WORK.values())
+    assert all(entry.harms for entry in classes.TURN_ON_FOR_NOT_SUPPORTED.values())
     assert [adapter.action for adapter in ADAPTERS if adapter.scope.harms] == ["turn_on_for"]
 
 
@@ -867,7 +870,7 @@ async def test_turn_on_for_refuses_a_group_without_the_bridge_cache(hass, setup_
 
 async def test_turn_on_for_refuses_a_device_only_the_registry_placed_in_other(hass, setup_production, broker):
     """The audit's M2: a rebadged TS011F (Lidl's definition) before bridge/devices arrives looks like another brand.
-    Once it arrives, the plug is its own class, refused as doesn't work, and another brand runs flagged again."""
+    Once it arrives, the plug is its own class, refused as not supported, and another brand runs flagged again."""
     plug = light(hass, broker, "light.plug", "0x03", manufacturer="Lidl", model_id="HG06337", zigbee=(TUYA, "TS011F"))
     ikea = light(hass, broker, "light.ikea", "0x04", manufacturer="IKEA of Sweden")
     allow_experimental(hass)
@@ -878,7 +881,7 @@ async def test_turn_on_for_refuses_a_device_only_the_registry_placed_in_other(ha
     assert commands(broker) == []
 
     broker.retained[DEVICES] = devices
-    assert await refusal(hass, "turn_on_for", {"entity_id": plug, "duration": 5}) == "doesnt_work"
+    assert await refusal(hass, "turn_on_for", {"entity_id": plug, "duration": 5}) == "not_supported"
     assert await call(hass, "turn_on_for", {"entity_id": ikea, "duration": 5}) == {ikea: SENT}
 
 
@@ -972,7 +975,7 @@ async def test_a_group_with_a_ts011f_member_falls_back_to_its_members(hass, setu
 
     assert response == {"light.one": SENT}
     assert commands(broker) == [(SET.replace(IEEE, "0x01"), {"state": "ON", "on_time": 5.0})]
-    assert "light.two (doesnt_work)" in caplog.text
+    assert "light.two (not_supported)" in caplog.text
 
 
 def test_hue_s_rule_comes_first_and_reads_the_registry_alone():
@@ -996,7 +999,7 @@ async def test_turn_on_for_refuses_a_gledopto_badged_tuya_device_until_its_strin
     assert await refusal(hass, "turn_on_for", data) == "class_unknown"
     assert commands(broker) == []
     broker.retained[DEVICES] = devices
-    assert await refusal(hass, "turn_on_for", data) == "doesnt_work"
+    assert await refusal(hass, "turn_on_for", data) == "not_supported"
 
 
 async def test_a_hue_group_with_a_gledopto_badged_tuya_member_runs_only_its_hue_member_until_its_strings_arrive(
@@ -1017,7 +1020,7 @@ async def test_a_hue_group_with_a_gledopto_badged_tuya_member_runs_only_its_hue_
     broker.retained[DEVICES] = devices
     assert await call(hass, "turn_on_for", data) == {"light.one": SENT}
     assert commands(broker) == hue_only * 2
-    assert "light.two (doesnt_work)" in caplog.text
+    assert "light.two (not_supported)" in caplog.text
 
 
 async def test_a_named_member_not_yet_placed_raises_beside_its_group(hass, setup_production, broker):
@@ -1081,7 +1084,7 @@ async def test_a_tuya_device_is_refused_with_no_bridge_cache(hass, setup_product
         pytest.param(None, False, "class_unknown", id="no_strings"),
         pytest.param((None, "TS011F"), True, "class_unknown", id="model_only"),
         pytest.param((TUYA, "TS011F"), False, "class_unknown", id="mid_interview"),
-        pytest.param((TUYA, "TS011F"), True, "doesnt_work", id="interviewed"),
+        pytest.param((TUYA, "TS011F"), True, "not_supported", id="interviewed"),
     ],
 )
 async def test_a_device_listed_with_null_strings_is_not_placed(

@@ -34,7 +34,7 @@ another vendor's definition shows neither: Lidl's `HG06337` lands in `other`, an
 puts it in `hue`, which no Zigbee-string rule can override. So a registry Tuya class waits too (refused either way),
 a rule added before the Zigbee-string rules can't become final by accident, and a class a later call serves (part
 3's countdown) still waits for the full strings. An Unplaced class is that class to every adapter but one whose call
-harms a class (the Tuya entries' DoesntWork.harms, turn_on_for's), where the dispatcher refuses it as class_unknown
+harms a class (the Tuya entries' NotSupported.harms, turn_on_for's), where the dispatcher refuses it as class_unknown
 (plan Decisions 23 and 26; docs/evidence.md, where a call is known to harm, a class not yet known is refused). A
 group is no device of its own: the dispatcher classes its members (members.expand_group), and falls back to them
 when one isn't placed. A device whose interview never completes stays Unplaced until it is paired again, so its
@@ -56,7 +56,7 @@ from homeassistant.helpers import device_registry as dr
 from . import bridge_cache
 from .addressing import z2m_address
 from ...core.models import Target
-from ...core.scope import DoesntWork, Unplaced, documented, experimental, verified
+from ...core.scope import NotSupported, Unplaced, documented, experimental, verified
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -133,7 +133,7 @@ RULES: tuple[Rule, ...] = (
 
 # The levels each adapter's scope holds (index.md, Device classes): Verified on Hue, whose bulbs every record ran on;
 # `other` Documented where the call is the Verified one and no known class departs, else untested; the Tuya, Sengled
-# and Gledopto classes untested, or left out where they're not yet supported or don't work.
+# and Gledopto classes untested, or left out where they're not yet supported.
 _UNTESTED = experimental(TUYA_ZCL, TUYA_TS011F, TUYA_MCU, SENGLED, GLEDOPTO)
 # Brightness fades and stop: the ZCL Level and Color commands Hue's are (native_control turns Philips' own off for a
 # brightness fade), and no class known to depart from them.
@@ -145,30 +145,22 @@ FADE_COLOR = verified(HUE) | experimental(OTHER) | _UNTESTED
 # the read, and some come on, or at full, when written while off.
 READ_WRITE = verified(HUE) | experimental(OTHER, TUYA_ZCL, TUYA_TS011F, SENGLED, GLEDOPTO)
 # turn_on_for: the Sengled needs a host-side off, which isn't built, so it is not yet supported; every other brand may
-# depart (some never switch off), so `other` and `gledopto` are untested. The Tuya classes are listed as doesn't work.
+# depart (some never switch off), so `other` and `gledopto` are untested. The Tuya classes are not yet supported, with
+# an entry each, as today's call harms them.
 TURN_ON_FOR = verified(HUE) | experimental(OTHER, GLEDOPTO)
-# The Tuya classes are harmed by today's call (plan Decision 20): Z2M has no `on_time` converter for a definition built
-# with `onOffCountdown`, or for a datapoint device, so it sends a plain On and the device stays on. `harms`, so the
-# dispatcher refuses a device not yet placed as well, which could be one of them (plan Decision 26).
+# The Tuya classes are not yet supported, and harmed by today's call (plan Decisions 20, 70 and 71): Z2M has no
+# `on_time` converter for a definition built with `onOffCountdown`, or for a datapoint device, so it sends a plain On
+# and the device stays on. Each has a call that would work, Z2M's `countdown`, which isn't built: converter A's for the
+# TS011F and its kin (step 5 part 3, the TS011F alone in v0.1.0), the datapoint one for TS0601 devices (v0.1.x,
+# docs/plans/2026-11-15-tuya-datapoint-countdown.md). `harms`, so the dispatcher refuses a device not yet placed as
+# well, which could be one of them (plan Decision 26).
 _RESEARCH = "https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/"
-_STAYS_ON = "Zigbee2MQTT turns it on with no timer, so it stays on"
-TURN_ON_FOR_DOESNT_WORK = {
+_STAYS_ON = "Its timer isn't supported yet: Zigbee2MQTT would turn it on with no timer, so it would stay on"
+TURN_ON_FOR_NOT_SUPPORTED = {
     # Measured (Decision 16), and matched by its model so every firmware inherits the refusal.
-    TUYA_TS011F: DoesntWork(
-        what="Tuya TS011F", reason=_STAYS_ON, source=_RESEARCH + "2026-11-14-lab-probe.md", harms=True
-    ),
-    TUYA_ZCL: DoesntWork(
-        what="Tuya plugs and switches",
-        reason=_STAYS_ON,
-        source=_RESEARCH + "2026-11-14-timed-on-call-patterns.md",
-        harms=True,
-    ),
-    TUYA_MCU: DoesntWork(
-        what="Tuya datapoint devices",
-        reason=_STAYS_ON,
-        source=_RESEARCH + "2026-11-14-timed-on-call-patterns.md",
-        harms=True,
-    ),
+    TUYA_TS011F: NotSupported(reason=_STAYS_ON, source=_RESEARCH + "2026-11-14-lab-probe.md", harms=True),
+    TUYA_ZCL: NotSupported(reason=_STAYS_ON, source=_RESEARCH + "2026-11-14-timed-on-call-patterns.md", harms=True),
+    TUYA_MCU: NotSupported(reason=_STAYS_ON, source=_RESEARCH + "2026-11-14-tuya-datapoint-countdown.md", harms=True),
 }
 
 

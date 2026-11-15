@@ -34,7 +34,9 @@ The README's prohibited signs mark these. Each is a limit of the device protocol
 waiting to be built.
 
 - **Turn off with timer on ZHA, Zigbee2MQTT and Matter.** The Zigbee and Matter timer command (`OnWithTimedOff`)
-  turns a device on, then off. There is no command for off, then on.
+  turns a device on, then off. There is no command for off, then on. The one exception is Tuya's datapoint devices
+  (model `TS0601`) on Zigbee2MQTT, whose own countdown toggles the device when it ends: DeviceSide plans to build
+  turn off with timer for them after v0.1.0.
 - **Turn on or off with timer on Hue.** The bridge's own timers keep running through a plain on or off, from Home
   Assistant, the Hue app or a dimmer switch, and the Hue app doesn't show them. To time Hue bulbs, pair them with
   ZHA, Zigbee2MQTT or Matter.
@@ -46,7 +48,7 @@ waiting to be built.
 `turn_on_for` and `get_attributes` on Zigbee2MQTT and ZHA plugs and switches are untested
 ([device compatibility](device-compatibility.md#zigbee-plugs-and-switches)). Few honor the Zigbee timer command:
 IKEA's are moving to Thread, and Sonoff and Tuya run their own countdowns (the Tuya TS011F's runs only Tuya's way:
-it [doesn't work](device-compatibility.md#tuya-ts011f) with DeviceSide's timer).
+DeviceSide's timer [isn't supported](device-compatibility.md#tuya-ts011f) on it yet).
 If you try one, please report it whether it works or not: Integrations >
 [DeviceSide](https://my.home-assistant.io/redirect/integration/?domain=deviceside) > Configure > Report a device test
 result or bug, which prefills the device's details.

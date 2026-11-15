@@ -60,15 +60,16 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
     validated in CI; the markdown records converted to format 1, which `check_release --signoffs` rejects; the
     rig's paired change writes format 2.
   - [ ] 6. Core fix-ups from step 5's run. Built on `claude/device-classes-6-core`: the harm rule in core
-    (`DoesntWork.harms`, `Unplaced`), and a group with a member not yet placed falling back to its members. Open
-    until step 5's lab run on this branch's tip or later.
+    (`DoesntWork.harms`, `Unplaced`), and a group with a member not yet placed falling back to its members; v0.1.0's
+    scope (plan Decisions 70 to 76): the two labels redefined, `NotSupported.harms`, and the Z2M Tuya classes re-sorted
+    as not yet supported. Open until step 5's lab run on this branch's tip or later.
   - [ ] 7. ZHA classes; rig rerun.
   - [ ] 8. Hue classes, the `smart_scene` check moved to them, and the v1 bridge refused as a separate integration
     (plan Decision 32); rig rerun.
   - [ ] 9. Matter classes; manual or rig sign-off.
   - [ ] 10. Close out: `models.yaml`'s shared `doesnt_work` removed, README regenerated, then the #350 comment.
-- [ ] **TS011F refusal on ZHA and Z2M** (device-classes plan, Decision 16): a `doesnt_work` entry for today's
-  `turn_on_for` call, holding with Experimental on. Without it, ZHA's 0x42 in tenths switches a `_TZ3000_typdpbpg`
+- [ ] **TS011F refusal on ZHA and Z2M** (device-classes plan, Decisions 16 and 70): a not yet supported entry with
+  `harms` for today's `turn_on_for` call, holding with Experimental on. Without it, ZHA's 0x42 in tenths switches a `_TZ3000_typdpbpg`
   plug on about 10× later than asked, and Z2M leaves the plug on with no timer
   ([probe](docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md)). Z2M in step 5 (built), ZHA in step 7;
   blocks v0.1.0 even if step 7 slips.
