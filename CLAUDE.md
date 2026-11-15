@@ -84,7 +84,7 @@ Cutting, tagging and fixing RCs and releases: the `release` skill (`.claude/skil
 ## The rig
 
 The rig, which drives the live HA and writes the records in `docs/integrations/<integration>/test-records/`, is a
-separate repo (jasonmx/ha-rig, public) kept out of this one: no rig code or rig docs here. The rig's test plan, its
+separate repo (jasonmx/ha-rig) kept out of this one: no rig code or rig docs here. The rig's test plan, its
 step files, named for the action they test and landed with that action, has two homes: shared ones in `tests/rig/steps/`
 need a repo maintainer; an integration's own in `tests/integrations/<x>/rig/`, run on `<x>` alone, belong to its
 maintainers, and repo maintainers may adopt them into the shared files. Before adding a case, name what it catches that

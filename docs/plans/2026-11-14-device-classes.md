@@ -258,12 +258,12 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
         bounds. Out of range raises as core does, rounding is reported in `clamped_to`. Core change, so an Opus audit.
      7. **Read-back** per the probe: `confirmed` only if the device reports the countdown; otherwise `sent`.
      8. **Levels (Decision 35):** `experimental(...)` for every converter A definition. Verified per maker string,
-        from Jason's lab runs on his TS011F variants (two or three), each maker string with its own record; part 3
+        from Jason's lab runs on his Tuya variants (Decision 77), each maker string with its own record; part 3
         settles how a string's level is keyed. `_TZ3000_gjnozsaz` stays banned, as it fails on the very call that
         serves its siblings (Decision 71): not yet supported, `harms`, as Tuya's inching would plausibly serve it
         (Decision 41). The cards and `index.md` move each Verified string
         to Works and the rest to Experimental.
-     9. **Lab run:** Jason's TS011F variants on Z2M, added to step 5's lab run.
+     9. **Lab run:** every Tuya variant on Jason's Z2M network (Decision 77), added to step 5's lab run.
 5b. **Test records, format 2 (Decision 27),** before the rest of step 5's lab run, so its records and the Shelly
    house run are written in it. Branch `claude/device-classes-5b-records`, stacked on step 5, its own PR, paired
    with a rig change (`Tests-with`).
@@ -1069,7 +1069,7 @@ Decisions 36 to 45, 46 to 55 and 56 to 65 are reserved for steps 7, 9 and 8.
     - Any class with no known working call stays doesn't work.
 72. **Step 5 part 3, reshaped for v0.1.0:** converter A only, TS011F-family plugs on Z2M, `turn_on_for` only, sent as
     Z2M's `countdown` key the way converter A does. Experimental for every converter A definition; Verified per maker
-    string from Jason's lab runs on his TS011F variants (two or three), each maker string with its own record
+    string from Jason's lab runs on his Tuya variants (Decision 77), each maker string with its own record
     (Decision 35). `_TZ3000_gjnozsaz` stays banned. Blocked on the countdown probe, P1 and P3 at least. Not built in
     this round: the plan text only (Steps, 5, Part 3).
 73. **Deferred to v0.1.x: the Tuya datapoint countdown class (Decision 67) and `turn_off_for` on Zigbee.**
@@ -1096,8 +1096,8 @@ Decisions 36 to 45, 46 to 55 and 56 to 65 are reserved for steps 7, 9 and 8.
     `turn_on_for`, and the WiZ plug becomes Verified by the rig on the real call. `get_attributes` stays Documented
     by certification, as a read carries no field values; evidence.md's certification basis narrows to that. Step 9
     carries it on #436, where Decision 48 and the basis live.
-76. **The rig is a separate public repo** (jasonmx/ha-rig): CLAUDE.md says so, and still keeps rig code and rig docs
-    out of this one.
+76. **The rig is a separate repo** (jasonmx/ha-rig), with no visibility label (Decision 77): CLAUDE.md says so,
+    and still keeps rig code and rig docs out of this one.
 
 ## Decisions (Jason, 2026-11-15, step 7a)
 
@@ -1155,6 +1155,10 @@ Numbered from 36; step 9 numbers from 46, so these renumber at merge if needed.
     - **Control4's sign-off waits for skialpine's `_manual.json` row;** it is the sixth of v0.1.0's sign-offs
       (TODO.md, evidence.md's Release gate example).
     - **The rc1 audit record is replaced** with base `b025363` once this stack lands (TODO.md, v0.1.0).
+    - **Part 3's lab run covers every Tuya variant on Jason's Z2M network,** not two or three. Just before the run,
+      the session asks Jason which of them go in the test profiles; only those run.
+    - **The rig carries no public or private label** in either repo's docs: the rules it serves (no rig code here,
+      no household details there) hold either way, and a label goes stale (CLAUDE.md, Decision 76).
 
 ## Handoff
 
