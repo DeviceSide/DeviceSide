@@ -8,9 +8,9 @@ Decision 78.
 
 **Research only, with no level weight** (Decision 35; units research, §8 question 2). A route is a fact of this ZHC
 version, not of how a device behaves: route A holds strings known to fail its call. `_TZ3000_gjnozsaz`, a white label
-on `TS011F_plug_1` (⚠ below), is doesn't work, `harms`
+on `TS011F_plug_1` (⚠ below), is not yet supported, `harms`
 ([Z2M #30493](https://github.com/Koenkk/zigbee2mqtt/issues/30493);
-[Tuya countdown research](2026-11-14-tuya-countdown.md), §3; Decision 35).
+[Tuya countdown research](2026-11-14-tuya-countdown.md), §3; Decisions 35 and 41).
 
 ## Source and license
 
