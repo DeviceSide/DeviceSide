@@ -11,6 +11,11 @@ after the work lands.
 
 **The repo is public:** no household entity IDs, device names, MACs or hostnames anywhere in it, commit messages included.
 
+**Until v0.1.0 ships, fix the architecture now:** this window is the cheap time for hard architectural choices,
+which get much harder with dozens of package contributors and thousands of users. Given the choice between touching
+less code and fewer binding surfaces, or the right long-term fix, take the long-term fix. (Removed once v0.1.0 ships:
+`TODO.md`, v0.1.0.)
+
 **No personal tooling:** deploy hosts, SSH aliases, and private stacks belong in gitignored files (`.private-terms`, `notes/`, `CLAUDE.local.md`), not in committed code, docs or commit messages.
 
 ## Where facts go

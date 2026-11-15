@@ -104,6 +104,7 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   integration signed off (`check_release.py --signoffs`). The release steps are in the `release` skill; the release
   body gets the signed-off notes. Once the device-classes stack lands, the rc1 audit record
   (`docs/audits/v0.1.0rc1.md`) is replaced by a new one with base `b025363`.
+  After the release, remove CLAUDE.md's "Until v0.1.0 ships, fix the architecture now" paragraph.
 - [x] **Raise/lower rig run**: the six actions and `stop` on Hue and Z2M, rerun in the lab reruns (#297, #299).
 - [x] **Lab rerun**: the first lab run's failures fixed (#160–#163, #172) and rerun (#297, #299); the Z2M failures
   it found fixed by #302.
