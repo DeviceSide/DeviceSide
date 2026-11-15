@@ -68,7 +68,7 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
     )
 
     def supports(self, hass: HomeAssistant, request: TurnOnForRequest, target: Target) -> str | None:
-        return super().supports(hass, request, target) or not_addressable(target) or _unknown(hass, target)
+        return super().supports(hass, request, target) or not_addressable(hass, target) or _unknown(hass, target)
 
     async def execute(
         self, hass: HomeAssistant, request: TurnOnForRequest, targets: list[Target]

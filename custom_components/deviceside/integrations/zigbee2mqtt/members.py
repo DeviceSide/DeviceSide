@@ -10,7 +10,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
 from . import bridge_cache
-from .addressing import group_id, state_topic, z2m_device
+from .addressing import endpoints, group_id, state_topic, z2m_device
 from .bridge import group_members, members_of
 from ...core.errors import Reason
 from ...core.models import Target
@@ -95,10 +95,11 @@ def _members(hass: HomeAssistant, group: Target, addresses: Iterable[str]) -> tu
     HA resolves none; and whether every address has a device. A device on two endpoints is listed twice, and counts
     once, keyed by its device.
 
-    A device with more than one Z2M entity in the group's domain, disabled ones counted (a two-gang switch, a dual
-    Gledopto), is listed by its first, not addressable (Target.addressable): its class counts, but no action addresses
-    it on its own. The group holds one endpoint of it, and DeviceSide's set and get topics name the device alone, so
-    Z2M would send the call to the device's default endpoint, maybe a gang the user didn't target
+    A device with more than one Z2M entity in the group's domain, disabled ones counted (`addressing.endpoints`, the
+    count addressing.not_addressable refuses such a device's entities by when targeted themselves), is listed by its
+    first, not addressable (Target.addressable): its class counts, but no action addresses it on its own. The group
+    holds one endpoint of it, and DeviceSide's set and get topics name the device alone, so Z2M would send the call
+    to the device's default endpoint, maybe a gang the user didn't target
     (docs/integrations/zigbee2mqtt/internals.md, Multi-endpoint devices). A groupcast still reaches the right one."""
     entities = er.async_get(hass)
     registry = get_runtime(hass).registry
@@ -113,11 +114,7 @@ def _members(hass: HomeAssistant, group: Target, addresses: Iterable[str]) -> tu
         lights = [e for e in own if e.domain == group.domain and e.platform == "mqtt"]
         resolved = resolve_members(hass, registry, group, "mqtt", [lights[0].unique_id]) if lights else []
         if resolved:
-            several = [
-                e
-                for e in er.async_entries_for_device(entities, device.id, include_disabled_entities=True)
-                if e.domain == group.domain and e.platform == "mqtt"
-            ]
+            several = endpoints(hass, device.id, group.domain)
             if len(several) > 1:
                 # The first report of "my two-gang's other gang turned on", or "it was skipped", holds why.
                 _LOGGER.debug(

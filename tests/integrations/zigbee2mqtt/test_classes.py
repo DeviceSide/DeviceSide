@@ -9,6 +9,7 @@ import pytest
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import label_registry as lr
 
 from custom_components.deviceside.core.errors import TargetNotSupported
 from custom_components.deviceside.core.models import Target
@@ -311,9 +312,12 @@ async def test_a_member_on_two_endpoints_counts_once(hass, setup_production, bro
 GANG = "0x05"
 
 
-def two_gang(hass, broker, group_id: int = 7, *, disabled: bool = False) -> None:
+def two_gang(
+    hass, broker, group_id: int | None = 7, *, disabled: bool = False, domain: str = "light", name: str = "gang"
+) -> None:
     """A Hue two-gang, 0x05, with light.gang_1 on endpoint 1 (disabled, with `disabled`) and light.gang_2 on endpoint
-    2, as Z2M announces each (`<ieee>_light_l1_zigbee2mqtt`), and endpoint 2 alone in Z2M group `group_id`."""
+    2, as Z2M announces each (`<ieee>_light_l1_zigbee2mqtt`), and endpoint 2 alone in Z2M group `group_id`, unless
+    that is None. `domain` and `name` make it a relay's `switch.<name>_1` and `_2`."""
     entry = hass.config_entries.async_entries("mqtt")[0]
     device = dr.async_get(hass).async_get_or_create(
         config_entry_id=entry.entry_id,
@@ -323,17 +327,20 @@ def two_gang(hass, broker, group_id: int = 7, *, disabled: bool = False) -> None
     )
     for gang in (1, 2):
         er.async_get(hass).async_get_or_create(
-            "light",
+            domain,
             "mqtt",
-            f"{GANG}_light_l{gang}_zigbee2mqtt",
-            suggested_object_id=f"gang_{gang}",
+            f"{GANG}_{domain}_l{gang}_zigbee2mqtt",
+            suggested_object_id=f"{name}_{gang}",
             config_entry=entry,
             device_id=device.id,
             disabled_by=er.RegistryEntryDisabler.USER if disabled and gang == 1 else None,
         )
         if not (disabled and gang == 1):
-            hass.states.async_set(f"light.gang_{gang}", "on", {"supported_color_modes": ["xy"]})
+            attributes = {"supported_color_modes": ["xy"]} if domain == "light" else {}
+            hass.states.async_set(f"{domain}.{name}_{gang}", "on", attributes)
     broker.retained[DEVICES].append(interviewed(GANG, "Philips", "ZIGBEE_SWITCH"))
+    if group_id is None:
+        return
     next(g for g in broker.retained[GROUPS] if g["id"] == group_id)["members"].append(
         {"ieee_address": GANG, "endpoint": 2}
     )
@@ -491,6 +498,84 @@ async def test_a_group_whose_fallback_reaches_only_a_device_with_several_lights_
 
     assert await refusal(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == "experimental_off"
     assert commands(broker) == []
+
+
+# A multi-endpoint device's light or switch targeted by itself: its call would reach the default endpoint.
+
+ACTIONS = [
+    ("turn_on_for", {"duration": 5}),
+    ("get_attributes", {}),
+    ("set_attributes", {"brightness": 50}),
+    ("raise_brightness", {"sweep_time": 10}),
+    ("lower_hue", {"sweep_time": 10}),
+    ("stop", {}),
+]
+
+
+@pytest.mark.parametrize(("service", "data"), ACTIONS)
+@pytest.mark.parametrize(
+    ("entity_id", "disabled"),
+    [("light.gang_1", False), ("light.gang_2", False), ("light.gang_2", True)],
+    ids=["gang_1", "gang_2", "gang_2_beside_a_disabled_gang_1"],
+)
+async def test_a_named_light_of_a_device_with_several_is_refused(
+    hass, setup_production, broker, service, data, entity_id, disabled
+):
+    """light.gang_2's call on the device topic would switch gang 1, which the user didn't target; gang 1 is refused
+    too, as which endpoint is the default is the definition's, and the device's state comes in suffixed keys. A
+    disabled gang 1 still counts: it is still an endpoint the device topic may reach."""
+    light(hass, broker, "light.one", "0x01")
+    two_gang(hass, broker, None, disabled=disabled)
+
+    assert await refusal(hass, service, {"entity_id": entity_id, **data}) == "not_addressable"
+    assert commands(broker) == []
+
+
+async def test_an_indirect_light_of_a_device_with_several_is_skipped(hass, setup_production, broker, caplog):
+    """Reached through a label, the gang is skipped with the warning and the label's other light runs."""
+    light(hass, broker, "light.one", "0x01")
+    two_gang(hass, broker, None)
+    label_id = lr.async_get(hass).async_create("Den").label_id
+    for entity_id in ("light.one", "light.gang_2"):
+        er.async_get(hass).async_update_entity(entity_id, labels={label_id})
+
+    response = await call(hass, "turn_on_for", {"label_id": label_id, "duration": 5})
+
+    assert response == {"light.one": SENT}
+    assert commands(broker) == [(SET.replace(IEEE, "0x01"), {"state": "ON", "on_time": 5.0})]
+    assert "light.gang_2 (not_addressable)" in caplog.text
+
+
+@pytest.mark.parametrize(("service", "data"), [("turn_on_for", {"duration": 5}), ("get_attributes", {})])
+@pytest.mark.parametrize("entity_id", ["switch.relay_1", "switch.relay_2"])
+async def test_a_named_switch_of_a_two_gang_relay_is_refused(hass, setup_production, broker, service, data, entity_id):
+    """The same topic problem on a relay's switches: switch.relay_2's timer would run on relay 1."""
+    light(hass, broker, "light.one", "0x01")
+    two_gang(hass, broker, None, domain="switch", name="relay")
+    allow_experimental(hass)  # switches are Experimental, so the refusal shown is the addressing one
+
+    assert await refusal(hass, service, {"entity_id": entity_id, **data}) == "not_addressable"
+    assert commands(broker) == []
+
+
+async def test_a_device_with_one_light_is_addressed(hass, setup_production, broker):
+    entity_id = light(hass, broker, "light.one", "0x01")
+    two_gang(hass, broker, None)
+
+    assert await call(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == {entity_id: SENT}
+    assert commands(broker) == [(SET.replace(IEEE, "0x01"), {"state": "ON", "on_time": 5.0})]
+
+
+async def test_a_switch_as_x_light_beside_a_z2m_light_leaves_it_addressable_by_name(hass, setup_production, broker):
+    """Only Z2M's own entities are endpoints: a switch_as_x light on the same device is no second light."""
+    entity_id = light(hass, broker, "light.one", "0x01")
+    device_id = er.async_get(hass).async_get(entity_id).device_id
+    er.async_get(hass).async_get_or_create(
+        "light", "switch_as_x", "wrapper", suggested_object_id="one_wrapper", device_id=device_id
+    )
+
+    assert await call(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == {entity_id: SENT}
+    assert commands(broker) == [(SET.replace(IEEE, "0x01"), {"state": "ON", "on_time": 5.0})]
 
 
 # What a class's level does to a call.

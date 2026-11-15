@@ -144,12 +144,13 @@ A group returns one entry, averaged over the lights that are on, as Hue averages
 - **Custom base topic.** Groups on a base topic other than `zigbee2mqtt` are refused (`not_addressable`). Devices
   aren't, but their commands reach nothing while the result still says `sent`.
 - **A device named with a bare number** that matches a group's ID gets that group's commands.
-- **Devices with several lights** (a two-gang switch, a dual-channel Gledopto) get a command on their first light
-  only, the device's default endpoint, so DeviceSide never sends one to such a device on a group's behalf
-  ([internals](internals.md#addressing)). A group holding one of its lights still runs as one group; when it falls
-  back to its lights, the device is skipped (`not_addressable`). Raise, lower, stop and set attributes refuse such a
-  group (`not_addressable`), as they plan from each light's state and can't see that one; get attributes reads the
-  group's other lights, and refuses a group with none. Targeted by itself, the device's second light gets the
-  command on its first.
+- **Devices with several lights or switches** (a two-gang switch, a dual-channel Gledopto, a two-gang relay) are
+  refused (`not_addressable`) by every action, each of their lights or switches, the first too: DeviceSide's
+  command would reach only the device's default endpoint, maybe a gang the user didn't target
+  ([internals](internals.md#addressing)). Named, the call raises; by area, label or an HA group, the light is
+  skipped. A Zigbee2MQTT group holding one of its lights still runs as one group; when it falls back to its lights,
+  the device is skipped (`not_addressable`). Raise, lower, stop and set attributes refuse such a group
+  (`not_addressable`), as they plan from each light's state and can't see that one; get attributes reads the
+  group's other lights, and refuses a group with none.
 - **Large groups.** A call has 30 s for all its targets. Reading a large group on a slow mesh can run out, failing
   every target with `timeout`. Target the lights by area or label instead, which reads four at a time.

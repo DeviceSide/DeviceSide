@@ -41,7 +41,7 @@ class Z2MGetAttributes(Adapter[Request]):
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:
         return (
             super().supports(hass, request, target)
-            or not_addressable(target, reads_state=True)
+            or not_addressable(hass, target, reads_state=True)
             or unaddressable(hass, target, every=False)
         )
 

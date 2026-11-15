@@ -33,13 +33,22 @@ Only devices Z2M registered through MQTT discovery are found: the device carries
   `l1`; `publishDevices` in [`lib/extension/bridge.ts`](https://github.com/Koenkk/zigbee2mqtt/blob/2.6.0/lib/extension/bridge.ts),
   absent in 2.5.1), and Z2M's discovery gives that entity unique_id `<ieee>_<domain>_<name>_<base topic>` (object_id
   `light_l1`, `lib/extension/homeassistant.ts`). Matching it is no use until the call can reach that endpoint, which
-  also needs the endpoint's suffixed state keys read back. So `members.py` lists a member device with more than one
-  Z2M (`mqtt` platform) entity in the group's domain, disabled ones counted, by its first, not addressable
-  (`Target.addressable`): its class counts; a group that falls back skips it as `not_addressable`; `member_lights`
-  leaves it out (logged at DEBUG). Fade, stop and set attributes plan from every member's state while the groupcast
-  still reaches that endpoint, so they refuse a group with such an available member as `not_addressable`; get
-  attributes averages the others, and refuses a group with no other available light. A groupcast-only action
-  (`turn_on_for`) reaches the endpoint the group holds, so it is unaffected.
+  also needs the endpoint's suffixed state keys read back. So a device with more than one Z2M (`mqtt` platform)
+  entity in the target's domain, disabled ones counted (`addressing.endpoints`), is never addressed on its own:
+  - **Targeted itself** (named, or by area, label or `group.*`), every such light or switch is refused as
+    `not_addressable` by every Z2M action (`addressing.not_addressable`, which each adapter's `supports()` calls),
+    the first too: the default endpoint is the definition's (`default`, else the device's first endpoint), which
+    HA's registry doesn't show, and such a device publishes its state under suffixed keys (`state_l1`), which no
+    read here takes. A `switch_as_x` light on the device is no endpoint of it.
+  - **As a group's member**, `members.py` lists it by its first entity, not addressable (`Target.addressable`): its
+    class counts; a group that falls back skips it as `not_addressable`; `member_lights` leaves it out (logged at
+    DEBUG). Fade, stop and set attributes plan from every member's state while the groupcast still reaches that
+    endpoint, so they refuse a group with such an available member as `not_addressable`; get attributes averages the
+    others, and refuses a group with no other available light. A groupcast-only action (`turn_on_for`) reaches the
+    endpoint the group holds, so it is unaffected.
+
+  The fix that addresses each endpoint, its topic named by the Z2M 2.6.0+ endpoint names, is future work
+  ([TODO](../../../TODO.md)).
 
 ## Modules
 

@@ -45,7 +45,7 @@ class Z2MStop(Adapter[Request]):
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:
         if (reason := super().supports(hass, request, target)) is not None:
             return reason
-        return not_addressable(target) or unaddressable(hass, target, every=True)
+        return not_addressable(hass, target) or unaddressable(hass, target, every=True)
 
     async def execute(self, hass: HomeAssistant, request: Request, targets: list[Target]) -> list[EntityResult]:
         cache = transition_cache(hass)
