@@ -21,6 +21,7 @@ from custom_components.deviceside.core.runtime import get_runtime
 from custom_components.deviceside.core.scope import (
     AdapterScope,
     DoesntWork,
+    DurationLimits,
     NotSupported,
     Unplaced,
     documented,
@@ -1624,3 +1625,57 @@ def test_class_unknown_names_the_integration_by_its_title_or_gets_the_plain_refu
     untitled = TargetNotSupported("light.a", "class_unknown")
     assert untitled.translation_key == "target_not_supported"
     assert untitled.translation_placeholders == {"entity_id": "light.a", "reason": "class_unknown"}
+
+
+# A class with a call of its own (AdapterScope.own_calls): Zigbee2MQTT's Tuya countdown plugs, whole seconds to 12 h.
+WHOLE_SECONDS = DurationLimits(min_s=1, max_s=43200, step_s=1)
+OWN_CALL = replace(CLASSED, capabilities=verified("A", "E"), own_calls={"E": WHOLE_SECONDS})
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_class_with_a_call_of_its_own_runs_apart_with_its_own_limits(hass, fake, reset_script):
+    add_fake_entity(hass, fake, "switch.a")
+    add_fake_entity(hass, fake, "switch.e")
+
+    with patch.object(FakeTurnOffFor, "scope", OWN_CALL):
+        response = await call(hass, "turn_off_for", {"entity_id": ["switch.a", "switch.e"], "duration": 500.4})
+
+    # The scope's limits clamp the one, the class's round and clamp the other, each reported.
+    assert response == {
+        "switch.a": {"status": "sent", "integration": "fake", "capability": "A", "clamped_to": 100},
+        "switch.e": {"status": "sent", "integration": "fake", "capability": "E", "clamped_to": 500},
+    }
+    assert sorted((request.duration_s, ids) for *_, request, ids in reset_script.calls) == [
+        (100, ["switch.a"]),
+        (500, ["switch.e"]),
+    ]
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_group_with_a_member_that_takes_a_call_of_its_own_falls_back(hass, fake, reset_script, caplog):
+    """The group's call isn't the member's, so each member gets its own, with Experimental features on or off."""
+    members = ["switch.a", "switch.e"]
+    for member in members:
+        add_fake_entity(hass, fake, member)
+    add_fake_native_group(hass, fake, "switch.fake_group", members)
+    caplog.set_level(logging.DEBUG, logger=DISPATCHER)
+
+    with patch.object(FakeTurnOffFor, "scope", OWN_CALL):
+        response = await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
+
+    assert response == {
+        "switch.a": {"status": "sent", "integration": "fake", "capability": "A"},
+        "switch.e": {"status": "sent", "integration": "fake", "capability": "E"},
+    }
+    assert sorted(ids for *_, ids in reset_script.calls) == [["switch.a"], ["switch.e"]]
+    assert "switch.fake_group falls back to its members (own_call)" in caplog.text
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_named_group_none_of_whose_members_runs_raises_own_call(hass, fake, reset_script):
+    add_fake_entity(hass, fake, "switch.e", state="unavailable")
+    add_fake_native_group(hass, fake, "switch.fake_group", ["switch.e"])
+
+    with patch.object(FakeTurnOffFor, "scope", OWN_CALL):
+        assert await refusal(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5}) == "own_call"
+    assert reset_script.calls == []

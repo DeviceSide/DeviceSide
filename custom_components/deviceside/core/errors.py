@@ -31,6 +31,9 @@ class Reason(StrEnum):
     # clears once the integration has reported it, and a group whose membership isn't listed yet once it is; a target
     # that can't be classed at all (an entity with no device, a classifier that raised) stays refused.
     CLASS_UNKNOWN = "class_unknown"
+    # A native group with a member whose class takes a call of its own (AdapterScope.own_calls): the group's call isn't
+    # the member's, so the group falls back to its members; raised for the group only when none of them runs.
+    OWN_CALL = "own_call"
 
 
 class TargetNotSupported(ServiceNotSupported):

@@ -738,11 +738,15 @@ def merged(phrases: list[str], url: str) -> str:
 
 
 def class_entries(key: str, held: dict[str, set[str]], data: Data) -> list[str]:
-    """Classes with the same features share one entry: "dimmers, LED controllers (CCT, RGB): turn on with timer"."""
+    """Classes with the same features share one entry: "dimmers, LED controllers (CCT, RGB): turn on with timer", and
+    each phrase in it once."""
     grouped: dict[tuple[str, ...], dict[str, list[str]]] = {}
     for item, actions in held.items():
         entry = data.capabilities[key][item]
-        grouped.setdefault(features(actions), {}).setdefault(entry["section"], []).append(entry["phrase"])
+        phrases = grouped.setdefault(features(actions), {}).setdefault(entry["section"], [])
+        # Classes that share a phrase (Zigbee2MQTT's countdown plugs, a class per maker string) are said once.
+        if entry["phrase"] not in phrases:
+            phrases.append(entry["phrase"])
     return [
         f"{', '.join(merged(phrases, data.url(key, section)) for section, phrases in sections.items())}: "
         f"{', '.join(names)}"

@@ -435,6 +435,16 @@ def test_classes_of_one_section_say_their_shared_ending_once():
     )
 
 
+def test_classes_that_share_a_phrase_say_it_once():
+    """Zigbee2MQTT's countdown plugs: a class per maker string, one phrase for them all."""
+    phrase = {"phrase": "countdown plugs", "section": "Plugs"}
+    data = gc.Data(requires={}, models={}, capabilities={"x": {"a": phrase, "b": phrase}}, doesnt_work=[])
+
+    assert gc.class_entries("x", {"a": {"stop"}, "b": {"stop"}}, data) == [
+        f"[countdown plugs]({gc.PAGE_URL}#plugs): stop"
+    ]
+
+
 def test_a_card_drops_its_integrations_name_where_a_name_leads():
     card = gc.Card("Hue")
     assert card.short("Hue Bridge v1") == "Bridge v1"

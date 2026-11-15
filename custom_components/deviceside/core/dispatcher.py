@@ -18,7 +18,7 @@ from .models import FAILED, ActionKind, EntityResult, Request, Status, Target, T
 from .registry import AdapterRegistry
 from .resolver import resolve
 from .runtime import DEADLINE, get_runtime
-from .scope import Level, Unplaced
+from .scope import DurationLimits, Level, Unplaced
 from ..const import ADAPTER_BACKSTOP_S, ADAPTER_TIMEOUT_S, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -48,8 +48,9 @@ class Reached:
     members: tuple[str | None, ...] = ()
 
 
-# One execute: the adapter, the request its targets get, the targets, the fields dropped, and what each reaches.
-type Run = tuple[Adapter, Request, list[Target], frozenset[str], dict[str, Reached]]
+# One execute: the adapter, the request its targets get, the targets, the fields dropped, what each reaches, and the
+# duration limits of their call (AdapterScope.limits).
+type Run = tuple[Adapter, Request, list[Target], frozenset[str], dict[str, Reached], DurationLimits | None]
 
 
 def _placed(name: str | None) -> bool:
@@ -214,8 +215,10 @@ class Dispatcher:
         scope doesn't serve, is refused; a native group so refused falls back to its members when the integration can
         list them (docs/design.md), and an empty one is skipped silently. A flagged call, from an
         `experimental=True` adapter or touching an Experimental scope item, is refused while the Experimental features
-        option is off; a native group flagged by a member's class alone falls back to its members instead. A named
-        target that can't take the action raises then, before anything is sent. Returns a result per target that ran
+        option is off; a native group flagged by a member's class alone falls back to its members instead, as does one
+        with a member whose class takes a call of its own (AdapterScope.own_calls), and a target of such a class runs
+        with that call's duration limits. A named target that can't take the action raises then, before anything is
+        sent. Returns a result per target that ran
         or was left nothing to do, each with its class, and an unsupported one per indirect target skipped.
         """
         results: list[EntityResult] = []
@@ -245,13 +248,13 @@ class Dispatcher:
         results: list[EntityResult],
         experimental_on: bool,
     ) -> list[Run]:
-        """One adapter's runs, one per set of dropped fields so every target in a run gets the same request; each
-        target skipped or left nothing to do goes in results instead.
+        """One adapter's runs, one per set of dropped fields and duration limits so every target in a run gets the same
+        request; each target skipped or left nothing to do goes in results instead.
 
         A native group that falls back to its members gets no result of its own: they answer for it. Only when none
         of its members was planned or left nothing to do (each refused, gated or unavailable) is the group itself
         refused, with its reason, raised if named, once every target is judged."""
-        by_dropped: dict[frozenset[str], list[Target]] = {}
+        by_run: dict[tuple[frozenset[str], DurationLimits | None], list[Target]] = {}
         reached: dict[str, Reached] = {}
         pending = deque(targets)
         seen = {target.reported_id for target in pending}
@@ -294,10 +297,11 @@ class Dispatcher:
                 results.append(
                     _classed(adapter.result(target, Status.UNCHANGED, detail="fields_dropped"), target, here)
                 )
-            elif refused := adapter.scope.refusal(found):
+            elif refused := adapter.scope.refusal(found, group=members is not None):
                 # A native group falls back to its members, each judged alone: the good ones run, a refused one is
                 # skipped as indirect. So a group with one member not yet placed runs the rest, where the call harms
-                # a class; one of unknown membership can't fall back, and is refused whole.
+                # a class, and one with a member that takes a call of its own gives each member its own; one of
+                # unknown membership can't fall back, and is refused whole.
                 if members is not None:
                     fallen.append((target, members, *refused))
                     pending.extend(self._fallback(adapter, target, members, seen, refused[0]))
@@ -315,9 +319,12 @@ class Dispatcher:
                     results += _skip(target.reported_id, target.named, EXPERIMENTAL_OFF, adapter.integration)
             else:
                 answered.add(target.reported_id)
-                by_dropped.setdefault(dropped, []).append(target)
+                by_run.setdefault((dropped, adapter.scope.limits(found)), []).append(target)
         results += _unanswered(adapter, fallen, answered, title)
-        return [(adapter, request.without(dropped), ready, dropped, reached) for dropped, ready in by_dropped.items()]
+        return [
+            (adapter, request.without(dropped), ready, dropped, reached, limits)
+            for (dropped, limits), ready in by_run.items()
+        ]
 
     def _experimental(self, adapter: Adapter, request: Request, target: Target, classes: Classes) -> bool:
         """Whether the call is flagged experimental: the whole adapter (`experimental=True`), or an Experimental item
@@ -424,10 +431,11 @@ class Dispatcher:
         targets: list[Target],
         dropped: frozenset[str],
         reached: dict[str, Reached],
+        limits: DurationLimits | None,
     ) -> list[EntityResult]:
         clamped_to = None
         if isinstance(request, TimedRequest):
-            request, clamped_to = duration.clamp(request, adapter.scope.duration)
+            request, clamped_to = duration.clamp(request, limits)
         # Each run is its own task (run_adapters gathers them), so the deadline set here is this run's alone.
         deadline = asyncio.get_running_loop().time() + ADAPTER_TIMEOUT_S
         DEADLINE.set(deadline)

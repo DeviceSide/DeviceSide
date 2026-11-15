@@ -16,6 +16,7 @@ from custom_components.deviceside.core.registry import AdapterRegistry
 from custom_components.deviceside.core.scope import (
     AdapterScope,
     DoesntWork,
+    DurationLimits,
     Level,
     NotSupported,
     Unplaced,
@@ -196,6 +197,37 @@ def test_a_scope_without_classes_refuses_none():
 def test_a_class_never_both_serves_and_doesnt_work():
     with pytest.raises(ValueError, match="classes the scope serves"):
         AdapterScope(capabilities=verified("hue"), doesnt_work={"hue": BROKEN})
+
+
+OWN = DurationLimits(min_s=1, max_s=10, step_s=1)
+
+
+def test_a_class_with_a_call_of_its_own_gets_its_limits_and_keeps_a_group_apart():
+    scope = AdapterScope(
+        duration=DurationLimits(min_s=0, max_s=100),
+        capabilities=verified("A") | experimental("B", "C"),
+        own_calls={"B": OWN, "C": None},
+    )
+
+    assert scope.limits(["B"]) is OWN
+    assert scope.limits([Unplaced("B")]) is OWN
+    # One whose own call keeps the scope's limits, and one with no call of its own, get the scope's.
+    assert scope.limits(["C"]) is scope.duration
+    assert scope.limits(["A"]) is scope.duration
+    assert scope.limits([None]) is scope.duration
+    assert scope.apart(["A", "B"]) and scope.apart(["C"])
+    assert not scope.apart(["A", None])
+    # A listed group with such a member falls back to its members; the member itself, and any other group, run.
+    assert scope.refusal(["A", "B"], group=True) == (Reason.OWN_CALL, None)
+    assert scope.refusal(["B"]) is None
+    assert scope.refusal(["A"], group=True) is None
+
+
+def test_a_call_of_its_own_is_for_a_class_the_scope_serves():
+    with pytest.raises(ValueError, match="own_calls names classes the scope doesn't serve"):
+        AdapterScope(capabilities=verified("A"), own_calls={"B": OWN})
+    with pytest.raises(ValueError, match="own_calls names classes the scope doesn't serve"):
+        AdapterScope(own_calls={"B": OWN})
 
 
 def test_a_documented_field_is_refused():
