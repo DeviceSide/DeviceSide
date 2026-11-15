@@ -390,8 +390,8 @@ C = "00:00:00:00:00:00:00:0c"
         (("_TZ3210_0jxeoadc", "TS0049"), quirk_on_off("zhaquirks.tuya.mcu"), "switch", "not_supported"),
         (("sengled", "E11-G13"), StandardOnOff, "light", "not_supported"),
         (("SONOFF", "SWV"), StandardOnOff, "switch", "not_supported"),
-        # Fails the very call that serves its siblings: no known call works.
-        (("_TZ3000_gjnozsaz", "TS011F"), StandardOnOff, "switch", "doesnt_work"),
+        # Fails the countdown that serves its siblings; Tuya's inching would plausibly serve it (plan Decision 41).
+        (("_TZ3000_gjnozsaz", "TS011F"), StandardOnOff, "switch", "not_supported"),
     ],
 )
 async def test_a_class_the_call_harms_is_refused_with_experimental_on(

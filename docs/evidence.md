@@ -68,8 +68,9 @@ not-yet-supported entry with `harms`, by the definitions [below](#doesnt-work-no
 the identity the report names, on the report alone, cited as its source; credibility is theirs to judge (tenet 7).
 Which label depends on whether a known call would serve the identity. ZHA's `_TZ3000_typdpbpg` reads the spec's
 tenths as seconds, and Tuya's recipe would serve it, so it is not yet supported, with `harms`: the fix is the call,
-and the entry lifts when the call changes. Zigbee2MQTT's `_TZ3000_gjnozsaz` fails the very call that serves its
-siblings, so it doesn't work, with `harms`. As proof follows the call (tenet 5), the entry may cover every action that
+and the entry lifts when the call changes. `_TZ3000_gjnozsaz` fails the very call that serves its siblings,
+but Tuya's inching call would plausibly serve it, so it too is not yet supported, with `harms`; an identity no known
+call serves is doesn't work. As proof follows the call (tenet 5), the entry may cover every action that
 sends that call to that identity, such as `turn_on_for`, `set_auto_off` and `turn_off_for` where they send the same
 frame. The identity is the most specific one the report names that a class rule can key on: the model ID with the
 manufacturer string, and the firmware where that is what decides. On a report alone, a vendor name never moves: Hue's

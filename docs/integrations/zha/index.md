@@ -44,8 +44,9 @@ isn't supported yet, as above.
 #### Reported Tuya plugs
 
 A TS011F reported to fail Tuya's own timer call: `_TZ3000_gjnozsaz`, whose time left jumps back at random, so it may
-not turn off when asked ([Z2M #30493](https://github.com/Koenkk/zigbee2mqtt/issues/30493)). Turn on with timer
-doesn't work on it, and DeviceSide refuses it, even with Experimental features on.
+not turn off when asked ([Z2M #30493](https://github.com/Koenkk/zigbee2mqtt/issues/30493)). Turn on with timer isn't
+supported on it yet, as another of Tuya's calls may serve it, and DeviceSide refuses it, even with Experimental
+features on.
 
 #### Other Tuya devices
 

@@ -36,7 +36,7 @@ from homeassistant.core import HomeAssistant
 from . import zcl
 from .addressing import address
 from ...core.models import Target
-from ...core.scope import DoesntWork, NotSupported, documented, experimental, verified
+from ...core.scope import NotSupported, documented, experimental, verified
 
 HUE = "hue"
 # Tuya's ZCL plugs and switches whose timer is Tuya's countdown, in whole seconds (internals.md, `classes`; Tuya's
@@ -107,17 +107,17 @@ TURN_ON_FOR = verified(HUE) | experimental(OTHER)
 # or on or off long after it was asked, unwatched. `harms`, so core also refuses a target it can't class.
 _INTERNALS = "https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/internals.md"
 _RESEARCH = "https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/"
-# No known call works on it: it fails the very call (Tuya's recipe, Z2M's converter A) that serves its siblings.
-TURN_ON_FOR_DOESNT_WORK = {
-    TUYA_COUNTDOWN_HARMED: DoesntWork(
-        what="Reported Tuya plugs",
-        reason="Its timer is reported to jump back at random, so it may not turn off when asked",
+# A call that would work is known or plausible, but isn't built (plan Decisions 70, 74 and 41): every class the call
+# harms, so none is doesn't work.
+TURN_ON_FOR_NOT_SUPPORTED = {
+    # The countdown misbehaves on this string (Z2M #30493: the time left jumps back at random), and Tuya's inching
+    # (cluster 0xE000, command 0xFB), which would plausibly serve it, isn't built (plan Decision 41).
+    TUYA_COUNTDOWN_HARMED: NotSupported(
+        reason="Tuya's own timer is reported to jump back at random on it, so it may not turn off when asked, and the "
+        "timer that would serve it isn't built",
         source="https://github.com/Koenkk/zigbee2mqtt/issues/30493",
         harms=True,
     ),
-}
-# A call that would work is known or plausible, but isn't built (plan Decisions 70 and 74).
-TURN_ON_FOR_NOT_SUPPORTED = {
     # Tuya's recipe would serve it, parked (internals.md, "Tuya's recipe, parked"); today's tenths harm it (Tested
     # behavior, the TS011F).
     TUYA_COUNTDOWN: NotSupported(

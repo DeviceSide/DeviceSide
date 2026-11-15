@@ -259,8 +259,9 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      7. **Read-back** per the probe: `confirmed` only if the device reports the countdown; otherwise `sent`.
      8. **Levels (Decision 35):** `experimental(...)` for every converter A definition. Verified per maker string,
         from Jason's lab runs on his TS011F variants (two or three), each maker string with its own record; part 3
-        settles how a string's level is keyed. `_TZ3000_gjnozsaz` stays banned: doesn't work, `harms`, as it fails
-        on the very call that serves its siblings (Decision 71). The cards and `index.md` move each Verified string
+        settles how a string's level is keyed. `_TZ3000_gjnozsaz` stays banned, as it fails on the very call that
+        serves its siblings (Decision 71): not yet supported, `harms`, as Tuya's inching would plausibly serve it
+        (Decision 41). The cards and `index.md` move each Verified string
         to Works and the rest to Experimental.
      9. **Lab run:** Jason's TS011F variants on Z2M, added to step 5's lab run.
 5b. **Test records, format 2 (Decision 27),** before the rest of step 5's lab run, so its records and the Shelly
@@ -366,8 +367,9 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      - `turn_on_for`: `hue` Verified; `other` Experimental; not yet supported, `harms` (Decisions 70 and 74):
        `tuya_countdown` (the recipe would serve it, parked), `tuya_zcl` (the recipe or a countdown is plausible),
        `tuya_mcu` (a datapoint call), `sengled` (a host-side off; with fields, or in a group, it stays on today) and
-       `sonoff_swv` (a call in seconds, as Z2M's `on_off_fixed_on_time`); doesn't work, `harms`:
-       `tuya_countdown_harmed`, `_TZ3000_gjnozsaz` on `TS011F` (Decision 35), which fails the recipe's own frame.
+       `sonoff_swv` (a call in seconds, as Z2M's `on_off_fixed_on_time`) and `tuya_countdown_harmed`,
+       `_TZ3000_gjnozsaz` on `TS011F` (Decision 35), which fails the recipe's own frame but which Tuya's inching would
+       plausibly serve (Decision 41). Nothing on ZHA is doesn't work.
      - The rest: `hue` Verified, `other` Documented on `lower_brightness` and `stop` (Decision 39), `tuya_mcu` left
        out (not supported: its quirk answers every call itself), the others Experimental. `get_attributes` reads a
        `tuya_countdown` OnTime as seconds. The E11-G13's `set_attributes` refusal (`execute_if_off_unsupported`)
@@ -925,8 +927,8 @@ A package changed after its lab run needs that run again before the release. Non
     **Amended (Jason, 2026-11-14), the rubric for Tuya plugs on the 0x42 path** (converter A,
     [research](../integrations/zigbee2mqtt/research/2026-11-14-tuya-countdown.md), §1):
     - **Verified:** the maintainer's lab plug, `_TZ3000_0zfrhq4i`, once its lab run passes.
-    - **Doesn't work, `harms`:** `_TZ3000_gjnozsaz` (Z2M #30493), reported on converter A, the call DeviceSide
-      sends, with harm: the time left jumps back at random, so the off can be pushed out indefinitely (research,
+    - **Doesn't work, `harms`** (*not yet supported, `harms`, by Decision 41*): `_TZ3000_gjnozsaz` (Z2M #30493),
+      reported on converter A, the call DeviceSide sends, with harm: the time left jumps back at random, so the off can be pushed out indefinitely (research,
       §3); a harmful failure's report is enough (Decision 68).
     - **Experimental, not banned (Jason, 2026-11-14):** `_TZ3000_dg7fdg92` (Z2M #25434) and `_TZ3000_okaz9tjs`
       (ZHC #9786). Both reports used an external converter, not DeviceSide's call, and a ban needs a failure "on the
@@ -1002,7 +1004,8 @@ Decisions 36 to 45, 46 to 55 and 56 to 65 are reserved for steps 7, 9 and 8.
     lets an integration maintainer land a doesn't-work or not-yet-supported entry with `harms`, by Decision 70's
     definitions, moving only the identity the report names (Scope, below), on the report alone, cited as its source;
     credibility is theirs to judge (tenet 7). Which label depends on whether a known call would serve the identity:
-    `_TZ3000_gjnozsaz` stays doesn't work, as it fails the very call that serves its siblings. The entry may
+    `_TZ3000_gjnozsaz` stays doesn't work, as it fails the very call that serves its siblings (*amended by
+    Decision 41:* not yet supported, `harms`, as Tuya's inching would plausibly serve it). The entry may
     cover every action that sends that call to that identity (tenet 5), such as `turn_on_for`, `set_auto_off` and
     `turn_off_for` where they send the same frame. A false "works" leaves a
     device on or off unattended; a false ban costs a refusal a later record lifts.
@@ -1049,7 +1052,8 @@ Decisions 36 to 45, 46 to 55 and 56 to 65 are reserved for steps 7, 9 and 8.
     - **Zigbee2MQTT `get_attributes` and `set_attributes`:** `tuya_mcu` stays not yet supported with no entry
       (Decision 12): Z2M's datapoint state would plausibly serve a read, and a read or write never harms.
     - **`_TZ3000_gjnozsaz`** (Decision 35, a class part 3 adds) stays doesn't work, `harms`: it fails on the very call
-      that serves its siblings, so no known call works on it.
+      that serves its siblings, so no known call works on it. *Amended by Decision 41:* not yet supported, `harms`,
+      as Tuya's inching would plausibly serve it.
     - **Shelly:** no entry. A `Switch` component is left out of the dimming and `set_attributes` scopes, which a relay
       can't take; the card names it nowhere, so no label shows (gen_compat, `unsupported`).
     - **Core:** no class entries of its own; `models.yaml`'s shared ZHA TS011F entry is not yet supported with
@@ -1116,6 +1120,12 @@ Numbered from 36; step 9 numbers from 46, so these renumber at merge if needed.
     recipe, Experimental. Tuya's other ZCL devices (bulbs such as TS0505B, dimmers, white labels) are `tuya_zcl`,
     doesn't work and `harms` on `turn_on_for` until probed: a spec bulb given seconds would turn off about ten times
     early, and a Tuya plug outside the list given tenths could switch on long after.
+41. **`_TZ3000_gjnozsaz` is not yet supported, `harms`, not doesn't work** (L9 of #435's review). Tuya's inching
+    (cluster `0xE000`, command `0xFB`, `setInchingSwitch`) is a plausible working call for the TS011F family, so the
+    string isn't "no known call works" (Decision 70). Its countdown misbehaves (Z2M #30493), and inching isn't built.
+    On ZHA, `tuya_countdown_harmed` moves to `turn_on_for`'s `not_supported`, so ZHA has no doesn't-work entry; Z2M's
+    class for it (part 3) takes the same label. The rule stays: a harmful report bans an identity under either label.
+    Inching is a v0.1.x probe question ([datapoint countdown plan](2026-11-15-tuya-datapoint-countdown.md), Open).
 
 ## Decisions (Jason, 2026-11-15, #431's audit round)
 
