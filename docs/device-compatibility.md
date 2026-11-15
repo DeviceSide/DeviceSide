@@ -86,10 +86,11 @@ they work or not: your report helps get them fixed or shipped to everyone.
 
 ### Zigbee plugs and switches
 
-Turn on with timer and get attributes on a ZHA or Zigbee2MQTT `switch`. A plug works only if its firmware honors the
-Zigbee timed-on command, and few do: Sonoff and Tuya plugs often run their own countdown instead. On Zigbee2MQTT,
-DeviceSide uses Tuya's countdown on the TS011F plugs Zigbee2MQTT drives by it
-([Tuya TS011F plugs](integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs)). On ZHA, and on Zigbee2MQTT's other Tuya
+Turn on with timer on a ZHA `switch`, and get attributes on a ZHA or Zigbee2MQTT one. A plug works only if its firmware
+honors the Zigbee timed-on command, and few do: Sonoff and Tuya plugs often run their own countdown instead. On
+Zigbee2MQTT, turn on with timer is tested plug by plug: DeviceSide uses Tuya's countdown on the TS011F plugs Zigbee2MQTT
+drives by it ([Tuya TS011F plugs](integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs)), and every other plug, a Hue
+one included, runs only with Experimental features on. On ZHA, and on Zigbee2MQTT's other Tuya
 plugs, DeviceSide refuses it, as they would turn on and stay on, or on long after the time asked; the
 [Tuya TS011F](#tuya-ts011f) runs only Tuya's own timer. ZHA and Zigbee2MQTT each need their own report.
 
@@ -177,8 +178,8 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 | `stop` | Verified | light entities; hue classes | `LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/stop.json) |
 | `stop` | Documented | other classes | | |
 | `stop` | Experimental | tuya_zcl, tuya_ts011f, tuya_countdown, tuya_countdown_tz3000_0zfrhq4i, tuya_countdown_tz3000_typdpbpg, tuya_countdown_tz3000_gznh2xla, tuya_countdown_tz3000_okaz9tjs, tuya_countdown_harmed, tuya_mcu, sengled, gledopto classes | | |
-| `turn_on_for` | Verified | light entities; hue, tuya_countdown_tz3000_0zfrhq4i, tuya_countdown_tz3000_typdpbpg, tuya_countdown_tz3000_gznh2xla, tuya_countdown_tz3000_okaz9tjs classes; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, transition fields | `LWA012`, firmware `1.163.1`<br>`LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/turn_on_for.json) |
-| `turn_on_for` | Experimental | switch entities; other, gledopto, tuya_countdown classes | | |
+| `turn_on_for` | Verified | light, switch entities; hue on light, tuya_countdown_tz3000_0zfrhq4i on switch, tuya_countdown_tz3000_typdpbpg on switch, tuya_countdown_tz3000_gznh2xla on switch, tuya_countdown_tz3000_okaz9tjs on switch classes; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, transition fields | `LWA012`, firmware `1.163.1`<br>`LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/turn_on_for.json) |
+| `turn_on_for` | Experimental | other, gledopto, tuya_countdown classes | | |
 
 | Not yet supported, harmed by today's call | Why | Source |
 |---|---|---|

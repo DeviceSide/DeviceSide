@@ -226,34 +226,48 @@ def manual_rows(integration: str, action: str) -> list[list[tuple[str, str | Non
 # The coverage check (docs/evidence.md, The coverage check).
 
 
-def reached(integration: str, action: str) -> set[str]:
-    """The classes the action's evidence reached: in a passing record, each passing test's (format 2: its devices'
-    classes, a native group's members' each; format 1: its `classes`), and each `_manual.json` row's devices'. A null
-    class credits none."""
-    found = set()
+def reached(integration: str, action: str) -> set[tuple[str, str | None]]:
+    """The classes the action's evidence reached, each with the domain its test targeted: in a passing record, each
+    passing test's (format 2: its devices' classes, a native group's members' each; format 1: its `classes`), and each
+    `_manual.json` row's devices', whose domain is None, as a row names none. A null class credits none."""
+    found: set[tuple[str | None, str | None]] = set()
     for path in passing(integration, action):
         record = load(path)
         for test in record["tests"]:
             if test["result"] != "pass":
                 continue
-            found.update(test.get("classes", ()) if record["format"] == 1 else (d["class"] for d in test["devices"]))
+            names = test.get("classes", ()) if record["format"] == 1 else (d["class"] for d in test["devices"])
+            found.update((name, test.get("domain")) for name in names)
     for row in manual_rows(integration, action):
-        found.update(cls for _, cls in row)
-    return found - {None}
+        found.update((cls, None) for _, cls in row)
+    return {(name, domain) for name, domain in found if name is not None}
 
 
 def coverage_gaps(registry) -> list[str]:
     """Each class an adapter of an integration that names classes holds as Verified, with no passing record test or
-    manual row for its action that reached it. An adapter flagged whole holds none as Verified."""
+    manual row for its action that reached it: one held on every domain, in any domain; one held on some domains alone
+    (OnDomains), in each of them, as a record in one domain proves nothing about another. A manual row names no domain,
+    so it covers every domain (the maintainer's judgment, tenet 7). An adapter flagged whole holds none as Verified."""
     gaps = []
     for _, adapter in adapters(registry):
         if not names_classes(adapter) or adapter.scope.experimental:
             continue
-        held = [item for item, level in adapter.scope.capabilities.items() if level is Level.VERIFIED]
-        missing = sorted(set(held) - reached(adapter.integration, adapter.action))
-        gaps += [
-            f"{adapter.integration} {adapter.action}: `{item}` is Verified but no record reaches it" for item in missing
-        ]
+        found = reached(adapter.integration, adapter.action)
+        for item, level, domains in sorted(adapter.scope.class_entries(), key=lambda entry: entry[0]):
+            if level is not Level.VERIFIED:
+                continue
+            if domains is None:
+                if not any(name == item for name, _ in found):
+                    gaps.append(
+                        f"{adapter.integration} {adapter.action}: `{item}` is Verified but no record reaches it"
+                    )
+                continue
+            prefix = f"{adapter.integration} {adapter.action}: `{item}` is Verified on"
+            gaps += [
+                f"{prefix} {domain} but no record reaches it there"
+                for domain in sorted(domains)
+                if (item, domain) not in found and (item, None) not in found
+            ]
     return gaps
 
 

@@ -227,8 +227,9 @@ runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, 
   target that can never take the action raises before anything is sent; an indirect one is skipped and logged; a
   device failure raises once every target has run.
 - **Experimental items** are gated here, at runtime. After `supports()` passes a target and fields are dropped,
-  `Dispatcher.run_adapters` takes the call's level from its domain, the class `IntegrationInfo.capability` names (one
-  it can't name counts as Experimental; a native group takes its members' weakest) and the fields it still carries. An
+  `Dispatcher.run_adapters` takes the call's level from its domain, the class `IntegrationInfo.capability` names, in
+  that domain (one it can't name, or whose entry holds other domains alone, counts as Experimental; a native group
+  takes its members' weakest) and the fields it still carries. An
   Experimental one is refused as `experimental_off` while the option is off, raising its own message for a named
   target. A call left nothing to send is unchanged, not refused.
 - **Results.** Commands answer optionally, per entity: `{status, integration, capability?, clamped_to?, detail?}`

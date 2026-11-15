@@ -255,7 +255,8 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
         keeps today's refusal until it fills.
      5. **The call:** a branch in Z2M's `turn_on_for` for the class, with brightness as the probe shows.
      6. **Duration limits per class** (from Deferred): whole seconds, 1 to 43,200 s unless the probe shows other
-        bounds. Out of range raises as core does, rounding is reported in `clamped_to`. Core change, so an Opus audit.
+        bounds. Out of range is clamped to the class's `DurationLimits`, as core does (Decision 86), and the value used,
+        rounding included, is reported in `clamped_to`. Core change, so an Opus audit.
      7. **Read-back** per the probe: `confirmed` only if the device reports the countdown; otherwise `sent`.
      8. **Levels (Decision 35):** `experimental(...)` for every converter A definition. Verified per maker string,
         from Jason's lab runs on his Tuya variants (Decision 77), each maker string with its own record; part 3
@@ -264,10 +265,11 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
         (Decision 41). The cards and `index.md` move each Verified string
         to Works and the rest to Experimental.
      9. **Lab run:** every Tuya variant on Jason's Z2M network (Decision 77), added to step 5's lab run.
-        - **Plugs, one per maker string (Jason, 2026-11-15):** `_TZ3000_0zfrhq4i` in the lab profile, pre-authorized;
-          `_TZ3000_typdpbpg`, `_TZ3000_gznh2xla` (on no seed list: converter A by `TS011F_plug_1`'s catch-all) and
-          `_TZ3000_okaz9tjs` (a Girier white label; its plug switches a light, so it is safe to test) in a new `plugs`
-          profile, `pre_authorized: false`. Jason confirms the list just before the run.
+        - **Plugs, one per maker string (Jason, 2026-11-15; Decision 88):** one run, in a `plugs` profile that is a
+          superset of lab (all of lab's entities and roam, plus three TS011F plugs), `pre_authorized: false`, so one
+          record covers all four strings: `_TZ3000_0zfrhq4i` (lab's plug), `_TZ3000_typdpbpg`, `_TZ3000_gznh2xla` (on
+          no seed list: converter A by `TS011F_plug_1`'s catch-all) and `_TZ3000_okaz9tjs` (a Girier white label; its
+          plug switches a light, so it is safe to test). Jason confirms the list just before the run.
         - **Rig change, paired (`Tests-with`), merged first:** a profile takes only the first entity for each role
           and integration (`Profile.entity`), so a profile of three `switch_plug` plugs tests one. The cases for a
           role run once per listed entity, each a test reaching its own device, so one run gives each maker string
@@ -282,7 +284,7 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
          `tuya_ts011f` is.
        - **Item 8, a string's level:** a class per string, so the coverage check asks each Verified string for its own
          record, and a record credits only the string its test reached. The record shape is format 2 unchanged: each
-         test's device carries its `manufacturer` and its string's class. The four lab strings are Verified in code,
+         test's device carries its `manufacturer` and its string's class, one test per plug (Decision 88). The four lab strings are Verified in code,
          warning until the run's records land; one that fails moves to its finding, one dropped from the run to
          `tuya_countdown`.
        - **The call:** one publish, `{"state": "ON", "countdown": N}`; no `on_time`, no reads, `sent` (P6).
@@ -295,6 +297,13 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
          `on_time`, which would reach the plug as a plain On or the spec's tenths. The dispatcher runs each set of
          limits apart; `clamp` rounds to the step and reports it in `clamped_to` (action-behavior.md). Out of range
          clamps, as action-behavior.md has it.
+       - **Per-domain class levels (Decision 87):** `verified(..., domains=...)` holds a class's level on those domains
+         alone (core's `OnDomains`); elsewhere it counts as Experimental. Z2M `turn_on_for`'s `switch` is Verified,
+         `hue` on `light` alone (every record ran on a bulb, so a Hue plug stays flagged), and each Verified string on
+         `switch` alone. The coverage check (gen_compat's warning, `check_release --signoffs`) asks a scoped Verified
+         class for a record in each of its domains; a manual row, which names none, covers each. The cards' Works
+         credits a test by its domain's level; the evidence block names a scoped entry `hue on light`. Follow-up:
+         the adapter-wide domain axis could reduce to the unknown default, once every integration scopes its classes.
        - **Rig:** three `switch_plug` cases in the shared `turn_on_for.yaml`, `only: [zigbee2mqtt]`, the probe's
          firmware facts per string: from on it ends off (P1), a new call replaces (P2), an off cancels (P3);
          `on_then_off` covers the call from off. Shared, not Zigbee2MQTT's own file: a record is named for its step
@@ -1196,6 +1205,24 @@ Numbered from 36; step 9 numbers from 46, so these renumber at merge if needed.
       supported or flagged (Decisions 72 and 73).
     - **The rig carries no public or private label** in either repo's docs: the rules it serves (no rig code here,
       no household details there) hold either way, and a label goes stale (CLAUDE.md, Decision 76).
+
+## Decisions (Jason, 2026-11-15, step 5 part 3)
+
+86. **Out of range clamps.** A duration outside a class's own call's `DurationLimits` is clamped to them and reported
+    in `clamped_to`, as core does for every adapter (Matter's `_TIMER_LIMITS`): action-behavior.md's "a value the device
+    can't reach". Rounding to the call's step (whole seconds) is reported in `clamped_to` too, as the timer won't end
+    when asked. Corrects item 6's "raises".
+87. **A class's level per domain.** A class level entry can name domains (`verified(HUE, domains=("light",))`); with
+    none it covers every domain the adapter serves, today's behavior, so Hue, ZHA, Matter and Shelly are unchanged. A
+    (class, domain) pair with no entry counts as Experimental. Z2M `turn_on_for`'s `switch` goes Verified, `hue` is
+    scoped to `light`, and each Tuya maker string is Verified on `switch`, a class per string. The coverage check moves
+    to one record per (class, domain) for a scoped entry; the cards show the scoped entries. The user-visible failure it
+    prevents: a Hue plug run unflagged, and shown as Works, on a bulb's record; it replaces per-domain classes such as a
+    `hue_plug`. The adapter-wide domain axis stays for now.
+88. **Part 3's Z2M run is one run, one record.** The rig writes one record per integration and suite, so the run uses
+    a `plugs` profile that is a superset of lab. Each `switch_plug` entity gets its own test, `<test>[switch_plug]`
+    for the first and `<test>[switch_plug-<n>]` for the rest in profile order, each with one device (ha-rig #92); the
+    schema's `id` description says so, with no schema change.
 
 ## Handoff
 

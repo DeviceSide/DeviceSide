@@ -38,8 +38,8 @@ device classes in [the device-classes plan](plans/2026-11-14-device-classes.md).
    sign-off exists, not how thorough it was.
 
 *Example (tenets 4 and 5):* the rig found that a Tuya TS011F plug doesn't run the Zigbee timed-on timer it is given.
-That reopened "a Zigbee switch takes the light's timed-on call", so the `switch` domain stays untested on ZHA and
-Zigbee2MQTT `turn_on_for`. A lab probe then root-caused it: the plug runs the timer only Tuya's way, and given the
+That reopened "a Zigbee switch takes the light's timed-on call", so the `switch` domain stays untested on ZHA
+`turn_on_for`, and on Zigbee2MQTT each class holds its own level on switches: `hue` is Verified on lights alone. A lab probe then root-caused it: the plug runs the timer only Tuya's way, and given the
 light's call one plug stayed off while another switched on about ten times later than asked and stayed on
 ([internals](internals.md#tested-behavior)). Research also found that even lights given the identical call differ by
 firmware: Hue replaces a running timer where the spec keeps the longer one, and some IKEA and Hue models turn on and
@@ -108,6 +108,10 @@ Zigbee2MQTT countdown plug's maker string with a record of its own is a class of
   Nothing lifts it: a record on a device outside the named classes adds a new class named for its maker
   (Zigbee2MQTT: `ikea` for an IKEA bulb), as the default class holds every device no rule matches, and one maker's
   record proves nothing about the rest.
+- **A level per class and domain.** A class's level holds on every domain the adapter serves, unless its entry names
+  some (`verified(..., domains=...)`, core's `OnDomains`): on the rest its class has no entry, so it counts as
+  Experimental. A record on a class in one domain proves nothing about it in another: Zigbee2MQTT's `hue` is Verified
+  on lights, as every record ran on a bulb, so a Hue plug, a switch, stays flagged.
 - **One axis per integration.** An integration that names classes holds them in every adapter's scope, and only the
   classes it declares; one that names none holds them in none (the registry checks). A new integration names its
   classes, or its PR argues that it has one: that no known device behind it answers the same call differently.
@@ -184,7 +188,8 @@ varied integration, sets the bar. Classes match on manufacturer and model until 
 ### The coverage check
 
 Every class an adapter's scope holds as Verified needs a passing record test, or a `_manual.json` row, for that action
-that reached it. A record names the class each test's devices reached, and a manual row each device's. A native group's
+that reached it; one held on some domains alone needs it in each of them, from a test in that domain (a manual row
+names no domain, so it covers each). A record names the class each test's devices reached, and a manual row each device's. A native group's
 test credits each member's class, from its members' entries (the response's `member_capabilities`,
 [action-behavior.md](action-behavior.md#what-a-response-looks-like)), as the one call reached each member (a null one
 credits none; the cards add "native groups", never the members' models). A group with a null-class member is on no

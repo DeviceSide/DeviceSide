@@ -40,16 +40,38 @@ class Level(IntEnum):
     VERIFIED = 20
 
 
-def verified(*items: str) -> dict[str, Level]:
-    return dict.fromkeys(items, Level.VERIFIED)
+@dataclass(frozen=True, slots=True)
+class OnDomains:
+    """A class's level on some of the adapter's domains alone (docs/evidence.md, Device classes): on any other its
+    class has no entry, so counts as Experimental, as a class outside the scope does. A record on the class in one
+    domain proves nothing about it in another: a Hue bulb's `turn_on_for` isn't a Hue plug's."""
+
+    level: Level
+    domains: frozenset[str]
 
 
-def documented(*items: str) -> dict[str, Level]:
-    return dict.fromkeys(items, Level.DOCUMENTED)
+type ClassLevel = Level | OnDomains
 
 
-def experimental(*items: str) -> dict[str, Level]:
-    return dict.fromkeys(items, Level.EXPERIMENTAL)
+def _levels(items: tuple[str, ...], level: Level, domains: Collection[str] | None) -> dict[str, ClassLevel]:
+    # Typed for a class's levels, which domains and fields share as plain Levels: their scope refuses OnDomains.
+    entry = level if domains is None else OnDomains(level, frozenset(domains))
+    return dict.fromkeys(items, entry)
+
+
+def verified(*items: str, domains: Collection[str] | None = None) -> dict[str, ClassLevel]:
+    """Each item Verified; a class's on `domains` alone when given (OnDomains)."""
+    return _levels(items, Level.VERIFIED, domains)
+
+
+def documented(*items: str, domains: Collection[str] | None = None) -> dict[str, ClassLevel]:
+    """Each item Documented; a class's on `domains` alone when given (OnDomains)."""
+    return _levels(items, Level.DOCUMENTED, domains)
+
+
+def experimental(*items: str, domains: Collection[str] | None = None) -> dict[str, ClassLevel]:
+    """Each item Experimental; a class's on `domains` alone when given (OnDomains)."""
+    return _levels(items, Level.EXPERIMENTAL, domains)
 
 
 class CaveatKind(Enum):
@@ -154,8 +176,9 @@ class AdapterScope:
     # The classes the adapter serves (docs/evidence.md, Device classes), as IntegrationInfo.capability names them;
     # None for an integration that names none (the registry refuses a mismatch either way). Proof follows the call and
     # the class, so each stands on its own evidence: a sibling's untested one is Experimental unless it is Documented.
-    # A class the integration names in neither this nor doesnt_work is not yet supported, and refused.
-    capabilities: Mapping[str, Level] | None = None
+    # A class the integration names in neither this nor doesnt_work is not yet supported, and refused. A class's level
+    # holds on every domain unless its entry names some (OnDomains): elsewhere it counts as Experimental.
+    capabilities: Mapping[str, ClassLevel] | None = None
     # Classes no known call works on, refused with why; never in capabilities. Per adapter, as one class can fail one
     # action's call and answer another's.
     doesnt_work: Mapping[str, DoesntWork] = field(default_factory=dict)
@@ -187,6 +210,7 @@ class AdapterScope:
             )
         if unserved := sorted(self.own_calls.keys() - (self.capabilities or {}).keys()):
             raise ValueError(f"own_calls names classes the scope doesn't serve: {unserved}")
+        self._check_on_domains()
         # Read-only copies: adapters share mappings such as Shelly's CAPABILITIES, and a frozen scope stays frozen.
         for name in ("domains", "fields", "capabilities", "doesnt_work", "not_supported", "own_calls"):
             if (items := getattr(self, name)) is not None:
@@ -200,8 +224,23 @@ class AdapterScope:
         fails safe instead of raising."""
         levels = [self.domains[domain], *(self.fields[name] for name in fields)]
         if self.capabilities is not None:
-            levels += [self.capabilities.get(name, Level.EXPERIMENTAL) for name in classes]
+            levels += [self.class_level(name, domain) for name in classes]
         return min(levels)
+
+    def class_level(self, name: str | None, domain: str) -> Level:
+        """A class's level in a domain: its entry's, where that holds the domain (an OnDomains entry names some alone),
+        else Experimental, as for a class outside the scope or None."""
+        entry = (self.capabilities or {}).get(name)
+        if isinstance(entry, OnDomains):
+            return entry.level if domain in entry.domains else Level.EXPERIMENTAL
+        return Level.EXPERIMENTAL if entry is None else entry
+
+    def class_entries(self) -> list[tuple[str, Level, frozenset[str] | None]]:
+        """Each class the scope serves, with its level and the domains it holds it on, None for every domain."""
+        return [
+            (name, entry.level, entry.domains) if isinstance(entry, OnDomains) else (name, entry, None)
+            for name, entry in (self.capabilities or {}).items()
+        ]
 
     @property
     def harms(self) -> bool:
@@ -239,6 +278,14 @@ class AdapterScope:
         """The duration limits of the call a target of these classes gets: its own call's, where its class has one with
         limits, else the scope's `duration`. A native group with such a member is refused (refusal), so never runs."""
         return next((limits for name in classes if (limits := self.own_calls.get(name)) is not None), self.duration)
+
+    def _check_on_domains(self) -> None:
+        for axis in ("domains", "fields"):
+            if any(isinstance(level, OnDomains) for level in getattr(self, axis).values()):
+                raise ValueError(f"{axis} take no domains: only a class's level is held on some domains")
+        for name, entry in (self.capabilities or {}).items():
+            if isinstance(entry, OnDomains) and not entry.domains <= self.domains.keys():
+                raise ValueError(f"class {name!r} is held on domains the scope doesn't serve: {sorted(entry.domains)}")
 
     def _check_unlisted(self) -> None:
         if unknown := self.unlisted - LACKABLE:

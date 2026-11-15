@@ -24,7 +24,7 @@ from ...actions.turn_on_for import TurnOnForRequest
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Status, Target
 from ...core.runtime import get_runtime
-from ...core.scope import AdapterScope, DurationLimits, experimental, verified
+from ...core.scope import AdapterScope, DurationLimits, verified
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -65,10 +65,10 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
     action: ClassVar[str] = "turn_on_for"
     integration: ClassVar[str] = "zigbee2mqtt"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        # Zigbee plugs and switches rarely honor OnWithTimedOff, and Z2M has no read-back to show it, so switch fails
-        # the Documented test (docs/evidence.md, Levels): it takes the same call, so it stays flagged experimental,
-        # untested, until a maintainer judges it ready.
-        domains=verified("light") | experimental("switch"),
+        # Both Verified: the class decides a switch's level, as each class holds its own per domain (classes.py,
+        # TURN_ON_FOR). Zigbee plugs and switches rarely honor OnWithTimedOff, so only a class with a switch record is
+        # Verified there; a Hue plug, an `other` one and the rest stay untested.
+        domains=verified("light", "switch"),
         capabilities=TURN_ON_FOR,
         # Each harms its class (a Tuya plug left on), so the dispatcher refuses a device not yet placed, and a group of
         # unknown membership, as class_unknown, even with Experimental features on (classes.py).

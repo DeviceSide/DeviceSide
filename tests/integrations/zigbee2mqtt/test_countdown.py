@@ -101,12 +101,14 @@ async def test_until_bridge_devices_lists_it_a_countdown_plug_waits(hass, setup_
     assert await refusal(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == "class_unknown"
 
 
-def test_each_verified_string_has_a_class_of_its_own_verified_on_turn_on_for_alone():
+def test_each_verified_string_has_a_class_of_its_own_verified_on_switches_on_turn_on_for_alone():
     scope = Z2MTurnOnFor.scope
     for string in classes.VERIFIED_STRINGS:
         name = classes.string_class(string)
         assert name in INTEGRATION.classes
-        assert scope.capabilities[name] is Level.VERIFIED
+        # On switches alone, as Z2M shows a plug: one Z2M shows as a light has no record.
+        assert scope.class_level(name, "switch") is Level.VERIFIED
+        assert scope.class_level(name, "light") is Level.EXPERIMENTAL
     assert scope.capabilities["tuya_countdown"] is Level.EXPERIMENTAL
     assert set(scope.own_calls) == set(classes.COUNTDOWNS)
     assert "tuya_countdown_harmed" in scope.not_supported
@@ -146,6 +148,15 @@ async def test_the_countdown_is_whole_seconds_from_1_to_43200(
     expected = {"status": "sent", "integration": "zigbee2mqtt"}
     assert response == {entity_id: expected if clamped_to is None else expected | {"clamped_to": clamped_to}}
     assert commands(broker) == [(SET, {"state": "ON", "countdown": countdown})]
+
+
+async def test_a_verified_string_runs_with_experimental_features_off(hass, setup_production, broker):
+    entity_id = plug(hass, broker, LAB)
+
+    assert await call(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == {
+        entity_id: {"status": "sent", "integration": "zigbee2mqtt"}
+    }
+    assert commands(broker) == [(SET, {"state": "ON", "countdown": 5})]
 
 
 async def test_an_unrecorded_string_is_experimental(hass, setup_production, broker):

@@ -16,7 +16,8 @@ devices sold under other brands, by the device's own Zigbee manufacturer and mod
 it connects. Every feature says how well it is proven for each
 ([levels of proof](../../device-compatibility.md#levels-of-proof)).
 
-- **Hue bulbs** (manufacturer `Philips`) are tested: every feature on this page has passed on them.
+- **Hue bulbs** (manufacturer `Philips`) are tested: every feature on this page has passed on them. A Hue smart plug
+  hasn't: turn on with timer runs on it only with Experimental features on.
 - A **group** is proven as far as its weakest light. One with a light a feature refuses, or, with Experimental
   features off, one of another brand, falls back to its lights, each on its own; with them on, it runs as one group.
   A member Home Assistant has no light for (a plug Zigbee2MQTT shows as a switch, say) counts by its device, so a Tuya
@@ -45,7 +46,8 @@ setting for the plug). Turn on with timer uses that countdown:
 - **Verified one maker string at a time** (the Zigbee manufacturer Zigbee2MQTT shows for the plug), each by its own
   test record: `_TZ3000_0zfrhq4i`, `_TZ3000_typdpbpg`, `_TZ3000_gznh2xla` and `_TZ3000_okaz9tjs`. Plugs of the same
   model answer the countdown differently by maker, so one string's test proves nothing about another's.
-- **Untested** on every other maker string: it runs only with Experimental features on. If you try one, please report
+- **Untested** on every other maker string, and on any of them Zigbee2MQTT shows as a light: it runs only with
+  Experimental features on. If you try one, please report
   it, whether it works or not.
 - **Not supported yet on `_TZ3000_gjnozsaz`,** even with Experimental features on: its countdown is reported to restart
   at random, so it could stay on ([Zigbee2MQTT #30493](https://github.com/Koenkk/zigbee2mqtt/issues/30493)).

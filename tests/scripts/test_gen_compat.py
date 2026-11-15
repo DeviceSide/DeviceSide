@@ -774,6 +774,25 @@ def test_a_mixed_class_format_2_record_puts_under_works_only_the_models_that_rea
     ]
 
 
+def test_a_class_held_on_some_domains_alone_credits_works_only_from_a_test_in_one(root):
+    """Zigbee2MQTT's `hue` on lights alone: a Hue plug's pass, a switch, never shows it as working (OnDomains)."""
+    record2(
+        root,
+        "zha",
+        "turn_on_for",
+        ran("switch", device("P1", "1", "Light"), role="switch_plug"),
+        ran("light", device("LTA009", "2", "Light")),
+    )
+    manual_file(root, rows=[signoff(tester="jasonmx", devices=(("P1", "Light"),), passed=("turn_on_for",))])
+    scope = AdapterScope(
+        domains=verified("light", "switch"), capabilities=verified("Light", domains=("light",)) | verified("Switch")
+    )
+    tested = adapter("zha", "turn_on_for", scope)
+    # A manual row names no domain, so a class flagged in one domain credits none of them.
+    assert classed_card(tested).lines["works"] == [f"[Hue lamp]({URL}#hue-lamp) ✔"]
+    assert gc.rows(tested)[0].split(" | ")[2] == "light, switch entities; Light on light, Switch classes"
+
+
 def test_a_null_class_device_never_reaches_works_where_the_integration_names_classes(root):
     # A Shelly 1 Mini Gen4 whose class the run didn't name: no adapter flag needed to keep it off Works.
     record2(

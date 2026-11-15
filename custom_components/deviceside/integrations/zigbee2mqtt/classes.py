@@ -188,11 +188,16 @@ FADE_COLOR = verified(HUE) | experimental(OTHER) | _UNTESTED
 # Raw ZCL reads and writes, which a datapoint device can't take. Other brands depart: a bulb without `onTime` can fail
 # the read, and some come on, or at full, when written while off.
 READ_WRITE = verified(HUE) | experimental(OTHER, TUYA_ZCL, *_TS011F, SENGLED, GLEDOPTO)
-# turn_on_for: the Sengled needs a host-side off, which isn't built, so it is not yet supported; every other brand may
-# depart (some never switch off), so `other` and `gledopto` are untested. Tuya's countdown plugs get that call
-# (turn_on_for.py): each maker string with a record of its own Verified, the rest untested (plan Decision 35). The
-# other Tuya classes are not yet supported, with an entry each, as today's call harms them.
-TURN_ON_FOR = verified(HUE, *VERIFIED_COUNTDOWNS) | experimental(OTHER, GLEDOPTO, TUYA_COUNTDOWN)
+# turn_on_for: Hue on lights alone, as every record ran on a bulb, so a Hue plug (a switch) is untested. The Sengled
+# needs a host-side off, which isn't built, so it is not yet supported; every other brand may depart (some never switch
+# off), so `other` and `gledopto` are untested. Tuya's countdown plugs get that call (turn_on_for.py): each maker
+# string with a record of its own Verified, on switches alone, as Z2M shows a plug, and the rest untested (plan
+# Decision 35). The other Tuya classes are not yet supported, with an entry each, as today's call harms them.
+TURN_ON_FOR = (
+    verified(HUE, domains=("light",))
+    | verified(*VERIFIED_COUNTDOWNS, domains=("switch",))
+    | experimental(OTHER, GLEDOPTO, TUYA_COUNTDOWN)
+)
 # The other Tuya classes are not yet supported, and harmed by today's call (plan Decisions 20, 70 and 71): Z2M has no
 # `on_time` converter for a definition built with `onOffCountdown`, or for a datapoint device, so it sends a plain On
 # and the device stays on. Each has a call that would work, Z2M's `countdown`, which isn't built for them: converter

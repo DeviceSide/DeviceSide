@@ -92,7 +92,7 @@
       "type": "object",
       "required": ["id", "role", "result"],
       "properties": {
-        "id": {"description": "The case: `<test>[<role>]`, with ` observed` for a watched case.", "type": "string", "minLength": 1},
+        "id": {"description": "The case: `<test>[<role>]`, or `<test>[<role>-<n>]` for the n-th entity of a role in the profile (the first keeps `[<role>]`), with ` observed` for a watched case.", "type": "string", "minLength": 1},
         "domain": {"description": "The domain of the entity the case targeted; absent when it targeted none.", "type": "string", "pattern": "^[a-z_]+$"},
         "role": {"description": "The profile role the case targets.", "type": "string", "pattern": "^[a-z_]+$"},
         "result": {"description": "not observed: a watched case nobody watched.", "enum": ["pass", "fail", "skipped", "not observed"]},

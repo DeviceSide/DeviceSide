@@ -19,6 +19,7 @@ from custom_components.deviceside.core.scope import (
     DurationLimits,
     Level,
     NotSupported,
+    OnDomains,
     Unplaced,
     documented,
     experimental,
@@ -197,6 +198,37 @@ def test_a_scope_without_classes_refuses_none():
 def test_a_class_never_both_serves_and_doesnt_work():
     with pytest.raises(ValueError, match="classes the scope serves"):
         AdapterScope(capabilities=verified("hue"), doesnt_work={"hue": BROKEN})
+
+
+def test_a_class_held_on_some_domains_alone_is_experimental_on_the_rest():
+    """A Hue bulb's record proves nothing about a Hue plug: `hue` on lights alone leaves a Hue switch flagged."""
+    scope = AdapterScope(
+        domains=verified("light", "switch"),
+        capabilities=verified("hue", domains=("light",)) | documented("other"),
+    )
+
+    assert scope.capabilities["hue"] == OnDomains(Level.VERIFIED, frozenset({"light"}))
+    assert scope.level("light", ["hue"]) is Level.VERIFIED
+    assert scope.level("switch", ["hue"]) is Level.EXPERIMENTAL
+    assert scope.level("switch", ["other"]) is Level.DOCUMENTED  # an entry on every domain, as before
+    assert scope.class_entries() == [
+        ("hue", Level.VERIFIED, frozenset({"light"})),
+        ("other", Level.DOCUMENTED, None),
+    ]
+    assert scope.refusal(["hue"]) is None  # served, so not refused: gated by its level
+
+
+@pytest.mark.parametrize(
+    ("scope", "message"),
+    [
+        (lambda: AdapterScope(capabilities=verified("hue", domains=("switch",))), "domains the scope doesn't serve"),
+        (lambda: AdapterScope(domains=verified("light", domains=("light",))), "domains take no domains"),
+        (lambda: AdapterScope(fields=verified("brightness", domains=("light",))), "fields take no domains"),
+    ],
+)
+def test_only_a_class_is_held_on_domains_the_scope_serves(scope, message):
+    with pytest.raises(ValueError, match=message):
+        scope()
 
 
 OWN = DurationLimits(min_s=1, max_s=10, step_s=1)
