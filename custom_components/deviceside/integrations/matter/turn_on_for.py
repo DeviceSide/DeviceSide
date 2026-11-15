@@ -24,9 +24,7 @@ _LOGGER = logging.getLogger(__name__)
 
 # OnWithTimedOff.onTime is a uint16 in tenths of a second; the spec caps it at 65534 tenths, so 6553.4 s is the most.
 _TIMER_LIMITS = DurationLimits(min_s=0.1, max_s=6553.4)
-# OffWaitTime 1 (0.1 s), not 0: certification's TC-OO-2.3 sends OnWithTimedOff only with a non-zero OffWaitTime, and
-# matter.js before v0.17.2 never turns off on onTime > 0 with OffWaitTime 0 (internals.md, turn_on_for). A natural
-# timeout clears it, so its one effect is that an Off mid-timer guards for 0.1 s against another OnWithTimedOff.
+# OffWaitTime 1 (0.1 s), not 0: the value certification tests alike and matter.js times off (internals.md, turn_on_for).
 _OFF_WAIT_TENTHS = 1
 
 
@@ -37,8 +35,9 @@ class MatterTurnOnFor(Adapter[TurnOnForRequest]):
     action: ClassVar[str] = "turn_on_for"
     integration: ClassVar[str] = "matter"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        # Lights take the same OnWithTimedOff as plugs, behind the same LT check: Documented.
-        domains=verified("switch") | documented("light"),
+        # Documented on both until the plug's rerun on OffWaitTime 1 (its record ran 0); lights take the same call as
+        # plugs, behind the same LT check.
+        domains=documented("switch", "light"),
         duration=_TIMER_LIMITS,
         fields=verified(),
         capabilities=TURN_ON_FOR,

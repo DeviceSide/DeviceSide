@@ -57,10 +57,13 @@ item ships only behind `experimental`.
   known class of devices departs. Unit tests pin the payload. A field is never Documented, because it changes the
   call. The PR that claims Documented argues the sibling case, and review checks it. A bug on the Verified sibling
   reopens its Documented siblings in the same fix.
-  A class is also Documented when a certification it is defined by tests DeviceSide's exact call and its outcome on
-  every member, and no known member departs (Matter: certified devices, whose TC-OO-2.3 sends the timer call and
-  checks it ends, [internals](integrations/matter/internals.md#what-decides-the-call)). A call the certification
-  doesn't send, even a field value it never uses, isn't covered.
+  A class is also Documented when a certification tests DeviceSide's call and the outcome it relies on, on every
+  certified device, the class's rule keys on a marker every certified device carries and the known uncertified
+  sources don't, and no known member departs. The call counts as the one tested when it is the same command and each
+  field value is one the spec treats alike to the test's; a value the spec treats differently (Matter: OffWaitTime 0)
+  isn't covered. The PR names the equivalence, the marker and what slips past it (Matter: certified devices, by a
+  non-test VendorID, whose TC-OO-2.3 sends the timer call and checks it ends,
+  [internals](integrations/matter/internals.md#what-decides-the-call)).
 
 Nothing ships unflagged unless it is Verified or Documented. Built and unit-tested code that the maintainer can't
 exercise, and that isn't Documented, ships behind `experimental` as untested. A sign-off
@@ -159,8 +162,8 @@ does any other. A not yet supported class that today's call leaves unharmed need
   placed (its identifying strings haven't been received, so they could still move it into a harmed class). A
   target DeviceSide can't class at all is refused the same way. A group with a member not yet placed falls back to
   its members, so only that member is refused. A device no rule matches gets the default class, and one placed there
-  from full information stays Experimental, as does every target of an action no class is harmed by (Unknown is
-  flagged, never Verified, above). The refusal is `class_unknown`; for a target not yet placed it clears once the
+  from full information isn't refused but runs at its class's level, as does every target of an action no class is
+  harmed by (Unknown is flagged, never Verified, above). The refusal is `class_unknown`; for a target not yet placed it clears once the
   integration has reported what it lacked. How core applies it: [design.md](design.md#core-contract), Classes; when a
   device counts as placed: each integration's page, as
   [Zigbee2MQTT's](integrations/zigbee2mqtt/index.md#device-classes). ZHA, Hue and Matter mark their entries in steps

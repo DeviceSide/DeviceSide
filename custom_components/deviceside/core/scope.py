@@ -29,8 +29,8 @@ class Level(IntEnum):
     # The experimental flag on one item, not yet judged ready for everyone: refused unless the Experimental features
     # option is on. A maintainer lifts it when they judge it ready (docs/evidence.md, The experimental flag).
     EXPERIMENTAL = 0
-    # Reaches the same capability as a Verified item, differing only in addressing, or a class whose certification
-    # tests the exact call (docs/evidence.md, Levels); unit tests pin the payload.
+    # Reaches the same capability as a Verified item, differing only in addressing, or a class a certification tests
+    # the call on (docs/evidence.md, Levels); unit tests pin the payload.
     DOCUMENTED = 10
     # A maintainer has verified the call on a real device.
     VERIFIED = 20

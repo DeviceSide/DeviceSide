@@ -147,8 +147,9 @@ READBACK_SLACK_TENTHS = 30
 
 
 def timer_matches(read_on_time: object, on_off: object, on_time: int) -> bool:
-    """Whether the timer running is the one just sent for `on_time` tenths: a new timer replaces a running one, so
-    OnTime read straight back lies within READBACK_SLACK_TENTHS under it."""
+    """Whether the timer running is the one just sent for `on_time` tenths: OnTime read straight back lies within
+    READBACK_SLACK_TENTHS under it. A device keeps the longer of a running timer and a new one (the spec's
+    max(OnTime, onTime)), so a shorter call during a longer timer reads above it and isn't confirmed."""
     return timer_running(read_on_time, on_off) and on_time - READBACK_SLACK_TENTHS <= read_on_time <= on_time
 
 

@@ -12,7 +12,10 @@ refused on a Matter light.
 ## Turn on with timer
 
 The timer is read back from the device, so the result is `confirmed` only when it reports both a running timer
-(`OnTime`) and that it is on, otherwise `sent`. `turn_off` cancels the timer; a plain `turn_on` doesn't.
+(`OnTime`) and that it is on, otherwise `sent`. `turn_off` cancels the timer; a plain `turn_on` doesn't. By the spec,
+a second timer while one runs keeps the longer of the two, and a device turned off mid-timer ignores a new timer for
+the next 0.1 s and stays off (`sent`). If the device restarts while a timer runs, after a power cut say, it can come
+back on with no timer ([internals](internals.md#what-decides-the-call)).
 
 ## Get attributes
 
@@ -36,18 +39,19 @@ like other certified devices, until the plug is tested with it again.
 
 A device certified by the Connectivity Standards Alliance has passed a test of the timer command DeviceSide sends,
 including that it turns off when the time runs out, so turn on with timer and get attributes run on it with
-Experimental features off. Like every Matter device here, it needs the On/Off cluster's Lighting feature.
+Experimental features off. DeviceSide counts a device as certified by its vendor ID, which an uncertified product
+from a registered vendor also carries: that is the case this can't catch. Like every Matter device here, it needs the On/Off cluster's Lighting feature.
 
 ### Matter bridges
 
-Devices a bridge exposes on Matter, such as Zigbee lights behind a hub, or Home Assistant devices shared by a
-Matterbridge-style app. The bridge answers the timer, either by running it itself or by passing it on to the
-device, so how it behaves depends on the bridge. Untested: both features run only with Experimental features on.
+Devices a bridge exposes on Matter, such as Zigbee lights behind a hub. The bridge answers the timer, either by
+running it itself or by passing it on to the device, so how it behaves depends on the bridge. Untested: both
+features run only with Experimental features on. A bridge's own light or plug counts here too.
 
 ### Uncertified devices
 
-A device that reports a test vendor ID: development kits, apps that share other devices on Matter, and the odd
-uncertified product. Nothing has tested its timer, so both features run only with Experimental features on. An
+A device that reports a test vendor ID, or none yet: development kits, apps that share other devices on Matter
+(Matterbridge-style apps, bridge or not), and the odd uncertified product. Nothing has tested its timer, so both features run only with Experimental features on. An
 app built on matter.js forgets a running timer when it restarts, and the device stays on
 ([internals](internals.md#upstream-defects)).
 

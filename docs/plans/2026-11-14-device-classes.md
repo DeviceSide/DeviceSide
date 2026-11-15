@@ -387,17 +387,22 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      or clusters; the client's node cache does, sync.
    - **Built** (`claude/device-classes-9-matter`): `integrations/matter/classes.py`, rules on the node cache, first
      match winning: `uncertified` (a test VendorID), `bridged` (an Aggregator endpoint), `wiz_plug` (4107/8979), and
-     `other`, the default. Unplaced while a node reports no VendorID; None with no node. The call sends OffWaitTime 1
+     `other`, the default. A node with no VendorID yet is `uncertified`, Unplaced; None with no node. The call sends OffWaitTime 1
      (Decision 46). Levels on both adapters: `other` Documented by certification (Decision 48, the rule in
      `docs/evidence.md`, Levels); `bridged` and `uncertified` `experimental(...)`; `wiz_plug` Verified on
-     `get_attributes` and Documented on `turn_on_for`, as its record ran OffWaitTime 0. No `doesnt_work` entry: no
+     `get_attributes`, and on `turn_on_for` Documented, the `switch` domain too, as its record ran OffWaitTime 0. No `doesnt_work` entry: no
      certified Matter device is known to depart, and the call no longer harms matter.js; so no harm refusal, and
      every untested class runs with Experimental features on.
    - **Harm test** on each candidate entry: matter.js with OffWaitTime 0 (on, never off: deferred, unattended, harms)
      is avoided by the call, so it needs no entry; a matter.js restart dropping a running timer (indigo-matter #203)
-     harms too, but only on a restart mid-timer and on a class already untested, so it is named on the card, not
-     refused (Decision 46); a device without the Lighting feature refuses the command, a visible failure, already
+     harms too, but a reboot mid-timer drops the timer on any Matter device (the reference server doesn't persist
+     OnTime), so it is a limit of every class, stated on the page, not a departure a class rule can split off; a device without the Lighting feature refuses the command, a visible failure, already
      refused as `no_lt_feature`.
+   - **Plan review and audit** (fixed in the round's commit): the Documented basis names the equivalence (same
+     command, field values the spec treats alike) and the marker (a non-test VendorID) with what slips past it;
+     bridge detection fails closed (a Bridged Node, Bridged Device Basic Information or an unreadable DeviceTypeList);
+     `evidence.md`'s harm rule says a default-class device runs at its class's level, not Experimental. The README's
+     WiZ line is lost until the rerun, as Decision 15 accepted for Z2M; `check_release --signoffs` blocks on it.
    - **Lab run (pending):** the WiZ plug on the new call, `turn_on_for` and `get_attributes`, in format 2, so the
      records carry `wiz_plug`; it lifts `turn_on_for` on `wiz_plug` to Verified and clears the coverage warning.
 10. **Close out.**
@@ -1095,7 +1100,7 @@ Numbered from 46, as step 7's run from 36; renumber at merge if they collide.
 47. **A Matter class keys on VendorID and ProductID,** which name the firmware (tenet 9, Decision 35): the record
     lifts `wiz_plug` (4107/8979), not every Signify product.
 48. **`other` on Matter is Documented by certification,** on `turn_on_for` and `get_attributes`, as TC-OO-2.3 tests
-    the exact call and its outcome on every certified device, given Decision 46's call; with OffWaitTime 0 it would
+    the call, in the spec's terms, and its outcome on every certified device, given Decision 46's call; with OffWaitTime 0 it would
     have been `experimental(...)`. The rule goes in `docs/evidence.md` (Levels), so it gets the Opus audit.
 
 ## Handoff

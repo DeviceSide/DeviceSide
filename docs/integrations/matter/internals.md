@@ -35,13 +35,20 @@ Read 2026-11-14, for the device classes (plan step 9). Sources at a commit: Home
 - **Certification** tests the call on every device with the feature: TC-OO-2.3 (PICS `OO.S.F00`) sends
   `OnWithTimedOff` 15 times and checks that the device turns off when OnTime runs out (step 24c reads OnOff false
   after 40 s), always with OffWaitTime 300, never 0
-  ([`Test_TC_OO_2_3.yaml`](https://github.com/project-chip/connectedhomeip/blob/c55ddad4480afad31f249af5356c16e8b53416c6/src/app/tests/suites/certification/Test_TC_OO_2_3.yaml)). The reference server
-  clears OffWaitTime when OnTime runs out, so a non-zero one only guards, after an Off mid-timer, against another
-  `OnWithTimedOff` for that long ([`OnOffLightingCluster.cpp`](https://github.com/project-chip/connectedhomeip/blob/c55ddad4480afad31f249af5356c16e8b53416c6/src/app/clusters/on-off-server/OnOffLightingCluster.cpp),
-  `TimerFired`, `HandleOnWithTimedOff`).
+  ([`Test_TC_OO_2_3.yaml`](https://github.com/project-chip/connectedhomeip/blob/c55ddad4480afad31f249af5356c16e8b53416c6/src/app/tests/suites/certification/Test_TC_OO_2_3.yaml)). DeviceSide's call is
+  the test's in the spec's terms, so certification covers it (docs/evidence.md, Levels): the reference server
+  branches on OffWaitTime only as zero or not (`HandleOnWithTimedOff`), and on OnTime only as zero or not, within the
+  0xFFFE cap the command enforces; DeviceSide sends OffWaitTime 1 and OnTime 1 to 0xFFFE. It clears OffWaitTime when
+  OnTime runs out (`TimerFired`), so a non-zero one acts only after an Off mid-timer: the endpoint ignores another
+  `OnWithTimedOff` for that long
+  ([`OnOffLightingCluster.cpp`](https://github.com/project-chip/connectedhomeip/blob/c55ddad4480afad31f249af5356c16e8b53416c6/src/app/clusters/on-off-server/OnOffLightingCluster.cpp)).
+- **A reboot drops a running timer** on any device: the reference server persists OnOff and StartUpOnOff, not OnTime
+  (same file, constructor), so a device that restores its last state after a power cut comes back on with no timer.
 - **A test VendorID** (0xFFF1 to 0xFFF4, [`CHIPVendorIdentifiers.hpp`](https://github.com/project-chip/connectedhomeip/blob/c55ddad4480afad31f249af5356c16e8b53416c6/src/lib/core/CHIPVendorIdentifiers.hpp),
   `IsTestVendorId`) is what no certified product carries; development kits and software that shares devices on
-  Matter report one (HA's own test fixtures: Nordic, Silabs and Nabu Casa sample nodes, `tests/components/matter/fixtures/nodes/`).
+  Matter report one by default (HA's own test fixtures: Nordic, Silabs and Nabu Casa sample nodes,
+  `tests/components/matter/fixtures/nodes/`). A real VendorID doesn't prove certification: a member can ship an
+  uncertified product, or an app can be set to report one. That is what slips past `other`'s marker.
 - **What HA exposes.** The device registry holds Basic Information's `vendorName` as manufacturer, `productLabel` or
   `productName` as model, `productID` as `model_id` (none on a bridged device), and the version strings
   ([`adapter.py`](https://github.com/home-assistant/core/blob/2bca51ea8e647696e2c86f43e4edea3bdb48ea74/homeassistant/components/matter/adapter.py), `_create_device_registry`), but not the VendorID, the device types or the
@@ -51,9 +58,7 @@ Read 2026-11-14, for the device classes (plan step 9). Sources at a commit: Home
   the Aggregator (0x000E), and its bridged endpoints the Bridged Node (0x0013), as the client reads them
   (`matter_server/client/models/node.py`, `is_bridged_device`).
 
-So a class keys on the node, read sync from that cache (`classes.py` holds the rules and their order): a test
-VendorID first, as certification hasn't tested it; then a bridge, whose software answers; then a measured product by
-VendorID and ProductID, which name its firmware; else the default. The lab's plug is the one product measured.
+The classes those facts give, and their order: the `classes.py` docstring.
 
 ## Modules
 
@@ -95,11 +100,12 @@ cites have been checked upstream: search each tracker for duplicates before fili
   (2024-09) to v0.17.1; fixed in v0.17.2 (2026-06-09) by [#3842](https://github.com/matter-js/matter.js/pull/3842)
   ([before](https://github.com/matter-js/matter.js/blob/06cd7eaad5b868f3e81ac299d8d3d240e8fcd19b%5E/packages/node/src/behaviors/on-off/OnOffServer.ts),
   `onWithTimedOff`). Apps that share devices on Matter are built on it; nothing in the node shows its version.
-  DeviceSide sends OffWaitTime 1, which every version times off.
-- **matter.js: a restart drops a running timer** (open). The countdown is an in-memory timer that nothing rearms on
-  restart, though OnTime persists, so the device stays on
-  ([indigo-matter #203](https://github.com/simons-plugins/indigo-matter/issues/203), reproduced 2026-08-31). Why
-  uncertified devices and bridges stay untested (index.md).
+  DeviceSide sends OffWaitTime 1, which every version times off: a failure on another field value is about that
+  call, so the fix is the call (docs/evidence.md, Contrary evidence).
+- **matter.js: a restart drops a running timer** (open), as a reboot does on any device (What decides the call). Its
+  countdown is an in-memory timer that nothing rearms on restart, though OnTime persists, so the device stays on
+  ([indigo-matter #203](https://github.com/simons-plugins/indigo-matter/issues/203), reproduced 2026-08-31). An app restarts more often
+  than a device loses power.
 
 Not worth filing:
 

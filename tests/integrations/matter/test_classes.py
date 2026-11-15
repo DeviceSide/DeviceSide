@@ -40,7 +40,13 @@ AGGREGATOR = {"1/29/0": [{"0": 14, "1": 1}], "2/29/0": [{"0": 19, "1": 1}, {"0":
         (WIZ | AGGREGATOR, BRIDGED),  # a bridge's software answers, whoever made it
         ({"0/40/2": 0xFFF1} | AGGREGATOR, UNCERTIFIED),  # a test VendorID marks it untested first
         ({"0/40/2": 4874, "1/29/0": [{"0": 266, "1": 1}]}, OTHER),  # a device type that isn't the Aggregator
-        ({}, OTHER),
+        # Any sign of a bridge, or a DeviceTypeList that can't be read, fails closed to `bridged`.
+        ({"0/40/2": 4874, "2/29/0": [{"0": 19, "1": 1}]}, BRIDGED),  # a Bridged Node, no Aggregator
+        ({"0/40/2": 4874, "2/57/5": "a name"}, BRIDGED),  # Bridged Device Basic Information
+        ({"0/40/2": 4874, "1/29/0": [266]}, BRIDGED),
+        ({"0/40/2": 4874, "1/29/0": None}, BRIDGED),
+        ({}, UNCERTIFIED),  # no VendorID yet: the cautious class
+        ({"0/40/2": "4874"}, UNCERTIFIED),
     ],
 )
 def test_node_class(attributes, expected):
@@ -56,13 +62,38 @@ async def test_capability_is_unplaced_without_a_vendor_id(hass):
 
     found = capability(hass, target)
 
-    assert isinstance(found, Unplaced) and found == OTHER
+    assert isinstance(found, Unplaced) and found == UNCERTIFIED
+
+
+@pytest.mark.usefixtures("mock_chip", "setup_production")
+async def test_an_unplaced_node_waits_for_experimental_and_isnt_reported(hass):
+    """Unplaced as `uncertified`: untested, so refused while Experimental features is off; with them on it runs, and
+    the response leaves out its provisional class."""
+    entry, send_cmd, _ = matter_device(hass, vendor_id=None, product_id=None)
+    add_matter_entity(hass, entry, "switch.plug")
+    data = {"entity_id": "switch.plug", "duration": 5}
+
+    assert await refusal(hass, "turn_on_for", data) == "experimental_off"
+    allow_experimental(hass)
+    response = await call(hass, "turn_on_for", data)
+
+    assert "capability" not in response["switch.plug"]
+    send_cmd.assert_awaited_once()
 
 
 @pytest.mark.usefixtures("setup_production")
 async def test_capability_is_none_without_a_node(hass):
     entry, _, _ = matter_device(hass)
     add_matter_entity(hass, entry, "switch.plug", unique_id="not-a-matter-id")
+
+    assert capability(hass, _target(hass, "switch.plug")) is None
+
+
+@pytest.mark.usefixtures("setup_production")
+async def test_capability_is_none_when_the_node_lookup_raises(hass):
+    entry, _, _ = matter_device(hass)
+    entry.runtime_data.adapter.matter_client.get_node.side_effect = KeyError("gone")
+    add_matter_entity(hass, entry, "switch.plug")
 
     assert capability(hass, _target(hass, "switch.plug")) is None
 
@@ -78,6 +109,11 @@ def test_levels():
         assert not adapter.scope.doesnt_work
     assert MatterTurnOnFor.scope.capabilities[WIZ_PLUG] is Level.DOCUMENTED
     assert MatterGetAttributes.scope.capabilities[WIZ_PLUG] is Level.VERIFIED
+    # The WiZ plug's records ran OffWaitTime 0, so the switch domain waits for its rerun on turn_on_for too.
+    assert MatterTurnOnFor.scope.level("switch", [WIZ_PLUG]) is Level.DOCUMENTED
+    assert MatterGetAttributes.scope.level("switch", [WIZ_PLUG]) is Level.VERIFIED
+    assert MatterGetAttributes.scope.level("light", [OTHER]) is Level.DOCUMENTED
+    assert MatterTurnOnFor.scope.level("light", [BRIDGED]) is Level.EXPERIMENTAL
 
 
 @pytest.mark.usefixtures("mock_chip", "setup_production")
@@ -86,34 +122,44 @@ def test_levels():
     [({}, WIZ_PLUG), ({"vendor_id": 4874, "product_id": 80}, OTHER)],
     ids=["wiz_plug", "other"],
 )
-async def test_certified_runs_with_experimental_off(hass, node, expected):
-    entry, send_cmd, _ = matter_device(hass, **node)
-    add_matter_entity(hass, entry, "switch.plug")
+@pytest.mark.parametrize("entity_id", ["switch.plug", "light.bulb"])
+@pytest.mark.parametrize("action", ["turn_on_for", "get_attributes"])
+async def test_certified_runs_with_experimental_off(hass, node, expected, entity_id, action):
+    entry, send_cmd, read_attr = matter_device(hass, **node)
+    add_matter_entity(hass, entry, entity_id)
 
-    response = await call(hass, "turn_on_for", {"entity_id": "switch.plug", "duration": 5})
+    response = await call(hass, action, _data(action, entity_id))
 
-    assert response["switch.plug"]["capability"] == expected
-    send_cmd.assert_awaited_once()
+    assert response[entity_id]["capability"] == expected
+    assert (send_cmd if action == "turn_on_for" else read_attr).await_count == (1 if action == "turn_on_for" else 2)
 
 
 @pytest.mark.usefixtures("mock_chip", "setup_production")
 @pytest.mark.parametrize(
-    "node",
-    [{"vendor_id": 0xFFF1}, {"vendor_id": 4757, "attributes": AGGREGATOR}],
+    ("node", "expected"),
+    [({"vendor_id": 0xFFF1}, UNCERTIFIED), ({"vendor_id": 4757, "attributes": AGGREGATOR}, BRIDGED)],
     ids=["uncertified", "bridged"],
 )
 @pytest.mark.parametrize("action", ["turn_on_for", "get_attributes"])
-async def test_untested_classes_wait_for_experimental(hass, node, action):
+async def test_untested_classes_wait_for_experimental(hass, node, expected, action):
     """No Matter class is harmed by a call, so an untested one runs once Experimental features is on."""
     entry, send_cmd, read_attr = matter_device(hass, **node)
     add_matter_entity(hass, entry, "switch.plug")
-    data = {"entity_id": "switch.plug"} | ({"duration": 5} if action == "turn_on_for" else {})
+    data = _data(action, "switch.plug")
 
     assert await refusal(hass, action, data) == "experimental_off"
+    send_cmd.assert_not_awaited()
+    read_attr.assert_not_awaited()
     allow_experimental(hass)
-    await call(hass, action, data)
+    response = await call(hass, action, data)
 
-    assert (send_cmd if action == "turn_on_for" else read_attr).await_count >= 1
+    assert response["switch.plug"]["capability"] == expected
+    # turn_on_for sends once and reads back its two paths; get_attributes reads the two paths
+    assert (send_cmd.await_count, read_attr.await_count) == ((1, 2) if action == "turn_on_for" else (0, 2))
+
+
+def _data(action, entity_id):
+    return {"entity_id": entity_id} | ({"duration": 5} if action == "turn_on_for" else {})
 
 
 def _target(hass, entity_id):
