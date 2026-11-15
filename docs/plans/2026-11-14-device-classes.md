@@ -1156,7 +1156,9 @@ Numbered from 36; step 9 numbers from 46, so these renumber at merge if needed.
       (TODO.md, evidence.md's Release gate example).
     - **The rc1 audit record is replaced** with base `b025363` once this stack lands (TODO.md, v0.1.0).
     - **Part 3's lab run covers every Tuya variant on Jason's Z2M network,** not two or three. Just before the run,
-      the session asks Jason which of them go in the test profiles; only those run.
+      the session asks Jason which of them go in the test profiles; only those run. A converter A (TS011F-family)
+      variant runs part 3's call, for its Verified record; any other runs its refusal, as its class is not yet
+      supported or flagged (Decisions 72 and 73).
     - **The rig carries no public or private label** in either repo's docs: the rules it serves (no rig code here,
       no household details there) hold either way, and a label goes stale (CLAUDE.md, Decision 76).
 
