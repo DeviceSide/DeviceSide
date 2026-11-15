@@ -31,6 +31,105 @@
           "firmware": "1.164.2"
         }
       ]
+    },
+    {
+      "date": "2026-11-15",
+      "suite": "raise_brightness-predicted_state",
+      "test": "bridge_scene_recall_mid_fade_shows_at_once[group]",
+      "kind": "automated",
+      "result": "pass",
+      "devices": [
+        {
+          "model": "LCA016",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.164.2",
+          "class": "hue"
+        },
+        {
+          "model": "LWA012",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
+          "class": "hue"
+        },
+        {
+          "model": "LTA009",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
+          "class": "hue"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-15",
+      "suite": "raise_brightness",
+      "test": "late_stop_report[light_ct]",
+      "kind": "automated",
+      "result": "pass",
+      "devices": [
+        {
+          "model": "LTA009",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
+          "class": "hue"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-15",
+      "suite": "raise_brightness",
+      "test": "late_stop_report[group]",
+      "kind": "automated",
+      "result": "pass",
+      "devices": [
+        {
+          "model": "LCA016",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.164.2",
+          "class": "hue"
+        },
+        {
+          "model": "LWA012",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
+          "class": "hue"
+        },
+        {
+          "model": "LTA009",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
+          "class": "hue"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-15",
+      "suite": "set_attributes",
+      "test": "sets_color_while_off[light_color] observed",
+      "kind": "observed",
+      "result": "pass",
+      "devices": [
+        {
+          "model": "LCA016",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.164.2",
+          "class": "hue"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-15",
+      "suite": "stop",
+      "test": "halts_brightness_and_saturation[light_color] observed",
+      "kind": "observed",
+      "result": "pass",
+      "devices": [
+        {
+          "model": "LCA016",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.164.2",
+          "class": "hue"
+        }
+      ]
     }
   ]
 }

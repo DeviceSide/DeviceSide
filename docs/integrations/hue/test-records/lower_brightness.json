@@ -1,68 +1,83 @@
 {
-  "format": 1,
+  "format": 2,
   "integration": "hue",
   "action": "lower_brightness",
   "result": "pass",
-  "date": "2026-11-07",
+  "date": "2026-11-15",
   "source": {
     "kind": "rig",
-    "commit": "1de5a51"
+    "commit": "bc270947"
   },
-  "home_assistant": "2026.10.2",
-  "devices": [
-    {
-      "model": "LTA009",
-      "name": "Hue ambiance lamp",
-      "firmware": "1.163.1"
-    },
-    {
-      "name": "Zone",
-      "firmware": null,
-      "group": true
-    }
-  ],
+  "package": "d34542a499d6",
+  "home_assistant": "2026.10.4",
   "tests": [
     {
       "id": "lower_to_off[light_ct]",
       "domain": "light",
       "role": "light_ct",
-      "result": "pass"
+      "result": "pass",
+      "devices": [
+        {
+          "model": "LTA009",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
+          "class": "hue"
+        }
+      ]
     },
     {
       "id": "lower_to_off[group]",
       "domain": "light",
       "role": "group",
-      "result": "pass"
-    },
-    {
-      "id": "lower_to_a_limit[light_ct]",
-      "domain": "light",
-      "role": "light_ct",
-      "result": "pass"
-    },
-    {
-      "id": "lower_to_a_limit[group]",
-      "domain": "light",
-      "role": "group",
-      "result": "pass"
-    },
-    {
-      "id": "lower_stop_lower[light_ct]",
-      "domain": "light",
-      "role": "light_ct",
-      "result": "pass"
-    },
-    {
-      "id": "lower_stop_lower[group]",
-      "domain": "light",
-      "role": "group",
-      "result": "pass"
+      "result": "pass",
+      "group": true,
+      "devices": [
+        {
+          "model": "LCA016",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.164.2",
+          "class": "hue"
+        },
+        {
+          "model": "LWA012",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
+          "class": "hue"
+        },
+        {
+          "model": "LTA009",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
+          "class": "hue"
+        }
+      ]
     },
     {
       "id": "light_raised_mid_room_lower[group]",
       "domain": "light",
       "role": "group",
-      "result": "pass"
+      "result": "pass",
+      "group": true,
+      "devices": [
+        {
+          "model": "LCA016",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.164.2",
+          "class": "hue"
+        },
+        {
+          "model": "LWA012",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
+          "class": "hue"
+        },
+        {
+          "model": "LTA009",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
+          "class": "hue"
+        }
+      ]
     }
   ]
 }

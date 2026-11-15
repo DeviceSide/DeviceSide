@@ -1,71 +1,147 @@
 {
-  "format": 1,
+  "format": 2,
   "integration": "hue",
   "action": "raise_brightness",
   "options": [
     "predicted_state"
   ],
   "result": "pass",
-  "date": "2026-11-08",
+  "date": "2026-11-15",
   "source": {
     "kind": "rig",
-    "commit": "8aae106"
+    "commit": "bc270947"
   },
+  "package": "d34542a499d6",
   "home_assistant": "2026.10.4",
-  "devices": [
-    {
-      "model": "LTA009",
-      "name": "Hue ambiance lamp",
-      "firmware": "1.163.1"
-    },
-    {
-      "name": "Zone",
-      "firmware": null,
-      "group": true
-    }
-  ],
   "tests": [
     {
       "id": "holds_the_start_then_shows_the_end[light_ct]",
       "domain": "light",
       "role": "light_ct",
-      "result": "pass"
+      "result": "pass",
+      "devices": [
+        {
+          "model": "LTA009",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
+          "class": "hue"
+        }
+      ]
     },
     {
       "id": "holds_the_start_then_shows_the_end[group]",
       "domain": "light",
       "role": "group",
-      "result": "pass"
+      "result": "pass",
+      "group": true,
+      "devices": [
+        {
+          "model": "LCA016",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.164.2",
+          "class": "hue"
+        },
+        {
+          "model": "LWA012",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
+          "class": "hue"
+        },
+        {
+          "model": "LTA009",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
+          "class": "hue"
+        }
+      ]
     },
     {
       "id": "up_from_off_shows_the_dimmest[light_ct]",
       "domain": "light",
       "role": "light_ct",
-      "result": "pass"
+      "result": "pass",
+      "devices": [
+        {
+          "model": "LTA009",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
+          "class": "hue"
+        }
+      ]
     },
     {
       "id": "up_from_off_shows_the_dimmest[group]",
       "domain": "light",
       "role": "group",
-      "result": "pass"
+      "result": "pass",
+      "group": true,
+      "devices": [
+        {
+          "model": "LCA016",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.164.2",
+          "class": "hue"
+        },
+        {
+          "model": "LWA012",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
+          "class": "hue"
+        },
+        {
+          "model": "LTA009",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
+          "class": "hue"
+        }
+      ]
     },
     {
       "id": "ha_change_mid_fade_shows_at_once[light_ct]",
       "domain": "light",
       "role": "light_ct",
-      "result": "pass"
+      "result": "pass",
+      "devices": [
+        {
+          "model": "LTA009",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
+          "class": "hue"
+        }
+      ]
     },
     {
       "id": "ha_change_mid_fade_shows_at_once[group]",
       "domain": "light",
       "role": "group",
-      "result": "pass"
+      "result": "pass",
+      "group": true,
+      "devices": [
+        {
+          "model": "LCA016",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.164.2",
+          "class": "hue"
+        },
+        {
+          "model": "LWA012",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
+          "class": "hue"
+        },
+        {
+          "model": "LTA009",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
+          "class": "hue"
+        }
+      ]
     },
     {
       "id": "bridge_scene_recall_mid_fade_shows_at_once[group]",
-      "domain": "light",
       "role": "group",
-      "result": "pass"
+      "result": "skipped",
+      "fact": true
     }
   ]
 }

@@ -1,35 +1,69 @@
 {
-  "format": 1,
+  "format": 2,
   "integration": "hue",
   "action": "set_scene",
   "result": "pass",
-  "date": "2026-11-08",
+  "date": "2026-11-15",
   "source": {
     "kind": "rig",
-    "commit": "8aae106"
+    "commit": "bc270947"
   },
+  "package": "d34542a499d6",
   "home_assistant": "2026.10.4",
-  "devices": [
-    {
-      "name": "Zone",
-      "firmware": null,
-      "group": true
-    }
-  ],
   "tests": [
     {
       "id": "sets_while_off[scene]",
       "domain": "scene",
       "role": "scene",
       "result": "pass",
-      "group": true
+      "group": true,
+      "devices": [
+        {
+          "model": "LCA016",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.164.2",
+          "class": "hue"
+        },
+        {
+          "model": "LWA012",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
+          "class": "hue"
+        },
+        {
+          "model": "LTA009",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
+          "class": "hue"
+        }
+      ]
     },
     {
       "id": "applies_while_on[scene]",
       "domain": "scene",
       "role": "scene",
       "result": "pass",
-      "group": true
+      "group": true,
+      "devices": [
+        {
+          "model": "LCA016",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.164.2",
+          "class": "hue"
+        },
+        {
+          "model": "LWA012",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
+          "class": "hue"
+        },
+        {
+          "model": "LTA009",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
+          "class": "hue"
+        }
+      ]
     }
   ]
 }
