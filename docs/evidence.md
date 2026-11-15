@@ -27,7 +27,8 @@ device classes in [the device-classes plan](plans/2026-11-14-device-classes.md).
    sent, what the device answered, and which way DeviceSide went because of it.
 5. **Proof follows the call and the class.** Evidence is about how a class of devices responds to a call
    ([device classes](#device-classes)). Any code that sends the same call to the same class inherits it, and unit tests
-   pin the call.
+   pin the call. So does a doesn't-work entry: it may cover every action that sends that call to that class or
+   identity, such as `turn_on_for`, `set_auto_off` and `turn_off_for` where they send the same frame.
 6. **Simplify relentlessly.** Prefer fewer calls, fewer round trips and less machinery. A new guardrail needs
    evidence that its failure happens (a probe, record or report), and names the user-visible failure it prevents and
    what it replaces; until then, log so the first report would show the failure. An existing guardrail stays until
@@ -63,16 +64,23 @@ covers only what was exercised; it never signs off untested code.
 
 **Contrary evidence:** a credible report of a [harmful](#doesnt-work-not-yet-supported-untested) failure, upstream
 or a DeviceSide issue, on the call DeviceSide sends, lets an integration maintainer land a doesn't-work entry,
-`harms`, for that action, moving only that identity, on the report alone, cited as its source; credibility is theirs
-to judge (tenet 7). The identity is the most specific one the report names that a class rule can key on: the model
-ID with the manufacturer string, and the firmware where that is what decides. A vendor name alone never moves: Hue's
-or IKEA's manufacturer string, or HA's registry manufacturer "Tuya", is never banned whole (Split off the exception,
-not the class, [below](#doesnt-work-not-yet-supported-untested)). A failure reported on a different call, an external
-converter's or another frame, is evidence about that call, not the device: ZHA's `_TZ3000_typdpbpg` failed on the
-spec's tenths, which its firmware reads as seconds, so the fix is the call, not a ban (plan Decision 35). A report
-that contradicts the identity's own passing record or manual row doesn't ban it by itself: the maintainer retests,
-or weighs the two. Any other report changes no level until a maintainer confirms it: they root-cause it, and the
-fix, the updated fact or a demotion lands with the finding ([plan Decision 68](plans/2026-11-14-device-classes.md)).
+`harms`, moving only the identity the report names (below), on the report alone, cited as its source; credibility is
+theirs to judge (tenet 7). As proof follows the call (tenet 5), the entry may cover every action that sends that call
+to that identity, such as `turn_on_for`, `set_auto_off` and `turn_off_for` where they send the same frame. The
+identity is the most specific one the report names that a class rule can key on: the model ID with the manufacturer
+string, and the firmware where that is what decides. On a report alone, a vendor name never moves: Hue's or IKEA's
+manufacturer string, or HA's registry manufacturer "Tuya", is never banned whole on one (Split off the exception, not
+the class, [below](#doesnt-work-not-yet-supported-untested)); a class rule keyed on a vendor rests on research, as
+Zigbee2MQTT's registry "Tuya" rule does (plan Decision 20). A credible harmful report naming only a vendor is "any
+other report" below: the maintainer root-causes it. A failure reported on a different call, an external converter's
+or another frame, is evidence about that call, not the device: Z2M #25434's `_TZ3000_dg7fdg92` failed under an
+external converter that sent a plain `onOff()`, so it stays Experimental, not banned (plan Decision 35). Where
+DeviceSide's own call harms a device, the harm rule holds instead ([below](#doesnt-work-not-yet-supported-untested)):
+ZHA's `_TZ3000_typdpbpg` reads the spec's tenths as seconds, so it stays doesn't work for that call until step 7
+ships Tuya's recipe; the fix is the call, and the entry lifts when the call changes. A report that contradicts the
+identity's own passing record or manual row doesn't ban it by itself: the maintainer retests, or weighs the two. Any
+other report changes no level until a maintainer confirms it: they root-cause it, and the fix, the updated fact or a
+demotion lands with the finding ([plan Decision 68](plans/2026-11-14-device-classes.md)).
 
 *Example:* Shelly's `turn_on_for` and `turn_off_for` calls are Verified on the `Switch` and `RGBCCT` components and
 Documented on `Light`, `CCT`, `RGB` and `RGBW`: the same call, addressed to another component, which Shelly's API

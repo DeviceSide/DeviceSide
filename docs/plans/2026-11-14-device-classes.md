@@ -868,14 +868,16 @@ A package changed after its lab run needs that run again before the release. Non
     - **Experimental, not banned (Jason, 2026-11-14):** `_TZ3000_dg7fdg92` (Z2M #25434) and `_TZ3000_okaz9tjs`
       (ZHC #9786). Both reports used an external converter, not DeviceSide's call, and a ban needs a failure "on the
       call DeviceSide sends" (Decision 68). #25434's converter sent the standard `onOff()` call, which mirrors
-      ZHA's `_TZ3000_typdpbpg` below: a wrong call, not a bad device. #9786 shows no harm. This corrects the
+      a wrong call, not a bad device; unlike ZHA's `_TZ3000_typdpbpg` below, whose failure is on DeviceSide's own call.
+      #9786 shows no harm. This corrects the
       decision's citing ZHC #9786 above as a 0x42 plug that doesn't honor the countdown.
     - **Experimental:** every other converter A definition.
     - **No upstream inclusions:** upstream "works" reports are too thin to Verify a string. A later credible report
       can back a maintainer's `_manual.json` row, its sign-off PR body citing it (Decision 69 declined a `reports`
       field), and so Verified by its own evidence.
-    - **ZHA's `_TZ3000_typdpbpg` is not banned.** It failed because ZHA sends the spec's tenths, which Tuya firmware
-      reads as seconds: the fix is the call (step 7), not the device.
+    - **ZHA's `_TZ3000_typdpbpg` stays doesn't work for today's call** (Decision 16). DeviceSide's own call harms it:
+      ZHA sends the spec's tenths, which Tuya firmware reads as seconds, so the harm rule holds it until step 7 ships
+      Tuya's recipe. The fix is the call, and the entry lifts when the call changes.
 
 ## Decisions (Jason, 2026-11-14, step 6's group crediting and part 3's datapoint class)
 
@@ -888,14 +890,17 @@ Decisions 36 to 45, 46 to 55 and 56 to 65 are reserved for steps 7, 9 and 8.
     test-level list can be derived from the per-member map, but not the reverse; the map fills the per-member `class`
     field format 2's schema already requires of a group's members; and an unplaced member, or one the integration
     can't name, voids only itself (Decision 29), where it voids the group's `capabilities`, which keeps its
-    whole-group invariant. The map names only a member core reached through its own available entity (availability
-    judged at planning time); every other member is left out, though its class still counts in `capabilities`: one
+    whole-group invariant. The map names only a member core reached through its own available entity, an addressable
+    one (`Target.addressable`) with an available state, judged at planning time; every other member is left out, though its class still counts in `capabilities`: one
     that is unavailable; one core resolves only through a stand-in (Z2M's, for a plug in a light group, whether HA
     exposes it as a switch or a `switch_as_x` light wraps it, and for a disabled member), whose key would be the
     group's own entity_id, crediting a class no member's state showed; and a Z2M device with more than one entity in
-    the group's domain, disabled ones included, as bridge/groups names the member's endpoint by a number nothing Z2M
-    publishes maps to an entity, so its first entity may not be the one the call reached (`Target.own_entity`;
-    matching the endpoint was set aside as not reliably mappable). The map can sit on an `unchanged` entry too, as
+    the group's domain, disabled ones included, listed by its first entity, which may not be the endpoint the group
+    holds. The endpoint can be matched to its entity, as `bridge/devices` names each endpoint since Z2M 2.6.0
+    ([internals](../integrations/zigbee2mqtt/internals.md#addressing)), but DeviceSide's set and get topics carry no
+    endpoint, so such a device is not addressable on its own, and that leaves it out of the map too. (Amended in
+    #431's audit round: the map first had its own flag, `Target.own_entity`, which matched `addressable` and
+    availability in every case, so it was dropped.) The map can sit on an `unchanged` entry too, as
     `capabilities` can, where the call sent nothing: a reader crediting evidence credits only an entry whose status
     shows a send. The change is additive. The rig (ha-rig #89) writes each member's class from
     `member_capabilities`; `docs/evidence.md`'s coverage check credits each member's class from its members' entries.
@@ -929,15 +934,22 @@ Decisions 36 to 45, 46 to 55 and 56 to 65 are reserved for steps 7, 9 and 8.
     - Step 5 part 3 builds it (its steps 3 to 5).
 68. **A report of a harmful failure moves the identity it names** ([evidence.md](../evidence.md#levels), Contrary
     evidence): a credible report of a harmful failure, upstream or a DeviceSide issue, on the call DeviceSide sends,
-    lets an integration maintainer land a doesn't-work entry, `harms`, for that action, moving only that identity,
-    on the report alone, cited as its source; credibility is theirs to judge (tenet 7). A false "works" leaves a
+    lets an integration maintainer land a doesn't-work entry, `harms`, moving only the identity the report names
+    (Scope, below), on the report alone, cited as its source; credibility is theirs to judge (tenet 7). The entry may
+    cover every action that sends that call to that identity (tenet 5), such as `turn_on_for`, `set_auto_off` and
+    `turn_off_for` where they send the same frame. A false "works" leaves a
     device on or off unattended; a false ban costs a refusal a later record lifts.
     - **Scope:** the identity is the most specific one the report names that a class rule can key on, out of its
-      class: the model ID with the manufacturer string, and the firmware where that is what decides. A vendor name
-      alone never moves: Hue's or IKEA's manufacturer string, or HA's registry manufacturer "Tuya", is never banned
-      whole (Split off the exception, not the class: Decision 25).
+      class: the model ID with the manufacturer string, and the firmware where that is what decides. On a report
+      alone, a vendor name never moves: Hue's or IKEA's manufacturer string, or HA's registry manufacturer "Tuya", is
+      never banned whole on one (Split off the exception, not the class: Decision 25); Z2M's registry "Tuya" rule
+      rests on research (Decision 20), not a report. A credible harmful report naming only a vendor falls under Any
+      other report, below: the maintainer root-causes it.
     - **The call:** a failure reported on a different call, an external converter's or another frame, is evidence
-      about that call, not the device: ZHA's `_TZ3000_typdpbpg` is fixed in the call, not banned (Decision 35).
+      about that call, not the device: Z2M #25434's `_TZ3000_dg7fdg92`, under an external converter sending a plain
+      `onOff()`, stays Experimental, not banned (Decision 35). Where DeviceSide's own call harms the device, the harm
+      rule holds it instead: ZHA's `_TZ3000_typdpbpg` stays doesn't work for today's call until step 7's call ships,
+      and the entry lifts when the call changes.
     - **Against a record:** a report that contradicts the identity's own passing record or manual row doesn't ban it
       by itself: the maintainer retests, or weighs the two.
     - **Any other report**, a plain failure that doesn't harm, changes no level until a maintainer confirms it.
