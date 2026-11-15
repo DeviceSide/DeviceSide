@@ -223,13 +223,15 @@ async def test_a_zigbee_device_s_report_carries_its_own_manufacturer_string(hass
         assert private not in url
 
 
-async def test_without_the_hook_s_string_the_report_takes_the_registry_s(hass: HomeAssistant, zha, monkeypatch):
-    """Here the registry's maker already leads the product, so it isn't repeated."""
+async def test_without_the_hook_s_string_the_report_leaves_the_maker_out(hass: HomeAssistant, zha, monkeypatch):
+    """The registry's maker, a quirk's friendly name here, is not the string a report is matched by."""
     entry = await load_entry(hass)
+    entity_id = tuya_plug(hass, zha, monkeypatch, held=False)
+    dr.async_get(hass).async_update_device(er.async_get(hass).async_get(entity_id).device_id, model="TS011F")
 
-    fields, _ = await report_for(hass, entry, tuya_plug(hass, zha, monkeypatch, held=False))
+    fields, _ = await report_for(hass, entry, entity_id)
 
-    assert fields["devices"] == "zha · Tuya Smart plug · TS011F"
+    assert fields["devices"] == "zha · TS011F"
 
 
 async def test_a_device_with_no_product_name_still_reports_its_maker(hass: HomeAssistant):
@@ -243,9 +245,7 @@ async def test_a_device_with_no_product_name_still_reports_its_maker(hass: HomeA
     assert fields["devices"] == "mqtt · Bulb · Tasmota · 2.0"
 
 
-async def test_a_hook_that_raises_is_logged_and_the_registry_s_string_stands_in(
-    hass: HomeAssistant, zha, monkeypatch, caplog
-):
+async def test_a_hook_that_raises_is_logged_and_the_string_left_out(hass: HomeAssistant, zha, monkeypatch, caplog):
     entry = await load_entry(hass)
     entity_id = tuya_plug(hass, zha, monkeypatch)
     dr.async_get(hass).async_update_device(er.async_get(hass).async_get(entity_id).device_id, model="TS011F")
@@ -257,7 +257,7 @@ async def test_a_hook_that_raises_is_logged_and_the_registry_s_string_stands_in(
     with caplog.at_level(logging.DEBUG, logger="custom_components.deviceside.config_flow"):
         fields, _ = await report_for(hass, entry, entity_id)
 
-    assert fields["devices"] == "zha · TS011F · Tuya"
+    assert fields["devices"] == "zha · TS011F"
     assert "zha: no Zigbee manufacturer string for the report form: RuntimeError('gateway gone')" in caplog.text
 
 

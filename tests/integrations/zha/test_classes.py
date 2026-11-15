@@ -153,6 +153,13 @@ async def test_a_device_the_gateway_does_not_hold_has_no_manufacturer_string(has
     assert INTEGRATION.zigbee_manufacturer(hass, _device(hass, entity_id)) is None
 
 
+@pytest.mark.parametrize("unread", [None, ""])
+async def test_a_string_the_interview_did_not_read_is_no_manufacturer_string(hass, setup_production, unread):
+    entity_id = add_zha_entity(hass, zha_entry(hass), "light.lamp", strings=(unread, "TS011F"))
+
+    assert INTEGRATION.zigbee_manufacturer(hass, _device(hass, entity_id)) is None
+
+
 def test_a_device_zha_did_not_register_has_no_manufacturer_string(hass):
     config = zha_entry(hass)
     device = dr.async_get(hass).async_get_or_create(config_entry_id=config.entry_id, identifiers={("mqtt", "x")})

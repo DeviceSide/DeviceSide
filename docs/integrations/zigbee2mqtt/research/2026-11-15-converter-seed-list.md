@@ -8,7 +8,7 @@ Decision 78.
 
 **Research only, with no level weight** (Decision 35; units research, §8 question 2). A route is a fact of this ZHC
 version, not of how a device behaves: route A holds strings known to fail its call. `_TZ3000_gjnozsaz`, a white label
-on `TS011F_plug_1` (⚠ below), is not yet supported, `harms`
+on `TS011F_plug_1` (marked † below), is not yet supported, `harms`
 ([Z2M #30493](https://github.com/Koenkk/zigbee2mqtt/issues/30493);
 [Tuya countdown research](2026-11-14-tuya-countdown.md), §3; Decisions 35 and 41).
 
@@ -72,17 +72,20 @@ variable; this version has neither on routes A to C.
 | C: definitions | 1 | 1 |
 | Standard tenths: definitions | 2,132 | 811 on `tz.on_off`, 1,567 on the light converter |
 
-**Routes A, B and C are complete:** each count matches the run. The standard route falls short of the run's, mostly by
-the copies above, and is given as counts only (Decision 78).
+**Routes A, B and C are complete:** each count matches the run. The standard route's count is not reconciled with
+the run's, and it is given as counts only (Decision 78).
 
 ## Findings
 
 - **Catch-alls.** Six route A definitions match by `zigbeeModel` alone, with no fingerprint: `TS0001`, `TS0002`,
   `ZG-301Z`, `AY-601ZL`, `AY-602ZL` and `AY-603ZL`. `TS011F_plug_1` holds `TS011F` and five fingerprints, so any
-  `TS011F` string no other definition lists falls to it, on route A. Both lab plugs (`_TZ3000_0zfrhq4i`,
-  `_TZ3000_typdpbpg`) and `_TZ3000_gjnozsaz` are in no fingerprint: they reach route A that way.
-- **White labels outside the fingerprints.** 47 white-label strings on route A definitions aren't in their
-  definition's fingerprints, so they match by the catch-all or another definition (the table's last column).
+  `TS011F` string no other definition lists falls to it, unless its `applicationVersion` matches one of
+  `TS011F_plug_3`'s six firmware-only fingerprints (160, 100, 69, 68, 65 and 64, at `priority: -1`); both are route A.
+  Both lab plugs (`_TZ3000_0zfrhq4i`, `_TZ3000_typdpbpg`) and `_TZ3000_gjnozsaz` are in no fingerprint: they reach
+  route A that way, by `TS011F_plug_1` or by `TS011F_plug_3`'s firmware fingerprints.
+- **White labels outside the fingerprints** (the table's last column): 50 entries, 48 distinct strings, on route A
+  definitions aren't in their own definition's fingerprints. 47 of the strings are in no route A fingerprint and
+  match by a catch-all; `_TZ3000_2uollq9d` matches `TS011F_plug_3`'s fingerprint, at `applicationVersion` 192 only.
 - **The countdown expose by string.** Of route A's 49, 42 expose `countdown` for every string, 3 for named strings
   only, and 4 for all strings but one.
 - **Route B's units, by expose**, over its 188 datapoints:
@@ -91,9 +94,12 @@ the copies above, and is given as counts only (Decision 78).
   - minutes: 3;
   - other seconds ranges: 3;
   - hours 0.25..12: 1, `_TZE284_z5jz7wpo`'s `countdown_hours`, whose wire value is seconds (units research, §1);
-  - not read by the parse: 30.
+  - not read by the parse: 30. Among them, D5Z's and D1Z's exposes are
+    `tuya.exposes.countdown().withValueMax(86400)`, called through a local alias of `tuya.exposes` the parse didn't
+    follow, and RM28-LE's `countdown` is an enum (`cancel`, `1h` to `4h`), with no unit or range to read.
 
-  A template's range is a copied default, not a measurement.
+  These tallies differ from the units research's (§1) because of the 30 the parse didn't read. A template's range
+  is a copied default, not a measurement.
 - **A countdown outside the four routes:** `TS110E_1gang_2` (fingerprints `TS110E` with `_TZ3210_ngqk6jia`,
   `_TZ3210_weaqkhab`, `_TZ3210_k1msuvg6`, `_TZ3210_o235agwx`). Its `countdown` sends Tuya's private `genOnOff`
   command `tuyaCountdown`, not `0x42`.
@@ -129,7 +135,7 @@ the copies above, and is given as counts only (Decision 78).
 | `_TZ3000_mw1pqqqt` (tuya) | `TS0003`: `_TZ3000_mw1pqqqt`, `_TZ3210_n0wbkysi` | every string |  |
 | `TS0001_switch_module` (tuya) | `TS0001`: `_TZ3000_tqlv4ug4`, `_TZ3210_tqlv4ug4`, `_TZ3000_gjrubzje`, `_TZ3000_tygpxwqa`, `_TZ3000_4rbqgcuv`, `_TZ3000_veu2v775`, `_TZ3000_prits6g4`, `_TZ3000_xfxpoxe0`, `_TZ3210_9hbau615`, `_TZ3000_afgzktgb`, `_TZ3000_qamj2vnn`, `_TZ3000_n6fqajob` | all but `_TZ3000_xfxpoxe0` |  |
 | `_TZ3000_pgq7ormg` (tuya) | `TS0001`: `_TZ3000_pgq7ormg` | every string |  |
-| `TS011F_plug_1` ⚠ (tuya) | `TS011F`: `_TZ3008_tary5dvv`, `_TZ3210_iooniers`, `_TZ3008_iooniers`, `_TZ3008_xvfd3nkp`, `_TZ3008_qziabvzj`; zigbeeModel `TS011F` | all but `_TZ3000_cicwjqth` | `AOYAN`, `Zbeacon`, `_TZ3000_266azbg3`, `_TZ3000_2putqrmw`, `_TZ3000_2uollq9d`, `_TZ3000_3ias4w4o`, `_TZ3000_4ux0ondb`, `_TZ3000_amdymr7l`, `_TZ3000_b28wrpvx`, `_TZ3000_cicwjqth`, `_TZ3000_cjrngdr3`, `_TZ3000_gjnozsaz`, `_TZ3000_ko6v90pg`, `_TZ3000_ksw8qtmt`, `_TZ3000_okaz9tjs`, `_TZ3000_ss98ec5d`, `_TZ3000_ww6drja5`, `_TZ3000_y4ona9me`, `_TZ3000_yujkchbz`, `_TZ3000_zloso4jk`, `_TZ3008_1a8m8wd6`, `_TZ3008_avdpejns`, `_TZ3008_reatplte`, `_TZ3210_2putqrmw`, `_TZ3210_2uollq9d`, `_TZ3210_4ux0ondb`, `_TZ3210_5ct6e7ye`, `_TZ3210_cjrngdr3`, `_TZ3210_ddigca5n`, `_TZ3210_jlf1nepw`, `_TZ3210_rwmitwj4`, `_TZ3210_w0qqde0g`, `_TZ3210_zifx0xoj` |
+| `TS011F_plug_1` † (tuya) | `TS011F`: `_TZ3008_tary5dvv`, `_TZ3210_iooniers`, `_TZ3008_iooniers`, `_TZ3008_xvfd3nkp`, `_TZ3008_qziabvzj`; zigbeeModel `TS011F` | all but `_TZ3000_cicwjqth` | `AOYAN`, `Zbeacon`, `_TZ3000_266azbg3`, `_TZ3000_2putqrmw`, `_TZ3000_2uollq9d`, `_TZ3000_3ias4w4o`, `_TZ3000_4ux0ondb`, `_TZ3000_amdymr7l`, `_TZ3000_b28wrpvx`, `_TZ3000_cicwjqth`, `_TZ3000_cjrngdr3`, `_TZ3000_gjnozsaz`, `_TZ3000_ko6v90pg`, `_TZ3000_ksw8qtmt`, `_TZ3000_okaz9tjs`, `_TZ3000_ss98ec5d`, `_TZ3000_ww6drja5`, `_TZ3000_y4ona9me`, `_TZ3000_yujkchbz`, `_TZ3000_zloso4jk`, `_TZ3008_1a8m8wd6`, `_TZ3008_avdpejns`, `_TZ3008_reatplte`, `_TZ3210_2putqrmw`, `_TZ3210_2uollq9d`, `_TZ3210_4ux0ondb`, `_TZ3210_5ct6e7ye`, `_TZ3210_cjrngdr3`, `_TZ3210_ddigca5n`, `_TZ3210_jlf1nepw`, `_TZ3210_rwmitwj4`, `_TZ3210_w0qqde0g`, `_TZ3210_zifx0xoj` |
 | `TS011F_plug_2` (tuya) | `TS011F`: `_TZ3000_hyfvrar3`, `_TZ3000_v1pdxuqq`, `_TZ3000_8a833yls`, `_TZ3000_bfn1w0mm`, `_TZ3000_nzkqcvvs`, `_TZ3000_rtcrrvia`, `_TZ3000_ysiog9xi`, `_TZ3000_o1jzcxou`, `_TZ3210_nhqka112`, `_TZ3000_uyrhiafs` | every string |  |
 | `TS011F_plug_3` (tuya) | `TS011F`: `_TZ3000_2uollq9d` (applicationVersion 192), `_TZ3000_9ni6xxld` (applicationVersion 67), `_TZ3000_cehuw1lw` (softwareBuildID "1.0.5\u0000"); firmware only: `TS011F` (applicationVersion 160), `TS011F` (applicationVersion 100), `TS011F` (applicationVersion 69), `TS011F` (applicationVersion 68), `TS011F` (applicationVersion 65), `TS011F` (applicationVersion 64) | every string | `_TZ3000_266azbg3`, `_TZ3000_okaz9tjs` |
 | `TS011F_3_gang` (tuya) | `TS011F`: `_TZ3000_dlug3kbc`, `_TZ3000_9tg32trw` | every string |  |

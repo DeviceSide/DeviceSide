@@ -1172,9 +1172,10 @@ async def test_the_report_form_carries_the_tuya_string_bridge_devices_holds(hass
         assert private not in url
 
 
-async def test_before_bridge_devices_lists_it_the_form_takes_the_registry_s_vendor(hass, setup_production, broker):
+async def test_before_bridge_devices_lists_it_the_form_leaves_the_string_out(hass, setup_production, broker):
+    """The registry's vendor, `Tuya`, is not the string a report is matched by, so it doesn't stand in."""
     entity_id = light(hass, broker, manufacturer=PLUG[0], model_id=PLUG[1], zigbee=(TUYA, "TS011F"))
     del broker.retained[DEVICES]
 
     url = await issue_url(hass, _FORMS_BY_STEP["report_device"], [entity_id])
-    assert parse_qs(urlparse(url).query)["devices"] == [f"zigbee2mqtt · {PLUG[1]} · {PLUG[0]}"]
+    assert parse_qs(urlparse(url).query)["devices"] == [f"zigbee2mqtt · {PLUG[1]}"]

@@ -104,9 +104,10 @@ class _DeviceFacts:
     integration: str = ""
     model: str = ""
     product: str = ""
-    # The maker: a Zigbee device's own manufacturer string (`_TZ3000_…`), which a Tuya class keys on (docs/evidence.md,
-    # Device classes) and HA's registry may not show (Z2M's definition vendor), else the registry's manufacturer; blank
-    # where it would repeat the product's.
+    # The maker: on an integration with a zigbee_manufacturer hook, the device's own Zigbee manufacturer string
+    # (`_TZ3000_…`), which a Tuya class keys on (docs/evidence.md, Device classes) and HA's registry may not show (Z2M's
+    # definition vendor), blank when the hook has none; elsewhere the registry's manufacturer. Blank, too, where it
+    # would repeat the product's.
     manufacturer: str = ""
     firmware: str = ""
     label: str = ""  # The product name and model, for a title.
@@ -136,7 +137,7 @@ def _device_facts(hass: HomeAssistant, entity_id: str) -> tuple[str, _DeviceFact
     name = device.model if device and device.model_id and device.model != device.model_id else ""
     integration = _integration(hass, entry, device)
     product = " ".join(filter(None, [device.manufacturer if device and name else "", name]))
-    manufacturer = (_zigbee_manufacturer(hass, integration, device) or device.manufacturer or "") if device else ""
+    manufacturer = _manufacturer(hass, integration, device) if device else ""
     return (entry.device_id or entity_id), _DeviceFacts(
         integration=integration,
         model=model_id or "",
@@ -147,19 +148,19 @@ def _device_facts(hass: HomeAssistant, entity_id: str) -> tuple[str, _DeviceFact
     )
 
 
-def _zigbee_manufacturer(hass: HomeAssistant, integration: str, device: dr.DeviceEntry) -> str | None:
-    """The device's own Zigbee manufacturer string, from its integration's hook (IntegrationInfo.zigbee_manufacturer);
-    None without the hook or an answer, or when the hook raises, so the form takes the registry's instead."""
-    if (runtime := hass.data.get(DATA)) is None:
-        return None
-    info = runtime.registry.integrations.get(integration)
+def _manufacturer(hass: HomeAssistant, integration: str, device: dr.DeviceEntry) -> str:
+    """The device's own Zigbee manufacturer string from its integration's hook (IntegrationInfo.zigbee_manufacturer),
+    blank when the hook has none or raises: the registry's would be another string (Z2M's vendor), which a report
+    can't be matched by. The registry's manufacturer for an integration without the hook."""
+    runtime = hass.data.get(DATA)
+    info = runtime.registry.integrations.get(integration) if runtime is not None else None
     if info is None or info.zigbee_manufacturer is None:
-        return None
+        return device.manufacturer or ""
     try:
-        return info.zigbee_manufacturer(hass, device)
-    except Exception as err:  # noqa: BLE001 - a broken hook must not break the form; the registry's string stands in
+        return info.zigbee_manufacturer(hass, device) or ""
+    except Exception as err:  # noqa: BLE001 - a broken hook must not break the form; the string is left out
         _LOGGER.debug("%s: no Zigbee manufacturer string for the report form: %r", integration, err)
-        return None
+        return ""
 
 
 _TITLE_LIMIT = 200  # GitHub's is 256; the prefix and "and N more" fit in the rest.

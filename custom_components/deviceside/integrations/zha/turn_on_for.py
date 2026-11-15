@@ -178,13 +178,13 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
             on_off, remaining = read[zcl.ON_OFF], read.get(zcl.ON_TIME, 0)
             # The values themselves, so the first report of a device that departs holds them: the lab's TS011F read
             # off, OnTime the request, counting down by 1 a second (zigbee2mqtt/research/2026-11-14-lab-probe.md, C1).
-            # OnTime None: the device lacks it.
+            # OnTime "absent": the device lacks it, where None is a value it read back.
             _LOGGER.debug(
                 "%s: %s read back OnOff %s, OnTime %s (sent %s tenths)",
                 target.reported_id,
                 self.action,
                 on_off,
-                read.get(zcl.ON_TIME),
+                read.get(zcl.ON_TIME, "absent"),
                 on_time,
             )
             if on_off not in (0, 1):  # zigpy's Bool and Python's bool both equal 0 or 1; anything else is no answer

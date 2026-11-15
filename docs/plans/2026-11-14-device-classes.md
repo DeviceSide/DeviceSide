@@ -404,7 +404,9 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      OnTime; its part is at most the state read-backs' timing in the DEBUG line (off after N seconds, or never), the
      one unit signal Z2M gives.
    - **Built** on `claude/device-classes-7a-units`: the prefill (an optional `IntegrationInfo.zigbee_manufacturer`
-     hook, Z2M's and ZHA's) and ZHA's read-back line. Z2M's part is left out: its state reads are bare publishes to
+     hook, Z2M's and ZHA's) and ZHA's read-back line. Where the hook has no string, or raises, the line leaves it
+     out rather than take the registry's manufacturer, which on Z2M is the vendor; an integration without the hook
+     keeps the registry's. Z2M's part is left out: its state reads are bare publishes to
      the get topic whose replies only HA's MQTT entity sees, so their timing would take a new state subscription per
      read, not a log line. The seed list is
      [2026-11-15-converter-seed-list.md](../integrations/zigbee2mqtt/research/2026-11-15-converter-seed-list.md),
@@ -1096,6 +1098,7 @@ Decisions 36 to 45, 46 to 55 and 56 to 65 are reserved for steps 7, 9 and 8.
     carries it on #436, where Decision 48 and the basis live.
 76. **The rig is a separate public repo** (jasonmx/ha-rig): CLAUDE.md says so, and still keeps rig code and rig docs
     out of this one.
+
 ## Decisions (Jason, 2026-11-15, step 7a)
 
 78. **The converter seed list: a static parse, and the derived rows committed under ZHC's MIT notice.** Running
