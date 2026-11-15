@@ -1,5 +1,6 @@
 """ZHA turn_on_for: optional light.turn_on for fields, OnWithTimedOff through zha.issue_zigbee_cluster_command (or
-one zha.issue_zigbee_group_command for a ZHA group's members), then an OnOff and OnTime read-back per light."""
+one zha.issue_zigbee_group_command for a ZHA group's members), then an OnOff and OnTime read-back per light, whose
+values go in a DEBUG line."""
 
 import asyncio
 import logging
@@ -178,6 +179,17 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
             if on_off not in (0, 1):  # zigpy's Bool and Python's bool both equal 0 or 1; anything else is no answer
                 raise ValueError(f"OnOff read {on_off!r}")
             running = 0 < remaining and on_time - _READBACK_SLACK_TENTHS <= remaining <= on_time
+            # The values themselves, so the first report of a device that departs holds them: the lab's TS011F read
+            # off, OnTime the request, counting down by 1 a second (zigbee2mqtt/research/2026-11-14-lab-probe.md, C1).
+            # OnTime None: the device lacks it.
+            _LOGGER.debug(
+                "%s: %s read back OnOff %s, OnTime %s (sent %s tenths)",
+                target.reported_id,
+                self.action,
+                int(on_off),
+                read.get(zcl.ON_TIME),
+                on_time,
+            )
         except Exception as err:  # noqa: BLE001 - zha and zigpy errors can't be imported here; see zcl.py
             _LOGGER.debug("%s read-back failed for %s: %r", self.action, target.entity_id, err)
             return self.result(target, Status.SENT, detail="readback_failed")

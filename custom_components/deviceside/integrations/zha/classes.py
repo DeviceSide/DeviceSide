@@ -32,6 +32,7 @@ dispatcher classes its members (groups.expand_group).
 import re
 
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
 
 from . import zcl
 from .addressing import address
@@ -167,6 +168,17 @@ def capability(hass: HomeAssistant, target: Target) -> str | None:
     if (addr := address(target.entry.unique_id)) is None or (device := zcl.zigpy_device(hass, addr.ieee)) is None:
         return None
     return device_class(device.manufacturer, device.model, _command_module(device, addr.endpoint_id))
+
+
+def zigbee_manufacturer(hass: HomeAssistant, device: dr.DeviceEntry) -> str | None:
+    """ZHA's IntegrationInfo.zigbee_manufacturer: the raw Zigbee manufacturer string of the zigpy device behind a
+    registry device, the one the rules read; None for a device ZHA didn't register or the gateway doesn't hold. ZHA
+    registers a device by identifier ("zha", its IEEE) (HA core homeassistant/components/zha/helpers.py,
+    ZHADeviceProxy.device_info)."""
+    ieee = next((ident for domain, ident in device.identifiers if domain == "zha"), None)
+    if ieee is None or (zigpy := zcl.zigpy_device(hass, ieee)) is None:
+        return None
+    return zigpy.manufacturer if isinstance(zigpy.manufacturer, str) and zigpy.manufacturer else None
 
 
 def _command_module(device, endpoint_id: int) -> str | None:

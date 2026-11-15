@@ -1,7 +1,7 @@
 """ZHA, through the core zha integration's cluster command action and its gateway's attribute reads."""
 
 from .addressing import is_zha_group
-from .classes import CLASSES, OTHER, capability
+from .classes import CLASSES, OTHER, capability, zigbee_manufacturer
 from .fade import ZHACallResolver
 from .get_attributes import ZHAGetAttributes
 from .groups import expand_group
@@ -26,6 +26,7 @@ INTEGRATION = IntegrationInfo(
     capability=capability,
     classes=CLASSES,
     default_class=OTHER,
+    zigbee_manufacturer=zigbee_manufacturer,
     call_resolver=ZHACallResolver(),
     max_concurrency=2,
 )

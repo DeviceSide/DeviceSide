@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass
 from urllib.parse import quote, urlencode
 
@@ -25,6 +26,8 @@ from .const import (
 )
 from .core.resolver import resolve
 from .core.runtime import DATA
+
+_LOGGER = logging.getLogger(__name__)
 
 REPORT_URL = "https://github.com/DeviceSide/DeviceSide/issues/new"
 CONF_ENTITY = "entity_id"
@@ -101,6 +104,9 @@ class _DeviceFacts:
     integration: str = ""
     model: str = ""
     product: str = ""
+    # The device's Zigbee manufacturer string (`_TZ3000_…`), which a Tuya class keys on (docs/evidence.md, Device
+    # classes), where HA's registry shows another (Z2M's definition vendor); blank where it would repeat the product's.
+    manufacturer: str = ""
     firmware: str = ""
     label: str = ""  # The product name and model, for a title.
 
@@ -113,7 +119,9 @@ class _DeviceFacts:
     @property
     def line(self) -> str:
         """One line of the report's Devices field."""
-        return " \u00b7 ".join(filter(None, [self.integration, self.product, self.model, self.firmware]))
+        return " \u00b7 ".join(
+            filter(None, [self.integration, self.product, self.model, self.manufacturer, self.firmware])
+        )
 
 
 def _device_facts(hass: HomeAssistant, entity_id: str) -> tuple[str, _DeviceFacts]:
@@ -125,13 +133,32 @@ def _device_facts(hass: HomeAssistant, entity_id: str) -> tuple[str, _DeviceFact
     model_id = (device.model_id or device.model) if device else ""
     # The product name the integration reports ("Hue ambiance lamp"), with its maker; left out when it is only the ID.
     name = device.model if device and device.model_id and device.model != device.model_id else ""
+    integration = _integration(hass, entry, device)
+    product = " ".join(filter(None, [device.manufacturer if device and name else "", name]))
+    manufacturer = (_zigbee_manufacturer(hass, integration, device) or device.manufacturer or "") if device else ""
     return (entry.device_id or entity_id), _DeviceFacts(
-        integration=_integration(hass, entry, device),
+        integration=integration,
         model=model_id or "",
-        product=" ".join(filter(None, [device.manufacturer if device and name else "", name])),
+        product=product,
+        manufacturer="" if product.startswith(manufacturer) else manufacturer,
         firmware=(device.sw_version or "") if device else "",
         label=" ".join(filter(None, [name, model_id])),
     )
+
+
+def _zigbee_manufacturer(hass: HomeAssistant, integration: str, device: dr.DeviceEntry) -> str | None:
+    """The device's own Zigbee manufacturer string, from its integration's hook (IntegrationInfo.zigbee_manufacturer);
+    None without the hook or an answer, or when the hook raises, so the form takes the registry's instead."""
+    if (runtime := hass.data.get(DATA)) is None:
+        return None
+    info = runtime.registry.integrations.get(integration)
+    if info is None or info.zigbee_manufacturer is None:
+        return None
+    try:
+        return info.zigbee_manufacturer(hass, device)
+    except Exception as err:  # noqa: BLE001 - a broken hook must not break the form; the registry's string stands in
+        _LOGGER.debug("%s: no Zigbee manufacturer string for the report form: %r", integration, err)
+        return None
 
 
 _TITLE_LIMIT = 200  # GitHub's is 256; the prefix and "and N more" fit in the rest.

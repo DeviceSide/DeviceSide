@@ -66,6 +66,9 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
     scope (plan Decisions 70 to 76): the two labels redefined, `NotSupported.harms`, and the Z2M Tuya classes re-sorted
     as not yet supported. Open until step 5's lab run on this branch's tip or later.
   - [ ] 7. ZHA classes; rig rerun. Built on `claude/device-classes-7-zha`; open until its lab run.
+  - [ ] 7a. Units groundwork (plan Decision 69): the report form's Zigbee manufacturer string and ZHA's OnTime
+    read-back in `turn_on_for`'s DEBUG line, built on `claude/device-classes-7a-units`; open until the mined
+    converter seed list lands.
   - [ ] 8. Hue classes, the `smart_scene` check moved to them, and the v1 bridge refused as a separate integration
     (plan Decision 32); rig rerun.
   - [ ] 9. Matter classes; manual or rig sign-off.

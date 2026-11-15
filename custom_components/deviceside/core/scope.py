@@ -236,6 +236,10 @@ class IntegrationInfo:
     maintainers: tuple[str, ...]
     # Picks this integration over a generic sibling on the same ha_domain (Z2M over plain mqtt).
     detect: Callable[[HomeAssistant, er.RegistryEntry, dr.DeviceEntry | None], bool] | None = None
+    # The device's own Zigbee manufacturer string (`_TZ3000_…`), for the report form, where HA's registry holds another
+    # (Z2M's definition vendor, a ZHA quirk's friendly name); sync, no I/O. None when it isn't held: the form then
+    # takes the registry's (config_flow._device_facts).
+    zigbee_manufacturer: Callable[[HomeAssistant, dr.DeviceEntry], str | None] | None = None
     # True for an integration-native group (Hue grouped_light, a Z2M or ZHA group entity).
     is_group: Callable[[HomeAssistant, Target], bool] | None = None
     # Members of a native group, sync and with no I/O: for adapters without native_groups, the targets they get; for

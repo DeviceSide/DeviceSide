@@ -403,6 +403,10 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      which reads OnOff and OnTime back per light. Z2M's `turn_on_for` reads back only `state`, so it can't deliver
      OnTime; its part is at most the state read-backs' timing in the DEBUG line (off after N seconds, or never), the
      one unit signal Z2M gives.
+   - **Built** on `claude/device-classes-7a-units`: the prefill (an optional `IntegrationInfo.zigbee_manufacturer`
+     hook, Z2M's and ZHA's) and ZHA's read-back line. Z2M's part is left out: its state reads are bare publishes to
+     the get topic whose replies only HA's MQTT entity sees, so their timing would take a new state subscription per
+     read, not a log line. The seed list waits on running zigbee-herdsman-converters, which this session couldn't.
 
 8. **Hue.** Classes `hue`, `other` and `smart_scene` (doesn't work, on `set_scene`). `other` is decided per action
    (Decision 2). Lab run, without the Sengled (Decision 77).

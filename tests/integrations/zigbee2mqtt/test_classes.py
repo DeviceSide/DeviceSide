@@ -5,6 +5,7 @@ import json
 import logging
 from pathlib import Path
 from types import SimpleNamespace
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 from homeassistant.exceptions import HomeAssistantError
@@ -12,6 +13,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import label_registry as lr
 
+from custom_components.deviceside.config_flow import _FORMS_BY_STEP, issue_url
 from custom_components.deviceside.core.errors import TargetNotSupported
 from custom_components.deviceside.core.models import Target
 from custom_components.deviceside.core.resolver import resolve
@@ -1156,3 +1158,23 @@ async def test_an_indirect_target_of_unknown_class_is_skipped_and_the_rest_run(h
 
     assert await call(hass, "turn_on_for", {"entity_id": "all", "duration": 5}) == {lamp: SENT}
     assert f"{strip} (class_unknown)" in caplog.text
+
+
+async def test_the_report_form_carries_the_tuya_string_bridge_devices_holds(hass, setup_production, broker):
+    """The registry shows the definition's vendor, `Tuya`; the form takes the string a Tuya class keys on."""
+    entity_id = light(hass, broker, manufacturer=PLUG[0], model_id=PLUG[1], zigbee=(TUYA, "TS011F"))
+    device = dr.async_get(hass).async_get(resolve(hass, get_runtime(hass).registry, entity_id).entry.device_id)
+
+    assert INTEGRATION.zigbee_manufacturer(hass, device) == TUYA
+    url = await issue_url(hass, _FORMS_BY_STEP["report_device"], [entity_id])
+    assert parse_qs(urlparse(url).query)["devices"] == [f"zigbee2mqtt · {PLUG[1]} · {TUYA}"]
+    for private in (entity_id, "lamp", IEEE):
+        assert private not in url
+
+
+async def test_before_bridge_devices_lists_it_the_form_takes_the_registry_s_vendor(hass, setup_production, broker):
+    entity_id = light(hass, broker, manufacturer=PLUG[0], model_id=PLUG[1], zigbee=(TUYA, "TS011F"))
+    del broker.retained[DEVICES]
+
+    url = await issue_url(hass, _FORMS_BY_STEP["report_device"], [entity_id])
+    assert parse_qs(urlparse(url).query)["devices"] == [f"zigbee2mqtt · {PLUG[1]} · {PLUG[0]}"]

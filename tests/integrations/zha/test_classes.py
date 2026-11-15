@@ -130,3 +130,31 @@ async def test_the_quirk_is_the_module_that_defines_command(hass, setup_producti
     )
 
     assert INTEGRATION.capability(hass, resolve(hass, get_runtime(hass).registry, "switch.plug")) == expected
+
+
+def _device(hass, entity_id: str) -> dr.DeviceEntry:
+    registry = dr.async_get(hass)
+    return registry.async_get(resolve(hass, get_runtime(hass).registry, entity_id).entry.device_id)
+
+
+async def test_the_report_form_gets_zigpy_s_manufacturer_string_not_the_registry_s(hass, setup_production):
+    """A v2 quirk's friendly name replaces the registry's strings; zigpy keeps the device's own (classes.py)."""
+    entity_id = add_zha_entity(hass, zha_entry(hass), "switch.plug", strings=("_TZ3000_abcdefgh", "TS011F"))
+    device = _device(hass, entity_id)
+    dr.async_get(hass).async_update_device(device.id, manufacturer="Tuya")
+
+    assert INTEGRATION.zigbee_manufacturer(hass, _device(hass, entity_id)) == "_TZ3000_abcdefgh"
+
+
+async def test_a_device_the_gateway_does_not_hold_has_no_manufacturer_string(hass, setup_production, monkeypatch):
+    entity_id = add_zha_entity(hass, zha_entry(hass), "light.lamp")
+    monkeypatch.setattr(zcl, "zigpy_device", lambda hass, ieee: None)
+
+    assert INTEGRATION.zigbee_manufacturer(hass, _device(hass, entity_id)) is None
+
+
+def test_a_device_zha_did_not_register_has_no_manufacturer_string(hass):
+    config = zha_entry(hass)
+    device = dr.async_get(hass).async_get_or_create(config_entry_id=config.entry_id, identifiers={("mqtt", "x")})
+
+    assert INTEGRATION.zigbee_manufacturer(hass, device) is None
