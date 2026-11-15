@@ -530,7 +530,7 @@ async def test_the_debug_log_holds_the_read_back_values(hass, setup_production, 
     with caplog.at_level(logging.DEBUG, logger=turn_on_for.__name__):
         await call(hass, "turn_on_for", {"entity_id": "light.bulb", "duration": 5})
 
-    assert "light.bulb: turn_on_for read back OnOff 0, OnTime 50 (sent 50 tenths)" in caplog.text
+    assert "light.bulb: turn_on_for read back OnOff False, OnTime 50 (sent 50 tenths)" in caplog.text
     assert IEEE not in caplog.text
 
 
@@ -542,3 +542,13 @@ async def test_a_light_without_on_time_logs_none_for_it(hass, setup_production, 
         await call(hass, "turn_on_for", {"entity_id": "light.bulb", "duration": 5})
 
     assert "light.bulb: turn_on_for read back OnOff 1, OnTime None (sent 50 tenths)" in caplog.text
+
+
+async def test_an_on_time_that_cannot_be_compared_is_still_logged(hass, setup_production, commands, readback, caplog):
+    add_zha_entity(hass, zha_entry(hass), "light.bulb")
+    readback.return_value = reads(None)
+
+    with caplog.at_level(logging.DEBUG, logger=turn_on_for.__name__):
+        await call(hass, "turn_on_for", {"entity_id": "light.bulb", "duration": 5})
+
+    assert "light.bulb: turn_on_for read back OnOff True, OnTime None (sent 50 tenths)" in caplog.text

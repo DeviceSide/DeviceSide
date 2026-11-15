@@ -104,8 +104,9 @@ class _DeviceFacts:
     integration: str = ""
     model: str = ""
     product: str = ""
-    # The device's Zigbee manufacturer string (`_TZ3000_…`), which a Tuya class keys on (docs/evidence.md, Device
-    # classes), where HA's registry shows another (Z2M's definition vendor); blank where it would repeat the product's.
+    # The maker: a Zigbee device's own manufacturer string (`_TZ3000_…`), which a Tuya class keys on (docs/evidence.md,
+    # Device classes) and HA's registry may not show (Z2M's definition vendor), else the registry's manufacturer; blank
+    # where it would repeat the product's.
     manufacturer: str = ""
     firmware: str = ""
     label: str = ""  # The product name and model, for a title.

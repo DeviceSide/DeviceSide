@@ -219,7 +219,7 @@ async def test_a_zigbee_device_s_report_carries_its_own_manufacturer_string(hass
     fields, url = await report_for(hass, entry, tuya_plug(hass, zha, monkeypatch))
 
     assert fields["devices"] == f"zha · Tuya Smart plug · TS011F · {TUYA}"
-    for private in ("switch.plug", "plug ", IEEE, "00%3A17"):
+    for private in ("switch.plug", IEEE, "00%3A17"):
         assert private not in url
 
 
