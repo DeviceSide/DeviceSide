@@ -180,6 +180,8 @@ async def test_a_room_light_with_no_entity_still_classes_the_room(hass, bridge):
     members = INTEGRATION.expand_group(hass, target)
     assert [INTEGRATION.capability(hass, member) for member in members] == ["hue", "other"]
     assert members[1].state is None
+    assert not members[1].addressable
+    assert members[0].addressable
 
     response = await call(hass, "stop", {"entity_id": "light.room"})
 

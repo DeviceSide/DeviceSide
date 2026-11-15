@@ -81,8 +81,12 @@ def light_device(hass: HomeAssistant, target: Target, light: Light) -> dr.Device
 def _stand_in(group: Target, device: dr.DeviceEntry | None) -> Target:
     """A member HA has no light entity for, for its class alone: the room's own entity with the member's device (None
     when HA has none, which classes as None), no state, so the dispatcher never falls back to it or passes it to an
-    adapter, and not named, as the caller named the room."""
-    return replace(group, device=device, state=None, via_group=group.entity_id, is_group=False, named=False)
+    adapter, not addressable (Target.addressable), so a room's member_capabilities leaves it out, and not named, as the
+    caller named the room. Each Hue light is one bridge resource with one entity, so every other member is addressable
+    on its own."""
+    return replace(
+        group, device=device, state=None, via_group=group.entity_id, is_group=False, named=False, addressable=False
+    )
 
 
 def entity_name(hass: HomeAssistant, rid: str) -> str:
