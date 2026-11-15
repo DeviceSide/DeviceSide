@@ -424,7 +424,9 @@ class Dispatcher:
         """The members a refused or class-flagged native group falls back to, marked seen and indirect: its available
         ones not already targets, which a target already answers for, and each stand-in (_stand_in), which _plan
         skips, so the device the group's call would have reached gets an entry saying it didn't. A stand-in has no
-        state to judge it unavailable by, and its reported_id is the group's, so it is never seen."""
+        state to judge it unavailable by, and its reported_id is the group's, so it is never seen; any other member
+        known unavailable, unaddressable or not, is left out quietly, as core skips one in an area. Each is indirect,
+        a stand-in too though it is the group's own entity: none raises, and only _unanswered refuses the group."""
         fresh = [
             replace(member, named=False)
             for member in members
