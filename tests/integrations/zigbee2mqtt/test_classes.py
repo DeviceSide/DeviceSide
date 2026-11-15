@@ -649,6 +649,54 @@ async def test_a_switch_as_x_light_beside_a_z2m_light_leaves_it_addressable_by_n
     assert commands(broker) == [(SET.replace(IEEE, "0x01"), {"state": "ON", "on_time": 5.0})]
 
 
+def second_light(hass, disabled: bool = False) -> None:
+    """A second light entity on light.one's device, as Z2M discovers a two-gang's l2, optionally disabled."""
+    entities = er.async_get(hass)
+    entities.async_get_or_create(
+        "light",
+        "mqtt",
+        "0x01_light_l2",
+        suggested_object_id="one_l2",
+        config_entry=hass.config_entries.async_entries("mqtt")[0],
+        device_id=entities.async_get("light.one").device_id,
+        disabled_by=er.RegistryEntryDisabler.USER if disabled else None,
+    )
+    if not disabled:
+        hass.states.async_set("light.one_l2", "on")
+
+
+@pytest.mark.parametrize("disabled", [False, True])
+async def test_a_device_with_two_lights_is_left_out_of_the_member_map_and_its_class_kept(
+    hass, setup_production, broker, disabled
+):
+    """The audit's M-D on #431: bridge/groups lists the l2 endpoint, but the member was light.one, its first light,
+    so the map credited an entity the group's call never reached. A disabled light counts too, as the group may hold
+    it while HA lists only the other."""
+    entity_id = group(hass, broker, one={}, two={"manufacturer": "IKEA of Sweden"})
+    second_light(hass, disabled)
+    broker.retained[GROUPS][0]["members"][0]["endpoint"] = 2
+    allow_experimental(hass)
+
+    # A groupcast-only action: stop and the fades refuse a group holding such a device (members.unaddressable).
+    response = await call_service(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5})
+
+    assert response[entity_id]["capabilities"] == ["hue", "other"]
+    assert response[entity_id]["member_capabilities"] == {"light.two": "other"}
+
+
+async def test_a_device_with_two_lights_is_listed_out_of_the_map_and_unaddressable(hass, setup_production, broker):
+    """Listed for its class, but neither credited in the map nor addressed on its own."""
+    entity_id = group(hass, broker, one={}, two={})
+    second_light(hass)
+
+    listed = INTEGRATION.expand_group(hass, resolve(hass, get_runtime(hass).registry, entity_id))
+
+    assert [(member.entity_id, member.own_entity, member.addressable) for member in listed] == [
+        ("light.one", False, False),
+        ("light.two", True, True),
+    ]
+
+
 # What a class's level does to a call.
 
 

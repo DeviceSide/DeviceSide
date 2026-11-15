@@ -79,8 +79,8 @@ async def call(hass, service: str, data: dict, return_response: bool = True):
     """The response, each entry's class checked and left out, so a test states only what its action decides: every
     Zigbee2MQTT result names the class its device is, or a group's members', unless one isn't placed yet
     (docs/action-behavior.md). A group's `member_capabilities` is checked against the rule, not rebuilt: each key is
-    a member with an available state of its own, never the group, and maps to the class that member has classed
-    alone. A test that states the map in full calls the service directly."""
+    one of the members the group lists, with an available state of its own, never the group, and maps to the class
+    that member has classed alone. A test that states the map in full calls the service directly."""
     response = await call_service(hass, service, data, return_response)
     registry = get_runtime(hass).registry
     for entity_id, entry in (response or {}).items():
@@ -92,7 +92,9 @@ async def call(hass, service: str, data: dict, return_response: bool = True):
             assert entry.pop("capability", None) == (found[0] if known else None), entity_id
             continue
         assert entry.pop("capabilities", None) == (sorted(set(found)) if known else None), entity_id
-        for member, name in entry.pop("member_capabilities", {}).items():
+        by_member = entry.pop("member_capabilities", {})
+        assert set(by_member) <= {member.reported_id for member in listed}, (entity_id, by_member)
+        for member, name in by_member.items():
             state = hass.states.get(member)
             assert member != entity_id and state is not None and state.state != "unavailable", (entity_id, member)
             assert INTEGRATION.capability(hass, resolve(hass, registry, member)) == name, (entity_id, member)

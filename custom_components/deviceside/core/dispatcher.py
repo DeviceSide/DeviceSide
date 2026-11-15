@@ -38,9 +38,11 @@ type Classes = tuple[str | None, ...]
 class Reached:
     """What a target's call reaches, for planning and its result: its Classes, and for a native group whose members'
     classes are known, `members`, paired by position with `classes`: each member's reported_id, or None for one that
-    can't show the call reached it, as it has no available state of its own (unavailable, or a stand-in classed by
-    its device alone, which has no state). `members` is empty for any other target, and for a group whose classes
-    are unknown, which has `classes` (None,): its membership unlisted, or its classifier raised."""
+    can't show the call reached it, as core didn't reach it through its own available entity (unavailable, a
+    stand-in classed by its device alone, or one of a device's several entities: Target.own_entity). Availability is
+    judged at planning time, from the state the member had then. `members` is empty for any other target, and for a
+    group whose classes are unknown, which has `classes` (None,): its membership unlisted, or its classifier
+    raised."""
 
     classes: Classes
     members: tuple[str | None, ...] = ()
@@ -59,8 +61,8 @@ def _classed(result: EntityResult, target: Target, reached: Reached) -> EntityRe
     target's, or a native group's members', sorted and each once. None when the integration couldn't name one or
     named it Unplaced, for a group any member's, so a group's list never passes for its whole membership, nor a
     class that could still move for a known one. A native group also gets each member's class (plan Decision 66),
-    every member with one that has its own available state: a member the integration couldn't place, and one with
-    no available state of its own (Reached), is left out, and only they."""
+    every member with one that core reached through its own available entity: a member the integration couldn't
+    place, and one core didn't reach that way (Reached), is left out, and only they."""
     classes = reached.classes
     if reached.members and (
         by_member := {
@@ -361,10 +363,10 @@ class Dispatcher:
         )
         if not found:
             return Reached((None,))
-        # A member is credited only with a state of its own to show the call reached it, as _fallback reaches only
-        # an available one; a stand-in has no state (zigbee2mqtt/members.py, _stand_in).
+        # A member is credited only through its own entity, with a state to show the call reached it, as _fallback
+        # reaches only an available one; a stand-in has neither (zigbee2mqtt/members.py, _stand_in).
         ids = (
-            tuple(member.reported_id if _available(member.state) else None for member in listed)
+            tuple(member.reported_id if member.own_entity and _available(member.state) else None for member in listed)
             if target.is_group
             else ()
         )

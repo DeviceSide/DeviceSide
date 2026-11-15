@@ -110,9 +110,13 @@ raises or the entity is skipped.
   also carries `member_capabilities`, each member's entity_id to its class (a map:
   `{"light.one": "hue", "light.two": "other"}`), as the one call reached each member. A member with no class, or
   only a provisional one, is left out of it, and only that member, so a group with one member not yet placed still
-  names the rest. So is a member that can't show the call reached it: one that is unavailable, and one with no
-  entity of its own (a plug in a light group, which HA exposes as a switch), whose class still counts in
-  `capabilities`. The key is absent when no member is left. A group that falls back has no entry, so no map: each
+  names the rest. So is every member core didn't reach through its own available entity (availability judged when
+  the call is planned), whose class still counts in `capabilities`: one that is unavailable; one core resolves only
+  through a stand-in, as a plug in a light group (which HA exposes as a switch, or a `switch_as_x` light wraps) or a
+  disabled member; and a device with more than one entity in the group's domain, as a Zigbee2MQTT group holds one
+  of its endpoints, which DeviceSide can't address on its own. The key is absent when no member is left. Like
+  `capability`, the map also appears on an `unchanged` entry, where the call sent nothing: a reader crediting
+  evidence credits only an entry whose status shows a send. A group that falls back has no entry, so no map: each
   member's own entry carries its `capability`.
 
 ## Replacing hue_dimmer
