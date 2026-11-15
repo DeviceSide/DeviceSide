@@ -46,7 +46,8 @@ LEVELS = verified(HUE) | experimental(OTHER)
 
 _PAGE = "https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/hue/index.md"
 SET_SCENE_DOESNT_WORK = {
-    # Not harmful: a refusal sends nothing, and a wrong scene would show at once (docs/evidence.md).
+    # Doesn't work: no known call can write a smart scene's settings, as it has none fixed, a limit of the scene, not a
+    # call unbuilt. Not harmful (docs/evidence.md, When today's call harms a class): a wrong scene shows at once.
     SMART_SCENE: DoesntWork(
         what="Hue smart scenes",
         reason="A smart (All-Day) scene changes with the time of day, so it has no fixed settings to write",

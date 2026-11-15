@@ -390,7 +390,9 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      - **`other`** is `experimental(...)` on all eight adapters, by an Opus judgment (Decision 2), argued in the PR
        body: Hue's results are the bridge's and Signify's firmware together, and known brands depart from the
        calls the bridge plausibly sends.
-     - **The harm test:** `smart_scene` on `set_scene` is `harms=False`, the one Hue entry.
+     - **The entries, under Decision 70:** `smart_scene` on `set_scene`, the one Hue entry, stays doesn't work (no
+       known call writes a scene with no fixed settings), `harms=False` by "When today's call harms a class". No Hue
+       class is not yet supported with `harms`: `other` has no entry, and v1 is refused per integration.
      - **v1:** core's `IntegrationInfo.unsupported`, an integration declared only to refuse, listed in its sibling's
        `UNSUPPORTED` and kept in `AdapterRegistry.unsupported`, out of the cards, gates and CODEOWNERS. `hue_v1`'s
        `detect` claims a config entry with `api_version` 1; the dispatcher refuses each such target, every action
@@ -1088,8 +1090,8 @@ Decisions 36 to 45, 46 to 55 and 56 to 65 are reserved for steps 7, 9 and 8.
 
 56. **Hue `get_attributes` reads color temperature mode as core does:** a certified light's `mirek_valid`; for any
     other, the color mode core shows for it while it is on (else the flag), as core trusts `mirek_valid` only from
-    certified lights. A mirek of 0 or none reports no color temperature. Built now, though untested on a non-certified light, which stays
-    Experimental.
+    certified lights. A mirek of 0 or none reports no color temperature. Built now, though untested on a non-certified
+    light, which stays Experimental.
 
 ## Handoff
 
