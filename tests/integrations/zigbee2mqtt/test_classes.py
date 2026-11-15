@@ -308,6 +308,129 @@ async def test_a_member_on_two_endpoints_counts_once(hass, setup_production, bro
     assert [member.entity_id for member in members] == ["light.one", "light.two"]
 
 
+GANG = "0x05"
+
+
+def two_gang(hass, broker, group_id: int = 7, *, disabled: bool = False) -> None:
+    """A Hue two-gang, 0x05, with light.gang_1 on endpoint 1 (disabled, with `disabled`) and light.gang_2 on endpoint
+    2, as Z2M announces each (`<ieee>_light_l1_zigbee2mqtt`), and endpoint 2 alone in Z2M group `group_id`."""
+    entry = hass.config_entries.async_entries("mqtt")[0]
+    device = dr.async_get(hass).async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={("mqtt", f"zigbee2mqtt_{GANG}")},
+        manufacturer="Philips",
+        name="two_gang",
+    )
+    for gang in (1, 2):
+        er.async_get(hass).async_get_or_create(
+            "light",
+            "mqtt",
+            f"{GANG}_light_l{gang}_zigbee2mqtt",
+            suggested_object_id=f"gang_{gang}",
+            config_entry=entry,
+            device_id=device.id,
+            disabled_by=er.RegistryEntryDisabler.USER if disabled and gang == 1 else None,
+        )
+        if not (disabled and gang == 1):
+            hass.states.async_set(f"light.gang_{gang}", "on", {"supported_color_modes": ["xy"]})
+    broker.retained[DEVICES].append(interviewed(GANG, "Philips", "ZIGBEE_SWITCH"))
+    next(g for g in broker.retained[GROUPS] if g["id"] == group_id)["members"].append(
+        {"ieee_address": GANG, "endpoint": 2}
+    )
+
+
+@pytest.mark.parametrize("disabled", [False, True], ids=["both_enabled", "gang_1_disabled"])
+async def test_a_device_with_several_lights_is_classed_but_never_addressed_alone(
+    hass, setup_production, broker, disabled
+):
+    """bridge/groups holds its endpoint 2, but a set on its device topic reaches its default endpoint, gang 1."""
+    entity_id = group(hass, broker, one={}, two={})
+    two_gang(hass, broker, disabled=disabled)
+
+    listed = INTEGRATION.expand_group(hass, resolve(hass, get_runtime(hass).registry, entity_id))
+
+    gang = "light.gang_2" if disabled else "light.gang_1"
+    assert {member.entity_id: member.addressable for member in listed} == {
+        "light.one": True,
+        "light.two": True,
+        gang: False,
+    }
+    assert [INTEGRATION.capability(hass, member) for member in listed] == ["hue"] * 3
+
+
+async def test_member_lights_leave_out_a_device_with_several_lights(hass, setup_production, broker, caplog):
+    caplog.set_level("DEBUG", logger=members.__name__)
+    entity_id = group(hass, broker, one={}, two={})
+    two_gang(hass, broker)
+
+    lights = await members.member_lights(hass, resolve(hass, get_runtime(hass).registry, entity_id))
+
+    assert [member.entity_id for member in lights] == ["light.one", "light.two"]
+    assert f"{entity_id}: a member device (light.gang_1, light.gang_2) has several light entities" in caplog.text
+
+
+async def test_a_fallback_skips_a_device_with_several_lights_as_not_addressable(hass, setup_production, broker, caplog):
+    """Addressed alone, the two-gang would get the call on gang 1, which the group doesn't hold."""
+    entity_id = group(hass, broker, one={}, two={"manufacturer": "IKEA of Sweden"})
+    two_gang(hass, broker)
+
+    response = await call(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5})
+
+    assert response == {"light.one": SENT}
+    assert commands(broker) == [(SET.replace(IEEE, "0x01"), {"state": "ON", "on_time": 5.0})]
+    assert "light.gang_1 (not_addressable)" in caplog.text
+
+
+async def test_a_groupcast_still_reaches_a_device_with_several_lights(hass, setup_production, broker):
+    entity_id = group(hass, broker, one={}, two={})
+    two_gang(hass, broker)
+
+    assert await call(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == {entity_id: SENT}
+    assert commands(broker) == [("zigbee2mqtt/7/set", {"state": "ON", "on_time": 5.0})]
+
+
+def gang_alone(hass, broker) -> str:
+    """Group 8, light.gangs, holding the two-gang's endpoint 2 and nothing else."""
+    group(hass, broker, one={}, two={})
+    add_z2m_group(hass, hass.config_entries.async_entries("mqtt")[0], "light.gangs", group_id=8, name="gangs")
+    hass.states.async_set("light.gangs", "on", {"supported_color_modes": ["xy"]})
+    broker.retained[GROUPS].append({"id": 8, "members": []})
+    two_gang(hass, broker, 8)
+    return "light.gangs"
+
+
+@pytest.mark.parametrize(
+    ("service", "data"),
+    [
+        ("get_attributes", {}),
+        ("set_attributes", {"brightness": 50}),
+        ("raise_brightness", {"sweep_time": 10}),
+        ("stop", {}),
+    ],
+)
+async def test_a_group_of_only_devices_with_several_lights_refuses_a_call_through_its_members(
+    hass, setup_production, broker, service, data
+):
+    """Each of these reaches the group's lights one by one, and it has none it can address: refused before anything is
+    sent, as core refuses a group none of whose members runs."""
+    entity_id = gang_alone(hass, broker)
+
+    assert await refusal(hass, service, {"entity_id": entity_id, **data}) == "not_addressable"
+    assert commands(broker) == []
+
+
+async def test_a_group_whose_fallback_reaches_only_a_device_with_several_lights_is_refused(
+    hass, setup_production, broker
+):
+    """The IKEA bulb is gated, the two-gang can't be addressed alone: none runs, so the group raises its own reason."""
+    entity_id = gang_alone(hass, broker)
+    light(hass, broker, "light.ikea", "0x06", manufacturer="IKEA of Sweden")
+    broker.retained[GROUPS][-1]["members"].append({"ieee_address": "0x06"})
+
+    assert await refusal(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == "experimental_off"
+    assert commands(broker) == []
+
+
 # What a class's level does to a call.
 
 

@@ -125,6 +125,11 @@ class Target:
     is_group: bool = False
     # The caller listed this entity_id. Anything reached through an area, device, label or group is indirect.
     named: bool = False
+    # False for a native group's member the integration can't address on its own: a device with several entities in
+    # the group's domain, whose call would reach its default one, maybe not the one the group holds
+    # (zigbee2mqtt/members.py). Its class still counts in the group's; the dispatcher skips it as not_addressable when
+    # the group falls back to its members.
+    addressable: bool = True
 
     @property
     def reported_id(self) -> str:

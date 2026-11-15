@@ -337,6 +337,36 @@ async def test_a_group_whose_members_all_fail_is_refused_with_its_reason(
 
 
 @pytest.mark.usefixtures("classed")
+async def test_a_fallen_group_skips_a_member_it_cant_address_alone(hass, fake, reset_script, caplog):
+    """switch.a is listed for its class, but the integration can't address it alone (Target.addressable): skipped
+    as not_addressable, and, though named beside the group too, it answers for nothing, so a group none of whose
+    other members runs is refused with its reason."""
+    for member in ("switch.a", "switch.c", "switch.e"):
+        add_fake_entity(hass, fake, member)
+    for group, members in (
+        ("switch.fake_group", ["switch.a", "switch.c", "switch.e"]),
+        ("switch.pair", ["switch.a", "switch.c"]),
+    ):
+        add_fake_entity(
+            hass,
+            fake,
+            group,
+            attributes={"fake_members": members, "fake_unaddressable": ["switch.a"]},
+            unique_id=f"group:{group}",
+        )
+    scope = replace(CLASSED, capabilities=verified("A", "E"))
+
+    with patch.object(FakeTurnOffFor, "scope", scope):
+        response = await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
+        data = {"entity_id": ["switch.pair", "switch.a"], "duration": 5}
+        assert await refusal(hass, "turn_off_for", data) == "not_supported"
+
+    assert response == {"switch.e": {"status": "sent", "integration": "fake", "capability": "E"}}
+    assert "skipped targets that can't take it: switch.a (not_addressable), switch.c (not_supported)" in caplog.text
+    assert [ids for *_, ids in reset_script.calls] == [["switch.e"]]
+
+
+@pytest.mark.usefixtures("classed")
 async def test_a_fallen_group_whose_member_has_nothing_to_do_is_answered_by_it(hass, fake, reset_script):
     """light.a lacks brightness, so it is unchanged, and that answers for the group beside the refused light.d."""
     modes = {"supported_color_modes": [ColorMode.BRIGHTNESS], "brightness": 100}

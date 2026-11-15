@@ -9,6 +9,7 @@ from .bridge import publish_set
 from .classes import STOP
 from .color_refresh import DELAY_S, refresh_color
 from .fade import hue_moves, lights_of, read_back_key, transition_cache
+from .members import unaddressable
 from .set_check import checked
 from ...core.adapter import Adapter
 from ...core.errors import Reason
@@ -44,9 +45,7 @@ class Z2MStop(Adapter[Request]):
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:
         if (reason := super().supports(hass, request, target)) is not None:
             return reason
-        if (reason := not_addressable(target)) is not None:
-            return reason
-        return None
+        return not_addressable(target) or unaddressable(hass, target)
 
     async def execute(self, hass: HomeAssistant, request: Request, targets: list[Target]) -> list[EntityResult]:
         cache = transition_cache(hass)

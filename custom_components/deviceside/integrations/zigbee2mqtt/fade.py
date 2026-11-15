@@ -14,7 +14,7 @@ from .addressing import not_addressable, topic, z2m_address
 from .bridge import has_feature, publish, publish_set
 from .classes import FADE_BRIGHTNESS, FADE_COLOR
 from .color_refresh import refresh_color
-from .members import member_lights
+from .members import member_lights, unaddressable
 from .native_control import NEED, native_control
 from .set_check import checked
 from ...actions.ramp import RampRequest
@@ -152,9 +152,7 @@ class Z2MRamp(Adapter[RampRequest]):
     def supports(self, hass: HomeAssistant, request: RampRequest, target: Target) -> str | None:
         if (reason := super().supports(hass, request, target)) is not None:
             return reason
-        if (reason := not_addressable(target)) is not None:
-            return reason
-        return None
+        return not_addressable(target) or unaddressable(hass, target)
 
     async def execute(self, hass: HomeAssistant, request: RampRequest, targets: list[Target]) -> list[EntityResult]:
         cache = transition_cache(hass)

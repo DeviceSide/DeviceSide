@@ -23,6 +23,21 @@ Only devices Z2M registered through MQTT discovery are found: the device carries
   next `bridge/info`.
 - **Both assume the default base topic.** A group's identifier carries it, so another is refused; a device's
   doesn't, so its publish goes nowhere.
+- **Multi-endpoint devices.** DeviceSide's set and get topics name the device alone, with unsuffixed keys
+  (`state`), so Z2M sends the call to the device's default endpoint: the definition's `default`, else its first
+  (`endpoint()` in Z2M's [`lib/model/device.ts`](https://github.com/Koenkk/zigbee2mqtt/blob/2.6.0/lib/model/device.ts),
+  called from `lib/extension/publish.ts`). Another endpoint needs `zigbee2mqtt/<device>/<endpoint>/set` or a
+  suffixed key (`state_l2`), which DeviceSide doesn't send. `bridge/groups` lists each member as `{ieee_address,
+  endpoint}`, the endpoint by number, so a group can hold gang 2 of a two-gang alone. The endpoint can be matched to
+  its entity: since Z2M 2.6.0 `bridge/devices` names each endpoint (`endpoints.<number>.name`, the definition's
+  `l1`; `publishDevices` in [`lib/extension/bridge.ts`](https://github.com/Koenkk/zigbee2mqtt/blob/2.6.0/lib/extension/bridge.ts),
+  absent in 2.5.1), and Z2M's discovery gives that entity unique_id `<ieee>_<domain>_<name>_<base topic>` (object_id
+  `light_l1`, `lib/extension/homeassistant.ts`). Matching it is no use until the call can reach that endpoint, which
+  also needs the endpoint's suffixed state keys read back. So `members.py` lists a member device with more than one
+  entity in the group's domain, disabled ones counted, by its first, not addressable (`Target.addressable`): its
+  class counts; a group that falls back skips it as `not_addressable`; `member_lights` leaves it out, and fade, stop,
+  set attributes and get attributes refuse a group with no other light as `not_addressable`. A groupcast reaches the
+  endpoint the group holds, so it is unaffected.
 
 ## Modules
 

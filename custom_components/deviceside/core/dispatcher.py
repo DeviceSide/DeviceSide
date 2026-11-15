@@ -70,7 +70,8 @@ def _unanswered(
     named, else skipped. A group a member answers for gets no result of its own."""
     results: list[EntityResult] = []
     for group, members, reason, why in fallen:
-        if not any(member.reported_id in answered for member in members):
+        # A member left unaddressable answers for nothing, even when its entity ran as a target of its own.
+        if not any(member.addressable and member.reported_id in answered for member in members):
             results += _skip(group.reported_id, group.named, reason, adapter.integration, why)
     return results
 
@@ -228,6 +229,11 @@ class Dispatcher:
                 request.fields_present() & adapter.scope.drops
             )
             reduced = request.without(dropped)
+            if not target.addressable:
+                # A member a group fell back to that the integration can't address on its own: the call could reach
+                # an entity the caller didn't target (Target.addressable).
+                results += _skip(target.reported_id, target.named, Reason.NOT_ADDRESSABLE, adapter.integration)
+                continue
             if reason := adapter.supports(self.hass, reduced, target):
                 title = self.registry.integrations[adapter.integration].title
                 results += _skip(target.reported_id, target.named, reason, adapter.integration, title=title)

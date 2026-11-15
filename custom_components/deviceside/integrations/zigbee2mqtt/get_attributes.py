@@ -11,7 +11,7 @@ from homeassistant.util import dt as dt_util
 
 from .addressing import not_addressable
 from .classes import READ_WRITE
-from .members import member_lights
+from .members import member_lights, unaddressable
 from .read import Reader, reader
 from ...core.adapter import Adapter
 from ...core.errors import Reason
@@ -39,7 +39,11 @@ class Z2MGetAttributes(Adapter[Request]):
     )
 
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:
-        return super().supports(hass, request, target) or not_addressable(target, reads_state=True)
+        return (
+            super().supports(hass, request, target)
+            or not_addressable(target, reads_state=True)
+            or unaddressable(hass, target)
+        )
 
     async def execute(self, hass: HomeAssistant, request: Request, targets: list[Target]) -> list[EntityResult]:
         async def read(target: Target) -> EntityResult:

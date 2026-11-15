@@ -17,7 +17,8 @@ class Reason(StrEnum):
     INTEGRATION_NOT_LOADED = "integration_not_loaded"
     # A group with no members holds nothing to act on, which is not a reason it can't: it is skipped, never raised.
     EMPTY_GROUP = "empty_group"
-    # The integration can't address the target (no device address, a nested wrapper): raised if named, else skipped.
+    # The integration can't address the target (no device address, a nested wrapper, a group member it can't address
+    # on its own: Target.addressable): raised if named, else skipped.
     NOT_ADDRESSABLE = "not_addressable"
     # The target's class (a native group: a member's) fails the adapter's call: AdapterScope.doesnt_work.
     DOESNT_WORK = "doesnt_work"
