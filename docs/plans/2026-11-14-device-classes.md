@@ -406,7 +406,9 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
    - **Built** on `claude/device-classes-7a-units`: the prefill (an optional `IntegrationInfo.zigbee_manufacturer`
      hook, Z2M's and ZHA's) and ZHA's read-back line. Z2M's part is left out: its state reads are bare publishes to
      the get topic whose replies only HA's MQTT entity sees, so their timing would take a new state subscription per
-     read, not a log line. The seed list waits on running zigbee-herdsman-converters, which this session couldn't.
+     read, not a log line. The seed list is
+     [2026-11-15-converter-seed-list.md](../integrations/zigbee2mqtt/research/2026-11-15-converter-seed-list.md),
+     by Decision 78.
 
 8. **Hue.** Classes `hue`, `other` and `smart_scene` (doesn't work, on `set_scene`). `other` is decided per action
    (Decision 2). Lab run, without the Sengled (Decision 77).
@@ -1094,6 +1096,16 @@ Decisions 36 to 45, 46 to 55 and 56 to 65 are reserved for steps 7, 9 and 8.
     carries it on #436, where Decision 48 and the basis live.
 76. **The rig is a separate public repo** (jasonmx/ha-rig): CLAUDE.md says so, and still keeps rig code and rig docs
     out of this one.
+## Decisions (Jason, 2026-11-15, step 7a)
+
+78. **The converter seed list: a static parse, and the derived rows committed under ZHC's MIT notice.** Running
+    zigbee-herdsman-converters' code was refused in the build session, so the list comes from a static parse of its
+    compiled definitions, the weaker method: it misses copied converters, mostly the standard-tenths Hue copies. Its
+    file says so, and checks each route against the units research's run. Routes A (the Tuya countdown over
+    `0x42`), B (the Tuya datapoint countdown) and C (eWeLink's) are committed row by row, with the MIT notice; the
+    standard route is given as counts only. This settles the units research's open question 6 for this file.
+    Research only, with no level weight (Decision 35).
+
 ## Decisions (Jason, step 7)
 
 Numbered from 36; step 9 numbers from 46, so these renumber at merge if needed.
