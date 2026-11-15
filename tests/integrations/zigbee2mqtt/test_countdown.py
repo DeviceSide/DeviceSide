@@ -1,5 +1,5 @@
-"""Zigbee2MQTT turn_on_for on Tuya's countdown (plan step 5 part 3): the classes that place a TS011F plug on converter A,
-and the one publish it gets."""
+"""Zigbee2MQTT turn_on_for on Tuya's countdown (plan step 5 part 3): the classes that place a TS011F plug on
+converter A, and the one publish it gets."""
 
 import pytest
 
@@ -163,7 +163,10 @@ async def test_the_reported_string_is_not_supported_with_experimental_on(hass, s
         await call_service(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5})
 
     assert raised.value.reason == "not_supported"
-    assert raised.value.translation_placeholders["why"] == classes.TURN_ON_FOR_NOT_SUPPORTED["tuya_countdown_harmed"].reason
+    assert (
+        raised.value.translation_placeholders["why"]
+        == classes.TURN_ON_FOR_NOT_SUPPORTED["tuya_countdown_harmed"].reason
+    )
     assert commands(broker) == []
 
 

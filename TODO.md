@@ -56,8 +56,8 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
     `gledopto`, `other`; the Tuya classes not yet supported on `turn_on_for`, with `harms`, which refuses unknown
     (step 6); `other` Documented on brightness fades and stop). Open until the lab run on the branch tip, which
     restores the card's Works line and clears the coverage warnings; the Sengled sits it out, as no gate needs it
-    (its classes are flagged or not yet supported). Part 3, the TS011F countdown (plan Decision 72), stays in v0.1.0,
-    built after Jason's countdown probe.
+    (its classes are flagged or not yet supported). Part 3, the TS011F countdown (plan Decision 72), built on
+    `claude/device-classes-5c-tuya-countdown`; its lab run, one plug per maker string, joins step 5's.
   - [x] 5b. Test records as JSON, format 2 (`docs/test-records.schema.json`): a device per test with its class,
     validated in CI; the markdown records converted to format 1, which `check_release --signoffs` rejects; the
     rig's paired change writes format 2.

@@ -87,8 +87,10 @@ they work or not: your report helps get them fixed or shipped to everyone.
 ### Zigbee plugs and switches
 
 Turn on with timer and get attributes on a ZHA or Zigbee2MQTT `switch`. A plug works only if its firmware honors the
-Zigbee timed-on command, and few do: Sonoff and Tuya plugs often run their own countdown instead. On Zigbee2MQTT
-and ZHA, DeviceSide refuses it on Tuya plugs, which would turn on and stay on, or on long after the time asked; the
+Zigbee timed-on command, and few do: Sonoff and Tuya plugs often run their own countdown instead. On Zigbee2MQTT,
+DeviceSide uses Tuya's countdown on the TS011F plugs Zigbee2MQTT drives by it
+([Tuya TS011F plugs](integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs)). On ZHA, and on Zigbee2MQTT's other Tuya
+plugs, DeviceSide refuses it, as they would turn on and stay on, or on long after the time asked; the
 [Tuya TS011F](#tuya-ts011f) runs only Tuya's own timer. ZHA and Zigbee2MQTT each need their own report.
 
 ## Not yet supported
@@ -100,9 +102,10 @@ that would leave it doing something you didn't ask for, and each card lists them
 ### Tuya TS011F
 
 A Zigbee plug whose timer runs only Tuya's way, so DeviceSide's timer can leave it off, or turn it on long after the
-time asked and leave it on. Tuya's own call would serve it, and isn't built yet. On Zigbee2MQTT and ZHA, DeviceSide
-refuses turn on with timer on it, even with Experimental features on, until it builds that call. What was measured:
-[internals](internals.md#tested-behavior).
+time asked and leave it on. Tuya's own call would serve it. On ZHA it isn't built yet, so DeviceSide refuses turn on
+with timer on it, even with Experimental features on. On Zigbee2MQTT DeviceSide sends it to the TS011F plugs
+Zigbee2MQTT drives by Tuya's countdown ([Tuya TS011F plugs](integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs)),
+and refuses the rest. What was measured: [internals](internals.md#tested-behavior).
 
 ## Evidence
 

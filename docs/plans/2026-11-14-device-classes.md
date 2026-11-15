@@ -235,7 +235,7 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      `docs/evidence.md`, `docs/design.md` and the tenets says what it requires: a class resting on information
      DeviceSide doesn't have yet. The Tuya entries' reason says what the user sees.
    - **Part 3, the Tuya countdown on Z2M (Decision 22), reshaped for v0.1.0 (Decision 72),** after part 2's
-     fix-ups. Not built yet. Until it is, `tuya_ts011f` and `tuya_zcl` are not yet supported on `turn_on_for`, with
+     fix-ups. Built below; before it, `tuya_ts011f` and `tuya_zcl` were not yet supported on `turn_on_for`, with
      `harms` (Decision 71).
      1. **Scope: converter A only** (`tuya.modernExtend.tuyaOnOff({onOffCountdown})`,
         [research](../integrations/zigbee2mqtt/research/2026-11-14-tuya-countdown.md), §1): TS011F-family plugs on
@@ -272,6 +272,33 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
           and integration (`Profile.entity`), so a profile of three `switch_plug` plugs tests one. The cases for a
           role run once per listed entity, each a test reaching its own device, so one run gives each maker string
           its record; part 3 settles the record's shape (item 8). The rig's plan goes on its `wt/` branch first.
+     - **Built** (`claude/device-classes-5c-tuya-countdown`), the lab run pending:
+       - **Classes** (`classes.py`): `tuya_countdown`, a TS011F whose bridge/devices definition exposes a top-level
+         `countdown` and isn't `ZOT60`; a class per Verified maker string on the same rule plus its string
+         (`string_class`: `tuya_countdown_tz3000_0zfrhq4i` and the plugs profile's three); `tuya_countdown_harmed` for
+         `_TZ3000_gjnozsaz` (Z2M #30493), not yet supported, `harms`, on `turn_on_for`. A TS011F without the expose, a
+         multi-gang one (an expose per endpoint) and the ZOT60 stay `tuya_ts011f`; before bridge/devices lists a plug
+         it is `tuya_ts011f`, Unplaced, so `class_unknown`. Elsewhere every new class is Experimental, as
+         `tuya_ts011f` is.
+       - **Item 8, a string's level:** a class per string, so the coverage check asks each Verified string for its own
+         record, and a record credits only the string its test reached. The record shape is format 2 unchanged: each
+         test's device carries its `manufacturer` and its string's class. The four lab strings are Verified in code,
+         warning until the run's records land; one that fails moves to its finding, one dropped from the run to
+         `tuya_countdown`.
+       - **The call:** one publish, `{"state": "ON", "countdown": N}`; no `on_time`, no reads, `sent` (P6).
+       - **The harm** (P1b: 0x42 alone on an off plug turns it on at N for good): converter A, the same in ZHC
+         26.125.0 and 26.131.0, awaits the On before 0x42, and herdsman rethrows a failed send, so a lost On sends no
+         0x42 and Z2M logs the set failed (`set_check`: `rejected`). No state check before or after
+         (zigbee2mqtt `internals.md`, `turn_on_for`).
+       - **Core:** `AdapterScope.own_calls`, a class with a call of its own and that call's `DurationLimits`, now with
+         `step_s`; a native group with such a member falls back (`Reason.OWN_CALL`), as a Z2M group's call carries
+         `on_time`, which would reach the plug as a plain On or the spec's tenths. The dispatcher runs each set of
+         limits apart; `clamp` rounds to the step and reports it in `clamped_to` (action-behavior.md). Out of range
+         clamps, as action-behavior.md has it.
+       - **Rig:** three `switch_plug` cases in the shared `turn_on_for.yaml`, `only: [zigbee2mqtt]`, the probe's
+         firmware facts per string: from on it ends off (P1), a new call replaces (P2), an off cancels (P3);
+         `on_then_off` covers the call from off. Shared, not Zigbee2MQTT's own file: a record is named for its step
+         file, so an own `turn_on_for.yaml` would collide with the shared one's record.
 5b. **Test records, format 2 (Decision 27),** before the rest of step 5's lab run, so its records and the Shelly
    house run are written in it. Branch `claude/device-classes-5b-records`, stacked on step 5, its own PR, paired
    with a rig change (`Tests-with`).

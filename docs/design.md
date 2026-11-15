@@ -18,9 +18,9 @@ Code and docs use these terms.
 - **Capability**: the code's name for a Class: `IntegrationInfo.capability` names a target's, `IntegrationInfo.classes`
   declares them, `AdapterScope.capabilities` holds a level per class, and a result reports it as `capability`.
 - **Class**: the set of devices that get the same call and run the same firmware family, as the integration names it
-  (Shelly: the RPC component; Zigbee2MQTT: `hue`, `tuya_zcl`, `tuya_ts011f`, `tuya_mcu`, `sengled`, `gledopto`,
-  `other`). Each class stands on its own evidence, and a device no rule matches gets the integration's default class,
-  which is never Verified: a record on another maker's device adds that maker's class. Where untested, it is
+  (Shelly: the RPC component; Zigbee2MQTT: `hue`, `tuya_zcl`, `tuya_ts011f`, `tuya_countdown` and a class per
+  Verified maker string on it, `tuya_mcu`, `sengled`, `gledopto`, `other`). Each class stands on its own evidence,
+  and a device no rule matches gets the integration's default class, which is never Verified: a record on another maker's device adds that maker's class. Where untested, it is
   Experimental (except where a call is known to harm: there a target whose class rests on information DeviceSide
   doesn't have yet is refused). Rules: [evidence.md](evidence.md#device-classes).
 - **Placed**: a device whose class rests on everything the integration will report about it (Zigbee2MQTT: listed as
@@ -199,7 +199,8 @@ runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, 
   answered `None`, or it raised, logged) counts as Experimental: refused while Experimental features is off, and, where
   a call is known to harm, as `class_unknown` with them on
   ([evidence.md](evidence.md#doesnt-work-not-yet-supported-untested)). When a member's class doesn't work or isn't
-  supported, or isn't placed yet where a call is known to harm, or, while Experimental features is off, is Experimental
+  supported, or isn't placed yet where a call is known to harm, or takes a call of its own (`AdapterScope.own_calls`,
+  `own_call`: a branch in `execute` the group's call isn't), or, while Experimental features is off, is Experimental
   (the adapter, domain and fields not flagged), the group falls back to its members: each available one not already a
   target is planned on its own, indirect, so the good ones run and a refused or flagged one is skipped and logged (a
   member also named raises, as its own target). A member `expand_group` lists for its class but the integration can't
@@ -219,7 +220,8 @@ runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, 
   `not_supported` entry `harms`, one `Unplaced` or `None` is refused as `class_unknown`; a class in `doesnt_work` is
   refused as `doesnt_work`, one in neither it nor `capabilities` as `not_supported`, with its `NotSupported.reason`
   where it has an entry; a call left nothing to send is first), clamps
-  durations to `AdapterScope.duration`, then runs every adapter concurrently under
+  durations to `AdapterScope.duration`, or a class's own call's limits (`own_calls`), rounded to their `step_s`, then
+  runs every adapter concurrently under
   `ADAPTER_TIMEOUT_S`: `Adapter.slot` (which `gather` runs each target in) rejects with `timeout` only the targets
   not done by then, so those that finished keep their results. An adapter exception rejects its targets. A named
   target that can never take the action raises before anything is sent; an indirect one is skipped and logged; a

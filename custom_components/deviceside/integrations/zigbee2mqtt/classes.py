@@ -9,16 +9,19 @@ A rule reads two sources, both sync and with no I/O:
 
 - The registry device, which Z2M fills from its definition at discovery: the vendor as manufacturer, the definition's
   model as `model_id` (research/2026-11-14-lab-probe.md, §1). Enough for Hue, Sengled and Gledopto.
-- The device's Zigbee strings, its own manufacturer and model, from the bridge cache's bridge/devices
-  (bridge_cache.py, the one members.py lists groups from). Only they show a Tuya device under another vendor's
-  definition (`_TZ3000_…`, `_TZE…`), which the registry doesn't (plan Decision 18): one that fell into `other` would
-  take turn_on_for's call with Experimental features on, and Zigbee2MQTT would leave it on.
+- The device's Zigbee strings, its own manufacturer and model, and its definition's model and exposes, from the
+  bridge cache's bridge/devices (bridge_cache.py, the one members.py lists groups from). Only they show a Tuya device
+  under another vendor's definition (`_TZ3000_…`, `_TZE…`), which the registry doesn't (plan Decision 18): one that
+  fell into `other` would take turn_on_for's call with Experimental features on, and Zigbee2MQTT would leave it on.
+  Only the definition shows which TS011F plugs take Tuya's countdown (internals.md, `turn_on_for`).
 
 The rule order, the one home for it (internals.md points here). It matters in three places; elsewhere no device can
 match two rules (`hue`'s vendor is Z2M's own Philips string, which no Tuya rule matches):
 
 1. Among the Tuya rules on the Zigbee strings, the models go first: a TS011F's manufacturer (`_TZ3000_…`) matches
-   `tuya_zcl`'s, and a TS0601's model matches `tuya_zcl`'s `TS` and four digits.
+   `tuya_zcl`'s, and a TS0601's model matches `tuya_zcl`'s `TS` and four digits. The TS011F's go in this order: the
+   string reported harmed, then each Verified string's and `tuya_countdown` (both on converter A's definition, read
+   from bridge/devices), then `tuya_ts011f`, which every TS011F matches.
 2. Every Tuya rule on the Zigbee strings goes before the vendor rules (`sengled`, `gledopto`), so a Tuya device sold
    under another vendor's definition (Gledopto's GL-SPI-206P runs Tuya datapoints) takes its Tuya class.
 3. Among the Tuya rules on the registry, the models go before the vendor `Tuya` and the catch-all `TS.*`, which a
