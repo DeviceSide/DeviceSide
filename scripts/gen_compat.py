@@ -467,8 +467,8 @@ def card_evidence(adapter) -> Evidence:
     on a domain or class, the record tests (`tested`) that target unflagged domains and, when a class is flagged
     anywhere (an entry held on some domains alone is flagged on the rest), reach only classes unflagged in the test's
     domain; and, unless a domain is flagged (a manual row names none), the manual devices whose class is unflagged in
-    every domain the adapter serves. Flagged or not, a null-class device of an integration that names classes counts
-    for nothing (`Evidence.of`)."""
+    some domain the adapter serves, as the coverage check lets a manual row cover any. Flagged or not, a null-class
+    device of an integration that names classes counts for nothing (`Evidence.of`)."""
     scope = adapter.scope
     flagged = {noun for level, _, noun, domains in items(scope) if level is Level.EXPERIMENTAL or domains is not None}
     if scope.experimental or "fields" in flagged:
@@ -490,7 +490,9 @@ def card_evidence(adapter) -> Evidence:
         return "classes" not in flagged or bool(reached) and all(unflagged(cls, domain) for cls in reached)
 
     def by_hand(cls: str | None) -> bool:
-        return "entities" not in flagged and ("classes" not in flagged or all(unflagged(cls, d) for d in scope.domains))
+        # A manual row names no domain, so it counts in any domain its class is unflagged in, as the coverage check
+        # lets it cover any (check_release.coverage_gaps).
+        return "entities" not in flagged and ("classes" not in flagged or any(unflagged(cls, d) for d in scope.domains))
 
     return Evidence.of(adapter, clean, by_hand)
 

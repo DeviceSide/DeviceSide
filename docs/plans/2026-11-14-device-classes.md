@@ -280,14 +280,15 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
          `countdown` and isn't `ZOT60`; a class per Verified maker string on the same rule plus its string
          (`string_class`: `tuya_countdown_tz3000_0zfrhq4i` and the three other lab plugs'); `tuya_countdown_harmed` for
          `_TZ3000_gjnozsaz` (Z2M #30493), not yet supported, `harms`, on `turn_on_for`. A TS011F without the expose, a
-         multi-gang one (an expose per endpoint) and the ZOT60 stay `tuya_ts011f`; before bridge/devices lists a plug
+         multi-gang one (an expose per endpoint, property `countdown_l1`) and the ZOT60 stay `tuya_ts011f`; before bridge/devices lists a plug
          it is `tuya_ts011f`, Unplaced, so `class_unknown`. Elsewhere every new class is Experimental, as
          `tuya_ts011f` is.
        - **Item 8, a string's level:** a class per string, so the coverage check asks each Verified string for its own
          record, and a record credits only the string its test reached. The record shape is format 2 unchanged: each
-         test's device carries its `manufacturer` and its string's class, one test per plug (Decision 88). The four lab strings are Verified in code,
-         warning until the run's records land; one that fails moves to its finding, one dropped from the run to
-         `tuya_countdown`.
+         test's device carries its `manufacturer` and its string's class, one test per plug (Decision 88). The four lab
+         strings are Verified in code, warning until the run's records land; one that fails moves to its finding, one
+         dropped from the run to `tuya_countdown`. #440 merges only with the four strings' records: the release
+         candidate workflow runs `check_release --notes` alone, without the coverage gate.
        - **The call:** one publish, `{"state": "ON", "countdown": N}`; no `on_time`, no reads, `sent` (P6).
        - **The harm** (P1b: 0x42 alone on an off plug turns it on at N for good): converter A, the same in ZHC
          26.125.0 and 26.131.0, awaits the On before 0x42, and herdsman rethrows a failed send, so a lost On sends no

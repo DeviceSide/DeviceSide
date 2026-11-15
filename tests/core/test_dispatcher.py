@@ -1679,3 +1679,30 @@ async def test_a_named_group_none_of_whose_members_runs_raises_own_call(hass, fa
     with patch.object(FakeTurnOffFor, "scope", OWN_CALL):
         assert await refusal(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5}) == "own_call"
     assert reset_script.calls == []
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_named_own_call_group_whose_members_are_all_gated_raises_experimental_off(hass, fake, reset_script):
+    """The members' reason, which says how to let the call through, not own_call (#440's review, M2)."""
+    for member in ("switch.e", "light.e"):
+        add_fake_entity(hass, fake, member)
+    add_fake_native_group(hass, fake, "switch.fake_group", ["switch.e", "light.e"])
+    allow_experimental(hass, False)
+    scope = replace(OWN_CALL, capabilities=verified("A") | experimental("E"))
+
+    with patch.object(FakeTurnOffFor, "scope", scope), pytest.raises(TargetNotSupported) as raised:
+        await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
+
+    assert raised.value.translation_key == "experimental_off"
+    assert reset_script.calls == []
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_named_own_call_group_whose_members_are_all_unavailable_says_so(hass, fake, reset_script):
+    add_fake_entity(hass, fake, "switch.e", state="unavailable")
+    add_fake_native_group(hass, fake, "switch.fake_group", ["switch.e"])
+
+    with patch.object(FakeTurnOffFor, "scope", OWN_CALL), pytest.raises(TargetNotSupported) as raised:
+        await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
+
+    assert raised.value.translation_key == "own_call"

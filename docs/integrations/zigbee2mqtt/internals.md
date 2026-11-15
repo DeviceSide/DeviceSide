@@ -149,18 +149,19 @@ group's call carries `on_time`, so a group with such a plug falls back to its me
   the same in 26.125.0, the lab's, and 26.131.0, the research pin) awaits `genOnOff` `on`, then awaits 0x42
   `{ctrlbits: 0, ontime: N, offwaittime: N}`, in that order ("on/off/toggle cancels onWithTimedOff"); it publishes
   `state: ON, countdown: N`.
-- **The harm the order prevents.** 0x42 alone on an off plug toggles it on at N, and it stays on (probe P1b). The
-  On's `await` rejects when herdsman can't deliver it (`Endpoint.zclCommand` rethrows a failed send,
+- **The harm the order prevents.** 0x42 alone on an off plug toggles it on at N, and it stays on (probe P1b). The On's
+  `await` rejects when herdsman can't deliver it (`Endpoint.zclCommand` rethrows a failed send,
   [`endpoint.ts`](https://github.com/Koenkk/zigbee-herdsman/blob/199c2f222a2b63c5c341af0c1bceda56845d34e0/src/controller/model/endpoint.ts#L1196-L1212),
   read 2026-11-15; `command` doesn't check the reply's status), so the converter throws before 0x42: a lost On sends
-  nothing more, and Z2M logs the set as failed (`Publish 'set' 'state' … failed`), which `set_check` makes
-  `rejected`. So no state check goes before or after the publish. What stays: an On that reached the plug but whose delivery failed
-  leaves it on with no timer, and the call raises (`targets_failed`), unless the bridge cache isn't live, when
-  `set_check` is off and the call answers `sent`; and a button press between the two frames (milliseconds) would put
-  the toggle on an off plug.
-- **The class rule** reads `bridge/devices`' definition: model `TS011F`, a top-level `countdown` expose (a
-  multi-gang one exposes one per endpoint and isn't matched), and a definition other than the datapoint `ZOT60`
-  ([research](research/2026-11-14-tuya-countdown.md), §1). Before `bridge/devices` lists the plug, the registry
+  nothing more, and Z2M logs the set as failed (`Publish 'set' 'state' … failed`), which `set_check` makes `rejected`.
+  So no state check goes before or after the publish. What stays: an On that reached the plug but whose delivery failed,
+  or a 0x42 that failed after the On was delivered, leaves it on with no timer; Z2M logs the set as failed and the call
+  answers `rejected` (raising `targets_failed`), unless the bridge cache isn't live, when `set_check` is off and the
+  call answers `sent`; and a button press between the two frames (milliseconds) would put the toggle on an off plug.
+- **The class rule** reads `bridge/devices`' definition: model `TS011F`, a top-level expose of property `countdown` with
+  no `endpoint` (a multi-gang one exposes one per endpoint: ZHC 26.131.0's `withEndpoint` keeps the name `countdown` and
+  sets `property` `countdown_l1` and `endpoint` `l1`, so it isn't matched), and a definition other than the datapoint
+  `ZOT60` ([research](research/2026-11-14-tuya-countdown.md), §1). Before `bridge/devices` lists the plug, the registry
   places it in `tuya_ts011f`, Unplaced, refused as `class_unknown`.
 
 ### `set_attributes`

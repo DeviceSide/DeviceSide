@@ -99,12 +99,14 @@ def string_class(string: str) -> str:
 VERIFIED_COUNTDOWNS = tuple(string_class(string) for string in VERIFIED_STRINGS)
 # Every class on Tuya's countdown that turn_on_for serves, each sent that call.
 COUNTDOWNS = (TUYA_COUNTDOWN, *VERIFIED_COUNTDOWNS)
+# Every plug on converter A's countdown, served or not: its OnTime is the countdown last set, not the time left.
+COUNTDOWN_PLUGS = frozenset({*COUNTDOWNS, TUYA_COUNTDOWN_HARMED})
 CLASSES = frozenset(
     {HUE, TUYA_ZCL, TUYA_TS011F, *COUNTDOWNS, TUYA_COUNTDOWN_HARMED, TUYA_MCU, SENGLED, GLEDOPTO, OTHER}
 )
 
 # The fields a rule may test: the registry device's; the Zigbee manufacturer and model bridge/devices holds; and from
-# its definition there, Z2M's model and the names of its top-level exposes (DEFINITION).
+# its definition there, Z2M's model and the properties of its device-wide top-level exposes (DEFINITION).
 REGISTRY = frozenset({"manufacturer", "model", "model_id"})
 ZIGBEE = {"zigbee_manufacturer": "manufacturer", "zigbee_model": "model_id"}  # rule field: bridge/devices key
 DEFINITION = frozenset({"definition_model", "exposes"})
@@ -143,8 +145,9 @@ class Rule:
 _TUYA_MCU_MANUFACTURER = r"_TZE\d{3}_.*"
 _TUYA_ZCL_MANUFACTURER = r"_TZ\d{4}_.*|_TYZB\d{2}_.*"
 
-# Tuya's countdown, converter A, on a TS011F: the definition exposes `countdown` (Z2M's own statement that it takes
-# the key; a multi-gang one names one per endpoint, so isn't matched) and isn't the ZOT60, whose `countdown` is a
+# Tuya's countdown, converter A, on a TS011F: the definition exposes `countdown` for the whole device (Z2M's own
+# statement that it takes the key; a multi-gang one exposes one per endpoint, `countdown_l1`, so isn't matched) and
+# isn't the ZOT60, whose `countdown` is a
 # datapoint, converter B (research/2026-11-14-tuya-countdown.md, §1, The expose doesn't tell A from B).
 _COUNTDOWN = {"zigbee_model": "TS011F", "exposes": "countdown", "definition_model": "(?!ZOT60$).*"}
 
@@ -240,8 +243,8 @@ def zigbee_strings(entry: Mapping | None) -> dict[str, str]:
 
 def definition_fields(entry: Mapping | None) -> dict[str, str | frozenset[str]]:
     """The rule fields from the definition in a device's bridge/devices entry: Z2M's model (`definition_model`), and
-    the names of its top-level exposes (`exposes`), each only when the entry holds it (Z2M holds a null definition
-    for a device it doesn't support); empty with no entry."""
+    the properties of its top-level exposes for the whole device, none for an endpoint (`exposes`), each only when the
+    entry holds it (Z2M holds a null definition for a device it doesn't support); empty with no entry."""
     definition = entry.get("definition") if entry is not None else None
     if not isinstance(definition, Mapping):
         return {}
@@ -249,8 +252,14 @@ def definition_fields(entry: Mapping | None) -> dict[str, str | frozenset[str]]:
     if isinstance(model := definition.get("model"), str) and model:
         fields["definition_model"] = model
     if isinstance(exposes := definition.get("exposes"), list):
+        # By property, and the device's own alone: a per-endpoint copy keeps the name and suffixes the property
+        # (`countdown_l1`, with `endpoint` set: ZHC's `withEndpoint`).
         fields["exposes"] = frozenset(
-            name for expose in exposes if isinstance(expose, Mapping) and isinstance(name := expose.get("name"), str)
+            prop
+            for expose in exposes
+            if isinstance(expose, Mapping)
+            and expose.get("endpoint") is None
+            and isinstance(prop := expose.get("property"), str)
         )
     return fields
 

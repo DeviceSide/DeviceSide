@@ -105,9 +105,15 @@ class Request:
 
 @dataclass(frozen=True, slots=True)
 class TimedRequest(Request):
-    """A request with a duration the dispatcher clamps to each adapter's DurationLimits."""
+    """A request with a duration the dispatcher clamps to each adapter's DurationLimits.
+
+    `limits` is the DurationLimits it was fitted to, set by the dispatcher (core/duration.py): a run's targets all share
+    them, so an adapter whose class takes a call of its own (AdapterScope.own_calls) branches on them, the class the
+    dispatcher planned on, rather than classing a target again in execute, where a report in between could move it.
+    """
 
     duration_s: float
+    limits: Any = field(default=None, kw_only=True)  # DurationLimits | None; scope.py imports this module
 
 
 @dataclass(frozen=True, slots=True)

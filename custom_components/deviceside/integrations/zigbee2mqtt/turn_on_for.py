@@ -17,7 +17,7 @@ from homeassistant.core import HomeAssistant
 
 from .addressing import not_addressable, topic
 from .bridge import logged_options, publish, publish_set, state_reply
-from .classes import COUNTDOWNS, TURN_ON_FOR, TURN_ON_FOR_NOT_SUPPORTED, capability
+from .classes import COUNTDOWNS, TURN_ON_FOR, TURN_ON_FOR_NOT_SUPPORTED
 from .native_control import COLOR_FIELDS, NEED, native_control, settled
 from .set_check import checked, note
 from ...actions.turn_on_for import TurnOnForRequest
@@ -88,8 +88,10 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
         self, hass: HomeAssistant, request: TurnOnForRequest, targets: list[Target]
     ) -> list[EntityResult]:
         async def send(target: Target) -> EntityResult:
-            if capability(hass, target) in COUNTDOWNS:
-                # The dispatcher fitted the duration to COUNTDOWN_LIMITS. A plug has no light fields to apply.
+            if request.limits is COUNTDOWN_LIMITS:
+                # The dispatcher planned the run on a countdown class and fitted the duration to its limits; branching
+                # on them, not a fresh capability(), keeps the two together if bridge/devices moves the plug between.
+                # A plug has no light fields to apply.
                 await publish_set(hass, target, {"state": "ON", "countdown": int(request.duration_s)})
                 return self.result(target, Status.SENT)
             if request.light.present():

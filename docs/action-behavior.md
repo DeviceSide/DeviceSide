@@ -97,11 +97,11 @@ raises or the entity is skipped.
   Skipped targets are left out, as core leaves them out, and `unsupported` or `rejected` never reach a response: the
   call skips or raises instead. A call that has nothing to do succeeds quietly as `unchanged` with a `detail`, checked
   before the target's class, so nothing-to-do wins over doesn't-work or not supported. A native group with a refused
-  member (`class_unknown` included), or an Experimental one while Experimental features is off, or one whose class
-  takes a call of its own (`own_call`), falls back to its members where the integration can list them. A group that falls back has no entry of its own: its members' entries
-  answer for it, though a member it can't address alone answers for nothing, and it raises only when none of its
-  members runs ([design.md](design.md#core-contract), Groups). A named target whose class doesn't work, or isn't
-  supported yet and is harmed by today's call, raises with the reason why.
+  member (`class_unknown` included), or an Experimental one while Experimental features is off, or one whose class takes
+  a call of its own (`own_call`), falls back to its members where the integration can list them. A group that falls back
+  has no entry of its own: its members' entries answer for it, though a member it can't address alone answers for
+  nothing, and it raises only when none of its members runs ([design.md](design.md#core-contract), Groups). A named
+  target whose class doesn't work, or isn't supported yet and is harmed by today's call, raises with the reason why.
 - **The class.** On an integration that names [classes](evidence.md#device-classes), each entry carries the
   class the call reached, as an attribute would: a command's beside `status` and `integration`, a query's among its
   data. A target's is `capability` (a string: `"RGBCCT"`); a native group's is `capabilities`, its members' classes

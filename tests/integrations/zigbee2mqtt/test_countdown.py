@@ -3,18 +3,19 @@ converter A, and the one publish it gets."""
 
 import pytest
 
+from custom_components.deviceside.actions.turn_on_for import TurnOnForRequest
 from custom_components.deviceside.core.errors import TargetNotSupported
 from custom_components.deviceside.core.resolver import resolve
 from custom_components.deviceside.core.runtime import get_runtime
 from custom_components.deviceside.core.scope import Level, Unplaced
-from custom_components.deviceside.integrations.zigbee2mqtt import INTEGRATION, classes
+from custom_components.deviceside.integrations.zigbee2mqtt import INTEGRATION, classes, turn_on_for
 from custom_components.deviceside.integrations.zigbee2mqtt.turn_on_for import Z2MTurnOnFor
 
 from .conftest import DEVICES, SET, call, commands, group
 from .test_set_check import answer, failure, live  # noqa: F401 - live is a fixture
 from ...conftest import allow_experimental, refusal
 from ...conftest import call as call_service
-from ...fixtures.zigbee2mqtt import IEEE, add_z2m_entity, z2m_entry
+from ...fixtures.zigbee2mqtt import IEEE, INFO, add_z2m_entity, z2m_entry
 
 LAB = "_TZ3000_0zfrhq4i"  # the lab plug (research/2026-11-15-tuya-countdown-probe.md)
 UNLISTED = "_TZ3000_abcdefgh"  # a converter A string with no record
@@ -71,7 +72,13 @@ def placed_class(hass, entity_id: str) -> str | None:
         pytest.param(UNLISTED, {"exposes": (SWITCH,)}, "tuya_ts011f", id="no_countdown_expose"),
         pytest.param(LAB, {"exposes": (SWITCH,)}, "tuya_ts011f", id="verified_string_without_expose"),
         # One per endpoint: a multi-gang plug, not one countdown for the device.
-        pytest.param(UNLISTED, {"exposes": (SWITCH, COUNTDOWN | {"name": "countdown_l1"})}, "tuya_ts011f", id="gangs"),
+        # ZHC's withEndpoint keeps the name and suffixes the property (TS011F_5).
+        pytest.param(
+            UNLISTED,
+            {"exposes": (SWITCH, COUNTDOWN | {"property": "countdown_l1", "endpoint": "l1"})},
+            "tuya_ts011f",
+            id="gangs",
+        ),
         # The datapoint countdown, converter B.
         pytest.param("_TZ3218_pfnjjx6a", {"definition": "ZOT60"}, "tuya_ts011f", id="zot60"),
         pytest.param(UNLISTED, {"model_id": "TS0001"}, "tuya_zcl", id="not_a_ts011f"),
@@ -210,3 +217,31 @@ async def test_a_countdown_set_z2m_logs_failed_is_rejected(hass, setup_productio
     answer(broker, SET, line=ON_UNDELIVERED)
 
     assert await failure(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == f"{entity_id}: send_failed"
+
+
+async def test_get_attributes_reports_no_timer_for_a_countdown_plug(hass, setup_production, broker):
+    """Its OnTime holds the countdown last set, in seconds, not the time left (probe P6): 600 would read as 60 s."""
+    entity_id = plug(hass, broker, UNLISTED)
+    hass.states.async_set(entity_id, "on", {})
+    broker.devices[IEEE] = ("plug", {"genOnOff": {"onOff": 1, "onTime": 600}})
+    broker.retained[INFO]["config"]["devices"].setdefault(IEEE, {})
+    allow_experimental(hass)
+
+    response = await call(hass, "get_attributes", {"entity_id": entity_id})
+
+    assert response == {entity_id: {}}
+
+
+async def test_execute_branches_on_the_limits_the_dispatcher_planned_not_a_fresh_class(hass, setup_production, broker):
+    """#440's review, LM3: a bridge/devices republish between planning and execute must not send the plug `on_time`
+    fitted to 43200 s, or a bulb `countdown`: the run's limits are the class the dispatcher planned on."""
+    entity_id = plug(hass, broker, UNLISTED)
+    registry = get_runtime(hass).registry
+    adapter = registry.adapter("turn_on_for", "zigbee2mqtt")
+    target = resolve(hass, registry, entity_id)
+    planned = TurnOnForRequest(duration_s=30, limits=turn_on_for.COUNTDOWN_LIMITS)
+    del broker.retained[DEVICES]  # the plug is no longer placed as a countdown class
+
+    await adapter.execute(hass, planned, [target])
+
+    assert commands(broker) == [(SET, {"state": "ON", "countdown": 30})]

@@ -99,15 +99,27 @@ def _skip(
 
 
 def _unanswered(
-    adapter: Adapter, fallen: list[tuple[Target, list[Target], str, str | None]], answered: set[str], title: str
+    adapter: Adapter,
+    fallen: list[tuple[Target, list[Target], str, str | None]],
+    answered: set[str],
+    title: str,
+    skipped: list[EntityResult],
 ) -> list[EntityResult]:
     """Each group that fell back with no member planned or left nothing to do, refused with its reason: raised if
-    named, else skipped. A group a member answers for gets no result of its own."""
+    named, else skipped. A group a member answers for gets no result of its own. One that fell back only because a
+    member takes a call of its own (own_call) is refused with its members' reason, `experimental_off` first, as that
+    one tells the user how to let the call through (`skipped`: the skips so far); own_call only when none was
+    skipped (each unavailable)."""
     results: list[EntityResult] = []
     for group, members, reason, why in fallen:
         # A member left unaddressable answers for nothing, even when its entity ran as a target of its own.
-        if not any(member.addressable and member.reported_id in answered for member in members):
-            results += _skip(group.reported_id, group.named, reason, adapter.integration, why, title)
+        if any(member.addressable and member.reported_id in answered for member in members):
+            continue
+        if reason == Reason.OWN_CALL:
+            ids = {member.reported_id for member in members}
+            details = [r.detail for r in skipped if r.entity_id in ids and r.status is Status.UNSUPPORTED and r.detail]
+            reason = EXPERIMENTAL_OFF if EXPERIMENTAL_OFF in details else next(iter(details), reason)
+        results += _skip(group.reported_id, group.named, reason, adapter.integration, why, title)
     return results
 
 
@@ -320,7 +332,7 @@ class Dispatcher:
             else:
                 answered.add(target.reported_id)
                 by_run.setdefault((dropped, adapter.scope.limits(found)), []).append(target)
-        results += _unanswered(adapter, fallen, answered, title)
+        results += _unanswered(adapter, fallen, answered, title, results)
         return [
             (adapter, request.without(dropped), ready, dropped, reached, limits)
             for (dropped, limits), ready in by_run.items()
