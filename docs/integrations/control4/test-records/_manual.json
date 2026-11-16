@@ -6,8 +6,9 @@
       "date": "2026-11-16",
       "commit": "f68bb8f120e72bc2c55a8228024e7f2cb986fdc1",
       "tester": "skialpine",
+      "group": true,
       "devices": [
-        {"model": "LTD010", "manufacturer": "Signify Netherlands B.V.", "class": null}
+        {"model": "LTD010", "manufacturer": "Finite Labs", "class": null}
       ],
       "passed": ["get_attributes", "lower_brightness", "raise_brightness", "set_attributes", "stop"]
     }
