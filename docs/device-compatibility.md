@@ -254,10 +254,10 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 
 | Action | Level | Items | Tested models | Records |
 |---|---|---|---|---|
-| `get_attributes` | Experimental | light entities | none | |
-| `lower_brightness` | Experimental | light entities; brightness fields | none | |
-| `raise_brightness` | Experimental | light entities; brightness fields | none | |
-| `set_attributes` | Experimental | light entities; color_temp_kelvin fields | none | |
-| `stop` | Experimental | light entities | none | |
+| `get_attributes` | Experimental | light entities | `LTD010`, by hand | [by hand](integrations/control4/test-records/_manual.json) |
+| `lower_brightness` | Experimental | light entities; brightness fields | `LTD010`, by hand | [by hand](integrations/control4/test-records/_manual.json) |
+| `raise_brightness` | Experimental | light entities; brightness fields | `LTD010`, by hand | [by hand](integrations/control4/test-records/_manual.json) |
+| `set_attributes` | Experimental | light entities; color_temp_kelvin fields | `LTD010`, by hand | [by hand](integrations/control4/test-records/_manual.json) |
+| `stop` | Experimental | light entities | `LTD010`, by hand | [by hand](integrations/control4/test-records/_manual.json) |
 
 <!-- evidence:end -->
