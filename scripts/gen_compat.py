@@ -10,15 +10,16 @@ don't show yet); a native group's or a scene's test (`group`, its devices the me
 members' models. Where the integration names classes, a device with a null class credits nothing, flagged or not, and a
 group with one none either: it is on no card and no row. A format 1 record (converted from markdown) gives the run's
 devices, not which test reached which, and its tests the classes they reached, if it recorded them. A manual row's
-devices are model ids, each with its class. A level comes from the scope alone (verify, then trust): a record never
-ages.
+devices are model ids, each with its class; with `group`, a native group's members, which show as "group, by hand".
+A level comes from the scope alone (verify, then trust): a record never ages.
 
 **Cards.** One collapsed section between the README's devices markers, the legend first and a link to the integrations
 page last, with a card per integration: its name, linked to its page (the bundle's index.md), and maintainers
 (`IntegrationInfo.maintainers`; "⚠️ Unmaintained · formerly maintained by" when every adapter is), then the features
 of the adapters with each `caveat` (⚠️ Unmaintained, then ⚠️ Untested fix, linking its reason), then a bullet per tier:
-- Works: the models the evidence tested (rig-tested ones end ✔), and native groups. A pass on a flagged item never
-  puts a model here: an adapter flagged whole, or on any field, adds no models. One flagged on a domain or class adds,
+- Works: the models the evidence tested (rig-tested ones end ✔), and native groups (✔ only when a rig test reached
+  one). A pass on a flagged item never puts a model here: an adapter flagged whole, or on any field, adds no models.
+  One flagged on a domain or class adds,
   from a format 2 record, each model a passing test reached on an unflagged domain and, with a class flagged, an
   unflagged class (a null one is none), and native groups when every member's class is unflagged; from a format 1
   record, which doesn't say which test reached which model, the run's models only when every passing test targets an
@@ -435,8 +436,10 @@ class Evidence:
     @classmethod
     def of(cls, adapter, clean: Clean | None = None, by_hand: Callable[[str | None], bool] | None = None) -> Evidence:
         """The adapter's evidence: with `clean`, only the record tests it accepts; with `by_hand`, only the manual
-        devices whose class it accepts. Where the integration names classes (`names_classes`), a device with a
-        null class credits nothing, flagged or not (docs/evidence.md, The coverage check), so it is left out."""
+        devices whose class it accepts (a group row, only when it accepts every member's). Where the integration names
+        classes (`names_classes`), a device with a null class credits nothing, flagged or not (docs/evidence.md, The
+        coverage check), so it is left out, as is a group with such a member. A manual
+        group row is one group, tested by hand."""
         names = names_classes(adapter)
         records = passing(adapter.integration, adapter.action)
         found = [
@@ -444,12 +447,19 @@ class Evidence:
             for path in records
             for item in tested(read_record(path), clean, names)
         ]
-        found += [
-            (MANUAL, Tested(model, None, cls, rig=False))
-            for row in manual_rows(adapter.integration, adapter.action)
-            for model, cls in row
-            if not (names and cls is None) and (by_hand is None or by_hand(cls))
-        ]
+        for group, row in manual_rows(adapter.integration, adapter.action):
+            if group:
+                # Judged as a rig group test is: a member the integration can't credit, or `by_hand` refuses, drops it.
+                if not (names and any(cls is None for _, cls in row)) and (
+                    by_hand is None or all(by_hand(cls) for _, cls in row)
+                ):
+                    found.append((MANUAL, Tested(None, rig=False)))
+                continue
+            found += [
+                (MANUAL, Tested(model, None, cls, rig=False))
+                for model, cls in row
+                if not (names and cls is None) and (by_hand is None or by_hand(cls))
+            ]
         return cls(records, found)
 
     def devices(self) -> list[Tested]:
@@ -582,7 +592,7 @@ def table_row(cells: list[str]) -> str:
 def described(item: Tested) -> str:
     """A tested item as the evidence block lists it: "`S3SW-001X8EU` (`Switch`), firmware `1.0`"."""
     if item.group:
-        return "group"
+        return "group" if item.rig else "group, by hand"
     name = f"`{item.model}`" + (f" (`{item.cls}`)" if item.cls else "")
     if not item.rig:
         return f"{name}, by hand"
@@ -820,14 +830,14 @@ def class_entries(key: str, held: dict[str, set[str]], data: Data) -> list[str]:
 
 def works(card: Card, key: str, integration_adapters: list, data: Data) -> list[str]:
     """The models the adapters' evidence tested (`card_evidence`), by device type, then first seen, then native
-    groups. A rig-tested model and the native groups end ✔."""
+    groups. A rig-tested model and native groups a rig test reached end ✔; a hand-tested group has none."""
     rig: set[str] = set()
     names: list[str] = []
-    groups = False
+    groups: list[bool] = []
     for adapter in integration_adapters:
         for item in card_evidence(adapter).devices():
             if item.group:
-                groups = True
+                groups.append(item.rig)
                 continue
             name = data.models[item.model]["name"]
             if item.rig:
@@ -840,7 +850,8 @@ def works(card: Card, key: str, integration_adapters: list, data: Data) -> list[
         for name in sorted(names, key=lambda name: TYPES.index(by_name[name]["type"]))
     ]
     if groups:
-        lines.append(f"{anchor(GROUPS_ENTRY[0], data.url(key, GROUPS_ENTRY[1]))} {VERIFIED}")
+        entry = anchor(GROUPS_ENTRY[0], data.url(key, GROUPS_ENTRY[1]))
+        lines.append(f"{entry} {VERIFIED}" if any(groups) else entry)
     return lines
 
 
