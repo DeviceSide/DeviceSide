@@ -128,8 +128,6 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
     gaps.
   - [ ] Zigbee2MQTT, run B: `turn_on_for` and `get_attributes` (the bulb, and part 3's plugs, one per maker string),
     and `config_entry`, which any package change reopens. No Zigbee2MQTT change between runs A and B.
-  - [ ] Control4: skialpine's `_manual.json` row, asked for once the runs' fixes have landed, so no fix sends
-    the contributor back to a first submission; it cites a `main` commit holding the release's Control4 package.
 - [x] **Partial reruns** (`docs/evidence.md`, tenet 9): `check_release.py --signoffs` judges each record by its own
   package tree, which stands while only other adapters' modules changed since; a `no_call_changed` row may name the
   `actions` whose records it carries across its commit's change; `--reruns` lists the suites to rerun. Open, in
