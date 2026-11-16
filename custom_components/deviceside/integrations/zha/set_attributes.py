@@ -150,7 +150,7 @@ class ZHASetAttributes(Adapter[SetAttributesRequest]):
         fields=verified(
             "brightness", "color_temp_kelvin", "hs_color", "rgb_color", "xy_color", "min_brightness", "max_brightness"
         ),
-        capabilities=classes.READ_WRITE,
+        **classes.class_scope(action),
         max_concurrency=2,
     )
 

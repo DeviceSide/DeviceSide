@@ -1,5 +1,6 @@
-"""ZHA's device classes: the rules on zigpy's raw Zigbee strings and the On/Off cluster's quirk, and capability's
-answers."""
+"""ZHA's device classes: capability's answers from zigpy's raw Zigbee strings and the On/Off cluster's quirk, and the
+string the report form gets. Each family's rules are tested in families/<family>/, their composition in
+test_families.py, and the class of each listed device in test_classification.py."""
 
 import pytest
 from homeassistant.helpers import device_registry as dr
@@ -7,65 +8,17 @@ from homeassistant.helpers import device_registry as dr
 from custom_components.deviceside.core.resolver import resolve
 from custom_components.deviceside.core.runtime import get_runtime
 from custom_components.deviceside.integrations.zha import INTEGRATION, classes, zcl
+from custom_components.deviceside.integrations.zha.families import tuya
 
 from ...fixtures.zha import StandardOnOff, add_zha_entity, quirk_on_off, zha_entry
 
 MCU_QUIRK = "zhaquirks.tuya.mcu"
 
 
-@pytest.mark.parametrize(
-    ("manufacturer", "model", "quirk", "expected"),
-    [
-        # The lab's strings (research/2026-11-14-lab-probe.md, §1); the TS011F's quirk keeps zigpy's command.
-        ("Signify Netherlands B.V.", "LTA009", "zigpy.zcl", classes.HUE),
-        ("_TZ3000_typdpbpg", "TS011F", "zigpy.zcl", classes.TUYA_COUNTDOWN),
-        # The string reported harmed on the recipe's frame, banned on that model only (plan Decision 35).
-        ("_TZ3000_gjnozsaz", "TS011F", "zigpy.zcl", classes.TUYA_COUNTDOWN_HARMED),
-        ("_TZ3000_gjnozsaz", "TS0001", None, classes.TUYA_COUNTDOWN),
-        # Reported on other calls, so not banned.
-        ("_TZ3000_dg7fdg92", "TS011F", None, classes.TUYA_COUNTDOWN),
-        ("_TZ3000_okaz9tjs", "TS011F", None, classes.TUYA_COUNTDOWN),
-        ("sengled", "E11-G13", "zigpy.zcl", classes.SENGLED),
-        # Older Hue bulbs' string.
-        ("Philips", "LCT001", None, classes.HUE),
-        # The countdown models go before Tuya's other ZCL strings, which hold its bulbs and white labels.
-        ("_TZ3000_abcdefgh", "TS0001", None, classes.TUYA_COUNTDOWN),
-        ("Lidl", "TS0004", None, classes.TUYA_COUNTDOWN),
-        ("_TZ3000_abcdefgh", "TS0011", None, classes.TUYA_COUNTDOWN),
-        ("_TZ3000_abcdefgh", "TS0726", None, classes.TUYA_COUNTDOWN),
-        ("_TZ3210_abcdefgh", "TS0505B", None, classes.TUYA_ZCL),
-        ("_TZ3000_abcdefgh", "TS0121", None, classes.TUYA_ZCL),
-        ("_TYZB01_abcdefgh", "Plug", None, classes.TUYA_ZCL),
-        ("Lidl", "TS0505B", None, classes.TUYA_ZCL),
-        # The datapoint rules go first: a TS0601's model would match tuya_zcl's, and a `_TZ3210_…` datapoint device's
-        # manufacturer too, which only its quirk shows.
-        ("_TZE200_abcdefgh", "TS0601", None, classes.TUYA_MCU),
-        ("_TZE204_abcdefgh", "Something", None, classes.TUYA_MCU),
-        ("_TZ3000_uim07oem", "TS0601", MCU_QUIRK, classes.TUYA_MCU),
-        ("_TZ3210_0jxeoadc", "TS0049", MCU_QUIRK, classes.TUYA_MCU),
-        ("_TZ3000_abcdefgh", "TS0001", "zhaquirks.tuya", classes.TUYA_MCU),
-        # A quirk elsewhere that defines its own command isn't Tuya's routing.
-        ("_TZ3000_abcdefgh", "TS0001", "zhaquirks.tuyaish", classes.TUYA_COUNTDOWN),
-        ("SONOFF", "SWV", "zigpy.zcl", classes.SONOFF_SWV),
-        # Every Tuya rule goes before Sengled's, so a Tuya device under Sengled's name keeps its Tuya class.
-        ("Sengled", "TS0601", None, classes.TUYA_MCU),
-        ("SENGLED", "E1F-N5E", None, classes.SENGLED),
-        # Another vendor's devices, or a Tuya string no rule reads: the default class.
-        ("IKEA of Sweden", "TRADFRI bulb E27 WS opal 980lm", "zigpy.zcl", classes.OTHER),
-        ("SONOFF", "ZBMINIR2", "zigpy.zcl", classes.OTHER),
-        ("_TYST11_abcdefgh", "abcdefgh", None, classes.OTHER),
-        # What the interview didn't read places nothing.
-        (None, "TS011F", None, None),
-        ("_TZ3000_typdpbpg", None, None, None),
-        ("Signify Netherlands B.V.", "", None, None),
-    ],
-)
-def test_device_class(manufacturer, model, quirk, expected):
-    assert classes.device_class(manufacturer, model, quirk) == expected
-
-
-def test_every_rule_names_a_class_but_the_default():
-    assert {cls for cls, _field, _pattern in classes.RULES} == classes.CLASSES - {classes.OTHER}
+@pytest.mark.parametrize(("manufacturer", "model"), [(None, "TS011F"), ("_TZ3000_typdpbpg", None), ("sengled", "")])
+def test_a_device_whose_interview_did_not_read_a_string_has_no_class(manufacturer, model):
+    """No rule can place it, whatever the other string says: None, never the default class."""
+    assert classes.device_class(manufacturer, model, "zigpy.zcl") is None
 
 
 async def test_capability_reads_zigpys_strings_not_the_registry(hass, setup_production):
@@ -83,7 +36,7 @@ async def test_capability_reads_zigpys_strings_not_the_registry(hass, setup_prod
     dr.async_get(hass).async_update_device(target.device.id, manufacturer="Friendly", model="Smart plug")
     target = resolve(hass, registry, "switch.plug")
 
-    assert INTEGRATION.capability(hass, target) == classes.TUYA_COUNTDOWN
+    assert INTEGRATION.capability(hass, target) == tuya.TUYA_COUNTDOWN
 
 
 async def test_capability_reads_the_quirk_on_the_targets_endpoint(hass, setup_production):
@@ -98,7 +51,7 @@ async def test_capability_reads_the_quirk_on_the_targets_endpoint(hass, setup_pr
     )
     target = resolve(hass, get_runtime(hass).registry, "switch.valve")
 
-    assert INTEGRATION.capability(hass, target) == classes.TUYA_MCU
+    assert INTEGRATION.capability(hass, target) == tuya.TUYA_MCU
 
 
 async def test_a_device_the_gateway_doesnt_hold_has_no_class(hass, setup_production, monkeypatch):
@@ -112,9 +65,9 @@ async def test_a_device_the_gateway_doesnt_hold_has_no_class(hass, setup_product
     ("on_off", "expected"),
     [
         # A Tuya ZCL quirk's cluster that defines no command of its own inherits zigpy's.
-        (type("TuyaZBOnOff", (StandardOnOff,), {"__module__": "zhaquirks.tuya"}), classes.TUYA_COUNTDOWN),
+        (type("TuyaZBOnOff", (StandardOnOff,), {"__module__": "zhaquirks.tuya"}), tuya.TUYA_COUNTDOWN),
         # A cluster elsewhere that inherits a Tuya datapoint quirk's command routes as it does.
-        (type("Custom", (quirk_on_off("zhaquirks.tuya.mcu"),), {"__module__": "custom_quirks"}), classes.TUYA_MCU),
+        (type("Custom", (quirk_on_off("zhaquirks.tuya.mcu"),), {"__module__": "custom_quirks"}), tuya.TUYA_MCU),
     ],
 )
 async def test_the_quirk_is_the_module_that_defines_command(hass, setup_production, on_off, expected):

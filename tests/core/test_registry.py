@@ -11,10 +11,13 @@ import pytest
 from custom_components.deviceside import actions
 from custom_components.deviceside.core.registry import AdapterRegistry
 from custom_components.deviceside.core.scope import (
-    DoesntWork,
+    Family,
+    FamilyScope,
     IntegrationInfo,
     Level,
-    NotSupported,
+    NoKnownMethod,
+    NotBuilt,
+    OwnCall,
     experimental,
     verified,
 )
@@ -80,8 +83,8 @@ def test_adapter_for_unknown_action_is_refused():
 
 
 CLASSED = replace(INTEGRATION, capability=lambda hass, target: "hue", classes=frozenset({"hue", "tuya", "other"}))
-BROKEN = DoesntWork("Tuya plug", "It never switches on", "https://example.com/source", harms=False)
-UNBUILT = NotSupported("It would stay on", "https://example.com/source", harms=True)
+NO_METHOD = NoKnownMethod("Tuya plug", "It never switches on", "https://example.com/source", harms=False)
+NOT_BUILT = NotBuilt("It would stay on", "https://example.com/source", harms=True)
 
 
 class Classed(FakeTurnOnFor):
@@ -98,8 +101,8 @@ def test_an_integration_naming_classes_needs_them_in_every_scope():
     "scope",
     [
         pytest.param(replace(FakeTurnOnFor.scope, capabilities=verified("hue")), id="capabilities"),
-        pytest.param(replace(FakeTurnOnFor.scope, doesnt_work={"tuya": BROKEN}), id="doesnt_work"),
-        pytest.param(replace(FakeTurnOnFor.scope, not_supported={"tuya": UNBUILT}), id="not_supported"),
+        pytest.param(replace(FakeTurnOnFor.scope, no_known_method={"tuya": NO_METHOD}), id="no_known_method"),
+        pytest.param(replace(FakeTurnOnFor.scope, not_built={"tuya": NOT_BUILT}), id="not_built"),
     ],
 )
 def test_an_integration_naming_no_classes_needs_them_in_no_scope(scope):
@@ -111,7 +114,9 @@ def test_an_integration_naming_no_classes_needs_them_in_no_scope(scope):
         _registry([Stray])
 
 
-@pytest.mark.parametrize("entries", [{"doesnt_work": {"tuya_zcl": BROKEN}}, {"not_supported": {"tuya_zcl": UNBUILT}}])
+@pytest.mark.parametrize(
+    "entries", [{"no_known_method": {"tuya_zcl": NO_METHOD}}, {"not_built": {"tuya_zcl": NOT_BUILT}}]
+)
 def test_a_scope_holds_only_classes_its_integration_declares(entries):
     class Typo(FakeTurnOnFor):
         scope = replace(Classed.scope, **entries)
@@ -176,6 +181,96 @@ def test_an_integration_must_name_its_maintainers_by_handle(maintainers, error):
 def test_several_maintainers_are_accepted():
     registry = _registry(info=replace(INTEGRATION, maintainers=("jasonmx", "a-b", "a" * 39)))
     assert registry.integrations["fake"].maintainers == ("jasonmx", "a-b", "a" * 39)
+
+
+# Two families holding every class of CLASSED but its default one, `other`.
+HUE_FAMILY = Family(
+    key="hue", classes=frozenset({"hue"}), scopes={"turn_on_for": FamilyScope(capabilities=verified("hue"))}
+)
+TUYA_FAMILY = Family(
+    key="tuya",
+    maintainers=("a-b",),
+    classes=frozenset({"tuya"}),
+    scopes={"turn_on_for": FamilyScope(capabilities=experimental("tuya"))},
+)
+WITH_FAMILIES = replace(CLASSED, default_class="other", families=(HUE_FAMILY, TUYA_FAMILY))
+
+
+def test_a_family_scope_for_an_unknown_action_is_refused():
+    typo = replace(HUE_FAMILY, scopes={"turn_on_fro": FamilyScope()})
+    with pytest.raises(ValueError, match="family 'hue' holds scopes for unknown actions"):
+        _registry([Classed], replace(WITH_FAMILIES, families=(typo, TUYA_FAMILY)))
+
+
+def test_a_family_scope_for_an_action_the_integration_has_no_adapter_for_is_refused():
+    """A real action, so no typo: the family's levels for it would be read by nothing, with nothing saying so."""
+    unread = replace(HUE_FAMILY, scopes={**HUE_FAMILY.scopes, "stop": FamilyScope(capabilities=verified("hue"))})
+    with pytest.raises(ValueError, match=r"family 'hue' holds scopes for actions fake has no adapter for: \['stop'\]"):
+        _registry([Classed], replace(WITH_FAMILIES, families=(unread, TUYA_FAMILY)))
+
+
+def test_families_that_split_the_classes_between_them_are_accepted():
+    registry = _registry([Classed], WITH_FAMILIES)
+    assert [family.key for family in registry.integrations["fake"].families] == ["hue", "tuya"]
+    # No maintainers is fine: the integration's own every family of it.
+    assert HUE_FAMILY.maintainers == ()
+
+
+@pytest.mark.parametrize(
+    ("families", "error"),
+    [
+        pytest.param(
+            (replace(HUE_FAMILY, key="Hue"), TUYA_FAMILY), "'Hue' is not shaped like a package name", id="key"
+        ),
+        pytest.param(
+            (replace(HUE_FAMILY, key="hue-2"), TUYA_FAMILY), "not shaped like a package name", id="key_hyphen"
+        ),
+        pytest.param((HUE_FAMILY, replace(TUYA_FAMILY, key="hue")), "family 'hue' is declared twice", id="key_twice"),
+        pytest.param(
+            (replace(HUE_FAMILY, maintainers=("@a-b",)), TUYA_FAMILY), "family 'hue': .*not GitHub handles", id="handle"
+        ),
+        pytest.param(
+            (replace(HUE_FAMILY, maintainers=("a-b", "a-b")), TUYA_FAMILY), "family 'hue': .*twice", id="handle_twice"
+        ),
+        pytest.param(
+            (replace(HUE_FAMILY, maintainers=["a-b"]), TUYA_FAMILY),
+            "family 'hue': maintainers must be a tuple",
+            id="list",
+        ),
+        pytest.param(
+            (HUE_FAMILY, replace(TUYA_FAMILY, classes=frozenset({"tuya", "hue"}))),
+            r"family 'tuya' holds classes family 'hue' holds: \['hue'\]",
+            id="class_in_two",
+        ),
+        pytest.param((HUE_FAMILY,), r"classes \['tuya'\] are in no family", id="class_in_none"),
+        pytest.param(
+            (HUE_FAMILY, replace(TUYA_FAMILY, classes=frozenset({"tuya", "other"}))),
+            "family 'tuya' holds the default class 'other'",
+            id="default_class",
+        ),
+        pytest.param(
+            (HUE_FAMILY, replace(TUYA_FAMILY, classes=frozenset({"tuya", "tuya_zcl"}))),
+            r"family 'tuya' holds classes fake doesn't declare \(IntegrationInfo.classes\): \['tuya_zcl'\]",
+            id="undeclared_class",
+        ),
+        *(
+            pytest.param(
+                (replace(HUE_FAMILY, scopes={"stop": FamilyScope(**{part: {"tuya": entry}})}), TUYA_FAMILY),
+                r"family 'hue': its scopes name classes that aren't its own: \['tuya'\]",
+                id=f"foreign_{part}",
+            )
+            for part, entry in (("capabilities", Level.EXPERIMENTAL), ("own_calls", OwnCall(None)))
+        ),
+    ],
+)
+def test_families_are_checked(families, error):
+    with pytest.raises(ValueError, match=error):
+        _registry([Classed], replace(WITH_FAMILIES, families=families))
+
+
+def test_an_integration_without_families_is_checked_for_none():
+    """Families are opt-in: the classes of an integration that has none need no family."""
+    _registry([Classed], replace(WITH_FAMILIES, families=()))
 
 
 def test_production_discovery_imports_cleanly():

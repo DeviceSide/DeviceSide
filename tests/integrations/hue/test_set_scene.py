@@ -4,7 +4,7 @@ import pytest
 from homeassistant.exceptions import HomeAssistantError
 
 from custom_components.deviceside.core.errors import TargetNotSupported
-from custom_components.deviceside.integrations.hue.classes import SET_SCENE_DOESNT_WORK
+from custom_components.deviceside.integrations.hue.classes import SET_SCENE_NO_KNOWN_METHOD
 from custom_components.deviceside.integrations.hue.transition_cache import transition_cache
 
 from .conftest import call
@@ -96,8 +96,8 @@ async def test_actions_with_nothing_to_write_are_skipped(hass, bridge, action):
     assert bridge.puts == []
 
 
-async def test_smart_scene_doesnt_work(hass, bridge):
-    # Its class, smart_scene, is set_scene's doesn't-work entry: a named target raises with why, sending nothing.
+async def test_smart_scene_has_no_known_method(hass, bridge):
+    # Its class, smart_scene, is set_scene's no known method entry: a named target raises with why, sending nothing.
     bridge.light("light-1")
     bridge.scene("scene-1", [], smart=True)
     entry = await hue_entry(hass, bridge)
@@ -106,8 +106,8 @@ async def test_smart_scene_doesnt_work(hass, bridge):
     with pytest.raises(TargetNotSupported) as raised:
         await call(hass, "set_scene", {"entity_id": "scene.relax"})
 
-    assert raised.value.reason == "doesnt_work"
-    assert raised.value.translation_placeholders["why"] == SET_SCENE_DOESNT_WORK["smart_scene"].reason
+    assert raised.value.reason == "no_known_method"
+    assert raised.value.translation_placeholders["why"] == SET_SCENE_NO_KNOWN_METHOD["smart_scene"].reason
     assert bridge.puts == []
 
 

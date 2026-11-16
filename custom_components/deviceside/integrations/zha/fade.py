@@ -7,7 +7,7 @@ visibly jumps (docs/integrations/zha/internals.md, Tested behavior)."""
 
 import asyncio
 import logging
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from statistics import mean
 from typing import Any, ClassVar
@@ -17,7 +17,7 @@ from homeassistant.core import Context, HomeAssistant
 from homeassistant.exceptions import Unauthorized
 from homeassistant.util.color import color_hs_to_xy
 
-from . import zcl
+from . import classes, zcl
 from .addressing import address, group_id, unsupported_reason, via_zha_group
 from .groups import covers, light_members
 from ...actions.ramp import HUE, RampRequest
@@ -27,7 +27,7 @@ from ...core.errors import describe
 from ...core.ha_watch import ALL, Call, Entries
 from ...core.models import EntityResult, Status, Target
 from ...core.runtime import Job, get_runtime
-from ...core.scope import AdapterScope, Level, verified
+from ...core.scope import AdapterScope, verified
 from ...core.transition import (
     BRIGHTNESS,
     SATURATION,
@@ -214,9 +214,10 @@ class HueMove:
     clamped_to: float | None  # the sweep_time used, where it had to be clamped
 
 
-def ramp_scope(attribute: str, capabilities: Mapping[str, Level]) -> AdapterScope:
+def ramp_scope(action: str, attribute: str) -> AdapterScope:
+    """A ramp's scope: its classes as classes.class_scope holds them for the action."""
     return AdapterScope(
-        domains=verified("light"), fields=verified(attribute), capabilities=capabilities, max_concurrency=2
+        domains=verified("light"), fields=verified(attribute), **classes.class_scope(action), max_concurrency=2
     )
 
 
@@ -231,11 +232,11 @@ class ZHARamp(Adapter[RampRequest]):
 
     Raising brightness is MoveToLevelWithOnOff, which turns the light on; a light that is off is first set to level 1,
     so it fades in from the bottom rather than its stored level: a Hue bulb turned on there by Hue's own command
-    (zcl.hue_turn_on), any other light set there with ExecuteIfOff. Lowering to a limit is MoveToLevel,
-    which a light that is off ignores. Lowering to 0 is MoveToLevelWithOnOff to 0, which leaves the bulb at level 1;
-    once it reads off, its start level goes back with ExecuteIfOff, so it stays off and comes back at its old level, as
-    on Hue. Models that drop a level while off (zcl.DROPS_WHILE_OFF) get neither: they start a raise at their stored
-    level, and come back on dim.
+    (zcl.hue_turn_on), any other light set there with ExecuteIfOff. Lowering to a limit is
+    MoveToLevel, which a light that is off ignores. Lowering to 0 is MoveToLevelWithOnOff to 0, which leaves the bulb
+    at level 1; once it reads off, its start level goes back with ExecuteIfOff, so it stays off and comes back at its
+    old level, as on Hue. Models that drop a level while off (zcl.DROPS_WHILE_OFF) get neither: they
+    start a raise at their stored level, and come back on dim.
 
     Saturation is MoveToSaturation on lit lights in color whose ColorCapabilities report hue and saturation: the bulb
     keeps its own hue, so a group's members share one groupcast. A light without them, or in color temperature, gets

@@ -1,35 +1,87 @@
 import importlib
 import logging
 import re
-from collections.abc import Iterable, Iterator
+from collections.abc import Collection, Iterable, Iterator
 from types import ModuleType
 
 from .action import Action
 from .adapter import Adapter
 from .ha_watch import CallResolver
-from .scope import IntegrationInfo, Level
+from .scope import Family, IntegrationInfo, Level
 from .. import actions as actions_pkg
 from .. import integrations as integrations_pkg
 
 _LOGGER = logging.getLogger(__name__)
 # A GitHub handle: alphanumerics and single inner hyphens, at most 39 characters, no leading @.
 HANDLE = re.compile(r"[A-Za-z0-9](?:-?[A-Za-z0-9]){0,38}")
+# A family's key names its package (integrations/<x>/families/<key>/), so it is shaped like one.
+FAMILY_KEY = re.compile(r"[a-z][a-z0-9_]*")
 
 
 def check_maintainers(info: IntegrationInfo) -> None:
     """An integration names one or more maintainers, each a GitHub handle, each once."""
-    maintainers = info.maintainers
-    if not isinstance(maintainers, tuple) or not maintainers:
+    if not isinstance(info.maintainers, tuple) or not info.maintainers:
         raise ValueError(f"{info.key}: maintainers must be a non-empty tuple of GitHub handles")
+    _check_handles(info.key, info.maintainers)
+
+
+def _check_handles(owner: str, maintainers: tuple[str, ...]) -> None:
     if bad := [handle for handle in maintainers if not isinstance(handle, str) or not HANDLE.fullmatch(handle)]:
-        raise ValueError(f"{info.key}: maintainers {bad!r} are not GitHub handles (no leading @)")
+        raise ValueError(f"{owner}: maintainers {bad!r} are not GitHub handles (no leading @)")
     if len(set(maintainers)) != len(maintainers):
-        raise ValueError(f"{info.key}: maintainers lists a handle twice")
+        raise ValueError(f"{owner}: maintainers lists a handle twice")
+
+
+def check_families(info: IntegrationInfo) -> None:
+    """An integration's families split its classes between them: each key once and shaped like a package name, each
+    maintainer a GitHub handle (none is fine: the integration's own them too), and every class the integration
+    declares in exactly one family, but the default class, which stays the integration's. A family's scopes name only
+    its own classes, so no family sets another's level or own call. No family holds a refusal entry: those are the
+    integration's, in its `refusals.py` (core/scope.py, FamilyScope)."""
+    owners: dict[str, str] = {}
+    for family in info.families:
+        name = f"{info.key}: family {family.key!r}"
+        if not isinstance(family.key, str) or not FAMILY_KEY.fullmatch(family.key):
+            raise ValueError(f"{name} is not shaped like a package name")
+        if sum(other.key == family.key for other in info.families) > 1:
+            raise ValueError(f"{name} is declared twice")
+        if not isinstance(family.maintainers, tuple):
+            raise ValueError(f"{name}: maintainers must be a tuple of GitHub handles")
+        _check_handles(name, family.maintainers)
+        if both := sorted(family.classes & owners.keys()):
+            raise ValueError(f"{name} holds classes family {owners[both[0]]!r} holds: {both}")
+        owners |= dict.fromkeys(family.classes, family.key)
+        if unknown := sorted(family.classes - info.classes):
+            raise ValueError(f"{name} holds classes {info.key} doesn't declare (IntegrationInfo.classes): {unknown}")
+        if info.default_class in family.classes:
+            raise ValueError(f"{name} holds the default class {info.default_class!r}, which is the integration's")
+        if foreign := sorted(_scoped(family) - family.classes):
+            raise ValueError(f"{name}: its scopes name classes that aren't its own: {foreign}")
+    if unowned := sorted(info.classes - owners.keys() - {info.default_class}):
+        raise ValueError(f"{info.key}: classes {unowned} are in no family")
+
+
+def _scoped(family: Family) -> set[str]:
+    """Every class a family's scopes name, across its actions."""
+    return {name for scope in family.scopes.values() for part in (scope.capabilities, scope.own_calls) for name in part}
+
+
+def check_family_actions(info: IntegrationInfo, actions: Collection[str], served: Collection[str]) -> None:
+    """Each family's scopes are for actions the integration has an adapter for (`served`), among the known `actions`.
+    A typo would leave the family's classes out of that adapter's scope, refused with nothing saying why; a scope for
+    an action with no adapter would be read by nothing, as silently."""
+    for family in info.families:
+        if unknown := sorted(family.scopes.keys() - set(actions)):
+            raise ValueError(f"{info.key}: family {family.key!r} holds scopes for unknown actions {unknown}")
+        if unserved := sorted(family.scopes.keys() - set(served)):
+            raise ValueError(
+                f"{info.key}: family {family.key!r} holds scopes for actions {info.key} has no adapter for: {unserved}"
+            )
 
 
 def check_integration(info: IntegrationInfo) -> None:
-    """An integration's own fields: its maintainers, its classes with the classifier that names them, and no
-    `unsupported`, which only an integration listed in its sibling's UNSUPPORTED may have."""
+    """An integration's own fields: its maintainers, its classes with the classifier that names them, its families
+    when it has any, and no `unsupported`, which only an integration listed in its sibling's UNSUPPORTED may have."""
     check_maintainers(info)
     if info.unsupported is not None:
         raise ValueError(f"{info.key}: an integration with adapters can't be unsupported; list it in UNSUPPORTED")
@@ -37,6 +89,8 @@ def check_integration(info: IntegrationInfo) -> None:
         raise ValueError(f"{info.key}: IntegrationInfo.capability and classes come together")
     if info.default_class is not None and info.default_class not in info.classes:
         raise ValueError(f"{info.key}: default_class {info.default_class!r} is none of its classes")
+    if info.families:
+        check_families(info)
 
 
 def check_classes(cls: type[Adapter], info: IntegrationInfo) -> None:
@@ -47,12 +101,12 @@ def check_classes(cls: type[Adapter], info: IntegrationInfo) -> None:
     which holds every device not yet placed, is never Verified: one maker's record proves nothing about the rest."""
     held = cls.scope.capabilities
     if info.capability is None:
-        if held is not None or cls.scope.doesnt_work or cls.scope.not_supported:
+        if held is not None or cls.scope.no_known_method or cls.scope.not_built:
             raise ValueError(f"{cls.__name__} holds classes, but {info.key} names none (IntegrationInfo.capability)")
         return
     if held is None:
         raise ValueError(f"{cls.__name__}: {info.key} names classes, but its scope holds none (capabilities)")
-    if unknown := sorted((held.keys() | cls.scope.doesnt_work.keys() | cls.scope.not_supported.keys()) - info.classes):
+    if unknown := sorted((held.keys() | cls.scope.no_known_method.keys() | cls.scope.not_built.keys()) - info.classes):
         raise ValueError(
             f"{cls.__name__} holds classes {info.key} doesn't declare (IntegrationInfo.classes): {unknown}"
         )
@@ -107,6 +161,7 @@ class AdapterRegistry:
         info: IntegrationInfo = module.INTEGRATION
         check_integration(info)
         self.integrations[info.key] = info
+        check_family_actions(info, self.actions.keys(), {cls.action for cls in module.ADAPTERS})
         for cls in module.ADAPTERS:
             if cls.integration != info.key:
                 raise ValueError(f"{cls.__name__} declares integration {cls.integration}, module is {info.key}")

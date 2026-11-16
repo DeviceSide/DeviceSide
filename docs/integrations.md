@@ -12,7 +12,7 @@ measured on real bulbs, is in [internals.md](internals.md) and each integration'
 
 - **Refused targets.** A target that can't take an action fails the call if you named it, and is skipped if it
   came through an area, device, label or group ([action-behavior.md](action-behavior.md)). The error names the
-  reason, such as `not_supported`.
+  reason, such as `not_built`.
 - **Groups.** For timers and smooth moves, Zigbee2MQTT and ZHA groups, Hue rooms and zones, and
   Control4 light groups get one command, so their lights move together. `set_attributes` writes a ZHA group's or
   Hue room's lights one by one.

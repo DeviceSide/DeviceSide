@@ -1,25 +1,26 @@
 """Zigbee2MQTT set check: a set Z2M logs as failed makes its target rejected; the check never delays a publish."""
 
 import asyncio
-import json
+from dataclasses import replace
 from types import SimpleNamespace
 
 import pytest
 from homeassistant.core import ServiceCall
-from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
 
-from custom_components.deviceside.core.runtime import DATA
-from custom_components.deviceside.integrations.zigbee2mqtt import bridge_cache, set_check, turn_on_for
+from custom_components.deviceside.core.models import Status
+from custom_components.deviceside.core.scope import OwnCall
+from custom_components.deviceside.integrations.zigbee2mqtt import ADAPTERS, set_check, turn_on_for
+from custom_components.deviceside.integrations.zigbee2mqtt.adapter import Z2MAdapter
+from custom_components.deviceside.integrations.zigbee2mqtt.bridge import publish_set
+from custom_components.deviceside.integrations.zigbee2mqtt.stop import Z2MStop
 
-from .conftest import SENT, SET, call, commands, group, light
-from .test_native_control import target
+from .conftest import SENT, SET, answer, call, commands, failure, group, light, log, target
 from .test_set_attributes import DIMMABLE, bulb
 from ...fixtures.zigbee2mqtt import IEEE
 
 pytestmark = pytest.mark.usefixtures("setup_production", "clock")
 
-LOGGING = "zigbee2mqtt/bridge/logging"
 GROUP_SET = "zigbee2mqtt/7/set"
 # The house run's line (notes: rig-run-2026-11-11-155622), household names replaced: a groupcast the coordinator
 # refused with BUSY, which herdsman's Ember adapter doesn't retry.
@@ -33,46 +34,6 @@ LAMP_UNDELIVERED = (
     f"Publish 'set' 'brightness' to 'lamp' failed: 'Error: ZCL command {IEEE}/11 genLevelCtrl.moveToLevelWithOnOff("
     "{\"level\":51,\"transtime\":20}) failed (Delivery failed for '12345')'"
 )
-
-
-@pytest.fixture
-def live(hass, setup_production, broker, monkeypatch):
-    """The bridge cache with its response topics and bridge/logging live, as once MQTT is up."""
-    cache = bridge_cache.BridgeCache()
-    cache.replies_live = True
-    hass.data[DATA].integration_state[bridge_cache._KEY] = cache
-    broker.subscribers.setdefault(LOGGING, []).append(cache._on_log)
-    for kind in bridge_cache.KINDS:
-        reply_topic = f"zigbee2mqtt/bridge/response/{kind}/options"
-        broker.subscribers.setdefault(reply_topic, []).append(bridge_cache.reply_router(cache.pending))
-    monkeypatch.setattr(set_check, "BOUND_S", 0.05)
-    return cache
-
-
-def log(broker, message: str, level: str = "error") -> None:
-    broker.deliver(LOGGING, json.dumps({"level": level, "message": message}))
-
-
-def answer(broker, on: str, *, line: str | None = None, state: str | None = None) -> None:
-    """Have Z2M answer each set published to `on`: a log line, and or a state publish under the friendly name."""
-
-    def on_set(topic: str, payload: dict) -> None:
-        if topic != on:
-            return
-        loop = asyncio.get_running_loop()
-        if line is not None:
-            loop.call_soon(log, broker, line)
-        if state is not None:
-            loop.call_soon(broker.deliver, f"zigbee2mqtt/{state}", json.dumps({"state": "ON"}))
-
-    broker.on_set = on_set
-
-
-async def failure(hass, service: str, data: dict) -> str:
-    with pytest.raises(HomeAssistantError) as raised:
-        await call(hass, service, data)
-    assert raised.value.translation_key == "targets_failed"
-    return raised.value.translation_placeholders["summary"]
 
 
 async def timed(coro) -> tuple[object, float]:
@@ -102,6 +63,27 @@ async def test_a_unicast_z2m_couldnt_deliver_fails_the_light(hass, broker, caplo
 
     assert await failure(hass, "lower_brightness", {"entity_id": entity_id, "limit": 20}) == "light.lamp: send_failed"
     assert "Zigbee2MQTT logged genLevelCtrl.moveToLevelWithOnOff failed (Delivery failed)" in caplog.text
+
+
+async def _own_set(adapter, hass, request, target):
+    await publish_set(hass, target, {"state": "ON"})
+    return adapter.result(target, Status.SENT)
+
+
+@pytest.mark.usefixtures("live")
+async def test_a_class_s_own_call_is_checked_on_any_adapter(hass, broker, monkeypatch):
+    """Not on turn_on_for alone, the one adapter with an own call today: core's default would answer `sent` for a set
+    Zigbee2MQTT logged as failed (adapter.py)."""
+    entity_id = light(hass, broker)
+    monkeypatch.setattr(Z2MStop, "scope", replace(Z2MStop.scope, own_calls={"hue": OwnCall(_own_set)}))
+    answer(broker, SET, line=LAMP_UNDELIVERED)
+
+    assert await failure(hass, "stop", {"entity_id": entity_id}) == "light.lamp: send_failed"
+    assert commands(broker) == [(SET, {"state": "ON"})]
+
+
+def test_every_adapter_sends_an_own_call_the_same_way():
+    assert {adapter.execute_own for adapter in ADAPTERS} == {Z2MAdapter.execute_own}
 
 
 @pytest.mark.usefixtures("live")

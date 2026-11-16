@@ -52,16 +52,16 @@ zigpy 2.3.0, zha-quirks 2.3.0; links at those commits), 2026-11-14:
 - **Sonoff's SWV valve quirk keeps it too** ([swv.py](https://github.com/zigpy/zha-device-handlers/blob/d6fcec59eff9f63f154723500be9378be926d927/zhaquirks/sonoff/swv.py#L38-L72)), and the valve reads
   `on_time` as whole seconds (Z2M #27980, which Z2M fixed by dividing by 10:
   [research](../zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md), §3, Sonoff row), so DeviceSide's tenths
-  would keep it open ten times as long: `sonoff_swv`, not yet supported, `harms`, as a call in seconds would serve it.
+  would keep it open ten times as long: `sonoff_swv`, not built yet, `harms`, as a call in seconds would serve it.
 - **Which Tuya ZCL devices take seconds.** The reports and the probe cover plugs and switches only: TS011F, TS0001
   (Z2M #22182, #28914) and the models Z2M drives by Tuya's countdown (TS0001 to TS0004, TS0011, TS0726:
   [research](../zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md), §3, Tuya ZCL row). Those are
   `tuya_countdown`. Tuya's other ZCL devices (bulbs such as TS0505B, dimmers, `_TYZB01_…` white labels, which Z2M
   drives with a third field layout) are `tuya_zcl`: nobody has probed whether they read the spec's tenths or seconds,
-  so neither call is known safe, and `turn_on_for` refuses them, not yet supported (`harms`).
+  so neither call is known safe, and `turn_on_for` refuses them, not built yet (`harms`).
 - **A datapoint quirk answers the other actions too.** Its Level cluster turns a move into a datapoint and drops the
   transition ([mcu/\_\_init\_\_.py](https://github.com/zigpy/zha-device-handlers/blob/d6fcec59eff9f63f154723500be9378be926d927/zhaquirks/tuya/mcu/__init__.py#L695-L770)), and its reads come from
-  its cache, so no adapter's call reaches a `tuya_mcu` device as sent: not yet supported on every action, with
+  its cache, so no adapter's call reaches a `tuya_mcu` device as sent: not built yet on every action, with
   `harms` on `turn_on_for`.
 - **Some datapoint devices carry ZCL-style strings.** A TS0601 quirk matches `_TZ3000_uim07oem`
   ([ts0601_switch.py](https://github.com/zigpy/zha-device-handlers/blob/d6fcec59eff9f63f154723500be9378be926d927/zhaquirks/tuya/ts0601_switch.py#L88)), and the TS0049 valve `_TZ3210_0jxeoadc` gets the
@@ -87,8 +87,8 @@ zigpy 2.3.0, zha-quirks 2.3.0; links at those commits), 2026-11-14:
 So two things decide the outcome. Where the quirk routes On/Off itself (Tuya's datapoint quirks), the quirk does, and
 `tuya_mcu` keys on it: the module that defines the On/Off cluster's `command`. Everywhere else the frame is the
 standard one and the firmware decides, so the class keys on the device's raw Zigbee manufacturer and model, read
-from zigpy's device through the gateway, never the registry. The rules and their order are in the `classes.py`
-docstring.
+from zigpy's device through the gateway, never the registry. Each family's rules are in its package
+(`families/<family>/`), and the order between families in `families/__init__.py`.
 
 ### `turn_on_for`
 
@@ -102,7 +102,7 @@ unicast: `light.turn_on` when there are fields, a plain `On`, then `OnWithTimedO
 call (C5: `0.1 | 1 | 0 | 10`, then `1.1 | 1 | 10 | 10`). It is the frame Z2M's converter A sends
 (`tuya.tz.on_off_countdown`, [tuya-countdown](../zigbee2mqtt/research/2026-11-14-tuya-countdown.md), §1) and the lab
 probe's C5. It was built and then taken out for v0.1.0's scope, not its units; until it returns, `turn_on_for`
-refuses the Tuya classes as not yet supported, with `harms`. `get_attributes` reads a `tuya_countdown` OnTime as
+refuses the Tuya classes as not built yet, with `harms`. `get_attributes` reads a `tuya_countdown` OnTime as
 seconds.
 
 A group gets one `light.turn_on` and one group `OnWithTimedOff` when the lights the call reaches are every device
@@ -244,7 +244,7 @@ cites have been checked upstream: search each tracker for duplicates before fili
   brightness was, and a fix sits on the `zigpy-bot/light-color-reports` branch, no PR yet). Don't file a new issue.
 - **zha-quirks: define Signify's `0xFC03` `multiColor` command on the Hue cluster,** so
   `zha.issue_zigbee_cluster_command` can send it. Workaround: straight to zigpy, re-implementing ZHA's admin
-  check (`zcl.hue_turn_on`, `require_admin`). Additive quirk work; Z2M's `philips.ts` is prior art.
+  check (`zcl.hue_turn_on`, `zcl.require_admin`). Additive quirk work; Z2M's `philips.ts` is prior art.
 - **ZHA: `update_entity` does nothing while the transition flag is up,** and "on" reports are ignored for 1.5 s
   after `turn_off`. Workaround: poll the flag up to 3 s and refresh again after long fades
   (`TRANSITION_WAIT_S`, the late refresh). The guard is deliberate; pitch it narrowly: an explicit

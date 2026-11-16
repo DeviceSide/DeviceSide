@@ -139,7 +139,7 @@ async def test_capability_out_of_scope_is_refused(hass, setup_production, monkey
     entry, call_rpc = shelly_device(hass)
     add_shelly_entity(hass, entry, "light.dimmer", "light:0")
 
-    assert await refusal(hass, "turn_on_for", {"entity_id": "light.dimmer", "duration": 5}) == "not_supported"
+    assert await refusal(hass, "turn_on_for", {"entity_id": "light.dimmer", "duration": 5}) == "not_built"
     assert not call_rpc.await_args_list
 
 

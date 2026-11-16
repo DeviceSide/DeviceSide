@@ -59,7 +59,8 @@ One section per adapter module, named after it.
 The class rules read the registry device (Z2M's vendor and definition) and, for a device the bridge cache's
 `bridge/devices` lists, its Zigbee `manufacturer` and `model_id` there, and its definition's `model` and top-level
 expose names, indexed by IEEE once per payload (Tested behavior: the registry holds no Zigbee strings). The rules,
-their order and the registry fallback's limit are in the `classes.py` docstring.
+each family's are in its package (`families/<family>/`), the order between families in `families/__init__.py`, and
+the registry fallback's limit in the `classes.py` docstring.
 
 Which adapters send a Level command to a light that is off, as a Sengled E11-G13 jumps to full on `MoveToLevel`
 while off on ZHA ([ZHA internals](../zha/internals.md), Tested behavior). Read from the code, 2026-11-14; nothing
@@ -89,7 +90,8 @@ announce both by default, as some lights handle mixed modes badly
 ### `native_control`
 
 `hue_native_control` makes Z2M send on, brightness, color and color temperature as one Philips command
-rather than ZCL ones. Each action that needs it one way declares it (`NEED` in `native_control.py`): on for a
+rather than ZCL ones. Each action that needs it one way declares it (`NEED` in `families/hue/`; `native_control.py`
+holds it there): on for a
 `turn_on_for` with a color or color temperature (a Hue bulb, manufacturer `Philips`, lights in the new color and
 keeps the timer); off for a brightness fade (native, a long raise runs about 2.3x faster than its transition, and
 a soft off reports `onOff: 0` at once); off for a saturation fade too (native, Philips' converter turns a hueless
@@ -140,7 +142,7 @@ bulb, and Z2M turned it off for Hue on purpose. A group gets one publish and one
 once every member is.
 
 **Tuya's countdown** (converter A, plan step 5 part 3): a TS011F plug in a `tuya_countdown` class gets one publish,
-`{"state": "ON", "countdown": N}`, N whole seconds from 1 to 43200 (`COUNTDOWN_LIMITS`; core rounds and clamps, and
+`{"state": "ON", "countdown": N}`, N whole seconds from 1 to 43200 (`COUNTDOWN_LIMITS` in `families/tuya/countdown.py`; core rounds and clamps, and
 reports either in `clamped_to`). No `on_time` (it has no converter there, Tested behavior) and no state reads: the plug
 reports its state at expiry (probe P1, P2, P6, P7), and the time left can't be read, so the result is `sent`. A Z2M
 group's call carries `on_time`, so a group with such a plug falls back to its members (`AdapterScope.own_calls`). A

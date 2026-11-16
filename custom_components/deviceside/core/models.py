@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field, fields, replace
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any, Self
+from typing import Any, Self
 
 import probatio
 from homeassistant.components.light.const import LIGHT_TURN_ON_SCHEMA
@@ -10,9 +10,6 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
 from ..const import LIGHT_FIELDS
-
-if TYPE_CHECKING:
-    from .scope import DurationLimits  # scope.py imports this module
 
 
 class Status(StrEnum):
@@ -108,15 +105,9 @@ class Request:
 
 @dataclass(frozen=True, slots=True)
 class TimedRequest(Request):
-    """A request with a duration the dispatcher clamps to each adapter's DurationLimits.
-
-    `limits` is the DurationLimits it was fitted to, set by the dispatcher (core/duration.py): a run's targets all share
-    them, so an adapter whose class takes a call of its own (AdapterScope.own_calls) branches on them, the class the
-    dispatcher planned on, rather than classing a target again in execute, where a report in between could move it.
-    """
+    """A request with a duration the dispatcher clamps to each adapter's DurationLimits."""
 
     duration_s: float
-    limits: DurationLimits | None = field(default=None, kw_only=True)
 
 
 @dataclass(frozen=True, slots=True)
