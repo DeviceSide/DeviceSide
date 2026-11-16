@@ -48,7 +48,7 @@ contributor's change for one vendor reclasses another vendor's devices unnoticed
   `request.limits == COUNTDOWN_LIMITS`. Fields: `send`, an async callable `(adapter, hass, request, target) ->
   EntityResult`, and `limits: DurationLimits | None`. Compared by identity.
 - `AdapterScope.own_calls` becomes `Mapping[str, OwnCall]`. `AdapterScope.own_call(classes) -> OwnCall | None` joins
-  `limits(classes)`; `apart` and the `own_call` refusal are unchanged in behavior.
+  `call_limits(call)`; the `own_call` refusal is unchanged in behavior.
 - Dispatcher: a run is keyed by its dropped fields and its `OwnCall` (or None), and carries it. `_run_adapter` calls
   `adapter.execute_own(hass, request, targets, call)` when the run has one, else `execute`. Duration clamping still
   uses the call's limits.
@@ -175,5 +175,6 @@ What the gate can't see (its docstring), left to trust in an appointed maintaine
 - A caveat set other than as a `caveat=` keyword or a `Caveat(...)` call.
 - A family's rule change that moves devices between classes, out of a refused class or in from another family's (a
   family's rule group can run before another's): only the classification snapshot catches the devices it lists.
-- A family's product code written in bad faith: the integration's tests import it, so it can change what they see.
-  Its test code can't silence them in `pytest-without-family-tests`.
+- A family's product code written in bad faith: the integration's tests import it, into their own process, so it
+  can make any of them pass. Its test code can't silence them in `pytest-without-family-tests`, once the ruleset
+  requires that job.

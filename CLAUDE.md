@@ -83,7 +83,8 @@ maintainer merges it; repo maintainers merge every other PR.
 
 A family maintainer sets their classes' levels, and can't merge alone what protects other families: another family,
 the integration's transport, `families/__init__.py` (the rule order between families), the classification snapshot,
-or a refusal entry; an integration maintainer merges those. Refusal entries (`NoKnownMethod`, `NotBuilt`) are kept
+a refusal entry, or a new class or family; an integration maintainer merges those (a new family, with its
+`maintainers` tuple, a repo maintainer). Refusal entries (`NoKnownMethod`, `NotBuilt`) are kept
 from a family by where they live: an integration with families holds every one in its `integrations/<x>/refusals.py`,
 outside every family, and a `FamilyScope` can't hold one. Only a repo maintainer changes a `maintainers` tuple.
 

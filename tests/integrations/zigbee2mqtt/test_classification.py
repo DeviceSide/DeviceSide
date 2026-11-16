@@ -6,8 +6,9 @@ file, outside every family, is edited. It guards the catalog too (zigbee/tuya.py
 edit made for the other stack that moves a device here fails here.
 
 It lists a device of every class, with every field a rule could read where another family's rule could take it, one
-for each trap the rule order names, and one for each catalog string that alone decides a class. A family's own tests,
-under families/, cover the rest of its rules.
+for each trap the rule order names, one for each catalog string that alone decides a class, and one on each side of
+the edge between a class turn_on_for refuses and one it serves, as moving a device across it lifts the refusal. A
+family's own tests, under families/, cover the rest of its rules.
 """
 
 from types import SimpleNamespace
@@ -97,6 +98,13 @@ DEVICES = {
     "countdown_gznh2xla": (countdown_plug("_TZ3000_gznh2xla"), "tuya_countdown_tz3000_gznh2xla"),
     "countdown_okaz9tjs": (countdown_plug("_TZ3000_okaz9tjs"), "tuya_countdown_tz3000_okaz9tjs"),
     "countdown_unrecorded": (countdown_plug(TUYA), "tuya_countdown"),
+    # The edge of the countdown, which turn_on_for serves, against `tuya_ts011f`, which it refuses: a TS011F whose
+    # `countdown` is a datapoint (the ZOT60, converter B) or per gang isn't converter A's.
+    "not_countdown_zot60": (device(PLUG, ("_TZ3218_pfnjjx6a", "TS011F"), "ZOT60", COUNTDOWN), "tuya_ts011f"),
+    "not_countdown_per_gang": (
+        device(PLUG, (TUYA, "TS011F"), "TS011F_2_gang", frozenset({"state_l1", "countdown_l1"})),
+        "tuya_ts011f",
+    ),
     # The registry fallbacks, for a Tuya device bridge/devices doesn't show yet: the models before the vendor and the
     # catch-all.
     "registry_ts011f": (device(PLUG), "tuya_ts011f"),

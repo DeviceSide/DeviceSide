@@ -94,10 +94,12 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   member raises the plug's reason.
 - [ ] **Z2M saturation fade** (#443, #411): MoveToSaturation, as ZHA's #442, so a stop of a saturation fade doesn't
   jump. Before the Zigbee2MQTT runs, which watch it (`saturation_down_stop`) and would reopen if it landed after.
-- [ ] **Family seam**, by its plan (`docs/plans/2026-11-16-family-seam.md`, landing with it): vendor families inside
+- [x] **Family seam**, by its plan (`docs/plans/2026-11-16-family-seam.md`, landing with it): vendor families inside
   Zigbee2MQTT and ZHA, each with its own maintainers, and the rename of the two not-supported kinds. Before the runs,
   as it reshapes both Zigbee packages. The rename touches Hue's `classes.py` and `set_scene.py`, so its PR carries a
   Hue `no_call_changed` row (no `actions`) rather than a Hue rerun.
+- [ ] **Require `pytest-without-family-tests`**: add it to the ruleset's required checks once it has run on `main`
+  (`docs/repo-maintainers.md`); until then a family's test code can still silence the integration's on a `/merge`.
 - [ ] **Shared Zigbee fade planning**, after the family seam, which moves both files (pre-run audit, Medium): ZHA's
   ramp and Zigbee2MQTT's fade duplicate `MIN_STEP`, `SETTLE_SECONDS`, the starts/movers/at-limit prelude and the
   hue-rate clamp, and have drifted (Z2M doesn't cap a transition at the ZCL uint16). Lift the planning into

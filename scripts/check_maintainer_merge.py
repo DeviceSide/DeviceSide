@@ -35,10 +35,11 @@ name, so it can't see:
 - a family's rule change that moves devices between classes, out of a refused class or in from another family's (a
   family's rule group can run before another's): only the integration's classification snapshot
   (`tests/integrations/<x>/test_classification.py`) catches the devices it lists;
-- a family's product code written in bad faith: the integration's tests import it, so it can change what they see
-  (patching another module's table at import). Its test code can't silence them: a CI job runs them with every
-  family's and the catalog's tests left out (`tests.yml`, `pytest-without-family-tests`). The gate trusts an appointed
-  maintainer not to, and the release candidate's audit reviews every merged change.
+- a family's product code written in bad faith: the integration's tests import it, into their own process, so it
+  can make any of them pass. Its test code can't silence them once the ruleset requires the CI job that runs them
+  with every family's and the catalog's tests left out (`tests.yml`, `pytest-without-family-tests`;
+  docs/repo-maintainers.md). The gate trusts an appointed maintainer not to, and the release candidate's audit
+  reviews every merged change.
 
 Usage: scripts/check_maintainer_merge.py <base> <head> --commenter <login>
 
@@ -169,13 +170,14 @@ def integrations_with(rev: str, family: str) -> tuple[str, ...]:
 
 def package_of(path: str, base: str, templates: Templates) -> Package | None:
     """What holds `path`, or None for a file nobody but a repo maintainer owns. A family that isn't on the base branch
-    has no owners of its own yet, so its paths are its integration's; a catalog file no family there shares is
-    nobody's."""
+    has no owners of its own yet, so its paths are its integration's; a catalog file no family there shares, or that
+    isn't there yet, is nobody's."""
     if (found := match(path, templates.family)) and family_maintainers(base, **found) is not None:
         return Package(**found)
     if found := match(path, templates.integration):
         return Package(found["key"])
-    if (found := match(path, templates.catalog)) and integrations_with(base, found["family"]):
+    # A catalog file new on this PR is nobody's: it gives the other integration's family code this one imports.
+    if (found := match(path, templates.catalog)) and integrations_with(base, found["family"]) and show(base, path):
         return Package(None, found["family"])
     return None
 
