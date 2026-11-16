@@ -100,6 +100,6 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry):
         *(
             _guarded(info, "remove", info.remove(hass, entry))
             for info in registry.available_integrations()
-            if info.remove
+            if info.remove is not None
         )
     )

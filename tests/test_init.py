@@ -141,3 +141,16 @@ async def test_unavailable_integrations_have_no_hooks(hass: HomeAssistant):
     assert [line for line in log if line.startswith("two ")] == []
     assert "one setup" in log
     assert "one remove" in log
+    assert not hass.data[DOMAIN].registry.integrations["two"].available
+
+
+async def test_removing_an_entry_that_never_loaded_runs_the_remove_hooks(hass: HomeAssistant):
+    """A disabled entry is deleted without async_setup having run: removal discovers the registry itself."""
+    log: list[str] = []
+    entry, discovery = hooked(log, "one", "two")
+    entry.add_to_hass(hass)
+    assert DOMAIN not in hass.data
+    with discovery:
+        assert await hass.config_entries.async_remove(entry.entry_id)
+
+    assert sorted(log) == ["one remove", "two remove"]

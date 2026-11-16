@@ -29,7 +29,7 @@ If you can build a change and test it on your own devices, open a pull request d
    - `docs/models.yaml`: the models you tested
    - `scripts/gen_features.py`: a `NO_PATH` row for each feature the devices can't support, with the reason, and its explanation in `docs/integrations.md`'s "What can't be done, and why"
    - `pyproject.toml`: any library its tests need, in the `dev` group
-   - `custom_components/deviceside/__init__.py`, `const.py`, `strings.json` and `translations/en.json`: only if it adds a setup hook or a user option
+   - `custom_components/deviceside/__init__.py`, `const.py`, `strings.json` and `translations/en.json`: only if it adds a user option
 
    If you also need changes to `README.md` outside its auto-generated sections (the feature table and device cards), propose them in a separate pull request that changes only `README.md`. If your integration needs a change to `manifest.json`, say so in the pull request.
 4. **Ship it behind `experimental`.** Every new action, integration, domain, capability and field starts flagged, as `experimental(...)` in its scope ([evidence rules](docs/evidence.md)). Unit tests pin each payload you send, and every module under `core/` and `integrations/`, bar `__init__.py`, needs at least 95% line coverage.
