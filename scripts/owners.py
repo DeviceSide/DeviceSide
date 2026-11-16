@@ -353,12 +353,12 @@ def row(group: Group, paths: list[str]) -> dict:
     }
 
 
-def line(group: Group, paths: list[str]) -> str:
+def line(group: Group, paths: list[str], noun: str = "path") -> str:
     """`control4: @a (2 paths)`; a family's integration's maintainers follow its own."""
     handles = " ".join(f"@{handle}" for handle in group.direct) or "nobody"
     if group.enclosing:
         handles += f", and `{group.key}`'s " + " ".join(f"@{handle}" for handle in group.enclosing)
-    return f"{group}: {handles} ({len(paths)} path{'s' * (len(paths) != 1)})"
+    return f"{group}: {handles} ({len(paths)} {noun}{'s' * (len(paths) != 1)})"
 
 
 def main(argv: list[str] | None = None) -> int:
