@@ -86,7 +86,7 @@ For a finding with no trigger, the fix is, in order: list it; a log line so the 
 
 For a diff target, keep the same sections but say "nothing found" in a single line rather than padding a section.
 
-Close by proposing how to land the fixes, grouped into batches that don't touch the same files, and following the repo's own commit rules if it has them (e.g. review → simplify → tests green). Tag simplification-only items (reuse, dead code, small duplication) `simplify`: they belong in the `/simplify` step of whichever batch touches those files, not in batches of their own.
+Close by proposing how to land the fixes for every Critical and High, grouped into batches that don't touch the same files, and following the repo's own commit rules if it has them (e.g. review → simplify → tests green). List each Medium and Low to track, not fix, unless its fix is a line a batch already touches; a re-audit's Mediums and Lows never start another fix round. Tag simplification-only items (reuse, dead code, small duplication) `simplify`: they go in the `/simplify` step of a batch that already touches those files, or are tracked.
 
 ## 6. Housekeeping
 
