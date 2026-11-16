@@ -105,7 +105,7 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
 - [ ] **Integration lifecycle hooks**, after the family seam (pre-run audit, Medium): the component root starts
   Zigbee2MQTT's bridge cache, color modes and restore journal itself, so every integration with a lifecycle edits a
   repo-maintainer file. Add `IntegrationInfo` setup and teardown hooks. Before the runs.
-- [ ] **Pre-run audit**: `/rc-audit` over `b025363..HEAD`, its record replacing `docs/audits/v0.1.0rc1.md`, and its
+- [x] **Pre-run audit**: `/rc-audit` over `b025363..HEAD`, its record replacing `docs/audits/v0.1.0rc1.md`, and its
   fixes landed, so no run repeats for a fix the audit would have found. The RC's second pass covers what lands after.
 - [ ] **Sign-offs** for v0.1.0, one per integration changed since v0.0.1 (`check_release.py --signoffs`), each a rig run
   from ha-rig `main` (its records are format 2; format 1 records, converted from markdown, count for none). The runs for

@@ -45,8 +45,8 @@ Users paste logs into public issues.
   names an address their fixtures use: a quoted Hue resource ID; a ZHA IEEE; an IEEE, a device topic, a Zigbee2MQTT
   failure line, or a friendly name quoted or ahead of an endpoint (their `conftest.py`).
 
-`scripts/check_logging.py` (a pre-commit hook) flags a caught exception passed bare to a `%s` and a log line naming an
-address field. It reads names, so it can't see an address inside a dict or a payload: keep those out by hand. A line that
+`scripts/check_logging.py` (a pre-commit hook) flags a caught exception logged as itself rather than through `describe`,
+and a log line naming an address field. It reads names, so it can't see an address inside a dict or a payload: keep those out by hand. A line that
 needs an exception ends with `# log-ok: <reason>`.
 
 ## Cost

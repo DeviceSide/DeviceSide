@@ -34,6 +34,7 @@ from ...core.scope import AdapterScope, verified
 from ...core.transition import (
     BRIGHTNESS,
     SATURATION,
+    Transition,
     TransitionCache,
     color_mode,
     hs_color,
@@ -58,6 +59,15 @@ AT_THE_BOTTOM = {"state": "ON", "brightness": 1, "transition": 0}
 
 def transition_cache(hass: HomeAssistant) -> TransitionCache:
     return transition.transition_cache(hass, "zigbee2mqtt", lambda: TransitionCache(SETTLE_SECONDS))
+
+
+type Source = tuple[Transition | None, float]  # the last published move under a planned fade, else the bulb's level
+
+
+def waiting(hass: HomeAssistant) -> dict[int, Source]:
+    """By id, each recorded fade still waiting for Z2M's option, and where the bulb really is under it: a stop in the
+    window halts there (start)."""
+    return get_runtime(hass).integration_state.setdefault("zigbee2mqtt_waiting_fades", {})
 
 
 def hue_moves(hass: HomeAssistant) -> set[str]:
@@ -201,8 +211,8 @@ def plan(cache: TransitionCache, request: RampRequest, target: Target, lights: l
 
 
 class Stopped(Exception):
-    """A stop reached the fade's lights while it waited for Z2M's option: it publishes nothing. Its arg is the ids of
-    the lights the stop halted."""
+    """A stop reached the fade's lights while it waited for Z2M's option: it publishes nothing. Its arg maps each light
+    the stop halted to its halt."""
 
 
 async def start(
@@ -225,20 +235,41 @@ async def start(
         hue_moves(hass).update(light.entity_id for light in lights)
         return
     attribute = outcome.attribute
-    prior = {light_id: cache.live(light_id, attribute) for light_id in outcome.starts}
+    await _publish_fade(hass, cache, target, outcome, need)
+    if attribute == SATURATION:
+        hue_moves(hass).difference_update(outcome.starts)  # a color write ends the bulb's hue cycle
+    read = end_read(hass, target, lights, attribute)
+    get_runtime(hass).schedule(hass, read_back_key(target, attribute), [(outcome.duration + END_READ_S, read)])
+
+
+def _sources(hass: HomeAssistant, cache: TransitionCache, outcome: Fade) -> dict[str, Source]:
+    """Where each of the fade's bulbs really is: under a fade that never published, where that one's source puts it."""
+    pending = waiting(hass)
+    sources: dict[str, Source] = {}
+    for light_id, begin in outcome.starts.items():
+        prior = cache.live(light_id, outcome.attribute)
+        sources[light_id] = pending.get(id(prior), (prior, begin)) if prior is not None else (None, begin)
+    return sources
+
+
+async def _publish_fade(
+    hass: HomeAssistant, cache: TransitionCache, target: Target, outcome: Fade, need: bool | None
+) -> None:
+    """Record the fade, take the option and publish, unless a stop halted it meanwhile (start)."""
+    attribute, pending, sources = outcome.attribute, waiting(hass), _sources(hass, cache, outcome)
+    planned: dict[str, Transition] = {}
     try:
         async with cache.recording((light_id, attribute) for light_id in outcome.starts):
-            planned = {
-                light_id: cache.moving(light_id, attribute, begin, outcome.ends[light_id], outcome.duration)
-                for light_id, begin in outcome.starts.items()
-            }
+            for light_id, begin in outcome.starts.items():
+                planned[light_id] = cache.moving(light_id, attribute, begin, outcome.ends[light_id], outcome.duration)
+                pending[id(planned[light_id])] = sources[light_id]
             async with native_control(hass, target, need):
-                if halted := [
-                    light_id
+                if halts := {
+                    light_id: halt
                     for light_id, transition in planned.items()
-                    if cache.halted(light_id, attribute) and cache.live(light_id, attribute) is not transition
-                ]:
-                    raise Stopped(halted)
+                    if cache.halted(light_id, attribute) and (halt := cache.live(light_id, attribute)) is not transition
+                }:
+                    raise Stopped(halts)
                 # Recorded again inside the option's window, so the prediction starts at the publish.
                 for light_id, begin in outcome.starts.items():
                     cache.moving(light_id, attribute, begin, outcome.ends[light_id], outcome.duration)
@@ -246,17 +277,16 @@ async def start(
                     await publish_set(hass, light, payload)
                 await publish_set(hass, target, outcome.payload)
     except Stopped as stop:
-        # The stop halted at the unpublished fade's prediction; the bulb is where the move before it puts it (0 % from
-        # off), so a raise right after still lights it from the bottom.
-        now = cache.clock()
-        for light_id in stop.args[0]:
-            before = prior[light_id]
-            cache.stopped(light_id, attribute, before.value(now) if before is not None else outcome.starts[light_id])
+        # The stop halted at the unpublished fade's prediction; the bulb halted where its source put it at the stop (0 %
+        # from off), so a raise right after still lights it from the bottom.
+        for light_id, halt in stop.args[0].items():
+            move, level = sources[light_id]
+            value = move.value(halt.started_at) if move is not None else level
+            cache.moving(light_id, attribute, value, value, 0.0, started_at=halt.started_at)
         raise
-    if attribute == SATURATION:
-        hue_moves(hass).difference_update(outcome.starts)  # a color write ends the bulb's hue cycle
-    read = end_read(hass, target, lights, attribute)
-    get_runtime(hass).schedule(hass, read_back_key(target, attribute), [(outcome.duration + END_READ_S, read)])
+    finally:
+        for transition in planned.values():
+            pending.pop(id(transition), None)
 
 
 async def lacks_color(hass: HomeAssistant, request: RampRequest, lights: list[Target]) -> bool:

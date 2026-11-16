@@ -11,9 +11,10 @@ from pytest_homeassistant_custom_component.common import async_mock_service
 
 from custom_components.deviceside.core.models import Target
 from custom_components.deviceside.core.runtime import DATA
+from custom_components.deviceside.core.transition import BRIGHTNESS
 from custom_components.deviceside.integrations.zigbee2mqtt import bridge, bridge_cache
 from custom_components.deviceside.integrations.zigbee2mqtt import native_control as nc
-from custom_components.deviceside.integrations.zigbee2mqtt.fade import AT_THE_BOTTOM
+from custom_components.deviceside.integrations.zigbee2mqtt.fade import AT_THE_BOTTOM, transition_cache, waiting
 from custom_components.deviceside.integrations.zigbee2mqtt.restore_journal import journal, locks
 
 from .conftest import DEVICES, SET, call, light
@@ -354,6 +355,51 @@ async def test_a_raise_after_a_stop_in_the_option_window_lights_an_off_bulb_from
     assert await call(hass, "raise_brightness", {"entity_id": entity_id}) == {entity_id: SENT}
 
     assert [p["payload"] for p in broker.published if p["topic"] == SET][0] == AT_THE_BOTTOM
+
+
+async def test_a_stop_in_the_option_window_halts_an_earlier_fade_where_the_stop_found_it(
+    hass, setup_production, clock, broker
+):
+    """An earlier fade of ours runs while a lower waits for the option: the bulb halts at the earlier fade's value at
+    the stop, not where it would have reached once the lower got the option."""
+    entity_id = light(hass, broker, manufacturer="Philips", brightness=51)
+    cache = transition_cache(hass)
+    earlier = cache.moving(entity_id, BRIGHTNESS, 20.0, 100.0, 8.0)
+    lock = locks(hass).setdefault(await nc._hue_address(hass, target(hass, entity_id)), asyncio.Lock())
+    await lock.acquire()
+    fade = asyncio.create_task(call(hass, "lower_brightness", {"entity_id": entity_id}))
+    for _ in range(10):
+        await asyncio.sleep(0)
+    clock.now += 0.2
+    stop_at = clock.now
+    assert await call(hass, "stop", {"entity_id": entity_id}) == {entity_id: SENT}
+    clock.now += 1.0
+    lock.release()
+    assert (await fade)[entity_id]["detail"] == "stopped"
+
+    halt = cache.live(entity_id, BRIGHTNESS)
+    assert (halt.target, halt.duration, halt.started_at) == (pytest.approx(earlier.value(stop_at)), 0.0, stop_at)
+
+
+async def test_a_stop_halting_two_waiting_raises_from_off_leaves_the_bulb_at_the_bottom(
+    hass, setup_production, clock, broker
+):
+    """The second raise plans from the first, which never published: the bulb never left 0 %."""
+    entity_id = light(hass, broker, manufacturer="Philips", state="off")
+    lock = locks(hass).setdefault(await nc._hue_address(hass, target(hass, entity_id)), asyncio.Lock())
+    await lock.acquire()
+    raises = []
+    for _ in range(2):
+        raises.append(asyncio.create_task(call(hass, "raise_brightness", {"entity_id": entity_id})))
+        for _ in range(10):
+            await asyncio.sleep(0)
+        clock.now += 0.3
+    assert await call(hass, "stop", {"entity_id": entity_id}) == {entity_id: SENT}
+    lock.release()
+    assert [(await fade)[entity_id]["detail"] for fade in raises] == ["stopped", "stopped"]
+
+    assert transition_cache(hass).live(entity_id, BRIGHTNESS).target == 0
+    assert waiting(hass) == {}
 
 
 # The context manager itself
