@@ -1,5 +1,6 @@
 """Zigbee2MQTT bridge over the core mqtt integration."""
 
+from . import lifecycle
 from .addressing import is_z2m_group
 from .classes import CLASSES, OTHER, capability, zigbee_manufacturer
 from .detect import detect
@@ -32,6 +33,8 @@ INTEGRATION = IntegrationInfo(
     families=FAMILIES,
     zigbee_manufacturer=zigbee_manufacturer,
     call_resolver=Z2MCallResolver(),
+    setup=lifecycle.setup,
+    remove=lifecycle.remove,
     max_concurrency=4,
 )
 

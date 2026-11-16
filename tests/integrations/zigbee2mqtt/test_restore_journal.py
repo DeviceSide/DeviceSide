@@ -249,7 +249,7 @@ async def test_a_strike_that_fails_warns(hass, setup_production, broker, mqtt_up
 
 
 async def test_entry_setup_wires_the_replay(hass, setup_production, broker, mqtt_up, hass_storage):
-    """Reloading the entry runs bridge_cache.async_setup as __init__ wires it: the retained online pays."""
+    """Reloading the entry runs bridge_cache.async_setup as lifecycle.setup wires it: the retained online pays."""
     left_owed(hass_storage, {"device/0x01": False})
     option_is(broker, "0x01", True)
 
