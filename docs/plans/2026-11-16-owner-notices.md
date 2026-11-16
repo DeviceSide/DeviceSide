@@ -132,12 +132,18 @@ imports the rest. Behavior is unchanged: its tests pass unedited apart from impo
   `origin/release/vX.Y.Z`).
 - The frontmatter finding gains `owner: <package>` (`control4`, `zigbee2mqtt/tuya`, the catalog's `zigbee/tuya`), or
   `""` for the runner's own.
-- For each foreign Critical or High, it asks the runner for one of three choices and records it in the pass's prose:
-  - **the owner fixes it:** the issue is filed, `open`, and the RC waits;
-  - **the runner fixes it:** the fix PR names the owner (the notice mentions them as well), and the runner sets ⚠️
-    Untested fix when nobody can test the owner's device before the release (`docs/evidence.md`, Caveats);
+- It asks once per owner group, not once per finding: "`control4` (@handles): H2, H4. Owner fixes, I fix, or
+  waive?" The runner can override the choice for any finding in the group. It records each finding's choice in the
+  pass's prose:
+  - **the owner fixes it:** the group's issue is filed, the finding stays `open`, and the RC waits;
+  - **the runner fixes it:** no issue is filed for it, because the notice on the fix PR is the owner's warning. The
+    fix PR names the owner, and the runner sets ⚠️ Untested fix when nobody can test the owner's device before the
+    release (`docs/evidence.md`, Caveats);
   - **waived**, with a reason: still the repo maintainers' decision, as the Then section says.
-- Foreign Mediums and Lows: one drafted issue per owner group, as in `audit-code`.
+- Foreign Mediums and Lows: one drafted issue per owner group, as in `audit-code`, holding the group's findings that
+  the runner doesn't fix. A group whose findings are all fixed by the runner gets no issue.
+- Unchanged by design: nothing reminds the runner that an RC is waiting on an owner's fix. `check_audit.py` reports
+  it as `open`. Revisit if RCs stall on it.
 - `--fix-pass`: a fix commit that touches a foreign package with no recorded choice is reported as a finding, High
   because it breaches the binding rule.
 
@@ -250,4 +256,5 @@ which share nothing but `owners.py`.
   edits don't notify.
 - Nothing in the three controls can fail a merge or an RC tag that would pass today, beyond the RC waiting on a
   finding its runner chose to leave `open`.
+- `rc-audit` asks one question per owner group, and a finding the runner chooses to fix gets no issue.
 - The rule's text exists once, in `CLAUDE.md`, and every other mention links it.
