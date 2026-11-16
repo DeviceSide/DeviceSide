@@ -110,9 +110,11 @@ def check_classes(cls: type[Adapter], info: IntegrationInfo) -> None:
     """One class axis per integration (docs/evidence.md, Device classes): an integration that names classes holds
     them in every adapter's scope, and one that names none in none. Otherwise an adapter that skipped the axis would
     let every class through at its domain's level, and one an integration can't name would refuse every call as
-    Experimental. Each class a scope holds is one the integration declares, so a typo fails here, and on a domain it
-    can be: a scope never admits a class to an action outside its domains, so dispatch refuses what the card leaves
-    off, and a level held on some domains alone (OnDomains) names only domains the class can be. The default class,
+    Experimental. Each class a scope holds is one the integration declares, so a typo fails here, and on an action
+    one of its domains reaches: an action for lights alone never holds a plug, so dispatch refuses it as not built yet
+    and the card leaves it off. Per action, not per domain: on an action serving several domains, a plain entry holds
+    the class on each, at its level (only the card reads its domains there); a level held on some domains alone
+    (OnDomains) names only domains the class can be. The default class,
     which holds every device not yet placed, is never Verified: one maker's record proves nothing about the rest."""
     held = cls.scope.capabilities
     if info.capability is None:
