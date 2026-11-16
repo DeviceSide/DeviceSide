@@ -63,8 +63,8 @@ device classes in [the device-classes plan](plans/2026-11-14-device-classes.md).
    cases being rerun at each small change, and replaces the sign-off as one whole run at one package tree.
 
 *Example (tenets 8 and 9):* after Zigbee2MQTT's run, a refactor of a shared helper lands, and its unit tests show
-every call and reply path unchanged: a `no_call_changed` row keeps every record. A fix to `stop`'s call lands next.
-It reopens `stop`'s records alone, and a rerun of the `stop` suite completes the sign-off.
+every call and reply path unchanged: a `no_call_changed` row citing its commit keeps every record. A fix to `stop`'s
+call lands next. It reopens `stop`'s records alone, and a rerun of the `stop` suite completes the sign-off.
 
 *Example (tenets 4 and 5):* the rig found that a Tuya TS011F plug doesn't run the Zigbee timed-on timer it is given.
 That reopened "a Zigbee switch takes the light's timed-on call", so the `switch` domain stays untested on ZHA
@@ -306,10 +306,15 @@ none.
   to its own adapter's module reopens it, and so does a change to a module that is no adapter's (a shared helper),
   which may alter any action's call. A suite that is no action's (`lifecycle.json`) is reopened by any change to the
   package, and a record whose tree the checkout doesn't have stands only if it is the release's. A reopened record
-  needs its suite rerun, and no other; `check_release.py --signoffs --reruns` lists the suites.
-- **A `no_call_changed` row keeps a reopened record** when the change altered neither the action's call nor its
-  handling of the device's reply. With no `actions` it covers every action, and is itself a sign-off of the package
-  as its commit holds it; with `actions` it keeps those actions' records, from its commit on, and is no sign-off
+  needs its suite rerun, and no other; `check_release.py --signoffs --reruns` lists the suites. So an adapter's
+  module never imports another adapter's: code two adapters share lives in a module that is neither's (a unit test
+  checks it).
+- **Every adapter changed since the last release needs a record,** a new one included: the other actions' records
+  stand through its change, and say nothing about it.
+- **A `no_call_changed` row carries a record across one change,** the one its commit made, when that change altered
+  neither the action's call nor its handling of the device's reply. The record must stand up to that commit, and from
+  it on; a later change needs its own row or a rerun. With no `actions` the row covers every action, and is itself a
+  sign-off of the package as its commit holds it; with `actions` it covers those actions' records, and is no sign-off
   alone. It is the maintainer's judgment (tenet 7), and the row's PR says what shows it: the unit tests that pin the
   calls, unchanged.
 - **A manual row** is checked by its commit, which must be in the release's checkout and hold the package as the release

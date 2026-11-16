@@ -108,8 +108,9 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   - [ ] Zigbee2MQTT
 - [x] **Partial reruns** (`docs/evidence.md`, tenet 9): `check_release.py --signoffs` judges each record by its own
   package tree, which stands while only other adapters' modules changed since; a `no_call_changed` row may name the
-  `actions` whose records it keeps; `--reruns` lists the suites to rerun. Open, in ha-rig: its run selection reads
-  `--json`, the integrations; reading `--reruns` instead lets it rerun only the reopened suites.
+  `actions` whose records it carries across its commit's change; `--reruns` lists the suites to rerun. Open, in
+  ha-rig: its run selection reads `--json`, the integrations; reading `--reruns` instead lets it rerun only the
+  reopened suites.
 - [ ] **Release notes**: hand-written v0.1.0 notes in `notes/`, signed off by the repo maintainers, after the RC
   installs cleanly and before `cut-release`, so they describe what the RC ships.
 - [ ] **v0.1.0**: `/rc-audit` over the new range, the RC and its HACS install, then `cut-release` with every

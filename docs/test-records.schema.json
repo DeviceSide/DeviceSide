@@ -179,7 +179,7 @@
         "devices": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/manual_device"}},
         "passed": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/action"}},
         "no_call_changed": {"const": true},
-        "actions": {"description": "With no_call_changed: the actions whose records the row keeps through a change to their own or a shared module (docs/evidence.md, tenet 9). Without it the row covers every action, and signs off the package as its commit holds it.", "type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/action"}}
+        "actions": {"description": "With no_call_changed: the actions whose records the row carries across the change its commit made, to their own or a shared module (docs/evidence.md, Release gate). Without it the row covers every action, and signs off the package as its commit holds it.", "type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/action"}}
       },
       "if": {"required": ["no_call_changed"]},
       "then": {"not": {"anyOf": [{"required": ["devices"]}, {"required": ["passed"]}]}},

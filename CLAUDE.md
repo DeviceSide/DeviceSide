@@ -57,7 +57,7 @@ every integration shares is in `docs/integrations.md`: add your value there, don
    maintainer reaches, so no merge waits on a run; the contributor's PR for their own devices. No plan gates a step
    on a run without naming the decision.
 9. Retest what the change exercises: only the rig cases whose call or reply handling changed. The gate reopens a
-   record only when its own adapter's module or a shared one changed, and a `no_call_changed` row keeps it.
+   record when its own adapter's module or a shared one changed; a `no_call_changed` row at that change keeps it.
 
 The levels (Verified, Documented), device classes, the `experimental` flag, caveats, the release gate and the sign-off
 format:

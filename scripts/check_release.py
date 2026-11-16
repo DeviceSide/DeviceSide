@@ -16,20 +16,21 @@ commit, which is in this checkout. The records sign off when every one is format
 stands while the package files changed between its tree and HEAD's are all other adapters' modules (docs/evidence.md,
 tenet 9): a change to its own adapter's module, or to a module that is no adapter's (a shared helper), reopens it, as
 does any change for a suite that is no action's (`lifecycle.json`), or a tree git doesn't have. A `no_call_changed` row
-keeps a reopened record when it names the record's action (`actions`; with none, every action) and the record would
-stand from the row's commit. A reopened, format 1 (converted from markdown) or failing record is no sign-off until its
-suite is rerun. Without one, a ⚠️ Untested fix caveat stands in when every changed adapter carries it: each adapter whose
-module changed, or all of the package's when a module that is no adapter's changed (a shared helper). Prints a line per
-changed integration naming its sign-off (kind, commit, tester) or the caveats standing in, and fails on each with
-neither, saying why its records and each manual row were rejected. With --json, prints instead the changed integrations
-without a sign-off, as a JSON list: the rig's run selection. With --reruns, prints instead a JSON object of those
-integrations, each with the suites to rerun (its reopened, format 1 and failing records), or an empty list for every
-suite, when it has no record. It also runs the coverage check, failing on each gap: for
-an integration that names classes (`IntegrationInfo.capability`), every class an adapter not flagged whole holds as
-Verified needs a passing test that reached it in a passing record of the action (format 2: a device of the test with
-that class, a native group's test crediting each member's; format 1: the test's `classes`), or a `_manual.json` row
-whose `passed` names the action and one of whose devices has the class. `scripts/gen_compat.py` prints the same gaps as
-warnings on every run (`coverage_gaps`).
+carries a record across the change its commit made when it names the record's action (`actions`; with none, every
+action): the record must stand up to that commit's parent, and from the commit on. Every action whose adapter changed
+since the last release needs a record. A reopened, format 1 (converted from markdown) or failing record, or a changed
+action with none, is no sign-off until its suite is run. Without one, a ⚠️ Untested fix caveat stands in when every
+changed adapter carries it: each adapter whose module changed, or all of the package's when a module that is no
+adapter's changed (a shared helper). Prints a line per changed integration naming its sign-off (kind, commit, tester) or
+the caveats standing in, and fails on each with neither, saying why its records and each manual row were rejected. With
+--json, prints instead the changed integrations without a sign-off, as a JSON list: the rig's run selection. With
+--reruns, prints instead a JSON object of those integrations, each with the suites to run (its reopened, format 1 and
+failing records, and its changed actions with none), or an empty list for every suite, when it has no record. It also
+runs the coverage check, failing on each gap: for an integration that names classes (`IntegrationInfo.capability`),
+every class an adapter not flagged whole holds as Verified needs a passing test that reached it in a passing record of
+the action (format 2: a device of the test with that class, a native group's test crediting each member's; format 1: the
+test's `classes`), or a `_manual.json` row whose `passed` names the action and one of whose devices has the class.
+`scripts/gen_compat.py` prints the same gaps as warnings on every run (`coverage_gaps`).
 
 --notes notes.md: writes the release notes' call for testers, with a link to the device report form: the changed
 integrations without a sign-off, and every adapter with an Untested fix caveat. Empty when there are none.
@@ -60,10 +61,9 @@ import re
 import subprocess
 import sys
 from collections import Counter
-from collections.abc import Mapping, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from types import MappingProxyType
 
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import best_match
@@ -356,32 +356,64 @@ def modules(registry, integration: str) -> dict[str, str]:
     }
 
 
-def touched(integration: str, tree: str | None = None, commit: str | None = None) -> set[str] | None:
-    """The package's files that differ between a record's `package` tree, or the package at a manual row's commit, and
-    HEAD's; None when git doesn't have it."""
-    at = package(integration).rstrip("/")
-    found = run("rev-parse", "--verify", "--quiet", f"{tree}^{{tree}}" if tree else f"{commit}:{at}")
-    if found.returncode:
+def package_tree(integration: str, tree: str | None = None, commit: str | None = None) -> str | None:
+    """The package's git tree: the one a record cites (`package`), in full, or the package at a commit; None when git
+    doesn't have it."""
+    name = f"{tree}^{{tree}}" if tree else f"{commit}:{package(integration).rstrip('/')}"
+    found = run("rev-parse", "--verify", "--quiet", name)
+    return None if found.returncode else found.stdout.strip()
+
+
+@functools.cache
+def differing(old: str | None, new: str | None) -> frozenset[str] | None:
+    """The files that differ between two package trees, a rename as both its names; None when either is unknown."""
+    if old is None or new is None:
         return None
-    return set(git("diff", "--name-only", found.stdout.strip(), f"HEAD:{at}").split())
+    return frozenset(filter(None, git("diff", "--name-only", "--no-renames", "-z", old, new).split("\0")))
 
 
-def stands(changed: set[str] | None, action: str, adapter_modules: Mapping[str, str]) -> bool:
+def stands(changed: Collection[str] | None, action: str, adapter_modules: Mapping[str, str]) -> bool:
     """Whether a record of the action holds through these changed files: each is another adapter's module. A suite that
-    is no action's holds through none, and nothing holds from a tree git doesn't have."""
-    if changed is None or action not in adapter_modules:
-        return not changed and changed is not None
-    return changed <= set(adapter_modules.values()) - {adapter_modules[action]}
+    is no action's holds through none, and nothing holds across a tree git doesn't have."""
+    if changed is None:
+        return False
+    own = adapter_modules.get(action)
+    return not changed if own is None else set(changed) <= set(adapter_modules.values()) - {own}
+
+
+def carried(
+    ran_at: str | None, head: str | None, action: str, adapter_modules: Mapping[str, str], hops: Sequence[tuple]
+) -> bool:
+    """Whether a record of the action, run at one package tree, stands at HEAD's: directly, or carried across each
+    change a `no_call_changed` row vouches for (`hops`: the package before the row's commit, after it, and the row's
+    actions), standing up to the one and on from the other."""
+
+    def holds_to(tree: str | None) -> bool:
+        return any(stands(differing(at, tree), action, adapter_modules) for at in held)
+
+    held, grew = {ran_at}, True
+    while grew:
+        grew = False
+        for before, after, actions in hops:
+            if after not in held and (actions is None or action in actions) and holds_to(before):
+                held.add(after)
+                grew = True
+    return holds_to(head)
 
 
 def record_signoff(
-    integration: str, adapter_modules: Mapping[str, str] = MappingProxyType({}), vouchers: Sequence[SignOff] = ()
+    integration: str,
+    adapter_modules: Mapping[str, str] | None = None,
+    vouchers: Sequence[SignOff] = (),
+    changed_actions: Collection[str] = (),
 ) -> tuple[SignOff | None, str | None, tuple[str, ...]]:
-    """The integration's test records as one sign-off when every one is format 2, passes and stands (`stands`), or is
-    kept by one of the `no_call_changed` rows (`vouchers`) that names its action and from whose commit it would stand;
-    else None, why not (no reason when there are no records), and the suites to rerun. A file in the folder that isn't
+    """The integration's test records as one sign-off when every one is format 2, passes and stands (`stands`) from
+    its package tree to HEAD's, and every action whose adapter changed since the last release (`changed_actions`) has
+    one; else None, why not (no reason when there are no records), and the suites to rerun. A `no_call_changed` row
+    (`vouchers`) that names a record's action carries it across the change its commit made: the record must stand up
+    to that commit's parent, and then from the commit on, or up to the next such row. A file in the folder that isn't
     JSON is no record, and stops the sign-off; a dotfile is none of the run's."""
-    folder = test_records_dir(integration)
+    folder, adapter_modules = test_records_dir(integration), adapter_modules or {}
     if foreign := [path.name for path in listed(integration) if path.suffix != ".json"]:
         return (
             None,
@@ -394,19 +426,26 @@ def record_signoff(
     run = {path.name: load(path) for path in paths}
     old = [name for name, record in run.items() if record["format"] != FORMAT]
     failing = [name for name, record in run.items() if record["format"] == FORMAT and record["result"] != "pass"]
-    reopened, changes = [], set()
-    for name, record in run.items():
-        if name in old or name in failing:
-            continue
-        action, changed = record["action"], touched(integration, tree=record["package"])
-        kept = any(
-            (row.actions is None or action in row.actions)
-            and stands(touched(integration, commit=row.commit), action, adapter_modules)
-            for row in vouchers
+    head = package_tree(integration, commit="HEAD")
+    hops = [
+        (package_tree(integration, commit=f"{row.commit}~1"), package_tree(integration, commit=row.commit), row.actions)
+        for row in vouchers
+    ]
+    ran_at = {
+        name: package_tree(integration, tree=record["package"])
+        for name, record in run.items()
+        if name not in old and name not in failing
+    }
+    reopened = [
+        name for name, tree in ran_at.items() if not carried(tree, head, run[name]["action"], adapter_modules, hops)
+    ]
+    changes = set().union(
+        *(
+            differing(ran_at[name], head) or {f"package {run[name]['package'][:12]}, which git doesn't have"}
+            for name in reopened
         )
-        if not stands(changed, action, adapter_modules) and not kept:
-            reopened.append(name)
-            changes |= changed or {f"package {record['package'][:12]}, which git doesn't have"}
+    )
+    missing = sorted(set(changed_actions) - {record["action"] for record in run.values()})
     why = []
     if old:
         why.append(f"{', '.join(old)}: format 1, converted from markdown, so no sign-off: rerun with the rig")
@@ -415,10 +454,12 @@ def record_signoff(
     if reopened:
         why.append(
             f"{', '.join(reopened)}: reopened by a change since {'its' if len(reopened) == 1 else 'their'} run"
-            f" ({', '.join(sorted(changes))}): rerun, or a no_call_changed row names the action"
+            f" ({', '.join(sorted(changes))}): rerun, or a no_call_changed row at the change's commit names the action"
         )
+    if missing:
+        why.append(f"{', '.join(missing)}: changed since the last release, with no record")
     if why:
-        return None, "; ".join(why), tuple(Path(name).stem for name in (*old, *failing, *reopened))
+        return None, "; ".join(why), tuple(Path(name).stem for name in (*old, *failing, *reopened, *missing))
     commits = Counter(record["source"]["commit"][:7] for record in run.values())
     return SignOff("record", str(folder.relative_to(REPO)), commits.most_common(1)[0][0]), None, ()
 
@@ -502,7 +543,13 @@ def gates(registry) -> tuple[str | None, list[Gate], list[str]]:
             errors += record_class_errors(key)
         if not (last := last_change(key, base)):
             continue
-        run, why, reruns = record_signoff(key, modules(registry, key), [row for row in manual if row.vouches])
+        changed = changed_adapters(registry, key, base)
+        run, why, reruns = record_signoff(
+            key,
+            modules(registry, key),
+            [row for row in manual if row.vouches],
+            [adapter.action for _, adapter in changed],
+        )
         signoff, rejected = run, [why] if why else []
         for candidate in () if run else manual:
             if not (why := rejection(candidate, key)):
@@ -510,7 +557,7 @@ def gates(registry) -> tuple[str | None, list[Gate], list[str]]:
                 break
             rejected.append(why)
         caveated, uncaveated = [], []
-        for name, adapter in changed_adapters(registry, key, base):
+        for name, adapter in changed:
             caveat = adapter.scope.caveat
             (caveated if caveat is not None and caveat.kind is CaveatKind.UNTESTED_FIX else uncaveated).append(name)
         found.append(Gate(key, last, signoff, rejected, caveated, uncaveated, reruns))
@@ -560,8 +607,9 @@ def main(argv: list[str] | None = None, registry: AdapterRegistry | None = None)
     parser.add_argument(
         "--signoffs", action="store_true", help="fail on an integration changed since the last release with no sign-off"
     )
-    parser.add_argument("--json", action="store_true", help="with --signoffs: list the integrations without one")
-    parser.add_argument("--reruns", action="store_true", help="with --signoffs: those, each with the suites to rerun")
+    printed = parser.add_mutually_exclusive_group()
+    printed.add_argument("--json", action="store_true", help="with --signoffs: list the integrations without one")
+    printed.add_argument("--reruns", action="store_true", help="with --signoffs: those, each with the suites to rerun")
     parser.add_argument("--notes", type=Path, help="write the release notes' call for testers here")
     args = parser.parse_args(argv)
     if (args.json or args.reruns) and not args.signoffs:
