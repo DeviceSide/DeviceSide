@@ -57,14 +57,14 @@ device classes in [the device-classes plan](plans/2026-11-14-device-classes.md).
    or per PR.
 9. **Retest what the change exercises.** After a run, a change reopens only the rig cases whose call, or whose
    handling of the device's reply, it changes (tenet 5). A change that alters neither reopens none, and a maintainer
-   says so with a `no_call_changed` row ([sign-off format](#sign-off-format)). A fix for a failing case reopens that
-   case, not its suite. This prevents the same passing cases being rerun at each small change. Not yet in the gate:
-   until it takes a partial rerun (`TODO.md`, Partial reruns), a rig sign-off is one whole run at the release's
-   package, so changes to a package land together before its run; the whole-run rule goes when the gate changes.
+   says so with a `no_call_changed` row ([sign-off format](#sign-off-format)). The release gate applies this by
+   record, one per suite: a change to an adapter's module reopens that action's records alone, and a fix for a failing
+   case reruns its suite, not the integration's run ([release gate](#release-gate)). This prevents the same passing
+   cases being rerun at each small change, and replaces the sign-off as one whole run at one package tree.
 
 *Example (tenets 8 and 9):* after Zigbee2MQTT's run, a refactor of a shared helper lands, and its unit tests show
-every call and reply path unchanged: a `no_call_changed` row signs off in the run's place. A fix to `stop`'s call
-lands next. Tenet 9 reopens only `stop`'s cases; today's gate still needs the whole run at the fixed package.
+every call and reply path unchanged: a `no_call_changed` row citing its commit keeps every record. A fix to `stop`'s
+call lands next. It reopens `stop`'s records alone, and a rerun of the `stop` suite completes the sign-off.
 
 *Example (tenets 4 and 5):* the rig found that a Tuya TS011F plug doesn't run the Zigbee timed-on timer it is given.
 That reopened "a Zigbee switch takes the light's timed-on call", so the `switch` domain stays untested on ZHA
@@ -299,11 +299,29 @@ Each integration whose package (`custom_components/deviceside/integrations/<x>/`
 needs a sign-off that holds the package as the release does. Any change counts, flags included; a reverted one is
 none.
 
-- **A sign-off** is a whole passing rig run or a `_manual.json` row. A run is checked by the package tree its records
-  cite (`package`), so a run on a PR branch still counts once the PR squash-merges, and its records can land in the same
-  PR. A manual row is checked by its commit, which must be in the release's checkout and hold the package as the release
+- **A sign-off** is the bundle's rig records, every one passing and still standing, or a `_manual.json` row. A record
+  is checked by the package tree it cites (`package`), so a run on a PR branch still counts once the PR squash-merges,
+  and its records can land in the same PR.
+- **A record stands** while every package file changed since its run is another adapter's module (tenet 9). A change
+  to its own adapter's module reopens it, and so does a change to a module that is no adapter's (a shared helper),
+  which may alter any action's call. A suite that is no action's (`lifecycle.json`) is reopened by any change to the
+  package, and a record whose tree the checkout doesn't have stands only if it is the release's. A reopened record
+  needs its suite rerun, and no other; `check_release.py --signoffs --reruns` lists the suites. So an adapter's
+  module never imports another adapter's: code two adapters share lives in a module that is neither's (a unit test
+  checks it).
+- **Every adapter changed since the last release needs a record** of its plain call, a new one included: the other
+  actions' records stand through its change, and say nothing about it, and a record with an option set
+  (`<action>-<option>.json`) ran only that option.
+- **A `no_call_changed` row carries a record across one change,** the one its commit made, when that change altered
+  neither the action's call nor its handling of the device's reply. The record must stand up to that commit's parent,
+  and from the commit on; a later change needs its own row or a rerun. `main` is squash-merged, so a commit is one
+  PR's change; a row citing a merge commit vouches for everything it merged. With no `actions` the row covers every action, and is itself a
+  sign-off of the package as its commit holds it; with `actions` it covers those actions' records, and is no sign-off
+  alone. It is the maintainer's judgment (tenet 7), and the row's PR says what shows it: the unit tests that pin the
+  calls, unchanged.
+- **A manual row** is checked by its commit, which must be in the release's checkout and hold the package as the release
   does: cite one on `main` (or a `release/` branch), as a PR branch's is gone once it squash-merges, so the row lands
-  after the change merges. It may say "no call changed". It comes from one of the integration's maintainers, or a repo
+  after the change merges. It comes from one of the integration's maintainers, or a repo
   maintainer when none responds.
 - **Prefer the rig.** Where the rig covers an integration, the sign-off is a rig run: it is repeatable and catches what
   a person doesn't. A manual row is the fallback for integrations the rig can't reach, or when the rig is broken; a
@@ -348,14 +366,15 @@ and which gives each field. The rules it serves:
   not on each test. It credits the cards as the markdown did, and is no sign-off; a rerun replaces it with format 2.
 - **`_manual.json`**: a maintainer's hand tests, a row each, added in a PR: each device a model id (never a household's
   device name) with the class it reached, and the actions that passed on all of them. A change that alters neither a
-  call nor the handling of a device's reply (tenet 9) signs off with a `no_call_changed` row instead.
+  call nor the handling of a device's reply (tenet 9) signs off with a `no_call_changed` row instead, which may name
+  the `actions` it covers.
 - **`_facts.json`**: the fact cases' results, a row each, only ever added. A row converted from markdown says so and
   has no class.
 
-A rig sign-off is the bundle's records when every one is format 2, cites the same `package` and passes: one whole run,
-whatever commit each record ran at. *Example:* if `stop.json` fails, or cites a different package tree than the rest,
-or is still format 1, the records are no sign-off until every action passes at one package tree; a rerun of `stop` on
-`main` completes a run made on a PR branch when the package didn't change between them.
+A rig sign-off is the bundle's records when every one is format 2, passes and stands ([release gate](#release-gate)),
+whatever commit and package tree each ran at. *Example:* if `stop.json` fails, is still format 1, or was run before a
+change to `stop.py` or to a shared helper, the records are no sign-off until the `stop` suite is rerun; the other
+actions' records stand through a change to `stop.py` alone.
 
 *Example:* a Shelly run in which a relay and a bulb each pass `turn_on_for` credits `S3SW-001X8EU` to `Switch` and
 `S3BL-C010007AEU` to `RGBCCT`, each only under its own class; a maintainer's hand test of both is one `_manual.json`

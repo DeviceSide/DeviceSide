@@ -884,9 +884,7 @@ One run per integration, on `main` once the stack is in (Decision 89). Each is t
 - **Control4:** no run; skialpine's `_manual.json` row (Decision 77).
 
 A run that fails a class flags the class or lists it as not yet supported, in the PR that holds the finding. The fix
-then reruns the cases it exercises, not the suite (`docs/evidence.md`, tenet 9); until the release gate takes a partial
-rerun (`TODO.md`, Partial reruns), a package changed after its run still needs the whole run again, so fixes to one
-package land together before its rerun.
+then reruns the suites it reopens, not the integration's run (`docs/evidence.md`, tenet 9 and Release gate).
 
 ## Deferred until something needs it
 

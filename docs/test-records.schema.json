@@ -168,7 +168,7 @@
     },
 
     "manual_row": {
-      "description": "Either the devices tested, each with the class it reached, and the actions that passed on all of them (a row credits each class to each action, so split a row whose actions reached different classes), or a change that sends no new call: no_call_changed.",
+      "description": "Either the devices tested, each with the class it reached, and the actions that passed on all of them (a row credits each class to each action, so split a row whose actions reached different classes), or a change that alters neither a call nor the handling of a device's reply: no_call_changed, for every action or for those `actions` names.",
       "type": "object",
       "required": ["date", "commit", "tester"],
       "additionalProperties": false,
@@ -178,11 +178,12 @@
         "tester": {"description": "A GitHub handle, without the @: one of the integration's maintainers or a repo maintainer.", "type": "string", "pattern": "^[A-Za-z0-9-]+$"},
         "devices": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/manual_device"}},
         "passed": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/action"}},
-        "no_call_changed": {"const": true}
+        "no_call_changed": {"const": true},
+        "actions": {"description": "With no_call_changed: the actions whose records the row carries across the change its commit made, to their own or a shared module (docs/evidence.md, Release gate). Without it the row covers every action, and signs off the package as its commit holds it.", "type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/action"}}
       },
       "if": {"required": ["no_call_changed"]},
       "then": {"not": {"anyOf": [{"required": ["devices"]}, {"required": ["passed"]}]}},
-      "else": {"required": ["devices", "passed"]}
+      "else": {"required": ["devices", "passed"], "not": {"required": ["actions"]}}
     },
 
     "manual_device": {
