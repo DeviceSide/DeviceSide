@@ -201,7 +201,8 @@ def plan(cache: TransitionCache, request: RampRequest, target: Target, lights: l
 
 
 class Stopped(Exception):
-    """A stop reached the fade's lights while it waited for Z2M's option: it publishes nothing."""
+    """A stop reached the fade's lights while it waited for Z2M's option: it publishes nothing. Its arg is the ids of
+    the lights the stop halted."""
 
 
 async def start(
@@ -216,31 +217,42 @@ async def start(
     hue_native_control is held at need for the publishes (native_control.py).
 
     A fade is recorded before the option is taken, which can wait on an earlier action's restore, so a stop in that
-    window finds the fade and halts it; the fade then raises Stopped and publishes nothing, and the stop stands. A hue
-    move needs no option, so it has no such window."""
+    window finds the fade and halts it; the fade then raises Stopped and publishes nothing, and the stop stands, moved
+    to where the bulb is. A hue move needs no option, so it has no such window."""
     if not isinstance(outcome, Fade):
         async with native_control(hass, target, need):
             await publish_set(hass, target, {"hue_move": outcome[0]})
         hue_moves(hass).update(light.entity_id for light in lights)
         return
     attribute = outcome.attribute
-    async with cache.recording((light_id, attribute) for light_id in outcome.starts):
-        planned = {
-            light_id: cache.moving(light_id, attribute, begin, outcome.ends[light_id], outcome.duration)
-            for light_id, begin in outcome.starts.items()
-        }
-        async with native_control(hass, target, need):
-            if any(
-                cache.halted(light_id, attribute) and cache.live(light_id, attribute) is not transition
-                for light_id, transition in planned.items()
-            ):
-                raise Stopped
-            # Recorded again inside the option's window, so the prediction starts at the publish.
-            for light_id, begin in outcome.starts.items():
-                cache.moving(light_id, attribute, begin, outcome.ends[light_id], outcome.duration)
-            for light, payload in outcome.before:
-                await publish_set(hass, light, payload)
-            await publish_set(hass, target, outcome.payload)
+    prior = {light_id: cache.live(light_id, attribute) for light_id in outcome.starts}
+    try:
+        async with cache.recording((light_id, attribute) for light_id in outcome.starts):
+            planned = {
+                light_id: cache.moving(light_id, attribute, begin, outcome.ends[light_id], outcome.duration)
+                for light_id, begin in outcome.starts.items()
+            }
+            async with native_control(hass, target, need):
+                if halted := [
+                    light_id
+                    for light_id, transition in planned.items()
+                    if cache.halted(light_id, attribute) and cache.live(light_id, attribute) is not transition
+                ]:
+                    raise Stopped(halted)
+                # Recorded again inside the option's window, so the prediction starts at the publish.
+                for light_id, begin in outcome.starts.items():
+                    cache.moving(light_id, attribute, begin, outcome.ends[light_id], outcome.duration)
+                for light, payload in outcome.before:
+                    await publish_set(hass, light, payload)
+                await publish_set(hass, target, outcome.payload)
+    except Stopped as stop:
+        # The stop halted at the unpublished fade's prediction; the bulb is where the move before it puts it (0 % from
+        # off), so a raise right after still lights it from the bottom.
+        now = cache.clock()
+        for light_id in stop.args[0]:
+            before = prior[light_id]
+            cache.stopped(light_id, attribute, before.value(now) if before is not None else outcome.starts[light_id])
+        raise
     if attribute == SATURATION:
         hue_moves(hass).difference_update(outcome.starts)  # a color write ends the bulb's hue cycle
     read = end_read(hass, target, lights, attribute)
