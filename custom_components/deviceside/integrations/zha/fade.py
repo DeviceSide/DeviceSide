@@ -200,6 +200,7 @@ class Fade:
     duration: float
     presets: list[Target] = field(default_factory=list)
     restores: frozenset[str] = frozenset()  # the soft-off lights whose start level goes back, from starts
+    clamped_to: float | None = None  # the sweep_time used, where it had to be clamped
 
 
 @dataclass(frozen=True, slots=True)
@@ -237,7 +238,8 @@ class ZHARamp(Adapter[RampRequest]):
     keeps its own hue, so a group's members share one groupcast. A light without them, or in color temperature, gets
     MoveToColor, the xy of its current hue at the end saturation, one command each. Hue is
     EnhancedMoveHue, a cycle the bulb runs until a stop, on lit lights whose ColorCapabilities report enhanced hue; a
-    sweep_time outside 1-65535 s is clamped, with clamped_to. A group is unchanged with fields_dropped for hue if any
+    sweep_time outside 1-65535 s is clamped, with clamped_to, as is a brightness or saturation fade's, which the longest
+    ZCL transition caps (core.zcl_fade.fade_seconds). A group is unchanged with fields_dropped for hue if any
     member lacks it. A move with nothing left to make is unchanged with at_limit; one with only lights that are off to
     move is unchanged with off. A hue or saturation move whose ColorCapabilities read fails is rejected with error.
 
@@ -367,7 +369,7 @@ async def start(
     for light in outcome.movers:
         if light.entity_id not in failed:
             run_on(hass, cache, context, outcome, light, marks.recorded[light.entity_id])
-    return None, failed
+    return outcome.clamped_to, failed
 
 
 @dataclass(frozen=True, slots=True)
@@ -476,6 +478,7 @@ def brightness_fade(cache: TransitionCache, request: RampRequest, lights: list[T
         leg.duration,
         presets,
         restores,
+        leg.clamped_to,
     )
 
 
@@ -500,7 +503,8 @@ def saturation_fade(
         return zcl.COLOR_CLUSTER, zcl.MOVE_TO_COLOR, params | {"transition_time": tenths}
 
     commands = {light.entity_id: command(light) for light in movers}
-    return Fade(SATURATION, commands, movers, leg.starts, dict.fromkeys(leg.starts, limit), leg.duration)
+    ends = dict.fromkeys(leg.starts, limit)
+    return Fade(SATURATION, commands, movers, leg.starts, ends, leg.duration, clamped_to=leg.clamped_to)
 
 
 def hue_move(request: RampRequest, movers: list[Target]) -> HueMove:

@@ -22,8 +22,9 @@ async def test_sends_the_end_saturation(hass, commands):
 async def test_a_transition_longer_than_zcl_holds_runs_at_the_most(hass, commands):
     bulb(hass)
 
-    await call(hass, "raise_saturation", {"entity_id": "light.bulb", "sweep_time": 100000})
+    response = await call(hass, "raise_saturation", {"entity_id": "light.bulb", "sweep_time": 100000})
 
+    assert response == {"light.bulb": {**SENT, "clamped_to": 16383.5}}
     assert sent(commands) == [(0x0300, 0x03, {"saturation": 254, "transition_time": 0xFFFE})]
 
 

@@ -156,7 +156,7 @@ light reads on, as a TS011F counts OnTime down while off.
 - A hue move marks its lights as cycling before the send, so a cancel mid-send still leaves them to a later stop; the
   lights it failed for are unmarked after.
 
-A transition longer than ZCL's 6553.4 s runs at that. The bulb reports brightness during a fade, never color, so
+A transition longer than ZCL carries is clamped, with `clamped_to` (`docs/internals.md`, Fades). The bulb reports brightness during a fade, never color, so
 DeviceSide calls `homeassistant.update_entity` 1 s after a fade should end and straight after a stop; raw commands
 leave ZHA's transition guard down, so the read is the bulb's.
 

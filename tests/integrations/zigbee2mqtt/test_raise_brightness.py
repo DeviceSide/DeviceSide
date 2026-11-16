@@ -34,7 +34,7 @@ async def test_a_fade_longer_than_a_zcl_transition_runs_at_the_longest(hass, bro
 
     response = await call(hass, "raise_brightness", {"entity_id": entity_id, "sweep_time": 20_000})
 
-    assert response == {entity_id: SENT}
+    assert response == {entity_id: {**SENT, "clamped_to": 16383.5}}
     assert commands(broker) == [(SET, {"state": "ON", "brightness": 254, "transition": 6553.4})]
     assert transition_cache(hass).value(entity_id, BRIGHTNESS, -1) == pytest.approx(60.0)
 

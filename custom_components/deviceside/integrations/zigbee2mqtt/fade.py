@@ -138,6 +138,7 @@ class Fade:
     ends: dict[str, float]
     duration: float
     before: tuple[tuple[Target, dict], ...] = ()
+    clamped_to: float | None = None  # the sweep_time used, where it had to be clamped
 
 
 def ramp_scope(action: str, attribute: str) -> AdapterScope:
@@ -160,7 +161,8 @@ class Z2MRamp(Z2MAdapter[RampRequest]):
     keeps the level for the next plain on. Saturation is written as a color with the end saturation and no hue, so each
     bulb keeps its own and a group is one publish, on lit lights showing a color (hs or xy); else as the light's
     current hue with the end saturation, in xy. It moves only lit lights. Hue is Z2M's hue_move, a cycle at a rate the
-    bulb runs until a stop; a sweep_time outside 1-254 s is clamped, with clamped_to. A light whose Z2M definition lacks
+    bulb runs until a stop; a sweep_time outside 1-254 s is clamped, with clamped_to, as is a brightness or saturation
+    fade's, which the longest ZCL transition caps (core.zcl_fade.fade_seconds). A light whose Z2M definition lacks
     color_hs is unchanged with fields_dropped for hue and saturation. A move with nothing left to make is unchanged with
     at_limit; one with only lights that are off to move is unchanged with off.
 
@@ -189,7 +191,7 @@ class Z2MRamp(Z2MAdapter[RampRequest]):
                 await start(hass, cache, target, lights, outcome, NEED.get(self.action))
             except Stopped:
                 return self.result(target, Status.UNCHANGED, detail="stopped")
-            clamped_to = None if isinstance(outcome, Fade) else outcome[1]
+            clamped_to = outcome.clamped_to if isinstance(outcome, Fade) else outcome[1]
             return self.result(target, Status.SENT, clamped_to=clamped_to)
 
         return await checked(self, hass, targets, send)
@@ -307,7 +309,7 @@ def brightness_fade(cache: TransitionCache, request: RampRequest, target: Target
     off = [light for light in lights if light not in lit_lights] if up else []
     # One publish to the group when it is all off, so its members light together; else each off member's own.
     before = tuple((light, AT_THE_BOTTOM) for light in ([target] if off == lights else off))
-    return Fade(BRIGHTNESS, payload, leg.starts, dict.fromkeys(leg.starts, limit), leg.duration, before)
+    return Fade(BRIGHTNESS, payload, leg.starts, dict.fromkeys(leg.starts, limit), leg.duration, before, leg.clamped_to)
 
 
 def saturation_fade(cache: TransitionCache, request: RampRequest, target: Target, lights: list[Target]) -> Fade | str:
@@ -325,7 +327,9 @@ def saturation_fade(cache: TransitionCache, request: RampRequest, target: Target
     if not all(color_mode(light) in COLOR_MODES_COLOR for light in movers):
         color["hue"] = round((hs_color(target) or hs_color(movers[0]))[0], 1)
     payload = {"color": color, "transition": round(leg.duration, 1)}
-    return Fade(SATURATION, payload, leg.starts, dict.fromkeys(leg.starts, limit), leg.duration)
+    return Fade(
+        SATURATION, payload, leg.starts, dict.fromkeys(leg.starts, limit), leg.duration, clamped_to=leg.clamped_to
+    )
 
 
 def hue_rate(request: RampRequest) -> HueMove:

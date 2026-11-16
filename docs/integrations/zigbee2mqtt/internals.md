@@ -220,9 +220,8 @@ one, the longest.
   light's current hue, which goes out as `moveToHueAndSaturation`. Source, `Koenkk/zigbee-herdsman-converters`
   `f368dcd1`: `src/converters/toZigbee.ts` (`light_color`), `src/lib/philips.ts` (`light`, `hue_native_control`),
   `src/lib/modernExtend.ts` (`light`: `meta.supportsHueAndSaturation`).
-- A brightness or saturation fade's `transition` is at most 6553.4 s, the longest a ZCL uint16 of tenths carries
-  (`0xFFFE`; `0xFFFF` means the bulb's default): a longer one runs at that, faster, with no `clamped_to`, and the
-  prediction matches.
+- A brightness or saturation fade's `transition` is at most the longest ZCL transition (`docs/internals.md`, Fades),
+  with `clamped_to` when a longer one is cut; the prediction matches.
 - Hue: `hue_move` at `254 / sweep_time` steps per second (ZCL allows 1 to 254).
 
 ### `stop`
