@@ -61,6 +61,42 @@
           "firmware": "0x01001200"
         }
       ]
+    },
+    {
+      "date": "2026-11-16",
+      "suite": "lower_brightness",
+      "test": "soft_off_keeps_level[light_ct]",
+      "kind": "automated",
+      "result": "pass",
+      "devices": [
+        {
+          "model": "LTA009",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "0x01002a00",
+          "class": "hue"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-16",
+      "suite": "lower_brightness",
+      "test": "soft_off_keeps_level[group]",
+      "kind": "automated",
+      "result": "pass",
+      "devices": [
+        {
+          "model": "LWA012",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "0x01002a00",
+          "class": "hue"
+        },
+        {
+          "model": "LTA009",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "0x01002a00",
+          "class": "hue"
+        }
+      ]
     }
   ]
 }
