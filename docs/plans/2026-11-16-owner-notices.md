@@ -1,9 +1,11 @@
 # Owner notices: warn a package's maintainers before someone else changes it
 
-Date: 2026-11-16. Status: planned, not started. Depends on PR #447 (the family seam,
+Date: 2026-11-16. Status: approved, not started. Depends on PR #447 (the family seam,
 `docs/plans/2026-11-16-family-seam.md`) merging first.
 
-## Open questions for the repo maintainer
+## Settled with the repo maintainer (2026-11-16)
+
+Each recommendation below was accepted as written; implementation starts once #447 merges.
 
 1. **Evidence 6 for controls 1 and 3.** No PR so far has changed a package without its maintainer hearing:
    Control4's history is its maintainer's own, and #447 leaves Control4 alone. The failure rests on a mechanism, not
