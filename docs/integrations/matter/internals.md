@@ -11,6 +11,10 @@ Through the core integration's python-matter-server connection. The unique ID is
 FeatureMap bit 0 from the node data (`node_data.attributes["{endpoint}/6/65532"]`), avoiding a chip.clusters import
 that `MatterEndpoint.get_attribute_value` would need.
 
+A target is addressed only when its unique ID's cluster and attribute are OnOff.OnOff (`6-0`). HA puts other switches
+on the same endpoint (Eve's child lock), and they're refused `not_addressable`
+([research](research/2026-11-16-onoff-addressing.md)).
+
 Lights take the same command and reads as plugs, behind the same Lighting feature check.
 
 ## What decides the call

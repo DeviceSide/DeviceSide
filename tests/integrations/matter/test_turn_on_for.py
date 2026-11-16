@@ -6,7 +6,7 @@ from homeassistant.exceptions import HomeAssistantError
 from custom_components.deviceside.core.scope import Level
 from custom_components.deviceside.integrations.matter.turn_on_for import MatterTurnOnFor
 
-from ...conftest import allow_experimental, call, sent
+from ...conftest import allow_experimental, call, refusal, sent
 from ...fixtures.matter import (
     NODE_ID,
     add_matter_entity,
@@ -144,3 +144,21 @@ async def test_the_command_is_logged_without_the_node(hass, wire):
     assert sent(wire) == [
         "switch.bulb: sending matter OnOff.OnWithTimedOff {'on_off_control': 0, 'on_time': 50, 'off_wait_time': 1}"
     ]
+
+
+CHILD_LOCK_UID = "0000000000000001-0000000000000002-MatterNodeDevice-1-EveChildLock-319486977-319422481"
+
+
+async def test_a_config_switch_on_the_plugs_endpoint_is_refused_and_the_plug_still_runs(hass):
+    """Eve's child lock is a switch on the plug's endpoint, but not its OnOff: refused, nothing sent for it."""
+    entry, send_cmd, _ = matter_device(hass, endpoint_id=EP)
+    add_matter_entity(hass, entry, "switch.plug", endpoint_id=EP)
+    add_matter_entity(hass, entry, "switch.child_lock", endpoint_id=EP, unique_id=CHILD_LOCK_UID)
+
+    assert await refusal(hass, "turn_on_for", {"entity_id": "switch.child_lock", "duration": 5}) == "not_addressable"
+    send_cmd.assert_not_awaited()
+
+    response = await call(hass, "turn_on_for", {"entity_id": "switch.plug", "duration": 5})
+
+    assert response == {"switch.plug": CONFIRMED}
+    send_cmd.assert_awaited_once()
