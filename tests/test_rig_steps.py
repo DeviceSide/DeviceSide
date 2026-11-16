@@ -29,5 +29,6 @@ def test_a_step_file_loads_and_calls_a_registered_action(path):
     assert raw["tests"]
     for test in raw["tests"]:  # a misspelled `only:` would drop the test, its observed run or a step from every suite
         named = set(test.get("only", [])) | set((test.get("observe") or {}).get("only", []))
-        named |= {key for step in test.get("setup", []) + test.get("steps", []) for key in step.get("only", [])}
+        for step in test.get("setup", []) + test.get("steps", []):  # and a class selector's, which would go inert
+            named |= {*step.get("only", []), *step.get("classes", {}), *step.get("except_classes", {})}
         assert named <= allowed, test["name"]
