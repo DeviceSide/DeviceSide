@@ -12,7 +12,7 @@ TODO.md, README.md (regenerated), custom_components/deviceside/core/{scope.py, a
 dispatcher.py, errors.py}, the five integration packages and their bundles, scripts/gen_compat.py, and their tests.
 Tests-with: ha-rig #84 (step 2, merged) writes the Capability column. A second ha-rig change, after step 4, reads the
 class from each result (Decision 6). It lands before any rig run on step 4's branch or later.
-Depends-on: none. #350 (Control4) gets no comment and no change until step 8. It is `experimental=True` throughout, so
+Depends-on: none. #350 (Control4) gets no comment and no change (step 10). It is `experimental=True` throughout, so
 none of these steps blocks it.
 
 ## Why
@@ -211,7 +211,7 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
        `docs/design.md` (glossary, Class) once the Tuya classes land: they name only `hue` and `other` until then.
      - **TODO and the run:** tick step 5 in `TODO.md` when its PR merges (Decision 89); the Zigbee2MQTT run (The
        runs) restores the card's Works line and clears the ten coverage warnings.
-   - **Part 2, built** (`claude/device-classes-5-z2m`), the lab run pending. The TS011F's `doesnt_work` is keyed by
+   - **Part 2, built** (#431), its run the Zigbee2MQTT sign-off (The runs). The TS011F's `doesnt_work` is keyed by
      a class of its own, `tuya_ts011f`, as `tuya_zcl` stays not supported on `turn_on_for` and a scope entry is per
      class. `other` is Documented on `raise_brightness`, `lower_brightness` and `stop`, and `experimental(...)` on the
      rest (argued in the PR body). The `sengled` audit of Level commands sent from off is in the Z2M `internals.md`
@@ -275,7 +275,7 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
           and integration (`Profile.entity`), so a profile of three `switch_plug` plugs tests one. The cases for a
           role run once per listed entity, each a test reaching its own device, so one run gives each maker string
           its record; part 3 settles the record's shape (item 8). The rig's plan goes on its `wt/` branch first.
-     - **Built** (`claude/device-classes-5c-tuya-countdown`), the lab run pending:
+     - **Built** (#441), its run the Zigbee2MQTT sign-off (The runs):
        - **Classes** (`classes.py`): `tuya_countdown`, a TS011F whose bridge/devices definition exposes a top-level
          `countdown` and isn't `ZOT60`; a class per Verified maker string on the same rule plus its string
          (`string_class`: `tuya_countdown_tz3000_0zfrhq4i` and the three other lab plugs'); `tuya_countdown_harmed` for
@@ -413,7 +413,7 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      seconds (the probe's 106 s). Tuya's datapoint quirks route On/Off themselves and answer `0x42` with
      `UNSUP_CLUSTER_COMMAND`, sending nothing. A v2 quirk's friendly name can replace the registry's strings, so the
      classifier reads zigpy's raw strings and the On/Off cluster's quirk through the gateway, never the registry.
-   - **Built** (`claude/device-classes-7-zha`), the lab run pending. `integrations/zha/classes.py`: classes `hue`,
+   - **Built** (#439), its run the ZHA sign-off (The runs). `integrations/zha/classes.py`: classes `hue`,
      `tuya_countdown`, `tuya_countdown_harmed`, `tuya_zcl`, `tuya_mcu`, `sengled`, `sonoff_swv` and `other` (the
      default). `tuya_mcu` keys on the routing (the module that defines the On/Off cluster's `command` is zha-quirks'
      Tuya package), then on `TS0601` or `_TZE…`; the rest key on the raw manufacturer and model. A device whose strings
@@ -531,15 +531,16 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      bridge detection fails closed (a Bridged Node, Bridged Device Basic Information or an unreadable DeviceTypeList);
      `evidence.md`'s harm rule says a default-class device runs at its class's level, not Experimental. The README's
      WiZ line is lost until the rerun, as Decision 15 accepted for Z2M; `check_release --signoffs` blocks on it.
-   - **Lab run (pending):** the WiZ plug on the new call, `turn_on_for` and `get_attributes`, in format 2, so the
-     records carry `wiz_plug`; it lifts `turn_on_for` on `wiz_plug` (and the `switch` domain) to Verified and clears
-     the coverage warning. With Experimental features on, as `turn_on_for` is flagged on every class until then.
+   - **Lab run (the Matter sign-off, The runs):** the WiZ plug on the new call, `turn_on_for` and `get_attributes`, in
+     format 2, so the records carry `wiz_plug`; it lifts `turn_on_for` on `wiz_plug` (and the `switch` domain) to
+     Verified and clears the coverage warning. With Experimental features on, as `turn_on_for` is flagged on every class
+     until then.
 10. **Close out.**
     - The runs, below.
     - Remove `models.yaml`'s shared entries (step 7 moves its last, ZHA's TS011F `not_supported`, into ZHA's code),
       regenerate the README, and tick TODO.
-    - Then, with Jason's go-ahead, comment on #350: the classes it will need to leave `experimental`, and what its
-      manual records should note (the Director's driver or proxy type).
+    - No #350 comment (Jason, 2026-11-16): Control4 ships Experimental, where no class check applies, and its classes
+      are its maintainer's to name when it leaves the flag.
 
 ### Step 3: probe spec
 
