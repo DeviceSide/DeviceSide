@@ -87,7 +87,7 @@ repos:
         stages: [pre-commit, commit-msg]
 
   # -------------------------
-  # Log lines (docs/logging.md: no addresses, %r on caught exceptions)
+  # Log lines (docs/logging.md: no addresses, caught exceptions through describe)
   # -------------------------
   - repo: local
     hooks:

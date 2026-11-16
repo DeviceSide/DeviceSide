@@ -19,6 +19,14 @@ async def test_sends_the_end_saturation(hass, commands):
     assert sent(commands) == [(0x0300, 0x03, {"saturation": 254, "transition_time": 20})]
 
 
+async def test_a_transition_longer_than_zcl_holds_runs_at_the_most(hass, commands):
+    bulb(hass)
+
+    await call(hass, "raise_saturation", {"entity_id": "light.bulb", "sweep_time": 100000})
+
+    assert sent(commands) == [(0x0300, 0x03, {"saturation": 254, "transition_time": 0xFFFE})]
+
+
 async def test_end_refresh_once_the_fade_has_run(hass, commands, refreshes):
     bulb(hass)
     start = wall_clock_now()

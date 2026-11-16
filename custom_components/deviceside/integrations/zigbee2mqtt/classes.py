@@ -60,8 +60,8 @@ OTHER_LEVELS: Mapping[str, Mapping[str, ClassLevel]] = {
     "raise_brightness": _SAME_CALL,
     "lower_brightness": _SAME_CALL,
     "stop": _SAME_CALL,
-    # Hue and saturation fades: a Hue bulb may get Philips' own command, as the user's option has it, and holds its
-    # hue fading saturation in xy, which nothing shows other firmware does.
+    # Hue and saturation fades: a saturation fade is MoveToSaturation with Philips' own command held off, which holds
+    # a Hue bulb's hue; nothing shows other firmware does.
     "raise_hue": _UNTESTED,
     "lower_hue": _UNTESTED,
     "raise_saturation": _UNTESTED,

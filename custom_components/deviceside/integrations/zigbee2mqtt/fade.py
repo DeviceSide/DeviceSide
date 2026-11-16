@@ -1,5 +1,9 @@
 """Zigbee2MQTT raise and lower: brightness and saturation published as an end point with a transition, hue as a rate
-move. Each action's adapter is a Z2MRamp."""
+move. Each action's adapter is a Z2MRamp.
+
+Saturation is a color with no hue, which zigbee-herdsman-converters' light_color sends as MoveToSaturation: the stop of
+an xy (MoveToColor) saturation fade visibly jumps, and a MoveToSaturation one halted by StopMoveStep doesn't
+(docs/integrations/zigbee2mqtt/internals.md, Tested behavior)."""
 
 import logging
 from collections.abc import Coroutine
@@ -7,6 +11,7 @@ from dataclasses import dataclass
 from statistics import mean
 from typing import Any, ClassVar
 
+from homeassistant.components.light import COLOR_MODES_COLOR
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
@@ -21,13 +26,22 @@ from .native_control import native_control
 from .set_check import checked
 from ...actions.ramp import RampRequest
 from ...core import transition
-from ...core.errors import Reason
+from ...core.errors import Reason, describe
 from ...core.ha_watch import ALL, Call, Entries
 from ...core.models import EntityResult, Status, Target
 from ...core.resolver import resolve
 from ...core.runtime import Job, get_runtime
 from ...core.scope import AdapterScope, verified
-from ...core.transition import BRIGHTNESS, SATURATION, TransitionCache, hs_color, light_brightness, lit
+from ...core.transition import (
+    BRIGHTNESS,
+    SATURATION,
+    Transition,
+    TransitionCache,
+    color_mode,
+    hs_color,
+    light_brightness,
+    lit,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -46,6 +60,15 @@ AT_THE_BOTTOM = {"state": "ON", "brightness": 1, "transition": 0}
 
 def transition_cache(hass: HomeAssistant) -> TransitionCache:
     return transition.transition_cache(hass, "zigbee2mqtt", lambda: TransitionCache(SETTLE_SECONDS))
+
+
+type Source = tuple[Transition | None, float]  # the last published move under a planned fade, else the bulb's level
+
+
+def waiting(hass: HomeAssistant) -> dict[int, Source]:
+    """By id, each recorded fade still waiting for Z2M's option, and where the bulb really is under it: a stop in the
+    window halts there (start)."""
+    return get_runtime(hass).integration_state.setdefault("zigbee2mqtt_waiting_fades", {})
 
 
 def hue_moves(hass: HomeAssistant) -> set[str]:
@@ -137,11 +160,12 @@ class Z2MRamp(Z2MAdapter[RampRequest]):
     each member's transition is recorded from its own start, and the group's start is the mean of its lit members.
 
     Raising brightness turns the light on. Lowering it to 0 % is Z2M's soft off, state OFF with the transition, which
-    keeps the level for the next plain on. Saturation is written as a color, the light's current hue with the end
-    saturation, and moves only lit lights. Hue is Z2M's hue_move, a cycle at a rate the bulb runs until a stop; a
-    sweep_time outside 1-254 s is clamped, with clamped_to. A light whose Z2M definition lacks color_hs is unchanged
-    with fields_dropped for hue and saturation. A move with nothing left to make is unchanged with at_limit; one with
-    only lights that are off to move is unchanged with off.
+    keeps the level for the next plain on. Saturation is written as a color with the end saturation and no hue, so each
+    bulb keeps its own and a group is one publish, on lit lights showing a color (hs or xy); else as the light's
+    current hue with the end saturation, in xy. It moves only lit lights. Hue is Z2M's hue_move, a cycle at a rate the
+    bulb runs until a stop; a sweep_time outside 1-254 s is clamped, with clamped_to. A light whose Z2M definition lacks
+    color_hs is unchanged with fields_dropped for hue and saturation. A move with nothing left to make is unchanged with
+    at_limit; one with only lights that are off to move is unchanged with off.
 
     Z2M publishes the end value at once. Once a fade has run, its attribute is read back, and a saturation fade's color
     refreshed (color_refresh), so HA ends right even after a live read mid-fade.
@@ -164,7 +188,11 @@ class Z2MRamp(Z2MAdapter[RampRequest]):
                 return self.result(target, Status.UNCHANGED, detail="fields_dropped")
             if isinstance(outcome := plan(cache, request, target, lights), str):
                 return self.result(target, Status.UNCHANGED, detail=outcome)
-            clamped_to = await start(hass, cache, target, lights, outcome, NEED.get(self.action))
+            try:
+                await start(hass, cache, target, lights, outcome, NEED.get(self.action))
+            except Stopped:
+                return self.result(target, Status.UNCHANGED, detail="stopped")
+            clamped_to = None if isinstance(outcome, Fade) else outcome[1]
             return self.result(target, Status.SENT, clamped_to=clamped_to)
 
         return await checked(self, hass, targets, send)
@@ -182,6 +210,11 @@ def plan(cache: TransitionCache, request: RampRequest, target: Target, lights: l
     return hue_rate(request) if lit(cache, lights) else "off"
 
 
+class Stopped(Exception):
+    """A stop reached the fade's lights while it waited for Z2M's option: it publishes nothing. Its arg maps each light
+    the stop halted to its halt."""
+
+
 async def start(
     hass: HomeAssistant,
     cache: TransitionCache,
@@ -189,27 +222,71 @@ async def start(
     lights: list[Target],
     outcome: Fade | HueMove,
     need: bool | None,
-) -> float | None:
-    """Publish the fade, recording it, and schedule its end read-back, or publish the hue move; the clamped
-    sweep_time. Z2M's hue_native_control is held at need for the publishes (native_control.py)."""
-    async with native_control(hass, target, need):
-        if not isinstance(outcome, Fade):
-            rate, clamped_to = outcome
-            await publish_set(hass, target, {"hue_move": rate})
-            hue_moves(hass).update(light.entity_id for light in lights)
-            return clamped_to
-        # Inside the option's window, so the prediction starts at the publish, not before the settings writes.
-        async with cache.recording((light_id, outcome.attribute) for light_id in outcome.starts):
+) -> None:
+    """Publish the fade, recording it, and schedule its end read-back, or publish the hue move. Z2M's
+    hue_native_control is held at need for the publishes (native_control.py).
+
+    A fade is recorded before the option is taken, which can wait on an earlier action's restore, so a stop in that
+    window finds the fade and halts it; the fade then raises Stopped and publishes nothing, and the stop stands, moved
+    to where the bulb is. A hue move needs no option, so it has no such window."""
+    if not isinstance(outcome, Fade):
+        async with native_control(hass, target, need):
+            await publish_set(hass, target, {"hue_move": outcome[0]})
+        hue_moves(hass).update(light.entity_id for light in lights)
+        return
+    attribute = outcome.attribute
+    await _publish_fade(hass, cache, target, outcome, need)
+    if attribute == SATURATION:
+        hue_moves(hass).difference_update(outcome.starts)  # a color write ends the bulb's hue cycle
+    read = end_read(hass, target, lights, attribute)
+    get_runtime(hass).schedule(hass, read_back_key(target, attribute), [(outcome.duration + END_READ_S, read)])
+
+
+def _sources(hass: HomeAssistant, cache: TransitionCache, outcome: Fade) -> dict[str, Source]:
+    """Where each of the fade's bulbs really is: under a fade that never published, where that one's source puts it."""
+    pending = waiting(hass)
+    sources: dict[str, Source] = {}
+    for light_id, begin in outcome.starts.items():
+        prior = cache.live(light_id, outcome.attribute)
+        sources[light_id] = pending.get(id(prior), (prior, begin)) if prior is not None else (None, begin)
+    return sources
+
+
+async def _publish_fade(
+    hass: HomeAssistant, cache: TransitionCache, target: Target, outcome: Fade, need: bool | None
+) -> None:
+    """Record the fade, take the option and publish, unless a stop halted it meanwhile (start)."""
+    attribute, pending, sources = outcome.attribute, waiting(hass), _sources(hass, cache, outcome)
+    planned: dict[str, Transition] = {}
+    try:
+        async with cache.recording((light_id, attribute) for light_id in outcome.starts):
             for light_id, begin in outcome.starts.items():
-                cache.moving(light_id, outcome.attribute, begin, outcome.ends[light_id], outcome.duration)
-            for light, payload in outcome.before:
-                await publish_set(hass, light, payload)
-            await publish_set(hass, target, outcome.payload)
-        if outcome.attribute == SATURATION:
-            hue_moves(hass).difference_update(outcome.starts)  # a color write ends the bulb's hue cycle
-    read = end_read(hass, target, lights, outcome.attribute)
-    get_runtime(hass).schedule(hass, read_back_key(target, outcome.attribute), [(outcome.duration + END_READ_S, read)])
-    return None
+                planned[light_id] = cache.moving(light_id, attribute, begin, outcome.ends[light_id], outcome.duration)
+                pending[id(planned[light_id])] = sources[light_id]
+            async with native_control(hass, target, need):
+                if halts := {
+                    light_id: halt
+                    for light_id, transition in planned.items()
+                    if cache.halted(light_id, attribute) and (halt := cache.live(light_id, attribute)) is not transition
+                }:
+                    raise Stopped(halts)
+                # Recorded again inside the option's window, so the prediction starts at the publish.
+                for light_id, begin in outcome.starts.items():
+                    cache.moving(light_id, attribute, begin, outcome.ends[light_id], outcome.duration)
+                for light, payload in outcome.before:
+                    await publish_set(hass, light, payload)
+                await publish_set(hass, target, outcome.payload)
+    except Stopped as stop:
+        # The stop halted at the unpublished fade's prediction; the bulb halted where its source put it at the stop (0 %
+        # from off), so a raise right after still lights it from the bottom.
+        for light_id, halt in stop.args[0].items():
+            move, level = sources[light_id]
+            value = move.value(halt.started_at) if move is not None else level
+            cache.moving(light_id, attribute, value, value, 0.0, started_at=halt.started_at)
+        raise
+    finally:
+        for transition in planned.values():
+            pending.pop(id(transition), None)
 
 
 async def lacks_color(hass: HomeAssistant, request: RampRequest, lights: list[Target]) -> bool:
@@ -246,10 +323,11 @@ def brightness_fade(cache: TransitionCache, request: RampRequest, target: Target
 
 
 def saturation_fade(cache: TransitionCache, request: RampRequest, target: Target, lights: list[Target]) -> Fade | str:
-    """The saturation fade toward the limit at the current hue; off with no lit light in color, at_limit when there is
-    none left to make.
+    """The saturation fade toward the limit; off with no lit light in color, at_limit when there is none left to make.
 
-    Written as a color: the bulb holds its hue as it fades, with Z2M's hue_native_control on (in xy) or off, and Z2M
+    A color with no hue where every moving light shows a color: Z2M sends MoveToSaturation (hue_native_control off,
+    which NEED holds), so each bulb keeps its own hue and a group is one publish. Else, a light in color temperature
+    (its stored hue may be stale, untested) makes it the current hue with the end saturation, as an xy fade. Z2M
     publishes the end, which HA takes.
     """
     if not (movers := [light for light in lit(cache, lights) if hs_color(light) is not None]):
@@ -259,9 +337,11 @@ def saturation_fade(cache: TransitionCache, request: RampRequest, target: Target
     current = mean(starts.values())
     if (limit - current if up else current - limit) < MIN_STEP:
         return "at_limit"
-    hue = (hs_color(target) or hs_color(movers[0]))[0]
     duration = abs(limit - current) / 100 * request.sweep_time
-    payload = {"color": {"hue": round(hue, 1), "saturation": round(limit, 1)}, "transition": round(duration, 1)}
+    color = {"saturation": round(limit, 1)}
+    if not all(color_mode(light) in COLOR_MODES_COLOR for light in movers):
+        color["hue"] = round((hs_color(target) or hs_color(movers[0]))[0], 1)
+    payload = {"color": color, "transition": round(duration, 1)}
     return Fade(SATURATION, payload, starts, dict.fromkeys(starts, limit), duration)
 
 
@@ -287,6 +367,6 @@ def end_read(hass: HomeAssistant, target: Target, lights: list[Target], attribut
             try:
                 await publish(hass, topic(light, "get"), {"state": "", "brightness": ""})
             except Exception as err:  # noqa: BLE001 - a failed read leaves HA's state stale, nothing more
-                _LOGGER.debug("End read-back for %s failed: %r", light.entity_id, err)
+                _LOGGER.debug("End read-back for %s failed: %s", light.entity_id, describe(err))
 
     return read

@@ -21,7 +21,7 @@ from homeassistant.core import HomeAssistant, callback
 
 from .addressing import bridge_topic, state_topic, topic, z2m_address
 from .bridge import ensure_options, first_retained, publish, wait
-from .bridge_cache import log_error
+from .bridge_cache import cause, log_error
 from ...core.models import Target
 
 _LOGGER = logging.getLogger(__name__)
@@ -76,7 +76,7 @@ class Reader:
         if self._reply is None or self._reply.done() or (message := log_error(msg.payload)) is None:
             return
         if all(part in message for part in self._failure):
-            self._reply.set_exception((DeliveryFailed if _DELIVERY_FAILED in message else RuntimeError)(message))
+            self._reply.set_exception((DeliveryFailed if _DELIVERY_FAILED in message else RuntimeError)(cause(message)))
 
     @callback
     def _on_state(self, msg: mqtt.ReceiveMessage) -> None:

@@ -1,5 +1,6 @@
-# Saturation: written as a color at the current hue, which the bulb fades in xy (on Hue, the bridge reports the end xy
-# at once). HA's hs is derived from the bulb's xy, so it lands near the limit, not on it.
+# Saturation: a MoveToSaturation where the light shows a color (ZHA and Zigbee2MQTT), which holds the hue; else a color
+# at the current hue (on Hue, the bridge reports the end xy at once). HA's hs is derived from the bulb's xy, so it lands
+# near the limit, not on it.
 action: lower_saturation
 rig_seconds: 75
 tests:

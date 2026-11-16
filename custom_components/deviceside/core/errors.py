@@ -1,5 +1,7 @@
+import errno
 from enum import StrEnum
 
+import aiohttp
 from homeassistant.exceptions import ServiceNotSupported, ServiceValidationError
 
 from ..const import DOMAIN
@@ -68,3 +70,50 @@ class TargetNotSupported(ServiceNotSupported):
             self, translation_domain=DOMAIN, translation_key=key, translation_placeholders=placeholders
         )
         self.reason = reason
+
+
+def describe(err: BaseException) -> str:
+    """An upstream error for a log line (docs/logging.md): its repr, as its text is often the diagnosis.
+
+    Not an aiohttp error's, nor one wrapping it (as its args, cause, context, or in an exception group): its repr holds
+    the request's URL and headers (a Hue bridge's address, a resource id, the hue-application-key), and its text the URL
+    or, where a connect failed, the address asyncio writes into the OS error. It gives the type, a response error its
+    status and reason, an SSL error its reason (CERTIFICATE_VERIFY_FAILED), and another connection error the OS error's
+    errno name; a wrapper's type wraps that.
+    """
+    if (client := _client_error(err)) is None:
+        return repr(err)
+    if isinstance(client, aiohttp.ClientResponseError):
+        text = f"{type(client).__name__}(status={client.status}, message={client.message!r})"
+    elif isinstance(client, aiohttp.ClientSSLError):
+        # Its errno is OpenSSL's code, not the OS's; its reason (CERTIFICATE_VERIFY_FAILED) names no address.
+        reason = getattr(client.os_error, "reason", None)
+        text = f"{type(client).__name__}({reason})" if reason else f"{type(client).__name__}()"
+    elif isinstance(client, aiohttp.ClientConnectorError) and client.os_error.errno:
+        text = f"{type(client).__name__}({errno.errorcode.get(client.os_error.errno, client.os_error.errno)})"
+    else:
+        text = f"{type(client).__name__}()"
+    return text if client is err else f"{type(err).__name__}({text})"
+
+
+def traceback_is_safe(err: BaseException) -> bool:
+    """Whether a log line may carry err's traceback, which prints each chained error's text: not where describe hides
+    an aiohttp error."""
+    return _client_error(err) is None
+
+
+def _client_error(err: BaseException) -> aiohttp.ClientError | None:
+    """The aiohttp error err is or wraps, through its args, cause, context and a group's exceptions; None if none."""
+    seen: set[int] = set()
+    pending: list[BaseException] = [err]
+    while pending:
+        if id(current := pending.pop()) in seen:
+            continue
+        seen.add(id(current))
+        if isinstance(current, aiohttp.ClientError):
+            return current
+        pending += [arg for arg in current.args if isinstance(arg, BaseException)]
+        if isinstance(current, BaseExceptionGroup):
+            pending += current.exceptions
+        pending += [chained for chained in (current.__cause__, current.__context__) if chained is not None]
+    return None

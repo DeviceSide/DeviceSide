@@ -35,14 +35,14 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
     docstring's CLAUDE.md citations and CLAUDE.md's Layout line on release checks.
   - [x] 5. Cards: `gen_compat.py` tiers for two levels, the flag and caveats, and the docstring's CLAUDE.md citations.
   - [x] 6. Sign-offs by the Package tree records cite, not commit ancestry, so a run on a PR branch counts (#408).
-- [ ] **Device classes**, by the [plan](docs/plans/2026-11-14-device-classes.md), in five PRs (its Decision 90),
+- [x] **Device classes**, by the [plan](docs/plans/2026-11-14-device-classes.md), in five PRs (its Decision 90),
   before the sign-offs below, as it moves non-Hue bulbs on Zigbee2MQTT, ZHA and Hue behind `experimental`. A step is
   ticked when its PR merges; no step waits on a rig run, and each integration runs once, as its sign-off below (plan
   Decision 89; `docs/evidence.md`, tenet 8):
   - [x] 1. Rules and design, docs only (`docs/evidence.md`, `docs/design.md`).
-  - [ ] 2. Rig (ha-rig): the records' Capability column (its format in `docs/evidence.md`, and `gen_compat`'s parser
+  - [x] 2. Rig (ha-rig): the records' Capability column (its format in `docs/evidence.md`, and `gen_compat`'s parser
     taking it, land in DeviceSide alongside); the rig reads the class from each result (the second rig change, given
-    to Jason directly), before any rig run on step 4's branch or later; Shelly rerun on it.
+    to Jason directly), before any rig run on step 4's branch or later. The Shelly rerun on it is its sign-off below.
   - [x] 3. Lab probe: registry strings, the TS011F, the Sengled
     ([results](docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md)).
   - [x] 4. Core: `IntegrationInfo.capability` and `classes`, `no_known_method`, `not_built` (and
@@ -73,12 +73,12 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   - [x] 8. Hue classes, the `smart_scene` check moved to them, and the v1 bridge refused as a separate integration
     (plan Decision 32) (#432).
   - [x] 9. Matter classes (#436).
-  - [ ] 10. Close out: `models.yaml`'s shared entries removed (step 7 moves ZHA's TS011F, its last, into ZHA's code),
-    README regenerated, then the #350 comment.
-- [ ] **TS011F refusal on ZHA and Z2M** (device-classes plan, Decisions 16 and 70): a not built yet entry with
+  - [x] 10. Close out: `models.yaml`'s shared entries removed (step 7 moves ZHA's TS011F, its last, into ZHA's code),
+    README regenerated. No #350 comment: Control4 ships Experimental (plan, step 10).
+- [x] **TS011F refusal on ZHA and Z2M** (device-classes plan, Decisions 16 and 70): a not built yet entry with
   `harms` for today's `turn_on_for` call, holding with Experimental on. Without it, ZHA's 0x42 in tenths switches a `_TZ3000_typdpbpg`
   plug on about 10× later than asked, and Z2M leaves the plug on with no timer
-  ([probe](docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md)). Z2M in step 5 (built), ZHA in step 7 (built,
+  ([probe](docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md)). Z2M in step 5 (#441), ZHA in step 7 (#439,
   not built yet with `harms`, plan Decision 74); blocks v0.1.0 even if step 7 slips.
 - [x] **Z2M direct target on a multi-light device** (#429): named by itself, a device's second light (a two-gang's
   `light.<gang_2>`) got its call on the device topic, which Z2M applies to the device's default endpoint, gang 1.
@@ -92,32 +92,50 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   so every integration's stand-ins: skip one with its class's refusal, or `not_addressable`, as an unaddressable
   member is. Fixed: the plug is skipped, named as a member device of the group, and a group with no other runnable
   member raises the plug's reason.
+- [ ] **Z2M saturation fade** (#443, #411): MoveToSaturation, as ZHA's #442, so a stop of a saturation fade doesn't
+  jump. Before the Zigbee2MQTT runs, which watch it (`saturation_down_stop`) and would reopen if it landed after.
+- [ ] **Family seam**, by its plan (`docs/plans/2026-11-16-family-seam.md`, landing with it): vendor families inside
+  Zigbee2MQTT and ZHA, each with its own maintainers, and the rename of the two not-supported kinds. Before the runs,
+  as it reshapes both Zigbee packages. The rename touches Hue's `classes.py` and `set_scene.py`, so its PR carries a
+  Hue `no_call_changed` row (no `actions`) rather than a Hue rerun.
+- [ ] **Shared Zigbee fade planning**, after the family seam, which moves both files (pre-run audit, Medium): ZHA's
+  ramp and Zigbee2MQTT's fade duplicate `MIN_STEP`, `SETTLE_SECONDS`, the starts/movers/at-limit prelude and the
+  hue-rate clamp, and have drifted (Z2M doesn't cap a transition at the ZCL uint16). Lift the planning into
+  `core/transition.py`. Before the runs, as it changes both packages' fades.
+- [ ] **Integration lifecycle hooks**, after the family seam (pre-run audit, Medium): the component root starts
+  Zigbee2MQTT's bridge cache, color modes and restore journal itself, so every integration with a lifecycle edits a
+  repo-maintainer file. Add `IntegrationInfo` setup and teardown hooks. Before the runs.
+- [x] **Pre-run audit**: `/rc-audit` over `b025363..HEAD`, its record replacing `docs/audits/v0.1.0rc1.md`, and its
+  fixes landed, so no run repeats for a fix the audit would have found. The RC's second pass covers what lands after.
 - [ ] **Sign-offs** for v0.1.0, one per integration changed since v0.0.1 (`check_release.py --signoffs`), each a rig run
   from ha-rig `main` (its records are format 2; format 1 records, converted from markdown, count for none). The runs for
   the formerly release-flagged adapters need these `--profile lab` cases, run watched, the A60 visiting each network:
   Hue `saturation_down_stop`, `halts_brightness_and_saturation` and `sets_color_while_off`; ZHA `hue_cycle_stop`,
   `saturation_down_stop` and `sets_color_while_off`; Z2M `halts_a_lower_to_off`, `hue_cycle_stop`,
   `saturation_down_stop` and `sets_color_while_off`. Unattended alongside: Z2M `lower_hue`
-  `cycles_down_the_wheel[group_color]` (#222).
-  - [ ] Control4: waits for skialpine's `_manual.json` row.
+  `cycles_down_the_wheel[group_color]` (#222). In this order; a fix a run finds reruns only the suites it reopens
+  (`--reruns`):
   - [x] Hue: the lab run at `bc27094`, landed with #432.
+  - [ ] ZHA
+  - [ ] Zigbee2MQTT, run A: every suite but `turn_on_for`, `get_attributes` and `lifecycle`, with the watched A60 cases.
+    A record is one run of one suite, so the split falls between suites. Needs ha-rig to run a chosen set of suites.
   - [ ] Matter
   - [ ] Shelly. Accepted until then: `check_release --signoffs` fails on Shelly's class coverage gaps, as its
     records are format 1, with no class per test; no release is cut before its house rerun.
-  - [ ] ZHA
-  - [ ] Zigbee2MQTT
-- [ ] **Partial reruns** (`docs/evidence.md`, tenet 9), after the device-classes stack, which rewrites the records
-  the gate reads: `check_release.py --signoffs` judges each action's record by its own package tree, which stands
-  while only other adapters' modules changed since; a `no_call_changed` row may name the actions it vouches for,
-  keeping their records through a shared-helper change; `--json` lists actions, for the rig's run selection (its
-  paired change). Then tenet 9's "until the gate takes a partial rerun" sentence goes, and the Release gate and
-  Sign-off format sections, `docs/design.md`'s Sign-off entry and CONTRIBUTING's Sign-offs line say the same.
+  - [ ] Zigbee2MQTT, run B: `turn_on_for` and `get_attributes` (the bulb, and part 3's plugs, one per maker string),
+    and `lifecycle`, which any package change reopens. No Zigbee2MQTT change between runs A and B.
+  - [ ] Control4: skialpine's `_manual.json` row, asked for once the runs' fixes have landed, so no fix sends
+    the contributor back to a first submission; it cites a `main` commit holding the release's Control4 package.
+- [x] **Partial reruns** (`docs/evidence.md`, tenet 9): `check_release.py --signoffs` judges each record by its own
+  package tree, which stands while only other adapters' modules changed since; a `no_call_changed` row may name the
+  `actions` whose records it carries across its commit's change; `--reruns` lists the suites to rerun. Open, in
+  ha-rig: its run selection reads `--json`, the integrations; reading `--reruns` instead lets it rerun only the
+  reopened suites.
 - [ ] **Release notes**: hand-written v0.1.0 notes in `notes/`, signed off by the repo maintainers, after the RC
   installs cleanly and before `cut-release`, so they describe what the RC ships.
-- [ ] **v0.1.0**: `/rc-audit` over the new range, the RC and its HACS install, then `cut-release` with every
-  integration signed off (`check_release.py --signoffs`). The release steps are in the `release` skill; the release
-  body gets the signed-off notes. Once the device-classes stack lands, the rc1 audit record
-  (`docs/audits/v0.1.0rc1.md`) is replaced by a new one with base `b025363`.
+- [ ] **v0.1.0**: the `/rc-audit` second pass over what landed after the pre-run audit, the RC and its HACS install,
+  then `cut-release` with every integration signed off (`check_release.py --signoffs`). The release steps are in the
+  `release` skill; the release body gets the signed-off notes.
   After the release, remove CLAUDE.md's "Until v0.1.0 ships, fix the architecture now" paragraph.
 - [x] **Raise/lower rig run**: the six actions and `stop` on Hue and Z2M, rerun in the lab reruns (#297, #299).
 - [x] **Lab rerun**: the first lab run's failures fixed (#160–#163, #172) and rerun (#297, #299); the Z2M failures
@@ -170,11 +188,8 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   ([CLAUDE.md](CLAUDE.md#maintainers)). Split them by family once a family maintainer signs off their own classes:
   the record layout and `docs/test-records.schema.json`, `check_release.py --signoffs` and `gen_compat.py` reading
   them, and the paths added to `FAMILY_PATHS` (`scripts/gen_codeowners.py`).
-- [ ] **Code comments cite the bundles**: eight comments under `integrations/` (hue, matter, zha, zigbee2mqtt) still
-  cite `docs/integration-internals.md` or `docs/integrations.md`; point each at its bundle's
-  `internals.md#tested-behavior` (Z2M `addressing.py`: `index.md#sharp-edges`), which
-  `tests/scripts/test_doc_anchors.py` then checks; widen that test to page-only citations (`docs/….md` with no anchor)
-  too.
+- [x] **Code comments cite the bundles** (pre-run audit): each comment that cited `docs/integration-internals.md` or
+  `docs/integrations.md` points at its bundle, and `tests/scripts/test_doc_anchors.py` checks page-only citations too.
 
 - [ ] **Forum announcement**, once v0.1.0 ships: refresh the draft's testers-wanted list from [Try it: Experimental
   features](docs/device-compatibility.md#try-it-experimental-features) and check every link resolves (the issue forms,
@@ -184,7 +199,6 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   `blank_issues_enabled: false` there, and link the thread from `CONTRIBUTING.md` and the README's Contributing
   section.
 - [ ] **Shelly RGB and RGBW color**: port core's conversions (`light/helper.py` rgb to rgbw with the white split,
-  kelvin to color) so RGB and RGBW take color instead of dropping it, and give `status_row` a branch per component
-  so `get_attributes` reads Light, CCT, RGB and RGBW light state.
+  kelvin to color) so RGB and RGBW take color instead of dropping it (`get_attributes` already reads their color).
 - **9b** Maintained adapters: the rig kit, so maintainers can commit records for hardware the rig lacks
   (`docs/design.md`, Release gates). Until then, they sign off by hand (`docs/evidence.md`).

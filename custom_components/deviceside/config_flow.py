@@ -24,6 +24,7 @@ from .const import (
     PREDICTED_STATE_DEFAULT,
     Z2M_COLOR_MODES_DEFAULT,
 )
+from .core.errors import describe
 from .core.resolver import resolve
 from .core.runtime import DATA
 
@@ -159,7 +160,7 @@ def _manufacturer(hass: HomeAssistant, integration: str, device: dr.DeviceEntry)
     try:
         return info.zigbee_manufacturer(hass, device) or ""
     except Exception as err:  # noqa: BLE001 - a broken hook must not break the form; the string is left out
-        _LOGGER.debug("%s: no Zigbee manufacturer string for the report form: %r", integration, err)
+        _LOGGER.debug("%s: no Zigbee manufacturer string for the report form: %s", integration, describe(err))
         return ""
 
 

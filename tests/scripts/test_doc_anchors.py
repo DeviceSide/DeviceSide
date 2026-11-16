@@ -1,5 +1,5 @@
-"""Every `docs/...md#anchor` cited under custom_components/ resolves to a heading, so a renamed heading or a moved page
-fails here rather than leaving code pointing at nothing."""
+"""Every `docs/...md` page cited under custom_components/ exists, and every `#anchor` on one resolves to a heading, so a
+renamed heading or a moved page fails here rather than leaving code pointing at nothing."""
 
 import re
 from pathlib import Path
@@ -8,7 +8,7 @@ import pytest
 
 from scripts.gen_features import REPO, anchors
 
-CITATION = re.compile(r"\b(docs/[\w./-]+\.md)#([\w-]+)")
+CITATION = re.compile(r"\b(docs/[\w./-]+\.md)(?:#([\w-]+))?")
 
 
 def citations(root: Path) -> list[tuple[str, str, str]]:
@@ -21,18 +21,18 @@ def citations(root: Path) -> list[tuple[str, str, str]]:
 
 
 def dead(found: list[tuple[str, str, str]], repo: Path = REPO) -> list[str]:
-    """The citations whose page is missing or has no heading for the anchor."""
+    """The citations whose page is missing or has no heading for the anchor (an empty anchor cites the page)."""
     errors = []
     for where, page, anchor in found:
         target = repo / page
         if not target.is_file():
             errors.append(f"{where}: {page} doesn't exist")
-        elif anchor not in anchors(target.read_text()):
+        elif anchor and anchor not in anchors(target.read_text()):
             errors.append(f"{where}: {page} has no heading for #{anchor}")
     return errors
 
 
-def test_every_doc_anchor_the_code_cites_resolves():
+def test_every_doc_page_and_anchor_the_code_cites_resolves():
     assert dead(citations(REPO / "custom_components")) == []
 
 
@@ -43,6 +43,8 @@ def test_every_doc_anchor_the_code_cites_resolves():
         ("docs/internals.md#shared", None),
         ("docs/integrations/zha/internals.md#no-such-heading", "has no heading for #no-such-heading"),
         ("docs/integrations/tuya/internals.md#tested-behavior", "doesn't exist"),
+        ("docs/integrations/zha/internals.md", None),
+        ("docs/integration-internals.md", "doesn't exist"),
     ],
 )
 def test_a_dead_page_or_anchor_is_named(citation, error):

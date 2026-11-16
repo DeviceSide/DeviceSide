@@ -25,5 +25,11 @@ def test_hue_is_verified_on_every_action_and_on_lights_alone_on_turn_on_for():
     assert scopes["turn_on_for"].class_level("hue", "switch") is Level.EXPERIMENTAL
 
 
-def test_a_timer_needs_native_control_on_and_a_brightness_fade_off():
-    assert hue.NEED == {"turn_on_for": True, "raise_brightness": False, "lower_brightness": False}
+def test_a_timer_needs_native_control_on_and_a_brightness_or_saturation_fade_off():
+    assert hue.NEED == {
+        "turn_on_for": True,
+        "raise_brightness": False,
+        "lower_brightness": False,
+        "raise_saturation": False,
+        "lower_saturation": False,
+    }

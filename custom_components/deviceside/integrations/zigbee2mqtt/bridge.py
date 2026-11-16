@@ -12,6 +12,7 @@ from homeassistant.core import HomeAssistant, callback
 
 from . import bridge_cache, set_check
 from .addressing import bridge_topic, options_address, state_topic, topic
+from ...core.errors import describe
 from ...core.models import Target
 
 _LOGGER = logging.getLogger(__name__)
@@ -128,7 +129,11 @@ async def ensure_options(
             )
             answer = await wait(pending[transaction], _REPLY_TIMEOUT_S, "no reply from Zigbee2MQTT")
             if answer.get("status") != "ok":
-                raise RuntimeError(answer.get("error") or f"status {answer.get('status')}")
+                # Z2M's error names the device it was asked about (`Device '<ieee>' does not exist`): scrubbed.
+                error = answer.get("error")
+                raise RuntimeError(
+                    bridge_cache.scrub(error, z2m_id, label=kind) if error else f"status {answer.get('status')}"
+                )
             if cache is not None:
                 cache.confirmed[(section, z2m_id)] = _after(answer, before, options)
             changed(z2m_id)
@@ -241,6 +246,8 @@ async def state_reply(hass: HomeAssistant, target: Target) -> tuple[asyncio.Futu
         return published, await mqtt.async_subscribe(hass, light_topic, received)
     except Exception as err:  # noqa: BLE001 - each caller goes on without the reply
         _LOGGER.debug(
-            "Couldn't subscribe to %s's state, so Zigbee2MQTT's answer isn't awaited: %r", target.entity_id, err
+            "Couldn't subscribe to %s's state, so Zigbee2MQTT's answer isn't awaited: %s",
+            target.entity_id,
+            describe(err),
         )
         return None, lambda: None

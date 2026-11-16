@@ -72,6 +72,21 @@ def sent(caplog) -> list[str]:
     return [r.getMessage() for r in caplog.records if r.levelno == logging.DEBUG and ": sending " in r.msg]
 
 
+def leaked(caplog, addressed) -> list[str]:
+    """DeviceSide's log lines, traceback included, for which addressed(line) is true: a line that names a device's
+    address, which docs/logging.md forbids, as users paste their logs into public issues."""
+    formatter = logging.Formatter()
+    return [
+        line
+        # Called at teardown, where caplog.records holds only the teardown's own records.
+        for record in (*caplog.get_records("setup"), *caplog.get_records("call"), *caplog.records)
+        if record.name.startswith("custom_components.deviceside")
+        and addressed(
+            line := record.getMessage() + (f"\n{formatter.formatException(record.exc_info)}" if record.exc_info else "")
+        )
+    ]
+
+
 @pytest.fixture
 def fake_registry():
     """Production actions over the fake integrations, in place of discovery."""

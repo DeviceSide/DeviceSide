@@ -78,11 +78,13 @@ def record_v1(
     return found | {"devices": [old_device()] if devices is None else devices, "tests": tests or [old_test()]}
 
 
-def signoff(commit: str = "1a2b3c4", tester: str = "a", devices=(("LCA001", None),), passed=("turn_on_for",)) -> dict:
-    """A `_manual.json` row; `passed` None for a no-call-changed row."""
+def signoff(
+    commit: str = "1a2b3c4", tester: str = "a", devices=(("LCA001", None),), passed=("turn_on_for",), actions=None
+) -> dict:
+    """A `_manual.json` row; `passed` None for a no-call-changed row, which `actions` narrows to those actions."""
     row = {"date": "2026-11-12", "commit": commit[:7], "tester": tester}
     if passed is None:
-        return row | {"no_call_changed": True}
+        return row | {"no_call_changed": True} | ({"actions": list(actions)} if actions else {})
     return row | {
         "devices": [{"model": m, "manufacturer": None, "class": c} for m, c in devices],
         "passed": list(passed),

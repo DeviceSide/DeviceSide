@@ -7,7 +7,7 @@ from .....core.scope import Family, FamilyScope, experimental
 SENGLED = "sengled"
 
 # Models that don't store a MoveToLevel while off: the Sengled E11-G13 jumps CurrentLevel to 255 with or without the
-# override and comes on at full (docs/integration-internals.md, ZHA tested behavior). Read off the registry's model,
+# override and comes on at full (docs/integrations/zha/internals.md#tested-behavior). Read off the registry's model,
 # not the class.
 DROPS_WHILE_OFF = frozenset({"E11-G13"})
 

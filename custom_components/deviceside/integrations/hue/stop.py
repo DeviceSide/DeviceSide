@@ -13,6 +13,7 @@ from .fade import in_soft_off, light_xy, lit, predicted_brightness, room_lights
 from .report_filter import report_filter
 from .transition_cache import XY, transition_cache
 from ...core.adapter import Adapter
+from ...core.errors import describe
 from ...core.models import EntityResult, Request, Status, Target
 from ...core.scope import AdapterScope
 from ...core.transition import BRIGHTNESS, SATURATION, TransitionCache, reported_brightness
@@ -93,8 +94,19 @@ class HueStop(Adapter[Request]):
                 SATURATION, {light_id: value for light_id, value in saturation.items() if light_id in halted}
             )
             if set(halted) != set(brightness):
-                failed = ", ".join(sorted(entity_name(hass, light_id) for light_id in set(brightness) - set(halted)))
-                _LOGGER.warning("hue stop on %s failed for lights %s", target.entity_id, failed)
+                failed = [
+                    (entity_name(hass, light_id), failure)
+                    for (light_ids, _), failure in zip(writes, failures, strict=True)
+                    if failure is not None
+                    for light_id in light_ids
+                ]
+                _LOGGER.warning(
+                    "stop on hue failed for %s in %s, so they may keep fading",
+                    ", ".join(
+                        f"{name} ({describe(failure)})" for name, failure in sorted(failed, key=lambda pair: pair[0])
+                    ),
+                    target.entity_id,
+                )
                 return self.result(target, Status.REJECTED, detail="some_lights_failed")
             return self.result(target, Status.SENT)
 

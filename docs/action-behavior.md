@@ -24,6 +24,7 @@ when the call is wrong or a device failed, never because some targets didn't app
 | `entity_id: all` | Targets every entity of the domain, none named, so none raises or logs as missing | Same: every light and switch is indirect, so one that can't take the action is skipped with the warning |
 | A target the caller named can never support the action | Raises `ServiceNotSupported` | Raise `target_not_supported`, before anything is sent |
 | The same target reached indirectly | Skips it silently | Skip it, with one warning per call listing each target and why |
+| A named entity of a domain the action doesn't take (a sensor in a light action) | Logs it as missing and carries on | Raise `target_not_supported` (`domain_not_supported`): the call names the wrong entity, which a log line would hide |
 | A light can't take one field (color on a white bulb) | Drops the field silently and acts on the rest | Drop it, act on the rest, `detail: fields_dropped` |
 | The device or its integration fails | The error propagates | Run every target, then raise `targets_failed` listing the failures |
 | DeviceSide's entry isn't loaded (disabled, or its setup failed) | Raises `service_config_entry_not_loaded` | Raise `not_loaded`, before anything is resolved |

@@ -21,8 +21,8 @@ HUE = "hue"
 RULES = (Rule(HUE, {"manufacturer": re.escape(HUE_MANUFACTURER)}),)
 
 # Each action's need of `hue_native_control` on a Hue light: True on, False off. An action left out works either way
-# and leaves the option alone: a saturation fade holds its hue, and a stop, a hue move and a read or write of settings
-# pass on the rig with the option on and off.
+# and leaves the option alone: a stop, a hue move and a read or write of settings pass on the rig with the option on
+# and off.
 NEED: dict[str, bool] = {
     # With a color; without one it works either way. A Hue bulb drops a color sent while it is off, so as ZCL it
     # lights at its last color first.
@@ -31,6 +31,10 @@ NEED: dict[str, bool] = {
     # while the bulb still fades.
     "raise_brightness": False,
     "lower_brightness": False,
+    # Its color has no hue, which the native command turns to xy, so the fade would run as MoveToColor, and jump at a
+    # stop.
+    "raise_saturation": False,
+    "lower_saturation": False,
 }
 
 # Verified on every action, as every record ran on a Hue bulb.

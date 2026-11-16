@@ -6,6 +6,7 @@ from dataclasses import replace
 from unittest.mock import patch
 
 import pytest
+from aiohttp import ClientResponseError, RequestInfo
 from homeassistant.components.light import ColorMode, LightEntityFeature
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.exceptions import HomeAssistantError, ServiceNotSupported, ServiceValidationError, Unauthorized
@@ -14,6 +15,8 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import floor_registry as fr
 from homeassistant.helpers import label_registry as lr
+from multidict import CIMultiDict, CIMultiDictProxy
+from yarl import URL
 
 from custom_components.deviceside.core.errors import TargetNotSupported
 from custom_components.deviceside.core.models import EntityResult, Status, TimedRequest
@@ -801,7 +804,7 @@ async def test_an_expand_group_that_raises_is_logged_and_the_group_not_supported
 
     assert await refusal(hass, "turn_on_for", data) == "group_not_supported"
     assert [record.getMessage() for record in caplog.records if record.exc_info] == [
-        "turn_on_for on fake: listing light.fake_group failed"
+        "turn_on_for on fake: listing light.fake_group failed, so its members are unknown"
     ]
     assert reset_script.calls == []
 
@@ -868,10 +871,11 @@ async def test_a_classifier_that_raises_is_logged_and_counts_as_unknown(hass, fa
 
     failed = [record.getMessage() for record in caplog.records if record.exc_info]
     if broken == "expand_group":
-        assert failed == ["turn_off_for on fake: listing switch.fake_group failed"]
+        assert failed == ["turn_off_for on fake: listing switch.fake_group failed, so its members are unknown"]
     else:
         assert failed == [
-            f"turn_off_for on fake: classing {entity_id} failed" for entity_id in ("switch.fake_group", "switch.a")
+            f"turn_off_for on fake: classing {entity_id} failed, so it is treated as an unknown class"
+            for entity_id in ("switch.fake_group", "switch.a")
         ]
 
 
@@ -1077,7 +1081,7 @@ def in_area(hass, area: str, *entity_ids: str) -> str:
     return area_id
 
 
-async def test_a_device_failure_raises_once_every_target_has_run(hass, fake, reset_script):
+async def test_a_device_failure_raises_once_every_target_has_run(hass, fake, reset_script, caplog):
     for entity_id in ("light.a", "light.b", "light.c"):
         add_fake_entity(hass, fake, entity_id)
     reset_script.outcomes["light.b"] = RuntimeError("radio busy")
@@ -1089,9 +1093,26 @@ async def test_a_device_failure_raises_once_every_target_has_run(hass, fake, res
     assert err.value.translation_key == "targets_failed"
     assert err.value.translation_placeholders == {"summary": "light.b: error, light.c: rejected"}
     assert reset_script.calls[0][3] == ["light.a", "light.b", "light.c"]
+    assert (
+        "turn_on_for on fake failed for light.b: RuntimeError('radio busy'), so HA may show the old values"
+        in caplog.text
+    )
 
 
-async def test_an_unauthorized_target_is_rejected_as_admin_required_and_the_rest_run(hass, fake, reset_script):
+async def test_an_http_error_is_logged_without_its_request(hass, fake, reset_script, caplog):
+    add_fake_entity(hass, fake, "light.a")
+    url = URL("https://192.0.2.1/clip/v2/resource/light/a-resource-id")
+    request = RequestInfo(url, "PUT", CIMultiDictProxy(CIMultiDict({"hue-application-key": "an-app-key"})), url)
+    reset_script.outcomes["light.a"] = ClientResponseError(request, (), status=500, message="Internal Server Error")
+
+    with pytest.raises(HomeAssistantError):
+        await call(hass, "turn_on_for", {"entity_id": "light.a", "duration": 5})
+
+    assert "failed for light.a: ClientResponseError(status=500, message='Internal Server Error')" in caplog.text
+    assert "an-app-key" not in caplog.text and "a-resource-id" not in caplog.text
+
+
+async def test_an_unauthorized_target_is_rejected_as_admin_required_and_the_rest_run(hass, fake, reset_script, caplog):
     for entity_id in ("light.a", "light.b"):
         add_fake_entity(hass, fake, entity_id)
     reset_script.outcomes["light.a"] = Unauthorized()
@@ -1102,6 +1123,9 @@ async def test_an_unauthorized_target_is_rejected_as_admin_required_and_the_rest
     assert err.value.translation_key == "targets_failed"
     assert err.value.translation_placeholders == {"summary": "light.a: admin_required"}
     assert reset_script.calls[0][3] == ["light.a", "light.b"]
+    assert "turn_on_for on fake refused for light.a: it needs an admin user, so HA may show the old values" in (
+        caplog.text
+    )
 
 
 @pytest.mark.usefixtures("experimental_option")
@@ -1207,7 +1231,9 @@ async def test_entity_id_all_acts_on_every_supported_light_and_skips_the_rest_qu
         for r in caplog.records
         if r.name.startswith("custom_components.deviceside") and r.levelno >= logging.WARNING
     ]
-    assert ours == ["turn_on_for skipped targets that can't take it: light.yaml_only (not_in_registry)"]
+    assert ours == [
+        "turn_on_for skipped targets that can't take it: light.yaml_only (not_in_registry), so they got no command"
+    ]
 
 
 async def test_a_label_target_resolves_to_its_lights(hass, fake, reset_script):
@@ -1457,7 +1483,7 @@ async def test_a_request_left_nothing_to_do_is_unchanged_and_sends_nothing(hass,
     assert reset_script.calls[0][3] == ["light.dim"]
 
 
-async def test_adapter_exception_and_timeout_reject_every_target(hass, fake, reset_script):
+async def test_adapter_exception_and_timeout_reject_every_target(hass, fake, reset_script, caplog):
     add_fake_entity(hass, fake, "light.a")
     add_fake_entity(hass, fake, "switch.b")
     data = {"entity_id": ["light.a", "switch.b"], "duration": 5}
@@ -1466,6 +1492,12 @@ async def test_adapter_exception_and_timeout_reject_every_target(hass, fake, res
     with pytest.raises(HomeAssistantError) as err:
         await call(hass, "turn_on_for", data)
     assert err.value.translation_placeholders == {"summary": "light.a: error, switch.b: error"}
+    # The catch-all of an adapter's own bug keeps its traceback (docs/logging.md), and names the targets.
+    [record] = [r for r in caplog.records if r.name.endswith("core.dispatcher") and r.levelno >= logging.WARNING]
+    assert record.exc_info is not None
+    assert record.getMessage() == (
+        "turn_on_for on fake failed for light.a, switch.b: RuntimeError('bridge gone'), so HA may show the old values"
+    )
 
     reset_script.execute_error = None
     reset_script.delay = 1
@@ -1474,7 +1506,7 @@ async def test_adapter_exception_and_timeout_reject_every_target(hass, fake, res
     assert err.value.translation_placeholders == {"summary": "light.a: timeout, switch.b: timeout"}
 
 
-async def test_a_timeout_keeps_the_results_of_the_targets_that_finished(hass, fake, reset_script):
+async def test_a_timeout_keeps_the_results_of_the_targets_that_finished(hass, fake, reset_script, caplog):
     add_fake_entity(hass, fake, "light.fast")
     add_fake_entity(hass, fake, "light.slow")
     reset_script.delays = {"light.slow": 1}
@@ -1484,6 +1516,7 @@ async def test_a_timeout_keeps_the_results_of_the_targets_that_finished(hass, fa
 
     # light.fast was sent and isn't reported failed: only the light still going when time ran out is.
     assert err.value.translation_placeholders == {"summary": "light.slow: timeout"}
+    assert "turn_on_for on fake timed out for light.slow, so HA may show the old values" in caplog.text
 
 
 async def test_an_execute_busy_outside_gather_past_the_backstop_times_out_every_target(hass, fake):
@@ -1924,5 +1957,5 @@ async def test_a_group_expanded_by_core_skips_its_stand_ins(hass, fake, reset_sc
     assert set(response) == {"light.a", "switch.e"}
     assert (
         "skipped targets that can't take it: a member device of light.fake_group (no_known_method),"
-        " a member device of light.fake_group (not_addressable)\n" in caplog.text
+        " a member device of light.fake_group (not_addressable), so they got no command\n" in caplog.text
     )

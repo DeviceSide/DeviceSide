@@ -29,6 +29,7 @@ from .addressing import group_id, options_address, z2m_address, z2m_device
 from .bridge import OPTION, ensure_options, group_members, state_reply
 from .families.hue import HUE_MANUFACTURER
 from .restore_journal import Address, journal, locks
+from ...core.errors import describe
 from ...core.models import Target
 from ...core.runtime import get_runtime
 
@@ -138,7 +139,7 @@ async def _take(hass: HomeAssistant, target: Target, address: Address, need: boo
         return True
     if journaled:
         await _strike(hass, address, not need, target.entity_id)  # refused: the option stands as it was
-    return await _owed(hass, address, target.entity_id) is not None
+    return await _owed(hass, address, target.entity_id, "so this action pays no restore it owes") is not None
 
 
 def _restore_task(hass: HomeAssistant, address: Address, restore: Coroutine[Any, Any, None]) -> None:
@@ -186,30 +187,58 @@ async def _owe(hass: HomeAssistant, address: Address, value: bool, entity_id: st
     try:
         return await (await journal(hass)).add(address, value)
     except Exception as err:  # noqa: BLE001 - the journal is a safety net; the action goes on without it
-        _LOGGER.warning("Couldn't journal the pending %s restore for %s: %r", OPTION, entity_id, err)
+        _LOGGER.warning(
+            "Couldn't journal the pending %s restore for %s: %s, so a restart before it would leave the option flipped",
+            OPTION,
+            entity_id,
+            describe(err),
+        )
         return False
 
 
-async def _owed(hass: HomeAssistant, address: Address, entity_id: str) -> bool | None:
-    """The value the journal owes back at the address, or None (none owed, or the journal unreadable)."""
+async def _owed(hass: HomeAssistant, address: Address, entity_id: str, consequence: str) -> bool | None:
+    """The value the journal owes back at the address, or None (none owed, or the journal unreadable, which the
+    caller's consequence ends the warning with)."""
     try:
         return (await journal(hass)).owes(address)
     except Exception as err:  # noqa: BLE001 - as if none were owed
-        _LOGGER.warning("Couldn't read the %s restore journal for %s: %r", OPTION, entity_id, err)
+        _LOGGER.warning(
+            "Couldn't read Zigbee2MQTT's %s restore journal for %s: %s, %s",
+            OPTION,
+            entity_id,
+            describe(err),
+            consequence,
+        )
         return None
 
 
 async def _strike(hass: HomeAssistant, address: Address, value: bool, entity_id: str) -> None:
     try:
-        await (await journal(hass)).strike(address, value)
-    except Exception as err:  # noqa: BLE001 - a stale entry is replayed harmlessly at the next online
-        _LOGGER.warning("Couldn't strike the %s restore for %s off the journal: %r", OPTION, entity_id, err)
+        held = await journal(hass)
+    except Exception as err:  # noqa: BLE001 - nothing is struck; the entry is paid again when the journal reads
+        _LOGGER.warning(
+            "Couldn't read Zigbee2MQTT's %s restore journal for %s: %s, so any restore it owes stays owed",
+            OPTION,
+            entity_id,
+            describe(err),
+        )
+        return
+    try:
+        await held.strike(address, value)
+    except Exception as err:  # noqa: BLE001 - struck in memory; the next start finds the stale entry already paid
+        _LOGGER.warning(
+            "Couldn't strike Zigbee2MQTT's %s restore for %s off the journal: %s, so the next start strikes it",
+            OPTION,
+            entity_id,
+            describe(err),
+        )
 
 
 async def _put_back(hass: HomeAssistant, target: Target, address: Address, fallback: bool) -> None:
     """Restore the user's value, the one the journal owes (fallback when none is), and strike it off once Z2M
     confirmed it."""
-    value = owed if (owed := await _owed(hass, address, target.entity_id)) is not None else fallback
+    found = f"so it puts back {fallback}, the value it found"
+    value = owed if (owed := await _owed(hass, address, target.entity_id, found)) is not None else fallback
     if await _set(hass, target, address, value, restoring=True):
         await _strike(hass, address, value, target.entity_id)
 
@@ -281,21 +310,21 @@ async def _set(
             return requested and isinstance(err, TimeoutError)
         else:
             _LOGGER.warning(
-                "Couldn't put Zigbee2MQTT's %s back to %s for %s, so it stays %s: %r",
+                "Couldn't put Zigbee2MQTT's %s back to %s for %s, so it may stay %s: %s",
                 OPTION,
                 value,
                 target.entity_id,
                 not value,
-                err,
+                describe(err),
             )
     return written
 
 
 def _warn_set(target: Target, value: bool, err: Exception) -> None:
     _LOGGER.warning(
-        "Couldn't set Zigbee2MQTT's %s to %s for %s, so the command goes out as the option stands: %r",
+        "Couldn't set Zigbee2MQTT's %s to %s for %s, so the command goes out as the option stands: %s",
         OPTION,
         value,
         target.entity_id,
-        err,
+        describe(err),
     )

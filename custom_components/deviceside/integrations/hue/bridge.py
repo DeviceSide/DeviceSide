@@ -95,6 +95,12 @@ def entity_name(hass: HomeAssistant, rid: str) -> str:
     return er.async_get(hass).async_get_entity_id("light", "hue", rid) or "a Hue light with no entity"
 
 
+def named(hass: HomeAssistant, values: dict[str, Any]) -> list[tuple[str, Any]]:
+    """values keyed by resource id, as (entity_name, value) pairs for a log line: pairs, not a dict, as every light
+    with no entity has the same name."""
+    return [(entity_name(hass, rid), value) for rid, value in values.items()]
+
+
 def log_write(
     hass: HomeAssistant,
     writer: LightsController | GroupedLightController,
@@ -156,7 +162,7 @@ def stops(attributes: Iterable[str]) -> dict:
 
 def xy_halt(xy: tuple[float, float]) -> dict:
     """The PUT body fields that halt an xy fade at this xy, its predicted one: the bridge has no color delta stop, and
-    reports the written xy at once (docs/integration-internals.md, Hue tested behavior). The duration of 0 holds for
+    reports the written xy at once (docs/integrations/hue/internals.md#tested-behavior). The duration of 0 holds for
     every field in the PUT."""
     return {"color": {"xy": {"x": xy[0], "y": xy[1]}}, "dynamics": {"duration": 0}}
 

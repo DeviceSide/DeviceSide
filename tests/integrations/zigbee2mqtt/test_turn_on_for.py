@@ -144,7 +144,10 @@ async def test_turn_on_error_rejects_that_target(hass, setup_production, publish
     assert not publishes  # publish was never reached
 
 
-async def test_group_with_fields_calls_turn_on_then_publishes(hass, setup_production, broker, publishes, turn_ons):
+async def test_group_with_fields_calls_turn_on_then_publishes(
+    hass, setup_production, broker, publishes, turn_ons, monkeypatch
+):
+    monkeypatch.setattr(turn_on_for, "_STATE_TIMEOUT_S", 0.05)  # turn_ons publishes no state: the timer goes out anyway
     group(hass, broker, one={}, two={})
 
     response = await call(hass, "turn_on_for", {"entity_id": "light.room", "duration": 5, "brightness": 50})
@@ -214,6 +217,7 @@ def z2m(hass, monkeypatch):
     fake = StateTopic(hass)
     monkeypatch.setattr(bridge.mqtt, "async_subscribe", fake.subscribe)
     monkeypatch.setattr(turn_on_for, "_STATE_TIMEOUT_S", 0.05)
+    monkeypatch.setattr(bridge, "_RETAINED_TIMEOUT_S", 0.05)  # this broker holds no retained bridge/info
     hass.services.async_register("light", "turn_on", fake.turn_on)
     hass.services.async_register("mqtt", "publish", fake.publish)
     return fake

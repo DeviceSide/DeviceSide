@@ -1,4 +1,5 @@
-"""Zigbee2MQTT raise_saturation: a color at the current hue with the end saturation, and its color brought in line."""
+"""Zigbee2MQTT raise_saturation: a color with the end saturation and no hue (MoveToSaturation), and its color brought
+in line."""
 
 import pytest
 from homeassistant.exceptions import HomeAssistantError
@@ -15,10 +16,10 @@ pytestmark = pytest.mark.usefixtures("setup_production", "clock")
 @pytest.mark.parametrize(
     ("data", "payload"),
     [
-        pytest.param({}, {"color": {"hue": 200.0, "saturation": 100.0}, "transition": 2.0}, id="at_the_current_hue"),
+        pytest.param({}, {"color": {"saturation": 100.0}, "transition": 2.0}, id="without_a_hue"),
         pytest.param(
             {"limit": 80, "sweep_time": 10},
-            {"color": {"hue": 200.0, "saturation": 80.0}, "transition": 2.0},
+            {"color": {"saturation": 80.0}, "transition": 2.0},
             id="to_a_limit",
         ),
     ],
@@ -37,11 +38,36 @@ async def test_a_group_records_each_lit_member(hass, broker, clock):
 
     await call(hass, "raise_saturation", {"entity_id": room})
 
-    payload = {"color": {"hue": 200.0, "saturation": 100.0}, "transition": 2.0}
+    payload = {"color": {"saturation": 100.0}, "transition": 2.0}
     assert commands(broker) == [("zigbee2mqtt/7/set", payload)]
     cache = transition_cache(hass)
     assert cache.value("light.one", SATURATION, 0) == 40.0
     assert cache.value("light.two", SATURATION, 0) == 80.0
+
+
+async def test_a_group_at_different_hues_is_one_publish_without_a_hue(hass, broker):
+    room = group(hass, broker, one={"hs": (200.0, 40.0)}, two={"hs": (100.0, 40.0)})
+
+    await call(hass, "raise_saturation", {"entity_id": room})
+
+    assert commands(broker) == [("zigbee2mqtt/7/set", {"color": {"saturation": 100.0}, "transition": 3.0})]
+
+
+async def test_a_light_in_color_temperature_fades_at_its_current_hue(hass, broker):
+    entity_id = light(hass, broker, color_mode="color_temp")
+
+    await call(hass, "raise_saturation", {"entity_id": entity_id})
+
+    assert commands(broker) == [(SET, {"color": {"hue": 200.0, "saturation": 100.0}, "transition": 2.0})]
+
+
+async def test_one_member_in_color_temperature_sends_the_group_the_hue_too(hass, broker):
+    room = group(hass, broker, one={"hs": (200.0, 40.0)}, two={"hs": (200.0, 40.0), "color_mode": "color_temp"})
+
+    await call(hass, "raise_saturation", {"entity_id": room})
+
+    payload = {"color": {"hue": 200.0, "saturation": 100.0}, "transition": 3.0}
+    assert commands(broker) == [("zigbee2mqtt/7/set", payload)]
 
 
 async def test_the_color_is_brought_in_line_at_its_end(hass, broker):
