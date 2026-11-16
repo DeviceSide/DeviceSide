@@ -124,8 +124,8 @@ Doesn't work (generated from `doesnt_work`). `devices.yaml` keeps `column`, `col
 - **Decisions the plan doesn't settle go to Jason**, asked directly, and are recorded below as they are made.
 - **The rig:** the lab profile is available every step. It has the Hue bulbs on Hue, ZHA and Z2M, the TS011F plug and
   the Matter WiZ plug, and can take a Sengled bulb or the Shelly color bulb when needed. The house profile, which
-  has the Shelly switch devices, is a day or two away. No step waits on a run: each integration runs once, after the stack lands
-  (Decision 89; The runs). The A60, the Sengled E11-G13 (the "ZHA bulb", paired on ZHA) and the Shelly color
+  has the Shelly switch devices, is a day or two away. No step waits on a run: each integration runs once, after the
+  stack lands (Decision 89; The runs). The A60, the Sengled E11-G13 (the "ZHA bulb", paired on ZHA) and the Shelly color
   bulb share one lab fixture and are swapped by hand, so each lab run names which bulb goes in the fixture and on which
   network.
 
@@ -174,8 +174,8 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      cache's `bridge/groups`, so a group takes its members' classes and falls back to them (Decision 10).
    - **The default class in code (Decision 5):** an `IntegrationInfo` field naming the default class, which the
      registry refuses at Verified in any scope.
-   - **Lab run,** once the stack is on `main` (Decision 89). It tests the classifier, the column, the coverage check, Works credited per
-     class, and the refusals. Fixture: the A60 on Z2M. The Sengled sits it out (Decision 77): no gate needs it, as
+   - **Lab run,** once the stack is on `main` (Decision 89). It tests the classifier, the column, the coverage
+     check, Works credited per class, and the refusals. Fixture: the A60 on Z2M. The Sengled sits it out (Decision 77): no gate needs it, as
      its classes are flagged or not yet supported.
    - **Part 1, done** (`claude/device-classes-5-z2m`): everything that needs no probe string. The classifier
      (`integrations/zigbee2mqtt/classes.py`), rules as data, with the `hue` rule alone (manufacturer `Philips`, the
