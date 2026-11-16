@@ -6,9 +6,9 @@
   "date": "2026-11-16",
   "source": {
     "kind": "rig",
-    "commit": "71ab3359"
+    "commit": "a27779ef"
   },
-  "package": "5f84da2f6050",
+  "package": "c29127046ee7",
   "home_assistant": "2026.10.4",
   "tests": [
     {

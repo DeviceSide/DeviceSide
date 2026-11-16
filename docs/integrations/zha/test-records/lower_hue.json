@@ -1,32 +1,35 @@
 {
-  "format": 1,
+  "format": 2,
   "integration": "zha",
   "action": "lower_hue",
   "result": "pass",
-  "date": "2026-11-07",
+  "date": "2026-11-16",
   "source": {
     "kind": "rig",
-    "commit": "1de5a51"
+    "commit": "687d369d"
   },
-  "home_assistant": "2026.10.2",
-  "devices": [
-    {
-      "model": "LCA016",
-      "firmware": "0x01001200"
-    }
-  ],
+  "package": "58496e69e867",
+  "home_assistant": "2026.10.4",
   "tests": [
     {
       "id": "cycles_down_the_wheel[light_color]",
       "domain": "light",
       "role": "light_color",
-      "result": "pass"
+      "result": "pass",
+      "devices": [
+        {
+          "model": "LCA016",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "0x01000d08",
+          "class": "hue"
+        }
+      ]
     },
     {
       "id": "cycles_down_the_wheel[group_color]",
       "role": "group_color",
       "result": "skipped",
-      "reason": "none in the profile"
+      "reason": "no group_color entity in the profile"
     }
   ]
 }

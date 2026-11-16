@@ -121,27 +121,27 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 
 | Action | Level | Items | Tested models | Records |
 |---|---|---|---|---|
-| `get_attributes` | Verified | light entities; hue classes | `LTA009`, firmware `0x01002a00`<br>`LCA016`, firmware `0x01001200`<br>`LWA012`, firmware `0x01002502`<br>group | [record](integrations/zha/test-records/get_attributes.json) |
+| `get_attributes` | Verified | light entities; hue classes | `LTA009` (`hue`), firmware `0x01002a00`<br>`LCA016` (`hue`), firmware `0x01000d08`<br>`LWA012` (`hue`), firmware `0x01002a00` | [record](integrations/zha/test-records/get_attributes.json) |
 | `get_attributes` | Experimental | switch entities; other, tuya_countdown, tuya_countdown_harmed, tuya_zcl, sengled, sonoff_swv classes | | |
-| `lower_brightness` | Verified | light entities; hue classes; brightness fields | `LTA009`, firmware `0x01002a00`<br>group | [record](integrations/zha/test-records/lower_brightness.json) |
+| `lower_brightness` | Verified | light entities; hue classes; brightness fields | `LTA009` (`hue`), firmware `0x01002a00`<br>group | [record](integrations/zha/test-records/lower_brightness.json) |
 | `lower_brightness` | Documented | other classes | | |
 | `lower_brightness` | Experimental | tuya_countdown, tuya_countdown_harmed, tuya_zcl, sengled, sonoff_swv classes | | |
-| `lower_hue` | Verified | light entities; hue classes; hue fields | `LCA016`, firmware `0x01001200` | [record](integrations/zha/test-records/lower_hue.json) |
+| `lower_hue` | Verified | light entities; hue classes; hue fields | `LCA016` (`hue`), firmware `0x01000d08` | [record](integrations/zha/test-records/lower_hue.json) |
 | `lower_hue` | Experimental | other, tuya_countdown, tuya_countdown_harmed, tuya_zcl, sengled, sonoff_swv classes | | |
-| `lower_saturation` | Verified | light entities; hue classes; saturation fields | `LCA016`, firmware `0x01001200` | [record](integrations/zha/test-records/lower_saturation.json) |
+| `lower_saturation` | Verified | light entities; hue classes; saturation fields | `LCA016` (`hue`), firmware `0x01000d08` | [record](integrations/zha/test-records/lower_saturation.json) |
 | `lower_saturation` | Experimental | other, tuya_countdown, tuya_countdown_harmed, tuya_zcl, sengled, sonoff_swv classes | | |
-| `raise_brightness` | Verified | light entities; hue classes; brightness fields | `LTA009`, firmware `0x01002a00`<br>group | [record](integrations/zha/test-records/raise_brightness.json) |
+| `raise_brightness` | Verified | light entities; hue classes; brightness fields | `LTA009` (`hue`), firmware `0x01002a00`<br>group | [record](integrations/zha/test-records/raise_brightness.json) |
 | `raise_brightness` | Experimental | other, tuya_countdown, tuya_countdown_harmed, tuya_zcl, sengled, sonoff_swv classes | | |
-| `raise_hue` | Verified | light entities; hue classes; hue fields | `LCA016`, firmware `0x01001200` | [record](integrations/zha/test-records/raise_hue.json) |
+| `raise_hue` | Verified | light entities; hue classes; hue fields | `LCA016` (`hue`), firmware `0x01000d08` | [record](integrations/zha/test-records/raise_hue.json) |
 | `raise_hue` | Experimental | other, tuya_countdown, tuya_countdown_harmed, tuya_zcl, sengled, sonoff_swv classes | | |
-| `raise_saturation` | Verified | light entities; hue classes; saturation fields | `LCA016`, firmware `0x01001200` | [record](integrations/zha/test-records/raise_saturation.json) |
+| `raise_saturation` | Verified | light entities; hue classes; saturation fields | `LCA016` (`hue`), firmware `0x01000d08` | [record](integrations/zha/test-records/raise_saturation.json) |
 | `raise_saturation` | Experimental | other, tuya_countdown, tuya_countdown_harmed, tuya_zcl, sengled, sonoff_swv classes | | |
-| `set_attributes` | Verified | light entities; hue classes; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, min_brightness, max_brightness fields | `LCA016`, firmware `0x01001200` | [record](integrations/zha/test-records/set_attributes.json) |
+| `set_attributes` | Verified | light entities; hue classes; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, min_brightness, max_brightness fields | `LTA009` (`hue`), firmware `0x01002a00`<br>`LCA016` (`hue`), firmware `0x01000d08`<br>group | [record](integrations/zha/test-records/set_attributes.json) |
 | `set_attributes` | Experimental | other, tuya_countdown, tuya_countdown_harmed, tuya_zcl, sengled, sonoff_swv classes | | |
-| `stop` | Verified | light entities; hue classes | `LTA009`, firmware `0x01002a00`<br>`LCA016`, firmware `0x01001200`<br>group | [record](integrations/zha/test-records/stop.json) |
+| `stop` | Verified | light entities; hue classes | `LTA009` (`hue`), firmware `0x01002a00`<br>`LCA016` (`hue`), firmware `0x01000d08`<br>group | [record](integrations/zha/test-records/stop.json) |
 | `stop` | Documented | other classes | | |
 | `stop` | Experimental | tuya_countdown, tuya_countdown_harmed, tuya_zcl, sengled, sonoff_swv classes | | |
-| `turn_on_for` | Verified | light entities; hue classes; brightness, color_temp_kelvin fields | `LWA012`, firmware `0x01002502`<br>`LTA009`, firmware `0x01002a00`<br>group | [record](integrations/zha/test-records/turn_on_for.json) |
+| `turn_on_for` | Verified | light entities; hue classes; brightness, color_temp_kelvin fields | `LWA012` (`hue`), firmware `0x01002a00`<br>`LTA009` (`hue`), firmware `0x01002a00`<br>group | [record](integrations/zha/test-records/turn_on_for.json) |
 | `turn_on_for` | Experimental | switch entities; other classes | | |
 
 | Not built yet, harmed by today's call | Why | Source |
@@ -157,28 +157,28 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 
 | Action | Level | Items | Tested models | Records |
 |---|---|---|---|---|
-| `get_attributes` | Verified | light entities; hue classes | `LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>`LWA012`, firmware `1.122.2`<br>group | [record](integrations/zigbee2mqtt/test-records/get_attributes.json) |
-| `get_attributes` | Experimental | switch entities; other, tuya_zcl, tuya_ts011f, tuya_countdown, tuya_countdown_tz3000_0zfrhq4i, tuya_countdown_tz3000_typdpbpg, tuya_countdown_tz3000_gznh2xla, tuya_countdown_tz3000_okaz9tjs, tuya_countdown_harmed, sengled, gledopto classes | | |
-| `lower_brightness` | Verified | light entities; hue classes; brightness fields | `LTA009`, firmware `1.163.1`<br>group | [record](integrations/zigbee2mqtt/test-records/lower_brightness.json) |
+| `get_attributes` | Verified | light entities; hue classes | `LTA009` (`hue`), firmware `1.163.1`<br>`LCA016` (`hue`), firmware `1.164.2`<br>`LWA012` (`hue`), firmware `1.163.1`<br>group | [record](integrations/zigbee2mqtt/test-records/get_attributes.json) |
+| `get_attributes` | Experimental | switch entities; other, tuya_zcl, tuya_ts011f, tuya_countdown, tuya_countdown_tz3000_0zfrhq4i, tuya_countdown_tz3000_typdpbpg, tuya_countdown_tz3000_gznh2xla, tuya_countdown_tz3000_okaz9tjs, tuya_countdown_harmed, sengled, gledopto classes | `TS011F` (`tuya_countdown_tz3000_0zfrhq4i`), firmware `0122052017`<br>`TS011F` (`tuya_countdown_tz3000_typdpbpg`), firmware `Zigbee2MQTT 2.14.3`<br>`TS011F` (`tuya_countdown_tz3000_gznh2xla`), firmware `Zigbee2MQTT 2.14.3`<br>`TS011F` (`tuya_countdown_tz3000_okaz9tjs`), firmware `500+TZSKT31BS102` | |
+| `lower_brightness` | Verified | light entities; hue classes; brightness fields | `LTA009` (`hue`), firmware `1.163.1`<br>group | [record](integrations/zigbee2mqtt/test-records/lower_brightness.json) |
 | `lower_brightness` | Documented | other classes | | |
 | `lower_brightness` | Experimental | tuya_zcl, tuya_ts011f, tuya_countdown, tuya_countdown_tz3000_0zfrhq4i, tuya_countdown_tz3000_typdpbpg, tuya_countdown_tz3000_gznh2xla, tuya_countdown_tz3000_okaz9tjs, tuya_countdown_harmed, tuya_mcu, sengled, gledopto classes | | |
-| `lower_hue` | Verified | light entities; hue classes; hue fields | `LCA016`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/lower_hue.json) |
+| `lower_hue` | Verified | light entities; hue classes; hue fields | `LCA016` (`hue`), firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/lower_hue.json) |
 | `lower_hue` | Experimental | other, tuya_zcl, tuya_ts011f, tuya_countdown, tuya_countdown_tz3000_0zfrhq4i, tuya_countdown_tz3000_typdpbpg, tuya_countdown_tz3000_gznh2xla, tuya_countdown_tz3000_okaz9tjs, tuya_countdown_harmed, tuya_mcu, sengled, gledopto classes | | |
 | `lower_saturation` | Verified | light entities; hue classes; saturation fields | `LCA016` (`hue`), firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/lower_saturation.json) |
 | `lower_saturation` | Experimental | other, tuya_zcl, tuya_ts011f, tuya_countdown, tuya_countdown_tz3000_0zfrhq4i, tuya_countdown_tz3000_typdpbpg, tuya_countdown_tz3000_gznh2xla, tuya_countdown_tz3000_okaz9tjs, tuya_countdown_harmed, tuya_mcu, sengled, gledopto classes | | |
-| `raise_brightness` | Verified | light entities; hue classes; brightness fields | `LTA009`, firmware `1.163.1`<br>group | [record](integrations/zigbee2mqtt/test-records/raise_brightness.json) |
+| `raise_brightness` | Verified | light entities; hue classes; brightness fields | `LTA009` (`hue`), firmware `1.163.1`<br>group | [record](integrations/zigbee2mqtt/test-records/raise_brightness.json) |
 | `raise_brightness` | Documented | other classes | | |
 | `raise_brightness` | Experimental | tuya_zcl, tuya_ts011f, tuya_countdown, tuya_countdown_tz3000_0zfrhq4i, tuya_countdown_tz3000_typdpbpg, tuya_countdown_tz3000_gznh2xla, tuya_countdown_tz3000_okaz9tjs, tuya_countdown_harmed, tuya_mcu, sengled, gledopto classes | | |
-| `raise_hue` | Verified | light entities; hue classes; hue fields | `LCA016`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/raise_hue.json) |
+| `raise_hue` | Verified | light entities; hue classes; hue fields | `LCA016` (`hue`), firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/raise_hue.json) |
 | `raise_hue` | Experimental | other, tuya_zcl, tuya_ts011f, tuya_countdown, tuya_countdown_tz3000_0zfrhq4i, tuya_countdown_tz3000_typdpbpg, tuya_countdown_tz3000_gznh2xla, tuya_countdown_tz3000_okaz9tjs, tuya_countdown_harmed, tuya_mcu, sengled, gledopto classes | | |
 | `raise_saturation` | Verified | light entities; hue classes; saturation fields | `LCA016` (`hue`), firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/raise_saturation.json) |
 | `raise_saturation` | Experimental | other, tuya_zcl, tuya_ts011f, tuya_countdown, tuya_countdown_tz3000_0zfrhq4i, tuya_countdown_tz3000_typdpbpg, tuya_countdown_tz3000_gznh2xla, tuya_countdown_tz3000_okaz9tjs, tuya_countdown_harmed, tuya_mcu, sengled, gledopto classes | | |
-| `set_attributes` | Verified | light entities; hue classes; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, min_brightness, max_brightness fields | `LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/set_attributes.json) |
+| `set_attributes` | Verified | light entities; hue classes; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, min_brightness, max_brightness fields | `LTA009` (`hue`), firmware `1.163.1`<br>`LCA016` (`hue`), firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/set_attributes.json) |
 | `set_attributes` | Experimental | other, tuya_zcl, tuya_ts011f, tuya_countdown, tuya_countdown_tz3000_0zfrhq4i, tuya_countdown_tz3000_typdpbpg, tuya_countdown_tz3000_gznh2xla, tuya_countdown_tz3000_okaz9tjs, tuya_countdown_harmed, sengled, gledopto classes | | |
 | `stop` | Verified | light entities; hue classes | `LTA009` (`hue`), firmware `1.163.1`<br>`LCA016` (`hue`), firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/stop.json) |
 | `stop` | Documented | other classes | | |
 | `stop` | Experimental | tuya_zcl, tuya_ts011f, tuya_countdown, tuya_countdown_tz3000_0zfrhq4i, tuya_countdown_tz3000_typdpbpg, tuya_countdown_tz3000_gznh2xla, tuya_countdown_tz3000_okaz9tjs, tuya_countdown_harmed, tuya_mcu, sengled, gledopto classes | | |
-| `turn_on_for` | Verified | light, switch entities; hue on light, tuya_countdown_tz3000_0zfrhq4i on switch, tuya_countdown_tz3000_typdpbpg on switch, tuya_countdown_tz3000_gznh2xla on switch, tuya_countdown_tz3000_okaz9tjs on switch classes; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, transition fields | `LWA012`, firmware `1.163.1`<br>`LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/turn_on_for.json) |
+| `turn_on_for` | Verified | light, switch entities; hue on light, tuya_countdown_tz3000_0zfrhq4i on switch, tuya_countdown_tz3000_typdpbpg on switch, tuya_countdown_tz3000_gznh2xla on switch, tuya_countdown_tz3000_okaz9tjs on switch classes; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, transition fields | `TS011F` (`tuya_countdown_tz3000_0zfrhq4i`), firmware `0122052017`<br>`TS011F` (`tuya_countdown_tz3000_typdpbpg`), firmware `Zigbee2MQTT 2.14.3`<br>`TS011F` (`tuya_countdown_tz3000_gznh2xla`), firmware `Zigbee2MQTT 2.14.3`<br>`TS011F` (`tuya_countdown_tz3000_okaz9tjs`), firmware `500+TZSKT31BS102`<br>`LWA012` (`hue`), firmware `1.163.1`<br>`LTA009` (`hue`), firmware `1.163.1`<br>`LCA016` (`hue`), firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/turn_on_for.json) |
 | `turn_on_for` | Experimental | other, tuya_countdown, gledopto classes | | |
 
 | Not built yet, harmed by today's call | Why | Source |
