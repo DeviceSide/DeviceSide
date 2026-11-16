@@ -114,6 +114,9 @@ imports the rest. Behavior is unchanged: its tests pass unedited apart from impo
 
 ### Skills
 
+Not in this PR: skill wording changes go through an issue (the repo maintainer, 2026-11-16), so this section is
+proposed in #458. The lookup's `--as`, `--json` and `--issue` are built for it.
+
 **`audit-code`** (`.claude/skills/audit-code/SKILL.md`):
 
 - §1: resolve the runner (Decision 5) and the base rev the fixes would merge into (the target's base branch, else
@@ -190,11 +193,10 @@ jobs:
 `CLAUDE.md`, Maintainers, a new paragraph after the merge rule, binding:
 
 > Changing someone else's package: before you change a package or family whose maintainers don't include you, tell
-> them; never wait on their approval (⚠️ Unmaintained covers an absent maintainer). The audit skills route such
-> findings to the owner, and `owner-notice.yml` mentions them on any PR that changes their package.
-> `scripts/owners.py` says who owns a path.
+> them; never wait on their approval (⚠️ Unmaintained covers an absent maintainer). `owner-notice.yml` mentions
+> them on any PR that changes their package. `scripts/owners.py` says who owns a path.
 
-Pointers to it: both skills, the workflow header, the `owners.py` docstring, `docs/repo-maintainers.md` (one line:
+(As built; the skills' routing joins this text when #458 lands.) Pointers to it: the workflow header, the `owners.py` docstring, `docs/repo-maintainers.md` (one line:
 the notice needs no setting, and it is what the owners see in place of a review request).
 
 ### Binding-rule surface, named
@@ -227,7 +229,7 @@ the notice needs no setting, and it is what the owners see in place of a review 
    pass on behavior unchanged), plus `test_owners.py`.
 2. In parallel, on disjoint files:
    - the notice: `owner_notice.py`, `owner-notice.yml`, `test_owner_notice.py`;
-   - the skills and the rules: both `SKILL.md` files, `CLAUDE.md`, `docs/repo-maintainers.md`.
+   - the rules: `CLAUDE.md`, `docs/repo-maintainers.md` (the skills' wording: #458).
 3. An audit of the diff against the intent checks below, and fixes.
 
 Each stage ends with `.venv/bin/pytest` and `pre-commit run --all-files` green. No device call changes, so no hardware
@@ -253,5 +255,5 @@ which share nothing but `owners.py`.
 - Three pushes to one PR leave one notice comment, plus a mention-only comment for each new handle.
 - Nothing in the three controls can fail a merge or an RC tag that would pass today, beyond the RC waiting on a
   finding its runner chose to leave `open`.
-- `rc-audit` asks one question per owner group, and a finding the runner chooses to fix gets no issue.
+- (#458) `rc-audit` asks one question per owner group, and a finding the runner chooses to fix gets no issue.
 - The rule's text exists once, in `CLAUDE.md`, and every other mention links it.

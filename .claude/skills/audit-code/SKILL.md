@@ -19,8 +19,6 @@ Interpret the arguments and default to the diff when there are none:
 
 Say in one line what you resolved to (e.g. "Auditing `main..feat-x`: 14 files, +612/−88"). If the arguments are ambiguous, pick the likely reading and say so; don't ask.
 
-**Owners.** If the repo's `CLAUDE.md` names an owner lookup (a script that says who maintains a path), resolve who is running the audit: `--as <login>` if given, else `gh api user --jq .login`, else ask once. If none answers, treat the runner as owning nothing and say so. Resolve too the base the fixes would merge into: the target's base branch, else `origin/main`. Add both to the resolve line ("… as @login, owners read at `origin/main`").
-
 For a diff target, the diff is the focus but not the boundary: read each changed function whole, and check its callers for behaviour changes. A diff that alters a return type or raises a new exception breaks code the diff never shows.
 
 ## 2. Load the repo's own rules
@@ -56,7 +54,6 @@ Reviewer reports are model output, not facts. They overstate severity, miss miti
 - **Calibrate severity against context.** A data-driven XSS behind authenticated access with pipeline-built URLs is Medium, not High. A latent crash on a default parameter that no caller uses is Medium. A breach of the repo's binding rule is High even when it looks small. A trigger is evidence, not a constructed interleaving: a probe, record, report or log, or a path a normal user action reaches; security and data loss keep their severity without one. A latency finding is Medium at most unless it breaks a timing rule the repo binds.
 - **Prefer your own numbers** (test counts, timings, line counts) over a reviewer's.
 - Merge duplicates across reviewers, and fold related findings into one when they share a fix.
-- **Tag owners**, when the repo has an owner lookup: run it at the base, as the runner, on the files of every finding you'll report (e.g. `scripts/owners.py --rev <base> --as <login> --json <paths>`), and give every findings table an Owner column (the package, then its maintainers' handles).
 
 Severity rubric:
 - **Critical**: exploitable now, data loss or corruption, secrets exposed, or an external party harmed (e.g. rate limits breached at scale).
@@ -66,12 +63,11 @@ Severity rubric:
 
 ## 5. Report
 
-Use these six sections, in this order. Lead with a two-or-three-sentence verdict: the overall shape, the count by severity, and the one thing that matters most. With an owner lookup, put **In code you don't maintain** between the verdict and section 1: the findings in code the lookup calls someone else's, grouped by owner, with the owner's handles. Leave it out when there are none. Use tables for findings and `file:line` references throughout. Say what's good too: it tells the reader which patterns to keep.
+Use these six sections, in this order. Lead with a two-or-three-sentence verdict: the overall shape, the count by severity, and the one thing that matters most. Use tables for findings and `file:line` references throughout. Say what's good too: it tells the reader which patterns to keep.
 
 ```
 # <target> audit: <date> (<sha or range>)
 <verdict>
-<In code you don't maintain, when there is any>
 
 ## 1. Architecture & modularity
 ## 2. Security & error handling
@@ -91,8 +87,6 @@ For a finding with no trigger, the fix is, in order: list it; a log line so the 
 For a diff target, keep the same sections but say "nothing found" in a single line rather than padding a section.
 
 Close by proposing how to land the fixes for every Critical and High, grouped into batches that don't touch the same files, and following the repo's own commit rules if it has them (e.g. review → simplify → tests green). List each Medium and Low to track, not fix, unless its fix is a line a batch already touches; a re-audit's Mediums and Lows never start another fix round. Tag simplification-only items (reuse, dead code, small duplication) `simplify`: they go in the `/simplify` step of a batch that already touches those files, or are tracked.
-
-A finding in code you don't maintain goes in no batch. Draft one issue per owner instead: a title, the findings, and the labels and assignees the lookup gives (e.g. `scripts/owners.py --rev <base> --as <login> --issue <paths>`). Whether to fix one yourself is the runner's decision, under the repo's rule for changing someone else's code (CLAUDE.md).
 
 ## 6. Housekeeping
 

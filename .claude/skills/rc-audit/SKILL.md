@@ -20,8 +20,6 @@ only runs the audit and writes the record.
 - **Fixes get their own pass.** A fix changes code after the audit, so `--fix-pass` audits just the new commits
   rather than re-running the whole range, reading past its hunks for what the fix broke (§ Fix pass, step 2).
   Passes chain from `base`, and nothing outside `docs/audits/` may change after the last one.
-- **Someone else's code:** a finding in a package or family the runner doesn't maintain is its owner's to hear of
-  first (CLAUDE.md, Maintainers); § Someone else's code says what the runner chooses.
 - **Tagging:** `cut-release-candidate` (a `workflow_dispatch`) checks green CI on the head and the record, then
   tags. A failed check means no tag.
 
@@ -29,8 +27,7 @@ only runs the audit and writes the record.
 
 1. `.venv/bin/python scripts/check_audit.py --base <rc>` prints the base: the previous RC tag of this version, or for
    rc1 the latest release under `HEAD`. Refuse if `docs/audits/<rc>.md` already exists; that's a `--fix-pass`.
-2. Run the project's `audit-code` skill on `<base>..HEAD`, with owners read at the branch the RC is cut from
-   (`origin/main`, or `origin/release/vX.Y.Z`) and the runner resolved as it says (§1, Owners).
+2. Run the project's `audit-code` skill on `<base>..HEAD`.
 3. Write `docs/audits/<rc>.md`: the frontmatter below, then the audit report under `## Pass 1`.
 
    ```yaml
@@ -46,26 +43,8 @@ only runs the audit and writes the record.
        status: open     # open | fixed | waived
        fixed_in: ""     # the fixing commit, once fixed
        reason: ""       # why, when waived
-       owner: ""        # someone else's package: `scripts/owners.py`'s owner (control4, zigbee2mqtt/tuya, zigbee/tuya)
    ---
    ```
-4. Settle the findings in someone else's code (below).
-
-## Someone else's code
-
-For each owner the report's **In code you don't maintain** lists, ask the runner once, naming the owner's handles and
-its Criticals and Highs: "`control4` (@handles): H2, H4. Owner fixes, I fix, or waive?" They may choose differently
-for any one finding. Record each finding's `owner`, and its choice in the pass's prose:
-
-- **The owner fixes it:** file the owner's issue (below). The finding stays `open`, so the RC waits.
-- **The runner fixes it:** no issue; the owner notice on the fix PR (`owner-notice.yml`) is the owner's warning. The
-  fix PR names the owner, and the runner sets ⚠️ Untested fix when nobody can test the owner's device before the
-  release (`docs/evidence.md`, Caveats).
-- **Waived**, with the runner's reason: still the repo maintainers' decision (§ Then).
-
-Each owner gets one issue, drafted as `audit-code` drafts it, holding the findings the runner doesn't fix: Criticals
-and Highs the owner fixes, and its Mediums and Lows to track. An owner whose findings the runner fixes, every one, gets
-none. File it with the runner's go-ahead.
 
 ## Fix pass (`--fix-pass`)
 
@@ -81,11 +60,8 @@ none. File it with the runner's go-ahead.
      - the repo's binding rules (`CLAUDE.md`, `CLAUDE.local.md`), as audit criteria.
    - **Test** with only the tests that cover the changed code; CI runs the full suite before tagging.
    - **Report** a verification table and a findings table, not the six-section report.
-   - **Someone else's code:** a commit in the range that changes code the runner doesn't maintain is a High, as it
-     breaches CLAUDE.md's rule for changing someone else's code, unless the commit is that code's owner's, or fixes a
-     finding the record says the runner fixes.
 3. Mark each finding the range fixes as `fixed` with its `fixed_in` commit, and add any new Critical or High as
-   `open`, settling the new ones in someone else's code as above.
+   `open`.
 
 ## Then
 
