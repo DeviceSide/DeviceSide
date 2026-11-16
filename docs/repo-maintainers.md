@@ -29,6 +29,9 @@ invite them to Triage, as for an integration's maintainers.
   `RELEASE_TAG_DEPLOY_KEY` is the only one, so release tags come from those workflows alone.
 - **Actions allow-list (org):** selected actions, pinned by full SHA. A new action needs an entry there before a
   workflow can use it.
+- **`pull_request_target` allowed explicitly (Actions event policy):** "Protected files" and "Owner notice" run on
+  it, to check and comment on fork PRs. GitHub is changing its default to block it on public repos (a brownout on
+  2026-11-16 failed both with `startup_failure` and no jobs), so the policy must allow it, or both stop running.
 
 ## `/merge`
 
