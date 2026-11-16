@@ -26,7 +26,16 @@ from ...core.ha_watch import ALL, Call, Entries
 from ...core.models import EntityResult, Status, Target
 from ...core.runtime import Job, get_runtime
 from ...core.scope import AdapterScope, Level, verified
-from ...core.transition import BRIGHTNESS, SATURATION, TransitionCache, hs_color, light_brightness, lit
+from ...core.transition import (
+    BRIGHTNESS,
+    COLOR_SHOWN,
+    SATURATION,
+    TransitionCache,
+    color_mode,
+    hs_color,
+    light_brightness,
+    lit,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -45,7 +54,6 @@ FIT_LAG_S = 0.15
 # A ZCL transition is a uint16 in tenths of a second; 0xFFFF means the bulb's default.
 _MAX_TENTHS = 0xFFFE
 _MOVE_UP, _MOVE_DOWN = 0x01, 0x03
-_COLOR_MODES = frozenset({"xy", "hs"})
 
 type Command = tuple[int, int, dict[str, Any]]  # cluster, command, params in the command's positional order
 
@@ -114,11 +122,7 @@ def units(hass: HomeAssistant, targets: list[Target]) -> list[tuple[int | None, 
 
 def has_color(light: Target) -> bool:
     modes = light.state.attributes.get("supported_color_modes") if light.state else None
-    return bool(set(modes or ()) & _COLOR_MODES)
-
-
-def color_mode(light: Target) -> str | None:
-    return light.state.attributes.get("color_mode") if light.state else None
+    return bool(set(modes or ()) & COLOR_SHOWN)
 
 
 def drops_while_off(light: Target) -> bool:
@@ -524,7 +528,7 @@ def saturation_fade(
     tenths = transition_tenths(duration)
 
     def command(light: Target) -> Command:
-        if capabilities[light.entity_id] & zcl.HUE_SATURATION and color_mode(light) in _COLOR_MODES:
+        if capabilities[light.entity_id] & zcl.HUE_SATURATION and color_mode(light) in COLOR_SHOWN:
             params = {"saturation": round(limit * 254 / 100), "transition_time": tenths}
             return zcl.COLOR_CLUSTER, zcl.MOVE_TO_SATURATION, params
         x, y = color_hs_to_xy(hs_color(light)[0], limit)

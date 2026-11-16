@@ -186,5 +186,13 @@ def lit(cache: TransitionCache, lights: list[Target]) -> list[Target]:
     )
 
 
+# The color modes in which a light shows a color, so a saturation fade holds its hue on its own.
+COLOR_SHOWN = frozenset({"hs", "xy"})
+
+
+def color_mode(light: Target) -> str | None:
+    return light.state.attributes.get("color_mode") if light.state else None
+
+
 def hs_color(light: Target) -> tuple[float, float] | None:
     return light.state.attributes.get("hs_color") if light.state else None
