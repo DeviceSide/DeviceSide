@@ -95,7 +95,9 @@ CONTRIBUTING's Fast track.
 **Changing someone else's code:** before you change a package or family whose maintainers don't include you, its
 maintainers hear of it first; never wait on their approval (⚠️ Unmaintained covers one who's gone).
 `owner-notice.yml` mentions them on any PR that changes their code, standing in for the review request Triage doesn't
-get. `scripts/owners.py` says who maintains a path, and `--as <login>` which of a finding's paths aren't yours.
+get. After any audit report (`audit-code`, also inside `rc-audit`), run the `owner-findings` skill before acting on a
+finding: it marks the findings in someone else's code and routes them to its maintainers. `scripts/owners.py` says who
+maintains a path.
 
 **Caveats** (⚠️ Untested fix, ⚠️ Unmaintained) are set and cleared by a repo maintainer: `docs/evidence.md`.
 
@@ -108,7 +110,8 @@ Cutting, tagging and fixing RCs and releases: the `release` skill (`.claude/skil
 - Base: `main`, or a `release/vX.Y.Z` fix branch when one exists for the change.
 - Setup: `uv sync`. Test dependencies live in the `dev` group of `pyproject.toml`; never `uv pip install` into `.venv`, as the next sync removes it.
 - Before each push: `.venv/bin/pytest` and `pre-commit run --all-files` (ruff and the household check).
-- Audits: as the global `## Code audits` rule says. The binding-rule surface that puts an Opus auditor on the PR
+- Audits: as the global `## Code audits` rule says, then `owner-findings` (Maintainers, Changing someone else's
+  code). The binding-rule surface that puts an Opus auditor on the PR
   audit is `docs/evidence.md`, the `experimental` flag and `AdapterScope`, `Level.DOCUMENTED`,
   `scripts/check_release.py`, `docs/test-records.schema.json`, `docs/integrations/*/test-records/`, and rule text in
   `CLAUDE.md` or `docs/design.md`.

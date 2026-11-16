@@ -43,14 +43,17 @@ def test_a_fix_pass_covers_the_fix(audited):
     assert errors(repo, record(repo, base=base, passes=[(base, end), (end, fix)], findings=findings)) == []
 
 
-def test_an_owner_on_a_finding_is_ignored(audited):
+def test_an_owner_on_a_finding_changes_nothing(audited):
+    """owner-findings writes `owner:`; the status alone still decides, so an owner's open finding still blocks."""
     repo, base, end = audited
     fix = repo.commit()
     findings = [
         {"id": "H1", "severity": "high", "status": "fixed", "fixed_in": fix[:7], "owner": "control4"},
         {"id": "C1", "severity": "critical", "status": "waived", "reason": "unreachable", "owner": "control4"},
+        {"id": "H2", "severity": "high", "status": "open", "owner": "zigbee2mqtt/tuya"},
     ]
-    assert errors(repo, record(repo, base=base, passes=[(base, end), (end, fix)], findings=findings)) == []
+    head = record(repo, base=base, passes=[(base, end), (end, fix)], findings=findings)
+    assert errors(repo, head) == ["finding H2 (high) is open"]
 
 
 def test_rc2_starts_at_rc1(audited):

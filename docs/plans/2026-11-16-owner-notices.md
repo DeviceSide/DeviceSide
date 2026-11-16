@@ -114,8 +114,9 @@ imports the rest. Behavior is unchanged: its tests pass unedited apart from impo
 
 ### Skills
 
-Not in this PR: skill wording changes go through an issue (the repo maintainer, 2026-11-16), so this section is
-proposed in #458. The lookup's `--as`, `--json` and `--issue` are built for it.
+Superseded: `audit-code` and `rc-audit` stay as they are, and a DeviceSide-only skill, `owner-findings`, does what
+this section describes (`docs/plans/2026-11-16-owner-findings.md`). The lookup's `--as`, `--json` and `--issue` are
+built for it.
 
 **`audit-code`** (`.claude/skills/audit-code/SKILL.md`):
 
@@ -196,7 +197,8 @@ jobs:
 > them; never wait on their approval (⚠️ Unmaintained covers an absent maintainer). `owner-notice.yml` mentions
 > them on any PR that changes their package. `scripts/owners.py` says who owns a path.
 
-(As built; the skills' routing joins this text when #458 lands.) Pointers to it: the workflow header, the `owners.py` docstring, `docs/repo-maintainers.md` (one line:
+(As built, it also names `owner-findings`.) Pointers to it: the workflow header, the `owners.py` docstring,
+`docs/repo-maintainers.md` (one line:
 the notice needs no setting, and it is what the owners see in place of a review request).
 
 ### Binding-rule surface, named
@@ -204,8 +206,8 @@ the notice needs no setting, and it is what the owners see in place of a review 
 - `CLAUDE.md`: the paragraph above. This puts the Opus auditor on the PR audit.
 - `docs/evidence.md`: no change. Untested fix and Unmaintained are used as they stand.
 - `scripts/check_release.py`: no change.
-- `scripts/check_audit.py`: no change (question 4). An `owner` key is ignored the way any extra key is; the test that
-  pins it lands with the key, in #458.
+- `scripts/check_audit.py`: no change (question 4). An `owner` key is ignored the way any extra key is; a test pins
+  that (`owner-findings` plan).
 - `docs/design.md`: no change. "Owner group" is a term internal to the script, not a glossary term.
 
 ### Tests (`tests/scripts/`)
@@ -229,7 +231,7 @@ the notice needs no setting, and it is what the owners see in place of a review 
    pass on behavior unchanged), plus `test_owners.py`.
 2. In parallel, on disjoint files:
    - the notice: `owner_notice.py`, `owner-notice.yml`, `test_owner_notice.py`;
-   - the rules: `CLAUDE.md`, `docs/repo-maintainers.md` (the skills' wording: #458).
+   - the rules: `CLAUDE.md`, `docs/repo-maintainers.md` (the skills: `owner-findings`).
 3. An audit of the diff against the intent checks below, and fixes.
 
 Each stage ends with `.venv/bin/pytest` and `pre-commit run --all-files` green. No device call changes, so no hardware
@@ -255,5 +257,5 @@ which share nothing but `owners.py`.
 - Three pushes to one PR leave one notice comment, plus a mention-only comment for each new handle.
 - Nothing in the three controls can fail a merge or an RC tag that would pass today, beyond the RC waiting on a
   finding its runner chose to leave `open`.
-- (#458) `rc-audit` asks one question per owner group, and a finding the runner chooses to fix gets no issue.
+- In an RC, `owner-findings` asks one question per owner group, and a finding the runner chooses to fix gets no issue.
 - The rule's text exists once, in `CLAUDE.md`, and every other mention links it.

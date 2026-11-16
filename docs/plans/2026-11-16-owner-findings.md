@@ -1,6 +1,6 @@
 # Owner findings: a DeviceSide helper that routes audit findings to their owners
 
-Date: 2026-11-16. Status: planned. Follows `docs/plans/2026-11-16-owner-notices.md` (controls 1 and 2), replacing
+Date: 2026-11-16. Status: built and wired in. Follows `docs/plans/2026-11-16-owner-notices.md` (controls 1 and 2), replacing
 its edits to `audit-code` and `rc-audit`: `audit-code` is shared with other repos, and skill wording changes go
 through an issue. Built on `claude/owner-notices-plan`, after `scripts/owners.py`.
 
