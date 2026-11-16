@@ -1,5 +1,5 @@
 """AdapterScope levels: each domain, class and field carries one; a call's level is the weakest it touches. A class
-that doesn't work, or isn't served, is refused.
+with no known method, or that isn't served, is refused.
 
 The scopes of the real adapters are checked here too: the invariants the dispatcher's gate relies on.
 """
@@ -15,12 +15,12 @@ from custom_components.deviceside.core.errors import Reason
 from custom_components.deviceside.core.registry import AdapterRegistry
 from custom_components.deviceside.core.scope import (
     AdapterScope,
-    DoesntWork,
     DurationLimits,
     Family,
     FamilyScope,
     Level,
-    NotSupported,
+    NoKnownMethod,
+    NotBuilt,
     OnDomains,
     OwnCall,
     Unplaced,
@@ -97,7 +97,7 @@ def test_a_class_outside_the_scope_counts_as_experimental():
     assert scope.level("light", ("Switch",)) is Level.EXPERIMENTAL
 
 
-BROKEN = DoesntWork("Tuya plug", "It never switches on", "https://example.com/source", harms=False)
+BROKEN = NoKnownMethod("Tuya plug", "It never switches on", "https://example.com/source", harms=False)
 
 
 @pytest.mark.parametrize(
@@ -106,28 +106,28 @@ BROKEN = DoesntWork("Tuya plug", "It never switches on", "https://example.com/so
         (("hue",), None),
         ((None,), None),  # unnamed: the gate weighs it, as Experimental
         ((), None),
-        (("tuya_mcu",), (Reason.NOT_SUPPORTED, None)),  # named, in neither capabilities nor doesnt_work
-        (("tuya_zcl",), (Reason.DOESNT_WORK, "It never switches on")),  # with the reason the user reads
-        (("hue", "tuya_mcu"), (Reason.NOT_SUPPORTED, None)),  # one member refuses the group
-        (("tuya_mcu", "tuya_zcl", "hue"), (Reason.DOESNT_WORK, "It never switches on")),  # doesn't work wins
+        (("tuya_mcu",), (Reason.NOT_BUILT, None)),  # named, in neither capabilities nor no_known_method
+        (("tuya_zcl",), (Reason.NO_KNOWN_METHOD, "It never switches on")),  # with the reason the user reads
+        (("hue", "tuya_mcu"), (Reason.NOT_BUILT, None)),  # one member refuses the group
+        (("tuya_mcu", "tuya_zcl", "hue"), (Reason.NO_KNOWN_METHOD, "It never switches on")),  # no known method wins
     ],
 )
-def test_a_class_that_doesnt_work_or_isnt_served_is_refused(classes, reason):
-    scope = AdapterScope(capabilities=verified("hue"), doesnt_work={"tuya_zcl": BROKEN})
+def test_a_class_with_no_known_method_or_not_served_is_refused(classes, reason):
+    scope = AdapterScope(capabilities=verified("hue"), no_known_method={"tuya_zcl": BROKEN})
 
     assert scope.refusal(classes) == reason
 
 
-HARMS = DoesntWork("Tuya plug", "It stays on", "https://example.com/source", harms=True)
+HARMS = NoKnownMethod("Tuya plug", "It stays on", "https://example.com/source", harms=True)
 
 
-def test_every_doesnt_work_entry_states_whether_its_call_harms():
+def test_every_no_known_method_entry_states_whether_its_call_harms():
     """No default (plan Decision 30): an entry that left it out would pass as harmless and let an unplaced target
     through the call that harms its class."""
     with pytest.raises(TypeError):
-        DoesntWork("Tuya plug", "It stays on", "https://example.com/source")  # type: ignore[call-arg]
+        NoKnownMethod("Tuya plug", "It stays on", "https://example.com/source")  # type: ignore[call-arg]
     with pytest.raises(TypeError):
-        DoesntWork("Tuya plug", "It stays on", "https://example.com/source", True)  # type: ignore[misc]
+        NoKnownMethod("Tuya plug", "It stays on", "https://example.com/source", True)  # type: ignore[misc]
 
 
 @pytest.mark.parametrize(
@@ -136,19 +136,19 @@ def test_every_doesnt_work_entry_states_whether_its_call_harms():
         ((Unplaced("hue"),), (Reason.CLASS_UNKNOWN, None)),  # it could still move into the harmed class
         ((None,), (Reason.CLASS_UNKNOWN, None)),  # unnamed, or a group of unknown membership
         (("hue", Unplaced("hue")), (Reason.CLASS_UNKNOWN, None)),  # one member refuses the group
-        ((Unplaced("tuya_zcl"), "tuya_zcl"), (Reason.CLASS_UNKNOWN, None)),  # before doesn't work
-        (("tuya_zcl",), (Reason.DOESNT_WORK, "It stays on")),
+        ((Unplaced("tuya_zcl"), "tuya_zcl"), (Reason.CLASS_UNKNOWN, None)),  # before no known method
+        (("tuya_zcl",), (Reason.NO_KNOWN_METHOD, "It stays on")),
         (("hue",), None),
     ],
 )
 def test_where_the_call_harms_a_class_one_not_yet_placed_is_refused(classes, reason):
-    scope = AdapterScope(capabilities=verified("hue"), doesnt_work={"tuya_zcl": HARMS})
+    scope = AdapterScope(capabilities=verified("hue"), no_known_method={"tuya_zcl": HARMS})
 
     assert scope.harms
     assert scope.refusal(classes) == reason
 
 
-UNBUILT = NotSupported("It would stay on", "https://example.com/source", harms=True)
+UNBUILT = NotBuilt("It would stay on", "https://example.com/source", harms=True)
 
 
 @pytest.mark.parametrize(
@@ -158,37 +158,37 @@ UNBUILT = NotSupported("It would stay on", "https://example.com/source", harms=T
         ((None,), (Reason.CLASS_UNKNOWN, None)),  # unnamed, or a group of unknown membership
         (("hue", Unplaced("hue")), (Reason.CLASS_UNKNOWN, None)),
         ((Unplaced("tuya_zcl"),), (Reason.CLASS_UNKNOWN, None)),
-        (("tuya_zcl",), (Reason.NOT_SUPPORTED, "It would stay on")),  # placed: with the reason
-        (("tuya_mcu",), (Reason.NOT_SUPPORTED, None)),  # left out, with no entry
+        (("tuya_zcl",), (Reason.NOT_BUILT, "It would stay on")),  # placed: with the reason
+        (("tuya_mcu",), (Reason.NOT_BUILT, None)),  # left out, with no entry
         (("hue",), None),
     ],
 )
-def test_a_not_supported_class_the_call_harms_refuses_one_not_yet_placed(classes, reason):
-    """Plan Decision 70: a not yet supported class today's call would harm refuses unplaced and None targets as
-    class_unknown, exactly as a harms doesn't-work entry does."""
-    scope = AdapterScope(capabilities=verified("hue"), not_supported={"tuya_zcl": UNBUILT})
+def test_a_not_built_class_the_call_harms_refuses_one_not_yet_placed(classes, reason):
+    """Plan Decision 70: a not built yet class today's call would harm refuses unplaced and None targets as
+    class_unknown, exactly as a harms no known method entry does."""
+    scope = AdapterScope(capabilities=verified("hue"), not_built={"tuya_zcl": UNBUILT})
 
     assert scope.harms
     assert scope.refusal(classes) == reason
 
 
-def test_a_not_supported_entry_harms_and_stays_out_of_the_other_two():
+def test_a_not_built_entry_harms_and_stays_out_of_the_other_two():
     with pytest.raises(TypeError):
-        NotSupported("It would stay on", "https://example.com/source")  # type: ignore[call-arg]
-    for other in ({"capabilities": verified("tuya_zcl")}, {"doesnt_work": {"tuya_zcl": BROKEN}}):
-        with pytest.raises(ValueError, match="not_supported names classes"):
-            AdapterScope(**{"capabilities": {}, **other}, not_supported={"tuya_zcl": UNBUILT})
-    # An unharmed not yet supported class needs no entry: leaving it out refuses it the same way.
-    with pytest.raises(ValueError, match=r"not_supported entries \['tuya_zcl'\] don't harm"):
-        AdapterScope(capabilities=verified("hue"), not_supported={"tuya_zcl": replace(UNBUILT, harms=False)})
+        NotBuilt("It would stay on", "https://example.com/source")  # type: ignore[call-arg]
+    for other in ({"capabilities": verified("tuya_zcl")}, {"no_known_method": {"tuya_zcl": BROKEN}}):
+        with pytest.raises(ValueError, match="not_built names classes"):
+            AdapterScope(**{"capabilities": {}, **other}, not_built={"tuya_zcl": UNBUILT})
+    # An unharmed not built yet class needs no entry: leaving it out refuses it the same way.
+    with pytest.raises(ValueError, match=r"not_built entries \['tuya_zcl'\] don't harm"):
+        AdapterScope(capabilities=verified("hue"), not_built={"tuya_zcl": replace(UNBUILT, harms=False)})
 
 
 def test_elsewhere_an_unplaced_class_is_the_class_it_names():
-    scope = AdapterScope(capabilities=verified("hue"), doesnt_work={"tuya_zcl": BROKEN})
+    scope = AdapterScope(capabilities=verified("hue"), no_known_method={"tuya_zcl": BROKEN})
 
     assert not scope.harms
     assert scope.refusal((Unplaced("hue"),)) is None
-    assert scope.refusal((Unplaced("tuya_zcl"),)) == (Reason.DOESNT_WORK, "It never switches on")
+    assert scope.refusal((Unplaced("tuya_zcl"),)) == (Reason.NO_KNOWN_METHOD, "It never switches on")
     assert scope.level("light", (Unplaced("hue"),)) is Level.VERIFIED
     assert Unplaced("hue") == "hue"
     assert hash(Unplaced("hue")) == hash("hue")
@@ -199,9 +199,9 @@ def test_a_scope_without_classes_refuses_none():
     assert AdapterScope().refusal(("anything",)) is None
 
 
-def test_a_class_never_both_serves_and_doesnt_work():
+def test_a_class_is_never_both_served_and_no_known_method():
     with pytest.raises(ValueError, match="classes the scope serves"):
-        AdapterScope(capabilities=verified("hue"), doesnt_work={"hue": BROKEN})
+        AdapterScope(capabilities=verified("hue"), no_known_method={"hue": BROKEN})
 
 
 def test_a_class_held_on_some_domains_alone_is_experimental_on_the_rest():
@@ -283,15 +283,15 @@ def test_an_own_call_is_compared_by_identity():
     assert len({TIMED, OwnCall(_send, OWN), TIMED}) == 2
 
 
-BROKEN = DoesntWork("Plug D", "It never switches on", "https://example.com/d", harms=False)
-UNBUILT = NotSupported("It would stay on", "https://example.com/e", harms=True)
+BROKEN = NoKnownMethod("Plug D", "It never switches on", "https://example.com/d", harms=False)
+UNBUILT = NotBuilt("It would stay on", "https://example.com/e", harms=True)
 FAMILIES = (
     Family(
         key="first",
         classes=frozenset({"A", "B", "D"}),
         scopes={
             "turn_on_for": FamilyScope(
-                capabilities=verified("A") | experimental("B"), doesnt_work={"D": BROKEN}, own_calls={"B": TIMED}
+                capabilities=verified("A") | experimental("B"), no_known_method={"D": BROKEN}, own_calls={"B": TIMED}
             ),
             "stop": FamilyScope(capabilities=documented("A")),
         },
@@ -300,7 +300,7 @@ FAMILIES = (
         key="second",
         maintainers=("a-b",),
         classes=frozenset("CE"),
-        scopes={"turn_on_for": FamilyScope(capabilities=documented("C"), not_supported={"E": UNBUILT})},
+        scopes={"turn_on_for": FamilyScope(capabilities=documented("C"), not_built={"E": UNBUILT})},
     ),
 )
 
@@ -310,23 +310,23 @@ def test_family_scope_merges_the_families_parts_for_one_action():
 
     assert merged == FamilyScope(
         capabilities=verified("A") | experimental("B") | documented("C"),
-        doesnt_work={"D": BROKEN},
-        not_supported={"E": UNBUILT},
+        no_known_method={"D": BROKEN},
+        not_built={"E": UNBUILT},
         own_calls={"B": TIMED},
     )
     # An adapter builds its scope from the parts, each under AdapterScope's field of the same name.
     scope = AdapterScope(
         capabilities=merged.capabilities,
-        doesnt_work=merged.doesnt_work,
-        not_supported=merged.not_supported,
+        no_known_method=merged.no_known_method,
+        not_built=merged.not_built,
         own_calls=merged.own_calls,
     )
     assert scope.own_call(["B"]) is TIMED
-    assert scope.refusal(["E"]) == (Reason.NOT_SUPPORTED, "It would stay on")
+    assert scope.refusal(["E"]) == (Reason.NOT_BUILT, "It would stay on")
 
 
 def test_an_action_a_family_gives_no_scope_leaves_its_classes_out():
-    """So the adapter's scope doesn't serve them, and they are refused as not yet supported."""
+    """So the adapter's scope doesn't serve them, and they are refused as not built yet."""
     assert family_scope(FAMILIES, "stop") == FamilyScope(capabilities=documented("A"))
     assert family_scope(FAMILIES, "fade_brightness") == family_scope((), "stop") == FamilyScope()
 

@@ -58,7 +58,7 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
         # turn_on_for scope). Zigbee plugs and switches rarely honor OnWithTimedOff, so only a class with a switch
         # record is Verified there; a Hue plug, an `other` one and the rest stay untested.
         domains=verified("light", "switch"),
-        # The families' not_supported entries each harm their class (a Tuya plug left on), so the dispatcher refuses a
+        # The families' not_built entries each harm their class (a Tuya plug left on), so the dispatcher refuses a
         # device not yet placed, and a group of unknown membership, as class_unknown, even with Experimental features
         # on (classes.py). Their own calls (Tuya's countdown) run through execute_own.
         **class_scope("turn_on_for"),

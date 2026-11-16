@@ -15,7 +15,7 @@ import re
 
 from .countdown import COUNTDOWN
 from ...rules import Rule
-from .....core.scope import Family, FamilyScope, NotSupported, experimental, verified
+from .....core.scope import Family, FamilyScope, NotBuilt, experimental, verified
 from .....zigbee.tuya import (
     COUNTDOWN_HARMED_MANUFACTURER,
     COUNTDOWN_HARMED_MODEL,
@@ -37,7 +37,7 @@ TUYA_COUNTDOWN = "tuya_countdown"
 # own evidence), each a class of its own, so the coverage check asks each for its record (string_class).
 VERIFIED_STRINGS = ("_TZ3000_0zfrhq4i", "_TZ3000_typdpbpg", "_TZ3000_gznh2xla", "_TZ3000_okaz9tjs")
 # The catalog's COUNTDOWN_HARMED_MANUFACTURER, on Tuya's countdown, reported failing it with harm (Z2M #30493): not
-# yet supported, as Tuya's inching would plausibly serve it (plan Decision 41).
+# built yet, as Tuya's inching would plausibly serve it (plan Decision 41).
 TUYA_COUNTDOWN_HARMED = "tuya_countdown_harmed"
 # A Tuya datapoint device (TS0601): no Zigbee On/Off cluster, so no raw ZCL read or write reaches it (Decision 12).
 TUYA_MCU = "tuya_mcu"
@@ -104,7 +104,7 @@ _UNTESTED = FamilyScope(capabilities=experimental(*_ALL))
 # Raw ZCL reads and writes, which a datapoint device can't take, so `tuya_mcu` is left out.
 _RAW_ZCL = FamilyScope(capabilities=experimental(TUYA_ZCL, *_TS011F))
 
-# turn_on_for. The classes off Tuya's countdown are not yet supported, and harmed by today's call (plan Decisions 20,
+# turn_on_for. The classes off Tuya's countdown are not built yet, and harmed by today's call (plan Decisions 20,
 # 70 and 71): Z2M has no `on_time` converter for a definition built with `onOffCountdown`, or for a datapoint device,
 # so it sends a plain On and the device stays on. Each has a call that would work, Z2M's `countdown`, which isn't built
 # for them: converter A's for a TS011F Z2M shows no `countdown` for and the TS011F's kin (v0.1.0 builds it for the
@@ -112,17 +112,17 @@ _RAW_ZCL = FamilyScope(capabilities=experimental(TUYA_ZCL, *_TS011F))
 # docs/plans/2026-11-15-tuya-datapoint-countdown.md). `harms`, so the dispatcher refuses a device not yet placed as
 # well, which could be one of them (plan Decision 26).
 _RESEARCH = "https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/"
-# What the user reads after core's "can't take this action yet" (errors.py, the not_supported key).
+# What the user reads after core's "can't take this action yet" (errors.py, the not_built key).
 _STAYS_ON = "Zigbee2MQTT would turn it on with no timer, so it would stay on"
-TURN_ON_FOR_NOT_SUPPORTED = {
+TURN_ON_FOR_NOT_BUILT = {
     # Measured (Decision 16), and matched by its model so every firmware inherits the refusal.
-    TUYA_TS011F: NotSupported(reason=_STAYS_ON, source=_RESEARCH + "2026-11-14-lab-probe.md", harms=True),
-    TUYA_ZCL: NotSupported(reason=_STAYS_ON, source=_RESEARCH + "2026-11-14-timed-on-call-patterns.md", harms=True),
+    TUYA_TS011F: NotBuilt(reason=_STAYS_ON, source=_RESEARCH + "2026-11-14-lab-probe.md", harms=True),
+    TUYA_ZCL: NotBuilt(reason=_STAYS_ON, source=_RESEARCH + "2026-11-14-timed-on-call-patterns.md", harms=True),
     # The harm today: a datapoint device's definition has no `on_time` converter either, so it gets a plain On
     # (timed-on call patterns); the call that would serve it is the datapoint countdown (its research note).
-    TUYA_MCU: NotSupported(reason=_STAYS_ON, source=_RESEARCH + "2026-11-14-timed-on-call-patterns.md", harms=True),
+    TUYA_MCU: NotBuilt(reason=_STAYS_ON, source=_RESEARCH + "2026-11-14-timed-on-call-patterns.md", harms=True),
     # Reported failing the countdown with harm (plan Decisions 35 and 41).
-    TUYA_COUNTDOWN_HARMED: NotSupported(
+    TUYA_COUNTDOWN_HARMED: NotBuilt(
         reason="its maker string is reported to restart its timer at random, so it could stay on",
         source="https://github.com/Koenkk/zigbee2mqtt/issues/30493",
         harms=True,
@@ -132,7 +132,7 @@ _TURN_ON_FOR = FamilyScope(
     # Tuya's countdown plugs get that call: each maker string with a record of its own Verified, on switches alone, as
     # Z2M shows a plug, and the rest untested (plan Decision 35).
     capabilities=verified(*VERIFIED_COUNTDOWNS, domains=("switch",)) | experimental(TUYA_COUNTDOWN),
-    not_supported=TURN_ON_FOR_NOT_SUPPORTED,
+    not_built=TURN_ON_FOR_NOT_BUILT,
     # Each takes the countdown, which a Z2M group's call isn't, so a group with one falls back to its members.
     own_calls=dict.fromkeys(COUNTDOWNS, COUNTDOWN),
 )

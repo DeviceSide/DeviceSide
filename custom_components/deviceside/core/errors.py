@@ -23,11 +23,13 @@ class Reason(StrEnum):
     # The integration can't address the target (no device address, a nested wrapper, a group member it can't address
     # on its own: Target.addressable): raised if named, else skipped.
     NOT_ADDRESSABLE = "not_addressable"
-    # The target's class (a native group: a member's) has no known call that works: AdapterScope.doesnt_work.
-    DOESNT_WORK = "doesnt_work"
-    # The target's class (a native group: a member's) needs a call that isn't built: the integration names it, and the
-    # adapter's scope holds it in neither capabilities nor doesnt_work (AdapterScope.not_supported, where it says why).
-    NOT_SUPPORTED = "not_supported"
+    # The target's class (a native group: a member's) has no known method: no known call works on it, or the only one
+    # known is unsafe (AdapterScope.no_known_method, where it says which).
+    NO_KNOWN_METHOD = "no_known_method"
+    # The target's class (a native group: a member's) is not built yet: it needs a call nobody has built, known or
+    # plausible. The integration names it, and the adapter's scope holds it in neither capabilities nor
+    # no_known_method (AdapterScope.not_built, where it says why).
+    NOT_BUILT = "not_built"
     # The target's class rests on what DeviceSide doesn't know yet (a device not yet placed, a native group's
     # membership), or can't be named at all (None), on an adapter whose call harms a class it could be: refused even
     # with Experimental features on (docs/evidence.md, Device classes). Usually transient: a device not yet placed
@@ -42,9 +44,10 @@ class Reason(StrEnum):
 
 class TargetNotSupported(ServiceNotSupported):
     """A target the caller named can't take the action: core's ServiceNotSupported, with our reason in it. A target
-    refused for experimental_off gets a message of its own, saying how to let it through, and one whose class doesn't
-    work, or isn't supported yet and has an entry, a message carrying why (`why`, the entry's reason), each under its
-    reason's own key (`doesnt_work`, `not_supported`; any other reason with a why reads as doesn't work). One refused as
+    refused for experimental_off gets a message of its own, saying how to let it through, and one whose class has no
+    known method, or is not built yet and has an entry, a message carrying why (`why`, the entry's reason), each under
+    its reason's own key (`no_known_method`, `not_built`; any other reason with a why reads as no known method). One
+    refused as
     class_unknown gets one saying it clears once the integration (`integration`, its title, which the dispatcher always
     passes) has reported the device; without the title it gets the plain refusal, never an untranslated name."""
 
@@ -55,8 +58,8 @@ class TargetNotSupported(ServiceNotSupported):
         elif reason == Reason.CLASS_UNKNOWN and integration is not None:
             key, placeholders["integration"] = Reason.CLASS_UNKNOWN.value, integration
         elif why is not None:
-            # A not yet supported class reads "yet"; a doesn't-work one doesn't, as no known call works on it.
-            key = Reason.NOT_SUPPORTED.value if reason == Reason.NOT_SUPPORTED else Reason.DOESNT_WORK.value
+            # A class not built yet reads "yet"; one with no known method doesn't, as no known call works on it.
+            key = Reason.NOT_BUILT.value if reason == Reason.NOT_BUILT else Reason.NO_KNOWN_METHOD.value
             placeholders["why"] = why
         else:
             key = "target_not_supported"

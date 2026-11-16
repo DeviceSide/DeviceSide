@@ -104,11 +104,11 @@ async def test_a_failed_set_fails_the_call(hass, setup_production):
         await call(hass, "set_attributes", {**BULB, "brightness": 40})
 
 
-async def test_a_relay_is_not_supported(hass, setup_production):
+async def test_a_relay_is_not_built(hass, setup_production):
     entry, call_rpc = shelly_device(hass)
     add_shelly_entity(hass, entry, "light.other", "switch:0")
 
-    assert await refusal(hass, "set_attributes", {"entity_id": "light.other", "brightness": 40}) == "not_supported"
+    assert await refusal(hass, "set_attributes", {"entity_id": "light.other", "brightness": 40}) == "not_built"
     assert not call_rpc.await_args_list
 
 

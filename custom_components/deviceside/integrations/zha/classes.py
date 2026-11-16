@@ -68,8 +68,8 @@ def class_scope(action: str) -> dict[str, Any]:
     parts = family_scope(FAMILIES, action)
     return {
         "capabilities": {**_OTHER[action], **parts.capabilities},
-        "doesnt_work": parts.doesnt_work,
-        "not_supported": parts.not_supported,
+        "no_known_method": parts.no_known_method,
+        "not_built": parts.not_built,
         "own_calls": parts.own_calls,
     }
 

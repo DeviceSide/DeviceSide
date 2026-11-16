@@ -94,7 +94,7 @@ one included, runs only with Experimental features on. On ZHA, and on Zigbee2MQT
 plugs, DeviceSide refuses it, as they would turn on and stay on, or on long after the time asked; the
 [Tuya TS011F](#tuya-ts011f) runs only Tuya's own timer. ZHA and Zigbee2MQTT each need their own report.
 
-## Not yet supported
+## Not built yet
 
 A class of device that needs a command DeviceSide hasn't built yet. DeviceSide refuses it, rather than send a command
 that would leave it doing something you didn't ask for, and each card lists them. If you'd like one built,
@@ -144,7 +144,7 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 | `turn_on_for` | Verified | light entities; hue classes; brightness, color_temp_kelvin fields | `LWA012`, firmware `0x01002502`<br>`LTA009`, firmware `0x01002a00`<br>group | [record](integrations/zha/test-records/turn_on_for.json) |
 | `turn_on_for` | Experimental | switch entities; other classes | | |
 
-| Not yet supported, harmed by today's call | Why | Source |
+| Not built yet, harmed by today's call | Why | Source |
 |---|---|---|
 | reported Tuya plugs (`turn_on_for`) | Tuya's own timer is reported to jump back at random on it, so it may not turn off when asked, and the timer that would serve it isn't built | [source](https://github.com/Koenkk/zigbee2mqtt/issues/30493) |
 | Tuya plugs and switches (`turn_on_for`) | ZHA's timer can turn it on long after the time asked and leave it on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md) |
@@ -181,7 +181,7 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 | `turn_on_for` | Verified | light, switch entities; hue on light, tuya_countdown_tz3000_0zfrhq4i on switch, tuya_countdown_tz3000_typdpbpg on switch, tuya_countdown_tz3000_gznh2xla on switch, tuya_countdown_tz3000_okaz9tjs on switch classes; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, transition fields | `LWA012`, firmware `1.163.1`<br>`LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/turn_on_for.json) |
 | `turn_on_for` | Experimental | other, tuya_countdown, gledopto classes | | |
 
-| Not yet supported, harmed by today's call | Why | Source |
+| Not built yet, harmed by today's call | Why | Source |
 |---|---|---|
 | Tuya TS011F (`turn_on_for`) | Zigbee2MQTT would turn it on with no timer, so it would stay on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md) |
 | Tuya plugs and switches (`turn_on_for`) | Zigbee2MQTT would turn it on with no timer, so it would stay on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md) |
@@ -236,7 +236,7 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 | `stop` | Verified | light entities; hue classes | `LTA009` (`hue`), firmware `1.163.1`<br>`LCA016` (`hue`), firmware `1.164.2`<br>group | [predicted state](integrations/hue/test-records/stop-predicted_state.json), [record](integrations/hue/test-records/stop.json) |
 | `stop` | Experimental | other classes | | |
 
-| Doesn't work | Why | Source |
+| No known method | Why | Source |
 |---|---|---|
 | Hue smart scenes (`set_scene`) | A smart (All-Day) scene changes with the time of day, so it has no fixed settings to write | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/hue/index.md#hue-smart-scenes) |
 

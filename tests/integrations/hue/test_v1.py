@@ -71,7 +71,7 @@ async def test_a_named_v1_target_raises_naming_the_v1_bridge(hass, bridge, actio
         await call_service(hass, action, {"entity_id": entity_id, **data})
 
     assert raised.value.reason == "integration_not_supported"
-    assert raised.value.translation_key == "doesnt_work"
+    assert raised.value.translation_key == "no_known_method"
     assert raised.value.translation_placeholders["why"] == v1.WHY
     assert "v1" in v1.WHY
     assert bridge.puts == []

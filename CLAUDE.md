@@ -30,7 +30,7 @@ shared home named in parentheses.
 | Wire calls, measurements, upstream defects | `<x>/internals.md` (shared: `docs/internals.md`, core HA: `docs/defects.md`) |
 | A vendor's rules, levels and calls, on an integration with families | its family: `integrations/<x>/families/<family>/` |
 | Zigbee strings two integrations' families share | the catalog: `custom_components/deviceside/zigbee/<family>.py` |
-| Classes, levels, doesn't-work and not-yet-supported entries | the package's code: `IntegrationInfo.classes` and the scopes' `doesnt_work` and `not_supported` (`scripts/gen_compat.py` regenerates the cards; entries not yet moved: `<x>/devices.yaml`, shared `docs/models.yaml`) |
+| Classes, levels, no known method and not built yet entries | the package's code: `IntegrationInfo.classes` and the scopes' `no_known_method` and `not_built` (`scripts/gen_compat.py` regenerates the cards; entries not yet moved: `<x>/devices.yaml`, shared `docs/models.yaml`) |
 | A class's card phrase and section | `<x>/devices.yaml` |
 | Models across integrations | `docs/models.yaml` |
 | Dated sources, never edited after | `<x>/research/` (a family's new ones: `<x>/research/<family>/`; shared: `docs/research/`) |
@@ -83,7 +83,7 @@ maintainer merges it; repo maintainers merge every other PR.
 
 A family maintainer sets their classes' levels, and can't merge alone what protects other families: another family,
 the integration's transport, `families/__init__.py` (the rule order between families), the classification snapshot,
-or a `DoesntWork` or `NotSupported` entry, their own family's included; an integration maintainer merges those. Only a
+or a `NoKnownMethod` or `NotBuilt` entry, their own family's included; an integration maintainer merges those. Only a
 repo maintainer changes a `maintainers` tuple.
 
 Integration and family maintainers hold Triage (`docs/repo-maintainers.md`), so GitHub ignores their names in

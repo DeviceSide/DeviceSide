@@ -13,10 +13,10 @@ def test_the_rule_reads_z2m_s_whole_vendor_string(manufacturer, matched):
     assert [rule.matches({"manufacturer": manufacturer}) for rule in sengled.RULES] == [matched]
 
 
-async def test_turn_on_for_is_not_supported(hass, setup_production, broker):
+async def test_turn_on_for_is_not_built(hass, setup_production, broker):
     """Rather than send `on_time`, which the Sengled ignores."""
     allow_experimental(hass)
     entity_id = light(hass, broker, manufacturer="Sengled", model_id="E11-G13")
 
-    assert await refusal(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == "not_supported"
+    assert await refusal(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == "not_built"
     assert commands(broker) == []

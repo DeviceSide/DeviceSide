@@ -153,9 +153,9 @@ def test_other_is_documented_on_brightness_fades_and_stop_alone():
 
 
 @pytest.mark.parametrize(
-    ("capability", "harmed", "not_supported"),
+    ("capability", "harmed", "not_built"),
     [
-        # Not yet supported on turn_on_for, with an entry: today's call would leave them on (Decision 70).
+        # Not built yet on turn_on_for, with an entry: today's call would leave them on (Decision 70).
         ("tuya_zcl", {"turn_on_for"}, {"turn_on_for"}),
         ("tuya_ts011f", {"turn_on_for"}, {"turn_on_for"}),
         # Reported failing Tuya's countdown with harm (Decision 41).
@@ -166,13 +166,13 @@ def test_other_is_documented_on_brightness_fades_and_stop_alone():
         ("gledopto", set(), set()),
     ],
 )
-def test_where_each_class_is_refused_and_elsewhere_untested(capability, harmed, not_supported):
-    """No Z2M class is doesn't work: each refused one has a call that would work, not yet built."""
+def test_where_each_class_is_refused_and_elsewhere_untested(capability, harmed, not_built):
+    """No Z2M class has no known method: each refused one has a call that would work, not yet built."""
     scopes = _scopes()
-    assert not any(capability in scope.doesnt_work for scope in scopes.values())
-    assert {action for action, scope in scopes.items() if capability in scope.not_supported} == harmed
+    assert not any(capability in scope.no_known_method for scope in scopes.values())
+    assert {action for action, scope in scopes.items() if capability in scope.not_built} == harmed
     refused = {action for action, scope in scopes.items() if capability not in scope.capabilities}
-    assert refused == not_supported
+    assert refused == not_built
     assert {scope.capabilities[capability] for action, scope in scopes.items() if action not in refused} == {
         Level.EXPERIMENTAL
     }
@@ -736,14 +736,14 @@ async def test_a_hue_group_is_verified_on_its_members_class(hass, setup_producti
     }
 
 
-# Where a call is known to harm, a class not yet known is refused (docs/evidence.md, Doesn't work, not yet supported,
+# Where a call is known to harm, a class not yet known is refused (docs/evidence.md, No known method, not built yet,
 # untested; Decisions 23 and 26): turn_on_for refuses a target it can't class, even with Experimental features on.
 # The dispatcher applies it (tests/core/test_dispatcher.py), on the adapters whose entries harm.
 
 
 def test_only_turn_on_for_s_entries_harm_and_each_does():
     """The Tuya entries mark the harm the rule guards against; no other Z2M adapter refuses an unplaced device."""
-    assert all(entry.harms for entry in tuya.TURN_ON_FOR_NOT_SUPPORTED.values())
+    assert all(entry.harms for entry in tuya.TURN_ON_FOR_NOT_BUILT.values())
     assert [adapter.action for adapter in ADAPTERS if adapter.scope.harms] == ["turn_on_for"]
 
 
@@ -772,7 +772,7 @@ async def test_turn_on_for_refuses_a_group_without_the_bridge_cache(hass, setup_
 
 async def test_turn_on_for_refuses_a_device_only_the_registry_placed_in_other(hass, setup_production, broker):
     """The audit's M2: a rebadged TS011F (Lidl's definition) before bridge/devices arrives looks like another brand.
-    Once it arrives, the plug is its own class, refused as not supported, and another brand runs flagged again."""
+    Once it arrives, the plug is its own class, refused as not built yet, and another brand runs flagged again."""
     plug = light(hass, broker, "light.plug", "0x03", manufacturer="Lidl", model_id="HG06337", zigbee=(TUYA, "TS011F"))
     ikea = light(hass, broker, "light.ikea", "0x04", manufacturer="IKEA of Sweden")
     allow_experimental(hass)
@@ -783,7 +783,7 @@ async def test_turn_on_for_refuses_a_device_only_the_registry_placed_in_other(ha
     assert commands(broker) == []
 
     broker.retained[DEVICES] = devices
-    assert await refusal(hass, "turn_on_for", {"entity_id": plug, "duration": 5}) == "not_supported"
+    assert await refusal(hass, "turn_on_for", {"entity_id": plug, "duration": 5}) == "not_built"
     assert await call(hass, "turn_on_for", {"entity_id": ikea, "duration": 5}) == {ikea: SENT}
 
 
@@ -877,7 +877,7 @@ async def test_a_group_with_a_ts011f_member_falls_back_to_its_members(hass, setu
 
     assert response == {"light.one": SENT}
     assert commands(broker) == [(SET.replace(IEEE, "0x01"), {"state": "ON", "on_time": 5.0})]
-    assert "light.two (not_supported)" in caplog.text
+    assert "light.two (not_built)" in caplog.text
 
 
 async def test_turn_on_for_refuses_a_gledopto_badged_tuya_device_until_its_strings_arrive(
@@ -893,14 +893,14 @@ async def test_turn_on_for_refuses_a_gledopto_badged_tuya_device_until_its_strin
     assert await refusal(hass, "turn_on_for", data) == "class_unknown"
     assert commands(broker) == []
     broker.retained[DEVICES] = devices
-    assert await refusal(hass, "turn_on_for", data) == "not_supported"
+    assert await refusal(hass, "turn_on_for", data) == "not_built"
 
 
 async def test_a_hue_group_with_a_gledopto_badged_tuya_member_runs_only_its_hue_member_until_its_strings_arrive(
     hass, setup_production, broker, caplog
 ):
-    """Before, the strip would take the group's call; once its strings arrive it is `tuya_mcu`, refused as doesn't
-    work, and the group still falls back."""
+    """Before, the strip would take the group's call; once its strings arrive it is `tuya_mcu`, refused as not
+    built yet, and the group still falls back."""
     entity_id = group(hass, broker, one={}, two=GLEDOPTO_TUYA)
     devices = broker.retained.pop(DEVICES)
     allow_experimental(hass)
@@ -914,7 +914,7 @@ async def test_a_hue_group_with_a_gledopto_badged_tuya_member_runs_only_its_hue_
     broker.retained[DEVICES] = devices
     assert await call(hass, "turn_on_for", data) == {"light.one": SENT}
     assert commands(broker) == hue_only * 2
-    assert "light.two (not_supported)" in caplog.text
+    assert "light.two (not_built)" in caplog.text
 
 
 async def test_a_named_member_not_yet_placed_raises_beside_its_group(hass, setup_production, broker):
@@ -978,7 +978,7 @@ async def test_a_tuya_device_is_refused_with_no_bridge_cache(hass, setup_product
         pytest.param(None, False, "class_unknown", id="no_strings"),
         pytest.param((None, "TS011F"), True, "class_unknown", id="model_only"),
         pytest.param((TUYA, "TS011F"), False, "class_unknown", id="mid_interview"),
-        pytest.param((TUYA, "TS011F"), True, "not_supported", id="interviewed"),
+        pytest.param((TUYA, "TS011F"), True, "not_built", id="interviewed"),
     ],
 )
 async def test_a_device_listed_with_null_strings_is_not_placed(

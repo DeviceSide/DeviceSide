@@ -2,7 +2,7 @@
 behavior)."""
 
 from ...rules import Group, Rule
-from .....core.scope import Family, FamilyScope, NotSupported, experimental
+from .....core.scope import Family, FamilyScope, NotBuilt, experimental
 
 SENGLED = "sengled"
 
@@ -21,9 +21,9 @@ _INTERNALS = "https://github.com/DeviceSide/DeviceSide/blob/main/docs/integratio
 # turn_on_for's call harms it (docs/evidence.md, When today's call harms a class): a call that would work is plausible,
 # but isn't built. `harms`, so core also refuses a target it can't class.
 _TURN_ON_FOR = FamilyScope(
-    not_supported={
+    not_built={
         # A host-side off would serve it; it refuses 0x42 by unicast and misses it by groupcast (Tested behavior).
-        SENGLED: NotSupported(
+        SENGLED: NotBuilt(
             reason="It refuses the timer, so with brightness, a color temperature or in a group it would stay on",
             source=_INTERNALS + "#tested-behavior",
             harms=True,

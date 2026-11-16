@@ -19,7 +19,7 @@ A family's path whose family isn't on the base branch is its integration's. This
   repo maintainer's, as is appointing one);
 - changes `README.md` outside its generated blocks;
 - sets or clears a `caveat` (a repo maintainer's, `docs/evidence.md`);
-- adds, changes or removes a `DoesntWork(...)` or `NotSupported(...)` call in a file whose integration the commenter
+- adds, changes or removes a `NoKnownMethod(...)` or `NotBuilt(...)` call in a file whose integration the commenter
   doesn't maintain: a family maintainer changes levels, never a `harms`-bearing entry.
 
 The ruleset on `main` still requires green, up-to-date checks, so this doesn't look at CI. Like
@@ -59,7 +59,7 @@ GENERATED = frozenset({README, "docs/device-compatibility.md", ".github/CODEOWNE
 # shapes it (core/registry.py, FAMILY_KEY), which no `__init__.py` or `__pycache__` beside the families is.
 NAMES = {"key": r"[a-z0-9_]+", "family": r"[a-z][a-z0-9_]*"}
 KEYWORDS = ("caveat", "maintainers")
-HARMS = frozenset({"DoesntWork", "NotSupported"})
+HARMS = frozenset({"NoKnownMethod", "NotBuilt"})
 
 
 class Refused(Exception):
@@ -180,7 +180,7 @@ def owners(package: Package, base: str) -> set[str]:
 
 class Marks(NamedTuple):
     """What a Python file holds that a maintainer doesn't change alone, as AST dumps: every `caveat=` keyword and
-    `Caveat(...)` call, every `maintainers=` keyword, and the set of `DoesntWork(...)` and `NotSupported(...)` calls."""
+    `Caveat(...)` call, every `maintainers=` keyword, and the set of `NoKnownMethod(...)` and `NotBuilt(...)` calls."""
 
     caveats: list[str]
     maintainers: list[str]
@@ -260,7 +260,7 @@ def check(base: str, head: str, commenter: str, templates: Templates) -> list[Pa
         mine = all(commenter in (maintainers(base, key) or ()) for key in integrations_of(held[path], base))
         if not mine and before[path].harms != after[path].harms:
             raise Refused(
-                f"it adds, changes or removes a doesn't-work or not-yet-supported entry in {path}; a maintainer of "
+                f"it adds, changes or removes a no known method or not built yet entry in {path}; a maintainer of "
                 f"the integration can merge it too"
             )
     return packages

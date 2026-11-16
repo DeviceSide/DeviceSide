@@ -66,7 +66,7 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
         # a maintainer judges it ready.
         domains=verified("light") | experimental("switch"),
         # Verified on Hue, whose bulbs every record ran on; every other brand may depart (some never switch off). The
-        # classes the call harms are refused (each family's not_supported).
+        # classes the call harms are refused (each family's not_built).
         **classes.class_scope(action),
         duration=_TIMER_LIMITS,
         fields=verified("brightness", "color_temp_kelvin"),

@@ -54,14 +54,14 @@ async def test_the_zigbee_strings_in_bridge_devices_place_a_rebadged_tuya_device
     assert INTEGRATION.capability(hass, resolve(hass, get_runtime(hass).registry, entity_id)) == expected
 
 
-async def test_turn_on_for_refuses_a_ts011f_as_not_supported_with_experimental_on(hass, setup_production, broker):
+async def test_turn_on_for_refuses_a_ts011f_as_not_built_with_experimental_on(hass, setup_production, broker):
     """Z2M has no on_time converter for it, so today's call would turn the plug on with no timer
     (research/2026-11-14-lab-probe.md, §2): refused, not flagged, so Experimental features can't send it."""
     allow_experimental(hass)
     add_z2m_entity(hass, z2m_entry(hass), "switch.plug", manufacturer=PLUG[0], model_id=PLUG[1])
     broker.retained[DEVICES] = [interviewed(IEEE, TUYA, "TS011F")]
 
-    assert await refusal(hass, "turn_on_for", {"entity_id": "switch.plug", "duration": 5}) == "not_supported"
+    assert await refusal(hass, "turn_on_for", {"entity_id": "switch.plug", "duration": 5}) == "not_built"
     assert commands(broker) == []
 
 
@@ -72,7 +72,7 @@ async def test_the_ts011f_s_refusal_says_what_the_user_sees(hass, setup_producti
 
     with pytest.raises(HomeAssistantError) as raised:
         await call_service(hass, "turn_on_for", {"entity_id": "switch.plug", "duration": 5})
-    assert raised.value.translation_placeholders["why"] == tuya.TURN_ON_FOR_NOT_SUPPORTED["tuya_ts011f"].reason
+    assert raised.value.translation_placeholders["why"] == tuya.TURN_ON_FOR_NOT_BUILT["tuya_ts011f"].reason
     assert "no timer, so it would stay on" in raised.value.translation_placeholders["why"]
 
 
@@ -83,14 +83,14 @@ async def test_the_ts011f_s_refusal_says_what_the_user_sees(hass, setup_producti
         pytest.param(("Tuya", "TS0601_switch"), id="tuya_mcu"),
     ],
 )
-async def test_turn_on_for_refuses_every_tuya_class_as_not_supported_with_experimental_on(
+async def test_turn_on_for_refuses_every_tuya_class_as_not_built_with_experimental_on(
     hass, setup_production, broker, registry
 ):
     """Z2M turns `on_time` into a plain On on Tuya firmware (Decision 20), so the device would stay on."""
     allow_experimental(hass)
     entity_id = light(hass, broker, manufacturer=registry[0], model_id=registry[1])
 
-    assert await refusal(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == "not_supported"
+    assert await refusal(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == "not_built"
     assert commands(broker) == []
 
 
@@ -101,12 +101,10 @@ async def test_turn_on_for_refuses_every_tuya_class_as_not_supported_with_experi
         pytest.param("set_attributes", {"brightness": 50}, id="write"),
     ],
 )
-async def test_a_datapoint_device_s_raw_zcl_read_and_write_are_not_supported(
-    hass, setup_production, broker, action, data
-):
+async def test_a_datapoint_device_s_raw_zcl_read_and_write_are_not_built(hass, setup_production, broker, action, data):
     """Rather than send raw ZCL a datapoint device can't take."""
     allow_experimental(hass)
     entity_id = light(hass, broker, manufacturer="Tuya", model_id="TS0601_dimmer")
 
-    assert await refusal(hass, action, {"entity_id": entity_id, **data}) == "not_supported"
+    assert await refusal(hass, action, {"entity_id": entity_id, **data}) == "not_built"
     assert commands(broker) == []

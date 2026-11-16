@@ -23,7 +23,7 @@ contributor's change for one vendor reclasses another vendor's devices unnoticed
    tuya, sengled, sonoff). The integration keeps the transport, the default class `other` and the precedence between
    families. Families are opt-in: Control4, Hue, Shelly and Matter are untouched.
 4. A family maintainer may `/merge` a PR whose every file they own, including level changes (Verified, lifting the
-   experimental flag). They may not add, change or remove a `harms`-bearing entry (`DoesntWork`, `NotSupported`): the
+   experimental flag). They may not add, change or remove a `harms`-bearing entry (`NoKnownMethod`, `NotBuilt`): the
    gate refuses, and an integration or repo maintainer merges it.
 5. The seam covers code, unit tests and new research (`docs/integrations/<x>/research/<family>/`). Test records,
    `index.md`, `internals.md` and `devices.yaml` stay whole and the integration's; existing dated research stays where
@@ -54,7 +54,7 @@ contributor's change for one vendor reclasses another vendor's devices unnoticed
   the way its `execute` does (Zigbee2MQTT's `checked`).
 - `TimedRequest.limits` is removed if nothing reads it once the branch is gone.
 - `Family` (scope.py): `key`, `maintainers: tuple[str, ...] = ()`, `classes: frozenset[str]`, `scopes: Mapping[str,
-  FamilyScope]` by action key. `FamilyScope`: `capabilities`, `doesnt_work`, `not_supported`, `own_calls`, each a
+  FamilyScope]` by action key. `FamilyScope`: `capabilities`, `no_known_method`, `not_built`, `own_calls`, each a
   mapping by class, all default empty. An action a family gives no scope leaves its classes out of that adapter's
   scope, so they are refused as not built, as leaving a class out does today.
 - `family_scope(families, action) -> FamilyScope`: the families' parts for one action merged; a class in two families
@@ -119,7 +119,7 @@ tests/integrations/<x>/
   anything else: nobody). The PR passes when the commenter is in every file's set. It still refuses a PR that changes
   README outside generated blocks or sets or clears a caveat, and now one that changes any `maintainers` value in a
   changed Python file, and, for a commenter who is not a maintainer of the file's integration, one that adds, changes
-  or removes a `DoesntWork(...)` or `NotSupported(...)` call in it (compared as AST dumps, as caveats are). Its
+  or removes a `NoKnownMethod(...)` or `NotBuilt(...)` call in it (compared as AST dumps, as caveats are). Its
   docstring states what it can't see (a rule change that moves devices out of a harmed class), as it does for caveats.
 - Family maintainers are read by parsing `families/<family>/__init__.py`; a test checks the parse against the
   registry, as `test_route_issue.py` does for integrations.

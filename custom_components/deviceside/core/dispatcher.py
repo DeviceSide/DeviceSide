@@ -111,7 +111,7 @@ def _rank(reason: str) -> int:
     the call through; then a class's refusal, which says why it can't; then any other; not_addressable last."""
     if reason == EXPERIMENTAL_OFF:
         return 0
-    if reason in (Reason.DOESNT_WORK, Reason.NOT_SUPPORTED, Reason.CLASS_UNKNOWN):
+    if reason in (Reason.NO_KNOWN_METHOD, Reason.NOT_BUILT, Reason.CLASS_UNKNOWN):
         return 1
     return 3 if reason == Reason.NOT_ADDRESSABLE else 2
 
@@ -124,8 +124,8 @@ def _skip(
     why: str | None = None,
     title: str | None = None,
 ) -> list[EntityResult]:
-    """A target that can't take the action: raise if the caller named it (with `why`, a doesn't-work or not yet
-    supported entry's reason, and `title`, the integration's, which a class_unknown message names), else the result
+    """A target that can't take the action: raise if the caller named it (with `why`, a no known method or not built
+    yet entry's reason, and `title`, the integration's, which a class_unknown message names), else the result
     that skips it."""
     if reason == Reason.EMPTY_GROUP:
         return []
@@ -289,7 +289,7 @@ class Dispatcher:
         Planning buckets targets by adapter, expands native groups an adapter can't address, drops the fields each
         target lacks and checks supports() on what is left, then the target's class (a native group's: its members'):
         where the adapter's call harms a class, one not yet placed (Unplaced, or None) is refused as class_unknown,
-        with Experimental features on or off; one the scope lists in doesnt_work, or the integration names but the
+        with Experimental features on or off; one the scope lists in no_known_method, or the integration names but the
         scope doesn't serve, is refused; a native group so refused falls back to its members when the integration can
         list them (docs/design.md), and an empty one is skipped silently. A flagged call, from an
         `experimental=True` adapter or touching an Experimental scope item, is refused while the Experimental features

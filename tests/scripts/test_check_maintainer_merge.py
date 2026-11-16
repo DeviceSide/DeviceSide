@@ -14,7 +14,7 @@ README = "# DeviceSide\n\nIntro.\n\n<!-- devices:start -->\nold cards\n<!-- devi
 ACME = cmm.Package("acme")
 TUYA = cmm.Package("acme", "tuya")
 FAMILY = PKG + "families/tuya/"
-ENTRY = 'ENTRY = DoesntWork("Plugs", "why", "https://x/1", harms=True)\n'
+ENTRY = 'ENTRY = NoKnownMethod("Plugs", "why", "https://x/1", harms=True)\n'
 
 
 def init(maintainers=("alice",)):
@@ -256,13 +256,13 @@ def test_a_family_maintainer_changes_a_level(families):
         "",
         ENTRY.replace("why", "another reason"),
         ENTRY.replace("harms=True", "harms=False"),
-        ENTRY + 'OTHER = scope.NotSupported("why", "https://x/2", harms=True)\n',
+        ENTRY + 'OTHER = scope.NotBuilt("why", "https://x/2", harms=True)\n',
     ],
 )
-def test_only_an_integration_maintainer_changes_a_doesnt_work_or_not_supported_entry(families, entries):
+def test_only_an_integration_maintainer_changes_a_no_known_method_or_not_built_entry(families, entries):
     families.commit(family_init(), family() + entries)
     assert refused("tina") == (
-        f"it adds, changes or removes a doesn't-work or not-yet-supported entry in {family_init()}; a maintainer of "
+        f"it adds, changes or removes a no known method or not built yet entry in {family_init()}; a maintainer of "
         "the integration can merge it too"
     )
     assert check("alice") == [TUYA]
@@ -328,7 +328,7 @@ def test_a_catalog_change_with_both_stacks_families_needs_an_owner_of_all_three(
 
 def test_a_catalog_entry_changes_only_with_every_sharing_integrations_maintainer(families):
     families.commit(CATALOG, ENTRY)
-    assert refused("alice").startswith("it adds, changes or removes a doesn't-work or not-yet-supported entry")
+    assert refused("alice").startswith("it adds, changes or removes a no known method or not built yet entry")
 
 
 def test_a_catalog_file_no_family_shares_is_nobodys(families):

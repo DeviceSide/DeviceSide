@@ -34,18 +34,23 @@ Code and docs use these terms.
   [index.md](integrations/zigbee2mqtt/index.md#tuya)). Until then its class is `Unplaced`: the same class to every adapter, except
   where a call is known to harm, which refuses it (`class_unknown`). Placed or not is apart from which rule matched:
   a device no rule matches is placed in the default class once the integration has reported it. Rules:
-  [evidence.md](evidence.md#doesnt-work-not-yet-supported-untested).
-- **Doesn't work**: a class no known call works on for an action, a device limit. Listed in the adapter's
-  `AdapterScope.doesnt_work` with a reason and source, refused (`doesnt_work`) and named on the card.
-- **Not yet supported**: a class a known or plausible call would serve for an action, but that DeviceSide hasn't
-  built. The integration names it, the adapter's scope holds it in neither `capabilities` nor `doesnt_work`, and it is
-  refused (`not_supported`) and named on the card. It may sit in `AdapterScope.not_supported`, with a reason, a source
-  and `harms`, and does exactly when today's call would harm it.
+  [evidence.md](evidence.md#no-known-method-not-built-yet-untested).
+- **Not supported**: DeviceSide can't do this action for the target (`target_not_supported`,
+  `integration_not_supported`). For a class it is one of two kinds, each named for why: no known method, or not built
+  yet. Whether today's call would harm the class is a separate axis, `harms`, which either kind may carry.
+- **No known method**: a class no known call works on for an action, a device limit as far as anyone knows. A method
+  is a call that does what was asked and fails without harm, so a class whose only known call is unsafe has none; the
+  entry's reason says which. Listed in the adapter's `AdapterScope.no_known_method` with a reason and source, refused
+  (`no_known_method`) and named on the card.
+- **Not built yet**: a class a known or plausible call would serve for an action, and nobody has built it. The
+  integration names it, the adapter's scope holds it in neither `capabilities` nor `no_known_method`, and it is
+  refused (`not_built`) and named on the card. It may sit in `AdapterScope.not_built`, with a reason, a source and
+  `harms`, and does exactly when today's call would harm it.
 - **Field**: an action parameter, e.g. `brightness`.
 - **Entity domain**: light, switch. "Domain" alone is fine where unambiguous.
 - **Scope**: the entity domains, classes and fields an adapter is built for, each Verified, Documented or untested,
-  and flagged or not, plus the classes it knows don't work. Outside it, calls are refused (`domain_not_tested`,
-  `fields_not_tested`, or `not_supported` for a class).
+  and flagged or not, plus the classes it knows have no known method. Outside it, calls are refused
+  (`domain_not_tested`, `fields_not_tested`, or `not_built` for a class).
 - **Level**: how a scope item is proven, Verified or Documented. Rules: [evidence.md](evidence.md#levels). User
   wording: [device-compatibility.md](device-compatibility.md#levels-of-proof).
 - **Experimental**: the flag on a scope item (`experimental(...)`) or a whole adapter (`experimental=True`) not yet
@@ -182,19 +187,19 @@ runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, 
   gets the default class; `None` is only for a target it can't class at all (a Shelly entity with no RPC component),
   which counts as Experimental. A device not yet [placed](#glossary), whose class a later report could move, gets its
   class as `Unplaced` (`core/scope.py`), a flag on the class: every adapter takes it as that class except one whose
-  scope holds a `doesnt_work` or `not_supported` entry marked `harms` (its call harms that class), where the
+  scope holds a `no_known_method` or `not_built` entry marked `harms` (its call harms that class), where the
   dispatcher refuses it as `class_unknown`, as it does `None`, even with Experimental features on (the rule:
-  [evidence.md](evidence.md#doesnt-work-not-yet-supported-untested)). A response leaves out an `Unplaced` class, as it
+  [evidence.md](evidence.md#no-known-method-not-built-yet-untested)). A response leaves out an `Unplaced` class, as it
   does `None` ([action-behavior.md](action-behavior.md#what-a-response-looks-like)). Every adapter of the integration
   sees the same class, and maps the classes it serves to its own branch in `execute`; a class is a device class, not
   a call pattern, as patterns are per action.
   `IntegrationInfo.classes` declares every class it can name. The registry refuses an integration with `capability`
   unless every adapter's scope has `capabilities`, one without unless none has, a scope class the integration doesn't
   declare, and a scope holding `IntegrationInfo.default_class` (the class a device no rule matches gets; none on Shelly)
-  as Verified. `AdapterScope.doesnt_work` maps a class to a `DoesntWork` (what, reason, source, and `harms`), and
-  `AdapterScope.not_supported` a not yet supported class today's call would harm to a `NotSupported` (reason, source,
+  as Verified. `AdapterScope.no_known_method` maps a class to a `NoKnownMethod` (what, reason, source, and `harms`), and
+  `AdapterScope.not_built` a class not built yet that today's call would harm to a `NotBuilt` (reason, source,
   and `harms`, which must be true, as an unharmed one needs no entry); a class is in at most one of `capabilities`,
-  `doesnt_work` and `not_supported`.
+  `no_known_method` and `not_built`.
 - **Resolver.** Candidates are the available integrations whose `ha_domain` is the entity's registry platform;
   one with a `detect` hook wins first (Z2M over plain MQTT). A gateway or API DeviceSide never supports is an
   integration of its own, declared only to refuse (`IntegrationInfo.unsupported`, listed in its sibling's module as
@@ -209,9 +214,9 @@ runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, 
   skipped silently, named or not, as core skips an empty group. One whose members can't be listed (no `expand_group`, it
   answered `None`, or it raised, logged) counts as Experimental: refused while Experimental features is off, and, where
   a call is known to harm, as `class_unknown` with them on
-  ([evidence.md](evidence.md#doesnt-work-not-yet-supported-untested)). When a member's class doesn't work or isn't
-  supported, or isn't placed yet where a call is known to harm, or takes a call of its own (`AdapterScope.own_calls`,
-  `own_call`: a branch in `execute` the group's call isn't), or, while Experimental features is off, is Experimental
+  ([evidence.md](evidence.md#no-known-method-not-built-yet-untested)). When a member's class has no known method or
+  is not built yet, or isn't placed yet where a call is known to harm, or takes a call of its own
+  (`AdapterScope.own_calls`, `own_call`: a branch in `execute` the group's call isn't), or, while Experimental features is off, is Experimental
   (the adapter, domain and fields not flagged), the group falls back to its members: each available one not already a
   target is planned on its own, indirect, so the good ones run and a refused or flagged one is skipped and logged (a
   member also named raises, as its own target). A member `expand_group` lists for its class but the integration can't
@@ -234,9 +239,9 @@ runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, 
   indirect), and an `expand_group` that answers `None` or raises (logged) leaves membership unknowable, so the group is
   refused as `group_not_supported`, as with none.
 - **Dispatcher.** Buckets targets by adapter, drops fields a target lacks, checks `supports()` (domain and fields in
-  scope, and the adapter's own reasons), then the class (`AdapterScope.refusal`: where a `doesnt_work` or
-  `not_supported` entry `harms`, one `Unplaced` or `None` is refused as `class_unknown`; a class in `doesnt_work` is
-  refused as `doesnt_work`, one in neither it nor `capabilities` as `not_supported`, with its `NotSupported.reason`
+  scope, and the adapter's own reasons), then the class (`AdapterScope.refusal`: where a `no_known_method` or
+  `not_built` entry `harms`, one `Unplaced` or `None` is refused as `class_unknown`; a class in `no_known_method` is
+  refused as `no_known_method`, one in neither it nor `capabilities` as `not_built`, with its `NotBuilt.reason`
   where it has an entry; a call left nothing to send is first), clamps
   durations to `AdapterScope.duration`, or a class's own call's limits (`own_calls`), rounded to their `step_s`, then
   runs every adapter concurrently under

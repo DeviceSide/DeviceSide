@@ -9,7 +9,7 @@ model, whose patterns both Zigbee stacks share (zigbee/tuya.py)."""
 import re
 
 from ...rules import Group, Rule
-from .....core.scope import Family, FamilyScope, NotSupported, experimental
+from .....core.scope import Family, FamilyScope, NotBuilt, experimental
 from .....zigbee import tuya as strings
 
 # Tuya's ZCL plugs and switches whose timer is Tuya's countdown, in whole seconds (internals.md, `classes`; Tuya's
@@ -53,8 +53,8 @@ ZCL_RULES: Group = (
 )
 
 # The ZCL classes untested on every action but turn_on_for, which refuses them. `tuya_mcu` is in no scope but
-# turn_on_for's not_supported: its quirk answers what DeviceSide sends itself (reads from its cache, a Level move
-# without its transition), so it needs a datapoint call that isn't built (not yet supported).
+# turn_on_for's not_built: its quirk answers what DeviceSide sends itself (reads from its cache, a Level move
+# without its transition), so it needs a datapoint call nobody has built (not built yet).
 _UNTESTED = FamilyScope(capabilities=experimental(TUYA_COUNTDOWN, TUYA_COUNTDOWN_HARMED, TUYA_ZCL))
 
 # turn_on_for's call harms each of these (docs/evidence.md, When today's call harms a class): it ends on with no timer,
@@ -62,12 +62,12 @@ _UNTESTED = FamilyScope(capabilities=experimental(TUYA_COUNTDOWN, TUYA_COUNTDOWN
 _INTERNALS = "https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/internals.md"
 _RESEARCH = "https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/"
 # A call that would work is known or plausible, but isn't built (plan Decisions 70, 74 and 41): every class the call
-# harms, so none is doesn't work.
+# harms, so none has no known method.
 _TURN_ON_FOR = FamilyScope(
-    not_supported={
+    not_built={
         # The countdown misbehaves on this string (Z2M #30493: the time left jumps back at random), and Tuya's inching
         # (cluster 0xE000, command 0xFB), which would plausibly serve it, isn't built (plan Decision 41).
-        TUYA_COUNTDOWN_HARMED: NotSupported(
+        TUYA_COUNTDOWN_HARMED: NotBuilt(
             reason="Tuya's own timer is reported to jump back at random on it, so it may not turn off when asked, and "
             "the timer that would serve it isn't built",
             source="https://github.com/Koenkk/zigbee2mqtt/issues/30493",
@@ -75,20 +75,20 @@ _TURN_ON_FOR = FamilyScope(
         ),
         # Tuya's recipe would serve it, parked (internals.md, "Tuya's recipe, parked"); today's tenths harm it (Tested
         # behavior, the TS011F).
-        TUYA_COUNTDOWN: NotSupported(
+        TUYA_COUNTDOWN: NotBuilt(
             reason="ZHA's timer can turn it on long after the time asked and leave it on",
             source=_RESEARCH + "2026-11-14-lab-probe.md",
             harms=True,
         ),
         # The recipe or a countdown is plausible; the spec's tenths may be read as seconds, as the countdown models do.
-        TUYA_ZCL: NotSupported(
+        TUYA_ZCL: NotBuilt(
             reason="ZHA's timer can turn it on or off long after the time asked",
             source=_RESEARCH + "2026-11-14-timed-on-call-patterns.md",
             harms=True,
         ),
         # A datapoint countdown is plausible; the quirk refuses 0x42, and with fields the light.turn_on before it stays
         # on.
-        TUYA_MCU: NotSupported(
+        TUYA_MCU: NotBuilt(
             reason="ZHA refuses its timer, so with brightness or a color temperature it would turn on and stay on",
             source=_INTERNALS + "#classes",
             harms=True,

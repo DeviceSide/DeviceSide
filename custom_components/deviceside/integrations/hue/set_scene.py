@@ -8,7 +8,7 @@ from aiohue.v2.models.scene import Scene
 from homeassistant.core import HomeAssistant
 
 from .bridge import bridge_api, entity_name, resource_id, write_light
-from .classes import LEVELS, SET_SCENE_DOESNT_WORK
+from .classes import LEVELS, SET_SCENE_NO_KNOWN_METHOD
 from .report_filter import write_forgetting
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Request, Status, Target
@@ -48,14 +48,14 @@ class HueSetScene(Adapter[Request]):
 
     One failing light does not stop the others, but the scene is then rejected (some_lights_failed, or error if every
     light failed), so the call raises targets_failed as core's does when a device fails. All-Day (smart) scenes have no
-    fixed settings to write: their class, smart_scene, doesn't work (classes.py). A light written ends any move's
+    fixed settings to write: their class, smart_scene, has no known method (classes.py). A light written ends any move's
     prediction for it.
     """
 
     action: ClassVar[str] = "set_scene"
     integration: ClassVar[str] = "hue"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        domains=verified("scene"), capabilities=LEVELS, doesnt_work=SET_SCENE_DOESNT_WORK
+        domains=verified("scene"), capabilities=LEVELS, no_known_method=SET_SCENE_NO_KNOWN_METHOD
     )
 
     async def execute(self, hass: HomeAssistant, request: Request, targets: list[Target]) -> list[EntityResult]:

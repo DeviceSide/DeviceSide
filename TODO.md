@@ -45,17 +45,17 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
     to Jason directly), before any rig run on step 4's branch or later; Shelly rerun on it.
   - [x] 3. Lab probe: registry strings, the TS011F, the Sengled
     ([results](docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md)).
-  - [x] 4. Core: `IntegrationInfo.capability` and `classes`, `doesnt_work`, `not_supported` (and
+  - [x] 4. Core: `IntegrationInfo.capability` and `classes`, `no_known_method`, `not_built` (and
     `docs/integrations.md`'s mention); Shelly moves to it; `gen_compat`'s tiers and coverage check (warning), failing
     in `check_release --signoffs`; `_manual.md`'s Capabilities column; "one fact, one home, in code" in
-    `docs/evidence.md`, with CLAUDE.md's devices.yaml row; the Not yet supported tier on
+    `docs/evidence.md`, with CLAUDE.md's devices.yaml row; the Not built yet tier on
     `docs/device-compatibility.md`; how a group test or a manual row credits the classes it lists; the Capability
     column's "until that lands" clause; the class in each result (plan Decision 6); `other` never Verified
     (Decision 5).
   - [x] 5. Zigbee2MQTT classes, after the TS011F probe and the Tuya detection probe; the first default class, so
     `docs/device-compatibility.md` regains "and so does a device DeviceSide can't place in a known class".
     Built on `claude/device-classes-5-z2m` (classes `hue`, `tuya_zcl`, `tuya_ts011f`, `tuya_mcu`, `sengled`,
-    `gledopto`, `other`; the Tuya classes not yet supported on `turn_on_for`, with `harms`, which refuses unknown
+    `gledopto`, `other`; the Tuya classes not built yet on `turn_on_for`, with `harms`, which refuses unknown
     (step 6); `other` Documented on brightness fades and stop). Parts 1 and 2 landed with #431, and part 3, the
     TS011F countdown (plan Decision 72), with #441. The Zigbee2MQTT sign-off run restores the card's Works line and
     clears the coverage warnings; part 3's plugs, one per maker string, join it.
@@ -63,9 +63,9 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
     validated in CI; the markdown records converted to format 1, which `check_release --signoffs` rejects; the
     rig's paired change writes format 2.
   - [x] 6. Core fix-ups. The harm rule in core
-    (`DoesntWork.harms`, `Unplaced`), and a group with a member not yet placed falling back to its members; v0.1.0's
-    scope (plan Decisions 70 to 76): the two labels redefined, `NotSupported.harms`, and the Z2M Tuya classes re-sorted
-    as not yet supported.
+    (`NoKnownMethod.harms`, `Unplaced`), and a group with a member not yet placed falling back to its members; v0.1.0's
+    scope (plan Decisions 70 to 76): the two labels redefined, `NotBuilt.harms`, and the Z2M Tuya classes re-sorted
+    as not built yet.
   - [x] 7. ZHA classes (#439).
   - [x] 7a. Units groundwork (plan Decision 69): the report form's Zigbee manufacturer string, ZHA's OnTime
     read-back in `turn_on_for`'s DEBUG line, and the mined converter seed list
@@ -75,11 +75,11 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   - [x] 9. Matter classes (#436).
   - [ ] 10. Close out: `models.yaml`'s shared entries removed (step 7 moves ZHA's TS011F, its last, into ZHA's code),
     README regenerated, then the #350 comment.
-- [ ] **TS011F refusal on ZHA and Z2M** (device-classes plan, Decisions 16 and 70): a not yet supported entry with
+- [ ] **TS011F refusal on ZHA and Z2M** (device-classes plan, Decisions 16 and 70): a not built yet entry with
   `harms` for today's `turn_on_for` call, holding with Experimental on. Without it, ZHA's 0x42 in tenths switches a `_TZ3000_typdpbpg`
   plug on about 10× later than asked, and Z2M leaves the plug on with no timer
   ([probe](docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md)). Z2M in step 5 (built), ZHA in step 7 (built,
-  not yet supported with `harms`, plan Decision 74); blocks v0.1.0 even if step 7 slips.
+  not built yet with `harms`, plan Decision 74); blocks v0.1.0 even if step 7 slips.
 - [x] **Z2M direct target on a multi-light device** (#429): named by itself, a device's second light (a two-gang's
   `light.<gang_2>`) got its call on the device topic, which Z2M applies to the device's default endpoint, gang 1.
   Every light or switch of a device with several in its domain is now refused as `not_addressable`

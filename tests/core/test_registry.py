@@ -11,12 +11,12 @@ import pytest
 from custom_components.deviceside import actions
 from custom_components.deviceside.core.registry import AdapterRegistry
 from custom_components.deviceside.core.scope import (
-    DoesntWork,
     Family,
     FamilyScope,
     IntegrationInfo,
     Level,
-    NotSupported,
+    NoKnownMethod,
+    NotBuilt,
     OwnCall,
     experimental,
     verified,
@@ -83,8 +83,8 @@ def test_adapter_for_unknown_action_is_refused():
 
 
 CLASSED = replace(INTEGRATION, capability=lambda hass, target: "hue", classes=frozenset({"hue", "tuya", "other"}))
-BROKEN = DoesntWork("Tuya plug", "It never switches on", "https://example.com/source", harms=False)
-UNBUILT = NotSupported("It would stay on", "https://example.com/source", harms=True)
+BROKEN = NoKnownMethod("Tuya plug", "It never switches on", "https://example.com/source", harms=False)
+UNBUILT = NotBuilt("It would stay on", "https://example.com/source", harms=True)
 
 
 class Classed(FakeTurnOnFor):
@@ -101,8 +101,8 @@ def test_an_integration_naming_classes_needs_them_in_every_scope():
     "scope",
     [
         pytest.param(replace(FakeTurnOnFor.scope, capabilities=verified("hue")), id="capabilities"),
-        pytest.param(replace(FakeTurnOnFor.scope, doesnt_work={"tuya": BROKEN}), id="doesnt_work"),
-        pytest.param(replace(FakeTurnOnFor.scope, not_supported={"tuya": UNBUILT}), id="not_supported"),
+        pytest.param(replace(FakeTurnOnFor.scope, no_known_method={"tuya": BROKEN}), id="no_known_method"),
+        pytest.param(replace(FakeTurnOnFor.scope, not_built={"tuya": UNBUILT}), id="not_built"),
     ],
 )
 def test_an_integration_naming_no_classes_needs_them_in_no_scope(scope):
@@ -114,7 +114,7 @@ def test_an_integration_naming_no_classes_needs_them_in_no_scope(scope):
         _registry([Stray])
 
 
-@pytest.mark.parametrize("entries", [{"doesnt_work": {"tuya_zcl": BROKEN}}, {"not_supported": {"tuya_zcl": UNBUILT}}])
+@pytest.mark.parametrize("entries", [{"no_known_method": {"tuya_zcl": BROKEN}}, {"not_built": {"tuya_zcl": UNBUILT}}])
 def test_a_scope_holds_only_classes_its_integration_declares(entries):
     class Typo(FakeTurnOnFor):
         scope = replace(Classed.scope, **entries)
@@ -189,7 +189,7 @@ TUYA_FAMILY = Family(
     key="tuya",
     maintainers=("a-b",),
     classes=frozenset({"tuya"}),
-    scopes={"turn_on_for": FamilyScope(not_supported={"tuya": UNBUILT})},
+    scopes={"turn_on_for": FamilyScope(not_built={"tuya": UNBUILT})},
 )
 WITH_FAMILIES = replace(CLASSED, default_class="other", families=(HUE_FAMILY, TUYA_FAMILY))
 
@@ -252,8 +252,8 @@ def test_families_that_split_the_classes_between_them_are_accepted():
             )
             for part, entry in (
                 ("capabilities", Level.EXPERIMENTAL),
-                ("doesnt_work", BROKEN),
-                ("not_supported", UNBUILT),
+                ("no_known_method", BROKEN),
+                ("not_built", UNBUILT),
                 ("own_calls", OwnCall(None)),
             )
         ),

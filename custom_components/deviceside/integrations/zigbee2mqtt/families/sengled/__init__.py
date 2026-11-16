@@ -12,7 +12,7 @@ FAMILY = Family(
     key="sengled",
     maintainers=(),
     classes=frozenset({SENGLED}),
-    # No turn_on_for: the Sengled needs a host-side off, which isn't built, so it is not yet supported.
+    # No turn_on_for: the Sengled needs a host-side off, which nobody has built, so it is not built yet.
     scopes={
         "raise_brightness": _UNTESTED,
         "lower_brightness": _UNTESTED,

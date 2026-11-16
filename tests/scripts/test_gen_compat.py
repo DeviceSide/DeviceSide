@@ -11,9 +11,9 @@ from custom_components.deviceside.core.scope import (
     AdapterScope,
     Caveat,
     CaveatKind,
-    DoesntWork,
     Level,
-    NotSupported,
+    NoKnownMethod,
+    NotBuilt,
     documented,
     experimental,
     verified,
@@ -50,7 +50,7 @@ DATA = {
             "CCT": {"phrase": "CCT controllers", "section": "Dimmers"},
         }
     },
-    "doesnt_work": [{"what": "Old plug", "integrations": ["zha"], "reason": "No timer", "source": "https://x.y/z"}],
+    "no_known_method": [{"what": "Old plug", "integrations": ["zha"], "reason": "No timer", "source": "https://x.y/z"}],
 }
 PROSE = "# Page\n\n" + "".join(
     f"### {heading}\n\n" for heading in ("Hue lamp", "Plug", "Zigbee plugs", "Dimmers", "Old plug", "Native groups")
@@ -184,7 +184,7 @@ def test_a_fact_rows_models_must_be_in_models_yaml_and_a_dotfile_is_skipped(root
             "twice",
         ),
         (
-            {"doesnt_work": [{"what": "X", "integrations": ["zha"], "reason": "", "source": "https://s"}]},
+            {"no_known_method": [{"what": "X", "integrations": ["zha"], "reason": "", "source": "https://s"}]},
             "needs a reason",
         ),
         ({"models": [{"name": "Lamp", "ids": "L1", "type": "bulb"}]}, "ids must be a list"),
@@ -195,14 +195,17 @@ def test_a_fact_rows_models_must_be_in_models_yaml_and_a_dotfile_is_skipped(root
         ),
         ({"capabilities": {"zha": {"switch": {"section": "S"}}}}, "needs a phrase"),
         (
-            {"doesnt_work": [{"what": "X", "integrations": "zha", "reason": "r", "source": "https://s"}]},
+            {"no_known_method": [{"what": "X", "integrations": "zha", "reason": "r", "source": "https://s"}]},
             "must be a list",
         ),
-        ({"doesnt_work": [{"what": "X", "integrations": ["zha"], "reason": "r", "source": "s"}]}, "https URL"),
-        ({"doesnt_work": [{"what": "X", "integrations": ["tuya"], "reason": "r", "source": "https://s"}]}, "no integr"),
+        ({"no_known_method": [{"what": "X", "integrations": ["zha"], "reason": "r", "source": "s"}]}, "https URL"),
+        (
+            {"no_known_method": [{"what": "X", "integrations": ["tuya"], "reason": "r", "source": "https://s"}]},
+            "no integr",
+        ),
         ({"models": [{"name": "Lamp", "ids": ["L1"], "type": "bulb", "colour": "red"}]}, "unknown key colour"),
         ({"capabilities": {"zha": {"switch": {"phrase": "p", "section": "S", "level": 1}}}}, "unknown key level"),
-        ({"doesnt_work": [{**DATA["doesnt_work"][0], "why": "x"}]}, "unknown key why"),
+        ({"no_known_method": [{**DATA["no_known_method"][0], "why": "x"}]}, "unknown key why"),
         ({"capabilities": {"zha": None}}, "capabilities zha must be a mapping"),
         ({"capabilities": {"zha": ["switch"]}}, "capabilities zha must be a mapping"),
     ],
@@ -319,7 +322,7 @@ def test_a_manual_row_names_models_in_models_yaml(root):
         gc.check_models(FakeRegistry(), data())
 
 
-def test_the_evidence_groups_by_integration_skips_unsupported_pairs_and_lists_what_doesnt_work(root):
+def test_the_evidence_groups_by_integration_skips_unsupported_pairs_and_lists_what_has_no_known_method(root):
     record(root, "zha", "stop")
     registry = FakeRegistry(adapter("zha", "stop"), adapter("hue", "lower_hue"))
     text = gc.evidence(registry, data(registry))
@@ -417,12 +420,12 @@ def test_documented_and_flagged_classes_share_an_entry_per_feature_set_and_name_
     assert card.lines["should"] == [f"[plugs]({URL}#zigbee-plugs), [dimmers]({URL}#dimmers): turn on with timer"]
     # stop rides the smooth move, so it isn't named. Two classes of one section share a link.
     assert card.lines["experimental"] == [f"[dimmers, CCT controllers]({URL}#dimmers): smooth dimming"]
-    assert card.lines["no"] == [f"[Old plug]({URL}#old-plug)"]
+    assert card.lines["no_known_method"] == [f"[Old plug]({URL}#old-plug)"]
     # A bullet per class entry, in OUTCOMES order.
     assert card.render().splitlines()[2:] == [
         f"- 🟡 {card.lines['should'][0]}",
         f"- 🧪 {card.lines['experimental'][0]}",
-        f"- 🔴 {card.lines['no'][0]}",
+        f"- 🔴 {card.lines['no_known_method'][0]}",
     ]
 
 
@@ -463,7 +466,7 @@ def test_classes_of_one_section_say_their_shared_ending_once():
 def test_classes_that_share_a_phrase_say_it_once():
     """Zigbee2MQTT's countdown plugs: a class per maker string, one phrase for them all."""
     phrase = {"phrase": "countdown plugs", "section": "Plugs"}
-    data = gc.Data(requires={}, models={}, capabilities={"x": {"a": phrase, "b": phrase}}, doesnt_work=[])
+    data = gc.Data(requires={}, models={}, capabilities={"x": {"a": phrase, "b": phrase}}, no_known_method=[])
 
     assert gc.class_entries("x", {"a": {"stop"}, "b": {"stop"}}, data) == [
         f"[countdown plugs]({gc.PAGE_URL}#plugs): stop"
@@ -499,7 +502,7 @@ BUNDLE = {
         "column_order": 1,
         "requires": "Zigbee 3.0",
         "capabilities": DATA["capabilities"]["zha"],
-        "doesnt_work": [{"what": "Old plug", "reason": "No timer", "source": "https://x.y/z"}],
+        "no_known_method": [{"what": "Old plug", "reason": "No timer", "source": "https://x.y/z"}],
     },
     "hue": {"column": "Hue", "column_order": 2},
 }
@@ -564,7 +567,7 @@ def test_a_bundle_merges_in_as_its_integrations_own_and_its_page_holds_its_secti
     (root / "docs" / "integrations" / "zha" / "index.md").write_text("# ZHA\n\n### Dimmers\n")
     data = gc.load(FakeRegistry(), models)
     assert data.requires == {"zha": "Zigbee 3.0"}
-    assert data.doesnt_work[0]["integrations"] == ["zha"]
+    assert data.no_known_method[0]["integrations"] == ["zha"]
     # A section on the integration's page links there; the rest fall back to the shared page.
     assert data.url("zha", "Dimmers") == f"{gc.BLOB_URL}docs/integrations/zha/index.md#dimmers"
     assert data.url("zha", "Zigbee plugs") == f"{URL}#zigbee-plugs"
@@ -608,14 +611,14 @@ def test_a_card_title_links_to_its_integrations_page(root, monkeypatch):
         (BUNDLE, {"models": {"a": 1}}, "docs/models.yaml: models must be a list"),
         ({**BUNDLE, "hue": {"column": "Hue", "column_order": 2, "requires": ""}}, None, "hue/devices.yaml needs a req"),
         (
-            {**BUNDLE, "hue": {"column": "Hue", "column_order": 2, "doesnt_work": [DATA["doesnt_work"][0]]}},
+            {**BUNDLE, "hue": {"column": "Hue", "column_order": 2, "no_known_method": [DATA["no_known_method"][0]]}},
             None,
-            "a doesnt_work entry is hue's own; drop its integrations",
+            "a no_known_method entry is hue's own; drop its integrations",
         ),
         (
-            {**BUNDLE, "hue": {"column": "Hue", "column_order": 2, "doesnt_work": {"a": 1}}},
+            {**BUNDLE, "hue": {"column": "Hue", "column_order": 2, "no_known_method": {"a": 1}}},
             None,
-            "hue/devices.yaml: doesnt_work must",
+            "hue/devices.yaml: no_known_method must",
         ),
     ],
 )
@@ -645,17 +648,18 @@ def test_the_legend_leads_the_cards(root):
         "🟢 works · ✔ verified on automated rig · 🟡 should work: same call pattern as a tested device · "
         "🧪 experimental: off until you turn on Experimental features in DeviceSide's Configure > Settings; please"
         f" [report how it goes]({gc.REPORT_URL}) · "
-        "🚧 not yet supported: needs a command DeviceSide hasn't built · 🔴 doesn't work · "
+        "🚧 not built yet: needs a command DeviceSide doesn't have yet · "
+        "🔴 no known method: no known command works on it safely · "
         "⚠️ unmaintained: no one is fixing it; use at your own risk · "
         f"⚠️ untested fix: changed, not yet tested; please [report whether it works]({gc.REPORT_URL})"
     )
     assert text.index("Details per integration are in [docs/integrations.md](") < text.index("</details>")
 
 
-def test_a_pipe_in_a_doesnt_work_entry_stays_in_its_cell(root):
+def test_a_pipe_in_a_no_known_method_entry_stays_in_its_cell(root):
     broken = [{"what": "A | B", "integrations": ["zha"], "reason": "x | y", "source": "https://x.y/z"}]
     registry = FakeRegistry(adapter("zha", "stop"))
-    assert "| A \\| B | x \\| y | [source]" in gc.evidence(registry, data(registry, doesnt_work=broken))
+    assert "| A \\| B | x \\| y | [source]" in gc.evidence(registry, data(registry, no_known_method=broken))
 
 
 def test_every_action_has_a_card_name_from_the_feature_table():
@@ -888,31 +892,32 @@ def test_a_manual_device_counts_for_a_class_flagged_adapter_only_with_an_unflagg
     assert classed_card(adapter("zha", "stop", flagged_domain)).lines["works"] == []  # a row names no domain
 
 
-def test_a_class_an_adapter_serves_in_neither_axis_is_not_yet_supported(root):
-    broken = {"RGB": DoesntWork("Old plug", "No timer", "https://x.y/z", harms=False)}
+def test_a_class_an_adapter_serves_in_neither_axis_is_not_built_yet(root):
+    broken = {"RGB": NoKnownMethod("Old plug", "No timer", "https://x.y/z", harms=False)}
     card = classed_card(
         adapter("zha", "turn_on_for", AdapterScope(capabilities=verified("Switch", "Light", "CCT", "RGB"))),
         adapter("zha", "set_attributes", AdapterScope(capabilities=verified("Switch"))),
-        adapter("zha", "turn_off_for", AdapterScope(capabilities=verified("Switch"), doesnt_work=broken)),
+        adapter("zha", "turn_off_for", AdapterScope(capabilities=verified("Switch"), no_known_method=broken)),
     )
-    # Switch has no phrase, so it's never named; RGB doesn't work on turn_off_for, so it isn't unsupported there.
-    assert card.lines["unsupported"] == [
+    # Switch has no phrase, so it's never named; RGB has no known method on turn_off_for, so it isn't listed as not
+    # built yet there.
+    assert card.lines["not_built"] == [
         f"[dimmers, CCT controllers]({URL}#dimmers): turn off with timer, set without turning on",
     ]
     assert card.render().splitlines()[2:] == [
-        f"- 🚧 {card.lines['unsupported'][0]}",
-        f"- 🔴 {' · '.join(card.lines['no'])}",
+        f"- 🚧 {card.lines['not_built'][0]}",
+        f"- 🔴 {' · '.join(card.lines['no_known_method'])}",
     ]
 
 
-def test_a_scopes_doesnt_work_reaches_the_card_and_the_evidence_with_its_actions(root):
-    broken = {"RGB": DoesntWork("Old plug", "No timer", "https://x.y/z", harms=False)}
-    scope = AdapterScope(capabilities=verified("Switch"), doesnt_work=broken)
+def test_a_scopes_no_known_method_reaches_the_card_and_the_evidence_with_its_actions(root):
+    broken = {"RGB": NoKnownMethod("Old plug", "No timer", "https://x.y/z", harms=False)}
+    scope = AdapterScope(capabilities=verified("Switch"), no_known_method=broken)
     adapters = (adapter("zha", "turn_on_for", scope), adapter("zha", "turn_off_for", scope))
     registry = classed_registry(*adapters)
-    found = data(registry, doesnt_work=[])
+    found = data(registry, no_known_method=[])
     # One entry per integration and entry, whichever adapters list it.
-    assert gc.card("zha", registry, list(adapters), found).lines["no"] == [
+    assert gc.card("zha", registry, list(adapters), found).lines["no_known_method"] == [
         f"[Old plug]({URL}#old-plug): turn on with timer, turn off with timer"
     ]
     assert "| Old plug (`turn_off_for`, `turn_on_for`) | No timer | [source](https://x.y/z) |" in gc.evidence(
@@ -920,18 +925,18 @@ def test_a_scopes_doesnt_work_reaches_the_card_and_the_evidence_with_its_actions
     )
 
 
-def test_a_harmful_not_supported_entry_is_not_yet_supported_on_the_card_and_sourced_in_the_evidence(root):
-    """Plan Decision 70: the card lists it as any not yet supported class; the evidence block keeps why and where."""
-    unbuilt = {"CCT": NotSupported("No timer yet", "https://x.y/z", harms=True)}
-    scope = AdapterScope(capabilities=verified("Switch"), not_supported=unbuilt)
+def test_a_harmful_not_built_entry_is_not_built_yet_on_the_card_and_sourced_in_the_evidence(root):
+    """Plan Decision 70: the card lists it as any not built yet class; the evidence block keeps why and where."""
+    unbuilt = {"CCT": NotBuilt("No timer yet", "https://x.y/z", harms=True)}
+    scope = AdapterScope(capabilities=verified("Switch"), not_built=unbuilt)
     adapters = (adapter("zha", "turn_on_for", scope), adapter("zha", "turn_off_for", scope))
     registry = classed_registry(*adapters)
-    found = data(registry, doesnt_work=[])
+    found = data(registry, no_known_method=[])
     card = gc.card("zha", registry, list(adapters), found)
-    assert card.lines["no"] == []
-    assert any(line.endswith("turn on with timer, turn off with timer") for line in card.lines["unsupported"])
+    assert card.lines["no_known_method"] == []
+    assert any(line.endswith("turn on with timer, turn off with timer") for line in card.lines["not_built"])
     evidence = gc.evidence(registry, found)
-    assert "| Not yet supported, harmed by today's call | Why | Source |" in evidence
+    assert "| Not built yet, harmed by today's call | Why | Source |" in evidence
     assert "| CCT controllers (`turn_off_for`, `turn_on_for`) | No timer yet | [source](https://x.y/z) |" in evidence
 
 
@@ -940,34 +945,34 @@ def test_a_harmful_not_supported_entry_is_not_yet_supported_on_the_card_and_sour
     [
         (
             "CCT",
-            NotSupported("No timer yet", "http://x.y/z", harms=True),
-            "not_supported zha CCT: source must be an https",
+            NotBuilt("No timer yet", "http://x.y/z", harms=True),
+            "not_built zha CCT: source must be an https",
         ),
-        ("CCT", NotSupported("", "https://x.y/z", harms=True), "not_supported zha CCT needs a reason"),
-        ("Switch", NotSupported("No timer yet", "https://x.y/z", harms=True), "no entry for zha Switch, which a scope"),
+        ("CCT", NotBuilt("", "https://x.y/z", harms=True), "not_built zha CCT needs a reason"),
+        ("Switch", NotBuilt("No timer yet", "https://x.y/z", harms=True), "no entry for zha Switch, which a scope"),
     ],
     ids=["non_https_source", "empty_reason", "no_phrase"],
 )
-def test_a_scopes_not_supported_entry_needs_a_reason_an_https_source_and_a_phrase(root, name, entry, message):
-    scope = AdapterScope(capabilities=verified("Light"), not_supported={name: entry})
+def test_a_scopes_not_built_entry_needs_a_reason_an_https_source_and_a_phrase(root, name, entry, message):
+    scope = AdapterScope(capabilities=verified("Light"), not_built={name: entry})
     registry = classed_registry(adapter("zha", "turn_on_for", scope))
     with pytest.raises(SystemExit, match=message):
         gc.code_unbuilt("zha", list(registry._adapters), data(registry))
 
 
-def test_a_shared_not_supported_entry_is_not_yet_supported_on_its_cards_and_sourced_in_the_evidence(root):
-    """models.yaml's `not_supported`: a device today's call harms, on an integration that doesn't class it yet."""
+def test_a_shared_not_built_entry_is_not_built_yet_on_its_cards_and_sourced_in_the_evidence(root):
+    """models.yaml's `not_built`: a device today's call harms, on an integration that doesn't class it yet."""
     shared = [{"what": "Old plug", "integrations": ["zha"], "reason": "It stays on", "source": "https://x.y/z"}]
     registry = FakeRegistry(adapter("zha", "turn_on_for"))
-    found = data(registry, doesnt_work=[], not_supported=shared)
+    found = data(registry, no_known_method=[], not_built=shared)
     card = gc.card("zha", registry, list(registry._adapters), found)
-    assert card.lines["no"] == []
-    assert card.lines["unsupported"] == [f"[Old plug]({URL}#old-plug)"]
+    assert card.lines["no_known_method"] == []
+    assert card.lines["not_built"] == [f"[Old plug]({URL}#old-plug)"]
     evidence = gc.evidence(registry, found)
-    assert "| Not yet supported, harmed by today's call | Why | Source |" in evidence
+    assert "| Not built yet, harmed by today's call | Why | Source |" in evidence
     assert "| Old plug | It stays on | [source](https://x.y/z) |" in evidence
-    with pytest.raises(SystemExit, match="not_supported 'Old plug': source must be an https URL"):
-        data(registry, not_supported=[{**shared[0], "source": "x.y/z"}])
+    with pytest.raises(SystemExit, match="not_built 'Old plug': source must be an https URL"):
+        data(registry, not_built=[{**shared[0], "source": "x.y/z"}])
 
 
 def test_main_warns_on_each_coverage_gap_and_still_passes(root, capsys, monkeypatch):

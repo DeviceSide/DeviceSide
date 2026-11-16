@@ -61,4 +61,4 @@ def test_the_datapoint_class_is_in_no_scope_but_turn_on_fors_refusal():
     """Its quirk answers what DeviceSide sends itself, so it needs a call that isn't built."""
     held = {action for action, scope in tuya.FAMILY.scopes.items() if tuya.TUYA_MCU in scope.capabilities}
     assert held == set()
-    assert tuya.TUYA_MCU in tuya.FAMILY.scopes["turn_on_for"].not_supported
+    assert tuya.TUYA_MCU in tuya.FAMILY.scopes["turn_on_for"].not_built
