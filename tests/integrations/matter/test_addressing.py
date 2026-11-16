@@ -4,9 +4,9 @@ client lookups."""
 import pytest
 
 from custom_components.deviceside.integrations.matter.addressing import (
-    endpoint_id_from_unique_id,
     matter_client,
     node_id_from_unique_id,
+    onoff_endpoint,
 )
 
 from ...conftest import refusal
@@ -63,7 +63,23 @@ async def test_a_target_that_cant_take_the_timer_is_refused_before_anything_is_s
 def test_non_numeric_unique_id_segment_is_unparsable():
     """Seven parts pass the length guard, but a non-numeric node or endpoint segment parses to None."""
     assert node_id_from_unique_id("00-zzzzzzzzzzzzzzzz-0-1-2-3-4") is None
-    assert endpoint_id_from_unique_id("00-0000000000000001-0-zz-2-3-4") is None
+    assert onoff_endpoint("00-0000000000000001-0-zz-6-6-0") is None
+
+
+@pytest.mark.parametrize(
+    ("unique_id", "endpoint"),
+    [
+        ("0000000000000001-0000000000000002-MatterNodeDevice-1-MatterPlug-6-0", 1),
+        ("0000000000000001-0000000000000002-MatterNodeDevice-3-MatterLight-6-0", 3),
+        # Another switch on the plug's endpoint: Eve's child lock, then the same cluster's other attribute.
+        ("0000000000000001-0000000000000002-MatterNodeDevice-1-EveChildLock-319486977-319422481", None),
+        ("0000000000000001-0000000000000002-MatterNodeDevice-1-MatterPlug-6-16385", None),
+        ("0000000000000001-0000000000000002-MatterNodeDevice-1-MatterPlug-6-zz", None),
+        ("bad-uid", None),
+    ],
+)
+def test_only_an_onoff_unique_id_has_an_endpoint(unique_id, endpoint):
+    assert onoff_endpoint(unique_id) == endpoint
 
 
 def test_matter_client_without_entry_id_or_loaded_entry_is_none(hass):

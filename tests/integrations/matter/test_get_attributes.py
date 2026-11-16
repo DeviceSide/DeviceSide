@@ -8,7 +8,7 @@ import pytest
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util import dt as dt_util
 
-from ...conftest import call
+from ...conftest import call, refusal
 from ...fixtures.matter import NODE_ID, add_matter_entity, matter_device, on_off_or, on_time_reads
 
 WIZ = "wiz_plug"  # the fixture's node: the lab's WiZ Smart Plug
@@ -87,3 +87,18 @@ async def test_two_targets_read_in_one_call(hass):
         "switch.timed": {"capability": WIZ, "timer": timer(5.0)},
         "switch.idle": {"capability": WIZ},
     }
+
+
+async def test_a_config_switch_on_the_plugs_endpoint_is_refused_without_a_read(hass):
+    """Eve's child lock shares the plug's endpoint, but its timer isn't the plug's."""
+    entry, _, read_attr = matter_device(hass, endpoint_id=EP)
+    add_matter_entity(
+        hass,
+        entry,
+        "switch.child_lock",
+        endpoint_id=EP,
+        unique_id="0000000000000001-0000000000000002-MatterNodeDevice-1-EveChildLock-319486977-319422481",
+    )
+
+    assert await refusal(hass, "get_attributes", {"entity_id": "switch.child_lock"}) == "not_addressable"
+    read_attr.assert_not_awaited()

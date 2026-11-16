@@ -6,10 +6,10 @@ from typing import ClassVar
 from homeassistant.core import HomeAssistant
 
 from .addressing import (
-    endpoint_id_from_unique_id,
     make_on_with_timed_off,
     matter_client,
     node_id_from_unique_id,
+    onoff_endpoint,
     read_timer,
     timer_matches,
     unsupported_reason,
@@ -53,7 +53,7 @@ class MatterTurnOnFor(Adapter[TurnOnForRequest]):
     ) -> list[EntityResult]:
         async def send(target: Target) -> EntityResult:
             node_id = node_id_from_unique_id(target.entry.unique_id)
-            ep_id = endpoint_id_from_unique_id(target.entry.unique_id)
+            ep_id = onoff_endpoint(target.entry.unique_id)
             client = matter_client(hass, target.entry.config_entry_id)  # supports() refused the targets without one
 
             on_time = round(request.duration_s * 10)
