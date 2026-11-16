@@ -1,5 +1,9 @@
 """Zigbee2MQTT raise and lower: brightness and saturation published as an end point with a transition, hue as a rate
-move. Each action's adapter is a Z2MRamp."""
+move. Each action's adapter is a Z2MRamp.
+
+Saturation is a color with no hue, which zigbee-herdsman-converters' light_color sends as MoveToSaturation: the stop of
+an xy (MoveToColor) saturation fade visibly jumps, and a MoveToSaturation one halted by StopMoveStep doesn't
+(docs/integrations/zigbee2mqtt/internals.md, Tested behavior)."""
 
 import logging
 from collections.abc import Coroutine
@@ -39,6 +43,8 @@ MIN_CYCLE_S, MAX_CYCLE_S = 1.0, 254.0
 # The end read-back, after the fade has run: a live read mid-fade may have overwritten Z2M's published end value.
 END_READ_S = 1.0
 COLOR_HS = "color_hs"  # the Z2M feature a hue or saturation move needs
+# The HA color modes in which a light shows a color, so a saturation change is visible and keeps its own hue.
+_COLOR_MODES = frozenset({"hs", "xy"})
 # An off light keeps its level, and a fade from off starts there: it is turned on at the bottom first.
 AT_THE_BOTTOM = {"state": "ON", "brightness": 1, "transition": 0}
 
@@ -137,11 +143,12 @@ class Z2MRamp(Adapter[RampRequest]):
     each member's transition is recorded from its own start, and the group's start is the mean of its lit members.
 
     Raising brightness turns the light on. Lowering it to 0 % is Z2M's soft off, state OFF with the transition, which
-    keeps the level for the next plain on. Saturation is written as a color, the light's current hue with the end
-    saturation, and moves only lit lights. Hue is Z2M's hue_move, a cycle at a rate the bulb runs until a stop; a
-    sweep_time outside 1-254 s is clamped, with clamped_to. A light whose Z2M definition lacks color_hs is unchanged
-    with fields_dropped for hue and saturation. A move with nothing left to make is unchanged with at_limit; one with
-    only lights that are off to move is unchanged with off.
+    keeps the level for the next plain on. Saturation is written as a color with the end saturation and no hue, so each
+    bulb keeps its own and a group is one publish, on lit lights showing a color (hs or xy); else as the light's
+    current hue with the end saturation, in xy. It moves only lit lights. Hue is Z2M's hue_move, a cycle at a rate the
+    bulb runs until a stop; a sweep_time outside 1-254 s is clamped, with clamped_to. A light whose Z2M definition lacks
+    color_hs is unchanged with fields_dropped for hue and saturation. A move with nothing left to make is unchanged with
+    at_limit; one with only lights that are off to move is unchanged with off.
 
     Z2M publishes the end value at once. Once a fade has run, its attribute is read back, and a saturation fade's color
     refreshed (color_refresh), so HA ends right even after a live read mid-fade.
@@ -246,10 +253,11 @@ def brightness_fade(cache: TransitionCache, request: RampRequest, target: Target
 
 
 def saturation_fade(cache: TransitionCache, request: RampRequest, target: Target, lights: list[Target]) -> Fade | str:
-    """The saturation fade toward the limit at the current hue; off with no lit light in color, at_limit when there is
-    none left to make.
+    """The saturation fade toward the limit; off with no lit light in color, at_limit when there is none left to make.
 
-    Written as a color: the bulb holds its hue as it fades, with Z2M's hue_native_control on (in xy) or off, and Z2M
+    A color with no hue where every moving light shows a color: Z2M sends MoveToSaturation (hue_native_control off,
+    which NEED holds), so each bulb keeps its own hue and a group is one publish. Else, a light in color temperature
+    (its stored hue may be stale, untested) makes it the current hue with the end saturation, as an xy fade. Z2M
     publishes the end, which HA takes.
     """
     if not (movers := [light for light in lit(cache, lights) if hs_color(light) is not None]):
@@ -259,10 +267,16 @@ def saturation_fade(cache: TransitionCache, request: RampRequest, target: Target
     current = mean(starts.values())
     if (limit - current if up else current - limit) < MIN_STEP:
         return "at_limit"
-    hue = (hs_color(target) or hs_color(movers[0]))[0]
     duration = abs(limit - current) / 100 * request.sweep_time
-    payload = {"color": {"hue": round(hue, 1), "saturation": round(limit, 1)}, "transition": round(duration, 1)}
+    color = {"saturation": round(limit, 1)}
+    if not all(color_mode(light) in _COLOR_MODES for light in movers):
+        color["hue"] = round((hs_color(target) or hs_color(movers[0]))[0], 1)
+    payload = {"color": color, "transition": round(duration, 1)}
     return Fade(SATURATION, payload, starts, dict.fromkeys(starts, limit), duration)
+
+
+def color_mode(light: Target) -> str | None:
+    return light.state.attributes.get("color_mode") if light.state else None
 
 
 def hue_rate(request: RampRequest) -> HueMove:

@@ -272,7 +272,7 @@ async def test_no_bridge_groups_warns_and_still_sends(hass, setup_production, br
     assert "no bridge/groups from Zigbee2MQTT" in caplog.text
 
 
-# Ramps: off for brightness; saturation and hue leave it alone
+# Ramps: off for brightness and saturation; hue leaves it alone
 
 
 async def test_brightness_ramp_turns_it_off_for_its_publish(hass, setup_production, clock, broker):
@@ -289,11 +289,21 @@ async def test_brightness_ramp_turns_it_off_for_its_publish(hass, setup_producti
     assert options(broker) == [False, True]
 
 
-@pytest.mark.parametrize("action", ["raise_saturation", "raise_hue"])
-async def test_a_color_ramp_leaves_it_alone(hass, setup_production, clock, broker, action):
+async def test_a_saturation_ramp_turns_it_off_for_its_publish(hass, setup_production, clock, broker):
+    """Native, Z2M turns a color with no hue to xy, so the fade wouldn't be MoveToSaturation."""
+    entity_id = light(hass, broker, manufacturer="Philips")
+    broker.retained[INFO]["config"]["devices"][IEEE]["hue_native_control"] = True
+
+    await call(hass, "raise_saturation", {"entity_id": entity_id})
+    await hass.async_block_till_done()
+
+    assert options(broker) == [False, True]
+
+
+async def test_a_hue_ramp_leaves_it_alone(hass, setup_production, clock, broker):
     entity_id = light(hass, broker, manufacturer="Philips")
 
-    await call(hass, action, {"entity_id": entity_id})
+    await call(hass, "raise_hue", {"entity_id": entity_id})
 
     assert broker.requests() == []
 

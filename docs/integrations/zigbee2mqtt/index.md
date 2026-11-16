@@ -155,8 +155,6 @@ timer.
 
 - **Hue moves** cycle the color wheel until `stop`, with a `sweep_time` of 1 to 254 s. Saturation and hue need a
   light that is on and supports hue and saturation, or a group whose lights all do.
-- **Saturation on a group** publishes one color to the group, at the group's hue in Home Assistant, and every light
-  that is on moves to it. A group whose lights sit at different hues ends at one hue.
 
 ## Flash-free turn-on
 

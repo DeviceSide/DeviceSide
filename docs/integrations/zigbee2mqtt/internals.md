@@ -92,7 +92,8 @@ announce both by default, as some lights handle mixed modes badly
 rather than ZCL ones. Each action that needs it one way declares it (`NEED` in `native_control.py`): on for a
 `turn_on_for` with a color or color temperature (a Hue bulb, manufacturer `Philips`, lights in the new color and
 keeps the timer); off for a brightness fade (native, a long raise runs about 2.3x faster than its transition, and
-a soft off reports `onOff: 0` at once). Other actions, a saturation fade included, leave it alone. Where the
+a soft off reports `onOff: 0` at once); off for a saturation fade too (native, Philips' converter turns a hueless
+color to xy, so it would run as `MoveToColor` and jump at a stop). Other actions leave it alone. Where the
 setting differs, it's set (Z2M's settings read on each call, up to 5 s for Z2M), the command published, and the
 user's value written back after Z2M's next state publish for the target (1 s cap). The action returns once its
 command is out; the write-back runs after it, and a `turn_on_for` waits for any pending one on its target before
@@ -198,8 +199,16 @@ one, the longest.
   from it, so it first gets `{"state": "ON", "brightness": 1, "transition": 0}` (one publish to an all-off group,
   else per off member).
 - `lower_brightness` to 0 %: `{"state": "OFF", "transition"}`, Z2M's soft off.
-- Saturation: `{"color": {"hue", "saturation"}, "transition"}`; the bulb holds its hue with `hue_native_control` on
-  (it fades in xy) or off.
+- Saturation: `{"color": {"saturation"}, "transition"}` with `hue_native_control` held off (`native_control`):
+  zigbee-herdsman-converters' `light_color` sends a color with only a saturation as `moveToSaturation` with `transtime`
+  on a light whose definition has `supportsHueAndSaturation` (any that exposes `color_hs`, as the A60's
+  `philips.m.light` does with `modes: ["xy", "hs"]`), as a `MoveToSaturation` fade's stop doesn't jump (Tested
+  behavior). With the option on, Philips' `light` converter turns any color to xy, so a hueless one doesn't go out as
+  `moveToSaturation`. No hue rides in the payload, so each bulb keeps its own and a group is one publish. A light in
+  color temperature (its stored hue may be stale, untested) makes the payload `{"color": {"hue", "saturation"}}`, the
+  light's current hue, which goes out as `moveToHueAndSaturation`. Source, `Koenkk/zigbee-herdsman-converters`
+  `f368dcd1`: `src/converters/toZigbee.ts` (`light_color`), `src/lib/philips.ts` (`light`, `hue_native_control`),
+  `src/lib/modernExtend.ts` (`light`: `meta.supportsHueAndSaturation`).
 - Hue: `hue_move` at `254 / sweep_time` steps per second (ZCL allows 1 to 254).
 
 ### `stop`
@@ -269,6 +278,12 @@ Measured 2026-10-28 on Z2M 2.14.2 with Hue bulbs (a CT bulb and the A60), Home A
   group; after a change in Z2M's frontend; and after a Z2M restart, 0.02 s after `bridge/state` goes online, with the
   values kept. On an options request it arrives 0.03 to 0.10 s after the request and microseconds before the reply
   (seven group flips). The reply's `data.to` holds the entity's options after the write, without `friendly_name`.
+- **Saturation fade stops.** The wire call is the same as on ZHA, so the A60's ZHA evidence carries over: halted by
+  `StopMoveStep`, a `MoveToSaturation` fade looked closest to smooth and kept its hue, where an xy (`MoveToColor`) fade
+  jumped at the stop
+  ([zha research](../zha/research/2026-11-15-a60-stop-halt-probe.md)). Watched through Zigbee2MQTT on the same bulb
+  (rig run 2026-11-16): the same, no jump and no drift, with a slight step back in saturation at the stop, as on ZHA.
+  Left as is: it would need firmware tuning.
 - **After an xy stop,** Z2M's read-back carries its cached end-point x/y, not where the bulb halted; a
   `{"color": ""}` get publishes the halted x/y.
 
