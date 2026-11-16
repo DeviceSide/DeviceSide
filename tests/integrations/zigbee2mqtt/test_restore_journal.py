@@ -224,7 +224,10 @@ async def test_an_unreadable_journal_warns(hass, setup_production, monkeypatch, 
 
     await rj.replay(hass)
 
-    assert "Couldn't read the hue_native_control restore journal: OSError('unreadable')" in caplog.text
+    assert (
+        "Couldn't read the hue_native_control restore journal: OSError('unreadable'), so owed restores wait"
+        in caplog.text
+    )
 
 
 async def test_a_strike_that_fails_warns(hass, setup_production, broker, mqtt_up, hass_storage, monkeypatch, caplog):

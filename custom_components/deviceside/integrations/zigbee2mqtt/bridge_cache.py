@@ -28,6 +28,7 @@ bridge/info arriving later holds it too: each new one drops the overlay.
 import asyncio
 import json
 import logging
+import re
 from collections.abc import Callable
 from typing import Any
 
@@ -36,6 +37,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 
 from .addressing import bridge_topic
+from ...core.errors import describe
 from ...core.runtime import DATA
 
 _LOGGER = logging.getLogger(__name__)
@@ -76,7 +78,8 @@ class BridgeCache:
             try:
                 parsed = json.loads(payload)
             except ValueError:
-                _LOGGER.debug("Zigbee2MQTT's bridge/%s doesn't parse: %.80s", suffix, payload)
+                # Not the payload: it opens with a device's IEEE and friendly name (docs/logging.md).
+                _LOGGER.debug("Zigbee2MQTT's bridge/%s doesn't parse (%d characters)", suffix, len(payload))
                 parsed = None
             memo = self._parsed[suffix] = (payload, parsed)
         return memo[1]
@@ -186,6 +189,51 @@ def log_error(payload: str) -> str | None:
     return None
 
 
+# A failed ZCL command, as Z2M logs it: `... ZCL command <address> <cluster>.<command>(<payload>) failed (<cause>)`,
+# the address a device's <ieee>/<endpoint> or a group's number.
+_ZCL_FAILURE = re.compile(r"ZCL command \S+ (?P<call>\w+\.\w+)\(.*\) failed \((?P<cause>.*)\)'?$")
+# Any other failed set: `Publish 'set' '<key>' to '<friendly name>' failed: '<error>'`.
+_SET_FAILURE = re.compile(r"^Publish '\w+' '[^']*' to '(?P<name>.*?)' failed: '?(?:Error: )?(?P<error>.*?)'?$")
+# The shapes Z2M and herdsman address a device or group in: a bracketed sender (`[ZCL GROUP groupId=7]`), the network
+# address a delivery failed for (`for '<nwk>'`), the address fields of herdsman's timeout (`Timeout - <nwk> - <ep> -
+# <tsn> - <cluster> - <command> after 10000ms`), an IEEE with its endpoint, and a group's number. Only these: the
+# rest of a cause, quoted text and codes included (`'MAC no ack' (233)`), is the diagnosis.
+_ADDRESSING = (
+    (re.compile(r"~x~>\s*|\s*\[[^\]]*\]"), ""),
+    (re.compile(r" for '\d+'"), ""),
+    (re.compile(r"\bTimeout(?: - \d+)+"), "Timeout"),
+    (re.compile(r"0x[0-9a-fA-F]{16}(?:/\d+)?"), "<device>"),
+    (re.compile(r"\bgroupId=\d+"), "groupId=<group>"),
+)
+
+
+def scrub(text: str, *names: str, label: str = "device") -> str:
+    """text Z2M wrote, for a log line (docs/logging.md): the addressing Z2M and herdsman put in it taken out, and each
+    of names (a friendly name, the id a request used) replaced by <label> where Z2M names a device by it: quoted, or
+    ahead of an endpoint (`lamp/11`). A bare word elsewhere is left, as a name can be one (`on`)."""
+    for name in names:
+        if name:
+            text = text.replace(f"'{name}'", f"'<{label}>'")
+            text = re.sub(rf"(?<![\w/]){re.escape(name)}/(?=\d)", f"<{label}>/", text)
+    for pattern, replacement in _ADDRESSING:
+        text = pattern.sub(replacement, text)
+    return text.strip()
+
+
+def cause(message: str) -> str:
+    """What a Z2M failure line says went wrong (`genOnOff.read failed (UNSUPPORTED_ATTRIBUTE)`), for a log line.
+
+    The line names the device by friendly name, IEEE or group number, which a log line never does, so it is never
+    logged whole: a ZCL failure gives its call and cause, another failed set its error, each scrubbed. A line in a
+    shape this doesn't know gives a generic phrase rather than its text.
+    """
+    if (match := _ZCL_FAILURE.search(message)) is not None:
+        return f"{match['call']} failed ({scrub(match['cause'])})"
+    if (match := _SET_FAILURE.match(message)) is not None:
+        return scrub(match["error"], match["name"])
+    return "a failure DeviceSide doesn't parse"
+
+
 def reply_router(pending: dict[str, asyncio.Future[dict]]) -> Callable[[mqtt.ReceiveMessage], None]:
     """A response-topic callback resolving the pending future of the reply's transaction; others are ignored."""
 
@@ -234,8 +282,8 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry, on_online: Callab
         # as Experimental, and turn_on_for refuses it and every device but a Hue one for good (classes.placed).
         _LOGGER.warning(
             "Couldn't subscribe to Zigbee2MQTT's bridge, so each action reads it fresh, Zigbee2MQTT groups run "
-            "only with Experimental features on, and turn on with timer refuses them and every device but Hue's: %r",
-            err,
+            "only with Experimental features on, and turn on with timer refuses them and every device but Hue's: %s",
+            describe(err),
         )
         cache.stop()
         return

@@ -59,7 +59,9 @@ def registry_only(hass, manufacturer: str | None, model_id: str | None = None) -
         manufacturer=manufacturer,
         model_id=model_id,
     )
-    entry = er.async_get(hass).async_get_or_create("light", "mqtt", IEEE, device_id=device.id)
+    entry = er.async_get(hass).async_get_or_create(
+        "light", "mqtt", IEEE, device_id=device.id, suggested_object_id="lamp"
+    )
     return Target(entry.entity_id, "light", "zigbee2mqtt", entry, device, None, None)
 
 

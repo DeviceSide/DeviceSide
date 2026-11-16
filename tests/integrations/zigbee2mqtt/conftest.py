@@ -1,3 +1,5 @@
+import logging
+import re
 from dataclasses import replace
 from types import SimpleNamespace
 
@@ -19,11 +21,40 @@ from custom_components.deviceside.integrations.zigbee2mqtt import (
 from custom_components.deviceside.integrations.zigbee2mqtt.fade import transition_cache
 from custom_components.deviceside.integrations.zigbee2mqtt.turn_on_for import Z2MTurnOnFor
 
-from ...conftest import Clock, unload_mock_entries
+from ...conftest import Clock, leaked, unload_mock_entries
 from ...conftest import call as call_service
 from ...fixtures.zigbee2mqtt import GROUPS, IEEE, INFO, Broker, add_z2m_entity, add_z2m_group, z2m_entry
 
 unload_mock_mqtt_entries = unload_mock_entries("mqtt")
+
+# What names a Z2M device in a log line (docs/logging.md): an IEEE, a device's MQTT topic, or Z2M's own failure line,
+# which carries its friendly name and IEEE.
+_ADDRESSED = re.compile(r"0x[0-9a-fA-F]{16}|zigbee2mqtt/(?!bridge/)|Publish 'set' '")
+
+
+def friendly_names(broker) -> set[str]:
+    """The friendly names the broker knows: its devices', and those bridge/info, devices and groups list."""
+    config = (broker.retained.get(INFO) or {}).get("config", {})
+    listed = [*config.get("devices", {}).values(), *config.get("groups", {}).values()]
+    for suffix in ("devices", "groups"):
+        if isinstance(entries := broker.retained.get(f"zigbee2mqtt/bridge/{suffix}"), list):
+            listed += [entry for entry in entries if isinstance(entry, dict)]
+    return {name for name, _ in broker.devices.values()} | {
+        name for entry in listed if (name := entry.get("friendly_name"))
+    }
+
+
+@pytest.fixture(autouse=True)
+def no_addresses_logged(request, caplog):
+    """Every Zigbee2MQTT test runs at DEBUG and fails if a log line names a device's address: one of _ADDRESSED, or
+    a friendly name the test's broker knows as Z2M's own text names a device: quoted, or ahead of an endpoint."""
+    caplog.set_level(logging.DEBUG, logger="custom_components.deviceside")
+    # Taken now, so the broker outlives this fixture's check.
+    broker = request.getfixturevalue("broker") if "broker" in request.fixturenames else None
+    yield
+    names = friendly_names(broker) if broker is not None else set()
+    named = re.compile("|".join(rf"'{re.escape(n)}'|(?<![\w/]){re.escape(n)}/\d" for n in names)) if names else None
+    assert not leaked(caplog, lambda line: _ADDRESSED.search(line) or (named is not None and named.search(line)))
 
 
 @pytest.fixture

@@ -23,6 +23,7 @@ from .groups import light_members
 from ...actions.ramp import HUE, RampRequest
 from ...core import transition
 from ...core.adapter import Adapter, DeadlinePassed
+from ...core.errors import describe
 from ...core.ha_watch import ALL, Call, Entries
 from ...core.models import EntityResult, Status, Target
 from ...core.runtime import Job, get_runtime
@@ -208,7 +209,7 @@ async def refresh(hass: HomeAssistant, light: Target, context: Context | None) -
             "homeassistant", "update_entity", {"entity_id": light.entity_id}, blocking=True, context=context
         )
     except Exception as err:  # noqa: BLE001 - a failed refresh leaves HA's state stale, nothing more
-        _LOGGER.debug("update_entity for %s failed: %r", light.entity_id, err)
+        _LOGGER.debug("update_entity for %s failed: %s", light.entity_id, describe(err))
 
 
 @dataclass(frozen=True, slots=True)
@@ -291,7 +292,13 @@ class ZHARamp(Adapter[RampRequest]):
         try:
             capabilities = await color_capabilities(hass, request, lights)
         except Exception as err:  # noqa: BLE001 - zha and zigpy errors can't be imported here; read_attributes says why
-            _LOGGER.warning("%s on zha failed for %s: ColorCapabilities not read: %r", self.action, names(lights), err)
+            _LOGGER.warning(
+                "%s on zha failed for %s: ColorCapabilities not read: %s, %s",
+                self.action,
+                names(lights),
+                describe(err),
+                self.consequence,
+            )
             return each(Status.REJECTED, detail="error")
         if request.attribute == HUE and not all(bits & zcl.ENHANCED_HUE for bits in capabilities.values()):
             return each(Status.UNCHANGED, detail="fields_dropped")
@@ -312,14 +319,16 @@ class ZHARamp(Adapter[RampRequest]):
             async with self.slot(hass):
                 clamped_to, failed = await start(hass, request.context, cache, gid, outcome)
         except DeadlinePassed:
-            _LOGGER.warning("%s on zha timed out for %s", self.action, names(lights))
+            _LOGGER.warning("%s on zha timed out for %s, %s", self.action, names(lights), self.consequence)
             return each(Status.REJECTED, detail="timeout")
         except Exception as err:  # noqa: BLE001 - as in gather(): one group's failure must not abort the room
-            _LOGGER.warning("%s on zha failed for %s: %r", self.action, names(lights), err)
+            _LOGGER.warning(
+                "%s on zha failed for %s: %s, %s", self.action, names(lights), describe(err), self.consequence
+            )
             return each(Status.REJECTED, detail="error")
         if errors := {light_id: err for light_id, err in failed.items() if not isinstance(err, Unauthorized)}:
-            why = ", ".join(f"{light_id}: {err!r}" for light_id, err in errors.items())
-            _LOGGER.warning("%s on zha failed for %s", self.action, why)
+            why = ", ".join(f"{light_id}: {describe(err)}" for light_id, err in errors.items())
+            _LOGGER.warning("%s on zha failed for %s, %s", self.action, why, self.consequence)
         moved = {light.entity_id for light in outcome.movers}
         return [self._result(light, moved, failed, clamped_to) for light in lights]
 
@@ -572,7 +581,7 @@ async def sync_to_bulb(
         at = (before + after) / 2
         level = read[zcl.CURRENT_LEVEL] * 100 / 254
     except Exception as err:  # noqa: BLE001 - the prediction stands, as on the other integrations
-        _LOGGER.debug("Level read after a fade was sent failed for %s: %r", light.entity_id, err)
+        _LOGGER.debug("Level read after a fade was sent failed for %s: %s", light.entity_id, describe(err))
         return
     elapsed = (at - recorded.started_at) / recorded.duration if recorded.duration > 0 else 1.0
     if elapsed >= 1 or cache.live(light.entity_id, BRIGHTNESS) is not recorded:
@@ -623,7 +632,11 @@ def end_job(hass: HomeAssistant, light: Target, restore: dict[str, float] | None
                         hass, addr, zcl.LEVEL_CLUSTER, zcl.MOVE_TO_LEVEL, params, context, entity_id=light.reported_id
                     )
             except Exception as err:  # noqa: BLE001 - the light stays off, and comes back on dim
-                _LOGGER.warning("Restoring %s's level after a soft off failed: %r", light.entity_id, err)
+                _LOGGER.warning(
+                    "zha couldn't put back %s's level after a soft off: %s, so its next plain turn on comes up dim",
+                    light.entity_id,
+                    describe(err),
+                )
         await refresh(hass, light, context)
 
     return run

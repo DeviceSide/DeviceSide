@@ -15,6 +15,7 @@ from homeassistant.helpers.storage import Store
 
 from .addressing import entity_name
 from .bridge import OPTION, ensure_options
+from ...core.errors import describe
 from ...core.runtime import get_runtime
 
 _LOGGER = logging.getLogger(__name__)
@@ -45,12 +46,16 @@ class Journal:
         """Read what a previous run left; an entry that isn't "<device|group>/<ID>": bool is dropped with a warning."""
         loaded = await self._store.async_load() or {}
         if not isinstance(loaded, dict):
-            _LOGGER.warning("Ignored the %s restore journal, which isn't a mapping: %s", OPTION, type(loaded).__name__)
+            _LOGGER.warning(
+                "Ignored the %s restore journal, which isn't a mapping (%s), so any restore it owed is lost",
+                OPTION,
+                type(loaded).__name__,
+            )
             return
         for key, value in loaded.items():
             kind, _, z2m_id = str(key).partition("/")
             if kind not in _KINDS or not z2m_id or not isinstance(value, bool):
-                _LOGGER.warning("Skipped a malformed %s restore journal entry", OPTION)
+                _LOGGER.warning("Skipped a malformed %s restore journal entry, so that restore is lost", OPTION)
                 continue
             self.owed[key] = value
 
@@ -140,7 +145,9 @@ async def replay(hass: HomeAssistant) -> None:
     try:
         held = await journal(hass)
     except Exception as err:  # noqa: BLE001 - nothing to pay from; the next online retries the load
-        _LOGGER.warning("Couldn't read the %s restore journal: %r", OPTION, err)
+        _LOGGER.warning(
+            "Couldn't read the %s restore journal: %s, so owed restores wait for the next online", OPTION, describe(err)
+        )
         return
     for key in list(held.owed):
         kind, z2m_id = key.split("/", 1)
@@ -155,13 +162,26 @@ async def replay(hass: HomeAssistant) -> None:
                     kind,
                     [z2m_id],
                     lambda current, value=value: {OPTION: value} if bool(current.get(OPTION)) != value else {},
-                    lambda _id: None,
+                    # INFO only for a write Z2M confirmed: one the user had made already writes nothing.
+                    lambda _id, value=value, name=name: _LOGGER.info(
+                        "Put Zigbee2MQTT's %s back to %s for %s, left owed by an earlier restore", OPTION, value, name
+                    ),
                 )
             except Exception as err:  # noqa: BLE001 - kept for the next try
-                _LOGGER.warning("Couldn't put Zigbee2MQTT's %s back to %s for %s: %r", OPTION, value, name, err)
+                _LOGGER.warning(
+                    "Couldn't put Zigbee2MQTT's %s back to %s for %s: %s, so it stays owed",
+                    OPTION,
+                    value,
+                    name,
+                    describe(err),
+                )
                 continue
             try:
                 await held.strike(address, value)
             except Exception as err:  # noqa: BLE001 - struck in memory; the next start finds it already paid
-                _LOGGER.warning("Couldn't strike the %s restore for %s off the journal: %r", OPTION, name, err)
-        _LOGGER.info("Put Zigbee2MQTT's %s back to %s for %s, left owed by an earlier restore", OPTION, value, name)
+                _LOGGER.warning(
+                    "Couldn't strike the %s restore for %s off the journal: %s, so the next start strikes it",
+                    OPTION,
+                    name,
+                    describe(err),
+                )
