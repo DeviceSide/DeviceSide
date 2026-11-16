@@ -3,7 +3,8 @@
 
 Two rules, read from the AST so a call split over lines is seen whole:
 
-- A caught exception is logged with `%r` (or `{err!r}`), never `%s`: its text is often the diagnosis.
+- A caught exception is logged through `core.errors.describe`, never as itself (`%s`, `%r`, `{err}` or `{err!r}`):
+  one function decides what an upstream error may show.
 - No argument names a device address: IEEE or MAC addresses, MQTT topics, friendly names, Hue resource IDs, Zigbee
   node IDs or tokens. Name the entity instead (Hue: `bridge.entity_name`; Zigbee2MQTT: `addressing.entity_name`).
 
@@ -24,7 +25,6 @@ ADDRESS_WORDS = {"ieee", "mac", "topic", "token", "address", "addr", "rid", "fri
 # Calls that turn an address into an entity name, and attributes that already are one: their insides are fine.
 LOOKUPS = {"entity_name", "group_entity_id"}
 ENTITY_ATTRS = {"entity_id", "reported_id"}
-PLACEHOLDER = re.compile(r"%(?:\([^)]*\))?[-#0 +]*[\d*]*(?:\.[\d*]+)?[a-zA-Z]")
 EXEMPT = re.compile(r"#\s*log-ok:\s*\S")
 
 
@@ -96,17 +96,11 @@ def violations(path: Path) -> list[str]:
             return isinstance(arg, ast.Name) and arg.id in names
 
         fmt, *args = node.args
-        if isinstance(fmt, ast.Constant) and isinstance(fmt.value, str):
-            holders = PLACEHOLDER.findall(fmt.value.replace("%%", ""))
-            found.extend(
-                f"{where}: caught exception logged with %s; use %r"
-                for index, arg in enumerate(args)
-                if is_caught(arg) and index < len(holders) and holders[index].endswith("s")
-            )
+        found.extend(f"{where}: caught exception logged as itself; use describe(err)" for arg in args if is_caught(arg))
         found.extend(
-            f"{where}: caught exception logged without !r"
+            f"{where}: caught exception logged as itself; use {{describe(err)}}"
             for part in ast.walk(fmt)
-            if isinstance(part, ast.FormattedValue) and is_caught(part.value) and part.conversion != ord("r")
+            if isinstance(part, ast.FormattedValue) and is_caught(part.value)
         )
         for arg in node.args:
             if isinstance(arg, ast.Constant):

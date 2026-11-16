@@ -221,7 +221,7 @@ class ReportFilter:
                     self._show_rooms_soon(self._rooms([data["id"]]))
         except Exception:
             _LOGGER.exception(
-                "Hue report filter failed on a %s report for %s",
+                "Hue report filter failed on a %s report for %s, so HA takes it as the bridge sent it",
                 data.get("type"),
                 entity_name(self.hass, data["id"]) if "id" in data else None,
             )
@@ -276,7 +276,7 @@ class ReportFilter:
                 self.api.events.emit(EventType.RESOURCE_UPDATED, event)
         except Exception:
             _LOGGER.exception(
-                "Hue report filter failed showing rooms %s",
+                "Hue report filter failed showing rooms %s, so HA may show their old state",
                 ", ".join(sorted(entity_name(self.hass, rid) for rid in grouped_light_ids)),
             )
 

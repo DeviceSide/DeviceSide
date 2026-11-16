@@ -126,8 +126,11 @@ def _busy(hass: HomeAssistant, ha_domain: str, resolver: CallResolver) -> bool:
     try:
         return resolver.busy(hass)
     except Exception:
-        _LOGGER.exception("The %s call resolver failed", ha_domain)
+        _LOGGER.exception("The %s call resolver failed, so a call may leave its predictions stale", ha_domain)
         return False
+
+
+_FORGET_FAILED = "The %s call resolver failed on %s.%s, so its predictions may stay stale until they expire"
 
 
 def _forget(hass: HomeAssistant, ha_domain: str, resolver: CallResolver, call: Call, entries: Entries) -> None:
@@ -136,14 +139,14 @@ def _forget(hass: HomeAssistant, ha_domain: str, resolver: CallResolver, call: C
         if (later := resolver.forget(hass, call, entries)) is None:
             return
     except Exception:
-        _LOGGER.exception("The %s call resolver failed on %s.%s", ha_domain, call.domain, call.service)
+        _LOGGER.exception(_FORGET_FAILED, ha_domain, call.domain, call.service)
         return
 
     async def run() -> None:
         try:
             await later
         except Exception:
-            _LOGGER.exception("The %s call resolver failed on %s.%s", ha_domain, call.domain, call.service)
+            _LOGGER.exception(_FORGET_FAILED, ha_domain, call.domain, call.service)
 
     pending = _pending(hass)
     task = hass.async_create_task(run(), f"DeviceSide {ha_domain} call resolver")
