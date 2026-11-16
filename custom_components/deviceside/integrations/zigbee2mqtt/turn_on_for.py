@@ -24,7 +24,7 @@ from ...actions.turn_on_for import TurnOnForRequest
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Status, Target
 from ...core.runtime import get_runtime
-from ...core.scope import AdapterScope, DurationLimits, verified
+from ...core.scope import AdapterScope, DurationLimits, OwnCall, verified
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,6 +34,17 @@ _TIMER_LIMITS = DurationLimits(min_s=0, max_s=6553.4)
 # Tuya's countdown: whole seconds, 1 to 43200, both reaching the plug; Z2M refuses anything else before sending
 # (probe P7, internals.md).
 COUNTDOWN_LIMITS = DurationLimits(min_s=1, max_s=43200, step_s=1)
+
+
+async def _countdown(adapter: Adapter, hass: HomeAssistant, request: TurnOnForRequest, target: Target) -> EntityResult:
+    # A plug has no light fields to apply. supports() refused the targets it can't address.
+    await publish_set(hass, target, {"state": "ON", "countdown": int(request.duration_s)})
+    return adapter.result(target, Status.SENT)
+
+
+# The countdown plugs' own call (module docstring), which the dispatcher hands execute_own for a run it planned on a
+# countdown class: no fresh capability() here, which could differ if bridge/devices moved the plug in between.
+COUNTDOWN = OwnCall(_countdown, COUNTDOWN_LIMITS)
 
 # Read-back delays in seconds. The second end read allows for a bulb clock that runs slow on a long timer.
 _ON_READ_S = 1.0
@@ -74,7 +85,7 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
         # unknown membership, as class_unknown, even with Experimental features on (classes.py).
         not_supported=TURN_ON_FOR_NOT_SUPPORTED,
         # Each takes the countdown, which a Z2M group's call isn't, so a group with one falls back to its members.
-        own_calls=dict.fromkeys(COUNTDOWNS, COUNTDOWN_LIMITS),
+        own_calls=dict.fromkeys(COUNTDOWNS, COUNTDOWN),
         duration=_TIMER_LIMITS,
         fields=verified("brightness", "color_temp_kelvin", "hs_color", "rgb_color", "xy_color", "transition"),
         confirmable=False,
@@ -88,13 +99,6 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
         self, hass: HomeAssistant, request: TurnOnForRequest, targets: list[Target]
     ) -> list[EntityResult]:
         async def send(target: Target) -> EntityResult:
-            if request.limits == COUNTDOWN_LIMITS:
-                # The dispatcher planned the run on a countdown class and fitted the duration to its limits; branching
-                # on them, not a fresh capability(), keeps the two together if bridge/devices moves the plug between.
-                # By equality, as the dispatcher groups runs by it: an equal copy is the same limits.
-                # A plug has no light fields to apply.
-                await publish_set(hass, target, {"state": "ON", "countdown": int(request.duration_s)})
-                return self.result(target, Status.SENT)
             if request.light.present():
                 need = NEED[self.action] if request.light.present() & COLOR_FIELDS else None
                 async with native_control(hass, target, need):
@@ -110,6 +114,12 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
             return self.result(target, Status.SENT)
 
         return await checked(self, hass, targets, send)
+
+    async def execute_own(
+        self, hass: HomeAssistant, request: TurnOnForRequest, targets: list[Target], call: OwnCall
+    ) -> list[EntityResult]:
+        # Under set_check, as execute's sends are: a set Z2M logs as failed is `rejected`.
+        return await checked(self, hass, targets, lambda target: call.send(self, hass, request, target))
 
     async def _turn_on(self, hass: HomeAssistant, target: Target, data: dict) -> None:
         """light.turn_on, returning once Z2M publishes the light's state, so the timer follows the fields.

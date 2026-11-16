@@ -17,12 +17,16 @@ from custom_components.deviceside.core.scope import (
     AdapterScope,
     DoesntWork,
     DurationLimits,
+    Family,
+    FamilyScope,
     Level,
     NotSupported,
     OnDomains,
+    OwnCall,
     Unplaced,
     documented,
     experimental,
+    family_scope,
     verified,
 )
 
@@ -234,13 +238,24 @@ def test_only_a_class_is_held_on_domains_the_scope_serves(scope, message):
 OWN = DurationLimits(min_s=1, max_s=10, step_s=1)
 
 
+async def _send(adapter, hass, request, target):
+    raise AssertionError("no scope test sends")
+
+
+TIMED = OwnCall(_send, OWN)
+UNTIMED = OwnCall(_send)
+
+
 def test_a_class_with_a_call_of_its_own_gets_its_limits_and_keeps_a_group_apart():
     scope = AdapterScope(
         duration=DurationLimits(min_s=0, max_s=100),
         capabilities=verified("A") | experimental("B", "C"),
-        own_calls={"B": OWN, "C": None},
+        own_calls={"B": TIMED, "C": UNTIMED},
     )
 
+    assert scope.own_call(["B"]) is scope.own_call([Unplaced("B")]) is TIMED
+    assert scope.own_call(["C"]) is UNTIMED
+    assert scope.own_call(["A"]) is scope.own_call([None]) is None
     assert scope.limits(["B"]) is OWN
     assert scope.limits([Unplaced("B")]) is OWN
     # One whose own call keeps the scope's limits, and one with no call of its own, get the scope's.
@@ -257,9 +272,70 @@ def test_a_class_with_a_call_of_its_own_gets_its_limits_and_keeps_a_group_apart(
 
 def test_a_call_of_its_own_is_for_a_class_the_scope_serves():
     with pytest.raises(ValueError, match="own_calls names classes the scope doesn't serve"):
-        AdapterScope(capabilities=verified("A"), own_calls={"B": OWN})
+        AdapterScope(capabilities=verified("A"), own_calls={"B": TIMED})
     with pytest.raises(ValueError, match="own_calls names classes the scope doesn't serve"):
-        AdapterScope(own_calls={"B": OWN})
+        AdapterScope(own_calls={"B": TIMED})
+
+
+def test_an_own_call_is_compared_by_identity():
+    """The dispatcher keys a run by it: an equal copy is another call, and classes share a run only on one object."""
+    assert OwnCall(_send, OWN) != TIMED
+    assert len({TIMED, OwnCall(_send, OWN), TIMED}) == 2
+
+
+BROKEN = DoesntWork("Plug D", "It never switches on", "https://example.com/d", harms=False)
+UNBUILT = NotSupported("It would stay on", "https://example.com/e", harms=True)
+FAMILIES = (
+    Family(
+        key="first",
+        classes=frozenset({"A", "B", "D"}),
+        scopes={
+            "turn_on_for": FamilyScope(
+                capabilities=verified("A") | experimental("B"), doesnt_work={"D": BROKEN}, own_calls={"B": TIMED}
+            ),
+            "stop": FamilyScope(capabilities=documented("A")),
+        },
+    ),
+    Family(
+        key="second",
+        maintainers=("a-b",),
+        classes=frozenset("CE"),
+        scopes={"turn_on_for": FamilyScope(capabilities=documented("C"), not_supported={"E": UNBUILT})},
+    ),
+)
+
+
+def test_family_scope_merges_the_families_parts_for_one_action():
+    merged = family_scope(FAMILIES, "turn_on_for")
+
+    assert merged == FamilyScope(
+        capabilities=verified("A") | experimental("B") | documented("C"),
+        doesnt_work={"D": BROKEN},
+        not_supported={"E": UNBUILT},
+        own_calls={"B": TIMED},
+    )
+    # An adapter builds its scope from the parts, each under AdapterScope's field of the same name.
+    scope = AdapterScope(
+        capabilities=merged.capabilities,
+        doesnt_work=merged.doesnt_work,
+        not_supported=merged.not_supported,
+        own_calls=merged.own_calls,
+    )
+    assert scope.own_call(["B"]) is TIMED
+    assert scope.refusal(["E"]) == (Reason.NOT_SUPPORTED, "It would stay on")
+
+
+def test_an_action_a_family_gives_no_scope_leaves_its_classes_out():
+    """So the adapter's scope doesn't serve them, and they are refused as not yet supported."""
+    assert family_scope(FAMILIES, "stop") == FamilyScope(capabilities=documented("A"))
+    assert family_scope(FAMILIES, "fade_brightness") == family_scope((), "stop") == FamilyScope()
+
+
+def test_a_class_in_two_families_is_refused():
+    twice = (*FAMILIES, Family(key="third", classes=frozenset("AF")))
+    # Whichever action is asked for, as the third family's scope for another could hold the class.
+    with pytest.raises(ValueError, match=r"families 'first' and 'third' both hold classes \['A'\]"):
+        family_scope(twice, "stop")
 
 
 def test_a_documented_field_is_refused():

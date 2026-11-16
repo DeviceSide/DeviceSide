@@ -7,7 +7,7 @@ from custom_components.deviceside.actions.turn_on_for import TurnOnForRequest
 from custom_components.deviceside.core.errors import TargetNotSupported
 from custom_components.deviceside.core.resolver import resolve
 from custom_components.deviceside.core.runtime import get_runtime
-from custom_components.deviceside.core.scope import DurationLimits, Level, Unplaced
+from custom_components.deviceside.core.scope import Level, Unplaced
 from custom_components.deviceside.integrations.zigbee2mqtt import INTEGRATION, classes, turn_on_for
 from custom_components.deviceside.integrations.zigbee2mqtt.turn_on_for import Z2MTurnOnFor
 
@@ -118,6 +118,9 @@ def test_each_verified_string_has_a_class_of_its_own_verified_on_switches_on_tur
         assert scope.class_level(name, "light") is Level.EXPERIMENTAL
     assert scope.capabilities["tuya_countdown"] is Level.EXPERIMENTAL
     assert set(scope.own_calls) == set(classes.COUNTDOWNS)
+    # One call object, so the countdown plugs of every string share a run.
+    assert set(scope.own_calls.values()) == {turn_on_for.COUNTDOWN}
+    assert turn_on_for.COUNTDOWN.limits is turn_on_for.COUNTDOWN_LIMITS
     assert "tuya_countdown_harmed" in scope.not_supported
 
 
@@ -272,29 +275,16 @@ async def test_get_attributes_reports_no_timer_for_a_countdown_plug(hass, setup_
     assert response == {entity_id: {}}
 
 
-async def test_execute_branches_on_the_limits_the_dispatcher_planned_not_a_fresh_class(hass, setup_production, broker):
-    """#440's review, LM3: a bridge/devices republish between planning and execute must not send the plug `on_time`
-    fitted to 43200 s, or a bulb `countdown`: the run's limits are the class the dispatcher planned on."""
+async def test_the_run_sends_the_call_the_dispatcher_planned_not_a_fresh_class(hass, setup_production, broker):
+    """#440's review, LM3: a bridge/devices republish between planning and the send must not send the plug `on_time`
+    fitted to 43200 s, or a bulb `countdown`: the run's own call is the class the dispatcher planned on."""
     entity_id = plug(hass, broker, UNLISTED)
     registry = get_runtime(hass).registry
     adapter = registry.adapter("turn_on_for", "zigbee2mqtt")
     target = resolve(hass, registry, entity_id)
-    planned = TurnOnForRequest(duration_s=30, limits=turn_on_for.COUNTDOWN_LIMITS)
     del broker.retained[DEVICES]  # the plug is no longer placed as a countdown class
 
-    await adapter.execute(hass, planned, [target])
+    results = await adapter.execute_own(hass, TurnOnForRequest(duration_s=30), [target], turn_on_for.COUNTDOWN)
 
     assert commands(broker) == [(SET, {"state": "ON", "countdown": 30})]
-
-
-async def test_execute_takes_an_equal_copy_of_the_countdown_limits_as_them(hass, setup_production, broker):
-    """The dispatcher groups runs by equality, so a copy must take the countdown too, not a plain on_time On."""
-    entity_id = plug(hass, broker, UNLISTED)
-    registry = get_runtime(hass).registry
-    adapter = registry.adapter("turn_on_for", "zigbee2mqtt")
-    copy = DurationLimits(min_s=1, max_s=43200, step_s=1)
-    assert copy is not turn_on_for.COUNTDOWN_LIMITS
-
-    await adapter.execute(hass, TurnOnForRequest(duration_s=30, limits=copy), [resolve(hass, registry, entity_id)])
-
-    assert commands(broker) == [(SET, {"state": "ON", "countdown": 30})]
+    assert [(result.entity_id, result.status) for result in results] == [(entity_id, "sent")]

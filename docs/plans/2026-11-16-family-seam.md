@@ -102,7 +102,7 @@ tests/integrations/<x>/
   with `ast` and no import. Every family starts with `maintainers=()`.
 - Classification snapshot, `tests/integrations/<x>/test_classification.py`, the integration's: a table of devices
   (the fields the rules read, and the expected class) covering every class and every cross-family trap the rule-order
-  text names (a Tuya device under another vendor's definition, a TS011F string against the ZCL pattern, the registry
+  text names (a Tuya device under another vendor's definition, a TS011F's manufacturer string against the ZCL manufacturer pattern, the registry
   fallbacks). It is how the integration's maintainer protects other families: a family change that reclasses a
   listed device fails until this file, outside the family, is edited.
 

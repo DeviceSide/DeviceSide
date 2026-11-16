@@ -12,9 +12,12 @@ from custom_components.deviceside import actions
 from custom_components.deviceside.core.registry import AdapterRegistry
 from custom_components.deviceside.core.scope import (
     DoesntWork,
+    Family,
+    FamilyScope,
     IntegrationInfo,
     Level,
     NotSupported,
+    OwnCall,
     experimental,
     verified,
 )
@@ -176,6 +179,88 @@ def test_an_integration_must_name_its_maintainers_by_handle(maintainers, error):
 def test_several_maintainers_are_accepted():
     registry = _registry(info=replace(INTEGRATION, maintainers=("jasonmx", "a-b", "a" * 39)))
     assert registry.integrations["fake"].maintainers == ("jasonmx", "a-b", "a" * 39)
+
+
+# Two families holding every class of CLASSED but its default one, `other`.
+HUE_FAMILY = Family(
+    key="hue", classes=frozenset({"hue"}), scopes={"turn_on_for": FamilyScope(capabilities=verified("hue"))}
+)
+TUYA_FAMILY = Family(
+    key="tuya",
+    maintainers=("a-b",),
+    classes=frozenset({"tuya"}),
+    scopes={"turn_on_for": FamilyScope(not_supported={"tuya": UNBUILT})},
+)
+WITH_FAMILIES = replace(CLASSED, default_class="other", families=(HUE_FAMILY, TUYA_FAMILY))
+
+
+def test_families_that_split_the_classes_between_them_are_accepted():
+    registry = _registry([Classed], WITH_FAMILIES)
+    assert [family.key for family in registry.integrations["fake"].families] == ["hue", "tuya"]
+    # No maintainers is fine: the integration's own every family of it.
+    assert HUE_FAMILY.maintainers == ()
+
+
+@pytest.mark.parametrize(
+    ("families", "error"),
+    [
+        pytest.param(
+            (replace(HUE_FAMILY, key="Hue"), TUYA_FAMILY), "'Hue' is not shaped like a package name", id="key"
+        ),
+        pytest.param(
+            (replace(HUE_FAMILY, key="hue-2"), TUYA_FAMILY), "not shaped like a package name", id="key_hyphen"
+        ),
+        pytest.param((HUE_FAMILY, replace(TUYA_FAMILY, key="hue")), "family 'hue' is declared twice", id="key_twice"),
+        pytest.param(
+            (replace(HUE_FAMILY, maintainers=("@a-b",)), TUYA_FAMILY), "family 'hue': .*not GitHub handles", id="handle"
+        ),
+        pytest.param(
+            (replace(HUE_FAMILY, maintainers=("a-b", "a-b")), TUYA_FAMILY), "family 'hue': .*twice", id="handle_twice"
+        ),
+        pytest.param(
+            (replace(HUE_FAMILY, maintainers=["a-b"]), TUYA_FAMILY),
+            "family 'hue': maintainers must be a tuple",
+            id="list",
+        ),
+        pytest.param(
+            (HUE_FAMILY, replace(TUYA_FAMILY, classes=frozenset({"tuya", "hue"}))),
+            r"family 'tuya' holds classes family 'hue' holds: \['hue'\]",
+            id="class_in_two",
+        ),
+        pytest.param((HUE_FAMILY,), r"classes \['tuya'\] are in no family", id="class_in_none"),
+        pytest.param(
+            (HUE_FAMILY, replace(TUYA_FAMILY, classes=frozenset({"tuya", "other"}))),
+            "family 'tuya' holds the default class 'other'",
+            id="default_class",
+        ),
+        pytest.param(
+            (HUE_FAMILY, replace(TUYA_FAMILY, classes=frozenset({"tuya", "tuya_zcl"}))),
+            r"family 'tuya' holds classes fake doesn't declare \(IntegrationInfo.classes\): \['tuya_zcl'\]",
+            id="undeclared_class",
+        ),
+        *(
+            pytest.param(
+                (replace(HUE_FAMILY, scopes={"stop": FamilyScope(**{part: {"tuya": entry}})}), TUYA_FAMILY),
+                r"family 'hue': its scopes name classes that aren't its own: \['tuya'\]",
+                id=f"foreign_{part}",
+            )
+            for part, entry in (
+                ("capabilities", Level.EXPERIMENTAL),
+                ("doesnt_work", BROKEN),
+                ("not_supported", UNBUILT),
+                ("own_calls", OwnCall(None)),
+            )
+        ),
+    ],
+)
+def test_families_are_checked(families, error):
+    with pytest.raises(ValueError, match=error):
+        _registry([Classed], replace(WITH_FAMILIES, families=families))
+
+
+def test_an_integration_without_families_is_checked_for_none():
+    """Families are opt-in: the classes of an integration that has none need no family."""
+    _registry([Classed], replace(WITH_FAMILIES, families=()))
 
 
 def test_production_discovery_imports_cleanly():

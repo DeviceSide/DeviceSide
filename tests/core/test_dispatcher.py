@@ -23,6 +23,7 @@ from custom_components.deviceside.core.scope import (
     DoesntWork,
     DurationLimits,
     NotSupported,
+    OwnCall,
     Unplaced,
     documented,
     experimental,
@@ -31,6 +32,7 @@ from custom_components.deviceside.core.scope import (
 
 from ..conftest import allow_experimental, call, refusal
 from ..fakes.fake_integration import LIMITS, FakeSetAttributes, FakeTurnOffFor, FakeTurnOnFor
+from ..fakes.scripted import SCRIPT
 from ..fixtures.fake import add_fake_entity, add_fake_native_group, add_ha_group, add_switch_as_x, fake_config_entry
 
 pytestmark = pytest.mark.usefixtures("setup_integration")
@@ -1633,7 +1635,16 @@ def test_class_unknown_names_the_integration_by_its_title_or_gets_the_plain_refu
 
 # A class with a call of its own (AdapterScope.own_calls): Zigbee2MQTT's Tuya countdown plugs, whole seconds to 12 h.
 WHOLE_SECONDS = DurationLimits(min_s=1, max_s=43200, step_s=1)
-OWN_CALL = replace(CLASSED, capabilities=verified("A", "E"), own_calls={"E": WHOLE_SECONDS})
+
+
+async def _own_send(adapter, hass, request, target):
+    """An own call's send, scripted as the fake's execute is, under `own` where that names its integration."""
+    SCRIPT.calls.append(("own", adapter.action, request, [target.entity_id]))
+    return adapter.result(target, Status.SENT)
+
+
+TAKES_OWN = OwnCall(_own_send, WHOLE_SECONDS)
+OWN_CALL = replace(CLASSED, capabilities=verified("A", "E"), own_calls={"E": TAKES_OWN})
 
 
 @pytest.mark.usefixtures("classed")
@@ -1653,6 +1664,53 @@ async def test_a_class_with_a_call_of_its_own_runs_apart_with_its_own_limits(has
         (100, ["switch.a"]),
         (500, ["switch.e"]),
     ]
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_run_with_an_own_call_goes_to_execute_own_with_it_not_execute(hass, fake, reset_script):
+    add_fake_entity(hass, fake, "switch.a")
+    add_fake_entity(hass, fake, "switch.e")
+
+    with (
+        patch.object(FakeTurnOffFor, "scope", OWN_CALL),
+        patch.object(FakeTurnOffFor, "execute_own", autospec=True, side_effect=FakeTurnOffFor.execute_own) as own,
+    ):
+        await call(hass, "turn_off_for", {"entity_id": ["switch.a", "switch.e"], "duration": 5})
+
+    (_, _, request, targets, sent), _ = own.await_args
+    assert (request.duration_s, [target.entity_id for target in targets], sent) == (5, ["switch.e"], TAKES_OWN)
+    # execute got the class with no call of its own, and nothing else.
+    assert sorted((sender, ids) for sender, _, _, ids in reset_script.calls) == [
+        ("fake", ["switch.a"]),
+        ("own", ["switch.e"]),
+    ]
+
+
+@pytest.mark.usefixtures("classed")
+@pytest.mark.parametrize(
+    ("other", "runs"),
+    [
+        pytest.param(TAKES_OWN, [["switch.b", "switch.e"]], id="one_call_object"),
+        # Equal, but another object: an own call is told apart by identity.
+        pytest.param(OwnCall(_own_send, WHOLE_SECONDS), [["switch.b"], ["switch.e"]], id="an_equal_copy"),
+    ],
+)
+async def test_classes_share_a_run_only_on_one_own_call_object(hass, fake, reset_script, other, runs):
+    add_fake_entity(hass, fake, "switch.b")
+    add_fake_entity(hass, fake, "switch.e")
+    scope = replace(CLASSED, capabilities=verified("B", "E"), own_calls={"B": other, "E": TAKES_OWN})
+
+    with (
+        patch.object(FakeTurnOffFor, "scope", scope),
+        patch.object(FakeTurnOffFor, "execute_own", autospec=True, side_effect=FakeTurnOffFor.execute_own) as own,
+    ):
+        response = await call(hass, "turn_off_for", {"entity_id": ["switch.b", "switch.e"], "duration": 5})
+
+    assert sorted([target.entity_id for target in args[3]] for args, _ in own.await_args_list) == runs
+    assert response == {
+        "switch.b": {"status": "sent", "integration": "fake", "capability": "B"},
+        "switch.e": {"status": "sent", "integration": "fake", "capability": "E"},
+    }
 
 
 @pytest.mark.usefixtures("classed")

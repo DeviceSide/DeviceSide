@@ -1,4 +1,4 @@
-from collections.abc import Callable, Collection, Mapping
+from collections.abc import Awaitable, Callable, Collection, Iterable, Mapping
 from dataclasses import dataclass, field
 from enum import Enum, IntEnum
 from types import MappingProxyType
@@ -10,9 +10,10 @@ from homeassistant.helpers import entity_registry as er
 
 from .errors import Reason
 from .fields import LACKABLE
-from .models import Target
+from .models import EntityResult, Request, Target
 
 if TYPE_CHECKING:
+    from .adapter import Adapter
     from .ha_watch import CallResolver
 
 
@@ -152,6 +153,22 @@ class Unplaced(str):
         return f"Unplaced({str.__repr__(self)})"
 
 
+# eq=False: compared and hashed by identity, so the dispatcher runs together only the targets one call object serves.
+@dataclass(frozen=True, slots=True, eq=False)
+class OwnCall:
+    """A class's own call (docs/evidence.md, The split rule): what an adapter sends a class in place of its `execute`,
+    held in AdapterScope.own_calls. `send` makes the call for one target and gives its result, as the `send` an adapter
+    hands `gather` does (Adapter.execute_own runs it); `limits` are the durations it can carry, None for the scope's
+    `duration`.
+
+    Why a value, not a branch in execute: the dispatcher plans a run on the class it found and hands the adapter that
+    class's call, so the adapter never classes a target again, where a report in between could have moved it. Classes
+    that share one OwnCall object share a run."""
+
+    send: Callable[[Adapter, HomeAssistant, Request, Target], Awaitable[EntityResult]]
+    limits: DurationLimits | None = None
+
+
 # eq=False: compared and hashed by identity, as the mappings it holds can't be hashed.
 @dataclass(frozen=True, slots=True, eq=False)
 class AdapterScope:
@@ -186,10 +203,10 @@ class AdapterScope:
     # Not yet supported classes the adapter's call would harm, refused with why (each entry's harms is True); in neither
     # of the above. Any other not yet supported class is simply left out.
     not_supported: Mapping[str, NotSupported] = field(default_factory=dict)
-    # Classes the adapter sends a call of their own, a branch in execute (docs/evidence.md, The split rule), each with
-    # that call's duration limits, or None for `duration`. Each is in capabilities. A native group's call isn't theirs,
-    # so a group with a member of one falls back to its members (Reason.OWN_CALL), and the member gets its own call.
-    own_calls: Mapping[str, DurationLimits | None] = field(default_factory=dict)
+    # Classes the adapter sends a call of their own (OwnCall), each with that call. Each is in capabilities. A native
+    # group's call isn't theirs, so a group with a member of one falls back to its members (Reason.OWN_CALL), and the
+    # member gets its own call.
+    own_calls: Mapping[str, OwnCall] = field(default_factory=dict)
     confirmable: bool = False
     # DeviceSide options that change what the adapter does.
     options: frozenset[str] = frozenset()
@@ -275,10 +292,18 @@ class AdapterScope:
         """Whether one of these classes takes a call of its own, so a native group with such a member falls back."""
         return any(name in self.own_calls for name in classes)
 
+    def own_call(self, classes: Collection[str | None]) -> OwnCall | None:
+        """The call of its own a target of these classes gets, None for the adapter's `execute`. A native group with
+        such a member is refused (refusal), so never runs."""
+        return next((self.own_calls[name] for name in classes if name in self.own_calls), None)
+
+    def call_limits(self, call: OwnCall | None) -> DurationLimits | None:
+        """The duration limits of a run on `call` (own_call): its own, where it has them, else the scope's."""
+        return self.duration if call is None or call.limits is None else call.limits
+
     def limits(self, classes: Collection[str | None]) -> DurationLimits | None:
-        """The duration limits of the call a target of these classes gets: its own call's, where its class has one with
-        limits, else the scope's `duration`. A native group with such a member is refused (refusal), so never runs."""
-        return next((limits for name in classes if (limits := self.own_calls.get(name)) is not None), self.duration)
+        """The duration limits of the call a target of these classes gets (own_call, call_limits)."""
+        return self.call_limits(self.own_call(classes))
 
     def _check_on_domains(self) -> None:
         for axis in ("domains", "fields"):
@@ -295,6 +320,51 @@ class AdapterScope:
             raise ValueError(f"unlisted names fields outside the scope's fields: {sorted(untested)}")
         if dropped := self.unlisted & self.drops:
             raise ValueError(f"unlisted names fields the scope drops: {sorted(dropped)}")
+
+
+@dataclass(frozen=True, slots=True)
+class FamilyScope:
+    """A family's part of one adapter's scope: its classes' entries for AdapterScope's fields of the same names, each
+    by class. A class it leaves out of all four is left out of the adapter's scope, so refused as not yet supported."""
+
+    capabilities: Mapping[str, ClassLevel] = field(default_factory=dict)
+    doesnt_work: Mapping[str, DoesntWork] = field(default_factory=dict)
+    not_supported: Mapping[str, NotSupported] = field(default_factory=dict)
+    own_calls: Mapping[str, OwnCall] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class Family:
+    """A vendor's firmware family inside one integration (docs/plans/2026-11-16-family-seam.md): the classes it owns
+    and, per action key, what each adapter's scope holds for them (`scopes`; an action with none leaves its classes
+    out of that adapter's scope). It exists so a vendor is one path with its own maintainers: GitHub handles, which may
+    be empty, as the integration's maintainers own every family of it too. The registry checks it (core/registry.py,
+    check_families)."""
+
+    key: str
+    maintainers: tuple[str, ...] = ()
+    classes: frozenset[str]
+    scopes: Mapping[str, FamilyScope] = field(default_factory=dict)
+
+
+def family_scope(families: Iterable[Family], action: str) -> FamilyScope:
+    """The families' parts of one action's scope, merged; an adapter builds its AdapterScope from it and the
+    integration's own entries for its default class. A class in two families raises, as one's entry would replace the
+    other's unseen."""
+    owners: dict[str, str] = {}
+    merged = FamilyScope()
+    for family in families:
+        if both := sorted(name for name in family.classes if name in owners):
+            raise ValueError(f"families {owners[both[0]]!r} and {family.key!r} both hold classes {both}")
+        owners |= dict.fromkeys(family.classes, family.key)
+        part = family.scopes.get(action, FamilyScope())
+        merged = FamilyScope(
+            capabilities={**merged.capabilities, **part.capabilities},
+            doesnt_work={**merged.doesnt_work, **part.doesnt_work},
+            not_supported={**merged.not_supported, **part.not_supported},
+            own_calls={**merged.own_calls, **part.own_calls},
+        )
+    return merged
 
 
 @dataclass(slots=True)
@@ -330,6 +400,9 @@ class IntegrationInfo:
     # The class capability() gives a device no rule matches, one of `classes`; the registry refuses any scope holding it
     # as Verified (docs/evidence.md, Device classes). None for an integration whose classes name every target (Shelly).
     default_class: str | None = None
+    # The vendor families that hold its classes, each with its own maintainers; between them every class but the
+    # default one, each once (core/registry.py, check_families). Empty for an integration that has none.
+    families: tuple[Family, ...] = ()
     # Drops what a light or scene call from HA leaves stale (core/ha_watch.py); None holds nothing it could.
     call_resolver: CallResolver | None = None
     max_concurrency: int = 4
