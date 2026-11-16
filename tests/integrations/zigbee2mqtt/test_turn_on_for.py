@@ -62,7 +62,8 @@ async def test_light_with_fields_calls_turn_on_with_them_all_then_publishes_on_t
     assert json.loads(publishes[0].data["payload"]) == {"state": "ON", "on_time": 10.0}
 
 
-async def test_switch_is_experimental(hass, setup_production, publishes, turn_ons):
+async def test_a_hue_plug_is_experimental(hass, setup_production, publishes, turn_ons):
+    """`hue` is Verified on lights alone: every record ran on a bulb, so a Hue plug, a switch, has no record."""
     add_z2m_entity(hass, z2m_entry(hass), "switch.plug")
     data = {"entity_id": "switch.plug", "duration": 5}
 

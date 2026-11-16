@@ -435,6 +435,16 @@ def test_classes_of_one_section_say_their_shared_ending_once():
     )
 
 
+def test_classes_that_share_a_phrase_say_it_once():
+    """Zigbee2MQTT's countdown plugs: a class per maker string, one phrase for them all."""
+    phrase = {"phrase": "countdown plugs", "section": "Plugs"}
+    data = gc.Data(requires={}, models={}, capabilities={"x": {"a": phrase, "b": phrase}}, doesnt_work=[])
+
+    assert gc.class_entries("x", {"a": {"stop"}, "b": {"stop"}}, data) == [
+        f"[countdown plugs]({gc.PAGE_URL}#plugs): stop"
+    ]
+
+
 def test_a_card_drops_its_integrations_name_where_a_name_leads():
     card = gc.Card("Hue")
     assert card.short("Hue Bridge v1") == "Bridge v1"
@@ -762,6 +772,27 @@ def test_a_mixed_class_format_2_record_puts_under_works_only_the_models_that_rea
         f"[Hue lamp]({URL}#hue-lamp) ✔",
         f"[Plug]({URL}#plug) ✔",
     ]
+
+
+def test_a_class_held_on_some_domains_alone_credits_works_only_from_a_test_in_one(root):
+    """Zigbee2MQTT's `hue` on lights alone: a Hue plug's pass, a switch, never shows it as working (OnDomains)."""
+    record2(
+        root,
+        "zha",
+        "turn_on_for",
+        ran("switch", device("P1", "1", "Light"), role="switch_plug"),
+        ran("light", device("LTA009", "2", "Light")),
+    )
+    scope = AdapterScope(
+        domains=verified("light", "switch"), capabilities=verified("Light", domains=("light",)) | verified("Switch")
+    )
+    tested = adapter("zha", "turn_on_for", scope)
+    assert classed_card(tested).lines["works"] == [f"[Hue lamp]({URL}#hue-lamp) ✔"]
+    assert gc.rows(tested)[0].split(" | ")[2] == "light, switch entities; Light on light, Switch classes"
+    # A manual row names no domain, so it counts where its class is unflagged in some domain, as the coverage check
+    # lets it cover any (#440's review, L1).
+    manual_file(root, rows=[signoff(tester="jasonmx", devices=(("P1", "Light"),), passed=("turn_on_for",))])
+    assert classed_card(tested).lines["works"] == [f"[Hue lamp]({URL}#hue-lamp) ✔", f"[Plug]({URL}#plug)"]
 
 
 def test_a_null_class_device_never_reaches_works_where_the_integration_names_classes(root):

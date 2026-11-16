@@ -31,6 +31,10 @@ class Reason(StrEnum):
     # clears once the integration has reported it, and a group whose membership isn't listed yet once it is; a target
     # that can't be classed at all (an entity with no device, a classifier that raised) stays refused.
     CLASS_UNKNOWN = "class_unknown"
+    # A native group with a member whose class takes a call of its own (AdapterScope.own_calls): the group's call isn't
+    # the member's, so the group falls back to its members; raised for the group only when none of them runs, and then
+    # with a member's reason where one was skipped (dispatcher._unanswered), so this only when each is unavailable.
+    OWN_CALL = "own_call"
 
 
 class TargetNotSupported(ServiceNotSupported):
@@ -43,8 +47,8 @@ class TargetNotSupported(ServiceNotSupported):
 
     def __init__(self, entity_id: str, reason: str, why: str | None = None, integration: str | None = None) -> None:
         placeholders = {"entity_id": entity_id, "reason": reason}
-        if reason == EXPERIMENTAL_OFF:
-            key = EXPERIMENTAL_OFF
+        if reason in (EXPERIMENTAL_OFF, Reason.OWN_CALL):
+            key = str(reason)
         elif reason == Reason.CLASS_UNKNOWN and integration is not None:
             key, placeholders["integration"] = Reason.CLASS_UNKNOWN.value, integration
         elif why is not None:

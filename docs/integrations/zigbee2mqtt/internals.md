@@ -57,9 +57,9 @@ One section per adapter module, named after it.
 ### `classes`
 
 The class rules read the registry device (Z2M's vendor and definition) and, for a device the bridge cache's
-`bridge/devices` lists, its Zigbee `manufacturer` and `model_id` there, indexed by IEEE once per payload (Tested
-behavior: the registry holds no Zigbee strings). The rules, their order and the registry fallback's limit are in the
-`classes.py` docstring.
+`bridge/devices` lists, its Zigbee `manufacturer` and `model_id` there, and its definition's `model` and top-level
+expose names, indexed by IEEE once per payload (Tested behavior: the registry holds no Zigbee strings). The rules,
+their order and the registry fallback's limit are in the `classes.py` docstring.
 
 Which adapters send a Level command to a light that is off, as a Sengled E11-G13 jumps to full on `MoveToLevel`
 while off on ZHA ([ZHA internals](../zha/internals.md), Tested behavior). Read from the code, 2026-11-14; nothing
@@ -137,6 +137,34 @@ the start (without fields only), and at the end + 1 s and end + max(5 s, 2 % of 
 clock. A new call replaces pending reads. Attribute reporting isn't used instead: it would need setting up on every
 bulb, and Z2M turned it off for Hue on purpose. A group gets one publish and one groupcast read; Z2M shows it off
 once every member is.
+
+**Tuya's countdown** (converter A, plan step 5 part 3): a TS011F plug in a `tuya_countdown` class gets one publish,
+`{"state": "ON", "countdown": N}`, N whole seconds from 1 to 43200 (`COUNTDOWN_LIMITS`; core rounds and clamps, and
+reports either in `clamped_to`). No `on_time` (it has no converter there, Tested behavior) and no state reads: the plug
+reports its state at expiry (probe P1, P2, P6, P7), and the time left can't be read, so the result is `sent`. A Z2M
+group's call carries `on_time`, so a group with such a plug falls back to its members (`AdapterScope.own_calls`). A
+plug Z2M exposes as a switch is the group's stand-in (`members._stand_in`), which no light entity addresses, so the
+fallback skips it (`not_addressable`).
+
+- **What Z2M sends.** `tuya.tz.on_off_countdown` (ZHC
+  [`src/lib/tuya.ts#L3351-L3407`](https://github.com/Koenkk/zigbee-herdsman-converters/blob/afdaa028a0972d801da762196ddfb2df631ea0cc/src/lib/tuya.ts#L3351-L3407),
+  the same in 26.125.0, the lab's, and 26.131.0, the research pin) awaits `genOnOff` `on`, then awaits 0x42
+  `{ctrlbits: 0, ontime: N, offwaittime: N}`, in that order ("on/off/toggle cancels onWithTimedOff"); it publishes
+  `state: ON, countdown: N`.
+- **The harm the order prevents.** 0x42 alone on an off plug toggles it on at N, and it stays on (probe P1b). The On's
+  `await` rejects when herdsman can't deliver it (`Endpoint.zclCommand` rethrows a failed send,
+  [`endpoint.ts`](https://github.com/Koenkk/zigbee-herdsman/blob/199c2f222a2b63c5c341af0c1bceda56845d34e0/src/controller/model/endpoint.ts#L1196-L1212),
+  read 2026-11-15; `command` doesn't check the reply's status), so the converter throws before 0x42: a lost On sends
+  nothing more, and Z2M logs the set as failed (`Publish 'set' 'state' … failed`), which `set_check` makes `rejected`.
+  So no state check goes before or after the publish. What stays: an On that reached the plug but whose delivery failed,
+  or a 0x42 that failed after the On was delivered, leaves it on with no timer; Z2M logs the set as failed and the call
+  answers `rejected` (raising `targets_failed`), unless the bridge cache isn't live, when `set_check` is off and the
+  call answers `sent`; and a button press between the two frames (milliseconds) would put the toggle on an off plug.
+- **The class rule** reads `bridge/devices`' definition: model `TS011F`, a top-level expose of property `countdown` with
+  no `endpoint` (a multi-gang one exposes one per endpoint: ZHC 26.131.0's `withEndpoint` keeps the name `countdown` and
+  sets `property` `countdown_l1` and `endpoint` `l1`, so it isn't matched), and a definition other than the datapoint
+  `ZOT60` ([research](research/2026-11-14-tuya-countdown.md), §1). Before `bridge/devices` lists the plug, the registry
+  places it in `tuya_ts011f`, Unplaced, refused as `class_unknown`.
 
 ### `set_attributes`
 
@@ -259,6 +287,17 @@ Device strings and timers, 2026-11-14 on Z2M 2.14.3 (ZHC 26.125.0), Home Assista
   or whole seconds, from off or after a plain On, Z2M logs it invoked and the bulb doesn't change state. It has no
   `onTime` or `offWaitTime` (`UNSUPPORTED_ATTRIBUTE`). So `{"state": "ON", "on_time": 10}`, which the light
   converter sends as `0x42` alone, leaves it off.
+
+Tuya's countdown, 2026-11-15 on the lab TS011F (`_TZ3000_0zfrhq4i`, `TS011F_plug_1`, build `0122052017`), Z2M 2.14.3
+(ZHC 26.125.0), Home Assistant 2026.10.4. Probe:
+[research/2026-11-15-tuya-countdown-probe.md](research/2026-11-15-tuya-countdown-probe.md).
+
+- **The countdown toggles at expiry.** From on, the plug ends off (P1); from off, 0x42 alone leaves it off and turns
+  it on at N, and it stays on (P1b).
+- **A new countdown replaces the running one** (P2), and an off, `countdown: 0` or a local button toggle cancels it
+  (P3 to P5).
+- **The time left can't be read:** `/get` and the plug's reports carry the value last set (P6).
+- **Bounds:** 1 and 43200 s reach the plug; Z2M refuses 43201 before sending anything, `state` included (P7).
 
 ## Upstream defects
 

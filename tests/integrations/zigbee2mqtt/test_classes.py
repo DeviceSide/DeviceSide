@@ -180,7 +180,18 @@ def test_a_rule_names_a_declared_class_and_known_fields(rule, error):
 
 def test_the_default_class_is_other_and_held_below_verified():
     assert INTEGRATION.default_class == "other"
-    assert INTEGRATION.classes == {"hue", "tuya_zcl", "tuya_ts011f", "tuya_mcu", "sengled", "gledopto", "other"}
+    assert INTEGRATION.classes == {
+        "hue",
+        "tuya_zcl",
+        "tuya_ts011f",
+        "tuya_countdown",
+        *classes.VERIFIED_COUNTDOWNS,
+        "tuya_countdown_harmed",
+        "tuya_mcu",
+        "sengled",
+        "gledopto",
+        "other",
+    }
 
 
 def _scopes() -> dict:
@@ -198,6 +209,8 @@ def test_other_is_documented_on_brightness_fades_and_stop_alone():
         # Not yet supported on turn_on_for, with an entry: today's call would leave them on (Decision 70).
         ("tuya_zcl", {"turn_on_for"}, {"turn_on_for"}),
         ("tuya_ts011f", {"turn_on_for"}, {"turn_on_for"}),
+        # Reported failing Tuya's countdown with harm (Decision 41).
+        ("tuya_countdown_harmed", {"turn_on_for"}, {"turn_on_for"}),
         ("tuya_mcu", {"turn_on_for"}, {"turn_on_for", "get_attributes", "set_attributes"}),
         ("sengled", set(), {"turn_on_for"}),
         # Its converter departs from the brightness commands `other` is Documented on (Decision 24).
@@ -276,7 +289,7 @@ async def test_a_member_ha_has_no_light_for_is_classed_by_its_device(hass, setup
 
     classed = {member.entity_id: INTEGRATION.capability(hass, member) for member in members}
     # The plug's stand-in is the group's own entity, with its device, no state and not addressable, so no action
-    # reaches it, and the fallback (which takes only an available member) never addresses it.
+    # reaches it: a group that falls back skips it (not_addressable).
     assert classed == {"light.one": "hue", "light.two": "hue", entity_id: "tuya_ts011f"}
     assert [(member.state, member.addressable) for member in members if member.entity_id == entity_id] == [
         (None, False)

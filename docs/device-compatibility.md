@@ -86,9 +86,12 @@ they work or not: your report helps get them fixed or shipped to everyone.
 
 ### Zigbee plugs and switches
 
-Turn on with timer and get attributes on a ZHA or Zigbee2MQTT `switch`. A plug works only if its firmware honors the
-Zigbee timed-on command, and few do: Sonoff and Tuya plugs often run their own countdown instead. On Zigbee2MQTT
-and ZHA, DeviceSide refuses it on Tuya plugs, which would turn on and stay on, or on long after the time asked; the
+Turn on with timer on a ZHA `switch`, and get attributes on a ZHA or Zigbee2MQTT one. A plug works only if its firmware
+honors the Zigbee timed-on command, and few do: Sonoff and Tuya plugs often run their own countdown instead. On
+Zigbee2MQTT, turn on with timer is tested plug by plug: DeviceSide uses Tuya's countdown on the TS011F plugs Zigbee2MQTT
+drives by it ([Tuya TS011F plugs](integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs)), and every other plug, a Hue
+one included, runs only with Experimental features on. On ZHA, and on Zigbee2MQTT's other Tuya
+plugs, DeviceSide refuses it, as they would turn on and stay on, or on long after the time asked; the
 [Tuya TS011F](#tuya-ts011f) runs only Tuya's own timer. ZHA and Zigbee2MQTT each need their own report.
 
 ## Not yet supported
@@ -100,9 +103,10 @@ that would leave it doing something you didn't ask for, and each card lists them
 ### Tuya TS011F
 
 A Zigbee plug whose timer runs only Tuya's way, so DeviceSide's timer can leave it off, or turn it on long after the
-time asked and leave it on. Tuya's own call would serve it, and isn't built yet. On Zigbee2MQTT and ZHA, DeviceSide
-refuses turn on with timer on it, even with Experimental features on, until it builds that call. What was measured:
-[internals](internals.md#tested-behavior).
+time asked and leave it on. Tuya's own call would serve it. On ZHA it isn't built yet, so DeviceSide refuses turn on
+with timer on it, even with Experimental features on. On Zigbee2MQTT DeviceSide sends it to the TS011F plugs
+Zigbee2MQTT drives by Tuya's countdown ([Tuya TS011F plugs](integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs)),
+and refuses the rest. What was measured: [internals](internals.md#tested-behavior).
 
 ## Evidence
 
@@ -154,34 +158,35 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 | Action | Level | Items | Tested models | Records |
 |---|---|---|---|---|
 | `get_attributes` | Verified | light entities; hue classes | `LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>`LWA012`, firmware `1.122.2`<br>group | [record](integrations/zigbee2mqtt/test-records/get_attributes.json) |
-| `get_attributes` | Experimental | switch entities; other, tuya_zcl, tuya_ts011f, sengled, gledopto classes | | |
+| `get_attributes` | Experimental | switch entities; other, tuya_zcl, tuya_ts011f, tuya_countdown, tuya_countdown_tz3000_0zfrhq4i, tuya_countdown_tz3000_typdpbpg, tuya_countdown_tz3000_gznh2xla, tuya_countdown_tz3000_okaz9tjs, tuya_countdown_harmed, sengled, gledopto classes | | |
 | `lower_brightness` | Verified | light entities; hue classes; brightness fields | `LTA009`, firmware `1.163.1`<br>group | [record](integrations/zigbee2mqtt/test-records/lower_brightness.json) |
 | `lower_brightness` | Documented | other classes | | |
-| `lower_brightness` | Experimental | tuya_zcl, tuya_ts011f, tuya_mcu, sengled, gledopto classes | | |
+| `lower_brightness` | Experimental | tuya_zcl, tuya_ts011f, tuya_countdown, tuya_countdown_tz3000_0zfrhq4i, tuya_countdown_tz3000_typdpbpg, tuya_countdown_tz3000_gznh2xla, tuya_countdown_tz3000_okaz9tjs, tuya_countdown_harmed, tuya_mcu, sengled, gledopto classes | | |
 | `lower_hue` | Verified | light entities; hue classes; hue fields | `LCA016`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/lower_hue.json) |
-| `lower_hue` | Experimental | other, tuya_zcl, tuya_ts011f, tuya_mcu, sengled, gledopto classes | | |
+| `lower_hue` | Experimental | other, tuya_zcl, tuya_ts011f, tuya_countdown, tuya_countdown_tz3000_0zfrhq4i, tuya_countdown_tz3000_typdpbpg, tuya_countdown_tz3000_gznh2xla, tuya_countdown_tz3000_okaz9tjs, tuya_countdown_harmed, tuya_mcu, sengled, gledopto classes | | |
 | `lower_saturation` | Verified | light entities; hue classes; saturation fields | `LCA016`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/lower_saturation.json) |
-| `lower_saturation` | Experimental | other, tuya_zcl, tuya_ts011f, tuya_mcu, sengled, gledopto classes | | |
+| `lower_saturation` | Experimental | other, tuya_zcl, tuya_ts011f, tuya_countdown, tuya_countdown_tz3000_0zfrhq4i, tuya_countdown_tz3000_typdpbpg, tuya_countdown_tz3000_gznh2xla, tuya_countdown_tz3000_okaz9tjs, tuya_countdown_harmed, tuya_mcu, sengled, gledopto classes | | |
 | `raise_brightness` | Verified | light entities; hue classes; brightness fields | `LTA009`, firmware `1.163.1`<br>group | [record](integrations/zigbee2mqtt/test-records/raise_brightness.json) |
 | `raise_brightness` | Documented | other classes | | |
-| `raise_brightness` | Experimental | tuya_zcl, tuya_ts011f, tuya_mcu, sengled, gledopto classes | | |
+| `raise_brightness` | Experimental | tuya_zcl, tuya_ts011f, tuya_countdown, tuya_countdown_tz3000_0zfrhq4i, tuya_countdown_tz3000_typdpbpg, tuya_countdown_tz3000_gznh2xla, tuya_countdown_tz3000_okaz9tjs, tuya_countdown_harmed, tuya_mcu, sengled, gledopto classes | | |
 | `raise_hue` | Verified | light entities; hue classes; hue fields | `LCA016`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/raise_hue.json) |
-| `raise_hue` | Experimental | other, tuya_zcl, tuya_ts011f, tuya_mcu, sengled, gledopto classes | | |
+| `raise_hue` | Experimental | other, tuya_zcl, tuya_ts011f, tuya_countdown, tuya_countdown_tz3000_0zfrhq4i, tuya_countdown_tz3000_typdpbpg, tuya_countdown_tz3000_gznh2xla, tuya_countdown_tz3000_okaz9tjs, tuya_countdown_harmed, tuya_mcu, sengled, gledopto classes | | |
 | `raise_saturation` | Verified | light entities; hue classes; saturation fields | `LCA016`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/raise_saturation.json) |
-| `raise_saturation` | Experimental | other, tuya_zcl, tuya_ts011f, tuya_mcu, sengled, gledopto classes | | |
+| `raise_saturation` | Experimental | other, tuya_zcl, tuya_ts011f, tuya_countdown, tuya_countdown_tz3000_0zfrhq4i, tuya_countdown_tz3000_typdpbpg, tuya_countdown_tz3000_gznh2xla, tuya_countdown_tz3000_okaz9tjs, tuya_countdown_harmed, tuya_mcu, sengled, gledopto classes | | |
 | `set_attributes` | Verified | light entities; hue classes; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, min_brightness, max_brightness fields | `LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/set_attributes.json) |
-| `set_attributes` | Experimental | other, tuya_zcl, tuya_ts011f, sengled, gledopto classes | | |
+| `set_attributes` | Experimental | other, tuya_zcl, tuya_ts011f, tuya_countdown, tuya_countdown_tz3000_0zfrhq4i, tuya_countdown_tz3000_typdpbpg, tuya_countdown_tz3000_gznh2xla, tuya_countdown_tz3000_okaz9tjs, tuya_countdown_harmed, sengled, gledopto classes | | |
 | `stop` | Verified | light entities; hue classes | `LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/stop.json) |
 | `stop` | Documented | other classes | | |
-| `stop` | Experimental | tuya_zcl, tuya_ts011f, tuya_mcu, sengled, gledopto classes | | |
-| `turn_on_for` | Verified | light entities; hue classes; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, transition fields | `LWA012`, firmware `1.163.1`<br>`LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/turn_on_for.json) |
-| `turn_on_for` | Experimental | switch entities; other, gledopto classes | | |
+| `stop` | Experimental | tuya_zcl, tuya_ts011f, tuya_countdown, tuya_countdown_tz3000_0zfrhq4i, tuya_countdown_tz3000_typdpbpg, tuya_countdown_tz3000_gznh2xla, tuya_countdown_tz3000_okaz9tjs, tuya_countdown_harmed, tuya_mcu, sengled, gledopto classes | | |
+| `turn_on_for` | Verified | light, switch entities; hue on light, tuya_countdown_tz3000_0zfrhq4i on switch, tuya_countdown_tz3000_typdpbpg on switch, tuya_countdown_tz3000_gznh2xla on switch, tuya_countdown_tz3000_okaz9tjs on switch classes; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, transition fields | `LWA012`, firmware `1.163.1`<br>`LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/turn_on_for.json) |
+| `turn_on_for` | Experimental | other, gledopto, tuya_countdown classes | | |
 
 | Not yet supported, harmed by today's call | Why | Source |
 |---|---|---|
 | Tuya TS011F (`turn_on_for`) | Zigbee2MQTT would turn it on with no timer, so it would stay on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md) |
 | Tuya plugs and switches (`turn_on_for`) | Zigbee2MQTT would turn it on with no timer, so it would stay on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md) |
 | Tuya datapoint devices (`turn_on_for`) | Zigbee2MQTT would turn it on with no timer, so it would stay on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md) |
+| Tuya TS011F _TZ3000_gjnozsaz (`turn_on_for`) | its maker string is reported to restart its timer at random, so it could stay on | [source](https://github.com/Koenkk/zigbee2mqtt/issues/30493) |
 
 ### Shelly
 

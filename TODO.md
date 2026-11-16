@@ -52,13 +52,13 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
     `docs/device-compatibility.md`; how a group test or a manual row credits the classes it lists; the Capability
     column's "until that lands" clause; the class in each result (plan Decision 6); `other` never Verified
     (Decision 5).
-  - [ ] 5. Zigbee2MQTT classes, after the TS011F probe and the Tuya detection probe; the first default class, so
+  - [x] 5. Zigbee2MQTT classes, after the TS011F probe and the Tuya detection probe; the first default class, so
     `docs/device-compatibility.md` regains "and so does a device DeviceSide can't place in a known class".
     Built on `claude/device-classes-5-z2m` (classes `hue`, `tuya_zcl`, `tuya_ts011f`, `tuya_mcu`, `sengled`,
     `gledopto`, `other`; the Tuya classes not yet supported on `turn_on_for`, with `harms`, which refuses unknown
-    (step 6); `other` Documented on brightness fades and stop). Parts 1 and 2 landed with #431; its sign-off run
-    restores the card's Works line and clears the coverage warnings. Open until part 3, the TS011F countdown (plan
-    Decision 72), lands with #441.
+    (step 6); `other` Documented on brightness fades and stop). Parts 1 and 2 landed with #431, and part 3, the
+    TS011F countdown (plan Decision 72), with #441. The Zigbee2MQTT sign-off run restores the card's Works line and
+    clears the coverage warnings; part 3's plugs, one per maker string, join it.
   - [x] 5b. Test records as JSON, format 2 (`docs/test-records.schema.json`): a device per test with its class,
     validated in CI; the markdown records converted to format 1, which `check_release --signoffs` rejects; the
     rig's paired change writes format 2.
@@ -85,6 +85,13 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   Every light or switch of a device with several in its domain is now refused as `not_addressable`
   ([internals](docs/integrations/zigbee2mqtt/internals.md#addressing)). Future work: address each
   endpoint, by its topic with the endpoint names Z2M 2.6.0+ publishes, and read its suffixed state keys back.
+- [x] **A group's stand-in member gets no entry** (#440's re-review): a Zigbee2MQTT light group holding a plug Z2M
+  shows as a switch (its stand-in, classed by its device) falls back for the plug's class, and the fallback plans only
+  available members, so the plug gets neither the call nor a skip: `turn_on_for` on the group turns its lights on for
+  the time asked and leaves the plug as it was, with no warning saying so. The fix is in core's fallback (`_fallback`),
+  so every integration's stand-ins: skip one with its class's refusal, or `not_addressable`, as an unaddressable
+  member is. Fixed: the plug is skipped, named as a member device of the group, and a group with no other runnable
+  member raises the plug's reason.
 - [ ] **Sign-offs** for v0.1.0, one per integration changed since v0.0.1 (`check_release.py --signoffs`), each a rig run
   from ha-rig `main` (its records are format 2; format 1 records, converted from markdown, count for none). The runs for
   the formerly release-flagged adapters need these `--profile lab` cases, run watched, the A60 visiting each network:

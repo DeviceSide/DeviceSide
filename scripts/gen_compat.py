@@ -464,38 +464,46 @@ def check_models(registry: AdapterRegistry, data: Data) -> None:
 
 def card_evidence(adapter) -> Evidence:
     """The evidence a card's Works counts. Fail-safe: none for an adapter flagged whole or on a field. For one flagged
-    on a domain or class, the record tests (`tested`) that target unflagged domains and, when a class is flagged, reach
-    only unflagged classes; and, unless a domain is flagged (a manual row names none), the manual devices whose class
-    is unflagged. Flagged or not, a null-class device of an integration that names classes counts for nothing
-    (`Evidence.of`)."""
-    flagged: dict[str, set[str]] = {}
-    for level, item, noun in items(adapter.scope):
-        if level is Level.EXPERIMENTAL:
-            flagged.setdefault(noun, set()).add(item)
-    if adapter.scope.experimental or "fields" in flagged:
+    on a domain or class, the record tests (`tested`) that target unflagged domains and, when a class is flagged
+    anywhere (an entry held on some domains alone is flagged on the rest), reach only classes unflagged in the test's
+    domain; and, unless a domain is flagged (a manual row names none), the manual devices whose class is unflagged in
+    some domain the adapter serves, as the coverage check lets a manual row cover any. Flagged or not, a null-class
+    device of an integration that names classes counts for nothing (`Evidence.of`)."""
+    scope = adapter.scope
+    flagged = {noun for level, _, noun, domains in items(scope) if level is Level.EXPERIMENTAL or domains is not None}
+    if scope.experimental or "fields" in flagged:
         return Evidence([], [])
     if not flagged:
         return Evidence.of(adapter)
-    domains = set(adapter.scope.domains) - flagged.get("entities", set())
-    classes = set(adapter.scope.capabilities or ()) - flagged.get("classes", set())
+    domains = {domain for domain, level in scope.domains.items() if level is not Level.EXPERIMENTAL}
+
+    def unflagged(cls: str | None, domain: str) -> bool:
+        return (
+            cls is not None
+            and cls in (scope.capabilities or {})
+            and scope.class_level(cls, domain) is not Level.EXPERIMENTAL
+        )
 
     def clean(domain: str | None, reached: set[str | None]) -> bool:
-        return domain in domains and ("classes" not in flagged or bool(reached) and reached <= classes)
+        if domain not in domains:
+            return False
+        return "classes" not in flagged or bool(reached) and all(unflagged(cls, domain) for cls in reached)
 
     def by_hand(cls: str | None) -> bool:
-        return "entities" not in flagged and ("classes" not in flagged or cls in classes)
+        # A manual row names no domain, so it counts in any domain its class is unflagged in, as the coverage check
+        # lets it cover any (check_release.coverage_gaps).
+        return "entities" not in flagged and ("classes" not in flagged or any(unflagged(cls, d) for d in scope.domains))
 
     return Evidence.of(adapter, clean, by_hand)
 
 
-def items(scope) -> list[tuple[Level, str, str]]:
-    """The scope's items, as (level, item, noun), domains first: all Experimental in an adapter flagged whole."""
-    axes = (scope.domains, scope.capabilities or {}, scope.fields)
-    return [
-        (Level.EXPERIMENTAL if scope.experimental else level, item, noun)
-        for axis, noun in zip(axes, NOUNS, strict=True)
-        for item, level in axis.items()
-    ]
+def items(scope) -> list[tuple[Level, str, str, frozenset[str] | None]]:
+    """The scope's items, as (level, item, noun, domains), domains first: all Experimental in an adapter flagged whole.
+    `domains` names those a class's level holds on alone (core/scope.py, OnDomains), else None."""
+    entries = [(level, item, "entities", None) for item, level in scope.domains.items()]
+    entries += [(level, item, "classes", domains) for item, level, domains in scope.class_entries()]
+    entries += [(level, item, "fields", None) for item, level in scope.fields.items()]
+    return [(Level.EXPERIMENTAL if scope.experimental else level, *rest) for level, *rest in entries]
 
 
 # The evidence block.
@@ -534,7 +542,11 @@ def level_rows(scope) -> list[tuple[Level, str]]:
     """(level, items) per row: a row per level the scope holds, strongest first."""
     found = []
     for level in sorted(Level, reverse=True):
-        if held := [(item, noun) for item_level, item, noun in items(scope) if item_level is level]:
+        if held := [
+            (f"{item} on {', '.join(sorted(domains))}" if domains else item, noun)
+            for item_level, item, noun, domains in items(scope)
+            if item_level is level
+        ]:
             found.append((level, named(held)))
     return found
 
@@ -561,11 +573,17 @@ def rows(adapter) -> list[str]:
     evidence = Evidence.of(adapter)
     levels = level_rows(adapter.scope)
     index = {level: number for number, (level, _) in enumerate(levels)}
-    level_of = {(noun, item): level for level, item, noun in items(adapter.scope)}
+    scope = adapter.scope
+    entries = {name: (level, domains) for name, level, domains in scope.class_entries()}
     models: list[list[str]] = [[] for _ in levels]
     for item in evidence.devices():
-        held = [level_of[key] for key in (("classes", item.cls), ("entities", item.domain)) if key in level_of]
-        row = models[index[min(held)]] if held else models[0]
+        held = [scope.domains[item.domain]] if item.domain in scope.domains else []
+        if item.cls in entries:
+            # A format 2 test's domain decides a class held on some domains alone; one that names no domain, its level.
+            held.append(scope.class_level(item.cls, item.domain) if item.domain else entries[item.cls][0])
+        held = [Level.EXPERIMENTAL if scope.experimental else level for level in held]
+        # A class flagged in this domain alone may have no row of its level: the scope's weakest row takes it.
+        row = models[index.get(min(held), len(levels) - 1)] if held else models[0]
         if (text := described(item)) not in row:
             row.append(text)
     sources = [link(record, adapter.action) for record in evidence.records]
@@ -691,7 +709,7 @@ def classes(key: str, integration_adapters: list, level: Level, data: Data) -> d
     for adapter in integration_adapters:
         if adapter.scope.experimental:
             continue
-        for item_level, item, noun in items(adapter.scope):
+        for item_level, item, noun, _ in items(adapter.scope):
             if item_level is level and noun != "fields":
                 if item not in data.capabilities.get(key, {}):
                     fail(f"capabilities: no entry for {key} {item}, which a scope holds as {level.name.title()}")
@@ -738,11 +756,15 @@ def merged(phrases: list[str], url: str) -> str:
 
 
 def class_entries(key: str, held: dict[str, set[str]], data: Data) -> list[str]:
-    """Classes with the same features share one entry: "dimmers, LED controllers (CCT, RGB): turn on with timer"."""
+    """Classes with the same features share one entry: "dimmers, LED controllers (CCT, RGB): turn on with timer", and
+    each phrase in it once."""
     grouped: dict[tuple[str, ...], dict[str, list[str]]] = {}
     for item, actions in held.items():
         entry = data.capabilities[key][item]
-        grouped.setdefault(features(actions), {}).setdefault(entry["section"], []).append(entry["phrase"])
+        phrases = grouped.setdefault(features(actions), {}).setdefault(entry["section"], [])
+        # Classes that share a phrase (Zigbee2MQTT's countdown plugs, a class per maker string) are said once.
+        if entry["phrase"] not in phrases:
+            phrases.append(entry["phrase"])
     return [
         f"{', '.join(merged(phrases, data.url(key, section)) for section, phrases in sections.items())}: "
         f"{', '.join(names)}"

@@ -16,8 +16,10 @@ from custom_components.deviceside.core.registry import AdapterRegistry
 from custom_components.deviceside.core.scope import (
     AdapterScope,
     DoesntWork,
+    DurationLimits,
     Level,
     NotSupported,
+    OnDomains,
     Unplaced,
     documented,
     experimental,
@@ -196,6 +198,68 @@ def test_a_scope_without_classes_refuses_none():
 def test_a_class_never_both_serves_and_doesnt_work():
     with pytest.raises(ValueError, match="classes the scope serves"):
         AdapterScope(capabilities=verified("hue"), doesnt_work={"hue": BROKEN})
+
+
+def test_a_class_held_on_some_domains_alone_is_experimental_on_the_rest():
+    """A Hue bulb's record proves nothing about a Hue plug: `hue` on lights alone leaves a Hue switch flagged."""
+    scope = AdapterScope(
+        domains=verified("light", "switch"),
+        capabilities=verified("hue", domains=("light",)) | documented("other"),
+    )
+
+    assert scope.capabilities["hue"] == OnDomains(Level.VERIFIED, frozenset({"light"}))
+    assert scope.level("light", ["hue"]) is Level.VERIFIED
+    assert scope.level("switch", ["hue"]) is Level.EXPERIMENTAL
+    assert scope.level("switch", ["other"]) is Level.DOCUMENTED  # an entry on every domain, as before
+    assert scope.class_entries() == [
+        ("hue", Level.VERIFIED, frozenset({"light"})),
+        ("other", Level.DOCUMENTED, None),
+    ]
+    assert scope.refusal(["hue"]) is None  # served, so not refused: gated by its level
+
+
+@pytest.mark.parametrize(
+    ("scope", "message"),
+    [
+        (lambda: AdapterScope(capabilities=verified("hue", domains=("switch",))), "domains the scope doesn't serve"),
+        (lambda: AdapterScope(domains=verified("light", domains=("light",))), "domains take no domains"),
+        (lambda: AdapterScope(fields=verified("brightness", domains=("light",))), "fields take no domains"),
+    ],
+)
+def test_only_a_class_is_held_on_domains_the_scope_serves(scope, message):
+    with pytest.raises(ValueError, match=message):
+        scope()
+
+
+OWN = DurationLimits(min_s=1, max_s=10, step_s=1)
+
+
+def test_a_class_with_a_call_of_its_own_gets_its_limits_and_keeps_a_group_apart():
+    scope = AdapterScope(
+        duration=DurationLimits(min_s=0, max_s=100),
+        capabilities=verified("A") | experimental("B", "C"),
+        own_calls={"B": OWN, "C": None},
+    )
+
+    assert scope.limits(["B"]) is OWN
+    assert scope.limits([Unplaced("B")]) is OWN
+    # One whose own call keeps the scope's limits, and one with no call of its own, get the scope's.
+    assert scope.limits(["C"]) is scope.duration
+    assert scope.limits(["A"]) is scope.duration
+    assert scope.limits([None]) is scope.duration
+    assert scope.apart(["A", "B"]) and scope.apart(["C"])
+    assert not scope.apart(["A", None])
+    # A listed group with such a member falls back to its members; the member itself, and any other group, run.
+    assert scope.refusal(["A", "B"], group=True) == (Reason.OWN_CALL, None)
+    assert scope.refusal(["B"]) is None
+    assert scope.refusal(["A"], group=True) is None
+
+
+def test_a_call_of_its_own_is_for_a_class_the_scope_serves():
+    with pytest.raises(ValueError, match="own_calls names classes the scope doesn't serve"):
+        AdapterScope(capabilities=verified("A"), own_calls={"B": OWN})
+    with pytest.raises(ValueError, match="own_calls names classes the scope doesn't serve"):
+        AdapterScope(own_calls={"B": OWN})
 
 
 def test_a_documented_field_is_refused():
