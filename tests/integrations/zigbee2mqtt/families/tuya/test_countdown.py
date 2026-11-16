@@ -4,18 +4,17 @@ converter A, and the one publish it gets."""
 import pytest
 
 from custom_components.deviceside.actions.turn_on_for import TurnOnForRequest
-from custom_components.deviceside.core.errors import TargetNotSupported
 from custom_components.deviceside.core.resolver import resolve
 from custom_components.deviceside.core.runtime import get_runtime
-from custom_components.deviceside.core.scope import DurationLimits, Level, Unplaced
-from custom_components.deviceside.integrations.zigbee2mqtt import INTEGRATION, classes, turn_on_for
+from custom_components.deviceside.core.scope import Level, Unplaced
+from custom_components.deviceside.integrations.zigbee2mqtt import INTEGRATION
+from custom_components.deviceside.integrations.zigbee2mqtt.families import tuya
+from custom_components.deviceside.integrations.zigbee2mqtt.families.tuya import countdown
 from custom_components.deviceside.integrations.zigbee2mqtt.turn_on_for import Z2MTurnOnFor
 
-from .conftest import DEVICES, GROUPS, SET, call, commands, group
-from .test_set_check import answer, failure, live  # noqa: F401 - live is a fixture
-from ...conftest import allow_experimental, refusal
-from ...conftest import call as call_service
-from ...fixtures.zigbee2mqtt import IEEE, INFO, add_z2m_entity, z2m_entry
+from ...conftest import DEVICES, GROUPS, SET, answer, call, commands, failure, group
+from .....conftest import allow_experimental, refusal
+from .....fixtures.zigbee2mqtt import IEEE, INFO, add_z2m_entity, z2m_entry
 
 LAB = "_TZ3000_0zfrhq4i"  # the lab plug (research/2026-11-15-tuya-countdown-probe.md)
 UNLISTED = "_TZ3000_abcdefgh"  # a converter A string with no record
@@ -110,15 +109,19 @@ async def test_until_bridge_devices_lists_it_a_countdown_plug_waits(hass, setup_
 
 def test_each_verified_string_has_a_class_of_its_own_verified_on_switches_on_turn_on_for_alone():
     scope = Z2MTurnOnFor.scope
-    for string in classes.VERIFIED_STRINGS:
-        name = classes.string_class(string)
+    for string in tuya.VERIFIED_STRINGS:
+        name = tuya.string_class(string)
         assert name in INTEGRATION.classes
         # On switches alone, as Z2M shows a plug: one Z2M shows as a light has no record.
         assert scope.class_level(name, "switch") is Level.VERIFIED
         assert scope.class_level(name, "light") is Level.EXPERIMENTAL
     assert scope.capabilities["tuya_countdown"] is Level.EXPERIMENTAL
-    assert set(scope.own_calls) == set(classes.COUNTDOWNS)
-    assert "tuya_countdown_harmed" in scope.not_supported
+    assert set(scope.own_calls) == set(tuya.COUNTDOWNS)
+    # One call object, so the countdown plugs of every string share a run.
+    assert set(scope.own_calls.values()) == {countdown.COUNTDOWN}
+    assert countdown.COUNTDOWN.limits is countdown.COUNTDOWN_LIMITS
+    # The string reported harmed is left out: the integration refuses it (test_refusals.py).
+    assert "tuya_countdown_harmed" not in scope.capabilities
 
 
 async def test_a_countdown_plug_gets_one_publish_with_the_countdown(hass, setup_production, broker):
@@ -170,21 +173,6 @@ async def test_an_unrecorded_string_is_experimental(hass, setup_production, brok
     entity_id = plug(hass, broker, UNLISTED)
 
     assert await refusal(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == "experimental_off"
-    assert commands(broker) == []
-
-
-async def test_the_reported_string_is_not_supported_with_experimental_on(hass, setup_production, broker):
-    entity_id = plug(hass, broker, "_TZ3000_gjnozsaz")
-    allow_experimental(hass)
-
-    with pytest.raises(TargetNotSupported) as raised:
-        await call_service(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5})
-
-    assert raised.value.reason == "not_supported"
-    assert (
-        raised.value.translation_placeholders["why"]
-        == classes.TURN_ON_FOR_NOT_SUPPORTED["tuya_countdown_harmed"].reason
-    )
     assert commands(broker) == []
 
 
@@ -272,29 +260,16 @@ async def test_get_attributes_reports_no_timer_for_a_countdown_plug(hass, setup_
     assert response == {entity_id: {}}
 
 
-async def test_execute_branches_on_the_limits_the_dispatcher_planned_not_a_fresh_class(hass, setup_production, broker):
-    """#440's review, LM3: a bridge/devices republish between planning and execute must not send the plug `on_time`
-    fitted to 43200 s, or a bulb `countdown`: the run's limits are the class the dispatcher planned on."""
+async def test_the_run_sends_the_call_the_dispatcher_planned_not_a_fresh_class(hass, setup_production, broker):
+    """#440's review, LM3: a bridge/devices republish between planning and the send must not send the plug `on_time`
+    fitted to 43200 s, or a bulb `countdown`: the run's own call is the class the dispatcher planned on."""
     entity_id = plug(hass, broker, UNLISTED)
     registry = get_runtime(hass).registry
     adapter = registry.adapter("turn_on_for", "zigbee2mqtt")
     target = resolve(hass, registry, entity_id)
-    planned = TurnOnForRequest(duration_s=30, limits=turn_on_for.COUNTDOWN_LIMITS)
     del broker.retained[DEVICES]  # the plug is no longer placed as a countdown class
 
-    await adapter.execute(hass, planned, [target])
+    results = await adapter.execute_own(hass, TurnOnForRequest(duration_s=30), [target], countdown.COUNTDOWN)
 
     assert commands(broker) == [(SET, {"state": "ON", "countdown": 30})]
-
-
-async def test_execute_takes_an_equal_copy_of_the_countdown_limits_as_them(hass, setup_production, broker):
-    """The dispatcher groups runs by equality, so a copy must take the countdown too, not a plain on_time On."""
-    entity_id = plug(hass, broker, UNLISTED)
-    registry = get_runtime(hass).registry
-    adapter = registry.adapter("turn_on_for", "zigbee2mqtt")
-    copy = DurationLimits(min_s=1, max_s=43200, step_s=1)
-    assert copy is not turn_on_for.COUNTDOWN_LIMITS
-
-    await adapter.execute(hass, TurnOnForRequest(duration_s=30, limits=copy), [resolve(hass, registry, entity_id)])
-
-    assert commands(broker) == [(SET, {"state": "ON", "countdown": 30})]
+    assert [(result.entity_id, result.status) for result in results] == [(entity_id, "sent")]

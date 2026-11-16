@@ -69,5 +69,7 @@ Run `.venv/bin/python scripts/check_audit.py <rc> HEAD` and list every problem i
 and High still `open`. Tell a repo maintainer to merge the PR carrying the record and its fixes with a merge commit
 (`--merge`), never squash or rebase: the record cites that branch's commits as `to` and `fixed_in`, and a rewrite
 takes them out from under the RC head, so the check fails and the tag is refused. Fixing or waiving is the repo
-maintainers' decision: never mark one `waived` yourself. Once the check passes, the record is committed, and CI is green,
+maintainers' decision: never mark one `waived` yourself. Fix only Criticals and Highs: Mediums and Lows stay in the
+record's prose, unless a fix is a line a Critical or High fix already touches, and a fix pass's Mediums and Lows never
+start another round. Once the check passes, the record is committed, and CI is green,
 a repo maintainer dispatches `cut-release-candidate` with `rc: <rc>` from the branch.

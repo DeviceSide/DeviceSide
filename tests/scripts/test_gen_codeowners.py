@@ -1,4 +1,5 @@
-"""scripts/gen_codeowners.py: the repo maintainers own everything, then each integration's paths to its maintainers."""
+"""scripts/gen_codeowners.py: the repo maintainers own everything, then each integration's paths to its maintainers,
+and a family's or the catalog's to theirs where they add an owner."""
 
 from types import SimpleNamespace
 
@@ -7,8 +8,14 @@ import pytest
 from scripts import gen_codeowners as gco
 
 
-def info(*maintainers, available=True):
-    return SimpleNamespace(maintainers=maintainers, available=available, unavailable_reason="No module named x")
+def info(*maintainers, available=True, families=()):
+    return SimpleNamespace(
+        maintainers=maintainers, available=available, unavailable_reason="No module named x", families=families
+    )
+
+
+def family(key, *maintainers):
+    return SimpleNamespace(key=key, maintainers=maintainers)
 
 
 def registry(**integrations):
@@ -91,6 +98,71 @@ def test_manifest_codeowners_must_match_the_repo_maintainers_in_either_mode(repo
     assert "don't match REPO_MAINTAINERS" in capsys.readouterr().err
     (repo / "custom_components" / "deviceside" / "manifest.json").write_text('{"codeowners": ["@jasonmx", "@carol"]}')
     assert gco.main([], fake, repo) == 0
+
+
+@pytest.fixture
+def stacks(repo):
+    """Two integrations with a `tuya` and a `hue` family each, and the catalog file the `tuya` ones share."""
+    for path in (
+        "custom_components/deviceside/integrations/hue/families/tuya",
+        "custom_components/deviceside/integrations/hue/families/hue",
+        "custom_components/deviceside/integrations/control4/families/tuya",
+        "custom_components/deviceside/integrations/control4/families/hue",
+        "tests/integrations/control4/families/tuya",
+        "docs/integrations/control4/research/tuya",
+        "custom_components/deviceside/zigbee",
+        "tests/zigbee",
+    ):
+        (repo / path).mkdir(parents=True)
+    (repo / "custom_components/deviceside/zigbee/tuya.py").write_text("")
+    (repo / "tests/zigbee/test_tuya.py").write_text("")
+    return repo
+
+
+def test_families_without_maintainers_of_their_own_add_no_line(stacks):
+    plain = registry(hue=info("jasonmx"), control4=info("alice"))
+    with_families = registry(
+        hue=info("jasonmx", families=(family("tuya"), family("hue", "jasonmx"))),
+        control4=info("alice", families=(family("tuya", "alice"), family("hue"))),
+    )
+    # The catalog's owners are then alice and the repo maintainer's, whom `*` gives it: only alice adds a line.
+    catalog = (
+        "\n/custom_components/deviceside/zigbee/tuya.py @alice @jasonmx\n/tests/zigbee/test_tuya.py @alice @jasonmx\n"
+    )
+    assert gco.generate(with_families, stacks) == gco.generate(plain, stacks) + catalog
+    solo = registry(hue=info("jasonmx", families=(family("tuya"),)))
+    assert gco.generate(solo, stacks) == gco.generate(registry(hue=info("jasonmx")), stacks)
+
+
+def test_a_familys_existing_paths_follow_its_integrations_then_the_catalog(stacks):
+    text = gco.generate(
+        registry(
+            hue=info("jasonmx", families=(family("tuya", "zed"), family("hue"))),
+            control4=info("alice", "bob", families=(family("tuya", "tina", "alice"), family("hue"))),
+        ),
+        stacks,
+    )
+    assert text.split("\n\n", 1)[1].splitlines() == [
+        "/custom_components/deviceside/integrations/control4/ @alice @bob @jasonmx",
+        "/tests/integrations/control4/ @alice @bob @jasonmx",
+        "/tests/fixtures/control4.py @alice @bob @jasonmx",
+        "/docs/integrations/control4/ @alice @bob @jasonmx",
+        "/custom_components/deviceside/integrations/control4/families/tuya/ @tina @alice @bob @jasonmx",
+        "/tests/integrations/control4/families/tuya/ @tina @alice @bob @jasonmx",
+        "/docs/integrations/control4/research/tuya/ @tina @alice @bob @jasonmx",
+        "",
+        "/custom_components/deviceside/integrations/hue/ @jasonmx",
+        # hue's family has no tests or research folder here: only its package.
+        "/custom_components/deviceside/integrations/hue/families/tuya/ @zed @jasonmx",
+        "",
+        "/custom_components/deviceside/zigbee/tuya.py @tina @alice @zed @bob @jasonmx",
+        "/tests/zigbee/test_tuya.py @tina @alice @zed @bob @jasonmx",
+    ]
+
+
+def test_a_family_without_a_package_is_an_error(stacks):
+    with pytest.raises(SystemExit, match="hue: no package for family sengled"):
+        gco.generate(registry(hue=info("jasonmx", families=(family("sengled"),))), stacks)
 
 
 def test_the_committed_file_is_current():

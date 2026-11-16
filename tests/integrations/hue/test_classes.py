@@ -98,7 +98,9 @@ def test_hue_is_verified_and_other_experimental_on_every_adapter(adapter):
 
 
 def test_only_set_scene_lists_smart_scenes_and_no_entry_harms():
-    listed = {adapter.action: set(adapter.scope.doesnt_work) for adapter in ADAPTERS if adapter.scope.doesnt_work}
+    listed = {
+        adapter.action: set(adapter.scope.no_known_method) for adapter in ADAPTERS if adapter.scope.no_known_method
+    }
 
     assert listed == {"set_scene": {"smart_scene"}}
     assert not any(adapter.scope.harms for adapter in ADAPTERS)

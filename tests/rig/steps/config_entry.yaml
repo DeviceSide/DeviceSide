@@ -3,7 +3,7 @@
 # get_attributes, a read, stands in for every action. Hue alone runs it, on one lamp: the entry's reload and refusal are
 # the same whatever adapter the call reaches, and Hue has a call_resolver of its own to rebuild.
 action: get_attributes
-name: lifecycle
+name: config_entry
 rig_seconds: 15
 tests:
   - name: works_after_a_reload

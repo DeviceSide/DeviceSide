@@ -41,6 +41,6 @@ models:
     ids: [LTD010, "5996411U5"]
     type: bulb
 
-# Devices that fail on several integrations would go in a shared `doesnt_work` or `not_supported` list here
+# Devices that fail on several integrations would go in a shared `no_known_method` or `not_built` list here
 # (scripts/gen_compat.py's docstring gives the format). None does: each integration's entries live in its scopes'
-# code (core/scope.py, DoesntWork and NotSupported), ZHA's and Zigbee2MQTT's TS011F entries included.
+# code (core/scope.py, NoKnownMethod and NotBuilt), ZHA's and Zigbee2MQTT's TS011F entries included.

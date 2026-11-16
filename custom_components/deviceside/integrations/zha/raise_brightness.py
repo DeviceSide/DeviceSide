@@ -2,7 +2,6 @@
 
 from typing import ClassVar
 
-from . import classes
 from .fade import ZHARamp, ramp_scope
 from ...core.scope import AdapterScope
 from ...core.transition import BRIGHTNESS
@@ -10,4 +9,4 @@ from ...core.transition import BRIGHTNESS
 
 class ZHARaiseBrightness(ZHARamp):
     action: ClassVar[str] = "raise_brightness"
-    scope: ClassVar[AdapterScope] = ramp_scope(BRIGHTNESS, classes.RAISE_BRIGHTNESS)
+    scope: ClassVar[AdapterScope] = ramp_scope(action, BRIGHTNESS)

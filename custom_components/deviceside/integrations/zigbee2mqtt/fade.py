@@ -15,16 +15,17 @@ from homeassistant.components.light import COLOR_MODES_COLOR
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
+from .adapter import Z2MAdapter
 from .addressing import not_addressable, topic, z2m_address
 from .bridge import has_feature, publish, publish_set
-from .classes import FADE_BRIGHTNESS, FADE_COLOR
+from .classes import class_scope
 from .color_refresh import refresh_color
+from .families.hue import NEED
 from .members import member_lights, unaddressable
-from .native_control import NEED, native_control
+from .native_control import native_control
 from .set_check import checked
 from ...actions.ramp import RampRequest
 from ...core import transition
-from ...core.adapter import Adapter
 from ...core.errors import Reason, describe
 from ...core.ha_watch import ALL, Call, Entries
 from ...core.models import EntityResult, Status, Target
@@ -142,16 +143,15 @@ class Fade:
     before: tuple[tuple[Target, dict], ...] = ()
 
 
-def ramp_scope(attribute: str) -> AdapterScope:
-    """A ramp's scope: a brightness fade's classes are held as stop's are, a hue or saturation fade's apart
-    (classes.py)."""
-    capabilities = FADE_BRIGHTNESS if attribute == BRIGHTNESS else FADE_COLOR
+def ramp_scope(action: str, attribute: str) -> AdapterScope:
+    """A ramp's scope: its classes as classes.class_scope holds them for the action, a brightness fade's as stop's
+    are, a hue or saturation fade's apart."""
     return AdapterScope(
-        domains=verified("light"), capabilities=capabilities, fields=verified(attribute), native_groups=True
+        domains=verified("light"), **class_scope(action), fields=verified(attribute), native_groups=True
     )
 
 
-class Z2MRamp(Adapter[RampRequest]):
+class Z2MRamp(Z2MAdapter[RampRequest]):
     """Publish the limit (or range end) with a transition for the distance left; the bulb runs the fade.
 
     Brightness and saturation fades are separate calls, each with its own transition: the bulb runs them

@@ -8,7 +8,7 @@ bridge's `product_data.manufacturer_name`:
 - `hue`: Signify's own lights, which every record ran on.
 - `other`, the default class: every other maker's light the bridge has paired, Friends of Hue certified ones
   included, as certification isn't Signify's firmware and no record reaches one.
-- `smart_scene`: an All-Day scene, which has no fixed settings to write (set_scene's doesn't-work entry).
+- `smart_scene`: an All-Day scene, which has no fixed settings to write (set_scene's no known method entry).
 
 A scene is classed by the lights it writes: `other` when any of them is, else `hue`, as set_scene's call reaches each
 light; one that writes none, or that the bridge no longer lists (set_scene rejects it), is `hue`, as no light is
@@ -28,7 +28,7 @@ from homeassistant.helpers import device_registry as dr
 
 from .bridge import bridge_api, light_device, resource_id
 from ...core.models import Target
-from ...core.scope import DoesntWork, experimental, verified
+from ...core.scope import NoKnownMethod, experimental, verified
 
 # The manufacturer core's hue integration registers Signify's own devices with (homeassistant/components/hue/v2/
 # device.py), lights and bridge alike: internals.md, Tested behavior, Device strings.
@@ -45,10 +45,10 @@ CLASSES = frozenset({HUE, OTHER, SMART_SCENE})
 LEVELS = verified(HUE) | experimental(OTHER)
 
 _PAGE = "https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/hue/index.md"
-SET_SCENE_DOESNT_WORK = {
-    # Doesn't work: no known call can write a smart scene's settings, as it has none fixed, a limit of the scene, not a
-    # call unbuilt. Not harmful (docs/evidence.md, When today's call harms a class): a wrong scene shows at once.
-    SMART_SCENE: DoesntWork(
+SET_SCENE_NO_KNOWN_METHOD = {
+    # No known method: no known call can write a smart scene's settings, as it has none fixed, a limit of the scene,
+    # not a call unbuilt. Not harmful (docs/evidence.md, When today's call harms a class): a wrong scene shows at once.
+    SMART_SCENE: NoKnownMethod(
         what="Hue smart scenes",
         reason="A smart (All-Day) scene changes with the time of day, so it has no fixed settings to write",
         source=_PAGE + "#hue-smart-scenes",

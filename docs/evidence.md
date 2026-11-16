@@ -27,7 +27,7 @@ device classes in [the device-classes plan](plans/2026-11-14-device-classes.md).
    sent, what the device answered, and which way DeviceSide went because of it.
 5. **Proof follows the call and the class.** Evidence is about how a class of devices responds to a call
    ([device classes](#device-classes)). Any code that sends the same call to the same class inherits it, and unit tests
-   pin the call. So does a doesn't-work entry: it may cover every action that sends that call to that class or
+   pin the call. So does a no known method entry: it may cover every action that sends that call to that class or
    identity, such as `turn_on_for`, `set_auto_off` and `turn_off_for` where they send the same frame.
 6. **Simplify relentlessly.** Prefer fewer calls, fewer round trips and less machinery. A new guardrail needs
    evidence that its failure happens (a probe, record or report), and names the user-visible failure it prevents and
@@ -100,20 +100,20 @@ Nothing ships unflagged unless it is Verified or Documented. Built and unit-test
 exercise, and that isn't Documented, ships behind `experimental` as untested. A sign-off
 covers only what was exercised; it never signs off untested code.
 
-**Contrary evidence:** a credible report of a [harmful](#doesnt-work-not-yet-supported-untested) failure, upstream
-or a DeviceSide issue, on the call DeviceSide sends, lets an integration maintainer land a doesn't-work or
-not-yet-supported entry with `harms`, by the definitions [below](#doesnt-work-not-yet-supported-untested), moving only
+**Contrary evidence:** a credible report of a [harmful](#no-known-method-not-built-yet-untested) failure, upstream
+or a DeviceSide issue, on the call DeviceSide sends, lets an integration maintainer land a no known method or
+not built yet entry with `harms`, by the definitions [below](#no-known-method-not-built-yet-untested), moving only
 the identity the report names, on the report alone, cited as its source; credibility is theirs to judge (tenet 7).
-Which label depends on whether a known call would serve the identity. ZHA's `_TZ3000_typdpbpg` reads the spec's
-tenths as seconds, and Tuya's recipe would serve it, so it is not yet supported, with `harms`: the fix is the call,
+Which kind depends on whether a known call would serve the identity. ZHA's `_TZ3000_typdpbpg` reads the spec's
+tenths as seconds, and Tuya's recipe would serve it, so it is not built yet, with `harms`: the fix is the call,
 and the entry lifts when the call changes. `_TZ3000_gjnozsaz` fails the very call that serves its siblings,
-but Tuya's inching call would plausibly serve it, so it too is not yet supported, with `harms`; an identity no known
-call serves is doesn't work. As proof follows the call (tenet 5), the entry may cover every action that
+but Tuya's inching call would plausibly serve it, so it too is not built yet, with `harms`; an identity no known
+call serves has no known method. As proof follows the call (tenet 5), the entry may cover every action that
 sends that call to that identity, such as `turn_on_for`, `set_auto_off` and `turn_off_for` where they send the same
 frame. The identity is the most specific one the report names that a class rule can key on: the model ID with the
 manufacturer string, and the firmware where that is what decides. On a report alone, a vendor name never moves: Hue's
 or IKEA's manufacturer string, or HA's registry manufacturer "Tuya", is never banned whole on one (Split off the
-exception, not the class, [below](#doesnt-work-not-yet-supported-untested)); a class rule keyed on a vendor rests on
+exception, not the class, [below](#no-known-method-not-built-yet-untested)); a class rule keyed on a vendor rests on
 research, as Zigbee2MQTT's registry "Tuya" rule does (plan Decision 20). A credible harmful report naming only a
 vendor is "any other report" below: the maintainer root-causes it. A failure reported on a different call, an external
 converter's or another frame, is evidence about that call, not the device: Z2M #25434's `_TZ3000_dg7fdg92` failed
@@ -141,7 +141,7 @@ Zigbee2MQTT countdown plug's maker string with a record of its own is a class of
 - **Unknown is flagged, never Verified.** A device no rule matches gets the default class
   (`IntegrationInfo.default_class`), which the registry refuses at Verified in any scope, so placing a device there
   can only make DeviceSide more cautious. Its one exception: where a call is known to harm, a class DeviceSide can't
-  name yet is refused ([below](#doesnt-work-not-yet-supported-untested)). The default class may be Documented for an
+  name yet is refused ([below](#no-known-method-not-built-yet-untested)). The default class may be Documented for an
   action where the [Documented](#levels) test holds (no known class departs), and is otherwise `experimental(...)`.
   Nothing lifts it: a record on a device outside the named classes adds a new class named for its maker
   (Zigbee2MQTT: `ikea` for an IKEA bulb), as the default class holds every device no rule matches, and one maker's
@@ -153,34 +153,36 @@ Zigbee2MQTT countdown plug's maker string with a record of its own is a class of
 - **One axis per integration.** An integration that names classes holds them in every adapter's scope, and only the
   classes it declares; one that names none holds them in none (the registry checks). A new integration names its
   classes, or its PR argues that it has one: that no known device behind it answers the same call differently.
-- **One fact, one home, in code.** Classes, levels, and doesn't-work (`doesnt_work`) and not-yet-supported
-  (`not_supported`) entries live in the integration's package, and the cards are generated from them; where each
+- **One fact, one home, in code.** Classes, levels, and no known method (`no_known_method`) and not built yet
+  (`not_built`) entries live in the integration's package, and the cards are generated from them; where each
   piece goes is CLAUDE.md's [Where facts go](../CLAUDE.md#where-facts-go).
-- **Groups.** A native group takes the weakest level among its members' classes. One with a member that doesn't work
-  or isn't supported, a member whose class takes a call of its own (a branch in the adapter, below, which the group's
-  call isn't), or a member whose class is Experimental while Experimental features is off (the adapter, domain and
+- **Groups.** A native group takes the weakest level among its members' classes. One with a member that has no known
+  method or is not built yet, a member whose class takes a call of its own (a branch in the adapter, below, which the
+  group's call isn't), or a member whose class is Experimental while Experimental features is off (the adapter, domain and
   fields not flagged), falls back to its members, each judged on its own, when the integration can list
   them, including, where a call is known to harm, a group with a member not yet placed; one it can't list counts as
   Experimental: refused while Experimental features is off, and with them on where a call is known to harm, as its
-  class rests on a membership DeviceSide doesn't have yet ([below](#doesnt-work-not-yet-supported-untested)).
+  class rests on a membership DeviceSide doesn't have yet ([below](#no-known-method-not-built-yet-untested)).
 
-### Doesn't work, not yet supported, untested
+### No known method, not built yet, untested
 
-Three ways a class can't take an action, each shown differently on the cards:
+Three ways a class can't take an action, each shown differently on the cards. The first two are the kinds of not
+supported, where DeviceSide can't do the action for the class, each named for why:
 
-- **Doesn't work:** no known call works on the class: a device limit, which the label tells users not to ask
-  DeviceSide to build. The adapter's scope lists it in `doesnt_work`, with what, why and a source; the dispatcher
-  refuses it (`doesnt_work`), and the card lists it under Doesn't work. It is per adapter, as one class can fail one
-  action's call and answer another's.
-- **Not yet supported:** a call that would work on the class is known or plausible, but isn't built. The integration
-  names it, and the adapter's scope holds it in neither `capabilities` nor `doesnt_work`. It is refused
-  (`not_supported`) and listed as not yet supported.
+- **No known method:** no known call works on the class: a device limit as far as anyone knows, which the label
+  tells users not to ask DeviceSide to build. A method is a call that does what was asked and fails without harm, so
+  a class whose only known call is unsafe has none; the entry's reason says which. The adapter's scope lists it in
+  `no_known_method`, with what, why and a source; the dispatcher refuses it (`no_known_method`), and the card lists
+  it under No known method. It is per adapter, as one class can fail one action's call and answer another's.
+- **Not built yet:** a call that would work on the class is known or plausible, and nobody has built it. The
+  integration names it, and the adapter's scope holds it in neither `capabilities` nor `no_known_method`. It is
+  refused (`not_built`) and listed as not built yet.
 - **Untested:** the default call may work. The class is in scope as `experimental(...)` and runs behind the flag.
 
-Either refused label may carry `harms`, when today's call would harm the class (below): a doesn't-work entry states it
-(`DoesntWork.harms`), and a not yet supported class today's call would harm gets an entry of its own in the scope's
-`not_supported` (`NotSupported`, with why, a source and `harms`), which the card lists as not yet supported, as it
-does any other. A not yet supported class that today's call leaves unharmed needs no entry.
+Either kind may carry `harms`, the separate safety axis, when today's call would harm the class (below): a no known
+method entry states it (`NoKnownMethod.harms`), and a class not built yet that today's call would harm gets an entry
+of its own in the scope's `not_built` (`NotBuilt`, with why, a source and `harms`), which the card lists as not built
+yet, as it does any other. A class not built yet that today's call leaves unharmed needs no entry.
 
 - **Split off the exception, not the class.** When devices are known to depart from a class's call, a rule moves them
   into a class of their own, at the level their own evidence supports. The rest of the class keeps its level. The
@@ -192,10 +194,10 @@ does any other. A not yet supported class that today's call leaves unharmed need
   scheduled on/off actions harm when they fail (`turn_on_for`, `turn_off_for`, `set_auto_off`, `set_auto_on`,
   `clear_auto_off`, `clear_auto_on`); dimming and color (`raise_brightness`, `lower_brightness`, `raise_hue`,
   `lower_hue`, `raise_saturation`, `lower_saturation`), `stop`, `set_attributes` and `set_scene` don't, as a wrong
-  result shows at once and one tap fixes it; and `get_attributes` only reads, so it never harms. Each `doesnt_work`
-  and `not_supported` entry answers it (`harms`, which has no default).
+  result shows at once and one tap fixes it; and `get_attributes` only reads, so it never harms. Each `no_known_method`
+  and `not_built` entry answers it (`harms`, which has no default).
 - **Where a call is known to harm, a class not yet known is refused.** An adapter whose scope holds an entry with
-  `harms`, doesn't work or not yet supported alike, refuses a target whose class rests on information DeviceSide
+  `harms`, no known method or not built yet alike, refuses a target whose class rests on information DeviceSide
   doesn't have yet, even with Experimental features on: a group whose membership isn't listed, or a device not yet
   placed (its identifying strings haven't been received, so they could still move it into a harmed class). A
   target DeviceSide can't class at all is refused the same way. A group with a member not yet placed falls back to
@@ -215,10 +217,11 @@ A refused target raises when named and is skipped when it came indirectly, as `s
 - A different gateway or API is a separate integration, with a `detect` hook on the same `ha_domain`, as Zigbee2MQTT is
   beside MQTT.
 - A different device behind the same API is a class.
-- A class that needs a different payload is a branch inside the adapter (`AdapterScope.own_calls`), so a native group
-  with a member of it falls back to its members.
+- A class that needs a different payload gets a call of its own: an `OwnCall` in `AdapterScope.own_calls`, which the
+  dispatcher hands the adapter (`Adapter.execute_own`) in place of `execute`, so a native group with a member of it
+  falls back to its members.
 - An adapter splits only when a class needs a different result contract. A different duration limit is a per-class
-  setting first (the branch's own `DurationLimits`).
+  setting first (the `OwnCall`'s own `DurationLimits`).
 
 No matcher, per-class setting or card tier is built before an integration needs it (tenet 6): Zigbee2MQTT, the most
 varied integration, sets the bar. Classes match on manufacturer and model until a firmware boundary decides behavior.
@@ -243,10 +246,10 @@ checks that evidence exists, not that it suffices (tenet 7), and it applies to i
 (and the countdown plugs' below), and only Hue bulbs in its records, `turn_on_for` can be Verified on `hue` alone; on
 `other` it is `experimental(...)`, so an IKEA or Innr bulb runs only with Experimental features on. A record on an IKEA
 bulb adds an `ikea` class, Verified on its own evidence, and `other` stays as it is. The Tuya classes, which Tuya's own
-countdown call drives but the Zigbee timer leaves on (Zigbee2MQTT turns it into a plain on), are not yet supported, with
+countdown call drives but the Zigbee timer leaves on (Zigbee2MQTT turns it into a plain on), are not built yet, with
 `harms`, until the countdown call is built for them; the TS011F plugs it is built for take it as `tuya_countdown`,
 Experimental, and each maker string with a record of its own as its own class, Verified, so the check asks each string
-for its record; the Sengled, which ignores today's call, needs a call that isn't built, so it is not yet supported too,
+for its record; the Sengled, which ignores today's call, needs a call that isn't built, so it is not built yet too,
 with no entry, as today's call leaves it unharmed.
 
 ## The experimental flag
@@ -264,7 +267,8 @@ few rig cases before the full suite exists, so a flagged item may have passing r
 `experimental(...)` into `verified(...)`, or drops `experimental=True`; a flagged item that qualifies as Documented
 becomes `documented(...)` in a PR that argues the sibling case ([Levels](#levels)). Lifting a flag is a change to the
 integration's package, so one of its maintainers approves it, as for any change there
-([CLAUDE.md](../CLAUDE.md#maintainers)).
+([CLAUDE.md](../CLAUDE.md#maintainers)). A [family](design.md#glossary)'s maintainers set their own classes' levels
+the same way, but change no refusal entry ([CLAUDE.md](../CLAUDE.md#maintainers)).
 
 For an item no maintainer can test, users' working reports can verify it through a maintainer's `_manual.json`
 sign-off, whose PR body cites them ([CLAUDE.md](../CLAUDE.md#where-facts-go): rule evidence goes in the PR body). The
@@ -304,7 +308,7 @@ none.
   and its records can land in the same PR.
 - **A record stands** while every package file changed since its run is another adapter's module (tenet 9). A change
   to its own adapter's module reopens it, and so does a change to a module that is no adapter's (a shared helper),
-  which may alter any action's call. A suite that is no action's (`lifecycle.json`) is reopened by any change to the
+  which may alter any action's call. A suite that is no action's (`config_entry.json`) is reopened by any change to the
   package, and a record whose tree the checkout doesn't have stands only if it is the release's. A reopened record
   needs its suite rerun, and no other; `check_release.py --signoffs --reruns` lists the suites. So an adapter's
   module never imports another adapter's: code two adapters share lives in a module that is neither's (a unit test
