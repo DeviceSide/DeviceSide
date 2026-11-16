@@ -144,9 +144,12 @@ light reads on, as a TS011F counts OnTime down while off.
 - `lower_brightness`: `MoveToLevel` to a limit; to 0 %, `MoveToLevelWithOnOff`, which leaves the bulb at level 1.
   1 s after the fade should end, OnOff is read and an off light gets `MoveToLevel` back to its starting level with
   `ExecuteIfOff`. A stop or a new brightness call cancels that restore.
-- Saturation: `MoveToColor` to the xy of each light's current hue at the end saturation. Group members at different
-  hues get one command each, so none takes another's hue; members at one hue share a groupcast. Hue instead fades
-  a room at the room's hue, as its `grouped_light` write carries one color.
+- Saturation: `MoveToSaturation` to the end saturation on a light whose ColorCapabilities (read as for hue, below)
+  report hue and saturation and that shows a color (`hs` or `xy`), as a `MoveToColor` fade's stop visibly jumps
+  (Tested behavior). It carries no hue, so each bulb keeps its own and a group's members share one groupcast. A light
+  without hue and saturation, or in color temperature (its stored hue may be stale, untested), gets `MoveToColor` to
+  the xy of its current hue at the end saturation, one command each. Hue instead fades a room at the room's hue, as
+  its `grouped_light` write carries one color.
 - Hue: `EnhancedMoveHue` at `65535 / sweep_time` steps per second; a light without enhanced hue in
   ColorCapabilities (zigpy's cache, else one live read) gets `fields_dropped`, and a read that fails rejects the
   move with `error`.
@@ -182,9 +185,12 @@ Color fades, on a Philips Hue A60 (LCA016, firmware 1.164.2): `MoveToColor` runs
 saturation, not along a straight xy line, so a saturation fade toward white swings the hue (136° to 100° in 2.5 s of
 a 9 s fade). `StopMoveStep` halts on that path, and the reads hold after it; the same on Zigbee2MQTT. Probe:
 [research/2026-11-13-a60-color-fade-path.md](research/2026-11-13-a60-color-fade-path.md). Watched, the stop of that
-saturation fade still shows as a jump in saturation, on ZHA and Zigbee2MQTT, though the reads have none: the bulb
-renders the fade unlike the state it reports. Cause not yet known:
-[research/2026-11-13-a60-stop-jump-watched.md](research/2026-11-13-a60-stop-jump-watched.md).
+saturation fade shows as a jump in saturation, on ZHA and Zigbee2MQTT, though the reads have none: the bulb renders
+the fade unlike the state it reports
+([research/2026-11-13-a60-stop-jump-watched.md](research/2026-11-13-a60-stop-jump-watched.md)). A `MoveToSaturation`
+fade halted the same way looked closest to smooth, staying at its hue, with a small step back at the halt left as is;
+halting the `MoveToColor` fade at its straight-line xy, as Hue does, also left a small step:
+[research/2026-11-15-a60-stop-halt-probe.md](research/2026-11-15-a60-stop-halt-probe.md).
 
 Timers, on a Philips Hue LTA004 (firmware `0x01001416`, Home Assistant 2026.10.2). Firmware decides this, so other
 devices may differ.

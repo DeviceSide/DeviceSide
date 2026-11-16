@@ -124,8 +124,8 @@ Doesn't work (generated from `doesnt_work`). `devices.yaml` keeps `column`, `col
 - **Decisions the plan doesn't settle go to Jason**, asked directly, and are recorded below as they are made.
 - **The rig:** the lab profile is available every step. It has the Hue bulbs on Hue, ZHA and Z2M, the TS011F plug and
   the Matter WiZ plug, and can take a Sengled bulb or the Shelly color bulb when needed. The house profile, which
-  has the Shelly switch devices, is a day or two away. Each lab run is also that integration's v0.1.0 sign-off if its
-  package doesn't change afterward. The A60, the Sengled E11-G13 (the "ZHA bulb", paired on ZHA) and the Shelly color
+  has the Shelly switch devices, is a day or two away. No step waits on a run: each integration runs once, after the stack lands
+  (Decision 89; The runs). The A60, the Sengled E11-G13 (the "ZHA bulb", paired on ZHA) and the Shelly color
   bulb share one lab fixture and are swapped by hand, so each lab run names which bulb goes in the fixture and on which
   network.
 
@@ -174,7 +174,7 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      cache's `bridge/groups`, so a group takes its members' classes and falls back to them (Decision 10).
    - **The default class in code (Decision 5):** an `IntegrationInfo` field naming the default class, which the
      registry refuses at Verified in any scope.
-   - **Lab run** on the branch tip. It tests the classifier, the column, the coverage check, Works credited per
+   - **Lab run,** once the stack is on `main` (Decision 89). It tests the classifier, the column, the coverage check, Works credited per
      class, and the refusals. Fixture: the A60 on Z2M. The Sengled sits it out (Decision 77): no gate needs it, as
      its classes are flagged or not yet supported.
    - **Part 1, done** (`claude/device-classes-5-z2m`): everything that needs no probe string. The classifier
@@ -209,8 +209,8 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
        Sengled.
      - **Restore the class names** in `docs/evidence.md` (Device classes, and the coverage check's example) and
        `docs/design.md` (glossary, Class) once the Tuya classes land: they name only `hue` and `other` until then.
-     - **TODO and the rerun:** tick step 5 in `TODO.md`, and the lab run below, which restores the card's Works
-       line and clears the ten coverage warnings.
+     - **TODO and the run:** tick step 5 in `TODO.md` when its PR merges (Decision 89); the Zigbee2MQTT run (The
+       runs) restores the card's Works line and clears the ten coverage warnings.
    - **Part 2, built** (`claude/device-classes-5-z2m`), the lab run pending. The TS011F's `doesnt_work` is keyed by
      a class of its own, `tuya_ts011f`, as `tuya_zcl` stays not supported on `turn_on_for` and a scope entry is per
      class. `other` is Documented on `raise_brightness`, `lower_brightness` and `stop`, and `experimental(...)` on the
@@ -320,8 +320,7 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
        class and its test's domain hold; a null-class one is on no row.
      - Checks: a `pass` record may hold no failing test (the schema); every model any test-records file names, in
        any test, must be in `docs/models.yaml` (`gen_compat.check_models`); dotfiles in `test-records/` are ignored.
-6. **Core fix-ups** from step 5's run, before ZHA and Hue copy the pattern. If a package changes, its lab run is
-   repeated.
+6. **Core fix-ups** from step 5's run, before ZHA and Hue copy the pattern.
    - **The harm rule moves to core (Decision 26):** a `harms` flag on `DoesntWork`, and the classifier answering
      `None` for "can't place yet"; the dispatcher then refuses `class_unknown` for an adapter whose scope holds a
      `harms` entry, and Z2M's `supports()` check goes.
@@ -338,8 +337,8 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
      entries set `harms`; Z2M's `capability` answers `Unplaced` by round 3's rule (`classes.placed`), and
      `turn_on_for`'s `supports()` check is gone. A group with a member not yet placed falls back through core's
      existing fallback; one of unknown membership is refused whole. `capability` no longer takes `hass=None`.
-     Z2M's package changed (the group fallback is its one behavior change), so step 5's pending lab run, on this
-     branch's tip or later, covers it.
+     Z2M's package changed (the group fallback is its one behavior change); the Zigbee2MQTT run covers it (The
+     runs).
    - **Step 6's review round** (Decisions 28 to 33): a response leaves out an `Unplaced` class; `DoesntWork.harms`
      has no default; the dispatcher's `Classes` keeps each member's class undeduplicated, as `Unplaced` equals its
      class; Z2M's `capability` reads bridge/devices once and logs at DEBUG what an unplaced device waits for.
@@ -433,8 +432,7 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
    rig on the real call (Decision 75). Until #436 applies Decision 75, Matter's `turn_on_for` still shows
    Documented on the cards.
 10. **Close out.**
-    - The house run: Shelly's switch devices, plus the color bulb unless it already ran in the lab.
-    - Repeat any run on the list below.
+    - The runs, below.
     - Remove `models.yaml`'s shared entries (step 7 moves its last, ZHA's TS011F `not_supported`, into ZHA's code),
       regenerate the README, and tick TODO.
     - Then, with Jason's go-ahead, comment on #350: the classes it will need to leave `experimental`, and what its
@@ -766,9 +764,24 @@ whatever their order.
 Results go in a dated research file, `zigbee2mqtt/research/<date>-tuya-countdown-probe.md`, and the facts in the Z2M
 `internals.md`.
 
-### Runs to repeat
+### The runs
 
-A package changed after its lab run needs that run again before the release. None yet.
+One run per integration, on `main` once the stack is in (Decision 89). Each is that integration's v0.1.0 sign-off
+(`TODO.md`, Sign-offs, which lists the watched cases). What each carries beyond its suite:
+
+- **Zigbee2MQTT** (lab): the A60 on Z2M. It tests the classifier, the class in each result, the coverage check, Works
+  credited per class, the refusals and the group fallback. Part 3's plugs join it: the Tuya variants Jason picks just
+  before the run, each maker string with its own test (Decisions 77 and 88).
+- **ZHA** (lab), without the Sengled (Decision 77).
+- **Hue** (lab), without the Sengled.
+- **Matter** (lab): the WiZ plug, on the real `turn_on_for` call (Decision 75).
+- **Shelly** (house): its switch devices, plus the color bulb unless it ran in the lab.
+- **Control4:** no run; skialpine's `_manual.json` row (Decision 77).
+
+A run that fails a class flags the class or lists it as not yet supported, in the PR that holds the finding. The fix
+then reruns the cases it exercises, not the suite (`docs/evidence.md`, tenet 9); until the release gate takes a partial
+rerun (`TODO.md`, Partial reruns), a package changed after its run still needs the whole run again, so fixes to one
+package land together before its rerun.
 
 ## Deferred until something needs it
 
@@ -920,7 +933,8 @@ A package changed after its lab run needs that run again before the release. Non
     ([action-behavior.md](../action-behavior.md#what-a-response-looks-like)).
 30. **`DoesntWork.harms` is a required keyword with no default.** Every entry states whether its call harms, by
     Decision 33's test.
-31. **Step 6 stays unticked in TODO** until step 5's lab run on this branch's tip or later.
+31. **Step 6 stays unticked in TODO** until step 5's lab run on this branch's tip or later. *Superseded by Decision
+    89:* ticked when its PR merges.
 32. **Hue v1 bridges are never supported.** The research
     ([2026-11-14-v1-api.md](../integrations/hue/research/2026-11-14-v1-api.md)) found that v1 can do only a degraded
     brightness raise, lower and stop: it can't write to an off light, has no push updates, and Signify ended its
@@ -1170,20 +1184,29 @@ Numbered from 36; step 9 numbers from 46, so these renumber at merge if needed.
     - **The rig carries no public or private label** in either repo's docs: the rules it serves (no rig code here,
       no household details there) hold either way, and a label goes stale (CLAUDE.md, Decision 76).
 
+## Decisions (Jason, 2026-11-16, runs and landing)
+
+89. **No step waits on a rig run; each integration runs once, after the stack lands** (`docs/evidence.md`, tenets 8
+    and 9). Merging a step takes no decision a run's result would change: every class a step adds is flagged, not yet
+    supported, or held as Verified with the coverage check failing at `cut-release` until a record reaches it. So a
+    step is ticked when its PR merges, and the runs the steps named move to The runs, each its integration's v0.1.0
+    sign-off. On `main` a class may read Verified before its record exists; no release can ship it so. This
+    supersedes "Lab run on the branch tip" in steps 5 to 9, step 6's "If a package changes, its lab run is repeated",
+    Decision 31, and Runs to repeat; under Decisions 15 and 38 the cards' Works lines stay lost on `main` until the
+    runs. No foundation run comes first (tenet 8): steps 7 to 9 are already built on step 5's pattern, so no result
+    would change what is built next. The probes stay before their builds, as each decided a design (step 3, and part
+    3's countdown probe).
+90. **The stack lands as five squash-merged PRs, along the seams that revert alone:** #431 (steps 1 to 6: core,
+    Zigbee2MQTT, the records), then #439 (ZHA: steps 7, 7a and 7b), #441 (step 5 part 3 and the stand-in fallback),
+    #432 (Hue) and #436 (Matter). #431 is the foundation, and doesn't revert alone. The drafts they hold (#428, #429,
+    #430, #435, #438, #440) close unmerged. This replaces Execution's one PR per step.
+
 ## Handoff
 
-2026-11-14, step 3 done. Branch `wt/device-classes-3`, worktree `deviceside-wt/device-classes-3`, PR #423.
+2026-11-16. Steps 1 to 9 are built on the five branches Decision 90 names, and land in its order.
 
-**Done:** the lab probe, written up in `docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md` and
-`docs/integrations/hue/research/2026-11-14-lab-probe-hue.md`, with the facts in `docs/internals.md`, each bundle's
-`internals.md` and `docs/models.yaml`; Decisions 16 and 17 (numbered 8 and 9 on that branch); the step's plan review (in
-its last commit).
-
-**Next:** merged into step 5's branch after steps 4 and 5 part 1; step 5 part 2 follows.
+**Next:** the runs (The runs), then step 10.
 
 **Open:**
-- The Sengled is in the house profile, which is out of bounds until Monday 2026-11-16, so it can't join step 5's lab
-  run until it's back in the lab. Its return to the lab ZHA group is unconfirmed: a group-add call timed out and
-  wasn't checked. Jason checks the group's members before the next ZHA group case. Working notes: the gitignored
-  `notes/lab-probe-2026-11-14/`.
-- Step 5's open question (above) is Jason's call.
+- The Sengled's return to the lab ZHA group is unconfirmed: a group-add call timed out and wasn't checked. Jason
+  checks the group's members before the next ZHA group case.

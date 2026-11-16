@@ -35,8 +35,10 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
     docstring's CLAUDE.md citations and CLAUDE.md's Layout line on release checks.
   - [x] 5. Cards: `gen_compat.py` tiers for two levels, the flag and caveats, and the docstring's CLAUDE.md citations.
   - [x] 6. Sign-offs by the Package tree records cite, not commit ancestry, so a run on a PR branch counts (#408).
-- [ ] **Device classes**, one PR per step of the [plan](docs/plans/2026-11-14-device-classes.md), before the
-  sign-offs below, as it moves non-Hue bulbs on Zigbee2MQTT, ZHA and Hue behind `experimental`:
+- [ ] **Device classes**, by the [plan](docs/plans/2026-11-14-device-classes.md), in five PRs (its Decision 90),
+  before the sign-offs below, as it moves non-Hue bulbs on Zigbee2MQTT, ZHA and Hue behind `experimental`. A step is
+  ticked when its PR merges; no step waits on a rig run, and each integration runs once, as its sign-off below (plan
+  Decision 89; `docs/evidence.md`, tenet 8):
   - [x] 1. Rules and design, docs only (`docs/evidence.md`, `docs/design.md`).
   - [ ] 2. Rig (ha-rig): the records' Capability column (its format in `docs/evidence.md`, and `gen_compat`'s parser
     taking it, land in DeviceSide alongside); the rig reads the class from each result (the second rig change, given
@@ -51,27 +53,26 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
     column's "until that lands" clause; the class in each result (plan Decision 6); `other` never Verified
     (Decision 5).
   - [ ] 5. Zigbee2MQTT classes, after the TS011F probe and the Tuya detection probe; the first default class, so
-    `docs/device-compatibility.md` regains "and so does a device DeviceSide can't place in a known class"; rig rerun.
+    `docs/device-compatibility.md` regains "and so does a device DeviceSide can't place in a known class".
     Built on `claude/device-classes-5-z2m` (classes `hue`, `tuya_zcl`, `tuya_ts011f`, `tuya_mcu`, `sengled`,
     `gledopto`, `other`; the Tuya classes not yet supported on `turn_on_for`, with `harms`, which refuses unknown
-    (step 6); `other` Documented on brightness fades and stop). Open until the lab run on the branch tip, which
-    restores the card's Works line and clears the coverage warnings; the Sengled sits it out, as no gate needs it
-    (its classes are flagged or not yet supported). Part 3, the TS011F countdown (plan Decision 72), stays in v0.1.0,
-    built after Jason's countdown probe.
+    (step 6); `other` Documented on brightness fades and stop). Parts 1 and 2 landed with #431; its sign-off run
+    restores the card's Works line and clears the coverage warnings. Open until part 3, the TS011F countdown (plan
+    Decision 72), lands with #441.
   - [x] 5b. Test records as JSON, format 2 (`docs/test-records.schema.json`): a device per test with its class,
     validated in CI; the markdown records converted to format 1, which `check_release --signoffs` rejects; the
     rig's paired change writes format 2.
-  - [ ] 6. Core fix-ups from step 5's run. Built on `claude/device-classes-6-core`: the harm rule in core
+  - [x] 6. Core fix-ups. The harm rule in core
     (`DoesntWork.harms`, `Unplaced`), and a group with a member not yet placed falling back to its members; v0.1.0's
     scope (plan Decisions 70 to 76): the two labels redefined, `NotSupported.harms`, and the Z2M Tuya classes re-sorted
-    as not yet supported. Open until step 5's lab run on this branch's tip or later.
-  - [ ] 7. ZHA classes; rig rerun. Built on `claude/device-classes-7-zha`; open until its lab run.
+    as not yet supported.
+  - [x] 7. ZHA classes (#439).
   - [x] 7a. Units groundwork (plan Decision 69): the report form's Zigbee manufacturer string, ZHA's OnTime
     read-back in `turn_on_for`'s DEBUG line, and the mined converter seed list
     ([research](docs/integrations/zigbee2mqtt/research/2026-11-15-converter-seed-list.md), Decision 78).
   - [ ] 8. Hue classes, the `smart_scene` check moved to them, and the v1 bridge refused as a separate integration
-    (plan Decision 32); rig rerun.
-  - [ ] 9. Matter classes; manual or rig sign-off.
+    (plan Decision 32).
+  - [ ] 9. Matter classes.
   - [ ] 10. Close out: `models.yaml`'s shared entries removed (step 7 moves ZHA's TS011F, its last, into ZHA's code),
     README regenerated, then the #350 comment.
 - [ ] **TS011F refusal on ZHA and Z2M** (device-classes plan, Decisions 16 and 70): a not yet supported entry with
@@ -98,6 +99,12 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
     records are format 1, with no class per test; no release is cut before its house rerun.
   - [ ] ZHA
   - [ ] Zigbee2MQTT
+- [ ] **Partial reruns** (`docs/evidence.md`, tenet 9), after the device-classes stack, which rewrites the records
+  the gate reads: `check_release.py --signoffs` judges each action's record by its own package tree, which stands
+  while only other adapters' modules changed since; a `no_call_changed` row may name the actions it vouches for,
+  keeping their records through a shared-helper change; `--json` lists actions, for the rig's run selection (its
+  paired change). Then tenet 9's "until the gate takes a partial rerun" sentence goes, and the Release gate and
+  Sign-off format sections, `docs/design.md`'s Sign-off entry and CONTRIBUTING's Sign-offs line say the same.
 - [ ] **Release notes**: hand-written v0.1.0 notes in `notes/`, signed off by the repo maintainers, after the RC
   installs cleanly and before `cut-release`, so they describe what the RC ships.
 - [ ] **v0.1.0**: `/rc-audit` over the new range, the RC and its HACS install, then `cut-release` with every
