@@ -36,6 +36,35 @@ device classes in [the device-classes plan](plans/2026-11-14-device-classes.md).
    user-visible failure it prevents and what it replaces.
 7. **Maintainers judge sufficiency.** Tooling records evidence, and maintainers decide what's enough. Gates check that a
    sign-off exists, not how thorough it was.
+8. **Test to decide.** Every hardware run costs time and needs a person at hand, even one nobody watches, so run one
+   only when its result takes a decision. Five decisions do:
+   - *a design choice:* tenet 2's probe, before the build. A call already seen working on the device (your own
+     automation, an upstream integration that ships it, a research file recording a run) needs none: cite it in
+     the bundle's `internals.md`. A vendor's document alone still needs the probe;
+   - *a foundation:* before further steps build on a design no verified fact covers, one run of the rig cases whose
+     failure would discard that work;
+   - *lifting a flag* ([the experimental flag](#the-experimental-flag));
+   - *a surprise:* the run that root-causes it (tenet 4);
+   - *a release:* the sign-off, due before the last RC, or the one that clears a caveat ([release gate](#release-gate)).
+
+   Run a test at the last point that can still take its decision. For a device the rig or a maintainer can reach,
+   that is the release's run, so merging a PR waits for none: unit tests pin the call, a new item starts flagged, the
+   gate runs at the cut, and the code may change again before then. For a contributor's own devices, it is their pull
+   request, as no later run is sure to reach them: one test of the finished build, at the commit whose calls ship
+   ([CONTRIBUTING](../CONTRIBUTING.md), Fast track). It shows the build works, which a maintainer needs to merge it
+   and, later, to lift its flag. A plan gates a step on a run only by naming the decision its result takes. This
+   prevents a release held up by runs whose results changed nothing, and replaces the practice of a rig run per step
+   or per PR.
+9. **Retest what the change exercises.** After a run, a change reopens only the rig cases whose call, or whose
+   handling of the device's reply, it changes (tenet 5). A change that alters neither reopens none, and a maintainer
+   says so with a `no_call_changed` row ([sign-off format](#sign-off-format)). A fix for a failing case reopens that
+   case, not its suite. This prevents the same passing cases being rerun at each small change. Not yet in the gate:
+   until it takes a partial rerun (`TODO.md`, Partial reruns), a rig sign-off is one whole run at the release's
+   package, so changes to a package land together before its run; the whole-run rule goes when the gate changes.
+
+*Example (tenets 8 and 9):* after Zigbee2MQTT's run, a refactor of a shared helper lands, and its unit tests show
+every call and reply path unchanged: a `no_call_changed` row signs off in the run's place. A fix to `stop`'s call
+lands next. Tenet 9 reopens only `stop`'s cases; today's gate still needs the whole run at the fixed package.
 
 *Example (tenets 4 and 5):* the rig found that a Tuya TS011F plug doesn't run the Zigbee timed-on timer it is given.
 That reopened "a Zigbee switch takes the light's timed-on call", so the `switch` domain stays untested on ZHA
@@ -309,8 +338,8 @@ and which gives each field. The rules it serves:
 - **Format 1** is a markdown record converted once (device-classes plan, step 5b): the run's devices sit on the record,
   not on each test. It credits the cards as the markdown did, and is no sign-off; a rerun replaces it with format 2.
 - **`_manual.json`**: a maintainer's hand tests, a row each, added in a PR: each device a model id (never a household's
-  device name) with the class it reached, and the actions that passed on all of them. A change that sends no new call
-  signs off with a `no_call_changed` row instead.
+  device name) with the class it reached, and the actions that passed on all of them. A change that alters neither a
+  call nor the handling of a device's reply (tenet 9) signs off with a `no_call_changed` row instead.
 - **`_facts.json`**: the fact cases' results, a row each, only ever added. A row converted from markdown says so and
   has no class.
 
