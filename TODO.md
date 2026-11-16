@@ -120,7 +120,7 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   `cycles_down_the_wheel[group_color]` (#222). In this order; a fix a run finds reruns only the suites it reopens
   (`--reruns`):
   - [x] Hue: the lab run at `bc27094`, landed with #432.
-  - [ ] ZHA
+  - [x] ZHA: the lab_zha run, #467.
   - [x] Zigbee2MQTT, run A: every suite but `turn_on_for`, `get_attributes` and `config_entry`, with the watched A60 cases.
     A record is one run of one suite, so the split falls between suites. Suites landed with #465; the watched cases'
     rows are in `_facts.json` (2026-11-13, and `halts_brightness_and_saturation` 2026-11-16 with #443, its slight

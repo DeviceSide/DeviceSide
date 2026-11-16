@@ -1,79 +1,118 @@
 {
-  "format": 1,
+  "format": 2,
   "integration": "zha",
   "action": "lower_brightness",
   "result": "pass",
-  "date": "2026-11-08",
+  "date": "2026-11-16",
   "source": {
     "kind": "rig",
-    "commit": "8aae106"
+    "commit": "687d369d"
   },
+  "package": "58496e69e867",
   "home_assistant": "2026.10.4",
-  "devices": [
-    {
-      "model": "LTA009",
-      "firmware": "0x01002a00"
-    },
-    {
-      "name": "ZBDongle-E",
-      "firmware": null,
-      "group": true
-    }
-  ],
   "tests": [
     {
       "id": "lower_to_off[light_ct]",
       "domain": "light",
       "role": "light_ct",
-      "result": "pass"
+      "result": "pass",
+      "devices": [
+        {
+          "model": "LTA009",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "0x01002a00",
+          "class": "hue"
+        }
+      ]
     },
     {
       "id": "lower_to_off[group]",
       "domain": "light",
       "role": "group",
-      "result": "pass"
+      "result": "pass",
+      "group": true,
+      "devices": [
+        {
+          "model": "LWA012",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "0x01002a00",
+          "class": "hue"
+        },
+        {
+          "model": "LTA009",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "0x01002a00",
+          "class": "hue"
+        }
+      ]
     },
     {
       "id": "soft_off_keeps_level[light_ct]",
-      "domain": "light",
       "role": "light_ct",
-      "result": "pass"
+      "result": "skipped",
+      "fact": true
     },
     {
       "id": "soft_off_keeps_level[group]",
-      "domain": "light",
       "role": "group",
-      "result": "pass"
+      "result": "skipped",
+      "fact": true
     },
     {
       "id": "lower_to_a_limit[light_ct]",
       "domain": "light",
       "role": "light_ct",
-      "result": "pass"
+      "result": "pass",
+      "devices": [
+        {
+          "model": "LTA009",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "0x01002a00",
+          "class": "hue"
+        }
+      ]
     },
     {
       "id": "lower_to_a_limit[group]",
       "domain": "light",
       "role": "group",
-      "result": "pass"
-    },
-    {
-      "id": "lower_stop_lower[light_ct]",
-      "domain": "light",
-      "role": "light_ct",
-      "result": "pass"
-    },
-    {
-      "id": "lower_stop_lower[group]",
-      "domain": "light",
-      "role": "group",
-      "result": "pass"
+      "result": "pass",
+      "group": true,
+      "devices": [
+        {
+          "model": "LWA012",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "0x01002a00",
+          "class": "hue"
+        },
+        {
+          "model": "LTA009",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "0x01002a00",
+          "class": "hue"
+        }
+      ]
     },
     {
       "id": "light_raised_mid_room_lower[group]",
       "domain": "light",
       "role": "group",
-      "result": "pass"
+      "result": "pass",
+      "group": true,
+      "devices": [
+        {
+          "model": "LWA012",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "0x01002a00",
+          "class": "hue"
+        },
+        {
+          "model": "LTA009",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "0x01002a00",
+          "class": "hue"
+        }
+      ]
     }
   ]
 }

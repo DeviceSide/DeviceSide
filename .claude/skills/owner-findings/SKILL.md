@@ -1,6 +1,6 @@
 ---
 name: owner-findings
-description: Route an audit's findings to the maintainers of the code they're in, amending the report and drafting one issue per owner group. Use after any audit-code report in this repo, including the one rc-audit writes, or when asked whose code an audit's findings are in.
+description: Route an audit's findings to the maintainers of the code they're in, amending the report and drafting one issue per owner group with a Critical or High. Use after any audit-code report in this repo, including the one rc-audit writes, or when asked whose code an audit's findings are in.
 ---
 
 Arguments: optionally the report (a path such as `docs/audits/<rc>.md`, else the audit report just produced in this
@@ -24,8 +24,10 @@ else's code"). This skill reads the report and amends it; it never edits code.
      runner's own code;
    - right after the verdict, a section **In code you don't maintain**: one entry per owner group, its `package`, its
      handles (`direct`, then `enclosing`, the integration's), and its finding ids. Leave it out when there are none;
-   - the fix batches drop those findings; each owner group gets a drafted issue instead.
-4. **Draft one issue per owner group:** a title naming the `package` and the audit; each finding with its `file:line`,
+   - the fix batches drop those findings; each owner group with a Critical or High gets a drafted issue instead.
+     Mediums and Lows stay in the report alone: no issue, no fix, until one bites someone.
+4. **Draft one issue per owner group with a Critical or High:** a title naming the `package` and the audit; each
+   Critical and High with its `file:line`,
    severity and the fix the audit proposed; the labels and assignees from
    `.venv/bin/python scripts/owners.py --rev <base> [--as <login>] --issue <that group's paths>` (`--as` left out as
    in step 2). Show the drafts. File
@@ -41,8 +43,7 @@ else's code"). This skill reads the report and amends it; it never edits code.
    - **waived:** `status: waived` with the runner's reason, in their words.
 
    Write `owner: <slug>` (the row's `owner`) on each such finding in the frontmatter, and each finding's choice in the
-   current pass's prose. The group's Mediums and Lows go in its issue, except one the runner's Critical or High fix
-   already touches (`rc-audit`, Then); a group with nothing left after the runner's fixes gets no issue. A shared-code
+   current pass's prose. A group whose every Critical and High the runner fixes or waives gets no issue. A shared-code
    group (`owner` is `""`) is the repo maintainers': write no `owner:` and ask no owner question for it, as
    `rc-audit`'s own fix-or-waive decision covers it.
 6. **Report** what changed: the owner groups, the choices, and the issues filed or still drafted.
