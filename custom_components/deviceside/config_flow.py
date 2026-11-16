@@ -91,7 +91,7 @@ def _integration(hass: HomeAssistant, entry: er.RegistryEntry, device: dr.Device
         return entry.platform
     if not isinstance(target := resolve(hass, runtime.registry, entry.entity_id), str):
         return target.integration
-    for info in runtime.registry.integrations.values():
+    for info in (*runtime.registry.integrations.values(), *runtime.registry.unsupported.values()):
         if info.ha_domain == entry.platform and info.detect is not None and info.detect(hass, entry, device):
             return info.key
     return entry.platform

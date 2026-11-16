@@ -9,8 +9,8 @@ from homeassistant.util.color import color_hs_to_xy, color_xy_to_hs
 from custom_components.deviceside.core.transition import BRIGHTNESS, SATURATION
 from custom_components.deviceside.integrations.hue.transition_cache import transition_cache
 
-from .conftest import SENT, STOP, color_lamp, color_room, hs_xy, lamp, mixed_room, report_off, room, xy_halt
-from ...conftest import call, refusal, result, sent
+from .conftest import SENT, STOP, call, color_lamp, color_room, hs_xy, lamp, mixed_room, report_off, room, xy_halt
+from ...conftest import refusal, result, sent
 
 pytestmark = pytest.mark.usefixtures("setup_production")
 

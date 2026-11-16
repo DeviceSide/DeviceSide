@@ -1,50 +1,73 @@
 {
-  "format": 1,
+  "format": 2,
   "integration": "hue",
   "action": "raise_saturation",
   "result": "pass",
-  "date": "2026-11-08",
+  "date": "2026-11-15",
   "source": {
     "kind": "rig",
-    "commit": "8aae106"
+    "commit": "bc270947"
   },
+  "package": "d34542a499d6",
   "home_assistant": "2026.10.4",
-  "devices": [
-    {
-      "model": "LCA016",
-      "name": "Hue Essential lamp",
-      "firmware": "1.164.2"
-    },
-    {
-      "name": "Zone",
-      "firmware": null,
-      "group": true
-    }
-  ],
   "tests": [
     {
       "id": "saturation_to_a_limit[light_color]",
       "domain": "light",
       "role": "light_color",
-      "result": "pass"
+      "result": "pass",
+      "devices": [
+        {
+          "model": "LCA016",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.164.2",
+          "class": "hue"
+        }
+      ]
     },
     {
       "id": "saturation_to_a_limit[group_color]",
       "domain": "light",
       "role": "group_color",
-      "result": "pass"
+      "result": "pass",
+      "group": true,
+      "devices": [
+        {
+          "model": "LCA016",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.164.2",
+          "class": "hue"
+        }
+      ]
     },
     {
       "id": "saturation_stop_raise[light_color]",
       "domain": "light",
       "role": "light_color",
-      "result": "pass"
+      "result": "pass",
+      "devices": [
+        {
+          "model": "LCA016",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.164.2",
+          "class": "hue"
+        }
+      ]
     },
     {
       "id": "saturation_stop_raise[group_color]",
       "domain": "light",
       "role": "group_color",
-      "result": "pass"
+      "result": "pass",
+      "group": true,
+      "devices": [
+        {
+          "model": "LCA016",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.164.2",
+          "class": "hue"
+        }
+      ]
     }
   ]
 }

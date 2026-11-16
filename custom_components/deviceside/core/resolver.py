@@ -18,7 +18,9 @@ def resolve(
 ) -> Target | str:
     """The Target for an entity, or the reason key it cannot be served.
 
-    Integrations with a detect hook are tried first, so Z2M takes its MQTT entities before a generic MQTT integration.
+    Integrations with a detect hook are tried first, so Z2M takes its MQTT entities before a generic MQTT integration,
+    and an unsupported one (IntegrationInfo.unsupported) the entities of the gateway it refuses, which the dispatcher
+    then refuses: Hue's v1 bridge.
     A switch_as_x wrapper resolves to the switch it wraps: it forwards on/off unchanged, so the switch's call is the
     one that reaches the device.
     """
@@ -27,9 +29,10 @@ def resolve(
         return "not_in_registry"
     if entry.platform == SWITCH_AS_X:
         return _resolve_wrapper(hass, registry, entry, via_group)
-    candidates = [info for info in registry.available_integrations() if info.ha_domain == entry.platform]
+    known = [*registry.available_integrations(), *registry.unsupported.values()]
+    candidates = [info for info in known if info.ha_domain == entry.platform]
     if not candidates:
-        return "integration_not_supported"
+        return Reason.INTEGRATION_NOT_SUPPORTED
     config_entry = hass.config_entries.async_get_entry(entry.config_entry_id) if entry.config_entry_id else None
     if config_entry is None or config_entry.state is not ConfigEntryState.LOADED:
         return Reason.INTEGRATION_NOT_LOADED
@@ -38,7 +41,7 @@ def resolve(
     detected = [info for info in candidates if info.detect is not None and info.detect(hass, entry, device)]
     generic = [info for info in candidates if info.detect is None]
     if not (chosen := (detected or generic)):
-        return "integration_not_supported"
+        return Reason.INTEGRATION_NOT_SUPPORTED
     integration = chosen[0]
 
     target = Target(

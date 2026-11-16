@@ -10,7 +10,14 @@ import pytest
 
 from custom_components.deviceside import actions
 from custom_components.deviceside.core.registry import AdapterRegistry
-from custom_components.deviceside.core.scope import DoesntWork, Level, NotSupported, experimental, verified
+from custom_components.deviceside.core.scope import (
+    DoesntWork,
+    IntegrationInfo,
+    Level,
+    NotSupported,
+    experimental,
+    verified,
+)
 
 from ..conftest import FAKE_INTEGRATIONS
 from ..fakes.fake_integration import ADAPTERS, INTEGRATION, FakeTurnOffFor, FakeTurnOnFor
@@ -227,3 +234,62 @@ def test_an_import_that_raises_anything_marks_the_integration_unavailable_and_lo
     assert "AttributeError" in info.unavailable_reason
     assert [record.levelno for record in caplog.records] == [logging.WARNING]
     assert caplog.records[0].exc_info is not None
+
+
+def _refused(**changes):
+    """An integration declared only to refuse a gateway on the fake's domain (IntegrationInfo.unsupported)."""
+    fields = {
+        "key": "fake_old",
+        "title": "Fake old gateway",
+        "ha_domain": INTEGRATION.ha_domain,
+        "maintainers": ("handle",),
+        "detect": lambda hass, entry, device: True,
+        "unsupported": "Old gateways aren't supported",
+    }
+    return IntegrationInfo(**(fields | changes))
+
+
+def _with_unsupported(*refused) -> AdapterRegistry:
+    module = SimpleNamespace(INTEGRATION=INTEGRATION, ADAPTERS=ADAPTERS, UNSUPPORTED=list(refused))
+    return AdapterRegistry(actions.discover(), [module])
+
+
+def test_an_unsupported_integration_is_kept_apart_from_the_integrations():
+    # The cards, the release gate and CODEOWNERS read `integrations`; the refused one has nothing for them.
+    registry = _with_unsupported(_refused())
+
+    assert list(registry.unsupported) == ["fake_old"]
+    assert "fake_old" not in registry.integrations
+    assert all(integration != "fake_old" for _, integration, _ in registry.matrix())
+
+
+@pytest.mark.parametrize(
+    ("changes", "error"),
+    [
+        pytest.param({"unsupported": ""}, "without a reason", id="no_reason"),
+        pytest.param({"detect": None}, "needs a detect hook", id="no_detect"),
+        pytest.param({"ha_domain": "elsewhere"}, "needs a detect hook", id="other_domain"),
+        pytest.param({"key": INTEGRATION.key}, "declared twice", id="its_siblings_key"),
+        pytest.param({"maintainers": ()}, "maintainers", id="no_maintainers"),
+    ],
+)
+def test_an_unsupported_integration_must_only_refuse(changes, error):
+    with pytest.raises(ValueError, match=error):
+        _with_unsupported(_refused(**changes))
+
+
+def test_an_unsupported_integration_is_declared_once():
+    with pytest.raises(ValueError, match="declared twice"):
+        _with_unsupported(_refused(), _refused())
+
+
+def test_an_integration_with_adapters_cant_be_unsupported():
+    with pytest.raises(ValueError, match="can't be unsupported"):
+        _registry(info=replace(INTEGRATION, unsupported="no"))
+
+
+def test_production_declares_the_hue_v1_bridge_unsupported():
+    registry = AdapterRegistry.discover()
+
+    assert list(registry.unsupported) == ["hue_v1"]
+    assert registry.unsupported["hue_v1"].ha_domain == registry.integrations["hue"].ha_domain

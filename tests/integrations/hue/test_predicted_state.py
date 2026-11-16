@@ -13,8 +13,8 @@ from custom_components.deviceside.core.transition import BRIGHTNESS, SATURATION
 from custom_components.deviceside.integrations.hue.report_filter import _END_PREFIX
 from custom_components.deviceside.integrations.hue.transition_cache import MIN_BRIGHTNESS_STEP, transition_cache
 
-from .conftest import light_event, setup_room
-from ...conftest import advance, call, wall_clock_now
+from .conftest import call, light_event, setup_room
+from ...conftest import advance, wall_clock_now
 from ...fixtures.hue import add_hue_entity, add_hue_group, hue_entry
 
 pytestmark = pytest.mark.usefixtures("setup_production")

@@ -12,7 +12,8 @@ from homeassistant.util.color import color_hs_to_xy, color_RGB_to_xy
 
 from custom_components.deviceside.integrations.hue import set_attributes as adapter
 
-from ...conftest import call, result, sent
+from .conftest import call
+from ...conftest import result, sent
 from ...fixtures.hue import add_hue_entity, add_hue_group, hue_entry
 
 pytestmark = pytest.mark.usefixtures("setup_production")

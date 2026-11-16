@@ -21,8 +21,7 @@ from custom_components.deviceside.integrations.hue.report_filter import (
 )
 from custom_components.deviceside.integrations.hue.transition_cache import API_SETTLE_SECONDS, transition_cache
 
-from .conftest import light_event, setup_room
-from ...conftest import call
+from .conftest import call, light_event, setup_room
 
 pytestmark = pytest.mark.usefixtures("setup_production")
 
@@ -216,12 +215,12 @@ def test_an_aiohue_without_the_private_handler_is_taken_to_apply_events_at_once(
     ],
 )
 async def test_a_light_call_from_ha_forgets_its_hue_lights(hass, bridge, cache, service_data, forgotten):
-    entry = await setup_room(hass, bridge)
+    await setup_room(hass, bridge)
     entities = er.async_get(hass)
     area = ar.async_get(hass).async_create("office")
-    entities.async_update_entity("light.two", area_id=area.id)
-    device = dr.async_get(hass).async_get_or_create(config_entry_id=entry.entry_id, identifiers={("hue", "one")})
-    entities.async_update_entity("light.one", device_id=device.id)
+    # An area of its own needs a name of its own, as the entity has a device (tests/fixtures/hue.py).
+    entities.async_update_entity("light.two", area_id=area.id, name="Two")
+    device = dr.async_get(hass).async_get(entities.async_get("light.one").device_id)
     entities.async_get_or_create("light", "demo", "other", suggested_object_id="other")
     async_mock_service(hass, "light", "turn_on")
     for light_id in ("one", "two"):

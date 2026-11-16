@@ -4,7 +4,7 @@
 column: Hue Bridge
 column_order: 4
 requires: Bridge v2/Pro
-doesnt_work:
-  - what: Hue smart scenes
-    reason: A smart (All-Day) scene changes with the time of day, so it has no fixed settings to write
-    source: https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/hue/index.md#flash-free-turn-on
+capabilities:
+  # The classes integrations/hue/classes.py names, but hue: Verified, it needs no phrase; smart_scene is a doesn't-work
+  # entry in code (DoesntWork), named by its own `what`.
+  other: {phrase: other brands, section: Other brands}

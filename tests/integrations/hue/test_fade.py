@@ -12,8 +12,8 @@ from custom_components.deviceside.integrations.hue.raise_brightness import HueRa
 from custom_components.deviceside.integrations.hue.raise_saturation import HueRaiseSaturation
 from custom_components.deviceside.integrations.hue.transition_cache import transition_cache
 
-from .conftest import fade_put, lamp, mixed_room, percent, room
-from ...conftest import call, refusal, result
+from .conftest import call, fade_put, lamp, mixed_room, percent, room
+from ...conftest import refusal, result
 from ...fixtures.hue import add_hue_entity, hue_entry
 
 pytestmark = pytest.mark.usefixtures("setup_production")

@@ -242,6 +242,10 @@ class Dispatcher:
                 missing.add(entity_id)
             elif isinstance(target, str):
                 results += _skip(entity_id, named, target)
+            elif refused := self.registry.unsupported.get(target.integration):
+                # A gateway or API DeviceSide never supports (Hue's v1 bridge): every action, with why.
+                why = refused.unsupported
+                results += _skip(entity_id, named, Reason.INTEGRATION_NOT_SUPPORTED, target.integration, why)
             elif target.domain not in action.domains:
                 results += _skip(entity_id, named, "domain_not_supported", target.integration)
             else:
