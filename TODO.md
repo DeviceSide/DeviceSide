@@ -194,8 +194,9 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   with evidence its failure happens):
   - Medium: the gate treats a catalog file new on a PR as its family's, so one stack's maintainer can open a catalog
     module alone. Fix shape: `package_of` returns None for a catalog path absent on the base branch.
-  - Low: Zigbee2MQTT's classification snapshot has no row on each side of the countdown / `tuya_ts011f` edge (a ZOT60
-    and a per-gang TS011F). Fix shape: two `DEVICES` rows.
+  - Medium: Zigbee2MQTT's classification snapshot has no row on each side of the countdown / `tuya_ts011f` edge (a
+    ZOT60 and a per-gang TS011F), so a Tuya family edit that moves one into `tuya_countdown` lifts a harm refusal
+    with only family tests to catch it. Fix shape: two `DEVICES` rows.
   - Low: CLAUDE.md doesn't list a new class or family among what a family maintainer can't merge alone (the gate
     already refuses both). Fix shape: name them in the Maintainers paragraph.
 - [x] **Code comments cite the bundles** (pre-run audit): each comment that cited `docs/integration-internals.md` or
