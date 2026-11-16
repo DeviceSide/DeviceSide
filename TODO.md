@@ -92,20 +92,33 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   so every integration's stand-ins: skip one with its class's refusal, or `not_addressable`, as an unaddressable
   member is. Fixed: the plug is skipped, named as a member device of the group, and a group with no other runnable
   member raises the plug's reason.
+- [ ] **Z2M saturation fade** (#443, #411): MoveToSaturation, as ZHA's #442, so a stop of a saturation fade doesn't
+  jump. Before the Zigbee2MQTT runs, which watch it (`saturation_down_stop`) and would reopen if it landed after.
+- [ ] **Family seam**, by its plan (`docs/plans/2026-11-16-family-seam.md`, landing with it): vendor families inside
+  Zigbee2MQTT and ZHA, each with its own maintainers, and the rename of the two not-supported kinds. Before the runs,
+  as it reshapes both Zigbee packages. The rename touches Hue's `classes.py` and `set_scene.py`, so its PR carries a
+  Hue `no_call_changed` row (no `actions`) rather than a Hue rerun.
+- [ ] **Pre-run audit**: `/rc-audit` over `b025363..HEAD`, its record replacing `docs/audits/v0.1.0rc1.md`, and its
+  fixes landed, so no run repeats for a fix the audit would have found. The RC's second pass covers what lands after.
 - [ ] **Sign-offs** for v0.1.0, one per integration changed since v0.0.1 (`check_release.py --signoffs`), each a rig run
   from ha-rig `main` (its records are format 2; format 1 records, converted from markdown, count for none). The runs for
   the formerly release-flagged adapters need these `--profile lab` cases, run watched, the A60 visiting each network:
   Hue `saturation_down_stop`, `halts_brightness_and_saturation` and `sets_color_while_off`; ZHA `hue_cycle_stop`,
   `saturation_down_stop` and `sets_color_while_off`; Z2M `halts_a_lower_to_off`, `hue_cycle_stop`,
   `saturation_down_stop` and `sets_color_while_off`. Unattended alongside: Z2M `lower_hue`
-  `cycles_down_the_wheel[group_color]` (#222).
-  - [ ] Control4: waits for skialpine's `_manual.json` row.
+  `cycles_down_the_wheel[group_color]` (#222). In this order; a fix a run finds reruns only the suites it reopens
+  (`--reruns`):
   - [x] Hue: the lab run at `bc27094`, landed with #432.
+  - [ ] ZHA
+  - [ ] Zigbee2MQTT, run A: every suite but `turn_on_for`, `get_attributes` and `lifecycle`, with the watched A60 cases.
+    A record is one run of one suite, so the split falls between suites. Needs ha-rig to run a chosen set of suites.
   - [ ] Matter
   - [ ] Shelly. Accepted until then: `check_release --signoffs` fails on Shelly's class coverage gaps, as its
     records are format 1, with no class per test; no release is cut before its house rerun.
-  - [ ] ZHA
-  - [ ] Zigbee2MQTT
+  - [ ] Zigbee2MQTT, run B: `turn_on_for` and `get_attributes` (the bulb, and part 3's plugs, one per maker string),
+    and `lifecycle`, which any package change reopens. No Zigbee2MQTT change between runs A and B.
+  - [ ] Control4: skialpine's `_manual.json` row, asked for once the runs' fixes have landed, so no fix sends
+    the contributor back to a first submission; it cites a `main` commit holding the release's Control4 package.
 - [x] **Partial reruns** (`docs/evidence.md`, tenet 9): `check_release.py --signoffs` judges each record by its own
   package tree, which stands while only other adapters' modules changed since; a `no_call_changed` row may name the
   `actions` whose records it carries across its commit's change; `--reruns` lists the suites to rerun. Open, in
@@ -113,10 +126,9 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   reopened suites.
 - [ ] **Release notes**: hand-written v0.1.0 notes in `notes/`, signed off by the repo maintainers, after the RC
   installs cleanly and before `cut-release`, so they describe what the RC ships.
-- [ ] **v0.1.0**: `/rc-audit` over the new range, the RC and its HACS install, then `cut-release` with every
-  integration signed off (`check_release.py --signoffs`). The release steps are in the `release` skill; the release
-  body gets the signed-off notes. Once the device-classes stack lands, the rc1 audit record
-  (`docs/audits/v0.1.0rc1.md`) is replaced by a new one with base `b025363`.
+- [ ] **v0.1.0**: the `/rc-audit` second pass over what landed after the pre-run audit, the RC and its HACS install,
+  then `cut-release` with every integration signed off (`check_release.py --signoffs`). The release steps are in the
+  `release` skill; the release body gets the signed-off notes.
   After the release, remove CLAUDE.md's "Until v0.1.0 ships, fix the architecture now" paragraph.
 - [x] **Raise/lower rig run**: the six actions and `stop` on Hue and Z2M, rerun in the lab reruns (#297, #299).
 - [x] **Lab rerun**: the first lab run's failures fixed (#160–#163, #172) and rerun (#297, #299); the Z2M failures
