@@ -18,7 +18,7 @@ from ...core.runtime import get_runtime
 from ...core.scope import AdapterScope, verified
 from ...core.transition import BRIGHTNESS, SATURATION, hs_color, light_brightness, lit
 
-# Z2M's saturation_move: stop halts only the saturation attribute, and the xy fade our saturation move runs carries on.
+# Z2M's saturation_move: stop halts only the saturation attribute and lets a color fade drift on (internals.md, `stop`).
 _STOP_MOVE_STEP = {
     "command": {
         "cluster": "lightingColorCtrl",

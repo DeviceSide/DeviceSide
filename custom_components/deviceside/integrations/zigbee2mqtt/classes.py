@@ -185,8 +185,8 @@ _UNTESTED = experimental(TUYA_ZCL, *_TS011F, TUYA_MCU, SENGLED, GLEDOPTO)
 # Brightness fades and stop: the ZCL Level and Color commands Hue's are (native_control turns Philips' own off for a
 # brightness fade), and no class known to depart from them.
 FADE_BRIGHTNESS = STOP = verified(HUE) | documented(OTHER) | _UNTESTED
-# Hue and saturation fades: a Hue bulb may get Philips' own command, as the user's option has it, and holds its hue
-# fading saturation in xy, which nothing shows other firmware does.
+# Hue and saturation fades: a saturation fade is MoveToSaturation with Philips' own command held off, which holds a
+# Hue bulb's hue; nothing shows other firmware does.
 FADE_COLOR = verified(HUE) | experimental(OTHER) | _UNTESTED
 # Raw ZCL reads and writes, which a datapoint device can't take. Other brands depart: a bulb without `onTime` can fail
 # the read, and some come on, or at full, when written while off.
