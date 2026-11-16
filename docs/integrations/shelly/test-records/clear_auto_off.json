@@ -1,27 +1,29 @@
 {
-  "format": 1,
+  "format": 2,
   "integration": "shelly",
   "action": "clear_auto_off",
   "result": "pass",
-  "date": "2026-11-13",
+  "date": "2026-11-16",
   "source": {
     "kind": "rig",
-    "commit": "5aa4aa4"
+    "commit": "323e24d5"
   },
+  "package": "bcc6453c1abf",
   "home_assistant": "2026.10.4",
-  "devices": [
-    {
-      "model": "S3SW-001X8EU",
-      "name": "Shelly 1 Mini Gen3",
-      "firmware": "20261026-122213/2.0.3-g4601943"
-    }
-  ],
   "tests": [
     {
       "id": "clears[switch_plug]",
       "domain": "switch",
       "role": "switch_plug",
-      "result": "pass"
+      "result": "pass",
+      "devices": [
+        {
+          "model": "S3SW-001X8EU",
+          "manufacturer": "Shelly",
+          "firmware": "20261109-150253/2.2.0-g7968dca",
+          "class": "Switch"
+        }
+      ]
     },
     {
       "id": "countdown_survives_a_clear[switch_plug]",
