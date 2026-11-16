@@ -505,16 +505,16 @@ class Dispatcher:
             else:
                 expanded += _members_planned(members, set(), by_device)
         # One copy per entity, each stand-in apart, as its reported_id is its group's. A member the caller also named
-        # stays named, whichever copy came first, so it raises rather than skips, as a named target does.
+        # is the caller's own target, whichever copy came first, so it raises rather than skips, as _plan keeps it.
         by_id: dict[str, Target] = {}
         stand_ins: list[Target] = []
         for target in expanded:
             if target.stand_in:
                 stand_ins.append(target)
-                continue
-            kept = by_id.setdefault(target.reported_id, target)
-            if target.named and not kept.named:
-                by_id[target.reported_id] = replace(kept, named=True)
+            elif target.named:
+                by_id[target.reported_id] = target
+            else:
+                by_id.setdefault(target.reported_id, target)
         return list(by_id.values()) + stand_ins
 
     async def _run_adapter(

@@ -8,7 +8,9 @@ import pytest
 from homeassistant.core import ServiceCall
 from homeassistant.exceptions import HomeAssistantError
 
+from custom_components.deviceside.core.runtime import get_runtime
 from custom_components.deviceside.core.transition import BRIGHTNESS, SATURATION
+from custom_components.deviceside.integrations.zha import INTEGRATION as ZHA_INTEGRATION
 from custom_components.deviceside.integrations.zha.fade import hue_moves, transition_cache
 
 from .conftest import IEEE, IKEA, SENT, A, B, bulb, call, call_as, sent
@@ -126,6 +128,21 @@ async def test_a_groups_lit_members_get_one_groupcast(hass, two_light_group, com
     assert not commands
 
 
+async def test_a_groups_hue_cycle_gets_one_stop_move_step_groupcast(hass, two_light_group, commands, group_commands):
+    bulb(hass, "light.a", A)
+    bulb(hass, "light.b", B)
+    await call(hass, "raise_hue", {"entity_id": "light.zha_group"})
+
+    assert await call(hass, "stop", {"entity_id": "light.zha_group"}) == {"light.a": SENT, "light.b": SENT}
+    # StopMoveStep's options_mask and options_override, positional, then Level Stop.
+    assert [command.data for command in group_commands[1:]] == [
+        {"group": 2, "cluster_id": 0x0300, "command": 0x47, "args": [0, 0]},
+        {"group": 2, "cluster_id": 0x0008, "command": 0x03, "args": []},
+    ]
+    assert not commands
+    assert hue_moves(hass) == set()
+
+
 async def test_a_group_with_an_off_member_stops_each_lit_one(hass, two_light_group, commands, group_commands):
     bulb(hass, "light.a", A)
     bulb(hass, "light.b", B, state="off")
@@ -214,3 +231,34 @@ async def test_another_brand_gets_a_hue_bulbs_commands(hass, commands, clock):
 
     hue, ikea = (sent([c for c in commands if c.data["ieee"] == ieee]) for ieee in (IEEE, A))
     assert ikea == hue == [LEVEL_STOP]
+
+
+async def test_a_stop_queued_behind_a_raise_from_off_halts_it(hass, commands, clock):
+    """The stop reads what to halt once it has a slot, so a raise from off queued ahead of it has recorded its fade."""
+    bulb(hass, state="off")
+    cache = transition_cache(hass)
+
+    def ticking() -> float:  # time passes between the raise's record and the stop's read, as it does live
+        clock.now += 0.01
+        return clock.now
+
+    cache.clock = ticking
+    limit = get_runtime(hass).semaphore("integration:zha", ZHA_INTEGRATION.max_concurrency)
+    held = 0
+    while not limit.locked():
+        await limit.acquire()
+        held += 1
+    raised = asyncio.create_task(call(hass, "raise_brightness", {"entity_id": "light.bulb"}))
+    for _ in range(10):
+        await asyncio.sleep(0)
+    stopped = asyncio.create_task(call(hass, "stop", {"entity_id": "light.bulb"}))
+    for _ in range(10):
+        await asyncio.sleep(0)
+    limit.release()  # one slot, taken in turn: the raise, then the stop
+    await raised
+    for _ in range(held - 1):
+        limit.release()
+
+    assert await stopped == {"light.bulb": SENT}
+    assert sent(commands)[-1] == LEVEL_STOP
+    assert cache.halted("light.bulb", BRIGHTNESS)

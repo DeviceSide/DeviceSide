@@ -10,9 +10,11 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import async_mock_service
 
+from custom_components.deviceside.core.resolver import resolve
+from custom_components.deviceside.core.runtime import get_runtime
 from custom_components.deviceside.core.transition import BRIGHTNESS, SATURATION
 from custom_components.deviceside.integrations.zha import zcl
-from custom_components.deviceside.integrations.zha.fade import hue_moves, soft_off_restores, transition_cache
+from custom_components.deviceside.integrations.zha.fade import hue_moves, send_each, soft_off_restores, transition_cache
 
 from .conftest import BOTTOM, RESTORE_60, SENT, XY_ONLY, A, B, bulb, call, call_as, on_off_reads, sent, xy
 from ...conftest import advance, result, wall_clock_now
@@ -556,3 +558,17 @@ async def test_a_cancel_puts_every_light_back(hass, monkeypatch):
     assert cache.live("light.a", BRIGHTNESS) is earlier
     assert not cache.tracks("light.b", BRIGHTNESS)
     assert soft_off_restores(hass) == set()
+
+
+async def test_a_group_zha_no_longer_knows_gets_a_command_per_light(hass, two_light_group, commands, group_commands):
+    """A groupcast to a group ZHA has dropped would reach nobody: each light gets its own command instead."""
+    bulb(hass, "light.a", A)
+    bulb(hass, "light.b", B)
+    movers = [resolve(hass, get_runtime(hass).registry, entity_id) for entity_id in ("light.a", "light.b")]
+    command = (0x0008, 0x04, {"level": 254, "transition_time": 20})
+
+    failed = await send_each(hass, 99, movers, dict.fromkeys(("light.a", "light.b"), command), None)
+
+    assert failed == {}
+    assert not group_commands
+    assert sent(commands) == [command, command]

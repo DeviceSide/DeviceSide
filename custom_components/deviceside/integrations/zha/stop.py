@@ -51,35 +51,31 @@ class ZHAStop(Adapter[Request]):
     async def _unit(
         self, hass: HomeAssistant, request: Request, cache: TransitionCache, gid: int | None, lights: list[Target]
     ) -> list[EntityResult]:
-        halting = lit(cache, lights)
-        halting_ids = {light.entity_id for light in halting}
-        off = [
-            self.result(light, Status.UNCHANGED, detail="off") for light in lights if light.entity_id not in halting_ids
-        ]
-        if not halting:
-            return off
-        # A halt is predicted only where a move of ours ran: elsewhere the refresh is right at once.
-        halts = {
-            BRIGHTNESS: {
-                light.entity_id: light_brightness(cache, light)
-                for light in halting
-                if cache.tracks(light.entity_id, BRIGHTNESS)
-            },
-            SATURATION: {
-                light.entity_id: cache.value(light.entity_id, SATURATION, (hs_color(light) or (0, 0))[1])
-                for light in halting
-                if cache.tracks(light.entity_id, SATURATION)
-            },
-        }
         cycling = hue_moves(hass)
-        color = [
-            light
-            for light in halting
-            if has_color(light) and (light.entity_id in halts[SATURATION] or light.entity_id in cycling)
-        ]
         failed: dict[str, Exception] = {}
+        halting = lights  # until the slot is ours: a timeout waiting for it fails every light
         try:
             async with self.slot(hass):
+                # Read in the slot, which raises share: a raise from off queued ahead of the stop has recorded its fade.
+                halting = lit(cache, lights)
+                # A halt is predicted only where a move of ours ran: elsewhere the refresh is right at once.
+                halts = {
+                    BRIGHTNESS: {
+                        light.entity_id: light_brightness(cache, light)
+                        for light in halting
+                        if cache.tracks(light.entity_id, BRIGHTNESS)
+                    },
+                    SATURATION: {
+                        light.entity_id: cache.value(light.entity_id, SATURATION, (hs_color(light) or (0, 0))[1])
+                        for light in halting
+                        if cache.tracks(light.entity_id, SATURATION)
+                    },
+                }
+                color = [
+                    light
+                    for light in halting
+                    if has_color(light) and (light.entity_id in halts[SATURATION] or light.entity_id in cycling)
+                ]
                 async with cache.recording(
                     (light_id, attribute) for attribute, values in halts.items() for light_id in values
                 ):
@@ -101,17 +97,34 @@ class ZHAStop(Adapter[Request]):
                             dict.fromkeys((light.entity_id for light in color), _STOP_MOVE_STEP),
                             request.context,
                         )
-                    failed |= await send_each(
-                        hass, gid, halting, dict.fromkeys(halting_ids, _LEVEL_STOP), request.context
-                    )
+                    if halting:
+                        failed |= await send_each(
+                            hass,
+                            gid,
+                            halting,
+                            dict.fromkeys({light.entity_id for light in halting}, _LEVEL_STOP),
+                            request.context,
+                        )
                     # A light that didn't halt keeps what it had, unless a move or stop since owns the entry.
                     for (light_id, attribute), transition in recorded.items():
                         if light_id in failed and cache.live(light_id, attribute) is transition:
                             cache.forget(light_id, attribute)
                             cache.restore(before[(light_id, attribute)])
         except DeadlinePassed:
+            halting_ids = {light.entity_id for light in halting}
+            off = [
+                self.result(light, Status.UNCHANGED, detail="off")
+                for light in lights
+                if light.entity_id not in halting_ids
+            ]
             _LOGGER.warning("stop on zha timed out for %s, %s", ", ".join(sorted(halting_ids)), self.consequence)
             return [*off, *(self.result(light, Status.REJECTED, detail="timeout") for light in halting)]
+        halting_ids = {light.entity_id for light in halting}
+        off = [
+            self.result(light, Status.UNCHANGED, detail="off") for light in lights if light.entity_id not in halting_ids
+        ]
+        if not halting:
+            return off
         if errors := {light_id: err for light_id, err in failed.items() if not isinstance(err, Unauthorized)}:
             _LOGGER.warning(
                 "stop on zha failed for %s, %s",

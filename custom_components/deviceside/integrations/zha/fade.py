@@ -19,7 +19,7 @@ from homeassistant.util.color import color_hs_to_xy
 
 from . import zcl
 from .addressing import address, group_id, unsupported_reason, via_zha_group
-from .groups import light_members
+from .groups import covers, light_members
 from ...actions.ramp import HUE, RampRequest
 from ...core import transition
 from ...core.adapter import Adapter, DeadlinePassed
@@ -130,39 +130,19 @@ def drops_while_off(light: Target) -> bool:
     return light.device is not None and light.device.model in zcl.DROPS_WHILE_OFF
 
 
-async def send(
-    hass: HomeAssistant, gid: int | None, movers: list[Target], command: Command, context: Context | None
-) -> None:
-    """One groupcast when the movers are every light the group holds, so they move in lockstep; else one command each.
-
-    A groupcast reaches every member, so one that isn't moving (off, on a move that passes it by) gets its own command
-    instead: a soft off sent to an off light would still drop its stored level.
-    """
-    cluster_id, command_id, params = command
-    if gid is not None and light_members(hass, gid) <= {light.entity_id for light in movers}:
-        await zcl.group_command(hass, gid, cluster_id, command_id, list(params.values()), context)
-        return
-    for light in movers:
-        await zcl.command(
-            hass, address(light.entry.unique_id), cluster_id, command_id, params, context, entity_id=light.reported_id
-        )
-
-
 async def send_each(
     hass: HomeAssistant, gid: int | None, movers: list[Target], commands: dict[str, Command], context: Context | None
 ) -> dict[str, Exception]:
-    """send() for a fade, which can fail one light and run on the rest: each mover's command, keyed by entity ID, and
-    the movers it failed for, with why.
+    """Each mover's command, keyed by entity ID; the movers it failed for, with why. A fade can fail one light and run
+    on the rest.
 
-    One groupcast when the movers are every light the group holds and all get the same command, failing them all if it
-    fails; else one command each, sent together. A cancel or other BaseException is raised.
+    One groupcast, so the movers move in lockstep, when they are every device the group reaches (covers) and all get
+    the same command, failing them all if it fails; else one command each, sent together. A groupcast reaches every
+    member, so one that isn't moving (off, on a move that passes it by) gets its own command instead: a soft off sent
+    to an off light would still drop its stored level. A cancel or other BaseException is raised.
     """
     shared = next(iter(commands.values()))
-    if (
-        gid is not None
-        and all(command == shared for command in commands.values())
-        and light_members(hass, gid) <= {light.entity_id for light in movers}
-    ):
+    if gid is not None and all(command == shared for command in commands.values()) and covers(hass, gid, movers):
         cluster_id, command_id, params = shared
         try:
             await zcl.group_command(hass, gid, cluster_id, command_id, list(params.values()), context)

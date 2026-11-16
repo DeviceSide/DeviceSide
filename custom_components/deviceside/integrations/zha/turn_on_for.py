@@ -45,7 +45,7 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
     lockstep: one light.turn_on on the group entity for fields, then one OnWithTimedOff to the group. Otherwise each
     gets its own, so a member that was refused, flagged or left out (a Tuya plug with only a switch entity) never
     takes the timer. Expanding them into one command each would start them a slot apart under
-    max_concurrency, visibly so in a large group (docs/integration-internals.md, ZHA tested behavior). Every other
+    max_concurrency, visibly so in a large group (docs/integrations/zha/internals.md#tested-behavior). Every other
     target gets its own command.
 
     issue_zigbee_cluster_command and issue_zigbee_group_command are admin-only actions, so the call carries the

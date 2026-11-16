@@ -98,6 +98,13 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   Zigbee2MQTT and ZHA, each with its own maintainers, and the rename of the two not-supported kinds. Before the runs,
   as it reshapes both Zigbee packages. The rename touches Hue's `classes.py` and `set_scene.py`, so its PR carries a
   Hue `no_call_changed` row (no `actions`) rather than a Hue rerun.
+- [ ] **Shared Zigbee fade planning**, after the family seam, which moves both files (pre-run audit, Medium): ZHA's
+  ramp and Zigbee2MQTT's fade duplicate `MIN_STEP`, `SETTLE_SECONDS`, the starts/movers/at-limit prelude and the
+  hue-rate clamp, and have drifted (Z2M doesn't cap a transition at the ZCL uint16). Lift the planning into
+  `core/transition.py`. Before the runs, as it changes both packages' fades.
+- [ ] **Integration lifecycle hooks**, after the family seam (pre-run audit, Medium): the component root starts
+  Zigbee2MQTT's bridge cache, color modes and restore journal itself, so every integration with a lifecycle edits a
+  repo-maintainer file. Add `IntegrationInfo` setup and teardown hooks. Before the runs.
 - [ ] **Pre-run audit**: `/rc-audit` over `b025363..HEAD`, its record replacing `docs/audits/v0.1.0rc1.md`, and its
   fixes landed, so no run repeats for a fix the audit would have found. The RC's second pass covers what lands after.
 - [ ] **Sign-offs** for v0.1.0, one per integration changed since v0.0.1 (`check_release.py --signoffs`), each a rig run
@@ -176,11 +183,8 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
 
 ## After v0.1.0
 
-- [ ] **Code comments cite the bundles**: eight comments under `integrations/` (hue, matter, zha, zigbee2mqtt) still
-  cite `docs/integration-internals.md` or `docs/integrations.md`; point each at its bundle's
-  `internals.md#tested-behavior` (Z2M `addressing.py`: `index.md#sharp-edges`), which
-  `tests/scripts/test_doc_anchors.py` then checks; widen that test to page-only citations (`docs/….md` with no anchor)
-  too.
+- [x] **Code comments cite the bundles** (pre-run audit): each comment that cited `docs/integration-internals.md` or
+  `docs/integrations.md` points at its bundle, and `tests/scripts/test_doc_anchors.py` checks page-only citations too.
 
 - [ ] **Forum announcement**, once v0.1.0 ships: refresh the draft's testers-wanted list from [Try it: Experimental
   features](docs/device-compatibility.md#try-it-experimental-features) and check every link resolves (the issue forms,
@@ -190,7 +194,6 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   `blank_issues_enabled: false` there, and link the thread from `CONTRIBUTING.md` and the README's Contributing
   section.
 - [ ] **Shelly RGB and RGBW color**: port core's conversions (`light/helper.py` rgb to rgbw with the white split,
-  kelvin to color) so RGB and RGBW take color instead of dropping it, and give `status_row` a branch per component
-  so `get_attributes` reads Light, CCT, RGB and RGBW light state.
+  kelvin to color) so RGB and RGBW take color instead of dropping it (`get_attributes` already reads their color).
 - **9b** Maintained adapters: the rig kit, so maintainers can commit records for hardware the rig lacks
   (`docs/design.md`, Release gates). Until then, they sign off by hand (`docs/evidence.md`).

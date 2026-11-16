@@ -6,7 +6,7 @@ read bridge/groups two or three times in series. Held here instead:
 - bridge/devices, bridge/groups and bridge/info, the latest of each as Z2M publishes it, parsed once per payload. All
   three are retained; Z2M republishes devices and groups whenever a device or group changes (lib/extension/bridge.ts),
   and info on every settings change and on start, so a user's change of an option reaches the cache (probe in
-  docs/integration-internals.md, Tested behavior).
+  docs/integrations/zigbee2mqtt/internals.md#tested-behavior).
 - The options response topics, routed to whichever `ensure_options` call is waiting on the reply's transaction.
 - bridge/logging, whose error lines go to whichever calls listen (`listen_log`): a set's failure is logged there and
   nowhere else (set_check.py). Each line is parsed only while a call listens.
