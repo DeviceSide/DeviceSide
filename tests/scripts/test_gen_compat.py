@@ -649,7 +649,7 @@ def test_the_legend_leads_the_cards(root):
         "🧪 experimental: off until you turn on Experimental features in DeviceSide's Configure > Settings; please"
         f" [report how it goes]({gc.REPORT_URL}) · "
         "🚧 not built yet: needs a command DeviceSide doesn't have yet · "
-        "🔴 no known method: no known command works on it safely · "
+        "🔴 no known method: no known command works on it · "
         "⚠️ unmaintained: no one is fixing it; use at your own risk · "
         f"⚠️ untested fix: changed, not yet tested; please [report whether it works]({gc.REPORT_URL})"
     )
