@@ -1,8 +1,8 @@
-from collections.abc import Callable, Collection, Mapping
+from collections.abc import Awaitable, Callable, Collection, Iterable, Mapping
 from dataclasses import dataclass, field
 from enum import Enum, IntEnum
 from types import MappingProxyType
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
@@ -10,9 +10,10 @@ from homeassistant.helpers import entity_registry as er
 
 from .errors import Reason
 from .fields import LACKABLE
-from .models import Target
+from .models import EntityResult, Request, Target
 
 if TYPE_CHECKING:
+    from .adapter import Adapter
     from .ha_watch import CallResolver
 
 
@@ -93,10 +94,11 @@ class Caveat:
 
 
 @dataclass(frozen=True, slots=True)
-class DoesntWork:
-    """A class no known call works on, a device limit (docs/evidence.md, Doesn't work): what the card names, why it
-    fails, and the source, an https URL (scripts/gen_compat.py checks it). The dispatcher refuses it, raising with
-    the reason; the card lists it under Doesn't work.
+class NoKnownMethod:
+    """A class with no known method, a device limit as far as anyone knows (docs/evidence.md, No known method): no
+    known call works on it, or the only one known is unsafe, and the reason says which. What the card names, why, and
+    the source, an https URL (scripts/gen_compat.py checks it). The dispatcher refuses it as `no_known_method`,
+    raising with the reason; the card lists it under No known method.
 
     `harms`, which every entry states: whether the call's failure on the class is deferred and unattended, leaving it
     on or off unasked after the user stopped watching (a plug turned on that stays on), by docs/evidence.md's test,
@@ -112,14 +114,14 @@ class DoesntWork:
 
 
 @dataclass(frozen=True, slots=True)
-class NotSupported:
-    """A class not yet supported (docs/evidence.md, Not yet supported), declared because the adapter's call would
-    harm it: a call that would work is known or plausible, but isn't built. Why the user can't have it yet, and the
-    source, an https URL (scripts/gen_compat.py checks it); the dispatcher refuses it as `not_supported` with the
-    reason, and the card lists it as not yet supported, as it does a class a scope leaves out.
+class NotBuilt:
+    """A class not built yet (docs/evidence.md, Not built yet), declared because the adapter's call would harm it: a
+    call that would work is known or plausible, and nobody has built it. Why the user can't have it yet, and the
+    source, an https URL (scripts/gen_compat.py checks it); the dispatcher refuses it as `not_built` with the reason,
+    and the card lists it as not built yet, as it does a class a scope leaves out.
 
-    `harms`, required as DoesntWork's is: the adapter's call harms the class (When today's call harms a class), so
-    AdapterScope.refusal refuses a target that could still be in it as class_unknown, exactly as for a DoesntWork
+    `harms`, required as NoKnownMethod's is: the adapter's call harms the class (When today's call harms a class), so
+    AdapterScope.refusal refuses a target that could still be in it as class_unknown, exactly as for a NoKnownMethod
     entry with `harms`. It must be True, which AdapterScope checks: a class today's call would leave unharmed needs
     no entry, as leaving it out of the scope refuses it the same way, and an entry saying so would be a second home
     for that refusal.
@@ -133,7 +135,7 @@ class NotSupported:
 class Unplaced(str):
     """A class IntegrationInfo.capability named from partial information (the integration hasn't reported all it
     will about the device), which could still move once it has. It is that class everywhere (it equals and hashes as
-    the plain string, so a scope's levels and doesnt_work read it as they would), except where an adapter's call
+    the plain string, so a scope's levels and no_known_method read it as they would), except where an adapter's call
     harms a class (AdapterScope.harms): there AdapterScope.refusal refuses it as class_unknown, as it may be one.
 
     Why a flag on the class, not a class of its own or None: None is a permanent "can't class" (a Shelly entity with
@@ -150,6 +152,22 @@ class Unplaced(str):
 
     def __repr__(self) -> str:
         return f"Unplaced({str.__repr__(self)})"
+
+
+# eq=False: compared and hashed by identity, so the dispatcher runs together only the targets one call object serves.
+@dataclass(frozen=True, slots=True, eq=False)
+class OwnCall:
+    """A class's own call (docs/evidence.md, The split rule): what an adapter sends a class in place of its `execute`,
+    held in AdapterScope.own_calls. `send` makes the call for one target and gives its result, as the `send` an adapter
+    hands `gather` does (Adapter.execute_own runs it); `limits` are the durations it can carry, None for the scope's
+    `duration`.
+
+    Why a value, not a branch in execute: the dispatcher plans a run on the class it found and hands the adapter that
+    class's call, so the adapter never classes a target again, where a report in between could have moved it. Classes
+    that share one OwnCall object share a run."""
+
+    send: Callable[[Adapter, HomeAssistant, Request, Target], Awaitable[EntityResult]]
+    limits: DurationLimits | None = None
 
 
 # eq=False: compared and hashed by identity, as the mappings it holds can't be hashed.
@@ -177,19 +195,19 @@ class AdapterScope:
     # The classes the adapter serves (docs/evidence.md, Device classes), as IntegrationInfo.capability names them;
     # None for an integration that names none (the registry refuses a mismatch either way). Proof follows the call and
     # the class, so each stands on its own evidence: a sibling's untested one is Experimental unless it is Documented.
-    # A class the integration names in neither this nor doesnt_work is not yet supported, and refused. A class's level
-    # holds on every domain unless its entry names some (OnDomains): elsewhere it counts as Experimental.
+    # A class the integration names in neither this nor no_known_method is not built yet, and refused. A class's
+    # level holds on every domain unless its entry names some (OnDomains): elsewhere it counts as Experimental.
     capabilities: Mapping[str, ClassLevel] | None = None
-    # Classes no known call works on, refused with why; never in capabilities. Per adapter, as one class can fail one
+    # Classes with no known method, refused with why; never in capabilities. Per adapter, as one class can fail one
     # action's call and answer another's.
-    doesnt_work: Mapping[str, DoesntWork] = field(default_factory=dict)
-    # Not yet supported classes the adapter's call would harm, refused with why (each entry's harms is True); in neither
-    # of the above. Any other not yet supported class is simply left out.
-    not_supported: Mapping[str, NotSupported] = field(default_factory=dict)
-    # Classes the adapter sends a call of their own, a branch in execute (docs/evidence.md, The split rule), each with
-    # that call's duration limits, or None for `duration`. Each is in capabilities. A native group's call isn't theirs,
-    # so a group with a member of one falls back to its members (Reason.OWN_CALL), and the member gets its own call.
-    own_calls: Mapping[str, DurationLimits | None] = field(default_factory=dict)
+    no_known_method: Mapping[str, NoKnownMethod] = field(default_factory=dict)
+    # Classes not built yet that the adapter's call would harm, refused with why (each entry's harms is True); in
+    # neither of the above. Any other class not built yet is simply left out.
+    not_built: Mapping[str, NotBuilt] = field(default_factory=dict)
+    # Classes the adapter sends a call of their own (OwnCall), each with that call. Each is in capabilities. A native
+    # group's call isn't theirs, so a group with a member of one falls back to its members (Reason.OWN_CALL), and the
+    # member gets its own call.
+    own_calls: Mapping[str, OwnCall] = field(default_factory=dict)
     confirmable: bool = False
     # DeviceSide options that change what the adapter does.
     options: frozenset[str] = frozenset()
@@ -201,19 +219,17 @@ class AdapterScope:
         if Level.DOCUMENTED in self.fields.values():
             raise ValueError("fields are never Documented: a field changes the call")
         self._check_unlisted()
-        if both := self.doesnt_work.keys() & (self.capabilities or {}).keys():
-            raise ValueError(f"doesnt_work names classes the scope serves: {sorted(both)}")
-        if both := self.not_supported.keys() & ((self.capabilities or {}).keys() | self.doesnt_work.keys()):
-            raise ValueError(f"not_supported names classes the scope serves or lists as doesn't work: {sorted(both)}")
-        if unharmed := sorted(name for name, entry in self.not_supported.items() if not entry.harms):
-            raise ValueError(
-                f"not_supported entries {unharmed} don't harm: an unharmed not yet supported class needs no entry"
-            )
+        if both := self.no_known_method.keys() & (self.capabilities or {}).keys():
+            raise ValueError(f"no_known_method names classes the scope serves: {sorted(both)}")
+        if both := self.not_built.keys() & ((self.capabilities or {}).keys() | self.no_known_method.keys()):
+            raise ValueError(f"not_built names classes the scope serves or lists under no_known_method: {sorted(both)}")
+        if unharmed := sorted(name for name, entry in self.not_built.items() if not entry.harms):
+            raise ValueError(f"not_built entries {unharmed} don't harm: an unharmed class not built yet needs no entry")
         if unserved := sorted(self.own_calls.keys() - (self.capabilities or {}).keys()):
             raise ValueError(f"own_calls names classes the scope doesn't serve: {unserved}")
         self._check_on_domains()
         # Read-only copies: adapters share mappings such as Shelly's CAPABILITIES, and a frozen scope stays frozen.
-        for name in ("domains", "fields", "capabilities", "doesnt_work", "not_supported", "own_calls"):
+        for name in ("domains", "fields", "capabilities", "no_known_method", "not_built", "own_calls"):
             if (items := getattr(self, name)) is not None:
                 object.__setattr__(self, name, MappingProxyType(dict(items)))
 
@@ -245,40 +261,40 @@ class AdapterScope:
 
     @property
     def harms(self) -> bool:
-        """Whether the adapter's call harms a class it could reach: a doesnt_work or not_supported entry with harms."""
-        return any(entry.harms for entry in (*self.doesnt_work.values(), *self.not_supported.values()))
+        """Whether the adapter's call harms a class it could reach: a no_known_method or not_built entry with harms."""
+        return any(entry.harms for entry in (*self.no_known_method.values(), *self.not_built.values()))
 
     def refusal(self, classes: Collection[str | None], group: bool = False) -> tuple[str, str | None] | None:
         """Why the scope refuses a target of these classes (a native group's: its members'), with the reason the user
         reads, or None. Where the call harms a class (`harms`), first `class_unknown` when one is Unplaced, or None
         (the integration couldn't name it, or a group's membership is unknown), as it could be the harmed class, with
-        Experimental features on or off. Then `doesnt_work` and its DoesntWork.reason when one is listed as failing
-        the call, else `not_supported` when one is named but not served, with its NotSupported.reason when it has an
-        entry. Elsewhere None is no refusal: the gate weighs it as Experimental, and an Unplaced class as the class it
+        Experimental features on or off. Then `no_known_method` and its NoKnownMethod.reason when one is listed as
+        having none, else `not_built` when one is named but not served, with its NotBuilt.reason when it has an entry.
+        Elsewhere None is no refusal: the gate weighs it as Experimental, and an Unplaced class as the class it
         names. Last, for a native group whose members are listed (`group`), `own_call` when a member's class takes a
         call of its own (own_calls), so the group falls back to its members."""
         if self.capabilities is None:
             return None
         if self.harms and any(name is None or isinstance(name, Unplaced) for name in classes):
             return Reason.CLASS_UNKNOWN, None
-        if broken := next((self.doesnt_work[name] for name in classes if name in self.doesnt_work), None):
-            return Reason.DOESNT_WORK, broken.reason
-        if entry := next((self.not_supported[name] for name in classes if name in self.not_supported), None):
-            return Reason.NOT_SUPPORTED, entry.reason
+        if entry := next((self.no_known_method[name] for name in classes if name in self.no_known_method), None):
+            return Reason.NO_KNOWN_METHOD, entry.reason
+        if entry := next((self.not_built[name] for name in classes if name in self.not_built), None):
+            return Reason.NOT_BUILT, entry.reason
         if any(name is not None and name not in self.capabilities for name in classes):
-            return Reason.NOT_SUPPORTED, None
-        if group and self.apart(classes):
+            return Reason.NOT_BUILT, None
+        if group and self.own_call(classes) is not None:
             return Reason.OWN_CALL, None
         return None
 
-    def apart(self, classes: Collection[str | None]) -> bool:
-        """Whether one of these classes takes a call of its own, so a native group with such a member falls back."""
-        return any(name in self.own_calls for name in classes)
+    def own_call(self, classes: Collection[str | None]) -> OwnCall | None:
+        """The call of its own a target of these classes gets, None for the adapter's `execute`. A native group with
+        such a member is refused (refusal), so never runs."""
+        return next((self.own_calls[name] for name in classes if name in self.own_calls), None)
 
-    def limits(self, classes: Collection[str | None]) -> DurationLimits | None:
-        """The duration limits of the call a target of these classes gets: its own call's, where its class has one with
-        limits, else the scope's `duration`. A native group with such a member is refused (refusal), so never runs."""
-        return next((limits for name in classes if (limits := self.own_calls.get(name)) is not None), self.duration)
+    def call_limits(self, call: OwnCall | None) -> DurationLimits | None:
+        """The duration limits of a run on `call` (own_call): its own, where it has them, else the scope's."""
+        return self.duration if call is None or call.limits is None else call.limits
 
     def _check_on_domains(self) -> None:
         for axis in ("domains", "fields"):
@@ -295,6 +311,67 @@ class AdapterScope:
             raise ValueError(f"unlisted names fields outside the scope's fields: {sorted(untested)}")
         if dropped := self.unlisted & self.drops:
             raise ValueError(f"unlisted names fields the scope drops: {sorted(dropped)}")
+
+
+@dataclass(frozen=True, slots=True)
+class FamilyScope:
+    """A family's part of one adapter's scope: its classes' levels and own calls, for AdapterScope's fields of the same
+    names, each by class. A class it leaves out is left out of the adapter's scope, so refused as not built yet.
+
+    It holds no refusal entry (NoKnownMethod, NotBuilt): those are the integration's, in its `refusals.py`, which
+    `class_scope` merges in. A family's maintainers may merge a change to its files alone, and an entry with `harms`
+    protects users of every family's devices, so it lives on a path a family maintainer doesn't own."""
+
+    capabilities: Mapping[str, ClassLevel] = field(default_factory=dict)
+    own_calls: Mapping[str, OwnCall] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class Family:
+    """A vendor's firmware family inside one integration (docs/design.md, Family): the classes it owns
+    and, per action key, the levels and own calls each adapter's scope holds for them (`scopes`; an action with none
+    leaves its classes out of that adapter's scope). Where an action refuses one of its classes with a reason is the
+    integration's to say (FamilyScope). It exists so a vendor is one path with its own maintainers: GitHub handles,
+    which may be empty, as the integration's maintainers own every family of it too. The registry checks it
+    (core/registry.py, check_families)."""
+
+    key: str
+    maintainers: tuple[str, ...] = ()
+    classes: frozenset[str]
+    scopes: Mapping[str, FamilyScope] = field(default_factory=dict)
+
+
+def family_scope(families: Iterable[Family], action: str) -> FamilyScope:
+    """The families' parts of one action's scope, merged in the families' order. The registry has checked that no two
+    families hold one class (core/registry.py, check_families), so no part replaces another's."""
+    parts = [family.scopes[action] for family in families if action in family.scopes]
+    return FamilyScope(
+        capabilities={name: level for part in parts for name, level in part.capabilities.items()},
+        own_calls={name: call for part in parts for name, call in part.own_calls.items()},
+    )
+
+
+def class_scope(
+    action: str,
+    *,
+    families: Iterable[Family],
+    default_levels: Mapping[str, Mapping[str, ClassLevel]],
+    refusals: Mapping[str, Mapping[str, NoKnownMethod | NotBuilt]],
+) -> dict[str, Any]:
+    """The class entries of an action's AdapterScope, as its keyword arguments, for an integration with families:
+    the default class at the integration's level (`default_levels`, by action), then the families' classes and own
+    calls (family_scope), and the integration's refusal entries (`refusals`, by action then class: its `refusals.py`),
+    each under the AdapterScope field its type names. The default class goes first, as the cards list an adapter's
+    classes in the scope's order (scripts/gen_compat.py). AdapterScope raises for a class a family serves that the
+    integration refuses."""
+    parts = family_scope(families, action)
+    refused = refusals.get(action, {})
+    return {
+        "capabilities": {**default_levels[action], **parts.capabilities},
+        "no_known_method": {name: entry for name, entry in refused.items() if isinstance(entry, NoKnownMethod)},
+        "not_built": {name: entry for name, entry in refused.items() if isinstance(entry, NotBuilt)},
+        "own_calls": parts.own_calls,
+    }
 
 
 @dataclass(slots=True)
@@ -325,11 +402,14 @@ class IntegrationInfo:
     # for an integration with one class, whose scopes then hold no capabilities.
     capability: Callable[[HomeAssistant, Target], str | None] | None = None
     # Every class capability() can name, so a scope's typo fails at registration and the cards name the classes an
-    # adapter serves in neither its capabilities nor its doesnt_work as not yet supported.
+    # adapter serves in neither its capabilities nor its no_known_method as not built yet.
     classes: frozenset[str] = frozenset()
     # The class capability() gives a device no rule matches, one of `classes`; the registry refuses any scope holding it
     # as Verified (docs/evidence.md, Device classes). None for an integration whose classes name every target (Shelly).
     default_class: str | None = None
+    # The vendor families that hold its classes, each with its own maintainers; between them every class but the
+    # default one, each once (core/registry.py, check_families). Empty for an integration that has none.
+    families: tuple[Family, ...] = ()
     # Drops what a light or scene call from HA leaves stale (core/ha_watch.py); None holds nothing it could.
     call_resolver: CallResolver | None = None
     max_concurrency: int = 4

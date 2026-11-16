@@ -11,7 +11,7 @@ from homeassistant.exceptions import Unauthorized
 from .errors import describe
 from .models import ActionKind, EntityResult, Request, Status, Target
 from .runtime import DEADLINE, get_runtime
-from .scope import AdapterScope
+from .scope import AdapterScope, OwnCall
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -54,6 +54,13 @@ class Adapter[RequestT: Request](ABC):
     @abstractmethod
     async def execute(self, hass: HomeAssistant, request: RequestT, targets: list[Target]) -> list[EntityResult]:
         """Send the command to every target at once, so an adapter can batch or address a native group."""
+
+    async def execute_own(
+        self, hass: HomeAssistant, request: RequestT, targets: list[Target], call: OwnCall
+    ) -> list[EntityResult]:
+        """Send a run's targets their class's own call (AdapterScope.own_calls) in place of execute: the dispatcher
+        planned the run on that class. An adapter overrides it to wrap the sends as its execute does."""
+        return await self.gather(hass, targets, lambda target: call.send(self, hass, request, target))
 
     def result(self, target: Target, status: Status, **kwargs) -> EntityResult:
         """Build every result here: it keys on target.reported_id, which the dispatcher matches results by."""

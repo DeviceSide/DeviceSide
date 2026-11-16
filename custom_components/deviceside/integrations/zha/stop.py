@@ -37,7 +37,7 @@ class ZHAStop(Adapter[Request]):
     action: ClassVar[str] = "stop"
     integration: ClassVar[str] = "zha"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        domains=verified("light"), capabilities=classes.STOP, max_concurrency=2
+        domains=verified("light"), **classes.class_scope(action), max_concurrency=2
     )
 
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:

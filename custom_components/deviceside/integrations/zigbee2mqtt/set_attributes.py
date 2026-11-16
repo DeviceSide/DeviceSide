@@ -7,14 +7,14 @@ from typing import ClassVar
 
 from homeassistant.core import HomeAssistant
 
+from .adapter import Z2MAdapter
 from .addressing import not_addressable
 from .bridge import publish_set
-from .classes import READ_WRITE
+from .classes import class_scope
 from .members import member_lights, unaddressable
 from .read import Reader, reader
 from .set_check import checked
 from ...actions.set_attributes import SetAttributesRequest
-from ...core.adapter import Adapter
 from ...core.errors import Reason
 from ...core.models import EntityResult, Status, Target
 from ...core.scope import AdapterScope, verified
@@ -118,7 +118,7 @@ async def _stored(reading: Reader, light: Target, sent: list[Command]) -> bool:
     return False
 
 
-class Z2MSetAttributes(Adapter[SetAttributesRequest]):
+class Z2MSetAttributes(Z2MAdapter[SetAttributesRequest]):
     """Publish each MoveTo command to the light or group, never the WithOnOff variants, then read the lights back.
 
     The ExecuteIfOff override makes a light that is off store the values and stay off (probe 13a). Z2M publishes no
@@ -137,7 +137,7 @@ class Z2MSetAttributes(Adapter[SetAttributesRequest]):
     integration: ClassVar[str] = "zigbee2mqtt"
     scope: ClassVar[AdapterScope] = AdapterScope(
         domains=verified("light"),
-        capabilities=READ_WRITE,
+        **class_scope("set_attributes"),
         fields=verified(
             "brightness", "color_temp_kelvin", "hs_color", "rgb_color", "xy_color", "min_brightness", "max_brightness"
         ),

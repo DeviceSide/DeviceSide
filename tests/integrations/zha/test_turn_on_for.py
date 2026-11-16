@@ -375,7 +375,7 @@ async def test_the_fields_and_the_timer_are_logged_in_order(hass, setup_producti
     ]
 
 
-# Device classes (classes.py): the entries for classes the call harms hold with Experimental features on.
+# Device classes (families/<family>/): the entries for classes the call harms hold with Experimental features on.
 
 TS011F = ("_TZ3000_typdpbpg", "TS011F")
 C = "00:00:00:00:00:00:00:0c"
@@ -385,16 +385,16 @@ C = "00:00:00:00:00:00:00:0c"
     ("strings", "on_off", "domain", "reason"),
     [
         # Tuya's recipe would serve it, but is parked (plan Decision 74).
-        (TS011F, StandardOnOff, "switch", "not_supported"),
-        (("_TZ3000_abcdefgh", "TS0001"), StandardOnOff, "switch", "not_supported"),
+        (TS011F, StandardOnOff, "switch", "not_built"),
+        (("_TZ3000_abcdefgh", "TS0001"), StandardOnOff, "switch", "not_built"),
         # A Tuya bulb outside the countdown models: nobody has probed its timer.
-        (("_TZ3210_abcdefgh", "TS0505B"), StandardOnOff, "light", "not_supported"),
-        (("_TZE200_abcdefgh", "TS0601"), StandardOnOff, "light", "not_supported"),
-        (("_TZ3210_0jxeoadc", "TS0049"), quirk_on_off("zhaquirks.tuya.mcu"), "switch", "not_supported"),
-        (("sengled", "E11-G13"), StandardOnOff, "light", "not_supported"),
-        (("SONOFF", "SWV"), StandardOnOff, "switch", "not_supported"),
+        (("_TZ3210_abcdefgh", "TS0505B"), StandardOnOff, "light", "not_built"),
+        (("_TZE200_abcdefgh", "TS0601"), StandardOnOff, "light", "not_built"),
+        (("_TZ3210_0jxeoadc", "TS0049"), quirk_on_off("zhaquirks.tuya.mcu"), "switch", "not_built"),
+        (("sengled", "E11-G13"), StandardOnOff, "light", "not_built"),
+        (("SONOFF", "SWV"), StandardOnOff, "switch", "not_built"),
         # Fails the countdown that serves its siblings; Tuya's inching would plausibly serve it (plan Decision 41).
-        (("_TZ3000_gjnozsaz", "TS011F"), StandardOnOff, "switch", "not_supported"),
+        (("_TZ3000_gjnozsaz", "TS011F"), StandardOnOff, "switch", "not_built"),
     ],
 )
 async def test_a_class_the_call_harms_is_refused_with_experimental_on(

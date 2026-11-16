@@ -29,7 +29,7 @@ class ShellyStop(Adapter[Request]):
     )
 
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:
-        # A relay's class is in no dimming scope, so the dispatcher would refuse it as not_supported: say why instead.
+        # A relay's class is in no dimming scope, so the dispatcher would refuse it as not_built: say why instead.
         if (rpc := address(target)) is not None and rpc.component == "Switch":
             return "not_dimmable"
         return super().supports(hass, request, target) or unsupported_reason(target)
