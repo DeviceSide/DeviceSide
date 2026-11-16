@@ -136,7 +136,7 @@ def test_a_format_2_record_tested_each_passing_tests_devices_with_their_classes(
 
 def test_a_model_a_record_names_must_be_in_models_yaml(root):
     record(root, "zha", "stop", devices=[old_device("NEW1", "1")])
-    with pytest.raises(SystemExit, match="stop.json: model 'NEW1' is not in docs/models.yaml"):
+    with pytest.raises(SystemExit, match="stop.json: model 'NEW1' is in neither docs/models.yaml"):
         gc.check_models(FakeRegistry(), data())
 
 
@@ -150,7 +150,7 @@ def test_a_model_a_record_names_must_be_in_models_yaml(root):
 )
 def test_every_model_a_record_names_must_be_in_models_yaml_whether_or_not_it_credits(root, test):
     record2(root, "zha", "stop", test, result=test["result"])
-    with pytest.raises(SystemExit, match="model 'NEW2' is not in docs/models.yaml"):
+    with pytest.raises(SystemExit, match="model 'NEW2' is in neither docs/models.yaml"):
         gc.check_models(FakeRegistry(), data())
 
 
@@ -170,7 +170,7 @@ def test_a_fact_rows_models_must_be_in_models_yaml_and_a_dotfile_is_skipped(root
     }]}  # fmt: skip
     write(records_dir(root, "zha") / "_facts.json", facts)
     (records_dir(root, "zha") / ".DS_Store").write_bytes(b"\0")
-    with pytest.raises(SystemExit, match="_facts.json: model 'NEW3' is not in docs/models.yaml"):
+    with pytest.raises(SystemExit, match="_facts.json: model 'NEW3' is in neither docs/models.yaml"):
         gc.check_models(FakeRegistry(), data())
 
 
@@ -318,7 +318,7 @@ def test_a_manual_row_is_evidence_for_the_actions_it_passed(root):
 
 def test_a_manual_row_names_models_in_models_yaml(root):
     manual_file(root, rows=[signoff(devices=(("NEW", None),), passed=("stop",))])
-    with pytest.raises(SystemExit, match="model 'NEW' is not in docs/models.yaml"):
+    with pytest.raises(SystemExit, match="model 'NEW' is in neither docs/models.yaml"):
         gc.check_models(FakeRegistry(), data())
 
 
@@ -603,9 +603,19 @@ def test_a_card_title_links_to_its_integrations_page(root, monkeypatch):
     [
         ({"zha": BUNDLE["zha"]}, None, "no docs/integrations/hue/devices.yaml; add the hue bundle"),
         (
-            {**BUNDLE, "hue": {"column": "Hue", "column_order": 2, "models": []}},
+            {**BUNDLE, "hue": {"column": "Hue", "column_order": 2, "bogus": []}},
             None,
-            "hue/devices.yaml: unknown key models",
+            "hue/devices.yaml: unknown key bogus",
+        ),
+        (
+            {**BUNDLE, "hue": {"column": "Hue", "column_order": 2, "models": {"a": 1}}},
+            None,
+            "hue/devices.yaml: models must be a list",
+        ),
+        (
+            {**BUNDLE, "hue": {"column": "Hue", "column_order": 2, "models": [DATA["models"][0]]}},
+            None,
+            "is listed twice",
         ),
         (BUNDLE, {"models": [], "capabilities": {}}, "docs/models.yaml: unknown key capabilities"),
         (BUNDLE, {"models": {"a": 1}}, "docs/models.yaml: models must be a list"),
@@ -626,6 +636,32 @@ def test_a_missing_bundle_or_a_misplaced_key_fails_naming_the_file(root, monkeyp
     models = write_bundles(root, monkeypatch, bundles, shared)
     with pytest.raises(SystemExit, match=error):
         gc.load(FakeRegistry(), models)
+
+
+def test_a_bundles_own_model_is_loaded_and_credits_a_device(root, monkeypatch):
+    own = {"name": "Own lamp", "ids": ["OWN1"], "type": DATA["models"][0]["type"]}
+    bundles = {**BUNDLE, "hue": {"column": "Hue", "column_order": 2, "models": [own]}}
+    data = gc.load(FakeRegistry(), write_bundles(root, monkeypatch, bundles))
+    record(root, "hue", "stop", devices=[old_device("OWN1", "1")])
+    gc.check_models(FakeRegistry(), data)  # a record naming it passes
+    assert data.model("OWN1", "x")["section"] == "Own lamp"
+    with pytest.raises(SystemExit, match="'NOPE' is in neither docs/models.yaml nor a bundle's devices.yaml"):
+        data.model("NOPE", "x")
+
+
+def test_a_record_naming_another_bundles_model_fails(root, monkeypatch):
+    own = {"name": "Own lamp", "ids": ["OWN1"], "type": DATA["models"][0]["type"]}
+    bundles = {**BUNDLE, "hue": {"column": "Hue", "column_order": 2, "models": [own]}}
+    data = gc.load(FakeRegistry(), write_bundles(root, monkeypatch, bundles))
+    record(root, "zha", "stop", devices=[old_device("OWN1", "1")])
+    with pytest.raises(SystemExit, match="'OWN1' is in docs/integrations/hue/devices.yaml; a model two integrations"):
+        gc.check_models(FakeRegistry(), data)
+
+
+def test_a_model_in_both_files_fails_naming_them(root, monkeypatch):
+    bundles = {**BUNDLE, "hue": {"column": "Hue", "column_order": 2, "models": [{**DATA["models"][0], "name": "Dup"}]}}
+    with pytest.raises(SystemExit, match="listed twice: in docs/models.yaml and docs/integrations/hue/devices.yaml"):
+        gc.load(FakeRegistry(), write_bundles(root, monkeypatch, bundles))
 
 
 def test_an_integration_without_a_user_page_fails(root, monkeypatch):

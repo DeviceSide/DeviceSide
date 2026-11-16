@@ -365,7 +365,7 @@ and which gives each field. The rules it serves:
   ([action-behavior.md](action-behavior.md#what-a-response-looks-like)), or null where the integration named none;
   always null on an integration that names no classes. A Zigbee device is named by its Zigbee model ID on every
   integration, and with its manufacturer string, as one model ID carries many makers' strings; every model a file
-  names must be in `docs/models.yaml`. A native group's test, and a scene's, lists the members and carries `group`.
+  names must be in `docs/models.yaml` or its bundle's `devices.yaml`. A native group's test, and a scene's, lists the members and carries `group`.
 - **Format 1** is a markdown record converted once (device-classes plan, step 5b): the run's devices sit on the record,
   not on each test. It credits the cards as the markdown did, and is no sign-off; a rerun replaces it with format 2.
 - **`_manual.json`**: a maintainer's hand tests, a row each, added in a PR: each device a model id (never a household's

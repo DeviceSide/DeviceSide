@@ -1,6 +1,6 @@
 # Physical models, and devices that fail on more than one integration, for scripts/gen_compat.py. It merges this file
 # with each integration's docs/integrations/<integration>/devices.yaml; its docstring gives both formats. A model a
-# record or report names must be here.
+# record or report names must be here, or in its integration's devices.yaml when no other integration names it.
 #
 # A model's `type` orders a card's Works line: bulb, relay, plug, dimmer or LED controller. Its `section` (default:
 # its `name`) is the heading a card links to; gen_compat's docstring says where it may be.

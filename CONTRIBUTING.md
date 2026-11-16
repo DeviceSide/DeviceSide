@@ -22,11 +22,10 @@ If you can build a change and test it on your own devices, open a pull request d
 
 1. **Check the fit** against the development principles above.
 2. **Keep one concern per pull request.** Apart from a new integration's shared touch points in step 3, any change outside your integration's package (`core/`, `actions/`, `scripts/`, shared docs, another integration) goes in its own small pull request first, and yours says `Depends on #N`. Each pull request passes CI on its own; don't stack one on another's unmerged branch. If you need a helper that another integration has, copy it into your package or propose the move in its own pull request. If a core base class doesn't fit, ask for the hook (a draft pull request or an issue) before working around it; don't carry state around it, or depend on Home Assistant's private names or side effects.
-3. **Stay in your package:** `custom_components/deviceside/integrations/<x>/`, `tests/integrations/<x>/`, `tests/fixtures/<x>.py` and the docs bundle `docs/integrations/<x>/` (CLAUDE.md's "Where facts go" says which fact goes in which file). A new integration also touches these shared files, which the repo maintainers review:
+3. **Stay in your package:** `custom_components/deviceside/integrations/<x>/`, `tests/integrations/<x>/`, `tests/fixtures/<x>.py` and the docs bundle `docs/integrations/<x>/` (CLAUDE.md's "Where facts go" says which fact goes in which file). The models you tested go in your bundle's `devices.yaml` (`models`), and in `docs/models.yaml` only when another integration already lists them (move the entry there from its bundle). A new integration also touches these shared files, which the repo maintainers review:
    - `custom_components/deviceside/services.yaml`: the integration's HA domain in each action's target filter
    - `.github/ISSUE_TEMPLATE/device_report.yml`: its title in the Integration dropdown
    - `docs/integrations.md`: a link to its page
-   - `docs/models.yaml`: the models you tested
    - `scripts/gen_features.py`: a `NO_PATH` row for each feature the devices can't support, with the reason, and its explanation in `docs/integrations.md`'s "What can't be done, and why"
    - `pyproject.toml`: any library its tests need, in the `dev` group
    - `custom_components/deviceside/__init__.py`, `const.py`, `strings.json` and `translations/en.json`: only if it adds a user option
