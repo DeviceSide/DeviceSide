@@ -8,7 +8,7 @@ from typing import Any, ClassVar
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
-from . import zcl
+from . import classes, zcl
 from .addressing import address, unsupported_reason
 from ...actions.set_attributes import SetAttributesRequest
 from ...core.adapter import Adapter
@@ -149,6 +149,7 @@ class ZHASetAttributes(Adapter[SetAttributesRequest]):
         fields=verified(
             "brightness", "color_temp_kelvin", "hs_color", "rgb_color", "xy_color", "min_brightness", "max_brightness"
         ),
+        capabilities=classes.READ_WRITE,
         max_concurrency=2,
     )
 

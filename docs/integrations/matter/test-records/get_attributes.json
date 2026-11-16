@@ -1,0 +1,45 @@
+{
+  "format": 1,
+  "integration": "matter",
+  "action": "get_attributes",
+  "result": "pass",
+  "date": "2026-11-11",
+  "source": {
+    "kind": "rig",
+    "commit": "a251331"
+  },
+  "home_assistant": "2026.10.4",
+  "devices": [
+    {
+      "model": "8979",
+      "name": "WiZ Smart Plug",
+      "firmware": "v1.4"
+    }
+  ],
+  "tests": [
+    {
+      "id": "reads_while_off[light_ct]",
+      "role": "light_ct",
+      "result": "skipped",
+      "reason": "none in the profile"
+    },
+    {
+      "id": "reads_a_running_timer[switch_plug]",
+      "domain": "switch",
+      "role": "switch_plug",
+      "result": "pass"
+    },
+    {
+      "id": "reads_a_running_timer[light_dimmable]",
+      "role": "light_dimmable",
+      "result": "skipped",
+      "reason": "none in the profile"
+    },
+    {
+      "id": "reads_no_timer_after_a_turn_off[switch_plug]",
+      "domain": "switch",
+      "role": "switch_plug",
+      "result": "pass"
+    }
+  ]
+}

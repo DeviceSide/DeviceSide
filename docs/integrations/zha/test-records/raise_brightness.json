@@ -1,0 +1,73 @@
+{
+  "format": 1,
+  "integration": "zha",
+  "action": "raise_brightness",
+  "result": "pass",
+  "date": "2026-11-08",
+  "source": {
+    "kind": "rig",
+    "commit": "8aae106"
+  },
+  "home_assistant": "2026.10.4",
+  "devices": [
+    {
+      "model": "LTA009",
+      "firmware": "0x01002a00"
+    },
+    {
+      "name": "ZBDongle-E",
+      "firmware": null,
+      "group": true
+    }
+  ],
+  "tests": [
+    {
+      "id": "raise[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass"
+    },
+    {
+      "id": "raise[group]",
+      "domain": "light",
+      "role": "group",
+      "result": "pass"
+    },
+    {
+      "id": "raise_from_off[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass"
+    },
+    {
+      "id": "raise_from_off[group]",
+      "domain": "light",
+      "role": "group",
+      "result": "pass"
+    },
+    {
+      "id": "raise_after_soft_off[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass"
+    },
+    {
+      "id": "raise_after_soft_off[group]",
+      "domain": "light",
+      "role": "group",
+      "result": "pass"
+    },
+    {
+      "id": "raise_stop_raise[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass"
+    },
+    {
+      "id": "raise_stop_raise[group]",
+      "domain": "light",
+      "role": "group",
+      "result": "pass"
+    }
+  ]
+}

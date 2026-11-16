@@ -12,7 +12,7 @@ from homeassistant.util.color import color_RGB_to_hs, color_RGB_to_xy
 from custom_components.deviceside.core.scope import Level
 from custom_components.deviceside.integrations.shelly.get_attributes import ShellyGetAttributes, config_row, status_row
 
-from ...conftest import call
+from .conftest import call
 from ...fixtures.fake import add_switch_as_x
 from ...fixtures.shelly import OTHER_LIGHT_COMPONENTS, TIMER_STARTED_AT, add_shelly_entity, failing, shelly_device
 

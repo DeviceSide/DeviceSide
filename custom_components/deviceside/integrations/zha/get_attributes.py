@@ -4,7 +4,7 @@ from typing import ClassVar
 
 from homeassistant.core import HomeAssistant
 
-from . import zcl
+from . import classes, zcl
 from .addressing import address, unsupported_reason
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Request, Status, Target
@@ -60,6 +60,7 @@ class ZHAGetAttributes(Adapter[Request]):
     scope: ClassVar[AdapterScope] = AdapterScope(
         # Zigbee plugs rarely honor OnTime (see turn_on_for), so a switch's timer may never show: Experimental.
         domains=verified("light") | experimental("switch"),
+        capabilities=classes.READ_WRITE,
         max_concurrency=2,
         confirmable=True,
     )
@@ -74,6 +75,9 @@ class ZHAGetAttributes(Adapter[Request]):
             modes = set(target.state.attributes.get("supported_color_modes") or ()) if target.state else set()
             read = await zcl.read_attributes(hass, addr, zcl.ON_OFF_CLUSTER, (zcl.ON_OFF,), optional=(zcl.ON_TIME,))
             attributes = named(zcl.ON_OFF_CLUSTER, read)
+            if "onTime" in attributes and classes.capability(hass, target) in classes.COUNTS_SECONDS:
+                # Tuya's countdown counts whole seconds, not the spec's tenths (internals.md, `classes`).
+                attributes["onTime"] *= 10
             if modes - {"onoff"}:
                 read = await zcl.read_attributes(hass, addr, zcl.LEVEL_CLUSTER, (zcl.CURRENT_LEVEL,))
                 attributes |= named(zcl.LEVEL_CLUSTER, read)

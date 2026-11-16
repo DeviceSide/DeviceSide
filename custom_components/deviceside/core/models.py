@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field, fields, replace
 from enum import StrEnum
-from typing import Any, Self
+from typing import TYPE_CHECKING, Any, Self
 
 import probatio
 from homeassistant.components.light.const import LIGHT_TURN_ON_SCHEMA
@@ -10,6 +10,9 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
 from ..const import LIGHT_FIELDS
+
+if TYPE_CHECKING:
+    from .scope import DurationLimits  # scope.py imports this module
 
 
 class Status(StrEnum):
@@ -105,9 +108,15 @@ class Request:
 
 @dataclass(frozen=True, slots=True)
 class TimedRequest(Request):
-    """A request with a duration the dispatcher clamps to each adapter's DurationLimits."""
+    """A request with a duration the dispatcher clamps to each adapter's DurationLimits.
+
+    `limits` is the DurationLimits it was fitted to, set by the dispatcher (core/duration.py): a run's targets all share
+    them, so an adapter whose class takes a call of its own (AdapterScope.own_calls) branches on them, the class the
+    dispatcher planned on, rather than classing a target again in execute, where a report in between could move it.
+    """
 
     duration_s: float
+    limits: DurationLimits | None = field(default=None, kw_only=True)
 
 
 @dataclass(frozen=True, slots=True)
@@ -125,6 +134,16 @@ class Target:
     is_group: bool = False
     # The caller listed this entity_id. Anything reached through an area, device, label or group is indirect.
     named: bool = False
+    # False for a native group's member the integration can't address on its own: a device with several entities in
+    # the group's domain, whose call would reach its default one, maybe not the one the group holds, and a stand-in
+    # classed by its device alone (zigbee2mqtt/members.py). Its class still counts in the group's `capabilities`, but
+    # not in `member_capabilities`; when the group falls back to its members, the dispatcher skips it, with its class's
+    # refusal if it has one, else as not_addressable.
+    addressable: bool = True
+    # A native group's member listed for its class alone: a device with no entity in the group's domain, listed by
+    # the group's own entity with that device and no state, not addressable (zigbee2mqtt/members.py, _stand_in). Its
+    # reported_id is the group's; a group that falls back skips it, unless a target on its device answers for it.
+    stand_in: bool = False
 
     @property
     def reported_id(self) -> str:
@@ -137,14 +156,38 @@ class EntityResult:
     entity_id: str
     status: Status
     integration: str | None = None
+    # The class the call reached, for an integration that names classes (docs/evidence.md, Device classes): a
+    # target's, or a native group's members', sorted. The dispatcher sets it, and leaves it None when it couldn't
+    # name one, or named one not yet placed (for a group: any member's).
+    classes: str | tuple[str, ...] | None = None
+    # A native group's members' classes, each member's entity_id to its class (plan Decision 66), set by the
+    # dispatcher beside `classes`: a member it couldn't name, or named not yet placed, is left out, and so is one core
+    # didn't reach through its own available entity (Target.addressable, and available), and only they.
+    member_classes: dict[str, str] | None = None
     clamped_to: float | None = None
     detail: str | None = None
     data: dict | None = None
 
+    def class_keys(self) -> dict[str, Any]:
+        """The class the call reached, as a response carries it: a target's `capability`, a group's `capabilities`
+        and `member_capabilities`."""
+        keys: dict[str, Any] = {}
+        if isinstance(self.classes, str):
+            keys["capability"] = self.classes
+        elif self.classes is not None:
+            keys["capabilities"] = list(self.classes)
+        if self.member_classes:
+            keys["member_capabilities"] = dict(self.member_classes)
+        return keys
+
     def as_response(self) -> dict:
-        """A command's status entry. A query's response is its data alone (dispatcher), so data is never here."""
+        """A command's status entry. A query's response is its data and class alone (dispatcher), so data is never
+        here."""
         response: dict[str, Any] = {"status": self.status.value}
-        for name in ("integration", "clamped_to", "detail"):
+        if self.integration is not None:
+            response["integration"] = self.integration
+        response |= self.class_keys()
+        for name in ("clamped_to", "detail"):
             if (value := getattr(self, name)) is not None:
                 response[name] = value
         return response

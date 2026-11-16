@@ -132,6 +132,18 @@ def gateway(hass: HomeAssistant) -> Any:
     return proxy.gateway
 
 
+def zigpy_device(hass: HomeAssistant, ieee: str) -> Any:
+    """The zigpy device behind the ZHA device with this IEEE, its raw Zigbee strings and its quirk's clusters; None
+    without a ZHA gateway or for a device the gateway doesn't hold. Sync, with no I/O."""
+    from zigpy.types import EUI64
+
+    try:
+        device = gateway(hass).get_device(EUI64.convert(ieee))
+    except ValueError, AssertionError:  # no gateway, or an IEEE of the wrong length (EUI64.convert asserts it)
+        return None
+    return device.device if device is not None else None
+
+
 async def read_attributes(
     hass: HomeAssistant, addr: Address, cluster_id: int, attributes: tuple[int, ...], optional: tuple[int, ...] = ()
 ) -> dict[int, Any]:

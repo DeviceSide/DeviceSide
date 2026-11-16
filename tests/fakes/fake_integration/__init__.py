@@ -1,5 +1,10 @@
 """Integration "fake": a generic integration with native groups whose members it can list."""
 
+from dataclasses import replace
+
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
+
 from custom_components.deviceside.core.resolver import resolve
 from custom_components.deviceside.core.scope import AdapterScope, DurationLimits, IntegrationInfo, verified
 
@@ -15,7 +20,28 @@ def is_group(hass, target) -> bool:
 def expand_group(hass, target):
     registry = hass.data["deviceside"].registry
     members = target.state.attributes.get("fake_members", []) if target.state else []
-    return [t for m in members if not isinstance(t := resolve(hass, registry, m, target.entity_id), str)]
+    # Members it can list but not address on their own (Target.addressable).
+    unaddressable = target.state.attributes.get("fake_unaddressable", []) if target.state else []
+    # Member devices it has no entity for in the group's domain, each named by an entity of the device's own and
+    # listed by a stand-in, as Zigbee2MQTT's members.py lists a plug in a light group: the group's own entity with
+    # the member's device, no state, and not addressable.
+    stand_ins = target.state.attributes.get("fake_stand_ins", []) if target.state else []
+    entities, devices = er.async_get(hass), dr.async_get(hass)
+    return [
+        replace(t, addressable=m not in unaddressable)
+        for m in members
+        if not isinstance(t := resolve(hass, registry, m, target.entity_id), str)
+    ] + [
+        replace(
+            target,
+            device=devices.async_get(entities.async_get(m).device_id),
+            state=None,
+            is_group=False,
+            addressable=False,
+            stand_in=True,
+        )
+        for m in stand_ins
+    ]
 
 
 INTEGRATION = IntegrationInfo(

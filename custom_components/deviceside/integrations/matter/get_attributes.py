@@ -14,6 +14,7 @@ from .addressing import (
     timer_running,
     unsupported_reason,
 )
+from .classes import GET_ATTRIBUTES
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Request, Status, Target
 from ...core.scope import AdapterScope, documented, verified
@@ -41,6 +42,7 @@ class MatterGetAttributes(Adapter[Request]):
         # Lights carry the same attributes as plugs, behind the same LT check: Documented.
         domains=verified("switch") | documented("light"),
         fields=verified(),
+        capabilities=GET_ATTRIBUTES,
         confirmable=True,
     )
 

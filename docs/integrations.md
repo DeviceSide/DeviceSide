@@ -12,7 +12,7 @@ measured on real bulbs, is in [internals.md](internals.md) and each integration'
 
 - **Refused targets.** A target that can't take an action fails the call if you named it, and is skipped if it
   came through an area, device, label or group ([action-behavior.md](action-behavior.md)). The error names the
-  reason, such as `capability_not_tested`.
+  reason, such as `not_supported`.
 - **Groups.** For timers and smooth moves, Zigbee2MQTT and ZHA groups, Hue rooms and zones, and
   Control4 light groups get one command, so their lights move together. `set_attributes` writes a ZHA group's or
   Hue room's lights one by one.
@@ -33,8 +33,12 @@ measured on real bulbs, is in [internals.md](internals.md) and each integration'
 The README's prohibited signs mark these. Each is a limit of the device protocol or the bridge, not a feature
 waiting to be built.
 
-- **Turn off with timer on ZHA, Zigbee2MQTT and Matter.** The Zigbee and Matter timer command (`OnWithTimedOff`)
-  turns a device on, then off. There is no command for off, then on.
+- **Turn off with timer on Zigbee groups and Matter, and on Zigbee devices other than Tuya's.** The Zigbee and
+  Matter timer command (`OnWithTimedOff`) turns a device on, then off. There is no command for off, then on, so
+  non-Tuya Zigbee lights and switches have no call for it either, though the README's table leaves their ZHA and
+  Zigbee2MQTT cells blank. Tuya's Zigbee devices may have one: Tuya's own countdown toggles the device when it ends,
+  and some Tuya firmware toggles on `OnWithTimedOff` from off too, though not all (one TS011F ignores it when off).
+  DeviceSide plans to probe and build turn off with timer for them after v0.1.0.
 - **Turn on or off with timer on Hue.** The bridge's own timers keep running through a plain on or off, from Home
   Assistant, the Hue app or a dimmer switch, and the Hue app doesn't show them. To time Hue bulbs, pair them with
   ZHA, Zigbee2MQTT or Matter.
@@ -43,9 +47,12 @@ waiting to be built.
 
 ## Zigbee plugs and switches
 
-`turn_on_for` and `get_attributes` on Zigbee2MQTT and ZHA plugs and switches are untested
+`turn_on_for` and `get_attributes` on Zigbee2MQTT and ZHA plugs and switches are untested, but for Zigbee2MQTT's
+Tuya countdown plugs on `turn_on_for`
 ([device compatibility](device-compatibility.md#zigbee-plugs-and-switches)). Few honor the Zigbee timer command:
-IKEA's are moving to Thread, and Sonoff and Tuya run their own countdowns (the Tuya TS011F tested never switches on).
+IKEA's are moving to Thread, and Sonoff and Tuya run their own countdowns (the Tuya TS011F's runs only Tuya's way:
+DeviceSide sends it Tuya's countdown on Zigbee2MQTT, and [doesn't support](device-compatibility.md#tuya-ts011f) its
+timer on ZHA yet).
 If you try one, please report it whether it works or not: Integrations >
 [DeviceSide](https://my.home-assistant.io/redirect/integration/?domain=deviceside) > Configure > Report a device test
 result or bug, which prefills the device's details.

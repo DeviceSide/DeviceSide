@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Check the release gates: the coverage bar, and a sign-off for each integration changed since the last release.
+"""Check the release gates: the coverage bar, a sign-off for each integration changed since the last release, and the
+classes' coverage check.
 
 The rules are in docs/evidence.md (Release gate, Sign-off format); this is how the checks read them.
 
@@ -9,43 +10,50 @@ needs at least 95% line coverage; one missing from the report has none.
 --signoffs: an integration is changed when its package (`integrations/<key>/`) differs between the last release tag (the
 latest `vX.Y.Z` that is an ancestor of HEAD; with none, every integration is changed) and HEAD, so a reverted change is
 none; its last change is the latest commit touching the package. It needs a sign-off that holds the package as HEAD
-does: its test records as one run, by the Package tree they cite (the tree of `integrations/<key>/` at the run's commit,
-compared to HEAD's, so a run on a branch counts after a squash merge, even once the branch is deleted), or a
-`_manual.md` row, by its commit, which is in this checkout. The records are one run when every one cites the same
-Package tree, whatever commit it ran at, and passes; a partial run (records citing different trees), a record with no
-Package row or a failing record is none, until a rerun of the missing or failing actions completes it. Without one, a ⚠️
-Untested fix caveat stands in when every changed adapter carries it: each adapter whose module changed, or all of the
-package's when a module that is no adapter's changed (a shared helper). Prints a line per changed integration naming its
-sign-off (kind, commit, tester) or the caveats standing in, and fails on each with neither, saying why its records and
-each manual row were rejected. With --json, prints instead the changed integrations without a sign-off, as a JSON list:
-the rig's run selection.
+does: its test records, each judged by the package tree it cites (the tree of `integrations/<key>/` at the run's commit,
+so a run on a branch counts after a squash merge, even once the branch is deleted), or a `_manual.json` row, by its
+commit, which is in this checkout. The records sign off when every one is format 2, passes and still stands. A record
+stands while the package files changed between its tree and HEAD's are all other adapters' modules (docs/evidence.md,
+tenet 9): a change to its own adapter's module, or to a module that is no adapter's (a shared helper), reopens it, as
+does any change for a suite that is no action's (`lifecycle.json`), or a tree git doesn't have. A `no_call_changed` row
+carries a record across the change its commit made when it names the record's action (`actions`; with none, every
+action): the record must stand up to that commit's parent, and from the commit on. Every action whose adapter changed
+since the last release needs a record. A reopened, format 1 (converted from markdown) or failing record, or a changed
+action with none, is no sign-off until its suite is run. Without one, a ⚠️ Untested fix caveat stands in when every
+changed adapter carries it: each adapter whose module changed, or all of the package's when a module that is no
+adapter's changed (a shared helper). Prints a line per changed integration naming its sign-off (kind, commit, tester) or
+the caveats standing in, and fails on each with neither, saying why its records and each manual row were rejected. With
+--json, prints instead the changed integrations without a sign-off, as a JSON list: the rig's run selection. With
+--reruns, prints instead a JSON object of those integrations, each with the suites to run (its reopened, format 1 and
+failing records, and its changed actions with none), or an empty list for every suite, when it has no record. It also
+runs the coverage check, failing on each gap: for an integration that names classes (`IntegrationInfo.capability`),
+every class an adapter not flagged whole holds as Verified needs a passing test that reached it in a passing record of
+the action (format 2: a device of the test with that class, a native group's test crediting each member's; format 1: the
+test's `classes`), or a `_manual.json` row whose `passed` names the action and one of whose devices has the class.
+`scripts/gen_compat.py` prints the same gaps as warnings on every run (`coverage_gaps`).
 
 --notes notes.md: writes the release notes' call for testers, with a link to the device report form: the changed
 integrations without a sign-off, and every adapter with an Untested fix caveat. Empty when there are none.
 
-Test records are the rig's, `docs/integrations/<key>/test-records/<action>*.md`: their Source row cites the commit
-(`commit `1a2b3c4``), their Package row the package tree (`| Package | `0123456789ab` |`), their Result row the outcome.
-A file whose name starts with `_` is no record (`_facts.md`), bar `_manual.md`, whose table rows are manual sign-offs.
-Under --signoffs, any other file is an error, named: a record without the rig's Source row (`| Source | rig run
-(`scripts/rig.py`), commit `1a2b3c4` |`) is no rig record. Probe findings go in internals.md, manual sign-offs in
-`_manual.md`:
-
-    | Date | Commit | Tester | Devices | Passed |
-    |---|---|---|---|---|
-    | 2026-11-12 | `1a2b3c4` | @handle | `S3SW-001X8EU`, `S3BL-C010007AEU` | `turn_on_for`, `set_auto_off` |
-    | 2026-11-12 | `1a2b3c4` | @handle | - | no call changed |
-
-Prose and headings around the table are ignored. Under --signoffs, any other `|` line is an error, as is a tester who
-is neither one of the integration's maintainers nor a repo maintainer (`REPO_MAINTAINERS`). A record names no tester:
-review of the PR that lands it checks who ran it.
+Test records are JSON, in `docs/integrations/<key>/test-records/`, each checked against docs/test-records.schema.json
+(the format's one home; docs/evidence.md, Sign-off format, describes it); a file of the wrong kind for its name, or of
+another integration than its folder's, is an error. A rig record per suite (`<action>.json`, `<action>-<option>.json`,
+read as the action's evidence; another suite's, as `lifecycle.json`, counts only toward the run), `_manual.json`, whose
+rows are manual sign-offs, and `_facts.json`, the fact cases' results, which nothing here reads. Under --signoffs, a
+file there that isn't JSON (a markdown record) is no record, named; a dotfile is ignored. A manual row's tester must be
+one of the integration's maintainers or a repo maintainer (`REPO_MAINTAINERS`). A manual row's devices, and a record's
+tests, may name a class only on an integration that names classes (`names_classes`, which gen_compat shares). A record
+names no tester: review of the PR that lands it checks who ran it. A `.json` named with a leading `_` other than those
+two, or a record whose `action` or `options` its name contradicts, is an error naming the file.
 
 Exits 1 on an integration that failed to import, whatever the options, and on any failure of the checks asked for. A
 git error fails the run rather than pass a gate unseen.
 
-Usage: scripts/check_release.py [--coverage coverage.json] [--signoffs [--json]] [--notes notes.md]
+Usage: scripts/check_release.py [--coverage coverage.json] [--signoffs [--json | --reruns]] [--notes notes.md]
 """
 
 import argparse
+import functools
 import inspect
 import json
 import os
@@ -53,15 +61,19 @@ import re
 import subprocess
 import sys
 from collections import Counter
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+
+from jsonschema import Draft202012Validator
+from jsonschema.exceptions import best_match
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
 from custom_components.deviceside.config_flow import REPORT_URL  # noqa: E402
 from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
-from custom_components.deviceside.core.scope import CaveatKind  # noqa: E402
+from custom_components.deviceside.core.scope import CaveatKind, Level  # noqa: E402
 from scripts.check_tag import git as git_in  # noqa: E402
 from scripts.check_tag import releases  # noqa: E402
 from scripts.gen_codeowners import REPO_MAINTAINERS  # noqa: E402
@@ -69,17 +81,10 @@ from scripts.gen_codeowners import REPO_MAINTAINERS  # noqa: E402
 COVERAGE_BAR = 95.0
 COMPONENT = Path("custom_components") / "deviceside"
 BUNDLES = REPO / "docs" / "integrations"
-RIG_SOURCE = re.compile(r"^\| Source \| rig run \(`scripts/rig\.py`\), commit `[0-9a-f]{7,40}` \|", re.MULTILINE)
-CITED_COMMIT = re.compile(r"^\| Source \|.*\bcommit `([0-9a-f]{7,40})`", re.MULTILINE)
-CITED_TREE = re.compile(r"^\| Package \| `([0-9a-f]{12,40})` \|", re.MULTILINE)
-RESULT = re.compile(r"^\| Result \| (\S+) \|", re.MULTILINE)
-MANUAL = "_manual.md"
-MANUAL_HEADER = ("| Date | Commit | Tester | Devices | Passed |", "|---|---|---|---|---|")
-BACKTICKED = r"`[^`|]+`(?:, `[^`|]+`)*"
-MANUAL_ROW = re.compile(
-    rf"\| \d{{4}}-\d{{2}}-\d{{2}} \| `([0-9a-f]{{7,40}})` \| @([A-Za-z0-9-]+)"
-    rf" \| (?:{BACKTICKED} \| {BACKTICKED}|- \| no call changed) \|"
-)
+SCHEMA = REPO / "docs" / "test-records.schema.json"
+MANUAL = "_manual.json"
+FACTS = "_facts.json"
+FORMAT = 2  # the format the rig writes, and the only one a sign-off takes
 DEVICE_REPORT = f"{REPORT_URL}?template=device_report.yml"
 
 
@@ -90,6 +95,18 @@ def adapters(registry: AdapterRegistry) -> list[tuple[str, object]]:
         for action, integration, adapter in registry.matrix()
         if adapter is not None
     ]
+
+
+def names_classes(adapter) -> bool:
+    """Whether the adapter's integration names classes (`IntegrationInfo.capability`): the registry holds every
+    adapter's scope to it, classes in each or in none (`check_classes`), so the scope answers for the integration. The
+    one definition gen_compat and the checks here share."""
+    return adapter.scope.capabilities is not None
+
+
+def classed(registry) -> set[str]:
+    """The integrations that name classes, by their adapters (`names_classes`)."""
+    return {adapter.integration for _, adapter in adapters(registry) if names_classes(adapter)}
 
 
 def git(*args: str) -> str:
@@ -131,9 +148,134 @@ def test_records_dir(integration: str) -> Path:
     return BUNDLES / integration / "test-records"
 
 
-def result(record: Path) -> str | None:
-    """The record's Result row (`pass`, `fail`, ...), or None if it has none."""
-    return m[1] if (m := RESULT.search(record.read_text())) else None
+def where(path: Path) -> str:
+    """The path as an error names it: relative to the repository."""
+    return path.relative_to(REPO).as_posix() if path.is_relative_to(REPO) else str(path)
+
+
+@functools.cache
+def validator() -> Draft202012Validator:
+    return Draft202012Validator(json.loads(SCHEMA.read_text()))
+
+
+def load(path: Path) -> dict:
+    """The test-records file, checked against the schema, against its name (`_manual.json` holds sign-offs,
+    `_facts.json` facts, any other a rig record) and against its folder's integration. Any error names the file and
+    stops the run: a file read wrong would credit or sign off unseen."""
+    try:
+        data = json.loads(path.read_text())
+    except json.JSONDecodeError as error:
+        raise SystemExit(f"{where(path)}: not JSON ({error})") from None
+    if error := best_match(validator().iter_errors(data)):
+        at = "/".join(map(str, error.absolute_path)) or "the top level"
+        raise SystemExit(f"{where(path)}: {error.message}, at {at} (docs/test-records.schema.json)")
+    kind = {MANUAL: "signoffs", FACTS: "facts"}.get(path.name, "tests")
+    if kind not in data:
+        raise SystemExit(f"{where(path)}: not the kind of file its name says (docs/test-records.schema.json)")
+    if data["integration"] != path.parent.parent.name:
+        raise SystemExit(f"{where(path)}: integration {data['integration']!r}, in {path.parent.parent.name}'s bundle")
+    return data
+
+
+def listed(integration: str) -> list[Path]:
+    """The files in the integration's test-records folder, dotfiles (an editor's or the OS's) left out. A `.json`
+    named with a leading `_` other than `_manual.json` and `_facts.json` stops the run, naming it: it is no record, and
+    would drop out of the sign-off unseen."""
+    folder = test_records_dir(integration)
+    found = sorted(path for path in folder.glob("*") if path.is_file() and not path.name.startswith("."))
+    for path in found:
+        if path.suffix == ".json" and path.name.startswith("_") and path.name not in (MANUAL, FACTS):
+            raise SystemExit(
+                f"{where(path)}: a leading `_` is for {MANUAL} and {FACTS} only; a rig record is named for its suite"
+                " (docs/test-records.schema.json)"
+            )
+    return found
+
+
+def records(integration: str) -> list[Path]:
+    """The integration's rig records, every suite's: the JSON files not named with a leading `_`."""
+    return [path for path in listed(integration) if path.suffix == ".json" and not path.name.startswith("_")]
+
+
+def passing(integration: str, action: str) -> list[Path]:
+    """The action's passing test records: `<action>.json`, and `<action>-<option>.json` for a run with an option set
+    (several options `-`-joined, sorted, as a step file's `options` are). A file is credited by its name, so one whose
+    `action` or `options` say otherwise stops the run, naming it, rather than credit an action it didn't test."""
+    pattern = re.compile(rf"{re.escape(action)}(?:-([^.]+))?\.json")
+    found = []
+    for path in records(integration):
+        if not (match := pattern.fullmatch(path.name)):
+            continue
+        record, options = load(path), match[1].split("-") if match[1] else None
+        if (record["action"], record.get("options")) != (action, options):
+            held = f"action {record['action']!r}, options {record.get('options')}"
+            raise SystemExit(f"{where(path)}: {held}, but its name says action {action!r}, options {options}")
+        if record["result"] == "pass":
+            found.append(path)
+    return found
+
+
+def manual(integration: str) -> list[dict]:
+    """The rows of the integration's `_manual.json`; none without one."""
+    path = test_records_dir(integration) / MANUAL
+    return load(path)["signoffs"] if path.is_file() else []
+
+
+def manual_rows(integration: str, action: str) -> list[list[tuple[str, str | None]]]:
+    """The devices, as (model id, class), of each `_manual.json` row whose `passed` names the action."""
+    return [
+        [(device["model"], device["class"]) for device in row["devices"]]
+        for row in manual(integration)
+        if action in row.get("passed", ())
+    ]
+
+
+# The coverage check (docs/evidence.md, The coverage check).
+
+
+def reached(integration: str, action: str) -> set[tuple[str, str | None]]:
+    """The classes the action's evidence reached, each with the domain its test targeted: in a passing record, each
+    passing test's (format 2: its devices' classes, a native group's members' each; format 1: its `classes`), and each
+    `_manual.json` row's devices', whose domain is None, as a row names none. A null class credits none."""
+    found: set[tuple[str | None, str | None]] = set()
+    for path in passing(integration, action):
+        record = load(path)
+        for test in record["tests"]:
+            if test["result"] != "pass":
+                continue
+            names = test.get("classes", ()) if record["format"] == 1 else (d["class"] for d in test["devices"])
+            found.update((name, test.get("domain")) for name in names)
+    for row in manual_rows(integration, action):
+        found.update((cls, None) for _, cls in row)
+    return {(name, domain) for name, domain in found if name is not None}
+
+
+def coverage_gaps(registry) -> list[str]:
+    """Each class an adapter of an integration that names classes holds as Verified, with no passing record test or
+    manual row for its action that reached it: one held on every domain, in any domain; one held on some domains alone
+    (OnDomains), in each of them, as a record in one domain proves nothing about another. A manual row names no domain,
+    so it covers every domain (the maintainer's judgment, tenet 7). An adapter flagged whole holds none as Verified."""
+    gaps = []
+    for _, adapter in adapters(registry):
+        if not names_classes(adapter) or adapter.scope.experimental:
+            continue
+        found = reached(adapter.integration, adapter.action)
+        for item, level, domains in sorted(adapter.scope.class_entries(), key=lambda entry: entry[0]):
+            if level is not Level.VERIFIED:
+                continue
+            if domains is None:
+                if not any(name == item for name, _ in found):
+                    gaps.append(
+                        f"{adapter.integration} {adapter.action}: `{item}` is Verified but no record reaches it"
+                    )
+                continue
+            prefix = f"{adapter.integration} {adapter.action}: `{item}` is Verified on"
+            gaps += [
+                f"{prefix} {domain} but no record reaches it there"
+                for domain in sorted(domains)
+                if (item, domain) not in found and (item, None) not in found
+            ]
+    return gaps
 
 
 # Coverage.
@@ -168,7 +310,8 @@ class SignOff:
     source: str  # the records' folder, or the manual row as `<file>:<line>`
     commit: str  # a manual row's commit; a record's most common one, for the printout
     tester: str | None = None  # a manual row's handle; a record names none
-    tree: str | None = None  # a record's cited Package tree, which it is checked by; a manual row has none
+    actions: tuple[str, ...] | None = None  # a no_call_changed row's `actions`: it vouches for these alone
+    vouches: bool = False  # a no_call_changed row, which can keep a reopened record
 
 
 @dataclass(frozen=True)
@@ -182,6 +325,7 @@ class Gate:
     rejected: list[str]
     caveated: list[str]
     uncaveated: list[str]
+    reruns: tuple[str, ...] = ()  # the suites whose records are reopened, format 1 or failing
 
     @property
     def passes(self) -> bool:
@@ -202,62 +346,155 @@ def last_change(integration: str, base: str | None) -> str | None:
     return git("log", "-1", "--format=%H", f"{base}..HEAD" if base else "HEAD", "--", package(integration)) or None
 
 
-def record_signoff(integration: str) -> tuple[SignOff | None, str | None]:
-    """The integration's test records as one sign-off when they are one passing run, every record citing the same
-    package tree; else None and why not, or no reason when there are no records. `_`-prefixed files are not records; a
-    file without the rig's Source row is an error."""
-    folder = test_records_dir(integration)
-    if not (records := [path for path in sorted(folder.glob("*.md")) if not path.name.startswith("_")]):
-        return None, None
-    if foreign := [path.name for path in records if not RIG_SOURCE.search(path.read_text())]:
-        return None, (
-            f"{', '.join(foreign)}: not rig records; probe findings go in internals.md, manual sign-offs in _manual.md"
+def modules(registry, integration: str) -> dict[str, str]:
+    """The module of each of the integration's adapters, by action, as a path inside the package."""
+    root = (REPO / package(integration)).resolve()
+    return {
+        adapter.action: Path(inspect.getfile(type(adapter))).resolve().relative_to(root).as_posix()
+        for _, adapter in adapters(registry)
+        if adapter.integration == integration
+    }
+
+
+def package_tree(integration: str, tree: str | None = None, commit: str | None = None) -> str | None:
+    """The package's git tree: the one a record cites (`package`), in full, or the package at a commit; None when git
+    doesn't have it."""
+    name = f"{tree}^{{tree}}" if tree else f"{commit}:{package(integration).rstrip('/')}"
+    found = run("rev-parse", "--verify", "--quiet", name)
+    return None if found.returncode else found.stdout.strip()
+
+
+@functools.cache
+def differing(old: str | None, new: str | None) -> frozenset[str] | None:
+    """The files that differ between two package trees, a rename as both its names; None when either is unknown."""
+    if old is None or new is None:
+        return None
+    return frozenset(filter(None, git("diff", "--name-only", "--no-renames", "-z", old, new).split("\0")))
+
+
+def stands(changed: Collection[str] | None, action: str, adapter_modules: Mapping[str, str]) -> bool:
+    """Whether a record of the action holds through these changed files: each is another adapter's module. A suite that
+    is no action's holds through none, and nothing holds across a tree git doesn't have."""
+    if changed is None:
+        return False
+    own = adapter_modules.get(action)
+    return not changed if own is None else set(changed) <= set(adapter_modules.values()) - {own}
+
+
+def carried(
+    ran_at: str | None, head: str | None, action: str, adapter_modules: Mapping[str, str], hops: Sequence[tuple]
+) -> bool:
+    """Whether a record of the action, run at one package tree, stands at HEAD's: directly, or carried across each
+    change a `no_call_changed` row vouches for (`hops`: the package before the row's commit, after it, and the row's
+    actions), standing up to the one and on from the other."""
+
+    def holds_to(tree: str | None) -> bool:
+        return any(stands(differing(at, tree), action, adapter_modules) for at in held)
+
+    held, grew = {ran_at}, True
+    while grew:
+        grew = False
+        for before, after, actions in hops:
+            if after not in held and (actions is None or action in actions) and holds_to(before):
+                held.add(after)
+                grew = True
+    return holds_to(head)
+
+
+def record_signoff(
+    integration: str,
+    adapter_modules: Mapping[str, str] | None = None,
+    vouchers: Sequence[SignOff] = (),
+    changed_actions: Collection[str] = (),
+) -> tuple[SignOff | None, str | None, tuple[str, ...]]:
+    """The integration's test records as one sign-off when every one is format 2, passes and stands (`stands`) from
+    its package tree to HEAD's, and every action whose adapter changed since the last release (`changed_actions`) has
+    one; else None, why not (no reason when there are no records), and the suites to rerun. A `no_call_changed` row
+    (`vouchers`) that names a record's action carries it across the change its commit made: the record must stand up
+    to that commit's parent, and then from the commit on, or up to the next such row. A file in the folder that isn't
+    JSON is no record, and stops the sign-off; a dotfile is none of the run's."""
+    folder, adapter_modules = test_records_dir(integration), adapter_modules or {}
+    if foreign := [path.name for path in listed(integration) if path.suffix != ".json"]:
+        return (
+            None,
+            f"{', '.join(foreign)}: not test records, which are JSON (docs/test-records.schema.json); probe findings go"
+            " in internals.md, manual sign-offs in _manual.json",
+            (),
         )
-    if missing := [path.name for path in records if not CITED_TREE.search(path.read_text())]:
-        return None, f"{', '.join(missing)}: no Package row: rerun with the rig"
-    trees = Counter(CITED_TREE.search(path.read_text())[1][:12] for path in records)
-    if len(trees) > 1:
-        counts = ", ".join(f"{tree}: {n}" for tree, n in trees.most_common())
-        return None, f"records cover {len(trees)} package versions ({counts}); a sign-off is one run of one package"
-    (tree,) = trees
-    if failing := [path.name for path in records if result(path) != "pass"]:
-        return None, f"{', '.join(failing)} fail{'s' * (len(failing) == 1)} at package {tree}"
-    commits = Counter(m[1][:7] for path in records if (m := CITED_COMMIT.search(path.read_text())))
-    return SignOff("record", str(folder.relative_to(REPO)), commits.most_common(1)[0][0], tree=tree), None
+    if not (paths := records(integration)):
+        return None, None, ()
+    run = {path.name: load(path) for path in paths}
+    old = [name for name, record in run.items() if record["format"] != FORMAT]
+    failing = [name for name, record in run.items() if record["format"] == FORMAT and record["result"] != "pass"]
+    head = package_tree(integration, commit="HEAD")
+    hops = [
+        (package_tree(integration, commit=f"{row.commit}~1"), package_tree(integration, commit=row.commit), row.actions)
+        for row in vouchers
+    ]
+    ran_at = {
+        name: package_tree(integration, tree=record["package"])
+        for name, record in run.items()
+        if name not in old and name not in failing
+    }
+    reopened = [
+        name for name, tree in ran_at.items() if not carried(tree, head, run[name]["action"], adapter_modules, hops)
+    ]
+    changes = set().union(
+        *(
+            differing(ran_at[name], head) or {f"package {run[name]['package'][:12]}, which git doesn't have"}
+            for name in reopened
+        )
+    )
+    # An option's record ran the action with that option set, so the plain call needs a record of its own.
+    missing = sorted(set(changed_actions) - {record["action"] for record in run.values() if not record.get("options")})
+    why = []
+    if old:
+        why.append(f"{', '.join(old)}: format 1, converted from markdown, so no sign-off: rerun with the rig")
+    if failing:
+        why.append(f"{', '.join(failing)} fail{'s' * (len(failing) == 1)}")
+    if reopened:
+        why.append(
+            f"{', '.join(reopened)}: reopened by a change since {'its' if len(reopened) == 1 else 'their'} run"
+            f" ({', '.join(sorted(changes))}): rerun, or a no_call_changed row at the change's commit names the action"
+        )
+    if missing:
+        why.append(f"{', '.join(missing)}: changed since the last release, with no record")
+    if why:
+        return None, "; ".join(why), tuple(Path(name).stem for name in (*old, *failing, *reopened, *missing))
+    commits = Counter(record["source"]["commit"][:7] for record in run.values())
+    return SignOff("record", str(folder.relative_to(REPO)), commits.most_common(1)[0][0]), None, ()
 
 
-def manual_signoffs(integration: str, testers: tuple[str, ...]) -> tuple[list[SignOff], list[str]]:
-    """The integration's `_manual.md` rows, and the errors in it: a `|` line that is neither the header nor a row of
-    the format, or a row whose tester may not sign off. A row in error is no sign-off."""
+def manual_signoffs(
+    integration: str, testers: tuple[str, ...], names_classes: bool = False
+) -> tuple[list[SignOff], list[str]]:
+    """The integration's `_manual.json` rows, and the errors in them: a class on an integration that names none, or a
+    tester who may not sign off. A row in error is no sign-off; a file the schema rejects stops the run."""
     path = test_records_dir(integration) / MANUAL
-    if not path.is_file():
-        return [], []
-    label = path.relative_to(REPO)
     allowed = {tester.casefold() for tester in testers}
     found, errors = [], []
-    for number, line in enumerate(path.read_text().splitlines(), 1):
-        line = line.strip()
-        if not line.startswith("|") or line in MANUAL_HEADER:
-            continue
-        if not (row := MANUAL_ROW.fullmatch(line)):
-            errors.append(f"{label}:{number}: not a row of `{MANUAL_HEADER[0]}`: {line}")
-        elif row[2].casefold() not in allowed:
-            errors.append(f"{label}:{number}: tester @{row[2]} is neither a maintainer of {integration} nor a repo one")
+    for number, row in enumerate(manual(integration), 1):
+        at = f"{where(path)} row {number}"
+        if not names_classes and any(device["class"] is not None for device in row.get("devices", ())):
+            errors.append(f"{at}: a class, but {integration} names no classes")
+        elif row["tester"].casefold() not in allowed:
+            errors.append(f"{at}: tester @{row['tester']} is neither a maintainer of {integration} nor a repo one")
         else:
-            found.append(SignOff("manual", f"{label}:{number}", row[1], row[2]))
+            actions = tuple(row["actions"]) if "actions" in row else None
+            found.append(
+                SignOff("manual", at, row["commit"], row["tester"], actions, row.get("no_call_changed", False))
+            )
     return found, errors
 
 
 def rejection(signoff: SignOff, integration: str) -> str | None:
-    """Why the sign-off doesn't hold the integration's package as HEAD does, or None when it does. A record is
-    checked by its Package tree, a manual row by its commit, which must be in this checkout."""
-    if signoff.tree:
-        if not git("rev-parse", f"HEAD:{package(integration)}").startswith(signoff.tree):
-            return f"{signoff.source} at package {signoff.tree}: the package differs from HEAD's"
-        return None
+    """Why the manual row doesn't hold the integration's package as HEAD does, or None when it does: its commit must
+    be in this checkout. A row naming `actions` signs off no package by itself: it only keeps their records."""
     at = f"{signoff.source} at {signoff.commit[:7]}"
     if not exists(signoff.commit):
         return f"{at}: not in this checkout; cite a commit on main"
+    if signoff.actions is not None:
+        return f"{at}: names actions, so it keeps their records and signs off no package"
     if not same(signoff.commit, package(integration)):
         return f"{at}: the package differs from HEAD's"
     return None
@@ -278,27 +515,53 @@ def changed_adapters(registry, integration: str, base: str | None) -> list[tuple
     return [(name, adapter) for name, adapter in own if modules[name].as_posix() in changed]
 
 
+def record_class_errors(integration: str) -> list[str]:
+    """For an integration that names no classes: each rig record test that names one, a device's `class` (format 2)
+    or a `classes` entry (format 1), as `_manual.json` rows are held (`manual_signoffs`). A class there is a record
+    read wrong, as nothing could have reached it."""
+    errors = []
+    for path in records(integration):
+        record = load(path)
+        for number, test in enumerate(record["tests"], 1):
+            named = test.get("classes", []) + [item["class"] for item in test.get("devices", ())]
+            if any(cls is not None for cls in named):
+                errors.append(
+                    f"{where(path)} test {number} ({test['id']}): a class, but {integration} names no classes"
+                )
+    return errors
+
+
 def gates(registry) -> tuple[str | None, list[Gate], list[str]]:
-    """The last release tag, a gate per changed integration, and the `_manual.md` errors."""
+    """The last release tag, a gate per changed integration, and the test-records errors: a `_manual.json` row's, or a
+    class named on an integration that names none."""
     base = last_release()
     found, errors = [], []
+    names = classed(registry)
     for key, info in registry.integrations.items():
-        manual, problems = manual_signoffs(key, (*info.maintainers, *REPO_MAINTAINERS))
+        manual, problems = manual_signoffs(key, (*info.maintainers, *REPO_MAINTAINERS), key in names)
         errors += problems
+        if key not in names:
+            errors += record_class_errors(key)
         if not (last := last_change(key, base)):
             continue
-        run, why = record_signoff(key)
-        signoff, rejected = None, [why] if why else []
-        for candidate in [run, *manual] if run else manual:
+        changed = changed_adapters(registry, key, base)
+        run, why, reruns = record_signoff(
+            key,
+            modules(registry, key),
+            [row for row in manual if row.vouches],
+            [adapter.action for _, adapter in changed],
+        )
+        signoff, rejected = run, [why] if why else []
+        for candidate in () if run else manual:
             if not (why := rejection(candidate, key)):
                 signoff = candidate
                 break
             rejected.append(why)
         caveated, uncaveated = [], []
-        for name, adapter in changed_adapters(registry, key, base):
+        for name, adapter in changed:
             caveat = adapter.scope.caveat
             (caveated if caveat is not None and caveat.kind is CaveatKind.UNTESTED_FIX else uncaveated).append(name)
-        found.append(Gate(key, last, signoff, rejected, caveated, uncaveated))
+        found.append(Gate(key, last, signoff, rejected, caveated, uncaveated, reruns))
     return base, found, errors
 
 
@@ -345,11 +608,13 @@ def main(argv: list[str] | None = None, registry: AdapterRegistry | None = None)
     parser.add_argument(
         "--signoffs", action="store_true", help="fail on an integration changed since the last release with no sign-off"
     )
-    parser.add_argument("--json", action="store_true", help="with --signoffs: list the integrations without one")
+    printed = parser.add_mutually_exclusive_group()
+    printed.add_argument("--json", action="store_true", help="with --signoffs: list the integrations without one")
+    printed.add_argument("--reruns", action="store_true", help="with --signoffs: those, each with the suites to rerun")
     parser.add_argument("--notes", type=Path, help="write the release notes' call for testers here")
     args = parser.parse_args(argv)
-    if args.json and not args.signoffs:
-        parser.error("--json needs --signoffs")
+    if (args.json or args.reruns) and not args.signoffs:
+        parser.error("--json and --reruns need --signoffs")
 
     registry = registry or AdapterRegistry.discover()
     # An integration that failed to import has no adapters to check, so every gate would pass it unseen.
@@ -367,8 +632,11 @@ def main(argv: list[str] | None = None, registry: AdapterRegistry | None = None)
         if args.signoffs:
             errors += manual_errors
             errors += [describe(gate) for gate in found if not gate.passes]
+            errors += coverage_gaps(registry)
             lines = [f"Since {base or 'the first commit'}:", *(describe(gate) for gate in found)]
-            if args.json:
+            if args.reruns:
+                print(json.dumps({gate.integration: list(gate.reruns) for gate in found if gate.signoff is None}))
+            elif args.json:
                 print(json.dumps([gate.integration for gate in found if gate.signoff is None]))
             else:
                 print("\n".join(lines))

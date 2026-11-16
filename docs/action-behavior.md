@@ -36,29 +36,41 @@ an area, device or label, a member of an HA group (`group.*` or a group helper),
 the dispatcher expanded. Core treats a `group.*` member as named; DeviceSide doesn't, because a group is a
 deliberately mixed set. An indirect entity outside the action's domains is never a target, as in core.
 
-**Can never support** is any reason that holds whatever the device's state: no adapter, a domain, capability
-or option nobody has tested, an entity the integration can't address. A field the adapter has never been
-tested with is in this class too: it is refused, never dropped. **Lacks a field** comes from the target's state, read
-as `filter_turn_on_params` reads it (a color is lacked only without any color mode, color temperature only without
-that or a color mode, since core converts between them first), and from the adapter where only it knows: Hue's
-gamut, `AdapterScope.drops`, and a Shelly component's fields. A field tested on one Shelly component but not yet
-ported or recorded for another is dropped there, not refused (`color_temp_kelvin` on a `CCT` light). A `switch`, or a `switch_as_x` light, lacks every
-light field, so a timed call still runs its timer. A call left nothing to do by dropping is `unchanged` with
-`fields_dropped`. An empty group is skipped silently, as core's group expansion yields nothing for one.
+**Can never support** is any reason that holds whatever the device's state: no adapter, an integration or gateway
+DeviceSide doesn't support (`integration_not_supported`; a named Hue v1 bridge light raises saying why), a domain or
+option nobody has tested, a class that doesn't work or isn't supported (`doesnt_work`, `not_supported`), an entity
+the integration can't address. A field the adapter has never been tested with is in this class too: it is refused, never dropped. **Lacks a
+field** comes from the target's state, read as `filter_turn_on_params` reads it (a color is lacked only without any
+color mode, color temperature only without that or a color mode, since core converts between them first), and from the
+adapter where only it knows: Hue's gamut, `AdapterScope.drops`, and a Shelly component's fields. A field tested on one
+Shelly component but not yet ported or recorded for another is dropped there, not refused (`color_temp_kelvin` on a
+`CCT` light). A `switch`, or a `switch_as_x` light, lacks every light field, so a timed call still runs its timer. A
+call left nothing to do by dropping is `unchanged` with `fields_dropped`. An empty group is skipped silently, as core's
+group expansion yields nothing for one.
 
-**Unlisted fields depart from core.** An adapter may name, in `AdapterScope.unlisted`, fields its devices take
-although the light's state says they can't; a light never lacks those for that adapter, where
-`filter_turn_on_params` would drop them. Why: DeviceSide fills design gaps between an upstream integration and HA,
-as it makes Zigbee2MQTT announce the HS mode its full-color lights have ([integrations.md](integrations.md)), and
-an integration that leaves a mode out of `supported_color_modes` shouldn't stop a device that has it. HA's own UI still shows the light without the mode,
-and `light.turn_on` still drops the field. An unlisted field must be in the adapter's `fields`, at its own level:
-fields are never Documented, so it starts Experimental. A `switch` still lacks every light field.
+**Not yet classed** (`class_unknown`), where a call is known to harm a class, is refused the same way, raised if named
+and skipped if not, but it is usually transient: it holds only until the integration has reported the device or group
+([evidence.md](evidence.md#doesnt-work-not-yet-supported-untested)). That usually takes seconds, so an automation firing
+at startup can get it; if the integration never reports it (DeviceSide couldn't connect to it), it holds until
+DeviceSide reloads, and a device that never finishes pairing holds until it is paired again. A target DeviceSide can't
+class at all (an entity with no device, a classifier that raised) is refused the same way, for good. A native group
+with a member refused either way falls back to its members, as for any refused member (below): the rest run, and only
+that one is refused.
 
-**A value the device can't reach** passes the schema but lies outside what the device can do: a timer longer
-than its counter, or a `raise_hue` or `lower_hue` `sweep_time` outside a native hue cycle's 1–254 s (Zigbee2MQTT). It is clamped to
-that range and the result carries `clamped_to`, the value used. It isn't refused, as the call can still do the
-nearest thing, and it isn't `fields_dropped`, which is for a field the light lacks. Rounding inside the range
-isn't reported.
+**Unlisted fields depart from core.** An adapter may name, in `AdapterScope.unlisted`, fields its devices take although
+the light's state says they can't; a light never lacks those for that adapter, where `filter_turn_on_params` would drop
+them. Why: DeviceSide fills design gaps between an upstream integration and HA, as it makes Zigbee2MQTT announce the HS
+mode its full-color lights have ([integrations.md](integrations.md)), and an integration that leaves a mode out of
+`supported_color_modes` shouldn't stop a device that has it. HA's own UI still shows the light without the mode, and
+`light.turn_on` still drops the field. An unlisted field must be in the adapter's `fields`, at its own level: fields are
+never Documented, so it starts Experimental. A `switch` still lacks every light field.
+
+**A value the device can't reach** passes the schema but lies outside what the device can do: a timer longer than its
+counter, or a `raise_hue` or `lower_hue` `sweep_time` outside a native hue cycle's 1–254 s (Zigbee2MQTT). It is clamped
+to that range and the result carries `clamped_to`, the value used. It isn't refused, as the call can still do the
+nearest thing, and it isn't `fields_dropped`, which is for a field the light lacks. Rounding inside the range isn't
+reported, except where the device's timer runs in coarser steps than the request (a Tuya plug's whole seconds on
+Zigbee2MQTT): there the result carries `clamped_to` too, as the timer won't end when asked.
 
 ## What a response looks like
 
@@ -82,10 +94,36 @@ raises or the entity is skipped.
 - **One entry per target.** A room returns one entry, not one per light as well, so `merge_response` lists each
   target once.
 - **Commands and settings** return nothing in core. DeviceSide keeps an optional status response, one entry per target
-  that ran: `confirmed`, `sent` or `unchanged`, with `integration` and, where they apply, `detail` and
-  `clamped_to`. Skipped targets are left out, as core leaves them out, and `unsupported` or `rejected` never
-  reach a response: the call skips or raises instead. A call that has nothing to do succeeds quietly as
-  `unchanged` with a `detail`.
+  that ran: `confirmed`, `sent` or `unchanged`, with `integration` and, where they apply, `detail` and `clamped_to`.
+  Skipped targets are left out, as core leaves them out, and `unsupported` or `rejected` never reach a response: the
+  call skips or raises instead. A call that has nothing to do succeeds quietly as `unchanged` with a `detail`, checked
+  before the target's class, so nothing-to-do wins over doesn't-work or not supported. A native group with a refused
+  member (`class_unknown` included), or an Experimental one while Experimental features is off, or one whose class takes
+  a call of its own (`own_call`), falls back to its members where the integration can list them. A group that falls back
+  has no entry of its own: its members' entries answer for it, though a member it can't address alone answers for
+  nothing and is skipped (a plug in a light group too, which HA shows as a switch, skipped whether or not it is
+  available, as its state can't be seen, unless the plug is a target itself), while any other member known unavailable
+  is left out quietly. Every member a group falls back to is indirect, so none raises, and the group raises only when
+  none of its members runs, with the most useful member's reason: `experimental_off`, then a class's refusal, then any
+  other, `not_addressable` last ([design.md](design.md#core-contract), Groups). A named target whose class doesn't work,
+  or isn't supported yet and is harmed by today's call, raises with the reason why.
+- **The class.** On an integration that names [classes](evidence.md#device-classes), each entry carries the
+  class the call reached, as an attribute would: a command's beside `status` and `integration`, a query's among its
+  data. A target's is `capability` (a string: `"RGBCCT"`); a native group's is `capabilities`, its members' classes
+  once each, sorted (a list: `["hue", "other"]`). The key is absent when the integration couldn't name one, or named
+  it only provisionally (a device not yet [placed](design.md#glossary)), for a group when that holds for any member,
+  so a list always stands for the whole group and never for a class that could still move. A native group's entry
+  also carries `member_capabilities`, each member's entity_id to its class (a map:
+  `{"light.one": "hue", "light.two": "other"}`), as the one call reached each member. A member with no class, or
+  only a provisional one, is left out of it, and only that member, so a group with one member not yet placed still
+  names the rest. So is every member core didn't reach through its own available entity (availability judged when
+  the call is planned), whose class still counts in `capabilities`: one that is unavailable; one core resolves only
+  through a stand-in, as a plug in a light group (which HA exposes as a switch, or a `switch_as_x` light wraps) or a
+  disabled member; and a device with more than one entity in the group's domain, as a Zigbee2MQTT group holds one
+  of its endpoints, which DeviceSide can't address on its own. The key is absent when no member is left. Like
+  `capability`, the map also appears on an `unchanged` entry, where the call sent nothing: a reader crediting
+  evidence credits only an entry whose status shows a send. A group that falls back has no entry, so no map: each
+  member's own entry carries its `capability`.
 
 ## Replacing hue_dimmer
 

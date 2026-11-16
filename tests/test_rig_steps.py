@@ -1,9 +1,9 @@
 """The rig's step files load, call a registered action and name only registered integrations.
 
 Shared ones live in `tests/rig/steps/`; an integration's own in `tests/integrations/<x>/rig/`, which run on `<x>` alone,
-so each needs `<x>`'s adapter of its action and may name no other integration. The rig's parser is private, and its CI
-checks them in full only on a rig PR or its daily run; this catches a broken file, a misspelled action or integration
-in the PR that brings it.
+so each needs `<x>`'s adapter of its action and may name no other integration. The rig's parser lives in the rig, and
+its CI checks them in full only on a rig PR or its daily run; this catches a broken file, a misspelled action or
+integration in the PR that brings it.
 """
 
 from pathlib import Path

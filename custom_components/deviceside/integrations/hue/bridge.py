@@ -2,9 +2,11 @@
 
 import logging
 from collections.abc import Iterable
+from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
 from ...core.models import Target
@@ -16,6 +18,7 @@ if TYPE_CHECKING:
     from aiohue.v2 import HueBridgeV2
     from aiohue.v2.controllers.groups import GroupedLightController
     from aiohue.v2.controllers.lights import LightsController
+    from aiohue.v2.models.light import Light
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -23,15 +26,10 @@ _LOGGER = logging.getLogger(__name__)
 DELTAS = {BRIGHTNESS: "dimming_delta"}
 
 
-def bridge_api(target: Target) -> HueBridgeV2 | None:
-    """The v2 API of the bridge behind the target, or None on a v1 bridge.
-
-    The core hue integration keeps its HueBridge on the config entry; HueBridge.api is a HueBridgeV2 from API 2 on.
-    """
-    bridge = getattr(target.config_entry, "runtime_data", None)
-    if bridge is None or getattr(bridge, "api_version", 1) < 2:
-        return None
-    return bridge.api
+def bridge_api(target: Target) -> HueBridgeV2:
+    """The v2 API of the bridge behind the target. Core's hue integration keeps its HueBridge on the config entry, whose
+    api is a HueBridgeV2 from API 2 on; a v1 bridge's targets never reach a Hue adapter (v1.py)."""
+    return target.config_entry.runtime_data.api
 
 
 def resource_id(target: Target) -> str:
@@ -45,20 +43,50 @@ def controller(api: HueBridgeV2, target: Target) -> LightsController | GroupedLi
 
 
 def is_hue_group(hass: HomeAssistant, target: Target) -> bool:
-    """A room or zone, which core's hue integration exposes as one light on the room's grouped_light.
-
-    A v1 bridge's group is left as a plain target, so supports() refuses it as bridge_v1 rather than expanding it.
-    """
-    return bool(target.state and target.state.attributes.get("is_hue_group")) and bridge_api(target) is not None
+    """A room or zone, which core's hue integration exposes as one light on the room's grouped_light."""
+    return bool(target.state and target.state.attributes.get("is_hue_group"))
 
 
 def expand_group(hass: HomeAssistant, target: Target) -> list[Target]:
-    """The room's or zone's lights that have a light entity in HA, sorted by entity_id (aiohue's order is a set's).
+    """Hue's IntegrationInfo.expand_group: the room's or zone's lights, sorted by entity_id (aiohue's order is a
+    set's). The dispatcher classes a room by them, and falls back to them when one's class is refused, or Experimental
+    with the option off (docs/design.md, Groups).
 
-    Only called for a target is_hue_group accepted, which has a v2 bridge.
+    A light with no light entity in HA is still classed by its device, through a stand-in no action reaches
+    (`_stand_in`): the bridge's grouped_light write reaches it, so, left out, a third-party light would get the room's
+    call at the Hue lights' level. One with no device in HA either can't be classed (None): the room then counts as
+    Experimental, and with the option off falls back to its lights that have entities, as it does for another brand's.
     """
-    lights = bridge_api(target).groups.grouped_light.get_lights(resource_id(target))
-    return resolve_members(hass, get_runtime(hass).registry, target, "hue", (light.id for light in lights))
+    entities = er.async_get(hass)
+    registry = get_runtime(hass).registry
+    members: list[Target] = []
+    for light in bridge_api(target).groups.grouped_light.get_lights(resource_id(target)):
+        if entities.async_get_entity_id("light", "hue", light.id) is not None:
+            members += resolve_members(hass, registry, target, "hue", [light.id])
+            continue
+        _LOGGER.debug(
+            "%s: a member light has no light entity, so it is classed by its device and left out of any fallback",
+            target.entity_id,
+        )
+        members.append(_stand_in(target, light_device(hass, target, light)))
+    return sorted(members, key=lambda member: member.entity_id)
+
+
+def light_device(hass: HomeAssistant, target: Target, light: Light) -> dr.DeviceEntry | None:
+    """The HA device of a light on the target's bridge: core's hue integration registers each bridge device with
+    the identifier ("hue", its device resource id) (homeassistant/components/hue/v2/device.py)."""
+    return dr.async_get(hass).async_get_device_by_identifier(("hue", light.owner.rid), target.config_entry.entry_id)
+
+
+def _stand_in(group: Target, device: dr.DeviceEntry | None) -> Target:
+    """A member HA has no light entity for, for its class alone: the room's own entity with the member's device (None
+    when HA has none, which classes as None), no state, so the dispatcher never falls back to it or passes it to an
+    adapter, not addressable (Target.addressable), so a room's member_capabilities leaves it out, and not named, as the
+    caller named the room. Each Hue light is one bridge resource with one entity, so every other member is addressable
+    on its own."""
+    return replace(
+        group, device=device, state=None, via_group=group.entity_id, is_group=False, named=False, addressable=False
+    )
 
 
 def entity_name(hass: HomeAssistant, rid: str) -> str:

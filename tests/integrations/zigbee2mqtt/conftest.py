@@ -1,12 +1,37 @@
+from dataclasses import replace
+from types import SimpleNamespace
+
 import pytest
 
-from custom_components.deviceside.integrations.zigbee2mqtt import bridge, native_control, read, set_attributes
+from custom_components.deviceside.core.resolver import resolve
+from custom_components.deviceside.core.runtime import DATA, get_runtime
+from custom_components.deviceside.core.scope import Unplaced
+from custom_components.deviceside.integrations.zigbee2mqtt import (
+    INTEGRATION,
+    bridge,
+    bridge_cache,
+    classes,
+    members,
+    native_control,
+    read,
+    set_attributes,
+)
 from custom_components.deviceside.integrations.zigbee2mqtt.fade import transition_cache
+from custom_components.deviceside.integrations.zigbee2mqtt.turn_on_for import Z2MTurnOnFor
 
 from ...conftest import Clock, unload_mock_entries
+from ...conftest import call as call_service
 from ...fixtures.zigbee2mqtt import GROUPS, IEEE, INFO, Broker, add_z2m_entity, add_z2m_group, z2m_entry
 
 unload_mock_mqtt_entries = unload_mock_entries("mqtt")
+
+
+@pytest.fixture
+def harmless(monkeypatch):
+    """turn_on_for without its not_supported entries, as if today's call harmed no class, for a test of its call
+    alone on a group bridge/groups doesn't list: the dispatcher otherwise refuses it as class_unknown
+    (test_classes.py), and still counts it as Experimental. The classes stay refused, left out of the scope."""
+    monkeypatch.setattr(Z2MTurnOnFor, "scope", replace(Z2MTurnOnFor.scope, not_supported={}))
 
 
 @pytest.fixture(autouse=True)
@@ -35,7 +60,56 @@ def broker(hass, monkeypatch):
     monkeypatch.setattr(set_attributes, "_FADE_WAIT_S", 0.0)
     monkeypatch.setattr(set_attributes, "_RETRY_S", 0.0)
     hass.services.async_register("mqtt", "publish", fake.publish)
+
+    # The dispatcher lists a group's members from bridge/groups as the running cache would hold it, once the entry is
+    # set up; a test's own cache stays, once it holds bridge/groups.
+    def held(hass):
+        if (cache := bridge_cache.get(hass)) is not None and cache.parsed("groups") is not None:
+            return cache
+        return HeldGroups(fake) if DATA in hass.data else None
+
+    monkeypatch.setattr(members, "bridge_cache", SimpleNamespace(get=held))
+    monkeypatch.setattr(classes, "bridge_cache", SimpleNamespace(get=held))
     return fake
+
+
+async def call(hass, service: str, data: dict, return_response: bool = True):
+    """The response, each entry's class checked and left out, so a test states only what its action decides: every
+    Zigbee2MQTT result names the class its device is, or a group's members', unless one isn't placed yet
+    (docs/action-behavior.md). A group's `member_capabilities` is checked against the rule, not rebuilt: each key is
+    one of the members the group lists, with an available state of its own, never the group, and maps to the class
+    that member has classed alone. A test that states the map in full calls the service directly."""
+    response = await call_service(hass, service, data, return_response)
+    registry = get_runtime(hass).registry
+    for entity_id, entry in (response or {}).items():
+        target = resolve(hass, registry, entity_id)
+        listed = (INTEGRATION.expand_group(hass, target) or []) if target.is_group else [target]
+        found = [INTEGRATION.capability(hass, member) for member in listed]
+        known = bool(found) and not any(name is None or isinstance(name, Unplaced) for name in found)
+        if not target.is_group:
+            assert entry.pop("capability", None) == (found[0] if known else None), entity_id
+            continue
+        assert entry.pop("capabilities", None) == (sorted(set(found)) if known else None), entity_id
+        by_member = entry.pop("member_capabilities", {})
+        assert set(by_member) <= {member.reported_id for member in listed}, (entity_id, by_member)
+        for member, name in by_member.items():
+            state = hass.states.get(member)
+            assert member != entity_id and state is not None and state.state != "unavailable", (entity_id, member)
+            assert INTEGRATION.capability(hass, resolve(hass, registry, member)) == name, (entity_id, member)
+            assert name in found, (entity_id, member)
+    return response
+
+
+class HeldGroups(bridge_cache.BridgeCache):
+    """A bridge cache holding bridge/groups and bridge/devices, as the broker has them now, for members.expand_group
+    and the classifier."""
+
+    def __init__(self, broker) -> None:
+        super().__init__()
+        self.broker = broker
+
+    def parsed(self, suffix: str):
+        return self.broker.retained.get({"groups": GROUPS, "devices": DEVICES}.get(suffix))
 
 
 DEVICES = "zigbee2mqtt/bridge/devices"
@@ -51,6 +125,14 @@ def clock(hass, setup_production) -> Clock:
     return clock
 
 
+class REGISTRY:
+    """light()'s default Zigbee strings: the registry's vendor, and ZIGBEE_MODEL."""
+
+
+# A Zigbee model no rule matches.
+ZIGBEE_MODEL = "bulb"
+
+
 def light(
     hass,
     broker,
@@ -63,10 +145,19 @@ def light(
     modes: list[str] | None = None,
     color_hs: bool = True,
     color: dict | None = None,
-    manufacturer: str | None = None,
+    manufacturer: str | None = "Philips",
+    model_id: str | None = None,
+    zigbee: tuple[str | None, str | None] | None | type[REGISTRY] = REGISTRY,
+    interviewed: bool | None = None,
     color_mode: str = "xy",
 ) -> str:
-    """A Z2M color light HA lists with xy, whose definition exposes color_hs, answering color reads with COLOR."""
+    """A Z2M color light HA lists with xy, whose definition exposes color_hs, answering color reads with COLOR.
+
+    Its bridge/devices entry holds the Zigbee manufacturer and model `zigbee` names. By default, REGISTRY, the
+    registry's manufacturer and ZIGBEE_MODEL: an interviewed device of that vendor that shows no Tuya string. None
+    writes an entry with neither, as Zigbee2MQTT lists a device mid-interview, which the classifier can't place by
+    them. `interview_completed` is `interviewed`, by default whether `zigbee` names any string.
+    """
     name = entity_id.split(".")[1]
     entries = hass.config_entries.async_entries("mqtt")
     entry = entries[0] if entries else z2m_entry(hass)
@@ -74,12 +165,25 @@ def light(
     if state == "on":
         attributes |= {"brightness": brightness, "hs_color": hs, "color_mode": color_mode}
     add_z2m_entity(
-        hass, entry, entity_id, ieee=ieee, state=state, attributes=attributes, name=name, manufacturer=manufacturer
+        hass,
+        entry,
+        entity_id,
+        ieee=ieee,
+        state=state,
+        attributes=attributes,
+        name=name,
+        manufacturer=manufacturer,
+        model_id=model_id,
     )
     broker.devices[ieee] = (name, {"lightingColorCtrl": {**COLOR, **(color or {})}})
     broker.retained[INFO]["config"]["devices"].setdefault(ieee, {})
     features = [{"name": "state"}, {"name": "brightness"}] + ([{"name": "color_hs"}] if color_hs else [])
     device = {"ieee_address": ieee, "definition": {"exposes": [{"type": "light", "features": features}]}}
+    if zigbee is REGISTRY:
+        zigbee = (manufacturer, ZIGBEE_MODEL)
+    # Its own Zigbee manufacturer and model, which the classifier reads; Z2M holds null for one it hasn't read.
+    device |= dict(zip(("manufacturer", "model_id"), zigbee or (None, None), strict=True))
+    device["interview_completed"] = zigbee is not None if interviewed is None else interviewed
     broker.retained.setdefault(DEVICES, []).append(device)
     return entity_id
 

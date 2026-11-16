@@ -1,0 +1,150 @@
+{
+  "format": 2,
+  "integration": "hue",
+  "action": "raise_brightness",
+  "result": "pass",
+  "date": "2026-11-15",
+  "source": {
+    "kind": "rig",
+    "commit": "bc270947"
+  },
+  "package": "d34542a499d6",
+  "home_assistant": "2026.10.4",
+  "tests": [
+    {
+      "id": "raise[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass",
+      "devices": [
+        {
+          "model": "LTA009",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
+          "class": "hue"
+        }
+      ]
+    },
+    {
+      "id": "raise[group]",
+      "domain": "light",
+      "role": "group",
+      "result": "pass",
+      "group": true,
+      "devices": [
+        {
+          "model": "LCA016",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.164.2",
+          "class": "hue"
+        },
+        {
+          "model": "LWA012",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
+          "class": "hue"
+        },
+        {
+          "model": "LTA009",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
+          "class": "hue"
+        }
+      ]
+    },
+    {
+      "id": "raise_after_soft_off[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass",
+      "devices": [
+        {
+          "model": "LTA009",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
+          "class": "hue"
+        }
+      ]
+    },
+    {
+      "id": "raise_after_soft_off[group]",
+      "domain": "light",
+      "role": "group",
+      "result": "pass",
+      "group": true,
+      "devices": [
+        {
+          "model": "LCA016",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.164.2",
+          "class": "hue"
+        },
+        {
+          "model": "LWA012",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
+          "class": "hue"
+        },
+        {
+          "model": "LTA009",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
+          "class": "hue"
+        }
+      ]
+    },
+    {
+      "id": "ha_change_mid_raise[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass",
+      "devices": [
+        {
+          "model": "LTA009",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
+          "class": "hue"
+        }
+      ]
+    },
+    {
+      "id": "ha_change_mid_raise[group]",
+      "domain": "light",
+      "role": "group",
+      "result": "pass",
+      "group": true,
+      "devices": [
+        {
+          "model": "LCA016",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.164.2",
+          "class": "hue"
+        },
+        {
+          "model": "LWA012",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
+          "class": "hue"
+        },
+        {
+          "model": "LTA009",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
+          "class": "hue"
+        }
+      ]
+    },
+    {
+      "id": "late_stop_report[light_ct]",
+      "role": "light_ct",
+      "result": "skipped",
+      "fact": true
+    },
+    {
+      "id": "late_stop_report[group]",
+      "role": "group",
+      "result": "skipped",
+      "fact": true
+    }
+  ]
+}

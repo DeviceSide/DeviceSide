@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, ClassVar
 from homeassistant.core import HomeAssistant
 
 from .bridge import bridge_api, controller, entity_name, put, resource_id, stops, xy_halt
+from .classes import LEVELS
 from .fade import in_soft_off, light_xy, lit, predicted_brightness, room_lights
 from .report_filter import report_filter
 from .transition_cache import XY, transition_cache
@@ -40,14 +41,15 @@ class HueStop(Adapter[Request]):
 
     action: ClassVar[str] = "stop"
     integration: ClassVar[str] = "hue"
-    scope: ClassVar[AdapterScope] = AdapterScope(options=frozenset({"predicted_state"}), native_groups=True)
+    scope: ClassVar[AdapterScope] = AdapterScope(
+        capabilities=LEVELS, options=frozenset({"predicted_state"}), native_groups=True
+    )
 
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:
         if (reason := super().supports(hass, request, target)) is not None:
             return reason
-        if (api := bridge_api(target)) is None:
-            return "bridge_v1"
-        if (resource := controller(api, target).get(resource_id(target))) is not None and resource.dimming is None:
+        resource = controller(bridge_api(target), target).get(resource_id(target))
+        if resource is not None and resource.dimming is None:
             return "not_dimmable"
         return None
 

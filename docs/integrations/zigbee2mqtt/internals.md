@@ -23,10 +23,58 @@ Only devices Z2M registered through MQTT discovery are found: the device carries
   next `bridge/info`.
 - **Both assume the default base topic.** A group's identifier carries it, so another is refused; a device's
   doesn't, so its publish goes nowhere.
+- **Multi-endpoint devices.** DeviceSide's set and get topics name the device alone, with unsuffixed keys
+  (`state`), so Z2M sends the call to the device's default endpoint: the definition's `default`, else its first
+  (`endpoint()` in Z2M's [`lib/model/device.ts`](https://github.com/Koenkk/zigbee2mqtt/blob/2.6.0/lib/model/device.ts),
+  called from `lib/extension/publish.ts`). Another endpoint needs `zigbee2mqtt/<device>/<endpoint>/set` or a
+  suffixed key (`state_l2`), which DeviceSide doesn't send. `bridge/groups` lists each member as `{ieee_address,
+  endpoint}`, the endpoint by number, so a group can hold gang 2 of a two-gang alone. The endpoint can be matched to
+  its entity: since Z2M 2.6.0 `bridge/devices` names each endpoint (`endpoints.<number>.name`, the definition's
+  `l1`; `publishDevices` in [`lib/extension/bridge.ts`](https://github.com/Koenkk/zigbee2mqtt/blob/2.6.0/lib/extension/bridge.ts),
+  absent in 2.5.1), and Z2M's discovery gives that entity unique_id `<ieee>_<domain>_<name>_<base topic>` (object_id
+  `light_l1`, `lib/extension/homeassistant.ts`). Matching it is no use until the call can reach that endpoint, which
+  also needs the endpoint's suffixed state keys read back. So a device with more than one Z2M (`mqtt` platform)
+  entity in the target's domain, disabled ones counted (`addressing.endpoints`), is never addressed on its own:
+  - **Targeted itself** (named, or by area, label or `group.*`), every such light or switch is refused as
+    `not_addressable` by every Z2M action (`addressing.not_addressable`, which each adapter's `supports()` calls),
+    the first too: the default endpoint is the definition's (`default`, else the device's first endpoint), which
+    HA's registry doesn't show, and such a device publishes its state under suffixed keys (`state_l1`), which no
+    read here takes. A `switch_as_x` light on the device is no endpoint of it.
+  - **As a group's member**, `members.py` lists it by its first entity, not addressable (`Target.addressable`): its
+    class counts; a group that falls back skips it as `not_addressable`; `member_lights` leaves it out (logged at
+    DEBUG). Fade, stop and set attributes plan from every member's state while the groupcast still reaches that
+    endpoint, so they refuse a group with such an available member as `not_addressable`; get attributes averages the
+    others, and refuses a group with no other available light. A groupcast-only action (`turn_on_for`) reaches the
+    endpoint the group holds, so it is unaffected.
+
+  The fix that addresses each endpoint, its topic named by the Z2M 2.6.0+ endpoint names, is future work
+  ([TODO](../../../TODO.md)).
 
 ## Modules
 
 One section per adapter module, named after it.
+
+### `classes`
+
+The class rules read the registry device (Z2M's vendor and definition) and, for a device the bridge cache's
+`bridge/devices` lists, its Zigbee `manufacturer` and `model_id` there, and its definition's `model` and top-level
+expose names, indexed by IEEE once per payload (Tested behavior: the registry holds no Zigbee strings). The rules,
+their order and the registry fallback's limit are in the `classes.py` docstring.
+
+Which adapters send a Level command to a light that is off, as a Sengled E11-G13 jumps to full on `MoveToLevel`
+while off on ZHA ([ZHA internals](../zha/internals.md), Tested behavior). Read from the code, 2026-11-14; nothing
+probed on Z2M:
+
+- `set_attributes`: `MoveToLevel` with `ExecuteIfOff`, then its kept-level publish,
+  `{"state": null, "brightness", "transition"}`, a `MoveToLevel` without it. The E11-G13 jumped on both on ZHA.
+- `raise_brightness` from off: `{"state": "ON", "brightness": 1, "transition": 0}`, which Z2M sends as
+  `moveToLevelWithOnOff`, then the fade, the same.
+- `turn_on_for` with brightness: Home Assistant's `light.turn_on`, `{"state": "ON", "brightness"}`, also
+  `moveToLevelWithOnOff`.
+- `lower_brightness`, the hue and saturation ramps and `stop` send no Level command to an off light.
+
+`moveToLevelWithOnOff` from off is untested on the Sengled. Every `sengled` scope entry is `experimental(...)`, or
+left out on `turn_on_for`, until the Sengled lab run.
 
 ### `color_modes`
 
@@ -89,6 +137,34 @@ the start (without fields only), and at the end + 1 s and end + max(5 s, 2 % of 
 clock. A new call replaces pending reads. Attribute reporting isn't used instead: it would need setting up on every
 bulb, and Z2M turned it off for Hue on purpose. A group gets one publish and one groupcast read; Z2M shows it off
 once every member is.
+
+**Tuya's countdown** (converter A, plan step 5 part 3): a TS011F plug in a `tuya_countdown` class gets one publish,
+`{"state": "ON", "countdown": N}`, N whole seconds from 1 to 43200 (`COUNTDOWN_LIMITS`; core rounds and clamps, and
+reports either in `clamped_to`). No `on_time` (it has no converter there, Tested behavior) and no state reads: the plug
+reports its state at expiry (probe P1, P2, P6, P7), and the time left can't be read, so the result is `sent`. A Z2M
+group's call carries `on_time`, so a group with such a plug falls back to its members (`AdapterScope.own_calls`). A
+plug Z2M exposes as a switch is the group's stand-in (`members._stand_in`), which no light entity addresses, so the
+fallback skips it (`not_addressable`).
+
+- **What Z2M sends.** `tuya.tz.on_off_countdown` (ZHC
+  [`src/lib/tuya.ts#L3351-L3407`](https://github.com/Koenkk/zigbee-herdsman-converters/blob/afdaa028a0972d801da762196ddfb2df631ea0cc/src/lib/tuya.ts#L3351-L3407),
+  the same in 26.125.0, the lab's, and 26.131.0, the research pin) awaits `genOnOff` `on`, then awaits 0x42
+  `{ctrlbits: 0, ontime: N, offwaittime: N}`, in that order ("on/off/toggle cancels onWithTimedOff"); it publishes
+  `state: ON, countdown: N`.
+- **The harm the order prevents.** 0x42 alone on an off plug toggles it on at N, and it stays on (probe P1b). The On's
+  `await` rejects when herdsman can't deliver it (`Endpoint.zclCommand` rethrows a failed send,
+  [`endpoint.ts`](https://github.com/Koenkk/zigbee-herdsman/blob/199c2f222a2b63c5c341af0c1bceda56845d34e0/src/controller/model/endpoint.ts#L1196-L1212),
+  read 2026-11-15; `command` doesn't check the reply's status), so the converter throws before 0x42: a lost On sends
+  nothing more, and Z2M logs the set as failed (`Publish 'set' 'state' … failed`), which `set_check` makes `rejected`.
+  So no state check goes before or after the publish. What stays: an On that reached the plug but whose delivery failed,
+  or a 0x42 that failed after the On was delivered, leaves it on with no timer; Z2M logs the set as failed and the call
+  answers `rejected` (raising `targets_failed`), unless the bridge cache isn't live, when `set_check` is off and the
+  call answers `sent`; and a button press between the two frames (milliseconds) would put the toggle on an off plug.
+- **The class rule** reads `bridge/devices`' definition: model `TS011F`, a top-level expose of property `countdown` with
+  no `endpoint` (a multi-gang one exposes one per endpoint: ZHC 26.131.0's `withEndpoint` keeps the name `countdown` and
+  sets `property` `countdown_l1` and `endpoint` `l1`, so it isn't matched), and a definition other than the datapoint
+  `ZOT60` ([research](research/2026-11-14-tuya-countdown.md), §1). Before `bridge/devices` lists the plug, the registry
+  places it in `tuya_ts011f`, Unplaced, refused as `class_unknown`.
 
 ### `set_attributes`
 
@@ -186,7 +262,12 @@ Measured 2026-10-28 on Z2M 2.14.2 with Hue bulbs (a CT bulb and the A60), Home A
 - **Color-mode override.** It deep-merges into the device's options, and Z2M republishes the discovery message at
   once, with no restart; Home Assistant's entity keeps its entity ID and shows `color_temp`, `hs` and `xy`. A
   group's options behave the same. A `null` can't remove it: `supported_color_modes: null` deletes the key from the
-  announcement, `light: null` drops the light from discovery, and `homeassistant: null` the whole device.
+  announcement, `light: null` drops the light from discovery, and `homeassistant: null` the whole device. With it,
+  after `hue_move` and `hue_move: stop` Home Assistant takes Z2M's `hs` state, with no "Invalid color mode" in its
+  log. With Hue native control on, HA's `hs_color`, `xy_color`, `rgb_color` and `color_temp_kelvin` each land on
+  the A60 on cue with no flicker (watched by eye); HA sends `color: {h, s}` for hs and RGB, `{x, y}` for xy and
+  `color_temp` for a temperature. Its rig case, `keeps_and_reads_hs_while_off`, rides in
+  [`get_attributes.json`](test-records/get_attributes.json).
 - **Stops, by eye** (a 10 s fade halted 3 s in). Brightness and hue stops freeze cleanly. Every color temperature
   stop jumps, whichever command halts it, the Hue bridge's own included. With brightness and color temperature in
   one fade, a brightness stop leaves the color temperature fading on to its end. `saturation_move: stop` lets an xy
@@ -202,6 +283,33 @@ Measured 2026-10-28 on Z2M 2.14.2 with Hue bulbs (a CT bulb and the A60), Home A
   ([zha research](../zha/research/2026-11-15-a60-stop-halt-probe.md)). Not yet watched through Zigbee2MQTT.
 - **After an xy stop,** Z2M's read-back carries its cached end-point x/y, not where the bulb halted; a
   `{"color": ""}` get publishes the halted x/y.
+
+Device strings and timers, 2026-11-14 on Z2M 2.14.3 (ZHC 26.125.0), Home Assistant 2026.10.4. Probe:
+[research/2026-11-14-lab-probe.md](research/2026-11-14-lab-probe.md).
+
+- **The registry holds Z2M's definition, not the Zigbee strings.** A TS011F plug registers as manufacturer `Tuya`,
+  model `Smart plug (with power monitoring)`, `model_id` `TS011F_plug_1`; its Zigbee model `TS011F` and manufacturer
+  `_TZ3000_…` are only in `bridge/devices`, with the `countdown` expose. A Sengled E11-G13 registers as `Sengled`,
+  `Element classic (A19)`, `model_id` `E11-G13`, and `sw_version` is Z2M's own version. A group registers as
+  `Zigbee2MQTT` / `Group`, and its members each resolve to a device.
+- **`TS011F_plug_1` has no `on_time` converter:** `{"state": "ON", "on_time": 10}` logs `No converter available for
+  'on_time'` and turns the plug on with no timer. Tuya's own recipe and `countdown` work: shared
+  [internals.md](../../internals.md), Tested behavior.
+- **A Sengled E11-G13 ignores `0x42` silently** (ZHA rejects it, [ZHA internals](../zha/internals.md)): in tenths
+  or whole seconds, from off or after a plain On, Z2M logs it invoked and the bulb doesn't change state. It has no
+  `onTime` or `offWaitTime` (`UNSUPPORTED_ATTRIBUTE`). So `{"state": "ON", "on_time": 10}`, which the light
+  converter sends as `0x42` alone, leaves it off.
+
+Tuya's countdown, 2026-11-15 on the lab TS011F (`_TZ3000_0zfrhq4i`, `TS011F_plug_1`, build `0122052017`), Z2M 2.14.3
+(ZHC 26.125.0), Home Assistant 2026.10.4. Probe:
+[research/2026-11-15-tuya-countdown-probe.md](research/2026-11-15-tuya-countdown-probe.md).
+
+- **The countdown toggles at expiry.** From on, the plug ends off (P1); from off, 0x42 alone leaves it off and turns
+  it on at N, and it stays on (P1b).
+- **A new countdown replaces the running one** (P2), and an off, `countdown: 0` or a local button toggle cancels it
+  (P3 to P5).
+- **The time left can't be read:** `/get` and the plug's reports carry the value last set (P6).
+- **Bounds:** 1 and 43200 s reach the plug; Z2M refuses 43201 before sending anything, `state` included (P7).
 
 ## Upstream defects
 

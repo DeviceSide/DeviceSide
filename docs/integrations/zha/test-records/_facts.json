@@ -1,0 +1,66 @@
+{
+  "format": 2,
+  "integration": "zha",
+  "facts": [
+    {
+      "date": "2026-11-13",
+      "suite": "set_attributes",
+      "test": "sets_color_while_off[light_color] observed",
+      "kind": "observed",
+      "result": "pass",
+      "converted": true,
+      "devices": [
+        {
+          "model": "LCA016",
+          "name": "Hue Essential White and Color Ambiance A60",
+          "firmware": "0x01001200"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-13",
+      "suite": "stop",
+      "test": "halts_brightness_and_saturation[light_color] observed",
+      "kind": "observed",
+      "result": "fail",
+      "converted": true,
+      "devices": [
+        {
+          "model": "LCA016",
+          "name": "Hue Essential White and Color Ambiance A60",
+          "firmware": "0x01001200"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-13",
+      "suite": "raise_hue",
+      "test": "hue_stop_raise[light_color] observed",
+      "kind": "observed",
+      "result": "pass",
+      "converted": true,
+      "devices": [
+        {
+          "model": "LCA016",
+          "name": "Hue Essential White and Color Ambiance A60",
+          "firmware": "0x01001200"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-13",
+      "suite": "stop",
+      "test": "halts_brightness_and_saturation[light_color] observed",
+      "kind": "observed",
+      "result": "fail",
+      "converted": true,
+      "devices": [
+        {
+          "model": "LCA016",
+          "name": "Hue Essential White and Color Ambiance A60",
+          "firmware": "0x01001200"
+        }
+      ]
+    }
+  ]
+}

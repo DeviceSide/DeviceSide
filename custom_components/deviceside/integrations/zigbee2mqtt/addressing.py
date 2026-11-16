@@ -1,5 +1,6 @@
 """Extract the Z2M device or group address from the HA device registry."""
 
+import logging
 import re
 from typing import Literal
 
@@ -9,6 +10,8 @@ from homeassistant.helpers import entity_registry as er
 
 from ...core.errors import Reason
 from ...core.models import Target
+
+_LOGGER = logging.getLogger(__name__)
 
 IDENTIFIER_PREFIX = "zigbee2mqtt_"  # of the identifier Z2M registers each device and group under
 _Z2M_BASE_TOPIC = "zigbee2mqtt"
@@ -91,12 +94,41 @@ def topic(target: Target, suffix: str) -> str | None:
     return f"{_Z2M_BASE_TOPIC}/{addr}/{suffix}"
 
 
-def not_addressable(target: Target, *, reads_state: bool = False) -> str | None:
-    """The unsupported reason when no set topic reaches the target, else None. With reads_state, a device also needs
-    a state topic, which an action reading its state back relies on."""
+def not_addressable(hass: HomeAssistant, target: Target, *, reads_state: bool = False) -> str | None:
+    """The unsupported reason when no set topic reaches the target, or when it is one of its device's several
+    endpoints (`endpoints`), else None; every Z2M adapter's supports() checks it. With reads_state, a device also
+    needs a state topic, which an action reading its state back relies on.
+
+    DeviceSide's set and get topics name the device alone, with unsuffixed keys, so Z2M sends the call to the
+    device's default endpoint (internals.md, Addressing): a call to a two-gang's `light.gang_2` would switch gang 1.
+    Every one of such a device's entities in the domain is refused, the first too: which endpoint is the default is
+    the definition's, which HA's registry doesn't show, and the device publishes its state under suffixed keys
+    (`state_l1`) that no read here takes. A group's own members are judged in members.py, from the same count."""
     if topic(target, "set") is None or (reads_state and not target.is_group and state_topic(target) is None):
         return Reason.NOT_ADDRESSABLE
+    if not target.is_group and target.device is not None:
+        if len(several := endpoints(hass, target.device.id, target.domain)) > 1:
+            # The first report of "my two-gang's light was refused" holds why.
+            _LOGGER.debug(
+                "%s: its device has several %s entities (%s), and a call on its device topic reaches only its default"
+                " endpoint, so it can't be addressed on its own",
+                target.entity_id,
+                target.domain,
+                ", ".join(e.entity_id for e in several),
+            )
+            return Reason.NOT_ADDRESSABLE
     return None
+
+
+def endpoints(hass: HomeAssistant, device_id: str, domain: str) -> list[er.RegistryEntry]:
+    """The device's Z2M (`mqtt` platform) entities in the domain, disabled ones included: more than one means a
+    multi-endpoint device (a two-gang switch, a dual Gledopto), whose entities no call here can address one by one.
+    A switch_as_x light on the same device is no endpoint of it."""
+    return [
+        e
+        for e in er.async_entries_for_device(er.async_get(hass), device_id, include_disabled_entities=True)
+        if e.domain == domain and e.platform == "mqtt"
+    ]
 
 
 def state_topic(target: Target) -> str | None:

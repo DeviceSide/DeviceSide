@@ -1,6 +1,7 @@
 """Zigbee2MQTT get_attributes: on/off timer, brightness, color temperature and color, read live from each bulb.
 
-An off bulb's brightness is Z2M's, the level it comes back at (Reader.read).
+An off bulb's brightness is Z2M's, the level it comes back at (Reader.read). A Tuya countdown plug reports no timer:
+its OnTime holds the countdown last set, not the time left (internals.md, Tuya's countdown, P6), so it is dropped.
 """
 
 from datetime import datetime
@@ -10,7 +11,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 
 from .addressing import not_addressable
-from .members import member_lights
+from .classes import COUNTDOWN_PLUGS, READ_WRITE, capability
+from .members import member_lights, unaddressable
 from .read import Reader, reader
 from ...core.adapter import Adapter
 from ...core.errors import Reason
@@ -32,16 +34,17 @@ class Z2MGetAttributes(Adapter[Request]):
     scope: ClassVar[AdapterScope] = AdapterScope(
         # Switches are Experimental, as in turn_on_for.
         domains=verified("light") | experimental("switch"),
+        capabilities=READ_WRITE,
         confirmable=True,
         native_groups=True,  # read through its members, which only Z2M's bridge/groups knows
     )
 
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:
-        if (reason := super().supports(hass, request, target)) is not None:
-            return reason
-        if (reason := not_addressable(target, reads_state=True)) is not None:
-            return reason
-        return None
+        return (
+            super().supports(hass, request, target)
+            or not_addressable(hass, target, reads_state=True)
+            or unaddressable(hass, target, every=False)
+        )
 
     async def execute(self, hass: HomeAssistant, request: Request, targets: list[Target]) -> list[EntityResult]:
         async def read(target: Target) -> EntityResult:
@@ -63,4 +66,6 @@ class Z2MGetAttributes(Adapter[Request]):
 async def _read(reading: Reader, target: Target) -> tuple[dict, datetime]:
     """The target's attributes, and when they were read, which a timer's end counts from."""
     attributes = await reading.read(target)
+    if capability(reading.hass, target) in COUNTDOWN_PLUGS:
+        attributes = {name: value for name, value in attributes.items() if name != "onTime"}
     return attributes, dt_util.utcnow()

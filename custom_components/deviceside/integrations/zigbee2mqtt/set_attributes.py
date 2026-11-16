@@ -9,7 +9,8 @@ from homeassistant.core import HomeAssistant
 
 from .addressing import not_addressable
 from .bridge import publish_set
-from .members import member_lights
+from .classes import READ_WRITE
+from .members import member_lights, unaddressable
 from .read import Reader, reader
 from .set_check import checked
 from ...actions.set_attributes import SetAttributesRequest
@@ -136,6 +137,7 @@ class Z2MSetAttributes(Adapter[SetAttributesRequest]):
     integration: ClassVar[str] = "zigbee2mqtt"
     scope: ClassVar[AdapterScope] = AdapterScope(
         domains=verified("light"),
+        capabilities=READ_WRITE,
         fields=verified(
             "brightness", "color_temp_kelvin", "hs_color", "rgb_color", "xy_color", "min_brightness", "max_brightness"
         ),
@@ -146,9 +148,7 @@ class Z2MSetAttributes(Adapter[SetAttributesRequest]):
     def supports(self, hass: HomeAssistant, request: SetAttributesRequest, target: Target) -> str | None:
         if (reason := super().supports(hass, request, target)) is not None:
             return reason
-        if (reason := not_addressable(target, reads_state=True)) is not None:
-            return reason
-        return None
+        return not_addressable(hass, target, reads_state=True) or unaddressable(hass, target, every=True)
 
     async def execute(
         self, hass: HomeAssistant, request: SetAttributesRequest, targets: list[Target]

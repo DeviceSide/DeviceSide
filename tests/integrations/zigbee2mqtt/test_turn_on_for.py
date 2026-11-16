@@ -13,8 +13,9 @@ from pytest_homeassistant_custom_component.common import async_mock_service
 
 from custom_components.deviceside.integrations.zigbee2mqtt import bridge, turn_on_for
 
-from ...conftest import advance, allow_experimental, call, refusal, sent, wall_clock_now
-from ...fixtures.zigbee2mqtt import IEEE, add_z2m_entity, add_z2m_group, z2m_entry
+from .conftest import call, group, light
+from ...conftest import advance, allow_experimental, refusal, sent, wall_clock_now
+from ...fixtures.zigbee2mqtt import GROUPS, IEEE, add_z2m_entity, add_z2m_group, z2m_entry
 
 SENT = {"status": "sent", "integration": "zigbee2mqtt"}
 TOPIC = f"zigbee2mqtt/{IEEE}/set"
@@ -61,7 +62,8 @@ async def test_light_with_fields_calls_turn_on_with_them_all_then_publishes_on_t
     assert json.loads(publishes[0].data["payload"]) == {"state": "ON", "on_time": 10.0}
 
 
-async def test_switch_is_experimental(hass, setup_production, publishes, turn_ons):
+async def test_a_hue_plug_is_experimental(hass, setup_production, publishes, turn_ons):
+    """`hue` is Verified on lights alone: every record ran on a bulb, so a Hue plug, a switch, has no record."""
     add_z2m_entity(hass, z2m_entry(hass), "switch.plug")
     data = {"entity_id": "switch.plug", "duration": 5}
 
@@ -142,13 +144,13 @@ async def test_turn_on_error_rejects_that_target(hass, setup_production, publish
     assert not publishes  # publish was never reached
 
 
-async def test_group_with_fields_calls_turn_on_then_publishes(hass, setup_production, publishes, turn_ons):
-    add_z2m_group(hass, z2m_entry(hass), "light.downstairs", group_id=7)
+async def test_group_with_fields_calls_turn_on_then_publishes(hass, setup_production, broker, publishes, turn_ons):
+    group(hass, broker, one={}, two={})
 
-    response = await call(hass, "turn_on_for", {"entity_id": "light.downstairs", "duration": 5, "brightness": 50})
+    response = await call(hass, "turn_on_for", {"entity_id": "light.room", "duration": 5, "brightness": 50})
 
-    assert response == {"light.downstairs": SENT}
-    assert turn_ons[0].data == {"entity_id": "light.downstairs", "brightness": 128}
+    assert response == {"light.room": SENT}
+    assert turn_ons[0].data == {"entity_id": "light.room", "brightness": 128}
     assert publishes[0].data["topic"] == "zigbee2mqtt/7/set"
 
 
@@ -159,14 +161,13 @@ async def test_group_on_custom_base_topic_is_not_addressable(hass, setup_product
     assert not publishes
 
 
-async def test_device_and_group_each_get_their_own_topic(hass, setup_production, publishes, turn_ons):
-    entry = z2m_entry(hass)
-    add_z2m_entity(hass, entry, "light.kitchen")
-    add_z2m_group(hass, entry, "light.downstairs", group_id=7)
+async def test_device_and_group_each_get_their_own_topic(hass, setup_production, broker, publishes, turn_ons):
+    add_z2m_entity(hass, z2m_entry(hass), "light.kitchen")
+    group(hass, broker, one={}, two={})
 
-    response = await call(hass, "turn_on_for", {"entity_id": ["light.kitchen", "light.downstairs"], "duration": 5})
+    response = await call(hass, "turn_on_for", {"entity_id": ["light.kitchen", "light.room"], "duration": 5})
 
-    assert response == {"light.kitchen": SENT, "light.downstairs": SENT}
+    assert response == {"light.kitchen": SENT, "light.room": SENT}
     assert {p.data["topic"] for p in publishes} == {TOPIC, "zigbee2mqtt/7/set"}
 
 
@@ -264,8 +265,11 @@ async def test_a_failed_turn_on_unsubscribes_and_rejects(hass, setup_production,
     assert z2m.subscribers[STATE_TOPIC] == []
 
 
-async def test_a_group_waits_on_its_own_state_topic(hass, setup_production, z2m):
-    add_z2m_group(hass, z2m_entry(hass), "light.downstairs", group_id=7, name="Kitchen")
+async def test_a_group_waits_on_its_own_state_topic(hass, setup_production, broker, z2m):
+    entry = z2m_entry(hass)
+    light(hass, broker, "light.one", "0x01")  # a Hue bulb bridge/groups lists, so the group's class is known
+    add_z2m_group(hass, entry, "light.downstairs", group_id=7, name="Kitchen")
+    broker.retained[GROUPS] = [{"id": 7, "members": [{"ieee_address": "0x01"}]}]
 
     await call(hass, "turn_on_for", {"entity_id": "light.downstairs", "duration": 5, "brightness": 50})
 
@@ -335,11 +339,11 @@ async def test_late_end_read_scales_with_a_long_timer(hass, setup_production, pu
     assert len(_reads(publishes)) == 3
 
 
-async def test_group_reads_its_group_topic(hass, setup_production, publishes, turn_ons):
-    add_z2m_group(hass, z2m_entry(hass), "light.downstairs", group_id=7)
+async def test_group_reads_its_group_topic(hass, setup_production, broker, publishes, turn_ons):
+    group(hass, broker, one={}, two={})
     start = wall_clock_now()
 
-    await call(hass, "turn_on_for", {"entity_id": "light.downstairs", "duration": 5})
+    await call(hass, "turn_on_for", {"entity_id": "light.room", "duration": 5})
     await advance(hass, start, 10.5)
 
     assert _reads(publishes) == ["zigbee2mqtt/7/get"] * 3

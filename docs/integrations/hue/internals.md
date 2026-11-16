@@ -15,6 +15,53 @@ a light entity. Reads come from aiohue's copy of the bridge's state, kept curren
 - **No auto-off or auto-on adapter.** CLIP v2 stores neither on a light or `grouped_light`, and lacks the v1 rule
   engine that could build one, which Signify is retiring.
 
+## Device classes
+
+What decides a call's outcome on Hue (docs/evidence.md, key a class on what decides the outcome), checked
+2026-11-14 in Home Assistant 2026.10.2 and aiohue 4.9.0, the versions in `pyproject.toml`'s lock:
+
+- **DeviceSide's request is the same for every light.** aiohue's `set_state` builds the CLIP v2 PUT from its
+  arguments alone, with no branch on the light, bar effects, which DeviceSide never sends
+  ([`v2/controllers/lights.py`](https://github.com/home-assistant-libs/aiohue/blob/4.9.0/aiohue/v2/controllers/lights.py#L74-L105)),
+  and `stop`'s raw PUT (`bridge.put`) sends its body as given.
+  The bridge picks the Zigbee command, and its firmware is closed: nothing in CLIP v2 shows which command it sent, nor
+  routes a light by a field DeviceSide could read. So the class keys on identity.
+- **Hue's results are the bridge's and Signify's firmware together.** On the bridge a Hue bulb's soft off keeps its
+  stored brightness and a raise from off starts at the bottom (Tested behavior); on ZHA the same bulb given the plain
+  ZCL call is left at level 1 after a soft off and raises from its stored level ([ZHA internals](../zha/internals.md)).
+  So the bridge sends Hue bulbs more than the plain call, and what it sends another brand can't be seen.
+- **`product_data.certified`** is the one routing core's hue integration does by device: it trusts `mirek_valid`
+  (color temperature mode) only from a certified light, as "non-official lights do not" set it
+  ([`v2/light.py`](https://github.com/home-assistant/core/blob/2026.10.2/homeassistant/components/hue/v2/light.py#L160-L164)),
+  and skips its availability workaround for one
+  ([`v2/entity.py`](https://github.com/home-assistant/core/blob/2026.10.2/homeassistant/components/hue/v2/entity.py#L166-L170)).
+  It decides how a light's state reads, not the call. Whether a Friends of Hue light reports `certified` true is
+  unverified, so it can't stand for Signify's firmware: `hue` keys on the manufacturer, `Signify Netherlands B.V.`,
+  which core registers from `product_data.manufacturer_name`
+  ([`v2/device.py`](https://github.com/home-assistant/core/blob/2026.10.2/homeassistant/components/hue/v2/device.py#L64-L71)).
+- **Per-light data changes the payload, not the call:** a light's gamut (aiohue leaves `gamut` None for many
+  non-Hue lights, [`v2/models/feature.py`](https://github.com/home-assistant-libs/aiohue/blob/4.9.0/aiohue/v2/models/feature.py#L310-L311)),
+  where `colors.clamp_to_gamut` sends the xy unclamped; its `mirek_schema`; and its features, which drop fields
+  (`fields_dropped`, `not_dimmable`). None needs a class. `product_archetype`, `min_dim_level`, `dynamics` and `mode`
+  route nothing.
+
+So `other` holds every other maker's light, and no action is Documented on it, as each depends on what the bridge
+sends and known brands depart from the commands it plausibly sends:
+
+- **Writes while off** (`set_attributes`, `set_scene`): a Sengled E11-G13 jumps to full on `MoveToLevel` while off
+  ([ZHA internals](../zha/internals.md)); a Gledopto turns on when its color is set while off
+  ([research](../zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md), §5); IKEA bulbs take a transition on
+  one attribute at a time (Zigbee2MQTT's
+  [LED1624G9 page](https://github.com/Koenkk/zigbee2mqtt.io/blob/master/docs/devices/LED1624G9.md), read 2026-11-14).
+- **Soft off and fades** (`lower_brightness`, `raise_brightness`, `stop`): IKEA firmware may not turn off
+  mid-transition (the LED1624G9 page). Stop's xy halt and its
+  soft-off cut are writes mid-transition, measured only on Hue bulbs.
+- **Color fades** (`raise_saturation`, `lower_saturation`): the payload differs where a light reports no gamut.
+- **`get_attributes`**: a non-certified light doesn't set `mirek_valid` reliably (above;
+  [core PR #97263](https://github.com/home-assistant/core/pull/97263)), so its color temperature mode is read as
+  core decides it, from the color mode core shows while the light is on (plan Decision 56), which follows core's last
+  command, so misses a DeviceSide write and a change from the Hue app. Untested on such a light.
+
 ## Modules
 
 One section per adapter module, named after it.
@@ -33,7 +80,9 @@ takes 3 requests at once and aiohue retries the rest.
 
 ### `get_attributes`
 
-`get_attributes` leaves out `color_temp_kelvin` in color mode, as the bridge's value is stale. A room with a
+`get_attributes` leaves out `color_temp_kelvin` in color mode, as the bridge's value is stale, and with a mirek of 0
+or none, which core treats as no value. Color temperature mode is core's: a certified light's `mirek_valid`, and for
+any other the color mode core shows while it is on, else the flag (Device classes). A room with a
 light on uses the bridge's brightness and averages color over lit lights; with all off, over all of them.
 
 ### `fade`
@@ -103,6 +152,15 @@ Assistant 2026.10.2, aiohue 4.9.0, unless dated otherwise. Home Assistant shows 
 - **Moving a bulb between networks** (2026-10-31, the A60 on firmware 1.164.2): a CLIP v2 `DELETE device/<id>`
   sends it a Leave, as Z2M's and ZHA's removes do, and it joins the next network in about 10 s. On older firmware,
   a v1 light delete left it on no network, until a delete in the Hue app released it.
+
+- **Device strings** (2026-11-14, Home Assistant 2026.10.4): Hue bulbs register as manufacturer `Signify
+  Netherlands B.V.`, a product-name model (`Hue ambiance lamp`), the model ID in `model_id` (`LTA009`), and the
+  firmware as `sw_version`. Their `product_data` has `certified` true and `product_archetype` `sultan_bulb` or
+  `classic_bulb`. A room's or zone's light entity has its own device, `Signify Netherlands B.V.` / `Room` (or
+  `Zone`), and a room's member devices each have theirs. A Sengled E11-G13 didn't pair with a `BSB002` on
+  software `6.3.1978545030` in one attempt (2026-11-14). Probes:
+  [lab-probe](../zigbee2mqtt/research/2026-11-14-lab-probe.md), §1; [rooms and the
+  Sengled](research/2026-11-14-lab-probe-hue.md).
 
 ## Upstream defects
 

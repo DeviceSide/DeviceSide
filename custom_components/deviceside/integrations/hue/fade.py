@@ -11,6 +11,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.util.color import color_hs_to_xy, color_xy_to_hs
 
 from .bridge import bridge_api, controller, resource_id, set_state
+from .classes import LEVELS
 from .colors import clamp_to_gamut
 from .report_filter import report_filter
 from .transition_cache import MIN_BRIGHTNESS_STEP, XY, HueTransitionCache, transition_cache
@@ -71,6 +72,7 @@ class Fade:
 def fade_scope(attribute: str) -> AdapterScope:
     """predicted_state is brightness's only: HA is shown the bridge's xy for saturation either way."""
     return AdapterScope(
+        capabilities=LEVELS,
         fields=verified(attribute),
         options=frozenset({"predicted_state"}) if attribute == BRIGHTNESS else frozenset(),
         native_groups=True,
@@ -103,9 +105,7 @@ class HueFade(Adapter[RampRequest]):
     def supports(self, hass: HomeAssistant, request: RampRequest, target: Target) -> str | None:
         if (reason := super().supports(hass, request, target)) is not None:
             return reason
-        if (api := bridge_api(target)) is None:
-            return "bridge_v1"
-        if target.is_group and not api.groups.grouped_light.get_lights(resource_id(target)):
+        if target.is_group and not bridge_api(target).groups.grouped_light.get_lights(resource_id(target)):
             return Reason.EMPTY_GROUP
         return None
 

@@ -5,8 +5,7 @@ import pytest
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util.color import color_hs_to_xy, color_xy_to_hs
 
-from .conftest import SENT, STOP, color_lamp, hs_xy, xy_halt, xy_put
-from ...conftest import call
+from .conftest import SENT, STOP, call, color_lamp, hs_xy, xy_halt, xy_put
 
 pytestmark = pytest.mark.usefixtures("setup_production")
 

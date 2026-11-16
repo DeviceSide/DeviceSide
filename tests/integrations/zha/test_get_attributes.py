@@ -9,7 +9,8 @@ from homeassistant.util.color import color_hs_to_RGB, color_hs_to_xy, color_xy_t
 
 from custom_components.deviceside.integrations.zha import zcl
 
-from ...conftest import allow_experimental, call, refusal
+from .conftest import call
+from ...conftest import allow_experimental, refusal
 from ...fixtures.zha import IEEE, add_zha_entity, zha_entry, zha_group
 
 pytestmark = pytest.mark.usefixtures("setup_production")
@@ -159,6 +160,25 @@ async def test_switch_is_experimental_and_reads_only_on_off(hass, bulb, requests
     allow_experimental(hass)
     assert await call(hass, "get_attributes", {"entity_id": "switch.plug"}) == {"switch.plug": {"timer": timer(5.0)}}
     assert clusters_read(requests) == [zcl.ON_OFF_CLUSTER]
+
+
+@pytest.mark.parametrize(
+    ("strings", "left"),
+    [
+        (("_TZ3000_typdpbpg", "TS011F"), 10.0),
+        # The reported plug runs the same seconds firmware (Z2M #30493).
+        (("_TZ3000_gjnozsaz", "TS011F"), 10.0),
+        # Any other class reads the spec's tenths.
+        (("IKEA of Sweden", "TRADFRI control outlet"), 1.0),
+    ],
+)
+async def test_a_tuya_countdown_timer_is_read_in_seconds(hass, bulb, strings, left):
+    """Tuya's countdown counts whole seconds, so OnTime 10 is 10 s left, not 1 s."""
+    add_zha_entity(hass, zha_entry(hass), "switch.plug", state="on", strings=strings)
+    bulb[zcl.ON_OFF_CLUSTER] = {zcl.ON_OFF: 1, zcl.ON_TIME: 10}
+    allow_experimental(hass)
+
+    assert await call(hass, "get_attributes", {"entity_id": "switch.plug"}) == {"switch.plug": {"timer": timer(left)}}
 
 
 async def test_light_without_an_address_is_refused(hass, bulb, requests):
