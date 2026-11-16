@@ -772,7 +772,8 @@ One run per integration, on `main` once the stack is in (Decision 89). Each is t
 - **Zigbee2MQTT** (lab): the A60 on Z2M. It tests the classifier, the class in each result, the coverage check, Works
   credited per class, the refusals and the group fallback. Part 3's plugs join it: the Tuya variants Jason picks just
   before the run, each maker string with its own test (Decisions 77 and 88).
-- **ZHA** (lab), without the Sengled (Decision 77).
+- **ZHA** (lab): the A60 on ZHA; the lab TS011F (`_TZ3000_typdpbpg`) for its refusal; a ZHA group with a plug in it,
+  for the fallback to unicasts. No Sengled (Decision 77).
 - **Hue** (lab), without the Sengled.
 - **Matter** (lab): the WiZ plug, on the real `turn_on_for` call (Decision 75).
 - **Shelly** (house): its switch devices, plus the color bulb unless it ran in the lab.
