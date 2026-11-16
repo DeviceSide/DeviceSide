@@ -4,7 +4,7 @@
 What holds a path, read at a rev (CLAUDE.md, Maintainers; the templates are `gen_codeowners.py`'s):
 
 - in a family (`FAMILY_PATHS`), on the rev: that family;
-- in the catalog (`CATALOG_PATHS`), there on the rev and shared by a family of its key: that key's catalog;
+- in the catalog (`CATALOG_PATHS`), shared by a family of its key on the rev: that key's catalog;
 - elsewhere in an integration's package (`PATHS`): the integration (a family not on the rev is its integration's);
 - generated output (`GENERATED`): nothing, as it follows its inputs;
 - anything else: shared code, the repo maintainers'.
@@ -251,14 +251,12 @@ def integrations_with(rev: str, family: str) -> tuple[str, ...]:
 
 def package_of(path: str, rev: str, templates: Templates) -> Package | None:
     """What holds `path` at `rev`, or None for shared code. A family that isn't on the rev has no owners of its own
-    yet, so its paths are its integration's; a catalog file no family there shares, or that isn't there yet, is
-    shared code."""
+    yet, so its paths are its integration's; a catalog file no family there shares is shared code."""
     if (found := match(path, templates.family)) and family_maintainers(rev, **found) is not None:
         return Package(**found)
     if found := match(path, templates.integration):
         return Package(found["key"])
-    # A catalog file new on this rev's PR is shared code: it gives the other integration's family code this one imports.
-    if (found := match(path, templates.catalog)) and integrations_with(rev, found["family"]) and show(rev, path):
+    if (found := match(path, templates.catalog)) and integrations_with(rev, found["family"]):
         return Package(None, found["family"])
     return None
 

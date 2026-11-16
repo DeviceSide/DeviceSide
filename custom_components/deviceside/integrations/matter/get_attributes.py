@@ -7,9 +7,9 @@ from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 
 from .addressing import (
-    endpoint_id_from_unique_id,
     matter_client,
     node_id_from_unique_id,
+    onoff_endpoint,
     read_timer,
     timer_running,
     unsupported_reason,
@@ -57,7 +57,7 @@ class MatterGetAttributes(Adapter[Request]):
             on_time, on_off = await read_timer(
                 client,
                 node_id_from_unique_id(target.entry.unique_id),
-                endpoint_id_from_unique_id(target.entry.unique_id),
+                onoff_endpoint(target.entry.unique_id),
             )
             return self.result(target, Status.CONFIRMED, data=on_time_row(on_time, on_off, dt_util.utcnow()))
 

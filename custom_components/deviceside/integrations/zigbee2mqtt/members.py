@@ -10,7 +10,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
 from . import bridge_cache
-from .addressing import endpoints, group_id, state_topic, z2m_device
+from .addressing import group_id, state_entity, state_topic, z2m_device
 from .bridge import group_members, members_of
 from ...core.errors import Reason
 from ...core.models import Target
@@ -96,13 +96,14 @@ def _members(hass: HomeAssistant, group: Target, addresses: Iterable[str]) -> tu
     HA resolves none; and whether every address has a device. A device on two endpoints is listed twice, and counts
     once, keyed by its device.
 
-    A device with more than one Z2M entity in the group's domain, disabled ones counted (`addressing.endpoints`, the
-    count addressing.not_addressable refuses such a device's entities by when targeted themselves), is listed by its
-    first, not addressable (Target.addressable): its class counts, but no action addresses it on its own, and the
-    group's member_capabilities never names it. The group holds one endpoint of it, and DeviceSide's set and get
-    topics name the device alone, so Z2M would send the call to the device's default endpoint, maybe a gang the user
-    didn't target (docs/integrations/zigbee2mqtt/internals.md, Multi-endpoint devices). A groupcast still reaches the
-    right one."""
+    A device's member is its unsuffixed state entity in the group's domain (`addressing.state_entity`, the entity
+    addressing.not_addressable accepts when targeted itself), disabled or not: a child-lock switch beside a plug is
+    never the member. A device with none (a gang's `light_l2`, a plug Z2M exposes only as a config switch) is listed by
+    its first Z2M entity in the domain, not addressable (Target.addressable): its class counts, but no action
+    addresses it on its own, and the group's member_capabilities never names it. The group holds one endpoint of it,
+    and DeviceSide's set and get topics name the device alone, so Z2M would send the call to the device's default
+    endpoint, maybe a gang the user didn't target (docs/integrations/zigbee2mqtt/internals.md, Multi-endpoint
+    devices). A groupcast still reaches the right one."""
     entities = er.async_get(hass)
     registry = get_runtime(hass).registry
     members: dict[str, Target] = {}
@@ -113,20 +114,21 @@ def _members(hass: HomeAssistant, group: Target, addresses: Iterable[str]) -> tu
             continue
         own = er.async_entries_for_device(entities, device.id)
         # Only Z2M's own entities: a switch_as_x light on the same device is no endpoint of it.
-        lights = [e for e in own if e.domain == group.domain and e.platform == "mqtt"]
-        resolved = resolve_members(hass, registry, group, "mqtt", [lights[0].unique_id]) if lights else []
+        mqtt = [e for e in own if e.domain == group.domain and e.platform == "mqtt"]
+        state = state_entity(hass, device, group.domain)
+        chosen = state or (mqtt[0] if mqtt else None)
+        resolved = resolve_members(hass, registry, group, "mqtt", [chosen.unique_id]) if chosen else []
         if resolved:
-            several = endpoints(hass, device.id, group.domain)
-            if len(several) > 1:
+            if state is None:
                 # The first report of "my two-gang's other gang turned on", or "it was skipped", holds why.
                 _LOGGER.debug(
-                    "%s: a member device (%s) has several %s entities, so it is classed by its device and never"
+                    "%s: a member device (%s) has no unsuffixed %s entity, so it is classed by its device and never"
                     " addressed on its own, which would reach its default endpoint",
                     group.entity_id,
-                    ", ".join(e.entity_id for e in several),
+                    ", ".join(e.entity_id for e in mqtt),
                     group.domain,
                 )
-            members[device.id] = replace(resolved[0], addressable=len(several) == 1)
+            members[device.id] = replace(resolved[0], addressable=state is not None)
             continue
         # The first report of "my plug was skipped in the group's fallback" holds why.
         _LOGGER.debug(

@@ -41,15 +41,19 @@ def node_id_from_unique_id(unique_id: str) -> int | None:
         return None
 
 
-def endpoint_id_from_unique_id(unique_id: str) -> int | None:
-    """Parse the Matter endpoint_id (int) from an entity unique_id.
+def onoff_endpoint(unique_id: str) -> int | None:
+    """The endpoint_id (int) of an OnOff.OnOff entity's unique_id, or None for any other entity.
 
-    The key, cluster_id and attr_id occupy the last three positions, so endpoint_id is parts[-4].
+    A target is addressed only when its unique_id ends in cluster 6, attribute 0: HA puts other switches on the
+    plug's endpoint (e.g. Eve's child lock), and those must not be addressed as the endpoint's OnOff. See
+    docs/integrations/matter/internals.md, Addressing.
     """
     parts = unique_id.split("-")
     if len(parts) < 7:
         return None
     try:
+        if (int(parts[-2]), int(parts[-1])) != (_ONOFF_CLUSTER_ID, _ONOFF_ATTR_ID):
+            return None
         return int(parts[-4])
     except ValueError:
         return None
@@ -107,7 +111,7 @@ def node_for(hass: HomeAssistant, target: Target):
 
 def unsupported_reason(hass: HomeAssistant, target: Target) -> str | None:
     """Why this entity can't run an OnOff timer, or None: it needs a reachable node whose endpoint has LT."""
-    ep_id = endpoint_id_from_unique_id(target.entry.unique_id)
+    ep_id = onoff_endpoint(target.entry.unique_id)
     if ep_id is None or (node := node_for(hass, target)) is None:
         return Reason.NOT_ADDRESSABLE
     if not lt_feature(node, ep_id):
