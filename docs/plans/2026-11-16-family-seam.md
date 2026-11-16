@@ -178,3 +178,7 @@ What the gate can't see (its docstring), left to trust in an appointed maintaine
 - A family's product code written in bad faith: the integration's tests import it, into their own process, so it
   can make any of them pass. Its test code can't silence them in `pytest-without-family-tests`, once the ruleset
   requires that job.
+
+One limit on a family maintainer, not on the gate: lowering Hue's level fails the integration's tests on both stacks,
+which call Hue bulbs without Experimental features, so that change needs the integration's maintainer. Raising any
+family's level fails none.

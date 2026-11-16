@@ -19,7 +19,6 @@ from homeassistant.util.color import color_hs_to_xy
 
 from . import classes, zcl
 from .addressing import address, group_id, unsupported_reason, via_zha_group
-from .families.sengled import DROPS_WHILE_OFF
 from .groups import covers, light_members
 from ...actions.ramp import HUE, RampRequest
 from ...core import transition
@@ -128,7 +127,7 @@ def has_color(light: Target) -> bool:
 
 
 def drops_while_off(light: Target) -> bool:
-    return light.device is not None and light.device.model in DROPS_WHILE_OFF
+    return light.device is not None and light.device.model in zcl.DROPS_WHILE_OFF
 
 
 async def send_each(
@@ -236,7 +235,7 @@ class ZHARamp(Adapter[RampRequest]):
     (zcl.hue_turn_on), any other light set there with ExecuteIfOff. Lowering to a limit is
     MoveToLevel, which a light that is off ignores. Lowering to 0 is MoveToLevelWithOnOff to 0, which leaves the bulb
     at level 1; once it reads off, its start level goes back with ExecuteIfOff, so it stays off and comes back at its
-    old level, as on Hue. Models that drop a level while off (families/sengled's DROPS_WHILE_OFF) get neither: they
+    old level, as on Hue. Models that drop a level while off (zcl.DROPS_WHILE_OFF) get neither: they
     start a raise at their stored level, and come back on dim.
 
     Saturation is MoveToSaturation on lit lights in color whose ColorCapabilities report hue and saturation: the bulb

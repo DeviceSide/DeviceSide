@@ -21,7 +21,7 @@ from ...conftest import call as call_service
 from ...fixtures.zha import HUE, IEEE, add_zha_entity, zha_entry, zha_group, zigpy_devices
 
 SENT = {"status": "sent", "integration": "zha"}
-# The Zigbee strings of the Sengled E11-G13, which drops a level while off (families/sengled's DROPS_WHILE_OFF).
+# The Zigbee strings of the Sengled E11-G13, which drops a level while off (zcl.DROPS_WHILE_OFF).
 E11_G13 = ("sengled", "E11-G13")
 # Another brand's bulb, which no rule places: the default class.
 IKEA = ("IKEA of Sweden", "TRADFRI bulb E27 WS opal 980lm")

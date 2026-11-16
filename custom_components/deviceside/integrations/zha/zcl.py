@@ -51,6 +51,11 @@ SIGNIFY = 0x100B
 # fade time (2 bytes, tenths).
 _HUE_ON_BRIGHTNESS_FADE = 0x0013
 
+# Models that don't store a MoveToLevel while off: the Sengled E11-G13 jumps CurrentLevel to 255 with or without the
+# override and comes on at full (docs/integrations/zha/internals.md#tested-behavior). Read off the registry's model of
+# any device, not the class, so it is the integration's, not the Sengled family's.
+DROPS_WHILE_OFF = frozenset({"E11-G13"})
+
 
 def execute_if_off(transition_tenths: int) -> dict[str, int]:
     """A MoveTo command's transition and the ExecuteIfOff override, which makes a light that is off store the value

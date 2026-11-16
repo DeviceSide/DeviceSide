@@ -10,7 +10,6 @@ from homeassistant.helpers import entity_registry as er
 
 from . import classes, zcl
 from .addressing import address, unsupported_reason
-from .families.sengled import DROPS_WHILE_OFF
 from ...actions.set_attributes import SetAttributesRequest
 from ...core.adapter import Adapter
 from ...core.errors import describe
@@ -158,7 +157,7 @@ class ZHASetAttributes(Adapter[SetAttributesRequest]):
     def supports(self, hass: HomeAssistant, request: SetAttributesRequest, target: Target) -> str | None:
         if reason := super().supports(hass, request, target) or unsupported_reason(target):
             return reason
-        if target.device is not None and target.device.model in DROPS_WHILE_OFF:
+        if target.device is not None and target.device.model in zcl.DROPS_WHILE_OFF:
             return "execute_if_off_unsupported"
         return None
 

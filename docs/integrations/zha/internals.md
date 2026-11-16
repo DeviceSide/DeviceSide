@@ -125,7 +125,7 @@ color light without color temperature takes one as a color, as core does. `min_b
 CurrentLevel live. Then, once every light's commands are sent and outside the concurrency slots, each light at least
 one command reached gets `homeassistant.update_entity`, since ZHA never applies a color temperature report; ZHA skips
 it while the light is transitioning (1.5 s after a plain off), so DeviceSide waits up to 3 s, and after a longer
-off fade refreshes again when it ends. Models in `DROPS_WHILE_OFF` (`families/sengled/`) are refused. The wait reads zha's private
+off fade refreshes again when it ends. Models in `zcl.DROPS_WHILE_OFF` are refused. The wait reads zha's private
 `entity_data.entity` and its `is_transitioning`; a zha release without them is logged once, and the refresh then
 goes ahead without waiting.
 

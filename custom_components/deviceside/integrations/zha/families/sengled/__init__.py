@@ -1,15 +1,9 @@
-"""Sengled bulbs on ZHA: their class, and the models that drop a level written while off (internals.md, Tested
-behavior)."""
+"""Sengled bulbs on ZHA: their class (internals.md, Tested behavior)."""
 
 from .....core.rules import Rule
 from .....core.scope import Family, FamilyScope, experimental
 
 SENGLED = "sengled"
-
-# Models that don't store a MoveToLevel while off: the Sengled E11-G13 jumps CurrentLevel to 255 with or without the
-# override and comes on at full (docs/integrations/zha/internals.md#tested-behavior). Read off the registry's model,
-# not the class.
-DROPS_WHILE_OFF = frozenset({"E11-G13"})
 
 RULES = (
     # The lab's E11-G13 reads `sengled`.
