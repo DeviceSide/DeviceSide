@@ -42,18 +42,25 @@ def warn_caveats(registry: AdapterRegistry) -> None:
             _LOGGER.warning(CAVEAT_WARNINGS[caveat.kind], integration, action, caveat.reason)
 
 
+HOOK_CONSEQUENCES = {
+    "setup": "its actions may not work until DeviceSide is reloaded",
+    "remove": "a change it made to another system may be left in place",
+}
+
+
 async def _guarded(info: IntegrationInfo, hook: str, hook_call: Awaitable[None]) -> None:
     """Await an integration's lifecycle hook; its failure is logged and never stops another integration's."""
     try:
         await hook_call
     except Exception as err:  # noqa: BLE001 - one integration's hook must not take the others down
-        # An HTTP client error's text and traceback hold the request's URL and headers: both stay out (docs/logging.md).
-        _LOGGER.warning(  # log-ok: a failing hook is ours (docs/logging.md)
-            "Integration %s %s hook failed: %s, so its %s may be incomplete",
+        # The catch-all of an integration's own bug, so the traceback is the diagnosis (docs/logging.md); an HTTP
+        # client error's is kept out, as it prints the request's URL and headers.
+        _LOGGER.exception(
+            "Integration %s %s hook failed: %s, so %s",
             info.key,
             hook,
             describe(err),
-            hook,
+            HOOK_CONSEQUENCES[hook],
             exc_info=traceback_is_safe(err),
         )
 
