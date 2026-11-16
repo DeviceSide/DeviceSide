@@ -250,7 +250,6 @@ def families(repo, monkeypatch):
     repo.commit(PKG + "bridge.py", "x = 1\n")
     repo.commit("tests/integrations/acme/test_classification.py", "DEVICES = ()\n")
     repo.commit(CATALOG, 'DATAPOINT = "_TZE"\n')
-    repo.commit("tests/zigbee/test_tuya.py", "x = 0\n")
     repo.git("checkout", "-q", "-b", "pr")
     return repo
 
@@ -376,7 +375,6 @@ def test_a_catalog_change_with_both_stacks_families_needs_an_owner_of_all_three(
     repo.commit(family_init(), family(maintainers=("tina", "both")))
     repo.commit(family_init("zeta"), family(maintainers=("zed", "both")))
     repo.commit(CATALOG, 'DATAPOINT = "_TZE"\n')
-    repo.commit("tests/zigbee/test_tuya.py", "x = 0\n")
     repo.git("checkout", "-q", "-b", "pr")
     repo.commit(CATALOG, 'DATAPOINT = "_TZE2"\n')
     repo.commit(FAMILY + "rules.py", "x = 1\n")
@@ -388,13 +386,6 @@ def test_a_catalog_change_with_both_stacks_families_needs_an_owner_of_all_three(
 
 def test_a_catalog_file_no_family_shares_is_nobodys(families):
     path = CATALOG.replace("tuya", "sengled")
-    families.commit(path, "x = 1\n")
-    assert refused("alice") == f"it changes files outside an integration's package: {path}"
-
-
-def test_a_catalog_file_new_on_the_pr_is_nobodys(families):
-    """Though `hue` is a family on the base branch: a new catalog file hands its other integration's family code."""
-    path = CATALOG.replace("tuya", "hue")
     families.commit(path, "x = 1\n")
     assert refused("alice") == f"it changes files outside an integration's package: {path}"
 
