@@ -46,6 +46,12 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   - [ ] Shelly
   - [ ] ZHA
   - [ ] Zigbee2MQTT
+- [ ] **Partial reruns** (`docs/evidence.md`, tenet 9), after the device-classes stack, which rewrites the records
+  the gate reads: `check_release.py --signoffs` judges each action's record by its own Package tree, which stands while
+  only other adapters' modules changed since; a `no call changed` row may name the actions it vouches for, keeping
+  their records through a shared-helper change; `--json` lists actions, for the rig's run selection (its paired
+  change). Then tenet 9's "until the gate takes a partial rerun" sentence goes, and the Release gate and Sign-off
+  format sections, `docs/design.md`'s Sign-off entry and CONTRIBUTING's Sign-offs line say the same.
 - [ ] **Release notes**: hand-written v0.1.0 notes in `notes/`, signed off by the repo maintainers, after the RC installs cleanly
   and before `cut-release`, so they describe what the RC ships.
 - [ ] **v0.1.0**: `/rc-audit` over the new range, the RC and its HACS install, then `cut-release` with every
