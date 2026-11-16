@@ -99,9 +99,14 @@ tests:
       - expect_state: {state: on, within: tol}
       - call: {}
       - expect_response: {attributes: {timer.turns: "off", timer.remaining_s: {min: 15, max: 20}}}
+        except_classes: {zigbee2mqtt: [tuya_countdown]}
+      # By design: Z2M can't read a Tuya countdown's time left, so it reports no timer (Z2M get_attributes.py).
+      - expect_response: {attributes: {timer: null}}
+        classes: {zigbee2mqtt: [tuya_countdown]}
       - wait: 5  # the device counts down, rather than echoing the duration
       - call: {}
       - expect_response: {attributes: {timer.remaining_s: {min: 10, max: 16}}}
+        except_classes: {zigbee2mqtt: [tuya_countdown]}
       - expect_state: {state: off, within: 15 + 2 * tol}
       - call: {}
       - expect_response: {attributes: {timer: null}}

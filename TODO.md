@@ -121,13 +121,16 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   (`--reruns`):
   - [x] Hue: the lab run at `bc27094`, landed with #432.
   - [x] ZHA: the lab_zha run, #467.
-  - [ ] Zigbee2MQTT, run A: every suite but `turn_on_for`, `get_attributes` and `config_entry`, with the watched A60 cases.
-    A record is one run of one suite, so the split falls between suites. Needs ha-rig to run a chosen set of suites.
+  - [x] Zigbee2MQTT, run A: every suite but `turn_on_for`, `get_attributes` and `config_entry`, with the watched A60 cases.
+    A record is one run of one suite, so the split falls between suites. Suites landed with #465; the watched cases'
+    rows are in `_facts.json` (2026-11-13, and `halts_brightness_and_saturation` 2026-11-16 with #443, its slight
+    saturation step accepted, as on ZHA).
   - [x] Matter: the `lab_matter` run (#463).
   - [x] Shelly: the `shelly` run (#463), format 2 records with a class per test, which clears its class coverage
     gaps.
-  - [ ] Zigbee2MQTT, run B: `turn_on_for` and `get_attributes` (the bulb, and part 3's plugs, one per maker string),
-    and `config_entry`, which any package change reopens. No Zigbee2MQTT change between runs A and B.
+  - [x] Zigbee2MQTT, run B: `turn_on_for` and `get_attributes` (the bulb, and part 3's plugs, one per maker string),
+    and `config_entry`, which any package change reopens. No Zigbee2MQTT change between runs A and B. Landed with
+    #465; `config_entry` has no Zigbee2MQTT case (`only: [hue]`), so it writes no record there.
   - [ ] Control4: skialpine's `_manual.json` row, asked for once the runs' fixes have landed, so no fix sends
     the contributor back to a first submission; it cites a `main` commit holding the release's Control4 package.
 - [x] **Partial reruns** (`docs/evidence.md`, tenet 9): `check_release.py --signoffs` judges each record by its own
