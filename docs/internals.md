@@ -13,7 +13,9 @@ repeated here; result and detail codes are in the code.
   identifier, below). A `switch_as_x` light is served as the switch it wraps, keyed on the light's entity ID; one
   wrapping another helper is `not_addressable`.
 - **Fades.** Brightness and saturation are one command to the end point (the limit, or the end of the range) with a
-  transition of `sweep_time` × the fraction of the range left; the device runs it. A brightness and a saturation
+  transition of `sweep_time` × the fraction of the range left; the device runs it. A ZCL transition is a uint16 of
+  tenths, so 6553.4 s (`0xFFFE`; `0xFFFF` means the bulb's default) is the longest: a longer fade runs at that,
+  faster, and the result carries `clamped_to`, the `sweep_time` that gives it. A brightness and a saturation
   fade can overlap. Saturation is Home Assistant's `hs_color` saturation, written as the light's current hue at the
   end saturation, so one automation behaves alike everywhere. Each raise, lower and stop is remembered for its
   duration plus a settle time (Zigbee 2 s, Hue 15 s) and its position predicted meanwhile; a light or scene call

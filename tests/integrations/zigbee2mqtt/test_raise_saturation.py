@@ -33,6 +33,15 @@ async def test_publishes_the_end_point_with_the_time_left(hass, broker, data, pa
     assert commands(broker) == [(SET, payload)]
 
 
+async def test_a_fade_longer_than_a_zcl_transition_is_reported_clamped(hass, broker):
+    entity_id = light(hass, broker)
+
+    response = await call(hass, "raise_saturation", {"entity_id": entity_id, "sweep_time": 100_000})
+
+    assert response == {entity_id: {**SENT, "clamped_to": 16383.5}}
+    assert commands(broker)[0][1]["transition"] == 6553.4
+
+
 async def test_a_group_records_each_lit_member(hass, broker, clock):
     room = group(hass, broker, one={"hs": (200.0, 40.0)}, two={"hs": (200.0, 80.0)})
 

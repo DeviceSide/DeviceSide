@@ -86,11 +86,25 @@ def test_a_fade_is_capped_at_the_longest_zcl_transition(cache):
     leg = brightness_leg(cache, ramp(BRIGHTNESS, True, sweep_time=100_000.0), [light("a", on=False)])
 
     assert leg.duration == MAX_TRANSITION_S == 6553.4
+    assert leg.clamped_to == 6553.4  # a full-range fade: the sweep_time that fits is the cap itself
+
+
+def test_a_partial_fade_reports_the_sweep_time_that_fits_the_cap(cache):
+    leg = brightness_leg(cache, ramp(BRIGHTNESS, True, sweep_time=20_000.0, limit=50.0), [light("a", on=False)])
+
+    assert leg.duration == MAX_TRANSITION_S
+    assert leg.clamped_to == 13106.8  # 50 % of that is the longest transition
+
+
+def test_a_fade_within_the_cap_reports_no_clamped_to(cache):
+    assert brightness_leg(cache, ramp(BRIGHTNESS, True), [light("a", on=False)]).clamped_to is None
 
 
 def test_fade_seconds_is_the_distance_at_the_sweep_speed_until_the_cap():
-    assert fade_seconds(50, 10) == 5
-    assert fade_seconds(100, 1e9) == MAX_TRANSITION_S
+    assert fade_seconds(50, 10) == (5, None)
+    assert fade_seconds(100, 1e9) == (MAX_TRANSITION_S, 6553.4)
+    assert fade_seconds(25, 100_000) == (MAX_TRANSITION_S, 26213.6)
+    assert fade_seconds(100, 6553.4) == (MAX_TRANSITION_S, None)
 
 
 @pytest.mark.parametrize(
@@ -120,6 +134,11 @@ def test_saturation_is_capped_too(cache):
     leg = saturation_leg(cache, ramp(SATURATION, True, sweep_time=1e9), [light("a", hs=(10.0, 0.0))])
 
     assert leg.duration == MAX_TRANSITION_S
+    assert leg.clamped_to == 6553.4
+
+
+def test_a_saturation_fade_within_the_cap_reports_no_clamped_to(cache):
+    assert saturation_leg(cache, ramp(SATURATION, True), [light("a", hs=(10.0, 0.0))]).clamped_to is None
 
 
 @pytest.mark.parametrize(

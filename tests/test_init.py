@@ -120,7 +120,9 @@ async def test_a_raising_setup_hook_is_logged_and_isolated(hass: HomeAssistant, 
 
     assert sorted(log) == ["one setup", "two setup"]
     assert entry.state is ConfigEntryState.LOADED
-    assert "Integration one setup hook failed" in caplog.text
+    [failure] = [r for r in caplog.records if "hook failed" in r.getMessage()]
+    assert failure.levelno == logging.ERROR and failure.exc_info  # a hook's failure is our bug: its traceback
+    assert "so its actions may not work until DeviceSide is reloaded" in failure.getMessage()
 
 
 async def test_a_failing_hook_keeps_an_http_clients_address_out_of_the_log(hass: HomeAssistant, caplog):

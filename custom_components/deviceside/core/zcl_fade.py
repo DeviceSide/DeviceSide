@@ -28,12 +28,20 @@ class Leg:
     starts: dict[str, float]  # the movers' starts
     limit: float
     duration: float  # at most MAX_TRANSITION_S
+    clamped_to: float | None = None  # the sweep_time the duration stands for, where the cap applied
 
 
-def fade_seconds(distance: float, sweep_time: float) -> float:
-    """How long a fade over `distance` percent takes at the sweep_time's speed, at most the longest ZCL transition: a
-    longer fade runs at that, faster."""
-    return min(distance / 100 * sweep_time, MAX_TRANSITION_S)
+def fade_seconds(distance: float, sweep_time: float) -> tuple[float, float | None]:
+    """How long a fade over `distance` percent takes at the sweep_time's speed, and the sweep_time used where that had
+    to be clamped.
+
+    Clamped, not refused: a fade longer than the longest ZCL transition (MAX_TRANSITION_S, docs/internals.md, Fades)
+    runs at that, faster, as an out-of-range duration does; the sweep_time that gives it is reported.
+    """
+    seconds = distance / 100 * sweep_time
+    if seconds <= MAX_TRANSITION_S:
+        return seconds, None
+    return MAX_TRANSITION_S, round(MAX_TRANSITION_S * 100 / distance, 1)
 
 
 def brightness_leg(cache: TransitionCache, request: RampRequest, lights: list[Target]) -> Leg | str:
@@ -48,8 +56,9 @@ def brightness_leg(cache: TransitionCache, request: RampRequest, lights: list[Ta
     current = mean(starts[light.entity_id] for light in lit_lights or lights)
     if (limit - current if up else current - limit) < MIN_STEP:
         return "at_limit"
-    duration = fade_seconds(abs(limit - current), request.sweep_time)
-    return Leg(movers, lit_lights, {light.entity_id: starts[light.entity_id] for light in movers}, limit, duration)
+    duration, clamped_to = fade_seconds(abs(limit - current), request.sweep_time)
+    starts = {light.entity_id: starts[light.entity_id] for light in movers}
+    return Leg(movers, lit_lights, starts, limit, duration, clamped_to)
 
 
 def saturation_leg(cache: TransitionCache, request: RampRequest, lights: list[Target]) -> Leg | str:
@@ -62,7 +71,8 @@ def saturation_leg(cache: TransitionCache, request: RampRequest, lights: list[Ta
     current = mean(starts.values())
     if (limit - current if up else current - limit) < MIN_STEP:
         return "at_limit"
-    return Leg(movers, movers, starts, limit, fade_seconds(abs(limit - current), request.sweep_time))
+    duration, clamped_to = fade_seconds(abs(limit - current), request.sweep_time)
+    return Leg(movers, movers, starts, limit, duration, clamped_to)
 
 
 def hue_cycle(sweep_time: float, steps: int, max_cycle: float) -> tuple[int, float | None]:

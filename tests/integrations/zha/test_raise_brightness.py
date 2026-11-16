@@ -72,8 +72,9 @@ async def test_from_off_on_a_model_that_drops_levels_while_off_skips_the_bottom(
 async def test_a_transition_longer_than_zcl_holds_runs_at_the_most(hass, commands):
     bulb(hass)
 
-    await call(hass, "raise_brightness", {"entity_id": "light.bulb", "sweep_time": 100000})
+    response = await call(hass, "raise_brightness", {"entity_id": "light.bulb", "sweep_time": 100000})
 
+    assert response == {"light.bulb": {**SENT, "clamped_to": 16383.5}}
     assert sent(commands) == [(0x0008, 0x04, {"level": 254, "transition_time": 0xFFFE})]
 
 
