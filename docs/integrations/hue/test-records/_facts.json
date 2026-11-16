@@ -130,6 +130,75 @@
           "class": "hue"
         }
       ]
+    },
+    {
+      "date": "2026-11-16",
+      "suite": "raise_brightness-predicted_state",
+      "test": "bridge_scene_recall_mid_fade_shows_at_once[group]",
+      "kind": "automated",
+      "result": "pass",
+      "devices": [
+        {
+          "model": "LTA009",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
+          "class": "hue"
+        },
+        {
+          "model": "LWA012",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
+          "class": "hue"
+        },
+        {
+          "model": "LCA016",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.164.2",
+          "class": "hue"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-16",
+      "suite": "raise_brightness",
+      "test": "late_stop_report[light_ct]",
+      "kind": "automated",
+      "result": "pass",
+      "devices": [
+        {
+          "model": "LTA009",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
+          "class": "hue"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-16",
+      "suite": "raise_brightness",
+      "test": "late_stop_report[group]",
+      "kind": "automated",
+      "result": "pass",
+      "devices": [
+        {
+          "model": "LTA009",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
+          "class": "hue"
+        },
+        {
+          "model": "LWA012",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.163.1",
+          "class": "hue"
+        },
+        {
+          "model": "LCA016",
+          "manufacturer": "Signify Netherlands B.V.",
+          "firmware": "1.164.2",
+          "class": "hue"
+        }
+      ]
     }
   ]
 }

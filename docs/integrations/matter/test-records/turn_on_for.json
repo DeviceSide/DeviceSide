@@ -1,39 +1,41 @@
 {
-  "format": 1,
+  "format": 2,
   "integration": "matter",
   "action": "turn_on_for",
   "result": "pass",
-  "date": "2026-11-11",
+  "date": "2026-11-16",
   "source": {
     "kind": "rig",
-    "commit": "a251331"
+    "commit": "323e24d5"
   },
+  "package": "bb3d33515fc7",
   "home_assistant": "2026.10.4",
-  "devices": [
-    {
-      "model": "8979",
-      "name": "WiZ Smart Plug",
-      "firmware": "v1.4"
-    }
-  ],
   "tests": [
     {
       "id": "on_then_off[switch_plug]",
       "domain": "switch",
       "role": "switch_plug",
-      "result": "pass"
+      "result": "pass",
+      "devices": [
+        {
+          "model": "8979",
+          "manufacturer": "Signify",
+          "firmware": "v1.4",
+          "class": "wiz_plug"
+        }
+      ]
     },
     {
       "id": "drops_brightness_on_a_wrapper[light_wrapped]",
       "role": "light_wrapped",
       "result": "skipped",
-      "reason": "none in the profile"
+      "reason": "no light_wrapped entity in the profile"
     },
     {
       "id": "bulb_on_then_off[light_dimmable]",
       "role": "light_dimmable",
       "result": "skipped",
-      "reason": "none in the profile"
+      "reason": "no light_dimmable entity in the profile"
     }
   ]
 }
