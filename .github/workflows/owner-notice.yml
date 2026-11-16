@@ -1,0 +1,77 @@
+name: Owner notice
+
+# Comments on a PR that changes a package or family its author doesn't maintain, mentioning that code's maintainers,
+# and keeps the one comment current on each push (scripts/owner_notice.py says what it lists and why). It stands in
+# for the CODEOWNERS review request GitHub doesn't send to Triage, and never fails a PR: the rule it serves is
+# CLAUDE.md's Maintainers section. pull_request_target, so the workflow, the script and the owners it reads come from
+# the base branch, and a PR can't edit them away or name its own owners. No step runs the PR's code: its head is
+# fetched and read with `git`, as data.
+
+on:
+  pull_request_target: # zizmor: ignore[dangerous-triggers] runs only base-branch code; the PR head is read as data
+    types: [opened, synchronize, reopened, edited] # edited: the PR's base branch can change
+
+permissions: {}
+
+# One run at a time per PR, so two runs can't both post the notice. Not a gate, so a queued run bumped by a newer one
+# costs nothing: the newer one reads the latest head.
+concurrency:
+  group: owner-notice-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  notice:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+
+      - name: Read the PR's comments
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh api "repos/$GH_REPO/issues/$NUMBER/comments" --paginate \
+            --jq '.[] | [.id, .user.login, .body] | @json' > "$RUNNER_TEMP/posted.jsonl"
+
+      # Against the checked-out base tip, as protected-files.yml does; the head is the event's commit.
+      - name: Work out the notice
+        id: notice
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: |
+          git fetch --quiet --no-tags origin "$HEAD_SHA"
+          python scripts/owner_notice.py HEAD "$HEAD_SHA" --author "$AUTHOR" \
+            --posted "$RUNNER_TEMP/posted.jsonl" --out "$RUNNER_TEMP"
+
+      - name: Post it
+        if: steps.notice.outputs.notice != 'none' || steps.notice.outputs.mention == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.pull_request.number }}
+          NOTICE: ${{ steps.notice.outputs.notice }}
+          COMMENT: ${{ steps.notice.outputs.comment }}
+          MENTION: ${{ steps.notice.outputs.mention }}
+        run: |
+          if [ "$NOTICE" = create ]; then
+            gh pr comment "$NUMBER" --body-file "$RUNNER_TEMP/notice.md"
+          elif [ "$NOTICE" = update ]; then
+            gh api --method PATCH "repos/$GH_REPO/issues/comments/$COMMENT" -F "body=@$RUNNER_TEMP/notice.md" --silent
+          fi
+          if [ "$MENTION" = true ]; then
+            gh pr comment "$NUMBER" --body-file "$RUNNER_TEMP/mention.md"
+          fi

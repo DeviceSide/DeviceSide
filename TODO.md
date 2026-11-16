@@ -92,7 +92,7 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   so every integration's stand-ins: skip one with its class's refusal, or `not_addressable`, as an unaddressable
   member is. Fixed: the plug is skipped, named as a member device of the group, and a group with no other runnable
   member raises the plug's reason.
-- [ ] **Z2M saturation fade** (#443, #411): MoveToSaturation, as ZHA's #442, so a stop of a saturation fade doesn't
+- [x] **Z2M saturation fade** (#443, #411): MoveToSaturation, as ZHA's #442, so a stop of a saturation fade doesn't
   jump. Before the Zigbee2MQTT runs, which watch it (`saturation_down_stop`) and would reopen if it landed after.
 - [x] **Family seam**, by its plan (`docs/plans/2026-11-16-family-seam.md`, landing with it): vendor families inside
   Zigbee2MQTT and ZHA, each with its own maintainers, and the rename of the two not-supported kinds. Before the runs,
@@ -100,10 +100,12 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   Hue `no_call_changed` row (no `actions`) rather than a Hue rerun.
 - [x] **Require `pytest-without-family-tests`**: in the ruleset's required checks (`docs/repo-maintainers.md`), so a
   family's test code can't silence the integration's on a `/merge`.
-- [ ] **Shared Zigbee fade planning**, after the family seam, which moves both files (pre-run audit, Medium): ZHA's
+- [x] **Shared Zigbee fade planning**, after the family seam, which moves both files (pre-run audit, Medium): ZHA's
   ramp and Zigbee2MQTT's fade duplicate `MIN_STEP`, `SETTLE_SECONDS`, the starts/movers/at-limit prelude and the
   hue-rate clamp, and have drifted (Z2M doesn't cap a transition at the ZCL uint16). Lift the planning into
-  `core/transition.py`. Before the runs, as it changes both packages' fades.
+  `core/zcl_fade.py`, not `core/transition.py` (the cache Hue and Shelly use too). Before the runs, as it changes
+  both packages' fades. `SETTLE_SECONDS` stays per integration (declined): each 2.0 s cites its own integration's
+  measurement.
 - [ ] **Integration lifecycle hooks**, after the family seam (pre-run audit, Medium): the component root starts
   Zigbee2MQTT's bridge cache, color modes and restore journal itself, so every integration with a lifecycle edits a
   repo-maintainer file. Add `IntegrationInfo` setup and teardown hooks. Before the runs.
