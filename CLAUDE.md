@@ -46,7 +46,9 @@ every integration shares is in `docs/integrations.md`: add your value there, don
    user-visible failure it prevents and what it replaces.
 7. Maintainers judge sufficiency: gates check that a sign-off exists, not how thorough it was.
 8. Test to decide: a hardware run needs a decision its result takes (a design choice, a foundation, lifting a flag, a
-   surprise, a release). Merging a PR is none, so no plan gates a step on a run without naming the decision.
+   surprise, a release), run at the last point that can take it: the release's run for a device the rig or a
+   maintainer reaches, so no merge waits on a run; the contributor's PR for their own devices. No plan gates a step
+   on a run without naming the decision.
 9. Retest what the change exercises: only the rig cases whose call or reply handling changed. The gate still takes
    one whole run per sign-off until `TODO.md`'s Partial reruns lands.
 

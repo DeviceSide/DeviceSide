@@ -35,18 +35,23 @@ for these rules; other docs point here. Settled in [the evidence-rules plan](pla
    sign-off exists, not how thorough it was.
 8. **Test to decide.** Every hardware run costs time and needs a person at hand, even one nobody watches, so run one
    only when its result takes a decision. Five decisions do:
-   - *a design choice:* tenet 2's probe, before the build. A contributor's test of what they built
-     ([CONTRIBUTING](../CONTRIBUTING.md), Fast track) is one, on hardware no maintainer has;
+   - *a design choice:* tenet 2's probe, before the build. A call already seen working on the device (your own
+     automation, an upstream integration that ships it, a research file recording a run) needs none: cite it in
+     the bundle's `internals.md`. A vendor's document alone still needs the probe;
    - *a foundation:* before further steps build on a design no verified fact covers, one run of the rig cases whose
      failure would discard that work;
    - *lifting a flag* ([the experimental flag](#the-experimental-flag));
    - *a surprise:* the run that root-causes it (tenet 4);
    - *a release:* the sign-off, due before the last RC, or the one that clears a caveat ([release gate](#release-gate)).
 
-   Merging a maintainer's PR is none of them: unit tests pin the call, a new item starts flagged, and the gate runs at
-   the cut. So finished code waits for the release's run, as it may change again before then. A plan gates a step on a
-   run only by naming the decision its result takes. This prevents a release held up by runs whose results changed
-   nothing, and replaces the practice of a run per step or per PR.
+   Run a test at the last point that can still take its decision. For a device the rig or a maintainer can reach,
+   that is the release's run, so merging a PR waits for none: unit tests pin the call, a new item starts flagged, the
+   gate runs at the cut, and the code may change again before then. For a contributor's own devices, it is their pull
+   request, as no later run is sure to reach them: one test of the finished build, at the commit whose calls ship
+   ([CONTRIBUTING](../CONTRIBUTING.md), Fast track). It shows the build works, which a maintainer needs to merge it
+   and, later, to lift its flag. A plan gates a step on a run only by naming the decision its result takes. This
+   prevents a release held up by runs whose results changed nothing, and replaces the practice of a rig run per step
+   or per PR.
 9. **Retest what the change exercises.** After a run, a change reopens only the rig cases whose call, or whose
    handling of the device's reply, it changes (tenet 5). A change that alters neither reopens none, and a maintainer
    says so with a `no call changed` row ([sign-off format](#sign-off-format)). A fix for a failing case reopens that
