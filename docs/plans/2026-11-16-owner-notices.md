@@ -1,6 +1,6 @@
 # Owner notices: warn a package's maintainers before someone else changes it
 
-Date: 2026-11-16. Status: approved, not started. Depends on PR #447 (the family seam,
+Date: 2026-11-16. Status: built on `claude/owner-notices-plan`; stage 3's audit pending. Depends on PR #447 (the family seam,
 `docs/plans/2026-11-16-family-seam.md`) merging first.
 
 ## Settled with the repo maintainer (2026-11-16)
@@ -175,9 +175,9 @@ jobs:
   `<!-- owner-notice mentioned=a,b -->`. It lists each foreign group (package, `@direct`, then the enclosing
   maintainers, and its file count) and says plainly that nothing blocks the merge, linking `CLAUDE.md#maintainers`.
   Each push recomputes it: same body, `none`; changed body, `update`; nothing foreign any more, `update` to "now
-  changes only packages its author maintains". A mention added by an edit may not notify anyone (stage 1's probe
-  settles it). If it doesn't, a handle not yet in `mentioned` gets `create` instead: a new comment whose `@` mentions
-  are only the new handles, while the old comment keeps them in code spans.
+  changes only packages its author maintains". A mention added by an edit is assumed not to notify anyone, so a
+  handle not yet in `mentioned` also gets a short comment of its own that mentions only the new handles. That works
+  whether or not edits notify, so no probe decides it (the probe stage 1 planned is dropped).
 - **Partial owners:** only the groups the author doesn't directly own are listed, so the author of a PR across their
   own integration and someone else's family sees just the family.
 - **Author:** `pull_request.user.login`. Known gap: a repo maintainer who pushes commits to a package's maintainer's
@@ -216,7 +216,7 @@ the notice needs no setting, and it is what the owners see in place of a review 
   `maintainers` still gets a notice); the CLI's text, `--json` and `--issue` rows. The existing parse-against-registry
   check stays as it is.
 - `test_owner_notice.py`: the first push gives `create`; a push that changes nothing gives `none`; a new foreign group
-  gives `update`, or `create` with only the new handles mentioned (whichever the probe decides); a push that drops the
+  gives `update` and a comment mentioning only the new handles; a push that drops the
   last foreign file gives `update` to the cleared text; only the bot's own markers count; generated output and shared
   files are never listed; a fork's head is only ever passed to `git show`.
 - `test_check_maintainer_merge.py` and `test_route_issue.py` keep their behavior tests, with imports changed.
@@ -224,9 +224,7 @@ the notice needs no setting, and it is what the owners see in place of a review 
 ## Stages
 
 1. **Lookup.** `scripts/owners.py`, with the gate and `route_issue.py` moved onto it (a refactor: the gate's tests
-   pass on behavior unchanged), plus `test_owners.py`. Probe, for the comment design: on a scratch PR, edit a bot
-   comment to add an `@` mention and see whether that handle is notified. Record the result in the module docstring of
-   `owner_notice.py`, citing the probe PR.
+   pass on behavior unchanged), plus `test_owners.py`.
 2. In parallel, on disjoint files:
    - the notice: `owner_notice.py`, `owner-notice.yml`, `test_owner_notice.py`;
    - the skills and the rules: both `SKILL.md` files, `CLAUDE.md`, `docs/repo-maintainers.md`.
@@ -252,8 +250,7 @@ which share nothing but `owners.py`.
   PR to a shared catalog each get one notice, mentioning the right handles. A package maintainer's PR to their own
   package gets none.
 - Owners come from the base. No step runs the PR's code. Every event value reaches `run:` through `env:`.
-- Three pushes to one PR leave one notice comment, plus a mention-only comment for each new handle if the probe says
-  edits don't notify.
+- Three pushes to one PR leave one notice comment, plus a mention-only comment for each new handle.
 - Nothing in the three controls can fail a merge or an RC tag that would pass today, beyond the RC waiting on a
   finding its runner chose to leave `open`.
 - `rc-audit` asks one question per owner group, and a finding the runner chooses to fix gets no issue.

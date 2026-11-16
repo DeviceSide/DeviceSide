@@ -92,6 +92,12 @@ Integration and family maintainers hold Triage (`docs/repo-maintainers.md`), so 
 `.github/CODEOWNERS` (from `scripts/gen_codeowners.py`), as Triage isn't write access. A contributor PR follows
 CONTRIBUTING's Fast track.
 
+**Changing someone else's code:** before you change a package or family whose maintainers don't include you, its
+maintainers hear of it first; never wait on their approval (⚠️ Unmaintained covers one who's gone). `audit-code` and
+`rc-audit` list such findings apart and route them to their maintainers, and `owner-notice.yml` mentions them on any
+PR that changes their code, standing in for the review request Triage doesn't get. `scripts/owners.py` says who
+maintains a path.
+
 **Caveats** (⚠️ Untested fix, ⚠️ Unmaintained) are set and cleared by a repo maintainer: `docs/evidence.md`.
 
 ## Releasing
