@@ -17,7 +17,9 @@ integration maintainer changing their own family is warned too. An integration n
 its own: its paths are shared code.
 
 It runs on the standard library alone and reads every file at the rev with `git show`, never importing an
-integration, so the workflows can run it from the base branch on a PR's files.
+integration, so the workflows can run it from the base branch on a PR's files. The repo maintainers and the path
+templates are read from `gen_codeowners.py` in the working tree, not at the rev: the workflows check out the base, and
+a local run on a branch that changes them reads the branch's.
 
 Usage: scripts/owners.py [--rev REV] [--as LOGIN] [--json | --issue] PATH...
 
@@ -353,11 +355,16 @@ def row(group: Group, paths: list[str]) -> dict:
     }
 
 
-def line(group: Group, paths: list[str], noun: str = "path") -> str:
-    """`control4: @a (2 paths)`; a family's integration's maintainers follow its own."""
-    handles = " ".join(f"@{handle}" for handle in group.direct) or "nobody"
+def line(group: Group, paths: list[str], noun: str = "path", quiet: str | None = None) -> str:
+    """`control4: @a (2 paths)`; a family's integration's maintainers follow its own. The `quiet` handle is named
+    without an `@`, so it isn't mentioned."""
+
+    def named(handles: tuple[str, ...]) -> str:
+        return " ".join(f"`{handle}`" if handle == quiet else f"@{handle}" for handle in handles)
+
+    handles = named(group.direct) or "nobody"
     if group.enclosing:
-        handles += f", and `{group.key}`'s " + " ".join(f"@{handle}" for handle in group.enclosing)
+        handles += f", and `{group.key}`'s " + named(group.enclosing)
     return f"{group}: {handles} ({len(paths)} {noun}{'s' * (len(paths) != 1)})"
 
 

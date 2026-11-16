@@ -1,6 +1,6 @@
 # Owner notices: warn a package's maintainers before someone else changes it
 
-Date: 2026-11-16. Status: built on `claude/owner-notices-plan`; stage 3's audit pending. Depends on PR #447 (the family seam,
+Date: 2026-11-16. Status: built on `claude/owner-notices-plan`; stage 3's audit done, fixes in. Depends on PR #447 (the family seam,
 `docs/plans/2026-11-16-family-seam.md`) merging first.
 
 ## Settled with the repo maintainer (2026-11-16)
@@ -106,8 +106,8 @@ def route(groups: Iterable[Group]) -> tuple[list[str], list[str]]  # integration
 CLI: `scripts/owners.py [--rev REV] [--as LOGIN] [--json] PATH...`. Without `--as`, it prints one line per group:
 package, direct handles, enclosing handles, paths. With `--as`, it prints only the foreign groups. `--json` gives the
 same rows for the skills. `--issue` prints the `labels=` and `assignees=` lines `route-issue.yml` already consumes.
-`route_issue.route` keeps its form parsing and builds labels through `owners.route`, so a routed form issue and a
-routed finding carry the same label.
+`route_issue.route` keeps its form parsing and writes labels from `owners.LABEL`, the constant `owners.route` uses, so
+a routed form issue and a routed finding carry the same label (a test pins the two equal).
 
 `check_maintainer_merge.py` keeps `Refused`, `Marks`, `marks`, `held_by`, `check_maintainers`, `check`, `main`, and
 imports the rest. Behavior is unchanged: its tests pass unedited apart from imports.
@@ -204,8 +204,8 @@ the notice needs no setting, and it is what the owners see in place of a review 
 - `CLAUDE.md`: the paragraph above. This puts the Opus auditor on the PR audit.
 - `docs/evidence.md`: no change. Untested fix and Unmaintained are used as they stand.
 - `scripts/check_release.py`: no change.
-- `scripts/check_audit.py`: no change (question 4). An `owner` key is ignored the way any extra key is; one test pins
-  that.
+- `scripts/check_audit.py`: no change (question 4). An `owner` key is ignored the way any extra key is; the test that
+  pins it lands with the key, in #458.
 - `docs/design.md`: no change. "Owner group" is a term internal to the script, not a glossary term.
 
 ### Tests (`tests/scripts/`)

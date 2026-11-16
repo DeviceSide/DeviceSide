@@ -31,7 +31,10 @@ def test_the_first_push_creates_the_notice_and_mentions_everyone_but_the_author(
 
 
 def test_an_integration_maintainer_in_their_own_family_mentions_the_family_alone():
-    assert on.plan({FAMILY: [TUYA + "b.py"]}, "alice", []).body.startswith("<!-- owner-notice mentioned=tina -->")
+    body = on.plan({FAMILY: [TUYA + "b.py"]}, "alice", []).body
+    assert body.startswith("<!-- owner-notice mentioned=tina -->")
+    assert body.endswith("- `acme`'s `tuya` family: @tina, and `acme`'s `alice` (1 file)")
+    assert "@alice" not in body
 
 
 def test_nothing_foreign_posts_nothing():
@@ -95,6 +98,13 @@ def test_only_the_bots_comments_count():
     marker = "<!-- owner-notice mentioned=alice -->\nx"
     lines = [json.dumps([1, "mallory", marker]), json.dumps([2, on.BOT, "hello"]), "", json.dumps([3, on.BOT, marker])]
     assert on.earlier("\n".join(lines)) == [(2, "hello"), (3, marker)]
+
+
+@pytest.mark.parametrize("separator", ["\u0085", "\u2028", "\u2029"])
+def test_a_line_separator_inside_a_comment_stays_in_its_body(separator):
+    """JSON leaves these unescaped, so anyone commenting could otherwise break every later run."""
+    body = f"hi{separator}there"
+    assert on.earlier(json.dumps([1, on.BOT, body], ensure_ascii=False) + "\n") == [(1, body)]
 
 
 @pytest.fixture

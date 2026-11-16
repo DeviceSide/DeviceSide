@@ -60,7 +60,8 @@ def changed(base: str, head: str) -> list[str]:
 def earlier(text: str) -> list[tuple[int, str]]:
     """The bot's comments, as (id, body), from the lines the workflow fetched."""
     found = []
-    for raw in text.splitlines():
+    # Split on newlines alone: JSON leaves U+0085, U+2028 and U+2029 in a string, and `splitlines` would cut there.
+    for raw in text.split("\n"):
         if raw.strip():
             comment_id, login, body = json.loads(raw)
             if login == BOT:
@@ -76,7 +77,7 @@ def render(groups: dict[Group, list[str]], author: str, mentioned: list[str]) ->
     head = MARKER.format(",".join(mentioned))
     if not groups:
         return f"{head}\nThis pull request now changes only code its author, `{author}`, maintains."
-    rows = "\n".join(f"- {line(group, paths, 'file')}" for group, paths in groups.items())
+    rows = "\n".join(f"- {line(group, paths, 'file', quiet=author)}" for group, paths in groups.items())
     return (
         f"{head}\nThis pull request changes code that its author, `{author}`, doesn't maintain. Its maintainers may "
         f"want to review it; nothing here blocks the merge ({RULE}).\n\n{rows}"
