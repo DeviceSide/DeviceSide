@@ -11,6 +11,7 @@ from .bridge import bridge_api, entity_name, resource_id, write_light
 from .classes import LEVELS, SET_SCENE_DOESNT_WORK
 from .report_filter import write_forgetting
 from ...core.adapter import Adapter
+from ...core.errors import describe
 from ...core.models import EntityResult, Request, Status, Target
 from ...core.scope import AdapterScope, verified
 
@@ -73,7 +74,10 @@ class HueSetScene(Adapter[Request]):
                 except Exception as err:  # noqa: BLE001 - one light's failure must not stop the rest of the scene
                     failed += 1
                     _LOGGER.warning(
-                        "set_scene %s: write to %s failed: %r", target.entity_id, entity_name(hass, light_id), err
+                        "set_scene %s: write to %s failed: %s, so that light may not be set",
+                        target.entity_id,
+                        entity_name(hass, light_id),
+                        describe(err),
                     )
             if failed:
                 detail = "error" if failed == len(writes) else "some_lights_failed"

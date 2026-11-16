@@ -4,6 +4,7 @@ import logging
 from collections.abc import Awaitable, Callable
 
 from .adapter import Adapter
+from .errors import describe
 from .models import EntityResult, Status, Target
 
 _LOGGER = logging.getLogger(__name__)
@@ -23,7 +24,7 @@ async def read_back[HeldT](
         held = await read(target)
     except Exception as err:  # noqa: BLE001 - an integration's library errors can't be imported here
         _LOGGER.debug(
-            "%s on %s read-back failed for %s: %r", adapter.action, adapter.integration, target.entity_id, err
+            "%s on %s read-back failed for %s: %s", adapter.action, adapter.integration, target.entity_id, describe(err)
         )
         return adapter.result(target, Status.SENT, detail="readback_failed")
     return judge(held)

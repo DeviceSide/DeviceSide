@@ -1,3 +1,5 @@
+import logging
+
 import pytest
 from homeassistant.util.color import color_hs_to_xy
 
@@ -6,7 +8,7 @@ from custom_components.deviceside.core.runtime import get_runtime
 from custom_components.deviceside.integrations.hue import INTEGRATION
 from custom_components.deviceside.integrations.hue.transition_cache import transition_cache
 
-from ...conftest import Clock, unload_mock_entries
+from ...conftest import Clock, leaked, unload_mock_entries
 from ...conftest import call as call_service
 from ...fixtures.hue import HueBridge, add_hue_entity, add_hue_group, hue_entry, light_action
 
@@ -24,6 +26,23 @@ def bridge() -> HueBridge:
 
 
 unload_mock_hue_entries = unload_mock_entries("hue")
+
+
+@pytest.fixture(autouse=True)
+def no_resource_ids_logged(request, caplog):
+    """Every Hue test runs at DEBUG and fails if a log line names a resource id of its bridge (docs/logging.md): an
+    id shows as it does in a dict, set or event dumped into the line, quoted."""
+    caplog.set_level(logging.DEBUG, logger="custom_components.deviceside")
+    # Taken now, so the bridge outlives this fixture's check.
+    hue = request.getfixturevalue("bridge") if "bridge" in request.fixturenames else None
+    yield
+    if hue is None:
+        return
+    resources = hue.resources
+    ids = {resource["id"] for resource in resources} | {
+        rid for resource in resources if (rid := resource.get("owner", {}).get("rid"))
+    }
+    assert not leaked(caplog, lambda line: any(f"'{rid}'" in line for rid in ids))
 
 
 async def call(hass, service: str, data: dict, return_response: bool = True):

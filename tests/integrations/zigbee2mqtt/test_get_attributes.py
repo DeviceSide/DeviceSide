@@ -286,7 +286,7 @@ async def test_a_logged_read_error_raises_at_once(hass, broker, monkeypatch, cap
             await call(hass, "get_attributes", {"entity_id": "light.lamp"})
 
     assert raised.value.translation_key == "targets_failed"
-    assert "lightingColorCtrl.read() failed (UNSUPPORTED_ATTRIBUTE)" in caplog.text
+    assert "lightingColorCtrl.read failed (UNSUPPORTED_ATTRIBUTE)" in caplog.text
 
 
 async def test_the_fake_broker_logs_a_read_of_an_attribute_the_bulb_lacks_as_failed(hass, broker, caplog):
@@ -299,7 +299,7 @@ async def test_the_fake_broker_logs_a_read_of_an_attribute_the_bulb_lacks_as_fai
         await call(hass, "get_attributes", {"entity_id": "light.lamp"})
 
     assert raised.value.translation_key == "targets_failed"
-    assert "genOnOff.read() failed (UNSUPPORTED_ATTRIBUTE)" in caplog.text
+    assert "genOnOff.read failed (UNSUPPORTED_ATTRIBUTE)" in caplog.text
 
 
 async def test_a_delivery_failure_is_read_again(hass, broker, caplog):
@@ -319,7 +319,7 @@ async def test_two_delivery_failures_fail_the_read(hass, broker, caplog):
         await call(hass, "get_attributes", {"entity_id": "light.lamp"})
 
     assert raised.value.translation_key == "targets_failed"
-    assert "genOnOff.read() failed (Delivery failed for '2')" in caplog.text
+    assert "genOnOff.read failed (Delivery failed)" in caplog.text
 
 
 async def test_another_read_error_is_not_read_again(hass, broker):

@@ -1,4 +1,4 @@
-"""scripts/check_logging.py: a caught exception logged with %s, or a log line naming a device address."""
+"""scripts/check_logging.py: a caught exception logged as itself, or a log line naming a device address."""
 
 import importlib.util
 from pathlib import Path
@@ -17,8 +17,9 @@ def flagged(tmp_path: Path, body: str) -> list[str]:
     return check_logging.violations(path)
 
 
-def test_caught_exception_with_percent_s_is_flagged(tmp_path):
-    body = "try:\n    pass\nexcept OSError as boom:\n    _LOGGER.warning('failed for %s: %s', 'x', boom)\n"
+@pytest.mark.parametrize("holder", ["%s", "%r"])
+def test_a_caught_exception_logged_as_itself_is_flagged(tmp_path, holder):
+    body = f"try:\n    pass\nexcept OSError as boom:\n    _LOGGER.warning('failed for %s: {holder}', 'x', boom)\n"
     assert len(flagged(tmp_path, body)) == 1
 
 
@@ -27,8 +28,8 @@ def test_a_conditional_log_method_is_seen(tmp_path):
     assert len(flagged(tmp_path, body)) == 1
 
 
-def test_percent_r_and_other_arguments_pass(tmp_path):
-    body = "try:\n    pass\nexcept OSError as boom:\n    _LOGGER.warning('failed for %s: %r', 'x', boom)\n"
+def test_describe_and_other_arguments_pass(tmp_path):
+    body = "try:\n    pass\nexcept OSError as boom:\n    _LOGGER.warning('failed for %s: %s', 'x', describe(boom))\n"
     assert flagged(tmp_path, body) == []
 
 
@@ -37,9 +38,10 @@ def test_multi_line_call_is_seen_whole(tmp_path):
     assert len(flagged(tmp_path, body)) == 1
 
 
-def test_f_string_exception_needs_repr(tmp_path):
+def test_f_string_exception_needs_describe(tmp_path):
     assert len(flagged(tmp_path, "def f(err):\n    _LOGGER.debug(f'{err}')\n")) == 1
-    assert flagged(tmp_path, "def f(err):\n    _LOGGER.debug(f'{err!r}')\n") == []
+    assert len(flagged(tmp_path, "def f(err):\n    _LOGGER.debug(f'{err!r}')\n")) == 1
+    assert flagged(tmp_path, "def f(err):\n    _LOGGER.debug(f'{describe(err)}')\n") == []
 
 
 @pytest.mark.parametrize("name", ["ieee", "mac", "friendly_name", "topic", "light_rid", "node_id", "token"])

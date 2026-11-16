@@ -11,7 +11,9 @@ module uses `_LOGGER = logging.getLogger(__name__)`.
 - **INFO:** a lasting change you make to another system's settings, such as a Zigbee2MQTT option.
 - **WARNING:** the device didn't get the command, or HA may now show the wrong state. Name the action, integration and
   entity, and the cause (timeout or error). End with the consequence: "…, so HA may show the old values".
-- **`_LOGGER.exception`:** only in a background callback that must survive its own error.
+- **`_LOGGER.exception`:** only for a catch-all that must survive DeviceSide's own bug: a background callback, or a
+  classifier or adapter that raised on the call path, where the traceback is the diagnosis. Name the target and end
+  with the consequence, as a WARNING does. Not for an upstream error that is expected (a timeout, a refusal).
 
 ## Each call sent
 
@@ -28,11 +30,23 @@ Users paste logs into public issues.
   address, look up its entity (Hue: `bridge.entity_name`; Zigbee2MQTT: `addressing.entity_name`).
 - **Never device addressing or secrets:** IEEE or MAC addresses, MQTT device topics, Zigbee2MQTT friendly names, Hue
   resource IDs, Shelly component IDs, Matter node IDs, tokens.
-- **Upstream errors are logged as they are** (`%r`): their text is often the diagnosis, and HA logs them the same way.
-  Your own format strings never add an address to them.
+- **Upstream errors go through `core.errors.describe`**, never `%r` or `%s` at the call site: a call site can't tell
+  which errors carry a secret, so one function decides. Most give their repr, as their text is often the diagnosis and
+  HA logs them the same way. An HTTP client error's repr holds the request's URL and headers (a Hue bridge's app key)
+  and its text the URL or the address it couldn't reach, so `describe` gives only its type, status and reason, or its
+  errno name (an SSL error's reason), for it or an error wrapping or grouping it, and its traceback stays out
+  (`traceback_is_safe`). A new client library whose errors carry addresses or secrets is handled in `describe`. Your
+  own format strings never add an address to them. An integration module's failure to import is ours, not upstream,
+  and is logged as it is.
+- **A message another system wrote is not an upstream error.** An upstream error is an exception a library raises.
+  A line another system logs or sends, such as a Zigbee2MQTT `bridge/logging` line or an options reply's error, names
+  devices its own way, so log the cause it names, never the line (Zigbee2MQTT: `bridge_cache.cause` and `scrub`).
+- **Tests check it:** the Hue, ZHA and Zigbee2MQTT tests run at DEBUG and fail on a line, traceback included, that
+  names an address their fixtures use: a quoted Hue resource ID; a ZHA IEEE; an IEEE, a device topic, a Zigbee2MQTT
+  failure line, or a friendly name quoted or ahead of an endpoint (their `conftest.py`).
 
-`scripts/check_logging.py` (a pre-commit hook) flags a caught exception logged with `%s` and a log line naming an
-address field. It reads names, so it can't see an address inside a dict or a payload: keep those out by hand. A line that
+`scripts/check_logging.py` (a pre-commit hook) flags a caught exception logged as itself rather than through `describe`,
+and a log line naming an address field. It reads names, so it can't see an address inside a dict or a payload: keep those out by hand. A line that
 needs an exception ends with `# log-ok: <reason>`.
 
 ## Cost

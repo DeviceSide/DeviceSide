@@ -11,7 +11,7 @@ from homeassistant.helpers import target as target_helpers
 from . import duration, ha_watch
 from .action import Action
 from .adapter import Adapter
-from .errors import EXPERIMENTAL_OFF, Reason, TargetNotSupported
+from .errors import EXPERIMENTAL_OFF, Reason, TargetNotSupported, describe, traceback_is_safe
 from .fields import lacking
 from .groups import expand_ha_groups
 from .models import FAILED, ActionKind, EntityResult, Request, Status, Target, TimedRequest
@@ -259,9 +259,10 @@ class Dispatcher:
         # An empty group is skipped silently, whether planning found it so or an adapter that reads membership did.
         if skipped := [r for r in results if r.status is Status.UNSUPPORTED and r.detail != Reason.EMPTY_GROUP]:
             _LOGGER.warning(
-                "%s skipped targets that can't take it: %s",
+                "%s skipped targets that can't take it: %s, %s",
                 action.key,
                 ", ".join(f"{result.entity_id} ({result.detail})" for result in skipped),
+                "so they aren't read" if action.kind is ActionKind.QUERY else "so they got no command",
             )
         ran = [result for result in results if result.status is not Status.UNSUPPORTED]
         if failed := [result for result in ran if result.status in FAILED]:
@@ -441,7 +442,12 @@ class Dispatcher:
             # reads, and the order pairs each class with its member.
             found: Classes = tuple(capability(self.hass, member) for member in listed)
         except Exception:  # noqa: BLE001 - a classifier's bug must not abort the call: the class counts as unknown
-            _LOGGER.exception("%s on %s: classing %s failed", adapter.action, adapter.integration, target.reported_id)
+            _LOGGER.exception(
+                "%s on %s: classing %s failed, so it is treated as an unknown class",
+                adapter.action,
+                adapter.integration,
+                target.reported_id,
+            )
             found = ()
         _LOGGER.debug(
             "%s on %s: %s is class %s", adapter.action, adapter.integration, target.reported_id, found or (None,)
@@ -465,7 +471,12 @@ class Dispatcher:
         try:
             return expand(self.hass, target)
         except Exception:  # noqa: BLE001 - one group's listing must not abort the call
-            _LOGGER.exception("%s on %s: listing %s failed", adapter.action, adapter.integration, target.reported_id)
+            _LOGGER.exception(
+                "%s on %s: listing %s failed, so its members are unknown",
+                adapter.action,
+                adapter.integration,
+                target.reported_id,
+            )
             return None
 
     @staticmethod
@@ -494,16 +505,16 @@ class Dispatcher:
             else:
                 expanded += _members_planned(members, set(), by_device)
         # One copy per entity, each stand-in apart, as its reported_id is its group's. A member the caller also named
-        # stays named, whichever copy came first, so it raises rather than skips, as a named target does.
+        # is the caller's own target, whichever copy came first, so it raises rather than skips, as _plan keeps it.
         by_id: dict[str, Target] = {}
         stand_ins: list[Target] = []
         for target in expanded:
             if target.stand_in:
                 stand_ins.append(target)
-                continue
-            kept = by_id.setdefault(target.reported_id, target)
-            if target.named and not kept.named:
-                by_id[target.reported_id] = replace(kept, named=True)
+            elif target.named:
+                by_id[target.reported_id] = target
+            else:
+                by_id.setdefault(target.reported_id, target)
         return list(by_id.values()) + stand_ins
 
     async def _run_adapter(
@@ -527,14 +538,26 @@ class Dispatcher:
                 raw = await adapter.execute(self.hass, request, targets)
         except TimeoutError:
             _LOGGER.warning(
-                "%s on %s timed out after %ss",
+                "%s on %s timed out after %ss for %s, %s",
                 adapter.action,
                 adapter.integration,
                 ADAPTER_TIMEOUT_S + ADAPTER_BACKSTOP_S,
+                ", ".join(target.reported_id for target in targets),
+                adapter.consequence,
             )
             return [adapter.result(target, Status.REJECTED, detail="timeout") for target in targets]
-        except Exception:
-            _LOGGER.exception("%s on %s failed", adapter.action, adapter.integration)
+        except Exception as err:
+            # The catch-all of an adapter's own bug, so the traceback is the diagnosis (docs/logging.md); an HTTP
+            # client error's is kept out, as it prints the request's URL and headers.
+            _LOGGER.exception(
+                "%s on %s failed for %s: %s, %s",
+                adapter.action,
+                adapter.integration,
+                ", ".join(target.reported_id for target in targets),
+                describe(err),
+                adapter.consequence,
+                exc_info=traceback_is_safe(err),
+            )
             return [adapter.result(target, Status.REJECTED, detail="error") for target in targets]
         return self._reconcile(adapter, targets, raw, clamped_to, dropped, reached)
 

@@ -93,11 +93,15 @@ class AdapterRegistry:
                 # The integration's library is absent, which is routine: debug. A missing HA or DeviceSide module is
                 # our code out of step with HA (a rename), which would hide every adapter of it: warn.
                 ours = (err.name or "").startswith(("homeassistant", "custom_components"))
-                (_LOGGER.warning if ours else _LOGGER.debug)("Integration %s unavailable: %r", key, err)
+                (_LOGGER.warning if ours else _LOGGER.debug)(  # log-ok: an import failure is ours (docs/logging.md)
+                    "Integration %s unavailable: %r, so its actions are refused", key, err
+                )
                 self._add_unavailable(key, str(err))
                 return
             except Exception as err:  # noqa: BLE001 - one integration's broken import must not take the rest down
-                _LOGGER.warning("Integration %s unavailable: %r", key, err, exc_info=True)
+                _LOGGER.warning(  # log-ok: an import failure is ours (docs/logging.md)
+                    "Integration %s unavailable: %r, so its actions are refused", key, err, exc_info=True
+                )
                 self._add_unavailable(key, repr(err))
                 return
         info: IntegrationInfo = module.INTEGRATION
@@ -109,7 +113,9 @@ class AdapterRegistry:
             if cls.action not in self.actions:
                 raise ValueError(f"{cls.__name__} serves unknown action {cls.action}")
             check_classes(cls, info)
-            self._adapters[(cls.action, info.key)] = cls()
+            adapter = cls()
+            adapter.kind = self.actions[cls.action].kind
+            self._adapters[(cls.action, info.key)] = adapter
         for refused in getattr(module, "UNSUPPORTED", ()):
             self._add_unsupported(refused, info)
 

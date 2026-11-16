@@ -52,7 +52,7 @@ SIGNIFY = 0x100B
 _HUE_ON_BRIGHTNESS_FADE = 0x0013
 
 # Models that don't store a MoveToLevel while off: the Sengled E11-G13 jumps CurrentLevel to 255 with or without the
-# override and comes on at full (docs/integration-internals.md, ZHA tested behavior).
+# override and comes on at full (docs/integrations/zha/internals.md#tested-behavior).
 DROPS_WHILE_OFF = frozenset({"E11-G13"})
 
 
@@ -77,24 +77,30 @@ async def command(
 
     The action is admin-only, so it carries the caller's context: a non-admin caller gets Unauthorized from ZHA rather
     than DeviceSide's own rights. The zha library raises on a delivery failure or a non-success ZCL status, so a call
-    that returns was accepted.
+    that returns was accepted. ZHA's error for a device it no longer has names its IEEE (`Device with IEEE <ieee> not
+    found`, zha/services.py), so it is raised again naming the entity, as a log line does.
     """
     _LOGGER.debug("%s: sending zcl %s %s", entity_id, _command_name(cluster_id, command_id), params)
-    await hass.services.async_call(
-        "zha",
-        "issue_zigbee_cluster_command",
-        {
-            "ieee": addr.ieee,
-            "endpoint_id": addr.endpoint_id,
-            "cluster_id": cluster_id,
-            "cluster_type": "in",
-            "command": command_id,
-            "command_type": "server",
-            "params": params,
-        },
-        blocking=True,
-        context=context,
-    )
+    try:
+        await hass.services.async_call(
+            "zha",
+            "issue_zigbee_cluster_command",
+            {
+                "ieee": addr.ieee,
+                "endpoint_id": addr.endpoint_id,
+                "cluster_id": cluster_id,
+                "cluster_type": "in",
+                "command": command_id,
+                "command_type": "server",
+                "params": params,
+            },
+            blocking=True,
+            context=context,
+        )
+    except ValueError as err:
+        if "IEEE" not in str(err):
+            raise
+        raise LookupError(f"ZHA device of {entity_id} not found") from None
 
 
 async def group_command(

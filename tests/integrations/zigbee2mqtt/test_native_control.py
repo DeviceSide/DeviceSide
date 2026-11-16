@@ -11,8 +11,10 @@ from pytest_homeassistant_custom_component.common import async_mock_service
 
 from custom_components.deviceside.core.models import Target
 from custom_components.deviceside.core.runtime import DATA
+from custom_components.deviceside.core.transition import BRIGHTNESS
 from custom_components.deviceside.integrations.zigbee2mqtt import bridge, bridge_cache
 from custom_components.deviceside.integrations.zigbee2mqtt import native_control as nc
+from custom_components.deviceside.integrations.zigbee2mqtt.fade import AT_THE_BOTTOM, transition_cache, waiting
 from custom_components.deviceside.integrations.zigbee2mqtt.restore_journal import journal, locks
 
 from .conftest import DEVICES, SET, call, light
@@ -190,7 +192,9 @@ async def test_a_failed_restore_warns_and_stays_owed(hass, setup_production, bro
     assert response == {"light.lamp": SENT}
     assert options(broker) == [True, False]
     assert len(broker.timers()) == 1
-    assert "Couldn't put Zigbee2MQTT's hue_native_control back to False for light.lamp, so it stays True" in caplog.text
+    assert (
+        "Couldn't put Zigbee2MQTT's hue_native_control back to False for light.lamp, so it may stay True" in caplog.text
+    )
     assert (await journal(hass)).owed == {f"device/{IEEE}": False}
 
 
@@ -306,6 +310,96 @@ async def test_a_hue_ramp_leaves_it_alone(hass, setup_production, clock, broker)
     await call(hass, "raise_hue", {"entity_id": entity_id})
 
     assert broker.requests() == []
+
+
+@pytest.mark.parametrize("state", ["on", "off"])
+async def test_a_stop_while_a_fade_waits_for_the_option_wins(hass, setup_production, clock, broker, state):
+    """A stop that lands while a fade waits for the target's lock (an earlier action's restore) halts it: the fade then
+    publishes nothing. From off, the stop still finds the raise, which predicts 0 % until it runs."""
+    entity_id = light(hass, broker, manufacturer="Philips", state=state)
+    lock = locks(hass).setdefault(await nc._hue_address(hass, target(hass, entity_id)), asyncio.Lock())
+    await lock.acquire()
+    fade = asyncio.create_task(call(hass, "raise_brightness", {"entity_id": entity_id}))
+    for _ in range(10):
+        await asyncio.sleep(0)
+    assert not fade.done()
+
+    assert await call(hass, "stop", {"entity_id": entity_id}) == {entity_id: SENT}
+    lock.release()
+    response = await fade
+    await hass.async_block_till_done()
+
+    assert response[entity_id]["status"] == "unchanged"
+    assert response[entity_id]["detail"] == "stopped"
+    assert [p["payload"] for p in broker.published if p["topic"] == SET] == [{"brightness_move": "stop"}]
+    assert broker.requests() == []
+
+
+async def test_a_raise_after_a_stop_in_the_option_window_lights_an_off_bulb_from_the_bottom(
+    hass, setup_production, clock, broker
+):
+    """The stop halts the unpublished raise where the bulb is, 0 % from off, not at the raise's extrapolated value: a
+    second raise within the settle window still sends the bulb to the bottom first."""
+    entity_id = light(hass, broker, manufacturer="Philips", state="off")
+    lock = locks(hass).setdefault(await nc._hue_address(hass, target(hass, entity_id)), asyncio.Lock())
+    await lock.acquire()
+    fade = asyncio.create_task(call(hass, "raise_brightness", {"entity_id": entity_id}))
+    for _ in range(10):
+        await asyncio.sleep(0)
+    clock.now += 0.2
+    assert await call(hass, "stop", {"entity_id": entity_id}) == {entity_id: SENT}
+    lock.release()
+    assert (await fade)[entity_id]["detail"] == "stopped"
+    broker.published.clear()
+
+    assert await call(hass, "raise_brightness", {"entity_id": entity_id}) == {entity_id: SENT}
+
+    assert [p["payload"] for p in broker.published if p["topic"] == SET][0] == AT_THE_BOTTOM
+
+
+async def test_a_stop_in_the_option_window_halts_an_earlier_fade_where_the_stop_found_it(
+    hass, setup_production, clock, broker
+):
+    """An earlier fade of ours runs while a lower waits for the option: the bulb halts at the earlier fade's value at
+    the stop, not where it would have reached once the lower got the option."""
+    entity_id = light(hass, broker, manufacturer="Philips", brightness=51)
+    cache = transition_cache(hass)
+    earlier = cache.moving(entity_id, BRIGHTNESS, 20.0, 100.0, 8.0)
+    lock = locks(hass).setdefault(await nc._hue_address(hass, target(hass, entity_id)), asyncio.Lock())
+    await lock.acquire()
+    fade = asyncio.create_task(call(hass, "lower_brightness", {"entity_id": entity_id}))
+    for _ in range(10):
+        await asyncio.sleep(0)
+    clock.now += 0.2
+    stop_at = clock.now
+    assert await call(hass, "stop", {"entity_id": entity_id}) == {entity_id: SENT}
+    clock.now += 1.0
+    lock.release()
+    assert (await fade)[entity_id]["detail"] == "stopped"
+
+    halt = cache.live(entity_id, BRIGHTNESS)
+    assert (halt.target, halt.duration, halt.started_at) == (pytest.approx(earlier.value(stop_at)), 0.0, stop_at)
+
+
+async def test_a_stop_halting_two_waiting_raises_from_off_leaves_the_bulb_at_the_bottom(
+    hass, setup_production, clock, broker
+):
+    """The second raise plans from the first, which never published: the bulb never left 0 %."""
+    entity_id = light(hass, broker, manufacturer="Philips", state="off")
+    lock = locks(hass).setdefault(await nc._hue_address(hass, target(hass, entity_id)), asyncio.Lock())
+    await lock.acquire()
+    raises = []
+    for _ in range(2):
+        raises.append(asyncio.create_task(call(hass, "raise_brightness", {"entity_id": entity_id})))
+        for _ in range(10):
+            await asyncio.sleep(0)
+        clock.now += 0.3
+    assert await call(hass, "stop", {"entity_id": entity_id}) == {entity_id: SENT}
+    lock.release()
+    assert [(await fade)[entity_id]["detail"] for fade in raises] == ["stopped", "stopped"]
+
+    assert transition_cache(hass).live(entity_id, BRIGHTNESS).target == 0
+    assert waiting(hass) == {}
 
 
 # The context manager itself
@@ -639,7 +733,8 @@ async def test_the_stamp_is_unknown_without_an_address(hass, setup_production):
     }
 
 
-async def test_nothing_is_computed_while_debug_logging_is_off(hass, setup_production, broker, monkeypatch):
+async def test_nothing_is_computed_while_debug_logging_is_off(hass, setup_production, broker, monkeypatch, caplog):
+    caplog.set_level(logging.INFO, logger="custom_components.deviceside")  # the conftest's guard turns DEBUG on
     entity_id = light(hass, broker)
     monkeypatch.setattr(bridge, "logged_options", lambda *args: pytest.fail("looked up with debug logging off"))
 
@@ -792,7 +887,7 @@ async def test_an_unreadable_journal_runs_as_if_none_were_owed(hass, setup_produ
     await nc.settled(hass, target(hass, "light.lamp"))
 
     assert options(broker) == [True, False]
-    assert "Couldn't read the hue_native_control restore journal" in caplog.text
+    assert "Couldn't read Zigbee2MQTT's hue_native_control restore journal for light.lamp" in caplog.text
 
 
 async def test_a_cancelled_set_that_was_refused_strikes_its_entry(hass, setup_production, broker, monkeypatch):

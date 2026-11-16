@@ -164,6 +164,8 @@ def write_record(
     if tree == "package":
         tree = tree_of(repo, commit, integration)
     action, *options = Path(name).stem.lstrip("_").split("-")
+    if action == "lifecycle":  # the rig names a suite that is no action's for the action it ran in it
+        action, options = "stop", []
     if tree is None:
         data = record_v1(integration, action, result=result, commit=commit, options=options)
     else:
@@ -339,6 +341,24 @@ def test_a_shared_module_or_a_suite_that_is_no_actions_reopens_on_any_change(rel
     released.commit(f"{FAKE}/transport.py")
     assert cr.main(["--signoffs", "--reruns"], registry(released, monkeypatch)) == 1
     assert json.loads(capsys.readouterr().out) == {"fake": ["lifecycle", "stop", "turn_on_for"]}
+
+
+def test_a_suite_that_is_no_actions_is_reopened_by_any_adapters_change_though_it_ran_an_action(
+    released, monkeypatch, capsys
+):
+    """The rig writes `lifecycle.json` with the action it ran (`stop` here): it stands for no action's change."""
+    run = released.commit(f"{FAKE}/stop.py")
+    for name in ("stop.json", "turn_on_for.json", "lifecycle.json"):
+        write_record(released, name, run)
+    assert json.loads((released.path / RECORDS / "lifecycle.json").read_text())["action"] == "stop"
+    released.commit(f"{FAKE}/turn_on_for.py")  # another adapter's module
+    assert cr.main(["--signoffs", "--reruns"], registry(released, monkeypatch)) == 1
+    assert json.loads(capsys.readouterr().out) == {"fake": ["lifecycle", "turn_on_for"]}
+    write_record(released, "lifecycle.json", released.git("rev-parse", "HEAD").strip())
+    write_record(released, "turn_on_for.json", released.git("rev-parse", "HEAD").strip())
+    released.commit(f"{FAKE}/stop.py")  # its own action's module
+    assert cr.main(["--signoffs", "--reruns"], registry(released, monkeypatch)) == 1
+    assert json.loads(capsys.readouterr().out) == {"fake": ["lifecycle", "stop"]}
 
 
 def test_a_no_call_changed_row_keeps_the_records_of_the_actions_it_names(released, monkeypatch, capsys):
@@ -660,6 +680,17 @@ def test_a_manual_row_at_the_last_change_signs_off_naming_the_tester(released, m
     assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 0
     assert capsys.readouterr().out.splitlines()[1] == (
         f"fake: changed at {change[:7]}; signed off by manual {MANUAL} row 1 at {change[:7]}, @a"
+    )
+
+
+def test_a_bare_no_call_changed_row_vouches_for_its_commit_alone(released, monkeypatch, capsys):
+    """After an unsigned call change, a row on a later log-wording change must not sign off the call change too."""
+    released.commit(f"{FAKE}/stop.py")  # a call change nobody tested
+    wording = released.commit(f"{FAKE}/transport.py")
+    released.commit(MANUAL, manual_file(signoff(wording, passed=None)))
+    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
+    assert "no_call_changed vouches for its commit's change alone; the package before it needs a sign-off" in (
+        capsys.readouterr().out
     )
 
 

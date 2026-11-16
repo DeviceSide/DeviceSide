@@ -34,8 +34,8 @@ class Z2MStop(Adapter[Request]):
 
     Each stop is its own publish, the color ones first: Z2M reads the light back after a brightness stop before it
     sends the next key of the same message. Z2M's read-back puts HA right for brightness; after a color stop, HA's color
-    is refreshed where it needs it (color_refresh). A light or group with nothing lit (off, and no soft off of ours
-    fading it) is unchanged with off and nothing is sent.
+    is refreshed where it needs it (color_refresh). A light or group with nothing lit (off, with no soft off of ours
+    fading it or raise of ours waiting to publish) is unchanged with off and nothing is sent.
     """
 
     action: ClassVar[str] = "stop"
@@ -54,7 +54,11 @@ class Z2MStop(Adapter[Request]):
         async def send(target: Target) -> EntityResult:
             if not (lights := await lights_of(hass, target)):
                 return self.result(target, Status.UNSUPPORTED, detail=Reason.EMPTY_GROUP)
-            if not (halting := lit(cache, lights)):
+            # A raise from off still waiting to publish (fade.start) predicts 0 % at first: it is halted too.
+            on = lit(cache, lights)
+            if not (
+                halting := [light for light in lights if light in on or cache.running(light.entity_id, BRIGHTNESS)]
+            ):
                 return self.result(target, Status.UNCHANGED, detail="off")
             # A halt is predicted only where a move of ours ran: elsewhere Z2M's read-back is right at once.
             halts = {

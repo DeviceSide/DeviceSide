@@ -55,7 +55,7 @@ tests:
       - sample: {attribute: brightness, for: 2, expect: steady}
 
   # One stop halting a brightness and a color move. A Hue bulb's brightness and color temperature stop let the color
-  # carry on (deviceside's docs/integration-internals.md, Zigbee2MQTT tested behavior), so each attribute is held to its own halt. The color move starts
+  # carry on (deviceside's docs/integrations/zigbee2mqtt/internals.md § stop), so each attribute is held to its own halt. The color move starts
   # 1 s after the brightness one, as a second button would.
   - name: halts_brightness_and_saturation
     roles: [light_color, group_color]

@@ -34,9 +34,11 @@ One `GetStatus`. Time left is `timer_started_at` + `timer_duration` against Home
 clock (both SNTP-synced), clamped to 0 to the duration to absorb up to 5 s of skew. Further off, the device's clock
 isn't synced, so the row has no timer: until SNTP syncs, `Sys.GetStatus` `unixtime` is null
 ([Sys](https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Sys)) and `timer_started_at` reads as seconds
-since boot ([forum report](https://shelly-forum.com/thread/31934-shelly-time-is-incorrect/)). `RGBCCT` adds brightness
-and the active mode's color, the others derived from it. A `<Component>.GetConfig` runs alongside for `auto_off` and `auto_on`;
-if it fails, the row leaves both keys out (unknown) rather than reporting them `null` (disabled).
+since boot ([forum report](https://shelly-forum.com/thread/31934-shelly-time-is-incorrect/)). Every light adds
+brightness. `RGBCCT` adds the active mode's color, `CCT` its `ct`, and `RGB` and `RGBW` their `rgb`, `RGBW`'s with its
+`white` mixed in by core's `color_rgbw_to_rgb`, as core's light state does; the hs and xy are derived from the rgb.
+A `<Component>.GetConfig` runs alongside for `auto_off` and `auto_on`; if it fails, the row leaves both keys out
+(unknown) rather than reporting them `null` (disabled).
 
 ### `set_attributes`
 
