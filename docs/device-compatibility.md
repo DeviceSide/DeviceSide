@@ -244,10 +244,11 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 
 | Action | Level | Items | Tested models | Records |
 |---|---|---|---|---|
-| `get_attributes` | Verified | switch entities | `8979`, firmware `v1.4` | [record](integrations/matter/test-records/get_attributes.json) |
-| `get_attributes` | Documented | light entities | | |
-| `turn_on_for` | Verified | switch entities | `8979`, firmware `v1.4` | [record](integrations/matter/test-records/turn_on_for.json) |
-| `turn_on_for` | Documented | light entities | | |
+| `get_attributes` | Verified | switch entities; wiz_plug classes | `8979`, firmware `v1.4` | [record](integrations/matter/test-records/get_attributes.json) |
+| `get_attributes` | Documented | light entities; other classes | | |
+| `get_attributes` | Experimental | multi_endpoint, bridged, uncertified classes | | |
+| `turn_on_for` | Documented | switch, light entities | `8979`, firmware `v1.4` | [record](integrations/matter/test-records/turn_on_for.json) |
+| `turn_on_for` | Experimental | wiz_plug, other, multi_endpoint, bridged, uncertified classes | | |
 
 ### Control4
 

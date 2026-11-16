@@ -92,28 +92,26 @@ def lt_feature(node, endpoint_id: int) -> bool:
     return isinstance(feature_map, int) and bool(feature_map & _LT_FEATURE_BIT)
 
 
+def node_for(hass: HomeAssistant, target: Target):
+    """The target's MatterNode from the client's cache, sync and with no I/O, or None: an unparsable unique ID, no
+    loaded Matter entry, or a node the server doesn't hold."""
+    if (node_id := node_id_from_unique_id(target.entry.unique_id)) is None:
+        return None
+    if (client := matter_client(hass, target.entry.config_entry_id)) is None:
+        return None
+    try:
+        return client.get_node(node_id)
+    except Exception:  # noqa: BLE001 - node lookup can raise if the node no longer exists
+        return None
+
+
 def unsupported_reason(hass: HomeAssistant, target: Target) -> str | None:
     """Why this entity can't run an OnOff timer, or None: it needs a reachable node whose endpoint has LT."""
-    node_id = node_id_from_unique_id(target.entry.unique_id)
     ep_id = endpoint_id_from_unique_id(target.entry.unique_id)
-    if node_id is None or ep_id is None:
+    if ep_id is None or (node := node_for(hass, target)) is None:
         return Reason.NOT_ADDRESSABLE
-
-    client = matter_client(hass, target.entry.config_entry_id)
-    if client is None:
-        return Reason.NOT_ADDRESSABLE
-
-    try:
-        node = client.get_node(node_id)
-    except Exception:  # noqa: BLE001 - node lookup can raise if the node no longer exists
-        return Reason.NOT_ADDRESSABLE
-
-    if node is None:
-        return Reason.NOT_ADDRESSABLE
-
     if not lt_feature(node, ep_id):
         return "no_lt_feature"
-
     return None
 
 
@@ -149,8 +147,9 @@ READBACK_SLACK_TENTHS = 30
 
 
 def timer_matches(read_on_time: object, on_off: object, on_time: int) -> bool:
-    """Whether the timer running is the one just sent for `on_time` tenths: a new timer replaces a running one, so
-    OnTime read straight back lies within READBACK_SLACK_TENTHS under it."""
+    """Whether the timer running is the one just sent for `on_time` tenths: OnTime read straight back lies within
+    READBACK_SLACK_TENTHS under it. A device keeps the longer of a running timer and a new one (the spec's
+    max(OnTime, onTime)), so a shorter call during a longer timer reads above it and isn't confirmed."""
     return timer_running(read_on_time, on_off) and on_time - READBACK_SLACK_TENTHS <= read_on_time <= on_time
 
 

@@ -702,14 +702,31 @@ class Card:
         return "\n".join(lines)
 
 
+def card_items(scope) -> list[tuple[Level, str, str]]:
+    """The scope's items as a card shows them: a domain at most at the level of the strongest class the adapter serves,
+    as a call in it runs at the weaker of the two (AdapterScope.level), so a domain whose every class is Experimental
+    reads Experimental. The strongest, not the weakest: one Verified class (Zigbee2MQTT's `hue`) is enough for the
+    domain's line to say so, as its other classes have lines of their own. A class whose level names domains counts
+    only on those."""
+
+    def best(domain: str) -> Level:
+        held = [level for _, level, domains in scope.class_entries() if domains is None or domain in domains]
+        return max(held, default=Level.EXPERIMENTAL)
+
+    return [
+        (min(level, best(item)) if noun == NOUNS[0] and scope.capabilities is not None else level, item, noun)
+        for level, item, noun, _ in items(scope)
+    ]
+
+
 def classes(key: str, integration_adapters: list, level: Level, data: Data) -> dict[str, set[str]]:
-    """Each domain or capability the unflagged adapters hold at the level, in first-seen order, with the actions that
-    hold it there."""
+    """Each domain or capability the unflagged adapters hold at the level (as `card_items` shows it), in first-seen
+    order, with the actions that hold it there."""
     held: dict[str, set[str]] = {}
     for adapter in integration_adapters:
         if adapter.scope.experimental:
             continue
-        for item_level, item, noun, _ in items(adapter.scope):
+        for item_level, item, noun in card_items(adapter.scope):
             if item_level is level and noun != "fields":
                 if item not in data.capabilities.get(key, {}):
                     fail(f"capabilities: no entry for {key} {item}, which a scope holds as {level.name.title()}")

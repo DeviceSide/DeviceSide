@@ -14,6 +14,7 @@ from .addressing import (
     timer_matches,
     unsupported_reason,
 )
+from .classes import TURN_ON_FOR
 from ...actions.turn_on_for import TurnOnForRequest
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Status, Target
@@ -23,6 +24,8 @@ _LOGGER = logging.getLogger(__name__)
 
 # OnWithTimedOff.onTime is a uint16 in tenths of a second; the spec caps it at 65534 tenths, so 6553.4 s is the most.
 _TIMER_LIMITS = DurationLimits(min_s=0.1, max_s=6553.4)
+# OffWaitTime 1 (0.1 s), not 0: matter.js before v0.17.2 never times off on 0 (internals.md, turn_on_for).
+_OFF_WAIT_TENTHS = 1
 
 
 class MatterTurnOnFor(Adapter[TurnOnForRequest]):
@@ -32,10 +35,12 @@ class MatterTurnOnFor(Adapter[TurnOnForRequest]):
     action: ClassVar[str] = "turn_on_for"
     integration: ClassVar[str] = "matter"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        # Lights take the same OnWithTimedOff as plugs, behind the same LT check: Documented.
-        domains=verified("switch") | documented("light"),
+        # Documented on both until the plug's rerun on OffWaitTime 1 (its record ran 0); lights take the same call as
+        # plugs, behind the same LT check.
+        domains=documented("switch", "light"),
         duration=_TIMER_LIMITS,
         fields=verified(),
+        capabilities=TURN_ON_FOR,
         confirmable=True,
     )
 
@@ -51,7 +56,7 @@ class MatterTurnOnFor(Adapter[TurnOnForRequest]):
             client = matter_client(hass, target.entry.config_entry_id)  # supports() refused the targets without one
 
             on_time = round(request.duration_s * 10)
-            params = {"on_off_control": 0, "on_time": on_time, "off_wait_time": 0}
+            params = {"on_off_control": 0, "on_time": on_time, "off_wait_time": _OFF_WAIT_TENTHS}
             command = make_on_with_timed_off(**params)
             _LOGGER.debug("%s: sending matter OnOff.OnWithTimedOff %s", target.reported_id, params)
             await client.send_device_command(

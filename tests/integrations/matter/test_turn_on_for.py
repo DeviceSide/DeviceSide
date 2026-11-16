@@ -6,7 +6,7 @@ from homeassistant.exceptions import HomeAssistantError
 from custom_components.deviceside.core.scope import Level
 from custom_components.deviceside.integrations.matter.turn_on_for import MatterTurnOnFor
 
-from ...conftest import call, sent
+from ...conftest import allow_experimental, call, sent
 from ...fixtures.matter import (
     NODE_ID,
     add_matter_entity,
@@ -14,10 +14,18 @@ from ...fixtures.matter import (
     on_time_reads,
 )
 
-CONFIRMED = {"status": "confirmed", "integration": "matter"}
+WIZ = "wiz_plug"  # the fixture's node: the lab's WiZ Smart Plug
+CONFIRMED = {"status": "confirmed", "integration": "matter", "capability": WIZ}
 EP = 1  # endpoint_id used across tests
 
 pytestmark = pytest.mark.usefixtures("mock_chip", "setup_production")
+
+
+@pytest.fixture(autouse=True)
+def experimental_on(hass, setup_production):
+    """turn_on_for is untested on every Matter class until the WiZ plug's rerun on OffWaitTime 1 (plan Decision 75);
+    test_classes pins that refusal, so these tests run the call with Experimental features on."""
+    allow_experimental(hass)
 
 
 @pytest.mark.parametrize("entity_id", ["switch.plug", "light.bulb"])
@@ -33,7 +41,8 @@ async def test_sends_on_with_timed_off_and_confirms(hass, entity_id):
     send_cmd.assert_awaited_once()
     call_kwargs = send_cmd.call_args.kwargs
     assert (call_kwargs["node_id"], call_kwargs["endpoint_id"]) == (NODE_ID, EP)
-    assert vars(call_kwargs["command"]) == {"onOffControl": 0, "onTime": 50, "offWaitTime": 0}  # 5 s in tenths
+    # 5 s in tenths, and a 0.1 s off wait (turn_on_for._OFF_WAIT_TENTHS)
+    assert vars(call_kwargs["command"]) == {"onOffControl": 0, "onTime": 50, "offWaitTime": 1}
     assert [args.kwargs["attribute_path"] for args in read_attr.await_args_list] == [f"{EP}/6/16385", f"{EP}/6/0"]
 
 
@@ -48,9 +57,10 @@ async def test_duration_converted_to_tenths(hass):
     assert cmd.onTime == 15  # 1.5 s * 10 = 15 tenths
 
 
-def test_light_is_documented_and_plug_verified():
+def test_both_domains_are_documented_until_the_plug_is_rerun():
+    """The plug's record ran OffWaitTime 0; the call now sends 1 (test_classes pins the class levels)."""
     assert MatterTurnOnFor.scope.level("light") is Level.DOCUMENTED
-    assert MatterTurnOnFor.scope.level("switch") is Level.VERIFIED
+    assert MatterTurnOnFor.scope.level("switch") is Level.DOCUMENTED
 
 
 @pytest.mark.parametrize(
@@ -67,7 +77,9 @@ async def test_no_running_timer_does_not_confirm(hass, reads, entity_id):
 
     response = await call(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5})
 
-    assert response == {entity_id: {"status": "sent", "integration": "matter", "detail": "timer_not_reported"}}
+    assert response == {
+        entity_id: {"status": "sent", "integration": "matter", "capability": WIZ, "detail": "timer_not_reported"}
+    }
 
 
 async def test_readback_fails_returns_sent(hass):
@@ -78,7 +90,9 @@ async def test_readback_fails_returns_sent(hass):
 
     response = await call(hass, "turn_on_for", {"entity_id": "switch.bulb", "duration": 5})
 
-    assert response == {"switch.bulb": {"status": "sent", "integration": "matter", "detail": "readback_failed"}}
+    assert response == {
+        "switch.bulb": {"status": "sent", "integration": "matter", "capability": WIZ, "detail": "readback_failed"}
+    }
 
 
 @pytest.mark.parametrize(
@@ -128,5 +142,5 @@ async def test_the_command_is_logged_without_the_node(hass, wire):
     await call(hass, "turn_on_for", {"entity_id": "switch.bulb", "duration": 5})
 
     assert sent(wire) == [
-        "switch.bulb: sending matter OnOff.OnWithTimedOff {'on_off_control': 0, 'on_time': 50, 'off_wait_time': 0}"
+        "switch.bulb: sending matter OnOff.OnWithTimedOff {'on_off_control': 0, 'on_time': 50, 'off_wait_time': 1}"
     ]

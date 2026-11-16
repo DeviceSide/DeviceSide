@@ -502,8 +502,38 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
        change, so outside the Hue package (a repo maintainer's), with the Opus audit.
      - `get_attributes` reads color temperature mode as core does (Decision 56).
 9. **Matter.** Lab run on the WiZ plug. `other` is Experimental on `turn_on_for`, and the WiZ plug Verified by the
-   rig on the real call (Decision 75). Until #436 applies Decision 75, Matter's `turn_on_for` still shows
-   Documented on the cards.
+   rig on the real call (Decision 75).
+   - **What decides the call** (read first, recorded in the Matter `internals.md`): nobody routes it. HA never sends
+     `OnWithTimedOff` and the Matter server passes it through, so the endpoint's own On/Off server decides: the
+     device's firmware, named by VendorID and ProductID, or on a bridge the bridge's software. The device type only
+     picks the HA domain; the Lighting feature is the precondition `no_lt_feature` already checks. Certification
+     (TC-OO-2.3) tests the call on every Lighting device, but only with OffWaitTime 300, never DeviceSide's former 0, the one
+     value matter.js before v0.17.2 never times off (it stays on). HA's registry holds none of VendorID, device types
+     or clusters; the client's node cache does, sync.
+   - **Built** (`claude/device-classes-9-matter`): `integrations/matter/classes.py`, rules on the node cache, first
+     match winning: `uncertified` (a test VendorID), `bridged` (an Aggregator or Bridged Node endpoint, Bridged
+     Device Basic Information, or a DeviceTypeList it can't read), `wiz_plug` (4107/8979), `multi_endpoint` (more
+     than one On/Off endpoint, as certification tests one; `experimental(...)` on both), and `other`, the default. A node with no VendorID yet is `uncertified`, Unplaced; None with no node. The call sends OffWaitTime 1
+     (Decision 46). Levels: on `get_attributes`, `other` Documented by certification (Decision 48 as narrowed by
+     Decision 75, the rule in `docs/evidence.md`, Levels) and `wiz_plug` Verified; on `turn_on_for`, every class
+     `experimental(...)` until the WiZ rerun makes `wiz_plug` Verified (Decision 75); `bridged` and `uncertified`
+     `experimental(...)` on both; the `switch` domain Documented on
+     `turn_on_for` until the rerun, as the plug's record ran OffWaitTime 0. No `doesnt_work` entry: no
+     certified Matter device is known to depart, and the call no longer harms matter.js; so no harm refusal, and
+     every untested class runs with Experimental features on.
+   - **Harm test** on each candidate entry: matter.js with OffWaitTime 0 (on, never off: deferred, unattended, harms)
+     is avoided by the call, so it needs no entry; a matter.js restart dropping a running timer (indigo-matter #203)
+     harms too, but a reboot mid-timer drops the timer on any Matter device (the reference server doesn't persist
+     OnTime), so it is a limit of every class, stated on the page, not a departure a class rule can split off; a device without the Lighting feature refuses the command, a visible failure, already
+     refused as `no_lt_feature`.
+   - **Plan review and audit** (fixed in the round's commit): the Documented basis names the marker (a non-test VendorID) and
+     what slips past it, and (narrowed by Decision 75 to reads) no longer an equivalence of field values;
+     bridge detection fails closed (a Bridged Node, Bridged Device Basic Information or an unreadable DeviceTypeList);
+     `evidence.md`'s harm rule says a default-class device runs at its class's level, not Experimental. The README's
+     WiZ line is lost until the rerun, as Decision 15 accepted for Z2M; `check_release --signoffs` blocks on it.
+   - **Lab run (pending):** the WiZ plug on the new call, `turn_on_for` and `get_attributes`, in format 2, so the
+     records carry `wiz_plug`; it lifts `turn_on_for` on `wiz_plug` (and the `switch` domain) to Verified and clears
+     the coverage warning. With Experimental features on, as `turn_on_for` is flagged on every class until then.
 10. **Close out.**
     - The runs, below.
     - Remove `models.yaml`'s shared entries (step 7 moves its last, ZHA's TS011F `not_supported`, into ZHA's code),
@@ -1303,6 +1333,21 @@ Numbered from 36; step 9 numbers from 46, so these renumber at merge if needed.
     other, the color mode core shows for it while it is on (else the flag), as core trusts `mirek_valid` only from
     certified lights. A mirek of 0 or none reports no color temperature. Built now, though untested on a non-certified
     light, which stays Experimental.
+
+## Decisions (Jason, step 9)
+
+Numbered from 46, as step 7's run from 36; renumber at merge if they collide.
+
+46. **Matter's call sends OffWaitTime 1 (0.1 s), not 0.** Certification's TC-OO-2.3 never sends 0, and matter.js
+    before v0.17.2 turns on for it and stays on; with 1, every version times off and the call is the path
+    certification tests. Chosen over refusing test VendorIDs (it refuses working devices and misses matter.js on a
+    real VendorID) and over both (refusal for the restart loss too). Cost: the WiZ plug is rerun, and an Off mid-timer
+    guards for 0.1 s against another `OnWithTimedOff`. `uncertified` stays `experimental(...)`.
+47. **A Matter class keys on VendorID and ProductID,** which name the firmware (tenet 9, Decision 35): the record
+    lifts `wiz_plug` (4107/8979), not every Signify product.
+48. **`other` on Matter is Documented by certification,** on `get_attributes`, as TC-OO-2.3 reads OnTime and OnOff
+    on every certified device. Withdrawn for `turn_on_for` by Decision 75: the test sends OffWaitTime 300 and
+    DeviceSide 1. The rule, narrowed to reads, is in `docs/evidence.md` (Levels), so it gets the Opus audit.
 
 ## Handoff
 

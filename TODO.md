@@ -72,7 +72,7 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
     ([research](docs/integrations/zigbee2mqtt/research/2026-11-15-converter-seed-list.md), Decision 78).
   - [x] 8. Hue classes, the `smart_scene` check moved to them, and the v1 bridge refused as a separate integration
     (plan Decision 32) (#432).
-  - [ ] 9. Matter classes.
+  - [x] 9. Matter classes (#436).
   - [ ] 10. Close out: `models.yaml`'s shared entries removed (step 7 moves ZHA's TS011F, its last, into ZHA's code),
     README regenerated, then the #350 comment.
 - [ ] **TS011F refusal on ZHA and Z2M** (device-classes plan, Decisions 16 and 70): a not yet supported entry with
