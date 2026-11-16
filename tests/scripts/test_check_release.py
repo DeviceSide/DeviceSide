@@ -417,16 +417,48 @@ def test_no_adapter_module_imports_another_adapters():
     registry = AdapterRegistry.discover()
     for key in registry.integrations:
         own = cr.modules(registry, key)
-        names = {Path(module).stem for module in own.values()}
         for module in own.values():
-            tree = ast.parse((cr.REPO / cr.package(key) / module).read_text())
-            imported = {
-                (node.module or alias.name).split(".")[-1] if node.level == 1 and not node.module else node.module
-                for node in ast.walk(tree)
-                if isinstance(node, ast.ImportFrom) and node.level == 1
-                for alias in node.names
-            }
-            assert not (imported & names - {Path(module).stem}), f"{key}/{module} imports another adapter's module"
+            source = (cr.REPO / cr.package(key) / module).read_text()
+            assert not imported_modules(source, key) & (set(own.values()) - {module}), (
+                f"{key}/{module} imports another adapter's module"
+            )
+
+
+def imported_modules(source: str, key: str) -> set[str]:
+    """The package's modules the source imports, as paths inside the package: relative or absolute, a module or a
+    name from one."""
+    dotted = cr.package(key).rstrip("/").replace("/", ".")
+    targets = []
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.ImportFrom):
+            base = f"{dotted}.{node.module or ''}".rstrip(".") if node.level == 1 else node.module or ""
+            targets += [base, *(f"{base}.{alias.name}" for alias in node.names)]
+        elif isinstance(node, ast.Import):
+            targets += [alias.name for alias in node.names]
+    return {target.removeprefix(f"{dotted}.").replace(".", "/") + ".py" for target in targets}
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "from .stop import x",
+        "from . import stop",
+        "from .stop import x as y",
+        "from . import transport, stop",
+        "from custom_components.deviceside.integrations.fake.stop import x",
+        "import custom_components.deviceside.integrations.fake.stop",
+    ],
+)
+def test_the_import_check_sees_each_way_to_import_a_module(source):
+    assert "stop.py" in imported_modules(source, "fake")
+    assert "stop.py" not in imported_modules("from .transport import stop_all", "fake")
+
+
+def test_an_option_record_alone_is_no_record_of_the_plain_call(released, monkeypatch, capsys):
+    change = released.commit(f"{FAKE}/stop.py")
+    write_record(released, "stop-fast.json", change)
+    assert cr.main(["--signoffs", "--reruns"], registry(released, monkeypatch)) == 1
+    assert json.loads(capsys.readouterr().out) == {"fake": ["stop"]}
 
 
 def test_a_row_naming_actions_is_no_signoff_without_their_records(released, monkeypatch, capsys):

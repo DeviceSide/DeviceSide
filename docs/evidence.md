@@ -309,11 +309,13 @@ none.
   needs its suite rerun, and no other; `check_release.py --signoffs --reruns` lists the suites. So an adapter's
   module never imports another adapter's: code two adapters share lives in a module that is neither's (a unit test
   checks it).
-- **Every adapter changed since the last release needs a record,** a new one included: the other actions' records
-  stand through its change, and say nothing about it.
+- **Every adapter changed since the last release needs a record** of its plain call, a new one included: the other
+  actions' records stand through its change, and say nothing about it, and a record with an option set
+  (`<action>-<option>.json`) ran only that option.
 - **A `no_call_changed` row carries a record across one change,** the one its commit made, when that change altered
-  neither the action's call nor its handling of the device's reply. The record must stand up to that commit, and from
-  it on; a later change needs its own row or a rerun. With no `actions` the row covers every action, and is itself a
+  neither the action's call nor its handling of the device's reply. The record must stand up to that commit's parent,
+  and from the commit on; a later change needs its own row or a rerun. `main` is squash-merged, so a commit is one
+  PR's change; a row citing a merge commit vouches for everything it merged. With no `actions` the row covers every action, and is itself a
   sign-off of the package as its commit holds it; with `actions` it covers those actions' records, and is no sign-off
   alone. It is the maintainer's judgment (tenet 7), and the row's PR says what shows it: the unit tests that pin the
   calls, unchanged.

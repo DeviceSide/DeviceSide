@@ -445,7 +445,8 @@ def record_signoff(
             for name in reopened
         )
     )
-    missing = sorted(set(changed_actions) - {record["action"] for record in run.values()})
+    # An option's record ran the action with that option set, so the plain call needs a record of its own.
+    missing = sorted(set(changed_actions) - {record["action"] for record in run.values() if not record.get("options")})
     why = []
     if old:
         why.append(f"{', '.join(old)}: format 1, converted from markdown, so no sign-off: rerun with the rig")
@@ -490,10 +491,10 @@ def rejection(signoff: SignOff, integration: str) -> str | None:
     """Why the manual row doesn't hold the integration's package as HEAD does, or None when it does: its commit must
     be in this checkout. A row naming `actions` signs off no package by itself: it only keeps their records."""
     at = f"{signoff.source} at {signoff.commit[:7]}"
-    if signoff.actions is not None:
-        return f"{at}: names actions, so it keeps their records and signs off no package"
     if not exists(signoff.commit):
         return f"{at}: not in this checkout; cite a commit on main"
+    if signoff.actions is not None:
+        return f"{at}: names actions, so it keeps their records and signs off no package"
     if not same(signoff.commit, package(integration)):
         return f"{at}: the package differs from HEAD's"
     return None
