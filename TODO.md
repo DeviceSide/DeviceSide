@@ -121,9 +121,10 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   (`--reruns`):
   - [x] Hue: the lab run at `bc27094`, landed with #432.
   - [ ] ZHA
-  - [ ] Zigbee2MQTT, run A: every suite but `turn_on_for`, `get_attributes` and `config_entry`, with the watched A60 cases.
-    A record is one run of one suite, so the split falls between suites. Suites landed with #465; open: whether
-    `hue_cycle_stop` and `saturation_down_stop`, with no observed row in `_facts.json`, need a watched run before the RC.
+  - [x] Zigbee2MQTT, run A: every suite but `turn_on_for`, `get_attributes` and `config_entry`, with the watched A60 cases.
+    A record is one run of one suite, so the split falls between suites. Suites landed with #465; the watched cases'
+    rows are in `_facts.json` (2026-11-13, and `halts_brightness_and_saturation` 2026-11-16 with #443, its slight
+    saturation step accepted, as on ZHA).
   - [ ] Matter
   - [ ] Shelly. Accepted until then: `check_release --signoffs` fails on Shelly's class coverage gaps, as its
     records are format 1, with no class per test; no release is cut before its house rerun.
