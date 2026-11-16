@@ -31,8 +31,6 @@ comes back at its lowest level.
 ## Smooth color changes
 
 - **Hue moves** cycle the color wheel until `stop`, with a `sweep_time` of 1 to 65535 s.
-- **Saturation on a group** sends every light that is on one color, at the hue of the first of them. A group whose
-  lights sit at different hues ends at one hue.
 
 ## Flash-free turn-on
 
