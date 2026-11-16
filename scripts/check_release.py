@@ -15,8 +15,8 @@ so a run on a branch counts after a squash merge, even once the branch is delete
 commit, which is in this checkout. The records sign off when every one is format 2, passes and still stands. A record
 stands while the package files changed between its tree and HEAD's are all other adapters' modules (docs/evidence.md,
 tenet 9): a change to its own adapter's module, or to a module that is no adapter's (a shared helper), reopens it, as
-does any change for a suite that is no action's (`lifecycle.json`), or a tree git doesn't have. A `no_call_changed` row
-carries a record across the change its commit made when it names the record's action (`actions`; with none, every
+does any change for a suite that is no action's (`config_entry.json`), or a tree git doesn't have. A `no_call_changed`
+row carries a record across the change its commit made when it names the record's action (`actions`; with none, every
 action): the record must stand up to that commit's parent, and from the commit on. Every action whose adapter changed
 since the last release needs a record. A reopened, format 1 (converted from markdown) or failing record, or a changed
 action with none, is no sign-off until its suite is run. Without one, a ⚠️ Untested fix caveat stands in when every
@@ -38,13 +38,13 @@ integrations without a sign-off, and every adapter with an Untested fix caveat. 
 Test records are JSON, in `docs/integrations/<key>/test-records/`, each checked against docs/test-records.schema.json
 (the format's one home; docs/evidence.md, Sign-off format, describes it); a file of the wrong kind for its name, or of
 another integration than its folder's, is an error. A rig record per suite (`<action>.json`, `<action>-<option>.json`,
-read as the action's evidence; another suite's, as `lifecycle.json`, counts only toward the run), `_manual.json`, whose
-rows are manual sign-offs, and `_facts.json`, the fact cases' results, which nothing here reads. Under --signoffs, a
-file there that isn't JSON (a markdown record) is no record, named; a dotfile is ignored. A manual row's tester must be
-one of the integration's maintainers or a repo maintainer (`REPO_MAINTAINERS`). A manual row's devices, and a record's
-tests, may name a class only on an integration that names classes (`names_classes`, which gen_compat shares). A record
-names no tester: review of the PR that lands it checks who ran it. A `.json` named with a leading `_` other than those
-two, or a record whose `action` or `options` its name contradicts, is an error naming the file.
+read as the action's evidence; another suite's, as `config_entry.json`, counts only toward the run), `_manual.json`,
+whose rows are manual sign-offs, and `_facts.json`, the fact cases' results, which nothing here reads. Under --signoffs,
+a file there that isn't JSON (a markdown record) is no record, named; a dotfile is ignored. A manual row's tester must
+be one of the integration's maintainers or a repo maintainer (`REPO_MAINTAINERS`). A manual row's devices, and a
+record's tests, may name a class only on an integration that names classes (`names_classes`, which gen_compat shares). A
+record names no tester: review of the PR that lands it checks who ran it. A `.json` named with a leading `_` other than
+those two, or a record whose `action` or `options` its name contradicts, is an error naming the file.
 
 Exits 1 on an integration that failed to import, whatever the options, and on any failure of the checks asked for. A
 git error fails the run rather than pass a gate unseen.
@@ -383,7 +383,7 @@ def stands(changed: Collection[str] | None, action: str, adapter_modules: Mappin
 
 def suite_action(name: str, record: Mapping) -> str | None:
     """The action a record is evidence of, by its suite's name (`<action>.json`, `<action>-<option>.json`); None for a
-    suite that is no action's (`lifecycle.json`), whatever action the rig ran in it."""
+    suite that is no action's (`config_entry.json`), whatever action the rig ran in it."""
     action = record["action"]
     stem = Path(name).stem
     return action if stem == action or stem.startswith(f"{action}-") else None

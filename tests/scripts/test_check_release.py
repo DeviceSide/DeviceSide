@@ -164,7 +164,7 @@ def write_record(
     if tree == "package":
         tree = tree_of(repo, commit, integration)
     action, *options = Path(name).stem.lstrip("_").split("-")
-    if action == "lifecycle":  # the rig names a suite that is no action's for the action it ran in it
+    if action == "config_entry":  # the rig names a suite that is no action's for the action it ran in it
         action, options = "stop", []
     if tree is None:
         data = record_v1(integration, action, result=result, commit=commit, options=options)
@@ -328,37 +328,37 @@ def test_a_change_reopens_only_the_records_it_exercises(released, monkeypatch, c
 
 
 def test_a_shared_module_or_a_suite_that_is_no_actions_reopens_on_any_change(released, monkeypatch, capsys):
-    """A helper serves every adapter, so its change reopens every record; a suite with no adapter (`lifecycle.json`)
+    """A helper serves every adapter, so its change reopens every record; a suite with no adapter (`config_entry.json`)
     has no module to compare, so any change to the package reopens it."""
     run = released.commit(f"{FAKE}/stop.py")
-    for name in ("stop.json", "turn_on_for.json", "lifecycle.json"):
+    for name in ("stop.json", "turn_on_for.json", "config_entry.json"):
         write_record(released, name, run)
     assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 0
     capsys.readouterr()
     released.commit(f"{FAKE}/stop.py")
     assert cr.main(["--signoffs", "--reruns"], registry(released, monkeypatch)) == 1
-    assert json.loads(capsys.readouterr().out) == {"fake": ["lifecycle", "stop"]}
+    assert json.loads(capsys.readouterr().out) == {"fake": ["config_entry", "stop"]}
     released.commit(f"{FAKE}/transport.py")
     assert cr.main(["--signoffs", "--reruns"], registry(released, monkeypatch)) == 1
-    assert json.loads(capsys.readouterr().out) == {"fake": ["lifecycle", "stop", "turn_on_for"]}
+    assert json.loads(capsys.readouterr().out) == {"fake": ["config_entry", "stop", "turn_on_for"]}
 
 
 def test_a_suite_that_is_no_actions_is_reopened_by_any_adapters_change_though_it_ran_an_action(
     released, monkeypatch, capsys
 ):
-    """The rig writes `lifecycle.json` with the action it ran (`stop` here): it stands for no action's change."""
+    """The rig writes `config_entry.json` with the action it ran (`stop` here): it stands for no action's change."""
     run = released.commit(f"{FAKE}/stop.py")
-    for name in ("stop.json", "turn_on_for.json", "lifecycle.json"):
+    for name in ("stop.json", "turn_on_for.json", "config_entry.json"):
         write_record(released, name, run)
-    assert json.loads((released.path / RECORDS / "lifecycle.json").read_text())["action"] == "stop"
+    assert json.loads((released.path / RECORDS / "config_entry.json").read_text())["action"] == "stop"
     released.commit(f"{FAKE}/turn_on_for.py")  # another adapter's module
     assert cr.main(["--signoffs", "--reruns"], registry(released, monkeypatch)) == 1
-    assert json.loads(capsys.readouterr().out) == {"fake": ["lifecycle", "turn_on_for"]}
-    write_record(released, "lifecycle.json", released.git("rev-parse", "HEAD").strip())
+    assert json.loads(capsys.readouterr().out) == {"fake": ["config_entry", "turn_on_for"]}
+    write_record(released, "config_entry.json", released.git("rev-parse", "HEAD").strip())
     write_record(released, "turn_on_for.json", released.git("rev-parse", "HEAD").strip())
     released.commit(f"{FAKE}/stop.py")  # its own action's module
     assert cr.main(["--signoffs", "--reruns"], registry(released, monkeypatch)) == 1
-    assert json.loads(capsys.readouterr().out) == {"fake": ["lifecycle", "stop"]}
+    assert json.loads(capsys.readouterr().out) == {"fake": ["config_entry", "stop"]}
 
 
 def test_a_no_call_changed_row_keeps_the_records_of_the_actions_it_names(released, monkeypatch, capsys):
@@ -585,8 +585,8 @@ def test_a_record_whose_action_or_options_its_name_contradicts_stops_the_check(f
 
 
 def test_a_record_whose_name_and_options_agree_is_the_actions(fake_repo):
-    """A suite named for no action (`lifecycle`) is none's evidence, whatever action it ran."""
-    for name in ("stop.json", "stop-predicted_state.json", "lifecycle.json", "stop_x.json"):
+    """A suite named for no action (`config_entry`) is none's evidence, whatever action it ran."""
+    for name in ("stop.json", "stop-predicted_state.json", "config_entry.json", "stop_x.json"):
         write_record(fake_repo, name, fake_repo.commit(), tree="0123456789ab")
     assert [path.name for path in cr.passing("fake", "stop")] == ["stop-predicted_state.json", "stop.json"]
 

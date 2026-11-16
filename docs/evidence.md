@@ -308,7 +308,7 @@ none.
   and its records can land in the same PR.
 - **A record stands** while every package file changed since its run is another adapter's module (tenet 9). A change
   to its own adapter's module reopens it, and so does a change to a module that is no adapter's (a shared helper),
-  which may alter any action's call. A suite that is no action's (`lifecycle.json`) is reopened by any change to the
+  which may alter any action's call. A suite that is no action's (`config_entry.json`) is reopened by any change to the
   package, and a record whose tree the checkout doesn't have stands only if it is the release's. A reopened record
   needs its suite rerun, and no other; `check_release.py --signoffs --reruns` lists the suites. So an adapter's
   module never imports another adapter's: code two adapters share lives in a module that is neither's (a unit test
