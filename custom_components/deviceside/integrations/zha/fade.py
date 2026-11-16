@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from statistics import mean
 from typing import Any, ClassVar
 
+from homeassistant.components.light import COLOR_MODES_COLOR, color_supported
 from homeassistant.core import Context, HomeAssistant
 from homeassistant.exceptions import Unauthorized
 from homeassistant.util.color import color_hs_to_xy
@@ -28,7 +29,6 @@ from ...core.runtime import Job, get_runtime
 from ...core.scope import AdapterScope, Level, verified
 from ...core.transition import (
     BRIGHTNESS,
-    COLOR_SHOWN,
     SATURATION,
     TransitionCache,
     color_mode,
@@ -122,7 +122,7 @@ def units(hass: HomeAssistant, targets: list[Target]) -> list[tuple[int | None, 
 
 def has_color(light: Target) -> bool:
     modes = light.state.attributes.get("supported_color_modes") if light.state else None
-    return bool(set(modes or ()) & COLOR_SHOWN)
+    return color_supported(modes)
 
 
 def drops_while_off(light: Target) -> bool:
@@ -528,7 +528,7 @@ def saturation_fade(
     tenths = transition_tenths(duration)
 
     def command(light: Target) -> Command:
-        if capabilities[light.entity_id] & zcl.HUE_SATURATION and color_mode(light) in COLOR_SHOWN:
+        if capabilities[light.entity_id] & zcl.HUE_SATURATION and color_mode(light) in COLOR_MODES_COLOR:
             params = {"saturation": round(limit * 254 / 100), "transition_time": tenths}
             return zcl.COLOR_CLUSTER, zcl.MOVE_TO_SATURATION, params
         x, y = color_hs_to_xy(hs_color(light)[0], limit)

@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from statistics import mean
 from typing import Any, ClassVar
 
+from homeassistant.components.light import COLOR_MODES_COLOR
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
@@ -32,7 +33,6 @@ from ...core.runtime import Job, get_runtime
 from ...core.scope import AdapterScope, verified
 from ...core.transition import (
     BRIGHTNESS,
-    COLOR_SHOWN,
     SATURATION,
     TransitionCache,
     color_mode,
@@ -276,7 +276,7 @@ def saturation_fade(cache: TransitionCache, request: RampRequest, target: Target
         return "at_limit"
     duration = abs(limit - current) / 100 * request.sweep_time
     color = {"saturation": round(limit, 1)}
-    if not all(color_mode(light) in COLOR_SHOWN for light in movers):
+    if not all(color_mode(light) in COLOR_MODES_COLOR for light in movers):
         color["hue"] = round((hs_color(target) or hs_color(movers[0]))[0], 1)
     payload = {"color": color, "transition": round(duration, 1)}
     return Fade(SATURATION, payload, starts, dict.fromkeys(starts, limit), duration)
