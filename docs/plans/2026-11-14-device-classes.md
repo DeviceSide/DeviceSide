@@ -847,7 +847,8 @@ One run per integration, on `main` once the stack is in (Decision 89). Each is t
   before the run, each maker string with its own test (Decisions 77 and 88).
 - **ZHA** (lab): the A60 on ZHA; the lab TS011F (`_TZ3000_typdpbpg`) for its refusal; a ZHA group with a plug in it,
   for the fallback to unicasts. No Sengled (Decision 77).
-- **Hue** (lab), without the Sengled.
+- **Hue:** done. Its lab run on step 8's branch (`bc27094`) cites the Hue package as #432 lands it, so it is the
+  sign-off; no run unless the package changes.
 - **Matter** (lab): the WiZ plug, on the real `turn_on_for` call (Decision 75).
 - **Shelly** (house): its switch devices, plus the color bulb unless it ran in the lab.
 - **Control4:** no run; skialpine's `_manual.json` row (Decision 77).

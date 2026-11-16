@@ -100,7 +100,7 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   `saturation_down_stop` and `sets_color_while_off`. Unattended alongside: Z2M `lower_hue`
   `cycles_down_the_wheel[group_color]` (#222).
   - [ ] Control4: waits for skialpine's `_manual.json` row.
-  - [ ] Hue
+  - [x] Hue: the lab run at `bc27094`, landed with #432.
   - [ ] Matter
   - [ ] Shelly. Accepted until then: `check_release --signoffs` fails on Shelly's class coverage gaps, as its
     records are format 1, with no class per test; no release is cut before its house rerun.
