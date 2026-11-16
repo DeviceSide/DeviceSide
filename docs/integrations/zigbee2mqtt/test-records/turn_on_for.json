@@ -1,0 +1,114 @@
+{
+  "format": 1,
+  "integration": "zigbee2mqtt",
+  "action": "turn_on_for",
+  "result": "pass",
+  "date": "2026-11-14",
+  "source": {
+    "kind": "rig",
+    "commit": "c172338"
+  },
+  "package": "1f6c7a5e4705",
+  "home_assistant": "2026.10.4",
+  "devices": [
+    {
+      "model": "LWA012",
+      "name": "Hue white A60 bulb B22 bluetooth",
+      "firmware": "1.163.1"
+    },
+    {
+      "model": "LTA009",
+      "name": "Hue white ambiance E27 1100lm with Bluetooth",
+      "firmware": "1.163.1"
+    },
+    {
+      "model": "LCA016",
+      "name": "Hue Essential White and Color Ambiance A60",
+      "firmware": "1.164.2"
+    },
+    {
+      "name": "Group",
+      "firmware": "Zigbee2MQTT 2.14.3",
+      "group": true
+    }
+  ],
+  "tests": [
+    {
+      "id": "on_then_off[switch_plug]",
+      "role": "switch_plug",
+      "result": "skipped",
+      "reason": "none in the profile",
+      "classes": []
+    },
+    {
+      "id": "drops_brightness_on_a_wrapper[light_wrapped]",
+      "role": "light_wrapped",
+      "result": "skipped",
+      "reason": "none in the profile",
+      "classes": []
+    },
+    {
+      "id": "bulb_on_then_off[light_dimmable]",
+      "domain": "light",
+      "role": "light_dimmable",
+      "result": "pass",
+      "classes": [
+        "hue"
+      ]
+    },
+    {
+      "id": "bulb_color_temp_then_off[light_ct]",
+      "domain": "light",
+      "role": "light_ct",
+      "result": "pass",
+      "classes": [
+        "hue"
+      ]
+    },
+    {
+      "id": "bulb_transition_then_off[light_dimmable]",
+      "domain": "light",
+      "role": "light_dimmable",
+      "result": "pass",
+      "classes": [
+        "hue"
+      ]
+    },
+    {
+      "id": "bulb_rgb_then_off[light_color]",
+      "domain": "light",
+      "role": "light_color",
+      "result": "pass",
+      "classes": [
+        "hue"
+      ]
+    },
+    {
+      "id": "bulb_hs_then_off[light_color]",
+      "domain": "light",
+      "role": "light_color",
+      "result": "pass",
+      "classes": [
+        "hue"
+      ]
+    },
+    {
+      "id": "bulb_xy_then_off[light_color]",
+      "domain": "light",
+      "role": "light_color",
+      "result": "pass",
+      "classes": [
+        "hue"
+      ]
+    },
+    {
+      "id": "group_on_then_off[group]",
+      "domain": "light",
+      "role": "group",
+      "result": "pass",
+      "classes": [
+        "hue"
+      ]
+    }
+  ]
+}

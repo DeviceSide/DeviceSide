@@ -74,6 +74,15 @@
     "target_not_supported": {
       "message": "{entity_id} can't take this action ({reason})."
     },
+    "doesnt_work": {
+      "message": "{entity_id} can't take this action ({reason}): {why}"
+    },
+    "not_supported": {
+      "message": "{entity_id} can't take this action yet ({reason}): {why}"
+    },
+    "class_unknown": {
+      "message": "{entity_id} can't take this action yet: DeviceSide hasn't learned what device it is from {integration}. It can once {integration} has reported the device, which usually takes seconds; if it doesn't, reload DeviceSide, or pair the device again in {integration}."
+    },
     "targets_failed": {
       "message": "The command failed on: {summary}"
     },

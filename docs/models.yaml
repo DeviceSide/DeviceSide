@@ -5,8 +5,9 @@
 # A model's `type` orders a card's Works line: bulb, relay, plug, dimmer or LED controller. Its `section` (default:
 # its `name`) is the heading a card links to; gen_compat's docstring says where it may be.
 
-# One entry per physical model, with its ids across integrations: a Hue bulb is `LTA009` on Hue and ZHA and
-# `9290024684` on Zigbee2MQTT (zigbee-herdsman-converters, src/devices/philips.ts, maps one to the other).
+# One entry per physical model, with its ids: a record names a Zigbee device by its Zigbee model ID on every
+# integration (a Hue bulb is `LTA009`); Zigbee2MQTT's own product code (`9290024684`, which zigbee-herdsman-converters,
+# src/devices/philips.ts, maps to it) is listed too, for a report that names the model as Zigbee2MQTT shows it.
 models:
   - name: Hue White Ambiance E27 1100lm
     ids: [LTA009, "9290024684"]
@@ -26,6 +27,13 @@ models:
   - name: Shelly Multicolor Bulb Gen3
     ids: [S3BL-C010007AEU]
     type: bulb
+  - name: Sengled Element Classic A19
+    ids: [E11-G13]
+    type: bulb
+    section: Sengled
+  - name: Tuya TS011F
+    ids: [TS011F, TS011F_plug_1]
+    type: plug
   - name: WiZ Smart Plug
     ids: ["8979"]
     type: plug
@@ -33,9 +41,15 @@ models:
     ids: [LTD010, "5996411U5"]
     type: bulb
 
-# Devices that fail the call DeviceSide sends on several integrations, and why. One integration's go in its bundle.
-doesnt_work:
+# Devices that fail the call DeviceSide sends on several integrations, and why (`doesnt_work`: no known call works
+# on them), and devices today's call harms that a known or plausible call would serve, which isn't built
+# (`not_supported`), on an integration whose code doesn't class them yet; an unharmed not yet supported device needs no
+# entry (docs/evidence.md, Doesn't work, not yet supported, untested). One integration's go in its bundle, or in its
+# scopes' code (core/scope.py, DoesntWork or NotSupported): Zigbee2MQTT's TS011F entry is there, as not yet supported
+# (plan Decision 70); ZHA's moves there in the device-classes plan's step 7.
+not_supported:
   - what: Tuya TS011F
-    integrations: [zha, zigbee2mqtt]
-    reason: It stores the Zigbee timer as a countdown and never switches on
-    source: https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations.md#zigbee-plugs-and-switches
+    integrations: [zha]
+    reason: DeviceSide's timer can leave it off, or turn it on long after the time asked and leave it on; Tuya's own
+      call would serve it, which isn't built
+    source: https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md

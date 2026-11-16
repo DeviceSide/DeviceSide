@@ -1,0 +1,50 @@
+{
+  "format": 1,
+  "integration": "zigbee2mqtt",
+  "action": "raise_saturation",
+  "result": "pass",
+  "date": "2026-11-09",
+  "source": {
+    "kind": "rig",
+    "commit": "8cbd97f"
+  },
+  "home_assistant": "2026.10.4",
+  "devices": [
+    {
+      "model": "LCA016",
+      "name": "Hue Essential White and Color Ambiance A60",
+      "firmware": "1.164.2"
+    },
+    {
+      "name": "Group",
+      "firmware": "Zigbee2MQTT 2.14.3",
+      "group": true
+    }
+  ],
+  "tests": [
+    {
+      "id": "saturation_to_a_limit[light_color]",
+      "domain": "light",
+      "role": "light_color",
+      "result": "pass"
+    },
+    {
+      "id": "saturation_to_a_limit[group_color]",
+      "domain": "light",
+      "role": "group_color",
+      "result": "pass"
+    },
+    {
+      "id": "saturation_stop_raise[light_color]",
+      "domain": "light",
+      "role": "light_color",
+      "result": "pass"
+    },
+    {
+      "id": "saturation_stop_raise[group_color]",
+      "domain": "light",
+      "role": "group_color",
+      "result": "pass"
+    }
+  ]
+}

@@ -1,0 +1,96 @@
+{
+  "format": 2,
+  "integration": "zigbee2mqtt",
+  "facts": [
+    {
+      "date": "2026-11-13",
+      "suite": "stop",
+      "test": "halts_a_lower_to_off[light_ct] observed",
+      "kind": "observed",
+      "result": "pass",
+      "converted": true,
+      "devices": [
+        {
+          "model": "LTA009",
+          "name": "Hue white ambiance E27 1100lm with Bluetooth",
+          "firmware": "1.163.1"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-13",
+      "suite": "raise_hue",
+      "test": "hue_stop_raise[light_color] observed",
+      "kind": "observed",
+      "result": "pass",
+      "converted": true,
+      "devices": [
+        {
+          "model": "LCA016",
+          "name": "Hue Essential White and Color Ambiance A60",
+          "firmware": "1.164.2"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-13",
+      "suite": "set_attributes",
+      "test": "sets_color_while_off[light_color] observed",
+      "kind": "observed",
+      "result": "pass",
+      "converted": true,
+      "devices": [
+        {
+          "model": "LCA016",
+          "name": "Hue Essential White and Color Ambiance A60",
+          "firmware": "1.164.2"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-13",
+      "suite": "stop",
+      "test": "halts_brightness_and_saturation[light_color] observed",
+      "kind": "observed",
+      "result": "fail",
+      "converted": true,
+      "devices": [
+        {
+          "model": "LCA016",
+          "name": "Hue Essential White and Color Ambiance A60",
+          "firmware": "1.164.2"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-13",
+      "suite": "raise_hue",
+      "test": "hue_stop_raise[light_color] observed",
+      "kind": "observed",
+      "result": "pass",
+      "converted": true,
+      "devices": [
+        {
+          "model": "LCA016",
+          "name": "Hue Essential White and Color Ambiance A60",
+          "firmware": "1.164.2"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-13",
+      "suite": "stop",
+      "test": "halts_brightness_and_saturation[light_color] observed",
+      "kind": "observed",
+      "result": "fail",
+      "converted": true,
+      "devices": [
+        {
+          "model": "LCA016",
+          "name": "Hue Essential White and Color Ambiance A60",
+          "firmware": "1.164.2"
+        }
+      ]
+    }
+  ]
+}

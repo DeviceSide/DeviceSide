@@ -106,9 +106,13 @@ LEGEND = (
 # (feature label, integration) -> icon keys with a known blocker, so never "not built yet". Users read why in
 # docs/integrations.md, at IMPOSSIBLE.
 NO_PATH = {
-    # Zigbee and Matter `OnWithTimedOff` is on-then-off only: there is no off-then-on timer to send.
-    ("Turn off with timer", "zha"): ("light", "switch", "group"),
-    ("Turn off with timer", "zigbee2mqtt"): ("light", "switch", "group"),
+    # Zigbee and Matter `OnWithTimedOff` is on-then-off only: there is no off-then-on timer to send. Tuya's Zigbee
+    # devices are the exception on ZHA and Zigbee2MQTT alike, plausibly (plan Decision 73, for v0.1.x): Tuya's own
+    # countdown toggles at zero, and some Tuya firmware toggles on 0x42 from off. So their lights and switches are
+    # only not built yet, while every other Zigbee device still has no call (docs/integrations.md says so, as the cell
+    # can't); a group's call is the Zigbee one.
+    ("Turn off with timer", "zha"): ("group",),
+    ("Turn off with timer", "zigbee2mqtt"): ("group",),
     ("Turn off with timer", "matter"): ("light", "switch"),
     # Hue bridge timers ignore a manual on or off, so they can't be cancelled the way users expect.
     ("Turn off with timer", "hue"): ("light", "group"),

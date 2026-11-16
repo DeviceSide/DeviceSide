@@ -30,26 +30,13 @@ class Adapter[RequestT: Request](ABC):
         """None if this adapter can serve the target, else a reason key. Sync and cheap: no I/O.
 
         The request is the one the target will get, its lacked fields and scope.drops already dropped. The default
-        checks the domains, fields and capabilities in scope: a field left that nobody has tested is refused, never
-        dropped. A capability is checked only when the call has something to send and capability() names one; an
-        adapter refuses a target it can't name one for with its own reason, and the gate counts None as Experimental.
+        checks the domains and fields in scope: a field left that nobody has tested is refused, never dropped. The
+        dispatcher checks the target's class after this, so an adapter's own reason wins.
         """
         if target.domain not in self.scope.domains:
             return "domain_not_tested"
         if request.fields_present() - self.scope.drops - self.scope.fields.keys():
             return "fields_not_tested"
-        if (
-            self.scope.capabilities is not None
-            and not request.nothing_to_do()
-            and (capability := self.capability(hass, target)) is not None
-            and capability not in self.scope.capabilities
-        ):
-            return "capability_not_tested"
-        return None
-
-    def capability(self, hass: HomeAssistant, target: Target) -> str | None:
-        """The device-side capability the call reaches (Shelly: the RPC component), for an adapter whose scope lists
-        capabilities; None otherwise, or when it can't tell. Sync and cheap: no I/O."""
         return None
 
     @abstractmethod

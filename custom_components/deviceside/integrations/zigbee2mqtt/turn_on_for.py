@@ -8,6 +8,7 @@ from homeassistant.core import HomeAssistant
 
 from .addressing import not_addressable, topic
 from .bridge import logged_options, publish, publish_set, state_reply
+from .classes import TURN_ON_FOR, TURN_ON_FOR_NOT_SUPPORTED
 from .native_control import COLOR_FIELDS, NEED, native_control, settled
 from .set_check import checked, note
 from ...actions.turn_on_for import TurnOnForRequest
@@ -56,6 +57,10 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
         # the Documented test (docs/evidence.md, Levels): it takes the same call, so it stays flagged experimental,
         # untested, until a maintainer judges it ready.
         domains=verified("light") | experimental("switch"),
+        capabilities=TURN_ON_FOR,
+        # Each harms its class (a Tuya plug left on), so the dispatcher refuses a device not yet placed, and a group of
+        # unknown membership, as class_unknown, even with Experimental features on (classes.py).
+        not_supported=TURN_ON_FOR_NOT_SUPPORTED,
         duration=_TIMER_LIMITS,
         fields=verified("brightness", "color_temp_kelvin", "hs_color", "rgb_color", "xy_color", "transition"),
         confirmable=False,
@@ -63,11 +68,7 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
     )
 
     def supports(self, hass: HomeAssistant, request: TurnOnForRequest, target: Target) -> str | None:
-        if (reason := super().supports(hass, request, target)) is not None:
-            return reason
-        if (reason := not_addressable(target)) is not None:
-            return reason
-        return None
+        return super().supports(hass, request, target) or not_addressable(hass, target)
 
     async def execute(
         self, hass: HomeAssistant, request: TurnOnForRequest, targets: list[Target]

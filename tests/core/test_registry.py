@@ -10,10 +10,10 @@ import pytest
 
 from custom_components.deviceside import actions
 from custom_components.deviceside.core.registry import AdapterRegistry
-from custom_components.deviceside.core.scope import verified
+from custom_components.deviceside.core.scope import DoesntWork, Level, NotSupported, experimental, verified
 
 from ..conftest import FAKE_INTEGRATIONS
-from ..fakes.fake_integration import ADAPTERS, INTEGRATION, FakeTurnOnFor
+from ..fakes.fake_integration import ADAPTERS, INTEGRATION, FakeTurnOffFor, FakeTurnOnFor
 
 
 def _registry(adapters=ADAPTERS, info=INTEGRATION) -> AdapterRegistry:
@@ -72,26 +72,81 @@ def test_adapter_for_unknown_action_is_refused():
         _registry([Stray])
 
 
-def test_an_adapter_naming_capabilities_must_list_them_in_its_scope():
-    class Named(FakeTurnOnFor):
-        def capability(self, hass, target):
-            return "Switch"
-
-    with pytest.raises(ValueError, match="names capabilities but its scope lists none"):
-        _registry([Named])
-
-    class Listed(Named):
-        scope = replace(FakeTurnOnFor.scope, capabilities=verified("Switch"))
-
-    _registry([Listed])
+CLASSED = replace(INTEGRATION, capability=lambda hass, target: "hue", classes=frozenset({"hue", "tuya", "other"}))
+BROKEN = DoesntWork("Tuya plug", "It never switches on", "https://example.com/source", harms=False)
+UNBUILT = NotSupported("It would stay on", "https://example.com/source", harms=True)
 
 
-def test_an_adapter_listing_capabilities_must_name_them():
-    class Unnamed(FakeTurnOnFor):
-        scope = replace(FakeTurnOnFor.scope, capabilities=verified("Switch"))
+class Classed(FakeTurnOnFor):
+    scope = replace(FakeTurnOnFor.scope, capabilities=verified("hue") | experimental("other"))
 
-    with pytest.raises(ValueError, match="lists capabilities in its scope but names none"):
-        _registry([Unnamed])
+
+def test_an_integration_naming_classes_needs_them_in_every_scope():
+    _registry([Classed], CLASSED)
+    with pytest.raises(ValueError, match="names classes, but its scope holds none"):
+        _registry([Classed, FakeTurnOffFor], CLASSED)
+
+
+@pytest.mark.parametrize(
+    "scope",
+    [
+        pytest.param(replace(FakeTurnOnFor.scope, capabilities=verified("hue")), id="capabilities"),
+        pytest.param(replace(FakeTurnOnFor.scope, doesnt_work={"tuya": BROKEN}), id="doesnt_work"),
+        pytest.param(replace(FakeTurnOnFor.scope, not_supported={"tuya": UNBUILT}), id="not_supported"),
+    ],
+)
+def test_an_integration_naming_no_classes_needs_them_in_no_scope(scope):
+    class Stray(FakeTurnOnFor):
+        pass
+
+    Stray.scope = scope
+    with pytest.raises(ValueError, match="holds classes, but fake names none"):
+        _registry([Stray])
+
+
+@pytest.mark.parametrize("entries", [{"doesnt_work": {"tuya_zcl": BROKEN}}, {"not_supported": {"tuya_zcl": UNBUILT}}])
+def test_a_scope_holds_only_classes_its_integration_declares(entries):
+    class Typo(FakeTurnOnFor):
+        scope = replace(Classed.scope, **entries)
+
+    with pytest.raises(ValueError, match=r"doesn't declare \(IntegrationInfo.classes\): \['tuya_zcl'\]"):
+        _registry([Typo], CLASSED)
+
+
+def test_the_default_class_is_never_verified():
+    """docs/evidence.md, Device classes: it holds every device not yet placed, so no record proves it."""
+    defaulted = replace(CLASSED, default_class="other")
+    _registry([Classed], defaulted)
+
+    class Lifted(FakeTurnOnFor):
+        scope = replace(Classed.scope, capabilities=verified("hue", "other"))
+
+    with pytest.raises(ValueError, match="holds fake's default class 'other' as Verified"):
+        _registry([Lifted], defaulted)
+    _registry([Lifted], CLASSED)  # with no default class, any class may be Verified
+
+
+def test_the_default_class_is_a_declared_one():
+    with pytest.raises(ValueError, match="default_class 'ikea' is none of its classes"):
+        _registry([Classed], replace(CLASSED, default_class="ikea"))
+
+
+def test_shelly_names_no_default_class_and_zigbee2mqtt_holds_its_below_verified():
+    registry = AdapterRegistry.discover()
+    assert registry.integrations["shelly"].default_class is None
+    z2m = [adapter for _, key, adapter in registry.matrix() if key == "zigbee2mqtt" and adapter is not None]
+    assert z2m
+    assert all(adapter.scope.capabilities["other"] < Level.VERIFIED for adapter in z2m)
+
+
+@pytest.mark.parametrize(
+    "info",
+    [replace(INTEGRATION, classes=frozenset({"hue"})), replace(CLASSED, classes=frozenset())],
+    ids=["classes_alone", "capability_alone"],
+)
+def test_capability_and_classes_come_together(info):
+    with pytest.raises(ValueError, match="capability and classes come together"):
+        _registry([FakeTurnOnFor], info)
 
 
 @pytest.mark.parametrize(

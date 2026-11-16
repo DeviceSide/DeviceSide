@@ -1,5 +1,7 @@
 """Integration "fake": a generic integration with native groups whose members it can list."""
 
+from dataclasses import replace
+
 from custom_components.deviceside.core.resolver import resolve
 from custom_components.deviceside.core.scope import AdapterScope, DurationLimits, IntegrationInfo, verified
 
@@ -15,7 +17,13 @@ def is_group(hass, target) -> bool:
 def expand_group(hass, target):
     registry = hass.data["deviceside"].registry
     members = target.state.attributes.get("fake_members", []) if target.state else []
-    return [t for m in members if not isinstance(t := resolve(hass, registry, m, target.entity_id), str)]
+    # Members it can list but not address on their own (Target.addressable).
+    unaddressable = target.state.attributes.get("fake_unaddressable", []) if target.state else []
+    return [
+        replace(t, addressable=m not in unaddressable)
+        for m in members
+        if not isinstance(t := resolve(hass, registry, m, target.entity_id), str)
+    ]
 
 
 INTEGRATION = IntegrationInfo(

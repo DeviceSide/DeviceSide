@@ -1,7 +1,8 @@
 # Evidence
 
 What DeviceSide must know about a device before a feature ships, and what a release needs. This page is the one home
-for these rules; other docs point here. Settled in [the evidence-rules plan](plans/2026-11-12-evidence-rules.md).
+for these rules; other docs point here. Settled in [the evidence-rules plan](plans/2026-11-12-evidence-rules.md);
+device classes in [the device-classes plan](plans/2026-11-14-device-classes.md).
 
 ## Tenets
 
@@ -10,7 +11,7 @@ for these rules; other docs point here. Settled in [the evidence-rules plan](pla
 2. **Probe before you build.** When unsure how a device responds to a call, run a cheap probe rather than assume.
    Record what it shows as a fact (the bundle's `internals.md`, dated). Where its source goes depends on whether a
    shipped call depends on the fact staying true:
-   - **Yes: a fact test.** The rig re-runs it (`--facts`) when that call changes, and `test-records/_facts.md` keeps
+   - **Yes: a fact test.** The rig re-runs it (`--facts`) when that call changes, and `test-records/_facts.json` keeps
      each dated result. A watched test covers what only a person can see.
    - **No: `research/`.** The fact decided scope or design, and no shipped call depends on it. A dated file, never
      edited; if evidence suggests it has changed, repeat the probe by hand in a new file.
@@ -24,8 +25,10 @@ for these rules; other docs point here. Settled in [the evidence-rules plan](pla
 4. **Surprises reopen facts.** A bug or unexplained behavior triggers a root-cause dive. The finding joins the fact
    base and is then trusted in turn. Log so that the first bug report already holds the diagnosis: what DeviceSide
    sent, what the device answered, and which way DeviceSide went because of it.
-5. **Proof follows the call.** Evidence is about how a device responds to a call. Any code that sends the same call
-   inherits it, and unit tests pin the call.
+5. **Proof follows the call and the class.** Evidence is about how a class of devices responds to a call
+   ([device classes](#device-classes)). Any code that sends the same call to the same class inherits it, and unit tests
+   pin the call. So does a doesn't-work entry: it may cover every action that sends that call to that class or
+   identity, such as `turn_on_for`, `set_auto_off` and `turn_off_for` where they send the same frame.
 6. **Simplify relentlessly.** Prefer fewer calls, fewer round trips and less machinery. A new guardrail needs
    evidence that its failure happens (a probe, record or report), and names the user-visible failure it prevents and
    what it replaces; until then, log so the first report would show the failure. An existing guardrail stays until
@@ -54,28 +57,32 @@ for these rules; other docs point here. Settled in [the evidence-rules plan](pla
    or per PR.
 9. **Retest what the change exercises.** After a run, a change reopens only the rig cases whose call, or whose
    handling of the device's reply, it changes (tenet 5). A change that alters neither reopens none, and a maintainer
-   says so with a `no call changed` row ([sign-off format](#sign-off-format)). A fix for a failing case reopens that
+   says so with a `no_call_changed` row ([sign-off format](#sign-off-format)). A fix for a failing case reopens that
    case, not its suite. This prevents the same passing cases being rerun at each small change. Not yet in the gate:
    until it takes a partial rerun (`TODO.md`, Partial reruns), a rig sign-off is one whole run at the release's
    package, so changes to a package land together before its run; the whole-run rule goes when the gate changes.
 
 *Example (tenets 8 and 9):* after Zigbee2MQTT's run, a refactor of a shared helper lands, and its unit tests show
-every call and reply path unchanged: a `no call changed` row signs off in the run's place. A fix to `stop`'s call
+every call and reply path unchanged: a `no_call_changed` row signs off in the run's place. A fix to `stop`'s call
 lands next. Tenet 9 reopens only `stop`'s cases; today's gate still needs the whole run at the fixed package.
 
-*Example (tenets 4 and 5):* the rig found that a Tuya TS011F plug stores the Zigbee timed-on timer as a countdown and
-never switches on ([integrations](integrations.md#zigbee-plugs-and-switches)). That reopened "a Zigbee switch takes the
-light's timed-on call", so the `switch` domain stays untested on ZHA and Zigbee2MQTT `turn_on_for` while the `light`
-domain keeps its proof.
+*Example (tenets 4 and 5):* the rig found that a Tuya TS011F plug doesn't run the Zigbee timed-on timer it is given.
+That reopened "a Zigbee switch takes the light's timed-on call", so the `switch` domain stays untested on ZHA and
+Zigbee2MQTT `turn_on_for`. A lab probe then root-caused it: the plug runs the timer only Tuya's way, and given the
+light's call one plug stayed off while another switched on about ten times later than asked and stayed on
+([internals](internals.md#tested-behavior)). Research also found that even lights given the identical call differ by
+firmware: Hue replaces a running timer where the spec keeps the longer one, and some IKEA and Hue models turn on and
+never off ([2026-11-14](integrations/zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md)). So a Hue bulb's record
+proves the call on the `hue` class, not on every Zigbee light.
 
 ## Levels
 
-A scope item (an entity domain, capability or field of an adapter) is Verified, Documented, or untested; an untested
+A scope item (an entity domain, class or field of an adapter) is Verified, Documented, or untested; an untested
 item ships only behind `experimental`.
 
 - **Verified:** a maintainer has verified the call on a real device, by rig record or by manual test. How it was
   tested is the maintainer's choice; the rig is a tool, not a requirement.
-- **Documented:** a call that reaches the same capability as a Verified item, differing only in addressing, where no
+- **Documented:** a call to another class that differs from a Verified class's call only in addressing, where no
   known class of devices departs. Unit tests pin the payload. A field is never Documented, because it changes the
   call. The PR that claims Documented argues the sibling case, and review checks it. A bug on the Verified sibling
   reopens its Documented siblings in the same fix.
@@ -84,12 +91,143 @@ Nothing ships unflagged unless it is Verified or Documented. Built and unit-test
 exercise, and that isn't Documented, ships behind `experimental` as untested. A sign-off
 covers only what was exercised; it never signs off untested code.
 
-**Contrary evidence:** a report of misbehavior doesn't change the level. The maintainer root-causes it, and the fix,
-the updated fact or a demotion lands with the finding.
+**Contrary evidence:** a credible report of a [harmful](#doesnt-work-not-yet-supported-untested) failure, upstream
+or a DeviceSide issue, on the call DeviceSide sends, lets an integration maintainer land a doesn't-work or
+not-yet-supported entry with `harms`, by the definitions [below](#doesnt-work-not-yet-supported-untested), moving only
+the identity the report names, on the report alone, cited as its source; credibility is theirs to judge (tenet 7).
+Which label depends on whether a known call would serve the identity. ZHA's `_TZ3000_typdpbpg` reads the spec's
+tenths as seconds, and Tuya's recipe would serve it, so it is not yet supported, with `harms`: the fix is the call,
+and the entry lifts when the call changes. Zigbee2MQTT's `_TZ3000_gjnozsaz` fails the very call that serves its
+siblings, so it doesn't work, with `harms`. As proof follows the call (tenet 5), the entry may cover every action that
+sends that call to that identity, such as `turn_on_for`, `set_auto_off` and `turn_off_for` where they send the same
+frame. The identity is the most specific one the report names that a class rule can key on: the model ID with the
+manufacturer string, and the firmware where that is what decides. On a report alone, a vendor name never moves: Hue's
+or IKEA's manufacturer string, or HA's registry manufacturer "Tuya", is never banned whole on one (Split off the
+exception, not the class, [below](#doesnt-work-not-yet-supported-untested)); a class rule keyed on a vendor rests on
+research, as Zigbee2MQTT's registry "Tuya" rule does (plan Decision 20). A credible harmful report naming only a
+vendor is "any other report" below: the maintainer root-causes it. A failure reported on a different call, an external
+converter's or another frame, is evidence about that call, not the device: Z2M #25434's `_TZ3000_dg7fdg92` failed
+under an external converter that sent a plain `onOff()`, so it stays Experimental, not banned (plan Decision 35). A
+report that contradicts the identity's own passing record or manual row doesn't ban it by itself: the maintainer
+retests, or weighs the two. Any other report changes no level until a maintainer confirms it: they root-cause it, and
+the fix, the updated fact or a demotion lands with the finding ([plan Decision 68](plans/2026-11-14-device-classes.md)).
 
 *Example:* Shelly's `turn_on_for` and `turn_off_for` calls are Verified on the `Switch` and `RGBCCT` components and
 Documented on `Light`, `CCT`, `RGB` and `RGBW`: the same call, addressed to another component, which Shelly's API
 documents identically (`integrations/shelly/addressing.py`).
+
+## Device classes
+
+A **class** is the set of devices that get the same call and run the same firmware family. The integration declares
+its classes (`IntegrationInfo.classes`) and names each target's (`IntegrationInfo.capability`; in code a scope's
+`capabilities`), and every adapter of the integration sees the same one; an adapter maps the classes it serves to its
+own branch. A scope holds a level per class, so each
+class stands on its own evidence: a record on one class proves nothing about another. On a single-vendor API the class
+is what the call addresses (Shelly: the RPC component). On a multi-vendor protocol the call and the firmware family
+decide the result together, so the class follows the vendor (Zigbee2MQTT: `hue`, `tuya_zcl`, `tuya_ts011f`,
+`tuya_mcu`, `sengled`, `gledopto`, `other`).
+
+- **Unknown is flagged, never Verified.** A device no rule matches gets the default class
+  (`IntegrationInfo.default_class`), which the registry refuses at Verified in any scope, so placing a device there
+  can only make DeviceSide more cautious. Its one exception: where a call is known to harm, a class DeviceSide can't
+  name yet is refused ([below](#doesnt-work-not-yet-supported-untested)). The default class may be Documented for an
+  action where the [Documented](#levels) test holds (no known class departs), and is otherwise `experimental(...)`.
+  Nothing lifts it: a record on a device outside the named classes adds a new class named for its maker
+  (Zigbee2MQTT: `ikea` for an IKEA bulb), as the default class holds every device no rule matches, and one maker's
+  record proves nothing about the rest.
+- **One axis per integration.** An integration that names classes holds them in every adapter's scope, and only the
+  classes it declares; one that names none holds them in none (the registry checks). A new integration names its
+  classes, or its PR argues that it has one: that no known device behind it answers the same call differently.
+- **One fact, one home, in code.** Classes, levels, and doesn't-work (`doesnt_work`) and not-yet-supported
+  (`not_supported`) entries live in the integration's package, and the cards are generated from them; where each
+  piece goes is CLAUDE.md's [Where facts go](../CLAUDE.md#where-facts-go).
+- **Groups.** A native group takes the weakest level among its members' classes. One with a member that doesn't work
+  or isn't supported, or a member whose class is Experimental while Experimental features is off (the adapter,
+  domain and fields not flagged), falls back to its members, each judged on its own, when the integration can list
+  them, including, where a call is known to harm, a group with a member not yet placed; one it can't list counts as
+  Experimental: refused while Experimental features is off, and with them on where a call is known to harm, as its
+  class rests on a membership DeviceSide doesn't have yet ([below](#doesnt-work-not-yet-supported-untested)).
+
+### Doesn't work, not yet supported, untested
+
+Three ways a class can't take an action, each shown differently on the cards:
+
+- **Doesn't work:** no known call works on the class: a device limit, which the label tells users not to ask
+  DeviceSide to build. The adapter's scope lists it in `doesnt_work`, with what, why and a source; the dispatcher
+  refuses it (`doesnt_work`), and the card lists it under Doesn't work. It is per adapter, as one class can fail one
+  action's call and answer another's.
+- **Not yet supported:** a call that would work on the class is known or plausible, but isn't built. The integration
+  names it, and the adapter's scope holds it in neither `capabilities` nor `doesnt_work`. It is refused
+  (`not_supported`) and listed as not yet supported.
+- **Untested:** the default call may work. The class is in scope as `experimental(...)` and runs behind the flag.
+
+Either refused label may carry `harms`, when today's call would harm the class (below): a doesn't-work entry states it
+(`DoesntWork.harms`), and a not yet supported class today's call would harm gets an entry of its own in the scope's
+`not_supported` (`NotSupported`, with why, a source and `harms`), which the card lists as not yet supported, as it
+does any other. A not yet supported class that today's call leaves unharmed needs no entry.
+
+- **Split off the exception, not the class.** When devices are known to depart from a class's call, a rule moves them
+  into a class of their own, at the level their own evidence supports. The rest of the class keeps its level. The
+  whole class drops a level only when no rule can tell the departing devices apart.
+- **Key a class on what decides the outcome:** the integration's routing where it picks the call, otherwise the
+  device's identity.
+- **When today's call harms a class.** A failure harms when it is deferred and unattended: the device ends in an
+  on or off state the user didn't ask for, after they've stopped watching, with no visible cue. So the timed and
+  scheduled on/off actions harm when they fail (`turn_on_for`, `turn_off_for`, `set_auto_off`, `set_auto_on`,
+  `clear_auto_off`, `clear_auto_on`); dimming and color (`raise_brightness`, `lower_brightness`, `raise_hue`,
+  `lower_hue`, `raise_saturation`, `lower_saturation`), `stop`, `set_attributes` and `set_scene` don't, as a wrong
+  result shows at once and one tap fixes it; and `get_attributes` only reads, so it never harms. Each `doesnt_work`
+  and `not_supported` entry answers it (`harms`, which has no default).
+- **Where a call is known to harm, a class not yet known is refused.** An adapter whose scope holds an entry with
+  `harms`, doesn't work or not yet supported alike, refuses a target whose class rests on information DeviceSide
+  doesn't have yet, even with Experimental features on: a group whose membership isn't listed, or a device not yet
+  placed (its identifying strings haven't been received, so they could still move it into a harmed class). A
+  target DeviceSide can't class at all is refused the same way. A group with a member not yet placed falls back to
+  its members, so only that member is refused. A device no rule matches gets the default class, and one placed there
+  from full information stays Experimental, as does every target of an action no class is harmed by (Unknown is
+  flagged, never Verified, above). The refusal is `class_unknown`; for a target not yet placed it clears once the
+  integration has reported what it lacked. How core applies it: [design.md](design.md#core-contract), Classes; when a
+  device counts as placed: each integration's page, as
+  [Zigbee2MQTT's](integrations/zigbee2mqtt/index.md#device-classes). ZHA, Hue and Matter mark their entries in steps
+  7 to 9 of the [device classes plan](plans/2026-11-14-device-classes.md).
+
+A refused target raises when named and is skipped when it came indirectly, as `supports()` refusals do
+([action-behavior.md](action-behavior.md)).
+
+### The split rule
+
+- A different gateway or API is a separate integration, with a `detect` hook on the same `ha_domain`, as Zigbee2MQTT is
+  beside MQTT.
+- A different device behind the same API is a class.
+- A class that needs a different payload is a branch inside the adapter.
+- An adapter splits only when a class needs a different result contract. A different duration limit is a per-class
+  setting first.
+
+No matcher, per-class setting or card tier is built before an integration needs it (tenet 6): Zigbee2MQTT, the most
+varied integration, sets the bar. Classes match on manufacturer and model until a firmware boundary decides behavior.
+
+### The coverage check
+
+Every class an adapter's scope holds as Verified needs a passing record test, or a `_manual.json` row, for that action
+that reached it. A record names the class each test's devices reached, and a manual row each device's. A native group's
+test credits each member's class, from its members' entries (the response's `member_capabilities`,
+[action-behavior.md](action-behavior.md#what-a-response-looks-like)), as the one call reached each member (a null one
+credits none; the cards add "native groups", never the members' models). A group with a null-class member is on no
+card, as "native groups" needs every member's class named and unflagged, while its named members still count here; a
+manual row credits every class it lists to every action it passed, so a row whose actions reached different classes is
+split. A scene's test is a group's, its members the scene's lights. A null class credits none, here or on the cards, as
+does a test that didn't pass. `scripts/gen_compat.py` warns on each gap on every PR, so a developer sees it early, and
+names it, for example "zigbee2mqtt turn_on_for: `hue` is Verified but no record reaches it";
+`scripts/check_release.py --signoffs` fails on it at `cut-release`, with the other release gates. Like every gate, it
+checks that evidence exists, not that it suffices (tenet 7), and it applies to integrations that name classes.
+
+*Example:* with Zigbee2MQTT's classes `hue`, `tuya_zcl`, `tuya_ts011f`, `tuya_mcu`, `sengled`, `gledopto` and `other`,
+and only Hue bulbs in its records, `turn_on_for` can be Verified on `hue` alone; on `other` it is `experimental(...)`,
+so an IKEA or Innr bulb runs only with Experimental features on. A record on an IKEA bulb adds an `ikea` class,
+Verified on its own evidence, and `other` stays as it is. The Tuya classes, which Tuya's own countdown call drives but
+today's call leaves on (Zigbee2MQTT turns it into a plain on), are not yet supported, with `harms`, until the
+countdown call is built; the Sengled, which ignores today's call, needs a call that isn't built, so it is not yet
+supported too, with no entry, as today's call leaves it unharmed.
 
 ## The experimental flag
 
@@ -99,7 +237,7 @@ the whole adapter. A flagged item is refused unless the user turns on the Experi
 is the only gate: adapters never read the option, and turning it on never changes how any other item behaves.
 
 Every new feature (action, integration, domain, capability or field) starts flagged, and soaks behind the flag with
-users who opt in. A passing rig record or `_manual.md` sign-off on a flagged item is evidence a maintainer can use to
+users who opt in. A passing rig record or `_manual.json` sign-off on a flagged item is evidence a maintainer can use to
 lift its flag for the next release, skipping that soak; it is not a requirement to lift it. Whether to lift is the
 maintainer's judgment, by how complex the feature is and how complete its tests are: a developer may run the first
 few rig cases before the full suite exists, so a flagged item may have passing runs and stay flagged. Lifting makes
@@ -108,8 +246,9 @@ becomes `documented(...)` in a PR that argues the sibling case ([Levels](#levels
 integration's package, so one of its maintainers approves it, as for any change there
 ([CLAUDE.md](../CLAUDE.md#maintainers)).
 
-For an item no maintainer can test, users' working reports, cited in a maintainer's `_manual.md` sign-off, can verify
-it. The maintainer judges how many are enough (tenet 7); nothing counts them in code.
+For an item no maintainer can test, users' working reports can verify it through a maintainer's `_manual.json`
+sign-off, whose PR body cites them ([CLAUDE.md](../CLAUDE.md#where-facts-go): rule evidence goes in the PR body). The
+maintainer judges how many are enough (tenet 7); nothing counts them in code.
 
 The cards never put a model under Works from a pass on a flagged item while its flag stands (`scripts/gen_compat.py`).
 
@@ -124,7 +263,7 @@ are about evidence, caveats about risk and people. Each gives one setup warning,
 line:
 
 - **⚠️ Untested fix:** changed, and nobody could test it before the release. It ships live, with a call for testers
-  in the release notes. A sign-off clears it, including a maintainer's `_manual.md` line citing a user's working
+  in the release notes. A sign-off clears it, including a maintainer's `_manual.json` row citing a user's working
   report.
 - **⚠️ Unmaintained:** nobody is fixing it. It ships live. Cleared when someone fixes the adapter or adopts the
   integration. An integration whose maintainers are all gone gets it on every adapter.
@@ -132,7 +271,7 @@ line:
 A deprecation gets a hand-written note in that release's notes, not a caveat.
 
 *Example:* a low-risk fix to a broken adapter whose devices no maintainer has lands before the cut. It ships with
-⚠️ Untested fix and the issue URL; a user's working report, cited in a maintainer's `_manual.md` line, clears it.
+⚠️ Untested fix and the issue URL; a user's working report, cited in a maintainer's `_manual.json` row, clears it.
 
 ## Release gate
 
@@ -140,14 +279,14 @@ Each integration whose package (`custom_components/deviceside/integrations/<x>/`
 needs a sign-off that holds the package as the release does. Any change counts, flags included; a reverted one is
 none.
 
-- **A sign-off** is a whole passing rig run or a `_manual.md` line. A run is checked by the Package tree its records
-  cite, so a run on a PR branch still counts once the PR squash-merges, and its records can land in the same PR. A
-  manual line is checked by its commit, which must be in the release's checkout and hold the package as the release
-  does: cite one on `main` (or a `release/` branch), as a PR branch's is gone once it squash-merges, so the line lands
-  after the change merges. It may say "no call changed". It comes from one of the integration's maintainers, or a repo maintainer when
-  none responds.
+- **A sign-off** is a whole passing rig run or a `_manual.json` row. A run is checked by the package tree its records
+  cite (`package`), so a run on a PR branch still counts once the PR squash-merges, and its records can land in the same
+  PR. A manual row is checked by its commit, which must be in the release's checkout and hold the package as the release
+  does: cite one on `main` (or a `release/` branch), as a PR branch's is gone once it squash-merges, so the row lands
+  after the change merges. It may say "no call changed". It comes from one of the integration's maintainers, or a repo
+  maintainer when none responds.
 - **Prefer the rig.** Where the rig covers an integration, the sign-off is a rig run: it is repeatable and catches what
-  a person doesn't. A manual line is the fallback for integrations the rig can't reach, or when the rig is broken; a
+  a person doesn't. A manual row is the fallback for integrations the rig can't reach, or when the rig is broken; a
   manual sign-off on a rig-covered integration says why in its PR. This is guidance, not a gate check. Rig evidence is
   no separate level: the cards keep their ✔ for rig-tested models, and `--signoffs` prints each sign-off's kind (record
   or manual) for the RC audit.
@@ -162,33 +301,42 @@ none.
   to work for users (tenet 1): hold the fix back (revert it, or leave it out of the release branch) when the current
   code mostly works; ship it marked ⚠️ Untested fix when the current code is broken and the fix is low-risk; or, when
   it is risky, put it behind `experimental` and mark it ⚠️ Untested fix.
-- Records keep a `Covers` row as information if the rig writes one. Nothing checks it.
 - **Coverage:** every module under `core/` and `integrations/`, bar `__init__.py`, needs at least 95% line coverage;
   CI checks it.
 
-*Example:* all five integrations changed since v0.0.1, so v0.1.0 needs five sign-offs. A passing Hue rig run whose
-Package tree is the release's Hue package signs off Hue; an integration with no change would need none.
+*Example:* all six integrations, Control4 among them, changed since v0.0.1, so v0.1.0 needs six sign-offs. A passing
+Hue rig run whose package tree is the release's Hue package signs off Hue; an integration with no change would need
+none.
 
 ### Sign-off format
 
-A rig sign-off is the bundle's test records, `docs/integrations/<x>/test-records/<action>*.md`, when every one cites
-the same Package tree and passes: one whole run, whatever commit each record ran at. The rig writes the Package row,
-the package's git tree at the run's commit:
+Test records are JSON files in the bundle's `test-records/`, one schema for all of them:
+[`docs/test-records.schema.json`](test-records.schema.json), the format's one home, which CI checks every file against
+and which gives each field. The rules it serves:
 
-    | Source | rig run (`scripts/rig.py`), commit `1a2b3c4` |
-    | Package | `0123456789ab` |
+- **A rig record**, `<suite>.json`, is named for its step file (`<action>.json`, or `<action>-<option>.json` for a run
+  with an option set), and credits the action its name gives only when its `action` and `options` agree; a leading
+  `_` is `_manual.json`'s and `_facts.json`'s alone. It cites the package tree its run held (`package`), which is what
+  a sign-off is checked by. It passes only when no test failed and one passed; counts are derived from the tests,
+  never stored.
+- **A test names the devices it reached** and the class the call reached on each, as the action's result reports it
+  ([action-behavior.md](action-behavior.md#what-a-response-looks-like)), or null where the integration named none;
+  always null on an integration that names no classes. A Zigbee device is named by its Zigbee model ID on every
+  integration, and with its manufacturer string, as one model ID carries many makers' strings; every model a file
+  names must be in `docs/models.yaml`. A native group's test, and a scene's, lists the members and carries `group`.
+- **Format 1** is a markdown record converted once (device-classes plan, step 5b): the run's devices sit on the record,
+  not on each test. It credits the cards as the markdown did, and is no sign-off; a rerun replaces it with format 2.
+- **`_manual.json`**: a maintainer's hand tests, a row each, added in a PR: each device a model id (never a household's
+  device name) with the class it reached, and the actions that passed on all of them. A change that alters neither a
+  call nor the handling of a device's reply (tenet 9) signs off with a `no_call_changed` row instead.
+- **`_facts.json`**: the fact cases' results, a row each, only ever added. A row converted from markdown says so and
+  has no class.
 
-*Example:* if `stop.md` fails, or cites a different Package tree than the rest, the records are no sign-off until every
-action passes at one package tree; a rerun of `stop` on `main` completes a run made on a PR branch when the package
-didn't change between them. A record with no Package row is no sign-off. A manual sign-off is a row of the bundle's
-`test-records/_manual.md`, added in a PR: date, commit, tester, model ids (`docs/models.yaml`, never a household's
-device names) and what passed.
+A rig sign-off is the bundle's records when every one is format 2, cites the same `package` and passes: one whole run,
+whatever commit each record ran at. *Example:* if `stop.json` fails, or cites a different package tree than the rest,
+or is still format 1, the records are no sign-off until every action passes at one package tree; a rerun of `stop` on
+`main` completes a run made on a PR branch when the package didn't change between them.
 
-    | Date | Commit | Tester | Devices | Passed |
-    |---|---|---|---|---|
-    | 2026-11-12 | `1a2b3c4` | @handle | `S3SW-001X8EU`, `S3BL-C010007AEU` | `turn_on_for`, `set_auto_off` |
-
-A change that alters neither a call nor the handling of a device's reply (tenet 9) signs off with a row whose Devices
-holds a dash and whose Passed holds exactly `no call changed`. *Example:* a log-wording change in a Shelly adapter:
-
-    | 2026-11-12 | `1a2b3c4` | @handle | - | no call changed |
+*Example:* a Shelly run in which a relay and a bulb each pass `turn_on_for` credits `S3SW-001X8EU` to `Switch` and
+`S3BL-C010007AEU` to `RGBCCT`, each only under its own class; a maintainer's hand test of both is one `_manual.json`
+row naming each with its class, and a log-wording change's is a `no_call_changed` row.

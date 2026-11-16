@@ -23,10 +23,11 @@ shared home named in parentheses.
 |---|---|
 | User-facing limits and device classes | `<x>/index.md` (shared: `docs/device-compatibility.md`) |
 | Wire calls, measurements, upstream defects | `<x>/internals.md` (shared: `docs/internals.md`, core HA: `docs/defects.md`) |
-| Classes, doesn't-work entries | `<x>/devices.yaml` (shared doesn't-work: `docs/models.yaml`; `scripts/gen_compat.py` regenerates the cards) |
+| Classes, levels, doesn't-work and not-yet-supported entries | the package's code: `IntegrationInfo.classes` and the scopes' `doesnt_work` and `not_supported` (`scripts/gen_compat.py` regenerates the cards; entries not yet moved: `<x>/devices.yaml`, shared `docs/models.yaml`) |
+| A class's card phrase and section | `<x>/devices.yaml` |
 | Models across integrations | `docs/models.yaml` |
-| Dated sources, never edited after | `<x>/research/` |
-| Run evidence | `<x>/test-records/` |
+| Dated sources, never edited after | `<x>/research/` (shared: `docs/research/`) |
+| Run evidence | `<x>/test-records/*.json`, in the shape `docs/test-records.schema.json` gives |
 | Why the code does something | the module docstring, a few lines, linking `internals.md` for the evidence |
 | Rule evidence | the PR body |
 | Repo settings and repo-maintainer steps | `docs/repo-maintainers.md` |
@@ -41,7 +42,8 @@ every integration shares is in `docs/integrations.md`: add your value there, don
 2. Probe before you build: when unsure how a device responds, run a cheap probe and record what it shows.
 3. Verify, then trust: a verified fact stands across firmware, HA and code changes until evidence contradicts it.
 4. Surprises reopen facts: root-cause a bug, record the finding, and log so the first report holds the diagnosis.
-5. Proof follows the call: code that sends the same call inherits its evidence; unit tests pin the call.
+5. Proof follows the call and the class: code that sends the same call to the same class of device inherits its
+   evidence; unit tests pin the call.
 6. Simplify relentlessly: a new guardrail needs evidence its failure happens; a new rule or guardrail names the
    user-visible failure it prevents and what it replaces.
 7. Maintainers judge sufficiency: gates check that a sign-off exists, not how thorough it was.
@@ -52,7 +54,8 @@ every integration shares is in `docs/integrations.md`: add your value there, don
 9. Retest what the change exercises: only the rig cases whose call or reply handling changed. The gate still takes
    one whole run per sign-off until `TODO.md`'s Partial reruns lands.
 
-The levels (Verified, Documented), the `experimental` flag, caveats, the release gate and the sign-off format:
+The levels (Verified, Documented), device classes, the `experimental` flag, caveats, the release gate and the sign-off
+format:
 [`docs/evidence.md`](docs/evidence.md).
 
 ## Maintainers
@@ -81,17 +84,18 @@ Cutting, tagging and fixing RCs and releases: the `release` skill (`.claude/skil
 - Before each push: `.venv/bin/pytest` and `pre-commit run --all-files` (ruff and the household check).
 - Audits: as the global `## Code audits` rule says. The binding-rule surface that puts an Opus auditor on the PR
   audit is `docs/evidence.md`, the `experimental` flag and `AdapterScope`, `Level.DOCUMENTED`,
-  `scripts/check_release.py`, `docs/integrations/*/test-records/`, and rule text in `CLAUDE.md` or `docs/design.md`.
+  `scripts/check_release.py`, `docs/test-records.schema.json`, `docs/integrations/*/test-records/`, and rule text in
+  `CLAUDE.md` or `docs/design.md`.
 
 ## The rig
 
 The rig, which drives the live HA and writes the records in `docs/integrations/<integration>/test-records/`, is a
-private repo kept out of this one: no rig code or rig docs here. The rig's test plan, its step files, named for the
-action they test and landed with that action, has two homes: shared ones in `tests/rig/steps/` need a repo maintainer;
-an integration's own in `tests/integrations/<x>/rig/`, run on `<x>` alone, belong to its maintainers, and repo
-maintainers may adopt them into the shared files. Before adding a case, name what it catches that no existing case or
-unit test does: a different call shape, a live-reply branch, or a firmware fact. When the rig is attached to the
-session, its `CLAUDE.md` says how to run it.
+separate repo (jasonmx/ha-rig, public) kept out of this one: no rig code or rig docs here. The rig's test plan, its
+step files, named for the action they test and landed with that action, has two homes: shared ones in `tests/rig/steps/`
+need a repo maintainer; an integration's own in `tests/integrations/<x>/rig/`, run on `<x>` alone, belong to its
+maintainers, and repo maintainers may adopt them into the shared files. Before adding a case, name what it catches that
+no existing case or unit test does: a different call shape, a live-reply branch, or a firmware fact. When the rig is
+attached to the session, its `CLAUDE.md` says how to run it.
 
 ## Conventions
 

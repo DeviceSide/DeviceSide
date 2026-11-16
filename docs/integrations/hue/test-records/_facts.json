@@ -1,0 +1,36 @@
+{
+  "format": 2,
+  "integration": "hue",
+  "facts": [
+    {
+      "date": "2026-11-13",
+      "suite": "set_attributes",
+      "test": "sets_color_while_off[light_color] observed",
+      "kind": "observed",
+      "result": "pass",
+      "converted": true,
+      "devices": [
+        {
+          "model": "LCA016",
+          "name": "Hue Essential lamp",
+          "firmware": "1.164.2"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-13",
+      "suite": "stop",
+      "test": "halts_brightness_and_saturation[light_color] observed",
+      "kind": "observed",
+      "result": "pass",
+      "converted": true,
+      "devices": [
+        {
+          "model": "LCA016",
+          "name": "Hue Essential lamp",
+          "firmware": "1.164.2"
+        }
+      ]
+    }
+  ]
+}
