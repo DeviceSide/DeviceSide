@@ -381,6 +381,14 @@ def stands(changed: Collection[str] | None, action: str, adapter_modules: Mappin
     return not changed if own is None else set(changed) <= set(adapter_modules.values()) - {own}
 
 
+def suite_action(name: str, record: Mapping) -> str | None:
+    """The action a record is evidence of, by its suite's name (`<action>.json`, `<action>-<option>.json`); None for a
+    suite that is no action's (`lifecycle.json`), whatever action the rig ran in it."""
+    action = record["action"]
+    stem = Path(name).stem
+    return action if stem == action or stem.startswith(f"{action}-") else None
+
+
 def carried(
     ran_at: str | None, head: str | None, action: str, adapter_modules: Mapping[str, str], hops: Sequence[tuple]
 ) -> bool:
@@ -437,7 +445,9 @@ def record_signoff(
         if name not in old and name not in failing
     }
     reopened = [
-        name for name, tree in ran_at.items() if not carried(tree, head, run[name]["action"], adapter_modules, hops)
+        name
+        for name, tree in ran_at.items()
+        if not carried(tree, head, suite_action(name, run[name]), adapter_modules, hops)
     ]
     changes = set().union(
         *(
@@ -446,7 +456,9 @@ def record_signoff(
         )
     )
     # An option's record ran the action with that option set, so the plain call needs a record of its own.
-    missing = sorted(set(changed_actions) - {record["action"] for record in run.values() if not record.get("options")})
+    missing = sorted(
+        set(changed_actions) - {suite_action(name, record) for name, record in run.items() if not record.get("options")}
+    )
     why = []
     if old:
         why.append(f"{', '.join(old)}: format 1, converted from markdown, so no sign-off: rerun with the rig")
@@ -487,9 +499,11 @@ def manual_signoffs(
     return found, errors
 
 
-def rejection(signoff: SignOff, integration: str) -> str | None:
+def rejection(signoff: SignOff, integration: str, base: str | None) -> str | None:
     """Why the manual row doesn't hold the integration's package as HEAD does, or None when it does: its commit must
-    be in this checkout. A row naming `actions` signs off no package by itself: it only keeps their records."""
+    be in this checkout. A row naming `actions` signs off no package by itself: it only keeps their records. A
+    `no_call_changed` row without them vouches for its commit's change alone, so it signs off only when the package
+    before that commit is the last release's (`base`)."""
     at = f"{signoff.source} at {signoff.commit[:7]}"
     if not exists(signoff.commit):
         return f"{at}: not in this checkout; cite a commit on main"
@@ -497,6 +511,12 @@ def rejection(signoff: SignOff, integration: str) -> str | None:
         return f"{at}: names actions, so it keeps their records and signs off no package"
     if not same(signoff.commit, package(integration)):
         return f"{at}: the package differs from HEAD's"
+    if signoff.vouches:
+        before = package_tree(integration, commit=f"{signoff.commit}~1")
+        if before is None or before != (package_tree(integration, commit=base) if base else None):
+            return (
+                f"{at}: no_call_changed vouches for its commit's change alone; the package before it needs a sign-off"
+            )
     return None
 
 
@@ -553,7 +573,7 @@ def gates(registry) -> tuple[str | None, list[Gate], list[str]]:
         )
         signoff, rejected = run, [why] if why else []
         for candidate in () if run else manual:
-            if not (why := rejection(candidate, key)):
+            if not (why := rejection(candidate, key, base)):
                 signoff = candidate
                 break
             rejected.append(why)

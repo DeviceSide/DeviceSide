@@ -315,10 +315,10 @@ none.
 - **A `no_call_changed` row carries a record across one change,** the one its commit made, when that change altered
   neither the action's call nor its handling of the device's reply. The record must stand up to that commit's parent,
   and from the commit on; a later change needs its own row or a rerun. `main` is squash-merged, so a commit is one
-  PR's change; a row citing a merge commit vouches for everything it merged. With no `actions` the row covers every action, and is itself a
-  sign-off of the package as its commit holds it; with `actions` it covers those actions' records, and is no sign-off
-  alone. It is the maintainer's judgment (tenet 7), and the row's PR says what shows it: the unit tests that pin the
-  calls, unchanged.
+  PR's change; a row citing a merge commit vouches for everything it merged. With no `actions` the row covers every
+  action, and is a sign-off alone only when the package before its commit is the last release's; with `actions` it
+  covers those actions' records, and is no sign-off alone. It is the maintainer's judgment (tenet 7), and the row's PR
+  says what shows it: the unit tests that pin the calls, unchanged.
 - **A manual row** is checked by its commit, which must be in the release's checkout and hold the package as the release
   does: cite one on `main` (or a `release/` branch), as a PR branch's is gone once it squash-merges, so the row lands
   after the change merges. It comes from one of the integration's maintainers, or a repo
