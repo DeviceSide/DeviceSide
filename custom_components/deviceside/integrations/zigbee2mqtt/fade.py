@@ -52,7 +52,6 @@ MIN_CYCLE_S, MAX_CYCLE_S = 1.0, 254.0
 # The end read-back, after the fade has run: a live read mid-fade may have overwritten Z2M's published end value.
 END_READ_S = 1.0
 COLOR_HS = "color_hs"  # the Z2M feature a hue or saturation move needs
-# The HA color modes in which a light shows a color, so a saturation change is visible and keeps its own hue.
 # An off light keeps its level, and a fade from off starts there: it is turned on at the bottom first.
 AT_THE_BOTTOM = {"state": "ON", "brightness": 1, "transition": 0}
 
