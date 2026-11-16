@@ -35,7 +35,11 @@ BRIDGED = "bridged"
 WIZ_PLUG = "wiz_plug"
 MULTI_ENDPOINT = "multi_endpoint"
 OTHER = "other"  # the default class, never Verified (IntegrationInfo.default_class)
-CLASSES = frozenset({UNCERTIFIED, BRIDGED, WIZ_PLUG, MULTI_ENDPOINT, OTHER})
+# Each class's domains (IntegrationInfo.classes): the WiZ Smart Plug is a switch; any other may be a light or a plug.
+CLASSES = {
+    name: frozenset({"switch"}) if name == WIZ_PLUG else frozenset({"light", "switch"})
+    for name in (UNCERTIFIED, BRIDGED, WIZ_PLUG, MULTI_ENDPOINT, OTHER)
+}
 
 # Basic Information (cluster 0x0028) on the root endpoint, and the Descriptor's DeviceTypeList (0x001D/0x0000).
 _VENDOR_ID = "0/40/2"

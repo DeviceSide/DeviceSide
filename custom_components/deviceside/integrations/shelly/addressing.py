@@ -20,6 +20,11 @@ from ...core.scope import documented, experimental, verified
 _UNIQUE_ID = re.compile(r"^[^-]+-(?P<key>switch|light|cct|rgb|rgbcct|rgbw):(?P<id>\d+)$")
 
 COMPONENTS = {"switch": "Switch", "light": "Light", "cct": "CCT", "rgb": "RGB", "rgbcct": "RGBCCT", "rgbw": "RGBW"}
+# Each component's domains (IntegrationInfo.classes): a Switch relay is a switch, or a light where its consumption type
+# says it drives one; the rest are lights.
+CLASSES = {
+    name: frozenset({"switch", "light"}) if name == "Switch" else frozenset({"light"}) for name in COMPONENTS.values()
+}
 
 _DIMMABLE = frozenset({"brightness", "transition"})
 _COLOR = frozenset({"hs_color", "rgb_color", "xy_color"})

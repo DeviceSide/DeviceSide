@@ -43,12 +43,15 @@ from .rules import ZIGBEE, definition_fields, zigbee_strings
 from ...core import scope
 from ...core.models import Target
 from ...core.rules import match
-from ...core.scope import ClassLevel, Unplaced, documented, experimental
+from ...core.scope import ClassDomains, ClassLevel, Unplaced, documented, experimental
 
 _LOGGER = logging.getLogger(__name__)
 
 OTHER = "other"  # the default class, never Verified (IntegrationInfo.default_class)
-CLASSES = frozenset({OTHER}).union(*(family.classes for family in FAMILIES))
+# Every class with its domains (IntegrationInfo.classes): `other`, any brand's light, plug or switch, and the families'.
+CLASSES: ClassDomains = {OTHER: frozenset({"light", "switch"})} | {
+    name: domains for family in FAMILIES for name, domains in family.classes.items()
+}
 
 # `other`'s level in each adapter's scope (index.md, Device classes): Documented where the call is the Verified one
 # and no known class departs, else untested.

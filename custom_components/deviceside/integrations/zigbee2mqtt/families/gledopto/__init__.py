@@ -18,7 +18,7 @@ _UNTESTED = FamilyScope(capabilities=experimental(GLEDOPTO))
 FAMILY = Family(
     key="gledopto",
     maintainers=(),
-    classes=frozenset({GLEDOPTO}),
+    classes={GLEDOPTO: frozenset({"light"})},
     scopes={
         "raise_brightness": _UNTESTED,
         "lower_brightness": _UNTESTED,

@@ -57,16 +57,26 @@ ZCL_RULES = (
 )
 
 # The ZCL classes untested on every action but turn_on_for, whose call harms every Tuya class: the integration refuses
-# them there (refusals.py). `tuya_mcu` is in no scope at all: its quirk answers what DeviceSide sends itself (reads
-# from its cache, a Level move without its transition), so it needs a datapoint call nobody has built (not built yet).
-_UNTESTED = FamilyScope(capabilities=experimental(TUYA_COUNTDOWN, TUYA_COUNTDOWN_HARMED, TUYA_ZCL))
+# them there (refusals.py). The countdown models are plugs and switches, so the actions for lights alone hold only
+# `tuya_zcl`, as the registry checks (core/registry.py, check_classes). `tuya_mcu` is in no scope at all: its quirk
+# answers what DeviceSide sends itself (reads from its cache, a Level move without its transition), so it needs a
+# datapoint call nobody has built (not built yet).
+_UNTESTED = FamilyScope(capabilities=experimental(TUYA_ZCL))
+_READ = FamilyScope(capabilities=experimental(TUYA_COUNTDOWN, TUYA_COUNTDOWN_HARMED, TUYA_ZCL))
 
 FAMILY = Family(
     key="tuya",
     maintainers=(),
-    classes=frozenset({TUYA_COUNTDOWN, TUYA_COUNTDOWN_HARMED, TUYA_ZCL, TUYA_MCU}),
+    # Each class's domains (IntegrationInfo.classes): the countdown models are plugs and switch modules; the rest of
+    # Tuya's ZCL devices, and its datapoint ones, include bulbs and dimmers too.
+    classes={
+        TUYA_COUNTDOWN: frozenset({"switch"}),
+        TUYA_COUNTDOWN_HARMED: frozenset({"switch"}),
+        TUYA_ZCL: frozenset({"light", "switch"}),
+        TUYA_MCU: frozenset({"light", "switch"}),
+    },
     scopes={
-        "get_attributes": _UNTESTED,
+        "get_attributes": _READ,
         "lower_brightness": _UNTESTED,
         "lower_hue": _UNTESTED,
         "lower_saturation": _UNTESTED,

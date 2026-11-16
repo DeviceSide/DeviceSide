@@ -31,6 +31,8 @@ from custom_components.deviceside.core.scope import (
     verified,
 )
 
+ANYWHERE = frozenset({"light", "switch", "scene"})  # a test class's domains: every one a test scope serves
+
 PACKAGE = Path(__file__).resolve().parents[2] / "custom_components" / "deviceside"
 # What reads the Experimental features option: only the option's definition, the entry setup and the dispatcher may.
 OPTION_NAMES = {"CONF_EXPERIMENTAL", "EXPERIMENTAL_DEFAULT", "experimental_features"}
@@ -283,7 +285,7 @@ def test_an_own_call_is_compared_by_identity():
 FAMILIES = (
     Family(
         key="first",
-        classes=frozenset({"A", "B", "D"}),
+        classes=dict.fromkeys({"A", "B", "D"}, ANYWHERE),
         scopes={
             "turn_on_for": FamilyScope(capabilities=verified("A") | experimental("B"), own_calls={"B": TIMED}),
             "stop": FamilyScope(capabilities=documented("A")),
@@ -292,7 +294,7 @@ FAMILIES = (
     Family(
         key="second",
         maintainers=("a-b",),
-        classes=frozenset("CE"),
+        classes=dict.fromkeys("CE", ANYWHERE),
         scopes={"turn_on_for": FamilyScope(capabilities=documented("C"))},
     ),
 )

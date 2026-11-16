@@ -6,8 +6,9 @@ from custom_components.deviceside.core.rules import Rule, compose, match
 from custom_components.deviceside.core.scope import Family
 
 FIELDS = frozenset({"manufacturer", "model", "exposes"})
-ACME = Family(key="acme", classes=frozenset({"acme", "acme_plug"}))
-BOLT = Family(key="bolt", classes=frozenset({"bolt"}))
+ANYWHERE = frozenset({"light", "switch", "scene"})  # a test class's domains: every one a test scope serves
+ACME = Family(key="acme", classes=dict.fromkeys({"acme", "acme_plug"}, ANYWHERE))
+BOLT = Family(key="bolt", classes=dict.fromkeys({"bolt"}, ANYWHERE))
 
 
 @pytest.mark.parametrize(

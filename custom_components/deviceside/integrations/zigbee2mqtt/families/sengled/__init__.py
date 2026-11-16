@@ -11,7 +11,7 @@ _UNTESTED = FamilyScope(capabilities=experimental(SENGLED))
 FAMILY = Family(
     key="sengled",
     maintainers=(),
-    classes=frozenset({SENGLED}),
+    classes={SENGLED: frozenset({"light"})},
     # No turn_on_for: the Sengled needs a host-side off, which nobody has built, so it is not built yet.
     scopes={
         "raise_brightness": _UNTESTED,

@@ -11,22 +11,11 @@ RULES = (
     Rule(SONOFF_SWV, {"model": "SWV"}),
 )
 
-# Untested on every action but turn_on_for, whose call harms it: the integration refuses it there (refusals.py).
-_UNTESTED = FamilyScope(capabilities=experimental(SONOFF_SWV))
-
 FAMILY = Family(
     key="sonoff",
     maintainers=(),
-    classes=frozenset({SONOFF_SWV}),
-    scopes={
-        "get_attributes": _UNTESTED,
-        "lower_brightness": _UNTESTED,
-        "lower_hue": _UNTESTED,
-        "lower_saturation": _UNTESTED,
-        "raise_brightness": _UNTESTED,
-        "raise_hue": _UNTESTED,
-        "raise_saturation": _UNTESTED,
-        "set_attributes": _UNTESTED,
-        "stop": _UNTESTED,
-    },
+    # A valve on the On/Off cluster, which ZHA shows as a switch: no action for lights alone reaches it.
+    classes={SONOFF_SWV: frozenset({"switch"})},
+    # Untested on get_attributes. turn_on_for's call harms it: the integration refuses it there (refusals.py).
+    scopes={"get_attributes": FamilyScope(capabilities=experimental(SONOFF_SWV))},
 )

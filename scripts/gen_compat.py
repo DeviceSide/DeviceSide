@@ -34,9 +34,11 @@ of the adapters with each `caveat` (⚠️ Untested fix, then ⚠️ Unmaintaine
 - No known method: the scopes' `no_known_method`, with the features whose adapters list them, then devices.yaml's.
   A scope's `not_built` entry (core/scope.py, NotBuilt, one today's call harms) is listed as not built yet, as
   above; the evidence block adds a table of them and of models.yaml's, with why and the source.
-Classes with the same features share an entry, and those of one page section a link. A model or blocker drops the
-integration's name where it leads, as the card's name already gives it. Cards show features, not fields: a flagged or
-Documented field shows on the integration's page and in the evidence block only.
+Classes with the same features share an entry, and those of one page section a link. A class is counted on each
+entity domain it can be (`IntegrationInfo.classes`) that the adapter serves, at its level there; one whose domains show
+different features is named per domain, by its devices.yaml `domains` phrases, so a plug never lists dimming. A model
+or blocker drops the integration's name where it leads, as the card's name already gives it. Cards show features, not
+fields: a flagged or Documented field shows on the integration's page and in the evidence block only.
 
 **Evidence block.** Per integration, a row per action and level its domains, capabilities and fields hold (an adapter
 flagged whole has one), the first with the evidence's records; each row carries the adapter's caveat. A model tested on
@@ -57,10 +59,10 @@ integrations, `type`, optional `section`; a model only one integration names is 
 unharmed one needs no entry. Each bundle's devices.yaml holds its integration's: `models` (as above), `column` and
 `column_order` (the README feature table's, read by gen_features), `requires` (shown after the card's name),
 `capabilities` (a `phrase` and `section` per domain or class the scopes hold below Verified, and per class to name as
-not built yet) and `no_known_method` (`what`, `reason`, `source`, optional `section`: devices that fail the call
-DeviceSide sends, not what isn't built). A scope's `no_known_method` (core/scope.py, NoKnownMethod) and `not_built`
-(NotBuilt) are the code's home for these, and join them here; the devices.yaml and models.yaml entries move to them,
-class by class. Every integration needs a bundle.
+not built yet; `domains`, a phrase per entity domain, for a class the card splits) and `no_known_method` (`what`,
+`reason`, `source`, optional `section`: devices that fail the call DeviceSide sends, not what isn't built). A scope's
+`no_known_method` (core/scope.py, NoKnownMethod) and `not_built` (NotBuilt) are the code's home for these, and join
+them here; the devices.yaml and models.yaml entries move to them, class by class. Every integration needs a bundle.
 
 **Links.** A card links each model, class or blocker to the heading its `section` names (default: the model's
 `name`, the blocker's `what`): on the card's integration page when that has the heading; a model's or native groups'
@@ -85,7 +87,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
 from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
-from custom_components.deviceside.core.scope import CaveatKind, Level  # noqa: E402
+from custom_components.deviceside.core.scope import CaveatKind, ClassDomains, Level  # noqa: E402
 from scripts.check_release import (  # noqa: E402
     MANUAL,
     adapters,
@@ -149,7 +151,7 @@ INTEGRATIONS_URL = "https://github.com/DeviceSide/DeviceSide/blob/main/docs/inte
 SHARED_KEYS = {"models", "no_known_method", "not_built"}  # each a list
 BUNDLE_KEYS = {"column", "column_order", "requires", "capabilities", "models", "no_known_method"}
 MODEL_KEYS = {"name", "ids", "type", "section"}
-CLASS_KEYS = {"phrase", "section"}
+CLASS_KEYS = {"phrase", "section", "domains"}  # `domains`: a phrase per entity domain, for a class the card splits
 BROKEN_KEYS = {"what", "integrations", "reason", "source", "section"}
 GROUPS_ENTRY = ("native groups", "Native groups")  # (phrase, section) for the groups a record tested
 
@@ -286,6 +288,8 @@ def load_raw(raw: dict, registry: AdapterRegistry) -> Data:
         need(items, f"capabilities {key}")
         for item, entry in items.items():
             need(entry, f"capabilities {key} {item}", ("phrase", "section"), keys=CLASS_KEYS)
+            if "domains" in entry:
+                need(entry["domains"], f"capabilities {key} {item} domains", tuple(entry["domains"]))
             data.sections.add((key, entry["section"]))
     for entry in raw["no_known_method"]:
         load_broken(entry, set(registry.integrations), data)
@@ -742,46 +746,68 @@ def card_items(scope) -> list[tuple[Level, str, str]]:
     ]
 
 
-def classes(key: str, integration_adapters: list, level: Level, data: Data) -> dict[str, set[str]]:
-    """Each domain or capability the unflagged adapters hold at the level (as `card_items` shows it), in first-seen
-    order, with the actions that hold it there."""
-    held: dict[str, set[str]] = {}
+# A card entry's item: a domain, with None, or a class with one of the entity domains it can be.
+type Held = dict[tuple[str, str | None], set[str]]
+
+
+def reached(class_domains: ClassDomains, name: str, scope) -> list[str]:
+    """The domains the class can be (IntegrationInfo.classes) that the scope serves, in the scope's order. Never empty
+    for a class the scope holds or refuses with a reason (core/registry.py, check_classes)."""
+    return [domain for domain in scope.domains if domain in class_domains.get(name, ())]
+
+
+def classes(key: str, integration_adapters: list, level: Level, data: Data, class_domains: ClassDomains) -> Held:
+    """Each domain (as `card_items` shows it) or class in each domain it can be that the unflagged adapters hold at the
+    level, in first-seen order, with the actions that hold it there. A class's level in a domain is the one the call
+    runs at there (AdapterScope.class_level): an entry held on some domains alone counts as Experimental elsewhere."""
+    held: Held = {}
     for adapter in integration_adapters:
         if adapter.scope.experimental:
             continue
-        for item_level, item, noun in card_items(adapter.scope):
-            if item_level is level and noun != "fields":
-                if item not in data.capabilities.get(key, {}):
-                    fail(f"capabilities: no entry for {key} {item}, which a scope holds as {level.name.title()}")
-                held.setdefault(item, set()).add(adapter.action)
+        scope = adapter.scope
+        found = [
+            (item, None) for item_level, item, noun in card_items(scope) if noun == NOUNS[0] and item_level is level
+        ]
+        found += [
+            (name, domain)
+            for name, _, _ in scope.class_entries()
+            for domain in reached(class_domains, name, scope)
+            if scope.class_level(name, domain) is level
+        ]
+        for item, domain in found:
+            if item not in data.capabilities.get(key, {}):
+                fail(f"capabilities: no entry for {key} {item}, which a scope holds as {level.name.title()}")
+            held.setdefault((item, domain), set()).add(adapter.action)
     return held
 
 
-def not_built(key: str, classes: frozenset[str], integration_adapters: list, data: Data) -> dict[str, set[str]]:
-    """Each class the integration declares that an adapter holds in neither its capabilities nor its no_known_method,
-    with the actions that refuse it (`not_built`), in devices.yaml's order. Only a class devices.yaml gives a phrase is
-    named: Shelly's Switch has none, as a relay has no brightness or color to dim or set. A class no scope holds at
-    all must have one, or the card would hide it."""
+def not_built(key: str, class_domains: ClassDomains, integration_adapters: list, data: Data) -> Held:
+    """Each class the integration declares that an adapter serving one of its domains holds in neither its
+    capabilities nor its no_known_method, in each such domain, with the actions that refuse it (`not_built`), in
+    devices.yaml's order. An action none of its domains reaches doesn't count: a plug isn't a dimming feature not built
+    yet. Only a class devices.yaml gives a phrase is named: Shelly's Switch has none, as a relay has no brightness or
+    color to dim or set. A class no scope holds at all must have one, or the card would hide it."""
     phrased = data.capabilities.get(key, {})
     served = [
         (adapter.scope.capabilities or {}).keys() | adapter.scope.no_known_method.keys()
         for adapter in integration_adapters
     ]
-    if hidden := sorted(classes - set().union(*served) - phrased.keys()):
+    if hidden := sorted(class_domains.keys() - set().union(*served) - phrased.keys()):
         fail(
             f"capabilities: no entry for {key} {', '.join(hidden)}, which no scope holds, so the card lists it as not"
             " yet supported"
         )
-    held: dict[str, set[str]] = {}
+    held: Held = {}
     for item in data.capabilities.get(key, {}):
         for adapter in integration_adapters:
             served = adapter.scope.capabilities
             if (
-                item in classes
+                item in class_domains
                 and served is not None
                 and item not in served.keys() | adapter.scope.no_known_method.keys()
             ):
-                held.setdefault(item, set()).add(adapter.action)
+                for domain in reached(class_domains, item, adapter.scope):
+                    held.setdefault((item, domain), set()).add(adapter.action)
     return held
 
 
@@ -800,16 +826,44 @@ def merged(phrases: list[str], url: str) -> str:
     return anchor(f"{ending} ({', '.join(' '.join(w[:-shared]) for w in words)})", url)
 
 
-def class_entries(key: str, held: dict[str, set[str]], data: Data) -> list[str]:
-    """Classes with the same features share one entry: "dimmers, LED controllers (CCT, RGB): turn on with timer", and
-    each phrase in it once."""
-    grouped: dict[tuple[str, ...], dict[str, list[str]]] = {}
-    for item, actions in held.items():
+def split(
+    key: str, held: Held, data: Data, class_domains: ClassDomains, served: list[str]
+) -> list[tuple[str, dict, set]]:
+    """The held items as the card names them, (phrase, devices.yaml entry, actions), in first-seen order. A class whose
+    domains (those it can be that the integration's adapters serve) don't all show the same features is named once per
+    domain, by its entry's phrase for that domain (devices.yaml `domains`): "other brands' lights: smooth dimming", so
+    a plug never reads as dimmable; one whose domains all show the same is named once, by its phrase."""
+    by_item: dict[str, dict[str | None, set[str]]] = {}
+    for (item, domain), actions in held.items():
+        by_item.setdefault(item, {})[domain] = actions
+    named = []
+    for item, by_domain in by_item.items():
         entry = data.capabilities[key][item]
+        domains = [domain for domain in served if domain in class_domains.get(item, ())]
+        if None in by_domain or (
+            set(by_domain) == set(domains) and len({features(actions) for actions in by_domain.values()}) == 1
+        ):
+            named.append((entry["phrase"], entry, set().union(*by_domain.values())))
+            continue
+        for domain, actions in by_domain.items():
+            if domain not in entry.get("domains", {}):
+                fail(
+                    f"capabilities: {key} {item} shows other features on each of its domains, so its card entry splits:"
+                    f" give it a phrase for {domain} (`domains`)"
+                )
+            named.append((entry["domains"][domain], entry, actions))
+    return named
+
+
+def class_entries(key: str, held: Held, data: Data, class_domains: ClassDomains, served: list[str]) -> list[str]:
+    """Classes with the same features share one entry: "dimmers, LED controllers (CCT, RGB): turn on with timer", and
+    each phrase in it once; a class whose domains show different features is split first (`split`)."""
+    grouped: dict[tuple[str, ...], dict[str, list[str]]] = {}
+    for phrase, entry, actions in split(key, held, data, class_domains, served):
         phrases = grouped.setdefault(features(actions), {}).setdefault(entry["section"], [])
         # Classes that share a phrase (Zigbee2MQTT's countdown plugs, a class per maker string) are said once.
-        if entry["phrase"] not in phrases:
-            phrases.append(entry["phrase"])
+        if phrase not in phrases:
+            phrases.append(phrase)
     return [
         f"{', '.join(merged(phrases, data.url(key, section)) for section, phrases in sections.items())}: "
         f"{', '.join(names)}"
@@ -871,11 +925,15 @@ def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: 
         and all(caveat_reason(adapter.scope, CaveatKind.UNMAINTAINED) for adapter in integration_adapters),
     )
     result.lines["works"] = works(result, key, integration_adapters, data)
+    # The domains the integration's adapters serve, in first-seen order: those a class's entry is split by.
+    served = list(dict.fromkeys(domain for adapter in integration_adapters for domain in adapter.scope.domains))
     for level, tier in ((Level.DOCUMENTED, "should"), (Level.EXPERIMENTAL, "experimental")):
-        result.lines[tier] = class_entries(key, classes(key, integration_adapters, level, data), data)
+        held = classes(key, integration_adapters, level, data, info.classes)
+        result.lines[tier] = class_entries(key, held, data, info.classes, served)
     if flagged := {adapter.action for adapter in integration_adapters if adapter.scope.experimental}:
         result.lines["experimental"].append(", ".join(features(flagged)))
-    result.lines["not_built"] = class_entries(key, not_built(key, info.classes, integration_adapters, data), data)
+    unbuilt = not_built(key, info.classes, integration_adapters, data)
+    result.lines["not_built"] = class_entries(key, unbuilt, data, info.classes, served)
     result.lines["not_built"] += [
         anchor(result.short(entry["what"]), data.url(key, entry["section"]))
         for entry in data.not_built

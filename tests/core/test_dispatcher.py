@@ -52,6 +52,9 @@ def experimental_option(request, hass, setup_integration):
     return request.param
 
 
+ANYWHERE = frozenset({"light", "switch", "scene"})  # a test class's domains: every one a test scope serves
+
+
 @pytest.fixture
 def fake(hass):
     return fake_config_entry(hass)
@@ -154,7 +157,7 @@ def classed(hass, setup_integration):
     the loaded registry for the test."""
     registry = get_runtime(hass).registry
     info = registry.integrations["fake"]
-    registry.integrations["fake"] = replace(info, capability=by_name, classes=frozenset("ABCDE"))
+    registry.integrations["fake"] = replace(info, capability=by_name, classes=dict.fromkeys("ABCDE", ANYWHERE))
     yield
     registry.integrations["fake"] = info
 

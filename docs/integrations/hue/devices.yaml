@@ -7,4 +7,7 @@ requires: Bridge v2/Pro
 capabilities:
   # The classes integrations/hue/classes.py names, but hue: Verified, it needs no phrase; smart_scene is a no known
   # method entry in code (NoKnownMethod), named by its own `what`.
-  other: {phrase: other brands, section: Other brands}
+  other:
+    phrase: other brands
+    section: Other brands
+    domains: {light: other brands' lights, scene: scenes with other brands' lights}

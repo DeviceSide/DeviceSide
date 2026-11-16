@@ -105,7 +105,7 @@ def test_a_target_with_no_device_has_no_class(hass):
 
 def test_the_default_class_is_other_and_held_below_verified():
     assert INTEGRATION.default_class == "other"
-    assert INTEGRATION.classes == {
+    assert INTEGRATION.classes.keys() == {
         "hue",
         "tuya_zcl",
         "tuya_ts011f",
@@ -143,12 +143,39 @@ def test_other_is_documented_on_brightness_fades_and_stop_alone():
 )
 def test_where_each_class_is_refused(capability, harmed, not_built):
     """The integration's guard on what a family's change can let through: the actions that refuse the class with an
-    entry, because the call would harm it, and those that leave it out. Its level where it is served is its family's
-    (families/<family>/)."""
-    scopes = _scopes()
+    entry, because the call would harm it, and those that leave it out, among the actions a domain it can be reaches
+    (the rest never hold it: test_actions_for_lights_alone_never_hold_a_switch_only_class). Its level where it is
+    served is its family's (families/<family>/)."""
+    scopes = {
+        action: scope for action, scope in _scopes().items() if INTEGRATION.classes[capability] & scope.domains.keys()
+    }
     assert not any(capability in scope.no_known_method for scope in scopes.values())
     assert {action for action, scope in scopes.items() if capability in scope.not_built} == harmed
     assert {action for action, scope in scopes.items() if capability not in scope.capabilities} == not_built
+
+
+SWITCH_ONLY = {"tuya_ts011f", "tuya_countdown", *tuya.VERIFIED_COUNTDOWNS, "tuya_countdown_harmed"}
+
+
+def test_actions_for_lights_alone_never_hold_a_switch_only_class():
+    """Decision 3: a TS011F is a plug, a switch, so an action for lights alone holds it in no axis, and refuses it as
+    not built yet; the card leaves it off (scripts/gen_compat.py)."""
+    assert {name for name, domains in INTEGRATION.classes.items() if domains == {"switch"}} == SWITCH_ONLY
+    lights_alone = {action: scope for action, scope in _scopes().items() if scope.domains.keys() == {"light"}}
+    assert lights_alone.keys() == {
+        "raise_brightness",
+        "lower_brightness",
+        "raise_hue",
+        "lower_hue",
+        "raise_saturation",
+        "lower_saturation",
+        "stop",
+        "set_attributes",
+    }
+    for scope in lights_alone.values():
+        held = scope.capabilities.keys() | scope.no_known_method.keys() | scope.not_built.keys()
+        assert not held & SWITCH_ONLY
+        assert scope.refusal(["tuya_ts011f"]) == ("not_built", None)
 
 
 # Group members, from the bridge cache.
@@ -193,14 +220,19 @@ async def test_only_a_group_listed_with_no_members_is_empty(hass, setup_producti
     assert INTEGRATION.expand_group(hass, resolve(hass, get_runtime(hass).registry, entity_id)) == expected
 
 
-def plug_in_group(hass, broker) -> str:
-    """Group 7 of two Hue bulbs and a TS011F plug, 0x03, which Z2M exposes as a switch, so HA has no light for it."""
+def plug_in_group(hass, broker, registry: tuple[str, str] = PLUG, zigbee: tuple[str, str] = (TUYA, "TS011F")) -> str:
+    """Group 7 of two Hue bulbs and a plug, 0x03 (a TS011F unless `registry` and `zigbee` say otherwise), which Z2M
+    exposes as a switch, so HA has no light for it."""
     entity_id = group(hass, broker, one={}, two={})
     entry = hass.config_entries.async_entries("mqtt")[0]
-    add_z2m_entity(hass, entry, "switch.plug", ieee="0x03", manufacturer=PLUG[0], model_id=PLUG[1])
-    broker.retained[DEVICES].append(interviewed("0x03", TUYA, "TS011F"))
+    add_z2m_entity(hass, entry, "switch.plug", ieee="0x03", manufacturer=registry[0], model_id=registry[1])
+    broker.retained[DEVICES].append(interviewed("0x03", *zigbee))
     broker.retained[GROUPS][0]["members"].append({"ieee_address": "0x03"})
     return entity_id
+
+
+# A Tuya switch module, `tuya_zcl`, a class an action for lights alone still holds, as some Tuya ZCL devices are lights.
+TS0001 = {"registry": ("Tuya", "TS0001_switch_module"), "zigbee": (TUYA, "TS0001")}
 
 
 async def test_a_member_ha_has_no_light_for_is_classed_by_its_device(hass, setup_production, broker):
@@ -243,6 +275,43 @@ async def test_a_group_with_a_member_harmed_by_the_call_falls_back_with_experime
     assert {topic for topic, _ in commands(broker)} == {SET.replace(IEEE, "0x01"), SET.replace(IEEE, "0x02")}
 
 
+@pytest.mark.parametrize(
+    ("service", "data", "sent"),
+    [
+        ("stop", {}, {"brightness_move": "stop"}),
+        ("raise_hue", {"sweep_time": 10}, None),
+    ],
+)
+async def test_a_light_group_with_a_ts011f_plug_falls_back_on_a_light_action_with_experimental_on(
+    hass, setup_production, broker, caplog, service, data, sent
+):
+    """Plan Decision 7: no action for lights alone holds a TS011F, a switch (Decision 3), so its class refuses the
+    group, which falls back to its members even with Experimental features on: each bulb gets its own call, where the
+    group once took one groupcast that reached the plug, and the plug's stand-in is skipped as not built yet."""
+    entity_id = plug_in_group(hass, broker)
+    allow_experimental(hass)
+
+    response = await call_service(hass, service, {"entity_id": entity_id} | data)
+
+    assert response == {"light.one": SENT | {"capability": "hue"}, "light.two": SENT | {"capability": "hue"}}
+    topics = [topic for topic, _ in commands(broker)]
+    assert set(topics) == {SET.replace(IEEE, "0x01"), SET.replace(IEEE, "0x02")}
+    assert "zigbee2mqtt/7/set" not in topics
+    if sent is not None:
+        assert sorted(commands(broker)) == sorted((topic, sent) for topic in topics)
+    assert "a member device of light.room (not_built)" in caplog.text
+
+
+async def test_a_ts011f_zigbee2mqtt_shows_as_a_light_is_refused_by_stop(hass, setup_production, broker):
+    """Plan Decision 7: a TS011F stays a switch when Z2M is set to show it as a light, so stop refuses it as not built
+    yet, where it once sent the plug a brightness_move it can't do."""
+    plug = light(hass, broker, "light.plug", "0x03", manufacturer=PLUG[0], model_id=PLUG[1], zigbee=(TUYA, "TS011F"))
+    allow_experimental(hass)
+
+    assert await refusal(hass, "stop", {"entity_id": plug}) == "not_built"
+    assert commands(broker) == []
+
+
 # What a native group's member_capabilities holds (docs/action-behavior.md, The class).
 
 HUE_PAIR = {"light.one": "hue", "light.two": "hue"}
@@ -251,35 +320,35 @@ HUE_PAIR = {"light.one": "hue", "light.two": "hue"}
 @pytest.mark.parametrize("service", ["stop", "set_attributes"])
 async def test_a_stand_in_is_left_out_of_the_member_map_and_its_class_kept(hass, setup_production, broker, service):
     """The audit's H1 on #431: the plug's stand-in is keyed on the group's own entity_id, so the map once credited
-    tuya_ts011f to light.room, a class whose state the rig never sees."""
-    entity_id = plug_in_group(hass, broker)
+    tuya_zcl to light.room, a class whose state the rig never sees."""
+    entity_id = plug_in_group(hass, broker, **TS0001)
     allow_experimental(hass)
     data = {"entity_id": entity_id} | ({"brightness": 50} if service == "set_attributes" else {})
 
     response = await call_service(hass, service, data)
 
-    assert response[entity_id]["capabilities"] == ["hue", "tuya_ts011f"]
+    assert response[entity_id]["capabilities"] == ["hue", "tuya_zcl"]
     assert response[entity_id]["member_capabilities"] == HUE_PAIR
 
 
 async def test_two_stand_ins_in_one_group_are_both_left_out(hass, setup_production, broker):
     """Two plugs would both be keyed on the group's entity_id: one would hide the other's class."""
-    entity_id = plug_in_group(hass, broker)
+    entity_id = plug_in_group(hass, broker, **TS0001)
     add_z2m_entity(
         hass,
         hass.config_entries.async_entries("mqtt")[0],
         "switch.plug_two",
         ieee="0x04",
-        manufacturer="Tuya",
-        model_id="TS0001_switch_module",
+        manufacturer=IKEA[0],
+        model_id="E1603",
     )
-    broker.retained[DEVICES].append(interviewed("0x04", TUYA, "TS0001"))
+    broker.retained[DEVICES].append(interviewed("0x04", IKEA[0], "TRADFRI control outlet"))
     broker.retained[GROUPS][0]["members"].append({"ieee_address": "0x04"})
     allow_experimental(hass)
 
     response = await call_service(hass, "stop", {"entity_id": entity_id})
 
-    assert response[entity_id]["capabilities"] == ["hue", "tuya_ts011f", "tuya_zcl"]
+    assert response[entity_id]["capabilities"] == ["hue", "other", "tuya_zcl"]
     assert response[entity_id]["member_capabilities"] == HUE_PAIR
 
 

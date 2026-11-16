@@ -5,11 +5,21 @@ column: ZHA
 column_order: 2
 capabilities:
   switch: {phrase: plugs and switches, section: Zigbee plugs and switches}
-  # The classes integrations/zha/families/ name, but hue: Verified, it needs no phrase.
+  # The classes integrations/zha/families/ name, but hue: Verified, it needs no phrase. A class whose domains show
+  # different features on the card is named per domain (`domains`).
   tuya_countdown: {phrase: Tuya plugs and switches, section: Tuya}
   tuya_countdown_harmed: {phrase: reported Tuya plugs, section: Tuya}
-  tuya_zcl: {phrase: other Tuya devices, section: Tuya}
-  tuya_mcu: {phrase: Tuya datapoint devices, section: Tuya}
+  tuya_zcl:
+    phrase: other Tuya devices
+    section: Tuya
+    domains: {light: other Tuya lights, switch: other Tuya plugs and switches}
+  tuya_mcu:
+    phrase: Tuya datapoint devices
+    section: Tuya
+    domains: {light: Tuya datapoint lights, switch: Tuya datapoint switches}
   sengled: {phrase: Sengled bulbs, section: Sengled}
   sonoff_swv: {phrase: Sonoff SWV, section: Sonoff SWV}
-  other: {phrase: other brands, section: Other brands}
+  other:
+    phrase: other brands
+    section: Other brands
+    domains: {light: other brands' lights, switch: other brands' plugs and switches}

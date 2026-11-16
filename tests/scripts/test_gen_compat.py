@@ -36,6 +36,15 @@ from .record_files import (
     write,
 )
 
+LIGHT = frozenset({"light"})
+# The classes the tests' scopes hold, each with its domains, as a Shelly-like integration declares them: a relay can be
+# a switch or a light; the rest are lights. `hue` and `other` are Hue's, which classes scenes too.
+CLASSES = {
+    "Switch": frozenset({"switch", "light"}),
+    **dict.fromkeys(("Light", "CCT", "RGB", "RGBCCT"), LIGHT),
+    **dict.fromkeys(("hue", "other"), frozenset({"light", "scene"})),
+}
+
 URL = gc.PAGE_URL
 DATA = {
     "requires": {"zha": "Zigbee 3.0"},
@@ -77,12 +86,21 @@ def record2(root, integration, name, *tests, result="pass"):
 
 class FakeRegistry:
     integrations = {
-        "zha": SimpleNamespace(title="ZHA", maintainers=("jasonmx",), capability=None, classes=frozenset()),
-        "hue": SimpleNamespace(title="Hue", maintainers=("jasonmx", "other"), capability=None, classes=frozenset()),
+        "zha": SimpleNamespace(title="ZHA", maintainers=("jasonmx",), capability=None, classes={}),
+        "hue": SimpleNamespace(title="Hue", maintainers=("jasonmx", "other"), capability=None, classes={}),
     }
 
     def __init__(self, *adapters):
         self._adapters = adapters
+        # The cards read a class's domains, so each class a scope names is declared, as the registry holds it.
+        self.integrations = {
+            key: SimpleNamespace(**vars(info) | {"classes": dict(info.classes)})
+            for key, info in self.integrations.items()
+        }
+        for adapter in adapters:
+            scope = adapter.scope
+            named = (scope.capabilities or {}).keys() | scope.no_known_method.keys() | scope.not_built.keys()
+            self.integrations[adapter.integration].classes |= {name: CLASSES[name] for name in named}
 
     def matrix(self):
         yield "stop", "hue", None
@@ -421,10 +439,13 @@ def test_documented_and_flagged_classes_share_an_entry_per_feature_set_and_name_
     # stop rides the smooth move, so it isn't named. Two classes of one section share a link.
     assert card.lines["experimental"] == [f"[dimmers, CCT controllers]({URL}#dimmers): smooth dimming"]
     assert card.lines["no_known_method"] == [f"[Old plug]({URL}#old-plug)"]
+    # CCT, declared and left out of the timer's scope, is not built yet there.
+    assert card.lines["not_built"] == [f"[CCT controllers]({URL}#dimmers): turn on with timer"]
     # A bullet per class entry, in OUTCOMES order.
     assert card.render().splitlines()[2:] == [
         f"- 🟡 {card.lines['should'][0]}",
         f"- 🧪 {card.lines['experimental'][0]}",
+        f"- 🚧 {card.lines['not_built'][0]}",
         f"- 🔴 {card.lines['no_known_method'][0]}",
     ]
 
@@ -453,6 +474,36 @@ def test_a_domains_line_takes_at_most_the_level_of_the_strongest_class_it_serves
     ]
 
 
+def test_a_class_whose_domains_show_different_features_splits_per_domain_on_the_card(root):
+    """Decision 4: a relay, a switch or a light, takes the timer as either, and dimming only as a light. One entry
+    would list dimming for every relay, so each of its domains gets its own, grouped with the entries of its feature
+    set: as a light with the dimmers, as a switch alone."""
+    dimming = AdapterScope(capabilities=verified("RGBCCT") | experimental("Switch", "Light"))
+    timer = AdapterScope(
+        domains=verified("light", "switch"), capabilities=verified("RGBCCT") | experimental("Switch", "Light")
+    )
+    relays = {"phrase": "relays", "section": "Relays", "domains": {"light": "relays as lights", "switch": "relays"}}
+    capabilities = {"zha": {**DATA["capabilities"]["zha"], "Switch": relays}}
+    card = zha_card(
+        adapter("zha", "raise_brightness", dimming),
+        adapter("zha", "turn_on_for", timer),
+        capabilities=capabilities,
+    )
+    assert card.lines["experimental"] == [
+        f"[relays as lights]({URL}#relays), [dimmers]({URL}#dimmers): turn on with timer, smooth dimming",
+        f"[relays]({URL}#relays): turn on with timer",
+    ]
+    # Where both domains show the same features, the class keeps one entry, by its phrase.
+    both = zha_card(adapter("zha", "turn_on_for", timer), capabilities=capabilities)
+    assert both.lines["experimental"] == [f"[relays]({URL}#relays), [dimmers]({URL}#dimmers): turn on with timer"]
+    # A class that splits needs a phrase for each domain it shows.
+    capabilities["zha"]["Switch"] = {"phrase": "relays", "section": "Relays"}
+    with pytest.raises(SystemExit, match="zha Switch shows other features on each of its domains"):
+        zha_card(
+            adapter("zha", "raise_brightness", dimming), adapter("zha", "turn_on_for", timer), capabilities=capabilities
+        )
+
+
 def test_classes_of_one_section_say_their_shared_ending_once():
     led = f"{URL}#led"
     assert gc.merged(["CCT LED controllers", "RGB LED controllers"], led) == f"[LED controllers (CCT, RGB)]({led})"
@@ -468,7 +519,8 @@ def test_classes_that_share_a_phrase_say_it_once():
     phrase = {"phrase": "countdown plugs", "section": "Plugs"}
     data = gc.Data(requires={}, models={}, capabilities={"x": {"a": phrase, "b": phrase}}, no_known_method=[])
 
-    assert gc.class_entries("x", {"a": {"stop"}, "b": {"stop"}}, data) == [
+    held = {("a", "light"): {"stop"}, ("b", "light"): {"stop"}}
+    assert gc.class_entries("x", held, data, {"a": LIGHT, "b": LIGHT}, ["light"]) == [
         f"[countdown plugs]({gc.PAGE_URL}#plugs): stop"
     ]
 
@@ -797,7 +849,10 @@ def classed_registry(*adapters) -> FakeRegistry:
     registry.integrations = {
         **registry.integrations,
         "zha": SimpleNamespace(
-            title="ZHA", maintainers=("jasonmx",), capability=len, classes=frozenset({"Switch", "Light", "CCT"})
+            title="ZHA",
+            maintainers=("jasonmx",),
+            capability=len,
+            classes={name: CLASSES[name] for name in ("Switch", "Light", "CCT")},
         ),
     }
     return registry
@@ -1021,6 +1076,6 @@ def test_main_warns_on_each_coverage_gap_and_still_passes(root, capsys, monkeypa
 
 def test_a_declared_class_no_scope_holds_needs_a_phrase(root):
     registry = classed_registry(adapter("zha", "stop", AdapterScope(capabilities=verified("Light"))))
-    registry.integrations["zha"].classes = frozenset({"Light", "Hidden"})
+    registry.integrations["zha"].classes = {"Light": LIGHT, "Hidden": LIGHT}
     with pytest.raises(SystemExit, match="no entry for zha Hidden, which no scope holds"):
         gc.card("zha", registry, list(registry._adapters), data(registry))

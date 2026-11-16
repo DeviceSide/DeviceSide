@@ -17,7 +17,8 @@ _VERIFIED = FamilyScope(capabilities=verified(HUE))
 FAMILY = Family(
     key="hue",
     maintainers=(),
-    classes=frozenset({HUE}),
+    # Hue bulbs, and Hue's smart plug, which ZHA may show as a switch.
+    classes={HUE: frozenset({"light", "switch"})},
     scopes={
         "get_attributes": _VERIFIED,
         "lower_brightness": _VERIFIED,

@@ -195,10 +195,12 @@ runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, 
   does `None` ([action-behavior.md](action-behavior.md#what-a-response-looks-like)). Every adapter of the integration
   sees the same class, and maps the classes it serves to its own branch in `execute`; a class is a device class, not
   a call pattern, as patterns are per action.
-  `IntegrationInfo.classes` declares every class it can name. The registry refuses an integration with `capability`
+  `IntegrationInfo.classes` declares every class it can name, each with the entity domains a device in it can be
+  (a family's come from its `Family`). The registry refuses an integration with `capability`
   unless every adapter's scope has `capabilities`, one without unless none has, a scope class the integration doesn't
   declare, and a scope holding `IntegrationInfo.default_class` (the class a device no rule matches gets; none on Shelly)
-  as Verified. `AdapterScope.no_known_method` maps a class to a `NoKnownMethod` (what, reason, source, and `harms`), and
+  as Verified, or holding a class (as a level or a refusal entry) on an action none of its domains reaches.
+  `AdapterScope.no_known_method` maps a class to a `NoKnownMethod` (what, reason, source, and `harms`), and
   `AdapterScope.not_built` a class not built yet that today's call would harm to a `NotBuilt` (reason, source,
   and `harms`, which must be true, as an unharmed one needs no entry); a class is in at most one of `capabilities`,
   `no_known_method` and `not_built`.

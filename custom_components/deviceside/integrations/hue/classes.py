@@ -37,7 +37,13 @@ SIGNIFY = "Signify Netherlands B.V."
 HUE = "hue"
 OTHER = "other"  # the default class, never Verified (IntegrationInfo.default_class)
 SMART_SCENE = "smart_scene"
-CLASSES = frozenset({HUE, OTHER, SMART_SCENE})
+# Each class's domains (IntegrationInfo.classes): a light, Hue's smart plug included, which the bridge shows as one,
+# and a scene, classed by the lights it writes; a smart scene is a scene alone.
+CLASSES = {
+    HUE: frozenset({"light", "scene"}),
+    OTHER: frozenset({"light", "scene"}),
+    SMART_SCENE: frozenset({"scene"}),
+}
 
 # Every adapter's levels: Verified on Hue, whose lights every record ran on; `other` Experimental on every action, as
 # none passes docs/evidence.md's Documented test (plan Decision 2): the bridge picks the Zigbee call, and other brands

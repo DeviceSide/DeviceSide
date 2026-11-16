@@ -119,4 +119,4 @@ def test_each_listed_device_keeps_its_class(name):
 
 
 def test_the_snapshot_lists_every_class():
-    assert {expected for _, expected in DEVICES.values()} == INTEGRATION.classes
+    assert {expected for _, expected in DEVICES.values()} == INTEGRATION.classes.keys()

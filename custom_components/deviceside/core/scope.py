@@ -328,18 +328,23 @@ class FamilyScope:
     own_calls: Mapping[str, OwnCall] = field(default_factory=dict)
 
 
+# Classes by name, each with the entity domains a device in it can be (IntegrationInfo.classes).
+type ClassDomains = Mapping[str, frozenset[str]]
+
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Family:
-    """A vendor's firmware family inside one integration (docs/design.md, Family): the classes it owns
-    and, per action key, the levels and own calls each adapter's scope holds for them (`scopes`; an action with none
-    leaves its classes out of that adapter's scope). Where an action refuses one of its classes with a reason is the
-    integration's to say (FamilyScope). It exists so a vendor is one path with its own maintainers: GitHub handles,
-    which may be empty, as the integration's maintainers own every family of it too. The registry checks it
-    (core/registry.py, check_families)."""
+    """A vendor's firmware family inside one integration (docs/design.md, Family): the classes it owns, each with the
+    entity domains it can be (as IntegrationInfo.classes holds them, which takes them from here), and, per action key,
+    the levels and own calls each adapter's scope holds for them (`scopes`; an action with none leaves its classes out
+    of that adapter's scope, and one whose domains a class can't be must). Where an action refuses one of its classes
+    with a reason is the integration's to say (FamilyScope). It exists so a vendor is one path with its own
+    maintainers: GitHub handles, which may be empty, as the integration's maintainers own every family of it too. The
+    registry checks it (core/registry.py, check_families)."""
 
     key: str
     maintainers: tuple[str, ...] = ()
-    classes: frozenset[str]
+    classes: ClassDomains
     scopes: Mapping[str, FamilyScope] = field(default_factory=dict)
 
 
@@ -404,8 +409,12 @@ class IntegrationInfo:
     # for an integration with one class, whose scopes then hold no capabilities.
     capability: Callable[[HomeAssistant, Target], str | None] | None = None
     # Every class capability() can name, so a scope's typo fails at registration and the cards name the classes an
-    # adapter serves in neither its capabilities nor its no_known_method as not built yet.
-    classes: frozenset[str] = frozenset()
+    # adapter serves in neither its capabilities nor its no_known_method as not built yet. Each with the entity
+    # domains a device in it can be, every one Home Assistant may show it as (a Shelly relay: a switch, or a light), so
+    # no adapter's scope holds it on an action none of them reaches (core/registry.py, check_classes): an action for
+    # lights alone refuses a plug, and its card leaves the plug off (docs/evidence.md, Device classes). An integration
+    # with families takes each family's from its Family; the default class's are its own.
+    classes: ClassDomains = field(default_factory=dict)
     # The class capability() gives a device no rule matches, one of `classes`; the registry refuses any scope holding it
     # as Verified (docs/evidence.md, Device classes). None for an integration whose classes name every target (Shelly).
     default_class: str | None = None

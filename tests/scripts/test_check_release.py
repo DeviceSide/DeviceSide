@@ -34,6 +34,8 @@ from .record_files import (
     text,
 )
 
+ANYWHERE = frozenset({"light", "switch", "scene"})  # a test class's domains: every one a test scope serves
+
 ISSUE = "https://github.com/DeviceSide/DeviceSide/issues/9"
 
 
@@ -819,7 +821,9 @@ def classed(repo, monkeypatch, **scopes: AdapterScope) -> FakeRegistry:
     """fake naming classes hue, ikea and other, with the scopes given by action."""
     found = FakeRegistry(repo.path, monkeypatch, {(action, "fake"): scope for action, scope in scopes.items()})
     found.integrations["fake"] = replace(
-        found.integrations["fake"], capability=lambda hass, target: "hue", classes=frozenset({"hue", "ikea", "other"})
+        found.integrations["fake"],
+        capability=lambda hass, target: "hue",
+        classes=dict.fromkeys({"hue", "ikea", "other"}, ANYWHERE),
     )
     return found
 

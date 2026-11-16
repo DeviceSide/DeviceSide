@@ -150,6 +150,11 @@ Zigbee2MQTT countdown plug's maker string with a record of its own is a class of
   some (`verified(..., domains=...)`, core's `OnDomains`): on the rest its class has no entry, so it counts as
   Experimental. A record on a class in one domain proves nothing about it in another: Zigbee2MQTT's `hue` is Verified
   on lights, as every record ran on a bulb, so a Hue plug, a switch, stays flagged.
+- **A class names its domains.** Each class declares the entity domains a device in it can be, every one Home
+  Assistant may show it as (a TS011F plug: switch; Gledopto: light; other brands: light and switch). A scope never
+  holds a class on an action none of those reaches, so an action for lights alone refuses a plug as not built yet,
+  and its card leaves the plug off (the registry checks). A class whose domains show different features gets a card
+  entry per domain ("other brands' lights", "other brands' plugs and switches").
 - **One axis per integration.** An integration that names classes holds them in every adapter's scope, and only the
   classes it declares; one that names none holds them in none (the registry checks). A new integration names its
   classes, or its PR argues that it has one: that no known device behind it answers the same call differently.

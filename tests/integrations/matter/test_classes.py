@@ -110,7 +110,7 @@ def test_levels():
     untested on both."""
     for adapter in (MatterTurnOnFor, MatterGetAttributes):
         held = adapter.scope.capabilities
-        assert held.keys() == INTEGRATION.classes
+        assert held.keys() == INTEGRATION.classes.keys()
         assert held[BRIDGED] is held[UNCERTIFIED] is held[MULTI_ENDPOINT] is Level.EXPERIMENTAL
         assert not adapter.scope.no_known_method
     assert set(MatterTurnOnFor.scope.capabilities.values()) == {Level.EXPERIMENTAL}
