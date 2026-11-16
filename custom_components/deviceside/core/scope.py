@@ -13,6 +13,8 @@ from .fields import LACKABLE
 from .models import EntityResult, Request, Target
 
 if TYPE_CHECKING:
+    from homeassistant.config_entries import ConfigEntry
+
     from .adapter import Adapter
     from .ha_watch import CallResolver
 
@@ -412,6 +414,13 @@ class IntegrationInfo:
     families: tuple[Family, ...] = ()
     # Drops what a light or scene call from HA leaves stale (core/ha_watch.py); None holds nothing it could.
     call_resolver: CallResolver | None = None
+    # Starts what the integration keeps running while the entry is loaded (Z2M's bridge cache). Core runs it as the
+    # entry's background task, so it never holds setup back and an unload cancels it mid-way; it registers its own
+    # teardown with entry.async_on_unload. None for an integration with nothing to start.
+    setup: Callable[[HomeAssistant, ConfigEntry], Awaitable[None]] | None = None
+    # Undoes what the integration changed outside HA as DeviceSide is deleted (Z2M's color modes); awaited from
+    # async_remove_entry. None for an integration that changed nothing.
+    remove: Callable[[HomeAssistant, ConfigEntry], Awaitable[None]] | None = None
     max_concurrency: int = 4
     available: bool = True
     unavailable_reason: str | None = None
