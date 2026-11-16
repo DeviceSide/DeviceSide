@@ -33,6 +33,7 @@ shared home named in parentheses.
 | Classes, levels, no known method and not built yet entries | the package's code: `IntegrationInfo.classes` and the scopes' `no_known_method` and `not_built` (on an integration with families, the entries are in its `integrations/<x>/refusals.py`; `scripts/gen_compat.py` regenerates the cards; entries not yet moved: `<x>/devices.yaml`, shared `docs/models.yaml`) |
 | A class's card phrase and section | `<x>/devices.yaml` |
 | Models across integrations | `docs/models.yaml` |
+| A model only one integration names | `<x>/devices.yaml` |
 | Dated sources, never edited after | `<x>/research/` (a family's new ones: `<x>/research/<family>/`; shared: `docs/research/`) |
 | Run evidence | `<x>/test-records/*.json`, in the shape `docs/test-records.schema.json` gives |
 | Why the code does something | the module docstring, a few lines, linking `internals.md` for the evidence |

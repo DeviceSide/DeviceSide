@@ -43,23 +43,24 @@ flagged whole has one), the first with the evidence's records; each row carries 
 a class is listed with it, on the row of the weakest level the scope holds its class and its test's domain at, so each
 class lists only the models that reached it, with their firmware, and a group goes by its test's domain; the rest (a
 format 1 record's, which names no device's test, and items the scope doesn't hold) are on the first row. Every model a
-test-records file names must be in docs/models.yaml, whatever its test's result (`check_models`). The prose outside the
-evidence markers is kept as written.
+test-records file names must be in docs/models.yaml or its bundle's devices.yaml, whatever its test's result
+(`check_models`). The prose outside the evidence markers is kept as written.
 
 **The coverage check** (`check_release.coverage_gaps`, docs/evidence.md) prints a warning per Verified class no
 record reaches on every run, `--check` included, and never fails here: `check_release.py --signoffs` fails on it at
 the cut.
 
 **Data.** docs/models.yaml holds what integrations share: `models`, one entry per physical model (`name`, `ids` across
-integrations, `type`, optional `section`), and `no_known_method` and `not_built` entries that name their
-`integrations` (`what`, `reason`, `source`, optional `section`), a `not_built` one for a device today's call
-harms on an integration that doesn't class it yet, as an unharmed one needs no entry. Each bundle's
-devices.yaml holds its integration's: `column` and `column_order` (the README feature table's, read by
-gen_features), `requires` (shown after the card's name), `capabilities` (a `phrase` and `section` per domain or
-class the scopes hold below Verified, and per class to name as not built yet) and `no_known_method` (`what`,
-`reason`, `source`, optional `section`: devices that fail the call DeviceSide sends, not what isn't built). A scope's
-`no_known_method` (core/scope.py, NoKnownMethod) and `not_built` (NotBuilt) are the code's home for these, and join
-them here; the devices.yaml and models.yaml entries move to them, class by class. Every integration needs a bundle.
+integrations, `type`, optional `section`; a model only one integration names is in its bundle's devices.yaml), and
+`no_known_method` and `not_built` entries that name their `integrations` (`what`, `reason`, `source`, optional
+`section`), a `not_built` one for a device today's call harms on an integration that doesn't class it yet, as an
+unharmed one needs no entry. Each bundle's devices.yaml holds its integration's: `models` (as above), `column` and
+`column_order` (the README feature table's, read by gen_features), `requires` (shown after the card's name),
+`capabilities` (a `phrase` and `section` per domain or class the scopes hold below Verified, and per class to name as
+not built yet) and `no_known_method` (`what`, `reason`, `source`, optional `section`: devices that fail the call
+DeviceSide sends, not what isn't built). A scope's `no_known_method` (core/scope.py, NoKnownMethod) and `not_built`
+(NotBuilt) are the code's home for these, and join them here; the devices.yaml and models.yaml entries move to them,
+class by class. Every integration needs a bundle.
 
 **Links.** A card links each model, class or blocker to the heading its `section` names (default: the model's
 `name`, the blocker's `what`): on the card's integration page when that has the heading; a model's or native groups'
@@ -147,7 +148,7 @@ GITHUB = "https://github.com/"
 INTEGRATIONS_URL = "https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations.md"
 # The keys each devices.yaml entry may hold, so a typo fails instead of being ignored.
 SHARED_KEYS = {"models", "no_known_method", "not_built"}  # each a list
-BUNDLE_KEYS = {"column", "column_order", "requires", "capabilities", "no_known_method"}
+BUNDLE_KEYS = {"column", "column_order", "requires", "capabilities", "models", "no_known_method"}
 MODEL_KEYS = {"name", "ids", "type", "section"}
 CLASS_KEYS = {"phrase", "section"}
 BROKEN_KEYS = {"what", "integrations", "reason", "source", "section"}
@@ -169,7 +170,7 @@ FEATURES = card_features()
 
 @dataclass
 class Data:
-    """docs/models.yaml and the bundles' devices.yaml, merged and validated."""
+    """docs/models.yaml and the bundles' devices.yaml, merged and validated (a model is in either)."""
 
     requires: dict[str, str]
     models: dict[str, dict]  # by each of its ids
@@ -184,7 +185,10 @@ class Data:
 
     def model(self, model_id: str, where: str) -> dict:
         if model_id not in self.models:
-            raise SystemExit(f"{where}: model {model_id!r} is not in docs/models.yaml; add it to `models`")
+            raise SystemExit(
+                f"{where}: model {model_id!r} is in neither docs/models.yaml nor a bundle's devices.yaml; "
+                "add it to `models`"
+            )
         return self.models[model_id]
 
     def url(self, key: str | None, section: str) -> str:
@@ -221,7 +225,7 @@ def merge(shared: dict, bundles: dict[str, dict]) -> dict:
     """The shared file and the bundles as one mapping, each bundle's entries named for its integration: a bundle's
     `no_known_method` entries are its own, so they take no `integrations` key."""
     need(shared, "docs/models.yaml", lists=tuple(sorted(SHARED_KEYS & set(shared))), keys=SHARED_KEYS)
-    raw: dict = {"requires": {}, "capabilities": {}, "models": shared.get("models") or []}
+    raw: dict = {"requires": {}, "capabilities": {}, "models": list(shared.get("models") or [])}
     raw["no_known_method"] = list(shared.get("no_known_method") or [])
     raw["not_built"] = list(shared.get("not_built") or [])
     for key, data in bundles.items():
@@ -233,6 +237,9 @@ def merge(shared: dict, bundles: dict[str, dict]) -> dict:
             raw["requires"][key] = data["requires"]
         if data.get("capabilities"):
             raw["capabilities"][key] = data["capabilities"]
+        if not isinstance(models := data.get("models") or [], list):
+            fail(f"{where}: models must be a list")
+        raw["models"].extend(models)
         if not isinstance(broken := data.get("no_known_method") or [], list):
             fail(f"{where}: no_known_method must be a list")
         for entry in broken:
@@ -431,7 +438,7 @@ class Evidence:
 
     def devices(self) -> list[Tested]:
         """What was tested, each once: the records' first, then the manual rows', groups last. `check_models` has
-        checked every model against docs/models.yaml."""
+        checked every model against docs/models.yaml and the bundles' devices.yaml."""
         found: list[Tested] = []
         for _, item in self.tested:
             if item not in found:
@@ -441,10 +448,11 @@ class Evidence:
 
 
 def check_models(registry: AdapterRegistry, data: Data) -> None:
-    """Every model a test-records file names is in docs/models.yaml: each device of every record, whatever its test's
-    result or class, and of `_manual.json` and `_facts.json`, so a model missing from it fails on the PR that lands
-    the file, not later, when a test of it first credits a card. And, as check_release does at the cut, no record of
-    an integration that names no classes names one (`record_class_errors`), so it fails on the PR too."""
+    """Every model a test-records file names is in docs/models.yaml or its bundle's devices.yaml: each device of every
+    record, whatever its test's result or class, and of `_manual.json` and `_facts.json`, so a model missing from it
+    fails on the PR that lands the file, not later, when a test of it first credits a card. And, as check_release does
+    at the cut, no record of an integration that names no classes names one (`record_class_errors`), so it fails on the
+    PR too."""
     names = classed(registry)
     if errors := [
         error for key in sorted(registry.integrations) if key not in names for error in record_class_errors(key)
