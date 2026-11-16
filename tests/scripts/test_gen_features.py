@@ -285,7 +285,7 @@ def test_a_legend_link_to_no_heading_fails(tmp_path, monkeypatch, no_blockers):
 def test_the_real_zha_and_z2m_turn_off_with_timer_cells_are_blank_and_matter_and_hue_are_marked():
     """Tuya may support it on Zigbee (docs/integrations.md), so only whole-integration impossibilities get the sign."""
     text = gf.generate(gf.AdapterRegistry.discover())
-    zha, z2m, shelly, hue, matter = cells(text, "Turn off with timer")[:5]
+    z2m, zha, shelly, hue, matter = cells(text, "Turn off with timer")[:5]
     assert zha.strip() == "" and z2m.strip() == ""
     assert "/no.svg" in hue and "/no.svg" in matter and "/no.svg" not in shelly
     assert ("Turn off with timer", "zha") not in gf.NO_PATH and ("Turn off with timer", "zigbee2mqtt") not in gf.NO_PATH

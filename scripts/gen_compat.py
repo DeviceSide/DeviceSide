@@ -16,7 +16,7 @@ ages.
 **Cards.** One collapsed section between the README's devices markers, the legend first and a link to the integrations
 page last, with a card per integration: its name, linked to its page (the bundle's index.md), and maintainers
 (`IntegrationInfo.maintainers`; "⚠️ Unmaintained · formerly maintained by" when every adapter is), then the features
-of the adapters with each `caveat` (⚠️ Unmaintained, then ⚠️ Untested fix, linking its reason), then a bullet per tier:
+of the adapters with each `caveat` (⚠️ Untested fix, then ⚠️ Unmaintained, linking its reason), then a bullet per tier:
 - Works: the models the evidence tested (rig-tested ones end ✔), and native groups. A pass on a flagged item never
   puts a model here: an adapter flagged whole, or on any field, adds no models. One flagged on a domain or class adds,
   from a format 2 record, each model a passing test reached on an unflagged domain and, with a class flagged, an
@@ -696,7 +696,7 @@ class Card:
     requires: str | None = None
     url: str | None = None  # the integration's page
     maintainers: tuple[str, ...] = ()
-    # ⚠️ Unmaintained, then ⚠️ Untested fix entries: the features of the adapters so marked, by reason.
+    # ⚠️ Untested fix, then ⚠️ Unmaintained entries: the features of the adapters so marked, by reason.
     marks: list[str] = field(default_factory=list)
     # Every adapter is unmaintained, so the heading says "formerly maintained".
     all_unmaintained: bool = False

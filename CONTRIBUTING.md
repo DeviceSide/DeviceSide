@@ -26,7 +26,7 @@ If you can build a change and test it on your own devices, open a pull request d
    - `custom_components/deviceside/services.yaml`: the integration's HA domain in each action's target filter
    - `.github/ISSUE_TEMPLATE/device_report.yml`: its title in the Integration dropdown
    - `docs/integrations.md`: a link to its page
-   - `scripts/gen_features.py`: a `NO_PATH` row for each feature the devices can't support, with the reason, and its explanation in `docs/integrations.md`'s "What can't be done, and why"
+   - `scripts/gen_features.py`: a `NO_PATH` entry for each feature impossible on every device of the integration, with the reason, and its explanation in `docs/integrations.md`'s "What can't be done, and why"
    - `pyproject.toml`: any library its tests need, in the `dev` group
    - `custom_components/deviceside/__init__.py`, `const.py`, `strings.json` and `translations/en.json`: only if it adds a user option
 

@@ -36,10 +36,10 @@ some devices can't do is not marked there.
 
 - **Turn off with timer on Matter, and on Zigbee groups and Zigbee devices other than Tuya's.** The Zigbee and
   Matter timer command (`OnWithTimedOff`) turns a device on, then off. There is no command for off, then on, so
-  Matter, Zigbee groups and non-Tuya Zigbee lights and switches have no call for it. The README's table marks only
-  Matter, and leaves the ZHA and Zigbee2MQTT cells blank, as Tuya's Zigbee devices may have one: Tuya's own countdown toggles the device when it ends,
-  and some Tuya firmware toggles on `OnWithTimedOff` from off too, though not all (one TS011F ignores it when off).
-  DeviceSide plans to probe and build turn off with timer for them after v0.1.0.
+  Matter, Zigbee groups and non-Tuya Zigbee lights and switches have no call for it. Tuya's Zigbee devices may have
+  one: Tuya's own countdown toggles the device when it ends, and some Tuya firmware toggles on `OnWithTimedOff` from
+  off too, though not all (one TS011F ignores it when off). DeviceSide plans to probe and build turn off with timer
+  for them after v0.1.0.
 - **Turn on or off with timer on Hue.** The bridge's own timers keep running through a plain on or off, from Home
   Assistant, the Hue app or a dimmer switch, and the Hue app doesn't show them. To time Hue bulbs, pair them with
   ZHA, Zigbee2MQTT or Matter.
