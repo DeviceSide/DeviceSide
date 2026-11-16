@@ -108,8 +108,8 @@ jobs:
   # The tests an integration's maintainers and the repo's own, apart from any a family maintainer may merge alone
   # (CLAUDE.md, Maintainers): each family's folder, and the catalog's tests in tests/zigbee/. Test code shares one
   # pytest process, so a family's conftest.py hook or import-time patch could silence the classification snapshot in
-  # the pytest job; here it is never loaded. The pytest job still runs everything. Whether the ruleset requires this
-  # check: docs/repo-maintainers.md.
+  # the pytest job; here it is never loaded. The pytest job still runs everything. The ruleset requires this check
+  # (docs/repo-maintainers.md).
   pytest-without-family-tests:
     needs: changes
     # Fails open, as pytest does.

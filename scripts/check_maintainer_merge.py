@@ -36,10 +36,9 @@ name, so it can't see:
   family's rule group can run before another's): only the integration's classification snapshot
   (`tests/integrations/<x>/test_classification.py`) catches the devices it lists;
 - a family's product code written in bad faith: the integration's tests import it, into their own process, so it
-  can make any of them pass. Its test code can't silence them once the ruleset requires the CI job that runs them
-  with every family's and the catalog's tests left out (`tests.yml`, `pytest-without-family-tests`;
-  docs/repo-maintainers.md). The gate trusts an appointed maintainer not to, and the release candidate's audit
-  reviews every merged change.
+  can make any of them pass. Its test code can't silence them: a required CI job runs them with every family's and
+  the catalog's tests left out (`tests.yml`, `pytest-without-family-tests`; docs/repo-maintainers.md). The gate
+  trusts an appointed maintainer not to, and the release candidate's audit reviews every merged change.
 
 Usage: scripts/check_maintainer_merge.py <base> <head> --commenter <login>
 
