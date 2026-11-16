@@ -35,7 +35,7 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
     docstring's CLAUDE.md citations and CLAUDE.md's Layout line on release checks.
   - [x] 5. Cards: `gen_compat.py` tiers for two levels, the flag and caveats, and the docstring's CLAUDE.md citations.
   - [x] 6. Sign-offs by the Package tree records cite, not commit ancestry, so a run on a PR branch counts (#408).
-- [ ] **Device classes**, by the [plan](docs/plans/2026-11-14-device-classes.md), in five PRs (its Decision 90),
+- [x] **Device classes**, by the [plan](docs/plans/2026-11-14-device-classes.md), in five PRs (its Decision 90),
   before the sign-offs below, as it moves non-Hue bulbs on Zigbee2MQTT, ZHA and Hue behind `experimental`. A step is
   ticked when its PR merges; no step waits on a rig run, and each integration runs once, as its sign-off below (plan
   Decision 89; `docs/evidence.md`, tenet 8):
@@ -73,8 +73,8 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   - [x] 8. Hue classes, the `smart_scene` check moved to them, and the v1 bridge refused as a separate integration
     (plan Decision 32) (#432).
   - [x] 9. Matter classes (#436).
-  - [ ] 10. Close out: `models.yaml`'s shared entries removed (step 7 moves ZHA's TS011F, its last, into ZHA's code),
-    README regenerated, then the #350 comment.
+  - [x] 10. Close out: `models.yaml`'s shared entries removed (step 7 moves ZHA's TS011F, its last, into ZHA's code),
+    README regenerated. No #350 comment: Control4 ships Experimental (plan, step 10).
 - [x] **TS011F refusal on ZHA and Z2M** (device-classes plan, Decisions 16 and 70): a not yet supported entry with
   `harms` for today's `turn_on_for` call, holding with Experimental on. Without it, ZHA's 0x42 in tenths switches a `_TZ3000_typdpbpg`
   plug on about 10× later than asked, and Z2M leaves the plug on with no timer

@@ -12,7 +12,7 @@ TODO.md, README.md (regenerated), custom_components/deviceside/core/{scope.py, a
 dispatcher.py, errors.py}, the five integration packages and their bundles, scripts/gen_compat.py, and their tests.
 Tests-with: ha-rig #84 (step 2, merged) writes the Capability column. A second ha-rig change, after step 4, reads the
 class from each result (Decision 6). It lands before any rig run on step 4's branch or later.
-Depends-on: none. #350 (Control4) gets no comment and no change until step 8. It is `experimental=True` throughout, so
+Depends-on: none. #350 (Control4) gets no comment and no change (step 10). It is `experimental=True` throughout, so
 none of these steps blocks it.
 
 ## Why
@@ -539,8 +539,8 @@ Each step is one PR, in order, with pytest, pre-commit and the regenerated files
     - The runs, below.
     - Remove `models.yaml`'s shared entries (step 7 moves its last, ZHA's TS011F `not_supported`, into ZHA's code),
       regenerate the README, and tick TODO.
-    - Then, with Jason's go-ahead, comment on #350: the classes it will need to leave `experimental`, and what its
-      manual records should note (the Director's driver or proxy type).
+    - No #350 comment (Jason, 2026-11-16): Control4 ships Experimental, where no class check applies, and its classes
+      are its maintainer's to name when it leaves the flag.
 
 ### Step 3: probe spec
 
