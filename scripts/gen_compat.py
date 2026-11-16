@@ -17,15 +17,14 @@ A level comes from the scope alone (verify, then trust): a record never ages.
 page last, with a card per integration: its name, linked to its page (the bundle's index.md), and maintainers
 (`IntegrationInfo.maintainers`; "⚠️ Unmaintained · formerly maintained by" when every adapter is), then the features
 of the adapters with each `caveat` (⚠️ Unmaintained, then ⚠️ Untested fix, linking its reason), then a bullet per tier:
-- Works: the models the evidence tested (rig-tested ones end ✔), and native groups (✔ only when a rig test reached
-  one). A pass on a flagged item never puts a model here: an adapter flagged whole, or on any field, adds no models.
-  One flagged on a domain or class adds,
-  from a format 2 record, each model a passing test reached on an unflagged domain and, with a class flagged, an
-  unflagged class (a null one is none), and native groups when every member's class is unflagged; from a format 1
-  record, which doesn't say which test reached which model, the run's models only when every passing test targets an
-  unflagged domain and, with a class flagged, names unflagged classes only; and, unless a domain is flagged (a manual
-  row names none), each `_manual.json` model whose class is unflagged. A model can still reach Works through another
-  adapter's evidence.
+- Works: the models the evidence tested (rig-tested ones end ✔), and native groups (✔ only when a rig test reached one).
+  A pass on a flagged item never puts a model here: an adapter flagged whole, or on any field, adds no models. One
+  flagged on a domain or class adds, from a format 2 record, each model a passing test reached on an unflagged domain
+  and, with a class flagged, an unflagged class (a null one is none), and native groups when every member's class is
+  unflagged; from a format 1 record, which doesn't say which test reached which model, the run's models only when every
+  passing test targets an unflagged domain and, with a class flagged, names unflagged classes only; and, unless a domain
+  is flagged (a manual row names none), each `_manual.json` model whose class is unflagged. A model can still reach
+  Works through another adapter's evidence.
 - Should work: the classes (devices.yaml `capabilities`) unflagged adapters hold as Documented.
 - Experimental features: the classes held as `experimental(...)`, and the features of adapters flagged whole
   (`experimental=True`), whatever their evidence.
