@@ -18,9 +18,9 @@ Code and docs use these terms.
 - **Capability**: the code's name for a Class: `IntegrationInfo.capability` names a target's, `IntegrationInfo.classes`
   declares them, `AdapterScope.capabilities` holds a level per class, and a result reports it as `capability`.
 - **Class**: the set of devices that get the same call and run the same firmware family, as the integration names it
-  (Shelly: the RPC component; Zigbee2MQTT: `hue`, `tuya_zcl`, `tuya_ts011f`, `tuya_mcu`, `sengled`, `gledopto`,
-  `other`). Each class stands on its own evidence, and a device no rule matches gets the integration's default class,
-  which is never Verified: a record on another maker's device adds that maker's class. Where untested, it is
+  (Shelly: the RPC component; Zigbee2MQTT: `hue`, `tuya_zcl`, `tuya_ts011f`, `tuya_countdown` and a class per
+  Verified maker string on it, `tuya_mcu`, `sengled`, `gledopto`, `other`). Each class stands on its own evidence,
+  and a device no rule matches gets the integration's default class, which is never Verified: a record on another maker's device adds that maker's class. Where untested, it is
   Experimental (except where a call is known to harm: there a target whose class rests on information DeviceSide
   doesn't have yet is refused). Rules: [evidence.md](evidence.md#device-classes).
 - **Placed**: a device whose class rests on everything the integration will report about it (Zigbee2MQTT: listed as
@@ -124,7 +124,7 @@ docs, data and records are its bundle, `docs/integrations/<integration>/`, which
 - **`set_scene`**: a scene's settings, written to each light while it's off. A Zigbee scene recall turns lights on, so
   Zigbee would follow the same pattern.
 
-Not built yet: turn-on defaults (`OnLevel`), Shelly Gen1, Hue bridge v1, other domains (cover, valve, lock) and other
+Not built yet: turn-on defaults (`OnLevel`), Shelly Gen1, other domains (cover, valve, lock) and other
 integrations (Z-Wave JS, Tuya, ESPHome, Tasmota, TP-Link Kasa). Each is weighed against the broad-appeal principle
 in [CONTRIBUTING.md](../CONTRIBUTING.md#development-principles). Per device class:
 [device-compatibility.md](device-compatibility.md).
@@ -188,8 +188,11 @@ runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, 
   and `harms`, which must be true, as an unharmed one needs no entry); a class is in at most one of `capabilities`,
   `doesnt_work` and `not_supported`.
 - **Resolver.** Candidates are the available integrations whose `ha_domain` is the entity's registry platform;
-  one with a `detect` hook wins first (Z2M over plain MQTT). A `switch_as_x` light resolves to the switch it wraps,
-  and results report the light.
+  one with a `detect` hook wins first (Z2M over plain MQTT). A gateway or API DeviceSide never supports is an
+  integration of its own, declared only to refuse (`IntegrationInfo.unsupported`, listed in its sibling's module as
+  `UNSUPPORTED`, and kept out of the cards and gates): its `detect` hook claims the entities, and the dispatcher refuses
+  each as `integration_not_supported`, with its reason (the Hue v1 bridge). A `switch_as_x` light resolves to the
+  switch it wraps, and results report the light.
 - **Groups.** HA groups are always expanded, in one place, because no device can address them; members carry
   `via_group`. Native groups (Hue `grouped_light`, Z2M and ZHA groups) pass through as one target. An adapter with
   `native_groups` gets the group; for one without, the dispatcher calls the integration's `expand_group`, or refuses
@@ -199,34 +202,44 @@ runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, 
   answered `None`, or it raised, logged) counts as Experimental: refused while Experimental features is off, and, where
   a call is known to harm, as `class_unknown` with them on
   ([evidence.md](evidence.md#doesnt-work-not-yet-supported-untested)). When a member's class doesn't work or isn't
-  supported, or isn't placed yet where a call is known to harm, or, while Experimental features is off, is Experimental
+  supported, or isn't placed yet where a call is known to harm, or takes a call of its own (`AdapterScope.own_calls`,
+  `own_call`: a branch in `execute` the group's call isn't), or, while Experimental features is off, is Experimental
   (the adapter, domain and fields not flagged), the group falls back to its members: each available one not already a
   target is planned on its own, indirect, so the good ones run and a refused or flagged one is skipped and logged (a
   member also named raises, as its own target). A member `expand_group` lists for its class but the integration can't
-  address on its own (`Target.addressable` false: a Z2M device with several lights) is skipped, with its class's
-  refusal if it has one, else `not_addressable`, named by its device, and answers for nothing. While Experimental features is off, or where a call is known to harm, a
-  classifier that raised (logged) leaves the group's class unknown, so it falls back too, and each member is classed
-  again. With Experimental features on, a group whose weakest member is Experimental, or whose class is unknown where no
-  call is known to harm, runs whole, as one command; a member named beside it then gets its own command as well as the
-  group's. A group that falls back gets no result of its own: its planned members answer for it, including one already a
-  target, so naming a member beside a group that falls back changes nothing. Only when none of its members is planned or
-  left nothing to do (each refused, gated or unavailable) is the group itself refused, with its reason (the refused
-  member's, or `experimental_off`): raised if named, skipped and logged if not. For an adapter without `native_groups`,
-  an `expand_group` that answers `None` or raises (logged) leaves membership unknowable, so the group is refused as
-  `group_not_supported`, as with none.
+  address on its own (`Target.addressable` false: a Z2M device with several lights) is skipped, with its class's refusal
+  if it has one, else `not_addressable`, named by its device, and answers for nothing. So is a stand-in
+  (`Target.stand_in`: a member device with no entity in the group's domain, listed by the group's own entity with no
+  state, as a plug in a Z2M light group), named as a member device of the group, available or not, so the device the
+  group's call would have reached gets an entry saying it didn't; unless a target on its device was planned too, which
+  answers for it, the group included. Any other member known unavailable is left out quietly, and every member the
+  fallback plans is indirect. While Experimental features is off, or where a call is known to harm, a classifier that
+  raised (logged) leaves the group's class unknown, so it falls back too, and each member is classed again. With
+  Experimental features on, a group whose weakest member is Experimental, or whose class is unknown where no call is
+  known to harm, runs whole, as one command; a member named beside it then gets its own command as well as the group's.
+  A group that falls back gets no result of its own: its planned members answer for it, including one already a target,
+  so naming a member beside a group that falls back changes nothing. Only when none of its members is planned or left
+  nothing to do (each refused, gated or unavailable) is the group itself refused, with its reason (the refused member's,
+  or `experimental_off`; for `own_call`, a skipped member's: `experimental_off` first, then a class's refusal, then any
+  other, `not_addressable` last): raised if named, skipped and logged if not. For an adapter without `native_groups`,
+  core plans a group's members itself, as the fallback does (stand-ins skipped, the unavailable left out, each
+  indirect), and an `expand_group` that answers `None` or raises (logged) leaves membership unknowable, so the group is
+  refused as `group_not_supported`, as with none.
 - **Dispatcher.** Buckets targets by adapter, drops fields a target lacks, checks `supports()` (domain and fields in
   scope, and the adapter's own reasons), then the class (`AdapterScope.refusal`: where a `doesnt_work` or
   `not_supported` entry `harms`, one `Unplaced` or `None` is refused as `class_unknown`; a class in `doesnt_work` is
   refused as `doesnt_work`, one in neither it nor `capabilities` as `not_supported`, with its `NotSupported.reason`
   where it has an entry; a call left nothing to send is first), clamps
-  durations to `AdapterScope.duration`, then runs every adapter concurrently under
+  durations to `AdapterScope.duration`, or a class's own call's limits (`own_calls`), rounded to their `step_s`, then
+  runs every adapter concurrently under
   `ADAPTER_TIMEOUT_S`: `Adapter.slot` (which `gather` runs each target in) rejects with `timeout` only the targets
   not done by then, so those that finished keep their results. An adapter exception rejects its targets. A named
   target that can never take the action raises before anything is sent; an indirect one is skipped and logged; a
   device failure raises once every target has run.
 - **Experimental items** are gated here, at runtime. After `supports()` passes a target and fields are dropped,
-  `Dispatcher.run_adapters` takes the call's level from its domain, the class `IntegrationInfo.capability` names (one
-  it can't name counts as Experimental; a native group takes its members' weakest) and the fields it still carries. An
+  `Dispatcher.run_adapters` takes the call's level from its domain, the class `IntegrationInfo.capability` names, in
+  that domain (one it can't name, or whose entry holds other domains alone, counts as Experimental; a native group
+  takes its members' weakest) and the fields it still carries. An
   Experimental one is refused as `experimental_off` while the option is off, raising its own message for a named
   target. A call left nothing to send is unchanged, not refused.
 - **Results.** Commands answer optionally, per entity: `{status, integration, capability?, clamped_to?, detail?}`

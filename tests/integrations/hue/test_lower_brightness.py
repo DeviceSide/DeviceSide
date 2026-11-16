@@ -4,8 +4,8 @@ import pytest
 
 from custom_components.deviceside.core.runtime import get_runtime
 
-from .conftest import SENT, SOFT_OFF_3S, fade_put, lamp, mixed_room, report_off
-from ...conftest import call, result
+from .conftest import SENT, SOFT_OFF_3S, call, fade_put, lamp, mixed_room, report_off
+from ...conftest import result
 
 pytestmark = pytest.mark.usefixtures("setup_production")
 

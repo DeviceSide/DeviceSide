@@ -18,8 +18,13 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True, slots=True)
 class DurationLimits:
+    """The durations a call can carry, in seconds (core/duration.py fits a request to them). `step_s` is the call's
+    resolution where it is coarser than the request's (whole seconds: 1), which a duration is rounded to; None leaves
+    it as asked."""
+
     min_s: float
     max_s: float
+    step_s: float | None = None
 
 
 class Level(IntEnum):
@@ -36,16 +41,38 @@ class Level(IntEnum):
     VERIFIED = 20
 
 
-def verified(*items: str) -> dict[str, Level]:
-    return dict.fromkeys(items, Level.VERIFIED)
+@dataclass(frozen=True, slots=True)
+class OnDomains:
+    """A class's level on some of the adapter's domains alone (docs/evidence.md, Device classes): on any other its
+    class has no entry, so counts as Experimental, as a class outside the scope does. A record on the class in one
+    domain proves nothing about it in another: a Hue bulb's `turn_on_for` isn't a Hue plug's."""
+
+    level: Level
+    domains: frozenset[str]
 
 
-def documented(*items: str) -> dict[str, Level]:
-    return dict.fromkeys(items, Level.DOCUMENTED)
+type ClassLevel = Level | OnDomains
 
 
-def experimental(*items: str) -> dict[str, Level]:
-    return dict.fromkeys(items, Level.EXPERIMENTAL)
+def _levels(items: tuple[str, ...], level: Level, domains: Collection[str] | None) -> dict[str, ClassLevel]:
+    # Typed for a class's levels, which domains and fields share as plain Levels: their scope refuses OnDomains.
+    entry = level if domains is None else OnDomains(level, frozenset(domains))
+    return dict.fromkeys(items, entry)
+
+
+def verified(*items: str, domains: Collection[str] | None = None) -> dict[str, ClassLevel]:
+    """Each item Verified; a class's on `domains` alone when given (OnDomains)."""
+    return _levels(items, Level.VERIFIED, domains)
+
+
+def documented(*items: str, domains: Collection[str] | None = None) -> dict[str, ClassLevel]:
+    """Each item Documented; a class's on `domains` alone when given (OnDomains)."""
+    return _levels(items, Level.DOCUMENTED, domains)
+
+
+def experimental(*items: str, domains: Collection[str] | None = None) -> dict[str, ClassLevel]:
+    """Each item Experimental; a class's on `domains` alone when given (OnDomains)."""
+    return _levels(items, Level.EXPERIMENTAL, domains)
 
 
 class CaveatKind(Enum):
@@ -150,14 +177,19 @@ class AdapterScope:
     # The classes the adapter serves (docs/evidence.md, Device classes), as IntegrationInfo.capability names them;
     # None for an integration that names none (the registry refuses a mismatch either way). Proof follows the call and
     # the class, so each stands on its own evidence: a sibling's untested one is Experimental unless it is Documented.
-    # A class the integration names in neither this nor doesnt_work is not yet supported, and refused.
-    capabilities: Mapping[str, Level] | None = None
+    # A class the integration names in neither this nor doesnt_work is not yet supported, and refused. A class's level
+    # holds on every domain unless its entry names some (OnDomains): elsewhere it counts as Experimental.
+    capabilities: Mapping[str, ClassLevel] | None = None
     # Classes no known call works on, refused with why; never in capabilities. Per adapter, as one class can fail one
     # action's call and answer another's.
     doesnt_work: Mapping[str, DoesntWork] = field(default_factory=dict)
     # Not yet supported classes the adapter's call would harm, refused with why (each entry's harms is True); in neither
     # of the above. Any other not yet supported class is simply left out.
     not_supported: Mapping[str, NotSupported] = field(default_factory=dict)
+    # Classes the adapter sends a call of their own, a branch in execute (docs/evidence.md, The split rule), each with
+    # that call's duration limits, or None for `duration`. Each is in capabilities. A native group's call isn't theirs,
+    # so a group with a member of one falls back to its members (Reason.OWN_CALL), and the member gets its own call.
+    own_calls: Mapping[str, DurationLimits | None] = field(default_factory=dict)
     confirmable: bool = False
     # DeviceSide options that change what the adapter does.
     options: frozenset[str] = frozenset()
@@ -177,8 +209,11 @@ class AdapterScope:
             raise ValueError(
                 f"not_supported entries {unharmed} don't harm: an unharmed not yet supported class needs no entry"
             )
+        if unserved := sorted(self.own_calls.keys() - (self.capabilities or {}).keys()):
+            raise ValueError(f"own_calls names classes the scope doesn't serve: {unserved}")
+        self._check_on_domains()
         # Read-only copies: adapters share mappings such as Shelly's CAPABILITIES, and a frozen scope stays frozen.
-        for name in ("domains", "fields", "capabilities", "doesnt_work", "not_supported"):
+        for name in ("domains", "fields", "capabilities", "doesnt_work", "not_supported", "own_calls"):
             if (items := getattr(self, name)) is not None:
                 object.__setattr__(self, name, MappingProxyType(dict(items)))
 
@@ -190,22 +225,38 @@ class AdapterScope:
         fails safe instead of raising."""
         levels = [self.domains[domain], *(self.fields[name] for name in fields)]
         if self.capabilities is not None:
-            levels += [self.capabilities.get(name, Level.EXPERIMENTAL) for name in classes]
+            levels += [self.class_level(name, domain) for name in classes]
         return min(levels)
+
+    def class_level(self, name: str | None, domain: str) -> Level:
+        """A class's level in a domain: its entry's, where that holds the domain (an OnDomains entry names some alone),
+        else Experimental, as for a class outside the scope or None."""
+        entry = (self.capabilities or {}).get(name)
+        if isinstance(entry, OnDomains):
+            return entry.level if domain in entry.domains else Level.EXPERIMENTAL
+        return Level.EXPERIMENTAL if entry is None else entry
+
+    def class_entries(self) -> list[tuple[str, Level, frozenset[str] | None]]:
+        """Each class the scope serves, with its level and the domains it holds it on, None for every domain."""
+        return [
+            (name, entry.level, entry.domains) if isinstance(entry, OnDomains) else (name, entry, None)
+            for name, entry in (self.capabilities or {}).items()
+        ]
 
     @property
     def harms(self) -> bool:
         """Whether the adapter's call harms a class it could reach: a doesnt_work or not_supported entry with harms."""
         return any(entry.harms for entry in (*self.doesnt_work.values(), *self.not_supported.values()))
 
-    def refusal(self, classes: Collection[str | None]) -> tuple[str, str | None] | None:
+    def refusal(self, classes: Collection[str | None], group: bool = False) -> tuple[str, str | None] | None:
         """Why the scope refuses a target of these classes (a native group's: its members'), with the reason the user
         reads, or None. Where the call harms a class (`harms`), first `class_unknown` when one is Unplaced, or None
         (the integration couldn't name it, or a group's membership is unknown), as it could be the harmed class, with
         Experimental features on or off. Then `doesnt_work` and its DoesntWork.reason when one is listed as failing
         the call, else `not_supported` when one is named but not served, with its NotSupported.reason when it has an
         entry. Elsewhere None is no refusal: the gate weighs it as Experimental, and an Unplaced class as the class it
-        names."""
+        names. Last, for a native group whose members are listed (`group`), `own_call` when a member's class takes a
+        call of its own (own_calls), so the group falls back to its members."""
         if self.capabilities is None:
             return None
         if self.harms and any(name is None or isinstance(name, Unplaced) for name in classes):
@@ -216,7 +267,26 @@ class AdapterScope:
             return Reason.NOT_SUPPORTED, entry.reason
         if any(name is not None and name not in self.capabilities for name in classes):
             return Reason.NOT_SUPPORTED, None
+        if group and self.apart(classes):
+            return Reason.OWN_CALL, None
         return None
+
+    def apart(self, classes: Collection[str | None]) -> bool:
+        """Whether one of these classes takes a call of its own, so a native group with such a member falls back."""
+        return any(name in self.own_calls for name in classes)
+
+    def limits(self, classes: Collection[str | None]) -> DurationLimits | None:
+        """The duration limits of the call a target of these classes gets: its own call's, where its class has one with
+        limits, else the scope's `duration`. A native group with such a member is refused (refusal), so never runs."""
+        return next((limits for name in classes if (limits := self.own_calls.get(name)) is not None), self.duration)
+
+    def _check_on_domains(self) -> None:
+        for axis in ("domains", "fields"):
+            if any(isinstance(level, OnDomains) for level in getattr(self, axis).values()):
+                raise ValueError(f"{axis} take no domains: only a class's level is held on some domains")
+        for name, entry in (self.capabilities or {}).items():
+            if isinstance(entry, OnDomains) and not entry.domains <= self.domains.keys():
+                raise ValueError(f"class {name!r} is held on domains the scope doesn't serve: {sorted(entry.domains)}")
 
     def _check_unlisted(self) -> None:
         if unknown := self.unlisted - LACKABLE:
@@ -237,6 +307,10 @@ class IntegrationInfo:
     maintainers: tuple[str, ...]
     # Picks this integration over a generic sibling on the same ha_domain (Z2M over plain mqtt).
     detect: Callable[[HomeAssistant, er.RegistryEntry, dr.DeviceEntry | None], bool] | None = None
+    # The device's own Zigbee manufacturer string (`_TZ3000_…`), for the report form, where HA's registry holds another
+    # (Z2M's definition vendor, a ZHA quirk's friendly name); sync, no I/O. None when it isn't held: the form then
+    # takes the registry's (config_flow._device_facts).
+    zigbee_manufacturer: Callable[[HomeAssistant, dr.DeviceEntry], str | None] | None = None
     # True for an integration-native group (Hue grouped_light, a Z2M or ZHA group entity).
     is_group: Callable[[HomeAssistant, Target], bool] | None = None
     # Members of a native group, sync and with no I/O: for adapters without native_groups, the targets they get; for
@@ -261,3 +335,9 @@ class IntegrationInfo:
     max_concurrency: int = 4
     available: bool = True
     unavailable_reason: str | None = None
+    # Why DeviceSide never supports this integration's targets, for one declared only to refuse them: a different
+    # gateway or API on a sibling's ha_domain (docs/evidence.md, The split rule), whose `detect` hook claims its
+    # entities, as the Hue v1 bridge's beside Hue. The sibling's module lists it in UNSUPPORTED (core/registry.py); it
+    # has no adapters, and the dispatcher refuses every target it claims as integration_not_supported, with this as the
+    # reason a named one raises with. None for every integration that has adapters.
+    unsupported: str | None = None

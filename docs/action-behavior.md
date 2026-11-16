@@ -36,9 +36,10 @@ an area, device or label, a member of an HA group (`group.*` or a group helper),
 the dispatcher expanded. Core treats a `group.*` member as named; DeviceSide doesn't, because a group is a
 deliberately mixed set. An indirect entity outside the action's domains is never a target, as in core.
 
-**Can never support** is any reason that holds whatever the device's state: no adapter, a domain or option nobody has
-tested, a class that doesn't work or isn't supported (`doesnt_work`, `not_supported`), an entity the integration can't
-address. A field the adapter has never been tested with is in this class too: it is refused, never dropped. **Lacks a
+**Can never support** is any reason that holds whatever the device's state: no adapter, an integration or gateway
+DeviceSide doesn't support (`integration_not_supported`; a named Hue v1 bridge light raises saying why), a domain or
+option nobody has tested, a class that doesn't work or isn't supported (`doesnt_work`, `not_supported`), an entity
+the integration can't address. A field the adapter has never been tested with is in this class too: it is refused, never dropped. **Lacks a
 field** comes from the target's state, read as `filter_turn_on_params` reads it (a color is lacked only without any
 color mode, color temperature only without that or a color mode, since core converts between them first), and from the
 adapter where only it knows: Hue's gamut, `AdapterScope.drops`, and a Shelly component's fields. A field tested on one
@@ -68,7 +69,8 @@ never Documented, so it starts Experimental. A `switch` still lacks every light 
 counter, or a `raise_hue` or `lower_hue` `sweep_time` outside a native hue cycle's 1–254 s (Zigbee2MQTT). It is clamped
 to that range and the result carries `clamped_to`, the value used. It isn't refused, as the call can still do the
 nearest thing, and it isn't `fields_dropped`, which is for a field the light lacks. Rounding inside the range isn't
-reported.
+reported, except where the device's timer runs in coarser steps than the request (a Tuya plug's whole seconds on
+Zigbee2MQTT): there the result carries `clamped_to` too, as the timer won't end when asked.
 
 ## What a response looks like
 
@@ -96,11 +98,15 @@ raises or the entity is skipped.
   Skipped targets are left out, as core leaves them out, and `unsupported` or `rejected` never reach a response: the
   call skips or raises instead. A call that has nothing to do succeeds quietly as `unchanged` with a `detail`, checked
   before the target's class, so nothing-to-do wins over doesn't-work or not supported. A native group with a refused
-  member (`class_unknown` included), or an Experimental one while Experimental features is off, falls back to its
-  members where the integration can list them. A group that falls back has no entry of its own: its members' entries
-  answer for it, though a member it can't address alone answers for nothing, and it raises only when none of its
-  members runs ([design.md](design.md#core-contract), Groups). A named target whose class doesn't work, or isn't
-  supported yet and is harmed by today's call, raises with the reason why.
+  member (`class_unknown` included), or an Experimental one while Experimental features is off, or one whose class takes
+  a call of its own (`own_call`), falls back to its members where the integration can list them. A group that falls back
+  has no entry of its own: its members' entries answer for it, though a member it can't address alone answers for
+  nothing and is skipped (a plug in a light group too, which HA shows as a switch, skipped whether or not it is
+  available, as its state can't be seen, unless the plug is a target itself), while any other member known unavailable
+  is left out quietly. Every member a group falls back to is indirect, so none raises, and the group raises only when
+  none of its members runs, with the most useful member's reason: `experimental_off`, then a class's refusal, then any
+  other, `not_addressable` last ([design.md](design.md#core-contract), Groups). A named target whose class doesn't work,
+  or isn't supported yet and is harmed by today's call, raises with the reason why.
 - **The class.** On an integration that names [classes](evidence.md#device-classes), each entry carries the
   class the call reached, as an attribute would: a command's beside `status` and `integration`, a query's among its
   data. A target's is `capability` (a string: `"RGBCCT"`); a native group's is `capabilities`, its members' classes

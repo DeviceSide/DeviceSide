@@ -2,7 +2,7 @@
 # a light, or a switch_as_x light over the switch, so the plug proves on/off for all three; the drops_brightness
 # cases keep the two light shapes covered.
 action: turn_on_for
-rig_seconds: 90
+rig_seconds: 150
 tests:
   - name: on_then_off
     roles: [switch_plug]
@@ -228,3 +228,51 @@ tests:
       - wait: duration - tol
       - expect_state: {state: on}
       - expect_state: {state: off, within: 2 * tol}
+
+  # Tuya's countdown on a Zigbee2MQTT TS011F plug (plan step 5 part 3), run once per switch_plug, one per maker string,
+  # so each string gets its own test (plan Decision 35); on_then_off above covers the call from off. These cover the
+  # firmware facts the probe measured on one string alone (zigbee2mqtt research/2026-11-15-tuya-countdown-probe.md),
+  # which another string can depart from: the countdown toggles at expiry, so from on it must still end off (P1); a
+  # new call must replace the running one (P2; _TZ3000_gjnozsaz's time left jumps back, Z2M #30493); and an off must
+  # cancel it (P3).
+
+  # From on, the On changes nothing and the toggle at expiry turns it off.
+  - name: countdown_from_on_then_off
+    roles: [switch_plug]
+    only: [zigbee2mqtt]
+    steps:
+      - set: {state: on}
+      - call: {duration: 6}
+      - expect_response: {status: expected, integration: self}
+      - wait: duration - tol
+      - expect_state: {state: on}
+      - expect_state: {state: off, within: 2 * tol}
+
+  # The second call's 6 s replaces the first's 20 s: the plug is off 6 s after it, not 20 s after the first.
+  - name: countdown_a_new_call_replaces_it
+    roles: [switch_plug]
+    only: [zigbee2mqtt]
+    steps:
+      - set: {state: off}
+      - call: {duration: 20}
+      - expect_state: {state: on, within: tol}
+      - wait: 3
+      - call: {duration: 6}
+      - expect_response: {status: expected, integration: self}
+      - wait: duration - tol
+      - expect_state: {state: on}
+      - expect_state: {state: off, within: 2 * tol}
+
+  # An off cancels the countdown, so turned back on, the plug stays on past the timer's end.
+  - name: countdown_an_off_cancels_it
+    roles: [switch_plug]
+    only: [zigbee2mqtt]
+    steps:
+      - set: {state: off}
+      - call: {duration: 6}
+      - expect_state: {state: on, within: tol}
+      - set: {state: off}
+      - set: {state: on}
+      - wait: duration + 2 * tol
+      - expect_state: {state: on}
+      - set: {state: off}

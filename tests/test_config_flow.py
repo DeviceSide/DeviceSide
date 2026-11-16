@@ -1,6 +1,7 @@
 """Tests for the single-instance config flow, its options and entry setup."""
 
 import asyncio
+import logging
 from urllib.parse import parse_qs, urlparse
 
 import pytest
@@ -24,9 +25,10 @@ from custom_components.deviceside.const import (
 )
 from custom_components.deviceside.core.resolver import resolve
 from custom_components.deviceside.core.runtime import get_runtime
+from custom_components.deviceside.integrations.zha import zcl
 
 from .conftest import load_entry, unload_mock_entries
-from .fixtures.zha import IEEE, add_zha_entity, zha_entry
+from .fixtures.zha import IEEE, add_zha_entity, zha_entry, zigpy_devices
 
 
 async def open_settings(hass: HomeAssistant, entry: MockConfigEntry):
@@ -197,6 +199,68 @@ async def test_a_report_for_a_supported_light_lists_its_integration_product_mode
         assert private not in url
 
 
+TUYA = "_TZ3000_abcdefgh"  # a Tuya Zigbee manufacturer string's shape (research/2026-11-14-lab-probe.md, §1)
+
+
+def tuya_plug(hass: HomeAssistant, zha: MockConfigEntry, monkeypatch, held: bool = True) -> str:
+    """switch.plug, a Tuya plug on ZHA whose registry shows a quirk's friendly maker and product, and whose zigpy
+    device, which the gateway holds when `held`, has the plug's own Zigbee strings."""
+    add_zha_entity(hass, zha, "switch.plug", strings=(TUYA, "TS011F"))
+    device_id = er.async_get(hass).async_get("switch.plug").device_id
+    dr.async_get(hass).async_update_device(device_id, manufacturer="Tuya", model="Smart plug", model_id="TS011F")
+    monkeypatch.setattr(zcl, "zigpy_device", lambda hass, ieee: zigpy_devices(hass).get(ieee) if held else None)
+    return "switch.plug"
+
+
+async def test_a_zigbee_device_s_report_carries_its_own_manufacturer_string(hass: HomeAssistant, zha, monkeypatch):
+    """Decision 35 keys a Tuya class on the Zigbee string, which the registry doesn't show."""
+    entry = await load_entry(hass)
+
+    fields, url = await report_for(hass, entry, tuya_plug(hass, zha, monkeypatch))
+
+    assert fields["devices"] == f"zha · Tuya Smart plug · TS011F · {TUYA}"
+    for private in ("switch.plug", IEEE, "00%3A17"):
+        assert private not in url
+
+
+async def test_without_the_hook_s_string_the_report_leaves_the_maker_out(hass: HomeAssistant, zha, monkeypatch):
+    """The registry's maker, a quirk's friendly name here, is not the string a report is matched by."""
+    entry = await load_entry(hass)
+    entity_id = tuya_plug(hass, zha, monkeypatch, held=False)
+    dr.async_get(hass).async_update_device(er.async_get(hass).async_get(entity_id).device_id, model="TS011F")
+
+    fields, _ = await report_for(hass, entry, entity_id)
+
+    assert fields["devices"] == "zha · TS011F"
+
+
+async def test_a_device_with_no_product_name_still_reports_its_maker(hass: HomeAssistant):
+    entry = await load_entry(hass)
+    add_mqtt_light(hass, "tasmota_ABC123")
+    device_id = er.async_get(hass).async_get("light.desk").device_id
+    dr.async_get(hass).async_update_device(device_id, manufacturer="Tasmota")
+
+    fields, _ = await report_for(hass, entry, "light.desk")
+
+    assert fields["devices"] == "mqtt · Bulb · Tasmota · 2.0"
+
+
+async def test_a_hook_that_raises_is_logged_and_the_string_left_out(hass: HomeAssistant, zha, monkeypatch, caplog):
+    entry = await load_entry(hass)
+    entity_id = tuya_plug(hass, zha, monkeypatch)
+    dr.async_get(hass).async_update_device(er.async_get(hass).async_get(entity_id).device_id, model="TS011F")
+
+    def broken(hass, device):
+        raise RuntimeError("gateway gone")
+
+    monkeypatch.setattr(get_runtime(hass).registry.integrations["zha"], "zigbee_manufacturer", broken)
+    with caplog.at_level(logging.DEBUG, logger="custom_components.deviceside.config_flow"):
+        fields, _ = await report_for(hass, entry, entity_id)
+
+    assert fields["devices"] == "zha · TS011F"
+    assert "zha: no Zigbee manufacturer string for the report form: RuntimeError('gateway gone')" in caplog.text
+
+
 async def test_a_report_for_an_unsupported_platform_uses_the_raw_platform(hass: HomeAssistant):
     """Tuya isn't served, and those reports are the demand signal for new adapters."""
     entry = await load_entry(hass)
@@ -269,7 +333,7 @@ async def test_a_plain_mqtt_device_reports_as_mqtt(hass: HomeAssistant):
 
 async def test_a_report_for_two_devices_lists_one_line_each(hass: HomeAssistant, zha):
     entry = await load_entry(hass)
-    add_zha_entity(hass, zha, "light.a")
+    add_zha_entity(hass, zha, "light.a", strings=(None, None))
     add_mqtt_light(hass, "tasmota_ABC123")
 
     fields, url = await report_for(hass, entry, ["light.a", "light.desk"])
@@ -282,8 +346,8 @@ async def test_a_report_for_two_devices_lists_one_line_each(hass: HomeAssistant,
 
 async def test_two_entities_of_one_device_give_one_line(hass: HomeAssistant, zha):
     entry = await load_entry(hass)
-    add_zha_entity(hass, zha, "light.a")
-    add_zha_entity(hass, zha, "switch.b", unique_id=f"{IEEE}-12")
+    add_zha_entity(hass, zha, "light.a", strings=(None, None))
+    add_zha_entity(hass, zha, "switch.b", unique_id=f"{IEEE}-12", strings=(None, None))
 
     fields, _ = await report_for(hass, entry, ["light.a", "switch.b"])
 

@@ -7,8 +7,8 @@ import pytest
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util.color import color_xy_to_hs, color_xy_to_RGB
 
-from .conftest import color_room, hs_xy
-from ...conftest import call
+from .conftest import call, color_room, hs_xy
+from ...conftest import allow_experimental
 from ...fixtures.hue import add_hue_entity, add_hue_group, hue_entry
 
 pytestmark = pytest.mark.usefixtures("setup_production")
@@ -153,3 +153,42 @@ async def test_color_mid_saturation_fade_reads_the_predicted_xy(hass, bridge, cl
     start = hs_xy(200.0, 90.0)
     midway = [round((a + b) / 2, 4) for a, b in zip(start, end, strict=True)]
     assert response[target]["xy_color"] == pytest.approx(midway, abs=1e-4)
+
+
+@pytest.mark.parametrize(
+    ("mirek_valid", "color_mode", "has_kelvin"),
+    [
+        pytest.param(True, "xy", False, id="valid_but_ha_shows_xy"),
+        pytest.param(False, "color_temp", True, id="invalid_but_ha_shows_color_temp"),
+        pytest.param(True, None, False, id="no_color_mode"),
+        # Core shows no color mode while a light is off: the bridge's flag is all there is.
+        pytest.param(True, "off", True, id="off_follows_the_flag"),
+        pytest.param(False, "off", False, id="off_flag_unset"),
+    ],
+)
+async def test_another_makers_light_reads_color_temperature_by_its_ha_color_mode(
+    hass, bridge, mirek_valid, color_mode, has_kelvin
+):
+    # A non-certified light doesn't set mirek_valid reliably, so core's hue integration follows its own last command,
+    # which it shows as the light's color mode (v2/light.py, color_temp_active). It runs only with Experimental on.
+    allow_experimental(hass)
+    bridge.light("light-1", mirek=370, mirek_valid=mirek_valid, manufacturer="IKEA of Sweden")
+    entry = await hue_entry(hass, bridge)
+    state = "off" if color_mode == "off" else "on"
+    attributes = {"color_mode": color_mode} if color_mode and state == "on" else {}
+    add_hue_entity(hass, entry, "light.lamp", "light-1", state=state, attributes=attributes)
+
+    response = await call(hass, "get_attributes", {"entity_id": "light.lamp"})
+
+    assert ("color_temp_kelvin" in response["light.lamp"]) is has_kelvin
+
+
+async def test_a_mirek_of_zero_reports_no_color_temperature(hass, bridge):
+    # Core shows none for it, and the conversion would divide by zero.
+    bridge.light("light-1", mirek=0, mirek_valid=True)
+    entry = await hue_entry(hass, bridge)
+    add_hue_entity(hass, entry, "light.lamp", "light-1")
+
+    response = await call(hass, "get_attributes", {"entity_id": "light.lamp"})
+
+    assert response == {"light.lamp": {"brightness": 50.0}}

@@ -21,6 +21,7 @@ from custom_components.deviceside.core.runtime import get_runtime
 from custom_components.deviceside.core.scope import (
     AdapterScope,
     DoesntWork,
+    DurationLimits,
     NotSupported,
     Unplaced,
     documented,
@@ -131,8 +132,12 @@ async def test_an_experimental_field_is_gated_only_when_the_call_carries_it(hass
 
 def by_name(hass, target):
     """A class per light, from its object id: light.a is class "A"; light.pending_a is "A", not yet placed
-    (Unplaced); light.unknown is unnamed."""
-    name = target.entity_id.partition(".")[2]
+    (Unplaced); light.unknown is unnamed. A stand-in is classed by its device, as its entity there is: switch.e's
+    is "E"."""
+    entity_id = target.entity_id
+    if target.stand_in:
+        entity_id = er.async_entries_for_device(er.async_get(hass), target.device.id)[0].entity_id
+    name = entity_id.partition(".")[2]
     if name.startswith("pending_"):
         return Unplaced(name.removeprefix("pending_").upper())
     return None if name in ("unknown", "fake_group") else name.upper()
@@ -663,7 +668,7 @@ async def test_a_group_whose_member_is_already_a_target_is_answered_by_it(hass, 
         indirect = await call(hass, "turn_off_for", {"area_id": area_id, "entity_id": "switch.a", "duration": 5})
 
     assert alone == both == indirect == expected
-    assert "skipped" not in caplog.text
+    assert "skipped targets" not in caplog.text
 
 
 @pytest.mark.usefixtures("classed")
@@ -835,7 +840,7 @@ async def test_an_empty_native_group_is_skipped_silently(hass, fake, reset_scrip
         response = await call(hass, "turn_off_for", {"entity_id": ["switch.fake_group", "switch.a"], "duration": 5})
 
     assert response == {"switch.a": {"status": "sent", "integration": "fake", "capability": "A"}}
-    assert "skipped" not in caplog.text
+    assert "skipped targets" not in caplog.text
 
 
 @pytest.mark.usefixtures("classed")
@@ -893,7 +898,7 @@ async def test_a_named_empty_group_alone_is_skipped_silently(hass, fake, reset_s
         assert await call(hass, "turn_off_for", data, return_response=False) is None
 
     assert reset_script.calls == []
-    assert "skipped" not in caplog.text
+    assert "skipped targets" not in caplog.text
 
 
 FALLS_BACK = "turn_off_for: switch.fake_group falls back to its members"
@@ -1624,3 +1629,241 @@ def test_class_unknown_names_the_integration_by_its_title_or_gets_the_plain_refu
     untitled = TargetNotSupported("light.a", "class_unknown")
     assert untitled.translation_key == "target_not_supported"
     assert untitled.translation_placeholders == {"entity_id": "light.a", "reason": "class_unknown"}
+
+
+# A class with a call of its own (AdapterScope.own_calls): Zigbee2MQTT's Tuya countdown plugs, whole seconds to 12 h.
+WHOLE_SECONDS = DurationLimits(min_s=1, max_s=43200, step_s=1)
+OWN_CALL = replace(CLASSED, capabilities=verified("A", "E"), own_calls={"E": WHOLE_SECONDS})
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_class_with_a_call_of_its_own_runs_apart_with_its_own_limits(hass, fake, reset_script):
+    add_fake_entity(hass, fake, "switch.a")
+    add_fake_entity(hass, fake, "switch.e")
+
+    with patch.object(FakeTurnOffFor, "scope", OWN_CALL):
+        response = await call(hass, "turn_off_for", {"entity_id": ["switch.a", "switch.e"], "duration": 500.4})
+
+    # The scope's limits clamp the one, the class's round and clamp the other, each reported.
+    assert response == {
+        "switch.a": {"status": "sent", "integration": "fake", "capability": "A", "clamped_to": 100},
+        "switch.e": {"status": "sent", "integration": "fake", "capability": "E", "clamped_to": 500},
+    }
+    assert sorted((request.duration_s, ids) for *_, request, ids in reset_script.calls) == [
+        (100, ["switch.a"]),
+        (500, ["switch.e"]),
+    ]
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_group_with_a_member_that_takes_a_call_of_its_own_falls_back(hass, fake, reset_script, caplog):
+    """The group's call isn't the member's, so each member gets its own, with Experimental features on or off."""
+    members = ["switch.a", "switch.e"]
+    for member in members:
+        add_fake_entity(hass, fake, member)
+    add_fake_native_group(hass, fake, "switch.fake_group", members)
+    caplog.set_level(logging.DEBUG, logger=DISPATCHER)
+
+    with patch.object(FakeTurnOffFor, "scope", OWN_CALL):
+        response = await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
+
+    assert response == {
+        "switch.a": {"status": "sent", "integration": "fake", "capability": "A"},
+        "switch.e": {"status": "sent", "integration": "fake", "capability": "E"},
+    }
+    assert sorted(ids for *_, ids in reset_script.calls) == [["switch.a"], ["switch.e"]]
+    assert "switch.fake_group falls back to its members (own_call)" in caplog.text
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_named_group_none_of_whose_members_runs_raises_own_call(hass, fake, reset_script):
+    add_fake_entity(hass, fake, "switch.e", state="unavailable")
+    add_fake_native_group(hass, fake, "switch.fake_group", ["switch.e"])
+
+    with patch.object(FakeTurnOffFor, "scope", OWN_CALL), pytest.raises(TargetNotSupported) as raised:
+        await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
+
+    # Each member unavailable: no member's reason to give, so own_call, with its own message.
+    assert (raised.value.reason, raised.value.translation_key) == ("own_call", "own_call")
+    assert reset_script.calls == []
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_named_own_call_group_whose_members_are_all_gated_raises_experimental_off(hass, fake, reset_script):
+    """The members' reason, which says how to let the call through, not own_call (#440's review, M2)."""
+    for member in ("switch.e", "light.e"):
+        add_fake_entity(hass, fake, member)
+    add_fake_native_group(hass, fake, "switch.fake_group", ["switch.e", "light.e"])
+    allow_experimental(hass, False)
+    scope = replace(OWN_CALL, capabilities=verified("A") | experimental("E"))
+
+    with patch.object(FakeTurnOffFor, "scope", scope), pytest.raises(TargetNotSupported) as raised:
+        await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
+
+    assert raised.value.translation_key == "experimental_off"
+    assert reset_script.calls == []
+
+
+@pytest.mark.usefixtures("classed")
+async def test_experimental_off_wins_over_a_member_skipped_earlier_for_another_reason(hass, fake, reset_script):
+    """The first member is refused by supports() and planned first; the gated one's reason still names the group."""
+    for member in ("switch.a", "switch.e"):
+        add_fake_entity(hass, fake, member)
+    add_fake_native_group(hass, fake, "switch.fake_group", ["switch.a", "switch.e"])
+    allow_experimental(hass, False)
+    scope = replace(OWN_CALL, capabilities=verified("A") | experimental("E"))
+    original = FakeTurnOffFor.supports
+
+    def supports(self, hass, request, target):
+        return "busy" if target.entity_id == "switch.a" else original(self, hass, request, target)
+
+    with (
+        patch.object(FakeTurnOffFor, "scope", scope),
+        patch.object(FakeTurnOffFor, "supports", supports),
+        pytest.raises(TargetNotSupported) as raised,
+    ):
+        await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
+
+    assert raised.value.translation_key == "experimental_off"
+
+
+@pytest.mark.usefixtures("classed")
+async def test_an_own_call_group_whose_members_cant_be_addressed_alone_raises_their_reason(hass, fake, reset_script):
+    """An unaddressable member's skip is named by its device (#440's re-review): its reason, not own_call's, which
+    reads as temporary."""
+    add_fake_entity(hass, fake, "switch.e")
+    add_fake_entity(
+        hass,
+        fake,
+        "switch.fake_group",
+        attributes={"fake_members": ["switch.e"], "fake_unaddressable": ["switch.e"]},
+        unique_id="group:switch.fake_group",
+    )
+
+    with patch.object(FakeTurnOffFor, "scope", OWN_CALL), pytest.raises(TargetNotSupported) as raised:
+        await call(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5})
+
+    assert raised.value.reason == "not_addressable"
+
+
+def add_group_with_stand_ins(hass, fake, members, stand_ins):
+    """light.fake_group, holding members and a stand-in for each device in stand_ins, each named by an entity of its
+    own on a device of its own (fake_integration, expand_group): a plug in a light group."""
+    for plug in stand_ins:
+        add_fake_entity(hass, fake, plug, identifier=plug)
+    add_fake_entity(
+        hass,
+        fake,
+        "light.fake_group",
+        attributes={"fake_members": members, "fake_stand_ins": stand_ins},
+        unique_id="group:light.fake_group",
+    )
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_fallen_group_skips_a_stand_in_member(hass, fake, reset_script, caplog):
+    """A member device listed by a stand-in (#440's re-review: a plug in a Z2M light group) gets an entry saying the
+    call didn't reach it, though the group was named, and its other members run: not_addressable, or its class's
+    refusal, named as a member device of the group, as its reported_id is the group's own."""
+    add_fake_entity(hass, fake, "light.a")
+    add_group_with_stand_ins(hass, fake, ["light.a"], ["switch.e", "switch.d"])
+
+    with patch.object(FakeTurnOnFor, "scope", OWN_CALL):
+        response = await call(hass, "turn_on_for", {"entity_id": "light.fake_group", "duration": 5})
+
+    assert response == {"light.a": {"status": "sent", "integration": "fake", "capability": "A"}}
+    assert (
+        "skipped targets that can't take it: a member device of light.fake_group (not_addressable),"
+        " a member device of light.fake_group (doesnt_work)" in caplog.text
+    )
+    assert [ids for *_, ids in reset_script.calls] == [["light.a"]]
+
+
+@pytest.mark.usefixtures("classed")
+async def test_an_own_call_group_whose_only_runnable_members_are_stand_ins_raises_their_reason(
+    hass, fake, reset_script
+):
+    """The stand-in's not_addressable, which says the call can't reach it, not own_call's, which reads as
+    temporary; the unavailable member gives no reason."""
+    add_fake_entity(hass, fake, "light.a", state="unavailable")
+    add_group_with_stand_ins(hass, fake, ["light.a"], ["switch.e"])
+
+    with patch.object(FakeTurnOnFor, "scope", OWN_CALL), pytest.raises(TargetNotSupported) as raised:
+        await call(hass, "turn_on_for", {"entity_id": "light.fake_group", "duration": 5})
+
+    assert raised.value.reason == "not_addressable"
+    assert reset_script.calls == []
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_stand_in_whose_device_is_a_target_is_answered_by_it(hass, fake, reset_script, caplog):
+    """The plug named beside its group runs as its own target, so it gets no skip as the group's stand-in (#441's
+    review): naming a member beside a group that falls back changes nothing (design.md, Groups)."""
+    add_fake_entity(hass, fake, "light.a")
+    add_group_with_stand_ins(hass, fake, ["light.a"], ["switch.e"])
+
+    with patch.object(FakeTurnOnFor, "scope", OWN_CALL):
+        response = await call(hass, "turn_on_for", {"entity_id": ["light.fake_group", "switch.e"], "duration": 5})
+
+    assert set(response) == {"light.a", "switch.e"}
+    assert "skipped targets" not in caplog.text
+    assert sorted(ids for *_, ids in reset_script.calls) == [["light.a"], ["switch.e"]]
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_group_whose_stand_ins_device_ran_as_a_target_does_not_raise(hass, fake, reset_script):
+    """Its light unavailable, the group's only runnable member is the plug, which ran as its own target: it answers
+    for the group, which raises nothing."""
+    add_fake_entity(hass, fake, "light.a", state="unavailable")
+    add_group_with_stand_ins(hass, fake, ["light.a"], ["switch.e"])
+
+    with patch.object(FakeTurnOnFor, "scope", OWN_CALL):
+        response = await call(hass, "turn_on_for", {"entity_id": ["light.fake_group", "switch.e"], "duration": 5})
+
+    assert response == {"switch.e": {"status": "sent", "integration": "fake", "capability": "E"}}
+
+
+@pytest.mark.usefixtures("classed")
+async def test_an_own_call_group_raises_its_most_useful_members_reason(hass, fake, reset_script):
+    """Not the first skip's, by the group's sort order (#441's review): a member's own reason outranks an
+    unaddressable member's not_addressable, which says only that DeviceSide can't reach it alone."""
+    for member in ("light.a", "light.e"):
+        add_fake_entity(hass, fake, member)
+    add_fake_entity(
+        hass,
+        fake,
+        "light.fake_group",
+        attributes={"fake_members": ["light.a", "light.e"], "fake_unaddressable": ["light.a"]},
+        unique_id="group:light.fake_group",
+    )
+    original = FakeTurnOnFor.supports
+
+    def supports(self, hass, request, target):
+        return "busy" if target.entity_id == "light.e" else original(self, hass, request, target)
+
+    with (
+        patch.object(FakeTurnOnFor, "scope", OWN_CALL),
+        patch.object(FakeTurnOnFor, "supports", supports),
+        pytest.raises(TargetNotSupported) as raised,
+    ):
+        await call(hass, "turn_on_for", {"entity_id": "light.fake_group", "duration": 5})
+
+    assert raised.value.reason == "busy"
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_group_expanded_by_core_skips_its_stand_ins(hass, fake, reset_script, caplog):
+    """An adapter without native_groups plans a group's members itself: each stand-in is skipped, two apart though
+    both carry the group's reported_id, and one whose device is a target too is answered by it."""
+    add_fake_entity(hass, fake, "light.a")
+    add_group_with_stand_ins(hass, fake, ["light.a"], ["switch.e", "switch.d", "sensor.e"])
+    scope = replace(OWN_CALL, native_groups=False)
+
+    with patch.object(FakeTurnOnFor, "scope", scope):
+        response = await call(hass, "turn_on_for", {"entity_id": ["light.fake_group", "switch.e"], "duration": 5})
+
+    assert set(response) == {"light.a", "switch.e"}
+    assert (
+        "skipped targets that can't take it: a member device of light.fake_group (doesnt_work),"
+        " a member device of light.fake_group (not_addressable)\n" in caplog.text
+    )

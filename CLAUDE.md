@@ -11,6 +11,11 @@ after the work lands.
 
 **The repo is public:** no household entity IDs, device names, MACs or hostnames anywhere in it, commit messages included.
 
+**Until v0.1.0 ships, fix the architecture now:** this window is the cheap time for hard architectural choices,
+which get much harder with dozens of package contributors and thousands of users. Given the choice between touching
+less code and fewer binding surfaces, or the right long-term fix, take the long-term fix. (Removed once v0.1.0 ships:
+`TODO.md`, v0.1.0.)
+
 **No personal tooling:** deploy hosts, SSH aliases, and private stacks belong in gitignored files (`.private-terms`, `notes/`, `CLAUDE.local.md`), not in committed code, docs or commit messages.
 
 ## Where facts go
@@ -47,6 +52,12 @@ every integration shares is in `docs/integrations.md`: add your value there, don
 6. Simplify relentlessly: a new guardrail needs evidence its failure happens; a new rule or guardrail names the
    user-visible failure it prevents and what it replaces.
 7. Maintainers judge sufficiency: gates check that a sign-off exists, not how thorough it was.
+8. Test to decide: a hardware run needs a decision its result takes (a design choice, a foundation, lifting a flag, a
+   surprise, a release), run at the last point that can take it: the release's run for a device the rig or a
+   maintainer reaches, so no merge waits on a run; the contributor's PR for their own devices. No plan gates a step
+   on a run without naming the decision.
+9. Retest what the change exercises: only the rig cases whose call or reply handling changed. The gate still takes
+   one whole run per sign-off until `TODO.md`'s Partial reruns lands.
 
 The levels (Verified, Documented), device classes, the `experimental` flag, caveats, the release gate and the sign-off
 format:
@@ -84,7 +95,7 @@ Cutting, tagging and fixing RCs and releases: the `release` skill (`.claude/skil
 ## The rig
 
 The rig, which drives the live HA and writes the records in `docs/integrations/<integration>/test-records/`, is a
-separate repo (jasonmx/ha-rig, public) kept out of this one: no rig code or rig docs here. The rig's test plan, its
+separate repo (jasonmx/ha-rig) kept out of this one: no rig code or rig docs here. The rig's test plan, its
 step files, named for the action they test and landed with that action, has two homes: shared ones in `tests/rig/steps/`
 need a repo maintainer; an integration's own in `tests/integrations/<x>/rig/`, run on `<x>` alone, belong to its
 maintainers, and repo maintainers may adopt them into the shared files. Before adding a case, name what it catches that

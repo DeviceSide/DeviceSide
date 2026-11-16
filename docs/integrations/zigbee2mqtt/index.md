@@ -16,31 +16,54 @@ devices sold under other brands, by the device's own Zigbee manufacturer and mod
 it connects. Every feature says how well it is proven for each
 ([levels of proof](../../device-compatibility.md#levels-of-proof)).
 
-- **Hue bulbs** (manufacturer `Philips`) are tested: every feature on this page has passed on them.
-- A **group** is proven as far as its weakest light. One with a light a feature refuses, or, with Experimental
-  features off, one of another brand, falls back to its lights, each on its own; with them on, it runs as one group.
-  A member Home Assistant has no light for (a plug Zigbee2MQTT shows as a switch, say) counts by its device, so a Tuya
-  plug in a group makes it fall back too. Right after Home Assistant connects to MQTT, until Zigbee2MQTT republishes
-  its groups, which it does as the connection comes up, DeviceSide can't tell a group's members: the group counts as
+- **Hue bulbs** (manufacturer `Philips`) are tested: every feature on this page has passed on them. A Hue smart plug
+  hasn't: turn on with timer runs on it only with Experimental features on.
+- A **group** is proven as far as its weakest light. One with a light a feature refuses, or, with Experimental features
+  off, one of another brand, falls back to its lights, each on its own; with them on, it runs as one group. A member
+  Home Assistant has no light for (a plug Zigbee2MQTT shows as a switch, say) counts by its device, so a Tuya plug in a
+  group makes it fall back too. So does a TS011F plug on Tuya's countdown for turn on with timer, as the group's timer
+  isn't the plug's: each light gets its own, and so does a plug Zigbee2MQTT shows as a light. One it shows as a switch
+  is skipped (`not_addressable`), with a warning, as no light reaches it: target its switch beside the group, and it
+  gets its countdown, with no warning. Right after Home Assistant connects to MQTT, until Zigbee2MQTT republishes its
+  groups, which it does as the connection comes up, DeviceSide can't tell a group's members: the group counts as
   Experimental, and turn on with timer refuses it (`class_unknown`), as a Tuya plug in it would stay on. If DeviceSide
-  can't subscribe to Zigbee2MQTT's bridge at all, it logs a warning, groups run only with Experimental features on,
-  and, until the integration reloads, turn on with timer refuses every group and every light, plug or switch but
-  Hue's (IKEA's included), as it can't tell which is a rebadged Tuya device.
+  can't subscribe to Zigbee2MQTT's bridge at all, it logs a warning, groups run only with Experimental features on, and,
+  until the integration reloads, turn on with timer refuses every group and every light, plug or switch but Hue's
+  (IKEA's included), as it can't tell which is a rebadged Tuya device.
 
 ### Tuya
 
 Tuya plugs, switches and lights, including those sold under other brands (Lidl, Moes, BlitzWolf and more). Most run
-Tuya's own countdown instead of the Zigbee timer, and Zigbee2MQTT turns DeviceSide's timer into a plain on, so turn
-on with timer isn't supported on them yet: today's call would turn the device on and leave it on
-([research](research/2026-11-14-timed-on-call-patterns.md)). DeviceSide refuses it, even with Experimental features
-on, until it builds Tuya's countdown. Their other features are untested, so they run only with Experimental features
-on.
+Tuya's own countdown instead of the Zigbee timer, and Zigbee2MQTT turns the Zigbee timer into a plain on. So turn on
+with timer uses Tuya's countdown on the TS011F plugs below, and isn't supported yet on the rest: the Zigbee timer would
+turn the device on and leave it on ([research](research/2026-11-14-timed-on-call-patterns.md)). DeviceSide refuses it
+there, even with Experimental features on. Their other features are untested, so they run only with Experimental
+features on.
+
+#### Tuya TS011F plugs
+
+Tuya's TS011F smart plugs, and their white labels, that Zigbee2MQTT drives by Tuya's countdown (it shows a `countdown`
+setting for the plug). Turn on with timer uses that countdown:
+
+- **Verified one maker string at a time** (the Zigbee manufacturer Zigbee2MQTT shows for the plug), each by its own
+  test record: `_TZ3000_0zfrhq4i`, `_TZ3000_typdpbpg`, `_TZ3000_gznh2xla` and `_TZ3000_okaz9tjs`. Plugs of the same
+  model answer the countdown differently by maker, so one string's test proves nothing about another's.
+- **Untested** on every other maker string, and on any of them Zigbee2MQTT shows as a light: it runs only with
+  Experimental features on. If you try one, please report
+  it, whether it works or not.
+- **Not supported yet on `_TZ3000_gjnozsaz`,** even with Experimental features on: its countdown is reported to restart
+  at random, so it could stay on ([Zigbee2MQTT #30493](https://github.com/Koenkk/zigbee2mqtt/issues/30493)).
+
+The timer runs in whole seconds, up to 12 hours: a duration is rounded to the nearest second, at least 1, and one
+rounded or longer than 12 hours reports `clamped_to`, the value sent. Turning the plug off, its button or a new timer
+cancels it. The plug's time left can't be read, so get attributes shows no `timer` for it. A TS011F that Zigbee2MQTT
+shows no `countdown` for, or a multi-socket one, isn't supported yet: the Zigbee timer was tested on the
+[Tuya TS011F](../../device-compatibility.md#tuya-ts011f) and left it on.
 
 #### Tuya plugs and switches
 
 Tuya devices on the standard Zigbee on/off commands: plugs, switches and relays (models `TS0001` to `TS0004`, and white
-labels). Turn on with timer isn't supported yet, as above; on the
-[Tuya TS011F](../../device-compatibility.md#tuya-ts011f) plug today's call was tested and left it on.
+labels). Turn on with timer isn't supported yet, as above.
 
 #### Tuya datapoint devices
 
@@ -114,6 +137,9 @@ Zigbee2MQTT answers with the light's state ends the wait at once.
 With light fields, DeviceSide calls `light.turn_on` first, then starts the timer once Zigbee2MQTT reports the
 light's new state, usually within a fraction of a second. If that takes over 5 s, the light stays on up to 5 s
 longer than asked.
+
+A Tuya TS011F plug gets Tuya's countdown instead, with its own limits ([Tuya TS011F plugs](#tuya-ts011f-plugs)); it
+reports its state when the timer ends, so DeviceSide reads nothing back.
 
 The result is `sent`: Zigbee2MQTT doesn't confirm a timer, or report the light's state after one. Device
 Side reads the state back after the light turns on and when the timer ends, so Home Assistant stays right. A

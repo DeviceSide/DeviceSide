@@ -36,10 +36,39 @@ device classes in [the device-classes plan](plans/2026-11-14-device-classes.md).
    user-visible failure it prevents and what it replaces.
 7. **Maintainers judge sufficiency.** Tooling records evidence, and maintainers decide what's enough. Gates check that a
    sign-off exists, not how thorough it was.
+8. **Test to decide.** Every hardware run costs time and needs a person at hand, even one nobody watches, so run one
+   only when its result takes a decision. Five decisions do:
+   - *a design choice:* tenet 2's probe, before the build. A call already seen working on the device (your own
+     automation, an upstream integration that ships it, a research file recording a run) needs none: cite it in
+     the bundle's `internals.md`. A vendor's document alone still needs the probe;
+   - *a foundation:* before further steps build on a design no verified fact covers, one run of the rig cases whose
+     failure would discard that work;
+   - *lifting a flag* ([the experimental flag](#the-experimental-flag));
+   - *a surprise:* the run that root-causes it (tenet 4);
+   - *a release:* the sign-off, due before the last RC, or the one that clears a caveat ([release gate](#release-gate)).
+
+   Run a test at the last point that can still take its decision. For a device the rig or a maintainer can reach,
+   that is the release's run, so merging a PR waits for none: unit tests pin the call, a new item starts flagged, the
+   gate runs at the cut, and the code may change again before then. For a contributor's own devices, it is their pull
+   request, as no later run is sure to reach them: one test of the finished build, at the commit whose calls ship
+   ([CONTRIBUTING](../CONTRIBUTING.md), Fast track). It shows the build works, which a maintainer needs to merge it
+   and, later, to lift its flag. A plan gates a step on a run only by naming the decision its result takes. This
+   prevents a release held up by runs whose results changed nothing, and replaces the practice of a rig run per step
+   or per PR.
+9. **Retest what the change exercises.** After a run, a change reopens only the rig cases whose call, or whose
+   handling of the device's reply, it changes (tenet 5). A change that alters neither reopens none, and a maintainer
+   says so with a `no_call_changed` row ([sign-off format](#sign-off-format)). A fix for a failing case reopens that
+   case, not its suite. This prevents the same passing cases being rerun at each small change. Not yet in the gate:
+   until it takes a partial rerun (`TODO.md`, Partial reruns), a rig sign-off is one whole run at the release's
+   package, so changes to a package land together before its run; the whole-run rule goes when the gate changes.
+
+*Example (tenets 8 and 9):* after Zigbee2MQTT's run, a refactor of a shared helper lands, and its unit tests show
+every call and reply path unchanged: a `no_call_changed` row signs off in the run's place. A fix to `stop`'s call
+lands next. Tenet 9 reopens only `stop`'s cases; today's gate still needs the whole run at the fixed package.
 
 *Example (tenets 4 and 5):* the rig found that a Tuya TS011F plug doesn't run the Zigbee timed-on timer it is given.
-That reopened "a Zigbee switch takes the light's timed-on call", so the `switch` domain stays untested on ZHA and
-Zigbee2MQTT `turn_on_for`. A lab probe then root-caused it: the plug runs the timer only Tuya's way, and given the
+That reopened "a Zigbee switch takes the light's timed-on call", so the `switch` domain stays untested on ZHA
+`turn_on_for`, and on Zigbee2MQTT each class holds its own level on switches: `hue` is Verified on lights alone. A lab probe then root-caused it: the plug runs the timer only Tuya's way, and given the
 light's call one plug stayed off while another switched on about ten times later than asked and stayed on
 ([internals](internals.md#tested-behavior)). Research also found that even lights given the identical call differ by
 firmware: Hue replaces a running timer where the spec keeps the longer one, and some IKEA and Hue models turn on and
@@ -77,8 +106,9 @@ not-yet-supported entry with `harms`, by the definitions [below](#doesnt-work-no
 the identity the report names, on the report alone, cited as its source; credibility is theirs to judge (tenet 7).
 Which label depends on whether a known call would serve the identity. ZHA's `_TZ3000_typdpbpg` reads the spec's
 tenths as seconds, and Tuya's recipe would serve it, so it is not yet supported, with `harms`: the fix is the call,
-and the entry lifts when the call changes. Zigbee2MQTT's `_TZ3000_gjnozsaz` fails the very call that serves its
-siblings, so it doesn't work, with `harms`. As proof follows the call (tenet 5), the entry may cover every action that
+and the entry lifts when the call changes. `_TZ3000_gjnozsaz` fails the very call that serves its siblings,
+but Tuya's inching call would plausibly serve it, so it too is not yet supported, with `harms`; an identity no known
+call serves is doesn't work. As proof follows the call (tenet 5), the entry may cover every action that
 sends that call to that identity, such as `turn_on_for`, `set_auto_off` and `turn_off_for` where they send the same
 frame. The identity is the most specific one the report names that a class rule can key on: the model ID with the
 manufacturer string, and the firmware where that is what decides. On a report alone, a vendor name never moves: Hue's
@@ -105,7 +135,8 @@ own branch. A scope holds a level per class, so each
 class stands on its own evidence: a record on one class proves nothing about another. On a single-vendor API the class
 is what the call addresses (Shelly: the RPC component). On a multi-vendor protocol the call and the firmware family
 decide the result together, so the class follows the vendor (Zigbee2MQTT: `hue`, `tuya_zcl`, `tuya_ts011f`,
-`tuya_mcu`, `sengled`, `gledopto`, `other`).
+`tuya_countdown`, `tuya_mcu`, `sengled`, `gledopto`, `other`), and, where evidence is per identity, the identity: a
+Zigbee2MQTT countdown plug's maker string with a record of its own is a class of its own.
 
 - **Unknown is flagged, never Verified.** A device no rule matches gets the default class
   (`IntegrationInfo.default_class`), which the registry refuses at Verified in any scope, so placing a device there
@@ -115,6 +146,10 @@ decide the result together, so the class follows the vendor (Zigbee2MQTT: `hue`,
   Nothing lifts it: a record on a device outside the named classes adds a new class named for its maker
   (Zigbee2MQTT: `ikea` for an IKEA bulb), as the default class holds every device no rule matches, and one maker's
   record proves nothing about the rest.
+- **A level per class and domain.** A class's level holds on every domain the adapter serves, unless its entry names
+  some (`verified(..., domains=...)`, core's `OnDomains`): on the rest its class has no entry, so it counts as
+  Experimental. A record on a class in one domain proves nothing about it in another: Zigbee2MQTT's `hue` is Verified
+  on lights, as every record ran on a bulb, so a Hue plug, a switch, stays flagged.
 - **One axis per integration.** An integration that names classes holds them in every adapter's scope, and only the
   classes it declares; one that names none holds them in none (the registry checks). A new integration names its
   classes, or its PR argues that it has one: that no known device behind it answers the same call differently.
@@ -122,8 +157,9 @@ decide the result together, so the class follows the vendor (Zigbee2MQTT: `hue`,
   (`not_supported`) entries live in the integration's package, and the cards are generated from them; where each
   piece goes is CLAUDE.md's [Where facts go](../CLAUDE.md#where-facts-go).
 - **Groups.** A native group takes the weakest level among its members' classes. One with a member that doesn't work
-  or isn't supported, or a member whose class is Experimental while Experimental features is off (the adapter,
-  domain and fields not flagged), falls back to its members, each judged on its own, when the integration can list
+  or isn't supported, a member whose class takes a call of its own (a branch in the adapter, below, which the group's
+  call isn't), or a member whose class is Experimental while Experimental features is off (the adapter, domain and
+  fields not flagged), falls back to its members, each judged on its own, when the integration can list
   them, including, where a call is known to harm, a group with a member not yet placed; one it can't list counts as
   Experimental: refused while Experimental features is off, and with them on where a call is known to harm, as its
   class rests on a membership DeviceSide doesn't have yet ([below](#doesnt-work-not-yet-supported-untested)).
@@ -179,9 +215,10 @@ A refused target raises when named and is skipped when it came indirectly, as `s
 - A different gateway or API is a separate integration, with a `detect` hook on the same `ha_domain`, as Zigbee2MQTT is
   beside MQTT.
 - A different device behind the same API is a class.
-- A class that needs a different payload is a branch inside the adapter.
+- A class that needs a different payload is a branch inside the adapter (`AdapterScope.own_calls`), so a native group
+  with a member of it falls back to its members.
 - An adapter splits only when a class needs a different result contract. A different duration limit is a per-class
-  setting first.
+  setting first (the branch's own `DurationLimits`).
 
 No matcher, per-class setting or card tier is built before an integration needs it (tenet 6): Zigbee2MQTT, the most
 varied integration, sets the bar. Classes match on manufacturer and model until a firmware boundary decides behavior.
@@ -189,7 +226,8 @@ varied integration, sets the bar. Classes match on manufacturer and model until 
 ### The coverage check
 
 Every class an adapter's scope holds as Verified needs a passing record test, or a `_manual.json` row, for that action
-that reached it. A record names the class each test's devices reached, and a manual row each device's. A native group's
+that reached it; one held on some domains alone needs it in each of them, from a test in that domain (a manual row
+names no domain, so it covers each). A record names the class each test's devices reached, and a manual row each device's. A native group's
 test credits each member's class, from its members' entries (the response's `member_capabilities`,
 [action-behavior.md](action-behavior.md#what-a-response-looks-like)), as the one call reached each member (a null one
 credits none; the cards add "native groups", never the members' models). A group with a null-class member is on no
@@ -201,13 +239,15 @@ names it, for example "zigbee2mqtt turn_on_for: `hue` is Verified but no record 
 `scripts/check_release.py --signoffs` fails on it at `cut-release`, with the other release gates. Like every gate, it
 checks that evidence exists, not that it suffices (tenet 7), and it applies to integrations that name classes.
 
-*Example:* with Zigbee2MQTT's classes `hue`, `tuya_zcl`, `tuya_ts011f`, `tuya_mcu`, `sengled`, `gledopto` and `other`,
-and only Hue bulbs in its records, `turn_on_for` can be Verified on `hue` alone; on `other` it is `experimental(...)`,
-so an IKEA or Innr bulb runs only with Experimental features on. A record on an IKEA bulb adds an `ikea` class,
-Verified on its own evidence, and `other` stays as it is. The Tuya classes, which Tuya's own countdown call drives but
-today's call leaves on (Zigbee2MQTT turns it into a plain on), are not yet supported, with `harms`, until the
-countdown call is built; the Sengled, which ignores today's call, needs a call that isn't built, so it is not yet
-supported too, with no entry, as today's call leaves it unharmed.
+*Example:* with Zigbee2MQTT's classes `hue`, `tuya_zcl`, `tuya_ts011f`, `tuya_mcu`, `sengled`, `gledopto` and `other`
+(and the countdown plugs' below), and only Hue bulbs in its records, `turn_on_for` can be Verified on `hue` alone; on
+`other` it is `experimental(...)`, so an IKEA or Innr bulb runs only with Experimental features on. A record on an IKEA
+bulb adds an `ikea` class, Verified on its own evidence, and `other` stays as it is. The Tuya classes, which Tuya's own
+countdown call drives but the Zigbee timer leaves on (Zigbee2MQTT turns it into a plain on), are not yet supported, with
+`harms`, until the countdown call is built for them; the TS011F plugs it is built for take it as `tuya_countdown`,
+Experimental, and each maker string with a record of its own as its own class, Verified, so the check asks each string
+for its record; the Sengled, which ignores today's call, needs a call that isn't built, so it is not yet supported too,
+with no entry, as today's call leaves it unharmed.
 
 ## The experimental flag
 
@@ -307,8 +347,8 @@ and which gives each field. The rules it serves:
 - **Format 1** is a markdown record converted once (device-classes plan, step 5b): the run's devices sit on the record,
   not on each test. It credits the cards as the markdown did, and is no sign-off; a rerun replaces it with format 2.
 - **`_manual.json`**: a maintainer's hand tests, a row each, added in a PR: each device a model id (never a household's
-  device name) with the class it reached, and the actions that passed on all of them. A change that sends no new call
-  signs off with a `no_call_changed` row instead.
+  device name) with the class it reached, and the actions that passed on all of them. A change that alters neither a
+  call nor the handling of a device's reply (tenet 9) signs off with a `no_call_changed` row instead.
 - **`_facts.json`**: the fact cases' results, a row each, only ever added. A row converted from markdown says so and
   has no class.
 

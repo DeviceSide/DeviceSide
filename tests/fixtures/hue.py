@@ -8,10 +8,13 @@ from types import SimpleNamespace
 
 from aiohue.v2 import HueBridgeV2
 from homeassistant.config_entries import ConfigEntryState
+from homeassistant.const import CONF_API_VERSION
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+SIGNIFY = "Signify Netherlands B.V."
 MIREK_SCHEMA = {"mirek_minimum": 153, "mirek_maximum": 454}
 
 # The bridge and its device: aiohue checks the software version before a grouped_light write.
@@ -54,9 +57,10 @@ class HueBridge:
         xy: tuple[float, float] | None = None,
         gamut: dict | None = None,
         mirek_schema: dict = MIREK_SCHEMA,
+        manufacturer: str = SIGNIFY,
     ) -> str:
         """A bulb and its device. brightness/mirek/xy None leave out the dimming/color_temperature/color feature;
-        gamut is the color feature's red/green/blue points, left out when None."""
+        gamut is the color feature's red/green/blue points, left out when None; manufacturer is the device's."""
         device_id = f"device-{light_id}"
         light: dict = {
             "id": light_id,
@@ -78,11 +82,11 @@ class HueBridge:
             "type": "device",
             "services": [{"rid": light_id, "rtype": "light"}],
             "product_data": {
-                "model_id": "LCT015",
-                "manufacturer_name": "Signify Netherlands B.V.",
-                "product_name": "Hue color lamp",
+                "model_id": "LCT015" if manufacturer == SIGNIFY else "TRADFRI bulb E27 WS opal 980lm",
+                "manufacturer_name": manufacturer,
+                "product_name": "Hue color lamp" if manufacturer == SIGNIFY else "Extended color light",
                 "product_archetype": "sultan_bulb",
-                "certified": True,
+                "certified": manufacturer == SIGNIFY,
                 "software_version": "1.0.0",
             },
             "metadata": {"archetype": "sultan_bulb", "name": light_id},
@@ -144,11 +148,22 @@ def light_action(rid: str, rtype: str = "light", **action) -> dict:
 
 
 async def hue_entry(hass: HomeAssistant, bridge: HueBridge, api_version: int = 2) -> MockConfigEntry:
-    """A loaded hue entry whose runtime_data is the bridge, as core's HueBridge carries it."""
-    entry = MockConfigEntry(domain="hue")
+    """A loaded hue entry whose runtime_data is the bridge, as core's HueBridge carries it, with the API version in
+    its data, and each bridge device in the device registry as core's hue integration registers it (v2/device.py)."""
+    entry = MockConfigEntry(domain="hue", data={CONF_API_VERSION: api_version})
     entry.add_to_hass(hass)
     entry.mock_state(hass, ConfigEntryState.LOADED)
-    entry.runtime_data = SimpleNamespace(api=await bridge.load(), api_version=api_version)
+    api = await bridge.load()
+    entry.runtime_data = SimpleNamespace(api=api, api_version=api_version)
+    for device in api.devices:
+        dr.async_get(hass).async_get_or_create(
+            config_entry_id=entry.entry_id,
+            identifiers={("hue", device.id)},
+            manufacturer=device.product_data.manufacturer_name,
+            model=device.product_data.product_name,
+            model_id=device.product_data.model_id,
+            sw_version=device.product_data.software_version,
+        )
     return entry
 
 
@@ -162,8 +177,16 @@ def add_hue_entity(
 ) -> str:
     """A light, room or scene entity; core's hue integration uses the bridge resource id as the unique_id."""
     domain, object_id = entity_id.split(".")
+    device = None
+    if (light := entry.runtime_data.api.lights.get(resource_id)) is not None:
+        device = dr.async_get(hass).async_get_device_by_identifier(("hue", light.owner.rid), entry.entry_id)
+    elif domain == "light" and not (attributes or {}).get("is_hue_group"):
+        # A light the bridge no longer lists keeps the Signify device HA registered for it.
+        device = dr.async_get(hass).async_get_or_create(
+            config_entry_id=entry.entry_id, identifiers={("hue", f"device-{resource_id}")}, manufacturer=SIGNIFY
+        )
     er.async_get(hass).async_get_or_create(
-        domain, "hue", resource_id, suggested_object_id=object_id, config_entry=entry
+        domain, "hue", resource_id, suggested_object_id=object_id, config_entry=entry, device_id=device and device.id
     )
     hass.states.async_set(entity_id, state, attributes or {})
     return entity_id

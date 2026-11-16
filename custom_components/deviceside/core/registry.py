@@ -27,6 +27,18 @@ def check_maintainers(info: IntegrationInfo) -> None:
         raise ValueError(f"{info.key}: maintainers lists a handle twice")
 
 
+def check_integration(info: IntegrationInfo) -> None:
+    """An integration's own fields: its maintainers, its classes with the classifier that names them, and no
+    `unsupported`, which only an integration listed in its sibling's UNSUPPORTED may have."""
+    check_maintainers(info)
+    if info.unsupported is not None:
+        raise ValueError(f"{info.key}: an integration with adapters can't be unsupported; list it in UNSUPPORTED")
+    if (info.capability is None) != (not info.classes):
+        raise ValueError(f"{info.key}: IntegrationInfo.capability and classes come together")
+    if info.default_class is not None and info.default_class not in info.classes:
+        raise ValueError(f"{info.key}: default_class {info.default_class!r} is none of its classes")
+
+
 def check_classes(cls: type[Adapter], info: IntegrationInfo) -> None:
     """One class axis per integration (docs/evidence.md, Device classes): an integration that names classes holds
     them in every adapter's scope, and one that names none in none. Otherwise an adapter that skipped the axis would
@@ -44,7 +56,7 @@ def check_classes(cls: type[Adapter], info: IntegrationInfo) -> None:
         raise ValueError(
             f"{cls.__name__} holds classes {info.key} doesn't declare (IntegrationInfo.classes): {unknown}"
         )
-    if held.get(info.default_class) is Level.VERIFIED:
+    if any(name == info.default_class and level is Level.VERIFIED for name, level, _ in cls.scope.class_entries()):
         raise ValueError(f"{cls.__name__} holds {info.key}'s default class {info.default_class!r} as Verified")
 
 
@@ -58,6 +70,10 @@ class AdapterRegistry:
     def __init__(self, actions: Iterable[type[Action]], integration_modules: Iterable[str | ModuleType]):
         self.actions: dict[str, type[Action]] = {action.key: action for action in actions}
         self.integrations: dict[str, IntegrationInfo] = {}
+        # Integrations declared only to refuse a gateway or API (IntegrationInfo.unsupported), by key. Kept apart from
+        # `integrations`, which the cards, the release gate and CODEOWNERS read: one lives in its sibling's package,
+        # whose bundle and gate cover it, and has nothing to list.
+        self.unsupported: dict[str, IntegrationInfo] = {}
         self._adapters: dict[tuple[str, str], Adapter] = {}
         for module in integration_modules:
             self._add_integration(module)
@@ -85,11 +101,7 @@ class AdapterRegistry:
                 self._add_unavailable(key, repr(err))
                 return
         info: IntegrationInfo = module.INTEGRATION
-        check_maintainers(info)
-        if (info.capability is None) != (not info.classes):
-            raise ValueError(f"{info.key}: IntegrationInfo.capability and classes come together")
-        if info.default_class is not None and info.default_class not in info.classes:
-            raise ValueError(f"{info.key}: default_class {info.default_class!r} is none of its classes")
+        check_integration(info)
         self.integrations[info.key] = info
         for cls in module.ADAPTERS:
             if cls.integration != info.key:
@@ -98,6 +110,20 @@ class AdapterRegistry:
                 raise ValueError(f"{cls.__name__} serves unknown action {cls.action}")
             check_classes(cls, info)
             self._adapters[(cls.action, info.key)] = cls()
+        for refused in getattr(module, "UNSUPPORTED", ()):
+            self._add_unsupported(refused, info)
+
+    def _add_unsupported(self, info: IntegrationInfo, sibling: IntegrationInfo) -> None:
+        """An integration its sibling's module declares only to refuse (IntegrationInfo.unsupported): on the sibling's
+        ha_domain, claiming its entities by a detect hook, with a reason and nothing else to serve them."""
+        check_maintainers(info)
+        if not info.unsupported:
+            raise ValueError(f"{info.key}: listed in UNSUPPORTED without a reason (IntegrationInfo.unsupported)")
+        if info.detect is None or info.ha_domain != sibling.ha_domain:
+            raise ValueError(f"{info.key}: an unsupported integration needs a detect hook on {sibling.ha_domain}")
+        if info.key in self.integrations or info.key in self.unsupported:
+            raise ValueError(f"{info.key}: declared twice")
+        self.unsupported[info.key] = info
 
     def _add_unavailable(self, key: str, reason: str) -> None:
         self.integrations[key] = IntegrationInfo(

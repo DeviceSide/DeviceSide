@@ -11,8 +11,8 @@ from homeassistant.exceptions import HomeAssistantError
 from custom_components.deviceside.core.transition import BRIGHTNESS, SATURATION
 from custom_components.deviceside.integrations.zha.fade import hue_moves, transition_cache
 
-from .conftest import IEEE, SENT, A, B, bulb, call_as, sent
-from ...conftest import advance, call, result, wall_clock_now
+from .conftest import IEEE, IKEA, SENT, A, B, bulb, call, call_as, sent
+from ...conftest import advance, result, wall_clock_now
 
 DISPATCHER = "custom_components.deviceside.core.dispatcher"
 
@@ -203,3 +203,14 @@ async def test_one_light_of_three_failing_rejects_only_it(hass, commands, clock)
     assert cache.halted("light.c", BRIGHTNESS)
     assert cache.running("light.b", BRIGHTNESS) is not None  # still the move it was
     assert hue_moves(hass) == {"light.b"}
+
+
+async def test_another_brand_gets_a_hue_bulbs_commands(hass, commands, clock):
+    """`other` is Documented: with Experimental features off it runs, and gets exactly the Verified Hue call."""
+    bulb(hass)
+    bulb(hass, "light.ikea", A, strings=IKEA)
+    for light in ("light.bulb", "light.ikea"):
+        await call(hass, "stop", {"entity_id": light})
+
+    hue, ikea = (sent([c for c in commands if c.data["ieee"] == ieee]) for ieee in (IEEE, A))
+    assert ikea == hue == [LEVEL_STOP]

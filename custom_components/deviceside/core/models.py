@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field, fields, replace
 from enum import StrEnum
-from typing import Any, Self
+from typing import TYPE_CHECKING, Any, Self
 
 import probatio
 from homeassistant.components.light.const import LIGHT_TURN_ON_SCHEMA
@@ -10,6 +10,9 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
 from ..const import LIGHT_FIELDS
+
+if TYPE_CHECKING:
+    from .scope import DurationLimits  # scope.py imports this module
 
 
 class Status(StrEnum):
@@ -105,9 +108,15 @@ class Request:
 
 @dataclass(frozen=True, slots=True)
 class TimedRequest(Request):
-    """A request with a duration the dispatcher clamps to each adapter's DurationLimits."""
+    """A request with a duration the dispatcher clamps to each adapter's DurationLimits.
+
+    `limits` is the DurationLimits it was fitted to, set by the dispatcher (core/duration.py): a run's targets all share
+    them, so an adapter whose class takes a call of its own (AdapterScope.own_calls) branches on them, the class the
+    dispatcher planned on, rather than classing a target again in execute, where a report in between could move it.
+    """
 
     duration_s: float
+    limits: DurationLimits | None = field(default=None, kw_only=True)
 
 
 @dataclass(frozen=True, slots=True)
@@ -131,6 +140,10 @@ class Target:
     # not in `member_capabilities`; when the group falls back to its members, the dispatcher skips it, with its class's
     # refusal if it has one, else as not_addressable.
     addressable: bool = True
+    # A native group's member listed for its class alone: a device with no entity in the group's domain, listed by
+    # the group's own entity with that device and no state, not addressable (zigbee2mqtt/members.py, _stand_in). Its
+    # reported_id is the group's; a group that falls back skips it, unless a target on its device answers for it.
+    stand_in: bool = False
 
     @property
     def reported_id(self) -> str:

@@ -3,9 +3,12 @@
 import pytest
 from homeassistant.exceptions import HomeAssistantError
 
+from custom_components.deviceside.core.errors import TargetNotSupported
+from custom_components.deviceside.integrations.hue.classes import SET_SCENE_DOESNT_WORK
 from custom_components.deviceside.integrations.hue.transition_cache import transition_cache
 
-from ...conftest import call, refusal, result
+from .conftest import call
+from ...conftest import refusal, result
 from ...fixtures.hue import add_hue_entity, hue_entry, light_action
 
 pytestmark = pytest.mark.usefixtures("setup_production")
@@ -93,14 +96,18 @@ async def test_actions_with_nothing_to_write_are_skipped(hass, bridge, action):
     assert bridge.puts == []
 
 
-async def test_smart_scene_is_refused(hass, bridge):
-    # smart_scene is unsupported: a named target raises before anything is sent.
+async def test_smart_scene_doesnt_work(hass, bridge):
+    # Its class, smart_scene, is set_scene's doesn't-work entry: a named target raises with why, sending nothing.
     bridge.light("light-1")
     bridge.scene("scene-1", [], smart=True)
     entry = await hue_entry(hass, bridge)
     add_hue_entity(hass, entry, "scene.relax", "scene-1")
 
-    assert await refusal(hass, "set_scene", {"entity_id": "scene.relax"}) == "smart_scene"
+    with pytest.raises(TargetNotSupported) as raised:
+        await call(hass, "set_scene", {"entity_id": "scene.relax"})
+
+    assert raised.value.reason == "doesnt_work"
+    assert raised.value.translation_placeholders["why"] == SET_SCENE_DOESNT_WORK["smart_scene"].reason
     assert bridge.puts == []
 
 

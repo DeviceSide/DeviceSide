@@ -17,6 +17,9 @@ class Reason(StrEnum):
     INTEGRATION_NOT_LOADED = "integration_not_loaded"
     # A group with no members holds nothing to act on, which is not a reason it can't: it is skipped, never raised.
     EMPTY_GROUP = "empty_group"
+    # No integration DeviceSide has takes the entity's platform, or one declared only to refuse a gateway or API claims
+    # it (IntegrationInfo.unsupported, whose reason a named target raises with).
+    INTEGRATION_NOT_SUPPORTED = "integration_not_supported"
     # The integration can't address the target (no device address, a nested wrapper, a group member it can't address
     # on its own: Target.addressable): raised if named, else skipped.
     NOT_ADDRESSABLE = "not_addressable"
@@ -31,6 +34,10 @@ class Reason(StrEnum):
     # clears once the integration has reported it, and a group whose membership isn't listed yet once it is; a target
     # that can't be classed at all (an entity with no device, a classifier that raised) stays refused.
     CLASS_UNKNOWN = "class_unknown"
+    # A native group with a member whose class takes a call of its own (AdapterScope.own_calls): the group's call isn't
+    # the member's, so the group falls back to its members; raised for the group only when none of them runs, and then
+    # with a member's reason where one was skipped (dispatcher._unanswered), so this only when each is unavailable.
+    OWN_CALL = "own_call"
 
 
 class TargetNotSupported(ServiceNotSupported):
@@ -43,8 +50,8 @@ class TargetNotSupported(ServiceNotSupported):
 
     def __init__(self, entity_id: str, reason: str, why: str | None = None, integration: str | None = None) -> None:
         placeholders = {"entity_id": entity_id, "reason": reason}
-        if reason == EXPERIMENTAL_OFF:
-            key = EXPERIMENTAL_OFF
+        if reason in (EXPERIMENTAL_OFF, Reason.OWN_CALL):
+            key = str(reason)
         elif reason == Reason.CLASS_UNKNOWN and integration is not None:
             key, placeholders["integration"] = Reason.CLASS_UNKNOWN.value, integration
         elif why is not None:

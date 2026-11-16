@@ -673,7 +673,24 @@ def test_a_format_2_test_credits_its_devices_classes_and_a_group_test_each_membe
     classes_record_v2(fake_repo, "stop", ran("light", *members, group=True, role="group"))
     found = classed(fake_repo, monkeypatch, turn_on_for=SCOPE, stop=SCOPE)
     assert cr.coverage_gaps(found) == ["fake turn_on_for: `ikea` is Verified but no record reaches it"]
-    assert (cr.reached("fake", "turn_on_for"), cr.reached("fake", "stop")) == ({"hue"}, {"hue", "ikea"})
+    assert (cr.reached("fake", "turn_on_for"), cr.reached("fake", "stop")) == (
+        {("hue", "light")},
+        {("hue", "light"), ("ikea", "light")},
+    )
+
+
+def test_a_class_verified_on_some_domains_alone_needs_a_record_in_each(fake_repo, monkeypatch):
+    """A record in one domain proves nothing about the class in another (core/scope.py, OnDomains)."""
+    scope = AdapterScope(domains=verified("light", "switch"), capabilities=verified("hue", domains=("light", "switch")))
+    classes_record_v2(fake_repo, "turn_on_for", ran("light", device("LTA009", "1", "hue")))
+    found = classed(fake_repo, monkeypatch, turn_on_for=scope)
+    assert cr.coverage_gaps(found) == ["fake turn_on_for: `hue` is Verified on switch but no record reaches it there"]
+    # A manual row names no domain, so it covers each.
+    sha = fake_repo.commit()
+    (fake_repo.path / MANUAL).write_text(
+        manual_file(signoff(sha, devices=(("LCA001", "hue"),), passed=("turn_on_for",)))
+    )
+    assert cr.coverage_gaps(found) == []
 
 
 def test_a_failing_record_reaches_nothing_and_a_manual_row_with_a_class_does(fake_repo, monkeypatch):

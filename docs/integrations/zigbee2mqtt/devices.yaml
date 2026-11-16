@@ -8,6 +8,12 @@ capabilities:
   # The classes integrations/zigbee2mqtt/classes.py names, but hue: Verified, it needs no phrase.
   tuya_zcl: {phrase: Tuya plugs and switches, section: Tuya}
   tuya_ts011f: {phrase: Tuya TS011F, section: Tuya}
+  tuya_countdown: {phrase: untested Tuya TS011F plugs on Tuya's countdown, section: Tuya TS011F plugs}
+  tuya_countdown_tz3000_0zfrhq4i: {phrase: tested Tuya TS011F plugs on Tuya's countdown, section: Tuya TS011F plugs}
+  tuya_countdown_tz3000_typdpbpg: {phrase: tested Tuya TS011F plugs on Tuya's countdown, section: Tuya TS011F plugs}
+  tuya_countdown_tz3000_gznh2xla: {phrase: tested Tuya TS011F plugs on Tuya's countdown, section: Tuya TS011F plugs}
+  tuya_countdown_tz3000_okaz9tjs: {phrase: tested Tuya TS011F plugs on Tuya's countdown, section: Tuya TS011F plugs}
+  tuya_countdown_harmed: {phrase: Tuya TS011F _TZ3000_gjnozsaz, section: Tuya TS011F plugs}
   tuya_mcu: {phrase: Tuya datapoint devices, section: Tuya}
   sengled: {phrase: Sengled bulbs, section: Sengled}
   gledopto: {phrase: Gledopto lights, section: Gledopto}

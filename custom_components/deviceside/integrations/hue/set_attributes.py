@@ -7,6 +7,7 @@ from homeassistant.helpers import entity_registry as er
 
 from . import colors
 from .bridge import bridge_api, resource_id, write_light
+from .classes import LEVELS
 from .report_filter import write_forgetting
 from ...actions.set_attributes import SetAttributesRequest
 from ...core.adapter import Adapter
@@ -84,17 +85,11 @@ class HueSetAttributes(Adapter[SetAttributesRequest]):
     action: ClassVar[str] = "set_attributes"
     integration: ClassVar[str] = "hue"
     scope: ClassVar[AdapterScope] = AdapterScope(
+        capabilities=LEVELS,
         fields=verified(
             "brightness", "color_temp_kelvin", "hs_color", "rgb_color", "xy_color", "min_brightness", "max_brightness"
         ),
     )
-
-    def supports(self, hass: HomeAssistant, request: SetAttributesRequest, target: Target) -> str | None:
-        if (reason := super().supports(hass, request, target)) is not None:
-            return reason
-        if bridge_api(target) is None:
-            return "bridge_v1"
-        return None
 
     async def execute(
         self, hass: HomeAssistant, request: SetAttributesRequest, targets: list[Target]

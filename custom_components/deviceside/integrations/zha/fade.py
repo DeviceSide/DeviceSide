@@ -1,10 +1,13 @@
 """ZHA raise and lower: brightness and saturation sent as an end point with a transition, hue as an EnhancedMoveHue
 rate, through zha.issue_zigbee_cluster_command (or one zha.issue_zigbee_group_command for a ZHA group's members). Each
-action's adapter is a ZHARamp."""
+action's adapter is a ZHARamp.
+
+Saturation is MoveToSaturation, not an xy fade, where the light has hue and saturation: the stop of a MoveToColor fade
+visibly jumps (docs/integrations/zha/internals.md, Tested behavior)."""
 
 import asyncio
 import logging
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from statistics import mean
 from typing import Any, ClassVar
@@ -22,7 +25,7 @@ from ...core.adapter import Adapter, DeadlinePassed
 from ...core.ha_watch import ALL, Call, Entries
 from ...core.models import EntityResult, Status, Target
 from ...core.runtime import Job, get_runtime
-from ...core.scope import AdapterScope, verified
+from ...core.scope import AdapterScope, Level, verified
 from ...core.transition import BRIGHTNESS, SATURATION, TransitionCache, hs_color, light_brightness, lit
 
 _LOGGER = logging.getLogger(__name__)
@@ -112,6 +115,10 @@ def units(hass: HomeAssistant, targets: list[Target]) -> list[tuple[int | None, 
 def has_color(light: Target) -> bool:
     modes = light.state.attributes.get("supported_color_modes") if light.state else None
     return bool(set(modes or ()) & _COLOR_MODES)
+
+
+def color_mode(light: Target) -> str | None:
+    return light.state.attributes.get("color_mode") if light.state else None
 
 
 def drops_while_off(light: Target) -> bool:
@@ -222,8 +229,10 @@ class HueMove:
     clamped_to: float | None  # the sweep_time used, where it had to be clamped
 
 
-def ramp_scope(attribute: str) -> AdapterScope:
-    return AdapterScope(domains=verified("light"), fields=verified(attribute), max_concurrency=2)
+def ramp_scope(attribute: str, capabilities: Mapping[str, Level]) -> AdapterScope:
+    return AdapterScope(
+        domains=verified("light"), fields=verified(attribute), capabilities=capabilities, max_concurrency=2
+    )
 
 
 class ZHARamp(Adapter[RampRequest]):
@@ -243,12 +252,13 @@ class ZHARamp(Adapter[RampRequest]):
     on Hue. Models that drop a level while off (zcl.DROPS_WHILE_OFF) get neither: they start a raise at their stored
     level, and come back on dim.
 
-    Saturation is MoveToColor, the xy of each light's current hue at the end saturation, on lit lights in color: group
-    members at different hues each get their own, so the group's lights are sent one each. Hue is
+    Saturation is MoveToSaturation on lit lights in color whose ColorCapabilities report hue and saturation: the bulb
+    keeps its own hue, so a group's members share one groupcast. A light without them, or in color temperature, gets
+    MoveToColor, the xy of its current hue at the end saturation, one command each. Hue is
     EnhancedMoveHue, a cycle the bulb runs until a stop, on lit lights whose ColorCapabilities report enhanced hue; a
     sweep_time outside 1-65535 s is clamped, with clamped_to. A group is unchanged with fields_dropped for hue if any
     member lacks it. A move with nothing left to make is unchanged with at_limit; one with only lights that are off to
-    move is unchanged with off. A hue move whose ColorCapabilities read fails is rejected with error.
+    move is unchanged with off. A hue or saturation move whose ColorCapabilities read fails is rejected with error.
 
     A command that fails rejects only the lights it was for (admin_required, or error), each keeping the prediction
     and soft off restore it had; the rest run on. A light whose bottom preset failed gets no fade, so a groupcast
@@ -275,13 +285,13 @@ class ZHARamp(Adapter[RampRequest]):
             return [self.result(light, status, **kwargs) for light in lights]
 
         try:
-            lacking = await lacks_hue(hass, request, lights)
+            capabilities = await color_capabilities(hass, request, lights)
         except Exception as err:  # noqa: BLE001 - zha and zigpy errors can't be imported here; read_attributes says why
             _LOGGER.warning("%s on zha failed for %s: ColorCapabilities not read: %r", self.action, names(lights), err)
             return each(Status.REJECTED, detail="error")
-        if lacking:
+        if request.attribute == HUE and not all(bits & zcl.ENHANCED_HUE for bits in capabilities.values()):
             return each(Status.UNCHANGED, detail="fields_dropped")
-        outcome = plan(cache, request, lights)
+        outcome = plan(cache, request, lights, capabilities)
         if (
             isinstance(outcome, str)
             and request.attribute == BRIGHTNESS
@@ -291,7 +301,7 @@ class ZHARamp(Adapter[RampRequest]):
             # brightness reports, so its state is right then. Plan again from it.
             for light in lights:
                 cache.forget(light.entity_id, BRIGHTNESS)
-            outcome = plan(cache, request, lights)
+            outcome = plan(cache, request, lights, capabilities)
         if isinstance(outcome, str):
             return each(Status.UNCHANGED, detail=outcome)
         try:
@@ -325,12 +335,14 @@ def names(lights: list[Target]) -> str:
     return ", ".join(light.entity_id for light in lights)
 
 
-def plan(cache: TransitionCache, request: RampRequest, lights: list[Target]) -> Fade | HueMove | str:
+def plan(
+    cache: TransitionCache, request: RampRequest, lights: list[Target], capabilities: dict[str, int]
+) -> Fade | HueMove | str:
     """The attribute's fade or hue move, or why it has none to make."""
     if request.attribute == BRIGHTNESS:
         return brightness_fade(cache, request, lights)
     if request.attribute == SATURATION:
-        return saturation_fade(cache, request, lights)
+        return saturation_fade(cache, request, lights, capabilities)
     return hue_move(request, movers) if (movers := lit(cache, lights)) else "off"
 
 
@@ -435,13 +447,13 @@ def run_on(
     )
 
 
-async def lacks_hue(hass: HomeAssistant, request: RampRequest, lights: list[Target]) -> bool:
-    """Whether a hue move meets a light whose ColorCapabilities lack enhanced hue; raises when one isn't read. The
-    dispatcher already dropped saturation and hue from lights without color."""
-    if request.attribute != HUE:
-        return False
-    reads = await asyncio.gather(*(zcl.enhanced_hue(hass, address(light.entry.unique_id)) for light in lights))
-    return not all(reads)
+async def color_capabilities(hass: HomeAssistant, request: RampRequest, lights: list[Target]) -> dict[str, int]:
+    """Each light's ColorCapabilities for a hue or saturation move, by entity ID; none for brightness. Raises when one
+    isn't read. The dispatcher already dropped saturation and hue from lights without color."""
+    if request.attribute == BRIGHTNESS:
+        return {}
+    reads = await asyncio.gather(*(zcl.color_capabilities(hass, address(light.entry.unique_id)) for light in lights))
+    return {light.entity_id: bits for light, bits in zip(lights, reads, strict=True)}
 
 
 def fade_seconds(distance: float, sweep_time: float) -> float:
@@ -493,10 +505,13 @@ def brightness_fade(cache: TransitionCache, request: RampRequest, lights: list[T
     )
 
 
-def saturation_fade(cache: TransitionCache, request: RampRequest, lights: list[Target]) -> Fade | str:
-    """The saturation fade toward the limit at each light's own hue, as an xy fade; off with no lit light in color,
-    at_limit when there is none left to make. Group members at different hues each get their own command, so none
-    takes another's hue; members at one hue share one, which a groupcast can carry."""
+def saturation_fade(
+    cache: TransitionCache, request: RampRequest, lights: list[Target], capabilities: dict[str, int]
+) -> Fade | str:
+    """The saturation fade toward the limit at each light's own hue; off with no lit light in color, at_limit when
+    there is none left to make. MoveToSaturation where the light has hue and saturation and shows a color: the same
+    command for every such light, which a groupcast can carry. Else an xy fade to its own hue at the limit, so none
+    takes another's hue: a light in color temperature may hold a stale hue of its own, untested."""
     if not (movers := [light for light in lit(cache, lights) if hs_color(light) is not None]):
         return "off"
     up, limit = request.up, request.end()
@@ -506,10 +521,15 @@ def saturation_fade(cache: TransitionCache, request: RampRequest, lights: list[T
         return "at_limit"
     duration = fade_seconds(abs(limit - current), request.sweep_time)
 
+    tenths = transition_tenths(duration)
+
     def command(light: Target) -> Command:
+        if capabilities[light.entity_id] & zcl.HUE_SATURATION and color_mode(light) in _COLOR_MODES:
+            params = {"saturation": round(limit * 254 / 100), "transition_time": tenths}
+            return zcl.COLOR_CLUSTER, zcl.MOVE_TO_SATURATION, params
         x, y = color_hs_to_xy(hs_color(light)[0], limit)
         params = {"color_x": round(x * 65535), "color_y": round(y * 65535)}
-        return zcl.COLOR_CLUSTER, zcl.MOVE_TO_COLOR, params | {"transition_time": transition_tenths(duration)}
+        return zcl.COLOR_CLUSTER, zcl.MOVE_TO_COLOR, params | {"transition_time": tenths}
 
     commands = {light.entity_id: command(light) for light in movers}
     return Fade(SATURATION, commands, movers, starts, dict.fromkeys(starts, limit), duration)
