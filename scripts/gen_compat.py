@@ -182,12 +182,20 @@ class Data:
     sections: set[tuple[str | None, str]] = field(default_factory=set)
     # The heading anchors of each integration's page; a section on none of them is on PAGE.
     pages: dict[str, set[str]] = field(default_factory=dict)
+    # The bundle each model id is listed in (None: docs/models.yaml), so a record names only its own bundle's.
+    owner: dict[str, str | None] = field(default_factory=dict)
 
-    def model(self, model_id: str, where: str) -> dict:
+    def model(self, model_id: str, where: str, integration: str | None = None) -> dict:
+        """The model, which a record of `integration` may name only from docs/models.yaml or its own bundle."""
         if model_id not in self.models:
             raise SystemExit(
                 f"{where}: model {model_id!r} is in neither docs/models.yaml nor a bundle's devices.yaml; "
                 "add it to `models`"
+            )
+        if integration is not None and (owner := self.owner.get(model_id)) not in (None, integration):
+            raise SystemExit(
+                f"{where}: model {model_id!r} is in docs/integrations/{owner}/devices.yaml; a model two "
+                "integrations name goes in docs/models.yaml"
             )
         return self.models[model_id]
 
@@ -225,7 +233,7 @@ def merge(shared: dict, bundles: dict[str, dict]) -> dict:
     """The shared file and the bundles as one mapping, each bundle's entries named for its integration: a bundle's
     `no_known_method` entries are its own, so they take no `integrations` key."""
     need(shared, "docs/models.yaml", lists=tuple(sorted(SHARED_KEYS & set(shared))), keys=SHARED_KEYS)
-    raw: dict = {"requires": {}, "capabilities": {}, "models": list(shared.get("models") or [])}
+    raw: dict = {"requires": {}, "capabilities": {}, "models": list(shared.get("models") or []), "bundle_models": {}}
     raw["no_known_method"] = list(shared.get("no_known_method") or [])
     raw["not_built"] = list(shared.get("not_built") or [])
     for key, data in bundles.items():
@@ -239,7 +247,7 @@ def merge(shared: dict, bundles: dict[str, dict]) -> dict:
             raw["capabilities"][key] = data["capabilities"]
         if not isinstance(models := data.get("models") or [], list):
             fail(f"{where}: models must be a list")
-        raw["models"].extend(models)
+        raw["bundle_models"][key] = models
         if not isinstance(broken := data.get("no_known_method") or [], list):
             fail(f"{where}: no_known_method must be a list")
         for entry in broken:
@@ -270,7 +278,10 @@ def load_raw(raw: dict, registry: AdapterRegistry) -> Data:
     raw = copy.deepcopy(raw)  # defaults are filled in place
     data = Data(raw["requires"], {}, raw["capabilities"], [])
     for model in raw["models"]:
-        load_model(model, data)
+        load_model(model, data, None)
+    for key, models in raw.get("bundle_models", {}).items():
+        for model in models:
+            load_model(model, data, key)
     data.sections.add((None, GROUPS_ENTRY[1]))  # every card with groups links it, as it does a model
     for key, items in data.capabilities.items():
         need(items, f"capabilities {key}")
@@ -318,7 +329,7 @@ def code_unbuilt(key: str, integration_adapters: list, data: Data) -> list[dict]
     return list(found.values())
 
 
-def load_model(model: dict, data: Data) -> None:
+def load_model(model: dict, data: Data, owner: str | None) -> None:
     need(model, f"model {model.get('name') if isinstance(model, dict) else model!r}", ("name",), ("ids",), MODEL_KEYS)
     if any(other["name"] == model["name"] for other in data.models.values()):
         fail(f"model name {model['name']!r} is listed twice")
@@ -329,9 +340,14 @@ def load_model(model: dict, data: Data) -> None:
         if not isinstance(model_id, str):
             fail(f"model {model['name']!r}: id {model_id!r} must be a string; quote it")
         if model_id in data.models:
-            fail(f"model id {model_id!r} is listed twice")
+            fail(f"model id {model_id!r} is listed twice: in {source(data.owner[model_id])} and {source(owner)}")
         data.models[model_id] = model
+        data.owner[model_id] = owner
     data.sections.add((None, model["section"]))
+
+
+def source(owner: str | None) -> str:
+    return "docs/models.yaml" if owner is None else f"docs/integrations/{owner}/devices.yaml"
 
 
 def load_broken(
@@ -448,11 +464,11 @@ class Evidence:
 
 
 def check_models(registry: AdapterRegistry, data: Data) -> None:
-    """Every model a test-records file names is in docs/models.yaml or its bundle's devices.yaml: each device of every
-    record, whatever its test's result or class, and of `_manual.json` and `_facts.json`, so a model missing from it
-    fails on the PR that lands the file, not later, when a test of it first credits a card. And, as check_release does
-    at the cut, no record of an integration that names no classes names one (`record_class_errors`), so it fails on the
-    PR too."""
+    """Every model a test-records file names is in docs/models.yaml or its own bundle's devices.yaml: each device of
+    every record, whatever its test's result or class, and of `_manual.json` and `_facts.json`, so a model missing from
+    it fails on the PR that lands the file, not later, when a test of it first credits a card. And, as check_release
+    does at the cut, no record of an integration that names no classes names one (`record_class_errors`), so it fails
+    on the PR too."""
     names = classed(registry)
     if errors := [
         error for key in sorted(registry.integrations) if key not in names for error in record_class_errors(key)
@@ -467,7 +483,7 @@ def check_models(registry: AdapterRegistry, data: Data) -> None:
             for row in rows:
                 for item in row.get("devices", ()):
                     if "model" in item:  # a format 1 record's group names none
-                        data.model(item["model"], path.relative_to(REPO).as_posix())
+                        data.model(item["model"], path.relative_to(REPO).as_posix(), key)
 
 
 def card_evidence(adapter) -> Evidence:

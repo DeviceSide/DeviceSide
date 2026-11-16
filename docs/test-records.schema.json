@@ -187,7 +187,7 @@
     },
 
     "manual_device": {
-      "description": "A model id (docs/models.yaml or a bundle's devices.yaml, never a household's device name), its manufacturer string and the class it reached.",
+      "description": "A model id (docs/models.yaml or its bundle's devices.yaml, never a household's device name), its manufacturer string and the class it reached.",
       "type": "object",
       "required": ["model", "manufacturer", "class"],
       "additionalProperties": false,

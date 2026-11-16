@@ -649,6 +649,21 @@ def test_a_bundles_own_model_is_loaded_and_credits_a_device(root, monkeypatch):
         data.model("NOPE", "x")
 
 
+def test_a_record_naming_another_bundles_model_fails(root, monkeypatch):
+    own = {"name": "Own lamp", "ids": ["OWN1"], "type": DATA["models"][0]["type"]}
+    bundles = {**BUNDLE, "hue": {"column": "Hue", "column_order": 2, "models": [own]}}
+    data = gc.load(FakeRegistry(), write_bundles(root, monkeypatch, bundles))
+    record(root, "zha", "stop", devices=[old_device("OWN1", "1")])
+    with pytest.raises(SystemExit, match="'OWN1' is in docs/integrations/hue/devices.yaml; a model two integrations"):
+        gc.check_models(FakeRegistry(), data)
+
+
+def test_a_model_in_both_files_fails_naming_them(root, monkeypatch):
+    bundles = {**BUNDLE, "hue": {"column": "Hue", "column_order": 2, "models": [{**DATA["models"][0], "name": "Dup"}]}}
+    with pytest.raises(SystemExit, match="listed twice: in docs/models.yaml and docs/integrations/hue/devices.yaml"):
+        gc.load(FakeRegistry(), write_bundles(root, monkeypatch, bundles))
+
+
 def test_an_integration_without_a_user_page_fails(root, monkeypatch):
     models = write_bundles(root, monkeypatch)
     (root / "docs" / "integrations" / "hue" / "index.md").unlink()
