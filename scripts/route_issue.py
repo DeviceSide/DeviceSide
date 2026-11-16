@@ -5,7 +5,8 @@ assignees.
 The device report form's Integration dropdown lists each integration's title (`IntegrationInfo.title`), then OTHER.
 GitHub writes the choices into the issue body under the dropdown's label, comma-separated. The maintainers are read
 from each integration's `__init__.py` by parsing it, not importing it, so the workflow runs on the standard library
-alone; tests/scripts/test_route_issue.py checks the parse against the registry.
+alone; tests/scripts/test_route_issue.py checks the parse against the registry. A family's maintainers are read the
+same way (`parse_family`), for scripts/check_maintainer_merge.py; the form names no family, so none is routed to.
 
 Usage: scripts/route_issue.py   (reads ISSUE_BODY; appends `labels=` and `assignees=` to GITHUB_OUTPUT, or prints them)
 """
@@ -31,6 +32,12 @@ class Integration:
     maintainers: tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class Family:
+    key: str
+    maintainers: tuple[str, ...]
+
+
 def read(init: Path) -> Integration:
     """The integration's key, title and maintainers, from the literal `INTEGRATION = IntegrationInfo(...)` call."""
     return parse(init.read_text(), init)
@@ -42,31 +49,51 @@ def names(node: ast.Assign | ast.AnnAssign) -> list[str | None]:
     return [getattr(target, "id", None) for target in targets]
 
 
-def parse(text: str, init: Path | str) -> Integration:
-    """`read`, on the text of an `__init__.py` (`init` names it in errors). The registry takes the last binding, so a
-    second one is refused rather than read past."""
+def listed(fields: tuple[str, ...], suffix: str = "") -> str:
+    """`key=, title= and maintainers=`, for an error."""
+    items = [f"{name}{suffix}" for name in fields]
+    return " and ".join([", ".join(items[:-1]), items[-1]] if len(items) > 1 else items)
+
+
+def literals(text: str, init: Path | str, name: str, call: str, fields: tuple[str, ...]) -> dict:
+    """The literal keyword `fields` of the module's one `<name> = <call>(...)` binding (`init` names the file in
+    errors). The registry takes the last binding, so a second one is refused rather than read past."""
     body = ast.parse(text).body
-    bindings = [node for node in body if isinstance(node, ast.Assign | ast.AnnAssign) and "INTEGRATION" in names(node)]
+    bindings = [node for node in body if isinstance(node, ast.Assign | ast.AnnAssign) and name in names(node)]
     if len(bindings) > 1:
-        raise SystemExit(f"{init}: INTEGRATION is bound {len(bindings)} times")
+        raise SystemExit(f"{init}: {name} is bound {len(bindings)} times")
     for node in bindings:
-        if (
-            isinstance(node, ast.Assign)
-            and [getattr(target, "id", None) for target in node.targets] == ["INTEGRATION"]
-            and isinstance(node.value, ast.Call)
-        ):
+        if isinstance(node, ast.Assign) and names(node) == [name] and isinstance(node.value, ast.Call):
             try:
-                kwargs = {
-                    kw.arg: ast.literal_eval(kw.value)
-                    for kw in node.value.keywords
-                    if kw.arg in ("key", "title", "maintainers")
-                }
+                kwargs = {kw.arg: ast.literal_eval(kw.value) for kw in node.value.keywords if kw.arg in fields}
             except ValueError as err:
-                raise SystemExit(f"{init}: key, title and maintainers must be literals ({err})") from None
-            if set(kwargs) != {"key", "title", "maintainers"}:
-                raise SystemExit(f"{init}: INTEGRATION needs key=, title= and maintainers=")
-            return Integration(kwargs["key"], kwargs["title"], tuple(kwargs["maintainers"]))
-    raise SystemExit(f"{init}: no INTEGRATION = IntegrationInfo(...)")
+                raise SystemExit(f"{init}: {listed(fields)} must be literals ({err})") from None
+            if set(kwargs) != set(fields):
+                raise SystemExit(f"{init}: {name} needs {listed(fields, '=')}")
+            return kwargs
+    raise SystemExit(f"{init}: no {name} = {call}(...)")
+
+
+def parse(text: str, init: Path | str) -> Integration:
+    """`read`, on the text of an `__init__.py`."""
+    kwargs = literals(text, init, "INTEGRATION", "IntegrationInfo", ("key", "title", "maintainers"))
+    return Integration(kwargs["key"], kwargs["title"], tuple(kwargs["maintainers"]))
+
+
+def parse_family(text: str, init: Path | str) -> Family:
+    """A family's key and maintainers, from the literal `FAMILY = Family(...)` call in the text of its `__init__.py`
+    (`integrations/<key>/families/<family>/`). scripts/check_maintainer_merge.py reads its owners with it;
+    tests/scripts/test_check_maintainer_merge.py checks the parse against the registry."""
+    kwargs = literals(text, init, "FAMILY", "Family", ("key", "maintainers"))
+    return Family(kwargs["key"], tuple(kwargs["maintainers"]))
+
+
+def families(root: Path = INTEGRATIONS) -> dict[str, dict[str, Family]]:
+    """Every family, by its integration's package name, then its own."""
+    found: dict[str, dict[str, Family]] = {}
+    for init in sorted(root.glob("*/families/*/__init__.py")):
+        found.setdefault(init.parents[2].name, {})[init.parent.name] = parse_family(init.read_text(), init)
+    return found
 
 
 def integrations(root: Path = INTEGRATIONS) -> dict[str, Integration]:

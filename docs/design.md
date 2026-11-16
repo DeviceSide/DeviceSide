@@ -23,6 +23,12 @@ Code and docs use these terms.
   and a device no rule matches gets the integration's default class, which is never Verified: a record on another maker's device adds that maker's class. Where untested, it is
   Experimental (except where a call is known to harm: there a target whose class rests on information DeviceSide
   doesn't have yet is refused). Rules: [evidence.md](evidence.md#device-classes).
+- **Family**: a vendor's classes on one integration, as a package of their own
+  (`integrations/<x>/families/<family>/`): its `Family` names the classes and holds their rules, levels, entries and
+  own calls, so a vendor is one path with its own Maintainers. The integration keeps the transport, the default class
+  and the rule order between families. Opt-in: an integration with no families holds its classes itself.
+- **Catalog**: the Zigbee strings and sourced firmware facts that two integrations' families of one key both read
+  (`custom_components/deviceside/zigbee/<family>.py`): patterns and facts only, no levels and no calls.
 - **Placed**: a device whose class rests on everything the integration will report about it (Zigbee2MQTT: listed as
   interviewed, with both Zigbee strings; one the registry puts in `hue` is placed without them:
   [index.md](integrations/zigbee2mqtt/index.md#tuya)). Until then its class is `Unplaced`: the same class to every adapter, except
@@ -47,7 +53,9 @@ Code and docs use these terms.
   integration maintainer lifts it when they judge it ready; a passing run is evidence for that, not a trigger. Rules:
   [evidence.md](evidence.md#the-experimental-flag).
 - **Maintainer**: a GitHub handle in an integration's `IntegrationInfo.maintainers`. Maintainers look after that
-  integration's package: they get its bug reports, and approve and merge changes to it. Rules:
+  integration's package: they get its bug reports, and approve and merge changes to it. A handle in a Family's
+  `maintainers` is that family's maintainer: they approve and merge changes to it, beside the integration's, who own
+  every family of theirs too. Rules:
   [CLAUDE.md](../CLAUDE.md#maintainers). User wording: [device-compatibility.md](device-compatibility.md#maintainers).
 - **Repo maintainer**: a handle in `REPO_MAINTAINERS` (`scripts/gen_codeowners.py`), with admin on the repo. Repo
   maintainers own shared code, merge any PR and set caveats. Distinct from an

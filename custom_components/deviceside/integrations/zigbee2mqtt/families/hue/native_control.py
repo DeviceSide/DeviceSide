@@ -29,12 +29,12 @@ from typing import Any
 
 from homeassistant.core import HomeAssistant
 
-from .addressing import group_id, options_address, z2m_address, z2m_device
-from .bridge import OPTION, ensure_options, group_members, state_reply
-from .classes import HUE_MANUFACTURER
-from .restore_journal import Address, journal, locks
-from ...core.models import Target
-from ...core.runtime import get_runtime
+from . import HUE_MANUFACTURER
+from ...addressing import group_id, options_address, z2m_address, z2m_device
+from ...bridge import OPTION, ensure_options, group_members, state_reply
+from ...restore_journal import Address, journal, locks
+from .....core.models import Target
+from .....core.runtime import get_runtime
 
 _LOGGER = logging.getLogger(__name__)
 

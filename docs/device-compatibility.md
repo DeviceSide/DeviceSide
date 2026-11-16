@@ -179,7 +179,7 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 | `stop` | Documented | other classes | | |
 | `stop` | Experimental | tuya_zcl, tuya_ts011f, tuya_countdown, tuya_countdown_tz3000_0zfrhq4i, tuya_countdown_tz3000_typdpbpg, tuya_countdown_tz3000_gznh2xla, tuya_countdown_tz3000_okaz9tjs, tuya_countdown_harmed, tuya_mcu, sengled, gledopto classes | | |
 | `turn_on_for` | Verified | light, switch entities; hue on light, tuya_countdown_tz3000_0zfrhq4i on switch, tuya_countdown_tz3000_typdpbpg on switch, tuya_countdown_tz3000_gznh2xla on switch, tuya_countdown_tz3000_okaz9tjs on switch classes; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, transition fields | `LWA012`, firmware `1.163.1`<br>`LTA009`, firmware `1.163.1`<br>`LCA016`, firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/turn_on_for.json) |
-| `turn_on_for` | Experimental | other, gledopto, tuya_countdown classes | | |
+| `turn_on_for` | Experimental | other, tuya_countdown, gledopto classes | | |
 
 | Not yet supported, harmed by today's call | Why | Source |
 |---|---|---|

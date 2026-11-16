@@ -215,10 +215,11 @@ A refused target raises when named and is skipped when it came indirectly, as `s
 - A different gateway or API is a separate integration, with a `detect` hook on the same `ha_domain`, as Zigbee2MQTT is
   beside MQTT.
 - A different device behind the same API is a class.
-- A class that needs a different payload is a branch inside the adapter (`AdapterScope.own_calls`), so a native group
-  with a member of it falls back to its members.
+- A class that needs a different payload gets a call of its own: an `OwnCall` in `AdapterScope.own_calls`, which the
+  dispatcher hands the adapter (`Adapter.execute_own`) in place of `execute`, so a native group with a member of it
+  falls back to its members.
 - An adapter splits only when a class needs a different result contract. A different duration limit is a per-class
-  setting first (the branch's own `DurationLimits`).
+  setting first (the `OwnCall`'s own `DurationLimits`).
 
 No matcher, per-class setting or card tier is built before an integration needs it (tenet 6): Zigbee2MQTT, the most
 varied integration, sets the bar. Classes match on manufacturer and model until a firmware boundary decides behavior.
@@ -264,7 +265,9 @@ few rig cases before the full suite exists, so a flagged item may have passing r
 `experimental(...)` into `verified(...)`, or drops `experimental=True`; a flagged item that qualifies as Documented
 becomes `documented(...)` in a PR that argues the sibling case ([Levels](#levels)). Lifting a flag is a change to the
 integration's package, so one of its maintainers approves it, as for any change there
-([CLAUDE.md](../CLAUDE.md#maintainers)).
+([CLAUDE.md](../CLAUDE.md#maintainers)). A [family](design.md#glossary)'s maintainers set their own classes' levels
+the same way. A doesn't-work or not-yet-supported entry is not theirs alone: it decides what is refused for harm, so
+adding, changing or removing one takes an integration or repo maintainer.
 
 For an item no maintainer can test, users' working reports can verify it through a maintainer's `_manual.json`
 sign-off, whose PR body cites them ([CLAUDE.md](../CLAUDE.md#where-facts-go): rule evidence goes in the PR body). The

@@ -1,13 +1,5 @@
 """Zigbee2MQTT turn_on_for: optional light.turn_on, a publish with on_time, then state read-backs; or, for a Tuya
-countdown plug, one publish with `countdown`.
-
-Tuya's countdown plugs (classes.COUNTDOWNS) get `{"state": "ON", "countdown": N}`, whole seconds, 1 to 43200: Z2M's
-converter A sends a plain On, then 0x42 `{0, N, N}`, which the plug runs as a toggle at expiry, so from on it ends off
-(internals.md, Tuya's countdown). One publish, not a state check first: 0x42 alone on an off plug turns it on at N for
-good (probe P1b), and converter A sends 0x42 only once the On's send has resolved, so a lost On sends nothing more and
-Z2M logs the set as failed (set_check.py makes it `rejected`). Neither the reads nor `on_time` are sent to it: it
-reports its state at expiry, and the time left can't be read (probe P6), so the result is `sent`.
-"""
+countdown plug, its family's own call, one publish with `countdown` (families/tuya/countdown.py)."""
 
 import asyncio
 import logging
@@ -17,8 +9,8 @@ from homeassistant.core import HomeAssistant
 
 from .addressing import not_addressable, topic
 from .bridge import logged_options, publish, publish_set, state_reply
-from .classes import COUNTDOWNS, TURN_ON_FOR, TURN_ON_FOR_NOT_SUPPORTED
-from .native_control import COLOR_FIELDS, NEED, native_control, settled
+from .classes import class_scope
+from .families.hue.native_control import COLOR_FIELDS, NEED, native_control, settled
 from .set_check import checked, note
 from ...actions.turn_on_for import TurnOnForRequest
 from ...core.adapter import Adapter
@@ -31,20 +23,6 @@ _LOGGER = logging.getLogger(__name__)
 # Zigbee OnWithTimedOff: on_time in tenths of a second (uint16), range 1-65534 tenths.
 # 65534 tenths = 6553.4 s. The 50 ms floor from core/duration.py handles the effective minimum.
 _TIMER_LIMITS = DurationLimits(min_s=0, max_s=6553.4)
-# Tuya's countdown: whole seconds, 1 to 43200, both reaching the plug; Z2M refuses anything else before sending
-# (probe P7, internals.md).
-COUNTDOWN_LIMITS = DurationLimits(min_s=1, max_s=43200, step_s=1)
-
-
-async def _countdown(adapter: Adapter, hass: HomeAssistant, request: TurnOnForRequest, target: Target) -> EntityResult:
-    # A plug has no light fields to apply. supports() refused the targets it can't address.
-    await publish_set(hass, target, {"state": "ON", "countdown": int(request.duration_s)})
-    return adapter.result(target, Status.SENT)
-
-
-# The countdown plugs' own call (module docstring), which the dispatcher hands execute_own for a run it planned on a
-# countdown class: no fresh capability() here, which could differ if bridge/devices moved the plug in between.
-COUNTDOWN = OwnCall(_countdown, COUNTDOWN_LIMITS)
 
 # Read-back delays in seconds. The second end read allows for a bulb clock that runs slow on a long timer.
 _ON_READ_S = 1.0
@@ -62,7 +40,7 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
     transition through its own protocol, waits for Z2M to publish the light's state, then publishes
     {"state":"ON","on_time":<seconds, 1dp>} to the device's command topic. Without fields: publishes only.
     With a color or color temperature, a Hue light (or a group with a Hue member) gets Z2M's hue_native_control on
-    for that light.turn_on (native_control.py), so it lights in that color rather than its last one.
+    for that light.turn_on (families/hue/native_control.py), so it lights in that color rather than its last one.
 
     Z2M publishes no state for a timed command, and Hue bulbs on Z2M don't report, so HA's state would go
     stale. The adapter then asks Z2M to read the state back ({"state":""} on the get topic): 1 s after the
@@ -76,16 +54,14 @@ class Z2MTurnOnFor(Adapter[TurnOnForRequest]):
     action: ClassVar[str] = "turn_on_for"
     integration: ClassVar[str] = "zigbee2mqtt"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        # Both Verified: the class decides a switch's level, as each class holds its own per domain (classes.py,
-        # TURN_ON_FOR). Zigbee plugs and switches rarely honor OnWithTimedOff, so only a class with a switch record is
-        # Verified there; a Hue plug, an `other` one and the rest stay untested.
+        # Both Verified: the class decides a switch's level, as each class holds its own per domain (its family's
+        # turn_on_for scope). Zigbee plugs and switches rarely honor OnWithTimedOff, so only a class with a switch
+        # record is Verified there; a Hue plug, an `other` one and the rest stay untested.
         domains=verified("light", "switch"),
-        capabilities=TURN_ON_FOR,
-        # Each harms its class (a Tuya plug left on), so the dispatcher refuses a device not yet placed, and a group of
-        # unknown membership, as class_unknown, even with Experimental features on (classes.py).
-        not_supported=TURN_ON_FOR_NOT_SUPPORTED,
-        # Each takes the countdown, which a Z2M group's call isn't, so a group with one falls back to its members.
-        own_calls=dict.fromkeys(COUNTDOWNS, COUNTDOWN),
+        # The families' not_supported entries each harm their class (a Tuya plug left on), so the dispatcher refuses a
+        # device not yet placed, and a group of unknown membership, as class_unknown, even with Experimental features
+        # on (classes.py). Their own calls (Tuya's countdown) run through execute_own.
+        **class_scope("turn_on_for"),
         duration=_TIMER_LIMITS,
         fields=verified("brightness", "color_temp_kelvin", "hs_color", "rgb_color", "xy_color", "transition"),
         confirmable=False,

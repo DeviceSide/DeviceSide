@@ -4,6 +4,7 @@ from .addressing import is_z2m_group
 from .classes import CLASSES, OTHER, capability, zigbee_manufacturer
 from .detect import detect
 from .fade import Z2MCallResolver
+from .families import FAMILIES
 from .get_attributes import Z2MGetAttributes
 from .lower_brightness import Z2MLowerBrightness
 from .lower_hue import Z2MLowerHue
@@ -28,6 +29,7 @@ INTEGRATION = IntegrationInfo(
     capability=capability,
     classes=CLASSES,
     default_class=OTHER,
+    families=FAMILIES,
     zigbee_manufacturer=zigbee_manufacturer,
     call_resolver=Z2MCallResolver(),
     max_concurrency=4,

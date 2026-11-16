@@ -335,7 +335,7 @@ class FamilyScope:
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Family:
-    """A vendor's firmware family inside one integration (docs/plans/2026-11-16-family-seam.md): the classes it owns
+    """A vendor's firmware family inside one integration (docs/design.md, Family): the classes it owns
     and, per action key, what each adapter's scope holds for them (`scopes`; an action with none leaves its classes
     out of that adapter's scope). It exists so a vendor is one path with its own maintainers: GitHub handles, which may
     be empty, as the integration's maintainers own every family of it too. The registry checks it (core/registry.py,

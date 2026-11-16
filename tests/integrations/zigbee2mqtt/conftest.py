@@ -12,11 +12,11 @@ from custom_components.deviceside.integrations.zigbee2mqtt import (
     bridge_cache,
     classes,
     members,
-    native_control,
     read,
     set_attributes,
 )
 from custom_components.deviceside.integrations.zigbee2mqtt.fade import transition_cache
+from custom_components.deviceside.integrations.zigbee2mqtt.families.hue import native_control
 from custom_components.deviceside.integrations.zigbee2mqtt.turn_on_for import Z2MTurnOnFor
 
 from ...conftest import Clock, unload_mock_entries

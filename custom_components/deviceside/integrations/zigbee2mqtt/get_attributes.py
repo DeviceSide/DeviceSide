@@ -11,7 +11,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 
 from .addressing import not_addressable
-from .classes import COUNTDOWN_PLUGS, READ_WRITE, capability
+from .classes import capability, class_scope
+from .families.tuya import COUNTDOWN_PLUGS
 from .members import member_lights, unaddressable
 from .read import Reader, reader
 from ...core.adapter import Adapter
@@ -34,7 +35,7 @@ class Z2MGetAttributes(Adapter[Request]):
     scope: ClassVar[AdapterScope] = AdapterScope(
         # Switches are Experimental, as in turn_on_for.
         domains=verified("light") | experimental("switch"),
-        capabilities=READ_WRITE,
+        **class_scope("get_attributes"),
         confirmable=True,
         native_groups=True,  # read through its members, which only Z2M's bridge/groups knows
     )

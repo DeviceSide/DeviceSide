@@ -1,5 +1,6 @@
+import sys
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import probatio
 import pytest
@@ -13,13 +14,14 @@ from custom_components.deviceside.core.resolver import resolve
 from custom_components.deviceside.core.runtime import get_runtime
 from custom_components.deviceside.integrations.zha import INTEGRATION, zcl
 from custom_components.deviceside.integrations.zha.fade import transition_cache
+from custom_components.deviceside.integrations.zha.families.hue import multi_color
 
 from ...conftest import Clock, unload_mock_entries
 from ...conftest import call as call_service
 from ...fixtures.zha import HUE, IEEE, add_zha_entity, zha_entry, zha_group, zigpy_devices
 
 SENT = {"status": "sent", "integration": "zha"}
-# The Zigbee strings of the Sengled E11-G13, which drops a level while off (zcl.DROPS_WHILE_OFF).
+# The Zigbee strings of the Sengled E11-G13, which drops a level while off (families/sengled's DROPS_WHILE_OFF).
 E11_G13 = ("sengled", "E11-G13")
 # Another brand's bulb, which no rule places: the default class.
 IKEA = ("IKEA of Sweden", "TRADFRI bulb E27 WS opal 980lm")
@@ -42,10 +44,29 @@ def zigpy_device(hass, monkeypatch):
 
 @pytest.fixture(autouse=True)
 def hue_turn_on(monkeypatch) -> AsyncMock:
-    """zcl.hue_turn_on on lights without Hue's cluster, as the fixtures' lights are unless a test says otherwise."""
+    """Hue's multi_color.turn_on on lights without its cluster, as the fixtures' lights are unless a test says
+    otherwise."""
     fake = AsyncMock(return_value=False)
-    monkeypatch.setattr(zcl, "hue_turn_on", fake)
+    monkeypatch.setattr(multi_color, "turn_on", fake)
     return fake
+
+
+@pytest.fixture
+def cluster():
+    return SimpleNamespace(read_attributes=AsyncMock(return_value=({zcl.ON_OFF: True, zcl.ON_TIME: 48}, {})))
+
+
+@pytest.fixture
+def gateway(hass, monkeypatch, cluster):
+    """Fake zha's hass.data and zigpy.types.EUI64; EUI64.convert passes the IEEE through."""
+    device = MagicMock()
+    device.async_get_cluster.return_value = cluster
+    gw = MagicMock()
+    gw.get_device.return_value = device
+    types = SimpleNamespace(EUI64=SimpleNamespace(convert=lambda ieee: ieee), Struct=object, SerializableBytes=bytes)
+    monkeypatch.setitem(hass.data, "zha", SimpleNamespace(gateway_proxy=SimpleNamespace(gateway=gw)))
+    monkeypatch.setitem(sys.modules, "zigpy.types", types)
+    return gw
 
 
 @pytest.fixture

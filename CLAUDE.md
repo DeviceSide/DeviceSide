@@ -28,10 +28,12 @@ shared home named in parentheses.
 |---|---|
 | User-facing limits and device classes | `<x>/index.md` (shared: `docs/device-compatibility.md`) |
 | Wire calls, measurements, upstream defects | `<x>/internals.md` (shared: `docs/internals.md`, core HA: `docs/defects.md`) |
+| A vendor's rules, levels and calls, on an integration with families | its family: `integrations/<x>/families/<family>/` |
+| Zigbee strings two integrations' families share | the catalog: `custom_components/deviceside/zigbee/<family>.py` |
 | Classes, levels, doesn't-work and not-yet-supported entries | the package's code: `IntegrationInfo.classes` and the scopes' `doesnt_work` and `not_supported` (`scripts/gen_compat.py` regenerates the cards; entries not yet moved: `<x>/devices.yaml`, shared `docs/models.yaml`) |
 | A class's card phrase and section | `<x>/devices.yaml` |
 | Models across integrations | `docs/models.yaml` |
-| Dated sources, never edited after | `<x>/research/` (shared: `docs/research/`) |
+| Dated sources, never edited after | `<x>/research/` (a family's new ones: `<x>/research/<family>/`; shared: `docs/research/`) |
 | Run evidence | `<x>/test-records/*.json`, in the shape `docs/test-records.schema.json` gives |
 | Why the code does something | the module docstring, a few lines, linking `internals.md` for the evidence |
 | Rule evidence | the PR body |
@@ -66,13 +68,25 @@ format:
 ## Maintainers
 
 An integration's package (`integrations/<x>/`, `tests/integrations/<x>/`, its fixture, its bundle
-`docs/integrations/<x>/`) belongs to the GitHub handles in its `IntegrationInfo.maintainers`, one or more. A PR confined
-to one package needs one maintainer's approval or `/merge`, and green CI; anything outside it (`core/`, shared docs,
-`docs/models.yaml`) needs a repo maintainer. Regenerated output follows its inputs: a package PR that also regenerates
-shared generated files (README, `docs/device-compatibility.md`, CODEOWNERS) still needs only its maintainer, as CI's
-`--check` proves them. A package PR merges when one of its maintainers comments `/merge <sha>`, even on their own PR
-(`scripts/check_maintainer_merge.py` says what it refuses), or when a repo maintainer merges it; repo maintainers merge
-every other PR. Integration maintainers hold Triage (`docs/repo-maintainers.md`), so GitHub ignores their names in
+`docs/integrations/<x>/`) belongs to the GitHub handles in its `IntegrationInfo.maintainers`, one or more. A family
+in it (`integrations/<x>/families/<family>/`, `tests/integrations/<x>/families/<family>/`,
+`docs/integrations/<x>/research/<family>/`) belongs to the handles in its `Family.maintainers` as well, which may be
+none; a catalog file (`custom_components/deviceside/zigbee/<family>.py` and its test) to the maintainers of every
+family of that key and of those families' integrations.
+
+A PR merges on one maintainer's approval or `/merge`, and green CI, when that maintainer owns every file it changes;
+a file none of them owns (`core/`, shared docs, `docs/models.yaml`) needs a repo maintainer. Regenerated output follows
+its inputs: such a PR that also regenerates shared generated files (README, `docs/device-compatibility.md`,
+CODEOWNERS) still needs only its maintainer, as CI's `--check` proves them. It merges when the maintainer comments
+`/merge <sha>`, even on their own PR (`scripts/check_maintainer_merge.py` says what it refuses), or when a repo
+maintainer merges it; repo maintainers merge every other PR.
+
+A family maintainer sets their classes' levels, and can't merge alone what protects other families: another family,
+the integration's transport, `families/__init__.py` (the rule order between families), the classification snapshot,
+or a `DoesntWork` or `NotSupported` entry, their own family's included; an integration maintainer merges those. Only a
+repo maintainer changes a `maintainers` tuple.
+
+Integration and family maintainers hold Triage (`docs/repo-maintainers.md`), so GitHub ignores their names in
 `.github/CODEOWNERS` (from `scripts/gen_codeowners.py`), as Triage isn't write access. A contributor PR follows
 CONTRIBUTING's Fast track.
 

@@ -10,6 +10,12 @@ Invite each handle in its `IntegrationInfo.maintainers` to the **Triage** role (
 `route-issue.yml` can only assign bug reports to someone with access to the repo. Triage doesn't let them push or
 merge; `/merge` needs no role.
 
+## Appointing a family maintainer
+
+Add the handle to the family's `Family.maintainers` (`integrations/<x>/families/<family>/__init__.py`), run
+`scripts/gen_codeowners.py`, and merge the PR yourself: `/merge` refuses any change to a `maintainers` tuple. Then
+invite them to Triage, as for an integration's maintainers.
+
 ## Settings the workflows rely on
 
 - **Ruleset on `main` and `release/*`:** changes go through a pull request, with no required approvals. The required

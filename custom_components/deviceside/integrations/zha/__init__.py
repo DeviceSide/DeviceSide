@@ -3,6 +3,7 @@
 from .addressing import is_zha_group
 from .classes import CLASSES, OTHER, capability, zigbee_manufacturer
 from .fade import ZHACallResolver
+from .families import FAMILIES
 from .get_attributes import ZHAGetAttributes
 from .groups import expand_group
 from .lower_brightness import ZHALowerBrightness
@@ -26,6 +27,7 @@ INTEGRATION = IntegrationInfo(
     capability=capability,
     classes=CLASSES,
     default_class=OTHER,
+    families=FAMILIES,
     zigbee_manufacturer=zigbee_manufacturer,
     call_resolver=ZHACallResolver(),
     max_concurrency=2,

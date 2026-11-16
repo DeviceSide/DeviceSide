@@ -373,7 +373,7 @@ async def test_the_fields_and_the_timer_are_logged_in_order(hass, setup_producti
     ]
 
 
-# Device classes (classes.py): the entries for classes the call harms hold with Experimental features on.
+# Device classes (families/<family>/): the entries for classes the call harms hold with Experimental features on.
 
 TS011F = ("_TZ3000_typdpbpg", "TS011F")
 C = "00:00:00:00:00:00:00:0c"

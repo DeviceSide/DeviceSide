@@ -87,8 +87,8 @@ zigpy 2.3.0, zha-quirks 2.3.0; links at those commits), 2026-11-14:
 So two things decide the outcome. Where the quirk routes On/Off itself (Tuya's datapoint quirks), the quirk does, and
 `tuya_mcu` keys on it: the module that defines the On/Off cluster's `command`. Everywhere else the frame is the
 standard one and the firmware decides, so the class keys on the device's raw Zigbee manufacturer and model, read
-from zigpy's device through the gateway, never the registry. The rules and their order are in the `classes.py`
-docstring.
+from zigpy's device through the gateway, never the registry. Each family's rules are in its package
+(`families/<family>/`), and the order between families in `families/__init__.py`.
 
 ### `turn_on_for`
 
@@ -125,7 +125,7 @@ color light without color temperature takes one as a color, as core does. `min_b
 CurrentLevel live. Then, once every light's commands are sent and outside the concurrency slots, each light at least
 one command reached gets `homeassistant.update_entity`, since ZHA never applies a color temperature report; ZHA skips
 it while the light is transitioning (1.5 s after a plain off), so DeviceSide waits up to 3 s, and after a longer
-off fade refreshes again when it ends. Models in `zcl.DROPS_WHILE_OFF` are refused. The wait reads zha's private
+off fade refreshes again when it ends. Models in `DROPS_WHILE_OFF` (`families/sengled/`) are refused. The wait reads zha's private
 `entity_data.entity` and its `is_transitioning`; a zha release without them is logged once, and the refresh then
 goes ahead without waiting.
 
@@ -244,7 +244,7 @@ cites have been checked upstream: search each tracker for duplicates before fili
   brightness was, and a fix sits on the `zigpy-bot/light-color-reports` branch, no PR yet). Don't file a new issue.
 - **zha-quirks: define Signify's `0xFC03` `multiColor` command on the Hue cluster,** so
   `zha.issue_zigbee_cluster_command` can send it. Workaround: straight to zigpy, re-implementing ZHA's admin
-  check (`zcl.hue_turn_on`, `require_admin`). Additive quirk work; Z2M's `philips.ts` is prior art.
+  check (`families/hue/multi_color.py`'s `turn_on`, `zcl.require_admin`). Additive quirk work; Z2M's `philips.ts` is prior art.
 - **ZHA: `update_entity` does nothing while the transition flag is up,** and "on" reports are ignored for 1.5 s
   after `turn_off`. Workaround: poll the flag up to 3 s and refresh again after long fades
   (`TRANSITION_WAIT_S`, the late refresh). The guard is deliberate; pitch it narrowly: an explicit

@@ -165,6 +165,11 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
 
 ## After v0.1.0
 
+- [ ] **Per-family test records and docs**: a family's maintainers own its code, unit tests and new research, while the
+  test records, `index.md`, `internals.md` and `devices.yaml` stay whole and the integration's
+  ([CLAUDE.md](CLAUDE.md#maintainers)). Split them by family once a family maintainer signs off their own classes:
+  the record layout and `docs/test-records.schema.json`, `check_release.py --signoffs` and `gen_compat.py` reading
+  them, and the paths added to `FAMILY_PATHS` (`scripts/gen_codeowners.py`).
 - [ ] **Code comments cite the bundles**: eight comments under `integrations/` (hue, matter, zha, zigbee2mqtt) still
   cite `docs/integration-internals.md` or `docs/integrations.md`; point each at its bundle's
   `internals.md#tested-behavior` (Z2M `addressing.py`: `index.md#sharp-edges`), which

@@ -12,12 +12,12 @@ from pytest_homeassistant_custom_component.common import async_mock_service
 from custom_components.deviceside.core.models import Target
 from custom_components.deviceside.core.runtime import DATA
 from custom_components.deviceside.integrations.zigbee2mqtt import bridge, bridge_cache
-from custom_components.deviceside.integrations.zigbee2mqtt import native_control as nc
+from custom_components.deviceside.integrations.zigbee2mqtt.families.hue import native_control as nc
 from custom_components.deviceside.integrations.zigbee2mqtt.restore_journal import journal, locks
 
-from .conftest import DEVICES, SET, call, light
-from ...conftest import allow_experimental, refusal
-from ...fixtures.zigbee2mqtt import GROUPS, IEEE, INFO, add_z2m_entity, add_z2m_group, z2m_entry
+from ...conftest import DEVICES, SET, call, light
+from .....conftest import allow_experimental, refusal
+from .....fixtures.zigbee2mqtt import GROUPS, IEEE, INFO, add_z2m_entity, add_z2m_group, z2m_entry
 
 SENT = {"status": "sent", "integration": "zigbee2mqtt"}
 DEVICE_REQUEST = "zigbee2mqtt/bridge/request/device/options"

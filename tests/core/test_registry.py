@@ -194,6 +194,12 @@ TUYA_FAMILY = Family(
 WITH_FAMILIES = replace(CLASSED, default_class="other", families=(HUE_FAMILY, TUYA_FAMILY))
 
 
+def test_a_family_scope_for_an_unknown_action_is_refused():
+    typo = replace(HUE_FAMILY, scopes={"turn_on_fro": FamilyScope()})
+    with pytest.raises(ValueError, match="family 'hue' holds scopes for unknown actions"):
+        _registry([Classed], replace(WITH_FAMILIES, families=(typo, TUYA_FAMILY)))
+
+
 def test_families_that_split_the_classes_between_them_are_accepted():
     registry = _registry([Classed], WITH_FAMILIES)
     assert [family.key for family in registry.integrations["fake"].families] == ["hue", "tuya"]

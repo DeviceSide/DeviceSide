@@ -148,6 +148,10 @@ class AdapterRegistry:
         info: IntegrationInfo = module.INTEGRATION
         check_integration(info)
         self.integrations[info.key] = info
+        for family in info.families:
+            # A typo would leave the family's classes out of that adapter's scope, refused with nothing saying why.
+            if unknown := sorted(family.scopes.keys() - self.actions.keys()):
+                raise ValueError(f"{info.key}: family {family.key!r} holds scopes for unknown actions {unknown}")
         for cls in module.ADAPTERS:
             if cls.integration != info.key:
                 raise ValueError(f"{cls.__name__} declares integration {cls.integration}, module is {info.key}")

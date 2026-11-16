@@ -12,10 +12,10 @@ from homeassistant.helpers import entity_registry as er
 
 from .addressing import not_addressable, topic, z2m_address
 from .bridge import has_feature, publish, publish_set
-from .classes import FADE_BRIGHTNESS, FADE_COLOR
+from .classes import class_scope
 from .color_refresh import refresh_color
+from .families.hue.native_control import NEED, native_control
 from .members import member_lights, unaddressable
-from .native_control import NEED, native_control
 from .set_check import checked
 from ...actions.ramp import RampRequest
 from ...core import transition
@@ -119,12 +119,11 @@ class Fade:
     before: tuple[tuple[Target, dict], ...] = ()
 
 
-def ramp_scope(attribute: str) -> AdapterScope:
-    """A ramp's scope: a brightness fade's classes are held as stop's are, a hue or saturation fade's apart
-    (classes.py)."""
-    capabilities = FADE_BRIGHTNESS if attribute == BRIGHTNESS else FADE_COLOR
+def ramp_scope(action: str, attribute: str) -> AdapterScope:
+    """A ramp's scope: its classes as the families and classes.py hold them for the action, a brightness fade's as
+    stop's are, a hue or saturation fade's apart."""
     return AdapterScope(
-        domains=verified("light"), capabilities=capabilities, fields=verified(attribute), native_groups=True
+        domains=verified("light"), **class_scope(action), fields=verified(attribute), native_groups=True
     )
 
 
@@ -191,7 +190,7 @@ async def start(
     need: bool | None,
 ) -> float | None:
     """Publish the fade, recording it, and schedule its end read-back, or publish the hue move; the clamped
-    sweep_time. Z2M's hue_native_control is held at need for the publishes (native_control.py)."""
+    sweep_time. Z2M's hue_native_control is held at need for the publishes (families/hue/native_control.py)."""
     async with native_control(hass, target, need):
         if not isinstance(outcome, Fade):
             rate, clamped_to = outcome

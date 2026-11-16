@@ -2,11 +2,10 @@
 through the zha integration's gateway."""
 
 import logging
-import struct
 from typing import Any
 
 from homeassistant.core import Context, HomeAssistant
-from homeassistant.exceptions import HomeAssistantError, Unauthorized, UnknownUser
+from homeassistant.exceptions import Unauthorized, UnknownUser
 
 from .addressing import Address, group_entity_id
 from ...core.zcl_write import level as level
@@ -42,19 +41,6 @@ MOVE_TO_COLOR_TEMP = 0x0A
 ENHANCED_MOVE_HUE = 0x41
 STOP_MOVE_STEP = 0x47
 
-# Signify's own cluster on Hue bulbs, whose multiColor command sets on, brightness and fade time in one; Z2M sends it
-# with hue_native_control on (zigbee-herdsman-converters src/lib/philips.ts).
-HUE_CLUSTER = 0xFC03
-HUE_MULTI_COLOR = 0x00
-SIGNIFY = 0x100B
-# multiColor's payload: flags, then each flagged field in Hue's wire order: on (1 byte), brightness (1 byte, 1-254),
-# fade time (2 bytes, tenths).
-_HUE_ON_BRIGHTNESS_FADE = 0x0013
-
-# Models that don't store a MoveToLevel while off: the Sengled E11-G13 jumps CurrentLevel to 255 with or without the
-# override and comes on at full (docs/integration-internals.md, ZHA tested behavior).
-DROPS_WHILE_OFF = frozenset({"E11-G13"})
-
 
 def execute_if_off(transition_tenths: int) -> dict[str, int]:
     """A MoveTo command's transition and the ExecuteIfOff override, which makes a light that is off store the value
@@ -79,7 +65,7 @@ async def command(
     than DeviceSide's own rights. The zha library raises on a delivery failure or a non-success ZCL status, so a call
     that returns was accepted.
     """
-    _LOGGER.debug("%s: sending zcl %s %s", entity_id, _command_name(cluster_id, command_id), params)
+    _LOGGER.debug("%s: sending zcl %s %s", entity_id, command_name(cluster_id, command_id), params)
     await hass.services.async_call(
         "zha",
         "issue_zigbee_cluster_command",
@@ -106,7 +92,7 @@ async def group_command(
     feedback: a member that can't run the command drops it silently. The debug line names the group's light entity.
     """
     if _LOGGER.isEnabledFor(logging.DEBUG):
-        _LOGGER.debug("%s: sending zcl %s %s", group_entity_id(hass, gid), _command_name(cluster_id, command_id), args)
+        _LOGGER.debug("%s: sending zcl %s %s", group_entity_id(hass, gid), command_name(cluster_id, command_id), args)
     await hass.services.async_call(
         "zha",
         "issue_zigbee_group_command",
@@ -116,7 +102,7 @@ async def group_command(
     )
 
 
-def _command_name(cluster_id: int, command_id: int) -> str:
+def command_name(cluster_id: int, command_id: int) -> str:
     return f"0x{cluster_id:04x}/0x{command_id:02x}"
 
 
@@ -180,38 +166,6 @@ async def require_admin(hass: HomeAssistant, context: Context | None) -> None:
         raise UnknownUser(context=context, user_id=context.user_id)
     if not user.is_admin:
         raise Unauthorized(context=context)
-
-
-async def hue_turn_on(
-    hass: HomeAssistant, addr: Address, level: int, context: Context | None, *, entity_id: str
-) -> bool:
-    """Turn a Hue bulb on at `level`, with no fade, in one multiColor command; False, with nothing sent, for a light
-    without Hue's cluster.
-
-    A Hue bulb on ZHA ignores a level sent just before it is turned on, by MoveToLevel with ExecuteIfOff or by
-    MoveToLevelWithOnOff, and fades from its stored one; turned on this way it starts at `level`, as on Z2M with
-    hue_native_control. zha has no action for a command its cluster doesn't define, so it goes to zigpy, behind zha's
-    admin check. Raises on a delivery failure or a non-success status, as command() does.
-    """
-    from zigpy.types import EUI64, SerializableBytes, Struct
-
-    if (device := gateway(hass).get_device(EUI64.convert(addr.ieee))) is None:
-        raise LookupError(f"ZHA device of {entity_id} not found")
-    try:
-        cluster = device.async_get_cluster(addr.endpoint_id, HUE_CLUSTER, cluster_type="in")
-    except KeyError:
-        return False
-    await require_admin(hass, context)
-
-    class MultiColor(Struct):
-        data: SerializableBytes
-
-    payload = struct.pack("<HBBH", _HUE_ON_BRIGHTNESS_FADE, 1, max(1, min(level, 254)), 0)
-    _LOGGER.debug("%s: sending zcl %s %s", entity_id, _command_name(HUE_CLUSTER, HUE_MULTI_COLOR), payload.hex())
-    response = await cluster.request(False, HUE_MULTI_COLOR, MultiColor, payload, manufacturer=SIGNIFY)
-    if (status := getattr(response, "status", 0)) != 0:
-        raise HomeAssistantError(f"multiColor to {entity_id} answered {status}")
-    return True
 
 
 async def color_capabilities(hass: HomeAssistant, addr: Address) -> int:
