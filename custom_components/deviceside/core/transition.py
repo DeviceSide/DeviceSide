@@ -186,5 +186,9 @@ def lit(cache: TransitionCache, lights: list[Target]) -> list[Target]:
     )
 
 
+def color_mode(light: Target) -> str | None:
+    return light.state.attributes.get("color_mode") if light.state else None
+
+
 def hs_color(light: Target) -> tuple[float, float] | None:
     return light.state.attributes.get("hs_color") if light.state else None

@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from statistics import mean
 from typing import Any, ClassVar
 
+from homeassistant.components.light import COLOR_MODES_COLOR
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
@@ -30,7 +31,15 @@ from ...core.models import EntityResult, Status, Target
 from ...core.resolver import resolve
 from ...core.runtime import Job, get_runtime
 from ...core.scope import AdapterScope, verified
-from ...core.transition import BRIGHTNESS, SATURATION, TransitionCache, hs_color, light_brightness, lit
+from ...core.transition import (
+    BRIGHTNESS,
+    SATURATION,
+    TransitionCache,
+    color_mode,
+    hs_color,
+    light_brightness,
+    lit,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -43,8 +52,6 @@ MIN_CYCLE_S, MAX_CYCLE_S = 1.0, 254.0
 # The end read-back, after the fade has run: a live read mid-fade may have overwritten Z2M's published end value.
 END_READ_S = 1.0
 COLOR_HS = "color_hs"  # the Z2M feature a hue or saturation move needs
-# The HA color modes in which a light shows a color, so a saturation change is visible and keeps its own hue.
-_COLOR_MODES = frozenset({"hs", "xy"})
 # An off light keeps its level, and a fade from off starts there: it is turned on at the bottom first.
 AT_THE_BOTTOM = {"state": "ON", "brightness": 1, "transition": 0}
 
@@ -269,14 +276,10 @@ def saturation_fade(cache: TransitionCache, request: RampRequest, target: Target
         return "at_limit"
     duration = abs(limit - current) / 100 * request.sweep_time
     color = {"saturation": round(limit, 1)}
-    if not all(color_mode(light) in _COLOR_MODES for light in movers):
+    if not all(color_mode(light) in COLOR_MODES_COLOR for light in movers):
         color["hue"] = round((hs_color(target) or hs_color(movers[0]))[0], 1)
     payload = {"color": color, "transition": round(duration, 1)}
     return Fade(SATURATION, payload, starts, dict.fromkeys(starts, limit), duration)
-
-
-def color_mode(light: Target) -> str | None:
-    return light.state.attributes.get("color_mode") if light.state else None
 
 
 def hue_rate(request: RampRequest) -> HueMove:

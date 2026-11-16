@@ -7,6 +7,7 @@ transition and the ExecuteIfOff override.
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from homeassistant.components.light import color_supported
 from homeassistant.util.color import (
     color_hs_to_xy,
     color_temperature_kelvin_to_mired,
@@ -18,8 +19,6 @@ from .color import color_xy
 
 if TYPE_CHECKING:  # core doesn't import actions at run time
     from ..actions.set_attributes import SetAttributesRequest
-
-_COLOR_MODES = frozenset({"xy", "hs"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -112,7 +111,7 @@ def commands(
         elif (command := _brightness(request, current_level)) is not None:
             sent.append(command)
     kelvin = fields.color_temp_kelvin
-    colors = bool(modes & _COLOR_MODES)
+    colors = color_supported(modes)
     if (xy := color_xy(fields)) is None and kelvin is not None and colors and "color_temp" not in modes:
         xy = color_hs_to_xy(*color_temperature_to_hs(kelvin))  # as core's light.turn_on converts it
     if xy is not None:
