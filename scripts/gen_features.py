@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Generate the README feature table: per feature and integration, an icon for each kind of target that is built
-(light, switch, native group, native scene), and one prohibited sign for whatever appears impossible.
+(light, switch, native group, native scene), and a lone prohibited sign for a feature that appears impossible on the
+whole integration.
 
 Each icon links to the docs: a cell's to its integration's page, `docs/integrations/<integration>/index.md` (the
 feature's section when it has one), a prohibited sign's to the section of docs/integrations.md that says why, a legend
@@ -10,8 +11,8 @@ The columns come from each integration's bundle: `column` (the README label) and
 `docs/integrations/<integration>/devices.yaml`. An integration without one is an error naming the file to add.
 
 What is built comes from each adapter's `AdapterScope`: an amber icon for what works with the Experimental features
-option off, a grey one for what works only with it on. Only NO_PATH, the known blockers, is kept by hand. A blank cell
-means possible but not built yet.
+option off, a grey one for what works only with it on. Only NO_PATH, the known blockers, is kept by hand, one whole cell
+each. A blank cell means possible on some device, or not built yet.
 
 Usage: scripts/gen_features.py [--check]
 
@@ -99,28 +100,23 @@ LEGEND = (
     ("switch", "switch", "switches", "docs/device-compatibility.md", "tested-devices"),
     ("group", "native group", "groups", "docs/device-compatibility.md", "native-groups"),
     ("scene", "native scene", "scene", "README.md", "set-scene-without-turning-on"),
-    ("devices", "Released", "released", "docs/device-compatibility.md", "levels-of-proof"),
     ("devices-grey", "Experimental", "experimental", "docs/device-compatibility.md", "levels-of-proof"),
     ("no", "not possible", "appears impossible", INTEGRATIONS, IMPOSSIBLE),
 )
-# (feature label, integration) -> icon keys with a known blocker, so never "not built yet". Users read why in
-# docs/integrations.md, at IMPOSSIBLE.
+# (feature label, integration) cells where the feature is impossible on the integration for every device we know of,
+# and we've found no device where it's possible: so never "not built yet", and never beside a built icon (generate
+# fails). Users read why in docs/integrations.md, at IMPOSSIBLE. A feature that only some devices can't do stays
+# blank, and that page says so.
 NO_PATH = {
-    # Zigbee and Matter `OnWithTimedOff` is on-then-off only: there is no off-then-on timer to send. Tuya's Zigbee
-    # devices are the exception on ZHA and Zigbee2MQTT alike, plausibly (plan Decision 73, for v0.1.x): Tuya's own
-    # countdown toggles at zero, and some Tuya firmware toggles on 0x42 from off. So their lights and switches are
-    # only not built yet, while every other Zigbee device still has no call (docs/integrations.md says so, as the cell
-    # can't); a group's call is the Zigbee one.
-    ("Turn off with timer", "zha"): ("group",),
-    ("Turn off with timer", "zigbee2mqtt"): ("group",),
-    ("Turn off with timer", "matter"): ("light", "switch"),
+    # Matter `OnWithTimedOff` is on-then-off only: there is no off-then-on timer to send.
+    ("Turn off with timer", "matter"),
     # Hue bridge timers ignore a manual on or off, so they can't be cancelled the way users expect.
-    ("Turn off with timer", "hue"): ("light", "group"),
-    ("Turn on with timer", "hue"): ("light", "group"),
+    ("Turn off with timer", "hue"),
+    ("Turn on with timer", "hue"),
     # CLIP v2 has no rule engine, so the bridge can't store "off N seconds after any turn-on".
-    ("Auto-off/on (aka inching)", "hue"): ("light", "group"),
+    ("Auto-off/on (aka inching)", "hue"),
     # A hue rotation isn't a straight line in xy, so it can't be one bridge command.
-    ("Smooth hue change", "hue"): ("light", "group"),
+    ("Smooth hue change", "hue"),
 }
 
 
@@ -212,17 +208,17 @@ def href(file: str, anchor: str | None) -> str:
     return DOC_URL.format(file, anchor) if anchor else DOC_URL.format(file, "").removesuffix("#")
 
 
-def cell(have: set[str], blocked: tuple[str, ...], trial: set[str] = frozenset(), link: str = "", why: str = "") -> str:
+def cell(have: set[str], blocked: bool = False, trial: set[str] = frozenset(), link: str = "", why: str = "") -> str:
     """An icon per built key, amber, or grey when it works only with the Experimental features option on, linking to
-    `link`, then one prohibited sign naming every blocked key, linking to `why`."""
+    `link`; or, for a `blocked` cell, one prohibited sign linking to `why`, and nothing else."""
+    if blocked:
+        return img("no", "not possible", why)
     icons = []
     for key in ICONS:
         if key in have:
             icons.append(img(key, ICONS[key], link))
         elif key in trial:
             icons.append(img(f"{key}-grey", f"{ICONS[key]}: Experimental", link))
-    if blocked:
-        icons.append(img("no", f"{', '.join(ICONS[key] for key in ICONS if key in blocked)}: not possible", why))
     return " ".join(icons)
 
 
@@ -243,14 +239,13 @@ def generate(registry: AdapterRegistry) -> str:
     cells = built(registry, cols=cols)
     trial = built(registry, experimental=True, cols=cols)
     labels = {label for label, *_ in FEATURES}
-    for (label, integration), blocked in NO_PATH.items():
+    for label, integration in NO_PATH:
         if label not in labels or integration not in cols:
             raise SystemExit(f"NO_PATH entry ({label!r}, {integration!r}) names no README row or column")
-        if unknown := [key for key in blocked if key not in ICONS]:
-            raise SystemExit(f"NO_PATH entry ({label!r}, {integration!r}): no icon {', '.join(unknown)}")
-        if stale := [key for key in blocked if key in trial[label, integration]]:
+        if found := trial[label, integration]:
             raise SystemExit(
-                f"{label} on {cols[integration]}: {', '.join(stale)} is built, so not blocked; drop it from NO_PATH"
+                f"{label} on {cols[integration]}: {', '.join(sorted(found))} is built, so not impossible; "
+                "drop it from NO_PATH"
             )
     lines = [
         START,
@@ -263,7 +258,7 @@ def generate(registry: AdapterRegistry) -> str:
         row = [
             cell(
                 cells[label, integration],
-                NO_PATH.get((label, integration), ()),
+                (label, integration) in NO_PATH,
                 trial[label, integration],
                 cell_link(integration, topic),
                 why,

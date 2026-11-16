@@ -682,12 +682,12 @@ def test_the_legend_leads_the_cards(root):
     assert text.index(gc.CARDS_LEGEND) < text.index("**ZHA**")
     assert gc.CARDS_LEGEND == (
         "🟢 works · ✔ verified on automated rig · 🟡 should work: same call pattern as a tested device · "
-        "🧪 experimental: off until you turn on Experimental features in DeviceSide's Configure > Settings; please"
+        "🧪 experimental: enable in DeviceSide's Configure > Settings; please"
         f" [report how it goes]({gc.REPORT_URL}) · "
         "🚧 not built yet: needs a command DeviceSide doesn't have yet · "
         "🔴 no known method: no known command works on it · "
-        "⚠️ unmaintained: no one is fixing it; use at your own risk · "
-        f"⚠️ untested fix: changed, not yet tested; please [report whether it works]({gc.REPORT_URL})"
+        f"⚠️ untested fix: changed, not yet tested; please [report whether it works]({gc.REPORT_URL}) · "
+        "⚠️ unmaintained: no one is fixing it; use at your own risk"
     )
     assert text.index("Details per integration are in [docs/integrations.md](") < text.index("</details>")
 
@@ -771,7 +771,7 @@ def test_every_evidence_row_of_an_adapter_with_a_caveat_is_marked(root):
     assert gc.rows(linked)[0].startswith(f"| `stop` [⚠️ Untested fix]({ISSUE_REASON}) | Verified |")
 
 
-def test_a_card_marks_untested_fixes_after_unmaintained_ones(root):
+def test_a_card_marks_unmaintained_ones_after_untested_fixes(root):
     card = zha_card(
         adapter("zha", "turn_on_for", AdapterScope(caveat=untested_fix(ISSUE_REASON))),
         adapter("zha", "turn_off_for", AdapterScope(caveat=unmaintained("gone"))),
@@ -780,8 +780,8 @@ def test_a_card_marks_untested_fixes_after_unmaintained_ones(root):
     lines = card.render().splitlines()
     marks = [line for line in lines if line.startswith("- ⚠️") or line.startswith("- [⚠️")]
     assert marks == [
-        "- ⚠️ Unmaintained (gone): turn off with timer",
         f"- [⚠️ Untested fix]({ISSUE_REASON}): turn on with timer, scenes",
+        "- ⚠️ Unmaintained (gone): turn off with timer",
     ]
     # An untested fix is not unmaintained: the heading still names the maintainers.
     assert "formerly maintained" not in heading(card)

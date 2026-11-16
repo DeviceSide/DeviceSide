@@ -30,13 +30,14 @@ measured on real bulbs, is in [internals.md](internals.md) and each integration'
 
 ## What can't be done, and why
 
-The README's prohibited signs mark these. Each is a limit of the device protocol or the bridge, not a feature
-waiting to be built.
+The README's prohibited signs mark these: a feature that is impossible on that whole integration, for every device
+we know of. Each is a limit of the device protocol or the bridge, not a feature waiting to be built. A feature only
+some devices can't do is not marked there.
 
-- **Turn off with timer on Zigbee groups and Matter, and on Zigbee devices other than Tuya's.** The Zigbee and
+- **Turn off with timer on Matter, and on Zigbee groups and Zigbee devices other than Tuya's.** The Zigbee and
   Matter timer command (`OnWithTimedOff`) turns a device on, then off. There is no command for off, then on, so
-  non-Tuya Zigbee lights and switches have no call for it either, though the README's table leaves their ZHA and
-  Zigbee2MQTT cells blank. Tuya's Zigbee devices may have one: Tuya's own countdown toggles the device when it ends,
+  Matter, Zigbee groups and non-Tuya Zigbee lights and switches have no call for it. The README's table marks only
+  Matter, and leaves the ZHA and Zigbee2MQTT cells blank, as Tuya's Zigbee devices may have one: Tuya's own countdown toggles the device when it ends,
   and some Tuya firmware toggles on `OnWithTimedOff` from off too, though not all (one TS011F ignores it when off).
   DeviceSide plans to probe and build turn off with timer for them after v0.1.0.
 - **Turn on or off with timer on Hue.** The bridge's own timers keep running through a plain on or off, from Home

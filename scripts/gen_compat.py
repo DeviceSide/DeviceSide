@@ -124,8 +124,7 @@ OUTCOMES = (
     (
         "experimental",
         "🧪",
-        "experimental: off until you turn on Experimental features in DeviceSide's Configure > Settings; please"
-        f" [report how it goes]({REPORT_URL})",
+        f"experimental: enable in DeviceSide's Configure > Settings; please [report how it goes]({REPORT_URL})",
     ),
     ("not_built", "🚧", "not built yet: needs a command DeviceSide doesn't have yet"),
     ("no_known_method", "🔴", "no known method: no known command works on it"),
@@ -134,14 +133,14 @@ VERIFIED = "✔"
 UNMAINTAINED = "⚠️ Unmaintained"
 UNTESTED_FIX = "⚠️ Untested fix"
 # The scope's caveats, as (kind, label), in a card's order.
-MARKS = ((CaveatKind.UNMAINTAINED, UNMAINTAINED), (CaveatKind.UNTESTED_FIX, UNTESTED_FIX))
+MARKS = ((CaveatKind.UNTESTED_FIX, UNTESTED_FIX), (CaveatKind.UNMAINTAINED, UNMAINTAINED))
 CARDS_LEGEND = " · ".join(
     [
         f"{OUTCOMES[0][1]} {OUTCOMES[0][2]}",
         f"{VERIFIED} verified on automated rig",
         *(f"{icon} {legend}" for _, icon, legend in OUTCOMES[1:]),
-        "⚠️ unmaintained: no one is fixing it; use at your own risk",
         f"⚠️ untested fix: changed, not yet tested; please [report whether it works]({REPORT_URL})",
+        "⚠️ unmaintained: no one is fixing it; use at your own risk",
     ]
 )
 GITHUB = "https://github.com/"
