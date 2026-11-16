@@ -25,7 +25,7 @@ from .set_check import checked
 from ...actions.ramp import RampRequest
 from ...core import transition
 from ...core.adapter import Adapter
-from ...core.errors import Reason
+from ...core.errors import Reason, describe
 from ...core.ha_watch import ALL, Call, Entries
 from ...core.models import EntityResult, Status, Target
 from ...core.resolver import resolve
@@ -178,7 +178,11 @@ class Z2MRamp(Adapter[RampRequest]):
                 return self.result(target, Status.UNCHANGED, detail="fields_dropped")
             if isinstance(outcome := plan(cache, request, target, lights), str):
                 return self.result(target, Status.UNCHANGED, detail=outcome)
-            clamped_to = await start(hass, cache, target, lights, outcome, NEED.get(self.action))
+            try:
+                await start(hass, cache, target, lights, outcome, NEED.get(self.action))
+            except Stopped:
+                return self.result(target, Status.UNCHANGED, detail="stopped")
+            clamped_to = None if isinstance(outcome, Fade) else outcome[1]
             return self.result(target, Status.SENT, clamped_to=clamped_to)
 
         return await checked(self, hass, targets, send)
@@ -196,6 +200,10 @@ def plan(cache: TransitionCache, request: RampRequest, target: Target, lights: l
     return hue_rate(request) if lit(cache, lights) else "off"
 
 
+class Stopped(Exception):
+    """A stop reached the fade's lights while it waited for Z2M's option: it publishes nothing."""
+
+
 async def start(
     hass: HomeAssistant,
     cache: TransitionCache,
@@ -203,27 +211,40 @@ async def start(
     lights: list[Target],
     outcome: Fade | HueMove,
     need: bool | None,
-) -> float | None:
-    """Publish the fade, recording it, and schedule its end read-back, or publish the hue move; the clamped
-    sweep_time. Z2M's hue_native_control is held at need for the publishes (native_control.py)."""
-    async with native_control(hass, target, need):
-        if not isinstance(outcome, Fade):
-            rate, clamped_to = outcome
-            await publish_set(hass, target, {"hue_move": rate})
-            hue_moves(hass).update(light.entity_id for light in lights)
-            return clamped_to
-        # Inside the option's window, so the prediction starts at the publish, not before the settings writes.
-        async with cache.recording((light_id, outcome.attribute) for light_id in outcome.starts):
+) -> None:
+    """Publish the fade, recording it, and schedule its end read-back, or publish the hue move. Z2M's
+    hue_native_control is held at need for the publishes (native_control.py).
+
+    A fade is recorded before the option is taken, which can wait on an earlier action's restore, so a stop in that
+    window finds the fade and halts it; the fade then raises Stopped and publishes nothing, and the stop stands. A hue
+    move needs no option, so it has no such window."""
+    if not isinstance(outcome, Fade):
+        async with native_control(hass, target, need):
+            await publish_set(hass, target, {"hue_move": outcome[0]})
+        hue_moves(hass).update(light.entity_id for light in lights)
+        return
+    attribute = outcome.attribute
+    async with cache.recording((light_id, attribute) for light_id in outcome.starts):
+        planned = {
+            light_id: cache.moving(light_id, attribute, begin, outcome.ends[light_id], outcome.duration)
+            for light_id, begin in outcome.starts.items()
+        }
+        async with native_control(hass, target, need):
+            if any(
+                cache.halted(light_id, attribute) and cache.live(light_id, attribute) is not transition
+                for light_id, transition in planned.items()
+            ):
+                raise Stopped
+            # Recorded again inside the option's window, so the prediction starts at the publish.
             for light_id, begin in outcome.starts.items():
-                cache.moving(light_id, outcome.attribute, begin, outcome.ends[light_id], outcome.duration)
+                cache.moving(light_id, attribute, begin, outcome.ends[light_id], outcome.duration)
             for light, payload in outcome.before:
                 await publish_set(hass, light, payload)
             await publish_set(hass, target, outcome.payload)
-        if outcome.attribute == SATURATION:
-            hue_moves(hass).difference_update(outcome.starts)  # a color write ends the bulb's hue cycle
-    read = end_read(hass, target, lights, outcome.attribute)
-    get_runtime(hass).schedule(hass, read_back_key(target, outcome.attribute), [(outcome.duration + END_READ_S, read)])
-    return None
+    if attribute == SATURATION:
+        hue_moves(hass).difference_update(outcome.starts)  # a color write ends the bulb's hue cycle
+    read = end_read(hass, target, lights, attribute)
+    get_runtime(hass).schedule(hass, read_back_key(target, attribute), [(outcome.duration + END_READ_S, read)])
 
 
 async def lacks_color(hass: HomeAssistant, request: RampRequest, lights: list[Target]) -> bool:
@@ -304,6 +325,6 @@ def end_read(hass: HomeAssistant, target: Target, lights: list[Target], attribut
             try:
                 await publish(hass, topic(light, "get"), {"state": "", "brightness": ""})
             except Exception as err:  # noqa: BLE001 - a failed read leaves HA's state stale, nothing more
-                _LOGGER.debug("End read-back for %s failed: %r", light.entity_id, err)
+                _LOGGER.debug("End read-back for %s failed: %s", light.entity_id, describe(err))
 
     return read
