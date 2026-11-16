@@ -22,7 +22,8 @@ Only devices Z2M registered through MQTT discovery are found: the device carries
   last connect. Options DeviceSide sets are written through to the held settings once Z2M confirms them, until its
   next `bridge/info`.
 - **Both assume the default base topic.** A group's identifier carries it, so another is refused; a device's
-  doesn't, so its publish goes nowhere.
+  doesn't, but its entities' unique_ids end in it (`<ieee>_<domain>_<base topic>`), so a device target on another is
+  refused by the state-entity rule below.
 - **Multi-endpoint devices.** DeviceSide's set and get topics name the device alone, with unsuffixed keys
   (`state`), so Z2M sends the call to the device's default endpoint: the definition's `default`, else its first
   (`endpoint()` in Z2M's [`lib/model/device.ts`](https://github.com/Koenkk/zigbee2mqtt/blob/2.6.0/lib/model/device.ts),
@@ -33,14 +34,22 @@ Only devices Z2M registered through MQTT discovery are found: the device carries
   `l1`; `publishDevices` in [`lib/extension/bridge.ts`](https://github.com/Koenkk/zigbee2mqtt/blob/2.6.0/lib/extension/bridge.ts),
   absent in 2.5.1), and Z2M's discovery gives that entity unique_id `<ieee>_<domain>_<name>_<base topic>` (object_id
   `light_l1`, `lib/extension/homeassistant.ts`). Matching it is no use until the call can reach that endpoint, which
-  also needs the endpoint's suffixed state keys read back. So a device with more than one Z2M (`mqtt` platform)
-  entity in the target's domain, disabled ones counted (`addressing.endpoints`), is never addressed on its own:
-  - **Targeted itself** (named, or by area, label or `group.*`), every such light or switch is refused as
-    `not_addressable` by every Z2M action (`addressing.not_addressable`, which each adapter's `supports()` calls),
-    the first too: the default endpoint is the definition's (`default`, else the device's first endpoint), which
+  also needs the endpoint's suffixed state keys read back. So a device target is addressed only when it is its
+  device's unsuffixed state entity: Z2M names a `switch`/`light` expose with no endpoint's entity `<domain>` (unique_id
+  `<ieee>_<domain>_zigbee2mqtt`, `${ID}_${object_id}_${base_topic}` in `lib/extension/homeassistant.ts`), the entity
+  defined by the unsuffixed `state` key DeviceSide sends and reads, so call and entity agree whichever endpoint is the
+  default. Every other entity in the domain is suffixed: a gang is `<domain>_<endpoint>` (`switch_l1`), and every
+  writable `binary` expose is a `switch_<name>` (a plug's child lock, `config` category; a presence sensor's
+  indicator; a radar's toggles, uncategorized), disabled or not. A count of the device's entities in the domain
+  refused every TS011F plug for its child lock (rig run B, 2026-11-16). The rule is argued, not tested, for a
+  device with an unsuffixed entity beside suffixed gangs, none of which is in hand: it addresses the unsuffixed one.
+  Such a device target is never addressed on its own:
+  - **Targeted itself** (named, or by area, label or `group.*`), every such light or switch, and every config switch,
+    is refused as `not_addressable` by every Z2M action (`addressing.not_addressable`, which each adapter's
+    `supports()` calls), a gang's first too: the default endpoint is the definition's (`default`, else the device's first endpoint), which
     HA's registry doesn't show, and such a device publishes its state under suffixed keys (`state_l1`), which no
-    read here takes. A `switch_as_x` light on the device is no endpoint of it.
-  - **As a group's member**, `members.py` lists it by its first entity, not addressable (`Target.addressable`): its
+    read here takes. A `switch_as_x` light on the device is none of this.
+  - **As a group's member**, `members.py` lists a device by its unsuffixed state entity, addressable, else (a gang) by its first entity, not addressable (`Target.addressable`): its
     class counts; a group that falls back skips it as `not_addressable`; `member_lights` leaves it out (logged at
     DEBUG). Fade, stop and set attributes plan from every member's state while the groupcast still reaches that
     endpoint, so they refuse a group with such an available member as `not_addressable`; get attributes averages the

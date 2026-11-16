@@ -387,7 +387,7 @@ async def test_member_lights_leave_out_a_device_with_several_lights(hass, setup_
     lights = await members.member_lights(hass, resolve(hass, get_runtime(hass).registry, entity_id))
 
     assert [member.entity_id for member in lights] == ["light.one", "light.two"]
-    assert f"{entity_id}: a member device (light.gang_1, light.gang_2) has several light entities" in caplog.text
+    assert f"{entity_id}: a member device (light.gang_1, light.gang_2) has no unsuffixed light entity" in caplog.text
     assert f"{entity_id}: leaving out the devices of light.gang_1, each with several light entities" in caplog.text
 
 
@@ -593,12 +593,12 @@ async def test_a_switch_as_x_light_beside_a_z2m_light_leaves_it_addressable_by_n
 
 
 def second_light(hass, disabled: bool = False) -> None:
-    """A second light entity on light.one's device, as Z2M discovers a two-gang's l2, optionally disabled."""
+    """A second light entity on light.one's device, `<ieee>_light_l2`, beside its unsuffixed state entity."""
     entities = er.async_get(hass)
     entities.async_get_or_create(
         "light",
         "mqtt",
-        "0x01_light_l2",
+        "0x01_light_l2_zigbee2mqtt",
         suggested_object_id="one_l2",
         config_entry=hass.config_entries.async_entries("mqtt")[0],
         device_id=entities.async_get("light.one").device_id,
@@ -609,32 +609,17 @@ def second_light(hass, disabled: bool = False) -> None:
 
 
 @pytest.mark.parametrize("disabled", [False, True])
-async def test_a_device_with_two_lights_is_left_out_of_the_member_map_and_its_class_kept(
+async def test_a_member_is_its_devices_unsuffixed_entity_whatever_sits_beside_it(
     hass, setup_production, broker, disabled
 ):
-    """The audit's M-D on #431: bridge/groups lists the l2 endpoint, but the member was light.one, its first light,
-    so the map credited an entity the group's call never reached. A disabled light counts too, as the group may hold
-    it while HA lists only the other."""
-    entity_id = group(hass, broker, one={}, two={"manufacturer": "IKEA of Sweden"})
-    second_light(hass, disabled)
-    broker.retained[GROUPS][0]["members"][0]["endpoint"] = 2
-    allow_experimental(hass)
-
-    # A groupcast-only action: stop and the fades refuse a group holding such a device (members.unaddressable).
-    response = await call_service(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5})
-
-    assert response[entity_id]["capabilities"] == ["hue", "other"]
-    assert response[entity_id]["member_capabilities"] == {"light.two": "other"}
-
-
-async def test_a_device_with_two_lights_is_listed_out_of_the_map_and_unaddressable(hass, setup_production, broker):
-    """Listed for its class, but neither credited in the map nor addressed on its own."""
+    """Argued, not seen on a device (internals.md, Addressing): the unsuffixed `state` key is the one DeviceSide sends,
+    so that entity is the member, addressable, even with a suffixed light beside it."""
     entity_id = group(hass, broker, one={}, two={})
-    second_light(hass)
+    second_light(hass, disabled)
 
     listed = INTEGRATION.expand_group(hass, resolve(hass, get_runtime(hass).registry, entity_id))
 
-    assert [(member.entity_id, member.addressable) for member in listed] == [("light.one", False), ("light.two", True)]
+    assert [(member.entity_id, member.addressable) for member in listed] == [("light.one", True), ("light.two", True)]
 
 
 # What a class's level does to a call.
