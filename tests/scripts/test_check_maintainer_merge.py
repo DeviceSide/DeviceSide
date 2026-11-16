@@ -2,18 +2,17 @@
 
 import pytest
 
-from custom_components.deviceside.core import registry
 from scripts import check_maintainer_merge as cmm
-from scripts import gen_codeowners
+from scripts import owners
 
-PATHS = cmm.package_paths()
+PATHS = owners.package_paths()
 PKG = "custom_components/deviceside/integrations/acme/"
-INIT = cmm.INIT.format(key="acme")
+INIT = owners.INIT.format(key="acme")
 SCOPE = PKG + "raise_brightness.py"
 README = "# DeviceSide\n\nIntro.\n\n<!-- devices:start -->\nold cards\n<!-- devices:end -->\n"
 COMPAT = "# Device compatibility\n\nProse.\n\n<!-- evidence:start -->\nold rows\n<!-- evidence:end -->\n"
-ACME = cmm.Package("acme")
-TUYA = cmm.Package("acme", "tuya")
+ACME = owners.Package("acme")
+TUYA = owners.Package("acme", "tuya")
 FAMILY = PKG + "families/tuya/"
 REFUSALS = PKG + "refusals.py"
 
@@ -27,7 +26,7 @@ def family(key="tuya", maintainers=("tina",), body='SCOPE = FamilyScope(capabili
 
 
 def family_init(integration="acme", name="tuya"):
-    return cmm.FAMILY_INIT.format(key=integration, family=name)
+    return owners.FAMILY_INIT.format(key=integration, family=name)
 
 
 @pytest.fixture
@@ -36,8 +35,8 @@ def pr(repo, monkeypatch):
     monkeypatch.chdir(repo.path)
     repo.commit(INIT, init())
     repo.commit(SCOPE, "scope = AdapterScope(experimental=True)\n")
-    repo.commit(cmm.README, README)
-    repo.commit(cmm.COMPAT, COMPAT)
+    repo.commit(owners.README, README)
+    repo.commit(owners.COMPAT, COMPAT)
     repo.git("branch", "pr")
     repo.git("checkout", "-q", "pr")
     return repo
@@ -53,15 +52,6 @@ def refused(commenter="alice"):
     return str(err.value)
 
 
-def test_the_paths_match_gen_codeowners():
-    assert PATHS == (gen_codeowners.PATHS, gen_codeowners.FAMILY_PATHS, gen_codeowners.CATALOG_PATHS)
-
-
-def test_the_family_key_shape_matches_the_registry():
-    """The gate is stdlib-only, so it restates the registry's pattern."""
-    assert cmm.NAMES["family"] == registry.FAMILY_KEY.pattern
-
-
 @pytest.mark.parametrize(
     "path",
     [SCOPE, "tests/integrations/acme/test_x.py", "tests/fixtures/acme.py", "docs/integrations/acme/test-records/r.md"],
@@ -73,8 +63,8 @@ def test_a_maintainer_merges_a_change_anywhere_in_their_package(pr, path):
 
 def test_regenerated_output_rides_along(pr):
     pr.commit(SCOPE, "scope = AdapterScope(experimental=False)\n")  # lifting the flag is the maintainer's call
-    pr.commit(cmm.README, README.replace("old cards", "new cards"))
-    pr.commit(cmm.COMPAT, COMPAT.replace("old rows", "new rows"))
+    pr.commit(owners.README, README.replace("old cards", "new cards"))
+    pr.commit(owners.COMPAT, COMPAT.replace("old rows", "new rows"))
     pr.commit(".github/CODEOWNERS", "* @x\n")
     assert check() == [ACME]
 
@@ -91,7 +81,7 @@ def test_a_pr_that_adds_its_commenter_as_maintainer_is_refused(pr):
 
 
 def test_a_new_integration_is_refused(pr):
-    pr.commit(cmm.INIT.format(key="newco"), init())
+    pr.commit(owners.INIT.format(key="newco"), init())
     assert refused() == "`newco` isn't an integration on the base branch yet"
 
 
@@ -105,28 +95,28 @@ def test_a_file_outside_the_package_is_refused(pr, path):
 def test_a_second_package_is_refused_unless_the_commenter_maintains_it_too(repo, monkeypatch):
     monkeypatch.chdir(repo.path)
     repo.commit(INIT, init(("alice", "bob")))
-    repo.commit(cmm.INIT.format(key="other"), init(("alice",)).replace("acme", "other"))
+    repo.commit(owners.INIT.format(key="other"), init(("alice",)).replace("acme", "other"))
     repo.git("checkout", "-q", "-b", "pr")
     repo.commit(SCOPE, "x = 1\n")
     repo.commit("tests/fixtures/other.py", "x = 1\n")
-    assert check() == [ACME, cmm.Package("other")]
+    assert check() == [ACME, owners.Package("other")]
     assert refused("bob") == "@bob isn't a maintainer of `other`"
 
 
 def test_generated_output_alone_is_refused(pr):
-    pr.commit(cmm.COMPAT, COMPAT.replace("old rows", "new rows"))
+    pr.commit(owners.COMPAT, COMPAT.replace("old rows", "new rows"))
     assert refused() == "it changes no integration's package"
 
 
 def test_readme_text_outside_its_blocks_is_refused(pr):
     pr.commit(SCOPE, "x = 1\n")
-    pr.commit(cmm.README, README.replace("Intro.", "My intro."))
+    pr.commit(owners.README, README.replace("Intro.", "My intro."))
     assert refused() == "it changes README.md outside its generated blocks"
 
 
 def test_compatibility_page_text_outside_its_block_is_refused(pr):
     pr.commit(SCOPE, "x = 1\n")
-    pr.commit(cmm.COMPAT, COMPAT.replace("Prose.", "My prose."))
+    pr.commit(owners.COMPAT, COMPAT.replace("Prose.", "My prose."))
     assert refused() == "it changes docs/device-compatibility.md outside its generated blocks"
 
 
@@ -194,7 +184,7 @@ def test_an_integration_or_family_declared_under_any_name_is_refused(pr, text):
 def test_a_file_named_with_a_trailing_newline_is_nobodys(pr):
     path = "tests/fixtures/acme.py\n"
     pr.commit(path, "x = 1\n")
-    assert cmm.match(path, PATHS.integration) is None
+    assert owners.match(path, PATHS.integration) is None
     assert refused() == f"it changes files outside an integration's package: {path}"
 
 
@@ -241,7 +231,7 @@ def families(repo, monkeypatch):
     with no maintainers of its own, and the catalog file the `tuya` families share; then a `pr` branch."""
     monkeypatch.chdir(repo.path)
     repo.commit(INIT, init())
-    repo.commit(cmm.INIT.format(key="zeta"), init(("zoe",)).replace("acme", "zeta").replace("Acme", "Zeta"))
+    repo.commit(owners.INIT.format(key="zeta"), init(("zoe",)).replace("acme", "zeta").replace("Acme", "Zeta"))
     repo.commit(family_init(), family())
     repo.commit(family_init(name="hue"), family("hue", ()))
     repo.commit(REFUSALS, 'TUYA = NoKnownMethod("Plugs", "why", "https://x/1", harms=True)\n')
@@ -285,7 +275,7 @@ def test_a_family_maintainer_merges_a_change_confined_to_their_family(families, 
         (FAMILY.replace("tuya", "newco") + "__init__.py", "@tina isn't a maintainer of `acme`"),
         ("docs/integrations/acme/research/newco/probe.md", "@tina isn't a maintainer of `acme`"),
         (
-            cmm.FAMILY_INIT.format(key="zeta", family="tuya"),
+            owners.FAMILY_INIT.format(key="zeta", family="tuya"),
             "@tina isn't a maintainer of `zeta` or of `zeta`'s `tuya` family",
         ),
     ],
@@ -364,14 +354,14 @@ def test_a_catalog_change_merges_for_any_maintainer_of_a_family_of_its_key_or_of
     families.commit(CATALOG, 'DATAPOINT = "_TZE2"\n')
     families.commit("tests/zigbee/test_tuya.py", "x = 1\n")
     for owner in ("tina", "zed", "alice", "zoe"):
-        assert check(owner) == [cmm.Package(None, "tuya")]
+        assert check(owner) == [owners.Package(None, "tuya")]
     assert refused("mallory") == "@mallory isn't a maintainer of a `tuya` family or its integration"
 
 
 def test_a_catalog_change_with_both_stacks_families_needs_an_owner_of_all_three(repo, monkeypatch):
     monkeypatch.chdir(repo.path)
     repo.commit(INIT, init())
-    repo.commit(cmm.INIT.format(key="zeta"), init(("zoe",)).replace("acme", "zeta"))
+    repo.commit(owners.INIT.format(key="zeta"), init(("zoe",)).replace("acme", "zeta"))
     repo.commit(family_init(), family(maintainers=("tina", "both")))
     repo.commit(family_init("zeta"), family(maintainers=("zed", "both")))
     repo.commit(CATALOG, 'DATAPOINT = "_TZE"\n')
@@ -379,7 +369,7 @@ def test_a_catalog_change_with_both_stacks_families_needs_an_owner_of_all_three(
     repo.commit(CATALOG, 'DATAPOINT = "_TZE2"\n')
     repo.commit(FAMILY + "rules.py", "x = 1\n")
     repo.commit(FAMILY.replace("acme", "zeta") + "rules.py", "x = 1\n")
-    assert check("both") == [cmm.Package(None, "tuya"), TUYA, cmm.Package("zeta", "tuya")]
+    assert check("both") == [owners.Package(None, "tuya"), TUYA, owners.Package("zeta", "tuya")]
     assert refused("tina") == "@tina isn't a maintainer of `zeta` or of `zeta`'s `tuya` family"
     assert refused("alice") == "@alice isn't a maintainer of `zeta` or of `zeta`'s `tuya` family"
 

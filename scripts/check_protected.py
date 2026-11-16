@@ -9,9 +9,9 @@ exception (a core domain in `after_dependencies` slows HA's startup), so a chang
 workflow to warn about on the PR, not failed. Renovate, which bumps its `requirements`, is exempt from the warning.
 
 Both files are compared between the PR's merge base and its head, so a PR that merges `main` in isn't blamed for
-`main`'s changes. The repo maintainers are `REPO_MAINTAINERS` in `scripts/gen_codeowners.py`, read without importing it
-(that imports the integrations): the workflow runs this from the base branch with the standard library alone, and
-reads the PR's files only as data.
+`main`'s changes. The repo maintainers are `REPO_MAINTAINERS` in `scripts/gen_codeowners.py`, read by
+`scripts/owners.py` without importing it (that imports the integrations): the workflow runs this from the base branch
+with the standard library alone, and reads the PR's files only as data.
 
 Usage: scripts/check_protected.py <base> <head> --author <login>
 
@@ -20,41 +20,20 @@ Exits 1 when the README check fails. Writes `readme=true|false` (it failed) and 
 """
 
 import argparse
-import ast
 import os
 import re
-import subprocess
 import sys
 from pathlib import Path
 
-README = "README.md"
-MANIFEST = "custom_components/deviceside/manifest.json"
 REPO = Path(__file__).resolve().parents[1]
-CODEOWNERS_SCRIPT = REPO / "scripts" / "gen_codeowners.py"
+sys.path.insert(0, str(REPO))
+
+from scripts.owners import README, git, repo_maintainers, show  # noqa: E402
+
+MANIFEST = "custom_components/deviceside/manifest.json"
 # Generated blocks: the markers stay, what's between them is the generators'.
 GENERATED = re.compile(r"(<!-- (\w+):start -->).*?(<!-- \2:end -->)", re.DOTALL)
 MANIFEST_EXEMPT = frozenset({"renovate[bot]"})
-
-
-def repo_maintainers(script: Path = CODEOWNERS_SCRIPT) -> frozenset[str]:
-    for node in ast.parse(script.read_text()).body:
-        if isinstance(node, ast.AnnAssign | ast.Assign):
-            targets = [node.target] if isinstance(node, ast.AnnAssign) else node.targets
-            if any(isinstance(t, ast.Name) and t.id == "REPO_MAINTAINERS" for t in targets):
-                return frozenset(ast.literal_eval(node.value))
-    raise SystemExit(f"no REPO_MAINTAINERS in {script}")
-
-
-def git(*args: str) -> str:
-    return subprocess.run(["git", *args], check=True, capture_output=True, text=True).stdout
-
-
-def show(rev: str, path: str) -> str:
-    """The file at `rev`, or "" when it doesn't exist there."""
-    try:
-        return git("show", f"{rev}:{path}")
-    except subprocess.CalledProcessError:
-        return ""
 
 
 def authored(text: str) -> str:

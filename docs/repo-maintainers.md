@@ -8,7 +8,9 @@ skill.
 
 Invite each handle in its `IntegrationInfo.maintainers` to the **Triage** role (Settings, Collaborators and teams).
 `route-issue.yml` can only assign bug reports to someone with access to the repo. Triage doesn't let them push or
-merge; `/merge` needs no role.
+merge; `/merge` needs no role. Triage also means GitHub never requests their review from CODEOWNERS:
+`owner-notice.yml` mentions them on a PR that changes their code instead, and needs no setting
+([CLAUDE.md](../CLAUDE.md#maintainers), Changing someone else's code).
 
 ## Appointing a family maintainer
 
