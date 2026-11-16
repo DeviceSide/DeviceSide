@@ -20,11 +20,9 @@ from ...core.scope import documented, experimental, verified
 _UNIQUE_ID = re.compile(r"^[^-]+-(?P<key>switch|light|cct|rgb|rgbcct|rgbw):(?P<id>\d+)$")
 
 COMPONENTS = {"switch": "Switch", "light": "Light", "cct": "CCT", "rgb": "RGB", "rgbcct": "RGBCCT", "rgbw": "RGBW"}
-# Each component's domains (IntegrationInfo.classes): a Switch relay is a switch, or a light where its consumption type
-# says it drives one; the rest are lights.
-CLASSES = {
-    name: frozenset({"switch", "light"}) if name == "Switch" else frozenset({"light"}) for name in COMPONENTS.values()
-}
+# Each component's domains (IntegrationInfo.classes): a Switch relay has a switch's features alone, even where its
+# consumption type has Home Assistant show it as a light; the rest are lights.
+CLASSES = {name: frozenset({"switch"}) if name == "Switch" else frozenset({"light"}) for name in COMPONENTS.values()}
 
 _DIMMABLE = frozenset({"brightness", "transition"})
 _COLOR = frozenset({"hs_color", "rgb_color", "xy_color"})

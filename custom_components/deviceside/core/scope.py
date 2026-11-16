@@ -410,10 +410,11 @@ class IntegrationInfo:
     capability: Callable[[HomeAssistant, Target], str | None] | None = None
     # Every class capability() can name, so a scope's typo fails at registration and the cards name the classes an
     # adapter serves in neither its capabilities nor its no_known_method as not built yet. Each with the entity
-    # domains a device in it can be, every one Home Assistant may show it as (a Shelly relay: a switch, or a light), so
-    # no adapter's scope holds it on an action none of them reaches (core/registry.py, check_classes): an action for
-    # lights alone refuses a plug, and its card leaves the plug off (docs/evidence.md, Device classes). An integration
-    # with families takes each family's from its Family; the default class's are its own.
+    # domains whose features its devices have (a TS011F plug: a switch, even where Zigbee2MQTT shows it as a light), so
+    # no adapter's scope holds it on an action that serves none of them (core/registry.py, check_classes): an action
+    # for lights alone refuses a plug, and its card leaves the plug off (docs/evidence.md, Device classes). Per action,
+    # not per domain: an action serving one of them admits the class in each domain it serves, at its level there. An
+    # integration with families takes each family's from its Family; the default class's are its own.
     classes: ClassDomains = field(default_factory=dict)
     # The class capability() gives a device no rule matches, one of `classes`; the registry refuses any scope holding it
     # as Verified (docs/evidence.md, Device classes). None for an integration whose classes name every target (Shelly).

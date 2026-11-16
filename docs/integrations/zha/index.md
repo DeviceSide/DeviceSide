@@ -75,7 +75,8 @@ only with Experimental features on.
 
 Sonoff's SWV water valve reads the Zigbee timer in seconds rather than tenths, so it would stay open about ten times
 longer than asked ([research](../zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md)). Turn on with timer isn't
-built for it yet, and DeviceSide refuses it, even with Experimental features on. Its other features are untested.
+built for it yet, and DeviceSide refuses it, even with Experimental features on. Get attributes is untested, so it
+runs only with Experimental features on; the light features don't apply to a valve.
 
 ### Other brands
 

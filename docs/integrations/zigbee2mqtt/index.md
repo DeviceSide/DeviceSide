@@ -40,7 +40,8 @@ Tuya's own countdown instead of the Zigbee timer, and Zigbee2MQTT turns the Zigb
 with timer uses Tuya's countdown on the TS011F plugs below, and isn't built yet on the rest: the Zigbee timer would
 turn the device on and leave it on ([research](research/2026-11-14-timed-on-call-patterns.md)). DeviceSide refuses it
 there, even with Experimental features on. Their other features are untested, so they run only with Experimental
-features on.
+features on, except that the TS011F plugs take none of the light features (smooth dimming, smooth color changes, set
+without turning on): they are plugs.
 
 #### Tuya TS011F plugs
 
@@ -50,8 +51,8 @@ setting for the plug). Turn on with timer uses that countdown:
 - **Verified one maker string at a time** (the Zigbee manufacturer Zigbee2MQTT shows for the plug), each by its own
   test record: `_TZ3000_0zfrhq4i`, `_TZ3000_typdpbpg`, `_TZ3000_gznh2xla` and `_TZ3000_okaz9tjs`. Plugs of the same
   model answer the countdown differently by maker, so one string's test proves nothing about another's.
-- **Untested** on every other maker string, and on any of them Zigbee2MQTT shows as a light: it runs only with
-  Experimental features on. If you try one, please report
+- **Untested** on every other maker string, and on any of them Zigbee2MQTT shows as a light (still a plug to
+  DeviceSide, with no record as a light): it runs only with Experimental features on. If you try one, please report
   it, whether it works or not.
 - **Not built yet on `_TZ3000_gjnozsaz`,** even with Experimental features on: its countdown is reported to restart
   at random, so it could stay on ([Zigbee2MQTT #30493](https://github.com/Koenkk/zigbee2mqtt/issues/30493)).
@@ -60,12 +61,15 @@ The timer runs in whole seconds, up to 12 hours: a duration is rounded to the ne
 rounded or longer than 12 hours reports `clamped_to`, the value sent. Turning the plug off, its button or a new timer
 cancels it. The plug's time left can't be read, so get attributes shows no `timer` for it. A TS011F that Zigbee2MQTT
 shows no `countdown` for, or a multi-socket one, isn't built yet: the Zigbee timer was tested on the
-[Tuya TS011F](../../device-compatibility.md#tuya-ts011f) and left it on.
+[Tuya TS011F](../../device-compatibility.md#tuya-ts011f) and left it on. A TS011F is a plug even where Zigbee2MQTT
+shows it as a light, so the actions for lights alone, such as stop, refuse it there as not built yet; turn on with
+timer and get attributes still take it.
 
 #### Tuya plugs and switches
 
 Tuya devices on the standard Zigbee on/off commands: plugs, switches and relays (models `TS0001` to `TS0004`, and white
-labels). Turn on with timer isn't built yet, as above.
+labels), and lights, such as bulbs and dimmers. Turn on with timer isn't built yet, as above; the light features run
+on the lights, with Experimental features on.
 
 #### Tuya datapoint devices
 

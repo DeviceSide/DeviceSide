@@ -12,7 +12,7 @@ capabilities:
     section: Device classes
     domains: {switch: Hue smart plugs}
   tuya_zcl:
-    phrase: Tuya plugs and switches
+    phrase: other Tuya devices
     section: Tuya
     domains: {light: Tuya lights, switch: Tuya plugs and switches}
   tuya_ts011f: {phrase: Tuya TS011F, section: Tuya}
