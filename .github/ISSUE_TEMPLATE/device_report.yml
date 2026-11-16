@@ -25,8 +25,8 @@ body:
     id: devices
     attributes:
       label: Devices
-      description: One line per device you tested, as shown on its device page in Home Assistant. Filled in when you start from DeviceSide's options.
-      placeholder: integration · product name · model · firmware
+      description: One line per device you tested, as shown on its device page in Home Assistant, with a Zigbee device's manufacturer string (such as _TZ3000_…). Filled in when you start from DeviceSide's options.
+      placeholder: integration · product name · model · manufacturer · firmware
     validations:
       required: true
   - type: checkboxes

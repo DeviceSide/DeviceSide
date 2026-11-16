@@ -8,7 +8,7 @@ from typing import ClassVar
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import Unauthorized
 
-from . import zcl
+from . import classes, zcl
 from .addressing import unsupported_reason
 from .fade import end_key, has_color, hue_moves, refresh, send_each, soft_off_restores, transition_cache, units
 from ...core.adapter import Adapter, DeadlinePassed
@@ -35,7 +35,9 @@ class ZHAStop(Adapter[Request]):
 
     action: ClassVar[str] = "stop"
     integration: ClassVar[str] = "zha"
-    scope: ClassVar[AdapterScope] = AdapterScope(domains=verified("light"), max_concurrency=2)
+    scope: ClassVar[AdapterScope] = AdapterScope(
+        domains=verified("light"), capabilities=classes.STOP, max_concurrency=2
+    )
 
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:
         return super().supports(hass, request, target) or unsupported_reason(target)

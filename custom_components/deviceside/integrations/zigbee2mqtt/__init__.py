@@ -1,7 +1,7 @@
 """Zigbee2MQTT bridge over the core mqtt integration."""
 
 from .addressing import is_z2m_group
-from .classes import CLASSES, OTHER, capability
+from .classes import CLASSES, OTHER, capability, zigbee_manufacturer
 from .detect import detect
 from .fade import Z2MCallResolver
 from .get_attributes import Z2MGetAttributes
@@ -28,6 +28,7 @@ INTEGRATION = IntegrationInfo(
     capability=capability,
     classes=CLASSES,
     default_class=OTHER,
+    zigbee_manufacturer=zigbee_manufacturer,
     call_resolver=Z2MCallResolver(),
     max_concurrency=4,
 )

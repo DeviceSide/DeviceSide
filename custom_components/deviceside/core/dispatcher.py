@@ -18,7 +18,7 @@ from .models import FAILED, ActionKind, EntityResult, Request, Status, Target, T
 from .registry import AdapterRegistry
 from .resolver import resolve
 from .runtime import DEADLINE, get_runtime
-from .scope import Level, Unplaced
+from .scope import DurationLimits, Level, Unplaced
 from ..const import ADAPTER_BACKSTOP_S, ADAPTER_TIMEOUT_S, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -48,8 +48,9 @@ class Reached:
     members: tuple[str | None, ...] = ()
 
 
-# One execute: the adapter, the request its targets get, the targets, the fields dropped, and what each reaches.
-type Run = tuple[Adapter, Request, list[Target], frozenset[str], dict[str, Reached]]
+# One execute: the adapter, the request its targets get, the targets, the fields dropped, what each reaches, and the
+# duration limits of their call (AdapterScope.limits).
+type Run = tuple[Adapter, Request, list[Target], frozenset[str], dict[str, Reached], DurationLimits | None]
 
 
 def _placed(name: str | None) -> bool:
@@ -79,6 +80,42 @@ def _classed(result: EntityResult, target: Target, reached: Reached) -> EntityRe
     return replace(result, classes=classes[0])
 
 
+def _device_of(member: Target) -> str:
+    """What an unaddressable member's skip is named by: its device, as the entity it is listed by may not be the one
+    the group holds, and a stand-in's (Target.stand_in) is the group's own."""
+    if member.stand_in:
+        return f"a member device of {member.reported_id}"
+    return f"the device of {member.reported_id}"
+
+
+# Each device's targets, by the device's id: the targets planned as they came, stand-ins left out, whose entries
+# answer for a stand-in of the same device (_fallback, _unanswered).
+type ByDevice = dict[str, set[str]]
+
+
+def _by_device(targets: list[Target]) -> ByDevice:
+    by_device: ByDevice = {}
+    for target in targets:
+        if target.device is not None and not target.stand_in:
+            by_device.setdefault(target.device.id, set()).add(target.reported_id)
+    return by_device
+
+
+def _targeted(member: Target, by_device: ByDevice) -> set[str]:
+    """The targets on a stand-in's device, which answer for it; none for any other member."""
+    return by_device.get(member.device.id, set()) if member.stand_in and member.device is not None else set()
+
+
+def _rank(reason: str) -> int:
+    """Which member's skip a group refused for own_call takes (_unanswered): experimental_off, which says how to let
+    the call through; then a class's refusal, which says why it can't; then any other; not_addressable last."""
+    if reason == EXPERIMENTAL_OFF:
+        return 0
+    if reason in (Reason.DOESNT_WORK, Reason.NOT_SUPPORTED, Reason.CLASS_UNKNOWN):
+        return 1
+    return 3 if reason == Reason.NOT_ADDRESSABLE else 2
+
+
 def _skip(
     entity_id: str,
     named: bool,
@@ -98,16 +135,54 @@ def _skip(
 
 
 def _unanswered(
-    adapter: Adapter, fallen: list[tuple[Target, list[Target], str, str | None]], answered: set[str], title: str
+    adapter: Adapter,
+    fallen: list[tuple[Target, list[Target], str, str | None]],
+    answered: set[str],
+    by_device: ByDevice,
+    title: str,
+    skipped: list[EntityResult],
 ) -> list[EntityResult]:
     """Each group that fell back with no member planned or left nothing to do, refused with its reason: raised if
-    named, else skipped. A group a member answers for gets no result of its own."""
+    named, else skipped. A group a member answers for gets no result of its own, nor one a target on a stand-in's
+    device answers for (`by_device`). One that fell back only because a member takes a call of its own (own_call) is
+    refused with its members' reason, ranked by _rank (`skipped`: the skips so far); own_call only when none was
+    skipped (each unavailable)."""
     results: list[EntityResult] = []
     for group, members, reason, why in fallen:
-        # A member left unaddressable answers for nothing, even when its entity ran as a target of its own.
-        if not any(member.addressable and member.reported_id in answered for member in members):
-            results += _skip(group.reported_id, group.named, reason, adapter.integration, why, title)
+        # A member left unaddressable answers for nothing, even when its entity ran as a target of its own; a
+        # stand-in's device does, through its own target.
+        if any(
+            (member.addressable and member.reported_id in answered) or bool(_targeted(member, by_device) & answered)
+            for member in members
+        ):
+            continue
+        if reason == Reason.OWN_CALL:
+            # An unaddressable member's skip names its device (_device_of), so match that form too; a stand-in's
+            # reported_id is the group's own, so only that form names it, or its device's own target.
+            ids: set[str] = set()
+            for member in members:
+                ids |= {_device_of(member)} | _targeted(member, by_device)
+                if not member.stand_in:
+                    ids.add(member.reported_id)
+            details = [r.detail for r in skipped if r.entity_id in ids and r.status is Status.UNSUPPORTED and r.detail]
+            reason = min(details, key=_rank, default=reason)
+        results += _skip(group.reported_id, group.named, reason, adapter.integration, why, title)
     return results
+
+
+def _members_planned(members: list[Target], seen: set[str], by_device: ByDevice) -> list[Target]:
+    """The members a native group is planned as, each indirect (named=False; a stand-in, the group's own entity,
+    too): none raises, and only _unanswered refuses a group that fell back. An available one not already a target
+    (`seen`), which a target already answers for; and each stand-in (Target.stand_in), which _plan skips, so the
+    device the group's call would have reached gets an entry saying it didn't, unless a target on its device
+    (`by_device`) answers for it. A stand-in has no state to judge it unavailable by; any other member known
+    unavailable, unaddressable or not, is left out quietly, as core skips one in an area."""
+    return [
+        replace(member, named=False)
+        for member in members
+        if (member.stand_in and not _targeted(member, by_device))
+        or (not member.stand_in and _available(member.state) and member.reported_id not in seen)
+    ]
 
 
 class Dispatcher:
@@ -218,8 +293,10 @@ class Dispatcher:
         scope doesn't serve, is refused; a native group so refused falls back to its members when the integration can
         list them (docs/design.md), and an empty one is skipped silently. A flagged call, from an
         `experimental=True` adapter or touching an Experimental scope item, is refused while the Experimental features
-        option is off; a native group flagged by a member's class alone falls back to its members instead. A named
-        target that can't take the action raises then, before anything is sent. Returns a result per target that ran
+        option is off; a native group flagged by a member's class alone falls back to its members instead, as does one
+        with a member whose class takes a call of its own (AdapterScope.own_calls), and a target of such a class runs
+        with that call's duration limits. A named target that can't take the action raises then, before anything is
+        sent. Returns a result per target that ran
         or was left nothing to do, each with its class, and an unsupported one per indirect target skipped.
         """
         results: list[EntityResult] = []
@@ -249,19 +326,20 @@ class Dispatcher:
         results: list[EntityResult],
         experimental_on: bool,
     ) -> list[Run]:
-        """One adapter's runs, one per set of dropped fields so every target in a run gets the same request; each
-        target skipped or left nothing to do goes in results instead.
+        """One adapter's runs, one per set of dropped fields and duration limits so every target in a run gets the same
+        request; each target skipped or left nothing to do goes in results instead.
 
         A native group that falls back to its members gets no result of its own: they answer for it. Only when none
         of its members was planned or left nothing to do (each refused, gated or unavailable) is the group itself
         refused, with its reason, raised if named, once every target is judged."""
-        by_dropped: dict[frozenset[str], list[Target]] = {}
+        by_run: dict[tuple[frozenset[str], DurationLimits | None], list[Target]] = {}
         reached: dict[str, Reached] = {}
         pending = deque(targets)
         seen = {target.reported_id for target in pending}
         # Each group that fell back, its members and the reason it would be refused with; the targets that answer.
         fallen: list[tuple[Target, list[Target], str, str | None]] = []
         answered: set[str] = set()
+        by_device = _by_device(targets)
         # The integration's title, which a class_unknown message names.
         title = self.registry.integrations[adapter.integration].title
         while pending:
@@ -273,15 +351,13 @@ class Dispatcher:
             if not target.addressable:
                 # A member a group fell back to that the integration can't address on its own: the call could reach
                 # an entity the caller didn't target (Target.addressable). Its class's refusal comes first, so a
-                # member whose class harms says so. It stands for its whole device, listed by an entity that may not
-                # be the one the group holds, so the skip names the device by it, with no address.
+                # member whose class harms says so. It stands for its whole device, so the skip names the device
+                # (_device_of), with no address.
                 reason, why = adapter.scope.refusal(self._reached(adapter, target, None).classes) or (
                     Reason.NOT_ADDRESSABLE,
                     None,
                 )
-                results += _skip(
-                    f"the device of {target.reported_id}", target.named, reason, adapter.integration, why, title
-                )
+                results += _skip(_device_of(target), target.named, reason, adapter.integration, why, title)
                 continue
             if reason := adapter.supports(self.hass, reduced, target):
                 results += _skip(target.reported_id, target.named, reason, adapter.integration, title=title)
@@ -298,13 +374,14 @@ class Dispatcher:
                 results.append(
                     _classed(adapter.result(target, Status.UNCHANGED, detail="fields_dropped"), target, here)
                 )
-            elif refused := adapter.scope.refusal(found):
+            elif refused := adapter.scope.refusal(found, group=members is not None):
                 # A native group falls back to its members, each judged alone: the good ones run, a refused one is
                 # skipped as indirect. So a group with one member not yet placed runs the rest, where the call harms
-                # a class; one of unknown membership can't fall back, and is refused whole.
+                # a class, and one with a member that takes a call of its own gives each member its own; one of
+                # unknown membership can't fall back, and is refused whole.
                 if members is not None:
                     fallen.append((target, members, *refused))
-                    pending.extend(self._fallback(adapter, target, members, seen, refused[0]))
+                    pending.extend(self._fallback(adapter, target, members, seen, by_device, refused[0]))
                 else:
                     results += _skip(
                         target.reported_id, target.named, refused[0], adapter.integration, refused[1], title
@@ -314,14 +391,17 @@ class Dispatcher:
                 # or Documented classes run, the flagged one is skipped (raised only if named on its own).
                 if members is not None and self._flagged_by_class_alone(adapter, reduced, target):
                     fallen.append((target, members, EXPERIMENTAL_OFF, None))
-                    pending.extend(self._fallback(adapter, target, members, seen, EXPERIMENTAL_OFF))
+                    pending.extend(self._fallback(adapter, target, members, seen, by_device, EXPERIMENTAL_OFF))
                 else:
                     results += _skip(target.reported_id, target.named, EXPERIMENTAL_OFF, adapter.integration)
             else:
                 answered.add(target.reported_id)
-                by_dropped.setdefault(dropped, []).append(target)
-        results += _unanswered(adapter, fallen, answered, title)
-        return [(adapter, request.without(dropped), ready, dropped, reached) for dropped, ready in by_dropped.items()]
+                by_run.setdefault((dropped, adapter.scope.limits(found)), []).append(target)
+        results += _unanswered(adapter, fallen, answered, by_device, title, results)
+        return [
+            (adapter, request.without(dropped), ready, dropped, reached, limits)
+            for (dropped, limits), ready in by_run.items()
+        ]
 
     def _experimental(self, adapter: Adapter, request: Request, target: Target, classes: Classes) -> bool:
         """Whether the call is flagged experimental: the whole adapter (`experimental=True`), or an Experimental item
@@ -389,10 +469,11 @@ class Dispatcher:
             return None
 
     @staticmethod
-    def _fallback(adapter: Adapter, group: Target, members: list[Target], seen: set[str], reason: str) -> list[Target]:
-        """The members a refused or class-flagged native group falls back to, marked seen: its available ones not
-        already targets, which a target already answers for."""
-        fresh = [member for member in members if _available(member.state) and member.reported_id not in seen]
+    def _fallback(
+        adapter: Adapter, group: Target, members: list[Target], seen: set[str], by_device: ByDevice, reason: str
+    ) -> list[Target]:
+        """The members a refused or class-flagged native group falls back to (_members_planned), marked seen."""
+        fresh = _members_planned(members, seen, by_device)
         _LOGGER.debug("%s: %s falls back to its members (%s)", adapter.action, group.reported_id, reason)
         seen.update(member.reported_id for member in fresh)
         return fresh
@@ -403,6 +484,7 @@ class Dispatcher:
         if adapter.scope.native_groups or not any(target.is_group for target in bucket):
             return bucket
         expanded: list[Target] = []
+        by_device = _by_device(bucket)
         for target in bucket:
             if not target.is_group:
                 expanded.append(target)
@@ -410,16 +492,19 @@ class Dispatcher:
                 # No expand_group, or one that answered None or raised (logged): membership is unknowable here.
                 results += _skip(target.reported_id, target.named, "group_not_supported", adapter.integration)
             else:
-                # Members are indirect, so an unavailable one is skipped quietly, as core skips one in an area.
-                expanded += [member for member in members if _available(member.state)]
-        # One copy per entity. A member the caller also named stays named, whichever copy came first, so it raises
-        # rather than skips, as a named target does.
+                expanded += _members_planned(members, set(), by_device)
+        # One copy per entity, each stand-in apart, as its reported_id is its group's. A member the caller also named
+        # stays named, whichever copy came first, so it raises rather than skips, as a named target does.
         by_id: dict[str, Target] = {}
+        stand_ins: list[Target] = []
         for target in expanded:
+            if target.stand_in:
+                stand_ins.append(target)
+                continue
             kept = by_id.setdefault(target.reported_id, target)
             if target.named and not kept.named:
                 by_id[target.reported_id] = replace(kept, named=True)
-        return list(by_id.values())
+        return list(by_id.values()) + stand_ins
 
     async def _run_adapter(
         self,
@@ -428,10 +513,11 @@ class Dispatcher:
         targets: list[Target],
         dropped: frozenset[str],
         reached: dict[str, Reached],
+        limits: DurationLimits | None,
     ) -> list[EntityResult]:
         clamped_to = None
         if isinstance(request, TimedRequest):
-            request, clamped_to = duration.clamp(request, adapter.scope.duration)
+            request, clamped_to = duration.clamp(request, limits)
         # Each run is its own task (run_adapters gathers them), so the deadline set here is this run's alone.
         deadline = asyncio.get_running_loop().time() + ADAPTER_TIMEOUT_S
         DEADLINE.set(deadline)

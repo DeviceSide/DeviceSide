@@ -166,7 +166,10 @@ def keys(adapter, registry: AdapterRegistry, experimental: bool = False) -> set[
     capabilities = adapter.scope.capabilities
     if not experimental and (
         adapter.scope.experimental
-        or (capabilities is not None and all(level is Level.EXPERIMENTAL for level in capabilities.values()))
+        or (
+            capabilities is not None
+            and all(level is Level.EXPERIMENTAL for _, level, _ in adapter.scope.class_entries())
+        )
     ):
         return set()
     found = {

@@ -26,8 +26,9 @@ def zcl_row(attributes: dict, now: datetime | None = None, *, xy_first: bool = F
     Brightness is a percent of CurrentLevel, as Hue's row is. Only the color of the active ColorMode (EnhancedColorMode
     where read) is reported, as core does. In a hue mode, hue and saturation win, unless `xy_first`: ZHA shows the
     bulb's own x and y in every mode but color temperature, and HA's hs to xy conversion isn't the bulb's. Lights
-    keep these attributes while off, so they read then too. OnTime is the time left on an OnWithTimedOff timer, in
-    tenths, and reads 0 with none; it counts only while OnOff reads on, as a Tuya TS011F counts it down while off.
+    keep these attributes while off, so they read then too. OnTime is the time left on an OnWithTimedOff timer, Tuya's
+    countdown plugs aside (Zigbee2MQTT's get_attributes drops it), in tenths, and reads 0 with none; it counts only
+    while OnOff reads on, as a Tuya TS011F counts it down while off.
     """
     row: dict = {}
     if (level := attributes.get("currentLevel")) is not None:

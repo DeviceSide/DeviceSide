@@ -70,3 +70,8 @@ key, guard and exclusions: Decision 67, which stays as written.
   `_TZ3000_0zfrhq4i` ignores it from off. Probe, per maker string, OFF then 0x42 `{0, N, N}`: whether it turns on
   at N, and whether a later state set cancels it.
 - **ZHA's route:** the datapoint countdown as a raw 0xEF00 `dataRequest`, if ZHA joins this plan.
+- **Inching, a probe question** (device-classes plan, Decision 41). Tuya's inching (cluster `0xE000`, command `0xFB`,
+  `setInchingSwitch`; [timed-on research](../integrations/zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md),
+  §3, Tuya ZCL row) may give TS011F strings a working timed off where the countdown misbehaves. Probe, per maker
+  string, `_TZ3000_gjnozsaz` included (Z2M #30493): whether it turns the plug off at N, whether it persists across
+  calls (the research calls it a persistent setting), and whether a state set cancels it.

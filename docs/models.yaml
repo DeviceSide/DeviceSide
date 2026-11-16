@@ -41,15 +41,6 @@ models:
     ids: [LTD010, "5996411U5"]
     type: bulb
 
-# Devices that fail the call DeviceSide sends on several integrations, and why (`doesnt_work`: no known call works
-# on them), and devices today's call harms that a known or plausible call would serve, which isn't built
-# (`not_supported`), on an integration whose code doesn't class them yet; an unharmed not yet supported device needs no
-# entry (docs/evidence.md, Doesn't work, not yet supported, untested). One integration's go in its bundle, or in its
-# scopes' code (core/scope.py, DoesntWork or NotSupported): Zigbee2MQTT's TS011F entry is there, as not yet supported
-# (plan Decision 70); ZHA's moves there in the device-classes plan's step 7.
-not_supported:
-  - what: Tuya TS011F
-    integrations: [zha]
-    reason: DeviceSide's timer can leave it off, or turn it on long after the time asked and leave it on; Tuya's own
-      call would serve it, which isn't built
-    source: https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md
+# Devices that fail on several integrations would go in a shared `doesnt_work` or `not_supported` list here
+# (scripts/gen_compat.py's docstring gives the format). None does: each integration's entries live in its scopes'
+# code (core/scope.py, DoesntWork and NotSupported), ZHA's and Zigbee2MQTT's TS011F entries included.

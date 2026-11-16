@@ -20,6 +20,7 @@ from ...fixtures.zha import IEEE
 ADDR = Address(IEEE, 11)
 # The real one: conftest fakes zcl.hue_turn_on for every test.
 HUE_TURN_ON = zcl.hue_turn_on
+ZIGPY_DEVICE = zcl.zigpy_device
 
 
 @pytest.fixture
@@ -110,45 +111,44 @@ async def test_command_issues_a_server_command_to_the_in_cluster_with_the_caller
     assert commands[0].context is context
 
 
-@pytest.mark.parametrize(("capabilities", "expected"), [(31, True), (16, False)])
-async def test_enhanced_hue_from_zigpys_cache(hass, gateway, cluster, capabilities, expected):
-    """The A60 reports 31 (enhanced hue among them), a color temperature bulb 16 (probe 13a)."""
-    cluster.get = MagicMock(return_value=capabilities)
+async def test_color_capabilities_from_zigpys_cache(hass, gateway, cluster):
+    """The A60 reports 31: hue and saturation, enhanced hue, color loop, xy and color temperature (probe 13a)."""
+    cluster.get = MagicMock(return_value=31)
 
-    assert await zcl.enhanced_hue(hass, ADDR) is expected
+    assert await zcl.color_capabilities(hass, ADDR) == 31
     cluster.get.assert_called_once_with(zcl.COLOR_CAPABILITIES)
     gateway.get_device.return_value.async_get_cluster.assert_called_once_with(11, 0x0300, cluster_type="in")
     cluster.read_attributes.assert_not_awaited()
 
 
-async def test_enhanced_hue_read_once_when_not_cached(hass, gateway, cluster):
+async def test_color_capabilities_read_once_when_not_cached(hass, gateway, cluster):
     cluster.get = MagicMock(return_value=None)
-    cluster.read_attributes.return_value = ({zcl.COLOR_CAPABILITIES: 31}, {})
+    cluster.read_attributes.return_value = ({zcl.COLOR_CAPABILITIES: 16}, {})
 
-    assert await zcl.enhanced_hue(hass, ADDR) is True
+    assert await zcl.color_capabilities(hass, ADDR) == 16
     cluster.read_attributes.assert_awaited_once_with([0x400A], allow_cache=False, only_cache=False)
 
 
-async def test_no_color_cluster_is_no_enhanced_hue(hass, gateway):
+async def test_no_color_cluster_is_no_color_capabilities(hass, gateway):
     gateway.get_device.return_value.async_get_cluster.side_effect = KeyError(0x0300)
 
-    assert await zcl.enhanced_hue(hass, ADDR) is False
+    assert await zcl.color_capabilities(hass, ADDR) == 0
 
 
-async def test_enhanced_hue_read_error_raises(hass, gateway, cluster):
-    """A light that didn't answer may have enhanced hue, so it isn't taken to lack it."""
+async def test_color_capabilities_read_error_raises(hass, gateway, cluster):
+    """A light that didn't answer may still have a capability, so it isn't taken to lack it."""
     cluster.get = MagicMock(return_value=None)
     cluster.read_attributes.return_value = ({}, {zcl.COLOR_CAPABILITIES: "TIMEOUT"})
 
     with pytest.raises(LookupError, match="0x400a not read: TIMEOUT"):
-        await zcl.enhanced_hue(hass, ADDR)
+        await zcl.color_capabilities(hass, ADDR)
 
 
-async def test_enhanced_hue_missing_device_raises(hass, gateway):
+async def test_color_capabilities_missing_device_raises(hass, gateway):
     gateway.get_device.return_value = None
 
     with pytest.raises(LookupError, match="not found"):
-        await zcl.enhanced_hue(hass, ADDR)
+        await zcl.color_capabilities(hass, ADDR)
 
 
 async def test_group_command_sends_positional_args(hass):
@@ -247,3 +247,32 @@ async def test_hue_turn_on_is_logged_with_its_payload(hass, gateway, cluster, wi
     await HUE_TURN_ON(hass, ADDR, 1, None, entity_id="light.lamp")
 
     assert sent(wire) == ["light.lamp: sending zcl 0xfc03/0x00 130001010000"]
+
+
+async def test_zigpy_device_is_the_zha_devices_own(hass, gateway):
+    """The zigpy device behind zha's, whose raw strings and quirk clusters the classifier reads."""
+    assert ZIGPY_DEVICE(hass, IEEE) is gateway.get_device.return_value.device
+    gateway.get_device.assert_called_once_with(IEEE)
+
+
+async def test_zigpy_device_of_a_device_the_gateway_doesnt_hold_is_none(hass, gateway):
+    gateway.get_device.return_value = None
+
+    assert ZIGPY_DEVICE(hass, IEEE) is None
+
+
+async def test_zigpy_device_without_a_gateway_is_none(hass, monkeypatch):
+    monkeypatch.setitem(sys.modules, "zigpy.types", SimpleNamespace(EUI64=SimpleNamespace(convert=lambda ieee: ieee)))
+
+    assert ZIGPY_DEVICE(hass, IEEE) is None
+
+
+async def test_zigpy_device_of_an_ieee_of_the_wrong_length_is_none(hass, gateway, monkeypatch):
+    """EUI64.convert asserts the length."""
+
+    def convert(ieee):
+        raise AssertionError
+
+    monkeypatch.setitem(sys.modules, "zigpy.types", SimpleNamespace(EUI64=SimpleNamespace(convert=convert)))
+
+    assert ZIGPY_DEVICE(hass, "00:01") is None

@@ -36,3 +36,20 @@ def test_floor_applies_and_is_reported_with_or_without_limits(limits, requested,
     request, reported = clamp(TimedRequest(duration_s=requested), limits)
     assert request.duration_s == sent
     assert reported == clamped_to
+
+
+@pytest.mark.parametrize(
+    ("requested", "sent", "clamped_to"),
+    [
+        (5, 5, None),
+        (5.4, 5, 5),  # rounded to the step, and reported
+        (5.5, 6, 6),  # half up
+        (0.3, 1, 1),  # never below the range
+        (43200.4, 43200, 43200),  # nor above it
+        (50000, 43200, 43200),
+    ],
+)
+def test_a_step_rounds_the_duration_and_reports_it(requested, sent, clamped_to):
+    request, reported = clamp(TimedRequest(duration_s=requested), DurationLimits(min_s=1, max_s=43200, step_s=1))
+    assert request.duration_s == sent
+    assert reported == clamped_to

@@ -56,7 +56,7 @@ def check_classes(cls: type[Adapter], info: IntegrationInfo) -> None:
         raise ValueError(
             f"{cls.__name__} holds classes {info.key} doesn't declare (IntegrationInfo.classes): {unknown}"
         )
-    if held.get(info.default_class) is Level.VERIFIED:
+    if any(name == info.default_class and level is Level.VERIFIED for name, level, _ in cls.scope.class_entries()):
         raise ValueError(f"{cls.__name__} holds {info.key}'s default class {info.default_class!r} as Verified")
 
 
