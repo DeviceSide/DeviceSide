@@ -182,6 +182,12 @@ def zigbee_strings(entry: Mapping | None) -> dict[str, str]:
     return {name: value for name, key in ZIGBEE.items() if isinstance(value := entry.get(key), str) and value}
 
 
+def zigbee_manufacturer(hass: HomeAssistant, device: dr.DeviceEntry) -> str | None:
+    """Zigbee2MQTT's IntegrationInfo.zigbee_manufacturer: the device's own Zigbee manufacturer string from the held
+    bridge/devices, where the registry holds the definition's vendor; None until bridge/devices lists it with one."""
+    return zigbee_strings(_listed(hass, device)).get("zigbee_manufacturer")
+
+
 def placed(found: str, entry: Mapping | None, zigbee: Mapping[str, str]) -> bool:
     """Whether a device of class `found` is placed: its bridge/devices entry (`_listed`) has it interviewed
     (`interview_completed`) with both Zigbee strings (`zigbee`, as zigbee_strings reads them), or its class is `hue`."""

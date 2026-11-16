@@ -20,6 +20,7 @@ from ...fixtures.zha import IEEE
 ADDR = Address(IEEE, 11)
 # The real one: conftest fakes zcl.hue_turn_on for every test.
 HUE_TURN_ON = zcl.hue_turn_on
+ZIGPY_DEVICE = zcl.zigpy_device
 
 
 @pytest.fixture
@@ -246,3 +247,32 @@ async def test_hue_turn_on_is_logged_with_its_payload(hass, gateway, cluster, wi
     await HUE_TURN_ON(hass, ADDR, 1, None, entity_id="light.lamp")
 
     assert sent(wire) == ["light.lamp: sending zcl 0xfc03/0x00 130001010000"]
+
+
+async def test_zigpy_device_is_the_zha_devices_own(hass, gateway):
+    """The zigpy device behind zha's, whose raw strings and quirk clusters the classifier reads."""
+    assert ZIGPY_DEVICE(hass, IEEE) is gateway.get_device.return_value.device
+    gateway.get_device.assert_called_once_with(IEEE)
+
+
+async def test_zigpy_device_of_a_device_the_gateway_doesnt_hold_is_none(hass, gateway):
+    gateway.get_device.return_value = None
+
+    assert ZIGPY_DEVICE(hass, IEEE) is None
+
+
+async def test_zigpy_device_without_a_gateway_is_none(hass, monkeypatch):
+    monkeypatch.setitem(sys.modules, "zigpy.types", SimpleNamespace(EUI64=SimpleNamespace(convert=lambda ieee: ieee)))
+
+    assert ZIGPY_DEVICE(hass, IEEE) is None
+
+
+async def test_zigpy_device_of_an_ieee_of_the_wrong_length_is_none(hass, gateway, monkeypatch):
+    """EUI64.convert asserts the length."""
+
+    def convert(ieee):
+        raise AssertionError
+
+    monkeypatch.setitem(sys.modules, "zigpy.types", SimpleNamespace(EUI64=SimpleNamespace(convert=convert)))
+
+    assert ZIGPY_DEVICE(hass, "00:01") is None

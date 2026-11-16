@@ -5,8 +5,7 @@ import pytest
 
 from custom_components.deviceside.integrations.zha import zcl
 
-from .conftest import SENT, XY_ONLY, bulb, sent, xy
-from ...conftest import call
+from .conftest import SENT, XY_ONLY, bulb, call, sent, xy
 
 pytestmark = pytest.mark.usefixtures("setup_production", "clock", "bulbs")
 

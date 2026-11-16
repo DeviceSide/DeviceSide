@@ -66,7 +66,10 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
     (`DoesntWork.harms`, `Unplaced`), and a group with a member not yet placed falling back to its members; v0.1.0's
     scope (plan Decisions 70 to 76): the two labels redefined, `NotSupported.harms`, and the Z2M Tuya classes re-sorted
     as not yet supported.
-  - [ ] 7. ZHA classes.
+  - [x] 7. ZHA classes (#439).
+  - [x] 7a. Units groundwork (plan Decision 69): the report form's Zigbee manufacturer string, ZHA's OnTime
+    read-back in `turn_on_for`'s DEBUG line, and the mined converter seed list
+    ([research](docs/integrations/zigbee2mqtt/research/2026-11-15-converter-seed-list.md), Decision 78).
   - [ ] 8. Hue classes, the `smart_scene` check moved to them, and the v1 bridge refused as a separate integration
     (plan Decision 32).
   - [ ] 9. Matter classes.
@@ -75,8 +78,8 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
 - [ ] **TS011F refusal on ZHA and Z2M** (device-classes plan, Decisions 16 and 70): a not yet supported entry with
   `harms` for today's `turn_on_for` call, holding with Experimental on. Without it, ZHA's 0x42 in tenths switches a `_TZ3000_typdpbpg`
   plug on about 10× later than asked, and Z2M leaves the plug on with no timer
-  ([probe](docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md)). Z2M in step 5 (built), ZHA in step 7;
-  blocks v0.1.0 even if step 7 slips.
+  ([probe](docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md)). Z2M in step 5 (built), ZHA in step 7 (built,
+  not yet supported with `harms`, plan Decision 74); blocks v0.1.0 even if step 7 slips.
 - [x] **Z2M direct target on a multi-light device** (#429): named by itself, a device's second light (a two-gang's
   `light.<gang_2>`) got its call on the device topic, which Z2M applies to the device's default endpoint, gang 1.
   Every light or switch of a device with several in its domain is now refused as `not_addressable`
@@ -108,6 +111,7 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   integration signed off (`check_release.py --signoffs`). The release steps are in the `release` skill; the release
   body gets the signed-off notes. Once the device-classes stack lands, the rc1 audit record
   (`docs/audits/v0.1.0rc1.md`) is replaced by a new one with base `b025363`.
+  After the release, remove CLAUDE.md's "Until v0.1.0 ships, fix the architecture now" paragraph.
 - [x] **Raise/lower rig run**: the six actions and `stop` on Hue and Z2M, rerun in the lab reruns (#297, #299).
 - [x] **Lab rerun**: the first lab run's failures fixed (#160–#163, #172) and rerun (#297, #299); the Z2M failures
   it found fixed by #302.

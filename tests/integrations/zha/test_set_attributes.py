@@ -7,16 +7,14 @@ from unittest.mock import AsyncMock
 import pytest
 from homeassistant.core import ServiceCall
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers import entity_registry as er
 from homeassistant.util.color import color_xy_to_hs
 
 from custom_components.deviceside.const import ADAPTER_BACKSTOP_S
 from custom_components.deviceside.integrations.zha import set_attributes as adapter
 from custom_components.deviceside.integrations.zha import zcl
 
-from .conftest import call_as
-from ...conftest import advance, call, refusal, result, wall_clock_now
+from .conftest import call, call_as
+from ...conftest import advance, allow_experimental, refusal, result, wall_clock_now
 from ...fixtures.zha import IEEE, add_zha_entity, zha_entry, zha_group
 
 pytestmark = pytest.mark.usefixtures("setup_production")
@@ -268,9 +266,8 @@ async def test_entity_without_a_light_unique_id_is_not_addressable(hass, command
 
 
 async def test_a_model_that_drops_writes_while_off_is_refused(hass, commands):
-    bulb(hass, DIMMABLE)
-    device_id = er.async_get(hass).async_get("light.bulb").device_id
-    dr.async_get(hass).async_update_device(device_id, model="E11-G13")
+    add_zha_entity(hass, zha_entry(hass), "light.bulb", attributes=DIMMABLE, strings=("sengled", "E11-G13"))
+    allow_experimental(hass)
 
     data = {"entity_id": "light.bulb", "brightness": 40}
     assert await refusal(hass, "set_attributes", data) == "execute_if_off_unsupported"

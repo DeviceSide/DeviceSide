@@ -2,6 +2,7 @@
 
 from typing import ClassVar
 
+from . import classes
 from .fade import ZHARamp, ramp_scope
 from ...core.scope import AdapterScope
 from ...core.transition import SATURATION
@@ -9,4 +10,4 @@ from ...core.transition import SATURATION
 
 class ZHARaiseSaturation(ZHARamp):
     action: ClassVar[str] = "raise_saturation"
-    scope: ClassVar[AdapterScope] = ramp_scope(SATURATION)
+    scope: ClassVar[AdapterScope] = ramp_scope(SATURATION, classes.FADE_COLOR)

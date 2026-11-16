@@ -57,9 +57,12 @@ The compatibility section below shows which devices are known or likely to work.
 
 **[ZHA](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/index.md)** · maintained by [@jasonmx](https://github.com/jasonmx)
 
-- 🟢 [Hue White Ambiance E27 1100lm](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#hue-white-ambiance-e27-1100lm) ✔ · [Hue Essential White and Color Ambiance A60](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#hue-essential-white-and-color-ambiance-a60) ✔ · [Hue White A60 B22](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#hue-white-a60-b22) ✔ · [native groups](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#native-groups) ✔
+- 🟡 [other brands](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/index.md#other-brands): smooth dimming
 - 🧪 [plugs and switches](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#zigbee-plugs-and-switches): turn on with timer, get attributes
-- 🚧 [Tuya TS011F](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#tuya-ts011f)
+- 🧪 [other brands](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/index.md#other-brands): turn on with timer, smooth dimming, smooth saturation, smooth hue, set without turning on, get attributes
+- 🧪 [Tuya plugs and switches, reported Tuya plugs, other Tuya devices](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/index.md#tuya), [Sengled bulbs](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/index.md#sengled), [Sonoff SWV](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/index.md#sonoff-swv): smooth dimming, smooth saturation, smooth hue, set without turning on, get attributes
+- 🚧 [Tuya plugs and switches, reported Tuya plugs, other Tuya devices](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/index.md#tuya), [Sengled bulbs](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/index.md#sengled), [Sonoff SWV](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/index.md#sonoff-swv): turn on with timer
+- 🚧 [Tuya datapoint devices](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/index.md#tuya): turn on with timer, smooth dimming, smooth saturation, smooth hue, set without turning on, get attributes
 
 **[Zigbee2MQTT](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md)** · maintained by [@jasonmx](https://github.com/jasonmx)
 

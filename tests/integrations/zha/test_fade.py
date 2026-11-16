@@ -14,8 +14,8 @@ from custom_components.deviceside.core.transition import BRIGHTNESS, SATURATION
 from custom_components.deviceside.integrations.zha import zcl
 from custom_components.deviceside.integrations.zha.fade import hue_moves, soft_off_restores, transition_cache
 
-from .conftest import BOTTOM, RESTORE_60, SENT, XY_ONLY, A, B, bulb, call_as, on_off_reads, sent, xy
-from ...conftest import advance, call, result, wall_clock_now
+from .conftest import BOTTOM, RESTORE_60, SENT, XY_ONLY, A, B, bulb, call, call_as, on_off_reads, sent, xy
+from ...conftest import advance, result, wall_clock_now
 from ...fixtures.zha import IEEE
 
 pytestmark = pytest.mark.usefixtures("setup_production", "clock")
