@@ -1,5 +1,6 @@
+import asyncio
 import logging
-from functools import partial
+from collections.abc import Awaitable
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
@@ -10,19 +11,16 @@ from homeassistant.helpers.typing import ConfigType
 from .const import (
     CONF_EXPERIMENTAL,
     CONF_PREDICTED_STATE,
-    CONF_Z2M_COLOR_MODES,
     DOMAIN,
     EXPERIMENTAL_DEFAULT,
     PREDICTED_STATE_DEFAULT,
-    Z2M_COLOR_MODES_DEFAULT,
 )
 from .core import ha_watch
 from .core.actions import async_setup_services
 from .core.dispatcher import Dispatcher
 from .core.registry import AdapterRegistry
 from .core.runtime import DATA, DeviceSideData, get_runtime
-from .core.scope import CaveatKind
-from .integrations.zigbee2mqtt import bridge_cache, color_modes, restore_journal
+from .core.scope import CaveatKind, IntegrationInfo
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 _LOGGER = logging.getLogger(__name__)
@@ -41,6 +39,16 @@ def warn_caveats(registry: AdapterRegistry) -> None:
     for action, integration, adapter in registry.matrix():
         if adapter is not None and (caveat := adapter.scope.caveat) is not None:
             _LOGGER.warning(CAVEAT_WARNINGS[caveat.kind], integration, action, caveat.reason)
+
+
+async def _guarded(info: IntegrationInfo, hook: str, hook_call: Awaitable[None]) -> None:
+    """Await an integration's lifecycle hook; its failure is logged and never stops another integration's."""
+    try:
+        await hook_call
+    except Exception:  # noqa: BLE001 - one integration's hook must not take the others down
+        _LOGGER.warning(  # log-ok: a failing hook is ours (docs/logging.md)
+            "Integration %s %s hook failed", info.key, hook, exc_info=True
+        )
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType):
@@ -67,11 +75,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     runtime.experimental_features = entry.options.get(CONF_EXPERIMENTAL, EXPERIMENTAL_DEFAULT)
     # Per entry, not in async_setup: unloading detaches every listener, and a reload runs only this again.
     runtime.listen("ha_watch", hass, lambda: ha_watch.attach(hass, runtime.registry.call_resolvers()))
-    # Z2M's online pays any hue_native_control restore left owed, so a Z2M offline at startup is paid when it's back.
-    replay = partial(restore_journal.request_replay, hass)
-    entry.async_create_background_task(hass, bridge_cache.async_setup(hass, entry, replay), "z2m bridge cache")
-    enabled = entry.options.get(CONF_Z2M_COLOR_MODES, Z2M_COLOR_MODES_DEFAULT)
-    entry.async_create_background_task(hass, color_modes.async_setup(hass, entry, enabled), "z2m color modes")
+    for info in runtime.registry.available_integrations():
+        if info.setup is not None:
+            entry.async_create_background_task(
+                hass, _guarded(info, "setup", info.setup(hass, entry)), f"{info.key} setup"
+            )
     return True
 
 
@@ -85,4 +93,13 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry):
-    await color_modes.async_remove(hass)
+    # An entry deleted while not loaded (disabled, or failed at startup) may precede async_setup: discover then.
+    runtime = hass.data.get(DATA)
+    registry = runtime.registry if runtime else await hass.async_add_import_executor_job(AdapterRegistry.discover)
+    await asyncio.gather(
+        *(
+            _guarded(info, "remove", info.remove(hass, entry))
+            for info in registry.available_integrations()
+            if info.remove
+        )
+    )

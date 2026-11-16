@@ -202,6 +202,11 @@ runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, 
   `AdapterScope.not_built` a class not built yet that today's call would harm to a `NotBuilt` (reason, source,
   and `harms`, which must be true, as an unharmed one needs no entry); a class is in at most one of `capabilities`,
   `no_known_method` and `not_built`.
+- **Lifecycle.** `IntegrationInfo.setup(hass, entry)` starts what an integration keeps running while the entry is
+  loaded (Z2M's bridge cache); core runs it as the entry's background task, so it never holds setup back, and the
+  hook registers its own teardown with `entry.async_on_unload`. `remove(hass, entry)` undoes what the integration
+  changed outside HA as DeviceSide is deleted (Z2M's color modes). A hook that raises is logged and isolated: the
+  others still run and the entry still loads. The component root names no integration.
 - **Resolver.** Candidates are the available integrations whose `ha_domain` is the entity's registry platform;
   one with a `detect` hook wins first (Z2M over plain MQTT). A gateway or API DeviceSide never supports is an
   integration of its own, declared only to refuse (`IntegrationInfo.unsupported`, listed in its sibling's module as
