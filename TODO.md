@@ -106,7 +106,7 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   `core/zcl_fade.py`, not `core/transition.py` (the cache Hue and Shelly use too). Before the runs, as it changes
   both packages' fades. `SETTLE_SECONDS` stays per integration (declined): each 2.0 s cites its own integration's
   measurement.
-- [ ] **Integration lifecycle hooks**, after the family seam (pre-run audit, Medium): the component root starts
+- [x] **Integration lifecycle hooks** (#466), after the family seam (pre-run audit, Medium): the component root starts
   Zigbee2MQTT's bridge cache, color modes and restore journal itself, so every integration with a lifecycle edits a
   repo-maintainer file. Add `IntegrationInfo` setup and teardown hooks. Before the runs.
 - [x] **Pre-run audit**: `/rc-audit` over `b025363..HEAD`, its record replacing `docs/audits/v0.1.0rc1.md`, and its
