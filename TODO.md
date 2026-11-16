@@ -98,8 +98,8 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   Zigbee2MQTT and ZHA, each with its own maintainers, and the rename of the two not-supported kinds. Before the runs,
   as it reshapes both Zigbee packages. The rename touches Hue's `classes.py` and `set_scene.py`, so its PR carries a
   Hue `no_call_changed` row (no `actions`) rather than a Hue rerun.
-- [ ] **Require `pytest-without-family-tests`**: add it to the ruleset's required checks once it has run on `main`
-  (`docs/repo-maintainers.md`); until then a family's test code can still silence the integration's on a `/merge`.
+- [x] **Require `pytest-without-family-tests`**: in the ruleset's required checks (`docs/repo-maintainers.md`), so a
+  family's test code can't silence the integration's on a `/merge`.
 - [ ] **Shared Zigbee fade planning**, after the family seam, which moves both files (pre-run audit, Medium): ZHA's
   ramp and Zigbee2MQTT's fade duplicate `MIN_STEP`, `SETTLE_SECONDS`, the starts/movers/at-limit prelude and the
   hue-rate clamp, and have drifted (Z2M doesn't cap a transition at the ZCL uint16). Lift the planning into
