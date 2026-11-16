@@ -18,6 +18,7 @@ from .const import (
 from .core import ha_watch
 from .core.actions import async_setup_services
 from .core.dispatcher import Dispatcher
+from .core.errors import describe, traceback_is_safe
 from .core.registry import AdapterRegistry
 from .core.runtime import DATA, DeviceSideData, get_runtime
 from .core.scope import CaveatKind, IntegrationInfo
@@ -45,9 +46,15 @@ async def _guarded(info: IntegrationInfo, hook: str, hook_call: Awaitable[None])
     """Await an integration's lifecycle hook; its failure is logged and never stops another integration's."""
     try:
         await hook_call
-    except Exception:  # noqa: BLE001 - one integration's hook must not take the others down
+    except Exception as err:  # noqa: BLE001 - one integration's hook must not take the others down
+        # An HTTP client error's text and traceback hold the request's URL and headers: both stay out (docs/logging.md).
         _LOGGER.warning(  # log-ok: a failing hook is ours (docs/logging.md)
-            "Integration %s %s hook failed", info.key, hook, exc_info=True
+            "Integration %s %s hook failed: %s, so its %s may be incomplete",
+            info.key,
+            hook,
+            describe(err),
+            hook,
+            exc_info=traceback_is_safe(err),
         )
 
 

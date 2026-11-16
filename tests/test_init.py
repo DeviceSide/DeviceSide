@@ -5,6 +5,7 @@ from dataclasses import replace
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import aiohttp
 import pytest
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
@@ -17,6 +18,7 @@ from custom_components.deviceside.core.scope import Caveat, CaveatKind
 
 from .fakes.fake_integration import ADAPTERS, INTEGRATION, FakeTurnOffFor
 
+ADDRESS = "192.0.2.1"  # documentation range (RFC 5737)
 REASON = "https://github.com/DeviceSide/DeviceSide/issues/1"
 WARNINGS = {
     CaveatKind.UNMAINTAINED: f"fake turn_off_for is unmaintained ({REASON}): no one is fixing it; use at your own risk",
@@ -70,6 +72,8 @@ class Hooks:
         entry.async_on_unload(lambda: self.log.append(f"{self.key} teardown"))
         if self.fail == "setup":
             raise RuntimeError(f"{self.key} broke")
+        if self.fail == "client":
+            raise aiohttp.ClientConnectionError(f"Cannot connect to host {ADDRESS}:80")
 
     async def remove(self, hass, entry) -> None:
         self.log.append(f"{self.key} remove")
@@ -117,6 +121,16 @@ async def test_a_raising_setup_hook_is_logged_and_isolated(hass: HomeAssistant, 
     assert sorted(log) == ["one setup", "two setup"]
     assert entry.state is ConfigEntryState.LOADED
     assert "Integration one setup hook failed" in caplog.text
+
+
+async def test_a_failing_hook_keeps_an_http_clients_address_out_of_the_log(hass: HomeAssistant, caplog):
+    entry, discovery = hooked([], "one", fail={"one": "client"})
+    with discovery, caplog.at_level(logging.WARNING, logger="custom_components.deviceside"):
+        await load(hass, entry)
+
+    assert "Integration one setup hook failed: ClientConnectionError" in caplog.text
+    assert ADDRESS not in caplog.text
+    assert not [r for r in caplog.records if r.exc_info]
 
 
 async def test_remove_hooks_run_and_a_raising_one_stops_no_other(hass: HomeAssistant, caplog):
