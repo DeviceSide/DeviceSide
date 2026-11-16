@@ -34,8 +34,13 @@ def add_z2m_entity(
     manufacturer: str | None = "Philips",
     name: str | None = None,
     model_id: str | None = None,
+    unique_object_id: str | None = None,
+    base_topic: str = "zigbee2mqtt",
 ) -> str:
     """Register one Z2M device entity with the identifier Z2M writes via MQTT discovery.
+
+    Its unique_id is Z2M's, `<ieee>_<object_id>_<base topic>`: by default the unsuffixed state entity, whose object_id
+    is the domain; `unique_object_id` makes a sibling (`switch_child_lock`, `switch_l1`).
 
     Each device has its own device-registry entry (keyed by ieee); all share one config entry. It is a Hue device
     unless the manufacturer says otherwise, as every record's is, so its class is Verified (integrations/zigbee2mqtt/
@@ -52,7 +57,7 @@ def add_z2m_entity(
     er.async_get(hass).async_get_or_create(
         domain,
         "mqtt",
-        ieee,
+        f"{ieee}_{unique_object_id or domain}_{base_topic}",
         suggested_object_id=object_id,
         config_entry=entry,
         device_id=device.id,
