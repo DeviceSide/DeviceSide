@@ -28,6 +28,17 @@ async def test_publishes_the_end_point_with_the_time_left(hass, broker, data, pa
     assert commands(broker) == [(SET, payload)]
 
 
+async def test_a_fade_longer_than_a_zcl_transition_runs_at_the_longest(hass, broker):
+    """zigbee-herdsman sends the transition as a uint16 of tenths, so 6553.4 s is the most it can carry."""
+    entity_id = light(hass, broker)
+
+    response = await call(hass, "raise_brightness", {"entity_id": entity_id, "sweep_time": 20_000})
+
+    assert response == {entity_id: SENT}
+    assert commands(broker) == [(SET, {"state": "ON", "brightness": 254, "transition": 6553.4})]
+    assert transition_cache(hass).value(entity_id, BRIGHTNESS, -1) == pytest.approx(60.0)
+
+
 async def test_at_the_top_is_unchanged(hass, broker):
     entity_id = light(hass, broker, brightness=255)
 
