@@ -157,7 +157,7 @@ Action: `turn_on_for`
 
 Also known as `on with timed off` (Zigbee, Matter), `on_time` (Zigbee2MQTT), `toggle_after` (Shelly), and `countdown`.
 
-Turn on, then off after a delay. Timer runs on the device, for this turn-on only: it doesn't change a Shelly's own [Auto-off](#auto-off-aka-inching-and-auto-on) setting. Example use case:
+Turn on, then off after a delay. Timer runs on the device, for this turn-on only. Example use case:
 
 - Run a fan for 20 minutes after a shower.
 
