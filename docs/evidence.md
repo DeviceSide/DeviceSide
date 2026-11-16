@@ -237,7 +237,7 @@ credits none; the cards add "native groups", never the members' models). A group
 as "native groups" needs every member's class named and unflagged, while its named members still count here; a manual
 row credits every class it lists to every action it passed, so a row whose actions reached different classes is split. A
 manual row may carry `group`, as a rig group test does: its devices are the members, credited as a group test's are; the
-evidence table shows it as "group, by hand", and the card "native groups" with no ✔. A scene's test is a group's, its
+evidence table shows it as "group, by hand", and the card "native groups", with no ✔ from it. A scene's test is a group's, its
 members the scene's lights. A null class credits none, here or on the cards, as does a test that didn't pass.
 `scripts/gen_compat.py` warns on each gap on every PR, so a developer sees it early, and names it, for example
 "zigbee2mqtt turn_on_for: `hue` is Verified but no record reaches it"; `scripts/check_release.py --signoffs` fails on it
@@ -376,7 +376,7 @@ and which gives each field. The rules it serves:
   the `actions` it covers.
   A row whose actions targeted a native group or a scene carries `group`, its devices the members. The model is the
   device's own (its label, the vendor's app or HA's device page), never a driver's or bridge's name, as on Control4's
-  Director; the manufacturer is what HA shows, even a driver's vendor, or null.
+  Director; the manufacturer is as the schema's `manufacturer` gives it.
 - **`_facts.json`**: the fact cases' results, a row each, only ever added. A row converted from markdown says so and
   has no class.
 
