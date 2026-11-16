@@ -2,7 +2,7 @@
 """Decide whether a maintainer's `/merge` may merge a PR without a repo maintainer.
 
 A PR is its commenter's to merge when they own every file it changes (CLAUDE.md, Maintainers). Each file's owners are
-read on the base branch, so a PR can't name its own merger:
+read on the base branch by `scripts/owners.py`, the one owner lookup, so a PR can't name its own merger:
 
 - in a family (`FAMILY_PATHS` in `scripts/gen_codeowners.py`): that family's maintainers and its integration's;
 - in the catalog (`CATALOG_PATHS`): the maintainers of every family of that key, and of those families' integrations;
@@ -48,32 +48,33 @@ Exits 1 when the PR may not merge this way, with the reason on stdout and as `re
 
 import argparse
 import ast
-import functools
 import os
-import re
 import sys
-from dataclasses import dataclass
 from pathlib import Path
 from typing import NamedTuple
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
-from scripts.check_protected import README, authored, git, show  # noqa: E402
-from scripts.route_issue import called, parse, parse_family  # noqa: E402
+from scripts import owners as lookup  # noqa: E402
+from scripts.check_protected import authored  # noqa: E402
+from scripts.owners import (  # noqa: E402
+    COMPAT,
+    GENERATED,
+    README,
+    Package,
+    Templates,
+    called,
+    commit,
+    family_maintainers,
+    git,
+    maintainers,
+    package_of,
+    package_paths,
+    show,
+)
 
-CODEOWNERS_SCRIPT = REPO / "scripts" / "gen_codeowners.py"
-INTEGRATIONS = "custom_components/deviceside/integrations/"
-INIT = INTEGRATIONS + "{key}/__init__.py"
-FAMILY_INIT = INTEGRATIONS + "{key}/families/{family}/__init__.py"
-COMPAT = "docs/device-compatibility.md"
-# Generated output: CODEOWNERS wholly, the other two inside their marked blocks (`BLOCKS`).
-GENERATED = frozenset({README, COMPAT, ".github/CODEOWNERS"})
 BLOCKS = (README, COMPAT)
-# What a path template's `{key}` and `{family}` match: an integration's package name, and a family's as the registry
-# shapes it (core/registry.py, FAMILY_KEY; tests/scripts/test_check_maintainer_merge.py pins them equal), which no
-# `__init__.py` or `__pycache__` beside the families is.
-NAMES = {"key": r"[a-z0-9_]+", "family": r"[a-z][a-z0-9_]*"}
 # The calls whose `maintainers=` name owners.
 DECLARES = frozenset({"IntegrationInfo", "Family"})
 
@@ -82,121 +83,12 @@ class Refused(Exception):
     """Why the PR may not merge this way."""
 
 
-class Templates(NamedTuple):
-    """The path templates of `gen_codeowners.py`: `PATHS`, `FAMILY_PATHS` and `CATALOG_PATHS`."""
-
-    integration: tuple[str, ...]
-    family: tuple[str, ...]
-    catalog: tuple[str, ...]
-
-
-@dataclass(frozen=True)
-class Package:
-    """What holds a changed file: an integration's package (`key`), a family of it (`key` and `family`), or the
-    catalog file of a family key (`family` alone)."""
-
-    key: str | None
-    family: str | None = None
-
-    def __str__(self) -> str:
-        if self.key is None:
-            return f"the `{self.family}` catalog"
-        return f"`{self.key}`" + (f"'s `{self.family}` family" if self.family else "")
-
-    def owned_by(self) -> str:
-        """Whose maintainers own it, for a refusal."""
-        if self.key is None:
-            return f"a `{self.family}` family or its integration"
-        return f"`{self.key}`" + (f" or of {self}" if self.family else "")
-
-
-def package_paths(script: Path = CODEOWNERS_SCRIPT) -> Templates:
-    """The path templates from `gen_codeowners.py`, read without importing it (that imports the integrations)."""
-    found = {}
-    for node in ast.parse(script.read_text()).body:
-        if isinstance(node, ast.Assign) and len(node.targets) == 1:
-            found[getattr(node.targets[0], "id", None)] = node.value
-    try:
-        return Templates(*(tuple(ast.literal_eval(found[name])) for name in ("PATHS", "FAMILY_PATHS", "CATALOG_PATHS")))
-    except KeyError as err:
-        raise SystemExit(f"no {err.args[0]} in {script}") from None
-
-
-def match(path: str, templates: tuple[str, ...]) -> dict[str, str] | None:
-    """The `key` and `family` with which one of the templates holds `path`, or None."""
-    for template in templates:
-        parts = re.split(r"\{(\w+)\}", template)
-        pattern = "".join(
-            f"(?P<{part}>{NAMES[part]})" if index % 2 else re.escape(part) for index, part in enumerate(parts)
-        )
-        # A folder's template holds every path under it; a file's, that path alone (`$` would pass a trailing newline).
-        if found := (re.match if template.endswith("/") else re.fullmatch)(pattern, path):
-            return found.groupdict()
-    return None
-
-
-@functools.cache
-def maintainers(rev: str, key: str) -> tuple[str, ...] | None:
-    """The integration's maintainers at `rev`, or None when it has no readable `__init__.py` there."""
-    init = INIT.format(key=key)
-    if not (text := show(rev, init)):
-        return None
-    try:
-        return parse(text, init).maintainers
-    except SyntaxError, SystemExit:
-        return None
-
-
-@functools.cache
-def family_maintainers(rev: str, key: str, family: str) -> tuple[str, ...] | None:
-    """The family's maintainers at `rev`, or None when it has no readable `__init__.py` there under that key."""
-    init = FAMILY_INIT.format(key=key, family=family)
-    if not (text := show(rev, init)):
-        return None
-    try:
-        found = parse_family(text, init)
-    except SyntaxError, SystemExit:
-        return None
-    return found.maintainers if found.key == family else None
-
-
-@functools.cache
-def integrations_with(rev: str, family: str) -> tuple[str, ...]:
-    """The integrations that hold a family of this key at `rev`."""
-    listing = git("ls-tree", "-d", "-z", "--name-only", rev, INTEGRATIONS)
-    keys = [Path(path).name for path in listing.split("\0") if path]
-    return tuple(key for key in keys if family_maintainers(rev, key, family) is not None)
-
-
-def package_of(path: str, base: str, templates: Templates) -> Package | None:
-    """What holds `path`, or None for a file nobody but a repo maintainer owns. A family that isn't on the base branch
-    has no owners of its own yet, so its paths are its integration's; a catalog file no family there shares, or that
-    isn't there yet, is nobody's."""
-    if (found := match(path, templates.family)) and family_maintainers(base, **found) is not None:
-        return Package(**found)
-    if found := match(path, templates.integration):
-        return Package(found["key"])
-    # A catalog file new on this PR is nobody's: it gives the other integration's family code this one imports.
-    if (found := match(path, templates.catalog)) and integrations_with(base, found["family"]) and show(base, path):
-        return Package(None, found["family"])
-    return None
-
-
-def integrations_of(package: Package, base: str) -> tuple[str, ...]:
-    """The integrations whose maintainers own the package: its own, or for the catalog each that shares it."""
-    return (package.key,) if package.key else integrations_with(base, package.family)
-
-
 def owners(package: Package, base: str) -> set[str]:
     """Who may merge a change to the package, on the base branch; raises Refused for an integration not there yet."""
-    found: set[str] = set()
-    for key in integrations_of(package, base):
-        if (theirs := maintainers(base, key)) is None:
-            raise Refused(f"`{key}` isn't an integration on the base branch yet")
-        found.update(theirs)
-        if package.family:
-            found.update(family_maintainers(base, key, package.family) or ())
-    return found
+    try:
+        return lookup.owners(package, base)
+    except lookup.NotOnRev as err:
+        raise Refused(f"`{err.key}` isn't an integration on the base branch yet") from None
 
 
 class Marks(NamedTuple):
@@ -253,7 +145,7 @@ def check_maintainers(packages: list[Package], head: str, before: dict[str, Mark
 def check(base: str, head: str, commenter: str, templates: Templates) -> list[Package]:
     """The packages the PR changes, when it may merge this way; raises Refused otherwise."""
     # As commits, so what is read at each is cached by content, whatever the names point to next.
-    base, head = (git("rev-parse", "--verify", f"{rev}^{{commit}}").strip() for rev in (base, head))
+    base, head = commit(base), commit(head)
     merge_base = git("merge-base", base, head).strip()
     files = [path for path in git("diff", "-z", "--name-only", "--no-renames", merge_base, head).split("\0") if path]
     if not files:
