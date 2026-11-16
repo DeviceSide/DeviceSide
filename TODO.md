@@ -117,13 +117,13 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   (`--reruns`):
   - [x] Hue: the lab run at `bc27094`, landed with #432.
   - [ ] ZHA
-  - [ ] Zigbee2MQTT, run A: every suite but `turn_on_for`, `get_attributes` and `lifecycle`, with the watched A60 cases.
+  - [ ] Zigbee2MQTT, run A: every suite but `turn_on_for`, `get_attributes` and `config_entry`, with the watched A60 cases.
     A record is one run of one suite, so the split falls between suites. Needs ha-rig to run a chosen set of suites.
   - [ ] Matter
   - [ ] Shelly. Accepted until then: `check_release --signoffs` fails on Shelly's class coverage gaps, as its
     records are format 1, with no class per test; no release is cut before its house rerun.
   - [ ] Zigbee2MQTT, run B: `turn_on_for` and `get_attributes` (the bulb, and part 3's plugs, one per maker string),
-    and `lifecycle`, which any package change reopens. No Zigbee2MQTT change between runs A and B.
+    and `config_entry`, which any package change reopens. No Zigbee2MQTT change between runs A and B.
   - [ ] Control4: skialpine's `_manual.json` row, asked for once the runs' fixes have landed, so no fix sends
     the contributor back to a first submission; it cites a `main` commit holding the release's Control4 package.
 - [x] **Partial reruns** (`docs/evidence.md`, tenet 9): `check_release.py --signoffs` judges each record by its own
