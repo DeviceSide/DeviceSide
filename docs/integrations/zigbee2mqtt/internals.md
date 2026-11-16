@@ -280,7 +280,9 @@ Measured 2026-10-28 on Z2M 2.14.2 with Hue bulbs (a CT bulb and the A60), Home A
 - **Saturation fade stops.** The wire call is the same as on ZHA, so the A60's ZHA evidence carries over: halted by
   `StopMoveStep`, a `MoveToSaturation` fade looked closest to smooth and kept its hue, where an xy (`MoveToColor`) fade
   jumped at the stop
-  ([zha research](../zha/research/2026-11-15-a60-stop-halt-probe.md)). Not yet watched through Zigbee2MQTT.
+  ([zha research](../zha/research/2026-11-15-a60-stop-halt-probe.md)). Watched through Zigbee2MQTT on the same bulb
+  (rig run 2026-11-16): the same, no jump and no drift, with a slight step back in saturation at the stop, as on ZHA.
+  Left as is: it would need firmware tuning.
 - **After an xy stop,** Z2M's read-back carries its cached end-point x/y, not where the bulb halted; a
   `{"color": ""}` get publishes the halted x/y.
 
