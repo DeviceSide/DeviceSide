@@ -33,29 +33,30 @@ for these rules; other docs point here. Settled in [the evidence-rules plan](pla
    user-visible failure it prevents and what it replaces.
 7. **Maintainers judge sufficiency.** Tooling records evidence, and maintainers decide what's enough. Gates check that a
    sign-off exists, not how thorough it was.
-8. **Test to decide.** Every hardware run costs time and a person's presence, an unattended one included, so run one
+8. **Test to decide.** Every hardware run costs time and needs a person at hand, even one nobody watches, so run one
    only when its result takes a decision. Five decisions do:
-   - *a design choice:* tenet 2's probe, before the build;
-   - *a foundation:* before several steps build on an unproven design, one run of the cases whose failure would
-     change it;
+   - *a design choice:* tenet 2's probe, before the build. A contributor's test of what they built
+     ([CONTRIBUTING](../CONTRIBUTING.md), Fast track) is one, on hardware no maintainer has;
+   - *a foundation:* before further steps build on a design no verified fact covers, one run of the rig cases whose
+     failure would discard that work;
    - *lifting a flag* ([the experimental flag](#the-experimental-flag));
    - *a surprise:* the run that root-causes it (tenet 4);
-   - *a release:* the sign-off ([release gate](#release-gate)).
+   - *a release:* the sign-off, due before the last RC, or the one that clears a caveat ([release gate](#release-gate)).
 
-   Merging a PR is none of them: unit tests pin the call, a new item starts flagged, and the gate runs at the cut. So
-   finished code waits for the release's run, as it may change again before then. A plan gates a step on a run only
-   by naming the decision its result takes. This prevents a release held up by runs whose results changed nothing,
-   and replaces a run per step or per PR.
-9. **Retest what the change exercises.** After a run, a change reopens only the cases whose call, or whose handling
-   of the device's reply, it changes (tenet 5). A change that alters neither reopens none, and a maintainer says so
-   with a `no call changed` row ([sign-off format](#sign-off-format)). A fix for a failing case reruns that case,
-   not its suite. This prevents the same passing cases being rerun at each small change, and replaces "a package
-   changed after its run needs that run again". Until the gate takes a partial rerun (`TODO.md`, Partial reruns), a
-   rig sign-off is still one whole run, so the last change before a release decides when that run happens.
+   Merging a maintainer's PR is none of them: unit tests pin the call, a new item starts flagged, and the gate runs at
+   the cut. So finished code waits for the release's run, as it may change again before then. A plan gates a step on a
+   run only by naming the decision its result takes. This prevents a release held up by runs whose results changed
+   nothing, and replaces the practice of a run per step or per PR.
+9. **Retest what the change exercises.** After a run, a change reopens only the rig cases whose call, or whose
+   handling of the device's reply, it changes (tenet 5). A change that alters neither reopens none, and a maintainer
+   says so with a `no call changed` row ([sign-off format](#sign-off-format)). A fix for a failing case reopens that
+   case, not its suite. This prevents the same passing cases being rerun at each small change. Not yet in the gate:
+   until it takes a partial rerun (`TODO.md`, Partial reruns), a rig sign-off is one whole run at the release's
+   package, so changes to a package land together before its run; the whole-run rule goes when the gate changes.
 
-*Example (tenets 8 and 9):* a Zigbee2MQTT refactor of a shared helper lands after the release's run, and its unit
-tests show every call unchanged: a `no call changed` row keeps the run. A fix to `stop`'s call lands next: `stop`'s
-cases rerun, and no other action's.
+*Example (tenets 8 and 9):* after Zigbee2MQTT's run, a refactor of a shared helper lands, and its unit tests show
+every call and reply path unchanged: a `no call changed` row signs off in the run's place. A fix to `stop`'s call
+lands next. Tenet 9 reopens only `stop`'s cases; today's gate still needs the whole run at the fixed package.
 
 *Example (tenets 4 and 5):* the rig found that a Tuya TS011F plug stores the Zigbee timed-on timer as a countdown and
 never switches on ([integrations](integrations.md#zigbee-plugs-and-switches)). That reopened "a Zigbee switch takes the
@@ -182,7 +183,7 @@ device names) and what passed.
     |---|---|---|---|---|
     | 2026-11-12 | `1a2b3c4` | @handle | `S3SW-001X8EU`, `S3BL-C010007AEU` | `turn_on_for`, `set_auto_off` |
 
-A change that sends no new call signs off with a row whose Devices holds a dash and whose Passed holds exactly
-`no call changed`. *Example:* a log-wording change in a Shelly adapter:
+A change that alters neither a call nor the handling of a device's reply (tenet 9) signs off with a row whose Devices
+holds a dash and whose Passed holds exactly `no call changed`. *Example:* a log-wording change in a Shelly adapter:
 
     | 2026-11-12 | `1a2b3c4` | @handle | - | no call changed |
