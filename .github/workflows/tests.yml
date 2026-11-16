@@ -105,6 +105,36 @@ jobs:
       - name: Check CODEOWNERS is current
         run: .venv/bin/python scripts/gen_codeowners.py --check
 
+  # The tests an integration's maintainers and the repo's own, apart from any a family maintainer may merge alone
+  # (CLAUDE.md, Maintainers): each family's folder, and the catalog's tests in tests/zigbee/. Test code shares one
+  # pytest process, so a family's conftest.py hook or import-time patch could silence the classification snapshot in
+  # the pytest job; here it is never loaded. The pytest job still runs everything. Whether the ruleset requires this
+  # check: docs/repo-maintainers.md.
+  pytest-without-family-tests:
+    needs: changes
+    # Fails open, as pytest does.
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.code != 'false') }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
+        with:
+          enable-cache: true # zizmor: ignore[cache-poisoning] publishes no artifacts, releases come from cut-release*
+
+      - name: Install test dependencies
+        run: uv sync --locked
+
+      - name: Run tests, leaving out the families' and the catalog's
+        run: .venv/bin/pytest -n auto tests/ --ignore-glob='tests/integrations/*/families/*' --ignore=tests/zigbee
+
   # One open issue per deprecated call HA reports, filed from main only: main's HA pin is the one the next release is
   # tested on, and a fork's pull request gets no token that can file one. Its own job, so the token that can write
   # issues never runs test code.

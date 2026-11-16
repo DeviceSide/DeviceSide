@@ -18,7 +18,7 @@ from .models import FAILED, ActionKind, EntityResult, Request, Status, Target, T
 from .registry import AdapterRegistry
 from .resolver import resolve
 from .runtime import DEADLINE, get_runtime
-from .scope import DurationLimits, Level, Unplaced
+from .scope import Level, OwnCall, Unplaced
 from ..const import ADAPTER_BACKSTOP_S, ADAPTER_TIMEOUT_S, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -48,9 +48,9 @@ class Reached:
     members: tuple[str | None, ...] = ()
 
 
-# One execute: the adapter, the request its targets get, the targets, the fields dropped, what each reaches, and the
-# duration limits of their call (AdapterScope.limits).
-type Run = tuple[Adapter, Request, list[Target], frozenset[str], dict[str, Reached], DurationLimits | None]
+# One execute: the adapter, the request its targets get, the targets, the fields dropped, what each reaches, and their
+# class's own call (AdapterScope.own_call), None for the adapter's execute.
+type Run = tuple[Adapter, Request, list[Target], frozenset[str], dict[str, Reached], OwnCall | None]
 
 
 def _placed(name: str | None) -> bool:
@@ -111,7 +111,7 @@ def _rank(reason: str) -> int:
     the call through; then a class's refusal, which says why it can't; then any other; not_addressable last."""
     if reason == EXPERIMENTAL_OFF:
         return 0
-    if reason in (Reason.DOESNT_WORK, Reason.NOT_SUPPORTED, Reason.CLASS_UNKNOWN):
+    if reason in (Reason.NO_KNOWN_METHOD, Reason.NOT_BUILT, Reason.CLASS_UNKNOWN):
         return 1
     return 3 if reason == Reason.NOT_ADDRESSABLE else 2
 
@@ -124,8 +124,8 @@ def _skip(
     why: str | None = None,
     title: str | None = None,
 ) -> list[EntityResult]:
-    """A target that can't take the action: raise if the caller named it (with `why`, a doesn't-work or not yet
-    supported entry's reason, and `title`, the integration's, which a class_unknown message names), else the result
+    """A target that can't take the action: raise if the caller named it (with `why`, a no known method or not built
+    yet entry's reason, and `title`, the integration's, which a class_unknown message names), else the result
     that skips it."""
     if reason == Reason.EMPTY_GROUP:
         return []
@@ -290,15 +290,15 @@ class Dispatcher:
         Planning buckets targets by adapter, expands native groups an adapter can't address, drops the fields each
         target lacks and checks supports() on what is left, then the target's class (a native group's: its members'):
         where the adapter's call harms a class, one not yet placed (Unplaced, or None) is refused as class_unknown,
-        with Experimental features on or off; one the scope lists in doesnt_work, or the integration names but the
+        with Experimental features on or off; one the scope lists in no_known_method, or the integration names but the
         scope doesn't serve, is refused; a native group so refused falls back to its members when the integration can
         list them (docs/design.md), and an empty one is skipped silently. A flagged call, from an
         `experimental=True` adapter or touching an Experimental scope item, is refused while the Experimental features
         option is off; a native group flagged by a member's class alone falls back to its members instead, as does one
         with a member whose class takes a call of its own (AdapterScope.own_calls), and a target of such a class runs
-        with that call's duration limits. A named target that can't take the action raises then, before anything is
-        sent. Returns a result per target that ran
-        or was left nothing to do, each with its class, and an unsupported one per indirect target skipped.
+        apart, on that call and its duration limits. A named target that can't take the action raises then, before
+        anything is sent. Returns a result per target that ran or was left nothing to do, each with its class, and an
+        unsupported one per indirect target skipped.
         """
         results: list[EntityResult] = []
         buckets: dict[str, tuple[Adapter, list[Target]]] = {}
@@ -327,13 +327,13 @@ class Dispatcher:
         results: list[EntityResult],
         experimental_on: bool,
     ) -> list[Run]:
-        """One adapter's runs, one per set of dropped fields and duration limits so every target in a run gets the same
-        request; each target skipped or left nothing to do goes in results instead.
+        """One adapter's runs, one per set of dropped fields and own call so every target in a run gets the same
+        request and call; each target skipped or left nothing to do goes in results instead.
 
         A native group that falls back to its members gets no result of its own: they answer for it. Only when none
         of its members was planned or left nothing to do (each refused, gated or unavailable) is the group itself
         refused, with its reason, raised if named, once every target is judged."""
-        by_run: dict[tuple[frozenset[str], DurationLimits | None], list[Target]] = {}
+        by_run: dict[tuple[frozenset[str], OwnCall | None], list[Target]] = {}
         reached: dict[str, Reached] = {}
         pending = deque(targets)
         seen = {target.reported_id for target in pending}
@@ -397,11 +397,11 @@ class Dispatcher:
                     results += _skip(target.reported_id, target.named, EXPERIMENTAL_OFF, adapter.integration)
             else:
                 answered.add(target.reported_id)
-                by_run.setdefault((dropped, adapter.scope.limits(found)), []).append(target)
+                by_run.setdefault((dropped, adapter.scope.own_call(found)), []).append(target)
         results += _unanswered(adapter, fallen, answered, by_device, title, results)
         return [
-            (adapter, request.without(dropped), ready, dropped, reached, limits)
-            for (dropped, limits), ready in by_run.items()
+            (adapter, request.without(dropped), ready, dropped, reached, own)
+            for (dropped, own), ready in by_run.items()
         ]
 
     def _experimental(self, adapter: Adapter, request: Request, target: Target, classes: Classes) -> bool:
@@ -524,18 +524,21 @@ class Dispatcher:
         targets: list[Target],
         dropped: frozenset[str],
         reached: dict[str, Reached],
-        limits: DurationLimits | None,
+        own: OwnCall | None,
     ) -> list[EntityResult]:
         clamped_to = None
         if isinstance(request, TimedRequest):
-            request, clamped_to = duration.clamp(request, limits)
+            request, clamped_to = duration.clamp(request, adapter.scope.call_limits(own))
         # Each run is its own task (run_adapters gathers them), so the deadline set here is this run's alone.
         deadline = asyncio.get_running_loop().time() + ADAPTER_TIMEOUT_S
         DEADLINE.set(deadline)
         try:
             # Adapter.slot holds each command to the deadline; this catches an execute still busy outside it.
             async with asyncio.timeout_at(deadline + ADAPTER_BACKSTOP_S):
-                raw = await adapter.execute(self.hass, request, targets)
+                if own is None:
+                    raw = await adapter.execute(self.hass, request, targets)
+                else:
+                    raw = await adapter.execute_own(self.hass, request, targets, own)
         except TimeoutError:
             _LOGGER.warning(
                 "%s on %s timed out after %ss for %s, %s",

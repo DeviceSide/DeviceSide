@@ -79,9 +79,9 @@ when every light is off, as the Hue integration shows it.
 - **Lights without an entity in Home Assistant** are skipped by `set_attributes` and `get_attributes` on their
   room, though `set_scene` writes them. A disabled entity still counts.
 
-## Doesn't work
+## No known method
 
 ### Hue smart scenes
 
 A smart (All-Day) scene switches between scenes by time of day, so it has no fixed settings to write. Set scene
-refuses it (`doesnt_work`), saying why ([flash-free turn-on](#flash-free-turn-on)).
+refuses it (`no_known_method`), saying why ([flash-free turn-on](#flash-free-turn-on)).

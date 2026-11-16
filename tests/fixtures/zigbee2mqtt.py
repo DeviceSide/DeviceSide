@@ -39,7 +39,7 @@ def add_z2m_entity(
 
     Each device has its own device-registry entry (keyed by ieee); all share one config entry. It is a Hue device
     unless the manufacturer says otherwise, as every record's is, so its class is Verified (integrations/zigbee2mqtt/
-    classes.py).
+    families/hue).
     """
     domain, object_id = entity_id.split(".")
     device = dr.async_get(hass).async_get_or_create(

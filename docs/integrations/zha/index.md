@@ -39,33 +39,33 @@ Experimental features on; why, and what else runs, is in each kind's section bel
 
 Tuya's plugs, switches and relays on the standard Zigbee on/off commands (models `TS011F`, `TS0001` to `TS0004`,
 `TS0011` and `TS0726`), including the [Tuya TS011F](../../device-compatibility.md#tuya-ts011f). Turn on with timer
-isn't supported yet, as above.
+isn't built yet, as above.
 
 #### Reported Tuya plugs
 
 A TS011F reported to fail Tuya's own timer call: `_TZ3000_gjnozsaz`, whose time left jumps back at random, so it may
 not turn off when asked ([Z2M #30493](https://github.com/Koenkk/zigbee2mqtt/issues/30493)). Turn on with timer isn't
-supported on it yet, as another of Tuya's calls may serve it, and DeviceSide refuses it, even with Experimental
+built for it yet, as another of Tuya's calls may serve it, and DeviceSide refuses it, even with Experimental
 features on.
 
 #### Other Tuya devices
 
 Tuya's other devices on the standard Zigbee commands: bulbs (such as `TS0505B`), dimmers and other white labels.
-Turn on with timer isn't supported yet, as above.
+Turn on with timer isn't built yet, as above.
 
 #### Tuya datapoint devices
 
 Tuya devices that speak only Tuya's own protocol (model `TS0601`, and others ZHA handles the same way). ZHA turns
 DeviceSide's commands into Tuya's own: it refuses the timer, so with a brightness or color temperature the light
 would turn on and stay on, and it drops a fade's timing and reads from memory rather than the device. So none of
-DeviceSide's features are supported on them yet, and turn on with timer is refused even with Experimental features
+DeviceSide's features are built for them yet, and turn on with timer is refused even with Experimental features
 on.
 
 ### Sengled
 
 Sengled bulbs refuse the Zigbee timer command, and miss it silently when it is sent to a group (tested on the
 E11-G13; Sengled's other bulbs don't list the command either,
-[research](../zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md)). So turn on with timer isn't supported on
+[research](../zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md)). So turn on with timer isn't built for
 them yet: with a brightness or color temperature, or in a group, the bulb would turn on and stay on, and DeviceSide
 refuses it, even with Experimental features on. A Sengled E11-G13 written while off jumps to full brightness, so set
 attributes refuses it ([Flash-free turn-on](#flash-free-turn-on)). Their other features are untested, so they run
@@ -75,7 +75,7 @@ only with Experimental features on.
 
 Sonoff's SWV water valve reads the Zigbee timer in seconds rather than tenths, so it would stay open about ten times
 longer than asked ([research](../zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md)). Turn on with timer isn't
-supported on it yet, and DeviceSide refuses it, even with Experimental features on. Its other features are untested.
+built for it yet, and DeviceSide refuses it, even with Experimental features on. Its other features are untested.
 
 ### Other brands
 

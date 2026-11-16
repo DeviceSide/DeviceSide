@@ -5,7 +5,7 @@ column: ZHA
 column_order: 1
 capabilities:
   switch: {phrase: plugs and switches, section: Zigbee plugs and switches}
-  # The classes integrations/zha/classes.py names, but hue: Verified, it needs no phrase.
+  # The classes integrations/zha/families/ name, but hue: Verified, it needs no phrase.
   tuya_countdown: {phrase: Tuya plugs and switches, section: Tuya}
   tuya_countdown_harmed: {phrase: reported Tuya plugs, section: Tuya}
   tuya_zcl: {phrase: other Tuya devices, section: Tuya}

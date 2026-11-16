@@ -1,10 +1,16 @@
+import asyncio
+import json
 import logging
 import re
 from dataclasses import replace
 from types import SimpleNamespace
 
 import pytest
+from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 
+from custom_components.deviceside.core.models import Target
 from custom_components.deviceside.core.resolver import resolve
 from custom_components.deviceside.core.runtime import DATA, get_runtime
 from custom_components.deviceside.core.scope import Unplaced
@@ -17,6 +23,7 @@ from custom_components.deviceside.integrations.zigbee2mqtt import (
     native_control,
     read,
     set_attributes,
+    set_check,
 )
 from custom_components.deviceside.integrations.zigbee2mqtt.fade import transition_cache
 from custom_components.deviceside.integrations.zigbee2mqtt.turn_on_for import Z2MTurnOnFor
@@ -59,10 +66,10 @@ def no_addresses_logged(request, caplog):
 
 @pytest.fixture
 def harmless(monkeypatch):
-    """turn_on_for without its not_supported entries, as if today's call harmed no class, for a test of its call
+    """turn_on_for without its not_built entries, as if today's call harmed no class, for a test of its call
     alone on a group bridge/groups doesn't list: the dispatcher otherwise refuses it as class_unknown
     (test_classes.py), and still counts it as Experimental. The classes stay refused, left out of the scope."""
-    monkeypatch.setattr(Z2MTurnOnFor, "scope", replace(Z2MTurnOnFor.scope, not_supported={}))
+    monkeypatch.setattr(Z2MTurnOnFor, "scope", replace(Z2MTurnOnFor.scope, not_built={}))
 
 
 @pytest.fixture(autouse=True)
@@ -144,7 +151,13 @@ class HeldGroups(bridge_cache.BridgeCache):
 
 
 DEVICES = "zigbee2mqtt/bridge/devices"
+LOGGING = "zigbee2mqtt/bridge/logging"
 XY = ["color_temp", "xy"]
+# Strings of the shapes the lab probe saw (research/2026-11-14-lab-probe.md, §1): the Zigbee manufacturer a Tuya
+# device reports in bridge/devices, and the vendor and definition Z2M registers for a TS011F.
+TUYA = "_TZ3000_abcdefgh"
+TUYA_MCU = "_TZE200_abcdefgh"
+PLUG = ("Tuya", "TS011F_plug_1")
 # A light's color cluster mid-hue-cycle: in hs mode (0), at x 0.3 and y 0.4.
 COLOR = {"colorMode": 0, "currentX": 19661, "currentY": 26214}
 
@@ -227,6 +240,61 @@ def group(hass, broker, **members: dict) -> str:
     hass.states.async_set("light.room", "on", {"supported_color_modes": XY, "hs_color": (200.0, 60.0)})
     broker.retained[GROUPS] = [{"id": 7, "members": [{"ieee_address": "0x01"}, {"ieee_address": "0x02"}]}]
     return "light.room"
+
+
+def interviewed(ieee: str, manufacturer: str, model_id: str) -> dict:
+    """A device's bridge/devices entry once Zigbee2MQTT has interviewed it."""
+    return {"ieee_address": ieee, "manufacturer": manufacturer, "model_id": model_id, "interview_completed": True}
+
+
+def target(hass, entity_id: str) -> Target:
+    """The target of a registered entity, built without the dispatcher."""
+    entry = er.async_get(hass).async_get(entity_id)
+    device = dr.async_get(hass).async_get(entry.device_id)
+    return Target(entity_id, "light", "zigbee2mqtt", entry, device, None, hass.states.get(entity_id))
+
+
+@pytest.fixture
+def live(hass, setup_production, broker, monkeypatch):
+    """The bridge cache with its response topics and bridge/logging live, as once MQTT is up, so sets are checked
+    (set_check.py)."""
+    cache = bridge_cache.BridgeCache()
+    cache.replies_live = True
+    hass.data[DATA].integration_state[bridge_cache._KEY] = cache
+    broker.subscribers.setdefault(LOGGING, []).append(cache._on_log)
+    for kind in bridge_cache.KINDS:
+        reply_topic = f"zigbee2mqtt/bridge/response/{kind}/options"
+        broker.subscribers.setdefault(reply_topic, []).append(bridge_cache.reply_router(cache.pending))
+    monkeypatch.setattr(set_check, "BOUND_S", 0.05)
+    return cache
+
+
+def log(broker, message: str, level: str = "error") -> None:
+    """A line on Zigbee2MQTT's bridge/logging."""
+    broker.deliver(LOGGING, json.dumps({"level": level, "message": message}))
+
+
+def answer(broker, on: str, *, line: str | None = None, state: str | None = None) -> None:
+    """Have Z2M answer each set published to `on`: a log line, and or a state publish under the friendly name."""
+
+    def on_set(topic: str, payload: dict) -> None:
+        if topic != on:
+            return
+        loop = asyncio.get_running_loop()
+        if line is not None:
+            loop.call_soon(log, broker, line)
+        if state is not None:
+            loop.call_soon(broker.deliver, f"zigbee2mqtt/{state}", json.dumps({"state": "ON"}))
+
+    broker.on_set = on_set
+
+
+async def failure(hass, service: str, data: dict) -> str:
+    """The summary a call raises targets_failed with."""
+    with pytest.raises(HomeAssistantError) as raised:
+        await call(hass, service, data)
+    assert raised.value.translation_key == "targets_failed"
+    return raised.value.translation_placeholders["summary"]
 
 
 def commands(broker) -> list[tuple[str, dict]]:
