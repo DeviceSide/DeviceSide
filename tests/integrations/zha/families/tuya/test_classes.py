@@ -1,11 +1,17 @@
-"""Tuya's rules on ZHA: the datapoint group, on the quirk and the datapoint strings, and the ZCL group, on the reported
-string, the countdown models and the rest of Tuya's ZCL strings. Each group alone; the order between them is the
-integration's (test_classification.py)."""
+"""ZHA's Tuya family: the datapoint rule group, on the quirk and the datapoint strings, and the ZCL group, on the
+reported string, the countdown models and the rest of Tuya's ZCL strings, each alone; the catalog they read; and its
+levels. The order between the groups and the other families' is the integration's (test_classification.py), as are
+turn_on_for's refusals (test_refusals.py)."""
+
+import re
 
 import pytest
 
+from custom_components.deviceside.core.rules import match
+from custom_components.deviceside.core.scope import Level
 from custom_components.deviceside.integrations.zha import rules
 from custom_components.deviceside.integrations.zha.families import tuya
+from custom_components.deviceside.zigbee import tuya as catalog
 
 MCU_QUIRK = "zhaquirks.tuya.mcu"
 
@@ -26,7 +32,7 @@ MCU_QUIRK = "zhaquirks.tuya.mcu"
     ],
 )
 def test_datapoint_rules(manufacturer, model, quirk, expected):
-    assert rules.match(tuya.DATAPOINT_RULES, manufacturer, model, quirk) == expected
+    assert match(tuya.DATAPOINT_RULES, rules.read(manufacturer, model, quirk)) == expected
 
 
 @pytest.mark.parametrize(
@@ -54,11 +60,35 @@ def test_datapoint_rules(manufacturer, model, quirk, expected):
     ],
 )
 def test_zcl_rules(manufacturer, model, expected):
-    assert rules.match(tuya.ZCL_RULES, manufacturer, model, "zigpy.zcl") == expected
+    assert match(tuya.ZCL_RULES, rules.read(manufacturer, model, "zigpy.zcl")) == expected
 
 
-def test_the_datapoint_class_is_in_no_scope_but_turn_on_fors_refusal():
+def test_the_rules_read_the_catalog_s_strings():
+    """One home for Tuya's Zigbee strings, shared with Zigbee2MQTT: the family restates none. A pattern is the
+    catalog's own object; a literal string is the catalog's, escaped."""
+    read = {
+        (rule.capability, name): pattern
+        for rule in (*tuya.DATAPOINT_RULES, *tuya.ZCL_RULES)
+        for name, pattern in rule.conditions.items()
+    }
+
+    assert read["tuya_mcu", "manufacturer"] is catalog.DATAPOINT_MANUFACTURER_PATTERN
+    assert read["tuya_zcl", "manufacturer"] is catalog.ZCL_MANUFACTURER_PATTERN
+    assert read["tuya_zcl", "model"] is catalog.ZCL_MODEL_PATTERN
+    assert read["tuya_mcu", "model"] == re.escape(catalog.DATAPOINT_MODEL)
+    assert read["tuya_countdown_harmed", "manufacturer"] == re.escape(catalog.COUNTDOWN_HARMED_MANUFACTURER)
+    assert read["tuya_countdown_harmed", "model"] == re.escape(catalog.COUNTDOWN_HARMED_MODEL)
+    assert read["tuya_countdown", "model"].split("|")[0] == re.escape(catalog.TS011F_MODEL)
+
+
+def test_the_zcl_classes_are_untested_on_every_action_they_are_served_on():
+    """turn_on_for, which the integration refuses every Tuya class on (test_refusals.py), is left out."""
+    assert "turn_on_for" not in tuya.FAMILY.scopes
+    assert {level for scope in tuya.FAMILY.scopes.values() for level in scope.capabilities.values()} == {
+        Level.EXPERIMENTAL
+    }
+
+
+def test_the_datapoint_class_is_in_no_scope():
     """Its quirk answers what DeviceSide sends itself, so it needs a call that isn't built."""
-    held = {action for action, scope in tuya.FAMILY.scopes.items() if tuya.TUYA_MCU in scope.capabilities}
-    assert held == set()
-    assert tuya.TUYA_MCU in tuya.FAMILY.scopes["turn_on_for"].not_built
+    assert {action for action, scope in tuya.FAMILY.scopes.items() if tuya.TUYA_MCU in scope.capabilities} == set()

@@ -268,8 +268,7 @@ few rig cases before the full suite exists, so a flagged item may have passing r
 becomes `documented(...)` in a PR that argues the sibling case ([Levels](#levels)). Lifting a flag is a change to the
 integration's package, so one of its maintainers approves it, as for any change there
 ([CLAUDE.md](../CLAUDE.md#maintainers)). A [family](design.md#glossary)'s maintainers set their own classes' levels
-the same way. A no known method or not built yet entry is not theirs alone: it decides what is refused for harm, so
-adding, changing or removing one takes an integration or repo maintainer.
+the same way, but change no refusal entry ([CLAUDE.md](../CLAUDE.md#maintainers)).
 
 For an item no maintainer can test, users' working reports can verify it through a maintainer's `_manual.json`
 sign-off, whose PR body cites them ([CLAUDE.md](../CLAUDE.md#where-facts-go): rule evidence goes in the PR body). The

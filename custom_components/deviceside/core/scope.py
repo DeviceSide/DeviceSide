@@ -2,7 +2,7 @@ from collections.abc import Awaitable, Callable, Collection, Iterable, Mapping
 from dataclasses import dataclass, field
 from enum import Enum, IntEnum
 from types import MappingProxyType
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
@@ -277,19 +277,15 @@ class AdapterScope:
             return None
         if self.harms and any(name is None or isinstance(name, Unplaced) for name in classes):
             return Reason.CLASS_UNKNOWN, None
-        if broken := next((self.no_known_method[name] for name in classes if name in self.no_known_method), None):
-            return Reason.NO_KNOWN_METHOD, broken.reason
+        if entry := next((self.no_known_method[name] for name in classes if name in self.no_known_method), None):
+            return Reason.NO_KNOWN_METHOD, entry.reason
         if entry := next((self.not_built[name] for name in classes if name in self.not_built), None):
             return Reason.NOT_BUILT, entry.reason
         if any(name is not None and name not in self.capabilities for name in classes):
             return Reason.NOT_BUILT, None
-        if group and self.apart(classes):
+        if group and self.own_call(classes) is not None:
             return Reason.OWN_CALL, None
         return None
-
-    def apart(self, classes: Collection[str | None]) -> bool:
-        """Whether one of these classes takes a call of its own, so a native group with such a member falls back."""
-        return any(name in self.own_calls for name in classes)
 
     def own_call(self, classes: Collection[str | None]) -> OwnCall | None:
         """The call of its own a target of these classes gets, None for the adapter's `execute`. A native group with
@@ -299,10 +295,6 @@ class AdapterScope:
     def call_limits(self, call: OwnCall | None) -> DurationLimits | None:
         """The duration limits of a run on `call` (own_call): its own, where it has them, else the scope's."""
         return self.duration if call is None or call.limits is None else call.limits
-
-    def limits(self, classes: Collection[str | None]) -> DurationLimits | None:
-        """The duration limits of the call a target of these classes gets (own_call, call_limits)."""
-        return self.call_limits(self.own_call(classes))
 
     def _check_on_domains(self) -> None:
         for axis in ("domains", "fields"):
@@ -323,22 +315,25 @@ class AdapterScope:
 
 @dataclass(frozen=True, slots=True)
 class FamilyScope:
-    """A family's part of one adapter's scope: its classes' entries for AdapterScope's fields of the same names, each
-    by class. A class it leaves out of all four is left out of the adapter's scope, so refused as not built yet."""
+    """A family's part of one adapter's scope: its classes' levels and own calls, for AdapterScope's fields of the same
+    names, each by class. A class it leaves out is left out of the adapter's scope, so refused as not built yet.
+
+    It holds no refusal entry (NoKnownMethod, NotBuilt): those are the integration's, in its `refusals.py`, which
+    `class_scope` merges in. A family's maintainers may merge a change to its files alone, and an entry with `harms`
+    protects users of every family's devices, so it lives on a path a family maintainer doesn't own."""
 
     capabilities: Mapping[str, ClassLevel] = field(default_factory=dict)
-    no_known_method: Mapping[str, NoKnownMethod] = field(default_factory=dict)
-    not_built: Mapping[str, NotBuilt] = field(default_factory=dict)
     own_calls: Mapping[str, OwnCall] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Family:
     """A vendor's firmware family inside one integration (docs/design.md, Family): the classes it owns
-    and, per action key, what each adapter's scope holds for them (`scopes`; an action with none leaves its classes
-    out of that adapter's scope). It exists so a vendor is one path with its own maintainers: GitHub handles, which may
-    be empty, as the integration's maintainers own every family of it too. The registry checks it (core/registry.py,
-    check_families)."""
+    and, per action key, the levels and own calls each adapter's scope holds for them (`scopes`; an action with none
+    leaves its classes out of that adapter's scope). Where an action refuses one of its classes with a reason is the
+    integration's to say (FamilyScope). It exists so a vendor is one path with its own maintainers: GitHub handles,
+    which may be empty, as the integration's maintainers own every family of it too. The registry checks it
+    (core/registry.py, check_families)."""
 
     key: str
     maintainers: tuple[str, ...] = ()
@@ -347,23 +342,36 @@ class Family:
 
 
 def family_scope(families: Iterable[Family], action: str) -> FamilyScope:
-    """The families' parts of one action's scope, merged; an adapter builds its AdapterScope from it and the
-    integration's own entries for its default class. A class in two families raises, as one's entry would replace the
-    other's unseen."""
-    owners: dict[str, str] = {}
-    merged = FamilyScope()
-    for family in families:
-        if both := sorted(name for name in family.classes if name in owners):
-            raise ValueError(f"families {owners[both[0]]!r} and {family.key!r} both hold classes {both}")
-        owners |= dict.fromkeys(family.classes, family.key)
-        part = family.scopes.get(action, FamilyScope())
-        merged = FamilyScope(
-            capabilities={**merged.capabilities, **part.capabilities},
-            no_known_method={**merged.no_known_method, **part.no_known_method},
-            not_built={**merged.not_built, **part.not_built},
-            own_calls={**merged.own_calls, **part.own_calls},
-        )
-    return merged
+    """The families' parts of one action's scope, merged in the families' order. The registry has checked that no two
+    families hold one class (core/registry.py, check_families), so no part replaces another's."""
+    parts = [family.scopes[action] for family in families if action in family.scopes]
+    return FamilyScope(
+        capabilities={name: level for part in parts for name, level in part.capabilities.items()},
+        own_calls={name: call for part in parts for name, call in part.own_calls.items()},
+    )
+
+
+def class_scope(
+    action: str,
+    *,
+    families: Iterable[Family],
+    default_levels: Mapping[str, Mapping[str, ClassLevel]],
+    refusals: Mapping[str, Mapping[str, NoKnownMethod | NotBuilt]],
+) -> dict[str, Any]:
+    """The class entries of an action's AdapterScope, as its keyword arguments, for an integration with families:
+    the default class at the integration's level (`default_levels`, by action), then the families' classes and own
+    calls (family_scope), and the integration's refusal entries (`refusals`, by action then class: its `refusals.py`),
+    each under the AdapterScope field its type names. The default class goes first, as the cards list an adapter's
+    classes in the scope's order (scripts/gen_compat.py). AdapterScope raises for a class a family serves that the
+    integration refuses."""
+    parts = family_scope(families, action)
+    refused = refusals.get(action, {})
+    return {
+        "capabilities": {**default_levels[action], **parts.capabilities},
+        "no_known_method": {name: entry for name, entry in refused.items() if isinstance(entry, NoKnownMethod)},
+        "not_built": {name: entry for name, entry in refused.items() if isinstance(entry, NotBuilt)},
+        "own_calls": parts.own_calls,
+    }
 
 
 @dataclass(slots=True)

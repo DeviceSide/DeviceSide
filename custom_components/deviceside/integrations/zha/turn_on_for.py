@@ -65,8 +65,8 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
         # switch fails the Documented test (docs/evidence.md, Levels): it stays flagged experimental, untested, until
         # a maintainer judges it ready.
         domains=verified("light") | experimental("switch"),
-        # Verified on Hue, whose bulbs every record ran on; every other brand may depart (some never switch off). The
-        # classes the call harms are refused (each family's not_built).
+        # Each class's level is its family's (families/<family>/), `other`'s classes.py's; the classes the call harms
+        # are refused (refusals.py).
         **classes.class_scope(action),
         duration=_TIMER_LIMITS,
         fields=verified("brightness", "color_temp_kelvin"),

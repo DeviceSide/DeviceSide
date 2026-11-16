@@ -4,7 +4,6 @@ converter A, and the one publish it gets."""
 import pytest
 
 from custom_components.deviceside.actions.turn_on_for import TurnOnForRequest
-from custom_components.deviceside.core.errors import TargetNotSupported
 from custom_components.deviceside.core.resolver import resolve
 from custom_components.deviceside.core.runtime import get_runtime
 from custom_components.deviceside.core.scope import Level, Unplaced
@@ -13,10 +12,8 @@ from custom_components.deviceside.integrations.zigbee2mqtt.families import tuya
 from custom_components.deviceside.integrations.zigbee2mqtt.families.tuya import countdown
 from custom_components.deviceside.integrations.zigbee2mqtt.turn_on_for import Z2MTurnOnFor
 
-from ...conftest import DEVICES, GROUPS, SET, call, commands, group
-from ...test_set_check import answer, failure, live  # noqa: F401 - live is a fixture
+from ...conftest import DEVICES, GROUPS, SET, answer, call, commands, failure, group
 from .....conftest import allow_experimental, refusal
-from .....conftest import call as call_service
 from .....fixtures.zigbee2mqtt import IEEE, INFO, add_z2m_entity, z2m_entry
 
 LAB = "_TZ3000_0zfrhq4i"  # the lab plug (research/2026-11-15-tuya-countdown-probe.md)
@@ -123,7 +120,8 @@ def test_each_verified_string_has_a_class_of_its_own_verified_on_switches_on_tur
     # One call object, so the countdown plugs of every string share a run.
     assert set(scope.own_calls.values()) == {countdown.COUNTDOWN}
     assert countdown.COUNTDOWN.limits is countdown.COUNTDOWN_LIMITS
-    assert "tuya_countdown_harmed" in scope.not_built
+    # The string reported harmed is left out: the integration refuses it (test_refusals.py).
+    assert "tuya_countdown_harmed" not in scope.capabilities
 
 
 async def test_a_countdown_plug_gets_one_publish_with_the_countdown(hass, setup_production, broker):
@@ -175,18 +173,6 @@ async def test_an_unrecorded_string_is_experimental(hass, setup_production, brok
     entity_id = plug(hass, broker, UNLISTED)
 
     assert await refusal(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == "experimental_off"
-    assert commands(broker) == []
-
-
-async def test_the_reported_string_is_not_built_with_experimental_on(hass, setup_production, broker):
-    entity_id = plug(hass, broker, "_TZ3000_gjnozsaz")
-    allow_experimental(hass)
-
-    with pytest.raises(TargetNotSupported) as raised:
-        await call_service(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5})
-
-    assert raised.value.reason == "not_built"
-    assert raised.value.translation_placeholders["why"] == tuya.TURN_ON_FOR_NOT_BUILT["tuya_countdown_harmed"].reason
     assert commands(broker) == []
 
 

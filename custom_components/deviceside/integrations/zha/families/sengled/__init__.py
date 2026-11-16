@@ -1,8 +1,8 @@
 """Sengled bulbs on ZHA: their class, and the models that drop a level written while off (internals.md, Tested
 behavior)."""
 
-from ...rules import Group, Rule
-from .....core.scope import Family, FamilyScope, NotBuilt, experimental
+from .....core.rules import Rule
+from .....core.scope import Family, FamilyScope, experimental
 
 SENGLED = "sengled"
 
@@ -11,25 +11,13 @@ SENGLED = "sengled"
 # not the class.
 DROPS_WHILE_OFF = frozenset({"E11-G13"})
 
-RULES: Group = (
+RULES = (
     # The lab's E11-G13 reads `sengled`.
-    Rule(SENGLED, "manufacturer", "(?i:sengled)"),
+    Rule(SENGLED, {"manufacturer": "(?i:sengled)"}),
 )
 
+# Untested on every action but turn_on_for, whose call harms it: the integration refuses it there (refusals.py).
 _UNTESTED = FamilyScope(capabilities=experimental(SENGLED))
-_INTERNALS = "https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/internals.md"
-# turn_on_for's call harms it (docs/evidence.md, When today's call harms a class): a call that would work is plausible,
-# but isn't built. `harms`, so core also refuses a target it can't class.
-_TURN_ON_FOR = FamilyScope(
-    not_built={
-        # A host-side off would serve it; it refuses 0x42 by unicast and misses it by groupcast (Tested behavior).
-        SENGLED: NotBuilt(
-            reason="It refuses the timer, so with brightness, a color temperature or in a group it would stay on",
-            source=_INTERNALS + "#tested-behavior",
-            harms=True,
-        ),
-    }
-)
 
 FAMILY = Family(
     key="sengled",
@@ -45,6 +33,5 @@ FAMILY = Family(
         "raise_saturation": _UNTESTED,
         "set_attributes": _UNTESTED,
         "stop": _UNTESTED,
-        "turn_on_for": _TURN_ON_FOR,
     },
 )

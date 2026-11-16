@@ -1,6 +1,6 @@
 """Sengled on Zigbee2MQTT: its bulbs ignore `on_time` (index.md, Device classes), so they are a class of their own."""
 
-from ...rules import Rule
+from .....core.rules import Rule
 from .....core.scope import Family, FamilyScope, experimental
 
 SENGLED = "sengled"

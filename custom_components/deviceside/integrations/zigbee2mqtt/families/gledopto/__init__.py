@@ -2,7 +2,7 @@
 (research/2026-11-14-timed-on-call-patterns.md, §3), so `other`'s Documented actions don't cover them (plan Decision
 24)."""
 
-from ...rules import Rule
+from .....core.rules import Rule
 from .....core.scope import Family, FamilyScope, experimental
 
 GLEDOPTO = "gledopto"

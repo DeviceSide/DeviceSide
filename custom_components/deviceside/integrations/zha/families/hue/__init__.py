@@ -1,14 +1,14 @@
-"""Hue bulbs on ZHA: the one class every record ran on, and Signify's own turn-on command (multi_color)."""
+"""Hue bulbs on ZHA: the one class every record ran on."""
 
-from ...rules import Group, Rule
+from .....core.rules import Rule
 from .....core.scope import Family, FamilyScope, verified
 
 HUE = "hue"
 
-RULES: Group = (
+RULES = (
     # Hue bulbs' own manufacturer strings, older and newer (zha-quirks zhaquirks/philips/__init__.py, PHILIPS and
     # SIGNIFY); the lab's read `Signify Netherlands B.V.`.
-    Rule(HUE, "manufacturer", r"Signify Netherlands B\.V\.|Philips"),
+    Rule(HUE, {"manufacturer": r"Signify Netherlands B\.V\.|Philips"}),
 )
 
 # Verified on every action: every record ran on Hue bulbs (index.md, Device classes).

@@ -6,29 +6,39 @@ read on the base branch, so a PR can't name its own merger:
 
 - in a family (`FAMILY_PATHS` in `scripts/gen_codeowners.py`): that family's maintainers and its integration's;
 - in the catalog (`CATALOG_PATHS`): the maintainers of every family of that key, and of those families' integrations;
-- elsewhere in an integration's package (`PATHS`): the integration's maintainers;
-- generated output that CI's `--check` proves (`docs/device-compatibility.md`, `.github/CODEOWNERS`, and `README.md`
-  inside its generated blocks): anyone who owns the rest;
+- elsewhere in an integration's package (`PATHS`), its `refusals.py` included: the integration's maintainers;
+- generated output that CI's `--check` proves (`.github/CODEOWNERS`, and `README.md` and
+  `docs/device-compatibility.md` inside their generated blocks): anyone who owns the rest;
 - anything else: nobody.
 
 A family's path whose family isn't on the base branch is its integration's. This refuses a PR that:
 
 - changes nothing, a file nobody owns, or only generated output;
 - changes a file of an integration that isn't on the base branch yet, or one the commenter doesn't own;
-- changes a `maintainers=` value in a Python file, or leaves an integration's or family's maintainers unreadable (a
-  repo maintainer's, as is appointing one);
-- changes `README.md` outside its generated blocks;
-- sets or clears a `caveat` (a repo maintainer's, `docs/evidence.md`);
-- adds, changes or removes a `NoKnownMethod(...)` or `NotBuilt(...)` call in a file whose integration the commenter
-  doesn't maintain: a family maintainer changes levels, never a `harms`-bearing entry.
+- changes the `maintainers=` of any `IntegrationInfo(...)` or `Family(...)` call in a Python file outside `tests/`,
+  bound to `INTEGRATION` or `FAMILY` or not (the unsupported integration `integrations/hue/v1.py` declares), adds or
+  removes such a call, or leaves an integration's or family's maintainers unreadable (a repo maintainer's, as is
+  appointing one);
+- changes `README.md` or `docs/device-compatibility.md` outside its generated blocks;
+- sets or clears a `caveat` (a repo maintainer's, `docs/evidence.md`).
+
+No rule here names a refusal entry (`NoKnownMethod`, `NotBuilt`): an integration with families keeps them in its
+`refusals.py`, outside every family, so ownership by path keeps them from a family maintainer (CLAUDE.md,
+Maintainers).
 
 The ruleset on `main` still requires green, up-to-date checks, so this doesn't look at CI. Like
 `check_protected.py`, it runs from the base branch on the standard library alone, and reads the PR's files with
 `git show`, as data: the integrations and families are parsed, never imported. It compares calls and keywords by
-name, so it can't see: a caveat set other than as a `caveat=` keyword or a `Caveat(...)` call; an entry built under
-another name, or one left whole while the class it is listed under changes; a rule change that moves devices out of
-a harmed class (the integration's classification snapshot, outside every family, catches the devices it lists). The
-release candidate's audit reviews every merged change.
+name, so it can't see:
+
+- a caveat set other than as a `caveat=` keyword or a `Caveat(...)` call;
+- a family's rule change that moves devices between classes, out of a refused class or in from another family's (a
+  family's rule group can run before another's): only the integration's classification snapshot
+  (`tests/integrations/<x>/test_classification.py`) catches the devices it lists;
+- a family's product code written in bad faith: the integration's tests import it, so it can change what they see
+  (patching another module's table at import). Its test code can't silence them: a CI job runs them with every
+  family's and the catalog's tests left out (`tests.yml`, `pytest-without-family-tests`). The gate trusts an appointed
+  maintainer not to, and the release candidate's audit reviews every merged change.
 
 Usage: scripts/check_maintainer_merge.py <base> <head> --commenter <login>
 
@@ -37,6 +47,7 @@ Exits 1 when the PR may not merge this way, with the reason on stdout and as `re
 
 import argparse
 import ast
+import functools
 import os
 import re
 import sys
@@ -48,18 +59,22 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
 from scripts.check_protected import README, authored, git, show  # noqa: E402
-from scripts.route_issue import parse, parse_family  # noqa: E402
+from scripts.route_issue import called, parse, parse_family  # noqa: E402
 
 CODEOWNERS_SCRIPT = REPO / "scripts" / "gen_codeowners.py"
 INTEGRATIONS = "custom_components/deviceside/integrations/"
 INIT = INTEGRATIONS + "{key}/__init__.py"
 FAMILY_INIT = INTEGRATIONS + "{key}/families/{family}/__init__.py"
-GENERATED = frozenset({README, "docs/device-compatibility.md", ".github/CODEOWNERS"})
+COMPAT = "docs/device-compatibility.md"
+# Generated output: CODEOWNERS wholly, the other two inside their marked blocks (`BLOCKS`).
+GENERATED = frozenset({README, COMPAT, ".github/CODEOWNERS"})
+BLOCKS = (README, COMPAT)
 # What a path template's `{key}` and `{family}` match: an integration's package name, and a family's as the registry
-# shapes it (core/registry.py, FAMILY_KEY), which no `__init__.py` or `__pycache__` beside the families is.
+# shapes it (core/registry.py, FAMILY_KEY; tests/scripts/test_check_maintainer_merge.py pins them equal), which no
+# `__init__.py` or `__pycache__` beside the families is.
 NAMES = {"key": r"[a-z0-9_]+", "family": r"[a-z][a-z0-9_]*"}
-KEYWORDS = ("caveat", "maintainers")
-HARMS = frozenset({"NoKnownMethod", "NotBuilt"})
+# The calls whose `maintainers=` name owners.
+DECLARES = frozenset({"IntegrationInfo", "Family"})
 
 
 class Refused(Exception):
@@ -113,11 +128,13 @@ def match(path: str, templates: tuple[str, ...]) -> dict[str, str] | None:
         pattern = "".join(
             f"(?P<{part}>{NAMES[part]})" if index % 2 else re.escape(part) for index, part in enumerate(parts)
         )
-        if found := re.match(pattern + ("" if template.endswith("/") else "$"), path):
+        # A folder's template holds every path under it; a file's, that path alone (`$` would pass a trailing newline).
+        if found := (re.match if template.endswith("/") else re.fullmatch)(pattern, path):
             return found.groupdict()
     return None
 
 
+@functools.cache
 def maintainers(rev: str, key: str) -> tuple[str, ...] | None:
     """The integration's maintainers at `rev`, or None when it has no readable `__init__.py` there."""
     init = INIT.format(key=key)
@@ -129,6 +146,7 @@ def maintainers(rev: str, key: str) -> tuple[str, ...] | None:
         return None
 
 
+@functools.cache
 def family_maintainers(rev: str, key: str, family: str) -> tuple[str, ...] | None:
     """The family's maintainers at `rev`, or None when it has no readable `__init__.py` there under that key."""
     init = FAMILY_INIT.format(key=key, family=family)
@@ -141,11 +159,12 @@ def family_maintainers(rev: str, key: str, family: str) -> tuple[str, ...] | Non
     return found.maintainers if found.key == family else None
 
 
-def integrations_with(rev: str, family: str) -> list[str]:
+@functools.cache
+def integrations_with(rev: str, family: str) -> tuple[str, ...]:
     """The integrations that hold a family of this key at `rev`."""
     listing = git("ls-tree", "-d", "-z", "--name-only", rev, INTEGRATIONS)
     keys = [Path(path).name for path in listing.split("\0") if path]
-    return [key for key in keys if family_maintainers(rev, key, family) is not None]
+    return tuple(key for key in keys if family_maintainers(rev, key, family) is not None)
 
 
 def package_of(path: str, base: str, templates: Templates) -> Package | None:
@@ -161,9 +180,9 @@ def package_of(path: str, base: str, templates: Templates) -> Package | None:
     return None
 
 
-def integrations_of(package: Package, base: str) -> list[str]:
+def integrations_of(package: Package, base: str) -> tuple[str, ...]:
     """The integrations whose maintainers own the package: its own, or for the catalog each that shares it."""
-    return [package.key] if package.key else integrations_with(base, package.family)
+    return (package.key,) if package.key else integrations_with(base, package.family)
 
 
 def owners(package: Package, base: str) -> set[str]:
@@ -180,11 +199,11 @@ def owners(package: Package, base: str) -> set[str]:
 
 class Marks(NamedTuple):
     """What a Python file holds that a maintainer doesn't change alone, as AST dumps: every `caveat=` keyword and
-    `Caveat(...)` call, every `maintainers=` keyword, and the set of `NoKnownMethod(...)` and `NotBuilt(...)` calls."""
+    `Caveat(...)` call, and, outside `tests/` (a test builds its own), the `maintainers=` keyword of every
+    `IntegrationInfo(...)` and `Family(...)` call, or None for such a call without one."""
 
     caveats: list[str]
-    maintainers: list[str]
-    harms: set[str]
+    maintainers: list[str | None]
 
 
 def marks(text: str, path: str) -> Marks:
@@ -193,25 +212,14 @@ def marks(text: str, path: str) -> Marks:
     except SyntaxError as err:
         raise Refused(f"{path} doesn't parse ({err.msg})") from None
     nodes = list(ast.walk(tree))
-    keywords = {
-        name: [ast.dump(node) for node in nodes if isinstance(node, ast.keyword) and node.arg == name]
-        for name in KEYWORDS
-    }
-    calls = [
-        (getattr(node.func, "id", getattr(node.func, "attr", None)), ast.dump(node))
-        for node in nodes
-        if isinstance(node, ast.Call)
-    ]
+    calls = [(called(node), node) for node in nodes if isinstance(node, ast.Call)]
+    caveats = [ast.dump(node) for node in nodes if isinstance(node, ast.keyword) and node.arg == "caveat"]
+    caveats += [ast.dump(node) for name, node in calls if name == "Caveat"]
+    declared = [] if path.startswith("tests/") else [node for name, node in calls if name in DECLARES]
     return Marks(
-        sorted(keywords["caveat"] + [dump for name, dump in calls if name == "Caveat"]),
-        sorted(keywords["maintainers"]),
-        {dump for name, dump in calls if name in HARMS},
+        sorted(caveats),
+        [next((ast.dump(kw.value) for kw in node.keywords if kw.arg == "maintainers"), None) for node in declared],
     )
-
-
-def caveats(text: str, path: str) -> list[str]:
-    """Every `caveat=` keyword and `Caveat(...)` call in a Python file, as AST dumps."""
-    return marks(text, path).caveats
 
 
 def held_by(files: list[str], base: str, commenter: str, templates: Templates) -> dict[str, Package]:
@@ -228,7 +236,8 @@ def held_by(files: list[str], base: str, commenter: str, templates: Templates) -
 
 
 def check_maintainers(packages: list[Package], head: str, before: dict[str, Marks], after: dict[str, Marks]) -> None:
-    """Refuses a PR that changes a `maintainers=` value, or leaves a package's unreadable at its head."""
+    """Refuses a PR that changes an integration's or family's `maintainers=` value, wherever it is declared, or leaves
+    a package's unreadable at its head."""
     for path in before:
         if before[path].maintainers != after[path].maintainers:
             raise Refused(f"it changes a `maintainers` value in {path}")
@@ -241,6 +250,8 @@ def check_maintainers(packages: list[Package], head: str, before: dict[str, Mark
 
 def check(base: str, head: str, commenter: str, templates: Templates) -> list[Package]:
     """The packages the PR changes, when it may merge this way; raises Refused otherwise."""
+    # As commits, so what is read at each is cached by content, whatever the names point to next.
+    base, head = (git("rev-parse", "--verify", f"{rev}^{{commit}}").strip() for rev in (base, head))
     merge_base = git("merge-base", base, head).strip()
     files = [path for path in git("diff", "-z", "--name-only", "--no-renames", merge_base, head).split("\0") if path]
     if not files:
@@ -250,19 +261,12 @@ def check(base: str, head: str, commenter: str, templates: Templates) -> list[Pa
     before = {path: marks(show(merge_base, path), path) for path in files if path.endswith(".py")}
     after = {path: marks(show(head, path), path) for path in before}
     check_maintainers(packages, head, before, after)
-    if README in files and authored(show(merge_base, README)) != authored(show(head, README)):
-        raise Refused("it changes README.md outside its generated blocks")
+    for path in BLOCKS:
+        if path in files and authored(show(merge_base, path)) != authored(show(head, path)):
+            raise Refused(f"it changes {path} outside its generated blocks")
     for path in before:
         if before[path].caveats != after[path].caveats:
             raise Refused(f"it sets or clears a caveat in {path}")
-    for path in before:
-        # Only an integration's maintainer changes a harms-bearing entry: not one who owns the file through a family.
-        mine = all(commenter in (maintainers(base, key) or ()) for key in integrations_of(held[path], base))
-        if not mine and before[path].harms != after[path].harms:
-            raise Refused(
-                f"it adds, changes or removes a no known method or not built yet entry in {path}; a maintainer of "
-                f"the integration can merge it too"
-            )
     return packages
 
 
@@ -275,7 +279,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         packages = check(args.base, args.head, args.commenter, package_paths())
     except Refused as refused:
-        message = f"A repo maintainer needs to merge this: {refused}."
+        # On one line: the reason names the PR's paths, and a newline in one would add a line to `$GITHUB_OUTPUT`.
+        message = " ".join(f"A repo maintainer needs to merge this: {refused}.".splitlines())
         if output := os.environ.get("GITHUB_OUTPUT"):
             with open(output, "a") as file:
                 file.write(f"reason={message}\n")

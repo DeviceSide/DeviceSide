@@ -7,11 +7,14 @@ RULES is ordered, the first match winning; a device none places gets the integra
 about."""
 
 from . import hue, sengled, sonoff, tuya
-from .. import rules
+from ..rules import FIELDS
+from ....core.rules import Rule, compose
+from ....core.scope import Family
 
-FAMILIES = (hue.FAMILY, tuya.FAMILY, sengled.FAMILY, sonoff.FAMILY)
+FAMILIES: tuple[Family, ...] = (hue.FAMILY, tuya.FAMILY, sengled.FAMILY, sonoff.FAMILY)
 
-RULES: rules.Group = rules.compose(
+RULES: tuple[Rule, ...] = compose(
+    FIELDS,
     # Reads a manufacturer no Tuya device carries, so it could go anywhere.
     (hue.FAMILY, hue.RULES),
     # Before Tuya's ZCL rules: a TS0601's model matches their `TS` and four digits, and some datapoint devices carry a

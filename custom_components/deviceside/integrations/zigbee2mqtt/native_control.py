@@ -1,15 +1,11 @@
 """Set Z2M's hue_native_control the way an action needs it, for that action's own publish only.
 
 With the option on, Z2M sends on, brightness, color and color temperature to a Hue light as one Philips-cluster
-command (zigbee-herdsman-converters src/lib/philips.ts); with it off, as ZCL commands. Some actions need one of the two:
+command (zigbee-herdsman-converters src/lib/philips.ts); with it off, as ZCL commands. Some actions need one of the
+two, which is the Hue family's to say (families/hue, NEED, with why); the rest work either way and leave it alone.
 
-- A timer with a color needs it on: a Hue bulb drops a color sent while it is off, so as ZCL it lights at its last
-  color first.
-- A brightness fade needs it off: sent native, a long raise runs about 2.3x faster than its transition, and a soft off
-  reports `onOff: 0` at once while the bulb still fades.
-
-The rest work either way and leave it alone: a saturation fade holds its hue, and a stop, a hue move and a read or
-write of settings pass on the rig with the option on and off.
+The mechanism is the integration's, here, not the family's: it wraps every vendor's fade publish and every
+turn_on_for with light fields, so a change to it can break any device's call.
 
 The option belongs to the user. An action that needs it the other way sets it, publishes, and puts the user's value
 back once Z2M has published the target's state in reply (1 s cap), so nothing outlasts the publish. The user's value
@@ -29,23 +25,17 @@ from typing import Any
 
 from homeassistant.core import HomeAssistant
 
-from . import HUE_MANUFACTURER
-from ...addressing import group_id, options_address, z2m_address, z2m_device
-from ...bridge import OPTION, ensure_options, group_members, state_reply
-from ...restore_journal import Address, journal, locks
-from .....core.models import Target
-from .....core.runtime import get_runtime
+from .addressing import group_id, options_address, z2m_address, z2m_device
+from .bridge import OPTION, ensure_options, group_members, state_reply
+from .families.hue import HUE_MANUFACTURER
+from .restore_journal import Address, journal, locks
+from ...core.models import Target
+from ...core.runtime import get_runtime
 
 _LOGGER = logging.getLogger(__name__)
 
 # The fields Z2M sends as a separate command after on; brightness rides moveToLevelWithOnOff with it.
 COLOR_FIELDS = frozenset({"color_temp_kelvin", "hs_color", "rgb_color", "xy_color"})
-# Each action's need: True on, False off. An action left out works either way and leaves the option alone.
-NEED: dict[str, bool] = {
-    "turn_on_for": True,  # with a color; without one it works either way
-    "raise_brightness": False,
-    "lower_brightness": False,
-}
 _REPLY_CAP_S = 1.0
 
 

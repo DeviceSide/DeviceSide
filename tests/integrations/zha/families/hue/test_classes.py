@@ -1,8 +1,10 @@
-"""Hue's rule on ZHA: its bulbs' two manufacturer strings."""
+"""ZHA's Hue family: its rule, on its bulbs' two manufacturer strings, and its levels."""
 
 import pytest
 
-from custom_components.deviceside.integrations.zha import rules
+from custom_components.deviceside.core.rules import match
+from custom_components.deviceside.core.scope import Level
+from custom_components.deviceside.integrations.zha import ADAPTERS, rules
 from custom_components.deviceside.integrations.zha.families import hue
 
 
@@ -19,4 +21,9 @@ from custom_components.deviceside.integrations.zha.families import hue
     ],
 )
 def test_hue_rules(manufacturer, model, expected):
-    assert rules.match(hue.RULES, manufacturer, model, "zigpy.zcl") == expected
+    assert match(hue.RULES, rules.read(manufacturer, model, "zigpy.zcl")) == expected
+
+
+def test_hue_is_verified_on_every_action():
+    """Every record ran on Hue bulbs."""
+    assert {adapter.scope.capabilities["hue"] for adapter in ADAPTERS} == {Level.VERIFIED}

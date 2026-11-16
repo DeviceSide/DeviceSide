@@ -2,19 +2,20 @@
 
 import pytest
 
-from custom_components.deviceside.core.registry import AdapterRegistry
+from custom_components.deviceside.core import registry
 from scripts import check_maintainer_merge as cmm
-from scripts import gen_codeowners, route_issue
+from scripts import gen_codeowners
 
 PATHS = cmm.package_paths()
 PKG = "custom_components/deviceside/integrations/acme/"
 INIT = cmm.INIT.format(key="acme")
 SCOPE = PKG + "raise_brightness.py"
 README = "# DeviceSide\n\nIntro.\n\n<!-- devices:start -->\nold cards\n<!-- devices:end -->\n"
+COMPAT = "# Device compatibility\n\nProse.\n\n<!-- evidence:start -->\nold rows\n<!-- evidence:end -->\n"
 ACME = cmm.Package("acme")
 TUYA = cmm.Package("acme", "tuya")
 FAMILY = PKG + "families/tuya/"
-ENTRY = 'ENTRY = NoKnownMethod("Plugs", "why", "https://x/1", harms=True)\n'
+REFUSALS = PKG + "refusals.py"
 
 
 def init(maintainers=("alice",)):
@@ -36,6 +37,7 @@ def pr(repo, monkeypatch):
     repo.commit(INIT, init())
     repo.commit(SCOPE, "scope = AdapterScope(experimental=True)\n")
     repo.commit(cmm.README, README)
+    repo.commit(cmm.COMPAT, COMPAT)
     repo.git("branch", "pr")
     repo.git("checkout", "-q", "pr")
     return repo
@@ -55,6 +57,11 @@ def test_the_paths_match_gen_codeowners():
     assert PATHS == (gen_codeowners.PATHS, gen_codeowners.FAMILY_PATHS, gen_codeowners.CATALOG_PATHS)
 
 
+def test_the_family_key_shape_matches_the_registry():
+    """The gate is stdlib-only, so it restates the registry's pattern."""
+    assert cmm.NAMES["family"] == registry.FAMILY_KEY.pattern
+
+
 @pytest.mark.parametrize(
     "path",
     [SCOPE, "tests/integrations/acme/test_x.py", "tests/fixtures/acme.py", "docs/integrations/acme/test-records/r.md"],
@@ -67,7 +74,7 @@ def test_a_maintainer_merges_a_change_anywhere_in_their_package(pr, path):
 def test_regenerated_output_rides_along(pr):
     pr.commit(SCOPE, "scope = AdapterScope(experimental=False)\n")  # lifting the flag is the maintainer's call
     pr.commit(cmm.README, README.replace("old cards", "new cards"))
-    pr.commit("docs/device-compatibility.md", "cards\n")
+    pr.commit(cmm.COMPAT, COMPAT.replace("old rows", "new rows"))
     pr.commit(".github/CODEOWNERS", "* @x\n")
     assert check() == [ACME]
 
@@ -107,7 +114,7 @@ def test_a_second_package_is_refused_unless_the_commenter_maintains_it_too(repo,
 
 
 def test_generated_output_alone_is_refused(pr):
-    pr.commit("docs/device-compatibility.md", "cards\n")
+    pr.commit(cmm.COMPAT, COMPAT.replace("old rows", "new rows"))
     assert refused() == "it changes no integration's package"
 
 
@@ -115,6 +122,12 @@ def test_readme_text_outside_its_blocks_is_refused(pr):
     pr.commit(SCOPE, "x = 1\n")
     pr.commit(cmm.README, README.replace("Intro.", "My intro."))
     assert refused() == "it changes README.md outside its generated blocks"
+
+
+def test_compatibility_page_text_outside_its_block_is_refused(pr):
+    pr.commit(SCOPE, "x = 1\n")
+    pr.commit(cmm.COMPAT, COMPAT.replace("Prose.", "My prose."))
+    assert refused() == "it changes docs/device-compatibility.md outside its generated blocks"
 
 
 @pytest.mark.parametrize(
@@ -159,6 +172,42 @@ def test_deleting_the_package_is_refused(pr):
     assert refused() == f"it changes a `maintainers` value in {INIT}"
 
 
+def test_a_maintainers_keyword_in_a_test_or_another_call_is_no_change(pr):
+    pr.commit("tests/integrations/acme/test_x.py", 'x = Family(key="x", maintainers=("a-b",), classes=frozenset())\n')
+    pr.commit(SCOPE, 'x = Stub(maintainers=("a-b",))\n')
+    assert check() == [ACME]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        'V1 = IntegrationInfo(key="acme_v1", title="Acme v1", maintainers=("mallory",))\n',
+        'V1 = scope.IntegrationInfo(key="acme_v1", title="Acme v1")\n',
+        'x = Family(key="x", maintainers=("mallory",))\n',
+    ],
+)
+def test_an_integration_or_family_declared_under_any_name_is_refused(pr, text):
+    pr.commit(PKG + "v1.py", text)
+    assert refused() == f"it changes a `maintainers` value in {PKG}v1.py"
+
+
+def test_a_file_named_with_a_trailing_newline_is_nobodys(pr):
+    path = "tests/fixtures/acme.py\n"
+    pr.commit(path, "x = 1\n")
+    assert cmm.match(path, PATHS.integration) is None
+    assert refused() == f"it changes files outside an integration's package: {path}"
+
+
+def test_a_newline_in_a_path_adds_no_output_line(pr, tmp_path, monkeypatch, capsys):
+    pr.commit("docs/x\nhead=evil\rmore", "x\n")
+    output = tmp_path / "output"
+    monkeypatch.setenv("GITHUB_OUTPUT", str(output))
+    assert cmm.main(["main", "pr", "--commenter", "alice"]) == 1
+    message = "A repo maintainer needs to merge this: it changes files outside an integration's package: docs/x"
+    assert output.read_text() == f"reason={message} head=evil more.\n"
+    assert capsys.readouterr().out == f"{message} head=evil more.\n"
+
+
 def test_a_path_with_a_space_is_read_whole(pr):
     path = f"README.md {PKG}evil.sh"
     pr.commit(path, "x\n")
@@ -193,8 +242,9 @@ def families(repo, monkeypatch):
     monkeypatch.chdir(repo.path)
     repo.commit(INIT, init())
     repo.commit(cmm.INIT.format(key="zeta"), init(("zoe",)).replace("acme", "zeta").replace("Acme", "Zeta"))
-    repo.commit(family_init(), family() + ENTRY)
+    repo.commit(family_init(), family())
     repo.commit(family_init(name="hue"), family("hue", ()))
+    repo.commit(REFUSALS, 'TUYA = NoKnownMethod("Plugs", "why", "https://x/1", harms=True)\n')
     repo.commit(family_init("zeta"), family(maintainers=("zed",)))
     repo.commit(PKG + "families/__init__.py", "RULES = (*hue.RULES, *tuya.RULES)\n")
     repo.commit(PKG + "bridge.py", "x = 1\n")
@@ -228,6 +278,7 @@ def test_a_family_maintainer_merges_a_change_confined_to_their_family(families, 
         (FAMILY.replace("tuya", "hue") + "rules.py", "@tina isn't a maintainer of `acme` or of `acme`'s `hue` family"),
         (PKG + "bridge.py", "@tina isn't a maintainer of `acme`"),
         (PKG + "families/__init__.py", "@tina isn't a maintainer of `acme`"),
+        ("tests/integrations/acme/families/conftest.py", "@tina isn't a maintainer of `acme`"),
         ("tests/integrations/acme/test_classification.py", "@tina isn't a maintainer of `acme`"),
         ("docs/integrations/acme/research/2026-11-16-probe.md", "@tina isn't a maintainer of `acme`"),
         # A family that isn't on the base branch is its integration's.
@@ -246,50 +297,56 @@ def test_a_family_maintainer_is_refused_outside_their_family(families, path, rea
 
 
 def test_a_family_maintainer_changes_a_level(families):
-    families.commit(family_init(), family(body='SCOPE = FamilyScope(capabilities=verified("tuya_zcl"))\n') + ENTRY)
+    families.commit(family_init(), family(body='SCOPE = FamilyScope(capabilities=verified("tuya_zcl"))\n'))
     assert check("tina") == [TUYA]
 
 
-@pytest.mark.parametrize(
-    "entries",
-    [
-        "",
-        ENTRY.replace("why", "another reason"),
-        ENTRY.replace("harms=True", "harms=False"),
-        ENTRY + 'OTHER = scope.NotBuilt("why", "https://x/2", harms=True)\n',
-    ],
-)
-def test_only_an_integration_maintainer_changes_a_no_known_method_or_not_built_entry(families, entries):
-    families.commit(family_init(), family() + entries)
-    assert refused("tina") == (
-        f"it adds, changes or removes a no known method or not built yet entry in {family_init()}; a maintainer of "
-        "the integration can merge it too"
-    )
-    assert check("alice") == [TUYA]
-
-
-def test_moving_an_entry_within_its_file_is_no_change(families):
-    families.commit(family_init(), ENTRY + family())
-    assert check("tina") == [TUYA]
+@pytest.mark.parametrize("text", ["", 'TUYA = NotBuilt("another reason", "https://x/2", harms=True)\n'])
+def test_only_an_integration_maintainer_changes_the_refusal_entries(families, text):
+    """They live in the integration's `refusals.py`, outside every family, so ownership by path is the whole rule."""
+    families.commit(FAMILY + "rules.py", "x = 1\n")
+    families.commit(REFUSALS, text)
+    assert refused("tina") == "@tina isn't a maintainer of `acme`"
+    assert check("alice") == [ACME, TUYA]
 
 
 @pytest.mark.parametrize("commenter", ["tina", "alice"])
 def test_nobody_changes_a_familys_maintainers(families, commenter):
-    families.commit(family_init(), family(maintainers=("tina", "mallory")) + ENTRY)
+    families.commit(family_init(), family(maintainers=("tina", "mallory")))
     assert refused("mallory") == "@mallory isn't a maintainer of `acme` or of `acme`'s `tuya` family"
     assert refused(commenter) == f"it changes a `maintainers` value in {family_init()}"
 
 
-def test_a_maintainers_value_anywhere_in_a_python_file_is_refused(families):
+def test_a_family_declared_elsewhere_in_the_family_is_refused(families):
     families.commit(FAMILY + "rules.py", 'x = Family(key="x", maintainers=("tina",))\n')
     assert refused("tina") == f"it changes a `maintainers` value in {FAMILY}rules.py"
+
+
+def test_a_familys_test_builds_a_family_of_its_own(families):
+    path = "tests/integrations/acme/families/tuya/test_rules.py"
+    families.commit(path, 'x = Family(key="x", maintainers=("a-b",), classes=frozenset())\n')
+    assert check("tina") == [TUYA]
+
+
+@pytest.mark.parametrize("commenter", ["tina", "alice"])
+def test_deleting_a_familys_init_is_refused(families, commenter):
+    families.git("rm", "-q", family_init())
+    families.git("commit", "-q", "-m", "delete")
+    assert refused(commenter) == f"it changes a `maintainers` value in {family_init()}"
+
+
+def test_a_new_family_folder_is_refused(families):
+    """It is its integration's until it is on the base branch, and declaring its maintainers a repo maintainer's."""
+    families.commit(family_init(name="newco"), family("newco", ()))
+    assert refused("tina") == "@tina isn't a maintainer of `acme`"
+    assert refused("alice") == f"it changes a `maintainers` value in {family_init(name='newco')}"
 
 
 @pytest.mark.parametrize(
     "text",
     [
-        "FAMILY = Family(key=KEY, maintainers=('tina',), classes=CLASSES)\n" + ENTRY,
-        "FAMILY = Family(key='hue', maintainers=('tina',), classes=CLASSES)\n" + ENTRY,
+        "FAMILY = Family(key=KEY, maintainers=('tina',), classes=CLASSES)\n",
+        "FAMILY = Family(key='hue', maintainers=('tina',), classes=CLASSES)\n",
     ],
 )
 def test_an_unreadable_family_is_refused(families, text):
@@ -302,7 +359,8 @@ def test_a_family_maintainer_sets_no_caveat(families):
     assert refused("tina") == f"it sets or clears a caveat in {FAMILY}rules.py"
 
 
-def test_the_catalog_is_its_families_and_their_integrations(families):
+def test_a_catalog_change_merges_for_any_maintainer_of_a_family_of_its_key_or_of_those_families_integrations(families):
+    """The union, not every one of them: the other stack's own tests failing is what then needs its owner."""
     families.commit(CATALOG, 'DATAPOINT = "_TZE2"\n')
     families.commit("tests/zigbee/test_tuya.py", "x = 1\n")
     for owner in ("tina", "zed", "alice", "zoe"):
@@ -326,11 +384,6 @@ def test_a_catalog_change_with_both_stacks_families_needs_an_owner_of_all_three(
     assert refused("alice") == "@alice isn't a maintainer of `zeta` or of `zeta`'s `tuya` family"
 
 
-def test_a_catalog_entry_changes_only_with_every_sharing_integrations_maintainer(families):
-    families.commit(CATALOG, ENTRY)
-    assert refused("alice").startswith("it adds, changes or removes a no known method or not built yet entry")
-
-
 def test_a_catalog_file_no_family_shares_is_nobodys(families):
     path = CATALOG.replace("tuya", "sengled")
     families.commit(path, "x = 1\n")
@@ -348,27 +401,3 @@ def test_main_names_what_the_commenter_owns(families, capsys):
     families.commit(PKG + "bridge.py", "x = 2\n")
     assert cmm.main(["main", "pr", "--commenter", "alice"]) == 0
     assert capsys.readouterr().out == "Every file it changes is in `acme`, `acme`'s `tuya` family, which @alice owns.\n"
-
-
-def test_the_family_parse_matches_the_registry():
-    """Reading each family's `__init__.py` without importing it gives what the registry holds, families or none."""
-    expected = {
-        info.key: {found.key: route_issue.Family(found.key, found.maintainers) for found in info.families}
-        for info in AdapterRegistry.discover().available_integrations()
-        if info.families
-    }
-    assert route_issue.families() == expected
-
-
-@pytest.mark.parametrize(
-    ("source", "error"),
-    [
-        ("X = 1\n", "no FAMILY = Family"),
-        ('FAMILY = Family(key="a")\n', "needs key= and maintainers="),
-        ('FAMILY = Family(key="a", maintainers=HANDLES)\n', "key and maintainers must be literals"),
-        ('FAMILY = Family(key="a", maintainers=())\nFAMILY = Family(key="a", maintainers=())\n', "bound 2 times"),
-    ],
-)
-def test_an_unreadable_family_is_an_error_to_the_parser(source, error):
-    with pytest.raises(SystemExit, match=error):
-        route_issue.parse_family(source, "x/__init__.py")

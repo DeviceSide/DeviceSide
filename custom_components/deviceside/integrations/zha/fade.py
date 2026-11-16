@@ -18,7 +18,6 @@ from homeassistant.util.color import color_hs_to_xy
 
 from . import classes, zcl
 from .addressing import address, group_id, unsupported_reason, via_zha_group
-from .families.hue import multi_color
 from .families.sengled import DROPS_WHILE_OFF
 from .groups import light_members
 from ...actions.ramp import HUE, RampRequest
@@ -183,7 +182,7 @@ async def preset_each(hass: HomeAssistant, presets: list[Target], context: Conte
 
     async def one(light: Target) -> None:
         addr = address(light.entry.unique_id)
-        if not await multi_color.turn_on(hass, addr, 1, context, entity_id=light.reported_id):
+        if not await zcl.hue_turn_on(hass, addr, 1, context, entity_id=light.reported_id):
             bottom = {"level": 1, **zcl.execute_if_off(0)}
             await zcl.command(
                 hass, addr, zcl.LEVEL_CLUSTER, zcl.MOVE_TO_LEVEL, bottom, context, entity_id=light.reported_id
@@ -231,7 +230,8 @@ class HueMove:
     clamped_to: float | None  # the sweep_time used, where it had to be clamped
 
 
-def ramp_scope(attribute: str, action: str) -> AdapterScope:
+def ramp_scope(action: str, attribute: str) -> AdapterScope:
+    """A ramp's scope: its classes as classes.class_scope holds them for the action."""
     return AdapterScope(
         domains=verified("light"), fields=verified(attribute), **classes.class_scope(action), max_concurrency=2
     )
@@ -248,7 +248,7 @@ class ZHARamp(Adapter[RampRequest]):
 
     Raising brightness is MoveToLevelWithOnOff, which turns the light on; a light that is off is first set to level 1,
     so it fades in from the bottom rather than its stored level: a Hue bulb turned on there by Hue's own command
-    (families/hue's multi_color.turn_on), any other light set there with ExecuteIfOff. Lowering to a limit is
+    (zcl.hue_turn_on), any other light set there with ExecuteIfOff. Lowering to a limit is
     MoveToLevel, which a light that is off ignores. Lowering to 0 is MoveToLevelWithOnOff to 0, which leaves the bulb
     at level 1; once it reads off, its start level goes back with ExecuteIfOff, so it stays off and comes back at its
     old level, as on Hue. Models that drop a level while off (families/sengled's DROPS_WHILE_OFF) get neither: they

@@ -1,56 +1,24 @@
-"""ZHA's device classes: the default class, capability's answers from zigpy's raw Zigbee strings and the On/Off
-cluster's quirk, and the composed rules. Each family's rules are tested in families/<family>/, and the class of each
-listed device in test_classification.py."""
+"""ZHA's device classes: capability's answers from zigpy's raw Zigbee strings and the On/Off cluster's quirk, and the
+string the report form gets. Each family's rules are tested in families/<family>/, their composition in
+test_families.py, and the class of each listed device in test_classification.py."""
 
 import pytest
 from homeassistant.helpers import device_registry as dr
 
 from custom_components.deviceside.core.resolver import resolve
 from custom_components.deviceside.core.runtime import get_runtime
-from custom_components.deviceside.core.scope import Family
-from custom_components.deviceside.integrations.zha import INTEGRATION, classes, rules, zcl
-from custom_components.deviceside.integrations.zha.families import RULES, tuya
+from custom_components.deviceside.integrations.zha import INTEGRATION, classes, zcl
+from custom_components.deviceside.integrations.zha.families import tuya
 
 from ...fixtures.zha import StandardOnOff, add_zha_entity, quirk_on_off, zha_entry
 
 MCU_QUIRK = "zhaquirks.tuya.mcu"
 
 
-@pytest.mark.parametrize(
-    ("manufacturer", "model", "expected"),
-    [
-        # Another vendor's devices, or a Tuya string no rule reads: the default class.
-        ("IKEA of Sweden", "TRADFRI bulb E27 WS opal 980lm", classes.OTHER),
-        ("_TYST11_abcdefgh", "abcdefgh", classes.OTHER),
-        # What the interview didn't read places nothing.
-        (None, "TS011F", None),
-        ("_TZ3000_typdpbpg", None, None),
-        ("Signify Netherlands B.V.", "", None),
-    ],
-)
-def test_a_device_no_rule_places(manufacturer, model, expected):
-    assert classes.device_class(manufacturer, model, "zigpy.zcl") == expected
-
-
-def test_every_rule_names_a_class_but_the_default():
-    assert {rule.cls for rule in RULES} == classes.CLASSES - {classes.OTHER}
-
-
-def test_a_rule_naming_another_familys_class_fails_composition():
-    family = Family(key="acme", classes=frozenset({"acme"}))
-
-    with pytest.raises(ValueError, match="'acme': its rules name classes that aren't its own: \\['hue'\\]"):
-        rules.compose((family, (rules.Rule("acme", "model", "A1"), rules.Rule("hue", "model", "A2"))))
-
-
-def test_composition_keeps_the_groups_in_the_order_given():
-    first, second = Family(key="a", classes=frozenset({"a"})), Family(key="b", classes=frozenset({"b"}))
-    a, b = rules.Rule("a", "model", "X.*"), rules.Rule("b", "model", "X1")
-
-    assert rules.compose((first, (a,)), (second, (b,))) == (a, b)
-    assert rules.match((a, b), "Maker", "X1") == "a"
-    assert rules.match((b, a), "Maker", "X1") == "b"
-    assert rules.match((a, b), "Maker", "Y1") is None
+@pytest.mark.parametrize(("manufacturer", "model"), [(None, "TS011F"), ("_TZ3000_typdpbpg", None), ("sengled", "")])
+def test_a_device_whose_interview_did_not_read_a_string_has_no_class(manufacturer, model):
+    """No rule can place it, whatever the other string says: None, never the default class."""
+    assert classes.device_class(manufacturer, model, "zigpy.zcl") is None
 
 
 async def test_capability_reads_zigpys_strings_not_the_registry(hass, setup_production):

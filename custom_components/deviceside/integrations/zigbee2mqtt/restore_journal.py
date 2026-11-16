@@ -1,6 +1,6 @@
 """A journal of the hue_native_control values still owed back to the user, so a later run or retry can pay them.
 
-families/hue/native_control.py changes the option for one publish and restores it after. A restart or crash between the
+native_control.py changes the option for one publish and restores it after. A restart or crash between the
 two would leave the user's option flipped for good, so each change is journaled as its request goes out and struck off
 once the restore is confirmed. `replay` pays what is left owed, each time Z2M's bridge/state says online (entry setup
 hooks it to the bridge cache): at startup, and again after a Z2M that was offline comes back.

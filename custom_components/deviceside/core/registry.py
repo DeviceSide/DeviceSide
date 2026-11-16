@@ -1,7 +1,7 @@
 import importlib
 import logging
 import re
-from collections.abc import Iterable, Iterator
+from collections.abc import Collection, Iterable, Iterator
 from types import ModuleType
 
 from .action import Action
@@ -36,7 +36,8 @@ def check_families(info: IntegrationInfo) -> None:
     """An integration's families split its classes between them: each key once and shaped like a package name, each
     maintainer a GitHub handle (none is fine: the integration's own them too), and every class the integration
     declares in exactly one family, but the default class, which stays the integration's. A family's scopes name only
-    its own classes, so no family sets another's level or refusal."""
+    its own classes, so no family sets another's level or own call. No family holds a refusal entry: those are the
+    integration's, in its `refusals.py` (core/scope.py, FamilyScope)."""
     owners: dict[str, str] = {}
     for family in info.families:
         name = f"{info.key}: family {family.key!r}"
@@ -62,12 +63,20 @@ def check_families(info: IntegrationInfo) -> None:
 
 def _scoped(family: Family) -> set[str]:
     """Every class a family's scopes name, across its actions."""
-    return {
-        name
-        for scope in family.scopes.values()
-        for part in (scope.capabilities, scope.no_known_method, scope.not_built, scope.own_calls)
-        for name in part
-    }
+    return {name for scope in family.scopes.values() for part in (scope.capabilities, scope.own_calls) for name in part}
+
+
+def check_family_actions(info: IntegrationInfo, actions: Collection[str], served: Collection[str]) -> None:
+    """Each family's scopes are for actions the integration has an adapter for (`served`), among the known `actions`.
+    A typo would leave the family's classes out of that adapter's scope, refused with nothing saying why; a scope for
+    an action with no adapter would be read by nothing, as silently."""
+    for family in info.families:
+        if unknown := sorted(family.scopes.keys() - set(actions)):
+            raise ValueError(f"{info.key}: family {family.key!r} holds scopes for unknown actions {unknown}")
+        if unserved := sorted(family.scopes.keys() - set(served)):
+            raise ValueError(
+                f"{info.key}: family {family.key!r} holds scopes for actions {info.key} has no adapter for: {unserved}"
+            )
 
 
 def check_integration(info: IntegrationInfo) -> None:
@@ -148,10 +157,7 @@ class AdapterRegistry:
         info: IntegrationInfo = module.INTEGRATION
         check_integration(info)
         self.integrations[info.key] = info
-        for family in info.families:
-            # A typo would leave the family's classes out of that adapter's scope, refused with nothing saying why.
-            if unknown := sorted(family.scopes.keys() - self.actions.keys()):
-                raise ValueError(f"{info.key}: family {family.key!r} holds scopes for unknown actions {unknown}")
+        check_family_actions(info, self.actions.keys(), {cls.action for cls in module.ADAPTERS})
         for cls in module.ADAPTERS:
             if cls.integration != info.key:
                 raise ValueError(f"{cls.__name__} declares integration {cls.integration}, module is {info.key}")

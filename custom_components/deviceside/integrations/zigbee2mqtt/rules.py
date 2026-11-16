@@ -1,7 +1,7 @@
-"""Zigbee2MQTT's rule: how a family says which devices are its classes' (docs/evidence.md, Device classes).
-
-A rule is a class and conditions; a family exports its rules in named groups, and families/__init__.py puts the
-groups in order, the first match winning. A lab probe changes a family's rules, never this structure.
+"""Zigbee2MQTT's rule fields: what a family's rule (core/rules.py) may test on Zigbee2MQTT, and how each is read off a
+device (docs/evidence.md, Device classes). Which strings name which class is each family's (families/<family>/); the
+order between their rule groups is the integration's (families/__init__.py). A lab probe changes a family's rules,
+never this structure.
 
 A rule reads two sources, both sync and with no I/O:
 
@@ -14,38 +14,52 @@ A rule reads two sources, both sync and with no I/O:
   Only the definition shows which TS011F plugs take Tuya's countdown (internals.md, `turn_on_for`).
 """
 
-import re
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+
+from homeassistant.helpers import device_registry as dr
 
 # The fields a rule may test: the registry device's; the Zigbee manufacturer and model bridge/devices holds; and from
 # its definition there, Z2M's model and the properties of its device-wide top-level exposes (DEFINITION).
 REGISTRY = frozenset({"manufacturer", "model", "model_id"})
 ZIGBEE = {"zigbee_manufacturer": "manufacturer", "zigbee_model": "model_id"}  # rule field: bridge/devices key
 DEFINITION = frozenset({"definition_model", "exposes"})
+FIELDS = REGISTRY | ZIGBEE.keys() | DEFINITION
 
 
-@dataclass(frozen=True, slots=True)
-class Rule:
-    """A class and the fields that place a device in it, each a regex the field must fully match; every condition
-    must hold, and there is at least one. Whether the class is its family's is checked where the groups are composed
-    (families/__init__.py)."""
+def zigbee_strings(entry: Mapping | None) -> dict[str, str]:
+    """The Zigbee manufacturer and model in a device's bridge/devices entry, as rule fields, each only when it is a
+    non-empty string (Z2M holds null until the interview reads it); empty with no entry."""
+    if entry is None:
+        return {}
+    return {name: value for name, key in ZIGBEE.items() if isinstance(value := entry.get(key), str) and value}
 
-    capability: str
-    conditions: Mapping[str, str] = field(default_factory=dict)
 
-    def __post_init__(self) -> None:
-        if not self.conditions:
-            raise ValueError(f"a rule for {self.capability!r} tests nothing")
-        if unknown := self.conditions.keys() - REGISTRY - ZIGBEE.keys() - DEFINITION:
-            raise ValueError(f"a rule tests {sorted(unknown)}, which neither the registry nor bridge/devices holds")
-
-    def matches(self, strings: Mapping[str, str | frozenset[str] | None]) -> bool:
-        """Whether every condition holds: a string field fully matches its pattern, a set (`exposes`) has a member
-        that does."""
-        return all(
-            any(re.fullmatch(pattern, value) for value in values)
-            if isinstance(values := strings.get(name), frozenset)
-            else isinstance(values, str) and re.fullmatch(pattern, values)
-            for name, pattern in self.conditions.items()
+def definition_fields(entry: Mapping | None) -> dict[str, str | frozenset[str]]:
+    """The rule fields from the definition in a device's bridge/devices entry: Z2M's model (`definition_model`), and
+    the properties of its top-level exposes for the whole device, none for an endpoint (`exposes`), each only when the
+    entry holds it (Z2M holds a null definition for a device it doesn't support); empty with no entry."""
+    definition = entry.get("definition") if entry is not None else None
+    if not isinstance(definition, Mapping):
+        return {}
+    fields: dict[str, str | frozenset[str]] = {}
+    if isinstance(model := definition.get("model"), str) and model:
+        fields["definition_model"] = model
+    if isinstance(exposes := definition.get("exposes"), list):
+        # By property, and the device's own alone: a per-endpoint copy keeps the name and suffixes the property
+        # (`countdown_l1`, with `endpoint` set: ZHC's `withEndpoint`).
+        fields["exposes"] = frozenset(
+            prop
+            for expose in exposes
+            if isinstance(expose, Mapping)
+            and expose.get("endpoint") is None
+            and isinstance(prop := expose.get("property"), str)
         )
+    return fields
+
+
+def read(
+    device: dr.DeviceEntry, bridge: Mapping[str, str | frozenset[str] | None] | None = None
+) -> dict[str, str | frozenset[str] | None]:
+    """A device's rule fields: the registry device's, and those read off its bridge/devices entry (`bridge`: its
+    zigbee_strings and definition_fields)."""
+    return {name: getattr(device, name) for name in REGISTRY} | dict(bridge or {})

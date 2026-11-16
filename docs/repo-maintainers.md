@@ -20,7 +20,9 @@ invite them to Triage, as for an integration's maintainers.
 
 - **Ruleset on `main` and `release/*`:** changes go through a pull request, with no required approvals. The required
   checks (`lint`, `secrets-history`, `pytest`, `validate-hacs`, `validate`) must pass, and the branch must be up to
-  date. Force pushes are blocked. There are no bypass actors.
+  date. Force pushes are blocked. There are no bypass actors. Add `pytest-without-family-tests` (`tests.yml`) to the
+  required checks once it has run on `main`: it runs the tests with every family's and the catalog's left out, so a
+  family maintainer's test code can't silence the integration's, and it guards a `/merge` only once it is required.
 - **Ruleset on tags:** only a deploy key can create, move or delete a tag. The cut workflows'
   `RELEASE_TAG_DEPLOY_KEY` is the only one, so release tags come from those workflows alone.
 - **Actions allow-list (org):** selected actions, pinned by full SHA. A new action needs an entry there before a

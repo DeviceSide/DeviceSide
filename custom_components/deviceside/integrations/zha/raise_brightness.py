@@ -9,4 +9,4 @@ from ...core.transition import BRIGHTNESS
 
 class ZHARaiseBrightness(ZHARamp):
     action: ClassVar[str] = "raise_brightness"
-    scope: ClassVar[AdapterScope] = ramp_scope(BRIGHTNESS, action)
+    scope: ClassVar[AdapterScope] = ramp_scope(action, BRIGHTNESS)

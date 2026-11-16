@@ -1,97 +1,94 @@
-"""Zigbee2MQTT's Tuya family: the rules on a device's Zigbee strings, the catalog they read, and where its classes
-are refused. The countdown plugs' classes and call are test_countdown.py's."""
+"""Zigbee2MQTT's Tuya family: its two rule groups, each alone, the catalog they read, its levels, and the actions it
+leaves a class out of. The countdown plugs' classes and call are test_countdown.py's; the order between its groups and
+the other families' is the integration's (test_classification.py), as are turn_on_for's refusals (test_refusals.py)."""
+
+import re
 
 import pytest
-from homeassistant.exceptions import HomeAssistantError
 
 from custom_components.deviceside.core.resolver import resolve
+from custom_components.deviceside.core.rules import match
 from custom_components.deviceside.core.runtime import get_runtime
+from custom_components.deviceside.core.scope import Level
 from custom_components.deviceside.integrations.zigbee2mqtt import INTEGRATION
 from custom_components.deviceside.integrations.zigbee2mqtt.families import tuya
 from custom_components.deviceside.zigbee import tuya as catalog
 
-from ...conftest import DEVICES, commands, light
-from ...test_classes import PLUG, TUYA, TUYA_MCU, interviewed
+from ...conftest import TUYA, TUYA_MCU, commands, light
 from .....conftest import allow_experimental, refusal
-from .....conftest import call as call_service
-from .....fixtures.zigbee2mqtt import IEEE, add_z2m_entity, z2m_entry
 
 
-def test_the_zigbee_string_rules_read_the_catalog_s_patterns():
-    """One home for Tuya's Zigbee strings, shared with ZHA: the family restates none."""
+def test_the_zigbee_string_rules_read_the_catalog_s_strings():
+    """One home for Tuya's Zigbee strings, shared with ZHA: the family restates none. A pattern is the catalog's own
+    object; a literal string is the catalog's, escaped."""
     read = {(rule.capability, name): pattern for rule in tuya.ZIGBEE_RULES for name, pattern in rule.conditions.items()}
 
-    assert read["tuya_mcu", "zigbee_model"] is catalog.DATAPOINT_MODEL
-    assert read["tuya_mcu", "zigbee_manufacturer"] is catalog.DATAPOINT_MANUFACTURER
-    assert read["tuya_zcl", "zigbee_manufacturer"] is catalog.ZCL_MANUFACTURER
-    assert read["tuya_zcl", "zigbee_model"] is catalog.ZCL_MODEL
-    assert read["tuya_countdown_harmed", "zigbee_manufacturer"] == catalog.COUNTDOWN_HARMED_MANUFACTURER
-    assert read["tuya_countdown_harmed", "zigbee_model"] == catalog.COUNTDOWN_HARMED_MODEL
+    assert read["tuya_mcu", "zigbee_manufacturer"] is catalog.DATAPOINT_MANUFACTURER_PATTERN
+    assert read["tuya_zcl", "zigbee_manufacturer"] is catalog.ZCL_MANUFACTURER_PATTERN
+    assert read["tuya_zcl", "zigbee_model"] is catalog.ZCL_MODEL_PATTERN
+    assert read["tuya_mcu", "zigbee_model"] == re.escape(catalog.DATAPOINT_MODEL)
+    assert read["tuya_ts011f", "zigbee_model"] == re.escape(catalog.TS011F_MODEL)
+    assert read["tuya_countdown", "zigbee_model"] == re.escape(catalog.TS011F_MODEL)
+    assert read["tuya_countdown_harmed", "zigbee_manufacturer"] == re.escape(catalog.COUNTDOWN_HARMED_MANUFACTURER)
+    assert read["tuya_countdown_harmed", "zigbee_model"] == re.escape(catalog.COUNTDOWN_HARMED_MODEL)
 
 
 @pytest.mark.parametrize(
-    ("registry", "zigbee", "expected"),
+    ("manufacturer", "model", "expected"),
     [
-        (("Lidl", "HG06337"), (TUYA, "TS011F"), "tuya_ts011f"),
-        (("Lidl", "HG06337"), (TUYA, "TS0001"), "tuya_zcl"),
-        (("Lidl", "HG06337"), ("_TYZB01_abcdefgh", "HG06337"), "tuya_zcl"),
-        (("Moes", "ZM-105"), (TUYA_MCU, "TS0601"), "tuya_mcu"),
-        (("Moes", "ZM-105"), (TUYA_MCU, "ZM-105"), "tuya_mcu"),
-        (("Moes", "ZM-105"), ("Moes", "TS0601"), "tuya_mcu"),
-        (("Philips", "9290018217"), ("Signify Netherlands B.V.", "LWA012"), "hue"),
-        (("Sengled", "E11-G13"), ("sengled", "E11-G13"), "sengled"),
-        (("IKEA of Sweden", "LED1836G9"), ("IKEA of Sweden", "TRADFRI bulb E27 WW 806lm"), "other"),
-        # Tuya's model is `TS` and four digits; another `TS` model under another vendor isn't Tuya's.
-        (("Lidl", "HG06337"), ("Lidl", "TSV-1"), "other"),
-        (("Lidl", "HG06337"), ("Lidl", "TS011"), "other"),
+        (TUYA, "TS011F", "tuya_ts011f"),
+        (TUYA, "TS0001", "tuya_zcl"),
+        ("_TYZB01_abcdefgh", "HG06337", "tuya_zcl"),
+        (TUYA_MCU, "TS0601", "tuya_mcu"),
+        (TUYA_MCU, "ZM-105", "tuya_mcu"),
+        ("Moes", "TS0601", "tuya_mcu"),
+        ("Moes", "TS011F", "tuya_ts011f"),  # the model alone, whatever the manufacturer
+        ("Moes", "ZM-105", None),
     ],
 )
-async def test_the_zigbee_strings_in_bridge_devices_place_a_rebadged_tuya_device(
-    hass, setup_production, broker, registry, zigbee, expected
-):
-    entity_id = light(hass, broker, manufacturer=registry[0], model_id=registry[1], zigbee=zigbee)
-
-    assert INTEGRATION.capability(hass, resolve(hass, get_runtime(hass).registry, entity_id)) == expected
-
-
-async def test_turn_on_for_refuses_a_ts011f_as_not_built_with_experimental_on(hass, setup_production, broker):
-    """Z2M has no on_time converter for it, so today's call would turn the plug on with no timer
-    (research/2026-11-14-lab-probe.md, §2): refused, not flagged, so Experimental features can't send it."""
-    allow_experimental(hass)
-    add_z2m_entity(hass, z2m_entry(hass), "switch.plug", manufacturer=PLUG[0], model_id=PLUG[1])
-    broker.retained[DEVICES] = [interviewed(IEEE, TUYA, "TS011F")]
-
-    assert await refusal(hass, "turn_on_for", {"entity_id": "switch.plug", "duration": 5}) == "not_built"
-    assert commands(broker) == []
-
-
-async def test_the_ts011f_s_refusal_says_what_the_user_sees(hass, setup_production, broker):
-    allow_experimental(hass)
-    add_z2m_entity(hass, z2m_entry(hass), "switch.plug", manufacturer=PLUG[0], model_id=PLUG[1])
-    broker.retained[DEVICES] = [interviewed(IEEE, TUYA, "TS011F")]
-
-    with pytest.raises(HomeAssistantError) as raised:
-        await call_service(hass, "turn_on_for", {"entity_id": "switch.plug", "duration": 5})
-    assert raised.value.translation_placeholders["why"] == tuya.TURN_ON_FOR_NOT_BUILT["tuya_ts011f"].reason
-    assert "no timer, so it would stay on" in raised.value.translation_placeholders["why"]
+def test_the_zigbee_string_rules(manufacturer, model, expected):
+    assert match(tuya.ZIGBEE_RULES, {"zigbee_manufacturer": manufacturer, "zigbee_model": model}) == expected
 
 
 @pytest.mark.parametrize(
-    "registry",
+    ("manufacturer", "model_id", "expected"),
     [
-        pytest.param(("Tuya", "TS0001_switch_module"), id="tuya_zcl"),
-        pytest.param(("Tuya", "TS0601_switch"), id="tuya_mcu"),
+        ("Tuya", "TS011F_plug_1", "tuya_ts011f"),
+        ("Tuya", "TS011F", "tuya_ts011f"),
+        ("Tuya", "TS0601_switch", "tuya_mcu"),
+        ("Tuya", "TS0001_switch_module", "tuya_zcl"),
+        ("Tuya", "ZG-101Z", "tuya_zcl"),  # Tuya's own vendor string
+        ("Moes", "TS0002", "tuya_zcl"),  # a Tuya definition model under another vendor
+        ("Lidl", "HG06337", None),  # a rebadged Tuya plug the registry can't show: bridge/devices does
+        ("Tuya", None, "tuya_zcl"),
     ],
 )
-async def test_turn_on_for_refuses_every_tuya_class_as_not_built_with_experimental_on(
-    hass, setup_production, broker, registry
-):
-    """Z2M turns `on_time` into a plain On on Tuya firmware (Decision 20), so the device would stay on."""
-    allow_experimental(hass)
-    entity_id = light(hass, broker, manufacturer=registry[0], model_id=registry[1])
+def test_the_registry_rules(manufacturer, model_id, expected):
+    assert match(tuya.REGISTRY_RULES, {"manufacturer": manufacturer, "model_id": model_id}) == expected
 
-    assert await refusal(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == "not_built"
-    assert commands(broker) == []
+
+async def test_the_zigbee_strings_in_bridge_devices_place_a_rebadged_tuya_device(hass, setup_production, broker):
+    entity_id = light(hass, broker, manufacturer="Lidl", model_id="HG06337", zigbee=(TUYA, "TS011F"))
+
+    assert INTEGRATION.capability(hass, resolve(hass, get_runtime(hass).registry, entity_id)) == "tuya_ts011f"
+
+
+def test_tuya_s_classes_are_untested_on_every_action_but_turn_on_for():
+    """turn_on_for's levels, on Tuya's countdown, are test_countdown.py's."""
+    levels = {
+        level
+        for action, scope in tuya.FAMILY.scopes.items()
+        if action != "turn_on_for"
+        for level in scope.capabilities.values()
+    }
+
+    assert levels == {Level.EXPERIMENTAL}
+
+
+def test_a_datapoint_device_is_left_out_of_raw_zcl_reads_and_writes():
+    left_out = {action for action, scope in tuya.FAMILY.scopes.items() if "tuya_mcu" not in scope.capabilities}
+
+    assert left_out == {"get_attributes", "set_attributes", "turn_on_for"}
 
 
 @pytest.mark.parametrize(

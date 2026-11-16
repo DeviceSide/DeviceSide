@@ -244,7 +244,7 @@ cites have been checked upstream: search each tracker for duplicates before fili
   brightness was, and a fix sits on the `zigpy-bot/light-color-reports` branch, no PR yet). Don't file a new issue.
 - **zha-quirks: define Signify's `0xFC03` `multiColor` command on the Hue cluster,** so
   `zha.issue_zigbee_cluster_command` can send it. Workaround: straight to zigpy, re-implementing ZHA's admin
-  check (`families/hue/multi_color.py`'s `turn_on`, `zcl.require_admin`). Additive quirk work; Z2M's `philips.ts` is prior art.
+  check (`zcl.hue_turn_on`, `zcl.require_admin`). Additive quirk work; Z2M's `philips.ts` is prior art.
 - **ZHA: `update_entity` does nothing while the transition flag is up,** and "on" reports are ignored for 1.5 s
   after `turn_off`. Workaround: poll the flag up to 3 s and refresh again after long fades
   (`TRANSITION_WAIT_S`, the late refresh). The guard is deliberate; pitch it narrowly: an explicit

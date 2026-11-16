@@ -10,19 +10,19 @@ from typing import ClassVar
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 
+from .adapter import Z2MAdapter
 from .addressing import not_addressable
 from .classes import capability, class_scope
 from .families.tuya import COUNTDOWN_PLUGS
 from .members import member_lights, unaddressable
 from .read import Reader, reader
-from ...core.adapter import Adapter
 from ...core.errors import Reason
 from ...core.models import EntityResult, Request, Status, Target
 from ...core.scope import AdapterScope, experimental, verified
 from ...core.zcl_row import average, zcl_row
 
 
-class Z2MGetAttributes(Adapter[Request]):
+class Z2MGetAttributes(Z2MAdapter[Request]):
     """One row per target from live ZCL reads (read.py): Hue bulbs on Z2M don't report, so HA's state can be stale.
 
     A group's row follows Hue's room row: its members are read one after another and averaged over the lit ones,

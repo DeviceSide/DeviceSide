@@ -1,6 +1,7 @@
 """ZHA's device classes (docs/evidence.md, Device classes): which firmware family a target's device is, and so which
 call it takes. The vendor classes, the rules that place a device in them and their levels are each family's
-(families/<family>/); the default class `other`, its levels and reading the device are the integration's, here.
+(families/<family>/); the default class `other`, its levels and reading the device are the integration's, here, as
+are the classes an action refuses with a reason (refusals.py).
 
 What decides the outcome on ZHA (internals.md, `classes`, which cites the source): every adapter sends standard ZCL
 through the cluster object a device's quirk puts on its endpoint. A quirk that keeps the standard command (Tuya's ZCL
@@ -33,15 +34,18 @@ from homeassistant.helpers import device_registry as dr
 from . import rules, zcl
 from .addressing import address
 from .families import FAMILIES, RULES
+from .refusals import REFUSALS
+from ...core import scope
 from ...core.models import Target
-from ...core.scope import ClassLevel, documented, experimental, family_scope
+from ...core.rules import match
+from ...core.scope import ClassLevel, documented, experimental
 
 OTHER = "other"  # the default class, never Verified (IntegrationInfo.default_class)
 CLASSES = frozenset({OTHER}).union(*(family.classes for family in FAMILIES))
 
 # `other`'s level in each adapter's scope (index.md, Device classes): Documented where it gets the Verified call and no
 # known class departs, else untested.
-_OTHER: Mapping[str, Mapping[str, ClassLevel]] = {
+OTHER_LEVELS: Mapping[str, Mapping[str, ClassLevel]] = {
     # lower_brightness and stop: the Level and Color commands a Hue bulb gets, sent alike to every light (fade.py), and
     # no class known to depart (the Sengled, which drops a level while off, is its own).
     "lower_brightness": documented(OTHER),
@@ -62,16 +66,9 @@ _OTHER: Mapping[str, Mapping[str, ClassLevel]] = {
 
 
 def class_scope(action: str) -> dict[str, Any]:
-    """The class entries of an action's AdapterScope, as its keyword arguments: `other` at the integration's level,
-    then the families' for their classes (core/scope.py, family_scope). `other` first, as the cards list an adapter's
-    classes in the scope's order (scripts/gen_compat.py)."""
-    parts = family_scope(FAMILIES, action)
-    return {
-        "capabilities": {**_OTHER[action], **parts.capabilities},
-        "no_known_method": parts.no_known_method,
-        "not_built": parts.not_built,
-        "own_calls": parts.own_calls,
-    }
+    """An adapter's AdapterScope fields that are held by class, for its action (core/scope.py, class_scope): `other`
+    at its own level, the families' classes and own calls, and the integration's refusal entries (refusals.py)."""
+    return scope.class_scope(action, families=FAMILIES, default_levels=OTHER_LEVELS, refusals=REFUSALS)
 
 
 def device_class(manufacturer: str | None, model: str | None, quirk: str | None = None) -> str | None:
@@ -79,7 +76,7 @@ def device_class(manufacturer: str | None, model: str | None, quirk: str | None 
     default; None when the interview didn't read a string, as no rule can place it."""
     if not manufacturer or not model:
         return None
-    return rules.match(RULES, manufacturer, model, quirk) or OTHER
+    return match(RULES, rules.read(manufacturer, model, quirk)) or OTHER
 
 
 def capability(hass: HomeAssistant, target: Target) -> str | None:

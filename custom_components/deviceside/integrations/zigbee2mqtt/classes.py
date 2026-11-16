@@ -16,15 +16,16 @@ another vendor's definition shows neither: Lidl's `HG06337` lands in `other`, an
 puts it in a class no Zigbee-string rule can override (families.REGISTRY_PLACED: `hue`). So a registry Tuya class
 waits too (refused either way), a rule added before the Zigbee-string rules can't become final by accident, and a
 class a later call serves (part 3's countdown) still waits for the full strings. An Unplaced class is that class to
-every adapter but one whose call harms a class (the Tuya entries' NotBuilt.harms, turn_on_for's), where the
-dispatcher refuses it as class_unknown (plan Decisions 23 and 26; docs/evidence.md, where a call is known to harm, a
+every adapter but one whose call harms a class (refusals.py: the Tuya entries' NotBuilt.harms, turn_on_for's), where
+the dispatcher refuses it as class_unknown (plan Decisions 23 and 26; docs/evidence.md, where a call is known to harm, a
 class not yet known is refused). A group is no device of its own: the dispatcher classes its members
 (members.expand_group), and falls back to them when one isn't placed. A device whose interview never completes stays
 Unplaced until it is paired again, so its groups fall back for good, one call per member (index.md, Device classes).
 `capability` logs, at DEBUG, what an Unplaced device is waiting for.
 
-Each adapter's scope holds the families' levels and `other`'s below (`class_scope`); why each class sits where it does
-is in index.md (Device classes) and the step 5 PR body (`other`'s Documented actions).
+Each adapter's scope holds the families' levels, `other`'s below and the refusal entries in refusals.py
+(`class_scope`); why each class sits where it does is in index.md (Device classes) and the step 5 PR body (`other`'s
+Documented actions).
 """
 
 import logging
@@ -34,12 +35,15 @@ from typing import Any
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
-from . import bridge_cache
+from . import bridge_cache, rules
 from .addressing import z2m_address
 from .families import FAMILIES, REGISTRY_PLACED, RULES
-from .rules import REGISTRY, ZIGBEE
+from .refusals import REFUSALS
+from .rules import ZIGBEE, definition_fields, zigbee_strings
+from ...core import scope
 from ...core.models import Target
-from ...core.scope import ClassLevel, Unplaced, documented, experimental, family_scope
+from ...core.rules import match
+from ...core.scope import ClassLevel, Unplaced, documented, experimental
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -48,8 +52,8 @@ CLASSES = frozenset({OTHER}).union(*(family.classes for family in FAMILIES))
 
 # `other`'s level in each adapter's scope (index.md, Device classes): Documented where the call is the Verified one
 # and no known class departs, else untested.
-# Brightness fades and stop: the ZCL Level and Color commands Hue's are (native_control turns Philips' own off for a
-# brightness fade), and no class known to depart from them.
+# Brightness fades and stop: the ZCL Level and Color commands Hue's are (native_control.py turns Philips' own off for
+# a brightness fade), and no class known to depart from them.
 _SAME_CALL = documented(OTHER)
 _UNTESTED = experimental(OTHER)
 OTHER_LEVELS: Mapping[str, Mapping[str, ClassLevel]] = {
@@ -72,15 +76,9 @@ OTHER_LEVELS: Mapping[str, Mapping[str, ClassLevel]] = {
 
 
 def class_scope(action: str) -> dict[str, Any]:
-    """An adapter's AdapterScope fields that are held by class, for its action: the families' parts
-    (core's family_scope) and `other` at its own level."""
-    part = family_scope(FAMILIES, action)
-    return {
-        "capabilities": {**OTHER_LEVELS[action], **part.capabilities},
-        "no_known_method": part.no_known_method,
-        "not_built": part.not_built,
-        "own_calls": part.own_calls,
-    }
+    """An adapter's AdapterScope fields that are held by class, for its action (core/scope.py, class_scope): `other`
+    at its own level, the families' classes and own calls, and the integration's refusal entries (refusals.py)."""
+    return scope.class_scope(action, families=FAMILIES, default_levels=OTHER_LEVELS, refusals=REFUSALS)
 
 
 def _listed(hass: HomeAssistant, device: dr.DeviceEntry) -> dict | None:
@@ -88,37 +86,6 @@ def _listed(hass: HomeAssistant, device: dr.DeviceEntry) -> dict | None:
     if (ieee := z2m_address(device)) is None or (cache := bridge_cache.get(hass)) is None:
         return None
     return cache.device(ieee)
-
-
-def zigbee_strings(entry: Mapping | None) -> dict[str, str]:
-    """The Zigbee manufacturer and model in a device's bridge/devices entry (`_listed`), as rule fields, each only
-    when it is a non-empty string (Z2M holds null until the interview reads it); empty with no entry."""
-    if entry is None:
-        return {}
-    return {name: value for name, key in ZIGBEE.items() if isinstance(value := entry.get(key), str) and value}
-
-
-def definition_fields(entry: Mapping | None) -> dict[str, str | frozenset[str]]:
-    """The rule fields from the definition in a device's bridge/devices entry: Z2M's model (`definition_model`), and
-    the properties of its top-level exposes for the whole device, none for an endpoint (`exposes`), each only when the
-    entry holds it (Z2M holds a null definition for a device it doesn't support); empty with no entry."""
-    definition = entry.get("definition") if entry is not None else None
-    if not isinstance(definition, Mapping):
-        return {}
-    fields: dict[str, str | frozenset[str]] = {}
-    if isinstance(model := definition.get("model"), str) and model:
-        fields["definition_model"] = model
-    if isinstance(exposes := definition.get("exposes"), list):
-        # By property, and the device's own alone: a per-endpoint copy keeps the name and suffixes the property
-        # (`countdown_l1`, with `endpoint` set: ZHC's `withEndpoint`).
-        fields["exposes"] = frozenset(
-            prop
-            for expose in exposes
-            if isinstance(expose, Mapping)
-            and expose.get("endpoint") is None
-            and isinstance(prop := expose.get("property"), str)
-        )
-    return fields
 
 
 def zigbee_manufacturer(hass: HomeAssistant, device: dr.DeviceEntry) -> str | None:
@@ -131,9 +98,9 @@ def placed(found: str, entry: Mapping | None, zigbee: Mapping[str, str]) -> bool
     """Whether a device of class `found` is placed: its bridge/devices entry (`_listed`) has it interviewed
     (`interview_completed`) with both Zigbee strings (`zigbee`, as zigbee_strings reads them), or its class is one the
     registry alone places."""
-    # A class its family declares as the registry's to place (`hue`), which no Zigbee-string rule can override: every
-    # rule up to its own reads the registry alone, so a device is in it exactly when its registry shows it
-    # (families/__init__.py checks it).
+    # A class the registry alone places (`hue`), which no Zigbee-string rule can override: every rule up to its own
+    # reads the registry alone, so a device is in it exactly when its registry shows it (families/__init__.py
+    # declares and checks it).
     if found in REGISTRY_PLACED:
         return True
     return entry is not None and entry.get("interview_completed") is True and zigbee.keys() == ZIGBEE.keys()
@@ -153,8 +120,7 @@ def _why_unplaced(hass: HomeAssistant, entry: Mapping | None, zigbee: Mapping[st
 def device_class(device: dr.DeviceEntry, bridge: Mapping[str, str | frozenset[str] | None] | None = None) -> str:
     """The class of a device Z2M registered: the first rule its registry and bridge/devices fields (`bridge`: the
     Zigbee strings and the definition's) match, else the default."""
-    strings = {name: getattr(device, name) for name in REGISTRY} | dict(bridge or {})
-    return next((rule.capability for rule in RULES if rule.matches(strings)), OTHER)
+    return match(RULES, rules.read(device, bridge)) or OTHER
 
 
 def capability(hass: HomeAssistant, target: Target) -> str | None:

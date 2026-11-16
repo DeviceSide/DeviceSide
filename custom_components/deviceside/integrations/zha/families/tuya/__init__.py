@@ -4,12 +4,13 @@ whose timer is Tuya's countdown or unprobed (internals.md, `classes`).
 A Tuya datapoint quirk routes On/Off itself and answers OnWithTimedOff with UNSUP_CLUSTER_COMMAND, sending nothing, so
 there the quirk decides: `tuya_mcu` keys on it (the On/Off cluster's `command` comes from zha-quirks' Tuya package),
 and on the datapoint strings for a device whose quirk is missing. Every other rule reads the Zigbee manufacturer and
-model, whose patterns both Zigbee stacks share (zigbee/tuya.py)."""
+model, by the catalog both Zigbee stacks share (zigbee/tuya.py): its patterns as they are, its literal strings
+escaped."""
 
 import re
 
-from ...rules import Group, Rule
-from .....core.scope import Family, FamilyScope, NotBuilt, experimental
+from .....core.rules import Rule
+from .....core.scope import Family, FamilyScope, experimental
 from .....zigbee import tuya as strings
 
 # Tuya's ZCL plugs and switches whose timer is Tuya's countdown, in whole seconds (internals.md, `classes`; Tuya's
@@ -30,71 +31,35 @@ COUNTS_SECONDS = frozenset({TUYA_COUNTDOWN, TUYA_COUNTDOWN_HARMED})
 # zhaquirks.tuya's older TuyaOnOff.
 _QUIRKS = "zhaquirks.tuya"
 # The models whose timer is Tuya's countdown.
-_COUNTDOWN_MODELS = r"TS011F|TS000[1-4]|TS0011|TS0726"
+_COUNTDOWN_MODELS = re.escape(strings.TS011F_MODEL) + r"|TS000[1-4]|TS0011|TS0726"
 
 # The quirk rule goes first: some datapoint devices carry a `_TZ3000_…` or `_TZ3210_…` string and a model of their
 # own, which only the quirk shows.
-DATAPOINT_RULES: Group = (
-    Rule(TUYA_MCU, "quirk", re.escape(_QUIRKS) + r"(\..*)?"),
-    Rule(TUYA_MCU, "model", strings.DATAPOINT_MODEL),
-    Rule(TUYA_MCU, "manufacturer", strings.DATAPOINT_MANUFACTURER),
+DATAPOINT_RULES = (
+    Rule(TUYA_MCU, {"quirk": re.escape(_QUIRKS) + r"(\..*)?"}),
+    Rule(TUYA_MCU, {"model": re.escape(strings.DATAPOINT_MODEL)}),
+    Rule(TUYA_MCU, {"manufacturer": strings.DATAPOINT_MANUFACTURER_PATTERN}),
 )
 # The reported string goes before the countdown models, which hold its model; those go before the rest of Tuya's ZCL
 # strings, which their manufacturers match too.
-ZCL_RULES: Group = (
+ZCL_RULES = (
+    # A ban that names both strings (docs/evidence.md, Contrary evidence).
     Rule(
         TUYA_COUNTDOWN_HARMED,
-        "identity",
-        re.escape(f"{strings.COUNTDOWN_HARMED_MANUFACTURER}/{strings.COUNTDOWN_HARMED_MODEL}"),
+        {
+            "manufacturer": re.escape(strings.COUNTDOWN_HARMED_MANUFACTURER),
+            "model": re.escape(strings.COUNTDOWN_HARMED_MODEL),
+        },
     ),
-    Rule(TUYA_COUNTDOWN, "model", _COUNTDOWN_MODELS),
-    Rule(TUYA_ZCL, "manufacturer", strings.ZCL_MANUFACTURER),
-    Rule(TUYA_ZCL, "model", strings.ZCL_MODEL),
+    Rule(TUYA_COUNTDOWN, {"model": _COUNTDOWN_MODELS}),
+    Rule(TUYA_ZCL, {"manufacturer": strings.ZCL_MANUFACTURER_PATTERN}),
+    Rule(TUYA_ZCL, {"model": strings.ZCL_MODEL_PATTERN}),
 )
 
-# The ZCL classes untested on every action but turn_on_for, which refuses them. `tuya_mcu` is in no scope but
-# turn_on_for's not_built: its quirk answers what DeviceSide sends itself (reads from its cache, a Level move
-# without its transition), so it needs a datapoint call nobody has built (not built yet).
+# The ZCL classes untested on every action but turn_on_for, whose call harms every Tuya class: the integration refuses
+# them there (refusals.py). `tuya_mcu` is in no scope at all: its quirk answers what DeviceSide sends itself (reads
+# from its cache, a Level move without its transition), so it needs a datapoint call nobody has built (not built yet).
 _UNTESTED = FamilyScope(capabilities=experimental(TUYA_COUNTDOWN, TUYA_COUNTDOWN_HARMED, TUYA_ZCL))
-
-# turn_on_for's call harms each of these (docs/evidence.md, When today's call harms a class): it ends on with no timer,
-# or on or off long after it was asked, unwatched. `harms`, so core also refuses a target it can't class.
-_INTERNALS = "https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/internals.md"
-_RESEARCH = "https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/"
-# A call that would work is known or plausible, but isn't built (plan Decisions 70, 74 and 41): every class the call
-# harms, so none has no known method.
-_TURN_ON_FOR = FamilyScope(
-    not_built={
-        # The countdown misbehaves on this string (Z2M #30493: the time left jumps back at random), and Tuya's inching
-        # (cluster 0xE000, command 0xFB), which would plausibly serve it, isn't built (plan Decision 41).
-        TUYA_COUNTDOWN_HARMED: NotBuilt(
-            reason="Tuya's own timer is reported to jump back at random on it, so it may not turn off when asked, and "
-            "the timer that would serve it isn't built",
-            source="https://github.com/Koenkk/zigbee2mqtt/issues/30493",
-            harms=True,
-        ),
-        # Tuya's recipe would serve it, parked (internals.md, "Tuya's recipe, parked"); today's tenths harm it (Tested
-        # behavior, the TS011F).
-        TUYA_COUNTDOWN: NotBuilt(
-            reason="ZHA's timer can turn it on long after the time asked and leave it on",
-            source=_RESEARCH + "2026-11-14-lab-probe.md",
-            harms=True,
-        ),
-        # The recipe or a countdown is plausible; the spec's tenths may be read as seconds, as the countdown models do.
-        TUYA_ZCL: NotBuilt(
-            reason="ZHA's timer can turn it on or off long after the time asked",
-            source=_RESEARCH + "2026-11-14-timed-on-call-patterns.md",
-            harms=True,
-        ),
-        # A datapoint countdown is plausible; the quirk refuses 0x42, and with fields the light.turn_on before it stays
-        # on.
-        TUYA_MCU: NotBuilt(
-            reason="ZHA refuses its timer, so with brightness or a color temperature it would turn on and stay on",
-            source=_INTERNALS + "#classes",
-            harms=True,
-        ),
-    }
-)
 
 FAMILY = Family(
     key="tuya",
@@ -110,6 +75,5 @@ FAMILY = Family(
         "raise_saturation": _UNTESTED,
         "set_attributes": _UNTESTED,
         "stop": _UNTESTED,
-        "turn_on_for": _TURN_ON_FOR,
     },
 )

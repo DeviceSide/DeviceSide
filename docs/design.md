@@ -24,9 +24,10 @@ Code and docs use these terms.
   Experimental (except where a call is known to harm: there a target whose class rests on information DeviceSide
   doesn't have yet is refused). Rules: [evidence.md](evidence.md#device-classes).
 - **Family**: a vendor's classes on one integration, as a package of their own
-  (`integrations/<x>/families/<family>/`): its `Family` names the classes and holds their rules, levels, entries and
-  own calls, so a vendor is one path with its own Maintainers. The integration keeps the transport, the default class
-  and the rule order between families. Opt-in: an integration with no families holds its classes itself.
+  (`integrations/<x>/families/<family>/`): its `Family` names the classes and holds their rules, levels and own
+  calls, so a vendor is one path with its own Maintainers. It holds no refusals: the integration keeps every no known
+  method and not built yet entry (`integrations/<x>/refusals.py`), with the transport, the default class and the rule
+  order between families. Opt-in: an integration with no families holds its classes itself.
 - **Catalog**: the Zigbee strings and sourced firmware facts that two integrations' families of one key both read
   (`custom_components/deviceside/zigbee/<family>.py`): patterns and facts only, no levels and no calls.
 - **Placed**: a device whose class rests on everything the integration will report about it (Zigbee2MQTT: listed as

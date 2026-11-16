@@ -1,30 +1,21 @@
-"""Zigbee2MQTT's families as the integration composes them: the rule type, the order between rule groups, and the
-class the registry alone places."""
+"""Zigbee2MQTT's families as the integration composes them: the order between rule groups, the fields a rule may
+test, and the class the registry alone places."""
 
 import pytest
 
 from custom_components.deviceside.core.registry import check_families
-from custom_components.deviceside.integrations.zigbee2mqtt import INTEGRATION, families
-from custom_components.deviceside.integrations.zigbee2mqtt.families import FAMILIES, RULES, gledopto, hue, sengled, tuya
-from custom_components.deviceside.integrations.zigbee2mqtt.rules import REGISTRY, Rule
-
-
-@pytest.mark.parametrize(
-    ("conditions", "error"),
-    [({"vendor": "x"}, r"tests \['vendor'\]"), ({}, "tests nothing")],
+from custom_components.deviceside.core.rules import Rule, compose
+from custom_components.deviceside.integrations.zigbee2mqtt import INTEGRATION, classes, native_control, rules
+from custom_components.deviceside.integrations.zigbee2mqtt.families import (
+    FAMILIES,
+    REGISTRY_PLACED,
+    RULES,
+    check_registry_placed,
+    gledopto,
+    hue,
+    sengled,
+    tuya,
 )
-def test_a_rule_tests_known_fields_and_at_least_one(conditions, error):
-    with pytest.raises(ValueError, match=error):
-        Rule("hue", conditions)
-
-
-@pytest.mark.parametrize("capability", ["other", "ikea", "sengled"])
-def test_a_family_s_rules_name_only_its_own_classes(capability):
-    """Not the default class, an undeclared one, or another family's."""
-    with pytest.raises(
-        ValueError, match=rf"family 'hue': its rules name classes that aren't its own: \['{capability}'\]"
-    ):
-        families._group(hue.FAMILY, (*hue.RULES, Rule(capability, {"manufacturer": "x"})))
 
 
 def test_the_integration_holds_the_four_families_and_the_registry_s_checks_pass():
@@ -38,17 +29,44 @@ def test_the_rule_groups_run_in_the_integration_s_order():
     assert RULES == (*hue.RULES, *tuya.ZIGBEE_RULES, *sengled.RULES, *gledopto.RULES, *tuya.REGISTRY_RULES)
 
 
-def test_hue_s_rule_comes_first_and_reads_the_registry_alone():
-    """Why a registry `hue` is placed without the Zigbee strings (classes.placed): no Zigbee-string rule can come
-    before it and override it, and no other rule names `hue`, so the class alone says the registry put it there."""
-    assert families.REGISTRY_PLACED == {"hue"}
-    assert RULES[0].capability == "hue"
-    assert RULES[0].conditions.keys() <= REGISTRY
-    assert all(rule.capability != "hue" for rule in RULES[1:])
+def test_every_rule_names_a_class_but_the_default():
+    assert {rule.capability for rule in RULES} == classes.CLASSES - {classes.OTHER}
 
 
-def test_a_class_behind_a_zigbee_string_rule_can_t_be_placed_by_the_registry(monkeypatch):
-    monkeypatch.setattr(families, "REGISTRY_PLACED", frozenset({"sengled"}))
+def test_a_rule_tests_the_fields_zigbee2mqtt_reads():
+    """The registry's and bridge/devices', as rules.read gives them; a mistyped one fails where rules are composed."""
+    assert rules.FIELDS == {
+        "manufacturer",
+        "model",
+        "model_id",
+        "zigbee_manufacturer",
+        "zigbee_model",
+        "definition_model",
+        "exposes",
+    }
+    with pytest.raises(ValueError, match=r"tests \['vendor'\]"):
+        compose(rules.FIELDS, (hue.FAMILY, (Rule("hue", {"vendor": "Philips"}),)))
 
-    with pytest.raises(ValueError, match="'sengled' can't be placed by the registry alone"):
-        families._check_registry_placed()
+
+def test_hue_is_placed_by_the_registry_alone():
+    """Why a registry `hue` is placed without the Zigbee strings (classes.placed); the check runs at import."""
+    assert REGISTRY_PLACED == {"hue"}
+    check_registry_placed(RULES, REGISTRY_PLACED)
+
+
+@pytest.mark.parametrize(
+    "placed",
+    [
+        pytest.param("sengled", id="behind_a_zigbee_string_rule"),
+        pytest.param("tuya_mcu", id="its_own_rule_reads_the_zigbee_strings"),
+        pytest.param("other", id="no_rule"),
+    ],
+)
+def test_a_class_the_registry_alone_can_t_place_is_refused(placed):
+    with pytest.raises(ValueError, match=f"'{placed}' can't be placed by the registry alone"):
+        check_registry_placed(RULES, {placed})
+
+
+def test_native_control_reads_the_hue_family_s_vendor_string():
+    """One home for the string that says a device is Hue's: the family's rule and the option's mechanism share it."""
+    assert native_control.HUE_MANUFACTURER is hue.HUE_MANUFACTURER

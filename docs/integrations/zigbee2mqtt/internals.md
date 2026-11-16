@@ -90,9 +90,10 @@ announce both by default, as some lights handle mixed modes badly
 ### `native_control`
 
 `hue_native_control` makes Z2M send on, brightness, color and color temperature as one Philips command
-rather than ZCL ones. Each action that needs it one way declares it (`NEED` in `families/hue/native_control.py`): on for a
-`turn_on_for` with a color or color temperature (a Hue bulb, manufacturer `Philips`, lights in the new color and
-keeps the timer); off for a brightness fade (native, a long raise runs about 2.3x faster than its transition, and
+rather than ZCL ones. Each action that needs it one way declares it (`NEED` in `families/hue/`; `native_control.py`
+holds it there): on for a `turn_on_for` with a color or color temperature (a Hue bulb, manufacturer `Philips`, lights
+in the new color and keeps the timer); off for a brightness fade (native, a long raise runs about 2.3x faster than
+its transition, and
 a soft off reports `onOff: 0` at once). Other actions, a saturation fade included, leave it alone. Where the
 setting differs, it's set (Z2M's settings read on each call, up to 5 s for Z2M), the command published, and the
 user's value written back after Z2M's next state publish for the target (1 s cap). The action returns once its

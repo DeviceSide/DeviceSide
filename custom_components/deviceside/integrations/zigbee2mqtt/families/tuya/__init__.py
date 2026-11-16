@@ -3,26 +3,28 @@
 On Zigbee the call and the firmware family decide the result together (research/2026-11-14-timed-on-call-patterns.md),
 and Tuya's departs most: Z2M has no `on_time` converter for it, so turn_on_for's call would leave a Tuya device on.
 The classes split it by the call that would serve each: the countdown plugs get Tuya's countdown (countdown.py), and
-the rest are refused there until theirs is built.
+the rest are refused there until theirs is built (the integration's refusals.py holds those entries, and why).
 
 Two rule groups, as the integration places them apart (families/__init__.py): ZIGBEE_RULES, on the device's own
 Zigbee strings and its definition, from bridge/devices, which alone show a Tuya device under another vendor's
 definition; and REGISTRY_RULES, which stand in for them on what the registry shows until bridge/devices lists the
-device. The Zigbee string patterns are the catalog's (zigbee/tuya.py), shared with ZHA.
+device. The Zigbee strings are the catalog's (zigbee/tuya.py), shared with ZHA: its patterns as they are, its
+literal strings escaped.
 """
 
 import re
 
 from .countdown import COUNTDOWN
-from ...rules import Rule
-from .....core.scope import Family, FamilyScope, NotBuilt, experimental, verified
+from .....core.rules import Rule
+from .....core.scope import Family, FamilyScope, experimental, verified
 from .....zigbee.tuya import (
     COUNTDOWN_HARMED_MANUFACTURER,
     COUNTDOWN_HARMED_MODEL,
-    DATAPOINT_MANUFACTURER,
+    DATAPOINT_MANUFACTURER_PATTERN,
     DATAPOINT_MODEL,
-    ZCL_MANUFACTURER,
-    ZCL_MODEL,
+    TS011F_MODEL,
+    ZCL_MANUFACTURER_PATTERN,
+    ZCL_MODEL_PATTERN,
 )
 
 # A Tuya device on the Zigbee On/Off cluster (TS011F, TS000x and white labels): its timer is Tuya's countdown.
@@ -59,7 +61,9 @@ _TS011F = (TUYA_TS011F, *COUNTDOWNS, TUYA_COUNTDOWN_HARMED)
 _ALL = (TUYA_ZCL, *_TS011F, TUYA_MCU)
 CLASSES = frozenset(_ALL)
 
-_TS011F_MODEL = "TS011F"  # the plug's Zigbee model, and the stem of its Z2M definitions (`TS011F_plug_1`)
+# The catalog's literal models, as the patterns the rules below test.
+_TS011F_MODEL = re.escape(TS011F_MODEL)
+_DATAPOINT_MODEL = re.escape(DATAPOINT_MODEL)
 # Tuya's countdown, converter A, on a TS011F: the definition exposes `countdown` for the whole device (Z2M's own
 # statement that it takes the key; a multi-gang one exposes one per endpoint, `countdown_l1`, so isn't matched) and
 # isn't the ZOT60, whose `countdown` is a datapoint, converter B (research/2026-11-14-tuya-countdown.md, §1, The
@@ -84,17 +88,17 @@ ZIGBEE_RULES = (
     ),
     Rule(TUYA_COUNTDOWN, _COUNTDOWN),
     Rule(TUYA_TS011F, {"zigbee_model": _TS011F_MODEL}),
-    Rule(TUYA_MCU, {"zigbee_model": DATAPOINT_MODEL}),
-    Rule(TUYA_MCU, {"zigbee_manufacturer": DATAPOINT_MANUFACTURER}),
-    Rule(TUYA_ZCL, {"zigbee_manufacturer": ZCL_MANUFACTURER}),
-    Rule(TUYA_ZCL, {"zigbee_model": ZCL_MODEL}),
+    Rule(TUYA_MCU, {"zigbee_model": _DATAPOINT_MODEL}),
+    Rule(TUYA_MCU, {"zigbee_manufacturer": DATAPOINT_MANUFACTURER_PATTERN}),
+    Rule(TUYA_ZCL, {"zigbee_manufacturer": ZCL_MANUFACTURER_PATTERN}),
+    Rule(TUYA_ZCL, {"zigbee_model": ZCL_MODEL_PATTERN}),
 )
 # The registry, for a Tuya device bridge/devices doesn't show yet: Z2M's definition (`TS011F_plug_1`) and vendor. The
 # models go before the vendor `Tuya` and the catch-all `TS.*`, which a `TS011F_…` or `TS0601_…` definition also
 # matches.
 REGISTRY_RULES = (
     Rule(TUYA_TS011F, {"model_id": _TS011F_MODEL + "(_.*)?"}),
-    Rule(TUYA_MCU, {"model_id": DATAPOINT_MODEL + "(_.*)?"}),
+    Rule(TUYA_MCU, {"model_id": _DATAPOINT_MODEL + "(_.*)?"}),
     Rule(TUYA_ZCL, {"manufacturer": "Tuya"}),
     Rule(TUYA_ZCL, {"model_id": "TS.*"}),
 )
@@ -104,36 +108,12 @@ _UNTESTED = FamilyScope(capabilities=experimental(*_ALL))
 # Raw ZCL reads and writes, which a datapoint device can't take, so `tuya_mcu` is left out.
 _RAW_ZCL = FamilyScope(capabilities=experimental(TUYA_ZCL, *_TS011F))
 
-# turn_on_for. The classes off Tuya's countdown are not built yet, and harmed by today's call (plan Decisions 20,
-# 70 and 71): Z2M has no `on_time` converter for a definition built with `onOffCountdown`, or for a datapoint device,
-# so it sends a plain On and the device stays on. Each has a call that would work, Z2M's `countdown`, which isn't built
-# for them: converter A's for a TS011F Z2M shows no `countdown` for and the TS011F's kin (v0.1.0 builds it for the
-# countdown plugs alone, plan Decision 72), the datapoint one for TS0601 devices (v0.1.x,
-# docs/plans/2026-11-15-tuya-datapoint-countdown.md). `harms`, so the dispatcher refuses a device not yet placed as
-# well, which could be one of them (plan Decision 26).
-_RESEARCH = "https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/"
-# What the user reads after core's "can't take this action yet" (errors.py, the not_built key).
-_STAYS_ON = "Zigbee2MQTT would turn it on with no timer, so it would stay on"
-TURN_ON_FOR_NOT_BUILT = {
-    # Measured (Decision 16), and matched by its model so every firmware inherits the refusal.
-    TUYA_TS011F: NotBuilt(reason=_STAYS_ON, source=_RESEARCH + "2026-11-14-lab-probe.md", harms=True),
-    TUYA_ZCL: NotBuilt(reason=_STAYS_ON, source=_RESEARCH + "2026-11-14-timed-on-call-patterns.md", harms=True),
-    # The harm today: a datapoint device's definition has no `on_time` converter either, so it gets a plain On
-    # (timed-on call patterns); the call that would serve it is the datapoint countdown (its research note).
-    TUYA_MCU: NotBuilt(reason=_STAYS_ON, source=_RESEARCH + "2026-11-14-timed-on-call-patterns.md", harms=True),
-    # Reported failing the countdown with harm (plan Decisions 35 and 41).
-    TUYA_COUNTDOWN_HARMED: NotBuilt(
-        reason="its maker string is reported to restart its timer at random, so it could stay on",
-        source="https://github.com/Koenkk/zigbee2mqtt/issues/30493",
-        harms=True,
-    ),
-}
+# turn_on_for. Tuya's countdown plugs get that call: each maker string with a record of its own Verified, on switches
+# alone, as Z2M shows a plug, and the rest untested (plan Decision 35). Each takes the countdown, which a Z2M group's
+# call isn't, so a group with one falls back to its members. The classes off the countdown are left out: the
+# integration refuses them there, as today's call would harm them (refusals.py).
 _TURN_ON_FOR = FamilyScope(
-    # Tuya's countdown plugs get that call: each maker string with a record of its own Verified, on switches alone, as
-    # Z2M shows a plug, and the rest untested (plan Decision 35).
     capabilities=verified(*VERIFIED_COUNTDOWNS, domains=("switch",)) | experimental(TUYA_COUNTDOWN),
-    not_built=TURN_ON_FOR_NOT_BUILT,
-    # Each takes the countdown, which a Z2M group's call isn't, so a group with one falls back to its members.
     own_calls=dict.fromkeys(COUNTDOWNS, COUNTDOWN),
 )
 

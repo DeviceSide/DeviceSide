@@ -4,6 +4,7 @@ from typing import ClassVar
 
 from homeassistant.core import HomeAssistant
 
+from .adapter import Z2MAdapter
 from .addressing import not_addressable
 from .bridge import publish_set
 from .classes import class_scope
@@ -11,7 +12,6 @@ from .color_refresh import DELAY_S, refresh_color
 from .fade import hue_moves, lights_of, read_back_key, transition_cache
 from .members import unaddressable
 from .set_check import checked
-from ...core.adapter import Adapter
 from ...core.errors import Reason
 from ...core.models import EntityResult, Request, Status, Target
 from ...core.runtime import get_runtime
@@ -28,7 +28,7 @@ _STOP_MOVE_STEP = {
 }
 
 
-class Z2MStop(Adapter[Request]):
+class Z2MStop(Z2MAdapter[Request]):
     """Send brightness_move: stop to the light or group, with hue_move: stop where a hue move of ours cycles and a raw
     stopMoveStep where a saturation move of ours fades, and record the predicted values as where it halted.
 

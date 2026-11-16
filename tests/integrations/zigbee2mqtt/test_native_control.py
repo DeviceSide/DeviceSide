@@ -5,19 +5,17 @@ import json
 import logging
 
 import pytest
-from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import async_mock_service
 
 from custom_components.deviceside.core.models import Target
 from custom_components.deviceside.core.runtime import DATA
 from custom_components.deviceside.integrations.zigbee2mqtt import bridge, bridge_cache
-from custom_components.deviceside.integrations.zigbee2mqtt.families.hue import native_control as nc
+from custom_components.deviceside.integrations.zigbee2mqtt import native_control as nc
 from custom_components.deviceside.integrations.zigbee2mqtt.restore_journal import journal, locks
 
-from ...conftest import DEVICES, SET, call, light
-from .....conftest import allow_experimental, refusal
-from .....fixtures.zigbee2mqtt import GROUPS, IEEE, INFO, add_z2m_entity, add_z2m_group, z2m_entry
+from .conftest import DEVICES, SET, call, light, target
+from ...conftest import allow_experimental, refusal
+from ...fixtures.zigbee2mqtt import GROUPS, IEEE, INFO, add_z2m_entity, add_z2m_group, z2m_entry
 
 SENT = {"status": "sent", "integration": "zigbee2mqtt"}
 DEVICE_REQUEST = "zigbee2mqtt/bridge/request/device/options"
@@ -45,12 +43,6 @@ def options(broker) -> list[bool]:
 
 def timers(broker) -> list[dict]:
     return [p["payload"] for p in broker.published if p["topic"] == SET and "on_time" in p["payload"]]
-
-
-def target(hass, entity_id: str) -> Target:
-    entry = er.async_get(hass).async_get(entity_id)
-    device = dr.async_get(hass).async_get(entry.device_id)
-    return Target(entity_id, "light", "zigbee2mqtt", entry, device, None, hass.states.get(entity_id))
 
 
 # turn_on_for: on for a color, then put back

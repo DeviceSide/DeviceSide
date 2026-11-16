@@ -1,6 +1,6 @@
 # Family seam: ownership below the integration
 
-Date: 2026-11-16. Status: in progress.
+Date: 2026-11-16. Status: implemented.
 
 ## Why
 
@@ -23,8 +23,10 @@ contributor's change for one vendor reclasses another vendor's devices unnoticed
    tuya, sengled, sonoff). The integration keeps the transport, the default class `other` and the precedence between
    families. Families are opt-in: Control4, Hue, Shelly and Matter are untouched.
 4. A family maintainer may `/merge` a PR whose every file they own, including level changes (Verified, lifting the
-   experimental flag). They may not add, change or remove a `harms`-bearing entry (`NoKnownMethod`, `NotBuilt`): the
-   gate refuses, and an integration or repo maintainer merges it.
+   experimental flag). They may not add, change or remove a refusal entry (`NoKnownMethod`, `NotBuilt`): every one
+   lives in the integration's `integrations/<x>/refusals.py`, outside every family, so ownership by path refuses it
+   and an integration or repo maintainer merges it. A new class is not a family-only change either: its card phrase
+   (`devices.yaml`), its test records and the classification snapshot are the integration's.
 5. The seam covers code, unit tests and new research (`docs/integrations/<x>/research/<family>/`). Test records,
    `index.md`, `internals.md` and `devices.yaml` stay whole and the integration's; existing dated research stays where
    it is. A `TODO.md` item tracks per-family records.
@@ -54,11 +56,14 @@ contributor's change for one vendor reclasses another vendor's devices unnoticed
   the way its `execute` does (Zigbee2MQTT's `checked`).
 - `TimedRequest.limits` is removed if nothing reads it once the branch is gone.
 - `Family` (scope.py): `key`, `maintainers: tuple[str, ...] = ()`, `classes: frozenset[str]`, `scopes: Mapping[str,
-  FamilyScope]` by action key. `FamilyScope`: `capabilities`, `no_known_method`, `not_built`, `own_calls`, each a
-  mapping by class, all default empty. An action a family gives no scope leaves its classes out of that adapter's
+  FamilyScope]` by action key. `FamilyScope`: `capabilities` and `own_calls`, each a mapping by class, both default
+  empty; it can hold no refusal entry. An action a family gives no scope leaves its classes out of that adapter's
   scope, so they are refused as not built, as leaving a class out does today.
-- `family_scope(families, action) -> FamilyScope`: the families' parts for one action merged; a class in two families
-  raises. An adapter builds its scope from it plus the integration's own entry for `other`.
+- `class_scope`: an adapter's scope for one action, from the integration's own entry for the default class, the
+  families' parts merged (a class in two families raises) and the integration's refusal entries. Class order is the
+  default class first, then the families in precedence order, which moved one card row.
+- `Rule` and `compose`: the one rule type and the one composer of the families' rule groups, for both stacks; a rule
+  naming a class outside its family raises.
 - `IntegrationInfo.families: tuple[Family, ...] = ()`. The registry checks, when it is non-empty: keys unique and
   shaped like a package name; maintainers valid handles (may be empty); the families' classes disjoint; every class
   the integration declares belongs to exactly one family, except the default class; every class a family's scopes
@@ -78,10 +83,11 @@ these; neither restates them.
 
 ```
 integrations/<x>/
-  rules.py                 the rule type and matcher (integration's)
+  rules.py                 the matcher, on core's `Rule` (integration's)
+  refusals.py              every `NoKnownMethod` and `NotBuilt` entry, the families' classes' included (integration's)
   families/__init__.py     FAMILIES, and RULES: the precedence between families' rule groups (integration's)
   families/<family>/       FAMILY = Family(...) as a literal call, its class names, rule groups, per-action levels,
-                           harms entries, own calls, and code only its classes need
+                           own calls, and the vendor's data
   classes.py               `other`, its levels, `capability`, placement (integration's)
 tests/integrations/<x>/
   families/<family>/       the family's unit tests
@@ -95,9 +101,10 @@ tests/integrations/<x>/
 - Dependency direction: adapters and `classes.py` import families; families import the integration's transport
   modules (`bridge`, `zcl`, `addressing`, `rules`) and the catalog, never an adapter module. No import cycles.
 - A vendor's facts live in its family. A whole alternate call is an `OwnCall` (Zigbee2MQTT's Tuya countdown); a
-  per-class parameter an adapter needs (ZHA's `COUNTS_SECONDS`, Zigbee2MQTT's Hue native control) is exported by the
-  family and imported by the adapter. Integration-owned modules name no vendor's class constant except by importing
-  it from its family.
+  per-class parameter an adapter needs (ZHA's `COUNTS_SECONDS`) is exported by the family and imported by the
+  adapter. Mechanism on every vendor's call path (Zigbee2MQTT's native control) stays in the integration: the family
+  holds the vendor's data, the integration the code that every call runs. Integration-owned modules name no vendor's
+  class constant except by importing it from its family.
 - `FAMILY = Family(key=..., maintainers=(...), ...)` has `key` and `maintainers` as literals, so the gate reads them
   with `ast` and no import. Every family starts with `maintainers=()`.
 - Classification snapshot, `tests/integrations/<x>/test_classification.py`, the integration's: a table of devices
@@ -116,13 +123,15 @@ tests/integrations/<x>/
   only when it names an owner the enclosing line doesn't, so today's CODEOWNERS is unchanged.
 - `check_maintainer_merge.py`: each changed file has an owner set at the base branch (family: its maintainers and its
   integration's; catalog: as above; integration package: its maintainers; generated output: anyone passing the rest;
-  anything else: nobody). The PR passes when the commenter is in every file's set. It still refuses a PR that changes
-  README outside generated blocks or sets or clears a caveat, and now one that changes any `maintainers` value in a
-  changed Python file, and, for a commenter who is not a maintainer of the file's integration, one that adds, changes
-  or removes a `NoKnownMethod(...)` or `NotBuilt(...)` call in it (compared as AST dumps, as caveats are). Its
-  docstring states what it can't see (a rule change that moves devices out of a harmed class), as it does for caveats.
-- Family maintainers are read by parsing `families/<family>/__init__.py`; a test checks the parse against the
-  registry, as `test_route_issue.py` does for integrations.
+  anything else: nobody). The PR passes when the commenter is in every file's set. It still refuses a PR that sets or
+  clears a caveat or changes README outside its generated blocks, and now `docs/device-compatibility.md` outside its
+  own, and one that changes the `maintainers` of any `IntegrationInfo(...)` or `Family(...)` call outside `tests/`.
+  It has no harms matching: matching entries by name could be sidestepped, so `refusals.py` being an integration
+  path is the rule. Its docstring states what it can't see (Known limits, below).
+- Family maintainers are read by parsing `families/<family>/__init__.py`; `test_route_issue.py` checks the parse
+  against the registry, as it does for integrations.
+- `tests.yml`'s `pytest-without-family-tests` job runs the tests with every family's and the catalog's left out, so
+  family test code can't silence the integration's; requiring it is a repo setting (`docs/repo-maintainers.md`).
 
 ### Docs and rules
 
@@ -130,7 +139,7 @@ tests/integrations/<x>/
   two kinds (final names from the rename stage).
 - `CLAUDE.md`: Maintainers section (families, the owns-every-file rule, what a family maintainer can't merge) and
   "Where facts go" (family code, catalog, family research).
-- `docs/evidence.md`: who may sign off a family's classes and who changes a harms entry.
+- `docs/evidence.md`: who may sign off a family's classes; who changes a refusal entry is CLAUDE.md's alone.
 - `CONTRIBUTING.md`, `docs/device-compatibility.md` (maintainers wording), `docs/repo-maintainers.md` (appointing a
   family maintainer), `TODO.md` (per-family records and docs).
 - Each integration's `internals.md` points to `families/__init__.py` for the rule order instead of `classes.py`.
@@ -149,11 +158,22 @@ pin the calls (Evidence 5).
 ## Intent checks (what the audit verifies)
 
 - No device changes class and no call changes: `RULES` composes to the same order; every adapter's scope holds the
-  same classes at the same levels with the same harms entries as before.
+  same classes at the same levels with the same refusal entries as before, the default class first and then the
+  families in precedence order (one card row moved).
 - Handing a vendor to someone is one edit: a `maintainers` tuple in one family's `__init__.py`, after which
   CODEOWNERS regenerates and the gate lets them merge a PR confined to that family.
-- A family maintainer cannot, alone: touch another family, the transport, the precedence list or the snapshot; change
-  a harms entry; change a maintainers tuple; set a caveat.
+- A family maintainer cannot, alone: touch another family, the transport, the precedence list, the snapshot or
+  `refusals.py`; add a class; change a maintainers tuple; set a caveat. No family file can hold a refusal entry.
 - A catalog edit that would reclass a device on the other stack fails that stack's tests.
 - Integrations without families see no change in code, CODEOWNERS or gate behavior.
 - No vendor fact has two homes: the catalog's patterns are not restated in either stack.
+
+## Known limits
+
+What the gate can't see (its docstring), left to trust in an appointed maintainer and the release candidate's audit:
+
+- A caveat set other than as a `caveat=` keyword or a `Caveat(...)` call.
+- A family's rule change that moves devices between classes, out of a refused class or in from another family's (a
+  family's rule group can run before another's): only the classification snapshot catches the devices it lists.
+- A family's product code written in bad faith: the integration's tests import it, so it can change what they see.
+  Its test code can't silence them in `pytest-without-family-tests`.

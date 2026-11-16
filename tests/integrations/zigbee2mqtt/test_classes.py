@@ -22,25 +22,15 @@ from custom_components.deviceside.core.scope import Level, Unplaced
 from custom_components.deviceside.integrations.zigbee2mqtt import ADAPTERS, INTEGRATION, bridge_cache, classes, members
 from custom_components.deviceside.integrations.zigbee2mqtt.families import tuya
 
-from .conftest import DEVICES, SENT, SET, call, commands, group, light
+from .conftest import DEVICES, PLUG, SENT, SET, TUYA, TUYA_MCU, call, commands, group, interviewed, light
 from ...conftest import allow_experimental, refusal
 from ...conftest import call as call_service
 from ...fixtures.zigbee2mqtt import GROUPS, IEEE, add_z2m_entity, add_z2m_group, z2m_entry
 
 STRINGS = Path(__file__).parents[3] / "custom_components" / "deviceside" / "strings.json"
-# Strings of the shapes the lab probe saw (research/2026-11-14-lab-probe.md, §1): the Zigbee manufacturer a Tuya
-# device reports in bridge/devices, and the vendor and definition Z2M registers for a TS011F.
-TUYA = "_TZ3000_abcdefgh"
-TUYA_MCU = "_TZE200_abcdefgh"
-PLUG = ("Tuya", "TS011F_plug_1")
 IKEA = ("IKEA of Sweden", "TRADFRI bulb E27 WW 806lm")
 # Gledopto's GL-SPI-206P: Gledopto's definition, Tuya datapoint firmware (families/__init__.py, the rule order).
 GLEDOPTO_TUYA = {"manufacturer": "Gledopto", "model_id": "GL-SPI-206P", "zigbee": (TUYA_MCU, "TS0601")}
-
-
-def interviewed(ieee: str, manufacturer: str, model_id: str) -> dict:
-    """A device's bridge/devices entry once Zigbee2MQTT has interviewed it."""
-    return {"ieee_address": ieee, "manufacturer": manufacturer, "model_id": model_id, "interview_completed": True}
 
 
 def registry_only(hass, manufacturer: str | None, model_id: str | None = None) -> Target:
@@ -58,26 +48,10 @@ def registry_only(hass, manufacturer: str | None, model_id: str | None = None) -
 
 @pytest.mark.parametrize(
     ("manufacturer", "model_id", "expected"),
-    [
-        ("Philips", "9290018217", "hue"),
-        ("Philips Lighting", None, "other"),  # the whole string, not a prefix
-        ("IKEA of Sweden", "LED1836G9", "other"),
-        ("Sengled", "E11-G13", "sengled"),
-        ("Gledopto", "GL-C-008", "gledopto"),  # Z2M's vendor string
-        ("GLEDOPTO", "GL-S-007ZS", "gledopto"),  # the Zigbee string, in any case
-        ("Gledopto Lighting", "GL-C-009", "other"),  # the whole string, not a prefix
-        (*PLUG, "tuya_ts011f"),
-        ("Tuya", "TS011F", "tuya_ts011f"),
-        ("Tuya", "TS0601_switch", "tuya_mcu"),
-        ("Tuya", "TS0001_switch_module", "tuya_zcl"),
-        ("Tuya", "ZG-101Z", "tuya_zcl"),  # Tuya's own vendor string
-        ("Moes", "TS0002", "tuya_zcl"),  # a Tuya definition model under another vendor
-        ("Lidl", "HG06337", "other"),  # a rebadged Tuya plug the registry can't show: bridge/devices does
-        (None, None, "other"),
-    ],
+    [("Philips", "9290018217", "hue"), ("IKEA of Sweden", "LED1836G9", "other")],
 )
-def test_on_the_registry_alone_a_device_s_class_is_its_first_matching_rule(hass, manufacturer, model_id, expected):
-    """Placed only in `hue`, which no Zigbee-string rule can override: every other class could still move."""
+def test_on_the_registry_alone_only_a_hue_device_is_placed(hass, manufacturer, model_id, expected):
+    """`hue`, which no Zigbee-string rule can override: every other class could still move, so it is Unplaced."""
     found = INTEGRATION.capability(hass, registry_only(hass, manufacturer, model_id))
 
     assert found == expected
@@ -162,20 +136,17 @@ def test_other_is_documented_on_brightness_fades_and_stop_alone():
         ("tuya_countdown_harmed", {"turn_on_for"}, {"turn_on_for"}),
         ("tuya_mcu", {"turn_on_for"}, {"turn_on_for", "get_attributes", "set_attributes"}),
         ("sengled", set(), {"turn_on_for"}),
-        # Its converter departs from the brightness commands `other` is Documented on (Decision 24).
         ("gledopto", set(), set()),
     ],
 )
-def test_where_each_class_is_refused_and_elsewhere_untested(capability, harmed, not_built):
-    """No Z2M class has no known method: each refused one has a call that would work, not yet built."""
+def test_where_each_class_is_refused(capability, harmed, not_built):
+    """The integration's guard on what a family's change can let through: the actions that refuse the class with an
+    entry, because the call would harm it, and those that leave it out. Its level where it is served is its family's
+    (families/<family>/)."""
     scopes = _scopes()
     assert not any(capability in scope.no_known_method for scope in scopes.values())
     assert {action for action, scope in scopes.items() if capability in scope.not_built} == harmed
-    refused = {action for action, scope in scopes.items() if capability not in scope.capabilities}
-    assert refused == not_built
-    assert {scope.capabilities[capability] for action, scope in scopes.items() if action not in refused} == {
-        Level.EXPERIMENTAL
-    }
+    assert {action for action, scope in scopes.items() if capability not in scope.capabilities} == not_built
 
 
 # Group members, from the bridge cache.
@@ -738,13 +709,7 @@ async def test_a_hue_group_is_verified_on_its_members_class(hass, setup_producti
 
 # Where a call is known to harm, a class not yet known is refused (docs/evidence.md, No known method, not built yet,
 # untested; Decisions 23 and 26): turn_on_for refuses a target it can't class, even with Experimental features on.
-# The dispatcher applies it (tests/core/test_dispatcher.py), on the adapters whose entries harm.
-
-
-def test_only_turn_on_for_s_entries_harm_and_each_does():
-    """The Tuya entries mark the harm the rule guards against; no other Z2M adapter refuses an unplaced device."""
-    assert all(entry.harms for entry in tuya.TURN_ON_FOR_NOT_BUILT.values())
-    assert [adapter.action for adapter in ADAPTERS if adapter.scope.harms] == ["turn_on_for"]
+# The dispatcher applies it (tests/core/test_dispatcher.py), on the adapters whose entries harm (test_refusals.py).
 
 
 async def test_turn_on_for_refuses_a_group_of_unknown_membership_with_experimental_on(hass, setup_production, broker):
