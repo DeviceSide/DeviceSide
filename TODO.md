@@ -121,9 +121,9 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   - [ ] ZHA
   - [ ] Zigbee2MQTT, run A: every suite but `turn_on_for`, `get_attributes` and `config_entry`, with the watched A60 cases.
     A record is one run of one suite, so the split falls between suites. Needs ha-rig to run a chosen set of suites.
-  - [ ] Matter
-  - [ ] Shelly. Accepted until then: `check_release --signoffs` fails on Shelly's class coverage gaps, as its
-    records are format 1, with no class per test; no release is cut before its house rerun.
+  - [x] Matter: the `lab_matter` run (#463).
+  - [x] Shelly: the `shelly` run (#463), format 2 records with a class per test, which clears its class coverage
+    gaps.
   - [ ] Zigbee2MQTT, run B: `turn_on_for` and `get_attributes` (the bulb, and part 3's plugs, one per maker string),
     and `config_entry`, which any package change reopens. No Zigbee2MQTT change between runs A and B.
   - [ ] Control4: skialpine's `_manual.json` row, asked for once the runs' fixes have landed, so no fix sends
