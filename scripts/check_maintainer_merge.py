@@ -170,14 +170,13 @@ def integrations_with(rev: str, family: str) -> tuple[str, ...]:
 
 def package_of(path: str, base: str, templates: Templates) -> Package | None:
     """What holds `path`, or None for a file nobody but a repo maintainer owns. A family that isn't on the base branch
-    has no owners of its own yet, so its paths are its integration's; a catalog file no family there shares, or that
-    isn't there yet, is nobody's."""
+    has no owners of its own yet, so its paths are its integration's; a catalog file no family there shares is
+    nobody's."""
     if (found := match(path, templates.family)) and family_maintainers(base, **found) is not None:
         return Package(**found)
     if found := match(path, templates.integration):
         return Package(found["key"])
-    # A catalog file new on this PR is nobody's: it gives the other integration's family code this one imports.
-    if (found := match(path, templates.catalog)) and integrations_with(base, found["family"]) and show(base, path):
+    if (found := match(path, templates.catalog)) and integrations_with(base, found["family"]):
         return Package(None, found["family"])
     return None
 
