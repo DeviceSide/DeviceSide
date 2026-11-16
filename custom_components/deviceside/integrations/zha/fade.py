@@ -9,7 +9,6 @@ import asyncio
 import logging
 from collections.abc import Iterable
 from dataclasses import dataclass, field
-from statistics import mean
 from typing import Any, ClassVar
 
 from homeassistant.components.light import COLOR_MODES_COLOR, color_supported
@@ -34,26 +33,22 @@ from ...core.transition import (
     TransitionCache,
     color_mode,
     hs_color,
-    light_brightness,
     lit,
 )
+from ...core.zcl_fade import MIN_STEP, brightness_leg, hue_cycle, saturation_leg
 
 _LOGGER = logging.getLogger(__name__)
 
 # A refresh after a fade or a stop reads the bulb's real value, so a prediction is needed only until then.
 SETTLE_SECONDS = 2.0
-# The smallest brightness or saturation step a bulb makes (1/254), in percent.
-MIN_STEP = 100 / 254
 # EnhancedMoveHue's rate is in steps of 1/65536 of the cycle per second, 1 to 65535, so a cycle takes 1 to 65535 s.
-MIN_CYCLE_S, MAX_CYCLE_S = 1.0, 65535.0
+HUE_STEPS = 65535
 # The end refresh and the soft off's restore, after the fade has run: the bulb reads its end within it (probe 13f).
 END_REFRESH_S = 1.0
 # The fit's deadband: how late a bulb may start its ramp, plus one level step. The lab's Hue bulbs start 0.05 to
 # 0.08 s after the send, so every read lands behind schedule and fits a start a few percent off (3 Nov lab rerun);
 # a read within this much of the ramp's own speed of the prediction leaves the prediction alone.
 FIT_LAG_S = 0.15
-# A ZCL transition is a uint16 in tenths of a second; 0xFFFF means the bulb's default.
-_MAX_TENTHS = 0xFFFE
 _MOVE_UP, _MOVE_DOWN = 0x01, 0x03
 
 type Command = tuple[int, int, dict[str, Any]]  # cluster, command, params in the command's positional order
@@ -450,35 +445,21 @@ async def color_capabilities(hass: HomeAssistant, request: RampRequest, lights: 
     return {light.entity_id: bits for light, bits in zip(lights, reads, strict=True)}
 
 
-def fade_seconds(distance: float, sweep_time: float) -> float:
-    """How long a fade over `distance` percent takes at the sweep_time's speed, at most the longest ZCL transition: a
-    longer fade runs at that, faster."""
-    return min(distance / 100 * sweep_time, _MAX_TENTHS / 10)
-
-
 def transition_tenths(duration: float) -> int:
     return round(duration * 10)
 
 
 def brightness_fade(cache: TransitionCache, request: RampRequest, lights: list[Target]) -> Fade | str:
-    """The brightness fade toward the limit; off lowering with nothing lit, at_limit when there is none left to make."""
-    up, limit = request.up, request.end()
-    starts = {light.entity_id: light_brightness(cache, light) for light in lights}
-    lit_lights = lit(cache, lights)
-    if not up and not lit_lights:
-        return "off"
-    # Raising turns every light on, so the off ones fade in from the bottom; lowering passes them by.
-    movers = lights if up else lit_lights
-    current = mean(starts[light.entity_id] for light in lit_lights or lights)
-    if (limit - current if up else current - limit) < MIN_STEP:
-        return "at_limit"
-    duration = fade_seconds(abs(limit - current), request.sweep_time)
-    tenths = transition_tenths(duration)
+    """The brightness fade toward the limit, or why it has none to make (core.zcl_fade.brightness_leg)."""
+    if isinstance(leg := brightness_leg(cache, request, lights), str):
+        return leg
+    limit, movers = leg.limit, leg.movers
+    tenths = transition_tenths(leg.duration)
     presets: list[Target] = []
     restores: frozenset[str] = frozenset()
-    if up:
+    if request.up:
         command_id, level = zcl.MOVE_TO_LEVEL_WITH_ON_OFF, zcl.level(limit)
-        lit_ids = {light.entity_id for light in lit_lights}
+        lit_ids = {light.entity_id for light in leg.lit}
         presets = [light for light in lights if light.entity_id not in lit_ids and not drops_while_off(light)]
     elif limit == 0:
         command_id, level = zcl.MOVE_TO_LEVEL_WITH_ON_OFF, 0
@@ -486,14 +467,13 @@ def brightness_fade(cache: TransitionCache, request: RampRequest, lights: list[T
     else:
         command_id, level = zcl.MOVE_TO_LEVEL, zcl.level(limit)
     command = (zcl.LEVEL_CLUSTER, command_id, {"level": level, "transition_time": tenths})
-    moving_starts = {light.entity_id: starts[light.entity_id] for light in movers}
     return Fade(
         BRIGHTNESS,
-        dict.fromkeys(moving_starts, command),
+        dict.fromkeys(leg.starts, command),
         movers,
-        moving_starts,
-        dict.fromkeys(moving_starts, limit),
-        duration,
+        leg.starts,
+        dict.fromkeys(leg.starts, limit),
+        leg.duration,
         presets,
         restores,
     )
@@ -506,16 +486,10 @@ def saturation_fade(
     there is none left to make. MoveToSaturation where the light has hue and saturation and shows a color: the same
     command for every such light, which a groupcast can carry. Else an xy fade to its own hue at the limit, so none
     takes another's hue: a light in color temperature may hold a stale hue of its own, untested."""
-    if not (movers := [light for light in lit(cache, lights) if hs_color(light) is not None]):
-        return "off"
-    up, limit = request.up, request.end()
-    starts = {light.entity_id: cache.value(light.entity_id, SATURATION, hs_color(light)[1]) for light in movers}
-    current = mean(starts.values())
-    if (limit - current if up else current - limit) < MIN_STEP:
-        return "at_limit"
-    duration = fade_seconds(abs(limit - current), request.sweep_time)
-
-    tenths = transition_tenths(duration)
+    if isinstance(leg := saturation_leg(cache, request, lights), str):
+        return leg
+    limit, movers = leg.limit, leg.movers
+    tenths = transition_tenths(leg.duration)
 
     def command(light: Target) -> Command:
         if capabilities[light.entity_id] & zcl.HUE_SATURATION and color_mode(light) in COLOR_MODES_COLOR:
@@ -526,7 +500,7 @@ def saturation_fade(
         return zcl.COLOR_CLUSTER, zcl.MOVE_TO_COLOR, params | {"transition_time": tenths}
 
     commands = {light.entity_id: command(light) for light in movers}
-    return Fade(SATURATION, commands, movers, starts, dict.fromkeys(starts, limit), duration)
+    return Fade(SATURATION, commands, movers, leg.starts, dict.fromkeys(leg.starts, limit), leg.duration)
 
 
 def hue_move(request: RampRequest, movers: list[Target]) -> HueMove:
@@ -535,11 +509,10 @@ def hue_move(request: RampRequest, movers: list[Target]) -> HueMove:
     Clamped, not refused: the call's value lies outside what the bulb can do, as an out-of-range duration does. Rounding
     the rate inside the range isn't reported.
     """
-    cycle = min(max(request.sweep_time, MIN_CYCLE_S), MAX_CYCLE_S)
-    rate = min(max(round(65535 / cycle), 1), 65535)
+    rate, clamped_to = hue_cycle(request.sweep_time, HUE_STEPS, HUE_STEPS)
     mode = _MOVE_UP if request.up else _MOVE_DOWN
     command = (zcl.COLOR_CLUSTER, zcl.ENHANCED_MOVE_HUE, {"move_mode": mode, "rate": rate})
-    return HueMove(command, movers, cycle if cycle != request.sweep_time else None)
+    return HueMove(command, movers, clamped_to)
 
 
 async def sync_to_bulb(

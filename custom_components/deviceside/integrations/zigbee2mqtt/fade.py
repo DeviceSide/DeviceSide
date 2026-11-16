@@ -8,7 +8,6 @@ an xy (MoveToColor) saturation fade visibly jumps, and a MoveToSaturation one ha
 import logging
 from collections.abc import Coroutine
 from dataclasses import dataclass
-from statistics import mean
 from typing import Any, ClassVar
 
 from homeassistant.components.light import COLOR_MODES_COLOR
@@ -39,18 +38,16 @@ from ...core.transition import (
     TransitionCache,
     color_mode,
     hs_color,
-    light_brightness,
     lit,
 )
+from ...core.zcl_fade import brightness_leg, hue_cycle, saturation_leg
 
 _LOGGER = logging.getLogger(__name__)
 
 # Z2M reads a light back within 0.7 s of a stop, and once a fade has run its published end value is right.
 SETTLE_SECONDS = 2.0
-# The smallest brightness or saturation step a bulb makes (1/254), in percent.
-MIN_STEP = 100 / 254
 # A hue move's rate is in steps of 1/254 of the cycle per second, 1 to 254, so a cycle takes 1 to 254 s.
-MIN_CYCLE_S, MAX_CYCLE_S = 1.0, 254.0
+HUE_STEPS = 254
 # The end read-back, after the fade has run: a live read mid-fade may have overwritten Z2M's published end value.
 END_READ_S = 1.0
 COLOR_HS = "color_hs"  # the Z2M feature a hue or saturation move needs
@@ -297,19 +294,11 @@ async def lacks_color(hass: HomeAssistant, request: RampRequest, lights: list[Ta
 
 
 def brightness_fade(cache: TransitionCache, request: RampRequest, target: Target, lights: list[Target]) -> Fade | str:
-    """The brightness fade toward the limit; off lowering with nothing lit, at_limit when there is none left to make."""
-    up, limit = request.up, request.end()
-    starts = {light.entity_id: light_brightness(cache, light) for light in lights}
-    lit_lights = lit(cache, lights)
-    if not up and not lit_lights:
-        return "off"
-    # Raising turns every light on, so the off ones fade in from the bottom; lowering passes them by.
-    moving = [light.entity_id for light in (lights if up else lit_lights)]
-    current = mean(starts[light.entity_id] for light in lit_lights or lights)
-    if (limit - current if up else current - limit) < MIN_STEP:
-        return "at_limit"
-    duration = abs(limit - current) / 100 * request.sweep_time
-    transition_s = round(duration, 1)
+    """The brightness fade toward the limit, or why it has none to make (core.zcl_fade.brightness_leg)."""
+    if isinstance(leg := brightness_leg(cache, request, lights), str):
+        return leg
+    up, limit, lit_lights = request.up, leg.limit, leg.lit
+    transition_s = round(leg.duration, 1)
     if limit == 0:
         payload = {"state": "OFF", "transition": transition_s}
     else:
@@ -318,8 +307,7 @@ def brightness_fade(cache: TransitionCache, request: RampRequest, target: Target
     off = [light for light in lights if light not in lit_lights] if up else []
     # One publish to the group when it is all off, so its members light together; else each off member's own.
     before = tuple((light, AT_THE_BOTTOM) for light in ([target] if off == lights else off))
-    moving_starts = {light_id: starts[light_id] for light_id in moving}
-    return Fade(BRIGHTNESS, payload, moving_starts, dict.fromkeys(moving, limit), duration, before)
+    return Fade(BRIGHTNESS, payload, leg.starts, dict.fromkeys(leg.starts, limit), leg.duration, before)
 
 
 def saturation_fade(cache: TransitionCache, request: RampRequest, target: Target, lights: list[Target]) -> Fade | str:
@@ -330,19 +318,14 @@ def saturation_fade(cache: TransitionCache, request: RampRequest, target: Target
     (its stored hue may be stale, untested) makes it the current hue with the end saturation, as an xy fade. Z2M
     publishes the end, which HA takes.
     """
-    if not (movers := [light for light in lit(cache, lights) if hs_color(light) is not None]):
-        return "off"
-    up, limit = request.up, request.end()
-    starts = {light.entity_id: cache.value(light.entity_id, SATURATION, hs_color(light)[1]) for light in movers}
-    current = mean(starts.values())
-    if (limit - current if up else current - limit) < MIN_STEP:
-        return "at_limit"
-    duration = abs(limit - current) / 100 * request.sweep_time
+    if isinstance(leg := saturation_leg(cache, request, lights), str):
+        return leg
+    movers, limit = leg.movers, leg.limit
     color = {"saturation": round(limit, 1)}
     if not all(color_mode(light) in COLOR_MODES_COLOR for light in movers):
         color["hue"] = round((hs_color(target) or hs_color(movers[0]))[0], 1)
-    payload = {"color": color, "transition": round(duration, 1)}
-    return Fade(SATURATION, payload, starts, dict.fromkeys(starts, limit), duration)
+    payload = {"color": color, "transition": round(leg.duration, 1)}
+    return Fade(SATURATION, payload, leg.starts, dict.fromkeys(leg.starts, limit), leg.duration)
 
 
 def hue_rate(request: RampRequest) -> HueMove:
@@ -351,9 +334,8 @@ def hue_rate(request: RampRequest) -> HueMove:
     Clamped, not refused: the call's value lies outside what the bulb can do, as an out-of-range duration does. Rounding
     the rate inside the range isn't reported.
     """
-    cycle = min(max(request.sweep_time, MIN_CYCLE_S), MAX_CYCLE_S)
-    rate = min(max(round(254 / cycle), 1), 254)
-    return (rate if request.up else -rate), (cycle if cycle != request.sweep_time else None)
+    rate, clamped_to = hue_cycle(request.sweep_time, HUE_STEPS, HUE_STEPS)
+    return (rate if request.up else -rate), clamped_to
 
 
 def end_read(hass: HomeAssistant, target: Target, lights: list[Target], attribute: str) -> Job:
