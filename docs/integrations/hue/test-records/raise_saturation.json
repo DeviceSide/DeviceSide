@@ -3,12 +3,12 @@
   "integration": "hue",
   "action": "raise_saturation",
   "result": "pass",
-  "date": "2026-11-15",
+  "date": "2026-11-16",
   "source": {
     "kind": "rig",
-    "commit": "bc270947"
+    "commit": "823065ec"
   },
-  "package": "d34542a499d6",
+  "package": "b9fd2fd0c842",
   "home_assistant": "2026.10.4",
   "tests": [
     {
