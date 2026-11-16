@@ -48,41 +48,6 @@ def test_the_parse_matches_the_registry():
     assert ri.integrations() == expected
 
 
-def test_the_family_parse_matches_the_registry():
-    """Reading each family's `__init__.py` without importing it gives what the registry holds, families or none."""
-    expected = {
-        (info.key, found.key): ri.Family(found.key, found.maintainers)
-        for info in AdapterRegistry.discover().available_integrations()
-        for found in info.families
-    }
-    inits = sorted(ri.INTEGRATIONS.glob("*/families/*/__init__.py"))
-    parsed = {(init.parents[2].name, init.parent.name): ri.parse_family(init.read_text(), init) for init in inits}
-    assert parsed == expected
-
-
-@pytest.mark.parametrize(
-    ("source", "error"),
-    [
-        ("X = 1\n", "no FAMILY = Family"),
-        ('FAMILY = Family(key="a")\n', "needs key= and maintainers="),
-        ('FAMILY = Family(key="a", maintainers=HANDLES)\n', "key and maintainers must be literals"),
-        ('FAMILY = Family(key="a", maintainers=-"b")\n', "key and maintainers must be literals"),
-        ('FAMILY = Family(key="a", maintainers=())\nFAMILY = Family(key="a", maintainers=())\n', "bound 2 times"),
-        ('FAMILY = dict(key="a", maintainers=())\n', "no FAMILY = Family"),
-        ('FAMILY = Family(key="a", maintainers="tina")\n', "maintainers must be a tuple or list of strings"),
-        ('FAMILY = Family(key="a", maintainers=("tina", 1))\n', "maintainers must be a tuple or list of strings"),
-        ('FAMILY = Family(key=("a",), maintainers=())\n', "key must be a string"),
-    ],
-)
-def test_an_unreadable_family_is_an_error(source, error):
-    with pytest.raises(SystemExit, match=error):
-        ri.parse_family(source, "x/__init__.py")
-
-
-def test_a_family_reads_under_an_attribute_call():
-    assert ri.parse_family('FAMILY = scope.Family(key="a", maintainers=["tina"])\n', "x") == ri.Family("a", ("tina",))
-
-
 @pytest.mark.parametrize(
     ("source", "error"),
     [

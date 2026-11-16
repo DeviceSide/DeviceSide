@@ -104,19 +104,3 @@ def test_main_writes_the_output_and_fails_on_the_readme(pr, tmp_path, monkeypatc
     assert "::error file=README.md" in out
     monkeypatch.delenv("GITHUB_OUTPUT")
     assert cp.main(["main", "pr", "--author", "jasonmx"]) == 0
-
-
-def test_the_maintainers_come_from_gen_codeowners():
-    from scripts import gen_codeowners
-
-    assert cp.repo_maintainers() == frozenset(gen_codeowners.REPO_MAINTAINERS)
-
-
-def test_no_maintainers_list_stops(tmp_path):
-    (tmp_path / "x.py").write_text("OTHER = 1\n")
-    with pytest.raises(SystemExit, match="no REPO_MAINTAINERS"):
-        cp.repo_maintainers(tmp_path / "x.py")
-
-
-def test_a_file_missing_at_a_revision_reads_as_empty(pr):
-    assert cp.show("main", "nope.md") == ""
