@@ -437,8 +437,8 @@ class Evidence:
         """The adapter's evidence: with `clean`, only the record tests it accepts; with `by_hand`, only the manual
         devices whose class it accepts (a group row, only when it accepts every member's). Where the integration names
         classes (`names_classes`), a device with a null class credits nothing, flagged or not (docs/evidence.md, The
-        coverage check), so it is left out, as is a group with such a member. A manual
-        group row is one group, tested by hand."""
+        coverage check), so it is left out, as is a group with such a member. A manual group row is one group, tested
+        by hand."""
         names = names_classes(adapter)
         records = passing(adapter.integration, adapter.action)
         found = [

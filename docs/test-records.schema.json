@@ -188,7 +188,7 @@
     },
 
     "manual_device": {
-      "description": "A model id (docs/models.yaml or its bundle's devices.yaml, never a household's device name), its manufacturer string and the class it reached. The model is the device's physical model ID (a Zigbee device's Basic-cluster model) from whatever source shows it (HA's device page, the vendor's app, the label), not a driver or bridge name HA may show in its place; the manufacturer is as the integration reports it (HA's device page), even when that is a driver's vendor, or null.",
+      "description": "A model id (docs/models.yaml or its bundle's devices.yaml, never a household's device name), its manufacturer string and the class it reached; where the model and manufacturer come from: docs/evidence.md, Sign-off format.",
       "type": "object",
       "required": ["model", "manufacturer", "class"],
       "additionalProperties": false,
