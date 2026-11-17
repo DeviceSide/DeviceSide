@@ -101,7 +101,13 @@ LEGEND = (
     (("switch",), "switch", "switches", "docs/device-compatibility.md", "tested-devices"),
     (("group",), "native group", "groups", "docs/device-compatibility.md", "native-groups"),
     (("scene",), "native scene", "scenes", "README.md", "set-scene-without-turning-on"),
-    (("light-grey", "switch-grey"), "Experimental", "experimental", "docs/device-compatibility.md", "levels-of-proof"),
+    (
+        ("light-grey", "switch-grey"),
+        "Experimental",
+        "new or untested",
+        "docs/device-compatibility.md",
+        "levels-of-proof",
+    ),
     (("no",), "not possible", "not possible", INTEGRATIONS, IMPOSSIBLE),
 )
 # (feature label, integration) cells where the feature is impossible on the integration for every device we know of,

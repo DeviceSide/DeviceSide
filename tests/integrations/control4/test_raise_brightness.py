@@ -296,4 +296,5 @@ def test_scope():
     assert scope.all_experimental
     assert scope.domains == {"light": Level.EXPERIMENTAL}
     assert scope.fields == {"brightness": Level.EXPERIMENTAL}
-    assert scope.capabilities is None
+    assert scope.capabilities == {"other": Level.EXPERIMENTAL}
+    assert scope.no_known_method.keys() == {"no_stop"}

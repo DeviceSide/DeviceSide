@@ -5,9 +5,28 @@ to every integration is in [integrations.md](../../integrations.md); which devic
 on the [device compatibility page](../../device-compatibility.md); how the calls work, and what was measured, is
 in [internals.md](internals.md).
 
-Lights on the core `control4` integration: dimmers and Control4 light groups alike. DeviceSide uses that
+Lights on the core `control4` integration: dimmers and light groups alike. A group made with the open-source
+[Light Group driver](https://github.com/skialpine/control4-group-lighting) is a native group: it gets one command for
+all its lights. A change to its lights in Composer shows once the Control4 integration reloads. DeviceSide uses that
 integration's own connection to the controller, so it needs no sign-in of its own. A light it can't tie to a Control4
 item is refused (`not_addressable`). Every action here is Experimental ([try it](#try-it-experimental-features)).
+
+## Device classes
+
+DeviceSide sends every Control4 light the same commands, and the light's driver decides what they do, so it tells
+lights apart by their driver. Every feature says how well it is proven for each
+([levels of proof](../../device-compatibility.md#levels-of-proof)).
+
+- **[Control4 lights](#control4-lights):** every driver but those below, the tested "Zigbee 3 Light" bulb and Light
+  Group driver among them.
+- A **light group** is proven as far as its lights.
+
+### Lights whose driver can't stop a ramp
+
+A light whose Control4 driver says it can't stop a ramp ignores a stop, so a raise or lower couldn't be halted when
+you let go. Raise, lower and `stop` are refused (`no_known_method`); reading and setting color temperature still
+work. Two drivers were seen to say so ([measurements](internals.md#tested-behavior)): Chowmain's "Link Client - Light",
+which also jumps straight to the new level, and Control4's own Philips Hue driver.
 
 ## Smooth dimming
 
@@ -16,6 +35,7 @@ The light runs the ramp itself, and `stop` reads back where it halted.
 - A ramp takes at most about 65 s, so a longer `sweep_time` is clamped.
 - Changing direction, or the limit, mid-ramp with no `stop` between costs that move up to a quarter of a second: the
   light is halted first, then moved from where it stopped.
+- Some drivers can't ramp or stop: see [device classes](#device-classes).
 - Calling the same raise or lower again while its ramp runs, as a remote that repeats while held does, sends nothing
   (`already_fading`). The ramp keeps its speed.
 

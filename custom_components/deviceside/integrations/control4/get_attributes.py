@@ -6,6 +6,7 @@ from homeassistant.components.light import ATTR_COLOR_TEMP_KELVIN
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
+from .classes import LEVELS
 from .director import (
     BRIGHTNESS_PERCENT,
     COLOR_MODE,
@@ -50,7 +51,9 @@ class Control4GetAttributes(Adapter[Request]):
 
     action: ClassVar[str] = "get_attributes"
     integration: ClassVar[str] = "control4"
-    scope: ClassVar[AdapterScope] = AdapterScope(domains=experimental(Platform.LIGHT), confirmable=True)
+    scope: ClassVar[AdapterScope] = AdapterScope(
+        domains=experimental(Platform.LIGHT), capabilities=LEVELS, confirmable=True, native_groups=True
+    )
 
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:
         return super().supports(hass, request, target) or unsupported_reason(target)

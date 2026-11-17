@@ -8,6 +8,7 @@ from typing import ClassVar
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
+from .classes import MOVE_LEVELS, MOVE_NO_KNOWN_METHOD
 from .director import (
     RAMP_LIMITS,
     LightLevel,
@@ -29,7 +30,13 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def fade_scope() -> AdapterScope:
-    return AdapterScope(domains=experimental(Platform.LIGHT), fields=experimental(BRIGHTNESS_FIELD))
+    return AdapterScope(
+        domains=experimental(Platform.LIGHT),
+        fields=experimental(BRIGHTNESS_FIELD),
+        capabilities=MOVE_LEVELS,
+        no_known_method=MOVE_NO_KNOWN_METHOD,
+        native_groups=True,
+    )
 
 
 class Control4Fade(LevelFade):
