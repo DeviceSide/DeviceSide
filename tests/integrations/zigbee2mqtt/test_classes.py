@@ -170,8 +170,8 @@ SWITCH_ONLY = {"tuya_ts011f", "tuya_countdown", *tuya.VERIFIED_COUNTDOWNS, "tuya
 
 
 def test_actions_for_lights_alone_never_hold_a_switch_only_class():
-    """Decision 3: a TS011F is a plug, a switch, so an action for lights alone holds it in no axis, and refuses it as
-    not built yet; the card leaves it off (scripts/gen_compat.py)."""
+    """A TS011F is a plug, a switch, so an action for lights alone holds it in no axis, and refuses it as not built yet;
+    the card leaves it off (scripts/gen_compat.py)."""
     assert {name for name, domains in INTEGRATION.classes.items() if domains == {"switch"}} == SWITCH_ONLY
     lights_alone = {action: scope for action, scope in _scopes().items() if scope.domains.keys() == {"light"}}
     assert lights_alone.keys() == {
@@ -297,10 +297,10 @@ async def test_a_group_with_a_member_harmed_by_the_call_falls_back_with_experime
 async def test_a_light_group_with_a_ts011f_plug_falls_back_on_a_light_action_with_experimental_on(
     hass, setup_production, broker, caplog, service, data, sent
 ):
-    """Per docs/evidence.md's "A class names its domains": no action for lights alone holds a TS011F, a switch (Decision
-    3), so its class refuses the group, which falls back to its members even with Experimental features on: each bulb
-    gets its own call, where the group once took one groupcast that reached the plug, and the plug's stand-in is skipped
-    as not built yet."""
+    """Per docs/evidence.md's "A class names its domains": no action for lights alone holds a TS011F, a switch, so its
+    class refuses the group, which falls back to its members even with Experimental features on: each bulb gets its own
+    call, where the group once took one groupcast that reached the plug, and the plug's stand-in is skipped as not built
+    yet."""
     entity_id = plug_in_group(hass, broker)
     allow_experimental(hass)
 

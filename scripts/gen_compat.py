@@ -1078,7 +1078,7 @@ def place(lines: list[Line], tested: Reached, classed: bool) -> list[Line]:
 
 def brands(info) -> Brand:
     """The class's family (IntegrationInfo.families), else other brands; an integration with no families is one brand,
-    its devices.yaml "Other brands" section the other brands (Decisions 19, 20)."""
+    its devices.yaml "Other brands" section the other brands."""
     families = getattr(info, "families", ())
     by_class = {cls: family.key.lower() for family in families for cls in family.classes}
 
@@ -1091,10 +1091,10 @@ def brands(info) -> Brand:
 
 
 def ordered(lines: list[Line], brand: Brand, rig: set[str]) -> list[Line]:
-    """Native groups first (Decision 22), then lines by brand (Decision 18, `brands`), alphabetically, then other
+    """Native groups first, then lines by brand (`brands`), alphabetically, then other
     brands, then models no class line takes. Within a brand, lines with a rig-tested model first, those named
     "other …" last, the rest alphabetically; a line's sections and their phrases, and a parent's children, sort the
-    same way, except that plain words come before maker strings ("_TZ3000_…", Decision 23)."""
+    same way, except that plain words come before maker strings ("_TZ3000_…")."""
 
     def name_key(name: str) -> tuple:
         return (name.lower().startswith("other"), name.startswith("_"), name.lower())

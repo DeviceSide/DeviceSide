@@ -420,7 +420,7 @@ def test_a_card_lists_tested_models_once_each_by_their_name_then_native_groups(r
         f"[native groups]({URL}#native-groups) ✔",
     ]
     # A format 1 record names no device's domain or class, so its models take a line of their own per feature set,
-    # after the lines that work, with the features they were tested on; native groups first (Decision 22).
+    # after the lines that work, with the features they were tested on; native groups first.
     assert card.render().splitlines() == [
         "**ZHA** (Zigbee 3.0)",
         "",
@@ -527,7 +527,7 @@ def test_a_class_line_runs_at_the_weaker_of_its_domain_and_class(root):
 
 
 def test_a_class_whose_domains_show_different_features_splits_per_domain_on_the_card(root):
-    """Decision 4: a relay, a switch or a light, takes the timer as either, and dimming only as a light. One entry
+    """A relay, a switch or a light, takes the timer as either, and dimming only as a light. One entry
     would list dimming for every relay, so each of its domains gets its own, grouped with the entries of its feature
     set: as a light with the dimmers, as a switch alone."""
     dimming = AdapterScope(capabilities=verified("RGBCCT") | experimental("Switch", "Light"))
@@ -558,7 +558,7 @@ def test_a_class_whose_domains_show_different_features_splits_per_domain_on_the_
 
 
 def test_a_classs_scene_domain_joins_its_light_line(root):
-    """Decision 29: a scene is classed by its lights, so a class that is a light and a scene shows one line, named by
+    """A scene is classed by its lights, so a class that is a light and a scene shows one line, named by
     its phrase, with set scene among its features; a class that is only scenes keeps its own line."""
     phrase = {"phrase": "lights", "section": "Lights"}
     data = gc.Data(
@@ -1167,7 +1167,7 @@ def test_a_declared_class_no_scope_holds_has_no_line(root):
 
 
 def test_a_tested_model_follows_the_line_of_the_class_and_domain_a_test_reached_it_on(root):
-    """Decision 8: no line of models apart. A model goes on its class's line in the test's domain, else on its class's
+    """No line of models apart. A model goes on its class's line in the test's domain, else on its class's
     line (a Shelly relay shown as a light), and rig-tested ones end ✔; native groups get a line of their own."""
     record2(
         root,
@@ -1180,7 +1180,7 @@ def test_a_tested_model_follows_the_line_of_the_class_and_domain_a_test_reached_
     scope = AdapterScope(domains=verified("light", "switch"), capabilities=verified("Switch", "Light"))
     dimming = AdapterScope(capabilities=verified("Light") | experimental("Switch"))
     card = classed_card(adapter("zha", "turn_on_for", scope), adapter("zha", "raise_brightness", dimming))
-    # Native groups first (Decision 22), then tested lines, then alphabetically.
+    # Native groups first, then tested lines, then alphabetically.
     assert card.lines == [
         f"[native groups]({URL}#native-groups) ✔: 🟢 turn on with timer",
         f"[dimmers]({URL}#dimmers) ([Hue lamp]({URL}#hue-lamp) ✔): 🟢 turn on with timer, smooth dimming",
@@ -1197,7 +1197,7 @@ def test_a_tested_model_follows_the_line_of_the_class_and_domain_a_test_reached_
 
 
 def test_a_feature_whose_actions_differ_in_status_names_its_parts():
-    """Decision 12: never one feature under two statuses."""
+    """Never one feature under two statuses."""
     dimming = {"should": {"lower_brightness", "stop"}, "experimental": {"raise_brightness", "turn_on_for"}}
     assert gc.shape(dimming) == (
         ("should", ("smooth dimming down",)),
@@ -1219,7 +1219,7 @@ def test_no_card_line_names_a_feature_twice():
 
 
 def test_a_line_holding_every_class_of_its_section_names_the_section(root):
-    """Decision 13: by its devices.yaml `sections` phrase, per domain where it gives one."""
+    """By its devices.yaml `sections` phrase, per domain where it gives one."""
     timer = AdapterScope(capabilities=verified("Light", "CCT"))
     sections = {"zha": {"Dimmers": {"phrase": "dimmable lights", "domains": {"switch": "dimmer switches"}}}}
     card = classed_card(adapter("zha", "turn_on_for", timer), sections=sections)
@@ -1239,7 +1239,7 @@ def test_a_line_holding_every_class_of_its_section_names_the_section(root):
 
 
 def test_a_class_refused_on_every_action_has_no_line(root):
-    """Decision 14: a class whose only entries are not built yet stays off the card."""
+    """A class whose only entries are not built yet stays off the card."""
     unbuilt = {"CCT": NotBuilt("No timer yet", "https://x.y/z")}
     adapters = (
         adapter("zha", "turn_on_for", AdapterScope(capabilities=verified("Light"), not_built=unbuilt)),
@@ -1263,7 +1263,7 @@ def brand_registry(*adapters) -> FakeRegistry:
 
 
 def test_lines_sort_by_brand_then_tested_then_other_last(root):
-    """Decision 18: brands (families) alphabetically, case-insensitive, then other brands (no family), then native
+    """Brands (families) alphabetically, case-insensitive, then other brands (no family), then native
     groups; within a brand, tested lines first, "other …" last, the rest alphabetically, and so do a line's names."""
     record2(
         root,
@@ -1285,7 +1285,7 @@ def test_lines_sort_by_brand_then_tested_then_other_last(root):
     card = gc.card("zha", registry, list(adapters), data(registry, capabilities=capabilities))
     # acme before Beta: brands sort case-insensitively.
     assert card.lines == [
-        f"[native groups]({URL}#native-groups) ✔: 🟢 turn on with timer",  # native groups first (Decision 22)
+        f"[native groups]({URL}#native-groups) ✔: 🟢 turn on with timer",  # native groups first
         f"[relays]({URL}#relays) ([Plug]({URL}#plug) ✔): 🟢 turn on with timer",  # acme's tested line first
         f"[RGB controllers]({URL}#dimmers): 🌱 turn on with timer",
         f"[other Acme lights]({URL}#dimmers): 🌱 turn on with timer, smooth dimming",
@@ -1296,7 +1296,7 @@ def test_lines_sort_by_brand_then_tested_then_other_last(root):
 
 
 def test_a_models_variants_are_children_of_one_parent_line(root):
-    """Decision 17: a section with `variants` is a parent line naming the model and what to check; each child names
+    """A section with `variants` is a parent line naming the model and what to check; each child names
     its variants (", or " between two) with ✔ for a rig-tested model, never its name, and merges only with its own
     section's classes."""
     record2(root, "zha", "turn_on_for", ran("switch", device("P1", "1", "Switch"), role="switch_plug"))
@@ -1335,14 +1335,14 @@ def brand_lines(families=(), **capabilities) -> list[str]:
 
 
 def test_classes_of_two_brands_never_share_a_line():
-    """Decision 19: the same features, but one class is acme's and one no family's."""
+    """The same features, but one class is acme's and one no family's."""
     acme = (SimpleNamespace(key="acme", classes={"a": LIGHT, "b": LIGHT}),)
     shown = brand_lines(acme, a=("bulbs", "A", "works"), b=("plugs", "A", "works"), c=("lamps", "C", "works"))
     assert shown == ["bulbs, plugs", "lamps"]
 
 
 def test_without_families_the_other_brands_section_sorts_last():
-    """Decision 20: Hue's "scenes with other brands' lights" after its own lines, and on a line of its own."""
+    """Hue's "scenes with other brands' lights" after its own lines, and on a line of its own."""
     shown = brand_lines(
         a=("zebra lights", "Device classes", "works"), b=("scenes with other brands' lights", "Other brands", "works")
     )
@@ -1352,7 +1352,7 @@ def test_without_families_the_other_brands_section_sorts_last():
 def test_a_lines_phrases_sort_like_lines_and_variants_join_with_or():
     line = gc.Line((), {"S": ["other makers", "Beta", "_TZ3000_b", "alpha"]})
     (line,) = gc.ordered([line], lambda cls, section: (0, ""), set())
-    # Plain words before maker strings, which keep their "_" (Decision 23); "other …" last.
+    # Plain words before maker strings, which keep their "_"; "other …" last.
     assert line.sections == {"S": ["alpha", "Beta", "_TZ3000_b", "other makers"]}
     line.variant = True
     data = gc.Data(requires={}, models={}, capabilities={}, no_known_method=[])

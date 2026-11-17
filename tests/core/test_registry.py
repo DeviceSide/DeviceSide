@@ -134,7 +134,7 @@ def test_a_scope_holds_only_classes_its_integration_declares(entries):
         _registry([Typo], CLASSED)
 
 
-# `tuya` a plug alone (a switch), as Decision 3's TS011F.
+# `tuya` a plug alone (a switch), as a TS011F is (docs/evidence.md, "A class names its domains").
 PLUG_ONLY = replace(CLASSED, classes={**CLASSED.classes, "tuya": frozenset({Platform.SWITCH})})
 
 
@@ -148,7 +148,7 @@ PLUG_ONLY = replace(CLASSED, classes={**CLASSED.classes, "tuya": frozenset({Plat
     ids=["capabilities", "no_known_method", "not_built"],
 )
 def test_a_scope_for_lights_alone_never_holds_a_switch_only_class(entries):
-    """Decision 3: an action for lights alone holds a plug in no axis, so dispatch refuses it as not built yet and the
+    """An action for lights alone holds a plug in no axis, so dispatch refuses it as not built yet and the
     card leaves it off; one that serves switches too may hold it."""
 
     class Dimming(FakeTurnOnFor):
