@@ -82,23 +82,16 @@ item ships only behind `experimental`.
 
 - **Verified:** a maintainer has verified the call on a real device, by rig record or by manual test. How it was
   tested is the maintainer's choice; the rig is a tool, not a requirement.
-- **Documented:** a call to another class that differs from a Verified class's call only in addressing, where no
-  known class of devices departs. Unit tests pin the payload. A field is never Documented, because it changes the
-  call. The PR that claims Documented argues the sibling case, and review checks it. A bug on the Verified sibling
-  reopens its Documented siblings in the same fix.
-  A read is also Documented on a class when a certification tests that read on every certified device DeviceSide
-  sends it to, the class's rule keys on a marker every such device carries and the known uncertified sources don't,
-  and no known member departs: a read carries no field values, so the read certification sends is the one DeviceSide
-  sends. A write or command isn't covered this way, as the test's field values are its own: Matter's TC-OO-2.3 sends
-  the timer command with OffWaitTime 300, DeviceSide with 1, so the timer call stays untested on certified devices
-  (plan Decision 75). Where the test runs on one part of a device (Matter: one configured endpoint), the class holds
-  only devices with that one part. The PR names the marker and what slips past it (Matter: certified devices with
-  one On/Off endpoint and the Lighting feature, which `no_lt_feature` checks, by a non-test VendorID; TC-OO-2.3 reads
-  OnTime and OnOff, [internals](integrations/matter/internals.md#what-decides-the-call)).
+- **Documented:** no known class departs, and the class takes either
+  - **a sibling's call:** it differs from a Verified class's call only in addressing. The PR argues the sibling
+    case, and a bug on the sibling reopens its Documented siblings in the same fix. A field is never Documented, as
+    it changes the call.
+  - **a certified read:** certification sends the same read to every device the class holds, as the class keys on
+    a marker certified devices carry and known uncertified ones don't, and on the one part the test runs on. A write
+    never qualifies, as the test's field values are its own. The PR names the marker and what slips past it
+    ([Matter](integrations/matter/internals.md#what-decides-the-call)).
 
-Nothing ships unflagged unless it is Verified or Documented. Built and unit-tested code that the maintainer can't
-exercise, and that isn't Documented, ships behind `experimental` as untested. A sign-off
-covers only what was exercised; it never signs off untested code.
+A sign-off covers only what was exercised; it never signs off untested code.
 
 **Contrary evidence.** A report changes a level only through a maintainer (tenet 7):
 
