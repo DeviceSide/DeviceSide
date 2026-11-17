@@ -1,14 +1,14 @@
 {
-  "format": 2,
+  "format": 3,
   "integration": "zha",
   "action": "raise_saturation",
   "result": "pass",
-  "date": "2026-11-16",
+  "date": "2026-11-17",
   "source": {
     "kind": "rig",
-    "commit": "687d369d"
+    "commit": "2a500c44"
   },
-  "package": "58496e69e867",
+  "calls": "f2fb23fbcd082f3572ff8eb98a49214c19484e78",
   "home_assistant": "2026.10.4",
   "tests": [
     {
