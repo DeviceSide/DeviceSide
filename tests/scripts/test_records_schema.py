@@ -9,7 +9,7 @@ from jsonschema import Draft202012Validator
 
 from scripts import check_release as cr
 
-from .record_files import device, manual, ran, record_v1, record_v2, signoff, skipped, write
+from .record_files import bound, device, manual, ran, record_v1, record_v2, record_v3, signoff, skipped, write
 
 STEPS = cr.REPO / "tests"
 
@@ -46,7 +46,7 @@ def test_every_record_is_its_step_files_action_and_options():
 # Shapes the schema takes, and ones it rejects.
 
 HUE = device("LWA012", "1.163.1", "hue")
-RECORD = record_v2(
+RECORD = record_v3(
     "zigbee2mqtt",
     "turn_on_for",
     [
@@ -56,6 +56,7 @@ RECORD = record_v2(
         {"id": "t[light_ct] observed", "role": "light_ct", "result": "skipped", "fact": True},
     ],
 )
+PACKAGED = record_v2("zigbee2mqtt", "turn_on_for", RECORD["tests"])  # format 2: bound to the package tree
 MEMBER = {"model": "LWA012", "firmware": "1.163.1", "class": "hue"}  # a group member without its manufacturer
 OLD = record_v1("zha", "stop", tests=[{"id": "t[r]", "role": "r", "domain": "light", "result": "pass", "classes": []}])
 FACTS = {
@@ -73,14 +74,19 @@ FACTS = {
     ],
 }
 MIXED = (("S3SW-001X8EU", "Switch"), ("S3BL-C010007AEU", "RGBCCT"))  # a relay and a bulb, each on its class
-MANUAL = manual("shelly", signoff(devices=MIXED), signoff(passed=None))
+MANUAL = manual("shelly", signoff(devices=MIXED), signoff(calls=bound("set_auto_off")))
+MANUAL_V2 = manual("shelly", signoff(devices=MIXED, passed=["turn_on_for"]))  # format 2: the actions, not their calls
 
 
 def errors(data):
     return [error.message for error in cr.validator().iter_errors(data)]
 
 
-@pytest.mark.parametrize("data", [RECORD, OLD, FACTS, MANUAL], ids=["format 2", "format 1", "facts", "manual"])
+@pytest.mark.parametrize(
+    "data",
+    [RECORD, PACKAGED, OLD, FACTS, MANUAL, MANUAL_V2],
+    ids=["format 3", "format 2", "format 1", "facts", "manual", "manual format 2"],
+)
 def test_the_schema_takes_each_kind_of_file(data):
     assert errors(data) == []
 
@@ -152,7 +158,11 @@ def test_a_manufacturer_is_a_string_or_null():
     ("data", "error"),
     [
         (changed(RECORD, lambda d: d.update(devices=[])), "should not be valid"),  # record-level devices are format 1's
-        (changed(RECORD, lambda d: d.pop("package")), "'package' is a required property"),
+        (changed(RECORD, lambda d: d.pop("calls")), "'calls' is a required property"),
+        (changed(RECORD, lambda d: d.update(package="0123456789ab")), "should not be valid"),  # format 2's binding
+        (changed(RECORD, lambda d: d.update(calls="abc1234")), "does not match"),  # a full blob id, never abbreviated
+        (changed(PACKAGED, lambda d: d.pop("package")), "'package' is a required property"),
+        (changed(PACKAGED, lambda d: d.update(calls=RECORD["calls"])), "should not be valid"),
         (changed(RECORD, lambda d: d["tests"][0].pop("devices")), "'devices' is a required property"),
         (changed(RECORD, lambda d: d["tests"][0].pop("domain")), "'domain' is a required property"),
         (changed(RECORD, lambda d: d["tests"][0]["devices"][0].pop("class")), "'class' is a required property"),
@@ -164,14 +174,21 @@ def test_a_manufacturer_is_a_string_or_null():
         (changed(RECORD, lambda d: d["tests"][2].update(devices=[HUE])), "should not be valid"),
         (changed(RECORD, lambda d: d["tests"][3].update(result="pass")), "'skipped' was expected"),
         (changed(RECORD, lambda d: d["tests"][0].update(result="passed")), "is not one of"),
-        (changed(RECORD, lambda d: d.update(format=3)), "is not one of"),
+        (changed(RECORD, lambda d: d.update(format=4)), "is not one of"),
         (changed(RECORD, lambda d: d.update(ran="1 passed")), "'ran' was unexpected"),  # counts are derived
         (changed(RECORD, lambda d: d["source"].update(commit="main")), "does not match"),
         (changed(OLD, lambda d: d.pop("devices")), "'devices' is a required property"),
         (changed(OLD, lambda d: d["tests"][0].update(devices=[HUE])), "'devices' was unexpected"),
         (changed(OLD, lambda d: d["devices"].append({"firmware": "1"})), "'model' is a required property"),
-        (changed(MANUAL, lambda d: d["signoffs"][1].update(passed=["stop"])), "should not be valid"),
-        (changed(MANUAL, lambda d: d["signoffs"][0].pop("passed")), "'passed' is a required property"),
+        (changed(MANUAL, lambda d: d["signoffs"][1].update(passed=["stop"])), "should not be valid"),  # format 2's
+        (changed(MANUAL, lambda d: d["signoffs"][0].pop("calls")), "'calls' is a required property"),
+        (changed(MANUAL, lambda d: d["signoffs"][0].update(calls={})), "should be non-empty"),
+        (changed(MANUAL, lambda d: d["signoffs"][0].update(calls={"turn_on_for": "abc"})), "does not match"),
+        (changed(MANUAL, lambda d: d["signoffs"][0].update(calls={"Stop": RECORD["calls"]})), "does not match"),
+        (changed(MANUAL, lambda d: d["signoffs"][0].update(no_call_changed=True)), "was unexpected"),
+        (changed(MANUAL, lambda d: d["signoffs"][0].pop("devices")), "'devices' is a required property"),
+        (changed(MANUAL_V2, lambda d: d["signoffs"][0].pop("passed")), "'passed' is a required property"),
+        (changed(MANUAL_V2, lambda d: d["signoffs"][0].update(calls=bound("stop"))), "should not be valid"),
         (changed(MANUAL, lambda d: d["signoffs"][0]["devices"][0].update(firmware="1")), "'firmware' was unexpected"),
         (changed(MANUAL, lambda d: d["signoffs"][0]["devices"][0].pop("manufacturer")), "'manufacturer' is a required"),
         (changed(FACTS, lambda d: d["facts"][0].update(kind="watched")), "is not one of"),
@@ -202,4 +219,5 @@ def test_manual_and_facts_files_parse_by_their_names(tmp_path, monkeypatch):
 
 def test_a_manual_row_may_be_a_group_only_alongside_devices():
     assert errors(manual("shelly", signoff(devices=MIXED, group=True))) == []
-    assert errors(manual("shelly", signoff(passed=None) | {"group": True})) != []
+    bare = {key: value for key, value in signoff(group=True).items() if key != "devices"}
+    assert errors(manual("shelly", bare)) != []

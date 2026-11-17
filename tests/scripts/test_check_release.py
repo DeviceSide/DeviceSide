@@ -1,10 +1,8 @@
-"""scripts/check_release.py: the coverage bar, a sign-off for each changed integration, the classes' coverage check,
-and the call for testers."""
+"""scripts/check_release.py: the coverage bar, a sign-off for each action whose calls changed, the classes' coverage
+check, and the call for testers."""
 
-import ast
 import json
-import sys
-import types
+import subprocess
 from dataclasses import replace
 from pathlib import Path
 
@@ -24,12 +22,15 @@ from custom_components.deviceside.core.scope import (
 from scripts import check_release as cr
 
 from .record_files import (
+    BLOB,
+    bound,
     device,
     manual,
     old_test,
     ran,
     record_v1,
     record_v2,
+    record_v3,
     signoff,
     skipped,
     text,
@@ -43,23 +44,15 @@ ISSUE = "https://github.com/DeviceSide/DeviceSide/issues/9"
 
 
 class FakeAdapter:
-    def __init__(self, scope: AdapterScope):
-        self.scope = scope
+    def __init__(self, action: str, integration: str, scope: AdapterScope):
+        self.action, self.integration, self.scope = action, integration, scope
 
 
 class FakeRegistry:
-    """Adapters by (action, integration), each of a class whose module is `<package>/<action>.py` under the root, and
-    the integrations' infos, each maintained by @a."""
+    """Adapters by (action, integration), and the integrations' infos, each maintained by @a."""
 
-    def __init__(self, root: Path, monkeypatch, adapters: dict[tuple[str, str], AdapterScope]):
-        self.adapters = {}
-        for (action, integration), scope in adapters.items():
-            module = types.ModuleType(f"fake_{integration}_{action}")
-            module.__file__ = str(root / cr.package(integration) / f"{action}.py")
-            monkeypatch.setitem(sys.modules, module.__name__, module)
-            cls = type(f"Fake{action}", (FakeAdapter,), {"__module__": module.__name__})
-            self.adapters[(action, integration)] = adapter = cls(scope)
-            adapter.action, adapter.integration = action, integration
+    def __init__(self, adapters: dict[tuple[str, str], AdapterScope]):
+        self.adapters = {key: FakeAdapter(*key, scope) for key, scope in adapters.items()}
         keys = sorted({integration for _, integration in adapters})
         self.integrations = {
             key: IntegrationInfo(key=key, title=key.title(), ha_domain=key, maintainers=("a",)) for key in keys
@@ -98,6 +91,22 @@ def test_main_reads_the_real_registry(capsys):
 def test_json_needs_signoffs():
     with pytest.raises(SystemExit):
         cr.main(["--json"])
+
+
+def test_json_and_reruns_exclude_each_other():
+    with pytest.raises(SystemExit):
+        cr.main(["--signoffs", "--json", "--reruns"])
+
+
+def test_every_adapter_in_the_repo_has_a_transcript():
+    """An action with none pins no call, so nothing could sign it off: its unit tests must run it."""
+    registry = AdapterRegistry.discover()
+    missing = [
+        name
+        for name, adapter in cr.adapters(registry)
+        if not (cr.REPO / cr.transcript_path(adapter.integration, adapter.action)).is_file()
+    ]
+    assert missing == []
 
 
 # Coverage.
@@ -143,68 +152,195 @@ def test_a_module_with_no_statements_is_covered(fake_repo):
     assert cr.coverage_errors(empty) == []
 
 
-def test_main_fails_under_the_bar(fake_repo, monkeypatch, tmp_path, capsys):
+def test_main_fails_under_the_bar(fake_repo, tmp_path, capsys):
     touch(fake_repo, f"{HUE}/transport.py")
-    registry = FakeRegistry(fake_repo.path, monkeypatch, {})
+    registry = FakeRegistry({})
     assert cr.main(["--coverage", str(coverage(tmp_path / "c.json", {f"{HUE}/transport.py": 100}))], registry) == 0
     assert cr.main(["--coverage", str(coverage(tmp_path / "c.json", {f"{HUE}/transport.py": 50}))], registry) == 1
     assert "under 95%" in capsys.readouterr().err
 
 
+# Transcripts.
+
+FAKE = "custom_components/deviceside/integrations/fake"
+
+
+def segment(action: str = "stop", call: str = "a", integration: str = "fake", reply=None) -> dict:
+    """A transcript segment: one run of the action, its one wire call `call`."""
+    targets = [["light.x", "light.x", False]]
+    request = {"dropped": [], "own": None, "request": {}, "targets": targets}
+    return {"action": action, "integration": integration, "request": request, "result": [], "wire": [[call, reply]]}
+
+
+def pin(repo, action: str, *calls: str, integration: str = "fake", also: str | None = None) -> str:
+    """Commit the action's transcript, a segment per call (with none, remove it), with a change to `also` (a source
+    file) in the same commit; return the commit."""
+    path = repo.path / cr.transcript_path(integration, action)
+    if calls:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        segments = sorted((segment(action, call, integration) for call in calls), key=json.dumps)
+        path.write_text(json.dumps(segments, indent=1, sort_keys=True) + "\n")
+    else:
+        path.unlink()
+    if also:
+        touch(repo, also)
+        (repo.path / also).write_text(f"{repo.git('rev-parse', 'HEAD')}\n")
+    repo.git("add", "-A")
+    repo.git("commit", "-qm", f"pin {integration} {action}")
+    return repo.git("rev-parse", "HEAD")
+
+
+def blob(repo, action: str, integration: str = "fake", rev: str = "HEAD") -> str:
+    """The blob of the action's transcript at the revision, as evidence cites it."""
+    return repo.git("rev-parse", f"{rev}:{cr.transcript_path(integration, action)}")
+
+
+def test_segments_hold_when_every_old_segment_is_in_the_new_unchanged():
+    old = [segment(call="a"), segment(call="b")]
+    assert cr.segments_hold(old, [segment(call="b"), segment(call="c"), segment(call="a")])  # added, reordered
+    assert cr.segments_hold(old, [dict(reversed(seg.items())) for seg in old])  # key order is no change
+    assert not cr.segments_hold(old, [segment(call="a")])  # removed
+    assert not cr.segments_hold(old, [segment(call="a"), segment(call="b", reply="ok")])  # a reply changed
+    assert cr.segments_hold([], [segment()])
+
+
+def test_a_transcript_is_a_blob_holding_a_list_of_segments(fake_repo):
+    pin(fake_repo, "stop", "a")
+    assert cr.transcript(blob(fake_repo, "stop")) == [segment()]
+    for other in ("[]\n", "{}\n", "not json\n", "[1]\n"):
+        fake_repo.commit("other.json", other)
+        assert cr.transcript(fake_repo.git("rev-parse", "HEAD:other.json")) is None, other
+    assert cr.transcript("0" * 40) is None  # git doesn't have it
+    assert cr.transcript(fake_repo.git("rev-parse", "HEAD")) is None  # a commit, no blob
+
+
 # Records.
 
 RECORDS = "docs/integrations/fake/test-records"
-
-
-def tree_of(repo, commit: str, integration: str = "fake") -> str:
-    """The integration's package tree at the commit, as the rig cites it."""
-    return repo.git("rev-parse", "--short=12", f"{commit}:custom_components/deviceside/integrations/{integration}")
+MANUAL = f"{RECORDS}/_manual.json"
 
 
 def write_record(
-    repo, name: str, commit: str, result: str = "pass", integration: str = "fake", tree: str | None = "package"
+    repo, name: str, result: str = "pass", integration: str = "fake", calls: str | None = None, format_: int = 3
 ) -> str:
-    """Commit a format 2 record citing the commit, and return the new head. It cites the package tree at the commit, or
-    `tree` when given one; with `tree` None it is format 1, converted from markdown."""
-    if tree == "package":
-        tree = tree_of(repo, commit, integration)
+    """Commit a record of the suite, citing the commit before it (provenance), bound to HEAD's transcript of its
+    action or to `calls` (format 3), to a package tree (2) or converted from markdown (1); return the new head."""
     action, *options = Path(name).stem.lstrip("_").split("-")
     if action == "config_entry":  # the rig names a suite that is no action's for the action it ran in it
         action, options = "stop", []
-    if tree is None:
+    commit = repo.git("rev-parse", "HEAD")
+    if format_ == 1:
         data = record_v1(integration, action, result=result, commit=commit, options=options)
+    elif format_ == 2:
+        data = record_v2(integration, action, [ran("light")], result=result, commit=commit, options=options)
     else:
-        data = record_v2(
-            integration, action, [ran("light")], result=result, commit=commit, package=tree, options=options
+        calls = calls or blob(repo, action, integration)
+        data = record_v3(
+            integration, action, [ran("light")], result=result, commit=commit, calls=calls, options=options
         )
     return repo.commit(f"docs/integrations/{integration}/test-records/{name}", text(data))
-
-
-@pytest.mark.parametrize("name", ["_facts.json", "_manual.json"])
-def test_a_file_named_with_a_leading_underscore_is_never_a_record(fake_repo, name):
-    """The rig's fact results (`_facts.json`) and the manual sign-offs sit beside the records; neither is one."""
-    write_record(fake_repo, name, fake_repo.commit(), tree="0123456789ab")
-    assert cr.record_signoff("fake") == (None, None, ())
-
-
-# Manual sign-offs.
-
-MANUAL = f"{RECORDS}/_manual.json"
 
 
 def manual_file(*rows: dict) -> str:
     return text(manual("fake", *rows))
 
 
-def test_a_manual_row_by_a_maintainer_or_repo_maintainer_is_a_signoff(fake_repo):
+@pytest.mark.parametrize("name", ["_facts.json", "_manual.json"])
+def test_a_file_named_with_a_leading_underscore_is_never_a_record(fake_repo, name):
+    """The rig's fact results (`_facts.json`) and the manual sign-offs sit beside the records; neither is one."""
+    fake_repo.commit()
+    write_record(fake_repo, name, calls=BLOB)
+    assert cr.records("fake") == []
+
+
+@pytest.mark.parametrize(
+    ("name", "error"),
+    [
+        ("_manual.json", "not the kind of file its name says"),  # a record under the manual sign-offs' name
+        ("../../other/test-records/stop.json", "integration 'fake', in other's bundle"),
+    ],
+)
+def test_a_file_of_the_wrong_kind_or_integration_stops_the_check(fake_repo, name, error):
+    pin(fake_repo, "stop", "a")
+    write_record(fake_repo, name, calls=BLOB)
+    with pytest.raises(SystemExit, match=error):
+        cr.manual_signoffs("fake", ("a",)) if name.startswith("_") else cr.suites("other", "stop")
+
+
+def test_a_json_file_named_with_another_leading_underscore_stops_the_check_naming_it(fake_repo):
+    """Only `_manual.json` and `_facts.json` take the `_`: any other would drop out of the sign-off unseen."""
+    pin(fake_repo, "stop", "a")
+    write_record(fake_repo, "stop.json")
+    write_record(fake_repo, "_stop.json", calls=BLOB)
+    with pytest.raises(SystemExit, match=f"{RECORDS}/_stop.json: a leading `_` is for _manual.json and _facts.json"):
+        cr.records("fake")
+    with pytest.raises(SystemExit, match="_stop.json"):
+        cr.passing("fake", "stop")
+
+
+@pytest.mark.parametrize(
+    ("name", "change", "error"),
+    [
+        ("stop.json", {"action": "turn_on_for"}, "action 'turn_on_for', options None, but its name says action 'stop'"),
+        (
+            "stop.json",
+            {"options": ["predicted_state"]},
+            r"action .stop., options \['predicted_state'\], but .* options None",
+        ),
+        (
+            "stop-predicted_state.json",
+            {"options": None},
+            r"action .stop., options None, but .* options \['predicted_state'\]",
+        ),
+        ("stop-predicted_state.json", {"options": ["other"]}, r"action .stop., options \['other'\], but its name says"),
+    ],
+)
+def test_a_record_whose_action_or_options_its_name_contradicts_stops_the_check(fake_repo, name, change, error):
+    """A record credits the action its name says: one that tested another would credit a call never made."""
+    pin(fake_repo, "stop", "a")
+    write_record(fake_repo, name)
+    path = fake_repo.path / RECORDS / name
+    data = {key: value for key, value in (json.loads(path.read_text()) | change).items() if value is not None}
+    path.write_text(text(data))
+    with pytest.raises(SystemExit, match=f"{RECORDS}/{name}: {error}"):
+        cr.suites("fake", "stop")
+
+
+def test_a_record_whose_name_and_options_agree_is_the_actions(fake_repo):
+    """A suite named for no action (`config_entry`) is none's evidence, whatever action it ran."""
+    pin(fake_repo, "stop", "a")
+    for name in ("stop.json", "stop-predicted_state.json", "config_entry.json", "stop_x.json"):
+        write_record(fake_repo, name, calls=BLOB)
+    assert [path.name for path in cr.passing("fake", "stop")] == ["stop-predicted_state.json", "stop.json"]
+
+
+def test_a_dotfile_in_the_records_folder_is_ignored(fake_repo):
+    """An editor's or the OS's file (`.DS_Store`, a swap file) is no record, and blocks no sign-off."""
+    pin(fake_repo, "stop", "a")
+    write_record(fake_repo, "stop.json")
+    (fake_repo.path / RECORDS / ".DS_Store").write_bytes(b"\0")
+    (fake_repo.path / RECORDS / ".stop.json.swp").write_text("x")
+    assert [path.name for path in cr.records("fake")] == ["stop.json"]
+    assert cr.foreign_files("fake") == []
+
+
+# Manual rows.
+
+
+def test_a_manual_row_by_a_maintainer_or_repo_maintainer_is_a_row(fake_repo):
     sha = fake_repo.commit()
-    fake_repo.commit(MANUAL, manual_file(signoff(sha), signoff(sha, tester="r", passed=None)))
+    fake_repo.commit(MANUAL, manual_file(signoff(sha, calls=bound("stop", blob="1" * 40)), signoff(sha, tester="r")))
     found, errors = cr.manual_signoffs("fake", ("a", "r"))
     assert errors == []
     assert found == [
-        cr.SignOff("manual", f"{MANUAL} row 1", sha[:7], "a"),
-        cr.SignOff("manual", f"{MANUAL} row 2", sha[:7], "r", vouches=True),
+        cr.Row(f"{MANUAL} row 1", sha[:7], "a", ("stop",), {"stop": "1" * 40}),
+        cr.Row(f"{MANUAL} row 2", sha[:7], "r", ("turn_on_for",), bound("turn_on_for")),
     ]
+
+
+def test_a_format_2_row_names_its_actions_and_binds_no_calls(fake_repo):
+    fake_repo.commit(MANUAL, manual_file(signoff(passed=("stop",))))
+    assert cr.manual_signoffs("fake", ("a",)) == ([cr.Row(f"{MANUAL} row 1", "1a2b3c4", "a", ("stop",), None)], [])
 
 
 @pytest.mark.parametrize(
@@ -213,10 +349,10 @@ def test_a_manual_row_by_a_maintainer_or_repo_maintainer_is_a_signoff(fake_repo)
         ({"devices": ["LCA001"]}, "'LCA001' is not of type 'object'"),
         ({"devices": [{"model": "LCA001", "manufacturer": None}]}, "'class' is a required property"),
         ({"devices": []}, "should be non-empty"),
-        ({"passed": []}, "should be non-empty"),
-        ({"no_call_changed": True}, "should not be valid"),  # with devices and passed
+        ({"calls": {}}, "should be non-empty"),
+        ({"no_call_changed": True}, "was unexpected"),
+        ({"passed": ["stop"]}, "should not be valid"),  # format 2's, in a format 3 file
         ({"tester": "@a"}, "does not match"),
-        ({"devices": None, "passed": None}, "is not of type 'array'"),
     ],
 )
 def test_a_manual_row_out_of_format_stops_the_check_naming_the_file(fake_repo, change, error):
@@ -260,26 +396,38 @@ def test_names_classes_is_the_integrations_capability_for_every_adapter():
 
 # The release gate.
 
-FAKE = "custom_components/deviceside/integrations/fake"
-OTHER = "custom_components/deviceside/integrations/other"
-
 
 @pytest.fixture
 def released(fake_repo):
-    """fake and other, each with two adapter modules and a helper, released as v0.1.0, with a later RC tag."""
-    modules = ("__init__.py", "turn_on_for.py", "stop.py", "transport.py")
-    touch(fake_repo, *(f"{package}/{module}" for package in (FAKE, OTHER) for module in modules))
-    fake_repo.commit()
+    """fake's stop and turn_on_for and other's turn_on_for, each with a transcript of one segment, and a package,
+    released as v0.1.0, with a later RC tag."""
+    touch(fake_repo, f"{FAKE}/stop.py", f"{FAKE}/transport.py", f"{CORE}/dispatcher.py")
+    pin(fake_repo, "stop", "a")
+    pin(fake_repo, "turn_on_for", "a")
+    pin(fake_repo, "turn_on_for", "a", integration="other")
     fake_repo.git("tag", "v0.1.0")
     fake_repo.commit()
     fake_repo.git("tag", "v0.2.0rc1")  # an RC is never the last release
     return fake_repo
 
 
-def registry(repo, monkeypatch, **scopes: AdapterScope) -> FakeRegistry:
+def registry(**scopes: AdapterScope) -> FakeRegistry:
     """fake's two adapters, with the scopes given by action, and other's turn_on_for."""
     adapters = {(action, "fake"): scopes.get(action, AdapterScope()) for action in ("turn_on_for", "stop")}
-    return FakeRegistry(repo.path, monkeypatch, adapters | {("turn_on_for", "other"): AdapterScope()})
+    return FakeRegistry(adapters | {("turn_on_for", "other"): AdapterScope()})
+
+
+@pytest.fixture
+def gate(capsys):
+    """Run `--signoffs` with the options given on `registry()` (or one passed), returning its exit, the printed
+    output (a list of lines, or the JSON) and its errors."""
+
+    def run(*options: str, on: FakeRegistry | None = None):
+        code = cr.main(["--signoffs", *options], on or registry())
+        out, err = capsys.readouterr()
+        return code, json.loads(out) if options else out.splitlines(), err.splitlines()
+
+    return run
 
 
 def test_the_last_release_is_the_latest_release_tag_under_head(released):
@@ -288,458 +436,285 @@ def test_the_last_release_is_the_latest_release_tag_under_head(released):
     assert cr.last_release() == "v0.1.0"
 
 
-def test_an_unchanged_integration_needs_no_signoff(released, monkeypatch, capsys):
-    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 0
-    assert capsys.readouterr().out == "Since v0.1.0:\n"
+def test_an_unchanged_action_needs_no_signoff(released, gate):
+    assert gate() == (0, ["Since v0.1.0:"], [])
 
 
-def test_a_changed_integration_with_no_signoff_fails(released, monkeypatch, capsys):
-    change = released.commit(f"{FAKE}/stop.py")
-    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
-    out, err = capsys.readouterr()
-    line = f"fake: changed at {change[:7]}; no sign-off of its package, and no Untested fix on fake / stop"
-    assert out.splitlines() == ["Since v0.1.0:", line]
-    assert err.splitlines() == [f"error: {line}"]
-
-
-def test_every_record_passing_at_the_package_as_it_ships_signs_off(released, monkeypatch, capsys):
-    change = released.commit(f"{FAKE}/stop.py")
-    write_record(released, "stop.json", change)
-    write_record(released, "turn_on_for.json", change)
-    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 0
-    assert capsys.readouterr().out.splitlines()[1] == (
-        f"fake: changed at {change[:7]}; signed off by record {RECORDS} at {change[:7]}"
-    )
-    after = released.commit("README.md")  # a later commit outside the package
-    write_record(released, "stop.json", after)
-    write_record(released, "turn_on_for.json", after)
-    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 0
-
-
-def test_a_change_reopens_only_the_records_it_exercises(released, monkeypatch, capsys):
-    """Tenet 9: a change to one adapter's module reopens that action's record and no other's, and a rerun of that
-    suite alone completes the sign-off, the records then citing two package trees."""
-    run = released.commit(f"{FAKE}/transport.py")
-    write_record(released, "stop.json", run)
-    write_record(released, "turn_on_for.json", run)
-    fix = released.commit(f"{FAKE}/stop.py")
-    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
-    assert "(stop.json: reopened by a change since its run (stop.py): rerun, or" in capsys.readouterr().out
-    assert cr.main(["--signoffs", "--reruns"], registry(released, monkeypatch)) == 1
-    assert json.loads(capsys.readouterr().out) == {"fake": ["stop"]}
-    write_record(released, "stop.json", fix)
-    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 0
-    assert f"signed off by record {RECORDS}" in capsys.readouterr().out
-
-
-def test_a_shared_module_or_a_suite_that_is_no_actions_reopens_on_any_change(released, monkeypatch, capsys):
-    """A helper serves every adapter, so its change reopens every record; a suite with no adapter (`config_entry.json`)
-    has no module to compare, so any change to the package reopens it."""
-    run = released.commit(f"{FAKE}/stop.py")
-    for name in ("stop.json", "turn_on_for.json", "config_entry.json"):
-        write_record(released, name, run)
-    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 0
-    capsys.readouterr()
+def test_a_package_or_core_change_that_keeps_every_transcript_needs_no_signoff(released, gate):
+    """Tenet 9: evidence follows the calls. A refactor that sends the same calls, in the package or `core/`, changes no
+    action."""
     released.commit(f"{FAKE}/stop.py")
-    assert cr.main(["--signoffs", "--reruns"], registry(released, monkeypatch)) == 1
-    assert json.loads(capsys.readouterr().out) == {"fake": ["config_entry", "stop"]}
     released.commit(f"{FAKE}/transport.py")
-    assert cr.main(["--signoffs", "--reruns"], registry(released, monkeypatch)) == 1
-    assert json.loads(capsys.readouterr().out) == {"fake": ["config_entry", "stop", "turn_on_for"]}
+    released.commit(f"{CORE}/dispatcher.py")
+    assert gate() == (0, ["Since v0.1.0:"], [])
 
 
-def test_a_suite_that_is_no_actions_is_reopened_by_any_adapters_change_though_it_ran_an_action(
-    released, monkeypatch, capsys
-):
-    """The rig writes `config_entry.json` with the action it ran (`stop` here): it stands for no action's change."""
-    run = released.commit(f"{FAKE}/stop.py")
-    for name in ("stop.json", "turn_on_for.json", "config_entry.json"):
-        write_record(released, name, run)
-    assert json.loads((released.path / RECORDS / "config_entry.json").read_text())["action"] == "stop"
-    released.commit(f"{FAKE}/turn_on_for.py")  # another adapter's module
-    assert cr.main(["--signoffs", "--reruns"], registry(released, monkeypatch)) == 1
-    assert json.loads(capsys.readouterr().out) == {"fake": ["config_entry", "turn_on_for"]}
-    write_record(released, "config_entry.json", released.git("rev-parse", "HEAD").strip())
-    write_record(released, "turn_on_for.json", released.git("rev-parse", "HEAD").strip())
-    released.commit(f"{FAKE}/stop.py")  # its own action's module
-    assert cr.main(["--signoffs", "--reruns"], registry(released, monkeypatch)) == 1
-    assert json.loads(capsys.readouterr().out) == {"fake": ["config_entry", "stop"]}
+def test_an_added_segment_changes_no_action(released, gate):
+    """A test added, or a new call path (a new class's own call), reopens nothing."""
+    pin(released, "stop", "a", "b")
+    assert gate() == (0, ["Since v0.1.0:"], [])
 
 
-def test_a_no_call_changed_row_keeps_the_records_of_the_actions_it_names(released, monkeypatch, capsys):
-    """A refactor of a shared helper reopens every record; a row naming an action keeps that action's record, from
-    the row's commit on, and signs off nothing by itself."""
-    run = released.commit(f"{FAKE}/stop.py")
-    write_record(released, "stop.json", run)
-    write_record(released, "turn_on_for.json", run)
-    refactor = released.commit(f"{FAKE}/transport.py")
-    released.commit(MANUAL, manual_file(signoff(refactor, passed=None, actions=["stop"])))
-    assert cr.main(["--signoffs", "--reruns"], registry(released, monkeypatch)) == 1
-    assert json.loads(capsys.readouterr().out) == {"fake": ["turn_on_for"]}
-    released.commit(MANUAL, manual_file(signoff(refactor, passed=None, actions=["stop", "turn_on_for"])))
-    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 0
-    assert f"signed off by record {RECORDS}" in capsys.readouterr().out
-    # A later change to stop's own module is past what the row vouched for.
-    released.commit(f"{FAKE}/stop.py")
-    assert cr.main(["--signoffs", "--reruns"], registry(released, monkeypatch)) == 1
-    assert json.loads(capsys.readouterr().out) == {"fake": ["stop"]}
+def test_a_changed_segment_with_no_signoff_fails(released, gate):
+    change = pin(released, "stop", "b", also=f"{CORE}/dispatcher.py")
+    line = f"fake / stop: calls changed at {change[:7]}; no sign-off (stop.json: no record), and no Untested fix"
+    assert gate() == (1, ["Since v0.1.0:", line], [f"error: {line}"])
+    assert gate("--reruns")[1] == {"fake": ["stop"]}
+    assert gate("--json")[1] == ["fake"]
 
 
-def test_a_row_vouches_only_for_the_change_its_commit_made(released, monkeypatch, capsys):
-    """A row carries a record across its own commit's change, never across an earlier one it didn't see; a second
-    row carries it across the next."""
-    run = released.commit(f"{FAKE}/stop.py")
-    write_record(released, "stop.json", run)
-    write_record(released, "turn_on_for.json", run)
-    released.commit(f"{FAKE}/turn_on_for.py")  # a call change nobody vouched for
-    trivial = released.commit(f"{FAKE}/transport.py")
-    both = ["stop", "turn_on_for"]
-    released.commit(MANUAL, manual_file(signoff(trivial, passed=None, actions=both)))
-    assert cr.main(["--signoffs", "--reruns"], registry(released, monkeypatch)) == 1
-    assert json.loads(capsys.readouterr().out) == {"fake": ["turn_on_for"]}
-    write_record(released, "turn_on_for.json", trivial)
-    second = released.commit(f"{FAKE}/transport.py")
-    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
-    capsys.readouterr()
-    rows = (signoff(trivial, passed=None, actions=both), signoff(second, passed=None, actions=both))
-    released.commit(MANUAL, manual_file(*rows))
-    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 0
-
-
-def test_an_adapter_changed_since_the_release_needs_a_record(released, monkeypatch, capsys):
-    """A new or changed adapter is another adapter's module to every existing record, so those stand; it still needs a
-    record of its own before the records sign off."""
-    run = released.commit(f"{FAKE}/stop.py")
-    write_record(released, "stop.json", run)
-    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 0
-    capsys.readouterr()
-    added = released.commit(f"{FAKE}/turn_on_for.py")
-    assert cr.main(["--signoffs", "--reruns"], registry(released, monkeypatch)) == 1
-    assert json.loads(capsys.readouterr().out) == {"fake": ["turn_on_for"]}
-    write_record(released, "turn_on_for.json", added)
-    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 0
-
-
-def test_a_rename_reopens_by_both_names(released, monkeypatch, capsys):
-    run = released.commit(f"{FAKE}/transport.py", "helper\n" * 20)
-    write_record(released, "stop.json", run)
-    write_record(released, "turn_on_for.json", run)
-    released.git("mv", f"{FAKE}/transport.py", f"{FAKE}/wire.py")
-    released.git("commit", "-qm", "rename")
-    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
-    assert "(transport.py, wire.py)" in capsys.readouterr().out
-
-
-def test_json_and_reruns_exclude_each_other():
-    with pytest.raises(SystemExit):
-        cr.main(["--signoffs", "--json", "--reruns"])
-
-
-def test_no_adapter_module_imports_another_adapters():
-    """What `stands` rests on: a record holds through a change to another adapter's module only because no adapter
-    module uses another's code. Code two adapters share lives in a module that is neither's, whose change reopens
-    both (docs/evidence.md, Release gate)."""
-    registry = AdapterRegistry.discover()
-    for key in registry.integrations:
-        own = cr.modules(registry, key)
-        for module in own.values():
-            source = (cr.REPO / cr.package(key) / module).read_text()
-            assert not imported_modules(source, key) & (set(own.values()) - {module}), (
-                f"{key}/{module} imports another adapter's module"
-            )
-
-
-def imported_modules(source: str, key: str) -> set[str]:
-    """The package's modules the source imports, as paths inside the package: relative or absolute, a module or a
-    name from one."""
-    dotted = cr.package(key).rstrip("/").replace("/", ".")
-    targets = []
-    for node in ast.walk(ast.parse(source)):
-        if isinstance(node, ast.ImportFrom):
-            base = f"{dotted}.{node.module or ''}".rstrip(".") if node.level == 1 else node.module or ""
-            targets += [base, *(f"{base}.{alias.name}" for alias in node.names)]
-        elif isinstance(node, ast.Import):
-            targets += [alias.name for alias in node.names]
-    return {target.removeprefix(f"{dotted}.").replace(".", "/") + ".py" for target in targets}
-
-
-@pytest.mark.parametrize(
-    "source",
-    [
-        "from .stop import x",
-        "from . import stop",
-        "from .stop import x as y",
-        "from . import transport, stop",
-        "from custom_components.deviceside.integrations.fake.stop import x",
-        "import custom_components.deviceside.integrations.fake.stop",
-    ],
-)
-def test_the_import_check_sees_each_way_to_import_a_module(source):
-    assert "stop.py" in imported_modules(source, "fake")
-    assert "stop.py" not in imported_modules("from .transport import stop_all", "fake")
-
-
-def test_an_option_record_alone_is_no_record_of_the_plain_call(released, monkeypatch, capsys):
-    change = released.commit(f"{FAKE}/stop.py")
-    write_record(released, "stop-fast.json", change)
-    assert cr.main(["--signoffs", "--reruns"], registry(released, monkeypatch)) == 1
-    assert json.loads(capsys.readouterr().out) == {"fake": ["stop"]}
-
-
-def test_a_row_naming_actions_is_no_signoff_without_their_records(released, monkeypatch, capsys):
-    change = released.commit(f"{FAKE}/stop.py")
-    released.commit(MANUAL, manual_file(signoff(change, passed=None, actions=["stop"])))
-    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
-    assert "names actions, so it keeps their records and signs off no package" in capsys.readouterr().out
-
-
-def test_actions_go_only_on_a_no_call_changed_row(fake_repo):
-    row = signoff(fake_repo.commit()) | {"actions": ["stop"]}
-    fake_repo.commit(MANUAL, manual_file(row))
-    with pytest.raises(SystemExit, match="should not be valid"):
-        cr.manual_signoffs("fake", ("a",))
-
-
-def test_a_record_whose_tree_git_does_not_have_stands_only_at_heads_package(released, monkeypatch, capsys):
-    """A run on a branch since deleted: its tree can't be compared, so it is reopened unless it is HEAD's."""
-    released.commit(f"{FAKE}/stop.py")
-    write_record(released, "stop.json", released.git("rev-parse", "HEAD").strip(), tree="0123456789ab")
-    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
-    assert "package 0123456789ab, which git doesn't have" in capsys.readouterr().out
-
-
-def test_records_at_two_commits_with_one_tree_are_one_run(released, monkeypatch, capsys):
-    """A rerun of one action on main completes a run made on the branch: the package is what they share."""
-    change = released.commit(f"{FAKE}/stop.py")
-    write_record(released, "stop.json", change)
-    write_record(released, "turn_on_for.json", released.commit("README.md"))  # a later commit, the same package
-    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 0
-    assert f"signed off by record {RECORDS} at {change[:7]}" in capsys.readouterr().out
-
-
-def test_a_format_1_record_is_no_signoff_and_is_named(released, monkeypatch, capsys):
-    """A record converted from markdown names a run's devices, not each test's: a sign-off takes format 2 alone."""
-    change = released.commit(f"{FAKE}/stop.py")
-    write_record(released, "stop.json", change)
-    write_record(released, "turn_on_for.json", change, tree=None)
-    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
-    assert "(turn_on_for.json: format 1, converted from markdown, so no sign-off: rerun with the rig)" in (
-        capsys.readouterr().out
+def test_a_format_3_record_bound_to_heads_transcript_signs_off(released, gate):
+    change = pin(released, "stop", "b")
+    write_record(released, "stop.json")
+    assert gate() == (
+        0,
+        [
+            "Since v0.1.0:",
+            f"fake / stop: calls changed at {change[:7]}; signed off by record {RECORDS}/stop.json at {change[:7]}",
+        ],
+        [],
     )
-    write_record(released, "turn_on_for.json", change)
-    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 0
 
 
-def test_a_record_the_schema_rejects_stops_the_check_naming_it(released, monkeypatch):
-    change = released.commit(f"{FAKE}/stop.py")
-    write_record(released, "stop.json", change)
-    path = released.path / RECORDS / "stop.json"
-    released.commit(f"{RECORDS}/stop.json", path.read_text().replace('"package"', '"tree"'))
-    with pytest.raises(SystemExit, match=f"{RECORDS}/stop.json: 'package' is a required property"):
-        cr.main(["--signoffs"], registry(released, monkeypatch))
+def test_a_cosmetic_package_edit_keeps_a_manual_row(released, gate):
+    """The Control4 case: a refactor that rewrites the package's source but sends the same calls keeps the row."""
+    change = pin(released, "stop", "b")
+    released.commit(MANUAL, manual_file(signoff(change, calls=bound("stop", blob=blob(released, "stop")))))
+    signed = f"fake / stop: calls changed at {change[:7]}; signed off by manual {MANUAL} row 1 at {change[:7]}, @a"
+    assert gate() == (0, ["Since v0.1.0:", signed], [])
+    released.commit(f"{FAKE}/stop.py")
+    released.commit(f"{FAKE}/transport.py")
+    assert gate() == (0, ["Since v0.1.0:", signed], [])
+
+
+def test_a_core_change_that_changes_a_segment_reopens_the_evidence(released, gate):
+    """What the old core/ exemption missed: a shared module that changes a call reopens every action whose calls it
+    changed, and no other."""
+    pin(released, "stop", "b")
+    pin(released, "turn_on_for", "b")
+    write_record(released, "stop.json")
+    released.commit(MANUAL, manual_file(signoff(calls=bound("turn_on_for", blob=blob(released, "turn_on_for")))))
+    assert gate()[0] == 0
+    change = pin(released, "stop", "c", also=f"{CORE}/dispatcher.py")
+    code, lines, _ = gate()
+    assert code == 1
+    assert lines[1] == (
+        f"fake / stop: calls changed at {change[:7]}; no sign-off (stop.json: reopened: 1 of its 1 call segments"
+        " changed or gone since), and no Untested fix"
+    )
+    assert "signed off by manual" in lines[2]
+    assert gate("--reruns")[1] == {"fake": ["stop"]}
+    write_record(released, "stop.json")
+    assert gate()[0] == 0
+
+
+def test_an_added_test_keeps_the_evidence(released, gate):
+    pin(released, "stop", "b")
+    write_record(released, "stop.json")
+    pin(released, "stop", "b", "c")
+    assert gate()[0] == 0
+
+
+@pytest.mark.parametrize("now", [("b",), ("b", "d")], ids=["removed", "changed"])
+def test_a_removed_or_changed_segment_reopens_the_evidence(released, gate, now):
+    pin(released, "stop", "b", "c")
+    released.commit(MANUAL, manual_file(signoff(calls=bound("stop", blob=blob(released, "stop")))))
+    pin(released, "stop", *now)
+    code, lines, _ = gate()
+    assert code == 1
+    assert f"({MANUAL} row 1: reopened: 1 of its 2 call segments changed or gone since)" in lines[1]
+
+
+def test_a_run_on_a_squash_merged_branch_still_resolves(released, gate):
+    """A blob is content-addressed: the branch's transcript, landed unchanged by a squash merge, is main's, even once
+    the branch and its commits are gone."""
+    released.git("checkout", "-q", "-b", "side")
+    ran_at = pin(released, "stop", "b", also=f"{FAKE}/stop.py")
+    tested = blob(released, "stop")
+    released.git("checkout", "-q", "main")
+    released.git("merge", "--squash", "side")
+    released.git("commit", "-qm", "squash side")
+    released.git("branch", "-D", "side")
+    released.git("reflog", "expire", "--expire=now", "--all")
+    released.git("gc", "-q", "--prune=now")
+    with pytest.raises(subprocess.CalledProcessError):  # the run's commit is gone
+        released.git("cat-file", "-t", ran_at)
+    write_record(released, "stop.json", calls=tested)
+    assert gate()[0] == 0
+
+
+def test_evidence_citing_a_blob_git_does_not_have_stands_for_nothing(released, gate):
+    pin(released, "stop", "b")
+    write_record(released, "stop.json", calls="0" * 40)
+    code, lines, _ = gate()
+    assert code == 1
+    assert "(stop.json: calls 000000000000, which git doesn't have as a transcript)" in lines[1]
+
+
+def test_a_record_of_another_actions_transcript_does_not_stand(released, gate):
+    pin(released, "stop", "b")
+    write_record(released, "stop.json", calls=blob(released, "turn_on_for"))
+    assert "stop.json: reopened: 1 of its 1 call segments changed or gone since" in gate()[1][1]
 
 
 @pytest.mark.parametrize(
-    ("name", "error"),
-    [
-        ("_manual.json", "not the kind of file its name says"),  # a record under the manual sign-offs' name
-        ("../../other/test-records/stop.json", "integration 'fake', in other's bundle"),
-    ],
+    ("format_", "why"),
+    [(1, "format 1, converted from markdown"), (2, "format 2, bound to the package, not the calls")],
 )
-def test_a_file_of_the_wrong_kind_or_integration_stops_the_check(released, name, error):
-    write_record(released, name, released.commit(f"{FAKE}/stop.py"))
-    with pytest.raises(SystemExit, match=error):
-        cr.manual_signoffs("fake", ("a",)) if name.startswith("_") else cr.record_signoff("other")
+def test_a_format_1_or_2_record_is_no_signoff_and_is_named(released, gate, format_, why):
+    """Format 2 binds to the package tree, so it credits classes and cards but never signs off: the action needs a run
+    bound to its calls."""
+    pin(released, "stop", "b")
+    write_record(released, "stop.json", format_=format_)
+    code, lines, _ = gate()
+    assert code == 1
+    assert f"(stop.json: {why})" in lines[1]
+    assert gate("--reruns")[1] == {"fake": ["stop"]}
+    write_record(released, "stop.json")
+    assert gate()[0] == 0
 
 
-def test_a_json_file_named_with_another_leading_underscore_stops_the_check_naming_it(released):
-    """Only `_manual.json` and `_facts.json` take the `_`: any other would drop out of the sign-off unseen."""
-    write_record(released, "stop.json", released.commit(f"{FAKE}/stop.py"))
-    write_record(released, "_stop.json", released.commit())
-    with pytest.raises(SystemExit, match=f"{RECORDS}/_stop.json: a leading `_` is for _manual.json and _facts.json"):
-        cr.record_signoff("fake")
-    with pytest.raises(SystemExit, match="_stop.json"):
-        cr.passing("fake", "stop")
+def test_a_failing_record_is_no_signoff_and_a_rerun_completes_it(released, gate):
+    pin(released, "stop", "b")
+    write_record(released, "stop.json", result="fail")
+    assert "(stop.json: fails)" in gate()[1][1]
+    write_record(released, "stop.json")
+    assert gate()[0] == 0
 
 
-@pytest.mark.parametrize(
-    ("name", "change", "error"),
-    [
-        ("stop.json", {"action": "turn_on_for"}, "action 'turn_on_for', options None, but its name says action 'stop'"),
-        (
-            "stop.json",
-            {"options": ["predicted_state"]},
-            r"action .stop., options \['predicted_state'\], but .* options None",
-        ),
-        (
-            "stop-predicted_state.json",
-            {"options": None},
-            r"action .stop., options None, but .* options \['predicted_state'\]",
-        ),
-        ("stop-predicted_state.json", {"options": ["other"]}, r"action .stop., options \['other'\], but its name says"),
-    ],
-)
-def test_a_record_whose_action_or_options_its_name_contradicts_stops_the_check(fake_repo, name, change, error):
-    """A record credits the action its name says: one that tested another would credit a call never made."""
-    write_record(fake_repo, name, fake_repo.commit(), tree="0123456789ab")
-    path = fake_repo.path / RECORDS / name
-    data = {key: value for key, value in (json.loads(path.read_text()) | change).items() if value is not None}
-    path.write_text(text(data))
-    with pytest.raises(SystemExit, match=f"{RECORDS}/{name}: {error}"):
-        cr.passing("fake", "stop")
+def test_an_option_record_alone_is_no_record_of_the_plain_call(released, gate):
+    pin(released, "stop", "b")
+    write_record(released, "stop-fast.json")
+    assert gate("--reruns")[1] == {"fake": ["stop"]}
 
 
-def test_a_record_whose_name_and_options_agree_is_the_actions(fake_repo):
-    """A suite named for no action (`config_entry`) is none's evidence, whatever action it ran."""
-    for name in ("stop.json", "stop-predicted_state.json", "config_entry.json", "stop_x.json"):
-        write_record(fake_repo, name, fake_repo.commit(), tree="0123456789ab")
-    assert [path.name for path in cr.passing("fake", "stop")] == ["stop-predicted_state.json", "stop.json"]
+def test_each_of_the_actions_records_must_stand(released, gate):
+    """An option's record is the action's too: a reopened one is rerun, though the plain record stands."""
+    pin(released, "stop", "b")
+    write_record(released, "stop-fast.json")
+    pin(released, "stop", "c")
+    write_record(released, "stop.json")
+    assert gate("--reruns")[1] == {"fake": ["stop-fast"]}
+    write_record(released, "stop-fast.json")
+    assert gate()[0] == 0
 
 
-def test_a_file_that_is_no_json_record_fails_by_name(released, monkeypatch, capsys):
-    change = released.commit(f"{FAKE}/stop.py")
-    write_record(released, "stop.json", change)
+def test_a_suite_that_is_no_actions_is_outside_the_gate(released, gate):
+    """`config_entry.json` credits no action, so whatever it holds, it neither signs off nor blocks one."""
+    pin(released, "stop", "b")
+    write_record(released, "stop.json")
+    write_record(released, "config_entry.json", result="fail", format_=2)
+    assert gate()[0] == 0
+
+
+def test_each_changed_action_takes_its_own_evidence(released, gate):
+    """Per action, from any mix: a record for one, a row for another, and an unchanged one needs neither."""
+    stop = pin(released, "stop", "b")
+    write_record(released, "stop.json")
+    turn_on = pin(released, "turn_on_for", "b")
+    released.commit(
+        MANUAL, manual_file(signoff(turn_on, calls=bound("turn_on_for", blob=blob(released, "turn_on_for"))))
+    )
+    code, lines, _ = gate()
+    assert (code, lines[1:]) == (
+        0,
+        [
+            f"fake / stop: calls changed at {stop[:7]}; signed off by record {RECORDS}/stop.json at {stop[:7]}",
+            f"fake / turn_on_for: calls changed at {turn_on[:7]}; signed off by manual {MANUAL} row 1 at"
+            f" {turn_on[:7]}, @a",
+        ],
+    )
+
+
+def test_a_row_signs_off_only_the_actions_its_calls_name(released, gate):
+    pin(released, "stop", "b")
+    pin(released, "turn_on_for", "b")
+    released.commit(MANUAL, manual_file(signoff(calls=bound("turn_on_for", blob=blob(released, "turn_on_for")))))
+    assert gate("--reruns")[1] == {"fake": ["stop"]}
+
+
+def test_a_format_2_row_signs_off_nothing(released, gate):
+    pin(released, "stop", "b")
+    released.commit(MANUAL, manual_file(signoff(passed=("stop",))))
+    code, lines, _ = gate()
+    assert code == 1
+    assert f"({MANUAL} row 1: format 2, which names the actions it passed but not their calls)" in lines[1]
+
+
+def test_a_rows_commit_is_provenance_and_unchecked(released, gate):
+    """A row stands by its calls; the commit it cites may be one git doesn't have (a deleted branch's)."""
+    pin(released, "stop", "b")
+    released.commit(MANUAL, manual_file(signoff("0" * 40, calls=bound("stop", blob=blob(released, "stop")))))
+    assert gate()[0] == 0
+
+
+@pytest.mark.parametrize("tester", [cr.REPO_MAINTAINERS[0], cr.REPO_MAINTAINERS[0].upper(), "A"])
+def test_a_repo_maintainer_may_sign_off_and_handles_ignore_case(released, gate, tester):
+    pin(released, "stop", "b")
+    released.commit(MANUAL, manual_file(signoff(tester=tester, calls=bound("stop", blob=blob(released, "stop")))))
+    assert gate()[0] == 0
+
+
+def test_a_manual_row_error_fails_the_gate(released, gate):
+    released.commit(MANUAL, manual_file(signoff(tester="b")))
+    code, _, err = gate()
+    assert code == 1
+    assert any("tester @b is neither" in line for line in err)
+
+
+def test_a_file_that_is_no_json_record_fails_by_name(released, gate):
     released.commit(f"{RECORDS}/probe.md", "| Result | pass |\n")
-    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
-    assert (
-        "probe.md: not test records, which are JSON (docs/test-records.schema.json); probe findings go in"
-        " internals.md, manual sign-offs in _manual.json" in capsys.readouterr().out
+    code, _, err = gate()
+    assert code == 1
+    assert err == [
+        f"error: {RECORDS}: probe.md: not test records, which are JSON (docs/test-records.schema.json); probe findings"
+        " go in internals.md, manual sign-offs in _manual.json"
+    ]
+
+
+def test_an_action_the_tag_has_no_transcript_of_is_changed(released, gate):
+    """A new adapter, or one whose tests ran no call at the release, has no pinned calls to hold."""
+    added = pin(released, "raise_brightness", "a")
+    on = FakeRegistry({("stop", "fake"): AdapterScope(), ("raise_brightness", "fake"): AdapterScope()})
+    code, lines, _ = gate(on=on)
+    assert code == 1
+    assert lines[1].startswith(f"fake / raise_brightness: calls changed at {added[:7]}; no sign-off")
+
+
+def test_an_action_with_no_transcript_at_head_has_nothing_to_stand_on(released, gate):
+    released.commit(MANUAL, manual_file(signoff(calls=bound("stop", blob=blob(released, "stop")))))
+    removed = pin(released, "stop")
+    code, lines, _ = gate()
+    assert code == 1
+    assert lines[1] == (
+        f"fake / stop: calls changed at {removed[:7]}; no sign-off (tests/integrations/fake/calls/stop.json: none at"
+        f" HEAD, so no unit test pins its calls) (stop.json: no record) ({MANUAL} row 1: HEAD has no transcript to"
+        " hold its calls), and no Untested fix"
     )
 
 
-def test_a_dotfile_in_the_records_folder_is_ignored(released):
-    """An editor's or the OS's file (`.DS_Store`, a swap file) is no record, and blocks no sign-off."""
-    change = released.commit(f"{FAKE}/stop.py")
-    write_record(released, "stop.json", change)
-    (released.path / RECORDS / ".DS_Store").write_bytes(b"\0")
-    (released.path / RECORDS / ".stop.json.swp").write_text("x")
-    signoff, why, reruns = cr.record_signoff("fake")
-    assert signoff is not None and why is None and reruns == ()
-    assert [path.name for path in cr.records("fake")] == ["stop.json"]
-
-
-def test_a_folder_of_rig_records_still_signs_off(released):
-    change = released.commit(f"{FAKE}/stop.py")
-    write_record(released, "stop.json", change)
-    write_record(released, "turn_on_for.json", change)
-    assert cr.record_signoff("fake")[0] is not None
-
-
-def test_a_failing_record_fails_the_run_and_a_rerun_completes_it(released, monkeypatch, capsys):
-    change = released.commit(f"{FAKE}/stop.py")
-    write_record(released, "stop.json", change)
-    write_record(released, "turn_on_for.json", change, result="fail")
-    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
-    assert "(turn_on_for.json fails)" in capsys.readouterr().out
-    write_record(released, "turn_on_for.json", change)
-    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 0
-
-
-def test_a_record_citing_a_commit_git_does_not_have_signs_off_by_its_tree(released, monkeypatch, capsys):
-    """The squash case: the run's commit was on a deleted branch, but the package it tested is the one on main."""
-    change = released.commit(f"{FAKE}/stop.py")
-    write_record(released, "stop.json", "0" * 40, tree=tree_of(released, change))
-    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 0
-    assert f"signed off by record {RECORDS} at 0000000" in capsys.readouterr().out
-
-
-def test_records_citing_one_tree_at_different_lengths_are_one_run(released, monkeypatch):
-    """The rig cites 12 hex digits; a full tree id is the same package, not a second version."""
-    change = released.commit(f"{FAKE}/stop.py")
-    full = released.git("rev-parse", f"{change}:custom_components/deviceside/integrations/fake")
-    write_record(released, "stop.json", change, tree=full)
-    write_record(released, "turn_on_for.json", change)
-    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 0
-
-
-def test_a_record_whose_package_tree_differs_from_heads_is_no_signoff(released, monkeypatch, capsys):
-    """A run before the last change, or on a branch that changed the package differently, tested other code."""
-    before = released.commit(f"{FAKE}/stop.py")
-    write_record(released, "stop.json", before)
-    released.commit(f"{FAKE}/transport.py")
-    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
-    assert (
-        "(stop.json: reopened by a change since its run (transport.py): rerun, or a no_call_changed row at the change's"
-        " commit names the action; turn_on_for: changed since the last release, with no record)"
-        in capsys.readouterr().out
-    )
-
-
-def test_a_reverted_change_is_unchanged(released, monkeypatch, capsys):
-    released.commit(f"{FAKE}/stop.py")
+def test_a_reverted_change_is_unchanged(released, gate):
+    pin(released, "stop", "b")
     released.git("revert", "--no-edit", "HEAD")
-    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 0
-    assert capsys.readouterr().out == "Since v0.1.0:\n"
+    assert gate() == (0, ["Since v0.1.0:"], [])
 
 
 def test_a_base_git_cannot_resolve_fails(released, monkeypatch):
     """A git error fails closed: an unresolvable base must not read as no change."""
     monkeypatch.setattr(cr, "last_release", lambda: "v9.9.9")
     with pytest.raises(RuntimeError, match="v9.9.9"):
-        cr.main(["--signoffs"], registry(released, monkeypatch))
-
-
-def test_a_manual_row_at_the_last_change_signs_off_naming_the_tester(released, monkeypatch, capsys):
-    change = released.commit(f"{FAKE}/stop.py")
-    released.commit(MANUAL, manual_file(signoff(change, passed=None)))
-    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 0
-    assert capsys.readouterr().out.splitlines()[1] == (
-        f"fake: changed at {change[:7]}; signed off by manual {MANUAL} row 1 at {change[:7]}, @a"
-    )
-
-
-def test_a_bare_no_call_changed_row_vouches_for_its_commit_alone(released, monkeypatch, capsys):
-    """After an unsigned call change, a row on a later log-wording change must not sign off the call change too."""
-    released.commit(f"{FAKE}/stop.py")  # a call change nobody tested
-    wording = released.commit(f"{FAKE}/transport.py")
-    released.commit(MANUAL, manual_file(signoff(wording, passed=None)))
-    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
-    assert "no_call_changed vouches for its commit's change alone; the package before it needs a sign-off" in (
-        capsys.readouterr().out
-    )
-
-
-def test_a_manual_row_off_the_branch_signs_off_when_the_package_is_equal(released, monkeypatch):
-    """Ancestry is no longer asked: a commit on a side branch holding the package as HEAD does is enough."""
-    released.git("checkout", "-q", "-b", "side", "v0.1.0")
-    side = released.commit(f"{FAKE}/stop.py", "x\n")
-    released.git("checkout", "-q", "main")
-    released.commit(f"{FAKE}/stop.py", "x\n")
-    released.commit(MANUAL, manual_file(signoff(side)))
-    assert side not in released.git("rev-list", "HEAD").split()
-    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 0
-
-
-def test_a_manual_row_at_a_commit_git_does_not_have_is_no_signoff(released, monkeypatch, capsys):
-    released.commit(f"{FAKE}/stop.py")
-    released.commit(MANUAL, manual_file(signoff("0" * 40)))
-    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
-    assert f"({MANUAL} row 1 at 0000000: not in this checkout; cite a commit on main)" in capsys.readouterr().out
-
-
-@pytest.mark.parametrize("tester", [cr.REPO_MAINTAINERS[0], cr.REPO_MAINTAINERS[0].upper(), "A"])
-def test_a_repo_maintainer_may_sign_off_and_handles_ignore_case(released, monkeypatch, tester):
-    change = released.commit(f"{FAKE}/stop.py")
-    released.commit(MANUAL, manual_file(signoff(change, tester=tester)))
-    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 0
-
-
-def test_a_manual_row_error_fails_the_gate(released, monkeypatch, capsys):
-    sha = released.git("rev-parse", "HEAD")
-    released.commit(MANUAL, manual_file(signoff(sha, tester="b")))
-    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
-    assert "tester @b is neither" in capsys.readouterr().err
+        cr.main(["--signoffs"], registry())
 
 
 CAVEAT = AdapterScope(caveat=Caveat(CaveatKind.UNTESTED_FIX, ISSUE))
 
 
-def test_untested_fix_on_the_changed_adapter_stands_in_for_the_signoff(released, monkeypatch, capsys):
-    change = released.commit(f"{FAKE}/stop.py")
-    assert cr.main(["--signoffs"], registry(released, monkeypatch, stop=CAVEAT)) == 0
-    assert capsys.readouterr().out.splitlines()[1] == (
-        f"fake: changed at {change[:7]}; no sign-off, Untested fix stands in on every changed adapter: fake / stop"
-    )
+def test_untested_fix_on_the_changed_adapter_stands_in_for_the_signoff(released, gate):
+    change = pin(released, "stop", "b")
+    code, lines, _ = gate(on=registry(stop=CAVEAT))
+    assert (code, lines[1]) == (0, f"fake / stop: calls changed at {change[:7]}; no sign-off, Untested fix stands in")
+    # Still the rig's to run.
+    assert gate("--reruns", on=registry(stop=CAVEAT))[1] == {"fake": ["stop"]}
 
 
 @pytest.mark.parametrize(
@@ -747,59 +722,46 @@ def test_untested_fix_on_the_changed_adapter_stands_in_for_the_signoff(released,
     [AdapterScope(caveat=Caveat(CaveatKind.UNMAINTAINED, ISSUE)), AdapterScope(domains=experimental("light"))],
     ids=["unmaintained", "experimental"],
 )
-def test_no_other_caveat_nor_the_flag_stands_in(released, monkeypatch, scope):
-    released.commit(f"{FAKE}/stop.py")
-    assert cr.main(["--signoffs"], registry(released, monkeypatch, stop=scope)) == 1
+def test_no_other_caveat_nor_the_flag_stands_in(released, gate, scope):
+    pin(released, "stop", "b")
+    assert gate(on=registry(stop=scope))[0] == 1
 
 
-def test_a_caveat_on_an_unchanged_adapter_does_not(released, monkeypatch):
-    released.commit(f"{FAKE}/stop.py")
-    assert cr.main(["--signoffs"], registry(released, monkeypatch, turn_on_for=CAVEAT)) == 1
+def test_a_caveat_on_an_unchanged_adapter_does_not(released, gate):
+    pin(released, "stop", "b")
+    assert gate(on=registry(turn_on_for=CAVEAT))[0] == 1
 
 
-def test_a_change_to_a_shared_module_needs_the_caveat_on_every_adapter_of_the_package(released, monkeypatch, capsys):
-    released.commit(f"{FAKE}/transport.py")
-    assert cr.main(["--signoffs"], registry(released, monkeypatch, turn_on_for=CAVEAT)) == 1
-    assert "no Untested fix on fake / stop" in capsys.readouterr().out
-    assert cr.main(["--signoffs"], registry(released, monkeypatch, turn_on_for=CAVEAT, stop=CAVEAT)) == 0
-
-
-def test_with_no_release_every_integration_is_changed(fake_repo, monkeypatch, capsys):
-    fake_repo.commit(f"{FAKE}/stop.py", "")
-    fake_repo.commit(f"{OTHER}/turn_on_for.py", "")
-    reg = registry(fake_repo, monkeypatch, stop=CAVEAT)
-    assert cr.main(["--signoffs", "--json"], reg) == 1
-    assert json.loads(capsys.readouterr().out) == ["fake", "other"]
-
-
-def test_json_lists_the_changed_integrations_without_a_signoff(released, monkeypatch, capsys):
-    change = released.commit(f"{FAKE}/stop.py")
-    released.commit(f"{OTHER}/stop.py")
-    write_record(released, "stop.json", change)
-    assert cr.main(["--signoffs", "--json"], registry(released, monkeypatch)) == 1
-    out, err = capsys.readouterr()
-    assert json.loads(out) == ["other"]
-    assert err.startswith("error: other: changed at")
+def test_with_no_release_every_action_is_changed(fake_repo, gate):
+    pin(fake_repo, "stop", "a")
+    pin(fake_repo, "turn_on_for", "a")
+    pin(fake_repo, "turn_on_for", "a", integration="other")
+    write_record(fake_repo, "stop.json")
+    code, found, _ = gate("--reruns", on=registry(turn_on_for=CAVEAT))
+    assert (code, found) == (1, {"fake": ["turn_on_for"], "other": ["turn_on_for"]})
+    assert gate("--json", on=registry(turn_on_for=CAVEAT))[1] == ["fake", "other"]
 
 
 def test_the_step_summary_lists_the_signoffs(released, monkeypatch, tmp_path):
     summary = tmp_path / "summary.md"
     monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary))
-    released.commit(f"{FAKE}/stop.py")
-    cr.main(["--signoffs"], registry(released, monkeypatch, stop=CAVEAT))
-    assert summary.read_text().splitlines()[:3] == ["## Sign-offs", "", "- Since v0.1.0:"]
+    pin(released, "stop", "b")
+    cr.main(["--signoffs"], registry(stop=CAVEAT))
+    lines = summary.read_text().splitlines()
+    assert lines[:3] == ["## Sign-offs", "", "- Since v0.1.0:"]
+    assert lines[3].startswith("- fake / stop: calls changed at ")
 
 
 # The call for testers.
 
 
-def test_notes_call_for_testers_of_unsigned_integrations_and_untested_fixes(released, monkeypatch, tmp_path):
+def test_notes_call_for_testers_of_unsigned_integrations_and_untested_fixes(released, tmp_path):
     notes = tmp_path / "notes.md"
-    released.commit(f"{OTHER}/turn_on_for.py")
-    released.commit(f"{FAKE}/stop.py")
-    write_record(released, "stop.json", released.git("rev-parse", "HEAD"))
+    pin(released, "turn_on_for", "b", integration="other")
+    pin(released, "stop", "b")
+    write_record(released, "stop.json")
     # No sign-off gate without --signoffs: an RC carries the unsigned change.
-    assert cr.main(["--notes", str(notes)], registry(released, monkeypatch, turn_on_for=CAVEAT)) == 0
+    assert cr.main(["--notes", str(notes)], registry(turn_on_for=CAVEAT)) == 0
     text = notes.read_text()
     assert text.startswith("## Help us test\n")
     assert f"]({cr.DEVICE_REPORT})" in text
@@ -811,18 +773,18 @@ def test_notes_call_for_testers_of_unsigned_integrations_and_untested_fixes(rele
     )
 
 
-def test_notes_are_empty_with_nothing_to_test(released, monkeypatch, tmp_path):
+def test_notes_are_empty_with_nothing_to_test(released, tmp_path):
     notes = tmp_path / "notes.md"
-    assert cr.main(["--notes", str(notes)], registry(released, monkeypatch)) == 0
+    assert cr.main(["--notes", str(notes)], registry()) == 0
     assert notes.read_text() == ""
 
 
 # The coverage check.
 
 
-def classed(repo, monkeypatch, **scopes: AdapterScope) -> FakeRegistry:
+def classed(**scopes: AdapterScope) -> FakeRegistry:
     """fake naming classes hue, ikea and other, with the scopes given by action."""
-    found = FakeRegistry(repo.path, monkeypatch, {(action, "fake"): scope for action, scope in scopes.items()})
+    found = FakeRegistry({(action, "fake"): scope for action, scope in scopes.items()})
     found.integrations["fake"] = replace(
         found.integrations["fake"],
         capability=lambda hass, target: "hue",
@@ -840,26 +802,26 @@ def classes_record(repo, action: str, *cells, result: str = "pass") -> None:
     path.write_text(text(record_v1("fake", action, result=result, tests=tests)))
 
 
-def classes_record_v2(repo, action: str, *tests: dict) -> None:
+def classes_record_v3(repo, action: str, *tests: dict) -> None:
     path = repo.path / RECORDS / f"{action}.json"
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(text(record_v2("fake", action, list(tests))))
+    path.write_text(text(record_v3("fake", action, list(tests))))
 
 
 SCOPE = AdapterScope(capabilities=verified("hue", "ikea") | experimental("other"))
 
 
-def test_a_verified_class_no_format_1_record_reaches_is_a_gap(fake_repo, monkeypatch):
+def test_a_verified_class_no_format_1_record_reaches_is_a_gap(fake_repo):
     classes_record(fake_repo, "turn_on_for", ["hue"], [])  # a dash: none
     classes_record(fake_repo, "stop", ["hue", "ikea"])  # a group's cell credits each class it lists
-    found = classed(fake_repo, monkeypatch, turn_on_for=SCOPE, stop=SCOPE)
+    found = classed(turn_on_for=SCOPE, stop=SCOPE)
     assert cr.coverage_gaps(found) == ["fake turn_on_for: `ikea` is Verified but no record reaches it"]
 
 
-def test_a_format_2_test_credits_its_devices_classes_and_a_group_test_each_members(fake_repo, monkeypatch):
+def test_a_test_credits_its_devices_classes_and_a_group_test_each_members(fake_repo):
     """A mixed group: each member's class is credited from its own entry; a null class credits none, a device's or a
     member's."""
-    classes_record_v2(
+    classes_record_v3(
         fake_repo,
         "turn_on_for",
         ran("light", device("LTA009", "1", "hue")),
@@ -867,8 +829,8 @@ def test_a_format_2_test_credits_its_devices_classes_and_a_group_test_each_membe
         skipped(),
     )
     members = (device("LTA009", "1", "hue"), device("LCA001", "1", None), device("LWA012", "1", "ikea"))
-    classes_record_v2(fake_repo, "stop", ran("light", *members, group=True, role="group"))
-    found = classed(fake_repo, monkeypatch, turn_on_for=SCOPE, stop=SCOPE)
+    classes_record_v3(fake_repo, "stop", ran("light", *members, group=True, role="group"))
+    found = classed(turn_on_for=SCOPE, stop=SCOPE)
     assert cr.coverage_gaps(found) == ["fake turn_on_for: `ikea` is Verified but no record reaches it"]
     assert (cr.reached("fake", "turn_on_for"), cr.reached("fake", "stop")) == (
         {("hue", "light")},
@@ -876,77 +838,84 @@ def test_a_format_2_test_credits_its_devices_classes_and_a_group_test_each_membe
     )
 
 
-def test_a_class_verified_on_some_domains_alone_needs_a_record_in_each(fake_repo, monkeypatch):
+def test_a_format_2_record_still_credits_its_classes(fake_repo):
+    """It binds no calls, so it signs off nothing, but what it reached it reached (verify, then trust)."""
+    path = fake_repo.path / RECORDS / "stop.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text(record_v2("fake", "stop", [ran("light", device("LTA009", "1", "ikea"))])))
+    assert cr.reached("fake", "stop") == {("ikea", "light")}
+
+
+def test_a_class_verified_on_some_domains_alone_needs_a_record_in_each(fake_repo):
     """A record in one domain proves nothing about the class in another (core/scope.py, OnDomains)."""
     scope = AdapterScope(domains=verified("light", "switch"), capabilities=verified("hue", domains=("light", "switch")))
-    classes_record_v2(fake_repo, "turn_on_for", ran("light", device("LTA009", "1", "hue")))
-    found = classed(fake_repo, monkeypatch, turn_on_for=scope)
+    classes_record_v3(fake_repo, "turn_on_for", ran("light", device("LTA009", "1", "hue")))
+    found = classed(turn_on_for=scope)
     assert cr.coverage_gaps(found) == ["fake turn_on_for: `hue` is Verified on switch but no record reaches it there"]
     # A manual row names no domain, so it covers each.
-    sha = fake_repo.commit()
-    (fake_repo.path / MANUAL).write_text(
-        manual_file(signoff(sha, devices=(("LCA001", "hue"),), passed=("turn_on_for",)))
-    )
+    (fake_repo.path / MANUAL).write_text(manual_file(signoff(devices=(("LCA001", "hue"),), calls=bound("turn_on_for"))))
     assert cr.coverage_gaps(found) == []
 
 
-def test_a_manual_group_row_credits_its_members_classes(fake_repo, monkeypatch):
+def test_a_manual_group_row_credits_its_members_classes(fake_repo):
     (fake_repo.path / MANUAL).parent.mkdir(parents=True, exist_ok=True)
-    sha = fake_repo.commit()
     members = (("LCA001", "hue"), ("LWA012", None), ("LTA009", "ikea"))
-    (fake_repo.path / MANUAL).write_text(manual_file(signoff(sha, devices=members, passed=("stop",), group=True)))
+    (fake_repo.path / MANUAL).write_text(manual_file(signoff(devices=members, calls=bound("stop"), group=True)))
     assert cr.manual_rows("fake", "stop") == [(True, list(members))]
     assert cr.reached("fake", "stop") == {("hue", None), ("ikea", None)}
 
 
-def test_a_failing_record_reaches_nothing_and_a_manual_row_with_a_class_does(fake_repo, monkeypatch):
+def test_a_failing_record_reaches_nothing_and_a_manual_row_with_a_class_does(fake_repo):
     classes_record(fake_repo, "turn_on_for", ["hue"], ["ikea"], result="fail")
-    sha = fake_repo.commit()
     rows = [
-        signoff(sha, devices=(("LCA001", "hue"),), passed=("turn_on_for", "stop")),
-        signoff(sha, devices=(("LCA001", "ikea"),), passed=("stop",)),  # another action's: nothing here
-        signoff(sha, passed=None),
+        signoff(devices=(("LCA001", "hue"),), calls=bound("turn_on_for", "stop")),
+        signoff(devices=(("LCA001", "ikea"),), calls=bound("stop")),  # another action's: nothing here
+        signoff(),
     ]
     (fake_repo.path / MANUAL).write_text(manual_file(*rows))
-    found = classed(fake_repo, monkeypatch, turn_on_for=SCOPE)
+    found = classed(turn_on_for=SCOPE)
     assert cr.coverage_gaps(found) == ["fake turn_on_for: `ikea` is Verified but no record reaches it"]
-    signoffs = [
-        cr.SignOff("manual", f"{MANUAL} row {number}", sha[:7], "a", vouches=number == 3) for number in (1, 2, 3)
+    actions = (("turn_on_for", "stop"), ("stop",), ("turn_on_for",))
+    signed = [
+        cr.Row(f"{MANUAL} row {number}", "1a2b3c4", "a", named, bound(*named))
+        for number, named in enumerate(actions, 1)
     ]
-    assert cr.manual_signoffs("fake", ("a",), names_classes=True) == (signoffs, [])
-    # An integration that names no classes takes no class; a row naming none, or no call changed, is fine.
+    assert cr.manual_signoffs("fake", ("a",), names_classes=True) == (signed, [])
+    # An integration that names no classes takes no class; a row naming none is fine.
     assert cr.manual_signoffs("fake", ("a",)) == (
-        [signoffs[2]],
+        [signed[2]],
         [f"{MANUAL} row {number}: a class, but fake names no classes" for number in (1, 2)],
     )
 
 
-def test_a_record_naming_a_class_on_an_integration_that_names_none_is_an_error(released, monkeypatch, capsys):
+def test_a_record_naming_a_class_on_an_integration_that_names_none_is_an_error(released, gate):
     """As a manual row's is: nothing there could have reached a class, so the record was read wrong."""
-    change = released.commit(f"{FAKE}/stop.py")
-    write_record(released, "stop.json", change)
-    write_record(released, "turn_on_for.json", change)
+    pin(released, "stop", "b")
+    write_record(released, "stop.json")
+    write_record(released, "turn_on_for.json")
     path = released.path / RECORDS / "turn_on_for.json"
     data = json.loads(path.read_text())
     data["tests"].append(ran("light", device("LTA009", "1", "hue"), role="light_dimmable"))
     path.write_text(text(data))
     error = f"{RECORDS}/turn_on_for.json test 2 (t[light_dimmable]): a class, but fake names no classes"
     assert cr.record_class_errors("fake") == [error]
-    assert cr.main(["--signoffs"], registry(released, monkeypatch)) == 1
-    assert f"error: {error}" in capsys.readouterr().err
+    code, _, err = gate()
+    assert code == 1
+    assert f"error: {error}" in err
     # Format 1 names its classes on the test; an integration that names classes takes them.
     classes_record(released, "stop", ["hue"])
     assert cr.record_class_errors("fake")[0].startswith(f"{RECORDS}/stop.json test 1 (t[r]): a class")
-    assert cr.gates(classed(released, monkeypatch, stop=SCOPE, turn_on_for=SCOPE))[2] == []
+    assert cr.gates(classed(stop=SCOPE, turn_on_for=SCOPE))[2] == []
 
 
-def test_an_adapter_flagged_whole_or_an_integration_naming_no_classes_has_no_gap(fake_repo, monkeypatch):
+def test_an_adapter_flagged_whole_or_an_integration_naming_no_classes_has_no_gap(fake_repo):
     flagged = AdapterScope(domains=experimental("light"), capabilities=verified("hue"))
-    assert cr.coverage_gaps(classed(fake_repo, monkeypatch, turn_on_for=flagged)) == []
-    assert cr.coverage_gaps(FakeRegistry(fake_repo.path, monkeypatch, {("turn_on_for", "fake"): AdapterScope()})) == []
+    assert cr.coverage_gaps(classed(turn_on_for=flagged)) == []
+    assert cr.coverage_gaps(FakeRegistry({("turn_on_for", "fake"): AdapterScope()})) == []
 
 
-def test_signoffs_fail_on_a_gap(released, monkeypatch, capsys):
+def test_signoffs_fail_on_a_gap(released, gate):
     classes_record(released, "turn_on_for", ["hue"])
-    assert cr.main(["--signoffs"], classed(released, monkeypatch, turn_on_for=SCOPE)) == 1
-    assert "error: fake turn_on_for: `ikea` is Verified but no record reaches it" in capsys.readouterr().err
+    code, _, err = gate(on=classed(turn_on_for=SCOPE))
+    assert code == 1
+    assert "error: fake turn_on_for: `ikea` is Verified but no record reaches it" in err
