@@ -16,9 +16,9 @@ segment is serialized when its test ends, and carries no test id; a run its test
 
 Normalization: HomeAssistant and Context values are dropped (omitted from mappings and dataclasses, None in a sequence),
 as they hold per-run ids; dataclasses become dicts of their fields; enums their values; sets sorted lists; bytes hex; a
-mapping's keys are normalized too, and one that isn't then a str becomes its JSON text; a raised exception `{"raises":
-<class name>}`; any other object `"<TypeName>"`, which fails the run when it's in a segment's wire or result: an
-integration's library types get a rule here.
+mapping's keys are normalized too, and one that isn't then a str becomes its JSON text (two keys that normalize alike
+raise); a raised exception `{"raises": <class name>}`; any other object `"<TypeName>"`, which fails the run when it's in
+a segment's wire or result: an integration's library types get a rule here.
 
 `write`, after a run with no failures, writes `tests/integrations/<x>/calls/<action>.json`, the sorted unique segments
 of each action, for each integration with a `tests/integrations/<x>/` directory, and removes the `calls/` files of
@@ -66,6 +66,9 @@ _NARROWING = (
     ("--ignore", "ignore"),
     ("--ignore-glob", "ignore_glob"),
     ("--collect-only", "collectonly"),
+    # Before --setup-only, which it sets too.
+    ("--setup-plan", "setupplan"),
+    ("--setup-only", "setuponly"),
 )
 
 type Boundary = tuple[str, str, int]
@@ -84,7 +87,14 @@ def norm(value: Any) -> Any:  # noqa: C901
             f.name: norm(v) for f in dataclasses.fields(value) if not isinstance(v := getattr(value, f.name), _DROPPED)
         }
     if isinstance(value, dict):
-        return {_json_key(norm(k)): norm(v) for k, v in value.items() if not isinstance(v, _DROPPED)}
+        mapping = {}
+        for k, v in value.items():
+            if isinstance(v, _DROPPED):
+                continue
+            if (key := _json_key(norm(k))) in mapping:
+                raise ValueError(f"transcripts: two keys of a mapping normalize to {key!r}")
+            mapping[key] = norm(v)
+        return mapping
     if isinstance(value, list | tuple):
         return [norm(v) for v in value]
     if isinstance(value, set | frozenset):
@@ -311,7 +321,9 @@ class Recorder:
         self.deselected = True
 
     def pytest_runtest_logreport(self, report) -> None:
-        self.ran = True
+        # Only a test's call: setup alone (--setup-only, a skip at setup) sends nothing.
+        if report.when == "call":
+            self.ran = True
 
     def pytest_collection_finish(self, session) -> None:
         if not self.deselected:
@@ -416,10 +428,20 @@ def _placeholders(value: Any):
     elif isinstance(value, dict):
         for k, v in value.items():
             yield from _placeholders(k)
+            yield from _placeholders(_key_structure(k))
             yield from _placeholders(v)
     elif isinstance(value, list):
         for v in value:
             yield from _placeholders(v)
+
+
+def _key_structure(key: str) -> Any:
+    """The list or dict a non-str key became JSON text of (`_json_key`), so its placeholders are seen, or None."""
+    try:
+        decoded = json.loads(key)
+    except ValueError:
+        return None
+    return decoded if isinstance(decoded, list | dict) else None
 
 
 def _write(wanted: dict[Path, str], stale: list[Path]) -> None:

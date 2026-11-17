@@ -208,6 +208,8 @@ def test_transcripts_are_off_by_default(inner):
         pytest.param(["--deselect", "test_inner.py::test_action"], "it runs with --deselect", id="deselect"),
         pytest.param(["test_inner.py"], "it runs test_inner.py, not the testpaths", id="path"),
         pytest.param(["--collect-only"], "it runs with --collect-only", id="collect-only"),
+        pytest.param(["--setup-only"], "it runs with --setup-only", id="setup-only"),
+        pytest.param(["--setup-plan"], "it runs with --setup-plan", id="setup-plan"),
     ],
 )
 def test_a_narrowed_run_is_refused(inner, args, reason):
@@ -252,9 +254,16 @@ def test_a_run_from_a_subdirectory_is_refused(inner, monkeypatch):
     result.stderr.fnmatch_lines(["ERROR: --transcripts=write needs the whole suite: it runs */sub, not the testpaths"])
 
 
-def test_a_run_where_no_test_ran_keeps_the_golden_files(inner):
+@pytest.mark.parametrize(
+    "suite",
+    [
+        pytest.param("", id="no-tests"),
+        pytest.param("import pytest\n\n\n@pytest.mark.skip\ndef test_skipped():\n    pass\n", id="skipped-at-setup"),
+    ],
+)
+def test_a_run_where_no_test_ran_keeps_the_golden_files(inner, suite):
     assert run(inner, "--transcripts=write").ret == 0
-    only(inner, "")
+    only(inner, suite)
 
     for mode in ("write", "check"):
         result = run(inner, f"--transcripts={mode}")
@@ -481,7 +490,19 @@ def test_dict_keys_are_normalized():
     }
 
 
-@pytest.mark.parametrize("reply", [pytest.param("object()", id="value"), pytest.param("{object(): 1}", id="key")])
+def test_keys_that_normalize_alike_raise():
+    with pytest.raises(ValueError, match="two keys of a mapping normalize to '1'"):
+        norm({1: "x", "1": "y"})
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [
+        pytest.param("object()", id="value"),
+        pytest.param("{object(): 1}", id="key"),
+        pytest.param("{(1, object()): 1}", id="inside-a-key"),
+    ],
+)
 def test_an_unnormalized_value_blocks_write(inner, reply):
     only(
         inner,
