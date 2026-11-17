@@ -1,10 +1,10 @@
-# Clearing the persistent auto-off. Plug only, and the entry reload, as in set_auto_off.yaml; the devices start with
+# Clearing the persistent auto-off. The roles and the entry reload as in set_auto_off.yaml; the devices start with
 # it clear. A clear on a setting already clear is unit-tested in deviceside (test_auto.py).
 action: clear_auto_off
-rig_seconds: 300
+rig_seconds: 450
 tests:
   - name: clears
-    roles: [switch_plug]
+    roles: [switch_plug, light_color]
     only: [shelly]
     steps:
       - set: {state: off}

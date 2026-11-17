@@ -78,9 +78,8 @@ A relay, rig-tested with turn on with timer. It has the same `Switch` component 
 
 ### Shelly Multicolor Bulb Gen3
 
-A color bulb (the `RGBCCT` component), rig-tested with turn on and turn off with timer, smooth dimming, set without
-turning on, and get attributes. Auto-off and auto-on are Documented on it: see
-[Shelly multicolor bulbs](#shelly-multicolor-bulbs).
+A color bulb (the `RGBCCT` component), rig-tested with turn on and turn off with timer, auto-off and auto-on, smooth
+dimming, set without turning on, and get attributes.
 
 ## Should work
 
@@ -95,11 +94,6 @@ attributes reports the timer, auto-off, auto-on and brightness. Smooth dimming i
 
 CCT, RGB and RGBW controllers (the `CCT`, `RGB` and `RGBW` components) take the same calls as the dimmers, brightness
 but not color or color temperature yet ([above](#shelly)). A record proves one component, so each needs its own.
-
-### Shelly multicolor bulbs
-
-Auto-off and auto-on on an `RGBCCT` bulb, such as the [Multicolor Bulb Gen3](#shelly-multicolor-bulb-gen3): the same
-calls the relay test passes, confirmed by reading the stored setting back.
 
 ## Try it: Experimental features
 
