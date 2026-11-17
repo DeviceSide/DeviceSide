@@ -26,10 +26,10 @@ No rule here names a refusal entry (`NoKnownMethod`, `NotBuilt`): an integration
 `refusals.py`, outside every family, so ownership by path keeps them from a family maintainer (CLAUDE.md,
 Maintainers).
 
-The ruleset on `main` still requires green, up-to-date checks, so this doesn't look at CI. Like
-`check_protected.py`, it runs from the base branch on the standard library alone, and reads the PR's files with
-`git show`, as data: the integrations and families are parsed, never imported. It compares calls and keywords by
-name, so it can't see:
+The ruleset's merge queue on `main` still requires green checks on the PR merged onto current `main`, so this
+doesn't look at CI. Like `check_protected.py`, it runs from the base branch on the standard library alone, and reads
+the PR's files with `git show`, as data: the integrations and families are parsed, never imported. It compares calls
+and keywords by name, so it can't see:
 
 - a caveat set other than as a `caveat=` keyword or a `Caveat(...)` call;
 - a family's rule change that moves devices between classes, out of a refused class or in from another family's (a
