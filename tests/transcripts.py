@@ -16,9 +16,10 @@ segment is serialized when its test ends, and carries no test id; a run its test
 
 Normalization: HomeAssistant and Context values are dropped (omitted from mappings and dataclasses, None in a sequence),
 as they hold per-run ids; dataclasses become dicts of their fields; enums their values; sets sorted lists; bytes hex; a
-mapping's keys are normalized too, and one that isn't then a str becomes its JSON text (two keys that normalize alike
-raise); a raised exception `{"raises": <class name>}`; any other object `"<TypeName>"`, which fails the run when it's in
-a segment's wire or result: an integration's library types get a rule here.
+class (a zigpy request's schema) `{"class": <name>, "fields": {<field>: <its type's name>}}`, its fields from its own
+annotations; a mapping's keys are normalized too, and one that isn't then a str becomes its JSON text (two keys that
+normalize alike raise); a raised exception `{"raises": <class name>}`; any other object `"<TypeName>"`, which fails the
+run when it's in a segment's wire or result: an integration's library types get a rule here.
 
 `write`, after a run with no failures, writes `tests/integrations/<x>/calls/<action>.json`, the sorted unique segments
 of each action, for each integration with a `tests/integrations/<x>/` directory, and removes the `calls/` files of
@@ -103,6 +104,9 @@ def norm(value: Any) -> Any:  # noqa: C901
         return value.hex()
     if isinstance(value, SimpleNamespace):
         return norm(vars(value))
+    if isinstance(value, type):
+        fields = inspect.get_annotations(value)
+        return {"class": value.__name__, "fields": {k: getattr(t, "__name__", str(t)) for k, t in fields.items()}}
     if value is None or isinstance(value, bool | int | float | str):
         return value
     return f"<{type(value).__name__}>"

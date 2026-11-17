@@ -2,7 +2,6 @@
 
 import asyncio
 import logging
-from unittest.mock import AsyncMock
 
 import pytest
 from homeassistant.core import ServiceCall
@@ -19,14 +18,9 @@ from custom_components.deviceside.integrations.zha.fade import hue_moves, send_e
 
 from .conftest import BOTTOM, RESTORE_60, SENT, XY_ONLY, A, B, bulb, call, call_as, on_off_reads, sent, xy
 from ...conftest import advance, result, wall_clock_now
-from ...fixtures.zha import IEEE
+from ...fixtures.zha import cluster
 
-pytestmark = pytest.mark.usefixtures("setup_production", "clock")
-
-
-@pytest.fixture(autouse=True)
-def on_off_read(bulbs):
-    return bulbs.read
+pytestmark = pytest.mark.usefixtures("setup_production", "clock", "bulbs")
 
 
 async def test_brightness_and_saturation_are_separate_fades(hass, commands, clock):
@@ -53,11 +47,11 @@ async def test_brightness_and_saturation_are_separate_fades(hass, commands, cloc
         pytest.param("raise_hue", {}, "fields_dropped", id="raise_hue_without_enhanced_hue"),
     ],
 )
-async def test_nothing_to_make_is_unchanged(hass, commands, action, light, detail):
+async def test_nothing_to_make_is_unchanged(hass, commands, bulbs, action, light, detail):
     """One row per branch: the lower and raise of an attribute share it, so lower_hue and lower_saturation have none
     of their own."""
     if detail == "fields_dropped":
-        zcl.color_capabilities.return_value = zcl.HUE_SATURATION
+        bulbs.answers[zcl.COLOR_CLUSTER][zcl.COLOR_CAPABILITIES] = zcl.HUE_SATURATION
     bulb(hass, **light)
 
     assert await call(hass, action, {"entity_id": "light.bulb"}) == {
@@ -66,7 +60,7 @@ async def test_nothing_to_make_is_unchanged(hass, commands, action, light, detai
     assert not commands
 
 
-async def test_a_move_of_another_attribute_keeps_the_soft_offs_restore(hass, commands, refreshes, on_off_read):
+async def test_a_move_of_another_attribute_keeps_the_soft_offs_restore(hass, commands, refreshes, bulbs):
     bulb(hass)
     start = wall_clock_now()
 
@@ -75,7 +69,7 @@ async def test_a_move_of_another_attribute_keeps_the_soft_offs_restore(hass, com
     await advance(hass, start, 4.5)
 
     assert sent(commands)[-1] == RESTORE_60
-    assert len(on_off_reads(on_off_read)) == 1
+    assert len(on_off_reads(bulbs)) == 1
     assert len(refreshes) == 2  # one per fade
 
 
@@ -118,24 +112,25 @@ async def test_a_failed_groupcast_rejects_its_members(hass, two_light_group):
     assert raised.value.translation_placeholders["summary"] == "light.a: error, light.b: error"
 
 
-def read_takes(bulbs, clock, seconds: float) -> None:
-    """Each Level read takes `seconds` on the cache's clock."""
-    answer = bulbs.read.side_effect
+def reads_level(hass, clock, level: int, seconds: float, first=lambda: None) -> None:
+    """The light answers a Level read with CurrentLevel `level`, each read taking `seconds` on the cache's clock, and
+    `first` run as the read arrives."""
 
-    async def slow(*args, **kwargs):
+    def slow(_cluster) -> None:
+        first()
         clock.now += seconds
-        return await answer(*args, **kwargs)
 
-    bulbs.read.side_effect = slow
+    level_cluster = cluster(hass, zcl.LEVEL_CLUSTER)
+    level_cluster.values = {zcl.CURRENT_LEVEL: level}
+    level_cluster.before = slow
 
 
-async def test_the_ramp_is_fitted_to_a_read_at_the_point_it_had_reached(hass, commands, bulbs, clock, caplog):
+async def test_the_ramp_is_fitted_to_a_read_at_the_point_it_had_reached(hass, commands, clock, caplog):
     """HA shows 60 %, but the bulb was set to 80 % elsewhere. The read 0.1 s into a 3 s soft off sees 77.2 %, which is
     on the ramp from 79.8 % to 0, not its start: the restore puts back 79.8 %. Every term of the fit is logged."""
     caplog.set_level(logging.DEBUG, logger="custom_components.deviceside.integrations.zha.fade")
     bulb(hass)
-    bulbs.levels[IEEE] = 196  # 77.2 %
-    read_takes(bulbs, clock, 0.2)  # timed at its middle: 0.1 s in
+    reads_level(hass, clock, 196, 0.2)  # 77.2 %, timed at its middle: 0.1 s in
     start = wall_clock_now()
 
     await call(hass, "lower_brightness", {"entity_id": "light.bulb"})
@@ -151,14 +146,13 @@ async def test_the_ramp_is_fitted_to_a_read_at_the_point_it_had_reached(hass, co
     assert "Restoring light.bulb to 79.8 % after a soft off" in caplog.text
 
 
-async def test_a_read_within_the_deadband_keeps_the_prediction(hass, commands, bulbs, clock, caplog):
+async def test_a_read_within_the_deadband_keeps_the_prediction(hass, commands, clock, caplog):
     """The bulb starts a little after the send, so a 60 % soft off reads a shade behind schedule: 57.1 % where the
     ramp predicts 58.0 %. That's within the deadband (0.15 s of the ramp, plus a level step), so the restore puts back
     60 %, not the 61.4 % a fit of the lag would (3 Nov lab rerun: a fitted 62.5 % came back on at 159)."""
     caplog.set_level(logging.DEBUG, logger="custom_components.deviceside.integrations.zha.fade")
     bulb(hass)
-    bulbs.levels[IEEE] = 145  # 57.1 %
-    read_takes(bulbs, clock, 0.2)
+    reads_level(hass, clock, 145, 0.2)  # 57.1 %
     start = wall_clock_now()
 
     await call(hass, "lower_brightness", {"entity_id": "light.bulb"})
@@ -170,18 +164,13 @@ async def test_a_read_within_the_deadband_keeps_the_prediction(hass, commands, b
 
 
 @pytest.mark.parametrize("stopped", [False, True], ids=["read_after_the_fade_ended", "read_after_a_stop"])
-async def test_a_read_too_late_to_fit_changes_nothing(hass, commands, bulbs, clock, stopped):
+async def test_a_read_too_late_to_fit_changes_nothing(hass, commands, clock, stopped):
     bulb(hass)
-    bulbs.levels[IEEE] = 10
-    read_takes(bulbs, clock, 1 if stopped else 10)
-    if stopped:
-        original = bulbs.read.side_effect
 
-        async def stop_first(*args, **kwargs):
-            transition_cache(hass).stopped("light.bulb", BRIGHTNESS_FIELD, 55.0)
-            return await original(*args, **kwargs)
+    def stop() -> None:
+        transition_cache(hass).stopped("light.bulb", BRIGHTNESS_FIELD, 55.0)
 
-        bulbs.read.side_effect = stop_first
+    reads_level(hass, clock, 10, 1 if stopped else 10, stop if stopped else lambda: None)
 
     await call(hass, "lower_brightness", {"entity_id": "light.bulb"})
     await hass.async_block_till_done()
@@ -243,9 +232,7 @@ async def test_a_light_call_from_ha_forgets_its_zha_lights(hass, commands, two_l
     assert {light for light in ("light.a", "light.b") if not cache.follows(light)} == forgotten
 
 
-async def test_an_off_from_ha_during_a_soft_off_leaves_no_restore_and_still_refreshes(
-    hass, commands, refreshes, on_off_read
-):
+async def test_an_off_from_ha_during_a_soft_off_leaves_no_restore_and_still_refreshes(hass, commands, refreshes, bulbs):
     """The call replaces our fade, as on Hue: the bulb stays where HA's off left it."""
     bulb(hass)
     start = wall_clock_now()
@@ -256,12 +243,12 @@ async def test_an_off_from_ha_during_a_soft_off_leaves_no_restore_and_still_refr
     await advance(hass, start, 4.5)
 
     assert len(commands) == 1  # the soft off, and no restore
-    assert not on_off_reads(on_off_read)
+    assert not on_off_reads(bulbs)
     assert [refresh.data for refresh in refreshes] == [{"entity_id": "light.bulb"}]
     assert soft_off_restores(hass) == set()
 
 
-async def test_an_off_from_ha_while_the_soft_off_is_sent_still_cancels_its_restore(hass, refreshes, on_off_read):
+async def test_an_off_from_ha_while_the_soft_off_is_sent_still_cancels_its_restore(hass, refreshes, bulbs):
     bulb(hass)
     start = wall_clock_now()
     async_mock_service(hass, "light", "turn_off")
@@ -278,7 +265,7 @@ async def test_an_off_from_ha_while_the_soft_off_is_sent_still_cancels_its_resto
     await advance(hass, start, 4.5)
 
     assert len(sent_commands) == 1
-    assert not on_off_reads(on_off_read)
+    assert not on_off_reads(bulbs)
 
 
 async def test_a_stop_drops_the_soft_offs_restore(hass, commands):
@@ -442,9 +429,9 @@ async def test_mixed_hues_in_a_group_share_one_groupcast(hass, two_light_group, 
 
 
 async def test_lights_without_hue_and_saturation_fade_in_xy_at_their_own_hue(
-    hass, two_light_group, commands, group_commands
+    hass, two_light_group, commands, group_commands, bulbs
 ):
-    zcl.color_capabilities.return_value = XY_ONLY
+    bulbs.answers[zcl.COLOR_CLUSTER][zcl.COLOR_CAPABILITIES] = XY_ONLY
     bulb(hass, "light.a", A, hs=(200.0, 60.0))
     bulb(hass, "light.b", B, hs=(100.0, 60.0))
 
@@ -459,11 +446,11 @@ async def test_lights_without_hue_and_saturation_fade_in_xy_at_their_own_hue(
     }
 
 
-async def test_one_hue_in_a_group_fades_in_xy_by_groupcast(hass, two_light_group, commands, group_commands):
+async def test_one_hue_in_a_group_fades_in_xy_by_groupcast(hass, two_light_group, commands, group_commands, bulbs):
     bulb(hass, "light.a", A)
     bulb(hass, "light.b", B)
 
-    zcl.color_capabilities.return_value = XY_ONLY
+    bulbs.answers[zcl.COLOR_CLUSTER][zcl.COLOR_CAPABILITIES] = XY_ONLY
 
     await call(hass, "raise_saturation", {"entity_id": "light.zha_group"})
 
@@ -473,11 +460,11 @@ async def test_one_hue_in_a_group_fades_in_xy_by_groupcast(hass, two_light_group
 
 
 @pytest.mark.parametrize("action", ["raise_hue", "raise_saturation"])
-async def test_an_unread_color_capabilities_rejects_the_move(hass, commands, monkeypatch, caplog, action):
+async def test_an_unread_color_capabilities_rejects_the_move(hass, commands, caplog, action):
     """#10: a light that didn't answer may have enhanced hue, or hue and saturation, so the move is rejected rather
     than dropped or sent another way."""
-    monkeypatch.setattr(zcl, "color_capabilities", AsyncMock(side_effect=LookupError("no answer")))
     bulb(hass)
+    cluster(hass, zcl.COLOR_CLUSTER).error = TimeoutError()  # no answer
 
     with pytest.raises(HomeAssistantError) as raised:
         await call(hass, action, {"entity_id": "light.bulb"})
@@ -499,15 +486,15 @@ async def test_a_failed_hue_move_keeps_the_cycle_an_earlier_one_started(hass):
     assert hue_moves(hass) == {"light.a", "light.b"}
 
 
-async def test_a_cancel_mid_send_leaves_the_hue_cycle_tracked(hass, monkeypatch):
+async def test_a_cancel_mid_send_leaves_the_hue_cycle_tracked(hass):
     """A cycle the bulb may have started must stay tracked, so a stop sends it StopMoveStep."""
     bulb(hass, "light.a", A)
     bulb(hass, "light.b", B)
 
-    async def cancelled(*args, **kwargs):
+    async def cancelled(call: ServiceCall) -> None:
         raise asyncio.CancelledError
 
-    monkeypatch.setattr(zcl, "command", cancelled)
+    hass.services.async_register("zha", "issue_zigbee_cluster_command", cancelled)
 
     with pytest.raises(asyncio.CancelledError):
         await call(hass, "raise_hue", {"entity_id": ["light.a", "light.b"]})
@@ -542,16 +529,16 @@ async def test_an_overlapping_soft_off_keeps_its_restore_when_the_first_fails(ha
     assert transition_cache(hass).tracks("light.a", BRIGHTNESS_FIELD)
 
 
-async def test_a_cancel_puts_every_light_back(hass, monkeypatch):
+async def test_a_cancel_puts_every_light_back(hass):
     bulb(hass, "light.a", A)
     bulb(hass, "light.b", B)
     cache = transition_cache(hass)
     earlier = cache.stopped("light.a", BRIGHTNESS_FIELD, 55.0)
 
-    async def cancelled(*args, **kwargs):
+    async def cancelled(call: ServiceCall) -> None:
         raise asyncio.CancelledError
 
-    monkeypatch.setattr(zcl, "command", cancelled)
+    hass.services.async_register("zha", "issue_zigbee_cluster_command", cancelled)
 
     with pytest.raises(asyncio.CancelledError):
         await call(hass, "lower_brightness", {"entity_id": ["light.a", "light.b"]})

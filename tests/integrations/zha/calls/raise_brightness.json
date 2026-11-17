@@ -54,22 +54,28 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      8,
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
        0
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    {
-     "raises": "LookupError"
-    }
+    [
+     {},
+     {
+      "0": 134
+     }
+    ]
    ]
   ]
  },
@@ -128,22 +134,28 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      8,
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
        0
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    {
-     "raises": "LookupError"
-    }
+    [
+     {},
+     {
+      "0": 134
+     }
+    ]
    ]
   ]
  },
@@ -251,41 +263,53 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:00:00:00:00:00:00:0a",
-       11
-      ],
-      8,
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0a"
+      },
       [
        0
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    {
-     "raises": "LookupError"
-    }
+    [
+     {},
+     {
+      "0": 134
+     }
+    ]
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:00:00:00:00:00:00:0b",
-       11
-      ],
-      8,
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0b"
+      },
       [
        0
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    {
-     "raises": "LookupError"
-    }
+    [
+     {},
+     {
+      "0": 134
+     }
+    ]
    ],
    [
     [
@@ -308,22 +332,28 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:00:00:00:00:00:00:0c",
-       11
-      ],
-      8,
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0c"
+      },
       [
        0
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    {
-     "raises": "LookupError"
-    }
+    [
+     {},
+     {
+      "0": 134
+     }
+    ]
    ]
   ]
  },
@@ -433,22 +463,28 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:00:00:00:00:00:00:0a",
-       11
-      ],
-      8,
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0a"
+      },
       [
        0
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    {
-     "raises": "LookupError"
-    }
+    [
+     {},
+     {
+      "0": 134
+     }
+    ]
    ],
    [
     [
@@ -471,22 +507,28 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:00:00:00:00:00:00:0c",
-       11
-      ],
-      8,
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0c"
+      },
       [
        0
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    {
-     "raises": "LookupError"
-    }
+    [
+     {},
+     {
+      "0": 134
+     }
+    ]
    ],
    [
     [
@@ -562,6 +604,27 @@
    [
     [
      "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 8,
+      "cluster_type": "in",
+      "command": 0,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:00:00:00:00:00:00:0b",
+      "params": {
+       "level": 1,
+       "options_mask": 1,
+       "options_override": 1,
+       "transition_time": 0
+      }
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "service",
      "zha.issue_zigbee_group_command",
      {
       "args": [
@@ -577,41 +640,53 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:00:00:00:00:00:00:0a",
-       11
-      ],
-      8,
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0a"
+      },
       [
        0
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    {
-     "raises": "LookupError"
-    }
+    [
+     {},
+     {
+      "0": 134
+     }
+    ]
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:00:00:00:00:00:00:0b",
-       11
-      ],
-      8,
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0b"
+      },
       [
        0
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    {
-     "raises": "LookupError"
-    }
+    [
+     {},
+     {
+      "0": 134
+     }
+    ]
    ]
   ]
  },
@@ -666,44 +741,6 @@
   "wire": [
    [
     [
-     "zcl.hue_turn_on",
-     [
-      [
-       "00:00:00:00:00:00:00:0b",
-       11
-      ],
-      1,
-      null
-     ],
-     {
-      "entity_id": "light.b"
-     }
-    ],
-    false
-   ],
-   [
-    [
-     "service",
-     "zha.issue_zigbee_cluster_command",
-     {
-      "cluster_id": 8,
-      "cluster_type": "in",
-      "command": 0,
-      "command_type": "server",
-      "endpoint_id": 11,
-      "ieee": "00:00:00:00:00:00:00:0b",
-      "params": {
-       "level": 1,
-       "options_mask": 1,
-       "options_override": 1,
-       "transition_time": 0
-      }
-     }
-    ],
-    null
-   ],
-   [
-    [
      "service",
      "zha.issue_zigbee_group_command",
      {
@@ -720,41 +757,53 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:00:00:00:00:00:00:0a",
-       11
-      ],
-      8,
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0a"
+      },
       [
        0
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    {
-     "raises": "LookupError"
-    }
+    [
+     {},
+     {
+      "0": 134
+     }
+    ]
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:00:00:00:00:00:00:0b",
-       11
-      ],
-      8,
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0b"
+      },
       [
        0
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    {
-     "raises": "LookupError"
-    }
+    [
+     {},
+     {
+      "0": 134
+     }
+    ]
    ]
   ]
  },
@@ -809,23 +858,6 @@
   "wire": [
    [
     [
-     "zcl.hue_turn_on",
-     [
-      [
-       "00:00:00:00:00:00:00:0b",
-       11
-      ],
-      1,
-      null
-     ],
-     {
-      "entity_id": "light.b"
-     }
-    ],
-    false
-   ],
-   [
-    [
      "service",
      "zha.issue_zigbee_cluster_command",
      {
@@ -868,22 +900,28 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:00:00:00:00:00:00:0a",
-       11
-      ],
-      8,
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0a"
+      },
       [
        0
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    {
-     "raises": "LookupError"
-    }
+    [
+     {},
+     {
+      "0": 134
+     }
+    ]
    ]
   ]
  },
@@ -1011,22 +1049,28 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:00:00:00:00:00:00:0a",
-       11
-      ],
-      8,
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0a"
+      },
       [
        0
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    {
-     "raises": "LookupError"
-    }
+    [
+     {},
+     {
+      "0": 134
+     }
+    ]
    ]
   ]
  },
@@ -1106,6 +1150,107 @@
      {
       "cluster_id": 8,
       "cluster_type": "in",
+      "command": 0,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "level": 1,
+       "options_mask": 1,
+       "options_override": 1,
+       "transition_time": 0
+      }
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 8,
+      "cluster_type": "in",
+      "command": 4,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "level": 254,
+       "transition_time": 50
+      }
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
+      [
+       0
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {},
+     {
+      "0": 134
+     }
+    ]
+   ]
+  ]
+ },
+ {
+  "action": "raise_brightness",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "brightness",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 8,
+      "cluster_type": "in",
       "command": 4,
       "command_type": "server",
       "endpoint_id": 11,
@@ -1120,22 +1265,28 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      8,
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
        0
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    {
-     "raises": "LookupError"
-    }
+    [
+     {},
+     {
+      "0": 134
+     }
+    ]
    ]
   ]
  },
@@ -1194,22 +1345,28 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      8,
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
        0
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    {
-     "raises": "LookupError"
-    }
+    [
+     {},
+     {
+      "0": 134
+     }
+    ]
    ],
    [
     [
@@ -1261,41 +1418,31 @@
   "wire": [
    [
     [
-     "zcl.hue_turn_on",
+     "zha.Cluster.request",
      [
-      [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      1,
-      null
+      {
+       "cluster_id": 64515,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
+      false,
+      0,
+      {
+       "class": "MultiColor",
+       "fields": {
+        "data": "SerializableBytes"
+       }
+      },
+      "130001010000"
      ],
      {
-      "entity_id": "light.bulb"
+      "manufacturer": 4107
      }
     ],
-    false
-   ],
-   [
-    [
-     "service",
-     "zha.issue_zigbee_cluster_command",
-     {
-      "cluster_id": 8,
-      "cluster_type": "in",
-      "command": 0,
-      "command_type": "server",
-      "endpoint_id": 11,
-      "ieee": "00:17:88:01:02:03:04:05",
-      "params": {
-       "level": 1,
-       "options_mask": 1,
-       "options_override": 1,
-       "transition_time": 0
-      }
-     }
-    ],
-    null
+    {
+     "command_id": 0,
+     "status": 0
+    }
    ],
    [
     [
@@ -1318,113 +1465,28 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      8,
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
        0
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    {
-     "raises": "LookupError"
-    }
-   ]
-  ]
- },
- {
-  "action": "raise_brightness",
-  "integration": "zha",
-  "request": {
-   "dropped": [],
-   "own": null,
-   "request": {
-    "attribute": "brightness",
-    "dropped": false,
-    "limit": null,
-    "sweep_time": 5.0,
-    "up": true
-   },
-   "targets": [
     [
-     "light.bulb",
-     "light.bulb",
-     false
+     {},
+     {
+      "0": 134
+     }
     ]
-   ]
-  },
-  "result": [
-   {
-    "clamped_to": null,
-    "classes": "hue",
-    "data": null,
-    "detail": null,
-    "entity_id": "light.bulb",
-    "integration": "zha",
-    "member_classes": null,
-    "status": "sent"
-   }
-  ],
-  "wire": [
-   [
-    [
-     "zcl.hue_turn_on",
-     [
-      [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      1,
-      null
-     ],
-     {
-      "entity_id": "light.bulb"
-     }
-    ],
-    true
-   ],
-   [
-    [
-     "service",
-     "zha.issue_zigbee_cluster_command",
-     {
-      "cluster_id": 8,
-      "cluster_type": "in",
-      "command": 4,
-      "command_type": "server",
-      "endpoint_id": 11,
-      "ieee": "00:17:88:01:02:03:04:05",
-      "params": {
-       "level": 254,
-       "transition_time": 50
-      }
-     }
-    ],
-    null
-   ],
-   [
-    [
-     "zcl.read_attributes",
-     [
-      [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      8,
-      [
-       0
-      ]
-     ],
-     {}
-    ],
-    {
-     "raises": "LookupError"
-    }
    ]
   ]
  },
@@ -1483,22 +1545,28 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      8,
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
        0
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    {
-     "raises": "LookupError"
-    }
+    [
+     {},
+     {
+      "0": 134
+     }
+    ]
    ]
   ]
  },
@@ -1652,23 +1720,6 @@
   "wire": [
    [
     [
-     "zcl.hue_turn_on",
-     [
-      [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      1,
-      null
-     ],
-     {
-      "entity_id": "light.ikea"
-     }
-    ],
-    false
-   ],
-   [
-    [
      "service",
      "zha.issue_zigbee_cluster_command",
      {
@@ -1709,22 +1760,28 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      8,
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
        0
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    {
-     "raises": "LookupError"
-    }
+    [
+     {},
+     {
+      "0": 134
+     }
+    ]
    ]
   ]
  }

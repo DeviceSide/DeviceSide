@@ -2,7 +2,6 @@
 
 import asyncio
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
 
 import pytest
 from homeassistant.core import ServiceCall
@@ -29,11 +28,10 @@ HS = {"supported_color_modes": ["hs"]}
 
 
 @pytest.fixture(autouse=True)
-def level_read(monkeypatch):
-    """zcl.read_attributes, reading CurrentLevel 127 (50 %) unless a test sets its own."""
-    read = AsyncMock(return_value={zcl.CURRENT_LEVEL: 127})
-    monkeypatch.setattr(zcl, "read_attributes", read)
-    return read
+def level_read(zha_gateway):
+    """The fake gateway, every light's Level cluster reading CurrentLevel 127 (50 %) unless a test sets its own."""
+    zha_gateway.answers[zcl.LEVEL_CLUSTER] = {zcl.CURRENT_LEVEL: 127}
+    return zha_gateway
 
 
 @pytest.fixture(autouse=True)
@@ -111,7 +109,7 @@ async def test_limits_clamp_the_current_level(hass, commands, refreshes, level_r
 
     assert await call(hass, "set_attributes", {"entity_id": "light.bulb", **data}) == {"light.bulb": SENT}
     assert sent(commands) == expected
-    level_read.assert_awaited_once_with(hass, (IEEE, 11), 0x0008, (0x0000,))
+    assert level_read.reads == [(IEEE, 0x0008, [0x0000])]
 
 
 async def test_within_limits_sends_nothing(hass, commands, refreshes):
@@ -148,7 +146,7 @@ async def test_a_light_that_takes_no_field_is_unchanged(hass, commands, refreshe
 
     assert response == {"light.bulb": result("zha", "unchanged", detail="fields_dropped")}
     assert not commands
-    level_read.assert_not_awaited()
+    assert not level_read.reads
 
 
 async def test_a_failed_refresh_still_reports_sent(hass, commands):
@@ -240,7 +238,7 @@ async def test_the_refreshes_wait_outside_the_concurrency_slots(hass):
 
 async def test_a_failed_level_read_rejects_that_light(hass, commands, level_read):
     bulb(hass, DIMMABLE)
-    level_read.side_effect = LookupError("Attribute 0x0000 not read")
+    level_read.answers[zcl.LEVEL_CLUSTER] = {}  # CurrentLevel unsupported
 
     with pytest.raises(HomeAssistantError) as raised:
         await call(hass, "set_attributes", {"entity_id": "light.bulb", "min_brightness": 60})

@@ -82,51 +82,57 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0a"
+      },
       [
-       "00:00:00:00:00:00:00:0a",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": true,
-     "16385": 50
-    }
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0b"
+      },
       [
-       "00:00:00:00:00:00:00:0b",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": true,
-     "16385": 50
-    }
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
    ]
   ]
  },
@@ -201,27 +207,30 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": true,
-     "16385": 50
-    }
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
    ]
   ]
  },
@@ -297,119 +306,142 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0a"
+      },
       [
-       "00:00:00:00:00:00:00:0a",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": true,
-     "16385": 50
-    }
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0b"
+      },
       [
-       "00:00:00:00:00:00:00:0b",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": false
-    }
+    [
+     {
+      "0": false
+     },
+     {
+      "16385": 134
+     }
+    ]
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0b"
+      },
       [
-       "00:00:00:00:00:00:00:0b",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": false
-    }
+    [
+     {
+      "0": false
+     },
+     {
+      "16385": 134
+     }
+    ]
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0b"
+      },
       [
-       "00:00:00:00:00:00:00:0b",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": false
-    }
+    [
+     {
+      "0": false
+     },
+     {
+      "16385": 134
+     }
+    ]
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0b"
+      },
       [
-       "00:00:00:00:00:00:00:0b",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": false
-    }
+    [
+     {
+      "0": false
+     },
+     {
+      "16385": 134
+     }
+    ]
    ]
   ]
  },
@@ -485,48 +517,57 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0a"
+      },
       [
-       "00:00:00:00:00:00:00:0a",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": true,
-     "16385": 50
-    }
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0b"
+      },
       [
-       "00:00:00:00:00:00:00:0b",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {}
+    [
+     {},
+     {
+      "0": 134,
+      "16385": 134
+     }
+    ]
    ]
   ]
  },
@@ -602,119 +643,142 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0a"
+      },
       [
-       "00:00:00:00:00:00:00:0a",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": true,
-     "16385": 50
-    }
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0b"
+      },
       [
-       "00:00:00:00:00:00:00:0b",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": true
-    }
+    [
+     {
+      "0": true
+     },
+     {
+      "16385": 134
+     }
+    ]
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0b"
+      },
       [
-       "00:00:00:00:00:00:00:0b",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": true
-    }
+    [
+     {
+      "0": true
+     },
+     {
+      "16385": 134
+     }
+    ]
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0b"
+      },
       [
-       "00:00:00:00:00:00:00:0b",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": true
-    }
+    [
+     {
+      "0": true
+     },
+     {
+      "16385": 134
+     }
+    ]
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0b"
+      },
       [
-       "00:00:00:00:00:00:00:0b",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": true
-    }
+    [
+     {
+      "0": true
+     },
+     {
+      "16385": 134
+     }
+    ]
    ]
   ]
  },
@@ -793,27 +857,30 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0a"
+      },
       [
-       "00:00:00:00:00:00:00:0a",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": true,
-     "16385": 50
-    }
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
    ],
    [
     [
@@ -837,27 +904,30 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0b"
+      },
       [
-       "00:00:00:00:00:00:00:0b",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": true,
-     "16385": 50
-    }
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
    ]
   ]
  },
@@ -933,75 +1003,84 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0a"
+      },
       [
-       "00:00:00:00:00:00:00:0a",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": true,
-     "16385": 50
-    }
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0b"
+      },
       [
-       "00:00:00:00:00:00:00:0b",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": false,
-     "16385": 0
-    }
+    [
+     {
+      "0": false,
+      "16385": 0
+     },
+     {}
+    ]
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0b"
+      },
       [
-       "00:00:00:00:00:00:00:0b",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": true,
-     "16385": 48
-    }
+    [
+     {
+      "0": true,
+      "16385": 48
+     },
+     {}
+    ]
    ]
   ]
  },
@@ -1077,75 +1156,84 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0a"
+      },
       [
-       "00:00:00:00:00:00:00:0a",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": true,
-     "16385": 50
-    }
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0b"
+      },
       [
-       "00:00:00:00:00:00:00:0b",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": true,
-     "16385": 0
-    }
+    [
+     {
+      "0": true,
+      "16385": 0
+     },
+     {}
+    ]
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0b"
+      },
       [
-       "00:00:00:00:00:00:00:0b",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": true,
-     "16385": 48
-    }
+    [
+     {
+      "0": true,
+      "16385": 48
+     },
+     {}
+    ]
    ]
   ]
  },
@@ -1221,51 +1309,57 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0a"
+      },
       [
-       "00:00:00:00:00:00:00:0a",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": true,
-     "16385": 50
-    }
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0b"
+      },
       [
-       "00:00:00:00:00:00:00:0b",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": true,
-     "16385": 50
-    }
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
    ]
   ]
  },
@@ -1450,75 +1544,84 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": true,
-     "16385": 50
-    }
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0a"
+      },
       [
-       "00:00:00:00:00:00:00:0a",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": true,
-     "16385": 50
-    }
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0b"
+      },
       [
-       "00:00:00:00:00:00:00:0b",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": true,
-     "16385": 50
-    }
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
    ]
   ]
  },
@@ -1631,27 +1734,30 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": true,
-     "16385": 50
-    }
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
    ]
   ]
  },
@@ -1730,27 +1836,30 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": true,
-     "16385": 50
-    }
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
    ],
    [
     [
@@ -1836,27 +1945,30 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": false,
-     "16385": 50
-    }
+    [
+     {
+      "0": false,
+      "16385": 50
+     },
+     {}
+    ]
    ]
   ]
  },
@@ -1920,27 +2032,30 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": null,
-     "16385": 50
-    }
+    [
+     {
+      "0": null,
+      "16385": 50
+     },
+     {}
+    ]
    ]
   ]
  },
@@ -2004,27 +2119,30 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": true,
-     "16385": null
-    }
+    [
+     {
+      "0": true,
+      "16385": null
+     },
+     {}
+    ]
    ]
   ]
  },
@@ -2088,26 +2206,30 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "raises": "ImportError"
-    }
+    [
+     {},
+     {
+      "0": 134,
+      "16385": 134
+     }
+    ]
    ]
   ]
  },
@@ -2171,189 +2293,25 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
     {
-     "raises": "LookupError"
-    }
-   ]
-  ]
- },
- {
-  "action": "turn_on_for",
-  "integration": "zha",
-  "request": {
-   "dropped": [],
-   "own": null,
-   "request": {
-    "duration_s": 5.0,
-    "light": {
-     "brightness": null,
-     "color_temp_kelvin": null,
-     "hs_color": null,
-     "rgb_color": null,
-     "transition": null,
-     "xy_color": null
-    }
-   },
-   "targets": [
-    [
-     "light.bulb",
-     "light.bulb",
-     false
-    ]
-   ]
-  },
-  "result": [
-   {
-    "clamped_to": null,
-    "classes": "hue",
-    "data": null,
-    "detail": "readback_failed",
-    "entity_id": "light.bulb",
-    "integration": "zha",
-    "member_classes": null,
-    "status": "sent"
-   }
-  ],
-  "wire": [
-   [
-    [
-     "service",
-     "zha.issue_zigbee_cluster_command",
-     {
-      "cluster_id": 6,
-      "cluster_type": "in",
-      "command": 66,
-      "command_type": "server",
-      "endpoint_id": 11,
-      "ieee": "00:17:88:01:02:03:04:05",
-      "params": {
-       "off_wait_time": 0,
-       "on_off_control": 0,
-       "on_time": 50
-      }
-     }
-    ],
-    null
-   ],
-   [
-    [
-     "zcl.read_attributes",
-     [
-      [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      6,
-      [
-       0
-      ]
-     ],
-     {
-      "optional": [
-       16385
-      ]
-     }
-    ],
-    {}
-   ]
-  ]
- },
- {
-  "action": "turn_on_for",
-  "integration": "zha",
-  "request": {
-   "dropped": [],
-   "own": null,
-   "request": {
-    "duration_s": 5.0,
-    "light": {
-     "brightness": null,
-     "color_temp_kelvin": null,
-     "hs_color": null,
-     "rgb_color": null,
-     "transition": null,
-     "xy_color": null
-    }
-   },
-   "targets": [
-    [
-     "light.bulb",
-     "light.bulb",
-     false
-    ]
-   ]
-  },
-  "result": [
-   {
-    "clamped_to": null,
-    "classes": "hue",
-    "data": null,
-    "detail": "timer_not_reported",
-    "entity_id": "light.bulb",
-    "integration": "zha",
-    "member_classes": null,
-    "status": "sent"
-   }
-  ],
-  "wire": [
-   [
-    [
-     "service",
-     "zha.issue_zigbee_cluster_command",
-     {
-      "cluster_id": 6,
-      "cluster_type": "in",
-      "command": 66,
-      "command_type": "server",
-      "endpoint_id": 11,
-      "ieee": "00:17:88:01:02:03:04:05",
-      "params": {
-       "off_wait_time": 0,
-       "on_off_control": 0,
-       "on_time": 50
-      }
-     }
-    ],
-    null
-   ],
-   [
-    [
-     "zcl.read_attributes",
-     [
-      [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      6,
-      [
-       0
-      ]
-     ],
-     {
-      "optional": [
-       16385
-      ]
-     }
-    ],
-    {
-     "0": 1
+     "raises": "TimeoutError"
     }
    ]
   ]
@@ -2418,27 +2376,31 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": true,
-     "16385": 0
-    }
+    [
+     {
+      "0": 1
+     },
+     {
+      "16385": 134
+     }
+    ]
    ]
   ]
  },
@@ -2502,27 +2464,30 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": true,
-     "16385": 19
-    }
+    [
+     {
+      "0": true,
+      "16385": 0
+     },
+     {}
+    ]
    ]
   ]
  },
@@ -2586,27 +2551,117 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": true,
-     "16385": 51
+    [
+     {
+      "0": true,
+      "16385": 19
+     },
+     {}
+    ]
+   ]
+  ]
+ },
+ {
+  "action": "turn_on_for",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
     }
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": "timer_not_reported",
+    "entity_id": "light.bulb",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 6,
+      "cluster_type": "in",
+      "command": 66,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "off_wait_time": 0,
+       "on_off_control": 0,
+       "on_time": 50
+      }
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": true,
+      "16385": 51
+     },
+     {}
+    ]
    ]
   ]
  },
@@ -2670,27 +2725,30 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": true,
-     "16385": 20
-    }
+    [
+     {
+      "0": true,
+      "16385": 20
+     },
+     {}
+    ]
    ]
   ]
  },
@@ -2754,27 +2812,30 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": true,
-     "16385": 50
-    }
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
    ]
   ]
  },
@@ -2900,27 +2961,30 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": true,
-     "16385": 50
-    }
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
    ]
   ]
  },
@@ -2984,27 +3048,30 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": false,
-     "16385": 50
-    }
+    [
+     {
+      "0": false,
+      "16385": 50
+     },
+     {}
+    ]
    ]
   ]
  },
@@ -3068,27 +3135,30 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": true,
-     "16385": 50
-    }
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
    ]
   ]
  },
@@ -3152,27 +3222,30 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      6,
-      [
-       0
+       0,
+       16385
       ]
      ],
      {
-      "optional": [
-       16385
-      ]
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    {
-     "0": true,
-     "16385": 65534
-    }
+    [
+     {
+      "0": true,
+      "16385": 65534
+     },
+     {}
+    ]
    ]
   ]
  }

@@ -490,6 +490,19 @@ def test_dict_keys_are_normalized():
     }
 
 
+def test_a_class_is_its_name_and_its_fields_types():
+    """A zigpy request's schema: what its args are sent as."""
+
+    class Payload(bytes):
+        pass
+
+    class MultiColor:
+        data: Payload
+
+    assert norm(MultiColor) == {"class": "MultiColor", "fields": {"data": "Payload"}}
+    assert norm(Payload) == {"class": "Payload", "fields": {}}
+
+
 def test_keys_that_normalize_alike_raise():
     with pytest.raises(ValueError, match="two keys of a mapping normalize to '1'"):
         norm({1: "x", "1": "y"})

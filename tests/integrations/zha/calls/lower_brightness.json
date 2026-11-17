@@ -54,22 +54,28 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      8,
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
        0
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    {
-     "raises": "LookupError"
-    }
+    [
+     {},
+     {
+      "0": 134
+     }
+    ]
    ]
   ]
  },
@@ -128,22 +134,28 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      8,
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
        0
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    {
-     "raises": "LookupError"
-    }
+    [
+     {},
+     {
+      "0": 134
+     }
+    ]
    ]
   ]
  },
@@ -259,22 +271,28 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:00:00:00:00:00:00:0a",
-       11
-      ],
-      8,
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0a"
+      },
       [
        0
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    {
-     "raises": "LookupError"
-    }
+    [
+     {},
+     {
+      "0": 134
+     }
+    ]
    ]
   ]
  },
@@ -348,22 +366,28 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:00:00:00:00:00:00:0a",
-       11
-      ],
-      8,
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0a"
+      },
       [
        0
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    {
-     "raises": "LookupError"
-    }
+    [
+     {},
+     {
+      "0": 134
+     }
+    ]
    ]
   ]
  },
@@ -458,22 +482,28 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:00:00:00:00:00:00:0a",
-       11
-      ],
-      8,
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0a"
+      },
       [
        0
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    {
-     "raises": "LookupError"
-    }
+    [
+     {},
+     {
+      "0": 134
+     }
+    ]
    ]
   ]
  },
@@ -532,22 +562,28 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:00:00:00:00:00:00:0a",
-       11
-      ],
-      8,
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0a"
+      },
       [
        0
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    {
-     "raises": "LookupError"
-    }
+    [
+     {},
+     {
+      "0": 134
+     }
+    ]
    ]
   ]
  },
@@ -708,22 +744,28 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      8,
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
        0
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    {
-     "raises": "LookupError"
-    }
+    [
+     {},
+     {
+      "0": 134
+     }
+    ]
    ],
    [
     [
@@ -792,22 +834,28 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      8,
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
        0
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    {
-     "0": 10
-    }
+    [
+     {
+      "0": 10
+     },
+     {}
+    ]
    ]
   ]
  },
@@ -866,41 +914,53 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      8,
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
        0
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    {
-     "0": 145
-    }
+    [
+     {
+      "0": 145
+     },
+     {}
+    ]
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      6,
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
        0
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    {
-     "0": false
-    }
+    [
+     {
+      "0": false
+     },
+     {}
+    ]
    ],
    [
     [
@@ -992,41 +1052,53 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      8,
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
        0
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    {
-     "0": 196
-    }
+    [
+     {
+      "0": 196
+     },
+     {}
+    ]
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      6,
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
        0
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    {
-     "0": false
-    }
+    [
+     {
+      "0": false
+     },
+     {}
+    ]
    ],
    [
     [
@@ -1118,22 +1190,28 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      8,
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
        0
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    {
-     "raises": "LookupError"
-    }
+    [
+     {},
+     {
+      "0": 134
+     }
+    ]
    ],
    [
     [
@@ -1202,41 +1280,53 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      8,
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
        0
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    {
-     "raises": "LookupError"
-    }
+    [
+     {},
+     {
+      "0": 134
+     }
+    ]
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      6,
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
        0
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    {
-     "0": false
-    }
+    [
+     {
+      "0": false
+     },
+     {}
+    ]
    ],
    [
     [
@@ -1326,41 +1416,53 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      8,
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
        0
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    {
-     "raises": "LookupError"
-    }
+    [
+     {},
+     {
+      "0": 134
+     }
+    ]
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      6,
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
        0
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    {
-     "0": false
-    }
+    [
+     {
+      "0": false
+     },
+     {}
+    ]
    ],
    [
     [
@@ -1452,40 +1554,164 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      8,
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
        0
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    {
-     "raises": "LookupError"
-    }
+    [
+     {},
+     {
+      "0": 134
+     }
+    ]
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      6,
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
        0
       ]
      ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": true
+     },
      {}
+    ]
+   ],
+   [
+    [
+     "service",
+     "homeassistant.update_entity",
+     {
+      "entity_id": "light.bulb"
+     }
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "lower_brightness",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "brightness",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": false
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 8,
+      "cluster_type": "in",
+      "command": 4,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "level": 0,
+       "transition_time": 30
+      }
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
+      [
+       0
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {},
+     {
+      "0": 134
+     }
+    ]
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
+      [
+       0
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
     {
-     "0": true
+     "raises": "TimeoutError"
     }
    ],
    [
@@ -1555,125 +1781,28 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      8,
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
        0
       ]
      ],
-     {}
-    ],
-    {
-     "raises": "LookupError"
-    }
-   ],
-   [
-    [
-     "zcl.read_attributes",
-     [
-      [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      6,
-      [
-       0
-      ]
-     ],
-     {}
-    ],
-    {
-     "raises": "LookupError"
-    }
-   ],
-   [
-    [
-     "service",
-     "homeassistant.update_entity",
      {
-      "entity_id": "light.bulb"
+      "allow_cache": false,
+      "only_cache": false
      }
     ],
-    null
-   ]
-  ]
- },
- {
-  "action": "lower_brightness",
-  "integration": "zha",
-  "request": {
-   "dropped": [],
-   "own": null,
-   "request": {
-    "attribute": "brightness",
-    "dropped": false,
-    "limit": null,
-    "sweep_time": 5.0,
-    "up": false
-   },
-   "targets": [
     [
-     "light.bulb",
-     "light.bulb",
-     false
+     {},
+     {
+      "0": 134
+     }
     ]
-   ]
-  },
-  "result": [
-   {
-    "clamped_to": null,
-    "classes": "hue",
-    "data": null,
-    "detail": null,
-    "entity_id": "light.bulb",
-    "integration": "zha",
-    "member_classes": null,
-    "status": "sent"
-   }
-  ],
-  "wire": [
-   [
-    [
-     "service",
-     "zha.issue_zigbee_cluster_command",
-     {
-      "cluster_id": 8,
-      "cluster_type": "in",
-      "command": 4,
-      "command_type": "server",
-      "endpoint_id": 11,
-      "ieee": "00:17:88:01:02:03:04:05",
-      "params": {
-       "level": 0,
-       "transition_time": 30
-      }
-     }
-    ],
-    null
-   ],
-   [
-    [
-     "zcl.read_attributes",
-     [
-      [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      8,
-      [
-       0
-      ]
-     ],
-     {}
-    ],
-    {
-     "raises": "LookupError"
-    }
    ]
   ]
  },
@@ -1732,22 +1861,28 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      8,
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
        0
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    {
-     "raises": "LookupError"
-    }
+    [
+     {},
+     {
+      "0": 134
+     }
+    ]
    ]
   ]
  },
@@ -1806,22 +1941,28 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:17:88:01:02:03:04:05",
-       11
-      ],
-      8,
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
        0
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    {
-     "raises": "LookupError"
-    }
+    [
+     {},
+     {
+      "0": 134
+     }
+    ]
    ],
    [
     [
@@ -1949,22 +2090,28 @@
    ],
    [
     [
-     "zcl.read_attributes",
+     "zha.Cluster.read_attributes",
      [
-      [
-       "00:00:00:00:00:00:00:0a",
-       11
-      ],
-      8,
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0a"
+      },
       [
        0
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    {
-     "raises": "LookupError"
-    }
+    [
+     {},
+     {
+      "0": 134
+     }
+    ]
    ]
   ]
  }

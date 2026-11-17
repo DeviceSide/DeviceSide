@@ -35,16 +35,28 @@
   "wire": [
    [
     [
-     "zcl.color_capabilities",
+     "zha.Cluster.read_attributes",
      [
+      {
+       "cluster_id": 768,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
       [
-       "00:17:88:01:02:03:04:05",
-       11
+       16394
       ]
      ],
-     {}
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
     ],
-    31
+    [
+     {
+      "16394": 31
+     },
+     {}
+    ]
    ],
    [
     [

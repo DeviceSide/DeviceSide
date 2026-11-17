@@ -2,20 +2,22 @@
 
 Cluster and group commands (`zcl.command`, `zcl.group_command`) reach the device through
 `zha.issue_zigbee_cluster_command` / `issue_zigbee_group_command` on HA's service registry, which the recorder already
-records, so they are not listed. The calls that go to zigpy directly, or read it, are:
+records, so they are not listed. The rest go to the zigpy cluster that `zcl`'s helpers (`read_attributes`,
+`color_capabilities`, `hue_turn_on`) get from zha's gateway, built and sent by the real helpers in every test:
 
-- `zcl.read_attributes`: an attribute read off the device (address, cluster, attribute ids); its reply is the values.
-- `zcl.hue_turn_on`: Hue's multiColor request to the cluster (address, level), with True for sent and False for a light
-  without Hue's cluster.
-- `zcl.color_capabilities`: the light's ColorCapabilities bits, from zigpy's cache or a read. A cached read sends
-  nothing, but it is a read the action makes and its reply steers the move, so it is recorded. When it does read the
-  device it calls `read_attributes`, which records too: the two names differ, so neither is a call to itself.
+- `Cluster.read_attributes`: an attribute read, as the cluster's address, the attribute ids and the cache flags; its
+  reply is zigpy's `(success, failure)`.
+- `Cluster.request`: a cluster command zha has no action for (Hue's multiColor), as the address, the general flag,
+  the command id, the schema, the payload and the manufacturer code; its reply is the Default Response.
 
-`hass` is dropped. Callers reach each as `zcl.<name>`, so a test's `monkeypatch.setattr(zcl, ...)` mock is wrapped
-too. Each is only ever called directly, never passed as a callback."""
+zigpy isn't a dev dependency, so there is no production class below the helpers to wrap: the boundary is the fake
+zigpy cluster in tests/fixtures/zha.py, whose methods take what the helpers pass zigpy. Its instance, the first arg,
+records as its address (ieee, endpoint, cluster). A cache read (`Cluster.get`) sends nothing and isn't recorded: the
+read it saves is, when the cache is empty, and the result shows what it steered. Every cluster class the fixtures
+make inherits both methods, and no test replaces one on an instance. Neither calls the other or itself, so nothing
+nests, and each is only ever called directly."""
 
 BOUNDARIES = [
-    ("custom_components.deviceside.integrations.zha.zcl", "read_attributes", 1),
-    ("custom_components.deviceside.integrations.zha.zcl", "hue_turn_on", 1),
-    ("custom_components.deviceside.integrations.zha.zcl", "color_capabilities", 1),
+    ("tests.fixtures.zha", "Cluster.read_attributes", 0),
+    ("tests.fixtures.zha", "Cluster.request", 0),
 ]
