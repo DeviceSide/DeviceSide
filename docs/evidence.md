@@ -6,8 +6,8 @@ device classes in [the device-classes plan](plans/2026-11-14-device-classes.md).
 
 ## Tenets
 
-1. **User experience is the north star.** Actions make devices do what users expect, quickly. If that holds, nothing
-   else matters.
+1. **User experience is the north star.** Actions make devices do what users expect, predictably and with low
+   latency, and DeviceSide offers only what's likely to meet that bar. If that holds, nothing else matters.
 2. **Probe before you build.** When unsure how a device responds to a call, run a cheap probe rather than assume.
    Record what it shows as a fact (the bundle's `internals.md`, dated). Where its source goes depends on whether a
    shipped call depends on the fact staying true:
@@ -96,9 +96,8 @@ A sign-off covers only what was exercised; it never signs off untested code.
 
 **Contrary evidence.** A report changes a level only through a maintainer (tenet 7):
 
-- **A failed report on a class on trial** is the class's result: the maintainer triaging it takes on the fix or
-  makes the class not built, with no root cause needed ([on trial](#no-known-method-not-built-yet-on-trial)). The
-  rest of this list is for a class with a pass.
+- **A failed report on a class on trial** is the class's result, handled as
+  [on trial](#no-known-method-not-built-yet-on-trial) says. The rest of this list is for a class out of trial.
 - **A credible report of a harmful failure on DeviceSide's own call** lets an integration maintainer refuse the
   identity it names on that action, on the report alone, citing it. It's not built yet if a known or plausible call
   would serve that identity, otherwise no known method ([below](#no-known-method-not-built-yet-on-trial)).
@@ -170,7 +169,7 @@ Zigbee2MQTT countdown plug's maker string with a record of its own is a class of
 
 ### No known method, not built yet, on trial
 
-Three ways a class has no proven call for an action, each handled differently. The first two are the kinds of not
+Three ways a class isn't served to everyone on an action, each handled differently. The first two are the kinds of not
 supported, where DeviceSide can't do the action for the class, each named for why:
 
 - **No known method:** no known call works on the class: a device limit as far as anyone knows, which the label
@@ -178,17 +177,17 @@ supported, where DeviceSide can't do the action for the class, each named for wh
   a class whose only known call is unsafe has none; the entry's reason says which. The adapter's scope lists it in
   `no_known_method`, with what, why and a source; the dispatcher refuses it (`no_known_method`), and the card marks
   it 🔴. It is per adapter, as one class can fail one action's call and answer another's.
-- **Not built yet:** a call that would work on the class is known or plausible, and nobody has built it. That
-  includes a class not admitted on trial (below), whose default call is expected to fail while another is known or
-  plausible. The integration names it, and the adapter's scope holds it in neither `capabilities` nor
-  `no_known_method`. It is refused (`not_built`), and the card leaves it out, as no one can list every feature that
-  could be built.
-- **On trial (Experimental):** a class with no pass yet, admitted on a reason to expect the call works: a pass on the
-  class, or research predicting most of the class accepts it. Research predicting most fail, or none at all, leaves
-  it not built. On a failed report, the maintainer triaging it takes on the fix, keeping the trial, or makes the
-  class not built, as their time allows; one they stop fixing becomes not built. A not built class returns with a
-  contributor's PR and a passing run on their own device. The class is in scope as `experimental(...)` and runs
-  behind the flag.
+- **Not built yet:** a call that would work on the class is known or plausible, and nobody has built it. That includes a
+  class not admitted on trial (below), as research predicts most of it fails the default call or there is no research,
+  while another call is known or plausible. The integration names it, and the adapter's scope holds it in neither
+  `capabilities` nor `no_known_method`. It is refused (`not_built`), and the card leaves it out, as no one can list
+  every feature that could be built.
+- **On trial (Experimental):** a class still behind the flag, admitted on a reason to expect the call works: a pass on a
+  device of the class (the builder's own probe or run counts, tenet 2), or research predicting most of the class accepts
+  it. Research predicting most fail, or none at all, leaves it not built. On a failed report, the maintainer triaging it
+  takes on the fix, keeping the trial, or makes the class not built, as their time allows; one they stop fixing becomes
+  not built. A not built class returns with a contributor's PR and a passing run on their own device. The class is in
+  scope as `experimental(...)` and runs behind the flag.
 
 Harm is a separate safety axis, which the action decides (below). On an action whose failure harms, a class not
 built yet that today's call would harm gets an entry of its own in the scope's `not_built` (`NotBuilt`, with why and a
@@ -277,16 +276,18 @@ option. The dispatcher is the only gate: adapters never read the option, and tur
 other item behaves.
 
 Every new feature (action, integration, domain, capability or field) starts flagged, and soaks behind the flag with
-users who opt in. A class is admitted behind the flag only on a reason to expect the call works, and a failed report
-on it is handled by its triaging maintainer ([on trial](#no-known-method-not-built-yet-on-trial)). A passing rig record or `_manual.json` sign-off on a flagged item is evidence a maintainer can use to
-lift its flag for the next release, skipping that soak; it is not a requirement to lift it. Whether to lift is the
-maintainer's judgment, by how complex the feature is and how complete its tests are: a developer may run the first
-few rig cases before the full suite exists, so a flagged item may have passing runs and stay flagged. Lifting makes
-`experimental(...)` into `verified(...)` (an adapter flagged whole: its domains); a flagged item that qualifies as
-Documented becomes `documented(...)` in a PR that argues the sibling case ([Levels](#levels)). Lifting a flag is a
-change to the integration's package, so one of its maintainers approves it, as for any change there
-([CLAUDE.md](../CLAUDE.md#maintainers)). A [family](design.md#glossary)'s maintainers set their own classes' levels
-the same way, but change no refusal entry ([CLAUDE.md](../CLAUDE.md#maintainers)).
+users who opt in. A class is admitted behind the flag only on a pass on one of its devices, the builder's own probe or
+run included, or research predicting most of it accepts the call; without either it stays not built ([on
+trial](#no-known-method-not-built-yet-on-trial)), which also handles a failed report. A passing rig record or
+`_manual.json` sign-off on a flagged item is evidence a maintainer can use to lift its flag for the next release,
+skipping that soak; it is not a requirement to lift it. Whether to lift is the maintainer's judgment, by how complex the
+feature is and how complete its tests are: a developer may run the first few rig cases before the full suite exists, so
+a flagged item may have passing runs and stay flagged. Lifting makes `experimental(...)` into `verified(...)` (an
+adapter flagged whole: its domains); a flagged item that qualifies as Documented becomes `documented(...)` in a PR that
+argues the sibling case ([Levels](#levels)). Lifting a flag is a change to the integration's package, so one of its
+maintainers approves it, as for any change there ([CLAUDE.md](../CLAUDE.md#maintainers)). A
+[family](design.md#glossary)'s maintainers set their own classes' levels the same way, but change no refusal entry
+([CLAUDE.md](../CLAUDE.md#maintainers)).
 
 For an item no maintainer can test, users' working reports can verify it through a maintainer's `_manual.json`
 sign-off, whose PR body cites them ([CLAUDE.md](../CLAUDE.md#where-facts-go): rule evidence goes in the PR body). The
