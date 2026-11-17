@@ -826,14 +826,15 @@ def test_the_legend_leads_the_cards_and_lists_only_the_marks_they_use(root):
     registry = FakeRegistry(adapter("zha", "turn_on_for"))
     text = gc.cards(registry, data(registry))
     # The fixture's Old plug has no known method; nothing is tested, Documented, Experimental or caveated.
-    assert "🟢 works · 🔴 no known method: no known command works on it\n\n**ZHA**" in text
+    assert "🟢 works<br>\n🔴 no known method: no known command works on it\n\n**ZHA**" in text
     assert text.index("Details per integration are in [docs/integrations.md](") < text.index("</details>")
     assert gc.legend("🟢 ✔ 🟡 🌱 🔴 🔧 ⚠️") == (
-        "🟢 works · ✔ verified on automated rig · 🟡 should work: same call pattern as a tested device · "
+        "🟢 works · ✔ verified on automated rig<br>\n"
+        "🟡 should work: same call pattern as a tested device<br>\n"
         "🌱 experimental: may not work; turn on in DeviceSide's Configure > Settings and"
-        f" [report whether it does]({gc.REPORT_URL}) · "
-        "🔴 no known method: no known command works on it · "
-        f"🔧 untested fix: please try it and [report whether it works]({gc.REPORT_URL}) · "
+        f" [report whether it does]({gc.REPORT_URL})<br>\n"
+        "🔴 no known method: no known command works on it<br>\n"
+        f"🔧 untested fix: please try it and [report whether it works]({gc.REPORT_URL})<br>\n"
         "⚠️ unmaintained: use at your own risk"
     )
 

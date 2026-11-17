@@ -1224,8 +1224,17 @@ def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: 
 
 
 def legend(text: str) -> str:
-    """The legend's entries for the marks the cards use."""
-    return " · ".join(f"{icon} {entry}" for icon, entry in LEGEND if icon in text)
+    """The legend's entries for the marks the cards use, one per line. Verified qualifies works, so it shares its
+    line."""
+    lines: list[str] = []
+    for icon, entry in LEGEND:
+        if icon not in text:
+            continue
+        if icon == VERIFIED and lines and lines[-1].startswith(OUTCOMES[0][1]):
+            lines[-1] += f" · {icon} {entry}"
+        else:
+            lines.append(f"{icon} {entry}")
+    return "<br>\n".join(lines)
 
 
 def cards(registry: AdapterRegistry, data: Data) -> str:

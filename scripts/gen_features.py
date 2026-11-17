@@ -94,15 +94,15 @@ FEATURES = (
     ("Set scene without turning on", "set-scene-without-turning-on", "Flash-free turn-on", "set scene", ("set_scene",)),
     ("Get attributes", "get-attributes", "Get attributes", "get attributes", ("get_attributes",)),
 )
-# (icon, alt text, label, file, anchor): the legend, in order. Each icon links to the heading that explains it; a
+# (icons, alt text, label, file, anchor): the legend, in order. Each icon links to the heading that explains it; a
 # README heading links within the page.
 LEGEND = (
-    ("light", "light", "lights", "docs/device-compatibility.md", "tested-devices"),
-    ("switch", "switch", "switches", "docs/device-compatibility.md", "tested-devices"),
-    ("group", "native group", "groups", "docs/device-compatibility.md", "native-groups"),
-    ("scene", "native scene", "scene", "README.md", "set-scene-without-turning-on"),
-    ("devices-grey", "Experimental", "experimental", "docs/device-compatibility.md", "levels-of-proof"),
-    ("no", "not possible", "not possible", INTEGRATIONS, IMPOSSIBLE),
+    (("light",), "light", "lights", "docs/device-compatibility.md", "tested-devices"),
+    (("switch",), "switch", "switches", "docs/device-compatibility.md", "tested-devices"),
+    (("group",), "native group", "groups", "docs/device-compatibility.md", "native-groups"),
+    (("scene",), "native scene", "scenes", "README.md", "set-scene-without-turning-on"),
+    (("light-grey", "switch-grey"), "Experimental", "experimental", "docs/device-compatibility.md", "levels-of-proof"),
+    (("no",), "not possible", "not possible", INTEGRATIONS, IMPOSSIBLE),
 )
 # (feature label, integration) cells where the feature is impossible on the integration for every device we know of,
 # and we've found no device where it's possible: so never "not built yet", and never beside a built icon (generate
@@ -279,7 +279,10 @@ def generate(registry: AdapterRegistry) -> str:
             for integration in cols
         ]
         lines.append(f"| [{label}](#{anchor}) | {' | '.join(row)} |")
-    legend = [f"{img(icon, alt, href(file, anchor))} {label}" for icon, alt, label, file, anchor in LEGEND]
+    legend = [
+        f"{'&nbsp;'.join(img(icon, alt, href(file, anchor)) for icon in icons)} {label}"
+        for icons, alt, label, file, anchor in LEGEND
+    ]
     lines += ["", " &nbsp; ".join(legend), "", END]
     return "\n".join(lines)
 
