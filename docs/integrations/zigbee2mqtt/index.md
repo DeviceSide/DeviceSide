@@ -41,8 +41,7 @@ with timer uses Tuya's countdown on the TS011F plugs below, and isn't built yet 
 turn the device on and leave it on ([research](research/2026-11-14-timed-on-call-patterns.md)). DeviceSide refuses it
 there, even with Experimental features on. Their other features are untested, so they run only with Experimental
 features on, except that the TS011F plugs take none of the light features (smooth dimming, smooth color changes, set
-without turning on): they are plugs. Get attributes runs only where another feature does
-([Get attributes](#get-attributes)).
+without turning on): they are plugs.
 
 #### Tuya TS011F plugs
 
