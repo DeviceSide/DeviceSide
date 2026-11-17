@@ -155,10 +155,12 @@ def integration_columns(registry: AdapterRegistry) -> dict[str, str]:
 
 def keys(adapter, registry: AdapterRegistry, experimental: bool = False) -> set[str]:
     """The icon keys an adapter covers: its domains at any Level but Experimental (Verified and Documented ship with
-    the option off), plus `group` when it takes lights and the dispatcher passes it native groups, natively or expanded
-    to their members (`_expand_native_groups`). Empty when the adapter is flagged (`experimental=True`), or the scope
-    lists capabilities and every one is Experimental: then no call works with the option off. With `experimental`,
-    what it covers with the option on: every domain."""
+    the option off) where some class that isn't Experimental can be on it (a class entry held on the domain, which
+    the class declares in `IntegrationInfo.classes`; with no classes named, any domain), plus `group` when it takes
+    lights and the dispatcher passes it native groups, natively or expanded to their members
+    (`_expand_native_groups`). Empty when the adapter is flagged (`experimental=True`), or the scope lists
+    capabilities and every one is Experimental: then no call works with the option off. With `experimental`, what it
+    covers with the option on: every domain."""
     capabilities = adapter.scope.capabilities
     if not experimental and (
         adapter.scope.experimental
@@ -171,6 +173,16 @@ def keys(adapter, registry: AdapterRegistry, experimental: bool = False) -> set[
     found = {
         domain for domain, level in adapter.scope.domains.items() if experimental or level is not Level.EXPERIMENTAL
     }
+    declared = registry.integrations[adapter.integration].classes
+    if not experimental and capabilities is not None and declared:
+        found = {
+            domain
+            for domain in found
+            if any(
+                level is not Level.EXPERIMENTAL and (on is None or domain in on) and domain in declared.get(name, ())
+                for name, level, on in adapter.scope.class_entries()
+            )
+        }
     groups = adapter.scope.native_groups or registry.integrations[adapter.integration].expand_group is not None
     if groups and "light" in found:
         found.add("group")

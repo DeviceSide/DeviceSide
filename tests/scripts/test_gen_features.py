@@ -15,9 +15,13 @@ GROUP = "/group.svg"
 
 
 class FakeRegistry:
-    def __init__(self, *adapters, expand=()):
+    def __init__(self, *adapters, expand=(), classes=None):
+        classes = classes or {}
         self._adapters = adapters
-        self.integrations = {key: SimpleNamespace(expand_group=(len if key in expand else None)) for key in KEYS}
+        self.integrations = {
+            key: SimpleNamespace(expand_group=(len if key in expand else None), classes=classes.get(key, {}))
+            for key in KEYS
+        }
 
     def matrix(self):
         yield "stop", "hue", None
@@ -63,6 +67,22 @@ def test_domains_show_at_any_level_and_group_follows_native_groups_or_expand_gro
     assert gf.keys(z2m, registry) == {"light", "group"}
     assert gf.keys(matter, registry) == {"light", "switch"}
     assert gf.keys(documented_light, registry) == {"light"}
+
+
+def test_a_domain_is_live_only_where_a_non_experimental_class_can_be_on_it(no_blockers):
+    """Matter's Turn on with timer: the switch-only WiZ plug is Verified, and every class that can be a light is
+    Experimental, so the light icon stays grey."""
+    registry = FakeRegistry(
+        classes={"matter": {"wiz_plug": frozenset({"switch"}), "other": frozenset({"light", "switch"})}}
+    )
+    scope = {
+        "domains": verified("switch") | documented("light"),
+        "capabilities": verified("wiz_plug") | experimental("other"),
+    }
+    assert gf.keys(adapter("matter", "turn_on_for", **scope), registry) == {"switch"}
+    assert gf.keys(adapter("matter", "turn_on_for", **scope), registry, experimental=True) == {"light", "switch"}
+    on_light = {**scope, "capabilities": verified("wiz_plug") | verified("other", domains={"light"})}
+    assert gf.keys(adapter("matter", "turn_on_for", **on_light), registry) == {"switch", "light"}
 
 
 def test_a_flagged_adapter_shows_no_icon_until_the_option_is_on(no_blockers):
