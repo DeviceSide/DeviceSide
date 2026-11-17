@@ -24,8 +24,8 @@ reports help ship them to everyone. How we decide: [evidence rules](evidence.md)
 DeviceSide is run by volunteers. Each integration's maintainers look after it: they review changes
 to it and fix bugs in it as they can. Please
 [report a bug](https://github.com/DeviceSide/DeviceSide/issues/new?template=device_report.yml); the report goes to the
-maintainers of the integration you choose. A report that a feature doesn't work is still useful: it is how features
-get fixed or left out.
+maintainers of the integration you choose. A report that a feature doesn't work is still useful: it goes to the
+integration's maintainers, who decide whether to fix it, find it a maintainer, or turn it off.
 
 **⚠️ Unmaintained** marks a feature no one is fixing. It still works as it did, but a bug in it stays unfixed until
 someone fixes it or takes over the integration, so use it at your own risk. **🔧 Untested fix** marks a feature
@@ -82,8 +82,8 @@ Documented ([levels of proof](#levels-of-proof)).
 
 These are built and unit-tested, but not yet ready for everyone ([levels of proof](#levels-of-proof)); some may
 have passed a maintainer's first tests. Turn on Experimental features to try them, then report the result, whether
-they work or not: a working report helps ship them to everyone, and a "doesn't work" one turns the feature off
-for that device.
+they work or not: a working report helps ship them to everyone, and a "doesn't work" one goes to the integration's
+maintainers, who decide whether to fix it, find it a maintainer, or turn it off.
 
 ### Zigbee plugs and switches
 
@@ -148,10 +148,10 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 
 | Not built yet, harmed by today's call | Why | Source |
 |---|---|---|
-| Tuya TS011F plugs without a countdown (`turn_on_for`) | Zigbee2MQTT would turn it on with no timer, so it would stay on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md) |
+| Tuya TS011F plugs (no countdown setting) (`turn_on_for`) | Zigbee2MQTT would turn it on with no timer, so it would stay on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md) |
 | other Tuya devices (`turn_on_for`) | Zigbee2MQTT would turn it on with no timer, so it would stay on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md) |
 | Tuya datapoint devices (`turn_on_for`) | Zigbee2MQTT would turn it on with no timer, so it would stay on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md) |
-| Tuya TS011F _TZ3000_gjnozsaz (`turn_on_for`) | its maker string is reported to restart its timer at random, so it could stay on | [source](https://github.com/Koenkk/zigbee2mqtt/issues/30493) |
+| Tuya TS011F plugs (_TZ3000_gjnozsaz) (`turn_on_for`) | its maker string is reported to restart its timer at random, so it could stay on | [source](https://github.com/Koenkk/zigbee2mqtt/issues/30493) |
 
 ### ZHA
 

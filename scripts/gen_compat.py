@@ -17,8 +17,9 @@ A level comes from the scope alone (verify, then trust): a record never ages.
 card per integration, then a link to the integrations page. A card has its name, linked to its page (the bundle's
 index.md), with "⚠️ Unmaintained" when every adapter is; the features of the adapters with each `caveat` (🔧 Untested
 fix, then ⚠️ Unmaintained, linking its reason); then a line per feature set, naming each class on one line, with its
-features by status: "Tuya TS011F countdown plugs of tested makers (Tuya TS011F ✔): 🟢 turn on with timer · 🌱 get
-attributes". Lines that work come first, then those that should, then the rest.
+features by status: "Hue lights (Hue White A60 B22 ✔): 🟢 turn on with timer · 🌱 get attributes". Lines sort by
+brand (the class's family), alphabetically, then other brands (no family), then native groups; within a brand, tested
+lines first, "other …" lines last, the rest alphabetically (`ordered`). An integration with no families is one brand.
 - Statuses: a class counts on each entity domain it can be (`IntegrationInfo.classes`) that the adapter serves, at the
   level a call there runs at (AdapterScope.level): 🟢 Verified, 🟡 Documented, 🌱 Experimental, as is every feature
   of an adapter flagged whole; 🔴 for a scope's `no_known_method` entry, which names a class devices.yaml gives no
@@ -29,6 +30,9 @@ attributes". Lines that work come first, then those that should, then the rest.
 - Names: the class's devices.yaml phrase; one whose domains show different features is named per domain, by its
   `domains` phrases, so a plug never lists dimming. Classes of one page section share a link, and a line holding
   every class its section shows in its domains names the section instead, by its devices.yaml `sections` phrase.
+- Variants: a section with `variants` (a model whose classes its page tells apart) is a parent line, "Tuya TS011F
+  plugs: check Manufacturer …", with a child line per feature set of its classes, named by their phrases and ending ✔
+  for a rig-tested model, which the parent names. Children never merge with another section's classes.
 - Tested models follow the line of the class and domain a test reached them on (else of their class; else, from a
   format 1 record or a manual row naming none, a line of their own with the features tested), and native groups get
   a line, with the features a test reached them on; rig-tested ones end ✔. A pass on a flagged item never credits a
@@ -64,7 +68,8 @@ unharmed one needs no entry. Each bundle's devices.yaml holds its integration's:
 `column_order` (the README feature table's, read by gen_features), `requires` (shown after the card's name),
 `capabilities` (a `phrase` and `section` per class a card line names, or domain where the integration names no
 classes, and per class a scope lists as not built yet; `domains`, a phrase per entity domain, for a class the card
-splits), `sections` (optional: a `phrase`, and `domains`, per page section, for a line holding all its classes) and
+splits), `sections` (optional: a `phrase`, and `domains`, per page section, for a line holding all its classes, or
+with `variants`, what to check to tell its classes apart) and
 `no_known_method` (`what`, `reason`, `source`, optional `section`: devices that fail the call DeviceSide sends, not
 what isn't built). A scope's `no_known_method` (core/scope.py, NoKnownMethod) and `not_built` (NotBuilt) are the
 code's home for these, and join them here; the devices.yaml and models.yaml entries move to them, class by class.
@@ -157,7 +162,9 @@ SHARED_KEYS = {"models", "no_known_method", "not_built"}  # each a list
 BUNDLE_KEYS = {"column", "column_order", "requires", "capabilities", "sections", "models", "no_known_method"}
 MODEL_KEYS = {"name", "ids", "type", "section"}
 CLASS_KEYS = {"phrase", "section", "domains"}  # `domains`: a phrase per entity domain, for a class the card splits
-SECTION_KEYS = {"phrase", "domains"}  # a section's phrase, for a line that holds all its classes
+# A section's phrase, for a line that holds all its classes; with `variants`, what to check to tell its classes apart,
+# and the card gives them a parent bullet of their own.
+SECTION_KEYS = {"phrase", "domains", "variants"}
 BROKEN_KEYS = {"what", "integrations", "reason", "source", "section"}
 GROUPS_ENTRY = ("native groups", "Native groups")  # (phrase, section) for the groups a record tested
 
@@ -316,7 +323,7 @@ def load_sections(by_key: dict[str, dict], data: Data) -> None:
     for key, items in by_key.items():
         need(items, f"sections {key}")
         for section, entry in items.items():
-            need(entry, f"sections {key} {section}", ("phrase",), keys=SECTION_KEYS)
+            need(entry, f"sections {key} {section}", ("phrase", *({"variants"} & set(entry))), keys=SECTION_KEYS)
             if "domains" in entry:
                 need(entry["domains"], f"sections {key} {section} domains", tuple(entry["domains"]))
             if section not in {item["section"] for item in data.capabilities.get(key, {}).values()}:
@@ -351,6 +358,9 @@ def code_unbuilt(key: str, integration_adapters: list, data: Data) -> list[dict]
             if name not in data.capabilities.get(key, {}):
                 fail(f"capabilities: no entry for {key} {name}, which a scope lists as not built yet")
             what = data.capabilities[key][name]["phrase"]
+            section = data.section_phrases.get(key, {}).get(data.capabilities[key][name]["section"], {})
+            if "variants" in section:  # a variant's phrase names it within its model: "no countdown setting"
+                what = f"{section['phrase']} ({what})"
             row = {"what": what, "reason": entry.reason, "source": entry.source, "actions": set()}
             found.setdefault((name, entry.reason, entry.source), row)["actions"].add(adapter.action)
     return list(found.values())
@@ -814,6 +824,11 @@ def merged(phrases: list[str], url: str) -> str:
     return anchor(f"{ending} ({', '.join(' '.join(w[:-shared]) for w in words)})", url)
 
 
+def text(phrases: list[str]) -> str:
+    """A section's phrases as `merged` names them, without the link."""
+    return merged(phrases, "")[1:-3]
+
+
 @dataclass
 class Line:
     """A card line: the classes (or domains) that show the same features, by page section, and the tested models a
@@ -824,10 +839,25 @@ class Line:
     items: list[Item] = field(default_factory=list)
     models: list[str] = field(default_factory=list)  # model names, as `works` gives them
     label: str | None = None  # a line no class names: native groups, or models no class line takes
+    # A model's variants (devices.yaml `sections` with `variants`): the parent names the model and what to check, each
+    # child a variant, by its classes' phrases, with ✔ for a rig-tested model, which the parent already names.
+    note: str | None = None
+    children: list[Line] = field(default_factory=list)
+    variant: bool = False
+    at: dict[Item, str] = field(default_factory=dict)  # each item's page section
+
+    def plain(self) -> str:
+        """The name as text, for sorting."""
+        return (self.label or ", ".join(text(phrases) for phrases in self.sections.values())).lower()
 
     def name(self, card: Card, key: str, data: Data, rig: set[str]) -> str:
         if self.label is not None:
             return self.label
+        if self.variant:
+            ((section, phrases),) = self.sections.items()
+            # Two variants read as either ("no countdown setting, or _TZ3000_gjnozsaz"); more as a list of makers.
+            either = ", or ".join(phrases) if len(phrases) == 2 else ", ".join(phrases)
+            return anchor(either, data.url(key, section)) + (f" {VERIFIED}" if set(self.models) & rig else "")
         names = ", ".join(merged(phrases, data.url(key, section)) for section, phrases in self.sections.items())
         tested = [card.short(name) for name in self.models]
         if len(tested) == 1 and [tested[0]] == [p for phrases in self.sections.values() for p in phrases]:
@@ -837,6 +867,9 @@ class Line:
         return names
 
     def render(self, card: Card, key: str, data: Data, rig: set[str]) -> str:
+        if self.note is not None:
+            children = "".join(f"\n  - {child.render(card, key, data, rig)}" for child in self.children)
+            return f"{self.name(card, key, data, rig)}: {self.note}{children}"
         icons = {key: icon for key, icon, _ in OUTCOMES}
         found = " · ".join(f"{icons[status]} {', '.join(labels)}" for status, labels in self.shape)
         return f"{self.name(card, key, data, rig)}: {found}"
@@ -853,30 +886,41 @@ def class_lines(
     """One line per feature set, each class on one: a class named once, by its devices.yaml phrase, when it shows the
     same features on every domain it can be that the integration serves (`served`), else once per domain it shows on,
     by its `domains` phrase, so a plug never reads as dimmable. A class with no entry that a scope's no_known_method
-    names is named by its `what` (`broken`). Lines are ordered by their strongest status: works, should, the rest."""
+    names is named by its `what` (`broken`). A section with `variants` gets a parent line, its classes child lines of
+    their own, which never merge with another section's. Unsorted (`ordered`)."""
     by_item: dict[str, dict[str | None, Shape]] = {}
     for (item, domain), by_status in found.items():
         if found_shape := shape(by_status):
             by_item.setdefault(item, {})[domain] = found_shape
     lines: dict[Shape, Line] = {}
     sections: dict[Item, str] = {}  # each item's page section
+    found_phrases = data.section_phrases.get(key, {})
+    parents: dict[str, tuple[Line, dict[Shape, Line]]] = {}
     for item, by_domain in by_item.items():
         entry = data.capabilities.get(key, {}).get(item) or broken.get(item)
         if entry is None:
             fail(f"capabilities: no entry for {key} {item}, which the card lists")
         can_be = [domain for domain in served if domain in class_domains.get(item, ())]
         for phrase, found_shape, domains in naming(key, item, entry, by_domain, can_be):
-            line = lines.setdefault(found_shape, Line(found_shape))
+            if "variants" in (parent_entry := found_phrases.get(entry["section"], {})):
+                parent = Line((), {entry["section"]: [parent_entry["phrase"]]}, note=parent_entry["variants"])
+                children = parents.setdefault(entry["section"], (parent, {}))[1]
+                line = children.setdefault(found_shape, Line(found_shape, variant=True))
+            else:
+                line = lines.setdefault(found_shape, Line(found_shape))
             phrases = line.sections.setdefault(entry["section"], [])
             # Classes that share a phrase (Zigbee2MQTT's countdown plugs, a class per maker string) are said once.
             if phrase not in phrases:
                 phrases.append(phrase)
             line.items += [(item, domain) for domain in domains]
-            sections |= {(item, domain): entry["section"] for domain in domains}
+            line.at |= {(item, domain): entry["section"] for domain in domains}
+            sections |= line.at
     for line in lines.values():
-        section_phrases(line, sections, data.section_phrases.get(key, {}))
-    order = [key for key, *_ in OUTCOMES]
-    return sorted(lines.values(), key=lambda line: order.index(line.shape[0][0]))
+        section_phrases(line, sections, found_phrases)
+    for parent, children in parents.values():
+        parent.children = list(children.values())
+        parent.items = [item for child in parent.children for item in child.items]
+    return [*lines.values(), *(parent for parent, _ in parents.values())]
 
 
 def naming(
@@ -944,6 +988,7 @@ def place(lines: list[Line], tested: Reached, classed: bool) -> list[Line]:
     as a light), each holding its class. None for a test that named neither (a format 1 record's, a manual row's on an
     integration that names no classes)."""
     found = []
+    lines = [line for held in lines for line in (held.children or [held])]
     for cls, domain in tested.places:
         item = (cls, domain) if classed else (domain, None)
         if item[0] is None:
@@ -953,6 +998,33 @@ def place(lines: list[Line], tested: Reached, classed: bool) -> list[Line]:
         )
         found += [line for line in on if line not in found]
     return found
+
+
+def ordered(lines: list[Line], brands: dict[str, str], families: bool, rig: set[str]) -> list[Line]:
+    """Lines by brand (Decision 18): a class's family (IntegrationInfo.families), alphabetically, then the classes no
+    family holds ("other brands"), then models no class line takes, then native groups; an integration with no
+    families is one brand. Within a brand, lines with a rig-tested model first, those named "other …" last, the rest
+    alphabetically; a line's names, and a parent's children, sort the same way."""
+
+    def brand(items: list[Item]) -> tuple:
+        return min(
+            ((0, brands[cls].lower()) if cls in brands else (int(families), "") for cls, _ in items), default=(0, "")
+        )
+
+    def section_key(line: Line, section: str, phrases: list[str]) -> tuple:
+        mine = [item for item in line.items if line.at.get(item) == section]
+        return (*brand(mine), text(phrases).lower().startswith("other"), text(phrases).lower())
+
+    def key(line: Line) -> tuple:
+        group = (2, int(line.models == [])) if line.label is not None else brand(line.items)
+        held = {name for child in (line.children or [line]) for name in child.models}
+        return (*group, not held & rig, line.plain().startswith("other"), line.plain())
+
+    for line in lines:
+        line.children = ordered(line.children, brands, families, rig)
+        if line.note is None and line.label is None:
+            line.sections = dict(sorted(line.sections.items(), key=lambda pair: section_key(line, *pair)))
+    return sorted(lines, key=key)
 
 
 @dataclass
@@ -1024,6 +1096,8 @@ def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: 
     # The domains the integration's adapters serve, in first-seen order: those a class's line is split by.
     served = list(dict.fromkeys(domain for adapter in integration_adapters for domain in adapter.scope.domains))
     lines = class_lines(key, statuses(integration_adapters, info.classes), data, info.classes, served, broken)
+    families = getattr(info, "families", ())
+    brands = {cls: family.key for family in families for cls in family.classes}
     models, groups = works(integration_adapters, data)
     rig = {name for name, tested in models.items() if tested.rig}
     # A model no class line takes gets a line of its own per feature set, with the features it was tested on.
@@ -1043,9 +1117,7 @@ def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: 
         label = anchor(GROUPS_ENTRY[0], data.url(key, GROUPS_ENTRY[1])) + (f" {VERIFIED}" if groups.rig else "")
         extra.append(Line(shape({"works": groups.actions}), label=label))
         result.tested.append(label)
-    # Native groups and untaken models follow the lines that work, as they only work.
-    at = next((number for number, line in enumerate(lines) if line.shape[0][0] != "works"), len(lines))
-    lines[at:at] = extra
+    lines = ordered([*lines, *extra], brands, bool(families), rig)
     result.lines = [line.render(result, key, data, rig) for line in lines]
     # devices.yaml's and models.yaml's no_known_method entries name no class or action: each a line of its own.
     result.lines += [

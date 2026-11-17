@@ -14,13 +14,14 @@ capabilities:
     phrase: other Tuya devices
     section: Tuya
     domains: {light: other Tuya lights, switch: other Tuya plugs and switches}
-  tuya_ts011f: {phrase: Tuya TS011F plugs without a countdown, section: Tuya TS011F plugs}
-  tuya_countdown: {phrase: Tuya TS011F countdown plugs of other makers, section: Tuya TS011F plugs}
-  tuya_countdown_tz3000_0zfrhq4i: {phrase: Tuya TS011F countdown plugs of tested makers, section: Tuya TS011F plugs}
-  tuya_countdown_tz3000_typdpbpg: {phrase: Tuya TS011F countdown plugs of tested makers, section: Tuya TS011F plugs}
-  tuya_countdown_tz3000_gznh2xla: {phrase: Tuya TS011F countdown plugs of tested makers, section: Tuya TS011F plugs}
-  tuya_countdown_tz3000_okaz9tjs: {phrase: Tuya TS011F countdown plugs of tested makers, section: Tuya TS011F plugs}
-  tuya_countdown_harmed: {phrase: Tuya TS011F _TZ3000_gjnozsaz, section: Tuya TS011F plugs}
+  # The TS011F's classes are its variants (`sections` below), each named by what its Zigbee2MQTT page shows.
+  tuya_ts011f: {phrase: no countdown setting, section: Tuya TS011F plugs}
+  tuya_countdown: {phrase: other makers with a countdown setting, section: Tuya TS011F plugs}
+  tuya_countdown_tz3000_0zfrhq4i: {phrase: _TZ3000_0zfrhq4i, section: Tuya TS011F plugs}
+  tuya_countdown_tz3000_typdpbpg: {phrase: _TZ3000_typdpbpg, section: Tuya TS011F plugs}
+  tuya_countdown_tz3000_gznh2xla: {phrase: _TZ3000_gznh2xla, section: Tuya TS011F plugs}
+  tuya_countdown_tz3000_okaz9tjs: {phrase: _TZ3000_okaz9tjs, section: Tuya TS011F plugs}
+  tuya_countdown_harmed: {phrase: _TZ3000_gjnozsaz, section: Tuya TS011F plugs}
   tuya_mcu:
     phrase: Tuya datapoint devices
     section: Tuya
@@ -31,3 +32,8 @@ capabilities:
     phrase: other brands
     section: Other brands
     domains: {light: other brands' lights, switch: other brands' plugs and switches}
+# A phrase for a page section; with `variants`, the card gives its classes a parent bullet, saying what to check.
+sections:
+  Tuya TS011F plugs:
+    phrase: Tuya TS011F plugs
+    variants: check Manufacturer and the countdown setting on the plug's Zigbee2MQTT page
