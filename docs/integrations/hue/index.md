@@ -27,19 +27,21 @@ each light. Every feature says how well it is proven for each
 ([levels of proof](../../device-compatibility.md#levels-of-proof)).
 
 - **Hue lights** (manufacturer `Signify Netherlands B.V.`) are tested: every feature on this page has passed on them.
-- A **scene** is proven as far as its lights: one with a light of another brand counts as that brand's.
-- A **room or zone** is proven as far as its weakest light. With Experimental features off, one with a light of
-  another brand falls back to its lights, each on its own, so the Hue lights still run; with them on, it runs as one
-  room. A light the bridge has in the room but Home Assistant has no light entity for still counts, as the room's
-  command reaches it.
+- A **scene** is proven as far as its lights: one with a light of another brand counts as that brand's, so it is
+  refused.
+- A **room or zone** is proven as far as its weakest light. One with a light of another brand falls back to its
+  lights, each on its own, so the Hue lights still run and the other brand's is refused. A light the bridge has in the
+  room but Home Assistant has no light entity for still counts, as the room's command reaches it.
 
 ### Other brands
 
-Lights of other brands paired to the bridge (IKEA, Innr, LEDVANCE and the rest, Friends of Hue ones included) are
-untested, so every feature runs on them only with Experimental features on. The Hue lights' tests don't prove them,
-as other brands are known to answer the same Zigbee commands differently: some fade only one of brightness and color
-at a time, some come on when written while off, and some don't report color temperature as Hue lights do
-([internals](internals.md#device-classes)). A test on one adds a class for its brand.
+Lights of other brands paired to the bridge (IKEA, Innr, LEDVANCE and the rest, Friends of Hue ones included) get no
+feature yet, even with Experimental features on. The Hue lights' tests don't prove them, as other brands are known to
+answer the same Zigbee commands differently: some fade only one of brightness and color at a time, some come on when
+written while off, and some don't report color temperature as Hue lights do
+([internals](internals.md#device-classes)). Nothing predicts which of the bridge's commands they take, so no feature
+is on trial on them. A contributor's passing run on one adds a class for its brand
+([evidence](../../evidence.md#no-known-method-not-built-yet-on-trial)).
 
 ## Smooth dimming
 

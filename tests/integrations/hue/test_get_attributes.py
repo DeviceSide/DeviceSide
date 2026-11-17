@@ -166,11 +166,13 @@ async def test_color_mid_saturation_fade_reads_the_predicted_xy(hass, bridge, cl
         pytest.param(False, "off", False, id="off_flag_unset"),
     ],
 )
+@pytest.mark.usefixtures("other_on_trial")
 async def test_another_makers_light_reads_color_temperature_by_its_ha_color_mode(
     hass, bridge, mirek_valid, color_mode, has_kelvin
 ):
     # A non-certified light doesn't set mirek_valid reliably, so core's hue integration follows its own last command,
-    # which it shows as the light's color mode (v2/light.py, color_temp_active). It runs only with Experimental on.
+    # which it shows as the light's color mode (v2/light.py, color_temp_active). `other` is not built today, so the
+    # read is kept for when it is admitted (other_on_trial).
     allow_experimental(hass)
     bridge.light("light-1", mirek=370, mirek_valid=mirek_valid, manufacturer="IKEA of Sweden")
     entry = await hue_entry(hass, bridge)

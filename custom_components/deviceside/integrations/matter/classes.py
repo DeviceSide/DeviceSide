@@ -18,8 +18,9 @@ bridge the bridge's software. The rules, first match winning:
 
 The rules read the node's attribute cache, as addressing.lt_feature does: sync, no I/O. A node holds every attribute
 from its interview on, so one with no VendorID isn't fully reported: it is `uncertified`, Unplaced, the cautious class
-until it reports. No Matter scope holds a refusal entry, so Unplaced refuses nothing today. A target with
-no node is None (addressing.unsupported_reason refuses it first, as not_addressable).
+until it reports. No Matter scope holds a refusal entry, so an Unplaced node is refused only as the class it names:
+`uncertified`, not built. A target with no node is None (addressing.unsupported_reason refuses it first, as
+not_addressable).
 """
 
 from collections.abc import Mapping
@@ -57,10 +58,12 @@ _PRODUCTS = {(4107, 8979): WIZ_PLUG}
 
 # The levels each adapter's scope holds (index.md, Device classes; plan Decisions 46 to 48 and 75): get_attributes's
 # reads Documented on `other` by certification (docs/evidence.md, Levels), Verified on the WiZ plug by its record; the
-# timer call Verified on the WiZ plug alone, by its 2026-11-16 record on OffWaitTime 1 (internals.md), and untested on
-# every other class, as certification sends another OffWaitTime.
-TURN_ON_FOR = verified(WIZ_PLUG) | experimental(OTHER, MULTI_ENDPOINT, BRIDGED, UNCERTIFIED)
-GET_ATTRIBUTES = verified(WIZ_PLUG) | documented(OTHER) | experimental(MULTI_ENDPOINT, BRIDGED, UNCERTIFIED)
+# timer call Verified on the WiZ plug alone, by its 2026-11-16 record on OffWaitTime 1 (internals.md), and on trial on
+# `other`, as certification sends OnWithTimedOff with another OffWaitTime. `multi_endpoint`, `bridged` and
+# `uncertified` are not built on both (docs/evidence.md, On trial): no pass or research predicts they take the call,
+# as certification tests one endpoint, a bridge's software answers for its devices, and an uncertified one is untested.
+TURN_ON_FOR = verified(WIZ_PLUG) | experimental(OTHER)
+GET_ATTRIBUTES = verified(WIZ_PLUG) | documented(OTHER)
 
 
 def _bridge_type(item: object) -> bool:
