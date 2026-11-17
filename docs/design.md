@@ -50,8 +50,11 @@ Code and docs use these terms. Each one's rules live where its link points.
   from an integration's Maintainer. Rules: [CLAUDE.md](../CLAUDE.md#maintainers).
 - **Caveat**: a risk mark on an adapter (`AdapterScope.caveat`), set by a repo maintainer; it ships live. Rules:
   [evidence.md](evidence.md#caveats).
-- **Sign-off**: an integration's standing rig records, or a maintainer's `_manual.json` row, which a release needs for
-  each integration changed since the last tag. Rules: [evidence.md](evidence.md#release-gate).
+- **Call transcript**: what the unit tests saw an action send on the wire and make of the replies,
+  `tests/integrations/<x>/calls/<action>.json`, one **segment** per distinct run; sign-offs bind to it. Rules:
+  [evidence.md](evidence.md#release-gate).
+- **Sign-off**: an action's standing rig records, or a maintainer's `_manual.json` row naming it, which a release
+  needs for each action whose calls changed since the last tag. Rules: [evidence.md](evidence.md#release-gate).
 - **Rig**: a tool that tests DeviceSide's features automatically with real hardware on a live Home Assistant instance,
   and writes up the results as test records.
 - **Test record**: the evidence that an adapter works on real hardware, in
@@ -234,4 +237,5 @@ workflow named.
 - **Tags:** `scripts/check_tag.py`, in `cut-release-candidate.yml` and `cut-release.yml`, the only way a tag is made.
 - **RC audit:** `scripts/check_audit.py`, in `cut-release-candidate`.
 - **Testing:** unit tests mock each integration at its boundary (its client, service or broker) against a real
-  `hass`; the rig runs against a live HA and writes the records.
+  `hass`, and record each action's call transcript there (`tests/transcripts.py`, the boundaries in
+  `tests/integrations/<x>/wire.py`); the rig runs against a live HA and writes the records.
