@@ -118,9 +118,12 @@ async def test_guard_keeps_a_folder_that_is_not_device_side(hass: HomeAssistant,
 
     result = await fix(hass)
 
-    assert result["type"] is FlowResultType.CREATE_ENTRY
+    # Left for the user, so the Fix aborts and the issue stays rather than reporting it fixed.
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "folder_left"
     assert hass.config_entries.async_entries("device_side") == []
     assert (folder / "__init__.py").exists()
+    assert issue(hass, LEGACY) is not None
 
 
 async def test_guard_keeps_a_symlinked_folder(hass: HomeAssistant, setup_integration, tmp_path: Path):
@@ -132,7 +135,7 @@ async def test_guard_keeps_a_symlinked_folder(hass: HomeAssistant, setup_integra
     link.symlink_to(target)
     await async_check_migrations(hass)
 
-    assert (await fix(hass))["type"] is FlowResultType.CREATE_ENTRY
+    assert (await fix(hass))["reason"] == "folder_left"
     assert (target / "manifest.json").exists()
 
 
@@ -145,7 +148,7 @@ async def test_fix_that_cannot_delete_the_folder_aborts(hass: HomeAssistant, set
         result = await fix(hass)
 
     assert result["type"] is FlowResultType.ABORT
-    assert result["reason"] == "remove_failed"
+    assert result["reason"] == "folder_left"
     assert result["description_placeholders"] == {"folder": str(folder)}
     assert hass.config_entries.async_entries("device_side") == []
     assert issue(hass, LEGACY) is not None

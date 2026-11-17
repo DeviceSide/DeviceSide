@@ -82,14 +82,19 @@ def _check_hue_dimmer(hass: HomeAssistant) -> None:
         ir.async_delete_issue(hass, DOMAIN, HUE_DIMMER_ISSUE)
 
 
-def _remove_folder(path: Path) -> None:
+def _remove_folder(path: Path) -> bool:
+    """Delete v0.0.1's folder if the guard passes; whether no folder is left."""
     if _is_legacy_folder(path):
-        shutil.rmtree(path)
+        try:
+            shutil.rmtree(path)
+        except OSError:
+            pass
+    return not path.is_dir()
 
 
-async def async_remove_legacy(hass: HomeAssistant) -> None:
-    """Remove every `device_side` config entry, then v0.0.1's folder if the guard passes. Raises OSError when the
-    folder can't be deleted."""
+async def async_remove_legacy(hass: HomeAssistant) -> bool:
+    """Remove every `device_side` config entry, then v0.0.1's folder if the guard passes. False when a folder is
+    left, for the user to delete: the guard refused it, or it couldn't be deleted."""
     for entry in hass.config_entries.async_entries(LEGACY_DOMAIN):
         await hass.config_entries.async_remove(entry.entry_id)
-    await hass.async_add_executor_job(_remove_folder, legacy_folder(hass))
+    return await hass.async_add_executor_job(_remove_folder, legacy_folder(hass))

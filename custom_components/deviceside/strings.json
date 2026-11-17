@@ -103,11 +103,11 @@
         "step": {
           "confirm": {
             "title": "Remove Device Side v0.0.1",
-            "description": "DeviceSide replaces Device Side v0.0.1, but its config entry or its folder, `{folder}`, is still here, so Home Assistant keeps loading the old version.\n\nSubmit removes the old config entry and deletes the old folder (only if it holds Device Side). Then restart Home Assistant.\n\nIn your automations and scripts, change `device_side.turn_on_for` to `deviceside.turn_on_for`, and `device_side.turn_off_for` to `deviceside.turn_off_for`. Their fields are the same."
+            "description": "DeviceSide replaces Device Side v0.0.1, but its config entry or its folder, `{folder}`, is still here, so Home Assistant keeps loading the old version.\n\nSubmit removes the old config entry and deletes the old folder, if it holds Device Side. Then restart Home Assistant.\n\nIn your automations and scripts, change `device_side.turn_on_for` to `deviceside.turn_on_for`, and `device_side.turn_off_for` to `deviceside.turn_off_for`. Their fields are the same."
           }
         },
         "abort": {
-          "remove_failed": "The old config entry is removed, but the folder `{folder}` couldn't be deleted. Delete it yourself, then restart Home Assistant."
+          "folder_left": "Device Side's config entry, if there was one, is removed, but the folder `{folder}` is still there: it doesn't look like Device Side v0.0.1's, or it couldn't be deleted. If it is the old version, delete it yourself, then restart Home Assistant."
         }
       }
     },

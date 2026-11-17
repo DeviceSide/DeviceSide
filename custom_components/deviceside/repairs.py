@@ -12,12 +12,10 @@ class LegacyDeviceSideFlow(ConfirmRepairFlow):
     async def async_step_confirm(self, user_input: dict[str, str] | None = None) -> RepairsFlowResult:
         if user_input is None:
             return await super().async_step_confirm()
-        try:
-            await async_remove_legacy(self.hass)
-        except OSError:
-            # The entries are gone by now; the folder is left for the user to delete.
+        if not await async_remove_legacy(self.hass):
+            # The entries are gone; aborting keeps the issue, so it isn't reported fixed while the folder is left.
             return self.async_abort(
-                reason="remove_failed", description_placeholders={"folder": str(legacy_folder(self.hass))}
+                reason="folder_left", description_placeholders={"folder": str(legacy_folder(self.hass))}
             )
         return self.async_create_entry(data={})
 
