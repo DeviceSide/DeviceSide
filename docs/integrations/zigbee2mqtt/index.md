@@ -172,8 +172,8 @@ timer.
 
 `get_attributes` reads each bulb live, since Hue bulbs on Zigbee2MQTT don't report and its cached state can be stale.
 A group returns one entry, averaged over the lights that are on, as Hue averages a room. It reads only devices another
-DeviceSide feature runs on, so not Tuya's plugs and switches but its countdown plugs, which it refuses: their time
-left can't be read ([Tuya TS011F plugs](#tuya-ts011f-plugs)).
+DeviceSide feature runs on, so no plug or switch yet. Tuya's countdown plugs, which Turn on with timer runs on, are
+refused: their time left can't be read ([Tuya TS011F plugs](#tuya-ts011f-plugs)).
 
 ## Sharp edges
 

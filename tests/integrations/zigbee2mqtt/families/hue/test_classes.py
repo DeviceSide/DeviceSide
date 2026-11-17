@@ -18,11 +18,11 @@ def test_the_rule_matches_the_whole_string(manufacturer, matched):
 
 
 def test_hue_is_verified_on_every_action_and_on_lights_alone_on_turn_on_for():
-    """Every record ran on a bulb, so a Hue plug, a switch, is untested."""
+    """A Hue plug, a switch, is not built on turn_on_for (refusals.py)."""
     for adapter in ADAPTERS:
         assert adapter.scope.class_level("hue", "light") is Level.VERIFIED, adapter.action
     scopes = {adapter.action: adapter.scope for adapter in ADAPTERS}
-    assert scopes["turn_on_for"].class_level("hue", "switch") is Level.EXPERIMENTAL
+    assert not scopes["turn_on_for"].admits("hue", "switch")
 
 
 def test_a_timer_needs_native_control_on_and_a_brightness_or_saturation_fade_off():

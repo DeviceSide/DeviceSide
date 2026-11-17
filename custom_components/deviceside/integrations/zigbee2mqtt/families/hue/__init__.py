@@ -58,7 +58,7 @@ FAMILY = Family(
         # (docs/evidence.md, "A read serves only").
         "get_attributes": FamilyScope(capabilities=verified(HUE, domains=(Platform.LIGHT,), only=True)),
         "set_attributes": _VERIFIED,
-        # On lights alone, as every record ran on a bulb, so a Hue plug (a switch) is untested.
+        # On lights alone: a Hue plug (a switch) is not built (refusals.py).
         "turn_on_for": FamilyScope(capabilities=verified(HUE, domains=(Platform.LIGHT,))),
     },
 )

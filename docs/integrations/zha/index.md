@@ -127,4 +127,4 @@ comes back at its lowest level.
 
 `get_attributes` reads each light live, not from ZHA's cache, which goes stale after a remote or a command Home
 Assistant didn't send. A ZHA group returns one entry per light. It reads only devices another DeviceSide feature runs
-on, so not Tuya's plugs and switches or the Sonoff SWV yet.
+on, so no plug, switch or valve yet.
