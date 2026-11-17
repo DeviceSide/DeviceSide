@@ -499,8 +499,13 @@ def test_a_class_is_its_name_and_its_fields_types():
     class MultiColor:
         data: Payload
 
+    class Unnamed:
+        data: 5
+
     assert norm(MultiColor) == {"class": "MultiColor", "fields": {"data": "Payload"}}
-    assert norm(Payload) == {"class": "Payload", "fields": {}}
+    # No annotations of its own, or one with no name: a placeholder, which fails the run.
+    assert norm(Payload) == "<type>"
+    assert norm(Unnamed) == {"class": "Unnamed", "fields": {"data": "<int>"}}
 
 
 def test_keys_that_normalize_alike_raise():

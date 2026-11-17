@@ -16,10 +16,11 @@ segment is serialized when its test ends, and carries no test id; a run its test
 
 Normalization: HomeAssistant and Context values are dropped (omitted from mappings and dataclasses, None in a sequence),
 as they hold per-run ids; dataclasses become dicts of their fields; enums their values; sets sorted lists; bytes hex; a
-class (a zigpy request's schema) `{"class": <name>, "fields": {<field>: <its type's name>}}`, its fields from its own
-annotations; a mapping's keys are normalized too, and one that isn't then a str becomes its JSON text (two keys that
-normalize alike raise); a raised exception `{"raises": <class name>}`; any other object `"<TypeName>"`, which fails the
-run when it's in a segment's wire or result: an integration's library types get a rule here.
+class with annotations of its own (a zigpy request's schema) `{"class": <name>, "fields": {<field>: <its type's
+name>}}`, an annotation with no name a placeholder; a mapping's keys are normalized too, and one that isn't then a str
+becomes its JSON text (two keys that normalize alike raise); a raised exception `{"raises": <class name>}`; any other
+object `"<TypeName>"`, which fails the run when it's in a segment's wire or result: an integration's library types get a
+rule here.
 
 `write`, after a run with no failures, writes `tests/integrations/<x>/calls/<action>.json`, the sorted unique segments
 of each action, for each integration with a `tests/integrations/<x>/` directory, and removes the `calls/` files of
@@ -104,12 +105,18 @@ def norm(value: Any) -> Any:  # noqa: C901
         return value.hex()
     if isinstance(value, SimpleNamespace):
         return norm(vars(value))
-    if isinstance(value, type):
-        fields = inspect.get_annotations(value)
-        return {"class": value.__name__, "fields": {k: getattr(t, "__name__", str(t)) for k, t in fields.items()}}
+    if isinstance(value, type) and (fields := inspect.get_annotations(value)):
+        return {"class": value.__name__, "fields": {k: _type_name(t) for k, t in fields.items()}}
     if value is None or isinstance(value, bool | int | float | str):
         return value
     return f"<{type(value).__name__}>"
+
+
+def _type_name(annotation: Any) -> str:
+    """An annotation's name, or a placeholder (failing the run) for one with none, as a union's."""
+    if isinstance(annotation, str):
+        return annotation
+    return getattr(annotation, "__name__", None) or f"<{type(annotation).__name__}>"
 
 
 def _key(value: Any) -> str:
@@ -216,7 +223,7 @@ def _owner(module: str, attribute: str) -> tuple[Any, str]:
 
 
 def _boundary_name(module: str, attribute: str) -> str:
-    """A boundary's name in the wire: its module's last name and its attribute, `zcl.read_attributes`."""
+    """A boundary's name in the wire: its module's last name and its attribute, `zha.Cluster.read_attributes`."""
     return f"{module.rpartition(".")[2]}.{attribute}"
 
 
