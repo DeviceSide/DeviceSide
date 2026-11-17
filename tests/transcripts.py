@@ -12,7 +12,8 @@ as `["<module's last name>.<attribute>", args, kwargs]` (a class's method, `Clas
 arg, even when a test's mock on the class is called without it). A boundary with a callback index is a subscription:
 the call is recorded without the callback and with no reply, and each call the callback (a sync one, at that position
 among the call's args) gets is recorded as `["<name>.callback", args, kwargs]` and its reply, in the segment the
-subscription was made in, so the messages a run is answered with are in its wire. A call takes its place in `wire` when
+subscription was made in, whoever delivers it (from no segment, or another's) until that test ends, so the messages a
+run is answered with are in its wire. A call takes its place in `wire` when
 it is made and gets its reply when it returns, so a reply delivered while a call is still running (a broker answering
 inside a publish) comes after the call that drew it. A boundary is wrapped at each segment's open,
 around whatever a test installed there (so name it where callers look it up), and unwrapped when the test ends; a call
@@ -24,9 +25,9 @@ Normalization: HomeAssistant and Context values are dropped (omitted from mappin
 as they hold per-run ids; dataclasses become dicts of their fields; enums their values; sets sorted lists; bytes hex; a
 class with annotations of its own (a zigpy request's schema) `{"class": <name>, "fields": {<field>: <its type's
 name>}}`, an annotation with no name a placeholder; a mapping's keys are normalized too, and one that isn't then a str
-becomes its JSON text (two keys that normalize alike raise); a raised exception `{"raises": <class name>}`; a function
-or method its `__qualname__`; any other object `"<TypeName>"`, which fails the run when it's in a segment's wire or
-result: an integration's library types get a rule here.
+becomes its JSON text (two keys that normalize alike raise); a raised exception `{"raises": <class name>}`; any other
+object `"<TypeName>"`, which fails the run when it's in a segment's wire or result: an integration's library types get a
+rule here.
 
 `write`, after a run with no failures, writes `tests/integrations/<x>/calls/<action>.json`, the sorted unique segments
 of each action, for each integration with a `tests/integrations/<x>/` directory, and removes the `calls/` files of
@@ -45,7 +46,7 @@ import re
 from collections.abc import Callable
 from contextvars import ContextVar
 from pathlib import Path
-from types import FunctionType, MethodType, SimpleNamespace
+from types import MethodType, SimpleNamespace
 from typing import Any
 
 import pytest
@@ -110,8 +111,6 @@ def norm(value: Any) -> Any:  # noqa: C901
         return sorted((norm(v) for v in value), key=_key)
     if isinstance(value, bytes):
         return value.hex()
-    if isinstance(value, FunctionType | MethodType):
-        return value.__qualname__
     if isinstance(value, SimpleNamespace):
         return norm(vars(value))
     if isinstance(value, type) and (fields := inspect.get_annotations(value)):

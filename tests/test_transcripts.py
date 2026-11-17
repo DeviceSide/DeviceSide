@@ -110,6 +110,23 @@ def test_fails():
     assert False
 """
 
+# A subscription boundary whose publish is answered inside it, as a broker answers.
+SUBSCRIPTION_WIRE = """
+subscribers = []
+
+
+def subscribe(hass, topic, callback):
+    subscribers.append(callback)
+    return lambda: None
+
+
+async def publish(hass, topic):
+    for callback in subscribers:
+        callback({"topic": topic, "payload": "1"})
+"""
+
+SUBSCRIPTION_BOUNDARIES = 'BOUNDARIES = [("inner_wire", "subscribe", 1, 2), ("inner_wire", "publish", 1)]\n'
+
 
 @pytest.fixture
 def inner(pytester: pytest.Pytester, monkeypatch) -> pytest.Pytester:
@@ -480,25 +497,8 @@ async def test_mocked_on_the_class(hass, setup_integration, monkeypatch):
 def test_a_subscription_boundary_records_the_subscribe_and_each_message_its_callback_gets_after_the_call_that_drew_it(
     inner,
 ):
-    (inner.path / "inner_wire.py").write_text(
-        """
-subscribers = []
-
-
-def subscribe(hass, topic, callback):
-    subscribers.append(callback)
-    return lambda: None
-
-
-async def publish(hass, topic):
-    # The broker answers inside the publish.
-    for callback in subscribers:
-        callback({"topic": topic, "payload": "1"})
-"""
-    )
-    (inner.path / "tests/integrations/fake/wire.py").write_text(
-        'BOUNDARIES = [("inner_wire", "subscribe", 1, 2), ("inner_wire", "publish", 1)]\n'
-    )
+    (inner.path / "inner_wire.py").write_text(SUBSCRIPTION_WIRE)
+    (inner.path / "tests/integrations/fake/wire.py").write_text(SUBSCRIPTION_BOUNDARIES)
     only(
         inner,
         """
@@ -521,7 +521,6 @@ async def listens(self, hass, request, targets):
 
 
 async def test_listens(hass, setup_integration):
-    hass.services.async_register("probe", "ping", lambda call: None)
     add_fake_entity(hass, fake_config_entry(hass), "light.a")
     with patch.object(FakeTurnOnFor, "execute", listens):
         await call(hass, "turn_on_for", {"entity_id": "light.a", "duration": 5})
@@ -538,18 +537,99 @@ async def test_listens(hass, setup_integration):
     ]
 
 
-def test_a_function_or_method_is_its_qualname():
-    class Owner:
-        def method(self):
-            pass
+def test_a_message_records_in_the_segment_its_subscription_was_made_in_whoever_delivers_it(inner):
+    (inner.path / "inner_wire.py").write_text(SUBSCRIPTION_WIRE)
+    (inner.path / "tests/integrations/fake/wire.py").write_text(SUBSCRIPTION_BOUNDARIES)
+    only(
+        inner,
+        """
+from unittest.mock import patch
 
-    def named():
-        pass
+import inner_wire
 
-    assert norm([named, Owner().method, Owner.method]) == [
-        f"{test_a_function_or_method_is_its_qualname.__qualname__}.<locals>.named",
-        "test_a_function_or_method_is_its_qualname.<locals>.Owner.method",
-        "test_a_function_or_method_is_its_qualname.<locals>.Owner.method",
+from tests.conftest import call
+from tests.fakes.fake_integration import FakeTurnOnFor
+from tests.fakes.scripted import ScriptedAdapter
+from tests.fixtures.fake import add_fake_entity, fake_config_entry
+
+
+async def subscribes(self, hass, request, targets):
+    inner_wire.subscribe(hass, "a/b", lambda message: None)
+    return await ScriptedAdapter.execute(self, hass, request, targets)
+
+
+async def publishes(self, hass, request, targets):
+    # Delivered from another run's segment.
+    await inner_wire.publish(hass, "c/d")
+    return await ScriptedAdapter.execute(self, hass, request, targets)
+
+
+async def test_delivered_elsewhere(hass, setup_integration):
+    add_fake_entity(hass, fake_config_entry(hass), "light.a")
+    with patch.object(FakeTurnOnFor, "execute", subscribes):
+        await call(hass, "turn_on_for", {"entity_id": "light.a", "duration": 5})
+    # Delivered from no segment.
+    for callback in inner_wire.subscribers:
+        callback({"topic": "x/y", "payload": "2"})
+    with patch.object(FakeTurnOnFor, "execute", publishes):
+        await call(hass, "turn_on_for", {"entity_id": "light.a", "duration": 5})
+""",
+    )
+
+    assert run(inner, "--transcripts=write").ret == 0
+    assert sorted((segment["wire"] for segment in segments(inner)), key=str) == sorted(
+        [
+            [
+                [["inner_wire.subscribe", ["a/b"], {}], None],
+                [["inner_wire.subscribe.callback", [{"payload": "2", "topic": "x/y"}], {}], None],
+                [["inner_wire.subscribe.callback", [{"payload": "1", "topic": "c/d"}], {}], None],
+            ],
+            [[["inner_wire.publish", ["c/d"], {}], None]],
+        ],
+        key=str,
+    )
+
+
+def test_a_service_call_made_inside_a_boundary_call_is_recorded(inner):
+    (inner.path / "inner_wire.py").write_text(
+        """
+async def send(hass, payload):
+    await hass.services.async_call("probe", "ping", {"inside": True}, blocking=True)
+"""
+    )
+    (inner.path / "tests/integrations/fake/wire.py").write_text('BOUNDARIES = [("inner_wire", "send", 1)]\n')
+    only(
+        inner,
+        """
+from unittest.mock import patch
+
+import inner_wire
+
+from tests.conftest import call
+from tests.fakes.fake_integration import FakeTurnOnFor
+from tests.fakes.scripted import ScriptedAdapter
+from tests.fixtures.fake import add_fake_entity, fake_config_entry
+
+
+async def sends(self, hass, request, targets):
+    await inner_wire.send(hass, {"level": 1})
+    return await ScriptedAdapter.execute(self, hass, request, targets)
+
+
+async def test_sends(hass, setup_integration):
+    hass.services.async_register("probe", "ping", lambda call: None)
+    add_fake_entity(hass, fake_config_entry(hass), "light.a")
+    with patch.object(FakeTurnOnFor, "execute", sends):
+        await call(hass, "turn_on_for", {"entity_id": "light.a", "duration": 5})
+""",
+    )
+
+    assert run(inner, "--transcripts=write").ret == 0
+    assert [segment["wire"] for segment in segments(inner)] == [
+        [
+            [["inner_wire.send", [{"level": 1}], {}], None],
+            [["service", "probe.ping", {"inside": True}], None],
+        ]
     ]
 
 

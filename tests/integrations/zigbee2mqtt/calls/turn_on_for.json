@@ -5560,7 +5560,7 @@
      "min_s": 1,
      "step_s": 1
     },
-    "send": "_countdown"
+    "send": "<function>"
    },
    "request": {
     "duration_s": 0.3,
@@ -5618,7 +5618,7 @@
      "min_s": 1,
      "step_s": 1
     },
-    "send": "_countdown"
+    "send": "<function>"
    },
    "request": {
     "duration_s": 10.0,
@@ -5676,7 +5676,7 @@
      "min_s": 1,
      "step_s": 1
     },
-    "send": "_countdown"
+    "send": "<function>"
    },
    "request": {
     "duration_s": 10.4,
@@ -5734,7 +5734,7 @@
      "min_s": 1,
      "step_s": 1
     },
-    "send": "_countdown"
+    "send": "<function>"
    },
    "request": {
     "duration_s": 10.5,
@@ -5792,7 +5792,7 @@
      "min_s": 1,
      "step_s": 1
     },
-    "send": "_countdown"
+    "send": "<function>"
    },
    "request": {
     "duration_s": 30.0,
@@ -5850,7 +5850,7 @@
      "min_s": 1,
      "step_s": 1
     },
-    "send": "_countdown"
+    "send": "<function>"
    },
    "request": {
     "duration_s": 43200.0,
@@ -5908,7 +5908,7 @@
      "min_s": 1,
      "step_s": 1
     },
-    "send": "_countdown"
+    "send": "<function>"
    },
    "request": {
     "duration_s": 46800.0,
@@ -5966,7 +5966,7 @@
      "min_s": 1,
      "step_s": 1
     },
-    "send": "_countdown"
+    "send": "<function>"
    },
    "request": {
     "duration_s": 5.0,
@@ -6024,7 +6024,7 @@
      "min_s": 1,
      "step_s": 1
     },
-    "send": "_countdown"
+    "send": "<function>"
    },
    "request": {
     "duration_s": 5.0,
@@ -6082,7 +6082,7 @@
      "min_s": 1,
      "step_s": 1
     },
-    "send": "_countdown"
+    "send": "<function>"
    },
    "request": {
     "duration_s": 5.0,
@@ -6140,7 +6140,7 @@
      "min_s": 1,
      "step_s": 1
     },
-    "send": "_countdown"
+    "send": "<function>"
    },
    "request": {
     "duration_s": 5.0,

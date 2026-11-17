@@ -8,13 +8,14 @@ Every call reaches Zigbee2MQTT through HA's `mqtt` integration, by two functions
 - `async_subscribe`: a topic and, at index 2, the callback that gets its messages. The replies are not the call's
   return value but messages delivered to that callback, so the boundary records the subscription (`hass` and the
   callback dropped, no reply) and each message its callback gets as `mqtt.async_subscribe.callback` (the topic, the
-  payload and `retain`), in the segment open when it arrives. A run's wire reads as the conversation it had: what it
-  sent, what it listened on, what Z2M answered, so the reply handling (a bridge response, a state publish, a log line)
-  is pinned along with the request.
+  payload and `retain`), in the segment the subscribe was made in. A run's wire reads as the conversation it had: what
+  it sent, what it listened on, what Z2M answered, so the reply handling (a bridge response, a state publish, a log
+  line) is pinned along with the request.
 
 Limits: a subscription made while no segment is open, such as the bridge cache's at set up, isn't wrapped (the
 callback is wrapped at the subscribe call), so what it hears isn't in the wire; the run's result shows its effect.
-A message delivered to a callback after its segment has closed, or from a context with no segment, isn't recorded.
+A message delivered to a wrapped callback records in its subscribe's segment whoever delivers it, from no segment or
+another run's, until that test ends; one delivered after, isn't recorded.
 
 mqtt isn't set up in the unit tests, so tests/fixtures/zigbee2mqtt.py's `Broker` and the conftest stand where the
 client does: `async_publish` runs the handler a test registered as the `mqtt.publish` service (the broker, or a test's
