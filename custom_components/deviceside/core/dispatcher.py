@@ -1,14 +1,13 @@
 """Plans each call's targets by adapter, gates them, and runs the adapters. What an integration declares for groups
 (is_group, expand_group, AdapterScope.native_groups) is docs/design.md, Groups; how the dispatcher applies it is here.
 
-Planning. Targets are bucketed by adapter (none: no_adapter). For each, the fields it lacks (fields.lacking, minus
-AdapterScope.unlisted) and the scope's `drops` are dropped, then supports() checks what is left: domain and fields in
-scope, then the adapter's own reasons. Then the class, a call left nothing to send first: unchanged with fields_dropped,
-never refused. Then AdapterScope.refusal, in order: where a no_known_method or not_built entry `harms`, an Unplaced or
-None class as class_unknown; a class in no_known_method as no_known_method, with its reason; one in not_built, or in
-neither it nor capabilities, as not_built, with NotBuilt.reason where it has an entry. Then the Experimental gate
-(below). A run's durations are clamped to AdapterScope.duration, or its class's own call's limits (own_calls), rounded
-to their step_s (core/duration.py).
+Planning. Targets are bucketed by adapter (none: no_adapter). For each, the fields it lacks (fields.lacking: a light's,
+minus AdapterScope.unlisted) and the scope's `drops` are dropped, then supports() checks what is left: domain and
+fields in scope, then the adapter's own reasons. Then the class, a call left nothing to send first: unchanged with
+fields_dropped, never refused. Then AdapterScope.refusal, in order: where a no_known_method or not_built entry `harms`,
+an Unplaced or None class as class_unknown; a class in no_known_method as no_known_method, with its reason; one in
+not_built, or in neither it nor capabilities, as not_built, with NotBuilt.reason where it has an entry. Then the
+Experimental gate (below).
 
 Native groups. One an adapter addresses as one takes its members' classes, from expand_group, and its weakest member's
 level for the gate; on an integration that names no classes it runs whole. An empty one (expand_group lists no members)
@@ -28,11 +27,12 @@ is skipped silently, named or not, as core skips an empty group; so is one an ad
   group), named as a member device of the group, available or not, so the device the group's call would have reached
   gets an entry saying it didn't; unless a target on its device was planned too, which answers for it, the group
   included. Any other member known unavailable is left out quietly. Every member planned is indirect.
-- Unknowable membership (no expand_group, or it answered None or raised, logged). The group counts as Experimental:
-  refused while Experimental features is off, and where a call harms as class_unknown with them on. It can't fall back,
-  so it is refused whole. For an adapter without native_groups it is refused as group_not_supported, as with no
-  expand_group; a group whose members are listed, core plans as the fallback does (stand-ins skipped, the unavailable
-  left out, each indirect, a member also named kept as the caller's target).
+- Unknowable membership (no expand_group, or it answered None or raised, logged). Where a call harms, the group is
+  refused as class_unknown, with Experimental features on or off; elsewhere it counts as Experimental, refused as
+  experimental_off while the option is off. It can't fall back, so it is refused whole. For an adapter without
+  native_groups it is refused as group_not_supported, as with no expand_group.
+- For an adapter without native_groups, core plans a group whose members are listed as the fallback does (stand-ins
+  skipped, the unavailable left out, each indirect, a member also named kept as the caller's target).
 - Refusal priority. A group that falls back gets no result of its own: its planned members answer for it, one already a
   target included, so naming a member beside it changes nothing. Only when none of its members is planned or left
   nothing to do (each refused, gated or unavailable) is the group itself refused, raised if named, else skipped and
@@ -47,13 +47,14 @@ and the fields it still carries; `experimental=True` flags the whole adapter. An
 experimental_off while the option is off, a named target raising its own message. A call left nothing to send is
 unchanged, not refused.
 
-Running. Each adapter runs once per distinct request (its dropped fields and own call), every run concurrently, under
-ADAPTER_TIMEOUT_S: Adapter.slot, which gather runs each target in, rejects with timeout only the targets not done by
-then, so those that finished keep their results; an execute still busy ADAPTER_BACKSTOP_S later has all its targets
-rejected with timeout. An exception from execute rejects its targets (error); one from a target's send, that target
-alone (Adapter.gather). A target with no result is rejected (no_result), a stray result dropped. A named target that can
-never take the action raises before anything is sent; an indirect one is skipped and logged; an unavailable one is
-skipped; a device failure raises once every target has run.
+Running. A run's durations are clamped to AdapterScope.duration, or its class's own call's limits (own_calls), rounded
+to their step_s (core/duration.py). Each adapter runs once per distinct request (its dropped fields and own call),
+every run concurrently, under ADAPTER_TIMEOUT_S: Adapter.slot, which gather runs each target in, rejects with timeout
+only the targets not done by then, so those that finished keep their results; an execute still busy
+ADAPTER_BACKSTOP_S later has all its targets rejected with timeout. An exception from execute rejects its targets
+(error); one from a target's send, that target alone (Adapter.gather). A target with no result is rejected
+(no_result), a stray result dropped. A named target that can never take the action raises before anything is sent; an
+indirect one is skipped and logged; an unavailable one is skipped; a device failure raises once every target has run.
 """
 
 import asyncio
