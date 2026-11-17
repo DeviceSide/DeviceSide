@@ -21,7 +21,7 @@ Code and docs use these terms. Each one's rules live where its link points.
   it; each stands on its own evidence. Rules: [evidence.md](evidence.md#device-classes).
 - **Family**: a vendor's classes on one integration, as a package of their own
   (`integrations/<x>/families/<family>/`), so a vendor is one path with its own maintainers. Rules:
-  [Writing an integration](#core-contract), families.
+  [Writing an integration](#core-contract), Family.
 - **Catalog**: the Zigbee strings and sourced firmware facts that two integrations' families of one key both read
   (`custom_components/deviceside/zigbee/<family>.py`): patterns and facts only, no levels and no calls.
 - **Placed**: a device whose class rests on everything the integration will report about it; until then its class is
@@ -36,7 +36,7 @@ Code and docs use these terms. Each one's rules live where its link points.
 - **Field**: an action parameter, e.g. `brightness`.
 - **Entity domain**: light, switch. "Domain" alone is fine where unambiguous.
 - **Scope**: the entity domains, classes and fields an adapter is built for, each at its level and flagged or not;
-  outside it, a call is refused. Fields: [Writing an integration](#core-contract).
+  outside it, a call is refused. Its `AdapterScope` fields: [Writing an integration](#core-contract).
 - **Level**: how a scope item is proven, Verified or Documented. Rules: [evidence.md](evidence.md#levels). User
   wording: [device-compatibility.md](device-compatibility.md#levels-of-proof).
 - **Experimental**: the flag on a scope item (`experimental(...)`) or a whole adapter (`experimental=True`) not yet
@@ -57,7 +57,8 @@ Code and docs use these terms. Each one's rules live where its link points.
 - **Test record**: the evidence that an adapter works on real hardware, in
   `docs/integrations/<integration>/test-records/`. Format: [evidence.md](evidence.md#sign-off-format).
 - **Device report**: a user's "works" or "doesn't work" for an action on a model, filed with the device report form;
-  the GitHub issue is its record. How it counts: [evidence.md](evidence.md#the-experimental-flag).
+  the GitHub issue is its record. How it counts: [evidence.md](evidence.md#the-experimental-flag); contrary reports:
+  [Levels](evidence.md#levels).
 - **Profile**: one test setup on the rig's HA, the entities a run may move by integration and role; a record names the
   one it ran on (`lab`, `house`).
 
@@ -164,7 +165,7 @@ adapter has an `AdapterScope`. What each can declare (`core/scope.py` holds each
 |---|---|---|
 | `IntegrationInfo.capability`, `classes`, `default_class` | Each target's class, so each class stands on its own evidence. `capability` is sync and cheap, no I/O; it gives the default class to a device no rule matches, `Unplaced` to one not yet placed, `None` only to one it can't class at all. Every adapter sees the same class and maps the classes it serves to its own branch: a class is a device class, not a call pattern, as patterns are per action. | [evidence.md](evidence.md#device-classes); `Unplaced` in `core/scope.py`; the registry's checks: `check_integration` and `check_classes` in `core/registry.py` |
 | **Family**: `IntegrationInfo.families` (`Family`, `FamilyScope`), `integrations/<x>/refusals.py` | A vendor's classes as one path with its own maintainers: a `Family` names its classes and holds their rules, levels and own calls. Opt-in: an integration with none holds its classes itself. The integration keeps the transport, the default class, the rule order between families (`families/__init__.py`) and every refusal entry (`refusals.py`, merged in by `class_scope`). | `Family`, `FamilyScope` and `class_scope` in `core/scope.py`; `check_families` in `core/registry.py`; `core/rules.py`; [CLAUDE.md](../CLAUDE.md#maintainers) |
-| **Groups**: `IntegrationInfo.is_group`, `expand_group`, `AdapterScope.native_groups` | A native group (a Hue zone, say) goes to the device as one command. `is_group` recognizes one; `expand_group` lists its members, sync and with no I/O; an adapter with `native_groups` gets the group as one target. `expand_group`'s members are the classes the group takes and what it falls back to when a member's class is refused, or Experimental with the option off; an adapter without `native_groups` gets them as its targets. | `core/dispatcher.py`'s module docstring, Native groups; [evidence.md](evidence.md#device-classes), Groups |
+| **Groups**: `IntegrationInfo.is_group`, `expand_group`, `AdapterScope.native_groups` | A native group (a Hue zone, say) goes to the device as one command. `is_group` recognizes one; `expand_group` lists its members, sync and with no I/O; an adapter with `native_groups` gets the group as one target. `expand_group`'s members give the group its classes and are what it falls back to when a member's class is refused, or Experimental with the option off; an adapter without `native_groups` gets them as its targets. | `core/dispatcher.py`'s module docstring, Native groups; [evidence.md](evidence.md#device-classes), Groups |
 | `IntegrationInfo.setup`, `remove` | `setup` starts what the integration keeps running while the entry is loaded, as the entry's background task, and registers its own teardown with `entry.async_on_unload`; `remove` undoes what it changed outside HA as DeviceSide is deleted. A hook that raises is logged and isolated. The component root names no integration. | `IntegrationInfo` in `core/scope.py`; `_guarded` in `__init__.py` |
 | `IntegrationInfo.detect` | Picks this integration over a generic sibling on the same `ha_domain` (Zigbee2MQTT over plain MQTT): a different gateway or API is an integration of its own. | [evidence.md](evidence.md#the-split-rule); Resolver, below |
 | `IntegrationInfo.unsupported` | Refuses a gateway or API DeviceSide never supports, as `integration_not_supported` with its reason: listed in its sibling's module as `UNSUPPORTED`, it claims entities by `detect`, has no adapters, and is kept out of the cards and gates. | `IntegrationInfo` in `core/scope.py`; `AdapterRegistry` in `core/registry.py` |
@@ -174,10 +175,11 @@ adapter has an `AdapterScope`. What each can declare (`core/scope.py` holds each
 | `AdapterScope.domains`, `fields` | The entity domains and fields the adapter is built for, each at its level; outside them a call is refused (`domain_not_tested`, `fields_not_tested`). | [evidence.md](evidence.md#levels); `Adapter.supports` in `core/adapter.py` |
 | `AdapterScope.drops`, `unlisted` | Fields the integration can never send, dropped as a lacked field is; fields its devices take though the light's state says they can't. | [action-behavior.md](action-behavior.md#when-to-stop-an-automation): Lacks a field, Unlisted fields depart from core |
 | `AdapterScope.capabilities` | A level per class, and per domain where its entry names some (`OnDomains`). | [evidence.md](evidence.md#device-classes) |
-| `AdapterScope.no_known_method`, `not_built` | A class refused with a reason and a source (`NoKnownMethod`, `NotBuilt`), each stating `harms`. A class is in at most one of `capabilities`, `no_known_method` and `not_built`. | [evidence.md](evidence.md#no-known-method-not-built-yet-untested); `AdapterScope.refusal` in `core/scope.py` |
-| `AdapterScope.own_calls` | A class's own call (`OwnCall`), which the dispatcher hands the adapter in place of `execute`, with its own duration limits. | [evidence.md](evidence.md#the-split-rule); `OwnCall` in `core/scope.py` |
+| `AdapterScope.no_known_method`, `not_built` | A class refused with a reason and a source (`NoKnownMethod`, `NotBuilt`), each stating `harms`. A class the integration names that the scope leaves out of `capabilities`, `no_known_method` and `not_built` is not built yet and refused; `not_built` holds only a class today's call would harm. A class is in at most one of the three. | [evidence.md](evidence.md#no-known-method-not-built-yet-untested); `AdapterScope.refusal` in `core/scope.py` |
+| `AdapterScope.own_calls` | A class's own call (`OwnCall`), which the dispatcher hands the adapter in place of `execute`, optionally with its own duration limits (else the scope's `duration`). Each class in it must be in `capabilities`. | [evidence.md](evidence.md#the-split-rule); `OwnCall` in `core/scope.py` |
 | `AdapterScope.duration` | The durations the call can carry (`DurationLimits`): a request outside them is clamped, and the result says so. | [action-behavior.md](action-behavior.md#when-to-stop-an-automation): A value the device can't reach; `core/duration.py` |
 | `AdapterScope.experimental` | Flags the whole adapter, as `experimental(...)` flags one item. | [evidence.md](evidence.md#the-experimental-flag); `core/dispatcher.py`'s module docstring, Experimental gating |
+| `AdapterScope.confirmable`, `options`, `notes` | Declarations core doesn't act on: `confirmable`, that the adapter can read back what it wrote (status `confirmed`); `options`, the DeviceSide options that change what it does (`predicted_state`), whose rig records are `<action>-<option>.json`; `notes`, free text. | `AdapterScope` in `core/scope.py`; [evidence.md](evidence.md#sign-off-format) |
 | `AdapterScope.caveat` | A risk mark, set by a repo maintainer; changes no call. | [evidence.md](evidence.md#caveats) |
 
 Core around them:
@@ -231,5 +233,5 @@ workflow named.
   workflows.
 - **Tags:** `scripts/check_tag.py`, in `cut-release-candidate.yml` and `cut-release.yml`, the only way a tag is made.
 - **RC audit:** `scripts/check_audit.py`, in `cut-release-candidate`.
-- **Testing:** unit tests mock each integration at its boundary (MQTT's publish and subscribe, the ZHA service, the
-  Shelly RPC, the Matter client, aiohue) against a real `hass`; the rig runs against a live HA and writes the records.
+- **Testing:** unit tests mock each integration at its boundary (its client, service or broker) against a real
+  `hass`; the rig runs against a live HA and writes the records.
