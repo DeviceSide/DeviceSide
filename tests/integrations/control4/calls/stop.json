@@ -1333,5 +1333,118 @@
     "[{\"id\": 201, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 201, \"varName\": \"Brightness Target Percent\", \"value\": 100.0}]"
    ]
   ]
+ },
+ {
+  "action": "stop",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.office",
+     "light.office",
+     true
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": [
+     "other"
+    ],
+    "data": null,
+    "detail": null,
+    "entity_id": "light.office",
+    "integration": "control4",
+    "member_classes": {
+     "light.left": "other",
+     "light.right": "other"
+    },
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/200/commands",
+      "SET_BRIGHTNESS_STOP",
+      {}
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/200/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 200, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 200, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}]"
+   ]
+  ]
+ },
+ {
+  "action": "stop",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.right",
+     "light.right",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "other",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.right",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_post_request",
+      "/api/v1/items/102/commands",
+      "SET_BRIGHTNESS_STOP",
+      {}
+     ],
+     {}
+    ],
+    "{}"
+   ],
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/102/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,Brightness%20Target%20Percent"
+     ],
+     {}
+    ],
+    "[{\"id\": 102, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 102, \"varName\": \"Brightness Target Percent\", \"value\": 40.0}]"
+   ]
+  ]
  }
 ]
