@@ -1900,7 +1900,7 @@ async def test_an_own_call_group_whose_only_runnable_members_are_stand_ins_raise
 @pytest.mark.usefixtures("classed")
 async def test_a_stand_in_whose_device_is_a_target_is_answered_by_it(hass, fake, reset_script, caplog):
     """The plug named beside its group runs as its own target, so it gets no skip as the group's stand-in (#441's
-    review): naming a member beside a group that falls back changes nothing (design.md, Groups)."""
+    review): naming a member beside a group that falls back changes nothing (core/dispatcher.py, Native groups)."""
     add_fake_entity(hass, fake, "light.a")
     add_group_with_stand_ins(hass, fake, ["light.a"], ["switch.e"])
 

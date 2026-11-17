@@ -98,16 +98,16 @@ raises or the entity is skipped.
   that ran: `confirmed`, `sent` or `unchanged`, with `integration` and, where they apply, `detail` and `clamped_to`.
   Skipped targets are left out, as core leaves them out, and `unsupported` or `rejected` never reach a response: the
   call skips or raises instead. A call that has nothing to do succeeds quietly as `unchanged` with a `detail`, checked
-  before the target's class, so nothing-to-do wins over no known method or not built yet. A native group with a refused
-  member (`class_unknown` included), or an Experimental one while Experimental features is off, or one whose class takes
-  a call of its own (`own_call`), falls back to its members where the integration can list them. A group that falls back
-  has no entry of its own: its members' entries answer for it, though a member it can't address alone answers for
-  nothing and is skipped (a plug in a light group too, which HA shows as a switch, skipped whether or not it is
-  available, as its state can't be seen, unless the plug is a target itself), while any other member known unavailable
-  is left out quietly. Every member a group falls back to is indirect, so none raises, and the group raises only when
-  none of its members runs, with the most useful member's reason: `experimental_off`, then a class's refusal, then any
-  other, `not_addressable` last ([design.md](design.md#core-contract), Groups). A named target whose class has no known
-  method, or is not built yet and is harmed by today's call, raises with the reason why.
+  before the target's class, so nothing-to-do wins over no known method or not built yet. A native group that falls
+  back to its members ([evidence.md](evidence.md#device-classes), Groups) has no entry of its own: its members' entries
+  answer for it; only a member also named as a target raises, as its own target. An available member it can't
+  address alone, or a stand-in (a member device with no entity in the group's domain, as a plug in a light group),
+  answers for nothing: it is skipped and logged, named by its device, a stand-in unless a target on its device ran.
+  The group is refused, raised if named, only when none of its members runs: with the refusal its members' classes
+  gave it, or `experimental_off`; one that fell back because a member's class takes a call of its own (`own_call`),
+  with its most useful skipped member's reason. The rules: `core/dispatcher.py`'s module docstring, Native groups. A
+  named target whose class has no known method, or is not built yet and is harmed by today's call, raises with the
+  reason why.
 - **The class.** On an integration that names [classes](evidence.md#device-classes), each entry carries the
   class the call reached, as an attribute would: a command's beside `status` and `integration`, a query's among its
   data. A target's is `capability` (a string: `"RGBCCT"`); a native group's is `capabilities`, its members' classes
