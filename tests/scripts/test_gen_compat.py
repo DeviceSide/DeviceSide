@@ -787,8 +787,8 @@ def test_the_legend_leads_the_cards_and_lists_only_the_marks_they_use(root):
     assert text.index("Details per integration are in [docs/integrations.md](") < text.index("</details>")
     assert gc.legend("🟢 ✔ 🟡 🌱 🔴 🔧 ⚠️") == (
         "🟢 works · ✔ verified on automated rig · 🟡 should work: same call pattern as a tested device · "
-        "🌱 experimental: enable in DeviceSide's Configure > Settings; please"
-        f" [report how it goes]({gc.REPORT_URL}) · "
+        "🌱 experimental: may not work; turn on in DeviceSide's Configure > Settings and"
+        f" [report whether it does]({gc.REPORT_URL}) · "
         "🔴 no known method: no known command works on it · "
         f"🔧 untested fix: please try it and [report whether it works]({gc.REPORT_URL}) · "
         "⚠️ unmaintained: use at your own risk"

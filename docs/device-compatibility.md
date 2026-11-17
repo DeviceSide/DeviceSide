@@ -82,7 +82,8 @@ Documented ([levels of proof](#levels-of-proof)).
 
 These are built and unit-tested, but not yet ready for everyone ([levels of proof](#levels-of-proof)); some may
 have passed a maintainer's first tests. Turn on Experimental features to try them, then report the result, whether
-they work or not: your report helps get them fixed or shipped to everyone.
+they work or not: a working report helps ship them to everyone, and a "doesn't work" one turns the feature off
+for that device.
 
 ### Zigbee plugs and switches
 

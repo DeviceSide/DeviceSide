@@ -131,7 +131,8 @@ OUTCOMES = (
     (
         "experimental",
         "🌱",
-        f"experimental: enable in DeviceSide's Configure > Settings; please [report how it goes]({REPORT_URL})",
+        "experimental: may not work; turn on in DeviceSide's Configure > Settings and"
+        f" [report whether it does]({REPORT_URL})",
     ),
     ("no_known_method", "🔴", "no known method: no known command works on it"),
 )

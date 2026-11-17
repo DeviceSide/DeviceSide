@@ -53,7 +53,7 @@ The compatibility section below shows which devices are known or likely to work.
 <details>
 <summary><b>Device compatibility by integration</b></summary>
 
-🟢 works · ✔ verified on automated rig · 🟡 should work: same call pattern as a tested device · 🌱 experimental: enable in DeviceSide's Configure > Settings; please [report how it goes](https://github.com/DeviceSide/DeviceSide/issues/new?template=device_report.yml) · 🔴 no known method: no known command works on it
+🟢 works · ✔ verified on automated rig · 🟡 should work: same call pattern as a tested device · 🌱 experimental: may not work; turn on in DeviceSide's Configure > Settings and [report whether it does](https://github.com/DeviceSide/DeviceSide/issues/new?template=device_report.yml) · 🔴 no known method: no known command works on it
 
 **[Zigbee2MQTT](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md)**
 
