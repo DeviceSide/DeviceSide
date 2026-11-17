@@ -10,8 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from tests import transcripts
-from tests.transcripts import Recorder, norm
+from tests.transcripts import norm
 
 ROOT = Path(__file__).parents[1]
 CALLS = "tests/integrations/fake/calls"
@@ -359,20 +358,6 @@ def test_a_native_groups_action_tested_on_a_group_passes(inner):
     assert run(inner, "--transcripts=write").ret == 0
     assert any(target[2] for segment in segments(inner) for target in segment["request"]["targets"])
     assert run(inner, "--transcripts=check").ret == 0
-
-
-def test_a_listed_action_now_tested_on_a_group_must_leave_the_list(tmp_path, monkeypatch):
-    monkeypatch.setattr(transcripts, "_NO_GROUP_TEST_YET", {("control4", "get_attributes")})
-    (tmp_path / "control4").mkdir()
-    recorder = Recorder("check", tmp_path)
-    on_a_group = {"request": {"targets": [["light.room", "light.room", True]]}}
-    recorder.segments = {("control4", "get_attributes"): {json.dumps(on_a_group)}}
-    recorder.native = {("control4", "get_attributes")}
-
-    assert recorder._groupless() == [
-        "now tested on a group: remove from _NO_GROUP_TEST_YET (tests/transcripts.py)",
-        "  control4 / get_attributes",
-    ]
 
 
 def test_a_wrapper_forwards_attributes_and_is_gone_after_its_test(inner):

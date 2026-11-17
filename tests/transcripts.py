@@ -33,8 +33,8 @@ rule here.
 `write`, after a run with no failures, writes `tests/integrations/<x>/calls/<action>.json`, the sorted unique segments
 of each action, for each integration with a `tests/integrations/<x>/` directory, and removes the `calls/` files of
 actions the run didn't see. `check` fails the run when those files would differ. Either fails an action whose adapter
-has `native_groups` and no segment run on a group (`_NO_GROUP_TEST_YET` lists the ones that shipped without). Under
-xdist each worker hands its segments to the controller, which writes or checks.
+has `native_groups` and no segment run on a group. Under xdist each worker hands its segments to the controller, which
+writes or checks.
 """
 
 import dataclasses
@@ -63,16 +63,6 @@ _ACTIVE: ContextVar[frozenset[str]] = ContextVar("transcript_active_boundaries",
 _WORKER_KEY = "transcripts"
 _DESELECTED_KEY = "transcripts_deselected"
 _NATIVE_KEY = "transcripts_native_groups"
-# Native-groups actions that shipped with no group segment, each removed by the pull request that tests it; one that
-# gains a group segment while listed fails the run, so the list only shrinks.
-_NO_GROUP_TEST_YET = frozenset(
-    {
-        ("control4", "get_attributes"),
-        ("control4", "lower_brightness"),
-        ("control4", "raise_brightness"),
-        ("control4", "set_attributes"),
-    }
-)
 _DESELECTED = "--transcripts={mode} needs the whole suite: this run deselects tests"
 _DROPPED = (HomeAssistant, Context)
 # `ServiceRegistry.async_call`'s arguments, past its service data, that change what the call does or returns.
@@ -474,21 +464,12 @@ class Recorder:
         grouped = {
             key for key, segments in self.segments.items() if any(_has_group(json.loads(text)) for text in segments)
         }
-        native = {key for key in self.native if key[0] in owned}
-        missing = sorted(native - grouped - _NO_GROUP_TEST_YET)
-        tested = sorted(_NO_GROUP_TEST_YET & grouped)
-        problems = []
-        if missing:
-            problems += [
-                "native-groups actions with no group segment: test each on one of its integration's groups",
-                *(f"  {integration} / {action}" for integration, action in missing),
-            ]
-        if tested:
-            problems += [
-                "now tested on a group: remove from _NO_GROUP_TEST_YET (tests/transcripts.py)",
-                *(f"  {integration} / {action}" for integration, action in tested),
-            ]
-        return problems
+        if not (missing := sorted({key for key in self.native if key[0] in owned} - grouped)):
+            return []
+        return [
+            "native-groups actions with no group segment: test each on one of its integration's groups",
+            *(f"  {integration} / {action}" for integration, action in missing),
+        ]
 
     def _unnormalized(self) -> list[str]:
         """Each placeholder norm left in a segment's wire or result, as `<integration> <action> <TypeName>`. The
