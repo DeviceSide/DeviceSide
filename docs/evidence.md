@@ -97,7 +97,7 @@ A sign-off covers only what was exercised; it never signs off untested code.
 **Contrary evidence.** A report changes a level only through a maintainer (tenet 7):
 
 - **A failed report on a class on trial** is the class's result, handled as
-  [on trial](#no-known-method-not-built-yet-on-trial) says. The rest of this list is for a class out of trial.
+  [on trial](#no-known-method-not-built-yet-on-trial) says. The rest of this list is for a Verified or Documented class.
 - **A credible report of a harmful failure on DeviceSide's own call** lets an integration maintainer refuse the
   identity it names on that action, on the report alone, citing it. It's not built yet if a known or plausible call
   would serve that identity, otherwise no known method ([below](#no-known-method-not-built-yet-on-trial)).
@@ -277,8 +277,8 @@ other item behaves.
 
 Every new feature (action, integration, domain, capability or field) starts flagged, and soaks behind the flag with
 users who opt in. A class is admitted behind the flag only on a pass on one of its devices, the builder's own probe or
-run included, or research predicting most of it accepts the call; without either it stays not built ([on
-trial](#no-known-method-not-built-yet-on-trial)), which also handles a failed report. A passing rig record or
+run included, or research predicting most of it accepts the call; without either it stays not built
+([on trial](#no-known-method-not-built-yet-on-trial)), which also handles a failed report. A passing rig record or
 `_manual.json` sign-off on a flagged item is evidence a maintainer can use to lift its flag for the next release,
 skipping that soak; it is not a requirement to lift it. Whether to lift is the maintainer's judgment, by how complex the
 feature is and how complete its tests are: a developer may run the first few rig cases before the full suite exists, so
