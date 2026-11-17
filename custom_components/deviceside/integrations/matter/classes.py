@@ -24,6 +24,7 @@ no node is None (addressing.unsupported_reason refuses it first, as not_addressa
 
 from collections.abc import Mapping
 
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from .addressing import node_for
@@ -37,7 +38,7 @@ MULTI_ENDPOINT = "multi_endpoint"
 OTHER = "other"  # the default class, never Verified (IntegrationInfo.default_class)
 # Each class's domains (IntegrationInfo.classes): the WiZ Smart Plug is a switch; any other may be a light or a plug.
 CLASSES = {
-    name: frozenset({"switch"}) if name == WIZ_PLUG else frozenset({"light", "switch"})
+    name: frozenset({Platform.SWITCH}) if name == WIZ_PLUG else frozenset({Platform.LIGHT, Platform.SWITCH})
     for name in (UNCERTIFIED, BRIDGED, WIZ_PLUG, MULTI_ENDPOINT, OTHER)
 }
 

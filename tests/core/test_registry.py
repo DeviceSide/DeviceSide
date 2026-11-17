@@ -7,6 +7,7 @@ from itertools import product
 from types import SimpleNamespace
 
 import pytest
+from homeassistant.const import Platform
 
 from custom_components.deviceside import actions
 from custom_components.deviceside.core.errors import Reason
@@ -42,7 +43,9 @@ def test_broken_integration_is_recorded_unavailable_and_others_load():
     assert registry.adapter("turn_on_for", "fake").integration == "fake"
 
 
-ANYWHERE = frozenset({"light", "switch", "scene"})  # a test class's domains: every one a test scope serves
+ANYWHERE = frozenset(
+    {Platform.LIGHT, Platform.SWITCH, Platform.SCENE}
+)  # a test class's domains: every one a test scope serves
 
 
 @pytest.mark.parametrize(
@@ -132,7 +135,7 @@ def test_a_scope_holds_only_classes_its_integration_declares(entries):
 
 
 # `tuya` a plug alone (a switch), as Decision 3's TS011F.
-PLUG_ONLY = replace(CLASSED, classes={**CLASSED.classes, "tuya": frozenset({"switch"})})
+PLUG_ONLY = replace(CLASSED, classes={**CLASSED.classes, "tuya": frozenset({Platform.SWITCH})})
 
 
 @pytest.mark.parametrize(
@@ -174,7 +177,11 @@ def test_a_level_held_on_some_domains_names_only_domains_the_class_can_be():
         _registry([Misplaced], PLUG_ONLY)
 
 
-@pytest.mark.parametrize("domains", [frozenset(), {"light"}, ("light",)], ids=["empty", "set", "tuple"])
+@pytest.mark.parametrize(
+    "domains",
+    [frozenset(), {"light"}, ("light",), frozenset({"light"})],
+    ids=["empty", "set", "tuple", "plain strings"],
+)
 def test_every_class_names_its_domains_as_a_non_empty_frozenset(domains):
     with pytest.raises(ValueError, match=r"classes \['tuya'\] name no entity domains"):
         _registry([Classed], replace(CLASSED, classes={**CLASSED.classes, "tuya": domains}))
@@ -346,7 +353,7 @@ def test_families_that_split_the_classes_between_them_are_accepted():
             id="undeclared_class",
         ),
         pytest.param(
-            (HUE_FAMILY, replace(TUYA_FAMILY, classes={"tuya": frozenset({"switch"})})),
+            (HUE_FAMILY, replace(TUYA_FAMILY, classes={"tuya": frozenset({Platform.SWITCH})})),
             r"family 'tuya': IntegrationInfo.classes gives \['tuya'\] other domains than the family's",
             id="other_domains",
         ),

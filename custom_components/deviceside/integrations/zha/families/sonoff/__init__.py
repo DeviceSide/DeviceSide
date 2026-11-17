@@ -1,5 +1,7 @@
 """Sonoff on ZHA: the SWV water valve, whose timer counts whole seconds."""
 
+from homeassistant.const import Platform
+
 from .....core.rules import Rule
 from .....core.scope import Family
 
@@ -15,7 +17,7 @@ FAMILY = Family(
     key="sonoff",
     maintainers=(),
     # A valve on the On/Off cluster, which ZHA shows as a switch: no action for lights alone reaches it.
-    classes={SONOFF_SWV: frozenset({"switch"})},
+    classes={SONOFF_SWV: frozenset({Platform.SWITCH})},
     # In no scope: turn_on_for's call harms it, so the integration refuses it there (refusals.py), and get_attributes
     # reads only what another action serves (core/registry.py, check_queries; plan Decision 25).
 )

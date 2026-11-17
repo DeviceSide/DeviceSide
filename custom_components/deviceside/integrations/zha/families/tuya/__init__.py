@@ -9,6 +9,8 @@ escaped."""
 
 import re
 
+from homeassistant.const import Platform
+
 from .....core.rules import Rule
 from .....core.scope import Family, FamilyScope, experimental
 from .....zigbee import tuya as strings
@@ -63,7 +65,7 @@ _UNTESTED = FamilyScope(capabilities=experimental(TUYA_ZCL))
 # get_attributes reads only what another action serves (core/registry.py, check_queries): `tuya_zcl` as a light. No
 # action serves a Tuya plug or switch yet, the countdown models included, so none is read (plan Decision 25); when
 # turn_on_for serves the countdown models, their OnTime reads in whole seconds (internals.md, "Tuya's recipe, parked").
-_READ = FamilyScope(capabilities=experimental(TUYA_ZCL, domains=("light",), only=True))
+_READ = FamilyScope(capabilities=experimental(TUYA_ZCL, domains=(Platform.LIGHT,), only=True))
 
 FAMILY = Family(
     key="tuya",
@@ -71,10 +73,10 @@ FAMILY = Family(
     # Each class's domains (IntegrationInfo.classes): the countdown models are plugs and switch modules; the rest of
     # Tuya's ZCL devices, and its datapoint ones, include bulbs and dimmers too.
     classes={
-        TUYA_COUNTDOWN: frozenset({"switch"}),
-        TUYA_COUNTDOWN_HARMED: frozenset({"switch"}),
-        TUYA_ZCL: frozenset({"light", "switch"}),
-        TUYA_MCU: frozenset({"light", "switch"}),
+        TUYA_COUNTDOWN: frozenset({Platform.SWITCH}),
+        TUYA_COUNTDOWN_HARMED: frozenset({Platform.SWITCH}),
+        TUYA_ZCL: frozenset({Platform.LIGHT, Platform.SWITCH}),
+        TUYA_MCU: frozenset({Platform.LIGHT, Platform.SWITCH}),
     },
     scopes={
         "get_attributes": _READ,

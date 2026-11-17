@@ -9,6 +9,7 @@ import pytest
 from aiohttp import ClientResponseError, RequestInfo
 from homeassistant.components.light import ColorMode, LightEntityFeature
 from homeassistant.config_entries import ConfigEntryState
+from homeassistant.const import Platform
 from homeassistant.exceptions import HomeAssistantError, ServiceNotSupported, ServiceValidationError, Unauthorized
 from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers import device_registry as dr
@@ -52,7 +53,9 @@ def experimental_option(request, hass, setup_integration):
     return request.param
 
 
-ANYWHERE = frozenset({"light", "switch", "scene"})  # a test class's domains: every one a test scope serves
+ANYWHERE = frozenset(
+    {Platform.LIGHT, Platform.SWITCH, Platform.SCENE}
+)  # a test class's domains: every one a test scope serves
 
 
 @pytest.fixture

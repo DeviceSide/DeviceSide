@@ -8,6 +8,7 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from ...core.errors import Reason
@@ -22,7 +23,10 @@ _UNIQUE_ID = re.compile(r"^[^-]+-(?P<key>switch|light|cct|rgb|rgbcct|rgbw):(?P<i
 COMPONENTS = {"switch": "Switch", "light": "Light", "cct": "CCT", "rgb": "RGB", "rgbcct": "RGBCCT", "rgbw": "RGBW"}
 # Each component's domains (IntegrationInfo.classes): a Switch relay has a switch's features alone, even where its
 # consumption type has Home Assistant show it as a light; the rest are lights.
-CLASSES = {name: frozenset({"switch"}) if name == "Switch" else frozenset({"light"}) for name in COMPONENTS.values()}
+CLASSES = {
+    name: frozenset({Platform.SWITCH}) if name == "Switch" else frozenset({Platform.LIGHT})
+    for name in COMPONENTS.values()
+}
 
 _DIMMABLE = frozenset({"brightness", "transition"})
 _COLOR = frozenset({"hs_color", "rgb_color", "xy_color"})

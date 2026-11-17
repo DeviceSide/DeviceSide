@@ -9,6 +9,7 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
+from homeassistant.const import Platform
 
 from custom_components.deviceside.actions import discover
 from custom_components.deviceside.core.registry import AdapterRegistry
@@ -34,7 +35,9 @@ from .record_files import (
     text,
 )
 
-ANYWHERE = frozenset({"light", "switch", "scene"})  # a test class's domains: every one a test scope serves
+ANYWHERE = frozenset(
+    {Platform.LIGHT, Platform.SWITCH, Platform.SCENE}
+)  # a test class's domains: every one a test scope serves
 
 ISSUE = "https://github.com/DeviceSide/DeviceSide/issues/9"
 

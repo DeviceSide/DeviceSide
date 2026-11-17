@@ -4,6 +4,7 @@ from enum import Enum, IntEnum
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
@@ -193,7 +194,7 @@ class AdapterScope:
 
     experimental: bool = False
     caveat: Caveat | None = None
-    domains: Mapping[str, Level] = field(default_factory=lambda: verified("light"))
+    domains: Mapping[str, Level] = field(default_factory=lambda: verified(Platform.LIGHT))
     duration: DurationLimits | None = None
     # Never Documented: a field changes the call, so no sibling's proof covers it.
     fields: Mapping[str, Level] = field(default_factory=dict)
@@ -349,7 +350,7 @@ class FamilyScope:
 
 
 # Classes by name, each with the entity domains a device in it can be (IntegrationInfo.classes).
-type ClassDomains = Mapping[str, frozenset[str]]
+type ClassDomains = Mapping[str, frozenset[Platform]]
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

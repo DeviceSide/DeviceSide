@@ -9,6 +9,7 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
+from homeassistant.const import Platform
 
 from custom_components.deviceside.core.adapter import Adapter
 from custom_components.deviceside.core.errors import Reason
@@ -31,7 +32,9 @@ from custom_components.deviceside.core.scope import (
     verified,
 )
 
-ANYWHERE = frozenset({"light", "switch", "scene"})  # a test class's domains: every one a test scope serves
+ANYWHERE = frozenset(
+    {Platform.LIGHT, Platform.SWITCH, Platform.SCENE}
+)  # a test class's domains: every one a test scope serves
 
 PACKAGE = Path(__file__).resolve().parents[2] / "custom_components" / "deviceside"
 # What reads the Experimental features option: only the option's definition, the entry setup and the dispatcher may.
@@ -214,12 +217,12 @@ def test_a_class_held_on_some_domains_alone_is_experimental_on_the_rest():
         capabilities=verified("hue", domains=("light",)) | documented("other"),
     )
 
-    assert scope.capabilities["hue"] == OnDomains(Level.VERIFIED, frozenset({"light"}))
+    assert scope.capabilities["hue"] == OnDomains(Level.VERIFIED, frozenset({Platform.LIGHT}))
     assert scope.level("light", ["hue"]) is Level.VERIFIED
     assert scope.level("switch", ["hue"]) is Level.EXPERIMENTAL
     assert scope.level("switch", ["other"]) is Level.DOCUMENTED  # an entry on every domain, as before
     assert scope.class_entries() == [
-        ("hue", Level.VERIFIED, frozenset({"light"})),
+        ("hue", Level.VERIFIED, frozenset({Platform.LIGHT})),
         ("other", Level.DOCUMENTED, None),
     ]
     assert scope.refusal(["hue"]) is None  # served, so not refused: gated by its level
@@ -231,7 +234,7 @@ def test_a_class_served_on_some_domains_alone_is_refused_on_the_rest():
         domains=verified("light", "switch"), capabilities=experimental("tuya", domains=("light",), only=True)
     )
 
-    assert scope.capabilities["tuya"] == OnDomains(Level.EXPERIMENTAL, frozenset({"light"}), only=True)
+    assert scope.capabilities["tuya"] == OnDomains(Level.EXPERIMENTAL, frozenset({Platform.LIGHT}), only=True)
     assert scope.admits("tuya", "light")
     assert not scope.admits("tuya", "switch")
     assert scope.admits("tuya")  # served somewhere

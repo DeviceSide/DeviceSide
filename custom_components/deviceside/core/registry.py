@@ -4,6 +4,8 @@ import re
 from collections.abc import Collection, Iterable, Iterator
 from types import ModuleType
 
+from homeassistant.const import Platform
+
 from .action import Action
 from .adapter import Adapter
 from .ha_watch import CallResolver
@@ -100,7 +102,7 @@ def check_integration(info: IntegrationInfo) -> None:
     if bare := sorted(
         name
         for name, domains in info.classes.items()
-        if not isinstance(domains, frozenset) or not domains or not all(isinstance(d, str) for d in domains)
+        if not isinstance(domains, frozenset) or not domains or not all(isinstance(d, Platform) for d in domains)
     ):
         raise ValueError(f"{info.key}: classes {bare} name no entity domains (a non-empty frozenset of them)")
     if info.families:

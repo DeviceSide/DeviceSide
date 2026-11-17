@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 import yaml
+from homeassistant.const import Platform
 
 from custom_components.deviceside.actions import discover
 from custom_components.deviceside.core.scope import (
@@ -36,13 +37,13 @@ from .record_files import (
     write,
 )
 
-LIGHT = frozenset({"light"})
+LIGHT = frozenset({Platform.LIGHT})
 # The classes the tests' scopes hold, each with its domains, as a Shelly-like integration declares them: a relay can be
 # a switch or a light; the rest are lights. `hue` and `other` are Hue's, which classes scenes too.
 CLASSES = {
-    "Switch": frozenset({"switch", "light"}),
+    "Switch": frozenset({Platform.SWITCH, Platform.LIGHT}),
     **dict.fromkeys(("Light", "CCT", "RGB", "RGBCCT"), LIGHT),
-    **dict.fromkeys(("hue", "other"), frozenset({"light", "scene"})),
+    **dict.fromkeys(("hue", "other"), frozenset({Platform.LIGHT, Platform.SCENE})),
     "Hidden": LIGHT,  # one devices.yaml gives no phrase
 }
 

@@ -14,6 +14,8 @@ literal strings escaped.
 
 import re
 
+from homeassistant.const import Platform
+
 from .countdown import COUNTDOWN
 from .....core.rules import Rule
 from .....core.scope import Family, FamilyScope, experimental, verified
@@ -63,7 +65,10 @@ _LIGHTS = (TUYA_ZCL, TUYA_MCU)
 # Each class's domains (IntegrationInfo.classes): a TS011F is a plug, so a switch, which no action for lights alone
 # reaches. Zigbee2MQTT can be set to show one as a light, on/off alone; it stays a switch here (plan Decision 7), as
 # none of those actions has anything to do on it but stop.
-CLASSES = {name: frozenset({"light", "switch"}) if name in _LIGHTS else frozenset({"switch"}) for name in _ALL}
+CLASSES = {
+    name: frozenset({Platform.LIGHT, Platform.SWITCH}) if name in _LIGHTS else frozenset({Platform.SWITCH})
+    for name in _ALL
+}
 
 # The catalog's literal models, as the patterns the rules below test.
 _TS011F_MODEL = re.escape(TS011F_MODEL)
@@ -113,7 +118,7 @@ _UNTESTED = FamilyScope(capabilities=experimental(*_LIGHTS))
 # Raw ZCL reads, of what another action serves (core/registry.py, check_queries; plan Decision 25): `tuya_zcl` as a
 # light. No action serves a Tuya ZCL switch or a TS011F off the countdown, so none is read; the countdown plugs'
 # read is refused (refusals.py), and a datapoint device can't take one, so `tuya_mcu` is left out.
-_READ = FamilyScope(capabilities=experimental(TUYA_ZCL, domains=("light",), only=True))
+_READ = FamilyScope(capabilities=experimental(TUYA_ZCL, domains=(Platform.LIGHT,), only=True))
 # Raw ZCL writes, on lights alone, so only `tuya_zcl`, as `tuya_mcu` can't take one.
 _WRITE = FamilyScope(capabilities=experimental(TUYA_ZCL))
 
@@ -122,7 +127,7 @@ _WRITE = FamilyScope(capabilities=experimental(TUYA_ZCL))
 # call isn't, so a group with one falls back to its members. The classes off the countdown are left out: the
 # integration refuses them there, as today's call would harm them (refusals.py).
 _TURN_ON_FOR = FamilyScope(
-    capabilities=verified(*VERIFIED_COUNTDOWNS, domains=("switch",)) | experimental(TUYA_COUNTDOWN),
+    capabilities=verified(*VERIFIED_COUNTDOWNS, domains=(Platform.SWITCH,)) | experimental(TUYA_COUNTDOWN),
     own_calls=dict.fromkeys(COUNTDOWNS, COUNTDOWN),
 )
 

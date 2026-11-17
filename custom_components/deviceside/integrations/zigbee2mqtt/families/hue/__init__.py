@@ -8,6 +8,8 @@ every vendor's call.
 
 import re
 
+from homeassistant.const import Platform
+
 from .....core.rules import Rule
 from .....core.scope import Family, FamilyScope, verified
 
@@ -43,7 +45,7 @@ FAMILY = Family(
     key="hue",
     maintainers=(),
     # Hue bulbs, and Hue's smart plug, which Zigbee2MQTT shows as a switch.
-    classes={HUE: frozenset({"light", "switch"})},
+    classes={HUE: frozenset({Platform.LIGHT, Platform.SWITCH})},
     scopes={
         "raise_brightness": _VERIFIED,
         "lower_brightness": _VERIFIED,
@@ -55,6 +57,6 @@ FAMILY = Family(
         "get_attributes": _VERIFIED,
         "set_attributes": _VERIFIED,
         # On lights alone, as every record ran on a bulb, so a Hue plug (a switch) is untested.
-        "turn_on_for": FamilyScope(capabilities=verified(HUE, domains=("light",))),
+        "turn_on_for": FamilyScope(capabilities=verified(HUE, domains=(Platform.LIGHT,))),
     },
 )
