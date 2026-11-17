@@ -132,7 +132,8 @@ def test_other_is_documented_on_brightness_fades_and_stop_alone():
     ("capability", "harmed", "not_built", "no_method"),
     [
         # Not built yet on turn_on_for, with an entry: today's call would leave them on (Decision 70). No other action
-        # serves a Tuya ZCL switch, so get_attributes reads it as a light alone (plan Decision 25).
+        # serves a Tuya ZCL switch, so get_attributes reads it as a light alone
+        # (docs/evidence.md, "A read serves only").
         ("tuya_zcl", {"turn_on_for"}, {"turn_on_for"}, set()),
         # Nor a TS011F off the countdown, so get_attributes doesn't read it.
         ("tuya_ts011f", {"turn_on_for"}, {"turn_on_for", "get_attributes"}, set()),
@@ -296,9 +297,10 @@ async def test_a_group_with_a_member_harmed_by_the_call_falls_back_with_experime
 async def test_a_light_group_with_a_ts011f_plug_falls_back_on_a_light_action_with_experimental_on(
     hass, setup_production, broker, caplog, service, data, sent
 ):
-    """Plan Decision 7: no action for lights alone holds a TS011F, a switch (Decision 3), so its class refuses the
-    group, which falls back to its members even with Experimental features on: each bulb gets its own call, where the
-    group once took one groupcast that reached the plug, and the plug's stand-in is skipped as not built yet."""
+    """Per docs/evidence.md's "A class names its domains": no action for lights alone holds a TS011F, a switch (Decision
+    3), so its class refuses the group, which falls back to its members even with Experimental features on: each bulb
+    gets its own call, where the group once took one groupcast that reached the plug, and the plug's stand-in is skipped
+    as not built yet."""
     entity_id = plug_in_group(hass, broker)
     allow_experimental(hass)
 
@@ -314,8 +316,8 @@ async def test_a_light_group_with_a_ts011f_plug_falls_back_on_a_light_action_wit
 
 
 async def test_a_ts011f_zigbee2mqtt_shows_as_a_light_is_refused_by_stop(hass, setup_production, broker):
-    """Plan Decision 7: a TS011F stays a switch when Z2M is set to show it as a light, so stop refuses it as not built
-    yet, where it once sent the plug a brightness_move it can't do."""
+    """Per docs/evidence.md's "A class names its domains": a TS011F stays a switch when Z2M is set to show it as a
+    light, so stop refuses it as not built yet, where it once sent the plug a brightness_move it can't do."""
     plug = light(hass, broker, "light.plug", "0x03", manufacturer=PLUG[0], model_id=PLUG[1], zigbee=(TUYA, "TS011F"))
     allow_experimental(hass)
 

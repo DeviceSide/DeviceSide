@@ -161,11 +161,11 @@ def served(cls: type[Adapter], info: IntegrationInfo) -> set[tuple[str | None, s
 
 
 def check_queries(adapters: Iterable[tuple[type[Adapter], Action]], info: IntegrationInfo) -> None:
-    """A query (get_attributes) reads state back around DeviceSide's other actions, so it serves only what another
-    of the integration's actions serves, class and domain both (plan Decision 25). A class only a read would reach
-    (a Tuya plug no other action serves yet) is left out of its scope, or, on some domains, held on the rest alone
-    (OnDomains `only`), so it isn't offered and the card doesn't list it. A refusal entry (no_known_method) stays: it
-    says why a read that would serve another action can't."""
+    """A query (get_attributes) reads state back around DeviceSide's other actions, so it serves only what another of
+    the integration's actions serves, class and domain both (docs/evidence.md, "A read serves only"). A class only a
+    read would reach (a Tuya plug no other action serves yet) is left out of its scope, or, on some domains, held on the
+    rest alone (OnDomains `only`), so it isn't offered and the card doesn't list it. A refusal entry (no_known_method)
+    stays: it says why a read that would serve another action can't."""
     adapters = list(adapters)
     others = {item for cls, action in adapters if action.kind is not ActionKind.QUERY for item in served(cls, info)}
     for cls, action in adapters:

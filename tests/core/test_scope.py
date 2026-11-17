@@ -248,7 +248,8 @@ def test_a_class_held_on_some_domains_alone_is_experimental_on_the_rest():
 
 
 def test_a_class_served_on_some_domains_alone_is_refused_on_the_rest():
-    """`only`: a Tuya ZCL device read as a light, which other actions serve, but not as a switch (plan Decision 25)."""
+    """`only`: a Tuya ZCL device read as a light, which other actions serve, but not as a switch
+    (docs/evidence.md, "A read serves only")."""
     scope = AdapterScope(
         domains=verified("light", "switch"), capabilities=experimental("tuya", domains=("light",), only=True)
     )

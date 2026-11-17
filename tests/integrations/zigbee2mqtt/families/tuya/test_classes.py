@@ -86,8 +86,8 @@ def test_tuya_s_classes_are_untested_on_every_action_but_turn_on_for():
 
 
 def test_only_a_tuya_zcl_light_is_read():
-    """get_attributes reads only what another action serves (plan Decision 25): no action serves a Tuya ZCL switch or
-    a TS011F off the countdown, and the countdown plugs' read has no known method (refusals.py)."""
+    """get_attributes reads only what another action serves (docs/evidence.md, "A read serves only"): no action serves a
+    Tuya ZCL switch or a TS011F off the countdown, and the countdown plugs' read has no known method (refusals.py)."""
     assert tuya.FAMILY.scopes["get_attributes"].capabilities == {
         tuya.TUYA_ZCL: OnDomains(Level.EXPERIMENTAL, frozenset({"light"}), only=True)
     }

@@ -20,6 +20,6 @@ def test_sonoff_rules(manufacturer, model, expected):
 
 
 def test_the_valve_is_in_no_scope():
-    """turn_on_for refuses it (test_refusals.py), and get_attributes reads only what another action serves (plan
-    Decision 25), so no action holds it."""
+    """turn_on_for refuses it (test_refusals.py), and get_attributes reads only what another action serves
+    (docs/evidence.md, "A read serves only"), so no action holds it."""
     assert sonoff.FAMILY.scopes == {}

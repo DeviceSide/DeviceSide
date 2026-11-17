@@ -19,5 +19,5 @@ FAMILY = Family(
     # A valve on the On/Off cluster, which ZHA shows as a switch: no action for lights alone reaches it.
     classes={SONOFF_SWV: frozenset({Platform.SWITCH})},
     # In no scope: turn_on_for's call harms it, so the integration refuses it there (refusals.py), and get_attributes
-    # reads only what another action serves (core/registry.py, check_queries; plan Decision 25).
+    # reads only what another action serves (core/registry.py, check_queries; docs/evidence.md, "A read serves only").
 )

@@ -63,8 +63,9 @@ ZCL_RULES = (
 # datapoint call nobody has built (not built yet).
 _UNTESTED = FamilyScope(capabilities=experimental(TUYA_ZCL))
 # get_attributes reads only what another action serves (core/registry.py, check_queries): `tuya_zcl` as a light. No
-# action serves a Tuya plug or switch yet, the countdown models included, so none is read (plan Decision 25); when
-# turn_on_for serves the countdown models, their OnTime reads in whole seconds (internals.md, "Tuya's recipe, parked").
+# action serves a Tuya plug or switch yet, the countdown models included, so none is read (docs/evidence.md, "A read
+# serves only"); when turn_on_for serves the countdown models, their OnTime reads in whole seconds (internals.md,
+# "Tuya's recipe, parked").
 _READ = FamilyScope(capabilities=experimental(TUYA_ZCL, domains=(Platform.LIGHT,), only=True))
 
 FAMILY = Family(

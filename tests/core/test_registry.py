@@ -188,8 +188,9 @@ def test_every_class_names_its_domains_as_a_non_empty_frozenset(domains):
 
 
 def test_a_query_serves_only_what_another_action_serves():
-    """Plan Decision 25: get_attributes reads state back around the other actions, so a class and domain only it
-    would serve fail registration; held on the rest alone (OnDomains `only`), or refused with a reason, they pass."""
+    """Per docs/evidence.md's "A read serves only": get_attributes reads state back around the other actions, so a class
+    and domain only it would serve fail registration; held on the rest alone (OnDomains `only`), or refused with a
+    reason, they pass."""
 
     class Timer(FakeTurnOnFor):
         scope = replace(

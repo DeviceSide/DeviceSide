@@ -90,8 +90,8 @@ def test_the_zcl_classes_are_untested_on_every_action_they_are_served_on():
 
 
 def test_only_a_tuya_zcl_light_is_read():
-    """get_attributes reads only what another action serves (plan Decision 25): no action serves a Tuya plug or
-    switch yet."""
+    """get_attributes reads only what another action serves (docs/evidence.md, "A read serves only"): no action serves a
+    Tuya plug or switch yet."""
     assert tuya.FAMILY.scopes["get_attributes"].capabilities == {
         tuya.TUYA_ZCL: OnDomains(Level.EXPERIMENTAL, frozenset({"light"}), only=True)
     }

@@ -34,7 +34,8 @@ def test_turn_on_for_alone_refuses_classes_not_built_and_harms_there_alone():
 
 def test_get_attributes_has_no_known_method_on_every_countdown_plug():
     """The time left can't be read (internals.md, Tuya's countdown, P6), on the Verified strings and the rest alike
-    (plan Decision 25). A read leaves nothing on or off, so get_attributes' failure doesn't harm."""
+    (docs/evidence.md, "A read serves only"). A read leaves nothing on or off, so get_attributes' failure doesn't
+    harm."""
     assert set(REFUSALS["get_attributes"]) == set(tuya.COUNTDOWNS)
     for entry in REFUSALS["get_attributes"].values():
         assert isinstance(entry, NoKnownMethod)

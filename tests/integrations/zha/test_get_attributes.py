@@ -171,7 +171,8 @@ async def test_switch_is_experimental_and_reads_only_on_off(hass, bulb, requests
     ],
 )
 async def test_a_tuya_plug_or_switch_is_not_read(hass, bulb, requests, strings):
-    """No other action serves a Tuya plug or switch yet, so get_attributes doesn't either (plan Decision 25)."""
+    """No other action serves a Tuya plug or switch yet, so get_attributes doesn't either
+    (docs/evidence.md, "A read serves only")."""
     add_zha_entity(hass, zha_entry(hass), "switch.plug", state="on", strings=strings)
     allow_experimental(hass)
 

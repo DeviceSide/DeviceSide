@@ -41,8 +41,8 @@ REFUSALS: Mapping[str, Mapping[str, NoKnownMethod | NotBuilt]] = {
     # get_attributes. On a countdown plug the only thing the read adds is the timer, and its time left can't be read:
     # `/get` and the plug's reports carry the countdown last set (internals.md, Tuya's countdown, P6). A read, whose
     # failure doesn't harm (Action.failure_harms; docs/evidence.md, When today's call harms a class). The TS011Fs off
-    # the countdown are in no scope: no other action serves them, so there is nothing to read back around (plan
-    # Decision 25).
+    # the countdown are in no scope: no other action serves them, so there is nothing to read back around
+    # (docs/evidence.md, "A read serves only").
     "get_attributes": dict.fromkeys(
         COUNTDOWNS,
         NoKnownMethod(

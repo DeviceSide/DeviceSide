@@ -250,7 +250,7 @@ async def test_a_countdown_set_z2m_logs_failed_is_rejected(hass, setup_productio
 @pytest.mark.parametrize("manufacturer", [LAB, UNLISTED])
 async def test_get_attributes_has_no_known_method_on_a_countdown_plug(hass, setup_production, broker, manufacturer):
     """Its OnTime holds the countdown last set, not the time left (probe P6), and the timer is all a read would add
-    (plan Decision 25): refused with why, reading nothing."""
+    (docs/evidence.md, "A read serves only"): refused with why, reading nothing."""
     entity_id = plug(hass, broker, manufacturer)
     hass.states.async_set(entity_id, "on", {})
     broker.devices[IEEE] = ("plug", {"genOnOff": {"onOff": 1, "onTime": 600}})
@@ -268,7 +268,8 @@ async def test_get_attributes_has_no_known_method_on_a_countdown_plug(hass, setu
     ],
 )
 async def test_get_attributes_doesn_t_read_a_ts011f_no_other_action_serves(hass, setup_production, broker, entry):
-    """No other action serves it, so there is nothing to read back around (plan Decision 25): not built."""
+    """No other action serves it, so there is nothing to read back around (docs/evidence.md, "A read serves only"):
+    not built."""
     entity_id = plug(hass, broker, **entry)
     allow_experimental(hass)
 
