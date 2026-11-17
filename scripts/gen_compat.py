@@ -145,7 +145,7 @@ OUTCOMES = (
         "experimental: may not work; turn on in DeviceSide's Configure > Settings and"
         f" [report whether it does]({REPORT_URL})",
     ),
-    ("no_known_method", "🔴", "no known method: no known command works on it"),
+    ("no_known_method", "🔴", "no known command works on it"),
 )
 TIER = {Level.VERIFIED: "works", Level.DOCUMENTED: "should", Level.EXPERIMENTAL: "experimental"}
 VERIFIED = "✔"
