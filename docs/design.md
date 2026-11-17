@@ -7,84 +7,58 @@ and what was measured on real devices, is in the bundle's `internals.md`, with w
 
 ## Glossary
 
-Code and docs use these terms.
+Code and docs use these terms. Each one's rules live where its link points.
 
 - **Action**: what the user calls, e.g. `deviceside.turn_on_for`.
 - **Feature**: the user experience one or more actions deliver (turn on with timer, smooth dimming). Prose only.
-- **Integration**: the HA integration that is the first hop to the device (Shelly, ZHA, MQTT, Hue).
+- **Integration**: the HA integration that is the first hop to the device, e.g. ZHA or MQTT.
 - **Bridge**: a separate system between the integration and the device, named only when the integration alone
-  doesn't say how the device is reached (Zigbee2MQTT behind MQTT). The Hue Bridge is not counted.
+  doesn't say how the device is reached (Zigbee2MQTT behind MQTT); the Hue Bridge is not counted.
 - **Adapter**: one action on one integration (or bridge).
-- **Capability**: the code's name for a Class: `IntegrationInfo.capability` names a target's, `IntegrationInfo.classes`
-  declares them, `AdapterScope.capabilities` holds a level per class, and a result reports it as `capability`.
-- **Class**: the set of devices that get the same call and run the same firmware family, as the integration names it
-  (Shelly: the RPC component; Zigbee2MQTT: `hue`, `tuya_zcl`, `tuya_ts011f`, `tuya_countdown` and a class per
-  Verified maker string on it, `tuya_mcu`, `sengled`, `gledopto`, `other`). Each class stands on its own evidence,
-  and a device no rule matches gets the integration's default class, which is never Verified: a record on another maker's device adds that maker's class. Where untested, it is
-  Experimental (except where a call is known to harm: there a target whose class rests on information DeviceSide
-  doesn't have yet is refused). Rules: [evidence.md](evidence.md#device-classes).
+- **Capability**: the code's name for a Class (`IntegrationInfo.capability`, `AdapterScope.capabilities`, a result's
+  `capability`).
+- **Class**: the set of devices that get the same call and run the same firmware family, as the integration names
+  it; each stands on its own evidence. Rules: [evidence.md](evidence.md#device-classes).
 - **Family**: a vendor's classes on one integration, as a package of their own
-  (`integrations/<x>/families/<family>/`): its `Family` names the classes and holds their rules, levels and own
-  calls, so a vendor is one path with its own Maintainers. It holds no refusals: the integration keeps every no known
-  method and not built yet entry (`integrations/<x>/refusals.py`), with the transport, the default class and the rule
-  order between families. Opt-in: an integration with no families holds its classes itself.
+  (`integrations/<x>/families/<family>/`), so a vendor is one path with its own maintainers. Rules:
+  [Writing an integration](#core-contract), Family.
 - **Catalog**: the Zigbee strings and sourced firmware facts that two integrations' families of one key both read
   (`custom_components/deviceside/zigbee/<family>.py`): patterns and facts only, no levels and no calls.
-- **Placed**: a device whose class rests on everything the integration will report about it (Zigbee2MQTT: listed as
-  interviewed, with both Zigbee strings; one the registry puts in `hue` is placed without them:
-  [index.md](integrations/zigbee2mqtt/index.md#tuya)). Until then its class is `Unplaced`: the same class to every adapter, except
-  where a call is known to harm, which refuses it (`class_unknown`). Placed or not is apart from which rule matched:
-  a device no rule matches is placed in the default class once the integration has reported it. Rules:
-  [evidence.md](evidence.md#no-known-method-not-built-yet-untested).
+- **Placed**: a device whose class rests on everything the integration will report about it; until then its class is
+  `Unplaced` (`core/scope.py`). Rules: [evidence.md](evidence.md#no-known-method-not-built-yet-untested); when a
+  device counts as placed: each integration's page, as [Zigbee2MQTT's](integrations/zigbee2mqtt/index.md#device-classes).
 - **Not supported**: DeviceSide can't do this action for the target (`target_not_supported`,
-  `integration_not_supported`). For a class it is one of two kinds, each named for why: no known method, or not built
-  yet. Whether today's call would harm the class is a separate axis, `harms`, which either kind may carry.
-- **No known method**: a class no known call works on for an action, a device limit as far as anyone knows. A method
-  is a call that does what was asked and fails without harm, so a class whose only known call is unsafe has none; the
-  entry's reason says which. Listed in the adapter's `AdapterScope.no_known_method` with a reason and source, refused
-  (`no_known_method`) and marked 🔴 on the card.
-- **Not built yet**: a class a known or plausible call would serve for an action, and nobody has built it. The
-  integration names it, the adapter's scope holds it in neither `capabilities` nor `no_known_method`, and it is
-  refused (`not_built`) and left off the card. It may sit in `AdapterScope.not_built`, with a reason, a source and
-  `harms`, and does exactly when today's call would harm it.
+  `integration_not_supported`); for a class, either no known method or not built yet.
+- **No known method**: a class no known call works on for an action, a device limit as far as anyone knows. Rules:
+  [evidence.md](evidence.md#no-known-method-not-built-yet-untested).
+- **Not built yet**: a class a known or plausible call would serve for an action, and nobody has built it. Rules:
+  [evidence.md](evidence.md#no-known-method-not-built-yet-untested).
 - **Field**: an action parameter, e.g. `brightness`.
 - **Entity domain**: light, switch. "Domain" alone is fine where unambiguous.
-- **Scope**: the entity domains, classes and fields an adapter is built for, each Verified, Documented or untested,
-  and flagged or not, plus the classes it knows have no known method. Outside it, calls are refused
-  (`domain_not_tested`, `fields_not_tested`, or `not_built` for a class).
-- **Level**: how a scope item is proven, Verified or Documented. Rules: [evidence.md](evidence.md#levels). User
-  wording: [device-compatibility.md](device-compatibility.md#levels-of-proof).
-- **Experimental**: the flag on a scope item (`experimental(...)`) or a whole adapter (`experimental=True`) not yet
-  judged ready for everyone, which keeps it off until the user turns on Experimental features; not a level. An
-  integration maintainer lifts it when they judge it ready; a passing run is evidence for that, not a trigger. Rules:
-  [evidence.md](evidence.md#the-experimental-flag).
-- **Maintainer**: a GitHub handle in an integration's `IntegrationInfo.maintainers`. Maintainers look after that
-  integration's package: they get its bug reports, and approve and merge changes to it. A handle in a Family's
-  `maintainers` is that family's maintainer: they approve and merge changes to it, beside the integration's, who own
-  every family of theirs too. Rules:
-  [CLAUDE.md](../CLAUDE.md#maintainers). User wording: [device-compatibility.md](device-compatibility.md#maintainers).
-- **Repo maintainer**: a handle in `REPO_MAINTAINERS` (`scripts/gen_codeowners.py`), with admin on the repo. Repo
-  maintainers own shared code, merge any PR and set caveats. Distinct from an
-  integration's Maintainer.
-- **Caveat**: a risk mark on an adapter (`AdapterScope.caveat`, an issue URL), 🔧 Untested fix or ⚠️ Unmaintained,
-  set by a repo maintainer. It ships live; setup warns, its card shows the mark and the release notes say why. Rules:
-  [evidence.md](evidence.md#caveats).
-- **Sign-off**: an integration's rig records, every one passing and standing through the changes since its run, or a
-  `_manual.json` row from one of an integration's Maintainers (or a Repo maintainer when none responds), holding the
-  package as the release does, which a release needs for each integration changed since the last tag. Rules:
-  [evidence.md](evidence.md#release-gate).
+- **Scope**: the entity domains, classes and fields an adapter is built for, each at its level; outside it, a call is
+  refused. Its `AdapterScope` fields: [Writing an integration](#core-contract).
+- **Level**: how a scope item is proven: Verified, Documented or Experimental. Rules: [evidence.md](evidence.md#levels).
+  User wording: [device-compatibility.md](device-compatibility.md#levels-of-proof).
+- **Experimental**: the lowest level, and the flag on a scope item (`experimental(...)`) not yet judged ready for
+  everyone. Rules: [evidence.md](evidence.md#the-experimental-flag).
 - **Experimental features**: the option (`experimental_features`, off by default) that lets calls touching a flagged
   item through. Only the dispatcher reads it.
+- **Maintainer**: a GitHub handle in an integration's `IntegrationInfo.maintainers`, or a family's in its `Family`'s
+  `maintainers`. Rules: [CLAUDE.md](../CLAUDE.md#maintainers). User wording:
+  [device-compatibility.md](device-compatibility.md#maintainers).
+- **Repo maintainer**: a handle in `REPO_MAINTAINERS` (`scripts/gen_codeowners.py`), with admin on the repo; distinct
+  from an integration's Maintainer. Rules: [CLAUDE.md](../CLAUDE.md#maintainers).
+- **Caveat**: a risk mark on an adapter (`AdapterScope.caveat`), set by a repo maintainer; it ships live. Rules:
+  [evidence.md](evidence.md#caveats).
+- **Sign-off**: an integration's standing rig records, or a maintainer's `_manual.json` row, which a release needs for
+  each integration changed since the last tag. Rules: [evidence.md](evidence.md#release-gate).
 - **Rig**: a tool that tests DeviceSide's features automatically with real hardware on a live Home Assistant instance,
   and writes up the results as test records.
-- **Test record**: the evidence that an adapter works on real hardware, from a rig run:
-  `docs/integrations/<integration>/test-records/<action>*.json` ([format](evidence.md#sign-off-format)). A
-  maintainer's hand test goes in the same folder's `_manual.json`, one row per run; either can be a sign-off
-  ([release gate](evidence.md#release-gate)).
+- **Test record**: the evidence that an adapter works on real hardware, in
+  `docs/integrations/<integration>/test-records/`. Format: [evidence.md](evidence.md#sign-off-format).
 - **Device report**: a user's "works" or "doesn't work" for an action on a model, filed with the device report form;
-  the GitHub issue is its record. A maintainer who trusts a "works" report may cite it in a `_manual.json` row as a
-  sign-off, which for an item no maintainer can test verifies it; a "doesn't work" is evidence for
-  a fix or for leaving the item out.
+  the GitHub issue is its record. How it counts: [evidence.md](evidence.md#the-experimental-flag); contrary reports:
+  [Levels](evidence.md#levels).
 - **Profile**: one test setup on the rig's HA, the entities a run may move by integration and role; a record names the
   one it ran on (`lab`, `house`).
 
@@ -120,12 +94,10 @@ built:
 
 ## Scope
 
-Integrations: Zigbee2MQTT (via `mqtt`), ZHA, Matter, Shelly Gen2+ and Hue (CLIP v2). Each adapter's `AdapterScope`
-says what it covers, and the README feature table (`scripts/gen_features.py`) lists every adapter. Each integration's
-docs, data and records are its bundle, `docs/integrations/<integration>/`, which
-[CLAUDE.md](../CLAUDE.md#where-facts-go) lays out. What can't be built where, and why: `NO_PATH` in
-`scripts/gen_features.py`, the README's prohibited signs, explained to users in
-[integrations.md](integrations.md#what-cant-be-done-and-why).
+Which integrations have which actions: the README feature table (`scripts/gen_features.py`); each integration's page:
+[integrations.md](integrations.md). What can't be built where, and why: `NO_PATH` in `scripts/gen_features.py`,
+explained to users in [integrations.md](integrations.md#what-cant-be-done-and-why). Per device class:
+[device-compatibility.md](device-compatibility.md). Each adapter's `AdapterScope` says what it covers.
 
 - **`turn_on_for`, `turn_off_for`**: on, then off after `duration` (or the reverse), timed on the device.
   `turn_on_for` takes the `light.turn_on` fields.
@@ -139,10 +111,9 @@ docs, data and records are its bundle, `docs/integrations/<integration>/`, which
 - **`set_scene`**: a scene's settings, written to each light while it's off. A Zigbee scene recall turns lights on, so
   Zigbee would follow the same pattern.
 
-Not built yet: turn-on defaults (`OnLevel`), Shelly Gen1, other domains (cover, valve, lock) and other
-integrations (Z-Wave JS, Tuya, ESPHome, Tasmota, TP-Link Kasa). Each is weighed against the broad-appeal principle
-in [CONTRIBUTING.md](../CONTRIBUTING.md#development-principles). Per device class:
-[device-compatibility.md](device-compatibility.md).
+Not built yet: turn-on defaults (`OnLevel`) and other entity domains (cover, valve, lock). Each new one, and each new
+integration, is weighed against the broad-appeal principle in
+[CONTRIBUTING.md](../CONTRIBUTING.md#development-principles).
 
 ## Architecture
 
@@ -162,108 +133,71 @@ Facts from HA core this rests on:
 
 ```
 models.py        Status, ActionKind, Request, Target, EntityResult, LightFields
-scope.py         AdapterScope, IntegrationInfo, DurationLimits
+scope.py         AdapterScope, IntegrationInfo, Family, DurationLimits: what an integration declares
+rules.py         Rule and its composer: which devices are a class's, for an integration with families
+errors.py        Reason, TargetNotSupported: why a target is refused
+fields.py        the fields a target lacks, read as light.turn_on's filter_turn_on_params reads them
+duration.py      clamp: fits a request's duration to a call's limits
 action.py        Action base class
+actions.py       registers the actions; refuses calls until the config entry loads
 adapter.py       Adapter base class; gather() runs sends under the concurrency limits
 registry.py      AdapterRegistry: discovery, guarded import, lookup, matrix
 resolver.py      entity_id -> Target, or the reason it can't be served
 groups.py        HA group expansion, any domain
 dispatcher.py    parse, extract, expand, resolve, plan, run, raise rule, response
 ha_watch.py      drops predictions a light or scene call from HA leaves stale
+ha_entity.py     guarded access to HA's live entity objects
 transition.py    a move's predicted value, per integration
 level_fade.py    LevelFade: raise and lower from the level the device reports, in one timed set
+zcl.py           ZCL facts the ZHA, Zigbee2MQTT and Matter packages share
+zcl_*.py         what the Zigbee integrations share: fade planning, a get_attributes row, set_attributes commands
+color.py         colors read and written alike across integrations
+timer.py         a get_attributes row's on/off timer entry
 readback.py      read_back: the read after an accepted write; a failed read reports sent
 runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, integration state
 ```
 
 ### Core contract
 
+**Writing an integration.** An integration's module exports `INTEGRATION` (an `IntegrationInfo`) and `ADAPTERS`; each
+adapter has an `AdapterScope`. What each can declare (`core/scope.py` holds each one's contract):
+
+| Hook or field | What it buys | Where its rules live |
+|---|---|---|
+| `IntegrationInfo.capability`, `classes`, `default_class` | Each target's class, so each class stands on its own evidence. `capability` is sync and cheap, no I/O; it gives the default class to a device no rule matches, `Unplaced` to one not yet placed, `None` only to one it can't class at all. Every adapter sees the same class and maps the classes it serves to its own branch: a class is a device class, not a call pattern, as patterns are per action. `classes` gives each class the entity domains a device in it can be (a family's from its `Family`), so no scope holds a class on an action none of those domains reaches. | [evidence.md](evidence.md#device-classes); `Unplaced` in `core/scope.py`; the registry's checks: `check_integration` and `check_classes` in `core/registry.py` |
+| **Family**: `IntegrationInfo.families` (`Family`, `FamilyScope`), `integrations/<x>/refusals.py` | A vendor's classes as one path with its own maintainers: a `Family` names its classes and holds their rules, levels and own calls. Opt-in: an integration with none holds its classes itself. The integration keeps the transport, the default class, the rule order between families (`families/__init__.py`) and every refusal entry (`refusals.py`, merged in by `class_scope`). | `Family`, `FamilyScope` and `class_scope` in `core/scope.py`; `check_families` in `core/registry.py`; `core/rules.py`; [CLAUDE.md](../CLAUDE.md#maintainers) |
+| **Groups**: `IntegrationInfo.is_group`, `expand_group`, `AdapterScope.native_groups` | A native group (a Hue zone, say) goes to the device as one command. `is_group` recognizes one; `expand_group` lists its members, sync and with no I/O; an adapter with `native_groups` gets the group as one target. `expand_group`'s members give the group its classes and are what it falls back to when a member's class is refused, takes a call of its own, or is Experimental with the option off; an adapter without `native_groups` gets them as its targets. | `core/dispatcher.py`'s module docstring, Native groups; [evidence.md](evidence.md#device-classes), Groups |
+| `IntegrationInfo.setup`, `remove` | `setup` starts what the integration keeps running while the entry is loaded, as the entry's background task, and registers its own teardown with `entry.async_on_unload`; `remove` undoes what it changed outside HA as DeviceSide is deleted. A hook that raises is logged and isolated. The component root names no integration. | `IntegrationInfo` in `core/scope.py`; `_guarded` in `__init__.py` |
+| `IntegrationInfo.detect` | Picks this integration over a generic sibling on the same `ha_domain` (Zigbee2MQTT over plain MQTT): a different gateway or API is an integration of its own. | [evidence.md](evidence.md#the-split-rule); Resolver, below |
+| `IntegrationInfo.unsupported` | Refuses a gateway or API DeviceSide never supports, as `integration_not_supported` with its reason: listed in its sibling's module as `UNSUPPORTED`, it claims entities by `detect`, has no adapters, and is kept out of the cards and gates. | `IntegrationInfo` in `core/scope.py`; `AdapterRegistry` in `core/registry.py` |
+| `IntegrationInfo.zigbee_manufacturer` | The device's own Zigbee manufacturer string for the device report form, where HA's registry holds another. | `IntegrationInfo` in `core/scope.py` |
+| `IntegrationInfo.call_resolver` | Drops what a light or scene call from HA leaves stale. | `core/ha_watch.py` |
+| `IntegrationInfo.max_concurrency`, `AdapterScope.max_concurrency` | How many sends run at once. | [Concurrency](#concurrency) |
+| `AdapterScope.domains`, `fields` | The entity domains and fields the adapter is built for, each at its level; outside them a call is refused (`domain_not_tested`, `fields_not_tested`). Flagging every domain flags the whole adapter. | [evidence.md](evidence.md#levels); `Adapter.supports` in `core/adapter.py` |
+| `AdapterScope.drops`, `unlisted` | Fields the integration can never send, dropped as a lacked field is; fields its devices take though the light's state says they can't. | [action-behavior.md](action-behavior.md#when-to-stop-an-automation): Lacks a field, Unlisted fields depart from core |
+| `AdapterScope.capabilities` | A level per class, and per domain where its entry names some (`OnDomains`). | [evidence.md](evidence.md#device-classes) |
+| `AdapterScope.no_known_method`, `not_built` | A class refused with a reason and a source (`NoKnownMethod`, `NotBuilt`). A class the integration names that the scope leaves out of `capabilities`, `no_known_method` and `not_built` is not built yet and refused; `not_built` holds only a class today's call would harm, on an action whose failure harms (`Action.failure_harms`, which the registry checks). A class is in at most one of the three. | [evidence.md](evidence.md#no-known-method-not-built-yet-untested); `AdapterScope.refusal` and `harms` in `core/scope.py` |
+| `AdapterScope.own_calls` | A class's own call (`OwnCall`), which the dispatcher hands the adapter in place of `execute`, optionally with its own duration limits (else the scope's `duration`). Each class in it must be in `capabilities`. | [evidence.md](evidence.md#the-split-rule); `OwnCall` in `core/scope.py` |
+| `AdapterScope.duration` | The durations the call can carry (`DurationLimits`): a request outside them is clamped, and the result says so. | [action-behavior.md](action-behavior.md#when-to-stop-an-automation): A value the device can't reach; `core/duration.py` |
+| `AdapterScope.confirmable`, `options`, `notes` | Declarations core doesn't act on, read by the rig: `confirmable`, that a run expects status `confirmed`, not `sent`; `options`, the DeviceSide options that change what it does (`predicted_state`), whose rig records are `<action>-<option>.json`; `notes`, free text. | `AdapterScope` in `core/scope.py`; [evidence.md](evidence.md#sign-off-format) |
+| `AdapterScope.caveat` | A risk mark, set by a repo maintainer; changes no call. | [evidence.md](evidence.md#caveats) |
+
+Core around them:
+
 - **Registry.** `pkgutil` discovery over `actions/` and `integrations/`. Modules export data (`ACTION`,
   `INTEGRATION`, `ADAPTERS`), not decorators, so import has no side effects, order is sorted and deterministic, and
   `check_release.py` and the rig, from outside the repo, import the registry without `hass`, so a change to
   `AdapterRegistry`'s interface needs the rig's matching change. A failing integration import (its core
-  integration isn't installed) records it unavailable and setup carries on.
-- **Classes.** `IntegrationInfo.capability(hass, target) -> str | None` names the target's class: sync and cheap, no
-  I/O, reading only the registry device, the config entry or the integration's data (Zigbee2MQTT's sources and when
-  a device counts as placed: [its page](integrations/zigbee2mqtt/index.md#device-classes)). A device no rule matches
-  gets the default class; `None` is only for a target it can't class at all (a Shelly entity with no RPC component),
-  which counts as Experimental. A device not yet [placed](#glossary), whose class a later report could move, gets its
-  class as `Unplaced` (`core/scope.py`), a flag on the class: every adapter takes it as that class except one whose
-  scope holds a `no_known_method` or `not_built` entry marked `harms` (its call harms that class), where the
-  dispatcher refuses it as `class_unknown`, as it does `None`, even with Experimental features on (the rule:
-  [evidence.md](evidence.md#no-known-method-not-built-yet-untested)). A response leaves out an `Unplaced` class, as it
-  does `None` ([action-behavior.md](action-behavior.md#what-a-response-looks-like)). Every adapter of the integration
-  sees the same class, and maps the classes it serves to its own branch in `execute`; a class is a device class, not
-  a call pattern, as patterns are per action.
-  `IntegrationInfo.classes` declares every class it can name, each with the entity domains a device in it can be
-  (a family's come from its `Family`). The registry refuses an integration with `capability`
-  unless every adapter's scope has `capabilities`, one without unless none has, a scope class the integration doesn't
-  declare, and a scope holding `IntegrationInfo.default_class` (the class a device no rule matches gets; none on Shelly)
-  as Verified, or holding a class (as a level or a refusal entry) on an action none of its domains reaches.
-  `AdapterScope.no_known_method` maps a class to a `NoKnownMethod` (what, reason, source, and `harms`), and
-  `AdapterScope.not_built` a class not built yet that today's call would harm to a `NotBuilt` (reason, source,
-  and `harms`, which must be true, as an unharmed one needs no entry); a class is in at most one of `capabilities`,
-  `no_known_method` and `not_built`.
-- **Lifecycle.** `IntegrationInfo.setup(hass, entry)` starts what an integration keeps running while the entry is
-  loaded (Z2M's bridge cache); core runs it as the entry's background task, so it never holds setup back, and the
-  hook registers its own teardown with `entry.async_on_unload`. `remove(hass, entry)` undoes what the integration
-  changed outside HA as DeviceSide is deleted (Z2M's color modes). A hook that raises is logged and isolated: the
-  others still run and the entry still loads. The component root names no integration.
+  integration isn't installed) records it unavailable and setup carries on. It checks each integration and scope as
+  it registers them (`core/registry.py`).
 - **Resolver.** Candidates are the available integrations whose `ha_domain` is the entity's registry platform;
-  one with a `detect` hook wins first (Z2M over plain MQTT). A gateway or API DeviceSide never supports is an
-  integration of its own, declared only to refuse (`IntegrationInfo.unsupported`, listed in its sibling's module as
-  `UNSUPPORTED`, and kept out of the cards and gates): its `detect` hook claims the entities, and the dispatcher refuses
-  each as `integration_not_supported`, with its reason (the Hue v1 bridge). A `switch_as_x` light resolves to the
-  switch it wraps, and results report the light.
-- **Groups.** HA groups are always expanded, in one place, because no device can address them; members carry
-  `via_group`. Native groups (Hue `grouped_light`, Z2M and ZHA groups) pass through as one target. An adapter with
-  `native_groups` gets the group; for one without, the dispatcher calls the integration's `expand_group`, or refuses
-  with `group_not_supported` when there is none. A native group an adapter addresses as one takes its members' classes,
-  from `expand_group`, its weakest member's level for the gate. An empty one (`expand_group` lists no members) is
-  skipped silently, named or not, as core skips an empty group. One whose members can't be listed (no `expand_group`, it
-  answered `None`, or it raised, logged) counts as Experimental: refused while Experimental features is off, and, where
-  a call is known to harm, as `class_unknown` with them on
-  ([evidence.md](evidence.md#no-known-method-not-built-yet-untested)). When a member's class has no known method or
-  is not built yet, or isn't placed yet where a call is known to harm, or takes a call of its own
-  (`AdapterScope.own_calls`, `own_call`: a branch in `execute` the group's call isn't), or, while Experimental features is off, is Experimental
-  (the adapter, domain and fields not flagged), the group falls back to its members: each available one not already a
-  target is planned on its own, indirect, so the good ones run and a refused or flagged one is skipped and logged (a
-  member also named raises, as its own target). A member `expand_group` lists for its class but the integration can't
-  address on its own (`Target.addressable` false: a Z2M device with several lights) is skipped, with its class's refusal
-  if it has one, else `not_addressable`, named by its device, and answers for nothing. So is a stand-in
-  (`Target.stand_in`: a member device with no entity in the group's domain, listed by the group's own entity with no
-  state, as a plug in a Z2M light group), named as a member device of the group, available or not, so the device the
-  group's call would have reached gets an entry saying it didn't; unless a target on its device was planned too, which
-  answers for it, the group included. Any other member known unavailable is left out quietly, and every member the
-  fallback plans is indirect. While Experimental features is off, or where a call is known to harm, a classifier that
-  raised (logged) leaves the group's class unknown, so it falls back too, and each member is classed again. With
-  Experimental features on, a group whose weakest member is Experimental, or whose class is unknown where no call is
-  known to harm, runs whole, as one command; a member named beside it then gets its own command as well as the group's.
-  A group that falls back gets no result of its own: its planned members answer for it, including one already a target,
-  so naming a member beside a group that falls back changes nothing. Only when none of its members is planned or left
-  nothing to do (each refused, gated or unavailable) is the group itself refused, with its reason (the refused member's,
-  or `experimental_off`; for `own_call`, a skipped member's: `experimental_off` first, then a class's refusal, then any
-  other, `not_addressable` last): raised if named, skipped and logged if not. For an adapter without `native_groups`,
-  core plans a group's members itself, as the fallback does (stand-ins skipped, the unavailable left out, each
-  indirect), and an `expand_group` that answers `None` or raises (logged) leaves membership unknowable, so the group is
-  refused as `group_not_supported`, as with none.
-- **Dispatcher.** Buckets targets by adapter, drops fields a target lacks, checks `supports()` (domain and fields in
-  scope, and the adapter's own reasons), then the class (`AdapterScope.refusal`: where a `no_known_method` or
-  `not_built` entry `harms`, one `Unplaced` or `None` is refused as `class_unknown`; a class in `no_known_method` is
-  refused as `no_known_method`, one in neither it nor `capabilities` as `not_built`, with its `NotBuilt.reason`
-  where it has an entry; a call left nothing to send is first), clamps
-  durations to `AdapterScope.duration`, or a class's own call's limits (`own_calls`), rounded to their `step_s`, then
-  runs every adapter concurrently under
-  `ADAPTER_TIMEOUT_S`: `Adapter.slot` (which `gather` runs each target in) rejects with `timeout` only the targets
-  not done by then, so those that finished keep their results. An adapter exception rejects its targets. A named
-  target that can never take the action raises before anything is sent; an indirect one is skipped and logged; a
-  device failure raises once every target has run.
-- **Experimental items** are gated here, at runtime. After `supports()` passes a target and fields are dropped,
-  `Dispatcher.run_adapters` takes the call's level from its domain, the class `IntegrationInfo.capability` names, in
-  that domain (one it can't name, or whose entry holds other domains alone, counts as Experimental; a native group
-  takes its members' weakest) and the fields it still carries. An
-  Experimental one is refused as `experimental_off` while the option is off, raising its own message for a named
-  target. A call left nothing to send is unchanged, not refused.
+  one with a `detect` hook wins first. A `switch_as_x` light resolves to the switch it wraps, and results report the
+  light.
+- **Dispatcher.** HA groups are always expanded, in one place (`core/groups.py`), because no device can address them;
+  members carry `via_group`. Then it resolves each target, buckets targets by adapter, drops the fields a target
+  lacks, checks `supports()`, the class and the Experimental gate, clamps durations, runs every adapter concurrently
+  under `ADAPTER_TIMEOUT_S`, and raises or skips per [action-behavior.md](action-behavior.md). The rules, native
+  groups' included: `core/dispatcher.py`'s module docstring.
 - **Results.** Commands answer optionally, per entity: `{status, integration, capability?, clamped_to?, detail?}`
   (a native group's `capabilities?` and `member_capabilities?` in place of `capability?`), where status is
   `sent`, `confirmed` (read back from the device) or `unchanged` (nothing to send). Queries answer only, in core's
@@ -274,14 +208,10 @@ runtime.py       DeviceSideData in hass.data: registry, dispatcher, semaphores, 
 ### Concurrency
 
 Each command runs under two semaphores, applied in `Adapter.gather()`: the integration's
-(`IntegrationInfo.max_concurrency`: Hue, ZHA and Matter 2; Shelly and Z2M 4) and the adapter's
-(`AdapterScope.max_concurrency`). Hue is 2 because aiohue's cap of 3 is shared with core. `execute` gets all of an
-adapter's targets at once, so native group commands stay possible.
-
-A per-device lock (`LevelFade.guard`, and the stop that shares it) is `gather`'s `hold`, taken before the slot under
-the same deadline, so a call waiting on its device holds no slot; a section under a hold never takes a slot itself.
-Not built, for when more integrations need per-device ordering: a lock-free per-device stop counter (a move that sees
-a stop land during it sends one more halt), or a per-device command queue.
+(`IntegrationInfo.max_concurrency`) and the adapter's (`AdapterScope.max_concurrency`). Hue's is 2 because aiohue's
+cap of 3 is shared with core. `execute` gets all of an adapter's targets at once, so native group commands stay
+possible. A per-device lock (`LevelFade.guard`, and the stop that shares it) is `gather`'s `hold`, taken before the
+slot under the same deadline, so a call waiting on its device holds no slot (`Adapter.slot`).
 
 ### services.yaml, strings, icons
 
@@ -299,16 +229,9 @@ The rules are in [evidence.md](evidence.md#release-gate); each gate's mechanics 
 workflow named.
 
 - **Coverage:** `scripts/check_release.py --coverage`, in CI.
-- **Sign-offs:** `check_release.py --signoffs`, in `cut-release`: a sign-off, or 🔧 Untested fix on every changed
-  adapter, for each integration whose package differs from the last release tag. `--notes` lists the unsigned
-  integrations and Untested fix caveats in both cut workflows.
-- **Tags:** `scripts/check_tag.py`, in `.github/workflows/cut-release-candidate.yml` and `cut-release.yml`, the only
-  way a tag is made.
+- **Sign-offs:** `check_release.py --signoffs`, in `cut-release`; `--notes` writes the call for testers in both cut
+  workflows.
+- **Tags:** `scripts/check_tag.py`, in `cut-release-candidate.yml` and `cut-release.yml`, the only way a tag is made.
 - **RC audit:** `scripts/check_audit.py`, in `cut-release-candidate`.
-- **Testing:** unit tests mock each integration at its boundary (MQTT's publish and subscribe, the ZHA service, the
-  Shelly RPC, the Matter client, aiohue) against a real `hass`. The rig runs against a live HA and writes the test
-  records.
-
-**Hardware the rig lacks:** a maintainer verifies by hand and signs off with a `_manual.json` row. After v0.1.0, a
-published rig kit lets maintainers run the rig on their own devices and commit attributed test records under
-`docs/integrations/<integration>/test-records/`.
+- **Testing:** unit tests mock each integration at its boundary (its client, service or broker) against a real
+  `hass`; the rig runs against a live HA and writes the records.

@@ -65,7 +65,7 @@ every integration shares is in `docs/integrations.md`: add your value there, don
 9. Retest what the change exercises: only the rig cases whose call or reply handling changed. The gate reopens a
    record when its own adapter's module or a shared one changed; a `no_call_changed` row at that change keeps it.
 
-The levels (Verified, Documented), device classes, the `experimental` flag, caveats, the release gate and the sign-off
+The levels (Verified, Documented, Experimental), device classes, caveats, the release gate and the sign-off
 format:
 [`docs/evidence.md`](docs/evidence.md).
 

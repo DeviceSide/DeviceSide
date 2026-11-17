@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate the README's device table and the evidence block of docs/device-compatibility.md, from the test records,
 the adapters' scopes, docs/models.yaml and each integration's bundle, docs/integrations/<integration>/. The rules
-the cards show (levels, the `experimental` flag, caveats) are in docs/evidence.md.
+the cards show (levels, caveats) are in docs/evidence.md.
 
 **Evidence** for an action is its passing test records (`<action>.json`, `<action>-<option>.json`, read by check_release
 against docs/test-records.schema.json) and the `_manual.json` rows whose `passed` names it. A format 2 record gives each
@@ -23,12 +23,11 @@ its "Other brands" section the other brands. Native groups sort first, then line
 other brands, then models no class line takes; within a brand, tested lines first, "other …" lines last, the rest
 alphabetically, and a line's names sort the same way (`ordered`), a variant's plain words before its maker strings.
 - Statuses: a class counts on each entity domain it can be (`IntegrationInfo.classes`) that the adapter serves, at the
-  level a call there runs at (AdapterScope.level): 🟢 Verified, 🟡 Documented, 🌱 Experimental, as is every feature
-  of an adapter flagged whole; 🔴 for a scope's `no_known_method` entry, which names a class devices.yaml gives no
-  phrase by its `what`. A feature whose actions differ in status names its parts ("🟡 smooth dimming down · 🌱
-  smooth dimming up"), so none shows twice. A feature not built yet on a class (in no scope, or a `not_built` entry)
-  is left out, and a class with nothing left has no line. Where the integration names no classes, its domains stand
-  in for them.
+  level a call there runs at (AdapterScope.level): 🟢 Verified, 🟡 Documented, 🌱 Experimental; 🔴 for a scope's
+  `no_known_method` entry, which names a class devices.yaml gives no phrase by its `what`. A feature whose actions
+  differ in status names its parts ("🟡 smooth dimming down · 🌱 smooth dimming up"), so none shows twice. A feature not
+  built yet on a class (in no scope, or a `not_built` entry) is left out, and a class with nothing left has no line.
+  Where the integration names no classes, its domains stand in for them.
 - Names: the class's devices.yaml phrase; one whose domains show different features is named per domain, by its
   `domains` phrases, so a plug never lists dimming. A scene domain is never one of them: a scene is classed by its
   lights, so its features join the class's light line ("set scene"); a class of scenes alone keeps its own.
@@ -578,7 +577,7 @@ def card_evidence(adapter) -> Evidence:
     null-class device of an integration that names classes counts for nothing (`Evidence.of`)."""
     scope = adapter.scope
     flagged = {noun for level, _, noun, domains in items(scope) if level is Level.EXPERIMENTAL or domains is not None}
-    if scope.experimental or "fields" in flagged:
+    if scope.all_experimental or "fields" in flagged:
         return Evidence([], [])
     if not flagged:
         return Evidence.of(adapter)
@@ -610,7 +609,7 @@ def items(scope) -> list[tuple[Level, str, str, frozenset[str] | None]]:
     entries = [(level, item, "entities", None) for item, level in scope.domains.items()]
     entries += [(level, item, "classes", domains) for item, level, domains in scope.class_entries()]
     entries += [(level, item, "fields", None) for item, level in scope.fields.items()]
-    return [(Level.EXPERIMENTAL if scope.experimental else level, *rest) for level, *rest in entries]
+    return [(Level.EXPERIMENTAL if scope.all_experimental else level, *rest) for level, *rest in entries]
 
 
 # The evidence block.
@@ -688,7 +687,6 @@ def rows(adapter) -> list[str]:
         if item.cls in entries:
             # A format 2 test's domain decides a class held on some domains alone; one that names no domain, its level.
             held.append(scope.class_level(item.cls, item.domain) if item.domain else entries[item.cls][0])
-        held = [Level.EXPERIMENTAL if scope.experimental else level for level in held]
         # A class flagged in this domain alone may have no row of its level: the scope's weakest row takes it.
         row = models[index.get(min(held), len(levels) - 1)] if held else models[0]
         if (text := described(item)) not in row:
@@ -837,8 +835,6 @@ def statuses(integration_adapters: list, class_domains: ClassDomains) -> dict[It
                     else:
                         held.append(((name, domain), TIER[scope.level(domain, [name])]))
         for item, status in held:
-            if scope.experimental and status != "no_known_method":
-                status = "experimental"
             found.setdefault(item, {}).setdefault(status, set()).add(adapter.action)
     return found
 

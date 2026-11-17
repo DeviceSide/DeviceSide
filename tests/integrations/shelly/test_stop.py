@@ -131,7 +131,7 @@ async def test_other_light_components_are_experimental(hass, setup_production, k
 
 def test_scope():
     scope = ShellyStop.scope
-    assert not scope.experimental
+    assert not scope.all_experimental
     assert scope.confirmable
     assert scope.capabilities == ShellyRaiseBrightness.scope.capabilities
 

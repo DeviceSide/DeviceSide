@@ -159,12 +159,12 @@ def keys(adapter, registry: AdapterRegistry, experimental: bool = False) -> set[
     the option off) where some class that isn't Experimental can be on it (a class entry held on the domain, which
     the class declares in `IntegrationInfo.classes`; with no classes named, any domain), plus `group` when it takes
     lights and the dispatcher passes it native groups, natively or expanded to their members
-    (`_expand_native_groups`). Empty when the adapter is flagged (`experimental=True`), or the scope lists
-    capabilities and every one is Experimental: then no call works with the option off. With `experimental`, what it
-    covers with the option on: every domain."""
+    (`_expand_native_groups`). Empty when the adapter is flagged whole (every domain Experimental), or the scope
+    lists capabilities and every one is Experimental: then no call works with the option off. With `experimental`,
+    what it covers with the option on: every domain."""
     capabilities = adapter.scope.capabilities
     if not experimental and (
-        adapter.scope.experimental
+        adapter.scope.all_experimental
         or (
             capabilities is not None
             and all(level is Level.EXPERIMENTAL for _, level, _ in adapter.scope.class_entries())

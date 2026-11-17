@@ -13,6 +13,7 @@ from custom_components.deviceside.core.scope import (
     AdapterScope,
     Caveat,
     CaveatKind,
+    Level,
     NoKnownMethod,
     NotBuilt,
     documented,
@@ -135,10 +136,8 @@ class FakeRegistry:
             yield adapter.action, adapter.integration, adapter
 
 
-def adapter(integration, action, scope=None, *, experimental=False):
-    return SimpleNamespace(
-        integration=integration, action=action, scope=scope or AdapterScope(experimental=experimental)
-    )
+def adapter(integration, action, scope=None):
+    return SimpleNamespace(integration=integration, action=action, scope=scope or AdapterScope())
 
 
 def data(registry=None, **changes):
@@ -336,8 +335,12 @@ def test_records_are_the_action_and_its_options(root):
 
 
 def test_an_adapter_flagged_whole_has_one_experimental_row(root):
-    scope = AdapterScope(experimental=True, domains=verified("light") | documented("switch"))
-    assert gc.rows(adapter("zha", "stop", scope)) == ["| `stop` | Experimental | light, switch entities | none | |"]
+    # Every domain Experimental flags every call, so its Verified field shows Experimental too.
+    scope = AdapterScope(domains=experimental("light", "switch"), fields=verified("brightness"))
+    assert {level for level, *_ in gc.items(scope)} == {Level.EXPERIMENTAL}
+    assert gc.rows(adapter("zha", "stop", scope)) == [
+        "| `stop` | Experimental | light, switch entities; brightness fields | none | |"
+    ]
 
 
 MANUAL = (
@@ -352,7 +355,7 @@ def manual_file(root, integration="zha", rows=MANUAL):
 
 def test_a_manual_row_is_evidence_for_the_actions_it_passed(root):
     manual_file(root)
-    flagged = adapter("zha", "stop", AdapterScope(experimental=True))
+    flagged = adapter("zha", "stop", AdapterScope(domains=experimental("light")))
     assert gc.rows(flagged) == [
         "| `stop` | Experimental | light entities | `P1`, by hand<br>`LTA009`, by hand"
         " | [by hand](integrations/zha/test-records/_manual.json) |"
@@ -364,7 +367,7 @@ def test_a_manual_row_is_evidence_for_the_actions_it_passed(root):
 def test_a_manual_group_row_is_one_group_by_hand_never_its_members_models(root):
     row = signoff(tester="jasonmx", devices=(("P1", None), ("LTA009", None)), passed=("stop",), group=True)
     manual_file(root, rows=[row])
-    flagged = adapter("zha", "stop", AdapterScope(experimental=True))
+    flagged = adapter("zha", "stop", AdapterScope(domains=experimental("light")))
     assert gc.rows(flagged) == [
         "| `stop` | Experimental | light entities | group, by hand"
         " | [by hand](integrations/zha/test-records/_manual.json) |"
@@ -442,12 +445,12 @@ def test_a_model_tested_by_hand_works_without_the_rig_mark(root):
 def test_a_card_puts_flagged_adapters_under_experimental_features_and_leaves_out_failing_records(root):
     record(root, "zha", "stop")
     record(root, "zha", "turn_on_for", result="fail", devices=[old_device("P1", "1")])
-    scope = AdapterScope(experimental=True, domains=verified("light") | documented("switch"))
+    scope = AdapterScope(domains=experimental("light", "switch"), fields=verified("brightness"))
     card = zha_card(
         adapter("zha", "stop", scope),
         adapter("zha", "turn_on_for"),
-        adapter("zha", "lower_hue", AdapterScope(experimental=True)),
-        adapter("zha", "raise_hue", AdapterScope(experimental=True)),
+        adapter("zha", "lower_hue", AdapterScope(domains=experimental("light"))),
+        adapter("zha", "raise_hue", AdapterScope(domains=experimental("light"))),
     )
     assert card.tested == []
     # An adapter flagged whole is Experimental on every domain, evidence or not; stop rides the smooth move.
@@ -865,7 +868,7 @@ def test_a_card_marks_unmaintained_adapters_by_reason_flagged_ones_included(root
         adapter("zha", "turn_off_for", AdapterScope(caveat=unmaintained(ISSUE_REASON))),
         adapter("zha", "stop", AdapterScope(caveat=unmaintained(ISSUE_REASON))),
         adapter("zha", "get_attributes", AdapterScope(caveat=unmaintained("the maintainer left"))),
-        adapter("zha", "set_scene", AdapterScope(experimental=True, caveat=unmaintained(ISSUE_REASON))),
+        adapter("zha", "set_scene", AdapterScope(domains=experimental("light"), caveat=unmaintained(ISSUE_REASON))),
         adapter("zha", "raise_hue"),
     )
     # A warning names every feature, stop beside the others.
@@ -882,11 +885,11 @@ def heading(card):
 def test_a_card_whose_adapters_are_all_unmaintained_says_so_in_its_heading(root):
     card = zha_card(
         adapter("zha", "turn_on_for", AdapterScope(caveat=unmaintained(ISSUE_REASON))),
-        adapter("zha", "stop", AdapterScope(experimental=True, caveat=unmaintained("gone"))),
+        adapter("zha", "stop", AdapterScope(domains=experimental("light"), caveat=unmaintained("gone"))),
     )
     assert heading(card).endswith(" · ⚠️ Unmaintained")
     # One maintained adapter, flagged or not, carries no mark.
-    for scope in (AdapterScope(), AdapterScope(experimental=True)):
+    for scope in (AdapterScope(), AdapterScope(domains=experimental("light"))):
         card = zha_card(
             adapter("zha", "turn_on_for", AdapterScope(caveat=unmaintained(ISSUE_REASON))),
             adapter("zha", "stop", scope),
@@ -909,7 +912,7 @@ def test_a_card_marks_unmaintained_ones_after_untested_fixes(root):
     card = zha_card(
         adapter("zha", "turn_on_for", AdapterScope(caveat=untested_fix(ISSUE_REASON))),
         adapter("zha", "turn_off_for", AdapterScope(caveat=unmaintained("gone"))),
-        adapter("zha", "set_scene", AdapterScope(experimental=True, caveat=untested_fix(ISSUE_REASON))),
+        adapter("zha", "set_scene", AdapterScope(domains=experimental("light"), caveat=untested_fix(ISSUE_REASON))),
     )
     lines = card.render().splitlines()
     marks = [line for line in lines if line.startswith(("- ⚠️", "- [⚠️", "- [🔧"))]

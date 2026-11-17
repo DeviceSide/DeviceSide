@@ -92,9 +92,9 @@ def test_a_domain_is_live_only_where_a_non_experimental_class_can_be_on_it(no_bl
 
 
 def test_a_flagged_adapter_shows_no_icon_until_the_option_is_on(no_blockers):
-    """experimental=True gates the whole adapter at runtime, as an Experimental item is gated."""
+    """Every domain Experimental gates the whole adapter at runtime, as an Experimental item is gated."""
     registry = FakeRegistry(expand={"zha"})
-    flagged = adapter("zha", "stop", experimental=True, domains=verified("light"))
+    flagged = adapter("zha", "stop", domains=experimental("light"))
     assert gf.keys(flagged, registry) == set()
     assert gf.keys(flagged, registry, experimental=True) == {"light", "group"}
 

@@ -96,6 +96,22 @@ def test_level_folds_in_the_fields_the_call_carries(fields, level):
     assert scope.level("light", (), fields) is level
 
 
+@pytest.mark.parametrize(
+    ("scope", "flagged"),
+    [
+        (AdapterScope(domains=experimental("light", "switch"), capabilities=verified("A")), True),
+        (AdapterScope(domains=experimental("light") | verified("switch")), False),  # flags only its domain's calls
+        (AdapterScope(domains=verified("light")), False),
+        (AdapterScope(domains={}), False),  # no domain, no call to flag
+        # A class or field at Experimental flags only the calls that touch it, never the adapter whole.
+        (AdapterScope(capabilities=experimental("A")), False),
+        (AdapterScope(fields=experimental("transition")), False),
+    ],
+)
+def test_an_adapter_is_flagged_whole_when_every_domain_is_experimental(scope, flagged):
+    assert scope.all_experimental is flagged
+
+
 def test_a_class_outside_the_scope_counts_as_experimental():
     """The gate must not raise on a class the refusal didn't stop."""
     scope = AdapterScope(capabilities=verified("RGBCCT"))
@@ -487,8 +503,8 @@ def _covers(stop: AdapterScope | None, items: str, item: str, level: Level) -> b
 
 def test_every_move_has_a_stop_at_least_as_strong():
     """A raise or lower that starts where stop is refused, or gated behind the option, can't be halted. Item levels
-    and the adapter-level flag: group reach (native_groups against expand_group) and refusals in supports() that don't
-    come from scope are not compared."""
+    alone (an adapter flagged whole has every domain Experimental): group reach (native_groups against expand_group)
+    and refusals in supports() that don't come from scope are not compared."""
     adapters = _adapters()
     stops = {adapter.integration: adapter.scope for adapter in adapters if adapter.action == "stop"}
     gaps = []
@@ -497,8 +513,6 @@ def test_every_move_has_a_stop_at_least_as_strong():
             continue
         stop = stops.get(adapter.integration)
         name = f"{adapter.integration} / {adapter.action}"
-        if stop is not None and stop.experimental and not adapter.scope.experimental:
-            gaps.append(f"{name}: stop is flagged experimental")
         for domain, level in adapter.scope.domains.items():
             if not _covers(stop, "domains", domain, level):
                 gaps.append(f"{name}: domain {domain} ({level.name})")

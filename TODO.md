@@ -214,5 +214,5 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   section.
 - [ ] **Shelly RGB and RGBW color**: port core's conversions (`light/helper.py` rgb to rgbw with the white split,
   kelvin to color) so RGB and RGBW take color instead of dropping it (`get_attributes` already reads their color).
-- **9b** Maintained adapters: the rig kit, so maintainers can commit records for hardware the rig lacks
-  (`docs/design.md`, Release gates). Until then, they sign off by hand (`docs/evidence.md`).
+- **9b** Maintained adapters: the rig kit, so maintainers can commit records for hardware the rig lacks.
+  Until then, they sign off by hand (`docs/evidence.md`).

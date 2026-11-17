@@ -77,8 +77,9 @@ proves the call on the `hue` class, not on every Zigbee light.
 
 ## Levels
 
-A scope item (an entity domain, class or field of an adapter) is Verified, Documented, or untested; an untested
-item ships only behind `experimental`.
+A scope item (an entity domain, class or field of an adapter) is Verified, Documented or Experimental; an
+Experimental item is refused unless Experimental features is on. To flag a whole adapter, flag its
+domains ([the experimental flag](#the-experimental-flag)).
 
 - **Verified:** a maintainer has verified the call on a real device, by rig record or by manual test. How it was
   tested is the maintainer's choice; the rig is a tool, not a requirement.
@@ -155,13 +156,12 @@ Zigbee2MQTT countdown plug's maker string with a record of its own is a class of
 - **One fact, one home, in code.** Classes, levels, and no known method (`no_known_method`) and not built yet
   (`not_built`) entries live in the integration's package, and the cards are generated from them; where each
   piece goes is CLAUDE.md's [Where facts go](../CLAUDE.md#where-facts-go).
-- **Groups.** A native group takes the weakest level among its members' classes. One with a member that has no known
-  method or is not built yet, a member whose class takes a call of its own (a branch in the adapter, below, which the
-  group's call isn't), or a member whose class is Experimental while Experimental features is off (the adapter, domain and
-  fields not flagged), falls back to its members, each judged on its own, when the integration can list
-  them, including, where a call is known to harm, a group with a member not yet placed; one it can't list counts as
-  Experimental: refused while Experimental features is off, and with them on where a call is known to harm, as its
-  class rests on a membership DeviceSide doesn't have yet ([below](#no-known-method-not-built-yet-untested)).
+- **Groups.** A native group takes the weakest level among its members' classes. When a member's class is refused,
+  takes a call of its own, or is Experimental while Experimental features is off, the group falls back to its members:
+  it gets no entry of its own, its members answer for it, each judged on its own, and it is refused only when none of
+  them ran. One whose members the integration can't list can't fall back: it counts as Experimental, and is refused
+  whole while Experimental features is off, and with it on where a call is known to harm
+  ([below](#no-known-method-not-built-yet-untested)). The rules: `core/dispatcher.py`'s module docstring, Native groups.
 
 ### No known method, not built yet, untested
 
@@ -203,10 +203,10 @@ leaving it out refuses it, and the registry refuses a `not_built` entry on an ac
   its members, so only that member is refused. A device no rule matches gets the default class, and one placed there
   from full information isn't refused but runs at its class's level, as does every target of an action no class is
   harmed by (one it can't class, as Experimental; Unknown is flagged, never Verified, above). The refusal is
-  `class_unknown`; for a target not yet placed it clears once the integration has reported what it lacked. How core applies it: [design.md](design.md#core-contract), Classes; when a
-  device counts as placed: each integration's page, as
-  [Zigbee2MQTT's](integrations/zigbee2mqtt/index.md#device-classes). ZHA, Hue and Matter mark their entries in steps
-  7 to 9 of the [device classes plan](plans/2026-11-14-device-classes.md).
+  `class_unknown`; for a target not yet placed it clears once the integration has reported what it lacked. How core
+  applies it: `core/dispatcher.py`'s module docstring, Planning, and `AdapterScope.refusal`; when a device counts as
+  placed: each integration's page, as [Zigbee2MQTT's](integrations/zigbee2mqtt/index.md#device-classes). ZHA, Hue
+  and Matter mark their entries in steps 7 to 9 of the [device classes plan](plans/2026-11-14-device-classes.md).
 
 A refused target raises when named and is skipped when it came indirectly, as `supports()` refusals do
 ([action-behavior.md](action-behavior.md)).
@@ -255,19 +255,21 @@ with no entry, as today's call leaves it unharmed.
 
 ## The experimental flag
 
-`experimental` is a flag, not a level: the item is not yet judged ready for everyone. In code it is the per-axis
-marker `experimental(...)`, beside `verified(...)` and `documented(...)`; `experimental=True` on an `AdapterScope` flags
-the whole adapter. A flagged item is refused unless the user turns on the Experimental features option. The dispatcher
-is the only gate: adapters never read the option, and turning it on never changes how any other item behaves.
+Experimental is the lowest [level](#levels), and the flag is that level: the item is not yet judged ready for
+everyone. In code it is the per-axis marker `experimental(...)`, beside `verified(...)` and `documented(...)`. A call
+takes the weakest level among the items it touches, its domain always among them, so an adapter whose domains are all
+`experimental(...)` is flagged whole. A flagged item is refused unless the user turns on the Experimental features
+option. The dispatcher is the only gate: adapters never read the option, and turning it on never changes how any
+other item behaves.
 
 Every new feature (action, integration, domain, capability or field) starts flagged, and soaks behind the flag with
 users who opt in. A passing rig record or `_manual.json` sign-off on a flagged item is evidence a maintainer can use to
 lift its flag for the next release, skipping that soak; it is not a requirement to lift it. Whether to lift is the
 maintainer's judgment, by how complex the feature is and how complete its tests are: a developer may run the first
 few rig cases before the full suite exists, so a flagged item may have passing runs and stay flagged. Lifting makes
-`experimental(...)` into `verified(...)`, or drops `experimental=True`; a flagged item that qualifies as Documented
-becomes `documented(...)` in a PR that argues the sibling case ([Levels](#levels)). Lifting a flag is a change to the
-integration's package, so one of its maintainers approves it, as for any change there
+`experimental(...)` into `verified(...)` (an adapter flagged whole: its domains); a flagged item that qualifies as
+Documented becomes `documented(...)` in a PR that argues the sibling case ([Levels](#levels)). Lifting a flag is a
+change to the integration's package, so one of its maintainers approves it, as for any change there
 ([CLAUDE.md](../CLAUDE.md#maintainers)). A [family](design.md#glossary)'s maintainers set their own classes' levels
 the same way, but change no refusal entry ([CLAUDE.md](../CLAUDE.md#maintainers)).
 

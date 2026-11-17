@@ -181,12 +181,11 @@ class AdapterScope:
     """The entity domains, capabilities and fields an adapter is built for, each at its Level, plus its settings.
 
     An Experimental item is gated at runtime: the dispatcher refuses a call that touches one unless the Experimental
-    features option is on. `experimental=True` flags the whole adapter the same way. An item that is not built, or
-    built but not unit-tested, is left out of scope and refused. `caveat` changes no call: setup warns and the card
-    says so.
+    features option is on; to flag the whole adapter, flag its domains (`all_experimental`). An item that is not
+    built, or built but not unit-tested, is left out of scope and refused. `caveat` changes no call: setup warns and
+    the card says so.
     """
 
-    experimental: bool = False
     caveat: Caveat | None = None
     domains: Mapping[str, Level] = field(default_factory=lambda: verified(Platform.LIGHT))
     duration: DurationLimits | None = None
@@ -236,6 +235,11 @@ class AdapterScope:
         for name in ("domains", "fields", "capabilities", "no_known_method", "not_built", "own_calls"):
             if (items := getattr(self, name)) is not None:
                 object.__setattr__(self, name, MappingProxyType(dict(items)))
+
+    @property
+    def all_experimental(self) -> bool:
+        """Whether the adapter is flagged whole: every domain it serves is Experimental, so every call is (level())."""
+        return bool(self.domains) and all(level is Level.EXPERIMENTAL for level in self.domains.values())
 
     def level(self, domain: str, classes: Collection[str | None] = (), fields: Collection[str] = ()) -> Level:
         """The weakest level among the in-scope items a call touches: its domain, its classes (when the scope lists

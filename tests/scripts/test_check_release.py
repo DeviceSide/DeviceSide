@@ -744,7 +744,7 @@ def test_untested_fix_on_the_changed_adapter_stands_in_for_the_signoff(released,
 
 @pytest.mark.parametrize(
     "scope",
-    [AdapterScope(caveat=Caveat(CaveatKind.UNMAINTAINED, ISSUE)), AdapterScope(experimental=True)],
+    [AdapterScope(caveat=Caveat(CaveatKind.UNMAINTAINED, ISSUE)), AdapterScope(domains=experimental("light"))],
     ids=["unmaintained", "experimental"],
 )
 def test_no_other_caveat_nor_the_flag_stands_in(released, monkeypatch, scope):
@@ -941,7 +941,7 @@ def test_a_record_naming_a_class_on_an_integration_that_names_none_is_an_error(r
 
 
 def test_an_adapter_flagged_whole_or_an_integration_naming_no_classes_has_no_gap(fake_repo, monkeypatch):
-    flagged = AdapterScope(experimental=True, capabilities=verified("hue"))
+    flagged = AdapterScope(domains=experimental("light"), capabilities=verified("hue"))
     assert cr.coverage_gaps(classed(fake_repo, monkeypatch, turn_on_for=flagged)) == []
     assert cr.coverage_gaps(FakeRegistry(fake_repo.path, monkeypatch, {("turn_on_for", "fake"): AdapterScope()})) == []
 

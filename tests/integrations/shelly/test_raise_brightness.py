@@ -122,6 +122,6 @@ async def test_a_device_error_rejects_the_target(hass, setup_production, verb):
 )
 def test_scope(component, level):
     scope = ShellyRaiseBrightness.scope
-    assert not scope.experimental
+    assert not scope.all_experimental
     assert scope.fields == {"brightness": Level.VERIFIED}
     assert scope.capabilities.get(component) is level
