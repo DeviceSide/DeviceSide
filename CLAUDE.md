@@ -132,5 +132,5 @@ attached to the session, its `CLAUDE.md` says how to run it.
 ## Conventions
 
 - Logging: [`docs/logging.md`](docs/logging.md): levels, the per-call DEBUG line, and never a device address.
-- Constants: before defining one, `rg` for its value and meaning and import the existing one. A duration's name carries its unit (`_S`, `_TENTHS`), and its comment gives the encoding or source that bounds it, once, where it's defined.
+- Constants: before defining one, `rg` for its value and meaning and import the existing one; `scripts/check_ha_literals.py` flags an HA name written as a literal. A duration's name carries its unit (`_S`, `_TENTHS`), and its comment gives the encoding or source that bounds it, once, where it's defined.
 - American English, matching HA.

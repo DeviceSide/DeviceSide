@@ -166,7 +166,8 @@ def transition_cache[C: TransitionCache](hass: HomeAssistant, integration: str, 
 
 def reported_brightness(light: Target) -> float:
     """HA's brightness in percent, 0 while off: a move from off starts at the bottom."""
-    brightness = light.state.attributes.get(ATTR_BRIGHTNESS) if light.state and light.state.state == STATE_ON else None
+    on = light.state is not None and light.state.state == STATE_ON
+    brightness = light.state.attributes.get(ATTR_BRIGHTNESS) if on else None  # ha-255: HA state reports a byte
     return brightness / 255 * 100 if brightness is not None else 0.0
 
 

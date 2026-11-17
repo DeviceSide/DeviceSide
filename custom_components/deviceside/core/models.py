@@ -77,7 +77,7 @@ class LightFields:
         """The fields as light.turn_on data."""
         data = {name: getattr(self, name) for name in sorted(self.present())}
         if self.brightness is not None:
-            data[ATTR_BRIGHTNESS] = self.brightness_255()
+            data[ATTR_BRIGHTNESS] = self.brightness_255()  # ha-255: service data takes HA's byte
         return data
 
     def without(self, names: frozenset[str]) -> LightFields:
