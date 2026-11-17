@@ -14,9 +14,8 @@ same command differently. Each claim is at one of two levels of proof:
 - **Documented:** no device of the class has been tested, but DeviceSide sends it the same call as a Verified device,
   differing only in addressing, and no known class of devices handles it differently.
 
-**Experimental** is a trial, not a promise. A class earns it with a pass or with research predicting most of the class
-accepts the call, and may lose it: when a failure's fix isn't taken on, the class is withdrawn until someone builds it
-better. Experimental features stay off until you turn on **Experimental features** in **Configure > Settings**, and so,
+**Experimental** is a trial, not a promise. A trial may be withdrawn: a class that fails and isn't fixed is taken
+off until someone builds it better. Experimental features stay off until you turn on **Experimental features** in **Configure > Settings**, and so,
 for most features, does a device DeviceSide can't place in a known class. Whether they work or not, please tell us
 with **Report a device test result or bug** in the same menu: your reports help ship them to everyone. How we decide:
 [evidence rules](evidence.md#no-known-method-not-built-yet-on-trial).
@@ -27,8 +26,8 @@ DeviceSide is run by volunteers. Each integration's maintainers look after it: t
 to it and fix bugs in it as they can. Please
 [report a bug](https://github.com/DeviceSide/DeviceSide/issues/new?template=device_report.yml); the report goes to the
 maintainers of the integration you choose. A report that a feature doesn't work is still useful: it goes to the
-integration's maintainers, who decide whether to take on the fix or withdraw the feature until it's built better; a fix
-may need someone with the device.
+integration's maintainers, who decide whether to fix it, find it a maintainer, or turn it off; a fix may need someone
+with the device.
 
 **⚠️ Unmaintained** marks a feature no one is fixing. It still works as it did, but a bug in it stays unfixed until
 someone fixes it or takes over the integration, so use it at your own risk. **🔧 Untested fix** marks a feature
@@ -83,11 +82,10 @@ Documented ([levels of proof](#levels-of-proof)).
 
 ## Try it: Experimental features
 
-These classes are on trial ([levels of proof](#levels-of-proof)): built and unit-tested, each admitted on a pass or on
-research predicting most of the class accepts the call, and some may have passed a maintainer's first tests. Turn on
+These classes are on trial ([levels of proof](#levels-of-proof)): built and unit-tested, and some may have passed a maintainer's first tests. Turn on
 Experimental features to try them, then report the result, whether they work or not: a working report helps ship them
-to everyone, and a "doesn't work" one goes to the integration's maintainers, who decide whether to take on the fix or
-withdraw the class until it's built better ([on trial](evidence.md#no-known-method-not-built-yet-on-trial)).
+to everyone, and a "doesn't work" one goes to the integration's maintainers, who decide whether to fix it, find it a maintainer, or
+turn it off ([on trial](evidence.md#no-known-method-not-built-yet-on-trial)).
 
 ### Zigbee plugs and switches
 
