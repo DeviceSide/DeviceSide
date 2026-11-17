@@ -49,6 +49,9 @@ compared until a probe has shown the device returns it unrounded. A failed read-
 `min_brightness`/`max_brightness` first read `GetStatus` `brightness` (kept while off), clamp it to whole percent,
 and send nothing when it is already within them; an explicit `brightness` wins.
 
+The docs for Light, CCT, RGB and RGBW `Set` match RGBCCT's field for field, but no page documents a Set without
+`on`: [research/2026-11-17-set-on-sibling-components.md](research/2026-11-17-set-on-sibling-components.md).
+
 ### `fade`
 
 Every dimming component takes the same calls (levels: `DIMMING_CAPABILITIES`). A move reads `GetStatus` first: the device reports its level exactly mid-fade (rig, 8 Nov), so no transition cache is kept and
