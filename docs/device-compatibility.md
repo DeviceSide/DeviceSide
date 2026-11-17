@@ -25,7 +25,8 @@ DeviceSide is run by volunteers. Each integration's maintainers look after it: t
 to it and fix bugs in it as they can. Please
 [report a bug](https://github.com/DeviceSide/DeviceSide/issues/new?template=device_report.yml); the report goes to the
 maintainers of the integration you choose. A report that a feature doesn't work is still useful: it goes to the
-integration's maintainers, who decide whether to fix it, find it a maintainer, or turn it off.
+integration's maintainers, who decide whether to fix it, find it a maintainer, or turn it off; a fix may need someone
+with the device.
 
 **⚠️ Unmaintained** marks a feature no one is fixing. It still works as it did, but a bug in it stays unfixed until
 someone fixes it or takes over the integration, so use it at your own risk. **🔧 Untested fix** marks a feature

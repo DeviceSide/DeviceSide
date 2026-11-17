@@ -1034,7 +1034,7 @@ def test_a_class_an_adapter_serves_in_neither_axis_shows_nothing_for_it(root):
     # Light and CCT, in neither axis of the other two adapters, aren't built yet there: the card leaves those
     # features out, and names nothing as not built.
     assert card.lines == [
-        f"[dimmers, CCT controllers]({URL}#dimmers): 🟢 turn on with timer",
+        f"[CCT controllers, dimmers]({URL}#dimmers): 🟢 turn on with timer",
         f"[relays]({URL}#relays): 🟢 turn on with timer, turn off with timer, set without turning on",
         f"[Old plug]({URL}#old-plug): 🔴",
     ]
@@ -1193,7 +1193,7 @@ def test_a_line_holding_every_class_of_its_section_names_the_section(root):
         f"[dimmers]({URL}#dimmers): 🟢 turn on with timer",
     ]
     assert classed_card(adapter("zha", "turn_on_for", timer)).lines[0] == (
-        f"[dimmers, CCT controllers]({URL}#dimmers): 🟢 turn on with timer"
+        f"[CCT controllers, dimmers]({URL}#dimmers): 🟢 turn on with timer"
     )
     with pytest.raises(SystemExit, match="sections zha Nowhere: no class in capabilities has that section"):
         data(sections={"zha": {"Nowhere": {"phrase": "x"}}})
@@ -1283,3 +1283,41 @@ def test_a_models_variants_are_children_of_one_parent_line(root):
         f"  - [maker A]({URL}#plug) ✔: 🟢 turn on with timer",
         f"  - [maker B, or no setting]({URL}#plug): 🌱 turn on with timer",
     ]
+
+
+def brand_lines(families=(), **capabilities) -> list[str]:
+    """Each class with its (phrase, section, status), as `class_lines` and `ordered` put them on a card."""
+    entries = {name: {"phrase": phrase, "section": section} for name, (phrase, section, _) in capabilities.items()}
+    data = gc.Data(requires={}, models={}, capabilities={"x": entries}, no_known_method=[])
+    found = {(name, "light"): {status: {"stop"}} for name, (_, _, status) in capabilities.items()}
+    brand = gc.brands(SimpleNamespace(families=families))
+    lines = gc.class_lines("x", found, data, dict.fromkeys(capabilities, LIGHT), ["light"], {}, brand)
+    return [line.plain() for line in gc.ordered(lines, brand, set())]
+
+
+def test_classes_of_two_brands_never_share_a_line():
+    """Decision 19: the same features, but one class is acme's and one no family's."""
+    acme = (SimpleNamespace(key="acme", classes={"a": LIGHT, "b": LIGHT}),)
+    shown = brand_lines(acme, a=("bulbs", "A", "works"), b=("plugs", "A", "works"), c=("lamps", "C", "works"))
+    assert shown == ["bulbs, plugs", "lamps"]
+
+
+def test_without_families_the_other_brands_section_sorts_last():
+    """Decision 20: Hue's "scenes with other brands' lights" after its own lines, and on a line of its own."""
+    shown = brand_lines(
+        a=("zebra lights", "Device classes", "works"), b=("scenes with other brands' lights", "Other brands", "works")
+    )
+    assert shown == ["zebra lights", "scenes with other brands' lights"]
+
+
+def test_a_lines_phrases_sort_like_lines_and_variants_join_with_or():
+    line = gc.Line((), {"S": ["other makers", "Beta", "_TZ3000_b", "alpha"]})
+    (line,) = gc.ordered([line], lambda cls, section: (0, ""), set())
+    assert line.sections == {"S": ["_TZ3000_b", "alpha", "Beta", "other makers"]}
+    line.variant = True
+    data = gc.Data(requires={}, models={}, capabilities={}, no_known_method=[])
+    assert line.name(gc.Card("X"), "x", data, set()) == f"[_TZ3000_b, alpha, Beta, or other makers]({URL}#s)"
+    # A parent's children sort the same way: "other …" last.
+    children = [gc.Line((), {"S": ["other makers"]}, variant=True), gc.Line((), {"S": ["zeta"]}, variant=True)]
+    (parent,) = gc.ordered([gc.Line((), {"S": ["plugs"]}, note="check", children=children)], lambda *_: (0, ""), set())
+    assert [child.plain() for child in parent.children] == ["zeta", "other makers"]
