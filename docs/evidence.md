@@ -77,8 +77,9 @@ proves the call on the `hue` class, not on every Zigbee light.
 
 ## Levels
 
-A scope item (an entity domain, class or field of an adapter) is Verified, Documented, or untested; an untested
-item ships only behind `experimental`.
+A scope item (an entity domain, class or field of an adapter) is Verified, Documented or Experimental; an
+Experimental item is refused unless Experimental features is on. To flag a whole adapter, flag its
+domains ([the experimental flag](#the-experimental-flag)).
 
 - **Verified:** a maintainer has verified the call on a real device, by rig record or by manual test. How it was
   tested is the maintainer's choice; the rig is a tool, not a requirement.
@@ -158,7 +159,7 @@ Zigbee2MQTT countdown plug's maker string with a record of its own is a class of
   piece goes is CLAUDE.md's [Where facts go](../CLAUDE.md#where-facts-go).
 - **Groups.** A native group takes the weakest level among its members' classes. One with a member that has no known
   method or is not built yet, a member whose class takes a call of its own (a branch in the adapter, below, which the
-  group's call isn't), or a member whose class is Experimental while Experimental features is off (the adapter, domain and
+  group's call isn't), or a member whose class is Experimental while Experimental features is off (its domain and
   fields not flagged), falls back to its members, each judged on its own, when the integration can list
   them, including, where a call is known to harm, a group with a member not yet placed; one it can't list counts as
   Experimental: refused while Experimental features is off, and with them on where a call is known to harm, as its
@@ -256,19 +257,21 @@ with no entry, as today's call leaves it unharmed.
 
 ## The experimental flag
 
-`experimental` is a flag, not a level: the item is not yet judged ready for everyone. In code it is the per-axis
-marker `experimental(...)`, beside `verified(...)` and `documented(...)`; `experimental=True` on an `AdapterScope` flags
-the whole adapter. A flagged item is refused unless the user turns on the Experimental features option. The dispatcher
-is the only gate: adapters never read the option, and turning it on never changes how any other item behaves.
+Experimental is the lowest [level](#levels), and the flag is that level: the item is not yet judged ready for
+everyone. In code it is the per-axis marker `experimental(...)`, beside `verified(...)` and `documented(...)`. A call
+takes the weakest level among the items it touches, its domain always among them, so an adapter whose domains are all
+`experimental(...)` is flagged whole. A flagged item is refused unless the user turns on the Experimental features
+option. The dispatcher is the only gate: adapters never read the option, and turning it on never changes how any
+other item behaves.
 
 Every new feature (action, integration, domain, capability or field) starts flagged, and soaks behind the flag with
 users who opt in. A passing rig record or `_manual.json` sign-off on a flagged item is evidence a maintainer can use to
 lift its flag for the next release, skipping that soak; it is not a requirement to lift it. Whether to lift is the
 maintainer's judgment, by how complex the feature is and how complete its tests are: a developer may run the first
 few rig cases before the full suite exists, so a flagged item may have passing runs and stay flagged. Lifting makes
-`experimental(...)` into `verified(...)`, or drops `experimental=True`; a flagged item that qualifies as Documented
-becomes `documented(...)` in a PR that argues the sibling case ([Levels](#levels)). Lifting a flag is a change to the
-integration's package, so one of its maintainers approves it, as for any change there
+`experimental(...)` into `verified(...)` (an adapter flagged whole: its domains); a flagged item that qualifies as
+Documented becomes `documented(...)` in a PR that argues the sibling case ([Levels](#levels)). Lifting a flag is a
+change to the integration's package, so one of its maintainers approves it, as for any change there
 ([CLAUDE.md](../CLAUDE.md#maintainers)). A [family](design.md#glossary)'s maintainers set their own classes' levels
 the same way, but change no refusal entry ([CLAUDE.md](../CLAUDE.md#maintainers)).
 

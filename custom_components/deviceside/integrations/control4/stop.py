@@ -40,9 +40,7 @@ class Control4Stop(Adapter[Request]):
 
     action: ClassVar[str] = "stop"
     integration: ClassVar[str] = "control4"
-    scope: ClassVar[AdapterScope] = AdapterScope(
-        experimental=True, domains=experimental(Platform.LIGHT), confirmable=True
-    )
+    scope: ClassVar[AdapterScope] = AdapterScope(domains=experimental(Platform.LIGHT), confirmable=True)
 
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:
         # Ahead of the scope check: an on/off light can never take a stop, whatever is tested.

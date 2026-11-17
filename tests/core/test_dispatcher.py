@@ -929,21 +929,14 @@ FALLS_BACK = "turn_off_for: switch.fake_group falls back to its members"
 
 
 @pytest.mark.usefixtures("classed")
-@pytest.mark.parametrize(
-    "scope",
-    [
-        pytest.param(replace(CLASSED, domains=experimental("switch")), id="domain"),
-        pytest.param(replace(CLASSED, experimental=True), id="adapter"),
-    ],
-)
-async def test_a_group_flagged_by_more_than_its_classes_does_not_fall_back(hass, fake, reset_script, caplog, scope):
+async def test_a_group_flagged_by_more_than_its_classes_does_not_fall_back(hass, fake, reset_script, caplog):
     caplog.set_level(logging.DEBUG, logger="custom_components.deviceside")
     for member in ("switch.a", "switch.b"):
         add_fake_entity(hass, fake, member)
     add_fake_native_group(hass, fake, "switch.fake_group", ["switch.a", "switch.b"])
     allow_experimental(hass, False)
 
-    with patch.object(FakeTurnOffFor, "scope", scope):
+    with patch.object(FakeTurnOffFor, "scope", replace(CLASSED, domains=experimental("switch"))):
         assert await refusal(hass, "turn_off_for", {"entity_id": "switch.fake_group", "duration": 5}) == (
             "experimental_off"
         )
@@ -1033,12 +1026,12 @@ async def test_an_experimental_call_left_nothing_to_send_is_unchanged_not_refuse
 
 
 async def test_a_flagged_adapter_is_refused_unless_the_option_is_on(hass, fake, reset_script, caplog):
-    """experimental=True flags every item of the adapter, Verified ones included: a named target raises and an
-    indirect one is skipped while the option is off, and both run once it is on."""
+    """An adapter flagged whole, every domain Experimental: a named target raises and an indirect one is skipped
+    while the option is off, and both run once it is on."""
     add_fake_entity(hass, fake, "light.named")
     add_fake_entity(hass, fake, "light.member")
     add_ha_group(hass, "light.room", ["light.member"])
-    flagged = AdapterScope(experimental=True, duration=LIMITS)
+    flagged = AdapterScope(domains=experimental("light"), duration=LIMITS)
     allow_experimental(hass, False)
 
     with patch.object(FakeTurnOnFor, "scope", flagged):

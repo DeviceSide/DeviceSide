@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate the README's device table and the evidence block of docs/device-compatibility.md, from the test records,
 the adapters' scopes, docs/models.yaml and each integration's bundle, docs/integrations/<integration>/. The rules
-the cards show (levels, the `experimental` flag, caveats) are in docs/evidence.md.
+the cards show (levels, caveats) are in docs/evidence.md.
 
 **Evidence** for an action is its passing test records (`<action>.json`, `<action>-<option>.json`, read by check_release
 against docs/test-records.schema.json) and the `_manual.json` rows whose `passed` names it. A format 2 record gives each
@@ -27,7 +27,7 @@ of the adapters with each `caveat` (⚠️ Unmaintained, then ⚠️ Untested fi
   Works through another adapter's evidence.
 - Should work: the classes (devices.yaml `capabilities`) unflagged adapters hold as Documented.
 - Experimental features: the classes held as `experimental(...)`, and the features of adapters flagged whole
-  (`experimental=True`), whatever their evidence.
+  (every domain `experimental(...)`), whatever their evidence.
 - Not built yet: the classes the integration declares (`IntegrationInfo.classes`) that an adapter holds in
   neither its `capabilities` nor its `no_known_method`, and so refuses; only those devices.yaml gives a phrase. Then
   docs/models.yaml's `not_built` entries, by their `what`.
@@ -504,7 +504,7 @@ def card_evidence(adapter) -> Evidence:
     device of an integration that names classes counts for nothing (`Evidence.of`)."""
     scope = adapter.scope
     flagged = {noun for level, _, noun, domains in items(scope) if level is Level.EXPERIMENTAL or domains is not None}
-    if scope.experimental or "fields" in flagged:
+    if scope.all_experimental or "fields" in flagged:
         return Evidence([], [])
     if not flagged:
         return Evidence.of(adapter)
@@ -536,7 +536,7 @@ def items(scope) -> list[tuple[Level, str, str, frozenset[str] | None]]:
     entries = [(level, item, "entities", None) for item, level in scope.domains.items()]
     entries += [(level, item, "classes", domains) for item, level, domains in scope.class_entries()]
     entries += [(level, item, "fields", None) for item, level in scope.fields.items()]
-    return [(Level.EXPERIMENTAL if scope.experimental else level, *rest) for level, *rest in entries]
+    return [(Level.EXPERIMENTAL if scope.all_experimental else level, *rest) for level, *rest in entries]
 
 
 # The evidence block.
@@ -614,7 +614,6 @@ def rows(adapter) -> list[str]:
         if item.cls in entries:
             # A format 2 test's domain decides a class held on some domains alone; one that names no domain, its level.
             held.append(scope.class_level(item.cls, item.domain) if item.domain else entries[item.cls][0])
-        held = [Level.EXPERIMENTAL if scope.experimental else level for level in held]
         # A class flagged in this domain alone may have no row of its level: the scope's weakest row takes it.
         row = models[index.get(min(held), len(levels) - 1)] if held else models[0]
         if (text := described(item)) not in row:
@@ -757,7 +756,7 @@ def classes(key: str, integration_adapters: list, level: Level, data: Data) -> d
     order, with the actions that hold it there."""
     held: dict[str, set[str]] = {}
     for adapter in integration_adapters:
-        if adapter.scope.experimental:
+        if adapter.scope.all_experimental:
             continue
         for item_level, item, noun in card_items(adapter.scope):
             if item_level is level and noun != "fields":
@@ -884,7 +883,7 @@ def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: 
     result.lines["works"] = works(result, key, integration_adapters, data)
     for level, tier in ((Level.DOCUMENTED, "should"), (Level.EXPERIMENTAL, "experimental")):
         result.lines[tier] = class_entries(key, classes(key, integration_adapters, level, data), data)
-    if flagged := {adapter.action for adapter in integration_adapters if adapter.scope.experimental}:
+    if flagged := {adapter.action for adapter in integration_adapters if adapter.scope.all_experimental}:
         result.lines["experimental"].append(", ".join(features(flagged)))
     result.lines["not_built"] = class_entries(key, not_built(key, info.classes, integration_adapters, data), data)
     result.lines["not_built"] += [

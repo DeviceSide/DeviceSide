@@ -265,6 +265,6 @@ async def test_get_config_error_keeps_the_status_row(hass):
 def test_scope_is_released():
     """The record proves Switch on a relay and RGBCCT on a bulb, on both domains."""
     scope = ShellyGetAttributes.scope
-    assert not scope.experimental
+    assert not scope.all_experimental
     assert scope.capabilities.get("Switch") is Level.VERIFIED
     assert scope.capabilities.get("RGBCCT") is Level.VERIFIED

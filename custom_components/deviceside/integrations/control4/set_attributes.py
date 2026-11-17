@@ -57,7 +57,6 @@ class Control4SetAttributes(Adapter[SetAttributesRequest]):
     action: ClassVar[str] = "set_attributes"
     integration: ClassVar[str] = "control4"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        experimental=True,
         domains=experimental(Platform.LIGHT),
         fields=experimental(ATTR_COLOR_TEMP_KELVIN),
         unlisted=frozenset({ATTR_COLOR_TEMP_KELVIN}),

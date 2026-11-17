@@ -259,7 +259,7 @@ def coverage_gaps(registry) -> list[str]:
     so it covers every domain (the maintainer's judgment, tenet 7). An adapter flagged whole holds none as Verified."""
     gaps = []
     for _, adapter in adapters(registry):
-        if not names_classes(adapter) or adapter.scope.experimental:
+        if not names_classes(adapter) or adapter.scope.all_experimental:
             continue
         found = reached(adapter.integration, adapter.action)
         for item, level, domains in sorted(adapter.scope.class_entries(), key=lambda entry: entry[0]):

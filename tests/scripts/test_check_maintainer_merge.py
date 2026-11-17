@@ -34,7 +34,7 @@ def pr(repo, monkeypatch):
     """`main` with an `acme` integration maintained by alice, and a `pr` branch off it."""
     monkeypatch.chdir(repo.path)
     repo.commit(INIT, init())
-    repo.commit(SCOPE, "scope = AdapterScope(experimental=True)\n")
+    repo.commit(SCOPE, "scope = AdapterScope(domains=experimental('light'))\n")
     repo.commit(owners.README, README)
     repo.commit(owners.COMPAT, COMPAT)
     repo.git("branch", "pr")
@@ -62,7 +62,7 @@ def test_a_maintainer_merges_a_change_anywhere_in_their_package(pr, path):
 
 
 def test_regenerated_output_rides_along(pr):
-    pr.commit(SCOPE, "scope = AdapterScope(experimental=False)\n")  # lifting the flag is the maintainer's call
+    pr.commit(SCOPE, "scope = AdapterScope(domains=verified('light'))\n")  # lifting the flag is the maintainer's call
     pr.commit(owners.README, README.replace("old cards", "new cards"))
     pr.commit(owners.COMPAT, COMPAT.replace("old rows", "new rows"))
     pr.commit(".github/CODEOWNERS", "* @x\n")
@@ -123,7 +123,7 @@ def test_compatibility_page_text_outside_its_block_is_refused(pr):
 @pytest.mark.parametrize(
     "text",
     [
-        'scope = AdapterScope(experimental=True, caveat=Caveat("https://x/1"))\n',
+        'scope = AdapterScope(domains=experimental("light"), caveat=Caveat("https://x/1"))\n',
         'c = core.Caveat("why")\n',
     ],
 )

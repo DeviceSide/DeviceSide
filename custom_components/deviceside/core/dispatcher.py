@@ -292,13 +292,12 @@ class Dispatcher:
         where the adapter's call harms a class, one not yet placed (Unplaced, or None) is refused as class_unknown,
         with Experimental features on or off; one the scope lists in no_known_method, or the integration names but the
         scope doesn't serve, is refused; a native group so refused falls back to its members when the integration can
-        list them (docs/design.md), and an empty one is skipped silently. A flagged call, from an
-        `experimental=True` adapter or touching an Experimental scope item, is refused while the Experimental features
-        option is off; a native group flagged by a member's class alone falls back to its members instead, as does one
-        with a member whose class takes a call of its own (AdapterScope.own_calls), and a target of such a class runs
-        apart, on that call and its duration limits. A named target that can't take the action raises then, before
-        anything is sent. Returns a result per target that ran or was left nothing to do, each with its class, and an
-        unsupported one per indirect target skipped.
+        list them (docs/design.md), and an empty one is skipped silently. A flagged call, one touching an Experimental
+        scope item, is refused while the Experimental features option is off; a native group flagged by a member's
+        class alone falls back to its members instead, as does one with a member whose class takes a call of its own
+        (AdapterScope.own_calls), and a target of such a class runs apart, on that call and its duration limits. A
+        named target that can't take the action raises then, before anything is sent. Returns a result per target that
+        ran or was left nothing to do, each with its class, and an unsupported one per indirect target skipped.
         """
         results: list[EntityResult] = []
         buckets: dict[str, tuple[Adapter, list[Target]]] = {}
@@ -409,18 +408,14 @@ class Dispatcher:
         ]
 
     def _experimental(self, adapter: Adapter, request: Request, target: Target, classes: Classes) -> bool:
-        """Whether the call is flagged experimental: the whole adapter (`experimental=True`), or an Experimental item
-        it touches, its domain, class (a native group's: its weakest member's) or a field it carries. The one place
-        the option gates anything; adapters never read it (docs/evidence.md)."""
-        if adapter.scope.experimental:
-            return True
+        """Whether the call is flagged experimental: an Experimental item it touches, its domain (an adapter flagged
+        whole has every domain Experimental), class (a native group's: its weakest member's) or a field it carries.
+        The one place the option gates anything; adapters never read it (docs/evidence.md)."""
         return adapter.scope.level(target.domain, classes, request.fields_present()) is Level.EXPERIMENTAL
 
     def _flagged_by_class_alone(self, adapter: Adapter, request: Request, target: Target) -> bool:
-        """Whether a flagged call would pass but for its classes: the adapter isn't flagged whole, nor its domain or
-        a field it carries, so a group's members can run one by one."""
-        if adapter.scope.experimental:
-            return False
+        """Whether a flagged call would pass but for its classes: neither its domain nor a field it carries is
+        Experimental, so a group's members can run one by one."""
         return adapter.scope.level(target.domain, (), request.fields_present()) is not Level.EXPERIMENTAL
 
     def _listed(self, adapter: Adapter, target: Target) -> list[Target] | None:

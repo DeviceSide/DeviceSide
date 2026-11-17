@@ -61,6 +61,6 @@ async def test_the_bottom_level_still_fades_off(hass, setup_production):
 
 def test_scope():
     scope = ShellyLowerBrightness.scope
-    assert not scope.experimental
+    assert not scope.all_experimental
     assert scope.fields == {"brightness": Level.VERIFIED}
     assert scope.capabilities == ShellyRaiseBrightness.scope.capabilities
