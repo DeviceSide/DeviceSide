@@ -2,6 +2,7 @@
 
 from typing import Any, ClassVar
 
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from .director import (
@@ -47,7 +48,9 @@ class Control4GetAttributes(Adapter[Request]):
 
     action: ClassVar[str] = "get_attributes"
     integration: ClassVar[str] = "control4"
-    scope: ClassVar[AdapterScope] = AdapterScope(experimental=True, domains=experimental("light"), confirmable=True)
+    scope: ClassVar[AdapterScope] = AdapterScope(
+        experimental=True, domains=experimental(Platform.LIGHT), confirmable=True
+    )
 
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:
         return super().supports(hass, request, target) or unsupported_reason(target)

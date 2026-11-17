@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING
 from aiohue.v2.controllers.events import EventType
 from aiohue.v2.models.resource import ResourceTypes
 from aiohue.v2.models.scene import SceneActiveStatus
+from homeassistant.const import Platform
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
@@ -283,7 +284,7 @@ class ReportFilter:
     def lights(self, entry: er.RegistryEntry) -> list[str]:
         """The bridge's lights behind a Hue light, room, zone or scene entity of this bridge."""
         resource_id = entry.unique_id
-        if entry.domain == "scene":
+        if entry.domain == Platform.SCENE:
             return self._scene_lights(resource_id)
         if self.api.lights.get(resource_id) is not None:
             return [resource_id]

@@ -4,6 +4,7 @@ then a GetStatus that confirms what the device kept."""
 from dataclasses import replace
 from typing import Any, ClassVar
 
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from .addressing import address, unsupported_reason
@@ -55,7 +56,7 @@ class ShellySetAttributes(Adapter[SetAttributesRequest]):
     action: ClassVar[str] = "set_attributes"
     integration: ClassVar[str] = "shelly"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        domains=verified("light"),
+        domains=verified(Platform.LIGHT),
         fields=verified(
             "brightness", "color_temp_kelvin", "hs_color", "rgb_color", "xy_color", "min_brightness", "max_brightness"
         ),

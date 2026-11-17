@@ -5,6 +5,7 @@ import asyncio
 import logging
 from typing import ClassVar
 
+from homeassistant.const import ATTR_ENTITY_ID, SERVICE_TURN_ON, Platform
 from homeassistant.core import HomeAssistant
 
 from .adapter import Z2MAdapter
@@ -60,7 +61,7 @@ class Z2MTurnOnFor(Z2MAdapter[TurnOnForRequest]):
         # Both Verified: the class decides a switch's level, as each class holds its own per domain (its family's
         # turn_on_for scope). Zigbee plugs and switches rarely honor OnWithTimedOff, so only a class with a switch
         # record is Verified there; a Hue plug, an `other` one and the rest stay untested.
-        domains=verified("light", "switch"),
+        domains=verified(Platform.LIGHT, Platform.SWITCH),
         # The not_built entries (refusals.py) each harm their class (a Tuya plug left on), so the dispatcher refuses a
         # device not yet placed, and a group of unknown membership, as class_unknown, even with Experimental features
         # on (classes.py). The families' own calls (Tuya's countdown) run through execute_own (adapter.py).
@@ -101,7 +102,7 @@ class Z2MTurnOnFor(Z2MAdapter[TurnOnForRequest]):
         timer's message would then publish the state from before the fields landed, which HA keeps, and contend
         with them on the mesh, starting the timer late. With no state by the timeout, the timer goes anyway.
         """
-        service_data = {"entity_id": target.entity_id, **data}
+        service_data = {ATTR_ENTITY_ID: target.entity_id, **data}
         published, unsubscribe = await state_reply(hass, target)
         try:
             if _LOGGER.isEnabledFor(logging.DEBUG):
@@ -110,7 +111,7 @@ class Z2MTurnOnFor(Z2MAdapter[TurnOnForRequest]):
                 )
             # HA publishes it as a set, whose failure Z2M logs as any other's.
             await note(hass, target)
-            await hass.services.async_call("light", "turn_on", service_data, blocking=True)
+            await hass.services.async_call(Platform.LIGHT, SERVICE_TURN_ON, service_data, blocking=True)
             if published is None:
                 return
             try:

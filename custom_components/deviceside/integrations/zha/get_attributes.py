@@ -2,6 +2,8 @@
 
 from typing import ClassVar
 
+from homeassistant.components.light import ColorMode
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from . import classes, zcl
@@ -12,7 +14,7 @@ from ...core.models import EntityResult, Request, Status, Target
 from ...core.scope import AdapterScope, experimental, verified
 from ...core.zcl_row import zcl_row
 
-_COLOR_MODES = frozenset({"color_temp", "hs", "xy"})
+_COLOR_MODES = frozenset({ColorMode.COLOR_TEMP, ColorMode.HS, ColorMode.XY})
 
 _COLOR_ATTRIBUTES = (
     zcl.CURRENT_HUE,
@@ -60,7 +62,7 @@ class ZHAGetAttributes(Adapter[Request]):
     integration: ClassVar[str] = "zha"
     scope: ClassVar[AdapterScope] = AdapterScope(
         # Zigbee plugs rarely honor OnTime (see turn_on_for), so a switch's timer may never show: Experimental.
-        domains=verified("light") | experimental("switch"),
+        domains=verified(Platform.LIGHT) | experimental(Platform.SWITCH),
         **classes.class_scope(action),
         max_concurrency=2,
         confirmable=True,
@@ -79,7 +81,7 @@ class ZHAGetAttributes(Adapter[Request]):
             if "onTime" in attributes and classes.capability(hass, target) in COUNTS_SECONDS:
                 # Tuya's countdown counts whole seconds, not the spec's tenths (internals.md, `classes`).
                 attributes["onTime"] *= 10
-            if modes - {"onoff"}:
+            if modes - {ColorMode.ONOFF}:
                 read = await zcl.read_attributes(hass, addr, zcl.LEVEL_CLUSTER, (zcl.CURRENT_LEVEL,))
                 attributes |= named(zcl.LEVEL_CLUSTER, read)
             if modes & _COLOR_MODES:

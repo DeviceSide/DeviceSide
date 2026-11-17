@@ -5,6 +5,9 @@ import asyncio
 import logging
 from typing import Any, ClassVar
 
+from homeassistant.components.homeassistant import SERVICE_UPDATE_ENTITY
+from homeassistant.const import ATTR_ENTITY_ID, Platform
+from homeassistant.core import DOMAIN as HOMEASSISTANT_DOMAIN
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
@@ -147,7 +150,7 @@ class ZHASetAttributes(Adapter[SetAttributesRequest]):
     action: ClassVar[str] = "set_attributes"
     integration: ClassVar[str] = "zha"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        domains=verified("light"),
+        domains=verified(Platform.LIGHT),
         fields=verified(
             "brightness", "color_temp_kelvin", "hs_color", "rgb_color", "xy_color", "min_brightness", "max_brightness"
         ),
@@ -236,7 +239,11 @@ class ZHASetAttributes(Adapter[SetAttributesRequest]):
     async def _update(self, hass: HomeAssistant, request: SetAttributesRequest, entity_id: str) -> None:
         try:
             await hass.services.async_call(
-                "homeassistant", "update_entity", {"entity_id": entity_id}, blocking=True, context=request.context
+                HOMEASSISTANT_DOMAIN,
+                SERVICE_UPDATE_ENTITY,
+                {ATTR_ENTITY_ID: entity_id},
+                blocking=True,
+                context=request.context,
             )
         except Exception as err:  # noqa: BLE001 - the write landed; a stale HA state is no reason to fail it
             _LOGGER.warning(

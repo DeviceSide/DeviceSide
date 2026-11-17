@@ -34,6 +34,10 @@ from homeassistant.const import (
     ATTR_SERVICE_DATA,
     ENTITY_MATCH_ALL,
     EVENT_CALL_SERVICE,
+    SERVICE_TOGGLE,
+    SERVICE_TURN_OFF,
+    SERVICE_TURN_ON,
+    Platform,
 )
 from homeassistant.core import CALLBACK_TYPE, Event, HomeAssistant, callback
 from homeassistant.helpers import entity_registry as er
@@ -43,7 +47,7 @@ from .runtime import get_runtime
 
 _LOGGER = logging.getLogger(__name__)
 
-SERVICE_DOMAINS = frozenset({"light", "scene"})
+SERVICE_DOMAINS = frozenset({Platform.LIGHT, Platform.SCENE})
 # A turn_on with any of these sets a color or an effect, which ends a bulb's hue cycle; so do turn_off and toggle.
 _COLOR_FIELDS = frozenset(
     {
@@ -80,11 +84,11 @@ class Call:
     @property
     def ends_hue_cycle(self) -> bool:
         """Whether the call sets a color or turns the light off, which ends a hue move's cycle on the bulb."""
-        if self.domain != "light":
+        if self.domain != Platform.LIGHT:
             return False
-        if self.service in ("turn_off", "toggle"):
+        if self.service in (SERVICE_TURN_OFF, SERVICE_TOGGLE):
             return True
-        return self.service == "turn_on" and not _COLOR_FIELDS.isdisjoint(self.service_data)
+        return self.service == SERVICE_TURN_ON and not _COLOR_FIELDS.isdisjoint(self.service_data)
 
 
 class CallResolver(Protocol):

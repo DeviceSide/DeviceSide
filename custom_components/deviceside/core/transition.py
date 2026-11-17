@@ -15,6 +15,8 @@ from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
 
+from homeassistant.components.light import ATTR_BRIGHTNESS
+from homeassistant.const import STATE_ON
 from homeassistant.core import HomeAssistant
 
 from .models import Target
@@ -164,7 +166,7 @@ def transition_cache[C: TransitionCache](hass: HomeAssistant, integration: str, 
 
 def reported_brightness(light: Target) -> float:
     """HA's brightness in percent, 0 while off: a move from off starts at the bottom."""
-    brightness = light.state.attributes.get("brightness") if light.state and light.state.state == "on" else None
+    brightness = light.state.attributes.get(ATTR_BRIGHTNESS) if light.state and light.state.state == STATE_ON else None
     return brightness / 255 * 100 if brightness is not None else 0.0
 
 
@@ -182,7 +184,7 @@ def lit_where[L](
 
 def lit(cache: TransitionCache, lights: list[Target]) -> list[Target]:
     return lit_where(
-        cache, lights, lambda light: light.entity_id, lambda light: bool(light.state and light.state.state == "on")
+        cache, lights, lambda light: light.entity_id, lambda light: bool(light.state and light.state.state == STATE_ON)
     )
 
 

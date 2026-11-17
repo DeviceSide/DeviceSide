@@ -1,6 +1,7 @@
 from dataclasses import replace
 from typing import ClassVar
 
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from .addressing import CAPABILITIES, COMPONENT_FIELDS, address, unsupported_reason
@@ -17,7 +18,7 @@ class ShellyTurnOnFor(Adapter[TurnOnForRequest]):
     action: ClassVar[str] = "turn_on_for"
     integration: ClassVar[str] = "shelly"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        domains=verified("light", "switch"),
+        domains=verified(Platform.LIGHT, Platform.SWITCH),
         duration=TIMER_LIMITS,
         fields=verified("brightness", "color_temp_kelvin", "hs_color", "rgb_color", "transition", "xy_color"),
         # A relay shown as a light sends the same Switch.Set.

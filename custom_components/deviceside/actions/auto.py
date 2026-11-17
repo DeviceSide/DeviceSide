@@ -4,6 +4,7 @@ remove it. Unlike turn_on_for's per-command timer, it applies to every turn-on (
 from typing import ClassVar
 
 import probatio
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import config_validation as cv
 
@@ -16,7 +17,7 @@ class SetAuto(Action[TimedRequest]):
     """Store a delay the device applies after every turn-on (auto-off) or turn-off (auto-on)."""
 
     kind: ClassVar[ActionKind] = ActionKind.SETTING
-    domains: ClassVar[frozenset[str]] = frozenset({"light", "switch"})
+    domains: ClassVar[frozenset[str]] = frozenset({Platform.LIGHT, Platform.SWITCH})
     fields: ClassVar[dict] = {probatio.Required("duration"): cv.positive_time_period}
 
     @classmethod
@@ -28,7 +29,7 @@ class ClearAuto(Action[Request]):
     """Remove the stored setting, as core's clear_ services do (sonos.clear_sleep_timer); never a zero duration."""
 
     kind: ClassVar[ActionKind] = ActionKind.SETTING
-    domains: ClassVar[frozenset[str]] = frozenset({"light", "switch"})
+    domains: ClassVar[frozenset[str]] = frozenset({Platform.LIGHT, Platform.SWITCH})
 
     @classmethod
     def parse(cls, hass: HomeAssistant, call: ServiceCall) -> Request:

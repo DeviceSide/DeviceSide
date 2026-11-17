@@ -3,6 +3,7 @@
 import logging
 from typing import ClassVar
 
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from .addressing import (
@@ -39,7 +40,7 @@ class MatterTurnOnFor(Adapter[TurnOnForRequest]):
     scope: ClassVar[AdapterScope] = AdapterScope(
         # Documented on both until the plug's rerun on OffWaitTime 1 (its record ran 0); lights take the same call as
         # plugs, behind the same LT check.
-        domains=documented("switch", "light"),
+        domains=documented(Platform.SWITCH, Platform.LIGHT),
         duration=_TIMER_LIMITS,
         fields=verified(),
         capabilities=TURN_ON_FOR,

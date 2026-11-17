@@ -7,7 +7,7 @@ transition and the ExecuteIfOff override.
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from homeassistant.components.light import color_supported
+from homeassistant.components.light import ColorMode, color_supported
 from homeassistant.util.color import (
     color_hs_to_xy,
     color_temperature_kelvin_to_mired,
@@ -80,7 +80,7 @@ def clamp_mireds(mireds: int, attrs: dict) -> int:
 
 def _color(xy: tuple[float, float], modes: set[str]) -> MoveToColor | MoveToHueAndSaturation:
     """MoveToColor on an xy light, else MoveToHueAndSaturation. The light clamps the color to its own gamut."""
-    if "xy" in modes:
+    if ColorMode.XY in modes:
         return MoveToColor(*xy)
     hue, saturation = color_xy_to_hs(*xy)
     return MoveToHueAndSaturation(round(hue * 254 / 360), round(saturation * 254 / 100))
@@ -89,7 +89,7 @@ def _color(xy: tuple[float, float], modes: set[str]) -> MoveToColor | MoveToHueA
 def wants_level(request: SetAttributesRequest, modes: set[str]) -> bool:
     """Whether the commands need the light's CurrentLevel: min/max_brightness alone, on a light that dims."""
     limits = request.min_brightness is not None or request.max_brightness is not None
-    return request.brightness is None and limits and bool(modes - {"onoff"})
+    return request.brightness is None and limits and bool(modes - {ColorMode.ONOFF})
 
 
 def commands(
@@ -106,13 +106,13 @@ def commands(
     sent: list[Command] = []
     dropped = False
     if request.brightness is not None or request.min_brightness is not None or request.max_brightness is not None:
-        if not modes - {"onoff"}:
+        if not modes - {ColorMode.ONOFF}:
             dropped = True
         elif (command := _brightness(request, current_level)) is not None:
             sent.append(command)
     kelvin = fields.color_temp_kelvin
     colors = color_supported(modes)
-    if (xy := color_xy(fields)) is None and kelvin is not None and colors and "color_temp" not in modes:
+    if (xy := color_xy(fields)) is None and kelvin is not None and colors and ColorMode.COLOR_TEMP not in modes:
         xy = color_hs_to_xy(*color_temperature_to_hs(kelvin))  # as core's light.turn_on converts it
     if xy is not None:
         if colors:
@@ -120,7 +120,7 @@ def commands(
         else:
             dropped = True
     if kelvin is not None and not (xy is not None and colors):
-        if "color_temp" in modes:
+        if ColorMode.COLOR_TEMP in modes:
             sent.append(MoveToColorTemp(clamp_mireds(color_temperature_kelvin_to_mired(kelvin), attrs)))
         else:
             dropped = True

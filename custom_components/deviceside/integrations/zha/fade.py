@@ -11,7 +11,10 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Any, ClassVar
 
+from homeassistant.components.homeassistant import SERVICE_UPDATE_ENTITY
 from homeassistant.components.light import COLOR_MODES_COLOR, color_supported
+from homeassistant.const import ATTR_ENTITY_ID, Platform
+from homeassistant.core import DOMAIN as HOMEASSISTANT_DOMAIN
 from homeassistant.core import Context, HomeAssistant
 from homeassistant.exceptions import Unauthorized
 from homeassistant.util.color import color_hs_to_xy
@@ -87,7 +90,7 @@ class ZHACallResolver:
                 cycling.clear()
             return
         for entry in entries:
-            if entry.domain != "light":
+            if entry.domain != Platform.LIGHT:
                 continue
             gid = group_id(entry.unique_id)
             for light_id in light_members(hass, gid) if gid is not None else (entry.entity_id,):
@@ -181,7 +184,11 @@ def failures(lights: list[Target], outcomes: list[Any]) -> dict[str, Exception]:
 async def refresh(hass: HomeAssistant, light: Target, context: Context | None) -> None:
     try:
         await hass.services.async_call(
-            "homeassistant", "update_entity", {"entity_id": light.entity_id}, blocking=True, context=context
+            HOMEASSISTANT_DOMAIN,
+            SERVICE_UPDATE_ENTITY,
+            {ATTR_ENTITY_ID: light.entity_id},
+            blocking=True,
+            context=context,
         )
     except Exception as err:  # noqa: BLE001 - a failed refresh leaves HA's state stale, nothing more
         _LOGGER.debug("update_entity for %s failed: %s", light.entity_id, describe(err))
@@ -213,7 +220,7 @@ class HueMove:
 def ramp_scope(action: str, attribute: str) -> AdapterScope:
     """A ramp's scope: its classes as classes.class_scope holds them for the action."""
     return AdapterScope(
-        domains=verified("light"), fields=verified(attribute), **classes.class_scope(action), max_concurrency=2
+        domains=verified(Platform.LIGHT), fields=verified(attribute), **classes.class_scope(action), max_concurrency=2
     )
 
 

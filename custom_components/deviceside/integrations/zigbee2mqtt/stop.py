@@ -2,6 +2,7 @@
 
 from typing import ClassVar
 
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from .adapter import Z2MAdapter
@@ -40,7 +41,9 @@ class Z2MStop(Z2MAdapter[Request]):
 
     action: ClassVar[str] = "stop"
     integration: ClassVar[str] = "zigbee2mqtt"
-    scope: ClassVar[AdapterScope] = AdapterScope(domains=verified("light"), **class_scope("stop"), native_groups=True)
+    scope: ClassVar[AdapterScope] = AdapterScope(
+        domains=verified(Platform.LIGHT), **class_scope("stop"), native_groups=True
+    )
 
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:
         if (reason := super().supports(hass, request, target)) is not None:

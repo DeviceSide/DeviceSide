@@ -6,6 +6,7 @@ import asyncio
 import logging
 from typing import ClassVar
 
+from homeassistant.const import ATTR_ENTITY_ID, SERVICE_TURN_ON, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import Unauthorized
 
@@ -62,7 +63,7 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
         # Zigbee plugs and switches rarely honor OnWithTimedOff (research/2026-11-14-timed-on-call-patterns.md), so
         # switch fails the Documented test (docs/evidence.md, Levels): it stays flagged experimental, untested, until
         # a maintainer judges it ready.
-        domains=verified("light") | experimental("switch"),
+        domains=verified(Platform.LIGHT) | experimental(Platform.SWITCH),
         # Each class's level is its family's (families/<family>/), `other`'s classes.py's; the classes the call harms
         # are refused (refusals.py).
         **classes.class_scope(action),
@@ -171,7 +172,7 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
         data = request.light.as_turn_on_data()
         _LOGGER.debug("%s: sending ha light.turn_on %s", logged_as or entity_id, data)
         await hass.services.async_call(
-            "light", "turn_on", {"entity_id": entity_id, **data}, blocking=True, context=request.context
+            Platform.LIGHT, SERVICE_TURN_ON, {ATTR_ENTITY_ID: entity_id, **data}, blocking=True, context=request.context
         )
 
     async def _read_back(self, hass: HomeAssistant, target: Target, addr: Address, on_time: int) -> EntityResult:

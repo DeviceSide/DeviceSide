@@ -3,6 +3,7 @@
 from datetime import datetime
 from typing import ClassVar
 
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 
@@ -40,7 +41,7 @@ class MatterGetAttributes(Adapter[Request]):
     integration: ClassVar[str] = "matter"
     scope: ClassVar[AdapterScope] = AdapterScope(
         # Lights carry the same attributes as plugs, behind the same LT check: Documented.
-        domains=verified("switch") | documented("light"),
+        domains=verified(Platform.SWITCH) | documented(Platform.LIGHT),
         fields=verified(),
         capabilities=GET_ATTRIBUTES,
         confirmable=True,

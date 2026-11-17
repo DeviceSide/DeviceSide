@@ -6,6 +6,7 @@ import logging
 from dataclasses import replace
 from typing import Any, ClassVar
 
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from .director import (
@@ -57,7 +58,7 @@ class Control4SetAttributes(Adapter[SetAttributesRequest]):
     integration: ClassVar[str] = "control4"
     scope: ClassVar[AdapterScope] = AdapterScope(
         experimental=True,
-        domains=experimental("light"),
+        domains=experimental(Platform.LIGHT),
         fields=experimental(COLOR_TEMP),
         unlisted=frozenset({COLOR_TEMP}),
         confirmable=True,

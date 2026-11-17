@@ -6,6 +6,7 @@ import logging
 from datetime import datetime
 from typing import ClassVar
 
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 from homeassistant.util.color import color_rgbw_to_rgb
@@ -84,7 +85,7 @@ class ShellyGetAttributes(Adapter[Request]):
     action: ClassVar[str] = "get_attributes"
     integration: ClassVar[str] = "shelly"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        domains=verified("light", "switch"),
+        domains=verified(Platform.LIGHT, Platform.SWITCH),
         # A relay shown as a light sends the same Switch.GetStatus.
         capabilities=CAPABILITIES,
         confirmable=True,

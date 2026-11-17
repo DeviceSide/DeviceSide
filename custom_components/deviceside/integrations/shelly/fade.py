@@ -3,6 +3,7 @@ device reports. Each action's adapter is a ShellyFade."""
 
 from typing import ClassVar
 
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from .addressing import DIMMING_CAPABILITIES, unsupported_reason
@@ -20,7 +21,7 @@ _DURATION_DIGITS = 2
 
 def fade_scope() -> AdapterScope:
     return AdapterScope(
-        domains=verified("light"),
+        domains=verified(Platform.LIGHT),
         fields=verified(BRIGHTNESS),
         capabilities=DIMMING_CAPABILITIES,
     )

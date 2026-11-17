@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from typing import Any, ClassVar
 
 from homeassistant.components.light import COLOR_MODES_COLOR
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
@@ -114,7 +115,7 @@ def _drop(hass: HomeAssistant, call: Call, light_ids: list[str]) -> None:
 def _z2m_lights(hass: HomeAssistant, entries: list[er.RegistryEntry]) -> list[Target]:
     """The Z2M light and group targets among the entries, which may hold any MQTT entity."""
     registry = get_runtime(hass).registry
-    targets = [resolve(hass, registry, entry.entity_id) for entry in entries if entry.domain == "light"]
+    targets = [resolve(hass, registry, entry.entity_id) for entry in entries if entry.domain == Platform.LIGHT]
     return [t for t in targets if not isinstance(t, str) and t.integration == "zigbee2mqtt"]
 
 
@@ -145,7 +146,7 @@ def ramp_scope(action: str, attribute: str) -> AdapterScope:
     """A ramp's scope: its classes as classes.class_scope holds them for the action, a brightness fade's as stop's
     are, a hue or saturation fade's apart."""
     return AdapterScope(
-        domains=verified("light"), **class_scope(action), fields=verified(attribute), native_groups=True
+        domains=verified(Platform.LIGHT), **class_scope(action), fields=verified(attribute), native_groups=True
     )
 
 

@@ -5,7 +5,7 @@ from statistics import mean
 from typing import TYPE_CHECKING, ClassVar
 
 from homeassistant.components.light import ATTR_COLOR_MODE, ColorMode
-from homeassistant.const import STATE_ON
+from homeassistant.const import STATE_ON, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 from homeassistant.util.color import color_temperature_mired_to_kelvin
@@ -45,7 +45,7 @@ def in_color_temp_mode(hass: HomeAssistant, api: HueBridgeV2, light: Light) -> b
         return False
     if (device := api.devices.get(light.owner.rid)) is None or device.product_data.certified:
         return feature.mirek_valid
-    entity_id = er.async_get(hass).async_get_entity_id("light", "hue", light.id)
+    entity_id = er.async_get(hass).async_get_entity_id(Platform.LIGHT, "hue", light.id)
     if (state := hass.states.get(entity_id) if entity_id else None) is None or state.state != STATE_ON:
         # Core shows no color mode for a light that is off, or one it has no entity for: the bridge's flag is all
         # there is, as for a certified light.

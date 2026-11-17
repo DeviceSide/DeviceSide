@@ -1,5 +1,6 @@
 from typing import ClassVar
 
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 
 from ..core.action import Action
@@ -12,7 +13,7 @@ class GetAttributes(Action[Request]):
 
     key: ClassVar[str] = "get_attributes"
     kind: ClassVar[ActionKind] = ActionKind.QUERY
-    domains: ClassVar[frozenset[str]] = frozenset({"light", "switch"})
+    domains: ClassVar[frozenset[str]] = frozenset({Platform.LIGHT, Platform.SWITCH})
     supports_response: ClassVar[SupportsResponse] = SupportsResponse.ONLY
 
     @classmethod

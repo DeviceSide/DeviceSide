@@ -1,5 +1,6 @@
 from typing import ClassVar
 
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
 
 from ..core.action import Action
@@ -11,7 +12,7 @@ class Stop(Action[Request]):
 
     key: ClassVar[str] = "stop"
     kind: ClassVar[ActionKind] = ActionKind.COMMAND
-    domains: ClassVar[frozenset[str]] = frozenset({"light"})
+    domains: ClassVar[frozenset[str]] = frozenset({Platform.LIGHT})
 
     @classmethod
     def parse(cls, hass: HomeAssistant, call: ServiceCall) -> Request:

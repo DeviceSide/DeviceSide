@@ -5,6 +5,7 @@ from collections.abc import Iterable
 from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
@@ -61,7 +62,7 @@ def expand_group(hass: HomeAssistant, target: Target) -> list[Target]:
     registry = get_runtime(hass).registry
     members: list[Target] = []
     for light in bridge_api(target).groups.grouped_light.get_lights(resource_id(target)):
-        if entities.async_get_entity_id("light", "hue", light.id) is not None:
+        if entities.async_get_entity_id(Platform.LIGHT, "hue", light.id) is not None:
             members += resolve_members(hass, registry, target, "hue", [light.id])
             continue
         _LOGGER.debug(
@@ -92,7 +93,7 @@ def _stand_in(group: Target, device: dr.DeviceEntry | None) -> Target:
 def entity_name(hass: HomeAssistant, rid: str) -> str:
     """The light entity HA has for a light or grouped_light resource, for a log line, which never names the resource
     id; "a Hue light with no entity" when HA has none."""
-    return er.async_get(hass).async_get_entity_id("light", "hue", rid) or "a Hue light with no entity"
+    return er.async_get(hass).async_get_entity_id(Platform.LIGHT, "hue", rid) or "a Hue light with no entity"
 
 
 def named(hass: HomeAssistant, values: dict[str, Any]) -> list[tuple[str, Any]]:

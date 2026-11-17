@@ -1,5 +1,6 @@
 from typing import ClassVar
 
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
 
 from ..core.action import Action
@@ -11,7 +12,7 @@ class SetScene(Action[Request]):
 
     key: ClassVar[str] = "set_scene"
     kind: ClassVar[ActionKind] = ActionKind.COMMAND
-    domains: ClassVar[frozenset[str]] = frozenset({"scene"})
+    domains: ClassVar[frozenset[str]] = frozenset({Platform.SCENE})
 
     @classmethod
     def parse(cls, hass: HomeAssistant, call: ServiceCall) -> Request:

@@ -5,6 +5,7 @@ values into Z2M's state, and so HA's."""
 import asyncio
 from typing import ClassVar
 
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from .adapter import Z2MAdapter
@@ -136,7 +137,7 @@ class Z2MSetAttributes(Z2MAdapter[SetAttributesRequest]):
     action: ClassVar[str] = "set_attributes"
     integration: ClassVar[str] = "zigbee2mqtt"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        domains=verified("light"),
+        domains=verified(Platform.LIGHT),
         **class_scope("set_attributes"),
         fields=verified(
             "brightness", "color_temp_kelvin", "hs_color", "rgb_color", "xy_color", "min_brightness", "max_brightness"

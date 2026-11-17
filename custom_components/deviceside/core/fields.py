@@ -14,7 +14,7 @@ from homeassistant.components.light import (
     color_supported,
     color_temp_supported,
 )
-from homeassistant.const import ATTR_SUPPORTED_FEATURES
+from homeassistant.const import ATTR_SUPPORTED_FEATURES, Platform
 
 if TYPE_CHECKING:  # const.py imports this module, and models.py imports const.py
     from .models import Request, Target
@@ -41,7 +41,7 @@ def lacking(target: Target, request: Request, unlisted: frozenset[str] = frozens
     AdapterScope.unlisted), which the adapter takes whatever the state says; a switch still lacks it.
     """
     present = request.fields_present()
-    if not present or target.domain != "light":
+    if not present or target.domain != Platform.LIGHT:
         return present
     attributes = target.state.attributes if target.state is not None else {}
     lacked: set[str] = set()

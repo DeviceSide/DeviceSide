@@ -8,6 +8,8 @@ every vendor's call.
 
 import re
 
+from homeassistant.const import Platform
+
 from .....core.rules import Rule
 from .....core.scope import Family, FamilyScope, verified
 
@@ -54,6 +56,6 @@ FAMILY = Family(
         "get_attributes": _VERIFIED,
         "set_attributes": _VERIFIED,
         # On lights alone, as every record ran on a bulb, so a Hue plug (a switch) is untested.
-        "turn_on_for": FamilyScope(capabilities=verified(HUE, domains=("light",))),
+        "turn_on_for": FamilyScope(capabilities=verified(HUE, domains=(Platform.LIGHT,))),
     },
 )

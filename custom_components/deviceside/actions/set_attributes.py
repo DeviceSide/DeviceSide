@@ -2,6 +2,7 @@ from dataclasses import dataclass, field, replace
 from typing import ClassVar, Self
 
 import probatio
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ServiceValidationError
 
@@ -45,7 +46,7 @@ class SetAttributes(Action[SetAttributesRequest]):
 
     key: ClassVar[str] = "set_attributes"
     kind: ClassVar[ActionKind] = ActionKind.COMMAND
-    domains: ClassVar[frozenset[str]] = frozenset({"light"})
+    domains: ClassVar[frozenset[str]] = frozenset({Platform.LIGHT})
     fields: ClassVar[dict] = {
         **{probatio.Optional(name): PERCENT for name in ("brightness", *LIMITS)},
         # light.turn_on's validators without its one-color rule: given several colors, rgb_color wins, then

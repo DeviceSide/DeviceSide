@@ -23,6 +23,7 @@ Every adapter's scope holds LEVELS; why `other` sits where it does is in interna
 """
 
 from aiohue.v2.models.resource import ResourceTypes
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
@@ -65,7 +66,7 @@ def device_class(device: dr.DeviceEntry) -> str:
 def capability(hass: HomeAssistant, target: Target) -> str | None:
     """Hue's IntegrationInfo.capability: a light's class by its device, a scene's by the lights it writes; None for a
     light with no device, or a scene with a light the bridge doesn't list or Home Assistant has no device for."""
-    if target.domain == "scene":
+    if target.domain == Platform.SCENE:
         return _scene_class(hass, target)
     return None if target.device is None else device_class(target.device)
 
