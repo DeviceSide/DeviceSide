@@ -126,7 +126,7 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 | Action | Level | Items | Tested models | Records |
 |---|---|---|---|---|
 | `get_attributes` | Verified | light entities; hue on light classes | `LTA009` (`hue`), firmware `1.163.1`<br>`LCA016` (`hue`), firmware `1.164.2`<br>`LWA012` (`hue`), firmware `1.163.1`<br>group | [record](integrations/zigbee2mqtt/test-records/get_attributes.json) |
-| `get_attributes` | Experimental | switch entities; other on light, tuya_zcl on light, sengled, gledopto classes | `TS011F` (`tuya_countdown_tz3000_0zfrhq4i`), firmware `0122052017`<br>`TS011F` (`tuya_countdown_tz3000_typdpbpg`), firmware `Zigbee2MQTT 2.14.3`<br>`TS011F` (`tuya_countdown_tz3000_gznh2xla`), firmware `Zigbee2MQTT 2.14.3`<br>`TS011F` (`tuya_countdown_tz3000_okaz9tjs`), firmware `500+TZSKT31BS102` | |
+| `get_attributes` | Experimental | other on light, tuya_zcl on light, sengled, gledopto classes | `TS011F` (`tuya_countdown_tz3000_0zfrhq4i`), firmware `0122052017`<br>`TS011F` (`tuya_countdown_tz3000_typdpbpg`), firmware `Zigbee2MQTT 2.14.3`<br>`TS011F` (`tuya_countdown_tz3000_gznh2xla`), firmware `Zigbee2MQTT 2.14.3`<br>`TS011F` (`tuya_countdown_tz3000_okaz9tjs`), firmware `500+TZSKT31BS102` | |
 | `lower_brightness` | Verified | light entities; hue classes; brightness fields | `LTA009` (`hue`), firmware `1.163.1`<br>group | [record](integrations/zigbee2mqtt/test-records/lower_brightness.json) |
 | `lower_brightness` | Documented | other classes | | |
 | `lower_brightness` | Experimental | tuya_zcl, tuya_mcu, sengled, gledopto classes | | |
@@ -187,7 +187,7 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 | `stop` | Documented | other classes | | |
 | `stop` | Experimental | tuya_zcl, sengled classes | | |
 | `turn_on_for` | Verified | light entities; hue on light classes; brightness, color_temp_kelvin fields | `LWA012` (`hue`), firmware `0x01002a00`<br>`LTA009` (`hue`), firmware `0x01002a00`<br>group | [record](integrations/zha/test-records/turn_on_for.json) |
-| `turn_on_for` | Experimental | switch entities; other on light classes | | |
+| `turn_on_for` | Experimental | other on light classes | | |
 
 | Not built yet, harmed by today's call | Why | Source |
 |---|---|---|

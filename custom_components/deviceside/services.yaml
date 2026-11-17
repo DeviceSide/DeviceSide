@@ -7,7 +7,7 @@ turn_on_for:
         integration: mqtt
       - domain: [light, switch]
         integration: matter
-      - domain: [light, switch]
+      - domain: light
         integration: zha
   fields:
     duration: &duration
@@ -273,7 +273,7 @@ get_attributes:
         integration: hue
       - domain: [light, switch]
         integration: shelly
-      - domain: [light, switch]
+      - domain: light
         integration: mqtt
       - domain: [light, switch]
         integration: matter

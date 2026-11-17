@@ -32,7 +32,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
 from custom_components.deviceside.const import DOCS_URL  # noqa: E402
-from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
+from custom_components.deviceside.core.registry import AdapterRegistry, served_domains  # noqa: E402
 from custom_components.deviceside.core.scope import Level  # noqa: E402
 from scripts.check_release import BUNDLES, adapters  # noqa: E402
 
@@ -167,7 +167,8 @@ def keys(adapter, registry: AdapterRegistry, experimental: bool = False) -> set[
     lights and the dispatcher passes it native groups, natively or expanded to their members
     (`_expand_native_groups`). Empty when the adapter is flagged whole (every domain Experimental), or the scope
     lists capabilities and every one is Experimental: then no call works with the option off. With `experimental`,
-    what it covers with the option on: every domain."""
+    what it covers with the option on: every domain. Either way, only domains it serves some class on
+    (`served_domains`)."""
     capabilities = adapter.scope.capabilities
     if not experimental and (
         adapter.scope.all_experimental
@@ -177,10 +178,14 @@ def keys(adapter, registry: AdapterRegistry, experimental: bool = False) -> set[
         )
     ):
         return set()
+    info = registry.integrations[adapter.integration]
+    served = served_domains(adapter, info)
     found = {
-        domain for domain, level in adapter.scope.domains.items() if experimental or level is not Level.EXPERIMENTAL
+        domain
+        for domain, level in adapter.scope.domains.items()
+        if (experimental or level is not Level.EXPERIMENTAL) and domain in served
     }
-    declared = registry.integrations[adapter.integration].classes
+    declared = info.classes
     if not experimental and capabilities is not None and declared:
         found = {
             domain

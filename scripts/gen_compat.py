@@ -103,7 +103,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
 from custom_components.deviceside.const import DOCS_URL  # noqa: E402
-from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
+from custom_components.deviceside.core.registry import AdapterRegistry, served_domains  # noqa: E402
 from custom_components.deviceside.core.scope import CaveatKind, ClassDomains, Level  # noqa: E402
 from scripts.check_release import (  # noqa: E402
     MANUAL,
@@ -650,14 +650,16 @@ def named(held: list[tuple[str, str]]) -> str:
     return "; ".join(f"{', '.join(names)} {noun}" for noun, names in by_noun.items())
 
 
-def level_rows(scope) -> list[tuple[Level, str]]:
-    """(level, items) per row: a row per level the scope holds, strongest first."""
+def level_rows(scope, served: set[str]) -> list[tuple[Level, str]]:
+    """(level, items) per row: a row per level the scope holds, strongest first. A domain is an item only where the
+    adapter serves some class (`served`, core/registry.py served_domains): one whose every class is refused isn't
+    offered."""
     found = []
     for level in sorted(Level, reverse=True):
         if held := [
             (f"{item} on {', '.join(sorted(domains))}" if domains else item, noun)
             for item_level, item, noun, domains in items(scope)
-            if item_level is level
+            if item_level is level and (noun != "entities" or item in served)
         ]:
             found.append((level, named(held)))
     return found
@@ -677,13 +679,13 @@ def described(item: Tested) -> str:
     return f"{name}, firmware `{item.firmware}`" if item.firmware else f"{name}, firmware unknown"
 
 
-def rows(adapter) -> list[str]:
+def rows(adapter, info) -> list[str]:
     """The action's rows: its records on the first; each tested model, and each group, on the row of the weakest
     level the scope holds its class and its test's domain at, else (neither held nor named: a format 1 record's) the
     first. A device with a null class, where the integration names classes, credits nothing (`Evidence.of`), so is on
-    no row."""
+    no row. `info` is the adapter's integration, whose classes say which domains it serves."""
     evidence = Evidence.of(adapter)
-    levels = level_rows(adapter.scope)
+    levels = level_rows(adapter.scope, served_domains(adapter, info))
     index = {level: number for number, (level, _) in enumerate(levels)}
     scope = adapter.scope
     entries = {name: (level, domains) for name, level, domains in scope.class_entries()}
@@ -737,7 +739,7 @@ def evidence(registry: AdapterRegistry, data: Data) -> str:
         parts.append("| Action | Level | Items | Tested models | Records |")
         parts.append("|---|---|---|---|---|")
         for adapter in integration_adapters:
-            parts += rows(adapter)
+            parts += rows(adapter, registry.integrations[key])
         if broken := [entry for entry in data.no_known_method if key in entry["integrations"]]:
             parts += ["", "| No known method | Why | Source |", "|---|---|---|"]
             parts += [

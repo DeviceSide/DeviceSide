@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import pytest
 from homeassistant.const import Platform
 
-from custom_components.deviceside.core.scope import AdapterScope, documented, experimental, verified
+from custom_components.deviceside.core.scope import AdapterScope, NotBuilt, documented, experimental, verified
 from scripts import gen_features as gf
 
 LIGHT = '<img src="https://raw.githubusercontent.com/DeviceSide/DeviceSide/main/docs/icons/light.svg"'
@@ -109,12 +109,30 @@ def test_an_experimental_domain_shows_no_icon_and_takes_its_group_with_it(no_blo
     assert gf.keys(adapter("zha", "stop", domains=experimental("light")), registry) == set()
 
 
+SHELLY_CLASSES = {"shelly": dict.fromkeys(("Light", "CCT", "RGBCCT"), frozenset({Platform.LIGHT}))}
+
+
 def test_capabilities_that_are_all_experimental_show_no_icon(no_blockers):
-    registry = FakeRegistry()
+    registry = FakeRegistry(classes=SHELLY_CLASSES)
     assert gf.keys(adapter("shelly", "stop", capabilities=experimental("Light", "CCT")), registry) == set()
     assert gf.keys(adapter("shelly", "stop", capabilities=verified("RGBCCT") | experimental("Light")), registry) == {
         "light"
     }
+
+
+def test_a_domain_whose_every_class_is_refused_shows_no_icon_even_with_the_option_on(no_blockers):
+    """ZHA's Turn on with timer: the scope keeps switch, so a plug is refused with its reason, but serves no class
+    there, so no icon offers it (core/registry.py, served_domains)."""
+    registry = FakeRegistry(classes={"zha": {"other": frozenset({Platform.LIGHT, Platform.SWITCH})}})
+    on_switches = NotBuilt("It ignores the timer", "https://example.com/source", domains=frozenset({"switch"}))
+    zha = adapter(
+        "zha",
+        "turn_on_for",
+        domains=verified("light") | experimental("switch"),
+        capabilities=experimental("other"),
+        not_built={"other": on_switches},
+    )
+    assert gf.keys(zha, registry, experimental=True) == {"light"}
 
 
 def test_a_group_needs_the_adapter_to_take_lights(no_blockers):
@@ -240,7 +258,7 @@ def test_an_experimental_domain_shows_a_grey_icon_after_the_amber_ones(no_blocke
 
 def test_all_experimental_capabilities_show_grey(no_blockers):
     adapters = every_row(capabilities=experimental("Light"))
-    cell = cells(gf.generate(FakeRegistry(*adapters)), "Get attributes")[2]
+    cell = cells(gf.generate(FakeRegistry(*adapters, classes=SHELLY_CLASSES)), "Get attributes")[2]
     assert "/light-grey.svg" in cell and LIGHT not in cell
 
 
