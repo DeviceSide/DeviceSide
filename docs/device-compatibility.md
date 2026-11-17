@@ -94,8 +94,9 @@ Zigbee2MQTT, turn on with timer is tested plug by plug: DeviceSide uses Tuya's c
 drives by it ([Tuya TS011F plugs](integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs)), and every other plug, a Hue
 one included, runs only with Experimental features on. On ZHA, and on Zigbee2MQTT's other Tuya
 plugs, DeviceSide refuses it, as they would turn on and stay on, or on long after the time asked; the
-[Tuya TS011F](#tuya-ts011f) runs only Tuya's own timer. Get attributes reads only the plugs another feature runs on,
-so none of Tuya's, nor the Sonoff SWV on ZHA. ZHA and Zigbee2MQTT each need their own report.
+[Tuya TS011F](#tuya-ts011f) runs only Tuya's own timer. Get attributes reads none of Tuya's plugs:
+a Zigbee2MQTT countdown plug's time left can't be read, and it reads only plugs another feature runs on, which the
+rest, and the Sonoff SWV on ZHA, are not. ZHA and Zigbee2MQTT each need their own report.
 
 ## Not built yet
 
