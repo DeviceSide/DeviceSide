@@ -27,6 +27,8 @@ invite them to Triage, as for an integration's maintainers.
   family maintainer's test code can't silence the integration's on a `/merge`.
 - **Ruleset on tags:** only a deploy key can create, move or delete a tag. The cut workflows'
   `RELEASE_TAG_DEPLOY_KEY` is the only one, so release tags come from those workflows alone.
+- **Deploy keys enabled (org, Member privileges):** with them off, GitHub refuses every deploy key whatever its
+  access, so a cut passes its checks and fails at the tag push with `Permission to … denied to deploy key`.
 - **Actions allow-list (org):** selected actions, pinned by full SHA. A new action needs an entry there before a
   workflow can use it.
 - **`pull_request_target` allowed explicitly (Actions event policy):** "Protected files" and "Owner notice" run on
