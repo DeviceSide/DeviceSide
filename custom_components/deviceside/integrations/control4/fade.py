@@ -5,6 +5,7 @@ import asyncio
 import logging
 from typing import ClassVar
 
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from .director import (
@@ -19,16 +20,16 @@ from .director import (
     unsupported_reason,
     whole_percent,
 )
+from ...core.fields import BRIGHTNESS_FIELD
 from ...core.level_fade import LevelFade, Reading
 from ...core.models import Target
 from ...core.scope import AdapterScope, experimental
-from ...core.transition import BRIGHTNESS
 
 _LOGGER = logging.getLogger(__name__)
 
 
 def fade_scope() -> AdapterScope:
-    return AdapterScope(experimental=True, domains=experimental("light"), fields=experimental(BRIGHTNESS))
+    return AdapterScope(experimental=True, domains=experimental(Platform.LIGHT), fields=experimental(BRIGHTNESS_FIELD))
 
 
 class Control4Fade(LevelFade):

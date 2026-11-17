@@ -599,7 +599,7 @@ def test_a_bundle_merges_in_as_its_integrations_own_and_its_page_holds_its_secti
     assert data.requires == {"zha": "Zigbee 3.0"}
     assert data.no_known_method[0]["integrations"] == ["zha"]
     # A section on the integration's page links there; the rest fall back to the shared page.
-    assert data.url("zha", "Dimmers") == f"{gc.BLOB_URL}docs/integrations/zha/index.md#dimmers"
+    assert data.url("zha", "Dimmers") == f"{gc.DOCS_URL}docs/integrations/zha/index.md#dimmers"
     assert data.url("zha", "Zigbee plugs") == f"{URL}#zigbee-plugs"
     assert data.url("hue", "Dimmers") == f"{URL}#dimmers"
     page = PROSE.replace("### Dimmers\n\n", "") + "<!-- evidence:start -->\n<!-- evidence:end -->\n"
@@ -616,7 +616,7 @@ def test_a_models_or_native_groups_section_on_another_integrations_page_links_th
     # Every card showing it links its heading on the ZHA page, which is where the check found it. A class's section
     # isn't one (test_a_bundle_merges_in_as_its_integrations_own_and_its_page_holds_its_sections).
     for key in ("hue", "zha"):
-        assert data.url(key, section) == f"{gc.BLOB_URL}docs/integrations/zha/index.md#{gf.slug(section)}"
+        assert data.url(key, section) == f"{gc.DOCS_URL}docs/integrations/zha/index.md#{gf.slug(section)}"
     gc.check_sections(
         PROSE.replace(f"### {section}\n\n", "") + "<!-- evidence:start -->\n<!-- evidence:end -->\n", data
     )
@@ -625,7 +625,7 @@ def test_a_models_or_native_groups_section_on_another_integrations_page_links_th
 def test_a_card_title_links_to_its_integrations_page(root, monkeypatch):
     data = gc.load(FakeRegistry(), write_bundles(root, monkeypatch))
     card = gc.card("zha", FakeRegistry(), [], data)
-    assert card.render().startswith(f"**[ZHA]({gc.BLOB_URL}docs/integrations/zha/index.md)** (Zigbee 3.0)")
+    assert card.render().startswith(f"**[ZHA]({gc.DOCS_URL}docs/integrations/zha/index.md)** (Zigbee 3.0)")
 
 
 @pytest.mark.parametrize(

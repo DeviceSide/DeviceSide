@@ -4,6 +4,7 @@ from enum import Enum, IntEnum
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
@@ -185,7 +186,7 @@ class AdapterScope:
 
     experimental: bool = False
     caveat: Caveat | None = None
-    domains: Mapping[str, Level] = field(default_factory=lambda: verified("light"))
+    domains: Mapping[str, Level] = field(default_factory=lambda: verified(Platform.LIGHT))
     duration: DurationLimits | None = None
     # Never Documented: a field changes the call, so no sibling's proof covers it.
     fields: Mapping[str, Level] = field(default_factory=dict)
@@ -304,7 +305,9 @@ class AdapterScope:
                 raise ValueError(f"{axis} take no domains: only a class's level is held on some domains")
         for name, entry in (self.capabilities or {}).items():
             if isinstance(entry, OnDomains) and not entry.domains <= self.domains.keys():
-                raise ValueError(f"class {name!r} is held on domains the scope doesn't serve: {sorted(entry.domains)}")
+                raise ValueError(
+                    f"class {name!r} is held on domains the scope doesn't serve: {sorted(map(str, entry.domains))}"
+                )
 
     def _check_unlisted(self) -> None:
         if unknown := self.unlisted - LACKABLE:
@@ -374,6 +377,9 @@ def class_scope(
         "not_built": {name: entry for name, entry in refused.items() if isinstance(entry, NotBuilt)},
         "own_calls": parts.own_calls,
     }
+
+
+OTHER = "other"  # the default class, never Verified (IntegrationInfo.default_class)
 
 
 @dataclass(slots=True)

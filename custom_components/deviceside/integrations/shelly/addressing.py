@@ -11,6 +11,7 @@ from typing import Any
 from homeassistant.core import HomeAssistant
 
 from ...core.errors import Reason
+from ...core.fields import BRIGHTNESS_FIELD, COLOR_TEMP, COLORS, TRANSITION
 from ...core.models import Target
 from ...core.scope import documented, experimental, verified
 
@@ -21,8 +22,8 @@ _UNIQUE_ID = re.compile(r"^[^-]+-(?P<key>switch|light|cct|rgb|rgbcct|rgbw):(?P<i
 
 COMPONENTS = {"switch": "Switch", "light": "Light", "cct": "CCT", "rgb": "RGB", "rgbcct": "RGBCCT", "rgbw": "RGBW"}
 
-_DIMMABLE = frozenset({"brightness", "transition"})
-_COLOR = frozenset({"hs_color", "rgb_color", "xy_color"})
+_DIMMABLE = frozenset({BRIGHTNESS_FIELD}) | TRANSITION
+_COLOR = COLORS
 
 # light.turn_on fields each component takes, as shelly/light.py translates them. A Switch shown as a light is on/off.
 # RGB and RGBW take color too, but core converts it differently for them (rgb to rgbw with a white split, kelvin to
@@ -34,7 +35,7 @@ COMPONENT_FIELDS = {
     "CCT": _DIMMABLE,
     "RGB": _DIMMABLE,
     "RGBW": _DIMMABLE,
-    "RGBCCT": _DIMMABLE | _COLOR | {"color_temp_kelvin"},
+    "RGBCCT": _DIMMABLE | _COLOR | COLOR_TEMP,
 }
 
 # The components every Shelly adapter addresses. Light, CCT, RGB and RGBW take the same <Component>.Set, SetConfig

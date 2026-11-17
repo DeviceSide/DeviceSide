@@ -11,15 +11,13 @@ from homeassistant.core import HomeAssistant
 
 from ...core.errors import Reason
 from ...core.models import Target
+from ...core.zcl import ON_OFF, ON_OFF_CLUSTER, ON_TIME, READBACK_SLACK_TENTHS
 
 _MATTER_DOMAIN = "matter"
 
 # OnOff cluster constants (Matter spec, cluster 0x0006)
-_ONOFF_CLUSTER_ID = 6
 _FEATUREMAP_ATTR_ID = 65532  # 0xFFFC
 _LT_FEATURE_BIT = 0x0001  # Lighting (LT) is bit 0; bit 1 (0x2) is DeadFrontBehavior
-_ONTIME_ATTR_ID = 16385  # 0x4001 — counts down to 0 while the timed-on is running
-_ONOFF_ATTR_ID = 0  # 0x0000 — true while the endpoint is on
 
 
 def node_id_from_unique_id(unique_id: str) -> int | None:
@@ -52,7 +50,7 @@ def onoff_endpoint(unique_id: str) -> int | None:
     if len(parts) < 7:
         return None
     try:
-        if (int(parts[-2]), int(parts[-1])) != (_ONOFF_CLUSTER_ID, _ONOFF_ATTR_ID):
+        if (int(parts[-2]), int(parts[-1])) != (ON_OFF_CLUSTER, ON_OFF):
             return None
         return int(parts[-4])
     except ValueError:
@@ -83,7 +81,7 @@ def matter_client(hass: HomeAssistant, config_entry_id: str | None = None):
 
 def _onoff_attr_path(endpoint_id: int, attr_id: int) -> str:
     """An OnOff attribute's path as python-matter-server keys it: "{endpoint}/{cluster}/{attribute}"."""
-    return f"{endpoint_id}/{_ONOFF_CLUSTER_ID}/{attr_id}"
+    return f"{endpoint_id}/{ON_OFF_CLUSTER}/{attr_id}"
 
 
 def lt_feature(node, endpoint_id: int) -> bool:
@@ -121,12 +119,12 @@ def unsupported_reason(hass: HomeAssistant, target: Target) -> str | None:
 
 def ontime_attr_path(endpoint_id: int) -> str:
     """Attribute path for OnOff.OnTime on the given endpoint, for python-matter-server's read_attribute."""
-    return _onoff_attr_path(endpoint_id, _ONTIME_ATTR_ID)
+    return _onoff_attr_path(endpoint_id, ON_TIME)
 
 
 def onoff_attr_path(endpoint_id: int) -> str:
     """Attribute path for OnOff.OnOff on the given endpoint, for python-matter-server's read_attribute."""
-    return _onoff_attr_path(endpoint_id, _ONOFF_ATTR_ID)
+    return _onoff_attr_path(endpoint_id, ON_OFF)
 
 
 async def read_timer(client, node_id: int, endpoint_id: int) -> tuple[object, object]:
@@ -144,10 +142,6 @@ async def read_timer(client, node_id: int, endpoint_id: int) -> tuple[object, ob
 
 def timer_running(on_time: object, on_off: object) -> bool:
     return isinstance(on_time, int) and on_time > 0 and on_off is True
-
-
-# OnTime counts down live, so the read-back lands a little under the request: the slack ZHA's read-back allows, 3 s.
-READBACK_SLACK_TENTHS = 30
 
 
 def timer_matches(read_on_time: object, on_off: object, on_time: int) -> bool:

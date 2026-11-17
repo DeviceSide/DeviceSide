@@ -30,13 +30,14 @@ from .bridge import OPTION, ensure_options, group_members, state_reply
 from .families.hue import HUE_MANUFACTURER
 from .restore_journal import Address, journal, locks
 from ...core.errors import describe
+from ...core.fields import COLOR_TEMP, COLORS
 from ...core.models import Target
 from ...core.runtime import get_runtime
 
 _LOGGER = logging.getLogger(__name__)
 
 # The fields Z2M sends as a separate command after on; brightness rides moveToLevelWithOnOff with it.
-COLOR_FIELDS = frozenset({"color_temp_kelvin", "hs_color", "rgb_color", "xy_color"})
+COLOR_FIELDS = COLORS | COLOR_TEMP
 _REPLY_CAP_S = 1.0
 
 

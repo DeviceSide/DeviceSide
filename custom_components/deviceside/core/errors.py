@@ -8,6 +8,8 @@ from ..const import DOMAIN
 
 # The call touches an Experimental scope item and the Experimental features option is off.
 EXPERIMENTAL_OFF = "experimental_off"
+# The read-back after set_attributes shows a value the device did not keep.
+NOT_STORED = "not_stored"
 
 
 class Reason(StrEnum):

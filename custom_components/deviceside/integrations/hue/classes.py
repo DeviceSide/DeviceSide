@@ -23,19 +23,20 @@ Every adapter's scope holds LEVELS; why `other` sits where it does is in interna
 """
 
 from aiohue.v2.models.resource import ResourceTypes
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
 from .bridge import bridge_api, light_device, resource_id
+from ...const import DOCS_URL
 from ...core.models import Target
-from ...core.scope import NoKnownMethod, experimental, verified
+from ...core.scope import OTHER, NoKnownMethod, experimental, verified
 
 # The manufacturer core's hue integration registers Signify's own devices with (homeassistant/components/hue/v2/
 # device.py), lights and bridge alike: internals.md, Tested behavior, Device strings.
 SIGNIFY = "Signify Netherlands B.V."
 
 HUE = "hue"
-OTHER = "other"  # the default class, never Verified (IntegrationInfo.default_class)
 SMART_SCENE = "smart_scene"
 CLASSES = frozenset({HUE, OTHER, SMART_SCENE})
 
@@ -44,7 +45,7 @@ CLASSES = frozenset({HUE, OTHER, SMART_SCENE})
 # are known to depart from the calls it plausibly sends (internals.md, Device classes; the step 8 PR body).
 LEVELS = verified(HUE) | experimental(OTHER)
 
-_PAGE = "https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/hue/index.md"
+_PAGE = DOCS_URL + "docs/integrations/hue/index.md"
 SET_SCENE_NO_KNOWN_METHOD = {
     # No known method: no known call can write a smart scene's settings, as it has none fixed, a limit of the scene,
     # not a call unbuilt. Not harmful (docs/evidence.md, When today's call harms a class): a wrong scene shows at once.
@@ -65,7 +66,7 @@ def device_class(device: dr.DeviceEntry) -> str:
 def capability(hass: HomeAssistant, target: Target) -> str | None:
     """Hue's IntegrationInfo.capability: a light's class by its device, a scene's by the lights it writes; None for a
     light with no device, or a scene with a light the bridge doesn't list or Home Assistant has no device for."""
-    if target.domain == "scene":
+    if target.domain == Platform.SCENE:
         return _scene_class(hass, target)
     return None if target.device is None else device_class(target.device)
 

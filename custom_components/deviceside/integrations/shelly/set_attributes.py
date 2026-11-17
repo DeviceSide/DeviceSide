@@ -4,16 +4,19 @@ then a GetStatus that confirms what the device kept."""
 from dataclasses import replace
 from typing import Any, ClassVar
 
+from homeassistant.components.light import ATTR_COLOR_TEMP_KELVIN, ATTR_HS_COLOR, ATTR_RGB_COLOR, ATTR_XY_COLOR
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from .addressing import address, unsupported_reason
 from .rpc import get_status, light_params, set_and_read_back, whole_percent
-from ...actions.set_attributes import SetAttributesRequest
+from ...actions.set_attributes import LIMITS, SetAttributesRequest
 from ...core.adapter import Adapter
+from ...core.errors import NOT_STORED
+from ...core.fields import BRIGHTNESS_FIELD
 from ...core.models import EntityResult, Status, Target
 from ...core.scope import AdapterScope, experimental, verified
 
-NOT_STORED = "not_stored"
 # The components set_attributes addresses. RGBCCT's Set without `on` keeping the output as it is, and storing the
 # values, is the rig's finding (probe of 8 Nov). Light, CCT, RGB and RGBW take the same <Component>.Set
 # (shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Light, /CCT, /RGB, /RGBW), but whether their docs say alike
@@ -55,9 +58,14 @@ class ShellySetAttributes(Adapter[SetAttributesRequest]):
     action: ClassVar[str] = "set_attributes"
     integration: ClassVar[str] = "shelly"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        domains=verified("light"),
+        domains=verified(Platform.LIGHT),
         fields=verified(
-            "brightness", "color_temp_kelvin", "hs_color", "rgb_color", "xy_color", "min_brightness", "max_brightness"
+            BRIGHTNESS_FIELD,
+            ATTR_COLOR_TEMP_KELVIN,
+            ATTR_HS_COLOR,
+            ATTR_RGB_COLOR,
+            ATTR_XY_COLOR,
+            *LIMITS,
         ),
         capabilities=SET_CAPABILITIES,
         confirmable=True,

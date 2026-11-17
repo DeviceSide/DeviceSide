@@ -9,13 +9,12 @@ from homeassistant.core import Context, HomeAssistant
 from homeassistant.exceptions import HomeAssistantError, Unauthorized, UnknownUser
 
 from .addressing import Address, group_entity_id
+from ...core.zcl import ON_OFF as ON_OFF
+from ...core.zcl import ON_OFF_CLUSTER as ON_OFF_CLUSTER
+from ...core.zcl import ON_TIME as ON_TIME
 from ...core.zcl_write import level as level
 
 _LOGGER = logging.getLogger(__name__)
-
-ON_OFF_CLUSTER = 0x0006
-ON_OFF = 0x0000
-ON_TIME = 0x4001
 
 LEVEL_CLUSTER = 0x0008
 CURRENT_LEVEL = 0x0000

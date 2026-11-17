@@ -4,6 +4,7 @@ from urllib.parse import quote, urlencode
 
 import voluptuous as vol
 from homeassistant import config_entries
+from homeassistant.const import CONF_ENTITY_ID, Platform
 from homeassistant.const import __version__ as HA_VERSION
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr
@@ -22,6 +23,7 @@ from .const import (
     EXPERIMENTAL_DEFAULT,
     NAME,
     PREDICTED_STATE_DEFAULT,
+    REPO_URL,
     Z2M_COLOR_MODES_DEFAULT,
 )
 from .core.errors import describe
@@ -30,8 +32,7 @@ from .core.runtime import DATA
 
 _LOGGER = logging.getLogger(__name__)
 
-REPORT_URL = "https://github.com/DeviceSide/DeviceSide/issues/new"
-CONF_ENTITY = "entity_id"
+REPORT_URL = REPO_URL + "/issues/new"
 
 
 class DeviceSideConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -232,15 +233,15 @@ class DeviceSideOptionsFlow(config_entries.OptionsFlowWithReload):
     async def _pick_entities(self, form: IssueForm, user_input):
         """Pick the lights and switches (one, for a form that takes a single device), then show the link."""
         if user_input is not None:
-            picked = user_input[CONF_ENTITY]
+            picked = user_input[CONF_ENTITY_ID]
             self._issue_url = await issue_url(self.hass, form, picked if isinstance(picked, list) else [picked])
             return self._show_link(form.link_step, None)
         return self.async_show_form(
             step_id=form.step,
             data_schema=vol.Schema(
                 {
-                    vol.Required(CONF_ENTITY): EntitySelector(
-                        EntitySelectorConfig(domain=["light", "switch"], multiple=form.multiple)
+                    vol.Required(CONF_ENTITY_ID): EntitySelector(
+                        EntitySelectorConfig(domain=[Platform.LIGHT, Platform.SWITCH], multiple=form.multiple)
                     )
                 }
             ),

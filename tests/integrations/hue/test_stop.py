@@ -6,7 +6,8 @@ import pytest
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util.color import color_hs_to_xy, color_xy_to_hs
 
-from custom_components.deviceside.core.transition import BRIGHTNESS, SATURATION
+from custom_components.deviceside.core.fields import BRIGHTNESS_FIELD
+from custom_components.deviceside.core.transition import SATURATION
 from custom_components.deviceside.integrations.hue.transition_cache import transition_cache
 
 from .conftest import SENT, STOP, call, color_lamp, color_room, hs_xy, lamp, mixed_room, report_off, room, xy_halt
@@ -225,7 +226,7 @@ async def test_a_stop_cancelled_mid_write_leaves_the_predictions_it_found(hass, 
     await call(hass, "raise_brightness", {"entity_id": entity_id, "sweep_time": 10})
     await call(hass, "lower_saturation", {"entity_id": entity_id, "sweep_time": 10, "limit": 0})
     cache = transition_cache(hass)
-    before = {attribute: cache.live("light-1", attribute) for attribute in (BRIGHTNESS, SATURATION)}
+    before = {attribute: cache.live("light-1", attribute) for attribute in (BRIGHTNESS_FIELD, SATURATION)}
     path = cache._paths["light-1"]
     clock.now += 2
     sent = asyncio.Event()

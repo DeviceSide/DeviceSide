@@ -96,3 +96,14 @@ repos:
         entry: python scripts/check_logging.py
         language: python
         files: ^custom_components/.*\.py$
+
+  # -------------------------
+  # HA names as literals (CLAUDE.md Conventions: Constants)
+  # -------------------------
+  - repo: local
+    hooks:
+      - id: check-ha-literals
+        name: check HA literals
+        entry: python scripts/check_ha_literals.py
+        language: python
+        files: ^custom_components/.*\.py$

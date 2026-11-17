@@ -18,9 +18,10 @@ from .transition_cache import MIN_BRIGHTNESS_STEP, XY, HueTransitionCache, trans
 from ...actions.ramp import RampRequest
 from ...core.adapter import Adapter
 from ...core.errors import Reason
+from ...core.fields import BRIGHTNESS_FIELD
 from ...core.models import EntityResult, Status, Target
 from ...core.scope import AdapterScope, verified
-from ...core.transition import BRIGHTNESS, SATURATION, TransitionCache, lit_where, reported_brightness
+from ...core.transition import SATURATION, TransitionCache, lit_where, reported_brightness
 
 if TYPE_CHECKING:
     from aiohue.v2 import HueBridgeV2
@@ -37,7 +38,7 @@ def room_lights(api: HueBridgeV2, target: Target) -> list[Light]:
 
 def predicted_brightness(cache: TransitionCache, light: Light) -> float:
     """A room light's predicted brightness in percent, 0 while off."""
-    return cache.value(light.id, BRIGHTNESS, light.dimming.brightness if light.on.on else 0.0)
+    return cache.value(light.id, BRIGHTNESS_FIELD, light.dimming.brightness if light.on.on else 0.0)
 
 
 def light_xy(cache: HueTransitionCache, light: Light) -> XY:
@@ -53,7 +54,7 @@ def lit(cache: TransitionCache, lights: list[Light]) -> list[Light]:
 
 def in_soft_off(cache: TransitionCache, light_id: str) -> bool:
     """Whether a move of ours is still fading the light to off, which the bridge won't take a dimming stop for."""
-    return (transition := cache.running(light_id, BRIGHTNESS)) is not None and transition.target == 0
+    return (transition := cache.running(light_id, BRIGHTNESS_FIELD)) is not None and transition.target == 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,7 +75,7 @@ def fade_scope(attribute: str) -> AdapterScope:
     return AdapterScope(
         capabilities=LEVELS,
         fields=verified(attribute),
-        options=frozenset({"predicted_state"}) if attribute == BRIGHTNESS else frozenset(),
+        options=frozenset({"predicted_state"}) if attribute == BRIGHTNESS_FIELD else frozenset(),
         native_groups=True,
     )
 
@@ -120,7 +121,7 @@ class HueFade(Adapter[RampRequest]):
                 return self.result(target, Status.REJECTED, detail="not_on_bridge")
             # Before the write, as stop does: the bridge may report the fade's end before the write returns.
             reports = report_filter(hass, target)
-            if request.attribute == BRIGHTNESS:
+            if request.attribute == BRIGHTNESS_FIELD:
                 fade = brightness_fade(cache, request, target, api, resource, predicted_state=reports.hiding)
             else:
                 fade = saturation_fade(cache, request, target, api, resource)
@@ -186,7 +187,7 @@ def brightness_fade(
     else:
         rid = resource_id(target)
         lit_lights = lit(cache, [resource])
-        starts = {rid: cache.value(rid, BRIGHTNESS, reported_brightness(target))}
+        starts = {rid: cache.value(rid, BRIGHTNESS_FIELD, reported_brightness(target))}
         moving, current = [rid], starts[rid]
     if not up and predicted_state and not lit_lights:
         return "off"
@@ -195,7 +196,11 @@ def brightness_fade(
     duration = abs(limit - current) / 100 * request.sweep_time
     write = {"on": False} if limit == 0 else {"on": True if up else None, "brightness": limit}
     return Fade(
-        BRIGHTNESS, {light_id: starts[light_id] for light_id in moving}, dict.fromkeys(moving, limit), duration, write
+        BRIGHTNESS_FIELD,
+        {light_id: starts[light_id] for light_id in moving},
+        dict.fromkeys(moving, limit),
+        duration,
+        write,
     )
 
 

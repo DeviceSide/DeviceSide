@@ -1,12 +1,21 @@
 from dataclasses import replace
 from typing import ClassVar
 
+from homeassistant.components.light import (
+    ATTR_COLOR_TEMP_KELVIN,
+    ATTR_HS_COLOR,
+    ATTR_RGB_COLOR,
+    ATTR_TRANSITION,
+    ATTR_XY_COLOR,
+)
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from .addressing import CAPABILITIES, COMPONENT_FIELDS, address, unsupported_reason
 from .rpc import TIMER_LIMITS, light_params, set_with_timer
 from ...actions.turn_on_for import TurnOnForRequest
 from ...core.adapter import Adapter
+from ...core.fields import BRIGHTNESS_FIELD
 from ...core.models import EntityResult, Target
 from ...core.scope import AdapterScope, verified
 
@@ -17,9 +26,11 @@ class ShellyTurnOnFor(Adapter[TurnOnForRequest]):
     action: ClassVar[str] = "turn_on_for"
     integration: ClassVar[str] = "shelly"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        domains=verified("light", "switch"),
+        domains=verified(Platform.LIGHT, Platform.SWITCH),
         duration=TIMER_LIMITS,
-        fields=verified("brightness", "color_temp_kelvin", "hs_color", "rgb_color", "transition", "xy_color"),
+        fields=verified(
+            BRIGHTNESS_FIELD, ATTR_COLOR_TEMP_KELVIN, ATTR_HS_COLOR, ATTR_RGB_COLOR, ATTR_TRANSITION, ATTR_XY_COLOR
+        ),
         # A relay shown as a light sends the same Switch.Set.
         capabilities=CAPABILITIES,
         confirmable=True,

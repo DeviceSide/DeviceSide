@@ -2,7 +2,7 @@
 
 import pytest
 
-from custom_components.deviceside.core.transition import BRIGHTNESS
+from custom_components.deviceside.core.fields import BRIGHTNESS_FIELD
 from custom_components.deviceside.integrations.zigbee2mqtt.fade import transition_cache
 
 from .conftest import BOTTOM, GET, SENT, SET, call, commands, group, light
@@ -36,7 +36,7 @@ async def test_a_fade_longer_than_a_zcl_transition_runs_at_the_longest(hass, bro
 
     assert response == {entity_id: {**SENT, "clamped_to": 16383.5}}
     assert commands(broker) == [(SET, {"state": "ON", "brightness": 254, "transition": 6553.4})]
-    assert transition_cache(hass).value(entity_id, BRIGHTNESS, -1) == pytest.approx(60.0)
+    assert transition_cache(hass).value(entity_id, BRIGHTNESS_FIELD, -1) == pytest.approx(60.0)
 
 
 async def test_at_the_top_is_unchanged(hass, broker):
@@ -68,7 +68,7 @@ async def test_a_group_with_an_off_member_moves_it_up_from_the_bottom(hass, brok
         ("zigbee2mqtt/7/set", {"state": "ON", "brightness": 254, "transition": 1.0}),
     ]
     clock.now += 0.5
-    assert transition_cache(hass).value("light.two", BRIGHTNESS, -1) == pytest.approx(50.0)
+    assert transition_cache(hass).value("light.two", BRIGHTNESS_FIELD, -1) == pytest.approx(50.0)
 
 
 async def test_a_group_all_off_is_put_at_the_bottom_with_one_publish(hass, broker):

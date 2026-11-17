@@ -16,6 +16,17 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Literal, Protocol
 
+from homeassistant.components.light import (
+    ATTR_COLOR_NAME,
+    ATTR_COLOR_TEMP_KELVIN,
+    ATTR_EFFECT,
+    ATTR_HS_COLOR,
+    ATTR_RGB_COLOR,
+    ATTR_RGBW_COLOR,
+    ATTR_RGBWW_COLOR,
+    ATTR_WHITE,
+    ATTR_XY_COLOR,
+)
 from homeassistant.const import (
     ATTR_DOMAIN,
     ATTR_ENTITY_ID,
@@ -23,6 +34,10 @@ from homeassistant.const import (
     ATTR_SERVICE_DATA,
     ENTITY_MATCH_ALL,
     EVENT_CALL_SERVICE,
+    SERVICE_TOGGLE,
+    SERVICE_TURN_OFF,
+    SERVICE_TURN_ON,
+    Platform,
 )
 from homeassistant.core import CALLBACK_TYPE, Event, HomeAssistant, callback
 from homeassistant.helpers import entity_registry as er
@@ -32,19 +47,19 @@ from .runtime import get_runtime
 
 _LOGGER = logging.getLogger(__name__)
 
-SERVICE_DOMAINS = frozenset({"light", "scene"})
+SERVICE_DOMAINS = frozenset({Platform.LIGHT, Platform.SCENE})
 # A turn_on with any of these sets a color or an effect, which ends a bulb's hue cycle; so do turn_off and toggle.
 _COLOR_FIELDS = frozenset(
     {
-        "hs_color",
-        "xy_color",
-        "rgb_color",
-        "rgbw_color",
-        "rgbww_color",
-        "color_name",
-        "color_temp_kelvin",
-        "white",
-        "effect",
+        ATTR_HS_COLOR,
+        ATTR_XY_COLOR,
+        ATTR_RGB_COLOR,
+        ATTR_RGBW_COLOR,
+        ATTR_RGBWW_COLOR,
+        ATTR_COLOR_NAME,
+        ATTR_COLOR_TEMP_KELVIN,
+        ATTR_WHITE,
+        ATTR_EFFECT,
     }
 )
 _PENDING = "ha_watch_pending"
@@ -69,11 +84,11 @@ class Call:
     @property
     def ends_hue_cycle(self) -> bool:
         """Whether the call sets a color or turns the light off, which ends a hue move's cycle on the bulb."""
-        if self.domain != "light":
+        if self.domain != Platform.LIGHT:
             return False
-        if self.service in ("turn_off", "toggle"):
+        if self.service in (SERVICE_TURN_OFF, SERVICE_TOGGLE):
             return True
-        return self.service == "turn_on" and not _COLOR_FIELDS.isdisjoint(self.service_data)
+        return self.service == SERVICE_TURN_ON and not _COLOR_FIELDS.isdisjoint(self.service_data)
 
 
 class CallResolver(Protocol):

@@ -3,10 +3,10 @@
 from typing import ClassVar
 
 from .fade import HueFade, fade_scope
+from ...core.fields import BRIGHTNESS_FIELD
 from ...core.scope import AdapterScope
-from ...core.transition import BRIGHTNESS
 
 
 class HueRaiseBrightness(HueFade):
     action: ClassVar[str] = "raise_brightness"
-    scope: ClassVar[AdapterScope] = fade_scope(BRIGHTNESS)
+    scope: ClassVar[AdapterScope] = fade_scope(BRIGHTNESS_FIELD)
