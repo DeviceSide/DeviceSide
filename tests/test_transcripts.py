@@ -4,10 +4,13 @@ Each inner session runs in a subprocess, as the recorder patches the dispatcher 
 whole session.
 """
 
+import enum
 import json
 from pathlib import Path
 
 import pytest
+
+from tests.transcripts import norm
 
 ROOT = Path(__file__).parents[1]
 CALLS = "tests/integrations/fake/calls"
@@ -24,6 +27,9 @@ async def send(hass, payload, *, context=None):
 
 
 class Client:
+    async def send(self, payload):
+        return {"client": payload}
+
     @staticmethod
     def static():
         pass
@@ -201,6 +207,7 @@ def test_transcripts_are_off_by_default(inner):
         pytest.param(["-m", "slow"], "it runs with -m", id="m"),
         pytest.param(["--deselect", "test_inner.py::test_action"], "it runs with --deselect", id="deselect"),
         pytest.param(["test_inner.py"], "it runs test_inner.py, not the testpaths", id="path"),
+        pytest.param(["--collect-only"], "it runs with --collect-only", id="collect-only"),
     ],
 )
 def test_a_narrowed_run_is_refused(inner, args, reason):
@@ -232,6 +239,29 @@ def pytest_collection_modifyitems(config, items):
     assert result.ret == pytest.ExitCode.USAGE_ERROR
     result.stdout.fnmatch_lines(["--transcripts=write needs the whole suite: this run deselects tests"])
     assert not (inner.path / CALLS).exists()
+
+
+def test_a_run_from_a_subdirectory_is_refused(inner, monkeypatch):
+    sub = inner.mkpydir("sub")
+    (sub / "test_sub.py").write_text("def test_sub():\n    pass\n")
+    monkeypatch.chdir(sub)
+
+    result = run(inner, "--transcripts=write")
+
+    assert result.ret == pytest.ExitCode.USAGE_ERROR
+    result.stderr.fnmatch_lines(["ERROR: --transcripts=write needs the whole suite: it runs */sub, not the testpaths"])
+
+
+def test_a_run_where_no_test_ran_keeps_the_golden_files(inner):
+    assert run(inner, "--transcripts=write").ret == 0
+    only(inner, "")
+
+    for mode in ("write", "check"):
+        result = run(inner, f"--transcripts={mode}")
+
+        assert result.ret == pytest.ExitCode.USAGE_ERROR
+        result.stdout.fnmatch_lines([f"transcripts not {'written' if mode == 'write' else 'checked'}: no test ran"])
+    assert (inner.path / GOLDEN).is_file()
 
 
 def test_the_whole_suite_named_explicitly_is_not_narrowed(inner):
@@ -391,10 +421,71 @@ async def test_cancelled(hass, setup_integration):
     assert not (inner.path / CALLS).exists()
 
 
-def test_an_unnormalized_value_blocks_write(inner):
+def test_a_class_method_boundary_records_its_call_mocked_or_not(inner):
+    (inner.path / "tests/integrations/fake/wire.py").write_text('BOUNDARIES = [("inner_wire", "Client.send", 1)]\n')
     only(
         inner,
         """
+from unittest.mock import AsyncMock, patch
+
+import inner_wire
+
+from tests.conftest import call
+from tests.fakes.fake_integration import FakeTurnOnFor
+from tests.fakes.scripted import ScriptedAdapter
+from tests.fixtures.fake import add_fake_entity, fake_config_entry
+
+
+async def sends(self, hass, request, targets):
+    await inner_wire.Client().send({"level": 1})
+    return await ScriptedAdapter.execute(self, hass, request, targets)
+
+
+async def turn_on(hass):
+    add_fake_entity(hass, fake_config_entry(hass), "light.a")
+    with patch.object(FakeTurnOnFor, "execute", sends):
+        await call(hass, "turn_on_for", {"entity_id": "light.a", "duration": 5})
+
+
+async def test_real(hass, setup_integration):
+    await turn_on(hass)
+
+
+async def test_mocked_on_the_class(hass, setup_integration, monkeypatch):
+    mock = AsyncMock(return_value={"mocked": True})
+    monkeypatch.setattr(inner_wire.Client, "send", mock)
+    await turn_on(hass)
+    # Called without the instance, as a mock on a class is; reached through the wrapper, which forwards to it.
+    mock.assert_awaited_once_with({"level": 1})
+    inner_wire.Client().send.assert_awaited_once_with({"level": 1})
+""",
+    )
+
+    assert run(inner, "--transcripts=write").ret == 0
+    assert sorted((segment["wire"] for segment in segments(inner)), key=str) == [
+        [[["inner_wire.Client.send", [{"level": 1}], {}], {"client": {"level": 1}}]],
+        [[["inner_wire.Client.send", [{"level": 1}], {}], {"mocked": True}]],
+    ]
+
+
+def test_dict_keys_are_normalized():
+    class Color(enum.Enum):
+        RED = "red"
+
+    assert norm({1: "a", (1, 2): "b", Color.RED: "c", None: "d", b"\x01": "e"}) == {
+        "1": "a",
+        "[1, 2]": "b",
+        "red": "c",
+        "null": "d",
+        "01": "e",
+    }
+
+
+@pytest.mark.parametrize("reply", [pytest.param("object()", id="value"), pytest.param("{object(): 1}", id="key")])
+def test_an_unnormalized_value_blocks_write(inner, reply):
+    only(
+        inner,
+        f"""
 import inner_wire
 
 from inner_helpers import run
@@ -402,7 +493,7 @@ from inner_helpers import run
 
 async def test_object(hass, setup_integration, monkeypatch):
     async def send(hass, payload, **kw):
-        return object()
+        return {reply}
 
     monkeypatch.setattr(inner_wire, "send", send)
     await run(hass)

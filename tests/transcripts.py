@@ -1,22 +1,24 @@
 """Call transcripts: what each action sent on the wire in the unit tests, and what it made of the replies.
 
-Off unless pytest runs with `--transcripts=write|check`, and refused on a run narrower than the whole suite (`-k`,
-`-m`, `--lf`, `--sw`, `--deselect`, `--ignore`, paths other than the testpaths, or any deselection), which would drop
-or miss every action it didn't reach. Each `Dispatcher._run_adapter` run opens a segment, `{integration, action,
-request, wire, result}`, held in a ContextVar, so the tasks and timers the run starts (a fade's ticks) land in it too.
-`wire` holds each call made inside the segment at a wire boundary, as `[call, reply]`: any non-DeviceSide service
-through `ServiceRegistry.async_call`, as `["service", "<domain>.<service>", data]` (and `{"target": ...}` when one is
-passed), and each boundary an integration declares in its `tests/integrations/<x>/wire.py`,
-`BOUNDARIES = [(module, attribute, leading args to drop), ...]`, as `["<module's last name>.<attribute>", args,
-kwargs]`. A boundary is wrapped at each segment's open, around whatever a test installed there (so name it where
-callers look it up), and unwrapped when the test ends; a call it makes to itself, as a test's mock calling through
-to the real one, records once. `result` is the run's reconciled per-target results. A segment is serialized when
-its test ends, and carries no test id; a run its test didn't see finish is left out.
+Off unless pytest runs with `--transcripts=write|check`, and refused on a run narrower than the whole suite (`-k`, `-m`,
+`--lf`, `--sw`, `--deselect`, `--ignore`, `--collect-only`, paths other than the testpaths, a run from a subdirectory,
+any deselection, or one where no test ran), which would drop or miss every action it didn't reach. Each
+`Dispatcher._run_adapter` run opens a segment, `{integration, action, request, wire, result}`, held in a ContextVar, so
+the tasks and timers the run starts (a fade's ticks) land in it too. `wire` holds each call made inside the segment at a
+wire boundary, as `[call, reply]`: any non-DeviceSide service through `ServiceRegistry.async_call`, as `["service",
+"<domain>.<service>", data]` (and `{"target": ...}` when one is passed), and each boundary an integration declares in
+its `tests/integrations/<x>/wire.py`, `BOUNDARIES = [(module, attribute, leading args to drop), ...]`, as `["<module's
+last name>.<attribute>", args, kwargs]` (a class's method, `Class.method`, has its instance as the first arg, even when
+a test's mock on the class is called without it). A boundary is wrapped at each segment's open, around whatever a test
+installed there (so name it where callers look it up), and unwrapped when the test ends; a call it makes to itself, as a
+test's mock calling through to the real one, records once. `result` is the run's reconciled per-target results. A
+segment is serialized when its test ends, and carries no test id; a run its test didn't see finish is left out.
 
-Normalization: HomeAssistant and Context values are dropped (omitted from mappings and dataclasses, None in a
-sequence), as they hold per-run ids; dataclasses become dicts of their fields; enums their values; sets sorted lists;
-bytes hex; a raised exception `{"raises": <class name>}`; any other object `"<TypeName>"`, which fails the run when
-it's in a segment's wire or result: an integration's library types get a rule here.
+Normalization: HomeAssistant and Context values are dropped (omitted from mappings and dataclasses, None in a sequence),
+as they hold per-run ids; dataclasses become dicts of their fields; enums their values; sets sorted lists; bytes hex; a
+mapping's keys are normalized too, and one that isn't then a str becomes its JSON text; a raised exception `{"raises":
+<class name>}`; any other object `"<TypeName>"`, which fails the run when it's in a segment's wire or result: an
+integration's library types get a rule here.
 
 `write`, after a run with no failures, writes `tests/integrations/<x>/calls/<action>.json`, the sorted unique segments
 of each action, for each integration with a `tests/integrations/<x>/` directory, and removes the `calls/` files of
@@ -63,6 +65,7 @@ _NARROWING = (
     ("--deselect", "deselect"),
     ("--ignore", "ignore"),
     ("--ignore-glob", "ignore_glob"),
+    ("--collect-only", "collectonly"),
 )
 
 type Boundary = tuple[str, str, int]
@@ -81,7 +84,7 @@ def norm(value: Any) -> Any:  # noqa: C901
             f.name: norm(v) for f in dataclasses.fields(value) if not isinstance(v := getattr(value, f.name), _DROPPED)
         }
     if isinstance(value, dict):
-        return {str(k): norm(v) for k, v in value.items() if not isinstance(v, _DROPPED)}
+        return {_json_key(norm(k)): norm(v) for k, v in value.items() if not isinstance(v, _DROPPED)}
     if isinstance(value, list | tuple):
         return [norm(v) for v in value]
     if isinstance(value, set | frozenset):
@@ -99,6 +102,11 @@ def _key(value: Any) -> str:
     return json.dumps(value, sort_keys=True)
 
 
+def _json_key(value: Any) -> str:
+    """A normalized mapping key as a JSON object's key: a str as it is, anything else its JSON text."""
+    return value if isinstance(value, str) else _key(value)
+
+
 def _record(call: list, reply: Any) -> None:
     """One wire call and its reply (or raise), into the open segment."""
     if (segment := _SEGMENT.get()) is not None:
@@ -111,10 +119,12 @@ class Wire:
     mock after a call still configures the mock. A call made while the same boundary is already recording in this
     context (a test's mock calling through to the real one) isn't recorded again."""
 
-    def __init__(self, name: str, fn: Callable, skip: int) -> None:
+    def __init__(self, name: str, fn: Callable, skip: int, instance: tuple = ()) -> None:
         object.__setattr__(self, "__wrapped__", fn)
         object.__setattr__(self, "_wire_name", name)
         object.__setattr__(self, "_wire_skip", skip)
+        # The instance a mock on a class was looked up on, recorded first as a method's would be, never passed on.
+        object.__setattr__(self, "_wire_instance", instance)
 
     def __getattr__(self, attr: str) -> Any:
         return getattr(self.__wrapped__, attr)
@@ -126,15 +136,18 @@ class Wire:
         delattr(self.__wrapped__, attr)
 
     def __get__(self, instance: Any, owner: type | None = None) -> Any:
-        # A method binds as the function it wraps would; a mock on a class doesn't bind, so neither does its wrapper.
-        if instance is None or not hasattr(type(self.__wrapped__), "__get__"):
+        # A method binds as the function it wraps would. A mock on a class doesn't bind, so it's called without the
+        # instance, but its wrapper records the instance all the same, so a mocked call records as the real one does.
+        if instance is None:
             return self
-        return MethodType(self, instance)
+        if hasattr(type(self.__wrapped__), "__get__"):
+            return MethodType(self, instance)
+        return Wire(self._wire_name, self.__wrapped__, self._wire_skip, (instance,))
 
     def __call__(self, *args, **kwargs) -> Any:
         if _SEGMENT.get() is None or self._wire_name in _ACTIVE.get():
             return self.__wrapped__(*args, **kwargs)
-        call = [self._wire_name, list(args[self._wire_skip :]), kwargs]
+        call = [self._wire_name, list((*self._wire_instance, *args)[self._wire_skip :]), kwargs]
         token = _ACTIVE.set(_ACTIVE.get() | {self._wire_name})
         try:
             reply = self.__wrapped__(*args, **kwargs)
@@ -204,6 +217,7 @@ class Recorder:
         self.installed: list[tuple[Any, str, bool, Wire]] = []  # the running test's wrappers: owner, name, own attr
         self.segments: dict[tuple[str, str], set[str]] = {}  # (integration, action): each segment as JSON
         self.deselected = False
+        self.ran = False  # whether any test ran, here or (under xdist) on a worker
         self.problems: list[str] = []  # what the session's end reports
 
     # --- recording
@@ -296,6 +310,9 @@ class Recorder:
     def pytest_deselected(self, items) -> None:
         self.deselected = True
 
+    def pytest_runtest_logreport(self, report) -> None:
+        self.ran = True
+
     def pytest_collection_finish(self, session) -> None:
         if not self.deselected:
             return
@@ -322,6 +339,11 @@ class Recorder:
             return
         if self.deselected:
             self.problems.append(_DESELECTED.format(mode=self.mode))
+            session.exitstatus = pytest.ExitCode.USAGE_ERROR
+            return
+        if not self.ran:
+            # Every golden file would be extra: a write would remove them all.
+            self.problems.append(f"transcripts not {_DONE[self.mode]}: no test ran")
             session.exitstatus = pytest.ExitCode.USAGE_ERROR
             return
         if exitstatus != pytest.ExitCode.OK:
@@ -392,7 +414,8 @@ def _placeholders(value: Any):
         if _PLACEHOLDER.fullmatch(value):
             yield value
     elif isinstance(value, dict):
-        for v in value.values():
+        for k, v in value.items():
+            yield from _placeholders(k)
             yield from _placeholders(v)
     elif isinstance(value, list):
         for v in value:
@@ -437,15 +460,19 @@ def pytest_addoption(parser: pytest.Parser) -> None:
 
 def _narrowed(config: pytest.Config) -> str | None:
     """Why this run covers less than the whole suite, or None. A narrowed write would drop every action it didn't
-    reach, and a narrowed check would report them missing. Deselection by any other means is caught at collection."""
+    reach, and a narrowed check would report them missing. Deselection by any other means is caught at collection,
+    and a run where no test ran at the session's end.
+
+    Paths given, or a run from a subdirectory with none (`ArgsSource.INVOCATION_DIR`), must name the testpaths (the
+    rootdir when there are none); only pytest's own expansion of the testpaths is taken as is."""
     option = config.option
     for flag, dest in _NARROWING:
         if getattr(option, dest, None):
             return f"it runs with {flag}"
-    if config.args_source == pytest.Config.ArgsSource.ARGS:
+    if config.args_source != pytest.Config.ArgsSource.TESTPATHS:
         given = {(config.invocation_params.dir / arg).resolve() for arg in config.args}
         default = {(config.rootpath / path).resolve() for path in config.getini("testpaths")}
-        if given != (default or {config.invocation_params.dir.resolve()}):
+        if given != (default or {config.rootpath.resolve()}):
             return f"it runs {' '.join(config.args)}, not the testpaths"
     return None
 
