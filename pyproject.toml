@@ -49,5 +49,5 @@ dev = [
     # CI runs the suite on one worker per runner vCPU (`-n auto`), about half the serial time.
     "pytest-xdist>=3.6",
     # Bump with ruff-pre-commit's rev in .pre-commit-config.yaml, so the two never disagree.
-    "ruff==0.17.2",
+    "ruff==0.17.5",
 ]
