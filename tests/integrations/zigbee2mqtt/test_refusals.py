@@ -4,6 +4,7 @@ and what the user reads. The integration's, as the entries are: a family's own t
 import pytest
 from homeassistant.exceptions import HomeAssistantError
 
+from custom_components.deviceside import actions
 from custom_components.deviceside.core.errors import TargetNotSupported
 from custom_components.deviceside.core.scope import NotBuilt
 from custom_components.deviceside.integrations.zigbee2mqtt import ADAPTERS
@@ -15,15 +16,18 @@ from ...conftest import call as call_service
 from ...fixtures.zigbee2mqtt import IEEE, add_z2m_entity, z2m_entry
 
 COUNTDOWN = {"type": "numeric", "name": "countdown", "property": "countdown"}
+FAILURE_HARMS = {action.key: action.failure_harms for action in actions.discover()}
 
 
-def test_turn_on_for_alone_refuses_classes_and_each_entry_harms():
-    """No Z2M class has no known method: each refused one has a call that would work, not built yet. `harms`, so the
-    dispatcher refuses a device it can't place too; no other Z2M adapter does."""
+def test_turn_on_for_alone_refuses_classes_and_harms_there_alone():
+    """No Z2M class has no known method: each refused one has a call that would work, not built yet. turn_on_for's
+    failure harms, so the dispatcher refuses a device it can't place too; no other Z2M adapter does."""
     assert REFUSALS.keys() == {"turn_on_for"}
     assert set(REFUSALS["turn_on_for"]) == {"tuya_ts011f", "tuya_zcl", "tuya_mcu", "tuya_countdown_harmed"}
-    assert all(isinstance(entry, NotBuilt) and entry.harms for entry in REFUSALS["turn_on_for"].values())
-    assert [adapter.action for adapter in ADAPTERS if adapter.scope.harms] == ["turn_on_for"]
+    assert all(isinstance(entry, NotBuilt) for entry in REFUSALS["turn_on_for"].values())
+    assert [adapter.action for adapter in ADAPTERS if adapter.scope.harms(FAILURE_HARMS[adapter.action])] == [
+        "turn_on_for"
+    ]
 
 
 def test_each_entry_is_in_its_adapter_s_scope():

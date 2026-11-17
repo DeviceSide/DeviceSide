@@ -103,17 +103,13 @@ class NoKnownMethod:
     the source, an https URL (scripts/gen_compat.py checks it). The dispatcher refuses it as `no_known_method`,
     raising with the reason; the card lists it under No known method.
 
-    `harms`, which every entry states: whether the call's failure on the class is deferred and unattended, leaving it
-    on or off unasked after the user stopped watching (a plug turned on that stays on), by docs/evidence.md's test,
-    When today's call harms a class: the timed and auto on/off actions, never dimming, color or a read. Where an
-    adapter's scope holds one such entry, a target that could still be in that class is refused too, even with
-    Experimental features on (AdapterScope.refusal). Required, so no entry leaves the question unanswered by default.
+    Whether the call harms the class is the action's (Action.failure_harms), not the entry's: on an action whose
+    failure harms, the entry also makes the scope refuse a target that could still be in it (AdapterScope.harms).
     """
 
     what: str
     reason: str
     source: str
-    harms: bool = field(kw_only=True)
 
 
 @dataclass(frozen=True, slots=True)
@@ -123,16 +119,14 @@ class NotBuilt:
     source, an https URL (scripts/gen_compat.py checks it); the dispatcher refuses it as `not_built` with the reason,
     and the card lists it as not built yet, as it does a class a scope leaves out.
 
-    `harms`, required as NoKnownMethod's is: the adapter's call harms the class (When today's call harms a class), so
-    AdapterScope.refusal refuses a target that could still be in it as class_unknown, exactly as for a NoKnownMethod
-    entry with `harms`. It must be True, which AdapterScope checks: a class today's call would leave unharmed needs
-    no entry, as leaving it out of the scope refuses it the same way, and an entry saying so would be a second home
-    for that refusal.
+    Only on an action whose failure harms (Action.failure_harms), which the registry checks: there the entry also
+    makes the scope refuse a target that could still be in it, as a NoKnownMethod entry does (AdapterScope.harms).
+    Elsewhere a class not built yet needs no entry, as leaving it out of the scope refuses it the same way, and an
+    entry would be a second home for that refusal.
     """
 
     reason: str
     source: str
-    harms: bool = field(kw_only=True)
 
 
 class Unplaced(str):
@@ -204,8 +198,8 @@ class AdapterScope:
     # Classes with no known method, refused with why; never in capabilities. Per adapter, as one class can fail one
     # action's call and answer another's.
     no_known_method: Mapping[str, NoKnownMethod] = field(default_factory=dict)
-    # Classes not built yet that the adapter's call would harm, refused with why (each entry's harms is True); in
-    # neither of the above. Any other class not built yet is simply left out.
+    # Classes not built yet that the adapter's call would harm, refused with why; in neither of the above, and only on
+    # an action whose failure harms (the registry checks). Any other class not built yet is simply left out.
     not_built: Mapping[str, NotBuilt] = field(default_factory=dict)
     # Classes the adapter sends a call of their own (OwnCall), each with that call. Each is in capabilities. A native
     # group's call isn't theirs, so a group with a member of one falls back to its members (Reason.OWN_CALL), and the
@@ -226,8 +220,6 @@ class AdapterScope:
             raise ValueError(f"no_known_method names classes the scope serves: {sorted(both)}")
         if both := self.not_built.keys() & ((self.capabilities or {}).keys() | self.no_known_method.keys()):
             raise ValueError(f"not_built names classes the scope serves or lists under no_known_method: {sorted(both)}")
-        if unharmed := sorted(name for name, entry in self.not_built.items() if not entry.harms):
-            raise ValueError(f"not_built entries {unharmed} don't harm: an unharmed class not built yet needs no entry")
         if unserved := sorted(self.own_calls.keys() - (self.capabilities or {}).keys()):
             raise ValueError(f"own_calls names classes the scope doesn't serve: {unserved}")
         self._check_on_domains()
@@ -262,14 +254,18 @@ class AdapterScope:
             for name, entry in (self.capabilities or {}).items()
         ]
 
-    @property
-    def harms(self) -> bool:
-        """Whether the adapter's call harms a class it could reach: a no_known_method or not_built entry with harms."""
-        return any(entry.harms for entry in (*self.no_known_method.values(), *self.not_built.values()))
+    def harms(self, failure_harms: bool) -> bool:
+        """Whether the adapter's call harms a class it could reach: the action's failure harms (Action.failure_harms)
+        and the scope refuses some class (a no_known_method or not_built entry). An action whose failure harms with no
+        entry harms no class a target could be in."""
+        return failure_harms and bool(self.no_known_method or self.not_built)
 
-    def refusal(self, classes: Collection[str | None], group: bool = False) -> tuple[str, str | None] | None:
+    def refusal(
+        self, classes: Collection[str | None], group: bool = False, *, failure_harms: bool
+    ) -> tuple[str, str | None] | None:
         """Why the scope refuses a target of these classes (a native group's: its members'), with the reason the user
-        reads, or None. Where the call harms a class (`harms`), first `class_unknown` when one is Unplaced, or None
+        reads, or None. `failure_harms` is the adapter's action's (Adapter.failure_harms), required so no caller
+        leaves it out. Where the call harms a class (`harms`), first `class_unknown` when one is Unplaced, or None
         (the integration couldn't name it, or a group's membership is unknown), as it could be the harmed class, with
         Experimental features on or off. Then `no_known_method` and its NoKnownMethod.reason when one is listed as
         having none, else `not_built` when one is named but not served, with its NotBuilt.reason when it has an entry.
@@ -278,7 +274,7 @@ class AdapterScope:
         call of its own (own_calls), so the group falls back to its members."""
         if self.capabilities is None:
             return None
-        if self.harms and any(name is None or isinstance(name, Unplaced) for name in classes):
+        if self.harms(failure_harms) and any(name is None or isinstance(name, Unplaced) for name in classes):
             return Reason.CLASS_UNKNOWN, None
         if entry := next((self.no_known_method[name] for name in classes if name in self.no_known_method), None):
             return Reason.NO_KNOWN_METHOD, entry.reason
@@ -324,8 +320,9 @@ class FamilyScope:
     names, each by class. A class it leaves out is left out of the adapter's scope, so refused as not built yet.
 
     It holds no refusal entry (NoKnownMethod, NotBuilt): those are the integration's, in its `refusals.py`, which
-    `class_scope` merges in. A family's maintainers may merge a change to its files alone, and an entry with `harms`
-    protects users of every family's devices, so it lives on a path a family maintainer doesn't own."""
+    `class_scope` merges in. A family's maintainers may merge a change to its files alone, and an entry on an action
+    whose failure harms protects users of every family's devices, so it lives on a path a family maintainer doesn't
+    own."""
 
     capabilities: Mapping[str, ClassLevel] = field(default_factory=dict)
     own_calls: Mapping[str, OwnCall] = field(default_factory=dict)
@@ -405,7 +402,7 @@ class IntegrationInfo:
     # Names a target's class (docs/evidence.md, Device classes): sync and cheap, no I/O, reading only the target's
     # registry entries, config entry or the integration's data. A device no rule matches gets the default class; one
     # it places from partial information, which a later report could move, its class as Unplaced; None only for a
-    # target it can't class at all. On an integration with a `harms` entry (AdapterScope.harms), a device no rule
+    # target it can't class at all. On an integration whose call harms a class (AdapterScope.harms), a device no rule
     # matches gets the default class, never None: core refuses None there as class_unknown, as it does Unplaced. None
     # for an integration with one class, whose scopes then hold no capabilities.
     capability: Callable[[HomeAssistant, Target], str | None] | None = None

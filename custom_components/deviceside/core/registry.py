@@ -168,8 +168,15 @@ class AdapterRegistry:
             if cls.action not in self.actions:
                 raise ValueError(f"{cls.__name__} serves unknown action {cls.action}")
             check_classes(cls, info)
+            action = self.actions[cls.action]
+            if cls.scope.not_built and not action.failure_harms:
+                raise ValueError(
+                    f"{cls.__name__} holds not_built entries {sorted(cls.scope.not_built)}, but {cls.action}'s failure "
+                    "doesn't harm: a class not built yet that the call leaves unharmed needs no entry"
+                )
             adapter = cls()
-            adapter.kind = self.actions[cls.action].kind
+            adapter.kind = action.kind
+            adapter.failure_harms = action.failure_harms
             self._adapters[(cls.action, info.key)] = adapter
         for refused in getattr(module, "UNSUPPORTED", ()):
             self._add_unsupported(refused, info)

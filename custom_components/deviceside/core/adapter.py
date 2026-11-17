@@ -28,6 +28,9 @@ class Adapter[RequestT: Request](ABC):
     scope: ClassVar[AdapterScope]
     # The action's kind, which the registry sets from the action; it decides how a failure's WARNING ends.
     kind: ActionKind = ActionKind.COMMAND
+    # Whether the action's failure harms (Action.failure_harms), which the registry sets from the action; the scope's
+    # refusal reads it.
+    failure_harms: bool = False
 
     @property
     def consequence(self) -> str:

@@ -40,6 +40,7 @@ class TurnOnFor(Action[TurnOnForRequest]):
 
     key: ClassVar[str] = "turn_on_for"
     kind: ClassVar[ActionKind] = ActionKind.COMMAND
+    failure_harms: ClassVar[bool] = True
     domains: ClassVar[frozenset[str]] = frozenset({Platform.LIGHT, Platform.SWITCH})
     fields: ClassVar[dict] = {probatio.Required("duration"): cv.positive_time_period, **LIGHT_FIELD_SCHEMA}
 

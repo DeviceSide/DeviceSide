@@ -234,7 +234,7 @@ def families(repo, monkeypatch):
     repo.commit(owners.INIT.format(key="zeta"), init(("zoe",)).replace("acme", "zeta").replace("Acme", "Zeta"))
     repo.commit(family_init(), family())
     repo.commit(family_init(name="hue"), family("hue", ()))
-    repo.commit(REFUSALS, 'TUYA = NoKnownMethod("Plugs", "why", "https://x/1", harms=True)\n')
+    repo.commit(REFUSALS, 'TUYA = NoKnownMethod("Plugs", "why", "https://x/1")\n')
     repo.commit(family_init("zeta"), family(maintainers=("zed",)))
     repo.commit(PKG + "families/__init__.py", "RULES = (*hue.RULES, *tuya.RULES)\n")
     repo.commit(PKG + "bridge.py", "x = 1\n")
@@ -291,7 +291,7 @@ def test_a_family_maintainer_changes_a_level(families):
     assert check("tina") == [TUYA]
 
 
-@pytest.mark.parametrize("text", ["", 'TUYA = NotBuilt("another reason", "https://x/2", harms=True)\n'])
+@pytest.mark.parametrize("text", ["", 'TUYA = NotBuilt("another reason", "https://x/2")\n'])
 def test_only_an_integration_maintainer_changes_the_refusal_entries(families, text):
     """They live in the integration's `refusals.py`, outside every family, so ownership by path is the whole rule."""
     families.commit(FAMILY + "rules.py", "x = 1\n")

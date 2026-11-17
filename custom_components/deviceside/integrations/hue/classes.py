@@ -15,8 +15,8 @@ light; one that writes none, or that the bridge no longer lists (set_scene rejec
 reached. A room or zone is
 no device of its own: the dispatcher classes it by its members (bridge.expand_group), a light with no entity in Home
 Assistant included. Home Assistant registers every bridge device with its product data when the entry loads, so a
-device is placed once it has an entity: nothing is provisional (no Unplaced), and with no `harms` entry (no Hue
-action is timed) nothing needs to be.
+device is placed once it has an entity: nothing is provisional (no Unplaced), and as no Hue action's failure harms
+(none is timed) nothing needs to be.
 
 Every adapter's scope holds LEVELS; why `other` sits where it does is in internals.md (Device classes), index.md
 (Other brands) and the step 8 PR body.
@@ -48,12 +48,11 @@ LEVELS = verified(HUE) | experimental(OTHER)
 _PAGE = DOCS_URL + "docs/integrations/hue/index.md"
 SET_SCENE_NO_KNOWN_METHOD = {
     # No known method: no known call can write a smart scene's settings, as it has none fixed, a limit of the scene,
-    # not a call unbuilt. Not harmful (docs/evidence.md, When today's call harms a class): a wrong scene shows at once.
+    # not a call unbuilt. set_scene's failure doesn't harm (Action.failure_harms): a wrong scene shows at once.
     SMART_SCENE: NoKnownMethod(
         what="Hue smart scenes",
         reason="A smart (All-Day) scene changes with the time of day, so it has no fixed settings to write",
         source=_PAGE + "#hue-smart-scenes",
-        harms=False,
     ),
 }
 
