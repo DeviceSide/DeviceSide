@@ -77,7 +77,7 @@ def _kept_level(level: int) -> dict:
     brightness; a raw command doesn't touch what it keeps. This payload replaces the kept level and sends a MoveToLevel
     without the override, which a light that is off ignores, so it stays off (probe 13j, either hue_native_control).
     """
-    return {"state": None, "brightness": level, "transition": 0.4}
+    return {"state": None, "brightness": level, "transition": WRITE_FADE_TENTHS / 10}
 
 
 def _modes(target: Target) -> set[str]:

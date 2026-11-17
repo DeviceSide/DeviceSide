@@ -1,7 +1,6 @@
 from collections.abc import Iterable
 from dataclasses import replace
 
-from homeassistant.components.switch_as_x.const import DOMAIN as SWITCH_AS_X
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import CONF_ENTITY_ID
 from homeassistant.core import HomeAssistant, split_entity_id
@@ -11,6 +10,10 @@ from homeassistant.helpers import entity_registry as er
 from .errors import Reason
 from .models import Target
 from .registry import AdapterRegistry
+
+# HA's switch_as_x DOMAIN, not imported: hassfest would then require switch_as_x in after_dependencies, which holds
+# DeviceSide's setup until switch_as_x's finishes (as zha/zcl.py's gateway says for zha).
+SWITCH_AS_X = "switch_as_x"
 
 
 def resolve(
