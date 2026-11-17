@@ -14,7 +14,7 @@ level for the gate; on an integration that names no classes it runs whole. An em
 is skipped silently, named or not, as core skips an empty group; so is one an adapter finds empty (Reason.EMPTY_GROUP).
 - Fallback. When a member's class has no known method, is not built yet, or isn't placed where a call harms, or takes a
   call of its own (own_calls: a branch in execute the group's call isn't), or, while Experimental features is off, is
-  Experimental (the adapter, domain and fields not flagged), the group falls back to its members: each available one not
+  Experimental (its domain and fields not flagged), the group falls back to its members: each available one not
   already a target is planned on its own, indirect, so the good ones run and a refused or flagged one is skipped and
   logged; a member also named raises, as its own target. A classifier that raised (logged) leaves the group's class
   unknown, so where a call harms, or while Experimental features is off, it falls back too, and each member is classed
