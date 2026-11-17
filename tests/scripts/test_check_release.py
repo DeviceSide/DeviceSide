@@ -883,6 +883,15 @@ def test_a_class_verified_on_some_domains_alone_needs_a_record_in_each(fake_repo
     assert cr.coverage_gaps(found) == []
 
 
+def test_a_manual_group_row_credits_its_members_classes(fake_repo, monkeypatch):
+    (fake_repo.path / MANUAL).parent.mkdir(parents=True, exist_ok=True)
+    sha = fake_repo.commit()
+    members = (("LCA001", "hue"), ("LWA012", None), ("LTA009", "ikea"))
+    (fake_repo.path / MANUAL).write_text(manual_file(signoff(sha, devices=members, passed=("stop",), group=True)))
+    assert cr.manual_rows("fake", "stop") == [(True, list(members))]
+    assert cr.reached("fake", "stop") == {("hue", None), ("ikea", None)}
+
+
 def test_a_failing_record_reaches_nothing_and_a_manual_row_with_a_class_does(fake_repo, monkeypatch):
     classes_record(fake_repo, "turn_on_for", ["hue"], ["ikea"], result="fail")
     sha = fake_repo.commit()

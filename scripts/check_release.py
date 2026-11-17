@@ -221,10 +221,11 @@ def manual(integration: str) -> list[dict]:
     return load(path)["signoffs"] if path.is_file() else []
 
 
-def manual_rows(integration: str, action: str) -> list[list[tuple[str, str | None]]]:
-    """The devices, as (model id, class), of each `_manual.json` row whose `passed` names the action."""
+def manual_rows(integration: str, action: str) -> list[tuple[bool, list[tuple[str, str | None]]]]:
+    """Each `_manual.json` row whose `passed` names the action, as (whether it targeted a native group, its devices as
+    (model id, class); a group's are its members)."""
     return [
-        [(device["model"], device["class"]) for device in row["devices"]]
+        (bool(row.get("group")), [(device["model"], device["class"]) for device in row["devices"]])
         for row in manual(integration)
         if action in row.get("passed", ())
     ]
@@ -236,7 +237,8 @@ def manual_rows(integration: str, action: str) -> list[list[tuple[str, str | Non
 def reached(integration: str, action: str) -> set[tuple[str, str | None]]:
     """The classes the action's evidence reached, each with the domain its test targeted: in a passing record, each
     passing test's (format 2: its devices' classes, a native group's members' each; format 1: its `classes`), and each
-    `_manual.json` row's devices', whose domain is None, as a row names none. A null class credits none."""
+    `_manual.json` row's devices' (a group row's members', as a group test's), whose domain is None, as a row names
+    none. A null class credits none."""
     found: set[tuple[str | None, str | None]] = set()
     for path in passing(integration, action):
         record = load(path)
@@ -245,7 +247,7 @@ def reached(integration: str, action: str) -> set[tuple[str, str | None]]:
                 continue
             names = test.get("classes", ()) if record["format"] == 1 else (d["class"] for d in test["devices"])
             found.update((name, test.get("domain")) for name in names)
-    for row in manual_rows(integration, action):
+    for _, row in manual_rows(integration, action):
         found.update((cls, None) for _, cls in row)
     return {(name, domain) for name, domain in found if name is not None}
 

@@ -79,16 +79,26 @@ def record_v1(
 
 
 def signoff(
-    commit: str = "1a2b3c4", tester: str = "a", devices=(("LCA001", None),), passed=("turn_on_for",), actions=None
+    commit: str = "1a2b3c4",
+    tester: str = "a",
+    devices=(("LCA001", None),),
+    passed=("turn_on_for",),
+    actions=None,
+    group: bool = False,
 ) -> dict:
-    """A `_manual.json` row; `passed` None for a no-call-changed row, which `actions` narrows to those actions."""
+    """A `_manual.json` row; `passed` None for a no-call-changed row, which `actions` narrows to
+    those actions; `group` for a native group's members."""
     row = {"date": "2026-11-12", "commit": commit[:7], "tester": tester}
     if passed is None:
         return row | {"no_call_changed": True} | ({"actions": list(actions)} if actions else {})
-    return row | {
-        "devices": [{"model": m, "manufacturer": None, "class": c} for m, c in devices],
-        "passed": list(passed),
-    }
+    return (
+        row
+        | ({"group": True} if group else {})
+        | {
+            "devices": [{"model": m, "manufacturer": None, "class": c} for m, c in devices],
+            "passed": list(passed),
+        }
+    )
 
 
 def manual(integration: str, *rows: dict) -> dict:
