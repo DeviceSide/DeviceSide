@@ -96,6 +96,30 @@
       "message": "Nothing to set. Give a brightness, a color temperature, a color, or a brightness limit."
     }
   },
+  "issues": {
+    "legacy_device_side": {
+      "title": "Old Device Side v0.0.1 is still installed",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Remove Device Side v0.0.1",
+            "description": "DeviceSide replaces Device Side v0.0.1, but the old integration is still installed, so Home Assistant keeps loading it.\n\nSubmit removes the Device Side v0.0.1 integration, including its folder, `{folder}`, if it holds Device Side. No restart is needed. A second repair then lists the automations and scripts that still call `device_side.`.\n\nIn your automations and scripts, change `device_side.turn_on_for` to `deviceside.turn_on_for`, and `device_side.turn_off_for` to `deviceside.turn_off_for`. Their fields are the same."
+          }
+        },
+        "abort": {
+          "folder_left": "The Device Side v0.0.1 integration is removed, but its folder, `{folder}`, is still there: it doesn't look like Device Side v0.0.1's, or it couldn't be deleted. If it is the old version, delete it yourself, then restart Home Assistant."
+        }
+      }
+    },
+    "legacy_device_side_calls": {
+      "title": "Automations and scripts still call Device Side v0.0.1",
+      "description": "The Device Side v0.0.1 integration is removed, but these automations and scripts still call its actions:\n\n{items}\n\nIn each, change `device_side.turn_on_for` to `deviceside.turn_on_for`, and `device_side.turn_off_for` to `deviceside.turn_off_for`. Their fields are the same. This repair clears once none are left. It can't see calls from blueprints, dashboards, or tools outside Home Assistant's automations and scripts, such as Node-RED or AppDaemon."
+    },
+    "migrate_hue_dimmer": {
+      "title": "Hue Smooth Dimming can be replaced by DeviceSide",
+      "description": "DeviceSide's actions are drop-in replacements for Hue Smooth Dimming's. In your automations and scripts, change:\n\n- `hue_dimmer.raise` to `deviceside.raise_brightness`\n- `hue_dimmer.lower` to `deviceside.lower_brightness`\n- every other `hue_dimmer.` to `deviceside.`\n\nThe fields and responses are the same. Both can run side by side while you switch, and Ignore hides this notice for good. Once no automation or script calls `hue_dimmer.`, remove the Hue Smooth Dimming integration."
+    }
+  },
   "services": {
     "clear_auto_off": {
       "name": "Clear auto-off",
