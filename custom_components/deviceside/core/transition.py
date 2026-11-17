@@ -15,7 +15,7 @@ from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
 
-from homeassistant.components.light import ATTR_BRIGHTNESS
+from homeassistant.components.light import ATTR_BRIGHTNESS, ATTR_COLOR_MODE, ATTR_HS_COLOR
 from homeassistant.const import STATE_ON
 from homeassistant.core import HomeAssistant
 
@@ -189,8 +189,8 @@ def lit(cache: TransitionCache, lights: list[Target]) -> list[Target]:
 
 
 def color_mode(light: Target) -> str | None:
-    return light.state.attributes.get("color_mode") if light.state else None
+    return light.state.attributes.get(ATTR_COLOR_MODE) if light.state else None
 
 
 def hs_color(light: Target) -> tuple[float, float] | None:
-    return light.state.attributes.get("hs_color") if light.state else None
+    return light.state.attributes.get(ATTR_HS_COLOR) if light.state else None

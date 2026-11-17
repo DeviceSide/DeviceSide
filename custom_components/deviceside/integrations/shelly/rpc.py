@@ -5,6 +5,7 @@ import logging
 from collections.abc import Callable
 from typing import Any, Literal
 
+from homeassistant.components.light import ATTR_MAX_COLOR_TEMP_KELVIN, ATTR_MIN_COLOR_TEMP_KELVIN
 from homeassistant.core import HomeAssistant, State
 from homeassistant.util.color import color_hs_to_RGB, color_xy_to_RGB
 
@@ -50,8 +51,8 @@ def light_params(light: LightFields, component: str, state: State | None) -> dic
     if light.color_temp_kelvin is not None:
         kelvin = light.color_temp_kelvin
         if state is not None:
-            low = state.attributes.get("min_color_temp_kelvin", kelvin)
-            high = state.attributes.get("max_color_temp_kelvin", kelvin)
+            low = state.attributes.get(ATTR_MIN_COLOR_TEMP_KELVIN, kelvin)
+            high = state.attributes.get(ATTR_MAX_COLOR_TEMP_KELVIN, kelvin)
             kelvin = min(max(kelvin, low), high)
         params["ct"] = kelvin
     # Core's light.turn_on sends hs and xy to a light without those modes as rgb, at full value, whatever mode the

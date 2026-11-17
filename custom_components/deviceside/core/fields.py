@@ -29,6 +29,8 @@ COLORS = frozenset({ATTR_HS_COLOR, ATTR_RGB_COLOR, ATTR_XY_COLOR})
 COLOR_TEMP = frozenset({ATTR_COLOR_TEMP_KELVIN})
 COLOR = COLORS | {"hue", "saturation"}  # hue and saturation are DeviceSide's
 TRANSITION = frozenset({ATTR_TRANSITION})
+# The light.turn_on fields an action may accept, under their light.turn_on names.
+LIGHT_FIELDS = (BRIGHTNESS_FIELD, ATTR_COLOR_TEMP_KELVIN, ATTR_HS_COLOR, ATTR_RGB_COLOR, ATTR_XY_COLOR, ATTR_TRANSITION)
 # Every field a light's state can say it lacks: the only ones AdapterScope.unlisted may name.
 LACKABLE = BRIGHTNESS | COLOR_TEMP | COLOR | TRANSITION
 

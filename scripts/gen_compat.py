@@ -84,6 +84,7 @@ import yaml
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
+from custom_components.deviceside.const import DOCS_URL  # noqa: E402
 from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
 from custom_components.deviceside.core.scope import CaveatKind, Level  # noqa: E402
 from scripts.check_release import (  # noqa: E402
@@ -106,8 +107,7 @@ PAGE = REPO / "docs" / "device-compatibility.md"
 README = REPO / "README.md"
 MODELS = REPO / "docs" / "models.yaml"
 # Absolute: HACS renders the README inside Home Assistant, where a relative link doesn't resolve.
-BLOB_URL = "https://github.com/DeviceSide/DeviceSide/blob/main/"
-PAGE_URL = f"{BLOB_URL}docs/device-compatibility.md"
+PAGE_URL = f"{DOCS_URL}docs/device-compatibility.md"
 CARDS = ("<!-- devices:start -->", "<!-- devices:end -->")
 CARDS_TITLE = "Device compatibility by integration"
 EVIDENCE = ("<!-- evidence:start -->", "<!-- evidence:end -->")
@@ -209,7 +209,7 @@ class Data:
             owners += sorted(self.pages)
         for owner in owners:
             if anchor in self.pages.get(owner, set()):
-                return f"{BLOB_URL}{page(owner)}#{anchor}"
+                return f"{DOCS_URL}{page(owner)}#{anchor}"
         return f"{PAGE_URL}#{anchor}"
 
 
@@ -875,7 +875,7 @@ def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: 
     result = Card(
         title=info.title,
         requires=data.requires.get(key),
-        url=f"{BLOB_URL}{page(key)}" if key in data.pages else None,
+        url=f"{DOCS_URL}{page(key)}" if key in data.pages else None,
         maintainers=info.maintainers,
         marks=mark_entries(integration_adapters),
         all_unmaintained=bool(integration_adapters)

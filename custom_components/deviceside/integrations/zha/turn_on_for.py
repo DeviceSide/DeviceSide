@@ -20,7 +20,7 @@ from ...core.models import EntityResult, Status, Target
 from ...core.scope import AdapterScope, DurationLimits, experimental, verified
 from ...core.zcl import MAX_TENTHS_S, READBACK_SLACK_TENTHS
 
-# OnWithTimedOff.on_time is a uint16 in tenths of a second; 0xFFFF is reserved, so 65534 tenths is the most.
+# OnWithTimedOff.on_time (core/zcl.py).
 _TIMER_LIMITS = DurationLimits(min_s=0.1, max_s=MAX_TENTHS_S)
 
 _ON_WITH_TIMED_OFF = 0x42

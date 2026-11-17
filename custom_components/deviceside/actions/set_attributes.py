@@ -2,6 +2,7 @@ from dataclasses import dataclass, field, replace
 from typing import ClassVar, Self
 
 import probatio
+from homeassistant.components.light import ATTR_COLOR_TEMP_KELVIN
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ServiceValidationError
@@ -16,7 +17,7 @@ from ..core.models import LIGHT_FIELD_SCHEMA, PERCENT, ActionKind, LightFields, 
 _COLORS = COLOR_TEMP | COLORS
 LIMITS = ("min_brightness", "max_brightness")
 # 0 leaves these unset, as on hue_dimmer, so a template can pass 0 for "no limit".
-_UNSET_AT_ZERO = (*LIMITS, "color_temp_kelvin")
+_UNSET_AT_ZERO = (*LIMITS, ATTR_COLOR_TEMP_KELVIN)
 
 
 @dataclass(frozen=True, slots=True)

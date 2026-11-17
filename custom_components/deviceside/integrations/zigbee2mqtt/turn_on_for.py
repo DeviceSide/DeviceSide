@@ -24,8 +24,7 @@ from ...core.zcl import MAX_TENTHS_S
 
 _LOGGER = logging.getLogger(__name__)
 
-# Zigbee OnWithTimedOff: on_time in tenths of a second (uint16), range 1-65534 tenths.
-# 65534 tenths = 6553.4 s. The 50 ms floor from core/duration.py handles the effective minimum.
+# OnWithTimedOff.on_time (core/zcl.py). The 50 ms floor from core/duration.py handles the effective minimum.
 _TIMER_LIMITS = DurationLimits(min_s=0, max_s=MAX_TENTHS_S)
 
 # Read-back delays in seconds. The second end read allows for a bulb clock that runs slow on a long timer.

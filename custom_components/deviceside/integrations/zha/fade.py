@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from typing import Any, ClassVar
 
 from homeassistant.components.homeassistant import SERVICE_UPDATE_ENTITY
-from homeassistant.components.light import COLOR_MODES_COLOR, color_supported
+from homeassistant.components.light import ATTR_SUPPORTED_COLOR_MODES, COLOR_MODES_COLOR, color_supported
 from homeassistant.const import ATTR_ENTITY_ID, Platform
 from homeassistant.core import DOMAIN as HOMEASSISTANT_DOMAIN
 from homeassistant.core import Context, HomeAssistant
@@ -120,7 +120,7 @@ def units(hass: HomeAssistant, targets: list[Target]) -> list[tuple[int | None, 
 
 
 def has_color(light: Target) -> bool:
-    modes = light.state.attributes.get("supported_color_modes") if light.state else None
+    modes = light.state.attributes.get(ATTR_SUPPORTED_COLOR_MODES) if light.state else None
     return color_supported(modes)
 
 

@@ -1,28 +1,8 @@
-from homeassistant.components.light import (
-    ATTR_COLOR_TEMP_KELVIN,
-    ATTR_HS_COLOR,
-    ATTR_RGB_COLOR,
-    ATTR_TRANSITION,
-    ATTR_XY_COLOR,
-)
-
-from .core.fields import BRIGHTNESS_FIELD
-
 DOMAIN = "deviceside"
 NAME = "DeviceSide"
 
 REPO_URL = "https://github.com/DeviceSide/DeviceSide"
 DOCS_URL = REPO_URL + "/blob/main/"
-
-# The light.turn_on fields a action may accept, under their light.turn_on names.
-LIGHT_FIELDS = (
-    BRIGHTNESS_FIELD,
-    ATTR_COLOR_TEMP_KELVIN,
-    ATTR_HS_COLOR,
-    ATTR_RGB_COLOR,
-    ATTR_XY_COLOR,
-    ATTR_TRANSITION,
-)
 
 # Ceiling for one adapter's execute(): a target whose Adapter.slot() hasn't finished by then is rejected with timeout,
 # and those that finished keep their results.

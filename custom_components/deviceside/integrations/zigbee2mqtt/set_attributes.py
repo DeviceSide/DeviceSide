@@ -5,6 +5,7 @@ values into Z2M's state, and so HA's."""
 import asyncio
 from typing import ClassVar
 
+from homeassistant.components.light import ATTR_SUPPORTED_COLOR_MODES, ColorMode
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
@@ -31,8 +32,8 @@ from ...core.zcl_write import (
     wants_level,
 )
 
-# 0.4 s, the Hue bridge's default write fade, as on ZHA; a light that is off doesn't fade. The override sets
-# ExecuteIfOff for this command only, so the light takes it while off; Options stays untouched.
+# The write fade is core/zcl.py's, as on ZHA. The override sets ExecuteIfOff for this command only, so the light
+# takes it while off; Options stays untouched.
 _EXECUTE_IF_OFF = {"transtime": WRITE_FADE_TENTHS, "optionsMask": 1, "optionsOverride": 1}
 
 # The fade is 0.4 s from when the bulb gets the command; a read inside it answers a level between the old and the
@@ -73,7 +74,7 @@ def _kept_level(level: int) -> dict:
 
 def _modes(target: Target) -> set[str]:
     # supported_color_modes stays in the state while the light is off.
-    return set((target.state and target.state.attributes.get("supported_color_modes")) or ())
+    return set((target.state and target.state.attributes.get(ATTR_SUPPORTED_COLOR_MODES)) or ())
 
 
 def _attrs(target: Target) -> dict:
@@ -91,15 +92,15 @@ def _expected(light: Target, sent: list[Command]) -> tuple[dict[str, list[str]],
     expected: dict[str, int] = {}
     for command in sent:
         match command:
-            case MoveToLevel(level) if modes - {"onoff"}:
+            case MoveToLevel(level) if modes - {ColorMode.ONOFF}:
                 reads[_LEVEL] = ["currentLevel"]
                 expected["currentLevel"] = level
-            case MoveToColorTemp(mireds) if "color_temp" in modes:
+            case MoveToColorTemp(mireds) if ColorMode.COLOR_TEMP in modes:
                 reads[_COLOR] = ["colorMode", "colorTemperature"]
                 expected["colorTemperature"] = clamp_mireds(mireds, _attrs(light))
-            case MoveToColor() | MoveToHueAndSaturation() if "xy" in modes:
+            case MoveToColor() | MoveToHueAndSaturation() if ColorMode.XY in modes:
                 reads[_COLOR] = ["colorMode", "currentX", "currentY"]
-            case MoveToColor() | MoveToHueAndSaturation() if "hs" in modes:
+            case MoveToColor() | MoveToHueAndSaturation() if ColorMode.HS in modes:
                 reads[_COLOR] = ["colorMode", "currentHue", "currentSaturation"]
     return reads, expected
 

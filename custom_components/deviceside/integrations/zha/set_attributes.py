@@ -6,6 +6,7 @@ import logging
 from typing import Any, ClassVar
 
 from homeassistant.components.homeassistant import SERVICE_UPDATE_ENTITY
+from homeassistant.components.light import ATTR_SUPPORTED_COLOR_MODES
 from homeassistant.const import ATTR_ENTITY_ID, Platform
 from homeassistant.core import DOMAIN as HOMEASSISTANT_DOMAIN
 from homeassistant.core import HomeAssistant
@@ -31,17 +32,17 @@ from ...core.zcl_write import (
     wants_level,
 )
 
-# 0.4 s, the Hue bridge's default write fade, so a call looks alike on both; a light that is off doesn't fade.
+# The write fade is core/zcl.py's, so a call looks alike on both transports.
 _EXECUTE_IF_OFF = zcl.execute_if_off(WRITE_FADE_TENTHS)
 
 Wire = tuple[int, int, dict[str, Any]]
 
 # zha skips update_entity while a light's transition flag is up: for an HA turn_off, its fade plus 0.5 s (1.5 s for a
 # plain off). The refresh waits it out this long, polling, then goes ahead and refreshes again once it clears.
-FADE_WAIT_S = WRITE_FADE_WAIT_S
 TRANSITION_WAIT_S = 3.0
 TRANSITION_POLL_S = 0.1
 LATE_REFRESH_POLL_S = 0.5
+FADE_WAIT_S = WRITE_FADE_WAIT_S
 SETTLE_REFRESH_S = 1.0  # a second read after the first, for a fade that ran slow
 # The refreshes' share of the adapter's time: they run past the concurrency slots, so nothing else bounds them.
 REFRESH_BUDGET_S = 4.0
@@ -174,7 +175,7 @@ class ZHASetAttributes(Adapter[SetAttributesRequest]):
             addr = address(target.entry.unique_id)  # supports() refused the targets it can't address
             # supported_color_modes stays in the state while the light is off.
             attrs = dict(target.state.attributes) if target.state else {}
-            modes = set(attrs.get("supported_color_modes") or ())
+            modes = set(attrs.get(ATTR_SUPPORTED_COLOR_MODES) or ())
             current_level = None
             if wants_level(request, modes):
                 read = await zcl.read_attributes(hass, addr, zcl.LEVEL_CLUSTER, (zcl.CURRENT_LEVEL,))

@@ -25,7 +25,7 @@ from ...core.zcl import MAX_TENTHS_S
 
 _LOGGER = logging.getLogger(__name__)
 
-# OnWithTimedOff.onTime is a uint16 in tenths of a second; the spec caps it at 65534 tenths, so 6553.4 s is the most.
+# OnWithTimedOff.onTime (core/zcl.py).
 _TIMER_LIMITS = DurationLimits(min_s=0.1, max_s=MAX_TENTHS_S)
 # OffWaitTime 1 (0.1 s), not 0: matter.js before v0.17.2 never times off on 0 (internals.md, turn_on_for).
 _OFF_WAIT_TENTHS = 1

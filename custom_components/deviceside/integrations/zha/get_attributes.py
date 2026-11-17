@@ -2,7 +2,7 @@
 
 from typing import ClassVar
 
-from homeassistant.components.light import ColorMode
+from homeassistant.components.light import ATTR_SUPPORTED_COLOR_MODES, ColorMode
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
@@ -75,7 +75,7 @@ class ZHAGetAttributes(Adapter[Request]):
         async def read(target: Target) -> EntityResult:
             addr = address(target.entry.unique_id)  # supports() refused the targets it can't address
             # supported_color_modes stays in the state while the light is off.
-            modes = set(target.state.attributes.get("supported_color_modes") or ()) if target.state else set()
+            modes = set(target.state.attributes.get(ATTR_SUPPORTED_COLOR_MODES) or ()) if target.state else set()
             read = await zcl.read_attributes(hass, addr, zcl.ON_OFF_CLUSTER, (zcl.ON_OFF,), optional=(zcl.ON_TIME,))
             attributes = named(zcl.ON_OFF_CLUSTER, read)
             if "onTime" in attributes and classes.capability(hass, target) in COUNTS_SECONDS:

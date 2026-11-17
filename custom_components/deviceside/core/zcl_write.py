@@ -7,7 +7,12 @@ transition and the ExecuteIfOff override.
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from homeassistant.components.light import ColorMode, color_supported
+from homeassistant.components.light import (
+    ATTR_MAX_COLOR_TEMP_KELVIN,
+    ATTR_MIN_COLOR_TEMP_KELVIN,
+    ColorMode,
+    color_supported,
+)
 from homeassistant.util.color import (
     color_hs_to_xy,
     color_temperature_kelvin_to_mired,
@@ -71,9 +76,9 @@ def _brightness(request: SetAttributesRequest, current_level: int | None) -> Mov
 
 def clamp_mireds(mireds: int, attrs: dict) -> int:
     """The mireds within the light's own range, where its state gives one."""
-    if (warmest := attrs.get("min_color_temp_kelvin")) is not None:
+    if (warmest := attrs.get(ATTR_MIN_COLOR_TEMP_KELVIN)) is not None:
         mireds = min(mireds, color_temperature_kelvin_to_mired(warmest))
-    if (coolest := attrs.get("max_color_temp_kelvin")) is not None:
+    if (coolest := attrs.get(ATTR_MAX_COLOR_TEMP_KELVIN)) is not None:
         mireds = max(mireds, color_temperature_kelvin_to_mired(coolest))
     return mireds
 
