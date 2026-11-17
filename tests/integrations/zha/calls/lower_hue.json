@@ -1,0 +1,70 @@
+[
+ {
+  "action": "lower_hue",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "hue",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 10.0,
+    "up": false
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "zcl.color_capabilities",
+     [
+      [
+       "00:17:88:01:02:03:04:05",
+       11
+      ]
+     ],
+     {}
+    ],
+    31
+   ],
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 768,
+      "cluster_type": "in",
+      "command": 65,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "move_mode": 3,
+       "rate": 6554
+      }
+     }
+    ],
+    null
+   ]
+  ]
+ }
+]
