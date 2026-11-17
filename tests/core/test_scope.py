@@ -135,7 +135,7 @@ def test_every_refusal_states_whether_the_action_s_failure_harms():
     with pytest.raises(TypeError):
         scope.refusal((None,))  # type: ignore[call-arg]
     with pytest.raises(TypeError):
-        scope.refusal((None,), False, True)  # type: ignore[misc]
+        scope.refusal((None,), False, None, True)  # type: ignore[misc]
 
 
 @pytest.mark.parametrize(

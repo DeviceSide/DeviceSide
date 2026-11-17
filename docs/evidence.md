@@ -103,8 +103,8 @@ covers only what was exercised; it never signs off untested code.
 **Contrary evidence.** A report changes a level only through a maintainer (tenet 7):
 
 - **A credible report of a harmful failure on DeviceSide's own call** lets an integration maintainer refuse the
-  identity it names, on the report alone, citing it, as an entry on that action. It's not built yet if a known or
-  plausible call would serve that identity, otherwise no known method ([below](#no-known-method-not-built-yet-untested)).
+  identity it names on that action, on the report alone, citing it. It's not built yet if a known or plausible call
+  would serve that identity, otherwise no known method ([below](#no-known-method-not-built-yet-untested)).
 - **The identity is the narrowest one a class rule can key on:** model ID with manufacturer string, plus firmware
   where that decides. A vendor is not normally refused whole on a single report; split off the exception. A rule
   keyed on a vendor needs research.
