@@ -17,11 +17,12 @@ callback is wrapped at the subscribe call), so what it hears isn't in the wire; 
 A message delivered to a callback after its segment has closed, or from a context with no segment, isn't recorded.
 
 mqtt isn't set up in the unit tests, so tests/fixtures/zigbee2mqtt.py's `Broker` and the conftest stand where the
-client does: `async_publish` forwards to a registered `mqtt.publish` service (the broker, or a test's refusal) and
-`async_subscribe` is `Broker.subscribe`, each set on the module with `monkeypatch.setattr`, never on an instance.
-That service call is the fake's plumbing and not recorded (tests/transcripts.py). Neither function calls the other
-or itself, and each is only called directly through `mqtt.`, never through a reference captured before the wrap
-(`bridge.publish` and the like look it up at call time).
+client does: `async_publish` runs the handler a test registered as the `mqtt.publish` service (the broker, or a test's
+refusal) directly, not as a service call, and `async_subscribe` is `Broker.subscribe`, each set on the module with
+`monkeypatch.setattr`, never on an instance. A broker answers inside the publish, so a reply's callback entry comes
+after the publish entry that drew it. Neither function calls the other or itself, and each is only called directly
+through `mqtt.`, never through a reference captured before the wrap (`bridge.publish` and the like look it up at call
+time).
 
 The options request's `transaction` is a `uuid4().hex` in production; the conftest numbers it per test, so the bytes
 `bridge.py` builds stay in the segment.

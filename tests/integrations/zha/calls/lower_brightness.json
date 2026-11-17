@@ -716,16 +716,6 @@
    [
     [
      "service",
-     "light.turn_off",
-     {
-      "entity_id": "light.bulb"
-     }
-    ],
-    null
-   ],
-   [
-    [
-     "service",
      "zha.issue_zigbee_cluster_command",
      {
       "cluster_id": 8,
@@ -738,6 +728,16 @@
        "level": 0,
        "transition_time": 30
       }
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "service",
+     "light.turn_off",
+     {
+      "entity_id": "light.bulb"
      }
     ],
     null

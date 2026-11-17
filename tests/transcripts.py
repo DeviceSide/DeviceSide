@@ -11,9 +11,10 @@ its `tests/integrations/<x>/wire.py`, `BOUNDARIES = [(module, attribute, leading
 as `["<module's last name>.<attribute>", args, kwargs]` (a class's method, `Class.method`, has its instance as the first
 arg, even when a test's mock on the class is called without it). A boundary with a callback index is a subscription:
 the call is recorded without the callback and with no reply, and each call the callback (a sync one, at that position
-among the call's args) gets is recorded as `["<name>.callback", args, kwargs]` and its reply, in the segment open at
-delivery, so the messages a run is answered with are in its wire. A service call made inside a boundary call is a
-fake's plumbing (a publish routed through a service), not recorded. A boundary is wrapped at each segment's open,
+among the call's args) gets is recorded as `["<name>.callback", args, kwargs]` and its reply, in the segment the
+subscription was made in, so the messages a run is answered with are in its wire. A call takes its place in `wire` when
+it is made and gets its reply when it returns, so a reply delivered while a call is still running (a broker answering
+inside a publish) comes after the call that drew it. A boundary is wrapped at each segment's open,
 around whatever a test installed there (so name it where callers look it up), and unwrapped when the test ends; a call
 it makes to itself, as a test's mock calling through to the real one, records once. `result` is the run's reconciled
 per-target results. A segment is serialized when its test ends, and carries no test id; a run its test didn't see
@@ -23,9 +24,9 @@ Normalization: HomeAssistant and Context values are dropped (omitted from mappin
 as they hold per-run ids; dataclasses become dicts of their fields; enums their values; sets sorted lists; bytes hex; a
 class with annotations of its own (a zigpy request's schema) `{"class": <name>, "fields": {<field>: <its type's
 name>}}`, an annotation with no name a placeholder; a mapping's keys are normalized too, and one that isn't then a str
-becomes its JSON text (two keys that normalize alike raise); a raised exception `{"raises": <class name>}`; any other
-object `"<TypeName>"`, which fails the run when it's in a segment's wire or result: an integration's library types get a
-rule here.
+becomes its JSON text (two keys that normalize alike raise); a raised exception `{"raises": <class name>}`; a function
+or method its `__qualname__`; any other object `"<TypeName>"`, which fails the run when it's in a segment's wire or
+result: an integration's library types get a rule here.
 
 `write`, after a run with no failures, writes `tests/integrations/<x>/calls/<action>.json`, the sorted unique segments
 of each action, for each integration with a `tests/integrations/<x>/` directory, and removes the `calls/` files of
@@ -44,7 +45,7 @@ import re
 from collections.abc import Callable
 from contextvars import ContextVar
 from pathlib import Path
-from types import MethodType, SimpleNamespace
+from types import FunctionType, MethodType, SimpleNamespace
 from typing import Any
 
 import pytest
@@ -109,6 +110,8 @@ def norm(value: Any) -> Any:  # noqa: C901
         return sorted((norm(v) for v in value), key=_key)
     if isinstance(value, bytes):
         return value.hex()
+    if isinstance(value, FunctionType | MethodType):
+        return value.__qualname__
     if isinstance(value, SimpleNamespace):
         return norm(vars(value))
     if isinstance(value, type) and (fields := inspect.get_annotations(value)):
@@ -134,10 +137,20 @@ def _json_key(value: Any) -> str:
     return value if isinstance(value, str) else _key(value)
 
 
-def _record(call: list, reply: Any) -> None:
-    """One wire call and its reply (or raise), into the open segment."""
-    if (segment := _SEGMENT.get()) is not None:
-        segment["wire"].append([norm(call), norm(reply)])
+def _open(call: list, segment: dict | None = None) -> list | None:
+    """A wire call's slot in `segment` (by default the open one), taken when the call is made so what it causes (a
+    reply delivered before it returns) records after it. None when no segment is open."""
+    if (segment := segment or _SEGMENT.get()) is None:
+        return None
+    slot = [norm(call), None]
+    segment["wire"].append(slot)
+    return slot
+
+
+def _close(slot: list | None, reply: Any) -> None:
+    """The reply (or raise) of the call that took `slot`."""
+    if slot is not None:
+        slot[1] = norm(reply)
 
 
 class Wire:
@@ -179,22 +192,23 @@ class Wire:
         call = [self._wire_name, list((*self._wire_instance, *args)[self._wire_skip :]), kwargs]
         if (at := self._wire_callback) is not None:
             args, call = self._subscription(args, call, at)
+        slot = _open(call)
         token = _ACTIVE.set(_ACTIVE.get() | {self._wire_name})
         try:
             reply = self.__wrapped__(*args, **kwargs)
         except BaseException as err:
-            _record(call, err)
+            _close(slot, err)
             raise
         finally:
             _ACTIVE.reset(token)
         if inspect.isawaitable(reply):
-            return self._awaited(call, reply)
-        self._record_reply(call, reply)
+            return self._awaited(slot, reply)
+        self._close_reply(slot, reply)
         return reply
 
-    def _record_reply(self, call: list, reply: Any) -> None:
+    def _close_reply(self, slot: list | None, reply: Any) -> None:
         # A subscription's reply is its unsubscribe.
-        _record(call, None if self._wire_callback is not None else reply)
+        _close(slot, None if self._wire_callback is not None else reply)
 
     def _subscription(self, args: tuple, call: list, at: int) -> tuple[tuple, list]:
         """`args` with the callback at `at` wrapped to record each call it gets, and `call` without the callback."""
@@ -202,30 +216,33 @@ class Wire:
         if inspect.iscoroutinefunction(callback):
             raise TypeError(f"transcripts: {self._wire_name}'s callback must be sync")
         name = f"{self._wire_name}.callback"
+        # The segment the subscription was made in, which stays open until its test ends, whoever delivers.
+        segment = _SEGMENT.get()
 
         @functools.wraps(callback)
         def recorded(*cb_args, **cb_kwargs):
+            slot = _open([name, list(cb_args), cb_kwargs], segment)
             try:
                 reply = callback(*cb_args, **cb_kwargs)
             except BaseException as err:
-                _record([name, list(cb_args), cb_kwargs], err)
+                _close(slot, err)
                 raise
-            _record([name, list(cb_args), cb_kwargs], reply)
+            _close(slot, reply)
             return reply
 
         del call[1][at + len(self._wire_instance) - self._wire_skip]
         return (*args[:at], recorded, *args[at + 1 :]), call
 
-    async def _awaited(self, call: list, awaitable) -> Any:
+    async def _awaited(self, slot: list | None, awaitable) -> Any:
         token = _ACTIVE.set(_ACTIVE.get() | {self._wire_name})
         try:
             reply = await awaitable
         except BaseException as err:
-            _record(call, err)
+            _close(slot, err)
             raise
         finally:
             _ACTIVE.reset(token)
-        self._record_reply(call, reply)
+        self._close_reply(slot, reply)
         return reply
 
 
@@ -306,18 +323,19 @@ class Recorder:
             return results
 
         async def recorded_call(self, domain, service, *args, **kwargs):
-            if domain == DOMAIN or _SEGMENT.get() is None or _ACTIVE.get():
+            if domain == DOMAIN or _SEGMENT.get() is None:
                 return await async_call(self, domain, service, *args, **kwargs)
             given = signature.bind(self, domain, service, *args, **kwargs).arguments
             call = ["service", f"{domain}.{service}", given.get("service_data")]
             if given.get("target") is not None:
                 call.append({"target": given["target"]})
+            slot = _open(call)
             try:
                 reply = await async_call(self, domain, service, *args, **kwargs)
             except BaseException as err:
-                _record(call, err)
+                _close(slot, err)
                 raise
-            _record(call, reply)
+            _close(slot, reply)
             return reply
 
         Dispatcher._run_adapter = recorded_run

@@ -477,7 +477,9 @@ async def test_mocked_on_the_class(hass, setup_integration, monkeypatch):
     ]
 
 
-def test_a_subscription_boundary_records_the_subscribe_and_each_message_its_callback_gets(inner):
+def test_a_subscription_boundary_records_the_subscribe_and_each_message_its_callback_gets_after_the_call_that_drew_it(
+    inner,
+):
     (inner.path / "inner_wire.py").write_text(
         """
 subscribers = []
@@ -489,7 +491,9 @@ def subscribe(hass, topic, callback):
 
 
 async def publish(hass, topic):
-    await hass.services.async_call("probe", "ping", {"plumbing": True}, blocking=True)
+    # The broker answers inside the publish.
+    for callback in subscribers:
+        callback({"topic": topic, "payload": "1"})
 """
     )
     (inner.path / "tests/integrations/fake/wire.py").write_text(
@@ -498,7 +502,6 @@ async def publish(hass, topic):
     only(
         inner,
         """
-from types import SimpleNamespace
 from unittest.mock import patch
 
 import inner_wire
@@ -513,8 +516,6 @@ async def listens(self, hass, request, targets):
     heard = []
     inner_wire.subscribe(hass, "a/b", heard.append)
     await inner_wire.publish(hass, "a/b")
-    for callback in inner_wire.subscribers:
-        callback(SimpleNamespace(topic="a/b", payload="1"))
     assert len(heard) == 1
     return await ScriptedAdapter.execute(self, hass, request, targets)
 
@@ -534,6 +535,21 @@ async def test_listens(hass, setup_integration):
             [["inner_wire.publish", ["a/b"], {}], None],
             [["inner_wire.subscribe.callback", [{"payload": "1", "topic": "a/b"}], {}], None],
         ]
+    ]
+
+
+def test_a_function_or_method_is_its_qualname():
+    class Owner:
+        def method(self):
+            pass
+
+    def named():
+        pass
+
+    assert norm([named, Owner().method, Owner.method]) == [
+        f"{test_a_function_or_method_is_its_qualname.__qualname__}.<locals>.named",
+        "test_a_function_or_method_is_its_qualname.<locals>.Owner.method",
+        "test_a_function_or_method_is_its_qualname.<locals>.Owner.method",
     ]
 
 

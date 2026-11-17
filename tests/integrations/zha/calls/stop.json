@@ -506,6 +506,21 @@
    [
     [
      "service",
+     "zha.issue_zigbee_group_command",
+     {
+      "args": [],
+      "cluster_id": 8,
+      "command": 3,
+      "group": 2
+     }
+    ],
+    {
+     "raises": "CancelledError"
+    }
+   ],
+   [
+    [
+     "service",
      "zha.issue_zigbee_cluster_command",
      {
       "cluster_id": 8,
@@ -529,21 +544,6 @@
     ],
     {
      "raises": "ServiceNotFound"
-    }
-   ],
-   [
-    [
-     "service",
-     "zha.issue_zigbee_group_command",
-     {
-      "args": [],
-      "cluster_id": 8,
-      "command": 3,
-      "group": 2
-     }
-    ],
-    {
-     "raises": "CancelledError"
     }
    ]
   ]

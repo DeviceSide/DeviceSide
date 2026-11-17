@@ -824,12 +824,40 @@
    ],
    [
     [
+     "mqtt.async_subscribe.callback",
+     [
+      {
+       "payload": "{\"state\":\"OFF\"}",
+       "retain": true,
+       "topic": "zigbee2mqtt/Kitchen"
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
      "service",
      "light.turn_on",
      {
       "brightness": 128,
       "entity_id": "light.kitchen"
      }
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe.callback",
+     [
+      {
+       "payload": "{\"state\":\"ON\"}",
+       "retain": false,
+       "topic": "zigbee2mqtt/Kitchen"
+      }
+     ],
+     {}
     ],
     null
    ],
@@ -886,20 +914,6 @@
   "wire": [
    [
     [
-     "mqtt.async_subscribe.callback",
-     [
-      {
-       "payload": "{\"state\":\"OFF\"}",
-       "retain": true,
-       "topic": "zigbee2mqtt/Kitchen"
-      }
-     ],
-     {}
-    ],
-    null
-   ],
-   [
-    [
      "mqtt.async_subscribe",
      [
       "zigbee2mqtt/Kitchen"
@@ -916,20 +930,6 @@
       "brightness": 128,
       "entity_id": "light.kitchen"
      }
-    ],
-    null
-   ],
-   [
-    [
-     "mqtt.async_subscribe.callback",
-     [
-      {
-       "payload": "{\"state\":\"ON\"}",
-       "retain": false,
-       "topic": "zigbee2mqtt/Kitchen"
-      }
-     ],
-     {}
     ],
     null
    ],
@@ -2601,6 +2601,17 @@
    ],
    [
     [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/bridge/request/device/options",
+      "{\"id\": \"0x00124b0012345678\", \"options\": {\"hue_native_control\": true}, \"transaction\": \"00000000000000000000000000000001\"}"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
      "mqtt.async_subscribe.callback",
      [
       {
@@ -2622,17 +2633,6 @@
        "retain": false,
        "topic": "zigbee2mqtt/bridge/response/device/options"
       }
-     ],
-     {}
-    ],
-    null
-   ],
-   [
-    [
-     "mqtt.async_publish",
-     [
-      "zigbee2mqtt/bridge/request/device/options",
-      "{\"id\": \"0x00124b0012345678\", \"options\": {\"hue_native_control\": true}, \"transaction\": \"00000000000000000000000000000001\"}"
      ],
      {}
     ],
@@ -2685,6 +2685,17 @@
    ],
    [
     [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/bridge/request/device/options",
+      "{\"id\": \"0x00124b0012345678\", \"options\": {\"hue_native_control\": false}, \"transaction\": \"00000000000000000000000000000002\"}"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
      "mqtt.async_subscribe.callback",
      [
       {
@@ -2706,17 +2717,6 @@
        "retain": false,
        "topic": "zigbee2mqtt/bridge/response/device/options"
       }
-     ],
-     {}
-    ],
-    null
-   ],
-   [
-    [
-     "mqtt.async_publish",
-     [
-      "zigbee2mqtt/bridge/request/device/options",
-      "{\"id\": \"0x00124b0012345678\", \"options\": {\"hue_native_control\": false}, \"transaction\": \"00000000000000000000000000000002\"}"
      ],
      {}
     ],
@@ -2812,6 +2812,17 @@
    ],
    [
     [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/bridge/request/device/options",
+      "{\"id\": \"0x00124b0012345678\", \"options\": {\"hue_native_control\": true}, \"transaction\": \"00000000000000000000000000000001\"}"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
      "mqtt.async_subscribe.callback",
      [
       {
@@ -2833,17 +2844,6 @@
        "retain": false,
        "topic": "zigbee2mqtt/bridge/response/device/options"
       }
-     ],
-     {}
-    ],
-    null
-   ],
-   [
-    [
-     "mqtt.async_publish",
-     [
-      "zigbee2mqtt/bridge/request/device/options",
-      "{\"id\": \"0x00124b0012345678\", \"options\": {\"hue_native_control\": true}, \"transaction\": \"00000000000000000000000000000001\"}"
      ],
      {}
     ],
@@ -2899,6 +2899,17 @@
    ],
    [
     [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/bridge/request/device/options",
+      "{\"id\": \"0x00124b0012345678\", \"options\": {\"hue_native_control\": false}, \"transaction\": \"00000000000000000000000000000002\"}"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
      "mqtt.async_subscribe.callback",
      [
       {
@@ -2920,17 +2931,6 @@
        "retain": false,
        "topic": "zigbee2mqtt/bridge/response/device/options"
       }
-     ],
-     {}
-    ],
-    null
-   ],
-   [
-    [
-     "mqtt.async_publish",
-     [
-      "zigbee2mqtt/bridge/request/device/options",
-      "{\"id\": \"0x00124b0012345678\", \"options\": {\"hue_native_control\": false}, \"transaction\": \"00000000000000000000000000000002\"}"
      ],
      {}
     ],
@@ -3055,6 +3055,17 @@
    ],
    [
     [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/bridge/request/group/options",
+      "{\"id\": \"7\", \"options\": {\"hue_native_control\": true}, \"transaction\": \"00000000000000000000000000000001\"}"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
      "mqtt.async_subscribe.callback",
      [
       {
@@ -3076,17 +3087,6 @@
        "retain": false,
        "topic": "zigbee2mqtt/bridge/response/group/options"
       }
-     ],
-     {}
-    ],
-    null
-   ],
-   [
-    [
-     "mqtt.async_publish",
-     [
-      "zigbee2mqtt/bridge/request/group/options",
-      "{\"id\": \"7\", \"options\": {\"hue_native_control\": true}, \"transaction\": \"00000000000000000000000000000001\"}"
      ],
      {}
     ],
@@ -3143,6 +3143,17 @@
    ],
    [
     [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/bridge/request/group/options",
+      "{\"id\": \"7\", \"options\": {\"hue_native_control\": false}, \"transaction\": \"00000000000000000000000000000002\"}"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
      "mqtt.async_subscribe.callback",
      [
       {
@@ -3164,17 +3175,6 @@
        "retain": false,
        "topic": "zigbee2mqtt/bridge/response/group/options"
       }
-     ],
-     {}
-    ],
-    null
-   ],
-   [
-    [
-     "mqtt.async_publish",
-     [
-      "zigbee2mqtt/bridge/request/group/options",
-      "{\"id\": \"7\", \"options\": {\"hue_native_control\": false}, \"transaction\": \"00000000000000000000000000000002\"}"
      ],
      {}
     ],
@@ -3790,6 +3790,34 @@
    ],
    [
     [
+     "mqtt.async_subscribe.callback",
+     [
+      {
+       "payload": "{\"transaction\": \"someone else's\", \"status\": \"error\"}",
+       "retain": false,
+       "topic": "zigbee2mqtt/bridge/response/device/options"
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe.callback",
+     [
+      {
+       "payload": "not json",
+       "retain": false,
+       "topic": "zigbee2mqtt/bridge/response/device/options"
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
      "service",
      "light.turn_on",
      {
@@ -3843,6 +3871,34 @@
      [
       "zigbee2mqtt/bridge/request/device/options",
       "{\"id\": \"0x00124b0012345678\", \"options\": {\"hue_native_control\": false}, \"transaction\": \"00000000000000000000000000000002\"}"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe.callback",
+     [
+      {
+       "payload": "{\"transaction\": \"someone else's\", \"status\": \"error\"}",
+       "retain": false,
+       "topic": "zigbee2mqtt/bridge/response/device/options"
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe.callback",
+     [
+      {
+       "payload": "not json",
+       "retain": false,
+       "topic": "zigbee2mqtt/bridge/response/device/options"
+      }
      ],
      {}
     ],
@@ -3931,34 +3987,6 @@
        "payload": "{\"config\": {\"devices\": {\"0x00124b0012345678\": {\"friendly_name\": \"bulb\"}}, \"groups\": {}}}",
        "retain": true,
        "topic": "zigbee2mqtt/bridge/info"
-      }
-     ],
-     {}
-    ],
-    null
-   ],
-   [
-    [
-     "mqtt.async_subscribe.callback",
-     [
-      {
-       "payload": "{\"transaction\": \"someone else's\", \"status\": \"error\"}",
-       "retain": false,
-       "topic": "zigbee2mqtt/bridge/response/device/options"
-      }
-     ],
-     {}
-    ],
-    null
-   ],
-   [
-    [
-     "mqtt.async_subscribe.callback",
-     [
-      {
-       "payload": "not json",
-       "retain": false,
-       "topic": "zigbee2mqtt/bridge/response/device/options"
       }
      ],
      {}
@@ -3971,183 +3999,6 @@
      [
       "zigbee2mqtt/bridge/request/device/options",
       "{\"id\": \"0x00124b0012345678\", \"options\": {\"hue_native_control\": true}, \"transaction\": \"00000000000000000000000000000001\"}"
-     ],
-     {}
-    ],
-    null
-   ],
-   [
-    [
-     "service",
-     "light.turn_on",
-     {
-      "entity_id": "light.lamp",
-      "rgb_color": [
-       255,
-       0,
-       0
-      ]
-     }
-    ],
-    null
-   ],
-   [
-    [
-     "mqtt.async_subscribe",
-     [
-      "zigbee2mqtt/bridge/response/device/options"
-     ],
-     {}
-    ],
-    null
-   ],
-   [
-    [
-     "mqtt.async_subscribe",
-     [
-      "zigbee2mqtt/bridge/info"
-     ],
-     {}
-    ],
-    null
-   ],
-   [
-    [
-     "mqtt.async_subscribe.callback",
-     [
-      {
-       "payload": "{\"config\": {\"devices\": {\"0x00124b0012345678\": {\"friendly_name\": \"bulb\"}}, \"groups\": {}}}",
-       "retain": true,
-       "topic": "zigbee2mqtt/bridge/info"
-      }
-     ],
-     {}
-    ],
-    null
-   ],
-   [
-    [
-     "mqtt.async_subscribe.callback",
-     [
-      {
-       "payload": "{\"transaction\": \"someone else's\", \"status\": \"error\"}",
-       "retain": false,
-       "topic": "zigbee2mqtt/bridge/response/device/options"
-      }
-     ],
-     {}
-    ],
-    null
-   ],
-   [
-    [
-     "mqtt.async_subscribe.callback",
-     [
-      {
-       "payload": "not json",
-       "retain": false,
-       "topic": "zigbee2mqtt/bridge/response/device/options"
-      }
-     ],
-     {}
-    ],
-    null
-   ],
-   [
-    [
-     "mqtt.async_publish",
-     [
-      "zigbee2mqtt/bridge/request/device/options",
-      "{\"id\": \"0x00124b0012345678\", \"options\": {\"hue_native_control\": false}, \"transaction\": \"00000000000000000000000000000002\"}"
-     ],
-     {}
-    ],
-    null
-   ],
-   [
-    [
-     "mqtt.async_publish",
-     [
-      "zigbee2mqtt/0x00124b0012345678/set",
-      "{\"state\": \"ON\", \"on_time\": 6.0}"
-     ],
-     {}
-    ],
-    null
-   ]
-  ]
- },
- {
-  "action": "turn_on_for",
-  "integration": "zigbee2mqtt",
-  "request": {
-   "dropped": [],
-   "own": null,
-   "request": {
-    "duration_s": 6.0,
-    "light": {
-     "brightness": null,
-     "color_temp_kelvin": null,
-     "hs_color": null,
-     "rgb_color": [
-      255,
-      0,
-      0
-     ],
-     "transition": null,
-     "xy_color": null
-    }
-   },
-   "targets": [
-    [
-     "light.lamp",
-     "light.lamp",
-     false
-    ]
-   ]
-  },
-  "result": [
-   {
-    "clamped_to": null,
-    "classes": "hue",
-    "data": null,
-    "detail": null,
-    "entity_id": "light.lamp",
-    "integration": "zigbee2mqtt",
-    "member_classes": null,
-    "status": "sent"
-   }
-  ],
-  "wire": [
-   [
-    [
-     "mqtt.async_subscribe",
-     [
-      "zigbee2mqtt/bridge/response/device/options"
-     ],
-     {}
-    ],
-    null
-   ],
-   [
-    [
-     "mqtt.async_subscribe",
-     [
-      "zigbee2mqtt/bridge/info"
-     ],
-     {}
-    ],
-    null
-   ],
-   [
-    [
-     "mqtt.async_subscribe.callback",
-     [
-      {
-       "payload": "{\"config\": {\"devices\": {\"0x00124b0012345678\": {\"friendly_name\": \"bulb\"}}, \"groups\": {}}}",
-       "retain": true,
-       "topic": "zigbee2mqtt/bridge/info"
-      }
      ],
      {}
     ],
@@ -4183,17 +4034,6 @@
    ],
    [
     [
-     "mqtt.async_publish",
-     [
-      "zigbee2mqtt/bridge/request/device/options",
-      "{\"id\": \"0x00124b0012345678\", \"options\": {\"hue_native_control\": true}, \"transaction\": \"00000000000000000000000000000001\"}"
-     ],
-     {}
-    ],
-    null
-   ],
-   [
-    [
      "service",
      "light.turn_on",
      {
@@ -4298,6 +4138,17 @@
    ],
    [
     [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/bridge/request/device/options",
+      "{\"id\": \"0x00124b0012345678\", \"options\": {\"hue_native_control\": true}, \"transaction\": \"00000000000000000000000000000001\"}"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
      "mqtt.async_subscribe.callback",
      [
       {
@@ -4319,17 +4170,6 @@
        "retain": false,
        "topic": "zigbee2mqtt/bridge/response/device/options"
       }
-     ],
-     {}
-    ],
-    null
-   ],
-   [
-    [
-     "mqtt.async_publish",
-     [
-      "zigbee2mqtt/bridge/request/device/options",
-      "{\"id\": \"0x00124b0012345678\", \"options\": {\"hue_native_control\": true}, \"transaction\": \"00000000000000000000000000000001\"}"
      ],
      {}
     ],
@@ -4379,6 +4219,233 @@
        "retain": true,
        "topic": "zigbee2mqtt/bridge/info"
       }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/bridge/request/device/options",
+      "{\"id\": \"0x00124b0012345678\", \"options\": {\"hue_native_control\": false}, \"transaction\": \"00000000000000000000000000000002\"}"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe.callback",
+     [
+      {
+       "payload": "{\"transaction\": \"someone else's\", \"status\": \"error\"}",
+       "retain": false,
+       "topic": "zigbee2mqtt/bridge/response/device/options"
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe.callback",
+     [
+      {
+       "payload": "{\"status\": \"error\", \"error\": \"refused\", \"transaction\": \"00000000000000000000000000000002\"}",
+       "retain": false,
+       "topic": "zigbee2mqtt/bridge/response/device/options"
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/0x00124b0012345678/set",
+      "{\"state\": \"ON\", \"on_time\": 6.0}"
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "turn_on_for",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 6.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": [
+      255,
+      0,
+      0
+     ],
+     "transition": null,
+     "xy_color": null
+    }
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "zigbee2mqtt",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_subscribe",
+     [
+      "zigbee2mqtt/bridge/response/device/options"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe",
+     [
+      "zigbee2mqtt/bridge/info"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe.callback",
+     [
+      {
+       "payload": "{\"config\": {\"devices\": {\"0x00124b0012345678\": {\"friendly_name\": \"bulb\"}}, \"groups\": {}}}",
+       "retain": true,
+       "topic": "zigbee2mqtt/bridge/info"
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/bridge/request/device/options",
+      "{\"id\": \"0x00124b0012345678\", \"options\": {\"hue_native_control\": true}, \"transaction\": \"00000000000000000000000000000001\"}"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe.callback",
+     [
+      {
+       "payload": "{\"transaction\": \"someone else's\", \"status\": \"error\"}",
+       "retain": false,
+       "topic": "zigbee2mqtt/bridge/response/device/options"
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe.callback",
+     [
+      {
+       "payload": "{\"status\": \"ok\", \"transaction\": \"00000000000000000000000000000001\"}",
+       "retain": false,
+       "topic": "zigbee2mqtt/bridge/response/device/options"
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "service",
+     "light.turn_on",
+     {
+      "entity_id": "light.lamp",
+      "rgb_color": [
+       255,
+       0,
+       0
+      ]
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe",
+     [
+      "zigbee2mqtt/bridge/response/device/options"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe",
+     [
+      "zigbee2mqtt/bridge/info"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe.callback",
+     [
+      {
+       "payload": "{\"config\": {\"devices\": {\"0x00124b0012345678\": {\"friendly_name\": \"bulb\"}}, \"groups\": {}}}",
+       "retain": true,
+       "topic": "zigbee2mqtt/bridge/info"
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/bridge/request/device/options",
+      "{\"id\": \"0x00124b0012345678\", \"options\": {\"hue_native_control\": false}, \"transaction\": \"00000000000000000000000000000002\"}"
      ],
      {}
     ],
@@ -4416,17 +4483,6 @@
     [
      "mqtt.async_publish",
      [
-      "zigbee2mqtt/bridge/request/device/options",
-      "{\"id\": \"0x00124b0012345678\", \"options\": {\"hue_native_control\": false}, \"transaction\": \"00000000000000000000000000000002\"}"
-     ],
-     {}
-    ],
-    null
-   ],
-   [
-    [
-     "mqtt.async_publish",
-     [
       "zigbee2mqtt/0x00124b0012345678/set",
       "{\"state\": \"ON\", \"on_time\": 6.0}"
      ],
@@ -4507,6 +4563,17 @@
        "retain": true,
        "topic": "zigbee2mqtt/bridge/info"
       }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/bridge/request/device/options",
+      "{\"id\": \"0x00124b0012345678\", \"options\": {\"hue_native_control\": true}, \"transaction\": \"00000000000000000000000000000001\"}"
      ],
      {}
     ],
@@ -4542,6 +4609,110 @@
    ],
    [
     [
+     "service",
+     "light.turn_on",
+     {
+      "entity_id": "light.lamp",
+      "rgb_color": [
+       255,
+       0,
+       0
+      ]
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/0x00124b0012345678/set",
+      "{\"state\": \"ON\", \"on_time\": 6.0}"
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "turn_on_for",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 6.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": [
+      255,
+      0,
+      0
+     ],
+     "transition": null,
+     "xy_color": null
+    }
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "zigbee2mqtt",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_subscribe",
+     [
+      "zigbee2mqtt/bridge/response/device/options"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe",
+     [
+      "zigbee2mqtt/bridge/info"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe.callback",
+     [
+      {
+       "payload": "{\"config\": {\"devices\": {\"0x00124b0012345678\": {\"friendly_name\": \"bulb\"}}, \"groups\": {}}}",
+       "retain": true,
+       "topic": "zigbee2mqtt/bridge/info"
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
      "mqtt.async_publish",
      [
       "zigbee2mqtt/bridge/request/device/options",
@@ -4563,6 +4734,51 @@
        0
       ]
      }
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe",
+     [
+      "zigbee2mqtt/bridge/response/device/options"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe",
+     [
+      "zigbee2mqtt/bridge/info"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe.callback",
+     [
+      {
+       "payload": "{\"config\": {\"devices\": {\"0x00124b0012345678\": {\"friendly_name\": \"bulb\"}}, \"groups\": {}}}",
+       "retain": true,
+       "topic": "zigbee2mqtt/bridge/info"
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/bridge/request/device/options",
+      "{\"id\": \"0x00124b0012345678\", \"options\": {\"hue_native_control\": false}, \"transaction\": \"00000000000000000000000000000002\"}"
+     ],
+     {}
     ],
     null
    ],
@@ -4657,6 +4873,17 @@
    ],
    [
     [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/bridge/request/device/options",
+      "{\"id\": \"0x00124b0012345678\", \"options\": {\"hue_native_control\": true}, \"transaction\": \"00000000000000000000000000000001\"}"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
      "mqtt.async_subscribe.callback",
      [
       {
@@ -4678,17 +4905,6 @@
        "retain": false,
        "topic": "zigbee2mqtt/bridge/response/device/options"
       }
-     ],
-     {}
-    ],
-    null
-   ],
-   [
-    [
-     "mqtt.async_publish",
-     [
-      "zigbee2mqtt/bridge/request/device/options",
-      "{\"id\": \"0x00124b0012345678\", \"options\": {\"hue_native_control\": true}, \"transaction\": \"00000000000000000000000000000001\"}"
      ],
      {}
     ],
@@ -4745,6 +4961,17 @@
    ],
    [
     [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/bridge/request/device/options",
+      "{\"id\": \"0x00124b0012345678\", \"options\": {\"hue_native_control\": false}, \"transaction\": \"00000000000000000000000000000002\"}"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
      "mqtt.async_subscribe.callback",
      [
       {
@@ -4766,17 +4993,6 @@
        "retain": false,
        "topic": "zigbee2mqtt/bridge/response/device/options"
       }
-     ],
-     {}
-    ],
-    null
-   ],
-   [
-    [
-     "mqtt.async_publish",
-     [
-      "zigbee2mqtt/bridge/request/device/options",
-      "{\"id\": \"0x00124b0012345678\", \"options\": {\"hue_native_control\": false}, \"transaction\": \"00000000000000000000000000000002\"}"
      ],
      {}
     ],
@@ -5094,6 +5310,17 @@
    ],
    [
     [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/bridge/request/device/options",
+      "{\"id\": \"0x00124b0012345678\", \"options\": {\"hue_native_control\": true}, \"transaction\": \"00000000000000000000000000000001\"}"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
      "mqtt.async_subscribe.callback",
      [
       {
@@ -5115,17 +5342,6 @@
        "retain": false,
        "topic": "zigbee2mqtt/bridge/response/device/options"
       }
-     ],
-     {}
-    ],
-    null
-   ],
-   [
-    [
-     "mqtt.async_publish",
-     [
-      "zigbee2mqtt/bridge/request/device/options",
-      "{\"id\": \"0x00124b0012345678\", \"options\": {\"hue_native_control\": true}, \"transaction\": \"00000000000000000000000000000001\"}"
      ],
      {}
     ],
@@ -5181,6 +5397,17 @@
    ],
    [
     [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/bridge/request/device/options",
+      "{\"id\": \"0x00124b0012345678\", \"options\": {\"hue_native_control\": false}, \"transaction\": \"00000000000000000000000000000002\"}"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
      "mqtt.async_subscribe.callback",
      [
       {
@@ -5202,17 +5429,6 @@
        "retain": false,
        "topic": "zigbee2mqtt/bridge/response/device/options"
       }
-     ],
-     {}
-    ],
-    null
-   ],
-   [
-    [
-     "mqtt.async_publish",
-     [
-      "zigbee2mqtt/bridge/request/device/options",
-      "{\"id\": \"0x00124b0012345678\", \"options\": {\"hue_native_control\": false}, \"transaction\": \"00000000000000000000000000000002\"}"
      ],
      {}
     ],
@@ -5344,7 +5560,7 @@
      "min_s": 1,
      "step_s": 1
     },
-    "send": "<function>"
+    "send": "_countdown"
    },
    "request": {
     "duration_s": 0.3,
@@ -5402,7 +5618,7 @@
      "min_s": 1,
      "step_s": 1
     },
-    "send": "<function>"
+    "send": "_countdown"
    },
    "request": {
     "duration_s": 10.0,
@@ -5460,7 +5676,7 @@
      "min_s": 1,
      "step_s": 1
     },
-    "send": "<function>"
+    "send": "_countdown"
    },
    "request": {
     "duration_s": 10.4,
@@ -5518,7 +5734,7 @@
      "min_s": 1,
      "step_s": 1
     },
-    "send": "<function>"
+    "send": "_countdown"
    },
    "request": {
     "duration_s": 10.5,
@@ -5576,7 +5792,7 @@
      "min_s": 1,
      "step_s": 1
     },
-    "send": "<function>"
+    "send": "_countdown"
    },
    "request": {
     "duration_s": 30.0,
@@ -5634,7 +5850,7 @@
      "min_s": 1,
      "step_s": 1
     },
-    "send": "<function>"
+    "send": "_countdown"
    },
    "request": {
     "duration_s": 43200.0,
@@ -5692,7 +5908,7 @@
      "min_s": 1,
      "step_s": 1
     },
-    "send": "<function>"
+    "send": "_countdown"
    },
    "request": {
     "duration_s": 46800.0,
@@ -5750,7 +5966,7 @@
      "min_s": 1,
      "step_s": 1
     },
-    "send": "<function>"
+    "send": "_countdown"
    },
    "request": {
     "duration_s": 5.0,
@@ -5808,7 +6024,7 @@
      "min_s": 1,
      "step_s": 1
     },
-    "send": "<function>"
+    "send": "_countdown"
    },
    "request": {
     "duration_s": 5.0,
@@ -5866,7 +6082,7 @@
      "min_s": 1,
      "step_s": 1
     },
-    "send": "<function>"
+    "send": "_countdown"
    },
    "request": {
     "duration_s": 5.0,
@@ -5924,7 +6140,7 @@
      "min_s": 1,
      "step_s": 1
     },
-    "send": "<function>"
+    "send": "_countdown"
    },
    "request": {
     "duration_s": 5.0,

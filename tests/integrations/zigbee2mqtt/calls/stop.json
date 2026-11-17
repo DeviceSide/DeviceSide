@@ -1153,7 +1153,7 @@
    "dropped": [],
    "own": {
     "limits": null,
-    "send": "<function>"
+    "send": "_own_set"
    },
    "request": {},
    "targets": [
