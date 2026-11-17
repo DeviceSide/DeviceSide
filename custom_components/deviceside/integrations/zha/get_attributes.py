@@ -6,7 +6,6 @@ from homeassistant.core import HomeAssistant
 
 from . import classes, zcl
 from .addressing import address, unsupported_reason
-from .families.tuya import COUNTS_SECONDS
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Request, Status, Target
 from ...core.scope import AdapterScope, experimental, verified
@@ -76,9 +75,6 @@ class ZHAGetAttributes(Adapter[Request]):
             modes = set(target.state.attributes.get("supported_color_modes") or ()) if target.state else set()
             read = await zcl.read_attributes(hass, addr, zcl.ON_OFF_CLUSTER, (zcl.ON_OFF,), optional=(zcl.ON_TIME,))
             attributes = named(zcl.ON_OFF_CLUSTER, read)
-            if "onTime" in attributes and classes.capability(hass, target) in COUNTS_SECONDS:
-                # Tuya's countdown counts whole seconds, not the spec's tenths (internals.md, `classes`).
-                attributes["onTime"] *= 10
             if modes - {"onoff"}:
                 read = await zcl.read_attributes(hass, addr, zcl.LEVEL_CLUSTER, (zcl.CURRENT_LEVEL,))
                 attributes |= named(zcl.LEVEL_CLUSTER, read)

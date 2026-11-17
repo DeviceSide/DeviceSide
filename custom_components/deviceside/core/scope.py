@@ -48,34 +48,42 @@ class Level(IntEnum):
 class OnDomains:
     """A class's level on some of the adapter's domains alone (docs/evidence.md, Device classes): on any other its
     class has no entry, so counts as Experimental, as a class outside the scope does. A record on the class in one
-    domain proves nothing about it in another: a Hue bulb's `turn_on_for` isn't a Hue plug's."""
+    domain proves nothing about it in another: a Hue bulb's `turn_on_for` isn't a Hue plug's.
+
+    `only`: the adapter serves the class on those domains alone, and refuses it as not built yet on the rest, as it
+    does a class outside the scope (AdapterScope.admits): get_attributes reads a Tuya ZCL light, which other actions
+    serve, but not a Tuya ZCL switch, which none does (core/registry.py, check_queries)."""
 
     level: Level
     domains: frozenset[str]
+    only: bool = False
 
 
 type ClassLevel = Level | OnDomains
 
 
-def _levels(items: tuple[str, ...], level: Level, domains: Collection[str] | None) -> dict[str, ClassLevel]:
+def _levels(items: tuple[str, ...], level: Level, domains: Collection[str] | None, only: bool) -> dict[str, ClassLevel]:
     # Typed for a class's levels, which domains and fields share as plain Levels: their scope refuses OnDomains.
-    entry = level if domains is None else OnDomains(level, frozenset(domains))
+    if only and domains is None:
+        raise ValueError("only takes domains: the class is served on them alone")
+    entry = level if domains is None else OnDomains(level, frozenset(domains), only)
     return dict.fromkeys(items, entry)
 
 
-def verified(*items: str, domains: Collection[str] | None = None) -> dict[str, ClassLevel]:
-    """Each item Verified; a class's on `domains` alone when given (OnDomains)."""
-    return _levels(items, Level.VERIFIED, domains)
+def verified(*items: str, domains: Collection[str] | None = None, only: bool = False) -> dict[str, ClassLevel]:
+    """Each item Verified; a class's on `domains` alone when given (OnDomains), and served nowhere else if `only`."""
+    return _levels(items, Level.VERIFIED, domains, only)
 
 
-def documented(*items: str, domains: Collection[str] | None = None) -> dict[str, ClassLevel]:
-    """Each item Documented; a class's on `domains` alone when given (OnDomains)."""
-    return _levels(items, Level.DOCUMENTED, domains)
+def documented(*items: str, domains: Collection[str] | None = None, only: bool = False) -> dict[str, ClassLevel]:
+    """Each item Documented; a class's on `domains` alone when given (OnDomains), and served nowhere else if `only`."""
+    return _levels(items, Level.DOCUMENTED, domains, only)
 
 
-def experimental(*items: str, domains: Collection[str] | None = None) -> dict[str, ClassLevel]:
-    """Each item Experimental; a class's on `domains` alone when given (OnDomains)."""
-    return _levels(items, Level.EXPERIMENTAL, domains)
+def experimental(*items: str, domains: Collection[str] | None = None, only: bool = False) -> dict[str, ClassLevel]:
+    """Each item Experimental; a class's on `domains` alone when given (OnDomains), and served nowhere else if
+    `only`."""
+    return _levels(items, Level.EXPERIMENTAL, domains, only)
 
 
 class CaveatKind(Enum):
@@ -198,7 +206,8 @@ class AdapterScope:
     # None for an integration that names none (the registry refuses a mismatch either way). Proof follows the call and
     # the class, so each stands on its own evidence: a sibling's untested one is Experimental unless it is Documented.
     # A class the integration names in neither this nor no_known_method is not built yet, and refused. A class's
-    # level holds on every domain unless its entry names some (OnDomains): elsewhere it counts as Experimental.
+    # level holds on every domain unless its entry names some (OnDomains): elsewhere it counts as Experimental, or,
+    # with `only`, is refused as not built yet (admits).
     capabilities: Mapping[str, ClassLevel] | None = None
     # Classes with no known method, refused with why; never in capabilities. Per adapter, as one class can fail one
     # action's call and answer another's.
@@ -254,6 +263,14 @@ class AdapterScope:
             return entry.level if domain in entry.domains else Level.EXPERIMENTAL
         return Level.EXPERIMENTAL if entry is None else entry
 
+    def admits(self, name: str, domain: str | None = None) -> bool:
+        """Whether the scope serves the class, on `domain` when given: an `only` entry (OnDomains) on its domains
+        alone."""
+        entry = (self.capabilities or {}).get(name)
+        if isinstance(entry, OnDomains) and entry.only and domain is not None:
+            return domain in entry.domains
+        return entry is not None
+
     def class_entries(self) -> list[tuple[str, Level, frozenset[str] | None]]:
         """Each class the scope serves, with its level and the domains it holds it on, None for every domain."""
         return [
@@ -266,15 +283,18 @@ class AdapterScope:
         """Whether the adapter's call harms a class it could reach: a no_known_method or not_built entry with harms."""
         return any(entry.harms for entry in (*self.no_known_method.values(), *self.not_built.values()))
 
-    def refusal(self, classes: Collection[str | None], group: bool = False) -> tuple[str, str | None] | None:
-        """Why the scope refuses a target of these classes (a native group's: its members'), with the reason the user
-        reads, or None. Where the call harms a class (`harms`), first `class_unknown` when one is Unplaced, or None
-        (the integration couldn't name it, or a group's membership is unknown), as it could be the harmed class, with
-        Experimental features on or off. Then `no_known_method` and its NoKnownMethod.reason when one is listed as
-        having none, else `not_built` when one is named but not served, with its NotBuilt.reason when it has an entry.
-        Elsewhere None is no refusal: the gate weighs it as Experimental, and an Unplaced class as the class it
-        names. Last, for a native group whose members are listed (`group`), `own_call` when a member's class takes a
-        call of its own (own_calls), so the group falls back to its members."""
+    def refusal(
+        self, classes: Collection[str | None], group: bool = False, domain: str | None = None
+    ) -> tuple[str, str | None] | None:
+        """Why the scope refuses a target of these classes (a native group's: its members'), in `domain` when given,
+        with the reason the user reads, or None. Where the call harms a class (`harms`), first `class_unknown` when
+        one is Unplaced, or None (the integration couldn't name it, or a group's membership is unknown), as it could
+        be the harmed class, with Experimental features on or off. Then `no_known_method` and its NoKnownMethod.reason
+        when one is listed as having none, else `not_built` when one is named but not served (in `domain`: admits),
+        with its NotBuilt.reason when it has an entry. Elsewhere None is no refusal: the gate weighs it as
+        Experimental, and an Unplaced class as the class it names. Last, for a native group whose members are listed
+        (`group`), `own_call` when a member's class takes a call of its own (own_calls), so the group falls back to
+        its members."""
         if self.capabilities is None:
             return None
         if self.harms and any(name is None or isinstance(name, Unplaced) for name in classes):
@@ -283,7 +303,7 @@ class AdapterScope:
             return Reason.NO_KNOWN_METHOD, entry.reason
         if entry := next((self.not_built[name] for name in classes if name in self.not_built), None):
             return Reason.NOT_BUILT, entry.reason
-        if any(name is not None and name not in self.capabilities for name in classes):
+        if any(name is not None and not self.admits(name, domain) for name in classes):
             return Reason.NOT_BUILT, None
         if group and self.own_call(classes) is not None:
             return Reason.OWN_CALL, None

@@ -53,9 +53,7 @@ def string_class(string: str) -> str:
 VERIFIED_COUNTDOWNS = tuple(string_class(string) for string in VERIFIED_STRINGS)
 # Every class on Tuya's countdown that turn_on_for serves, each sent that call.
 COUNTDOWNS = (TUYA_COUNTDOWN, *VERIFIED_COUNTDOWNS)
-# Every plug on converter A's countdown, served or not: its OnTime is the countdown last set, not the time left.
-COUNTDOWN_PLUGS = frozenset({*COUNTDOWNS, TUYA_COUNTDOWN_HARMED})
-# Tuya's TS011F plugs, on its countdown or not, take the rest of the actions' calls as any Tuya ZCL device does.
+# Tuya's TS011F plugs, on its countdown or not.
 _TS011F = (TUYA_TS011F, *COUNTDOWNS, TUYA_COUNTDOWN_HARMED)
 # Every Tuya class, in the order the cards list them (scripts/gen_compat.py reads a scope's classes in its order).
 _ALL = (TUYA_ZCL, *_TS011F, TUYA_MCU)
@@ -112,8 +110,10 @@ REGISTRY_RULES = (
 # The levels (index.md, Device classes): untested on every action but turn_on_for. The actions for lights alone hold
 # only the classes that can be lights, as the registry checks (core/registry.py, check_classes).
 _UNTESTED = FamilyScope(capabilities=experimental(*_LIGHTS))
-# Raw ZCL reads, on lights and switches; a datapoint device can't take one, so `tuya_mcu` is left out.
-_READ = FamilyScope(capabilities=experimental(TUYA_ZCL, *_TS011F))
+# Raw ZCL reads, of what another action serves (core/registry.py, check_queries; plan Decision 25): `tuya_zcl` as a
+# light. No action serves a Tuya ZCL switch or a TS011F off the countdown, so none is read; the countdown plugs'
+# read is refused (refusals.py), and a datapoint device can't take one, so `tuya_mcu` is left out.
+_READ = FamilyScope(capabilities=experimental(TUYA_ZCL, domains=("light",), only=True))
 # Raw ZCL writes, on lights alone, so only `tuya_zcl`, as `tuya_mcu` can't take one.
 _WRITE = FamilyScope(capabilities=experimental(TUYA_ZCL))
 

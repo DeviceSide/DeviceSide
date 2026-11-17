@@ -41,7 +41,8 @@ with timer uses Tuya's countdown on the TS011F plugs below, and isn't built yet 
 turn the device on and leave it on ([research](research/2026-11-14-timed-on-call-patterns.md)). DeviceSide refuses it
 there, even with Experimental features on. Their other features are untested, so they run only with Experimental
 features on, except that the TS011F plugs take none of the light features (smooth dimming, smooth color changes, set
-without turning on): they are plugs.
+without turning on): they are plugs. Get attributes runs only where another feature does
+([Get attributes](#get-attributes)).
 
 #### Tuya TS011F plugs
 
@@ -59,17 +60,17 @@ setting for the plug). Turn on with timer uses that countdown:
 
 The timer runs in whole seconds, up to 12 hours: a duration is rounded to the nearest second, at least 1, and one
 rounded or longer than 12 hours reports `clamped_to`, the value sent. Turning the plug off, its button or a new timer
-cancels it. The plug's time left can't be read, so get attributes shows no `timer` for it. A TS011F that Zigbee2MQTT
-shows no `countdown` for, or a multi-socket one, isn't built yet: the Zigbee timer was tested on the
+cancels it. The plug's time left can't be read, so get attributes refuses it, with no known method. A TS011F that
+Zigbee2MQTT shows no `countdown` for, or a multi-socket one, isn't built yet: the Zigbee timer was tested on the
 [Tuya TS011F](../../device-compatibility.md#tuya-ts011f) and left it on. A TS011F is a plug even where Zigbee2MQTT
 shows it as a light, so the actions for lights alone, such as stop, refuse it there as not built yet; turn on with
-timer and get attributes still take it.
+timer still takes it.
 
 #### Tuya plugs and switches
 
 Tuya devices on the standard Zigbee on/off commands: plugs, switches and relays (models `TS0001` to `TS0004`, and white
-labels), and lights, such as bulbs and dimmers. Turn on with timer isn't built yet, as above; the light features run
-on the lights, with Experimental features on.
+labels), and lights, such as bulbs and dimmers. Turn on with timer isn't built yet, as above; the light features and
+get attributes run on the lights, with Experimental features on.
 
 #### Tuya datapoint devices
 
@@ -170,7 +171,9 @@ timer.
 ## Get attributes
 
 `get_attributes` reads each bulb live, since Hue bulbs on Zigbee2MQTT don't report and its cached state can be stale.
-A group returns one entry, averaged over the lights that are on, as Hue averages a room.
+A group returns one entry, averaged over the lights that are on, as Hue averages a room. It reads only devices another
+DeviceSide feature runs on, so not Tuya's plugs and switches but its countdown plugs, which it refuses: their time
+left can't be read ([Tuya TS011F plugs](#tuya-ts011f-plugs)).
 
 ## Sharp edges
 

@@ -19,9 +19,9 @@ index.md), with "⚠️ Unmaintained" when every adapter is; the features of the
 fix, then ⚠️ Unmaintained, linking its reason); then a line per feature set, naming each class on one line, with its
 features by status: "Hue lights (Hue White A60 B22 ✔): 🟢 turn on with timer · 🌱 get attributes". Only classes of
 one brand share a line (`brand`): the class's family, else other brands; an integration with no families is one brand,
-its "Other brands" section the other brands. Lines sort by brand, alphabetically, then other brands, then native
-groups; within a brand, tested lines first, "other …" lines last, the rest alphabetically, and a line's names sort the
-same way (`ordered`).
+its "Other brands" section the other brands. Native groups sort first, then lines by brand, alphabetically, then
+other brands, then models no class line takes; within a brand, tested lines first, "other …" lines last, the rest
+alphabetically, and a line's names sort the same way (`ordered`), a variant's plain words before its maker strings.
 - Statuses: a class counts on each entity domain it can be (`IntegrationInfo.classes`) that the adapter serves, at the
   level a call there runs at (AdapterScope.level): 🟢 Verified, 🟡 Documented, 🌱 Experimental, as is every feature
   of an adapter flagged whole; 🔴 for a scope's `no_known_method` entry, which names a class devices.yaml gives no
@@ -810,9 +810,15 @@ def statuses(integration_adapters: list, class_domains: ClassDomains) -> dict[It
 
 
 def reached(class_domains: ClassDomains, name: str, scope) -> list[str]:
-    """The domains the class can be (IntegrationInfo.classes) that the scope serves, in the scope's order. Never empty
-    for a class the scope holds or refuses with a reason (core/registry.py, check_classes)."""
-    return [domain for domain in scope.domains if domain in class_domains.get(name, ())]
+    """The domains the class can be (IntegrationInfo.classes) that the scope serves, in the scope's order, and, for a
+    class it serves on some alone (OnDomains `only`), those. Never empty for a class the scope holds or refuses with
+    a reason (core/registry.py, check_classes)."""
+    held = name not in scope.no_known_method
+    return [
+        domain
+        for domain in scope.domains
+        if domain in class_domains.get(name, ()) and (not held or scope.admits(name, domain))
+    ]
 
 
 def merged(phrases: list[str], url: str) -> str:
@@ -861,7 +867,7 @@ class Line:
             return self.label
         if self.variant:
             ((section, phrases),) = self.sections.items()
-            # Variants read as either: "_TZ3000_a, _TZ3000_b, or no countdown setting".
+            # Variants read as either: "no countdown setting, _TZ3000_a, or _TZ3000_b".
             either = f"{', '.join(phrases[:-1])}, or {phrases[-1]}" if len(phrases) > 1 else phrases[0]
             return anchor(either, data.url(key, section)) + (f" {VERIFIED}" if set(self.models) & rig else "")
         names = ", ".join(merged(phrases, data.url(key, section)) for section, phrases in self.sections.items())
@@ -1023,18 +1029,22 @@ def brands(info) -> Brand:
 
 
 def ordered(lines: list[Line], brand: Brand, rig: set[str]) -> list[Line]:
-    """Lines by brand (Decision 18, `brands`), alphabetically, then other brands, then models no class line takes,
-    then native groups. Within a brand, lines with a rig-tested model first, those named "other …" last, the rest
-    alphabetically; a line's sections and their phrases, and a parent's children, sort the same way."""
+    """Native groups first (Decision 22), then lines by brand (Decision 18, `brands`), alphabetically, then other
+    brands, then models no class line takes. Within a brand, lines with a rig-tested model first, those named
+    "other …" last, the rest alphabetically; a line's sections and their phrases, and a parent's children, sort the
+    same way, except that plain words come before maker strings ("_TZ3000_…", Decision 23)."""
 
     def name_key(name: str) -> tuple:
-        return (name.lower().startswith("other"), name.lower())
+        return (name.lower().startswith("other"), name.startswith("_"), name.lower())
 
     def brand_of(line: Line, items: list[Item]) -> tuple:
         return min((brand(cls, line.at.get((cls, domain))) for cls, domain in items), default=(0, ""))
 
     def key(line: Line) -> tuple:
-        group = (2, int(line.models == [])) if line.label is not None else brand_of(line, line.items)
+        if line.label is not None:
+            group = (-1, "") if line.models == [] else (2, "")  # native groups, or models no class line takes
+        else:
+            group = brand_of(line, line.items)
         held = {name for child in (line.children or [line]) for name in child.models}
         return (*group, not held & rig, *name_key(line.plain()))
 

@@ -155,8 +155,13 @@ Zigbee2MQTT countdown plug's maker string with a record of its own is a class of
   guarantee is per action: a scope never holds a class on an action that serves none of its domains, so an action for
   lights alone refuses a plug as not built yet, and its card leaves the plug off (the registry checks). An action
   that serves one of them admits the class in every domain it serves, at the class's level there: one serving
-  switches takes a TS011F that Home Assistant shows as a light. A class whose domains show different features gets a
-  card line per domain ("other brands' lights", "other brands' plugs and switches").
+  switches takes a TS011F that Home Assistant shows as a light. An entry held on some domains with `only=True` admits
+  the class there alone and refuses it elsewhere as not built yet. A class whose domains show different features gets
+  a card line per domain ("other brands' lights", "other brands' plugs and switches").
+- **A read serves only what another action does.** Get attributes reads state back around DeviceSide's other
+  actions, so it admits only the classes, on the domains, that another of the integration's actions admits (the
+  registry checks): no other action serves a Tuya ZCL switch yet, so it reads a Tuya ZCL device as a light alone. A
+  class it would read with nothing to return is a `no_known_method` entry instead (a Tuya countdown plug's time left).
 - **One axis per integration.** An integration that names classes holds them in every adapter's scope, and only the
   classes it declares; one that names none holds them in none (the registry checks). A new integration names its
   classes, or its PR argues that it has one: that no known device behind it answers the same call differently.

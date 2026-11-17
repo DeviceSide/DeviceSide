@@ -129,29 +129,40 @@ def test_other_is_documented_on_brightness_fades_and_stop_alone():
 
 
 @pytest.mark.parametrize(
-    ("capability", "harmed", "not_built"),
+    ("capability", "harmed", "not_built", "no_method"),
     [
-        # Not built yet on turn_on_for, with an entry: today's call would leave them on (Decision 70).
-        ("tuya_zcl", {"turn_on_for"}, {"turn_on_for"}),
-        ("tuya_ts011f", {"turn_on_for"}, {"turn_on_for"}),
+        # Not built yet on turn_on_for, with an entry: today's call would leave them on (Decision 70). No other action
+        # serves a Tuya ZCL switch, so get_attributes reads it as a light alone (plan Decision 25).
+        ("tuya_zcl", {"turn_on_for"}, {"turn_on_for"}, set()),
+        # Nor a TS011F off the countdown, so get_attributes doesn't read it.
+        ("tuya_ts011f", {"turn_on_for"}, {"turn_on_for", "get_attributes"}, set()),
         # Reported failing Tuya's countdown with harm (Decision 41).
-        ("tuya_countdown_harmed", {"turn_on_for"}, {"turn_on_for"}),
-        ("tuya_mcu", {"turn_on_for"}, {"turn_on_for", "get_attributes", "set_attributes"}),
-        ("sengled", set(), {"turn_on_for"}),
-        ("gledopto", set(), set()),
+        ("tuya_countdown_harmed", {"turn_on_for"}, {"turn_on_for", "get_attributes"}, set()),
+        # The time left can't be read (probe P6).
+        ("tuya_countdown", set(), {"get_attributes"}, {"get_attributes"}),
+        ("tuya_mcu", {"turn_on_for"}, {"turn_on_for", "get_attributes", "set_attributes"}, set()),
+        ("sengled", set(), {"turn_on_for"}, set()),
+        ("gledopto", set(), set(), set()),
     ],
 )
-def test_where_each_class_is_refused(capability, harmed, not_built):
+def test_where_each_class_is_refused(capability, harmed, not_built, no_method):
     """The integration's guard on what a family's change can let through: the actions that refuse the class with an
-    entry, because the call would harm it, and those that leave it out, among the actions a domain it can be reaches
-    (the rest never hold it: test_actions_for_lights_alone_never_hold_a_switch_only_class). Its level where it is
-    served is its family's (families/<family>/)."""
+    entry, because the call would harm it or has no known method, and those that leave it out, among the actions a
+    domain it can be reaches (the rest never hold it: test_actions_for_lights_alone_never_hold_a_switch_only_class).
+    Its level where it is served is its family's (families/<family>/)."""
     scopes = {
         action: scope for action, scope in _scopes().items() if INTEGRATION.classes[capability] & scope.domains.keys()
     }
-    assert not any(capability in scope.no_known_method for scope in scopes.values())
+    assert {action for action, scope in scopes.items() if capability in scope.no_known_method} == no_method
     assert {action for action, scope in scopes.items() if capability in scope.not_built} == harmed
     assert {action for action, scope in scopes.items() if capability not in scope.capabilities} == not_built
+
+
+def test_get_attributes_reads_a_tuya_zcl_device_as_a_light_alone():
+    scope = _scopes()["get_attributes"]
+    assert scope.admits("tuya_zcl", "light")
+    assert not scope.admits("tuya_zcl", "switch")
+    assert scope.refusal(["tuya_zcl"], domain="switch") == ("not_built", None)
 
 
 SWITCH_ONLY = {"tuya_ts011f", "tuya_countdown", *tuya.VERIFIED_COUNTDOWNS, "tuya_countdown_harmed"}

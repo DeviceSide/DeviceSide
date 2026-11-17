@@ -24,8 +24,6 @@ TUYA_COUNTDOWN_HARMED = "tuya_countdown_harmed"
 TUYA_ZCL = "tuya_zcl"
 # A Tuya datapoint device (TS0601), whose quirk turns On/Off into Tuya datapoints and answers the rest itself.
 TUYA_MCU = "tuya_mcu"
-# The classes whose OnTime counts Tuya's countdown, in whole seconds, not the spec's tenths (get_attributes).
-COUNTS_SECONDS = frozenset({TUYA_COUNTDOWN, TUYA_COUNTDOWN_HARMED})
 
 # The package whose On/Off clusters route commands themselves: zhaquirks.tuya.mcu's TuyaOnOff and TuyaOnOffNM, and
 # zhaquirks.tuya's older TuyaOnOff.
@@ -62,7 +60,10 @@ ZCL_RULES = (
 # answers what DeviceSide sends itself (reads from its cache, a Level move without its transition), so it needs a
 # datapoint call nobody has built (not built yet).
 _UNTESTED = FamilyScope(capabilities=experimental(TUYA_ZCL))
-_READ = FamilyScope(capabilities=experimental(TUYA_COUNTDOWN, TUYA_COUNTDOWN_HARMED, TUYA_ZCL))
+# get_attributes reads only what another action serves (core/registry.py, check_queries): `tuya_zcl` as a light. No
+# action serves a Tuya plug or switch yet, the countdown models included, so none is read (plan Decision 25); when
+# turn_on_for serves the countdown models, their OnTime reads in whole seconds (internals.md, "Tuya's recipe, parked").
+_READ = FamilyScope(capabilities=experimental(TUYA_ZCL, domains=("light",), only=True))
 
 FAMILY = Family(
     key="tuya",

@@ -102,8 +102,10 @@ unicast: `light.turn_on` when there are fields, a plain `On`, then `OnWithTimedO
 call (C5: `0.1 | 1 | 0 | 10`, then `1.1 | 1 | 10 | 10`). It is the frame Z2M's converter A sends
 (`tuya.tz.on_off_countdown`, [tuya-countdown](../zigbee2mqtt/research/2026-11-14-tuya-countdown.md), §1) and the lab
 probe's C5. It was built and then taken out for v0.1.0's scope, not its units; until it returns, `turn_on_for`
-refuses the Tuya classes as not built yet, with `harms`. `get_attributes` reads a `tuya_countdown` OnTime as
-seconds.
+refuses the Tuya classes as not built yet, with `harms`, and `get_attributes` reads none of them, as it reads only
+what another action serves (`core/registry.py`, `check_queries`). When it returns, `get_attributes` reads a
+`tuya_countdown` again, its OnTime in whole seconds (the lab probe's ZHA C5 counts it down by 1 a second), so ten
+times the spec's tenths.
 
 A group gets one `light.turn_on` and one group `OnWithTimedOff` when the lights the call reaches are every device
 endpoint in the group but the coordinator; per-member commands would start about 0.7 s apart across 8 lights.

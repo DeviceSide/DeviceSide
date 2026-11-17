@@ -49,7 +49,7 @@ some devices can't do is not marked there.
 ## Zigbee plugs and switches
 
 `turn_on_for` and `get_attributes` on Zigbee2MQTT and ZHA plugs and switches are untested, but for Zigbee2MQTT's
-Tuya countdown plugs on `turn_on_for`
+Tuya countdown plugs on `turn_on_for`, and `get_attributes` reads only those another action serves
 ([device compatibility](device-compatibility.md#zigbee-plugs-and-switches)). Few honor the Zigbee timer command:
 IKEA's are moving to Thread, and Sonoff and Tuya run their own countdowns (the Tuya TS011F's runs only Tuya's way:
 DeviceSide sends it Tuya's countdown on Zigbee2MQTT, and [doesn't support](device-compatibility.md#tuya-ts011f) its

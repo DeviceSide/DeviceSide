@@ -94,7 +94,8 @@ Zigbee2MQTT, turn on with timer is tested plug by plug: DeviceSide uses Tuya's c
 drives by it ([Tuya TS011F plugs](integrations/zigbee2mqtt/index.md#tuya-ts011f-plugs)), and every other plug, a Hue
 one included, runs only with Experimental features on. On ZHA, and on Zigbee2MQTT's other Tuya
 plugs, DeviceSide refuses it, as they would turn on and stay on, or on long after the time asked; the
-[Tuya TS011F](#tuya-ts011f) runs only Tuya's own timer. ZHA and Zigbee2MQTT each need their own report.
+[Tuya TS011F](#tuya-ts011f) runs only Tuya's own timer. Get attributes reads only the plugs another feature runs on,
+so none of Tuya's, nor the Sonoff SWV on ZHA. ZHA and Zigbee2MQTT each need their own report.
 
 ## Not built yet
 
@@ -124,7 +125,7 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 | Action | Level | Items | Tested models | Records |
 |---|---|---|---|---|
 | `get_attributes` | Verified | light entities; hue classes | `LTA009` (`hue`), firmware `1.163.1`<br>`LCA016` (`hue`), firmware `1.164.2`<br>`LWA012` (`hue`), firmware `1.163.1`<br>group | [record](integrations/zigbee2mqtt/test-records/get_attributes.json) |
-| `get_attributes` | Experimental | switch entities; other, tuya_zcl, tuya_ts011f, tuya_countdown, tuya_countdown_tz3000_0zfrhq4i, tuya_countdown_tz3000_typdpbpg, tuya_countdown_tz3000_gznh2xla, tuya_countdown_tz3000_okaz9tjs, tuya_countdown_harmed, sengled, gledopto classes | `TS011F` (`tuya_countdown_tz3000_0zfrhq4i`), firmware `0122052017`<br>`TS011F` (`tuya_countdown_tz3000_typdpbpg`), firmware `Zigbee2MQTT 2.14.3`<br>`TS011F` (`tuya_countdown_tz3000_gznh2xla`), firmware `Zigbee2MQTT 2.14.3`<br>`TS011F` (`tuya_countdown_tz3000_okaz9tjs`), firmware `500+TZSKT31BS102` | |
+| `get_attributes` | Experimental | switch entities; other, tuya_zcl on light, sengled, gledopto classes | `TS011F` (`tuya_countdown_tz3000_0zfrhq4i`), firmware `0122052017`<br>`TS011F` (`tuya_countdown_tz3000_typdpbpg`), firmware `Zigbee2MQTT 2.14.3`<br>`TS011F` (`tuya_countdown_tz3000_gznh2xla`), firmware `Zigbee2MQTT 2.14.3`<br>`TS011F` (`tuya_countdown_tz3000_okaz9tjs`), firmware `500+TZSKT31BS102` | |
 | `lower_brightness` | Verified | light entities; hue classes; brightness fields | `LTA009` (`hue`), firmware `1.163.1`<br>group | [record](integrations/zigbee2mqtt/test-records/lower_brightness.json) |
 | `lower_brightness` | Documented | other classes | | |
 | `lower_brightness` | Experimental | tuya_zcl, tuya_mcu, sengled, gledopto classes | | |
@@ -147,6 +148,10 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 | `turn_on_for` | Verified | light, switch entities; hue on light, tuya_countdown_tz3000_0zfrhq4i on switch, tuya_countdown_tz3000_typdpbpg on switch, tuya_countdown_tz3000_gznh2xla on switch, tuya_countdown_tz3000_okaz9tjs on switch classes; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, transition fields | `TS011F` (`tuya_countdown_tz3000_0zfrhq4i`), firmware `0122052017`<br>`TS011F` (`tuya_countdown_tz3000_typdpbpg`), firmware `Zigbee2MQTT 2.14.3`<br>`TS011F` (`tuya_countdown_tz3000_gznh2xla`), firmware `Zigbee2MQTT 2.14.3`<br>`TS011F` (`tuya_countdown_tz3000_okaz9tjs`), firmware `500+TZSKT31BS102`<br>`LWA012` (`hue`), firmware `1.163.1`<br>`LTA009` (`hue`), firmware `1.163.1`<br>`LCA016` (`hue`), firmware `1.164.2`<br>group | [record](integrations/zigbee2mqtt/test-records/turn_on_for.json) |
 | `turn_on_for` | Experimental | other, tuya_countdown, gledopto classes | | |
 
+| No known method | Why | Source |
+|---|---|---|
+| Tuya TS011F plugs (`get_attributes`) | Its timer reads back the time it was set to, not the time left, so DeviceSide can't read it | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-15-tuya-countdown-probe.md) |
+
 | Not built yet, harmed by today's call | Why | Source |
 |---|---|---|
 | Tuya TS011F plugs (no countdown setting) (`turn_on_for`) | Zigbee2MQTT would turn it on with no timer, so it would stay on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md) |
@@ -159,7 +164,7 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 | Action | Level | Items | Tested models | Records |
 |---|---|---|---|---|
 | `get_attributes` | Verified | light entities; hue classes | `LTA009` (`hue`), firmware `0x01002a00`<br>`LCA016` (`hue`), firmware `0x01000d08`<br>`LWA012` (`hue`), firmware `0x01002a00` | [record](integrations/zha/test-records/get_attributes.json) |
-| `get_attributes` | Experimental | switch entities; other, tuya_countdown, tuya_countdown_harmed, tuya_zcl, sengled, sonoff_swv classes | | |
+| `get_attributes` | Experimental | switch entities; other, tuya_zcl on light, sengled classes | | |
 | `lower_brightness` | Verified | light entities; hue classes; brightness fields | `LTA009` (`hue`), firmware `0x01002a00`<br>group | [record](integrations/zha/test-records/lower_brightness.json) |
 | `lower_brightness` | Documented | other classes | | |
 | `lower_brightness` | Experimental | tuya_zcl, sengled classes | | |

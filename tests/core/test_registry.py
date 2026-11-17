@@ -180,6 +180,41 @@ def test_every_class_names_its_domains_as_a_non_empty_frozenset(domains):
         _registry([Classed], replace(CLASSED, classes={**CLASSED.classes, "tuya": domains}))
 
 
+def test_a_query_serves_only_what_another_action_serves():
+    """Plan Decision 25: get_attributes reads state back around the other actions, so a class and domain only it
+    would serve fail registration; held on the rest alone (OnDomains `only`), or refused with a reason, they pass."""
+
+    class Timer(FakeTurnOnFor):
+        scope = replace(
+            Classed.scope, capabilities=verified("hue", domains=("light",), only=True) | experimental("other")
+        )
+
+    def read(capabilities, **entries):
+        class Read(FakeTurnOnFor):
+            action = "get_attributes"
+            scope = replace(Classed.scope, capabilities=capabilities, **entries)
+
+        return Read
+
+    _registry([Timer, read(experimental("hue", domains=("light",), only=True) | experimental("other"))], CLASSED)
+    _registry([Timer, read(experimental("other"), no_known_method={"hue": NO_METHOD})], CLASSED)
+    with pytest.raises(ValueError, match="serves what no other fake action does: hue on switch$"):
+        _registry([Timer, read(experimental("hue", "other"))], CLASSED)
+    with pytest.raises(ValueError, match="serves what no other fake action does: tuya on light, tuya on switch$"):
+        _registry(
+            [Timer, read(experimental("hue", domains=("light",), only=True) | experimental("other", "tuya"))], CLASSED
+        )
+
+
+def test_a_query_on_an_integration_naming_no_classes_serves_only_another_action_s_domains():
+    class Read(FakeTurnOffFor):
+        action = "get_attributes"
+        scope = replace(FakeTurnOffFor.scope, domains=verified("light", "switch"))
+
+    with pytest.raises(ValueError, match="serves what no other fake action does: any class on light$"):
+        _registry([FakeTurnOffFor, Read])
+
+
 def test_the_default_class_is_never_verified():
     """docs/evidence.md, Device classes: it holds every device not yet placed, so no record proves it."""
     defaulted = replace(CLASSED, default_class="other")

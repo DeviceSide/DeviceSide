@@ -225,6 +225,28 @@ def test_a_class_held_on_some_domains_alone_is_experimental_on_the_rest():
     assert scope.refusal(["hue"]) is None  # served, so not refused: gated by its level
 
 
+def test_a_class_served_on_some_domains_alone_is_refused_on_the_rest():
+    """`only`: a Tuya ZCL device read as a light, which other actions serve, but not as a switch (plan Decision 25)."""
+    scope = AdapterScope(
+        domains=verified("light", "switch"), capabilities=experimental("tuya", domains=("light",), only=True)
+    )
+
+    assert scope.capabilities["tuya"] == OnDomains(Level.EXPERIMENTAL, frozenset({"light"}), only=True)
+    assert scope.admits("tuya", "light")
+    assert not scope.admits("tuya", "switch")
+    assert scope.admits("tuya")  # served somewhere
+    assert scope.refusal(["tuya"], domain="light") is None
+    assert scope.refusal(["tuya"], domain="switch") == (Reason.NOT_BUILT, None)
+    # Without `only`, a domain off the entry's is flagged, not refused.
+    flagged = AdapterScope(domains=verified("light", "switch"), capabilities=verified("hue", domains=("light",)))
+    assert flagged.refusal(["hue"], domain="switch") is None
+
+
+def test_only_takes_domains():
+    with pytest.raises(ValueError, match="only takes domains"):
+        experimental("tuya", only=True)
+
+
 @pytest.mark.parametrize(
     ("scope", "message"),
     [

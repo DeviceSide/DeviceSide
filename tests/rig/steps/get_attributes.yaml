@@ -88,7 +88,8 @@ tests:
           attributes: {hs_color.0: {min: 25, max: 35}, hs_color.1: {min: 75, max: 85}, color_temp_kelvin: null}
 
   # The device's own timer, read back with the time it has left; the row loses it once the timer ends.
-  # `"off"` is quoted: YAML reads a bare off as false.
+  # `"off"` is quoted: YAML reads a bare off as false. By design, Z2M can't read a Tuya countdown's time left, so it
+  # refuses the read, no known method (Z2M refusals.py).
   - name: reads_a_running_timer
     roles: [switch_plug, light_dimmable]
     steps:
@@ -100,16 +101,20 @@ tests:
       - call: {}
       - expect_response: {attributes: {timer.turns: "off", timer.remaining_s: {min: 15, max: 20}}}
         except_classes: {zigbee2mqtt: [tuya_countdown]}
-      # By design: Z2M can't read a Tuya countdown's time left, so it reports no timer (Z2M get_attributes.py).
-      - expect_response: {attributes: {timer: null}}
+      - expect_error: {key: no_known_method}
         classes: {zigbee2mqtt: [tuya_countdown]}
       - wait: 5  # the device counts down, rather than echoing the duration
       - call: {}
       - expect_response: {attributes: {timer.remaining_s: {min: 10, max: 16}}}
         except_classes: {zigbee2mqtt: [tuya_countdown]}
+      - expect_error: {key: no_known_method}
+        classes: {zigbee2mqtt: [tuya_countdown]}
       - expect_state: {state: off, within: 15 + 2 * tol}
       - call: {}
       - expect_response: {attributes: {timer: null}}
+        except_classes: {zigbee2mqtt: [tuya_countdown]}
+      - expect_error: {key: no_known_method}
+        classes: {zigbee2mqtt: [tuya_countdown]}
 
   # A turn_off cancels the timer, so the row must not report one left over on a plug that is off.
   - name: reads_no_timer_after_a_turn_off
@@ -120,6 +125,9 @@ tests:
       - set: {state: off}
       - call: {}
       - expect_response: {attributes: {timer: null}}
+        except_classes: {zigbee2mqtt: [tuya_countdown]}
+      - expect_error: {key: no_known_method}
+        classes: {zigbee2mqtt: [tuya_countdown]}
 
   - name: reads_an_auto_on_timer
     roles: [switch_plug]

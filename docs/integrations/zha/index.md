@@ -39,7 +39,8 @@ Experimental features on; why, and what else runs, is in each kind's section bel
 
 Tuya's plugs, switches and relays on the standard Zigbee on/off commands (models `TS011F`, `TS0001` to `TS0004`,
 `TS0011` and `TS0726`), including the [Tuya TS011F](../../device-compatibility.md#tuya-ts011f). Turn on with timer
-isn't built yet, as above.
+isn't built yet, as above, and get attributes runs only where another feature does
+([Get attributes](#get-attributes)).
 
 #### Reported Tuya plugs
 
@@ -51,7 +52,8 @@ features on.
 #### Other Tuya devices
 
 Tuya's other devices on the standard Zigbee commands: bulbs (such as `TS0505B`), dimmers and other white labels.
-Turn on with timer isn't built yet, as above.
+Turn on with timer isn't built yet, as above; the light features and get attributes run on the lights, with
+Experimental features on.
 
 #### Tuya datapoint devices
 
@@ -75,8 +77,8 @@ only with Experimental features on.
 
 Sonoff's SWV water valve reads the Zigbee timer in seconds rather than tenths, so it would stay open about ten times
 longer than asked ([research](../zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md)). Turn on with timer isn't
-built for it yet, and DeviceSide refuses it, even with Experimental features on. Get attributes is untested, so it
-runs only with Experimental features on; the light features don't apply to a valve.
+built for it yet, and DeviceSide refuses it, even with Experimental features on. Get attributes runs only where
+another feature does ([Get attributes](#get-attributes)), and the light features don't apply to a valve.
 
 ### Other brands
 
@@ -124,4 +126,5 @@ comes back at its lowest level.
 ## Get attributes
 
 `get_attributes` reads each light live, not from ZHA's cache, which goes stale after a remote or a command Home
-Assistant didn't send. A ZHA group returns one entry per light.
+Assistant didn't send. A ZHA group returns one entry per light. It reads only devices another DeviceSide feature runs
+on, so not Tuya's plugs and switches or the Sonoff SWV yet.

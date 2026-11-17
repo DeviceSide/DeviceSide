@@ -1,7 +1,7 @@
 """Zigbee2MQTT get_attributes: on/off timer, brightness, color temperature and color, read live from each bulb.
 
-An off bulb's brightness is Z2M's, the level it comes back at (Reader.read). A Tuya countdown plug reports no timer:
-its OnTime holds the countdown last set, not the time left (internals.md, Tuya's countdown, P6), so it is dropped.
+An off bulb's brightness is Z2M's, the level it comes back at (Reader.read). A Tuya countdown plug is refused: its
+OnTime holds the countdown last set, not the time left (refusals.py; internals.md, Tuya's countdown, P6).
 """
 
 from datetime import datetime
@@ -12,8 +12,7 @@ from homeassistant.util import dt as dt_util
 
 from .adapter import Z2MAdapter
 from .addressing import not_addressable
-from .classes import capability, class_scope
-from .families.tuya import COUNTDOWN_PLUGS
+from .classes import class_scope
 from .members import member_lights, unaddressable
 from .read import Reader, reader
 from ...core.errors import Reason
@@ -66,7 +65,4 @@ class Z2MGetAttributes(Z2MAdapter[Request]):
 
 async def _read(reading: Reader, target: Target) -> tuple[dict, datetime]:
     """The target's attributes, and when they were read, which a timer's end counts from."""
-    attributes = await reading.read(target)
-    if capability(reading.hass, target) in COUNTDOWN_PLUGS:
-        attributes = {name: value for name, value in attributes.items() if name != "onTime"}
-    return attributes, dt_util.utcnow()
+    return await reading.read(target), dt_util.utcnow()

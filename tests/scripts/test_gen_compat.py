@@ -419,14 +419,14 @@ def test_a_card_lists_tested_models_once_each_by_their_name_then_native_groups(r
         f"[native groups]({URL}#native-groups) ✔",
     ]
     # A format 1 record names no device's domain or class, so its models take a line of their own per feature set,
-    # after the lines that work, with the features they were tested on; native groups too.
+    # after the lines that work, with the features they were tested on; native groups first (Decision 22).
     assert card.render().splitlines() == [
         "**ZHA** (Zigbee 3.0)",
         "",
+        f"- [native groups]({URL}#native-groups) ✔: 🟢 turn on with timer",
         f"- [lights]({URL}#lights): 🟢 turn on with timer",
         f"- [Hue lamp]({URL}#hue-lamp) ✔: 🟢 turn on with timer",
         f"- [Plug]({URL}#plug) ✔: 🟢 stop",
-        f"- [native groups]({URL}#native-groups) ✔: 🟢 turn on with timer",
         f"- [Old plug]({URL}#old-plug): 🔴",
     ]
 
@@ -1141,12 +1141,12 @@ def test_a_tested_model_follows_the_line_of_the_class_and_domain_a_test_reached_
     scope = AdapterScope(domains=verified("light", "switch"), capabilities=verified("Switch", "Light"))
     dimming = AdapterScope(capabilities=verified("Light") | experimental("Switch"))
     card = classed_card(adapter("zha", "turn_on_for", scope), adapter("zha", "raise_brightness", dimming))
-    # Tested lines first, then alphabetically; native groups after the classes.
+    # Native groups first (Decision 22), then tested lines, then alphabetically.
     assert card.lines == [
+        f"[native groups]({URL}#native-groups) ✔: 🟢 turn on with timer",
         f"[dimmers]({URL}#dimmers) ([Hue lamp]({URL}#hue-lamp) ✔): 🟢 turn on with timer, smooth dimming",
         f"[relays]({URL}#relays) ([Plug]({URL}#plug) ✔): 🟢 turn on with timer",
         f"[relays as lights]({URL}#relays): 🟢 turn on with timer · 🌱 smooth dimming",
-        f"[native groups]({URL}#native-groups) ✔: 🟢 turn on with timer",
         f"[Old plug]({URL}#old-plug): 🔴",
     ]
     # A class named as its one model gives it once.
@@ -1246,12 +1246,12 @@ def test_lines_sort_by_brand_then_tested_then_other_last(root):
     card = gc.card("zha", registry, list(adapters), data(registry, capabilities=capabilities))
     # acme before Beta: brands sort case-insensitively.
     assert card.lines == [
+        f"[native groups]({URL}#native-groups) ✔: 🟢 turn on with timer",  # native groups first (Decision 22)
         f"[relays]({URL}#relays) ([Plug]({URL}#plug) ✔): 🟢 turn on with timer",  # acme's tested line first
         f"[RGB controllers]({URL}#dimmers): 🌱 turn on with timer",
         f"[other Acme lights]({URL}#dimmers): 🌱 turn on with timer, smooth dimming",
         f"[dimmers]({URL}#dimmers): 🟢 turn on with timer · 🌱 smooth dimming",  # Beta
         f"[other brands]({URL}#lights): 🟡 turn on with timer · 🌱 smooth dimming",
-        f"[native groups]({URL}#native-groups) ✔: 🟢 turn on with timer",
         f"[Old plug]({URL}#old-plug): 🔴",
     ]
 
@@ -1313,10 +1313,14 @@ def test_without_families_the_other_brands_section_sorts_last():
 def test_a_lines_phrases_sort_like_lines_and_variants_join_with_or():
     line = gc.Line((), {"S": ["other makers", "Beta", "_TZ3000_b", "alpha"]})
     (line,) = gc.ordered([line], lambda cls, section: (0, ""), set())
-    assert line.sections == {"S": ["_TZ3000_b", "alpha", "Beta", "other makers"]}
+    # Plain words before maker strings, which keep their "_" (Decision 23); "other …" last.
+    assert line.sections == {"S": ["alpha", "Beta", "_TZ3000_b", "other makers"]}
     line.variant = True
     data = gc.Data(requires={}, models={}, capabilities={}, no_known_method=[])
-    assert line.name(gc.Card("X"), "x", data, set()) == f"[_TZ3000_b, alpha, Beta, or other makers]({URL}#s)"
+    assert line.name(gc.Card("X"), "x", data, set()) == f"[alpha, Beta, _TZ3000_b, or other makers]({URL}#s)"
+    variant = gc.Line((), {"S": ["_TZ3000_gjnozsaz", "no countdown setting"]}, variant=True)
+    (variant,) = gc.ordered([variant], lambda cls, section: (0, ""), set())
+    assert variant.name(gc.Card("X"), "x", data, set()) == f"[no countdown setting, or _TZ3000_gjnozsaz]({URL}#s)"
     # A parent's children sort the same way: "other …" last.
     children = [gc.Line((), {"S": ["other makers"]}, variant=True), gc.Line((), {"S": ["zeta"]}, variant=True)]
     (parent,) = gc.ordered([gc.Line((), {"S": ["plugs"]}, note="check", children=children)], lambda *_: (0, ""), set())

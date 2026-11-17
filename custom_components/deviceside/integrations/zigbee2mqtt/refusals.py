@@ -10,7 +10,7 @@ this path isn't theirs, so an entry is added, changed or removed with an integra
 from collections.abc import Mapping
 
 from .docs import RESEARCH
-from .families.tuya import TUYA_COUNTDOWN_HARMED, TUYA_MCU, TUYA_TS011F, TUYA_ZCL
+from .families.tuya import COUNTDOWNS, TUYA_COUNTDOWN_HARMED, TUYA_MCU, TUYA_TS011F, TUYA_ZCL
 from ...core.scope import NoKnownMethod, NotBuilt
 
 # What the user reads after core's "can't take this action yet" (errors.py, the not_built key).
@@ -38,4 +38,17 @@ REFUSALS: Mapping[str, Mapping[str, NoKnownMethod | NotBuilt]] = {
             harms=True,
         ),
     },
+    # get_attributes. On a countdown plug the only thing the read adds is the timer, and its time left can't be read:
+    # `/get` and the plug's reports carry the countdown last set (internals.md, Tuya's countdown, P6). Not harmful, a
+    # read (docs/evidence.md, When today's call harms a class). The TS011Fs off the countdown are in no scope: no
+    # other action serves them, so there is nothing to read back around (plan Decision 25).
+    "get_attributes": dict.fromkeys(
+        COUNTDOWNS,
+        NoKnownMethod(
+            what="Tuya TS011F plugs",
+            reason="Its timer reads back the time it was set to, not the time left, so DeviceSide can't read it",
+            source=RESEARCH + "2026-11-15-tuya-countdown-probe.md",
+            harms=False,
+        ),
+    ),
 }

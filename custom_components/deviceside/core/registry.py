@@ -7,6 +7,7 @@ from types import ModuleType
 from .action import Action
 from .adapter import Adapter
 from .ha_watch import CallResolver
+from .models import ActionKind
 from .scope import Family, IntegrationInfo, Level
 from .. import actions as actions_pkg
 from .. import integrations as integrations_pkg
@@ -142,6 +143,35 @@ def check_classes(cls: type[Adapter], info: IntegrationInfo) -> None:
         raise ValueError(f"{cls.__name__} holds {info.key}'s default class {info.default_class!r} as Verified")
 
 
+def served(cls: type[Adapter], info: IntegrationInfo) -> set[tuple[str | None, str]]:
+    """What an adapter serves, as (class, domain): each class its scope serves (AdapterScope.admits) on each of its
+    domains the class can be (IntegrationInfo.classes); (None, domain) for each domain where the integration names no
+    classes."""
+    scope = cls.scope
+    if scope.capabilities is None:
+        return {(None, domain) for domain in scope.domains}
+    return {
+        (name, domain)
+        for name in scope.capabilities
+        for domain in scope.domains
+        if domain in info.classes[name] and scope.admits(name, domain)
+    }
+
+
+def check_queries(adapters: Iterable[tuple[type[Adapter], Action]], info: IntegrationInfo) -> None:
+    """A query (get_attributes) reads state back around DeviceSide's other actions, so it serves only what another
+    of the integration's actions serves, class and domain both (plan Decision 25). A class only a read would reach
+    (a Tuya plug no other action serves yet) is left out of its scope, or, on some domains, held on the rest alone
+    (OnDomains `only`), so it isn't offered and the card doesn't list it. A refusal entry (no_known_method) stays: it
+    says why a read that would serve another action can't."""
+    adapters = list(adapters)
+    others = {item for cls, action in adapters if action.kind is not ActionKind.QUERY for item in served(cls, info)}
+    for cls, action in adapters:
+        if action.kind is ActionKind.QUERY and (alone := served(cls, info) - others):
+            shown = sorted(f"{name or 'any class'} on {domain}" for name, domain in alone)
+            raise ValueError(f"{cls.__name__} serves what no other {info.key} action does: {', '.join(shown)}")
+
+
 class AdapterRegistry:
     """Actions, integrations and the adapters joining them, built from module data with no side effects and no hass.
 
@@ -199,6 +229,7 @@ class AdapterRegistry:
             adapter = cls()
             adapter.kind = self.actions[cls.action].kind
             self._adapters[(cls.action, info.key)] = adapter
+        check_queries(((cls, self.actions[cls.action]) for cls in module.ADAPTERS), info)
         for refused in getattr(module, "UNSUPPORTED", ()):
             self._add_unsupported(refused, info)
 
