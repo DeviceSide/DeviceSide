@@ -295,13 +295,13 @@ def test_an_integration_without_a_user_page_fails(tmp_path, monkeypatch, no_bloc
 
 def test_every_legend_icon_links_to_its_heading(no_blockers):
     legend = gf.generate(FakeRegistry(*every_row())).split("\n")[-3]
-    assert legend.count("<a href=") == len(gf.LEGEND)
+    assert legend.count("<a href=") == 7
     assert f'<a href="{DOCS}device-compatibility.md#levels-of-proof">' in legend
     assert '<a href="#set-scene-without-turning-on">' in legend
 
 
 def test_a_legend_link_to_no_heading_fails(tmp_path, monkeypatch, no_blockers):
-    monkeypatch.setattr(gf, "LEGEND", (("no", "not possible", "x", "docs/design.md", "nowhere"),))
+    monkeypatch.setattr(gf, "LEGEND", ((("no",), "not possible", "x", "docs/design.md", "nowhere"),))
     readme = tmp_path / "README.md"
     readme.write_text(f"# x\n\n{gf.START}\n{gf.END}\n{headings()}")
     with pytest.raises(SystemExit, match="docs/design.md has no heading for #nowhere"):
