@@ -124,7 +124,9 @@ restrict it to a named command subset. Color Control's Options is mandatory, Lev
    `raise_brightness`, `lower_brightness` and `stop` in [`docs/internals.md`](../internals.md).
 2. On With Timed Off (0x42), OnTime and OffWaitTime are O (sections 4 and 5), consistent with `other` not built on
    `turn_on_for` ([timed-on call patterns](../integrations/zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md)).
-3. Level Control's Options (and so ExecuteIfOff) is O in the base cluster (section 2), the basis of not building
-   `other` on `set_attributes`. One caveat for that entry: Level Control for Lighting, which lights use, marks Options
-   M, so a certified light has the attribute; whether it is writable to 1 and honored is a device fact the spec's
-   RW mark implies but this document doesn't prove.
+3. Level Control's Options (and so ExecuteIfOff) is O in the base cluster (section 2), but Level Control for
+   Lighting, which lights use, marks it M, as Color Control does (section 6), and a command's OptionsMask and
+   OptionsOverride set ExecuteIfOff for that command alone (section 2). So this document gives no reason a certified
+   light refuses a write while off; `other` is not built on `set_attributes` for its known departures (Hue, Sengled,
+   Gledopto), not for the base cluster's O. Whether a given firmware honors ExecuteIfOff is a device fact the spec
+   doesn't prove.
