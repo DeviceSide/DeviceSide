@@ -87,7 +87,7 @@ def failing(call_rpc: AsyncMock, verb: str, after: int = 0) -> None:
 
 class RpcDevice:
     """Stands in for aioshelly's RpcDevice, which stays out of the test environment: `call_rpc` is the one method
-    DeviceSide calls, a class method (the wire boundary tests/integrations/shelly/wire.py wraps) that awaits the
+    DeviceSide calls, a method on the class (the wire boundary tests/integrations/shelly/wire.py wraps) that awaits the
     test's mock, so a test sets `side_effect` and reads the calls there."""
 
     def __init__(self, call_rpc: AsyncMock) -> None:

@@ -15,9 +15,10 @@ follows what the adapter reads at runtime:
 """
 
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from typing import ClassVar
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -163,7 +164,11 @@ class OnWithTimedOff:
     onOffControl: int = 0
     onTime: int = 0
     offWaitTime: int = 0
-    command: str = "OnOff.OnWithTimedOff"
+    command: str = field(init=False)
+    cluster: ClassVar[str] = "OnOff"
+
+    def __post_init__(self) -> None:
+        self.command = f"{self.cluster}.{type(self).__name__}"
 
 
 @pytest.fixture
