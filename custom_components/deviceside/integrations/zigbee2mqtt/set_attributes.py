@@ -15,7 +15,7 @@ from .members import member_lights, unaddressable
 from .read import Reader, reader
 from .set_check import checked
 from ...actions.set_attributes import SetAttributesRequest
-from ...core.errors import Reason
+from ...core.errors import NOT_STORED, Reason
 from ...core.models import EntityResult, Status, Target
 from ...core.scope import AdapterScope, verified
 from ...core.zcl import WRITE_FADE_TENTHS, WRITE_FADE_WAIT_S
@@ -44,7 +44,6 @@ _RETRIES = 2
 _RETRY_S = 0.5
 
 _LEVEL, _COLOR = "genLevelCtrl", "lightingColorCtrl"
-NOT_STORED = "not_stored"
 
 
 def _wire(command: Command) -> dict:

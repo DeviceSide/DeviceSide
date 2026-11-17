@@ -10,10 +10,10 @@ from .addressing import address, unsupported_reason
 from .rpc import get_status, light_params, set_and_read_back, whole_percent
 from ...actions.set_attributes import SetAttributesRequest
 from ...core.adapter import Adapter
+from ...core.errors import NOT_STORED
 from ...core.models import EntityResult, Status, Target
 from ...core.scope import AdapterScope, experimental, verified
 
-NOT_STORED = "not_stored"
 # The components set_attributes addresses. RGBCCT's Set without `on` keeping the output as it is, and storing the
 # values, is the rig's finding (probe of 8 Nov). Light, CCT, RGB and RGBW take the same <Component>.Set
 # (shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Light, /CCT, /RGB, /RGBW), but whether their docs say alike

@@ -10,7 +10,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 from homeassistant.util.color import color_rgbw_to_rgb
 
-from .addressing import CAPABILITIES, address, unsupported_reason
+from .addressing import CAPABILITIES, COMPONENTS, address, unsupported_reason
 from .rpc import get_config, get_status
 from ...core.adapter import Adapter
 from ...core.color import rgb_row
@@ -22,7 +22,7 @@ from ...core.timer import timer_row
 _LOGGER = logging.getLogger(__name__)
 
 
-_DIMMABLE = frozenset({"Light", "CCT", "RGB", "RGBW", "RGBCCT"})
+_DIMMABLE = frozenset(COMPONENTS.values()) - {"Switch"}
 # The clock skew the timer's time left absorbs; more means the device's clock isn't synced.
 _SKEW_S = 5.0
 

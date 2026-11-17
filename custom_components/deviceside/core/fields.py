@@ -1,7 +1,14 @@
 """The fields a target can't take at all, read from its state as light.turn_on's filter_turn_on_params reads them."""
 
+from typing import TYPE_CHECKING
+
 from homeassistant.components.light import (
+    ATTR_COLOR_TEMP_KELVIN,
+    ATTR_HS_COLOR,
+    ATTR_RGB_COLOR,
     ATTR_SUPPORTED_COLOR_MODES,
+    ATTR_TRANSITION,
+    ATTR_XY_COLOR,
     LightEntityFeature,
     brightness_supported,
     color_supported,
@@ -9,14 +16,19 @@ from homeassistant.components.light import (
 )
 from homeassistant.const import ATTR_SUPPORTED_FEATURES
 
-from .models import Request, Target
+if TYPE_CHECKING:  # const.py imports this module, and models.py imports const.py
+    from .models import Request, Target
 
 # Each action's fields by the light capability they need. Core converts between color forms before it filters, so a
 # color is lacked only without any color mode, and a color temperature only without that or a color mode.
-BRIGHTNESS = frozenset({"brightness", "min_brightness", "max_brightness"})
-COLOR_TEMP = frozenset({"color_temp_kelvin"})
-COLOR = frozenset({"hs_color", "rgb_color", "xy_color", "hue", "saturation"})
-TRANSITION = frozenset({"transition"})
+# Brightness keeps its literal names: DeviceSide's brightness is a percent, and HA's ATTR_BRIGHTNESS is 0-255, so HA's
+# constant would mislead. Same for the limits. The other fields are HA's own names.
+BRIGHTNESS_FIELD = "brightness"
+BRIGHTNESS = frozenset({BRIGHTNESS_FIELD, "min_brightness", "max_brightness"})
+COLORS = frozenset({ATTR_HS_COLOR, ATTR_RGB_COLOR, ATTR_XY_COLOR})
+COLOR_TEMP = frozenset({ATTR_COLOR_TEMP_KELVIN})
+COLOR = COLORS | {"hue", "saturation"}  # hue and saturation are DeviceSide's
+TRANSITION = frozenset({ATTR_TRANSITION})
 # Every field a light's state can say it lacks: the only ones AdapterScope.unlisted may name.
 LACKABLE = BRIGHTNESS | COLOR_TEMP | COLOR | TRANSITION
 

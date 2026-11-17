@@ -376,6 +376,9 @@ def class_scope(
     }
 
 
+OTHER = "other"  # the default class, never Verified (IntegrationInfo.default_class)
+
+
 @dataclass(slots=True)
 class IntegrationInfo:
     key: str

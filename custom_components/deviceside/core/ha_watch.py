@@ -16,6 +16,17 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Literal, Protocol
 
+from homeassistant.components.light import (
+    ATTR_COLOR_NAME,
+    ATTR_COLOR_TEMP_KELVIN,
+    ATTR_EFFECT,
+    ATTR_HS_COLOR,
+    ATTR_RGB_COLOR,
+    ATTR_RGBW_COLOR,
+    ATTR_RGBWW_COLOR,
+    ATTR_WHITE,
+    ATTR_XY_COLOR,
+)
 from homeassistant.const import (
     ATTR_DOMAIN,
     ATTR_ENTITY_ID,
@@ -36,15 +47,15 @@ SERVICE_DOMAINS = frozenset({"light", "scene"})
 # A turn_on with any of these sets a color or an effect, which ends a bulb's hue cycle; so do turn_off and toggle.
 _COLOR_FIELDS = frozenset(
     {
-        "hs_color",
-        "xy_color",
-        "rgb_color",
-        "rgbw_color",
-        "rgbww_color",
-        "color_name",
-        "color_temp_kelvin",
-        "white",
-        "effect",
+        ATTR_HS_COLOR,
+        ATTR_XY_COLOR,
+        ATTR_RGB_COLOR,
+        ATTR_RGBW_COLOR,
+        ATTR_RGBWW_COLOR,
+        ATTR_COLOR_NAME,
+        ATTR_COLOR_TEMP_KELVIN,
+        ATTR_WHITE,
+        ATTR_EFFECT,
     }
 )
 _PENDING = "ha_watch_pending"

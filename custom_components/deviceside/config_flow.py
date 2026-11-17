@@ -22,6 +22,7 @@ from .const import (
     EXPERIMENTAL_DEFAULT,
     NAME,
     PREDICTED_STATE_DEFAULT,
+    REPO_URL,
     Z2M_COLOR_MODES_DEFAULT,
 )
 from .core.errors import describe
@@ -30,7 +31,7 @@ from .core.runtime import DATA
 
 _LOGGER = logging.getLogger(__name__)
 
-REPORT_URL = "https://github.com/DeviceSide/DeviceSide/issues/new"
+REPORT_URL = REPO_URL + "/issues/new"
 CONF_ENTITY = "entity_id"
 
 
