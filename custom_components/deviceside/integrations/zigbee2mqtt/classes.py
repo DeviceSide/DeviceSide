@@ -24,8 +24,7 @@ Unplaced until it is paired again, so its groups fall back for good, one call pe
 `capability` logs, at DEBUG, what an Unplaced device is waiting for.
 
 Each adapter's scope holds the families' levels, `other`'s below and the refusal entries in refusals.py
-(`class_scope`); why each class sits where it does is in index.md (Device classes) and the step 5 PR body (`other`'s
-Documented actions).
+(`class_scope`); why each class sits where it does is in index.md (Device classes) and the step 5 PR body.
 """
 
 import logging

@@ -1,6 +1,5 @@
 """Gledopto on Zigbee2MQTT: its controllers and bulbs, whose converter departs from the standard calls
-(research/2026-11-14-timed-on-call-patterns.md, §3), so `other`'s Documented actions don't cover them (plan Decision
-24)."""
+(research/2026-11-14-timed-on-call-patterns.md, §3), so they take none of `other`'s levels (plan Decision 24)."""
 
 from homeassistant.const import Platform
 

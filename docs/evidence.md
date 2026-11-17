@@ -267,8 +267,8 @@ at `cut-release`, with the other release gates. Like every gate, it checks that 
 *Example:* with Zigbee2MQTT's classes `hue`, `ikea`, `tuya_zcl`, `tuya_ts011f`, `tuya_mcu`, `sengled`, `gledopto` and
 `other` (and the countdown plugs' below), and only Hue bulbs in its records, `turn_on_for` can be Verified on `hue`
 alone. Research names IKEA's lights as running the timer, so `ikea` is `experimental(...)` on lights, with the two
-bulbs reported to stay on split off as not built; it names no other maker's, so `other` is not built yet, with an
-entry, as today's call would leave some of it on. A record on an Innr bulb adds an `innr` class, Verified on its own
+bulbs reported to stay on split off as not built; the other makers it names have a report or so each, too few to put them on trial, so `other`
+is not built yet, with an entry, as today's call would leave some of it on. A record on an Innr bulb adds an `innr` class, Verified on its own
 evidence, and `other` stays as it is. The Tuya classes, which Tuya's own countdown call drives but the Zigbee timer
 leaves on (Zigbee2MQTT turns it into a plain on), are not built yet, each with an entry; the TS011F plugs the
 countdown call is built for take it only on each maker string with a record of its own, its own class, Verified, so

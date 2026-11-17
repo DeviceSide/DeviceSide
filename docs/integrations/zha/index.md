@@ -125,9 +125,7 @@ comes back at its lowest level.
 ## Flash-free turn-on
 
 - **`set_attributes`** reads nothing back, so a bulb that ignores the write still reports `sent`. The Sengled
-  E11-G13 is refused (`execute_if_off_unsupported`): written while off, it jumps to full brightness. For the same
-  reason it doesn't fade in from the bottom when raised from off, and comes back at its lowest level after a soft
-  off.
+  E11-G13 is refused (`execute_if_off_unsupported`): written while off, it jumps to full brightness.
 - **`min_brightness` and `max_brightness`** read the light's level live. Within about 0.5 s of a brightness change
   the light is still fading, and the limit can replace the fade's end.
 
