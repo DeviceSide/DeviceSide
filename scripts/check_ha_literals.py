@@ -68,7 +68,8 @@ def _is_entity_state(node: ast.AST) -> bool:
 
 def _use(literal: ast.Constant, names: dict[str, str]) -> tuple[int, str] | None:
     if literal.value in names:
-        return literal.lineno, f"`{literal.value!r}` is HA's {names[literal.value]}"
+        note = " (HA's 0-255 byte; DeviceSide's percent is `BRIGHTNESS_FIELD`)" if literal.value == "brightness" else ""
+        return literal.lineno, f"`{literal.value!r}` is HA's {names[literal.value]}{note}"
     return None
 
 
@@ -80,7 +81,7 @@ def _call_slots(node: ast.Call) -> list[Slot]:
     func = node.func
     if not isinstance(func, ast.Attribute):
         return slots
-    if func.attr == "async_call":
+    if func.attr == "async_call" and _is_attr(func.value, {"services"}):
         slots += [(arg, names) for arg, names in zip(node.args, (DOMAINS, SERVICES), strict=False)]
         by_keyword = {"domain": DOMAINS, "service": SERVICES}
         slots += [(kw.value, by_keyword[kw.arg]) for kw in node.keywords if kw.arg in by_keyword]
@@ -101,7 +102,11 @@ def _compare_slots(node: ast.Compare) -> list[Slot]:
             names = STATES
         else:
             continue
-        slots += [(s, names) for other in operands if other is not subject for s in _strings(other)]
+        for other in operands:
+            if other is subject:
+                continue
+            literals = other.elts if isinstance(other, ast.Tuple | ast.Set | ast.List) else [other]
+            slots += [(x, names) for x in literals if isinstance(x, ast.Constant)]
     return slots
 
 

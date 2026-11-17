@@ -101,3 +101,17 @@ def test_the_attr_brightness_import_is_not_flagged(tmp_path):
     body = "from homeassistant.components.light import ATTR_BRIGHTNESS\n"
     assert flagged(tmp_path, body) == []
     assert flagged(tmp_path, "from homeassistant.components.light import ATTR_BRIGHTNESS as B\n") == []
+
+
+def test_a_brightness_literal_names_the_percent(tmp_path):
+    found = flagged(tmp_path, "v = state.attributes.get('brightness')\n")
+    assert len(found) == 1
+    assert "BRIGHTNESS_FIELD" in found[0]
+
+
+def test_a_compare_with_a_call_result_is_not_flagged(tmp_path):
+    assert flagged(tmp_path, "ok = entry.domain == mapping.get('light')\n") == []
+
+
+def test_async_call_on_something_other_than_services_is_not_flagged(tmp_path):
+    assert flagged(tmp_path, "vendor.async_call('light', 'turn_on')\n") == []
