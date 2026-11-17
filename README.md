@@ -142,7 +142,7 @@ DeviceSide's actions are drop-in replacements for [Hue Smooth Dimming](https://g
 * `hue_dimmer.lower` → `deviceside.lower_brightness`
 * `hue_dimmer` → `deviceside`
 
-The fields and responses are the same. Both can run side by side while you switch. Once no automation or script calls `hue_dimmer.`, delete the Hue Smooth Dimming entry and remove it in Marketplace.
+The fields and responses are the same. Both can run side by side while you switch. Once no automation or script calls `hue_dimmer.`, remove the Hue Smooth Dimming integration.
 
 </details>
 
