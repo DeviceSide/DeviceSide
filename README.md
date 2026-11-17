@@ -85,7 +85,7 @@ The compatibility list shows which devices are known or likely to work. If you o
 
 **[Shelly](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/shelly/index.md)** (Gen2+)
 
-- [multicolor bulbs](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/shelly/index.md#shelly-multicolor-bulbs) ([Multicolor Bulb Gen3](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/shelly/index.md#shelly-multicolor-bulb-gen3) ✔): 🟢 turn on with timer, turn off with timer, smooth dimming, set without turning on, get attributes · 🟡 auto-off/on
+- [multicolor bulbs](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/shelly/index.md#tested-devices) ([Multicolor Bulb Gen3](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/shelly/index.md#shelly-multicolor-bulb-gen3) ✔): 🟢 turn on with timer, turn off with timer, auto-off/on, smooth dimming, set without turning on, get attributes
 - [relays and plugs](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/shelly/index.md#tested-devices) ([1 Mini Gen3](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/shelly/index.md#shelly-1-mini-gen3) ✔, [1 Mini Gen4](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/shelly/index.md#shelly-1-mini-gen4) ✔): 🟢 turn on with timer, turn off with timer, auto-off/on, get attributes
 - [dimmers](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/shelly/index.md#shelly-dimmers), [LED controllers (CCT, RGB, RGBW)](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/shelly/index.md#shelly-led-controllers): 🟡 turn on with timer, turn off with timer, auto-off/on, get attributes · 🌱 smooth dimming, set without turning on
 
@@ -132,6 +132,7 @@ After downloading, restart Home Assistant, then [add DeviceSide](https://my.home
 
 ## Usage
 
+<a name="coming-from-hue-smooth-dimming"></a>
 <details>
 <summary>Coming from Hue Smooth Dimming?</summary>
 
@@ -140,6 +141,8 @@ DeviceSide's actions are drop-in replacements for [Hue Smooth Dimming](https://g
 * `hue_dimmer.raise` → `deviceside.raise_brightness`
 * `hue_dimmer.lower` → `deviceside.lower_brightness`
 * `hue_dimmer` → `deviceside`
+
+The fields and responses are the same. Both can run side by side while you switch. Once no automation or script calls `hue_dimmer.`, remove the Hue Smooth Dimming integration.
 
 </details>
 
