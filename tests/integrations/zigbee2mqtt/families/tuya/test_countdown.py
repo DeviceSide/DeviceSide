@@ -14,7 +14,7 @@ from custom_components.deviceside.integrations.zigbee2mqtt.turn_on_for import Z2
 
 from ...conftest import DEVICES, GROUPS, SET, answer, call, commands, failure, group
 from .....conftest import allow_experimental, refusal
-from .....fixtures.zigbee2mqtt import IEEE, INFO, add_z2m_entity, z2m_entry
+from .....fixtures.zigbee2mqtt import IEEE, add_z2m_entity, z2m_entry
 
 LAB = "_TZ3000_0zfrhq4i"  # the lab plug (research/2026-11-15-tuya-countdown-probe.md)
 UNLISTED = "_TZ3000_abcdefgh"  # a converter A string with no record
@@ -247,17 +247,34 @@ async def test_a_countdown_set_z2m_logs_failed_is_rejected(hass, setup_productio
     assert await failure(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5}) == f"{entity_id}: send_failed"
 
 
-async def test_get_attributes_reports_no_timer_for_a_countdown_plug(hass, setup_production, broker):
-    """Its OnTime holds the countdown last set, in seconds, not the time left (probe P6): 600 would read as 60 s."""
-    entity_id = plug(hass, broker, UNLISTED)
+@pytest.mark.parametrize("manufacturer", [LAB, UNLISTED])
+async def test_get_attributes_has_no_known_method_on_a_countdown_plug(hass, setup_production, broker, manufacturer):
+    """Its OnTime holds the countdown last set, not the time left (probe P6), and the timer is all a read would add
+    (docs/evidence.md, "A read serves only"): refused with why, reading nothing."""
+    entity_id = plug(hass, broker, manufacturer)
     hass.states.async_set(entity_id, "on", {})
     broker.devices[IEEE] = ("plug", {"genOnOff": {"onOff": 1, "onTime": 600}})
-    broker.retained[INFO]["config"]["devices"].setdefault(IEEE, {})
     allow_experimental(hass)
 
-    response = await call(hass, "get_attributes", {"entity_id": entity_id})
+    assert await refusal(hass, "get_attributes", {"entity_id": entity_id}) == "no_known_method"
+    assert commands(broker) == []
 
-    assert response == {entity_id: {}}
+
+@pytest.mark.parametrize(
+    "entry",
+    [
+        pytest.param({"manufacturer": LAB, "exposes": (SWITCH,)}, id="no countdown"),
+        pytest.param({"manufacturer": "_TZ3000_gjnozsaz"}, id="reported harmed"),
+    ],
+)
+async def test_get_attributes_doesn_t_read_a_ts011f_no_other_action_serves(hass, setup_production, broker, entry):
+    """No other action serves it, so there is nothing to read back around (docs/evidence.md, "A read serves only"):
+    not built."""
+    entity_id = plug(hass, broker, **entry)
+    allow_experimental(hass)
+
+    assert await refusal(hass, "get_attributes", {"entity_id": entity_id}) == "not_built"
+    assert commands(broker) == []
 
 
 async def test_the_run_sends_the_call_the_dispatcher_planned_not_a_fresh_class(hass, setup_production, broker):

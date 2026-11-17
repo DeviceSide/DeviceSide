@@ -28,6 +28,7 @@ dispatcher classes its members (groups.expand_group).
 from collections.abc import Mapping
 from typing import Any
 
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
@@ -38,9 +39,12 @@ from .refusals import REFUSALS
 from ...core import scope
 from ...core.models import Target
 from ...core.rules import match
-from ...core.scope import OTHER, ClassLevel, documented, experimental
+from ...core.scope import OTHER, ClassDomains, ClassLevel, documented, experimental
 
-CLASSES = frozenset({OTHER}).union(*(family.classes for family in FAMILIES))
+# Every class with its domains (IntegrationInfo.classes): `other`, any brand's light, plug or switch, and the families'.
+CLASSES: ClassDomains = {OTHER: frozenset({Platform.LIGHT, Platform.SWITCH})} | {
+    name: domains for family in FAMILIES for name, domains in family.classes.items()
+}
 
 # `other`'s level in each adapter's scope (index.md, Device classes): Documented where it gets the Verified call and no
 # known class departs, else untested.

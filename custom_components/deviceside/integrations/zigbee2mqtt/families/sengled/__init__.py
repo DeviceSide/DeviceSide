@@ -1,5 +1,7 @@
 """Sengled on Zigbee2MQTT: its bulbs ignore `on_time` (index.md, Device classes), so they are a class of their own."""
 
+from homeassistant.const import Platform
+
 from .....core.rules import Rule
 from .....core.scope import Family, FamilyScope, experimental
 
@@ -11,7 +13,7 @@ _UNTESTED = FamilyScope(capabilities=experimental(SENGLED))
 FAMILY = Family(
     key="sengled",
     maintainers=(),
-    classes=frozenset({SENGLED}),
+    classes={SENGLED: frozenset({Platform.LIGHT})},
     # No turn_on_for: the Sengled needs a host-side off, which nobody has built, so it is not built yet.
     scopes={
         "raise_brightness": _UNTESTED,

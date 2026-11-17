@@ -5,6 +5,11 @@ column: Hue Bridge
 column_order: 4
 requires: Bridge v2/Pro
 capabilities:
-  # The classes integrations/hue/classes.py names, but hue: Verified, it needs no phrase; smart_scene is a no known
-  # method entry in code (NoKnownMethod), named by its own `what`.
-  other: {phrase: other brands, section: Other brands}
+  # The classes integrations/hue/classes.py names, but smart_scene: a no known method entry in code (NoKnownMethod),
+  # named by its own `what`.
+  hue:
+    phrase: Hue lights
+    section: Device classes
+  other:
+    phrase: other brands' lights
+    section: Other brands

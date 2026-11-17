@@ -62,4 +62,4 @@ def test_device_class(manufacturer, model, quirk, expected):
 
 
 def test_every_class_is_listed():
-    assert {expected for *_strings, expected in DEVICES} == classes.CLASSES
+    assert {expected for *_strings, expected in DEVICES} == classes.CLASSES.keys()

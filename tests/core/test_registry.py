@@ -7,8 +7,10 @@ from itertools import product
 from types import SimpleNamespace
 
 import pytest
+from homeassistant.const import Platform
 
 from custom_components.deviceside import actions
+from custom_components.deviceside.core.errors import Reason
 from custom_components.deviceside.core.registry import AdapterRegistry
 from custom_components.deviceside.core.scope import (
     Family,
@@ -39,6 +41,11 @@ def test_broken_integration_is_recorded_unavailable_and_others_load():
     assert "fakelib" in broken.unavailable_reason
     assert [info.key for info in registry.available_integrations()] == ["fake", "fake_special"]
     assert registry.adapter("turn_on_for", "fake").integration == "fake"
+
+
+ANYWHERE = frozenset(
+    {Platform.LIGHT, Platform.SWITCH, Platform.SCENE}
+)  # a test class's domains: every one a test scope serves
 
 
 @pytest.mark.parametrize(
@@ -82,7 +89,9 @@ def test_adapter_for_unknown_action_is_refused():
         _registry([Stray])
 
 
-CLASSED = replace(INTEGRATION, capability=lambda hass, target: "hue", classes=frozenset({"hue", "tuya", "other"}))
+CLASSED = replace(
+    INTEGRATION, capability=lambda hass, target: "hue", classes=dict.fromkeys({"hue", "tuya", "other"}, ANYWHERE)
+)
 NO_METHOD = NoKnownMethod("Tuya plug", "It never switches on", "https://example.com/source")
 NOT_BUILT = NotBuilt("It would stay on", "https://example.com/source")
 
@@ -125,6 +134,95 @@ def test_a_scope_holds_only_classes_its_integration_declares(entries):
         _registry([Typo], CLASSED)
 
 
+# `tuya` a plug alone (a switch), as a TS011F is (docs/evidence.md, "A class names its domains").
+PLUG_ONLY = replace(CLASSED, classes={**CLASSED.classes, "tuya": frozenset({Platform.SWITCH})})
+
+
+@pytest.mark.parametrize(
+    "entries",
+    [
+        {"capabilities": verified("hue") | experimental("other", "tuya")},
+        {"no_known_method": {"tuya": NO_METHOD}},
+        {"not_built": {"tuya": NOT_BUILT}},
+    ],
+    ids=["capabilities", "no_known_method", "not_built"],
+)
+def test_a_scope_for_lights_alone_never_holds_a_switch_only_class(entries):
+    """An action for lights alone holds a plug in no axis, so dispatch refuses it as not built yet and the
+    card leaves it off; one that serves switches too may hold it."""
+
+    class Dimming(FakeTurnOnFor):
+        scope = replace(Classed.scope, domains=verified("light"), **entries)
+
+    class Timer(FakeTurnOnFor):
+        scope = replace(Classed.scope, domains=verified("light", "switch"), **entries)
+
+    with pytest.raises(ValueError, match=r"on none of the domains they can be \(IntegrationInfo.classes\): \['tuya'\]"):
+        _registry([Dimming], PLUG_ONLY)
+    _registry([Timer], PLUG_ONLY)
+    # Left out, the plug is refused at the scope level, as a class the integration names but the scope doesn't serve.
+    left_out = replace(Classed.scope, domains=verified("light"))
+    assert left_out.refusal(["tuya"], failure_harms=True) == (Reason.NOT_BUILT, None)
+
+
+def test_a_level_held_on_some_domains_names_only_domains_the_class_can_be():
+    class Misplaced(FakeTurnOnFor):
+        scope = replace(
+            Classed.scope,
+            domains=verified("light", "switch"),
+            capabilities=verified("hue") | experimental("other") | verified("tuya", domains=("light",)),
+        )
+
+    with pytest.raises(ValueError, match=r"on domains they can't be \(IntegrationInfo.classes\): \['tuya'\]"):
+        _registry([Misplaced], PLUG_ONLY)
+
+
+@pytest.mark.parametrize(
+    "domains",
+    [frozenset(), {"light"}, ("light",), frozenset({"light"})],
+    ids=["empty", "set", "tuple", "plain strings"],
+)
+def test_every_class_names_its_domains_as_a_non_empty_frozenset(domains):
+    with pytest.raises(ValueError, match=r"classes \['tuya'\] name no entity domains"):
+        _registry([Classed], replace(CLASSED, classes={**CLASSED.classes, "tuya": domains}))
+
+
+def test_a_query_serves_only_what_another_action_serves():
+    """Per docs/evidence.md's "A read serves only": get_attributes reads state back around the other actions, so a class
+    and domain only it would serve fail registration; held on the rest alone (OnDomains `only`), or refused with a
+    reason, they pass."""
+
+    class Timer(FakeTurnOnFor):
+        scope = replace(
+            Classed.scope, capabilities=verified("hue", domains=("light",), only=True) | experimental("other")
+        )
+
+    def read(capabilities, **entries):
+        class Read(FakeTurnOnFor):
+            action = "get_attributes"
+            scope = replace(Classed.scope, capabilities=capabilities, **entries)
+
+        return Read
+
+    _registry([Timer, read(experimental("hue", domains=("light",), only=True) | experimental("other"))], CLASSED)
+    _registry([Timer, read(experimental("other"), no_known_method={"hue": NO_METHOD})], CLASSED)
+    with pytest.raises(ValueError, match="serves what no other fake action does: hue on switch$"):
+        _registry([Timer, read(experimental("hue", "other"))], CLASSED)
+    with pytest.raises(ValueError, match="serves what no other fake action does: tuya on light, tuya on switch$"):
+        _registry(
+            [Timer, read(experimental("hue", domains=("light",), only=True) | experimental("other", "tuya"))], CLASSED
+        )
+
+
+def test_a_query_on_an_integration_naming_no_classes_serves_only_another_action_s_domains():
+    class Read(FakeTurnOffFor):
+        action = "get_attributes"
+        scope = replace(FakeTurnOffFor.scope, domains=verified("light", "switch"))
+
+    with pytest.raises(ValueError, match="serves what no other fake action does: any class on light$"):
+        _registry([FakeTurnOffFor, Read])
+
+
 def test_the_default_class_is_never_verified():
     """docs/evidence.md, Device classes: it holds every device not yet placed, so no record proves it."""
     defaulted = replace(CLASSED, default_class="other")
@@ -153,7 +251,7 @@ def test_shelly_names_no_default_class_and_zigbee2mqtt_holds_its_below_verified(
 
 @pytest.mark.parametrize(
     "info",
-    [replace(INTEGRATION, classes=frozenset({"hue"})), replace(CLASSED, classes=frozenset())],
+    [replace(INTEGRATION, classes=dict.fromkeys({"hue"}, ANYWHERE)), replace(CLASSED, classes={})],
     ids=["classes_alone", "capability_alone"],
 )
 def test_capability_and_classes_come_together(info):
@@ -185,12 +283,14 @@ def test_several_maintainers_are_accepted():
 
 # Two families holding every class of CLASSED but its default one, `other`.
 HUE_FAMILY = Family(
-    key="hue", classes=frozenset({"hue"}), scopes={"turn_on_for": FamilyScope(capabilities=verified("hue"))}
+    key="hue",
+    classes=dict.fromkeys({"hue"}, ANYWHERE),
+    scopes={"turn_on_for": FamilyScope(capabilities=verified("hue"))},
 )
 TUYA_FAMILY = Family(
     key="tuya",
     maintainers=("a-b",),
-    classes=frozenset({"tuya"}),
+    classes=dict.fromkeys({"tuya"}, ANYWHERE),
     scopes={"turn_on_for": FamilyScope(capabilities=experimental("tuya"))},
 )
 WITH_FAMILIES = replace(CLASSED, default_class="other", families=(HUE_FAMILY, TUYA_FAMILY))
@@ -238,20 +338,25 @@ def test_families_that_split_the_classes_between_them_are_accepted():
             id="list",
         ),
         pytest.param(
-            (HUE_FAMILY, replace(TUYA_FAMILY, classes=frozenset({"tuya", "hue"}))),
+            (HUE_FAMILY, replace(TUYA_FAMILY, classes=dict.fromkeys({"tuya", "hue"}, ANYWHERE))),
             r"family 'tuya' holds classes family 'hue' holds: \['hue'\]",
             id="class_in_two",
         ),
         pytest.param((HUE_FAMILY,), r"classes \['tuya'\] are in no family", id="class_in_none"),
         pytest.param(
-            (HUE_FAMILY, replace(TUYA_FAMILY, classes=frozenset({"tuya", "other"}))),
+            (HUE_FAMILY, replace(TUYA_FAMILY, classes=dict.fromkeys({"tuya", "other"}, ANYWHERE))),
             "family 'tuya' holds the default class 'other'",
             id="default_class",
         ),
         pytest.param(
-            (HUE_FAMILY, replace(TUYA_FAMILY, classes=frozenset({"tuya", "tuya_zcl"}))),
+            (HUE_FAMILY, replace(TUYA_FAMILY, classes=dict.fromkeys({"tuya", "tuya_zcl"}, ANYWHERE))),
             r"family 'tuya' holds classes fake doesn't declare \(IntegrationInfo.classes\): \['tuya_zcl'\]",
             id="undeclared_class",
+        ),
+        pytest.param(
+            (HUE_FAMILY, replace(TUYA_FAMILY, classes={"tuya": frozenset({Platform.SWITCH})})),
+            r"family 'tuya': IntegrationInfo.classes gives \['tuya'\] other domains than the family's",
+            id="other_domains",
         ),
         *(
             pytest.param(

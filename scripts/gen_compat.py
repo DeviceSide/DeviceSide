@@ -13,30 +13,43 @@ devices, not which test reached which, and its tests the classes they reached, i
 devices are model ids, each with its class; with `group`, a native group's members, which show as "group, by hand".
 A level comes from the scope alone (verify, then trust): a record never ages.
 
-**Cards.** One collapsed section between the README's devices markers, the legend first and a link to the integrations
-page last, with a card per integration: its name, linked to its page (the bundle's index.md), and maintainers
-(`IntegrationInfo.maintainers`; "⚠️ Unmaintained · formerly maintained by" when every adapter is), then the features
-of the adapters with each `caveat` (⚠️ Unmaintained, then ⚠️ Untested fix, linking its reason), then a bullet per tier:
-- Works: the models the evidence tested (rig-tested ones end ✔), and native groups (✔ only when a rig test reached one).
-  A pass on a flagged item never puts a model here: an adapter flagged whole, or on any field, adds no models. One
-  flagged on a domain or class adds, from a format 2 record, each model a passing test reached on an unflagged domain
-  and, with a class flagged, an unflagged class (a null one is none), and native groups when every member's class is
-  unflagged; from a format 1 record, which doesn't say which test reached which model, the run's models only when every
-  passing test targets an unflagged domain and, with a class flagged, names unflagged classes only; and, unless a domain
-  is flagged (a manual row names none), each `_manual.json` model whose class is unflagged. A model can still reach
-  Works through another adapter's evidence.
-- Should work: the classes (devices.yaml `capabilities`) unflagged adapters hold as Documented.
-- Experimental features: the classes held as `experimental(...)`, and the features of adapters flagged whole
-  (every domain `experimental(...)`), whatever their evidence.
-- Not built yet: the classes the integration declares (`IntegrationInfo.classes`) that an adapter holds in
-  neither its `capabilities` nor its `no_known_method`, and so refuses; only those devices.yaml gives a phrase. Then
-  docs/models.yaml's `not_built` entries, by their `what`.
-- No known method: the scopes' `no_known_method`, with the features whose adapters list them, then devices.yaml's.
-  A scope's `not_built` entry (core/scope.py, NotBuilt, on a harmful action only) is listed as not built yet, as
-  above; the evidence block adds a table of them and of models.yaml's, with why and the source.
-Classes with the same features share an entry, and those of one page section a link. A model or blocker drops the
-integration's name where it leads, as the card's name already gives it. Cards show features, not fields: a flagged or
-Documented field shows on the integration's page and in the evidence block only.
+**Cards.** One collapsed section between the README's devices markers: the legend, of the marks the cards use, then a
+card per integration, then a link to the integrations page. A card has its name, linked to its page (the bundle's
+index.md), with "⚠️ Unmaintained" when every adapter is; the features of the adapters with each `caveat` (🔧 Untested
+fix, then ⚠️ Unmaintained, linking its reason); then a line per feature set, naming each class on one line, with its
+features by status: "Hue lights (Hue White A60 B22 ✔): 🟢 turn on with timer · 🌱 get attributes". Only classes of
+one brand share a line (`brand`): the class's family, else other brands; an integration with no families is one brand,
+its "Other brands" section the other brands. Native groups sort first, then lines by brand, alphabetically, then
+other brands, then models no class line takes; within a brand, tested lines first, "other …" lines last, the rest
+alphabetically, and a line's names sort the same way (`ordered`), a variant's plain words before its maker strings.
+- Statuses: a class counts on each entity domain it can be (`IntegrationInfo.classes`) that the adapter serves, at the
+  level a call there runs at (AdapterScope.level): 🟢 Verified, 🟡 Documented, 🌱 Experimental; 🔴 for a scope's
+  `no_known_method` entry, which names a class devices.yaml gives no phrase by its `what`. A feature whose actions
+  differ in status names its parts ("🟡 smooth dimming down · 🌱 smooth dimming up"), so none shows twice. A feature not
+  built yet on a class (in no scope, or a `not_built` entry) is left out, and a class with nothing left has no line.
+  Where the integration names no classes, its domains stand in for them.
+- Names: the class's devices.yaml phrase; one whose domains show different features is named per domain, by its
+  `domains` phrases, so a plug never lists dimming. A scene domain is never one of them: a scene is classed by its
+  lights, so its features join the class's light line ("set scene"); a class of scenes alone keeps its own.
+  Classes of one page section share a link, and a line holding every class its section shows in its domains names
+  the section instead, by its devices.yaml `sections` phrase.
+- Variants: a section with `variants` (a model whose classes its page tells apart) is a parent line, "Tuya TS011F
+  plugs: check Manufacturer …", with a child line per feature set of its classes, named by their phrases ("a, b, or
+  c") and ending ✔ for a rig-tested model, which the parent names. Children never merge with another section's classes.
+- Tested models follow the line of the class and domain a test reached them on (else of their class; else, from a
+  format 1 record or a manual row naming none, a line of their own with the features tested), and native groups get
+  a line, with the features a test reached them on; rig-tested ones end ✔. A pass on a flagged item never credits a
+  model: an adapter flagged whole, or on any field, credits none. One flagged on a domain or class credits, from a
+  format 2 record, each model a passing test reached on an unflagged domain and, with a class flagged, an unflagged
+  class (a null one is none), and native groups when every member's class is unflagged; from a format 1 record, which
+  doesn't say which test reached which model, the run's models only when every passing test targets an unflagged
+  domain and, with a class flagged, names unflagged classes only; and, unless a domain is flagged (a manual row names
+  none), each `_manual.json` model whose class is unflagged.
+- devices.yaml's and models.yaml's `no_known_method` entries, which name no class, each get a 🔴 line; models.yaml's
+  `not_built` ones are on no card. The evidence block lists both, and the scopes' `not_built` entries, with why and
+  the source.
+A model or blocker drops the integration's name where it leads, as the card's name already gives it. Cards show
+features, not fields: a flagged or Documented field shows on the integration's page and in the evidence block only.
 
 **Evidence block.** Per integration, a row per action and level its domains, capabilities and fields hold (an adapter
 flagged whole has one), the first with the evidence's records; each row carries the adapter's caveat. A model tested on
@@ -55,12 +68,16 @@ integrations, `type`, optional `section`; a model only one integration names is 
 `no_known_method` and `not_built` entries that name their `integrations` (`what`, `reason`, `source`, optional
 `section`), a `not_built` one for a device today's call harms on an integration that doesn't class it yet, as an
 unharmed one needs no entry. Each bundle's devices.yaml holds its integration's: `models` (as above), `column` and
-`column_order` (the README feature table's, read by gen_features), `requires` (shown after the card's name),
-`capabilities` (a `phrase` and `section` per domain or class the scopes hold below Verified, and per class to name as
-not built yet) and `no_known_method` (`what`, `reason`, `source`, optional `section`: devices that fail the call
-DeviceSide sends, not what isn't built). A scope's `no_known_method` (core/scope.py, NoKnownMethod) and `not_built`
-(NotBuilt) are the code's home for these, and join them here; the devices.yaml and models.yaml entries move to them,
-class by class. Every integration needs a bundle.
+`column_order` (the README feature table's, read by gen_features, and the Requirements line's), `requirements_name`
+(optional: the Requirements line's name for the integration, its title by default), `requires` (shown after the card's
+name), `capabilities` (a `phrase` and `section` per class a card line names, or domain where the integration names no
+classes, and per class a scope lists as not built yet; `domains`, a phrase per entity domain, for a class the card
+splits), `sections` (optional: a `phrase`, and `domains`, per page section, for a line holding all its classes, or
+with `variants`, what to check to tell its classes apart) and
+`no_known_method` (`what`, `reason`, `source`, optional `section`: devices that fail the call DeviceSide sends, not
+what isn't built). A scope's `no_known_method` (core/scope.py, NoKnownMethod) and `not_built` (NotBuilt) are the
+code's home for these, and join them here; the devices.yaml and models.yaml entries move to them, class by class.
+Every integration needs a bundle.
 
 **Links.** A card links each model, class or blocker to the heading its `section` names (default: the model's
 `name`, the blocker's `what`): on the card's integration page when that has the heading; a model's or native groups'
@@ -80,13 +97,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import yaml
+from homeassistant.const import Platform
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
 from custom_components.deviceside.const import DOCS_URL  # noqa: E402
 from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
-from custom_components.deviceside.core.scope import CaveatKind, Level  # noqa: E402
+from custom_components.deviceside.core.scope import CaveatKind, ClassDomains, Level  # noqa: E402
 from scripts.check_release import (  # noqa: E402
     MANUAL,
     adapters,
@@ -110,49 +128,60 @@ MODELS = REPO / "docs" / "models.yaml"
 PAGE_URL = f"{DOCS_URL}docs/device-compatibility.md"
 CARDS = ("<!-- devices:start -->", "<!-- devices:end -->")
 CARDS_TITLE = "Device compatibility by integration"
+REQUIREMENTS = ("<!-- requirements:start -->", "<!-- requirements:end -->")
 EVIDENCE = ("<!-- evidence:start -->", "<!-- evidence:end -->")
 
 REPORT_URL = "https://github.com/DeviceSide/DeviceSide/issues/new?template=device_report.yml"
-NOUNS = ("entities", "classes", "fields")  # for a scope's domains, capabilities and fields
 
-# Device types, in a card's order for its Works models.
+# Device types, in a card's order for a line's tested models.
 TYPES = ("bulb", "relay", "plug", "dimmer", "LED controller")
-# Tiers, in a card's order: (key, icon, legend).
+# A line's statuses, in its order: (key, icon, legend). Not built yet has none: a card leaves those out.
 OUTCOMES = (
     ("works", "🟢", "works"),
     ("should", "🟡", "should work: same call pattern as a tested device"),
     (
         "experimental",
-        "🧪",
-        "experimental: off until you turn on Experimental features in DeviceSide's Configure > Settings; please"
-        f" [report how it goes]({REPORT_URL})",
+        "🌱",
+        f"new or untested: enable Configure > Settings to try it out and [report whether it works]({REPORT_URL})",
     ),
-    ("not_built", "🚧", "not built yet: needs a command DeviceSide doesn't have yet"),
-    ("no_known_method", "🔴", "no known method: no known command works on it"),
+    ("no_known_method", "🔴", "no known command works on it"),
 )
+TIER = {Level.VERIFIED: "works", Level.DOCUMENTED: "should", Level.EXPERIMENTAL: "experimental"}
 VERIFIED = "✔"
 UNMAINTAINED = "⚠️ Unmaintained"
-UNTESTED_FIX = "⚠️ Untested fix"
+UNTESTED_FIX = "🔧 Untested fix"
 # The scope's caveats, as (kind, label), in a card's order.
-MARKS = ((CaveatKind.UNMAINTAINED, UNMAINTAINED), (CaveatKind.UNTESTED_FIX, UNTESTED_FIX))
-CARDS_LEGEND = " · ".join(
-    [
-        f"{OUTCOMES[0][1]} {OUTCOMES[0][2]}",
-        f"{VERIFIED} verified on automated rig",
-        *(f"{icon} {legend}" for _, icon, legend in OUTCOMES[1:]),
-        "⚠️ unmaintained: no one is fixing it; use at your own risk",
-        f"⚠️ untested fix: changed, not yet tested; please [report whether it works]({REPORT_URL})",
-    ]
+MARKS = ((CaveatKind.UNTESTED_FIX, UNTESTED_FIX), (CaveatKind.UNMAINTAINED, UNMAINTAINED))
+# The legend's entries, as (icon, text), in its order; it lists only those a card uses (`legend`).
+LEGEND = (
+    (OUTCOMES[0][1], OUTCOMES[0][2]),
+    (VERIFIED, "verified on automated rig"),
+    *((icon, text) for _, icon, text in OUTCOMES[1:]),
+    ("🔧", f"untested fix: please try it and [report whether it works]({REPORT_URL})"),
+    ("⚠️", "unmaintained: use at your own risk"),
 )
 GITHUB = "https://github.com/"
 INTEGRATIONS_URL = "https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations.md"
 # The keys each devices.yaml entry may hold, so a typo fails instead of being ignored.
 SHARED_KEYS = {"models", "no_known_method", "not_built"}  # each a list
-BUNDLE_KEYS = {"column", "column_order", "requires", "capabilities", "models", "no_known_method"}
+BUNDLE_KEYS = {
+    "requirements_name",
+    "column",
+    "column_order",
+    "requires",
+    "capabilities",
+    "sections",
+    "models",
+    "no_known_method",
+}
 MODEL_KEYS = {"name", "ids", "type", "section"}
-CLASS_KEYS = {"phrase", "section"}
+CLASS_KEYS = {"phrase", "section", "domains"}  # `domains`: a phrase per entity domain, for a class the card splits
+# A section's phrase, for a line that holds all its classes; with `variants`, what to check to tell its classes apart,
+# and the card gives them a parent bullet of their own.
+SECTION_KEYS = {"phrase", "domains", "variants"}
 BROKEN_KEYS = {"what", "integrations", "reason", "source", "section"}
 GROUPS_ENTRY = ("native groups", "Native groups")  # (phrase, section) for the groups a record tested
+OTHER_BRANDS = "Other brands"  # the devices.yaml section of other brands' classes, on an integration with no families
 
 
 def card_features() -> dict[str, str]:
@@ -176,8 +205,13 @@ class Data:
     models: dict[str, dict]  # by each of its ids
     capabilities: dict[str, dict[str, dict]]
     no_known_method: list[dict]
+    # Each integration's devices.yaml `sections`: a phrase (and per domain) for each page section that has one.
+    section_phrases: dict[str, dict[str, dict]] = field(default_factory=dict)
     # models.yaml's devices not built yet that today's call harms, on integrations whose code doesn't class them yet.
     not_built: list[dict] = field(default_factory=list)
+    # Each integration's Requirements name (devices.yaml `requirements_name`, else its title) and its `column_order`.
+    names: dict[str, str] = field(default_factory=dict)
+    order: dict[str, int] = field(default_factory=dict)
     # Every heading an entry links to, with the integration whose card links it (None: any card, as for a model).
     sections: set[tuple[str | None, str]] = field(default_factory=set)
     # The heading anchors of each integration's page; a section on none of them is on PAGE.
@@ -229,11 +263,27 @@ def load(registry: AdapterRegistry, models: Path = MODELS) -> Data:
     return data
 
 
+def read_names(raw: dict, key: str, data: dict, where: str) -> None:
+    """A bundle's `requirements_name` (the Requirements line's) and `column_order`."""
+    if "requirements_name" in data:
+        need(data, where, ("requirements_name",))
+        raw["names"][key] = data["requirements_name"]
+    if isinstance(data.get("column_order"), int):
+        raw["order"][key] = data["column_order"]
+
+
 def merge(shared: dict, bundles: dict[str, dict]) -> dict:
     """The shared file and the bundles as one mapping, each bundle's entries named for its integration: a bundle's
     `no_known_method` entries are its own, so they take no `integrations` key."""
     need(shared, "docs/models.yaml", lists=tuple(sorted(SHARED_KEYS & set(shared))), keys=SHARED_KEYS)
-    raw: dict = {"requires": {}, "capabilities": {}, "models": list(shared.get("models") or []), "bundle_models": {}}
+    raw: dict = {
+        "requires": {},
+        "names": {},
+        "order": {},
+        "capabilities": {},
+        "models": list(shared.get("models") or []),
+        "bundle_models": {},
+    }
     raw["no_known_method"] = list(shared.get("no_known_method") or [])
     raw["not_built"] = list(shared.get("not_built") or [])
     for key, data in bundles.items():
@@ -243,8 +293,11 @@ def merge(shared: dict, bundles: dict[str, dict]) -> dict:
         if "requires" in data:
             need(data, where, ("requires",))
             raw["requires"][key] = data["requires"]
+        read_names(raw, key, data, where)
         if data.get("capabilities"):
             raw["capabilities"][key] = data["capabilities"]
+        if data.get("sections"):
+            raw.setdefault("sections", {})[key] = data["sections"]
         if not isinstance(models := data.get("models") or [], list):
             fail(f"{where}: models must be a list")
         raw["bundle_models"][key] = models
@@ -276,7 +329,7 @@ def need(
 def load_raw(raw: dict, registry: AdapterRegistry) -> Data:
     """The merged mapping (`merge`), its entries validated and their defaults filled in."""
     raw = copy.deepcopy(raw)  # defaults are filled in place
-    data = Data(raw["requires"], {}, raw["capabilities"], [])
+    data = Data(raw["requires"], {}, raw["capabilities"], [], names=raw.get("names", {}), order=raw.get("order", {}))
     for model in raw["models"]:
         load_model(model, data, None)
     for key, models in raw.get("bundle_models", {}).items():
@@ -287,7 +340,10 @@ def load_raw(raw: dict, registry: AdapterRegistry) -> Data:
         need(items, f"capabilities {key}")
         for item, entry in items.items():
             need(entry, f"capabilities {key} {item}", ("phrase", "section"), keys=CLASS_KEYS)
+            if "domains" in entry:
+                need(entry["domains"], f"capabilities {key} {item} domains", tuple(entry["domains"]))
             data.sections.add((key, entry["section"]))
+    load_sections(raw.get("sections") or {}, data)
     for entry in raw["no_known_method"]:
         load_broken(entry, set(registry.integrations), data)
     for entry, actions in code_broken(registry):
@@ -295,6 +351,19 @@ def load_raw(raw: dict, registry: AdapterRegistry) -> Data:
     for entry in raw.get("not_built") or []:
         load_broken(entry, set(registry.integrations), data, kind="not_built")
     return data
+
+
+def load_sections(by_key: dict[str, dict], data: Data) -> None:
+    """The bundles' `sections`, validated: each a section some class of its `capabilities` names."""
+    for key, items in by_key.items():
+        need(items, f"sections {key}")
+        for section, entry in items.items():
+            need(entry, f"sections {key} {section}", ("phrase", *({"variants"} & set(entry))), keys=SECTION_KEYS)
+            if "domains" in entry:
+                need(entry["domains"], f"sections {key} {section} domains", tuple(entry["domains"]))
+            if section not in {item["section"] for item in data.capabilities.get(key, {}).values()}:
+                fail(f"sections {key} {section}: no class in capabilities has that section")
+        data.section_phrases[key] = items
 
 
 def code_broken(registry: AdapterRegistry) -> list[tuple[dict, set[str]]]:
@@ -311,8 +380,8 @@ def code_broken(registry: AdapterRegistry) -> list[tuple[dict, set[str]]]:
 
 def code_unbuilt(key: str, integration_adapters: list, data: Data) -> list[dict]:
     """The scopes' not_built entries (core/scope.py, NotBuilt, on a harmful action only), each named by
-    its class's devices.yaml phrase, with the actions whose adapters list it, for the evidence block: the card lists
-    the class as not built yet, as it does any other, and this keeps the harm's source. One per class, reason and
+    its class's devices.yaml phrase, with the actions whose adapters list it, for the evidence block, which keeps the
+    harm's source: the card leaves the class's feature out, as it does any not built yet. One per class, reason and
     source."""
     found: dict[tuple, dict] = {}
     for adapter in integration_adapters:
@@ -324,6 +393,9 @@ def code_unbuilt(key: str, integration_adapters: list, data: Data) -> list[dict]
             if name not in data.capabilities.get(key, {}):
                 fail(f"capabilities: no entry for {key} {name}, which a scope lists as not built yet")
             what = data.capabilities[key][name]["phrase"]
+            section = data.section_phrases.get(key, {}).get(data.capabilities[key][name]["section"], {})
+            if "variants" in section:  # a variant's phrase names it within its model: "no countdown setting"
+                what = f"{section['phrase']} ({what})"
             row = {"what": what, "reason": entry.reason, "source": entry.source, "actions": set()}
             found.setdefault((name, entry.reason, entry.source), row)["actions"].add(adapter.action)
     return list(found.values())
@@ -496,12 +568,12 @@ def check_models(registry: AdapterRegistry, data: Data) -> None:
 
 
 def card_evidence(adapter) -> Evidence:
-    """The evidence a card's Works counts. Fail-safe: none for an adapter flagged whole or on a field. For one flagged
-    on a domain or class, the record tests (`tested`) that target unflagged domains and, when a class is flagged
-    anywhere (an entry held on some domains alone is flagged on the rest), reach only classes unflagged in the test's
-    domain; and, unless a domain is flagged (a manual row names none), the manual devices whose class is unflagged in
-    some domain the adapter serves, as the coverage check lets a manual row cover any. Flagged or not, a null-class
-    device of an integration that names classes counts for nothing (`Evidence.of`)."""
+    """The evidence a card credits tested models from. Fail-safe: none for an adapter flagged whole or on a field.
+    For one flagged on a domain or class, the record tests (`tested`) that target unflagged domains and, when a class
+    is flagged anywhere (an entry held on some domains alone is flagged on the rest), reach only classes unflagged in
+    the test's domain; and, unless a domain is flagged (a manual row names none), the manual devices whose class is
+    unflagged in some domain the adapter serves, as the coverage check lets a manual row cover any. Flagged or not, a
+    null-class device of an integration that names classes counts for nothing (`Evidence.of`)."""
     scope = adapter.scope
     flagged = {noun for level, _, noun, domains in items(scope) if level is Level.EXPERIMENTAL or domains is not None}
     if scope.all_experimental or "fields" in flagged:
@@ -554,7 +626,7 @@ def caveat_reason(scope, kind: CaveatKind) -> str | None:
 
 
 def marked(label: str, reason: str) -> str:
-    """A mark (⚠️ Unmaintained, ⚠️ Untested fix), linking its reason when that is a URL, else giving it in brackets."""
+    """A mark (⚠️ Unmaintained, 🔧 Untested fix), linking its reason when that is a URL, else giving it in brackets."""
     return f"[{label}]({reason})" if reason.startswith("https://") else f"{label} ({reason})"
 
 
@@ -699,99 +771,83 @@ def anchor(text: str, url: str) -> str:
     return f"[{text}]({url})"
 
 
-@dataclass
-class Card:
-    title: str
-    requires: str | None = None
-    url: str | None = None  # the integration's page
-    maintainers: tuple[str, ...] = ()
-    # ⚠️ Unmaintained, then ⚠️ Untested fix entries: the features of the adapters so marked, by reason.
-    marks: list[str] = field(default_factory=list)
-    # Every adapter is unmaintained, so the heading says "formerly maintained".
-    all_unmaintained: bool = False
-    lines: dict[str, list[str]] = field(default_factory=dict)
-
-    def short(self, name: str) -> str:
-        """The name without the integration's, which the card's title already gives: "Hue Bridge v1" -> "Bridge v1"."""
-        return name.removeprefix(f"{self.title} ")
-
-    def render(self) -> str:
-        requires = f" ({self.requires})" if self.requires else ""
-        maintainers = ", ".join(f"[@{handle}]({GITHUB}{handle})" for handle in self.maintainers)
-        title = f"[{self.title}]({self.url})" if self.url else self.title
-        status = (
-            f"⚠️ Unmaintained · formerly maintained by {maintainers}"
-            if self.all_unmaintained
-            else f"maintained by {maintainers}"
-        )
-        lines = [f"**{title}**{requires} · {status}", ""]
-        lines += [f"- {entry}" for entry in self.marks]
-        for key, icon, _ in OUTCOMES:
-            if key in ("should", "experimental", "not_built"):
-                lines += [f"- {icon} {entry}" for entry in self.lines.get(key, [])]
-            elif self.lines.get(key):
-                lines.append(f"- {icon} {' · '.join(self.lines[key])}")
-        return "\n".join(lines)
+# A card item: a class with one of the entity domains it can be, or, where the integration names no classes, a domain
+# with None.
+type Item = tuple[str, str | None]
+# A line's features by status, in OUTCOMES order: (("works", ("turn on with timer",)), ("experimental", (...))).
+type Shape = tuple[tuple[str, tuple[str, ...]], ...]
+# A class's brand, from its name and page section, as lines sort it: (0, family key) for a family's, (1, "") for other
+# brands' (`brands`).
+type Brand = Callable[[str, str | None], tuple[int, str]]
 
 
-def card_items(scope) -> list[tuple[Level, str, str]]:
-    """The scope's items as a card shows them: a domain at most at the level of the strongest class the adapter serves,
-    as a call in it runs at the weaker of the two (AdapterScope.level), so a domain whose every class is Experimental
-    reads Experimental. The strongest, not the weakest: one Verified class (Zigbee2MQTT's `hue`) is enough for the
-    domain's line to say so, as its other classes have lines of their own. A class whose level names domains counts
-    only on those."""
-
-    def best(domain: str) -> Level:
-        held = [level for _, level, domains in scope.class_entries() if domains is None or domain in domains]
-        return max(held, default=Level.EXPERIMENTAL)
-
-    return [
-        (min(level, best(item)) if noun == NOUNS[0] and scope.capabilities is not None else level, item, noun)
-        for level, item, noun, _ in items(scope)
-    ]
+def part(action: str) -> str:
+    """The part of its feature an action is, for a feature whose actions a line shows at different statuses: "smooth
+    dimming up" (raise_brightness), "auto-off" (set_auto_off)."""
+    for prefix, end in (("raise_", " up"), ("lower_", " down")):
+        if action.startswith(prefix):
+            return FEATURES[action] + end
+    if action.endswith(("_auto_off", "_auto_on")):
+        return "auto-" + action.rsplit("_", 1)[1]
+    return action.replace("_", " ")
 
 
-def classes(key: str, integration_adapters: list, level: Level, data: Data) -> dict[str, set[str]]:
-    """Each domain or capability the unflagged adapters hold at the level (as `card_items` shows it), in first-seen
-    order, with the actions that hold it there."""
-    held: dict[str, set[str]] = {}
+def shape(by_status: dict[str, set[str]]) -> Shape:
+    """The actions by status as a line names them, each feature under one status: one whose actions differ names its
+    parts instead ("🟡 smooth dimming down · 🌱 smooth dimming up"). `stop` rides the smooth moves, so it is named
+    only on a line that names nothing else."""
+    labels = {status: features(actions, fold_stop=False) for status, actions in by_status.items()}
+    every = [label for found in labels.values() for label in found]
+    split = {label for label in every if every.count(label) > 1}
+    for status, found in labels.items():
+        parts = [
+            part(action) if label in split else label
+            for label in found
+            for action in (
+                [a for a in FEATURES if a in by_status[status] and FEATURES[a] == label] if label in split else [None]
+            )
+        ]
+        labels[status] = tuple(dict.fromkeys(parts))
+    if set(every) - {"stop"}:
+        labels = {status: tuple(label for label in found if label != "stop") for status, found in labels.items()}
+    return tuple((key, labels[key]) for key, *_ in OUTCOMES if labels.get(key))
+
+
+def statuses(integration_adapters: list, class_domains: ClassDomains) -> dict[Item, dict[str, set[str]]]:
+    """Each item the adapters serve, with its actions by status, in first-seen order. A class counts on each entity
+    domain it can be (IntegrationInfo.classes) that the adapter serves, at the level a call there runs at
+    (AdapterScope.level: the weaker of the domain and the class); a class in the scope's `no_known_method` has none
+    there; one the scope names in neither (not built yet) is left out. An adapter flagged whole is Experimental
+    throughout."""
+    found: dict[Item, dict[str, set[str]]] = {}
     for adapter in integration_adapters:
-        if adapter.scope.all_experimental:
-            continue
-        for item_level, item, noun in card_items(adapter.scope):
-            if item_level is level and noun != "fields":
-                if item not in data.capabilities.get(key, {}):
-                    fail(f"capabilities: no entry for {key} {item}, which a scope holds as {level.name.title()}")
-                held.setdefault(item, set()).add(adapter.action)
-    return held
+        scope = adapter.scope
+        held: list[tuple[Item, str]] = []
+        if not class_domains:
+            held = [((domain, None), TIER[level]) for domain, level in scope.domains.items()]
+        else:
+            names = [name for name, _, _ in scope.class_entries()] if scope.capabilities is not None else class_domains
+            for name in [*names, *scope.no_known_method]:
+                for domain in reached(class_domains, name, scope):
+                    if name in scope.no_known_method:
+                        held.append(((name, domain), "no_known_method"))
+                    else:
+                        held.append(((name, domain), TIER[scope.level(domain, [name])]))
+        for item, status in held:
+            found.setdefault(item, {}).setdefault(status, set()).add(adapter.action)
+    return found
 
 
-def not_built(key: str, classes: frozenset[str], integration_adapters: list, data: Data) -> dict[str, set[str]]:
-    """Each class the integration declares that an adapter holds in neither its capabilities nor its no_known_method,
-    with the actions that refuse it (`not_built`), in devices.yaml's order. Only a class devices.yaml gives a phrase is
-    named: Shelly's Switch has none, as a relay has no brightness or color to dim or set. A class no scope holds at
-    all must have one, or the card would hide it."""
-    phrased = data.capabilities.get(key, {})
-    served = [
-        (adapter.scope.capabilities or {}).keys() | adapter.scope.no_known_method.keys()
-        for adapter in integration_adapters
+def reached(class_domains: ClassDomains, name: str, scope) -> list[str]:
+    """The domains the class can be (IntegrationInfo.classes) that the scope serves, in the scope's order, and, for a
+    class it serves on some alone (OnDomains `only`), those. Never empty for a class the scope holds or refuses with
+    a reason (core/registry.py, check_classes)."""
+    held = name not in scope.no_known_method
+    return [
+        domain
+        for domain in scope.domains
+        if domain in class_domains.get(name, ()) and (not held or scope.admits(name, domain))
     ]
-    if hidden := sorted(classes - set().union(*served) - phrased.keys()):
-        fail(
-            f"capabilities: no entry for {key} {', '.join(hidden)}, which no scope holds, so the card lists it as not"
-            " yet supported"
-        )
-    held: dict[str, set[str]] = {}
-    for item in data.capabilities.get(key, {}):
-        for adapter in integration_adapters:
-            served = adapter.scope.capabilities
-            if (
-                item in classes
-                and served is not None
-                and item not in served.keys() | adapter.scope.no_known_method.keys()
-            ):
-                held.setdefault(item, set()).add(adapter.action)
-    return held
 
 
 def merged(phrases: list[str], url: str) -> str:
@@ -809,52 +865,299 @@ def merged(phrases: list[str], url: str) -> str:
     return anchor(f"{ending} ({', '.join(' '.join(w[:-shared]) for w in words)})", url)
 
 
-def class_entries(key: str, held: dict[str, set[str]], data: Data) -> list[str]:
-    """Classes with the same features share one entry: "dimmers, LED controllers (CCT, RGB): turn on with timer", and
-    each phrase in it once."""
-    grouped: dict[tuple[str, ...], dict[str, list[str]]] = {}
-    for item, actions in held.items():
-        entry = data.capabilities[key][item]
-        phrases = grouped.setdefault(features(actions), {}).setdefault(entry["section"], [])
-        # Classes that share a phrase (Zigbee2MQTT's countdown plugs, a class per maker string) are said once.
-        if entry["phrase"] not in phrases:
-            phrases.append(entry["phrase"])
-    return [
-        f"{', '.join(merged(phrases, data.url(key, section)) for section, phrases in sections.items())}: "
-        f"{', '.join(names)}"
-        for names, sections in grouped.items()
-    ]
+def text(phrases: list[str]) -> str:
+    """A section's phrases as `merged` names them, without the link."""
+    return merged(phrases, "")[1:-3]
 
 
-def works(card: Card, key: str, integration_adapters: list, data: Data) -> list[str]:
-    """The models the adapters' evidence tested (`card_evidence`), by device type, then first seen, then native
-    groups. A rig-tested model and native groups a rig test reached end ✔; a hand-tested group has none."""
-    rig: set[str] = set()
-    names: list[str] = []
-    groups: list[bool] = []
+@dataclass
+class Line:
+    """A card line: the classes (or domains) that show the same features, by page section, and the tested models a
+    test reached them on."""
+
+    shape: Shape
+    sections: dict[str, list[str]] = field(default_factory=dict)  # each section's phrases, said once each
+    items: list[Item] = field(default_factory=list)
+    models: list[str] = field(default_factory=list)  # model names, as `works` gives them
+    label: str | None = None  # a line no class names: native groups, or models no class line takes
+    # A model's variants (devices.yaml `sections` with `variants`): the parent names the model and what to check, each
+    # child a variant, by its classes' phrases, with ✔ for a rig-tested model, which the parent already names.
+    note: str | None = None
+    children: list[Line] = field(default_factory=list)
+    variant: bool = False
+    at: dict[Item, str] = field(default_factory=dict)  # each item's page section
+
+    def plain(self) -> str:
+        """The name as text, for sorting."""
+        return (self.label or ", ".join(text(phrases) for phrases in self.sections.values())).lower()
+
+    def name(self, card: Card, key: str, data: Data, rig: set[str]) -> str:
+        if self.label is not None:
+            return self.label
+        if self.variant:
+            ((section, phrases),) = self.sections.items()
+            # Variants read as either: "no countdown setting, _TZ3000_a, or _TZ3000_b".
+            either = f"{', '.join(phrases[:-1])}, or {phrases[-1]}" if len(phrases) > 1 else phrases[0]
+            return anchor(either, data.url(key, section)) + (f" {VERIFIED}" if set(self.models) & rig else "")
+        names = ", ".join(merged(phrases, data.url(key, section)) for section, phrases in self.sections.items())
+        tested = [card.short(name) for name in self.models]
+        if len(tested) == 1 and [tested[0]] == [p for phrases in self.sections.values() for p in phrases]:
+            return names + (f" {VERIFIED}" if self.models[0] in rig else "")  # a class that is its model
+        if tested:
+            names += f" ({', '.join(card.model(name, key, data, rig) for name in self.models)})"
+        return names
+
+    def render(self, card: Card, key: str, data: Data, rig: set[str]) -> str:
+        if self.note is not None:
+            children = "".join(f"\n  - {child.render(card, key, data, rig)}" for child in self.children)
+            return f"{self.name(card, key, data, rig)}: {self.note}{children}"
+        icons = {key: icon for key, icon, _ in OUTCOMES}
+        found = " · ".join(f"{icons[status]} {', '.join(labels)}" for status, labels in self.shape)
+        return f"{self.name(card, key, data, rig)}: {found}"
+
+
+def class_lines(
+    key: str,
+    found: dict[Item, dict[str, set[str]]],
+    data: Data,
+    class_domains: ClassDomains,
+    served: list[str],
+    broken: dict[str, dict],
+    brand: Brand = lambda cls, section: (0, ""),
+) -> list[Line]:
+    """One line per brand (`brands`) and feature set, each class on one: a class named once, by its devices.yaml
+    phrase, when it shows the same features on every domain it can be that the integration serves (`served`), else
+    once per domain it shows on, by its `domains` phrase, so a plug never reads as dimmable. A class with no entry
+    that a scope's no_known_method names is named by its `what` (`broken`). A section with `variants` gets a parent
+    line, its classes child lines of their own, which never merge with another section's. Unsorted (`ordered`)."""
+    by_item, members = by_home(found, class_domains)
+    lines: dict[tuple[tuple, Shape], Line] = {}
+    sections: dict[Item, str] = {}  # each item's page section
+    found_phrases = data.section_phrases.get(key, {})
+    parents: dict[str, tuple[Line, dict[Shape, Line]]] = {}
+    for item, by_domain in by_item.items():
+        entry = data.capabilities.get(key, {}).get(item) or broken.get(item)
+        if entry is None:
+            fail(f"capabilities: no entry for {key} {item}, which the card lists")
+        can_be = list(
+            dict.fromkeys(
+                domain_home(class_domains[item], domain) for domain in served if domain in class_domains.get(item, ())
+            )
+        )
+        for phrase, found_shape, homes in naming(key, item, entry, by_domain, can_be):
+            domains = [domain for home in homes for domain in members[item][home]]
+            if "variants" in (parent_entry := found_phrases.get(entry["section"], {})):
+                parent = Line((), {entry["section"]: [parent_entry["phrase"]]}, note=parent_entry["variants"])
+                children = parents.setdefault(entry["section"], (parent, {}))[1]
+                line = children.setdefault(found_shape, Line(found_shape, variant=True))
+            else:
+                line = lines.setdefault((brand(item, entry["section"]), found_shape), Line(found_shape))
+            phrases = line.sections.setdefault(entry["section"], [])
+            # Classes that share a phrase (Zigbee2MQTT's countdown plugs, a class per maker string) are said once.
+            if phrase not in phrases:
+                phrases.append(phrase)
+            line.items += [(item, domain) for domain in domains]
+            line.at |= {(item, domain): entry["section"] for domain in domains}
+            sections |= line.at
+    for line in lines.values():
+        section_phrases(line, sections, found_phrases)
+    for parent, children in parents.values():
+        parent.children = list(children.values())
+        parent.items = [item for child in parent.children for item in child.items]
+        parent.at = {item: at for child in parent.children for item, at in child.at.items()}
+    return [*lines.values(), *(parent for parent, _ in parents.values())]
+
+
+def domain_home(domains: frozenset, domain: str | None) -> str | None:
+    """The domain a class's card line names `domain` by: a scene's is light, where the class can be a light."""
+    return Platform.LIGHT if domain == Platform.SCENE and Platform.LIGHT in domains else domain
+
+
+def by_home(
+    found: dict[Item, dict[str, set[str]]], class_domains: ClassDomains
+) -> tuple[dict[str, dict[str | None, Shape]], dict[str, dict[str | None, list[str | None]]]]:
+    """Each item's features per domain a line names it by (`domain_home`, a scene folded into light), and the domains
+    each of those holds."""
+    merged_found: dict[str, dict[str | None, dict[str, set[str]]]] = {}
+    members: dict[str, dict[str | None, list[str | None]]] = {}
+    for (item, domain), by_status in found.items():
+        home = domain_home(class_domains.get(item, frozenset()), domain)
+        members.setdefault(item, {}).setdefault(home, []).append(domain)
+        into = merged_found.setdefault(item, {}).setdefault(home, {})
+        for status, actions in by_status.items():
+            into.setdefault(status, set()).update(actions)
+    by_item: dict[str, dict[str | None, Shape]] = {}
+    for item, homes in merged_found.items():
+        for home, by_status in homes.items():
+            if found_shape := shape(by_status):
+                by_item.setdefault(item, {})[home] = found_shape
+    return by_item, members
+
+
+def naming(
+    key: str, item: str, entry: dict, by_domain: dict[str | None, Shape], domains: list[str]
+) -> list[tuple[str, Shape, list[str | None]]]:
+    """The item as its lines name it, (phrase, features, domains): once, by its phrase, when it shows the same features
+    on every domain it can be, else once per domain it shows on, by its `domains` phrase."""
+    if None in by_domain or (set(by_domain) == set(domains) and len(set(by_domain.values())) == 1):
+        return [(entry["phrase"], next(iter(by_domain.values())), list(by_domain))]
+    for domain in by_domain:
+        if domain not in entry.get("domains", {}):
+            fail(
+                f"capabilities: {key} {item} shows other features on each of its domains, so its card line"
+                f" splits: give it a phrase for {domain} (`domains`)"
+            )
+    return [(entry["domains"][domain], found_shape, [domain]) for domain, found_shape in by_domain.items()]
+
+
+def section_phrases(line: Line, sections: dict[Item, str], phrases: dict[str, dict]) -> None:
+    """A line that holds every class a section shows on the card in its domains names the section, by its devices.yaml
+    `sections` phrase (its domain's, where it gives one), instead of each class."""
+    for section, names in line.sections.items():
+        mine = {item for item in line.items if sections.get(item) == section}
+        domains = {domain for _, domain in mine}
+        every = {item for item, at in sections.items() if at == section and item[1] in domains}
+        if len(names) > 1 and mine == every and (entry := phrases.get(section)):
+            (only,) = domains if len(domains) == 1 else (None,)
+            names[:] = [entry.get("domains", {}).get(only, entry["phrase"])]
+
+
+@dataclass
+class Reached:
+    """What a card's evidence tested of one model: where (its class and domain, a domain alone where the integration
+    names no classes), on which actions, and whether the rig did."""
+
+    places: list[tuple[str | None, str | None]] = field(default_factory=list)
+    actions: set[str] = field(default_factory=set)
+    rig: bool = False
+
+
+def works(integration_adapters: list, data: Data) -> tuple[dict[str, Reached], Reached | None]:
+    """The models the adapters' evidence tested (`card_evidence`), by device type, then first seen, and native groups,
+    each with where and on which actions."""
+    models: dict[str, Reached] = {}
+    groups: Reached | None = None
     for adapter in integration_adapters:
         for item in card_evidence(adapter).devices():
             if item.group:
-                groups.append(item.rig)
-                continue
-            name = data.models[item.model]["name"]
-            if item.rig:
-                rig.add(name)
-            if name not in names:
-                names.append(name)
+                groups = groups or Reached()
+                tested = groups
+            else:
+                tested = models.setdefault(data.models[item.model]["name"], Reached())
+                if (item.cls, item.domain) not in tested.places:
+                    tested.places.append((item.cls, item.domain))
+            tested.actions.add(adapter.action)
+            tested.rig = tested.rig or item.rig
     by_name = {model["name"]: model for model in data.models.values()}
-    lines = [
-        anchor(card.short(name), data.url(key, by_name[name]["section"])) + (f" {VERIFIED}" if name in rig else "")
-        for name in sorted(names, key=lambda name: TYPES.index(by_name[name]["type"]))
-    ]
-    if groups:
-        entry = anchor(GROUPS_ENTRY[0], data.url(key, GROUPS_ENTRY[1]))
-        lines.append(f"{entry} {VERIFIED}" if any(groups) else entry)
-    return lines
+    ordered = sorted(models, key=lambda name: TYPES.index(by_name[name]["type"]))
+    return {name: models[name] for name in ordered}, groups
+
+
+def place(lines: list[Line], tested: Reached, classed: bool) -> list[Line]:
+    """The lines a tested model goes on: each holding the class and domain a test reached it on (the domain alone where
+    the integration names no classes), else, for a test whose domain the class shows on no line (a relay Shelly shows
+    as a light), each holding its class. None for a test that named neither (a format 1 record's, a manual row's on an
+    integration that names no classes)."""
+    found = []
+    lines = [line for held in lines for line in (held.children or [held])]
+    for cls, domain in tested.places:
+        item = (cls, domain) if classed else (domain, None)
+        if item[0] is None:
+            continue
+        on = [line for line in lines if item in line.items] or (
+            [line for line in lines if any(held == cls for held, _ in line.items)] if classed else []
+        )
+        found += [line for line in on if line not in found]
+    return found
+
+
+def brands(info) -> Brand:
+    """The class's family (IntegrationInfo.families), else other brands; an integration with no families is one brand,
+    its devices.yaml "Other brands" section the other brands."""
+    families = getattr(info, "families", ())
+    by_class = {cls: family.key.lower() for family in families for cls in family.classes}
+
+    def brand(cls: str, section: str | None) -> tuple[int, str]:
+        if families:
+            return (0, by_class[cls]) if cls in by_class else (1, "")
+        return (1, "") if section == OTHER_BRANDS else (0, "")
+
+    return brand
+
+
+def ordered(lines: list[Line], brand: Brand, rig: set[str]) -> list[Line]:
+    """Native groups first, then lines by brand (`brands`), alphabetically, then other
+    brands, then models no class line takes. Within a brand, lines with a rig-tested model first, those named
+    "other …" last, the rest alphabetically; a line's sections and their phrases, and a parent's children, sort the
+    same way, except that plain words come before maker strings ("_TZ3000_…")."""
+
+    def name_key(name: str) -> tuple:
+        return (name.lower().startswith("other"), name.startswith("_"), name.lower())
+
+    def brand_of(line: Line, items: list[Item]) -> tuple:
+        return min((brand(cls, line.at.get((cls, domain))) for cls, domain in items), default=(0, ""))
+
+    def key(line: Line) -> tuple:
+        if line.label is not None:
+            group = (-1, "") if line.models == [] else (2, "")  # native groups, or models no class line takes
+        else:
+            group = brand_of(line, line.items)
+        held = {name for child in (line.children or [line]) for name in child.models}
+        return (*group, not held & rig, *name_key(line.plain()))
+
+    for line in lines:
+        line.children = ordered(line.children, brand, rig)
+        if line.note is None and line.label is None:
+            for phrases in line.sections.values():
+                phrases.sort(key=name_key)
+            line.sections = dict(
+                sorted(
+                    line.sections.items(),
+                    key=lambda pair: (
+                        *brand_of(line, [item for item in line.items if line.at.get(item) == pair[0]]),
+                        *name_key(text(pair[1])),
+                    ),
+                )
+            )
+    return sorted(lines, key=key)
+
+
+@dataclass
+class Card:
+    title: str
+    requires: str | None = None
+    url: str | None = None  # the integration's page
+    maintainers: tuple[str, ...] = ()
+    # 🔧 Untested fix, then ⚠️ Unmaintained entries: the features of the adapters so marked, by reason.
+    marks: list[str] = field(default_factory=list)
+    # Every adapter is unmaintained, so the heading says so.
+    all_unmaintained: bool = False
+    lines: list[str] = field(default_factory=list)
+    # What the evidence tested, as the lines name it: each model (✔ when the rig tested it), then native groups.
+    tested: list[str] = field(default_factory=list)
+
+    def short(self, name: str) -> str:
+        """The name without the integration's, which the card's title already gives: "Hue Bridge v1" -> "Bridge v1"."""
+        return name.removeprefix(f"{self.title} ")
+
+    def model(self, name: str, key: str, data: Data, rig: set[str]) -> str:
+        by_name = {model["name"]: model for model in data.models.values()}
+        return anchor(self.short(name), data.url(key, by_name[name]["section"])) + (
+            f" {VERIFIED}" if name in rig else ""
+        )
+
+    def render(self) -> str:
+        requires = f" ({self.requires})" if self.requires else ""
+        title = f"[{self.title}]({self.url})" if self.url else self.title
+        status = " · ⚠️ Unmaintained" if self.all_unmaintained else ""
+        lines = [f"**{title}**{requires}{status}", ""]
+        lines += [f"- {entry}" for entry in self.marks]
+        lines += [f"- {line}" for line in self.lines]
+        return "\n".join(lines)
 
 
 def mark_entries(integration_adapters: list) -> list[str]:
-    """The adapters no one is fixing, then those shipping a fix no one could test, as their features, one entry per
+    """The adapters shipping a fix no one could test, then those no one is fixing, as their features, one entry per
     caveat and reason."""
     entries = []
     for kind, label in MARKS:
@@ -880,28 +1183,63 @@ def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: 
         all_unmaintained=bool(integration_adapters)
         and all(caveat_reason(adapter.scope, CaveatKind.UNMAINTAINED) for adapter in integration_adapters),
     )
-    result.lines["works"] = works(result, key, integration_adapters, data)
-    for level, tier in ((Level.DOCUMENTED, "should"), (Level.EXPERIMENTAL, "experimental")):
-        result.lines[tier] = class_entries(key, classes(key, integration_adapters, level, data), data)
-    if flagged := {adapter.action for adapter in integration_adapters if adapter.scope.all_experimental}:
-        result.lines["experimental"].append(", ".join(features(flagged)))
-    result.lines["not_built"] = class_entries(key, not_built(key, info.classes, integration_adapters, data), data)
-    result.lines["not_built"] += [
-        anchor(result.short(entry["what"]), data.url(key, entry["section"]))
-        for entry in data.not_built
-        if key in entry["integrations"]
+    broken = {
+        name: {"phrase": result.short(entry.what), "section": entry.what}
+        for adapter in integration_adapters
+        for name, entry in adapter.scope.no_known_method.items()
+    }
+    # The domains the integration's adapters serve, in first-seen order: those a class's line is split by.
+    served = list(dict.fromkeys(domain for adapter in integration_adapters for domain in adapter.scope.domains))
+    brand = brands(info)
+    lines = class_lines(key, statuses(integration_adapters, info.classes), data, info.classes, served, broken, brand)
+    models, groups = works(integration_adapters, data)
+    rig = {name for name, tested in models.items() if tested.rig}
+    # A model no class line takes gets a line of its own per feature set, with the features it was tested on.
+    unplaced: dict[Shape, Line] = {}
+    for name, tested in models.items():
+        on = place(lines, tested, bool(info.classes))
+        if not on:
+            found_shape = shape({"works": tested.actions})
+            on = [unplaced.setdefault(found_shape, Line(found_shape))]
+        for line in on:
+            line.models.append(name)
+    for line in unplaced.values():
+        line.label = ", ".join(result.model(name, key, data, rig) for name in line.models)
+    extra = list(unplaced.values())
+    result.tested = [result.model(name, key, data, rig) for name in models]
+    if groups is not None:
+        label = anchor(GROUPS_ENTRY[0], data.url(key, GROUPS_ENTRY[1])) + (f" {VERIFIED}" if groups.rig else "")
+        extra.append(Line(shape({"works": groups.actions}), label=label))
+        result.tested.append(label)
+    lines = ordered([*lines, *extra], brand, rig)
+    result.lines = [line.render(result, key, data, rig) for line in lines]
+    # devices.yaml's and models.yaml's no_known_method entries name no class or action: each a line of its own.
+    result.lines += [
+        f"{anchor(result.short(entry['what']), data.url(key, entry['section']))}: {OUTCOMES[-1][1]}"
+        for entry in data.no_known_method
+        if key in entry["integrations"] and not entry.get("actions")
     ]
-    result.lines["no_known_method"] = []
-    for entry in data.no_known_method:
-        if key in entry["integrations"]:
-            label = anchor(result.short(entry["what"]), data.url(key, entry["section"]))
-            result.lines["no_known_method"].append(
-                f"{label}: {', '.join(features(entry['actions']))}" if entry.get("actions") else label
-            )
     return result
 
 
+def legend(text: str) -> str:
+    """The legend's entries for the marks the cards use, one per line. Verified qualifies works, so it shares its
+    line."""
+    lines: list[str] = []
+    for icon, entry in LEGEND:
+        if icon not in text:
+            continue
+        if icon == VERIFIED and lines and lines[-1].startswith(OUTCOMES[0][1]):
+            lines[-1] += f" · {icon} {entry}"
+        else:
+            lines.append(f"{icon} {entry}")
+    return "<br>\n".join(lines)
+
+
 def cards(registry: AdapterRegistry, data: Data) -> str:
+    body = []
+    for key, integration_adapters in by_integration(registry).items():
+        body += [card(key, registry, integration_adapters, data).render(), ""]
     parts = [
         CARDS[0],
         "<!-- Generated by scripts/gen_compat.py. Do not edit; run the script. -->",
@@ -909,12 +1247,9 @@ def cards(registry: AdapterRegistry, data: Data) -> str:
         "<details>",
         f"<summary><b>{CARDS_TITLE}</b></summary>",
         "",
-        CARDS_LEGEND,
+        legend("\n".join(body)),
         "",
-    ]
-    for key, integration_adapters in by_integration(registry).items():
-        parts += [card(key, registry, integration_adapters, data).render(), ""]
-    parts += [
+        *body,
         f"Details per integration are in [docs/integrations.md]({INTEGRATIONS_URL}).",
         "",
         "</details>",
@@ -922,6 +1257,23 @@ def cards(registry: AdapterRegistry, data: Data) -> str:
         CARDS[1],
     ]
     return "\n".join(parts)
+
+
+def requirements(registry: AdapterRegistry, data: Data) -> str:
+    """The README's Requirements line: each integration's `requirements_name` or title, in `column_order`, no "or"."""
+    names = [
+        data.names.get(key, info.title)
+        for key, info in sorted(registry.integrations.items(), key=lambda item: data.order.get(item[0], 0))
+        if key in data.order
+    ]
+    return "\n".join(
+        [
+            REQUIREMENTS[0],
+            "<!-- Generated by scripts/gen_compat.py. Do not edit; run the script. -->",
+            f"* One of these integrations installed: {', '.join(names)}.",
+            REQUIREMENTS[1],
+        ]
+    )
 
 
 # Writing.
@@ -967,9 +1319,13 @@ def main(
     check_models(registry, data)
     # Both are computed before either is written, so a failure leaves neither half-updated.
     updates = {}
-    for path, markers, block in ((page, EVIDENCE, evidence(registry, data)), (readme, CARDS, cards(registry, data))):
-        text = path.read_text()
-        updates[path] = (text, splice(text, markers, block, path.name))
+    for path, markers, block in (
+        (page, EVIDENCE, evidence(registry, data)),
+        (readme, CARDS, cards(registry, data)),
+        (readme, REQUIREMENTS, requirements(registry, data)),
+    ):
+        text = updates[path][1] if path in updates else path.read_text()
+        updates[path] = (updates[path][0] if path in updates else text, splice(text, markers, block, path.name))
     check_sections(updates[page][1], data)
     # The coverage check warns here, on every PR, and fails only at cut-release (check_release.py --signoffs).
     for gap in coverage_gaps(registry):

@@ -30,7 +30,7 @@ def test_the_rule_groups_run_in_the_integration_s_order():
 
 
 def test_every_rule_names_a_class_but_the_default():
-    assert {rule.capability for rule in RULES} == classes.CLASSES - {classes.OTHER}
+    assert {rule.capability for rule in RULES} == classes.CLASSES.keys() - {classes.OTHER}
 
 
 def test_a_rule_tests_the_fields_zigbee2mqtt_reads():

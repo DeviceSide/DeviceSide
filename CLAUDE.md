@@ -103,7 +103,7 @@ get. After any audit report (`audit-code`, also inside `rc-audit`), run the `own
 finding: it marks the findings in someone else's code and routes them to its maintainers. `scripts/owners.py` says who
 maintains a path.
 
-**Caveats** (⚠️ Untested fix, ⚠️ Unmaintained) are set and cleared by a repo maintainer: `docs/evidence.md`.
+**Caveats** (🔧 Untested fix, ⚠️ Unmaintained) are set and cleared by a repo maintainer: `docs/evidence.md`.
 
 ## Releasing
 
@@ -133,5 +133,5 @@ attached to the session, its `CLAUDE.md` says how to run it.
 ## Conventions
 
 - Logging: [`docs/logging.md`](docs/logging.md): levels, the per-call DEBUG line, and never a device address.
-- Constants: before defining one, `rg` for its value and meaning and import the existing one; `scripts/check_ha_literals.py` flags an HA name written as a literal. A duration's name carries its unit (`_S`, `_TENTHS`), and its comment gives the encoding or source that bounds it, once, where it's defined.
+- Constants: before defining one, `rg` for its value and meaning and import the existing one; `scripts/check_ha_literals.py` flags an HA name written as a literal. A duration's name carries its unit (`_S`, `_TENTHS`), and its comment gives the encoding or source that bounds it, once, where it's defined. Tests pin the values they assert as literals, so a wrong constant fails its test; they may import a constant to build inputs.
 - American English, matching HA.

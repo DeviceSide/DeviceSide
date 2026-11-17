@@ -2,6 +2,8 @@
 (research/2026-11-14-timed-on-call-patterns.md, §3), so `other`'s Documented actions don't cover them (plan Decision
 24)."""
 
+from homeassistant.const import Platform
+
 from .....core.rules import Rule
 from .....core.scope import Family, FamilyScope, experimental
 
@@ -18,7 +20,7 @@ _UNTESTED = FamilyScope(capabilities=experimental(GLEDOPTO))
 FAMILY = Family(
     key="gledopto",
     maintainers=(),
-    classes=frozenset({GLEDOPTO}),
+    classes={GLEDOPTO: frozenset({Platform.LIGHT})},
     scopes={
         "raise_brightness": _UNTESTED,
         "lower_brightness": _UNTESTED,

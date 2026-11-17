@@ -31,9 +31,7 @@ pairs: its vendor and product IDs, and whether it is a bridge. Every feature say
 ### WiZ Smart Plug
 
 A Matter plug, rig-tested with turn on with timer and get attributes. It never reports its running timer on its own,
-so DeviceSide reads it back ([turn on with timer](#turn-on-with-timer)). Turn on with timer now sends a slightly
-different command (a 0.1 s off wait, [internals](internals.md#turn_on_for)), so it runs only with Experimental
-features on until the plug is tested with it again.
+so DeviceSide reads it back ([turn on with timer](#turn-on-with-timer)).
 
 ### Certified devices
 
