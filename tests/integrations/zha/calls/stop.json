@@ -72,6 +72,9 @@
        "options_mask": 0,
        "options_override": 0
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -91,6 +94,9 @@
        "options_mask": 0,
        "options_override": 0
       }
+     },
+     {
+      "blocking": true
      }
     ],
     {
@@ -109,6 +115,9 @@
       "endpoint_id": 11,
       "ieee": "00:00:00:00:00:00:00:0a",
       "params": {}
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -125,6 +134,9 @@
       "endpoint_id": 11,
       "ieee": "00:00:00:00:00:00:00:0b",
       "params": {}
+     },
+     {
+      "blocking": true
      }
     ],
     {
@@ -137,6 +149,9 @@
      "homeassistant.update_entity",
      {
       "entity_id": "light.a"
+     },
+     {
+      "blocking": true
      }
     ],
     {
@@ -158,6 +173,9 @@
        "options_mask": 0,
        "options_override": 0
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -174,6 +192,9 @@
       "endpoint_id": 11,
       "ieee": "00:00:00:00:00:00:00:0c",
       "params": {}
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -184,6 +205,9 @@
      "homeassistant.update_entity",
      {
       "entity_id": "light.c"
+     },
+     {
+      "blocking": true
      }
     ],
     {
@@ -247,6 +271,9 @@
       "endpoint_id": 11,
       "ieee": "00:00:00:00:00:00:00:0a",
       "params": {}
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -257,6 +284,9 @@
      "homeassistant.update_entity",
      {
       "entity_id": "light.a"
+     },
+     {
+      "blocking": true
      }
     ],
     {
@@ -320,6 +350,9 @@
       "cluster_id": 768,
       "command": 71,
       "group": 2
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -333,6 +366,9 @@
       "cluster_id": 8,
       "command": 3,
       "group": 2
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -343,6 +379,9 @@
      "homeassistant.update_entity",
      {
       "entity_id": "light.a"
+     },
+     {
+      "blocking": true
      }
     ],
     {
@@ -355,6 +394,9 @@
      "homeassistant.update_entity",
      {
       "entity_id": "light.b"
+     },
+     {
+      "blocking": true
      }
     ],
     {
@@ -415,6 +457,9 @@
       "cluster_id": 8,
       "command": 3,
       "group": 2
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -425,6 +470,9 @@
      "homeassistant.update_entity",
      {
       "entity_id": "light.a"
+     },
+     {
+      "blocking": true
      }
     ],
     {
@@ -437,6 +485,9 @@
      "homeassistant.update_entity",
      {
       "entity_id": "light.b"
+     },
+     {
+      "blocking": true
      }
     ],
     {
@@ -512,6 +563,9 @@
       "cluster_id": 8,
       "command": 3,
       "group": 2
+     },
+     {
+      "blocking": true
      }
     ],
     {
@@ -530,6 +584,9 @@
       "endpoint_id": 11,
       "ieee": "00:17:88:01:02:03:04:05",
       "params": {}
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -540,6 +597,9 @@
      "homeassistant.update_entity",
      {
       "entity_id": "light.bulb"
+     },
+     {
+      "blocking": true
      }
     ],
     {
@@ -620,6 +680,9 @@
        "options_mask": 0,
        "options_override": 0
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -636,6 +699,9 @@
       "endpoint_id": 11,
       "ieee": "00:17:88:01:02:03:04:05",
       "params": {}
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -646,6 +712,9 @@
      "homeassistant.update_entity",
      {
       "entity_id": "light.bulb"
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -695,6 +764,9 @@
        "options_mask": 0,
        "options_override": 0
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -711,6 +783,9 @@
       "endpoint_id": 11,
       "ieee": "00:17:88:01:02:03:04:05",
       "params": {}
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -721,6 +796,9 @@
      "homeassistant.update_entity",
      {
       "entity_id": "light.bulb"
+     },
+     {
+      "blocking": true
      }
     ],
     {
@@ -769,6 +847,9 @@
       "endpoint_id": 11,
       "ieee": "00:17:88:01:02:03:04:05",
       "params": {}
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -779,6 +860,9 @@
      "homeassistant.update_entity",
      {
       "entity_id": "light.bulb"
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -825,6 +909,9 @@
       "endpoint_id": 11,
       "ieee": "00:17:88:01:02:03:04:05",
       "params": {}
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -835,6 +922,9 @@
      "homeassistant.update_entity",
      {
       "entity_id": "light.bulb"
+     },
+     {
+      "blocking": true
      }
     ],
     {
@@ -883,6 +973,9 @@
       "endpoint_id": 11,
       "ieee": "00:17:88:01:02:03:04:05",
       "params": {}
+     },
+     {
+      "blocking": true
      }
     ],
     {
@@ -931,6 +1024,9 @@
       "endpoint_id": 11,
       "ieee": "00:17:88:01:02:03:04:05",
       "params": {}
+     },
+     {
+      "blocking": true
      }
     ],
     {
@@ -979,6 +1075,9 @@
       "endpoint_id": 11,
       "ieee": "00:00:00:00:00:00:00:0a",
       "params": {}
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -989,6 +1088,9 @@
      "homeassistant.update_entity",
      {
       "entity_id": "light.ikea"
+     },
+     {
+      "blocking": true
      }
     ],
     {

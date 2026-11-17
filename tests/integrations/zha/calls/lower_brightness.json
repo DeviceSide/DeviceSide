@@ -48,6 +48,9 @@
        "level": 51,
        "transition_time": 20
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -128,6 +131,9 @@
        "level": 51,
        "transition_time": 30
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -208,6 +214,9 @@
        "level": 51,
        "transition_time": 10
       }
+     },
+     {
+      "blocking": true
      }
     ],
     {
@@ -265,6 +274,9 @@
        "level": 51,
        "transition_time": 20
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -360,6 +372,9 @@
        "level": 0,
        "transition_time": 30
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -455,6 +470,9 @@
        "level": 0,
        "transition_time": 30
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -474,6 +492,9 @@
        "level": 0,
        "transition_time": 30
       }
+     },
+     {
+      "blocking": true
      }
     ],
     {
@@ -556,6 +577,9 @@
        "level": 0,
        "transition_time": 30
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -636,6 +660,9 @@
        "level": 0,
        "transition_time": 30
       }
+     },
+     {
+      "blocking": true
      }
     ],
     {
@@ -728,6 +755,9 @@
        "level": 0,
        "transition_time": 30
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -738,6 +768,9 @@
      "light.turn_off",
      {
       "entity_id": "light.bulb"
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -773,6 +806,9 @@
      "homeassistant.update_entity",
      {
       "entity_id": "light.bulb"
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -828,6 +864,9 @@
        "level": 0,
        "transition_time": 30
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -908,6 +947,9 @@
        "level": 0,
        "transition_time": 30
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -979,6 +1021,9 @@
        "options_override": 1,
        "transition_time": 0
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -989,6 +1034,9 @@
      "homeassistant.update_entity",
      {
       "entity_id": "light.bulb"
+     },
+     {
+      "blocking": true
      }
     ],
     {
@@ -1046,6 +1094,9 @@
        "level": 0,
        "transition_time": 30
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -1117,6 +1168,9 @@
        "options_override": 1,
        "transition_time": 0
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -1127,6 +1181,9 @@
      "homeassistant.update_entity",
      {
       "entity_id": "light.bulb"
+     },
+     {
+      "blocking": true
      }
     ],
     {
@@ -1184,6 +1241,9 @@
        "level": 0,
        "transition_time": 30
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -1219,6 +1279,9 @@
      "homeassistant.update_entity",
      {
       "entity_id": "light.bulb"
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -1274,6 +1337,9 @@
        "level": 0,
        "transition_time": 30
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -1345,6 +1411,9 @@
        "options_override": 1,
        "transition_time": 0
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -1355,6 +1424,9 @@
      "homeassistant.update_entity",
      {
       "entity_id": "light.bulb"
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -1410,6 +1482,9 @@
        "level": 0,
        "transition_time": 30
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -1481,6 +1556,9 @@
        "options_override": 1,
        "transition_time": 0
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -1491,6 +1569,9 @@
      "homeassistant.update_entity",
      {
       "entity_id": "light.bulb"
+     },
+     {
+      "blocking": true
      }
     ],
     {
@@ -1548,6 +1629,9 @@
        "level": 0,
        "transition_time": 30
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -1608,6 +1692,9 @@
      "homeassistant.update_entity",
      {
       "entity_id": "light.bulb"
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -1663,6 +1750,9 @@
        "level": 0,
        "transition_time": 30
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -1720,6 +1810,9 @@
      "homeassistant.update_entity",
      {
       "entity_id": "light.bulb"
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -1775,6 +1868,9 @@
        "level": 0,
        "transition_time": 30
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -1855,6 +1951,9 @@
        "level": 0,
        "transition_time": 50
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -1935,6 +2034,9 @@
        "level": 0,
        "transition_time": 30
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -1970,6 +2072,9 @@
      "homeassistant.update_entity",
      {
       "entity_id": "light.bulb"
+     },
+     {
+      "blocking": true
      }
     ],
     {
@@ -2027,6 +2132,9 @@
        "level": 0,
        "transition_time": 30
       }
+     },
+     {
+      "blocking": true
      }
     ],
     {
@@ -2084,6 +2192,9 @@
        "level": 0,
        "transition_time": 30
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null

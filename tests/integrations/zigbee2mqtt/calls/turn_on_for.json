@@ -146,6 +146,9 @@
      {
       "brightness": 128,
       "entity_id": "light.kitchen"
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -230,6 +233,9 @@
      {
       "brightness": 128,
       "entity_id": "light.kitchen"
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -305,6 +311,9 @@
       "brightness": 204,
       "color_temp_kelvin": 3000,
       "entity_id": "light.kitchen"
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -561,6 +570,9 @@
      {
       "brightness": 128,
       "entity_id": "light.kitchen"
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -743,6 +755,9 @@
      {
       "brightness": 128,
       "entity_id": "light.downstairs"
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -843,6 +858,9 @@
      {
       "brightness": 128,
       "entity_id": "light.kitchen"
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -929,6 +947,9 @@
      {
       "brightness": 128,
       "entity_id": "light.kitchen"
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -1001,6 +1022,9 @@
      {
       "brightness": 128,
       "entity_id": "light.kitchen"
+     },
+     {
+      "blocking": true
      }
     ],
     {
@@ -1054,6 +1078,9 @@
      {
       "brightness": 128,
       "entity_id": "light.kitchen"
+     },
+     {
+      "blocking": true
      }
     ],
     {
@@ -1127,6 +1154,9 @@
      {
       "brightness": 128,
       "entity_id": "light.lamp"
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -1204,6 +1234,9 @@
      {
       "brightness": 128,
       "entity_id": "light.room"
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -1302,6 +1335,9 @@
        0.15,
        0.06
       ]
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -2510,6 +2546,9 @@
      {
       "brightness": 128,
       "entity_id": "light.lamp"
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -2645,6 +2684,9 @@
      {
       "color_temp_kelvin": 3000,
       "entity_id": "light.lamp"
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -2859,6 +2901,9 @@
        120.0,
        100.0
       ]
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -3103,6 +3148,9 @@
        0,
        0
       ]
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -3308,6 +3356,9 @@
        0,
        0
       ]
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -3406,6 +3457,9 @@
        0,
        0
       ]
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -3500,6 +3554,9 @@
        0,
        0
       ]
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -3580,6 +3637,9 @@
        0,
        0
       ]
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -3684,6 +3744,9 @@
        0,
        0
       ]
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -3827,6 +3890,9 @@
        0,
        0
       ]
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -4043,6 +4109,9 @@
        0,
        0
       ]
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -4186,6 +4255,9 @@
        0,
        0
       ]
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -4402,6 +4474,9 @@
        0,
        0
       ]
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -4618,6 +4693,9 @@
        0,
        0
       ]
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -4733,6 +4811,9 @@
        0,
        0
       ]
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -4921,6 +5002,9 @@
        0,
        0
       ]
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -5084,6 +5168,9 @@
        0,
        0
       ]
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -5154,6 +5241,9 @@
        0,
        0
       ]
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -5216,6 +5306,9 @@
      {
       "entity_id": "light.lamp",
       "transition": 1.0
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -5357,6 +5450,9 @@
        0.2,
        0.3
       ]
+     },
+     {
+      "blocking": true
      }
     ],
     null

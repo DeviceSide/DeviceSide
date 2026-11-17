@@ -6,7 +6,8 @@ any deselection, or one where no test ran), which would drop or miss every actio
 `Dispatcher._run_adapter` run opens a segment, `{integration, action, request, wire, result}`, held in a ContextVar, so
 the tasks and timers the run starts (a fade's ticks) land in it too. `wire` holds each call made inside the segment at a
 wire boundary, as `[call, reply]`: any non-DeviceSide service through `ServiceRegistry.async_call`, as `["service",
-"<domain>.<service>", data]` (and `{"target": ...}` when one is passed), and each boundary an integration declares in
+"<domain>.<service>", data]`, then one dict of its `blocking`, `return_response` and `target` that differ from
+`async_call`'s defaults (`{"blocking": true}`; none differing, no dict), and each boundary an integration declares in
 its `tests/integrations/<x>/wire.py`, `BOUNDARIES = [(module, attribute, leading args to drop[, callback index]), ...]`,
 as `["<module's last name>.<attribute>", args, kwargs]` (a class's method, `Class.method`, has its instance as the first
 arg, even when a test's mock on the class is called without it). A boundary with a callback index is a subscription:
@@ -62,6 +63,8 @@ _WORKER_KEY = "transcripts"
 _DESELECTED_KEY = "transcripts_deselected"
 _DESELECTED = "--transcripts={mode} needs the whole suite: this run deselects tests"
 _DROPPED = (HomeAssistant, Context)
+# `ServiceRegistry.async_call`'s arguments, past its service data, that change what the call does or returns.
+_SERVICE_OPTIONS = ("blocking", "return_response", "target")
 
 _DONE = {"write": "written", "check": "checked"}
 _PLACEHOLDER = re.compile(r"<\w+>")
@@ -297,6 +300,8 @@ class Recorder:
         self._run_adapter = run_adapter = Dispatcher._run_adapter
         self._async_call = async_call = ServiceRegistry.async_call
         signature = inspect.signature(async_call)
+        # The call's options a segment records, with the defaults they're recorded only when they differ from.
+        defaults = {k: signature.parameters[k].default for k in _SERVICE_OPTIONS}
         recorder = self
 
         async def recorded_run(self, adapter, request, targets, dropped, reached, own):
@@ -326,8 +331,8 @@ class Recorder:
                 return await async_call(self, domain, service, *args, **kwargs)
             given = signature.bind(self, domain, service, *args, **kwargs).arguments
             call = ["service", f"{domain}.{service}", given.get("service_data")]
-            if given.get("target") is not None:
-                call.append({"target": given["target"]})
+            if options := {k: given[k] for k, default in defaults.items() if given.get(k, default) != default}:
+                call.append(options)
             slot = _open(call)
             try:
                 reply = await async_call(self, domain, service, *args, **kwargs)

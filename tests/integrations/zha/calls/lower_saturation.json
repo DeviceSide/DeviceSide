@@ -73,6 +73,9 @@
        "saturation": 0,
        "transition_time": 60
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -154,6 +157,9 @@
        "color_y": 20447,
        "transition_time": 40
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -234,6 +240,9 @@
        "saturation": 51,
        "transition_time": 40
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -315,6 +324,9 @@
        "color_y": 20447,
        "transition_time": 40
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -456,6 +468,9 @@
        "saturation": 0,
        "transition_time": 30
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -466,6 +481,9 @@
      "homeassistant.update_entity",
      {
       "entity_id": "light.bulb"
+     },
+     {
+      "blocking": true
      }
     ],
     null

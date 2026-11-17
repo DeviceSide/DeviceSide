@@ -73,6 +73,9 @@
        "saturation": 254,
        "transition_time": 40
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -153,6 +156,9 @@
        "saturation": 254,
        "transition_time": 65534
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -274,6 +280,9 @@
        "color_y": 13304,
        "transition_time": 20
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -294,6 +303,9 @@
        "color_y": 46399,
        "transition_time": 20
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -412,6 +424,9 @@
       "cluster_id": 768,
       "command": 7,
       "group": 2
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -529,6 +544,9 @@
       "cluster_id": 768,
       "command": 3,
       "group": 2
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -646,6 +664,9 @@
       "cluster_id": 768,
       "command": 3,
       "group": 2
+     },
+     {
+      "blocking": true
      }
     ],
     {
@@ -728,6 +749,9 @@
        "saturation": 254,
        "transition_time": 20
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -844,6 +868,9 @@
        "saturation": 254,
        "transition_time": 20
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -924,6 +951,9 @@
        "saturation": 254,
        "transition_time": 20
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -934,6 +964,9 @@
      "homeassistant.update_entity",
      {
       "entity_id": "light.bulb"
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -1014,6 +1047,9 @@
        "saturation": 254,
        "transition_time": 20
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -1024,6 +1060,9 @@
      "homeassistant.update_entity",
      {
       "entity_id": "light.bulb"
+     },
+     {
+      "blocking": true
      }
     ],
     {
@@ -1106,6 +1145,9 @@
        "saturation": 254,
        "transition_time": 20
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null

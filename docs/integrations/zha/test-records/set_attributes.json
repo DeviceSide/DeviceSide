@@ -8,7 +8,7 @@
     "kind": "rig",
     "commit": "687d369d"
   },
-  "calls": "8ad1ffc24e3c802677644931b0d0443ba103ba98",
+  "calls": "f9fc4626681b4bf9f31a8532e97ca37a40c0a7a8",
   "home_assistant": "2026.10.4",
   "tests": [
     {

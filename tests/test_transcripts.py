@@ -45,6 +45,7 @@ from datetime import timedelta
 from unittest.mock import patch
 
 import inner_wire
+from homeassistant.core import SupportsResponse
 from homeassistant.helpers.event import async_call_later
 
 from tests.conftest import advance, call, wall_clock_now
@@ -59,12 +60,13 @@ async def execute(self, hass, request, targets):
     await inner_wire.send(hass, {"level": LEVEL}, context=request.context)
     await hass.services.async_call("probe", "ping", {"level": LEVEL, "context": request.context}, blocking=True)
     await hass.services.async_call("probe", "ping", {}, blocking=True, target={"entity_id": "light.a"})
+    await hass.services.async_call("probe", "echo", {}, blocking=True, return_response=True)
     # DeviceSide's own services are no wire call.
     await hass.services.async_call("deviceside", "probe", {}, blocking=True)
 
     async def later(now):
         # A fade's tick: sent after the adapter returned, from a timer it started.
-        await hass.services.async_call("probe", "ping", {"later": True}, blocking=True)
+        await hass.services.async_call("probe", "ping", {"later": True})
 
     async_call_later(hass, timedelta(seconds=1), later)
     return await ScriptedAdapter.execute(self, hass, request, targets)
@@ -72,6 +74,7 @@ async def execute(self, hass, request, targets):
 
 def register(hass):
     hass.services.async_register("probe", "ping", lambda call: None)
+    hass.services.async_register("probe", "echo", lambda call: {"echo": True}, supports_response=SupportsResponse.ONLY)
     hass.services.async_register("deviceside", "probe", lambda call: None)
 
 
@@ -168,12 +171,14 @@ def test_write_then_check_passes_and_records_the_wire(inner):
     assert [r["status"] for r in sent["result"]] == ["sent"]
     # The raise of the mock the test put in place, and nothing after it.
     assert raised["wire"] == [[["inner_wire.send", [None, {"level": 1}], {}], {"raises": "OSError"}]]
-    # HomeAssistant becomes None in args, and the Context leaves kwargs and service data; a service call's target is
-    # kept; DeviceSide's own service isn't there; the timer's call, after the adapter returned, is in the segment.
+    # HomeAssistant becomes None in args, and the Context leaves kwargs and service data; a service call's blocking,
+    # return_response and target are kept where they aren't async_call's defaults, and its response is its reply;
+    # DeviceSide's own service isn't there; the timer's call, after the adapter returned, is in the segment.
     assert sent["wire"] == [
         [["inner_wire.send", [None, {"level": 1}], {}], {"ok": {"level": 1}}],
-        [["service", "probe.ping", {"level": 1}], None],
-        [["service", "probe.ping", {}, {"target": {"entity_id": "light.a"}}], None],
+        [["service", "probe.ping", {"level": 1}, {"blocking": True}], None],
+        [["service", "probe.ping", {}, {"blocking": True, "target": {"entity_id": "light.a"}}], None],
+        [["service", "probe.echo", {}, {"blocking": True, "return_response": True}], {"echo": True}],
         [["service", "probe.ping", {"later": True}], None],
     ]
 
@@ -628,7 +633,7 @@ async def test_sends(hass, setup_integration):
     assert [segment["wire"] for segment in segments(inner)] == [
         [
             [["inner_wire.send", [{"level": 1}], {}], None],
-            [["service", "probe.ping", {"inside": True}], None],
+            [["service", "probe.ping", {"inside": True}, {"blocking": True}], None],
         ]
     ]
 

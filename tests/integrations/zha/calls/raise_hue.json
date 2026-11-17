@@ -73,6 +73,9 @@
        "move_mode": 1,
        "rate": 65535
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -153,6 +156,9 @@
        "move_mode": 1,
        "rate": 65535
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -270,6 +276,9 @@
       "cluster_id": 768,
       "command": 65,
       "group": 2
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -390,6 +399,9 @@
        "move_mode": 1,
        "rate": 13107
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -409,6 +421,9 @@
        "move_mode": 1,
        "rate": 13107
       }
+     },
+     {
+      "blocking": true
      }
     ],
     {
@@ -613,6 +628,9 @@
        "move_mode": 1,
        "rate": 13107
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -751,6 +769,9 @@
        "move_mode": 1,
        "rate": 1
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -831,6 +852,9 @@
        "move_mode": 1,
        "rate": 1
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null

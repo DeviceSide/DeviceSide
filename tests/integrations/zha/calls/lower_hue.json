@@ -73,6 +73,9 @@
        "move_mode": 3,
        "rate": 6554
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null

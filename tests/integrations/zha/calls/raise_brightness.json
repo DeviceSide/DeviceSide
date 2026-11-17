@@ -48,6 +48,9 @@
        "level": 203,
        "transition_time": 10
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -128,6 +131,9 @@
        "level": 254,
        "transition_time": 65534
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -238,6 +244,9 @@
        "level": 254,
        "transition_time": 20
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -257,6 +266,9 @@
        "level": 254,
        "transition_time": 20
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -326,6 +338,9 @@
        "level": 254,
        "transition_time": 20
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -436,6 +451,9 @@
        "level": 254,
        "transition_time": 20
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -455,6 +473,9 @@
        "level": 254,
        "transition_time": 22
       }
+     },
+     {
+      "blocking": true
      }
     ],
     {
@@ -501,6 +522,9 @@
        "level": 254,
        "transition_time": 20
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -536,6 +560,9 @@
      "homeassistant.update_entity",
      {
       "entity_id": "light.a"
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -546,6 +573,9 @@
      "homeassistant.update_entity",
      {
       "entity_id": "light.c"
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -618,6 +648,9 @@
        "options_override": 1,
        "transition_time": 0
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -634,6 +667,9 @@
       "cluster_id": 8,
       "command": 4,
       "group": 2
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -751,6 +787,9 @@
       "cluster_id": 8,
       "command": 4,
       "group": 2
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -873,6 +912,9 @@
        "options_override": 1,
        "transition_time": 0
       }
+     },
+     {
+      "blocking": true
      }
     ],
     {
@@ -894,6 +936,9 @@
        "level": 254,
        "transition_time": 20
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -986,6 +1031,9 @@
       "cluster_id": 8,
       "command": 4,
       "group": 2
+     },
+     {
+      "blocking": true
      }
     ],
     {
@@ -1043,6 +1091,9 @@
        "level": 254,
        "transition_time": 20
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -1160,6 +1211,9 @@
        "options_override": 1,
        "transition_time": 0
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -1179,6 +1233,9 @@
        "level": 254,
        "transition_time": 50
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -1259,6 +1316,9 @@
        "level": 254,
        "transition_time": 20
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -1339,6 +1399,9 @@
        "level": 254,
        "transition_time": 30
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -1374,6 +1437,9 @@
      "homeassistant.update_entity",
      {
       "entity_id": "light.bulb"
+     },
+     {
+      "blocking": true
      }
     ],
     {
@@ -1459,6 +1525,9 @@
        "level": 254,
        "transition_time": 50
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -1539,6 +1608,9 @@
        "level": 254,
        "transition_time": 50
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -1619,6 +1691,9 @@
        "level": 254,
        "transition_time": 20
       }
+     },
+     {
+      "blocking": true
      }
     ],
     {
@@ -1676,6 +1751,9 @@
        "level": 254,
        "transition_time": 20
       }
+     },
+     {
+      "blocking": true
      }
     ],
     {
@@ -1735,6 +1813,9 @@
        "options_override": 1,
        "transition_time": 0
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
@@ -1754,6 +1835,9 @@
        "level": 254,
        "transition_time": 50
       }
+     },
+     {
+      "blocking": true
      }
     ],
     null
