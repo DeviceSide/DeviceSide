@@ -47,6 +47,10 @@ Read as each Control4 entry loads (DeviceSide's setup, then each state change to
   (`stop_not_supported`): its Director shows a ramp's end at once and the stop changes nothing (Tested behavior), so a
   read-back would confirm a halt that never happened. A light that reports no capabilities can stop, as before. A
   failed read leaves every light able to stop, logged.
+- **Ramp.** A light whose parent item is on a driver in `NO_RAMP_DRIVERS` (Chowmain's "Link Client - Light",
+  `chowmain_link_light.c4z`) is refused `raise_brightness` and `lower_brightness` (`ramp_not_supported`): it jumps to
+  `RAMP_TO_LEVEL`'s level, ignoring its time (Tested behavior). Its capabilities claim brightness rates, so only the
+  driver tells it apart.
 
 ### `fade`
 
@@ -238,6 +242,9 @@ hardware and versions, sent and timed in-process by a probe in Home Assistant. N
   capabilities say `supports_brightness_stop: false`, as do two Chowmain "Link Client - Light" items, whose Director
   also showed a ramp's end within a second (2026-11-16). The "Zigbee 3 Light" bulb and the Light Group driver say
   true.
+- **Link Client jumps, 2026-11-17.** A 10 s `RAMP_TO_LEVEL` from off to 100 on a Chowmain "Link Client - Light" dimmer:
+  watched in the room, the light came on at full brightness at once, and the Director showed level and target 100
+  within 2 s.
 - **Group members, 2026-11-17.** On the driver's group (driver build 2026111504), the light item's variables and
   bindings name no member: the driver item's variables hold only a count (`LIGHTS_TOTAL` 3). The driver item's
   properties hold `Lights` (a device selector) with three light item ids, comma-separated; each is the unique ID of a

@@ -19,7 +19,9 @@ The light runs the ramp itself, and `stop` reads back where it halted.
 - Changing direction, or the limit, mid-ramp with no `stop` between costs that move up to a quarter of a second: the
   light is halted first, then moved from where it stopped.
 - A light whose Control4 driver says it can't stop a ramp, as Control4's own Hue driver and Chowmain's Link Client
-  do, is refused `stop` (`stop_not_supported`). Raise and lower still work.
+  do, is refused `stop` (`stop_not_supported`).
+- A Chowmain Link Client light jumps to the level instead of ramping, so it is refused raise and lower too
+  (`ramp_not_supported`).
 - Calling the same raise or lower again while its ramp runs, as a remote that repeats while held does, sends nothing
   (`already_fading`). The ramp keeps its speed.
 

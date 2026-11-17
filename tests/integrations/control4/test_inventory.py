@@ -20,6 +20,8 @@ ITEMS = [
     {"id": GROUP, "parentId": DRIVER_ITEM},
     {"id": 90, "parentId": 14, "filename": "zigbee_light.c4z"},
     {"id": 101, "parentId": 90},
+    {"id": 80, "parentId": 14, "filename": "chowmain_link_light.c4z"},
+    {"id": 110, "parentId": 80},
 ]
 PROPERTIES = director_call(f"/api/v1/items/{DRIVER_ITEM}/properties")
 CAPABILITIES = director_call("/api/v1/items/variables?varnames=Navigator%20Dynamic%20Capabilities")
@@ -56,6 +58,7 @@ async def office(hass, director: FakeDirector):
     add_control4_light(hass, entry, "light.office", unique_id=str(GROUP))
     add_control4_light(hass, entry, "light.left", unique_id="101")
     add_control4_light(hass, entry, "light.right", unique_id="102")
+    add_control4_light(hass, entry, "light.dimmer", unique_id="110")
     await inventory.load(hass, entry)
     return entry
 
@@ -69,7 +72,13 @@ def test_the_driver_s_light_item_is_the_group():
 
 
 def test_only_a_light_that_says_so_can_t_stop():
-    rows = [capabilities(1, False), capabilities(2, True), capabilities(3, None), {"id": 4, "value": "x"}, {"value": {}}]
+    rows = [
+        capabilities(1, False),
+        capabilities(2, True),
+        capabilities(3, None),
+        {"id": 4, "value": "x"},
+        {"value": {}},
+    ]
     assert inventory.parse_no_stop(rows) == frozenset({1})
 
 
@@ -133,3 +142,15 @@ async def test_a_light_that_can_t_stop_is_refused_stop_with_nothing_sent(hass):
     assert await refusal(hass, "stop", {"entity_id": "light.left"}) == "stop_not_supported"
     assert director.log == []
     assert await call(hass, "stop", {"entity_id": "light.right"}) == {"light.right": CONFIRMED}
+
+
+async def test_a_light_on_a_driver_that_ignores_a_ramp_s_time_is_refused_raise_and_lower(hass):
+    """Chowmain's Link Client jumps to the level (Tested behavior), so a raise or lower would jump."""
+    director = group_director()
+    await office(hass, director)
+    director.log.clear()
+
+    for action in ("raise_brightness", "lower_brightness"):
+        assert await refusal(hass, action, {"entity_id": "light.dimmer"}) == "ramp_not_supported"
+    assert director.log == []
+    assert inventory.can_ramp(hass, target(hass, "light.left"))
