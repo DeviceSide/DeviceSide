@@ -4,23 +4,22 @@
 column: Z2M
 column_order: 1
 capabilities:
-  switch: {phrase: plugs and switches, section: Zigbee plugs and switches}
-  # The classes integrations/zigbee2mqtt/families/ name. A class whose domains show different features on the card
-  # is named per domain (`domains`): hue, Verified but on Hue's smart plug for turn on with timer, needs only that.
+  # The classes integrations/zigbee2mqtt/families/ name, each a card line (or, when its domains show different
+  # features, one per domain, by `domains`), so each phrase says what sets the class apart from its neighbors.
   hue:
-    phrase: Hue
+    phrase: Hue devices
     section: Device classes
-    domains: {switch: Hue smart plugs}
+    domains: {light: Hue lights, switch: Hue smart plugs}
   tuya_zcl:
     phrase: other Tuya devices
     section: Tuya
-    domains: {light: Tuya lights, switch: Tuya plugs and switches}
-  tuya_ts011f: {phrase: Tuya TS011F, section: Tuya}
-  tuya_countdown: {phrase: untested Tuya TS011F plugs on Tuya's countdown, section: Tuya TS011F plugs}
-  tuya_countdown_tz3000_0zfrhq4i: {phrase: tested Tuya TS011F plugs on Tuya's countdown, section: Tuya TS011F plugs}
-  tuya_countdown_tz3000_typdpbpg: {phrase: tested Tuya TS011F plugs on Tuya's countdown, section: Tuya TS011F plugs}
-  tuya_countdown_tz3000_gznh2xla: {phrase: tested Tuya TS011F plugs on Tuya's countdown, section: Tuya TS011F plugs}
-  tuya_countdown_tz3000_okaz9tjs: {phrase: tested Tuya TS011F plugs on Tuya's countdown, section: Tuya TS011F plugs}
+    domains: {light: other Tuya lights, switch: other Tuya plugs and switches}
+  tuya_ts011f: {phrase: Tuya TS011F plugs without a countdown, section: Tuya TS011F plugs}
+  tuya_countdown: {phrase: Tuya TS011F countdown plugs of other makers, section: Tuya TS011F plugs}
+  tuya_countdown_tz3000_0zfrhq4i: {phrase: Tuya TS011F countdown plugs of tested makers, section: Tuya TS011F plugs}
+  tuya_countdown_tz3000_typdpbpg: {phrase: Tuya TS011F countdown plugs of tested makers, section: Tuya TS011F plugs}
+  tuya_countdown_tz3000_gznh2xla: {phrase: Tuya TS011F countdown plugs of tested makers, section: Tuya TS011F plugs}
+  tuya_countdown_tz3000_okaz9tjs: {phrase: Tuya TS011F countdown plugs of tested makers, section: Tuya TS011F plugs}
   tuya_countdown_harmed: {phrase: Tuya TS011F _TZ3000_gjnozsaz, section: Tuya TS011F plugs}
   tuya_mcu:
     phrase: Tuya datapoint devices

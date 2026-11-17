@@ -173,23 +173,23 @@ Zigbee2MQTT countdown plug's maker string with a record of its own is a class of
 
 ### No known method, not built yet, untested
 
-Three ways a class can't take an action, each shown differently on the cards. The first two are the kinds of not
+Three ways a class can't take an action, each handled differently. The first two are the kinds of not
 supported, where DeviceSide can't do the action for the class, each named for why:
 
 - **No known method:** no known call works on the class: a device limit as far as anyone knows, which the label
   tells users not to ask DeviceSide to build. A method is a call that does what was asked and fails without harm, so
   a class whose only known call is unsafe has none; the entry's reason says which. The adapter's scope lists it in
-  `no_known_method`, with what, why and a source; the dispatcher refuses it (`no_known_method`), and the card lists
-  it under No known method. It is per adapter, as one class can fail one action's call and answer another's.
+  `no_known_method`, with what, why and a source; the dispatcher refuses it (`no_known_method`), and the card marks
+  it 🔴. It is per adapter, as one class can fail one action's call and answer another's.
 - **Not built yet:** a call that would work on the class is known or plausible, and nobody has built it. The
   integration names it, and the adapter's scope holds it in neither `capabilities` nor `no_known_method`. It is
-  refused (`not_built`) and listed as not built yet.
+  refused (`not_built`), and the card leaves it out, as no one can list every feature that could be built.
 - **Untested:** the default call may work. The class is in scope as `experimental(...)` and runs behind the flag.
 
 Either kind may carry `harms`, the separate safety axis, when today's call would harm the class (below): a no known
 method entry states it (`NoKnownMethod.harms`), and a class not built yet that today's call would harm gets an entry
-of its own in the scope's `not_built` (`NotBuilt`, with why, a source and `harms`), which the card lists as not built
-yet, as it does any other. A class not built yet that today's call leaves unharmed needs no entry.
+of its own in the scope's `not_built` (`NotBuilt`, with why, a source and `harms`), which the card leaves out, as it
+does any other. A class not built yet that today's call leaves unharmed needs no entry.
 
 - **Split off the exception, not the class.** When devices are known to depart from a class's call, a rule moves them
   into a class of their own, at the level their own evidence supports. The rest of the class keeps its level. The
@@ -283,10 +283,10 @@ For an item no maintainer can test, users' working reports can verify it through
 sign-off, whose PR body cites them ([CLAUDE.md](../CLAUDE.md#where-facts-go): rule evidence goes in the PR body). The
 maintainer judges how many are enough (tenet 7); nothing counts them in code.
 
-The cards never put a model under Works from a pass on a flagged item while its flag stands (`scripts/gen_compat.py`).
+The cards never credit a tested model from a pass on a flagged item while its flag stands (`scripts/gen_compat.py`).
 
 *Example:* Shelly dimming on `Light` is `experimental("Light")`: a user's report of a Gen3 Dimmer jumping on
-`DimStop` keeps it from Documented. A passing `raise_brightness` run on a Gen3 Dimmer puts no model under Works and
+`DimStop` keeps it from Documented. A passing `raise_brightness` run on a Gen3 Dimmer credits no model on the card and
 lets a Shelly maintainer lift the flag, once they judge the tests complete: their PR makes it `verified("Light")`.
 
 ## Caveats

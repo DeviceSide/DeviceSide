@@ -5,6 +5,7 @@ column: Shelly
 column_order: 3
 requires: Gen2+
 capabilities:
+  Switch: {phrase: relays and plugs, section: Tested devices}
   Light: {phrase: dimmers, section: Shelly dimmers}
   CCT: {phrase: CCT LED controllers, section: Shelly LED controllers}
   RGB: {phrase: RGB LED controllers, section: Shelly LED controllers}

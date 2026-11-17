@@ -28,7 +28,7 @@ maintainers of the integration you choose. A report that a feature doesn't work 
 get fixed or left out.
 
 **⚠️ Unmaintained** marks a feature no one is fixing. It still works as it did, but a bug in it stays unfixed until
-someone fixes it or takes over the integration, so use it at your own risk. **⚠️ Untested fix** marks a feature
+someone fixes it or takes over the integration, so use it at your own risk. **🔧 Untested fix** marks a feature
 changed in a release before anyone could test it on a device: please report how it works for you.
 
 On the cards, ✔ marks what the automated rig verified; a model without it was verified by a maintainer by hand.
@@ -97,7 +97,7 @@ plugs, DeviceSide refuses it, as they would turn on and stay on, or on long afte
 ## Not built yet
 
 A class of device that needs a command DeviceSide hasn't built yet. DeviceSide refuses it, rather than send a command
-that would leave it doing something you didn't ask for, and each card lists them. If you'd like one built,
+that would leave it doing something you didn't ask for. If you'd like one built,
 [propose it](../CONTRIBUTING.md#how-to-help).
 
 ### Tuya TS011F
@@ -111,7 +111,7 @@ and refuses the rest. What was measured: [internals](internals.md#tested-behavio
 ## Evidence
 
 Per integration, a row per action and level of proof its entities, classes and fields hold, with the models and
-records behind the action (a rig record, or a maintainer's test by hand); ⚠️ Unmaintained and ⚠️ Untested fix mark an
+records behind the action (a rig record, or a maintainer's test by hand); ⚠️ Unmaintained and 🔧 Untested fix mark an
 action's caveat. A group is a native group of the integration (a Hue zone, a ZHA or Zigbee2MQTT group).
 
 <!-- evidence:start -->
@@ -147,7 +147,7 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 
 | Not built yet, harmed by today's call | Why | Source |
 |---|---|---|
-| Tuya TS011F (`turn_on_for`) | Zigbee2MQTT would turn it on with no timer, so it would stay on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md) |
+| Tuya TS011F plugs without a countdown (`turn_on_for`) | Zigbee2MQTT would turn it on with no timer, so it would stay on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md) |
 | other Tuya devices (`turn_on_for`) | Zigbee2MQTT would turn it on with no timer, so it would stay on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md) |
 | Tuya datapoint devices (`turn_on_for`) | Zigbee2MQTT would turn it on with no timer, so it would stay on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md) |
 | Tuya TS011F _TZ3000_gjnozsaz (`turn_on_for`) | its maker string is reported to restart its timer at random, so it could stay on | [source](https://github.com/Koenkk/zigbee2mqtt/issues/30493) |
@@ -181,8 +181,8 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 
 | Not built yet, harmed by today's call | Why | Source |
 |---|---|---|
-| reported Tuya plugs (`turn_on_for`) | Tuya's own timer is reported to jump back at random on it, so it may not turn off when asked, and the timer that would serve it isn't built | [source](https://github.com/Koenkk/zigbee2mqtt/issues/30493) |
-| Tuya plugs and switches (`turn_on_for`) | ZHA's timer can turn it on long after the time asked and leave it on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md) |
+| Tuya TS011F _TZ3000_gjnozsaz (`turn_on_for`) | Tuya's own timer is reported to jump back at random on it, so it may not turn off when asked, and the timer that would serve it isn't built | [source](https://github.com/Koenkk/zigbee2mqtt/issues/30493) |
+| Tuya countdown plugs and switches (TS011F, TS0001–TS0004, TS0011, TS0726) (`turn_on_for`) | ZHA's timer can turn it on long after the time asked and leave it on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-lab-probe.md) |
 | other Tuya devices (`turn_on_for`) | ZHA's timer can turn it on or off long after the time asked | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md) |
 | Tuya datapoint devices (`turn_on_for`) | ZHA refuses its timer, so with brightness or a color temperature it would turn on and stay on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/internals.md#classes) |
 | Sengled bulbs (`turn_on_for`) | It refuses the timer, so with brightness, a color temperature or in a group it would stay on | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zha/internals.md#tested-behavior) |

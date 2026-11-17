@@ -4,11 +4,14 @@
 column: ZHA
 column_order: 2
 capabilities:
-  switch: {phrase: plugs and switches, section: Zigbee plugs and switches}
-  # The classes integrations/zha/families/ name, but hue: Verified, it needs no phrase. A class whose domains show
-  # different features on the card is named per domain (`domains`).
-  tuya_countdown: {phrase: Tuya plugs and switches, section: Tuya}
-  tuya_countdown_harmed: {phrase: reported Tuya plugs, section: Tuya}
+  # The classes integrations/zha/families/ name, each a card line (or, when its domains show different features,
+  # one per domain, by `domains`), so each phrase says what sets the class apart from its neighbors.
+  hue:
+    phrase: Hue devices
+    section: Device classes
+    domains: {light: Hue lights, switch: Hue smart plugs}
+  tuya_countdown: {phrase: "Tuya countdown plugs and switches (TS011F, TS0001–TS0004, TS0011, TS0726)", section: Tuya}
+  tuya_countdown_harmed: {phrase: Tuya TS011F _TZ3000_gjnozsaz, section: Tuya}
   tuya_zcl:
     phrase: other Tuya devices
     section: Tuya

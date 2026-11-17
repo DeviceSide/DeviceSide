@@ -56,4 +56,4 @@ report per driver.
 ### Hue White Ambiance 5/6" Retrofit Downlight
 
 `LTD010` (Philips 5996411U5), joined to Control4 over Zigbee on its "Zigbee 3 Light" driver, three of them in a
-Control4 light group. Flagged experimental like every Control4 light, so it isn't listed under Works.
+Control4 light group. Flagged experimental like every Control4 light, so the card doesn't list it as tested.
