@@ -8,18 +8,26 @@ name: Maintainer merge
 # GITHUB_TOKEN: a push from GITHUB_TOKEN starts no workflows, and tests.yml and lint.yml run on push to main.
 # issue_comment runs the default branch's workflow and script, so a PR can't edit its own check. No step runs the
 # PR's code: its head is fetched and read with `git show`, as data. The App's key is in the maintainer-merge
-# environment, which only the merge job reads, after the check passes. The App and environment settings, and how to
-# switch this off: docs/repo-maintainers.md.
+# environment, which only the merge job (after the check passes) and the guard read. The App and environment
+# settings, and how to switch this off: docs/repo-maintainers.md.
+#
+# GitHub checks the pinned SHA only when auto-merge is turned on, and turns it off on a push only from a fork: a push
+# by someone with write access leaves it on, and the unreviewed head would merge. So `guard`, on pull_request_target
+# synchronize, turns off auto-merge the App turned on (anyone else's is left alone) and says so. It runs base-branch
+# code with the App's token and no checkout. The race left: a new head whose required checks all pass in the few
+# seconds before the guard runs merges. A conflicting PR is refused before auto-merge is armed, and `/merge` says so.
 
 on:
   issue_comment: # zizmor: ignore[dangerous-triggers] runs only base-branch code; the PR head is read as data
     types: [created]
+  pull_request_target: # zizmor: ignore[dangerous-triggers] runs only base-branch code, no checkout; the PR is never run
+    types: [synchronize]
 
 permissions: {}
 
 jobs:
   check:
-    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '/merge')
+    if: github.event_name == 'issue_comment' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/merge')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -81,6 +89,7 @@ jobs:
 
   merge:
     needs: check
+    if: github.event_name == 'issue_comment'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     environment: maintainer-merge
@@ -107,6 +116,17 @@ jobs:
           NUMBER: ${{ github.event.issue.number }}
           HEAD_SHA: ${{ needs.check.outputs.head }}
         run: |
+          # A conflicting PR would arm auto-merge and wait forever: refuse it. mergeable is UNKNOWN while GitHub computes it.
+          for _ in 1 2 3 4 5 6; do
+            mergeable=$(gh pr view "$NUMBER" --json mergeable --jq .mergeable)
+            [ "$mergeable" != UNKNOWN ] && break
+            sleep 5
+          done
+          if [ "$mergeable" = CONFLICTING ]; then
+            echo "conflict=true" >> "$GITHUB_OUTPUT"
+            echo "It conflicts with main."
+            exit 1
+          fi
           if ! out=$(gh pr merge "$NUMBER" --auto --squash --match-head-commit "$HEAD_SHA" 2>&1); then
             echo "$out"
             delim=$(openssl rand -hex 16)
@@ -150,11 +170,12 @@ jobs:
           NUMBER: ${{ github.event.issue.number }}
           HEAD_SHA: ${{ needs.check.outputs.head }}
           ERROR: ${{ steps.merge.outputs.error }}
+          CONFLICT: ${{ steps.merge.outputs.conflict }}
           RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           read -r state head < <(gh pr view "$NUMBER" --json mergeStateStatus,headRefOid \
             --jq '"\(.mergeStateStatus) \(.headRefOid)"')
-          if [ "$state" = DIRTY ]; then
+          if [ "$CONFLICT" = true ] || [ "$state" = DIRTY ]; then
             why="it conflicts with main. Its author merges main into the branch; then comment \`/merge <sha>\` with the new head."
           elif [ "$head" != "$HEAD_SHA" ]; then
             why="the head moved to ${head:0:7} after your comment. Review it and comment \`/merge ${head:0:7}\`."
@@ -162,3 +183,42 @@ jobs:
             why="GitHub refused to merge it${ERROR:+: $ERROR}. Details: $RUN"
           fi
           gh pr comment "$NUMBER" --body "❌ \`/merge\`: $why"
+
+  # A push after `/merge` must not merge the new head unreviewed. Event values reach the shell only through env.
+  guard:
+    # `/merge` serves only `main`, and the environment's key is limited to it.
+    if: github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: maintainer-merge
+    permissions: {} # every call uses the App token
+    # Its own group per PR: never the `/merge` runs', which it must not cancel or wait behind.
+    concurrency:
+      group: maintainer-merge-guard-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        id: app
+        with:
+          app-id: ${{ vars.MAINTAINER_MERGE_APP_ID }}
+          private-key: ${{ secrets.MAINTAINER_MERGE_APP_KEY }}
+          permission-pull-requests: write
+
+      # gh reads the enabler as `app/<slug>` or `<slug>`, with `[bot]` on some paths: compare the bare slug.
+      - name: Turn off the App's auto-merge
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          GH_REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.pull_request.number }}
+          APP_SLUG: ${{ steps.app.outputs.app-slug }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          by=$(gh pr view "$NUMBER" --json autoMergeRequest --jq '.autoMergeRequest.enabledBy.login // empty')
+          by=${by#app/}
+          by=${by%\[bot\]}
+          if [ -z "$by" ] || [ "$by" != "$APP_SLUG" ]; then
+            exit 0
+          fi
+          gh pr merge "$NUMBER" --disable-auto
+          gh pr comment "$NUMBER" --body "⚠️ \`/merge\` cancelled: a push after it turned auto-merge off. Review the new head and comment \`/merge ${HEAD_SHA:0:7}\`."

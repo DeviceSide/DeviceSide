@@ -49,7 +49,8 @@ invite them to Triage, as for an integration's maintainers.
 - **The `maintainer-merge` environment:** holds the variable `MAINTAINER_MERGE_APP_ID` and the secret
   `MAINTAINER_MERGE_APP_KEY` (the App's private key). Keep its deployment branches limited to `main`.
   `issue_comment` runs on `main`, so the merge job still gets the key, but a workflow pushed on any other branch can't
-  read it.
+  read it. The `guard` job (`pull_request_target` on a PR into `main`, so it runs on `main`) reads the key too, to
+  turn off the App's auto-merge when a push follows `/merge`: GitHub does that itself only for a fork's push.
 - **Switching it off:** disable the "Maintainer merge" workflow in the Actions tab, and cancel any run already in
   progress. No new `/merge` runs, and repo maintainers merge everything until it's re-enabled.
 - **If the key leaks:** generate a new key on the App's page, replace the secret, then delete the old key.
