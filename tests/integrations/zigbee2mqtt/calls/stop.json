@@ -428,6 +428,73 @@
    "request": {},
    "targets": [
     [
+     "light.one",
+     "light.one",
+     false
+    ],
+    [
+     "light.two",
+     "light.two",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.one",
+    "integration": "zigbee2mqtt",
+    "member_classes": null,
+    "status": "sent"
+   },
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.two",
+    "integration": "zigbee2mqtt",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/0x01/set",
+      "{\"brightness_move\": \"stop\"}"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/0x02/set",
+      "{\"brightness_move\": \"stop\"}"
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "stop",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
      "light.room",
      "light.room",
      true
@@ -439,7 +506,7 @@
     "clamped_to": null,
     "classes": [
      "hue",
-     "tuya_ts011f",
+     "other",
      "tuya_zcl"
     ],
     "data": null,
@@ -511,7 +578,7 @@
     "clamped_to": null,
     "classes": [
      "hue",
-     "tuya_ts011f"
+     "tuya_zcl"
     ],
     "data": null,
     "detail": null,
