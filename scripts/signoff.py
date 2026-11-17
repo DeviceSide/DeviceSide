@@ -1,6 +1,6 @@
 """Print a `_manual.json` row signing off actions by their call transcripts at HEAD.
 
-    scripts/signoff.py <integration> <action>... --tester <handle> --device <model,manufacturer,class>...
+    scripts/signoff.py <integration> <action>... --tester <handle> --device <model,manufacturer,class>... [--group]
 
 Paste the printed row into `signoffs` in docs/integrations/<integration>/test-records/_manual.json (format 3). Its
 `calls` binds each action to the blob of HEAD's transcript, tests/integrations/<integration>/calls/<action>.json:
@@ -12,16 +12,20 @@ import argparse
 import datetime
 import json
 import sys
+from pathlib import Path
 
-from custom_components.deviceside.core.registry import AdapterRegistry
-from scripts.check_release import blob_at, git, transcript_path
+REPO = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO))
+
+from custom_components.deviceside.core.registry import AdapterRegistry  # noqa: E402
+from scripts.check_release import blob_at, git, transcript_path  # noqa: E402
 
 
 def parse_device(text: str) -> dict:
-    parts = text.split(",")
-    if len(parts) != 3 or not all(parts):
+    model, _, rest = text.partition(",")
+    manufacturer, _, cls = rest.rpartition(",")
+    if not (model and manufacturer and cls):
         raise argparse.ArgumentTypeError(f"{text!r}: expected model,manufacturer,class (`-` for none)")
-    model, manufacturer, cls = parts
     return {
         "model": model,
         "manufacturer": None if manufacturer == "-" else manufacturer,
@@ -29,7 +33,14 @@ def parse_device(text: str) -> dict:
     }
 
 
-def row(integration: str, actions: list[str], tester: str, devices: list[dict], registry: AdapterRegistry) -> dict:
+def row(
+    integration: str,
+    actions: list[str],
+    tester: str,
+    devices: list[dict],
+    registry: AdapterRegistry,
+    group: bool = False,
+) -> dict:
     """The sign-off row, or SystemExit naming what is wrong: an unknown integration or action, or an action with no
     transcript at HEAD."""
     if integration not in registry.integrations:
@@ -49,6 +60,7 @@ def row(integration: str, actions: list[str], tester: str, devices: list[dict], 
         "commit": git("rev-parse", "HEAD"),
         "tester": tester,
         "devices": devices,
+        **({"group": True} if group else {}),
         "calls": calls,
     }
 
@@ -67,9 +79,10 @@ def main(argv: list[str] | None = None, registry: AdapterRegistry | None = None)
         metavar="model,manufacturer,class",
         help="a device tested (repeatable); `-` for a manufacturer or class that is null",
     )
+    parser.add_argument("--group", action="store_true", help="the devices are a native group's or a scene's members")
     args = parser.parse_args(argv)
     registry = registry or AdapterRegistry.discover()
-    print(json.dumps(row(args.integration, args.actions, args.tester, args.devices, registry), indent=2))
+    print(json.dumps(row(args.integration, args.actions, args.tester, args.devices, registry, args.group), indent=2))
     return 0
 
 

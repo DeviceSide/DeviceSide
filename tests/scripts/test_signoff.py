@@ -2,6 +2,8 @@
 unknown integrations and actions, and a missing transcript, fail by name."""
 
 import json
+import subprocess
+import sys
 
 import pytest
 
@@ -66,7 +68,7 @@ def test_a_bad_request_fails_by_name(head, argv, message):
         signoff.main([*argv, "--tester", "someone", "--device", DEVICE], FakeRegistry())
 
 
-@pytest.mark.parametrize("device", ["LTA009", "LTA009,Acme", "LTA009,,-", ",Acme,-"])
+@pytest.mark.parametrize("device", ["LTA009", "LTA009,Acme", "LTA009,,-", ",Acme,-", "LTA009,Acme,"])
 def test_a_malformed_device_is_refused(head, device, capsys):
     with pytest.raises(SystemExit):
         signoff.main(["fake", "stop", "--tester", "t", "--device", device], FakeRegistry())
@@ -88,3 +90,35 @@ def test_a_row_the_script_didnt_print_is_checked_the_same():
     """The schema rejects a tester that is not a handle, so a hand-edited placeholder can't land."""
     row = sample_row(tester="<tester>")
     assert list(cr.validator().iter_errors(manual("fake", row)))
+
+
+def test_a_manufacturer_may_contain_a_comma(head, capsys):
+    row = printed(capsys, "fake", "stop", "--tester", "t", "--device", "LTA009,Acme, Inc.,ct")
+    assert row["devices"] == [{"model": "LTA009", "manufacturer": "Acme, Inc.", "class": "ct"}]
+
+
+def test_group_prints_the_flag_and_validates(head, capsys):
+    row = printed(capsys, "fake", "stop", "--tester", "t", "--device", DEVICE, "--group")
+    assert row["group"] is True
+    assert list(cr.validator().iter_errors(manual("fake", row))) == []
+    assert "group" not in printed(capsys, "fake", "stop", "--tester", "t", "--device", DEVICE)
+
+
+def test_it_runs_by_its_path():
+    done = subprocess.run(
+        [
+            sys.executable,
+            str(cr.REPO / "scripts" / "signoff.py"),
+            "control4",
+            "nope",
+            "--tester",
+            "t",
+            "--device",
+            DEVICE,
+        ],
+        capture_output=True,
+        text=True,
+        cwd="/",
+    )
+    assert "ModuleNotFoundError" not in done.stderr
+    assert "control4 has no 'nope' action" in done.stderr
