@@ -11,7 +11,7 @@ from custom_components.deviceside.integrations.zha import zcl
 
 from .conftest import call
 from ...conftest import allow_experimental, refusal
-from ...fixtures.zha import IEEE, add_zha_entity, zha_entry, zha_group
+from ...fixtures.zha import IEEE, add_zha_entity, cluster, zha_entry, zha_group
 
 pytestmark = pytest.mark.usefixtures("setup_production")
 
@@ -27,33 +27,20 @@ def frozen_now(monkeypatch):
 
 
 @pytest.fixture
-def requests() -> list[tuple[str, int]]:
-    """Each read request as (ieee, cluster), in order."""
-    return []
+def requests(zha_gateway) -> list[tuple[str, int, list[int]]]:
+    """Each read request as (ieee, cluster, attributes), in order."""
+    return zha_gateway.reads
 
 
 @pytest.fixture
-def bulb(monkeypatch, requests) -> dict:
-    """The fake light's attributes by cluster, read through a fake zcl.read_attributes that records each request.
-
-    Like the real one, it raises when a required attribute is missing and leaves out missing optional ones.
-    """
-    clusters: dict[int, dict[int, int]] = {zcl.ON_OFF_CLUSTER: {zcl.ON_OFF: 0, zcl.ON_TIME: 0}}
-
-    async def read_attributes(hass, addr, cluster_id, attributes, optional=()):
-        requests.append((addr.ieee, cluster_id))
-        values = clusters[cluster_id]
-        for attribute in attributes:
-            if attribute not in values:
-                raise LookupError(f"Attribute 0x{attribute:04x} not read")
-        return {attribute: values[attribute] for attribute in (*attributes, *optional) if attribute in values}
-
-    monkeypatch.setattr(zcl, "read_attributes", read_attributes)
-    return clusters
+def bulb(zha_gateway) -> dict:
+    """What every fake light answers, by cluster: an attribute it lacks comes back unsupported."""
+    zha_gateway.answers[zcl.ON_OFF_CLUSTER] = {zcl.ON_OFF: 0, zcl.ON_TIME: 0}
+    return zha_gateway.answers
 
 
 def clusters_read(requests) -> list[int]:
-    return [cluster for _, cluster in requests]
+    return [cluster_id for _, cluster_id, _ in requests]
 
 
 def timer(remaining_s: float) -> dict:
@@ -178,7 +165,7 @@ async def test_light_without_an_address_is_refused(hass, bulb, requests):
 
 
 async def test_read_error_raises(hass, bulb):
-    add_zha_entity(hass, zha_entry(hass), "light.bulb", attributes=DIMMABLE)  # no Level cluster to read
+    add_zha_entity(hass, zha_entry(hass), "light.bulb", attributes=DIMMABLE)  # no CurrentLevel to read
 
     with pytest.raises(HomeAssistantError) as raised:
         await call(hass, "get_attributes", {"entity_id": "light.bulb"})
@@ -187,14 +174,11 @@ async def test_read_error_raises(hass, bulb):
     assert raised.value.translation_placeholders == {"summary": "light.bulb: error"}
 
 
-async def test_a_failed_read_logs_the_error_type(hass, monkeypatch, caplog):
+async def test_a_failed_read_logs_the_error_type(hass, caplog):
     """A timeout has an empty message, so the log names its type."""
 
-    async def read_attributes(*args, **kwargs):
-        raise TimeoutError
-
-    monkeypatch.setattr(zcl, "read_attributes", read_attributes)
     add_zha_entity(hass, zha_entry(hass), "light.bulb", attributes=DIMMABLE)
+    cluster(hass, zcl.ON_OFF_CLUSTER).error = TimeoutError()
 
     with pytest.raises(HomeAssistantError):
         await call(hass, "get_attributes", {"entity_id": "light.bulb"})
@@ -214,4 +198,4 @@ async def test_group_reads_each_member(hass, bulb, requests, zha_groups):
     response = await call(hass, "get_attributes", {"entity_id": "light.zha_group"})
 
     assert response == {"light.a": {"brightness": 50.0}, "light.b": {"brightness": 50.0}}
-    assert sorted({ieee for ieee, _ in requests}) == [a, b]
+    assert sorted({ieee for ieee, _, _ in requests}) == [a, b]

@@ -1,6 +1,7 @@
 import logging
 
 import pytest
+from aiohue.v2 import HueBridgeV2
 from homeassistant.util.color import color_hs_to_xy
 
 from custom_components.deviceside.core.resolver import resolve
@@ -10,7 +11,7 @@ from custom_components.deviceside.integrations.hue.transition_cache import trans
 
 from ...conftest import Clock, leaked, unload_mock_entries
 from ...conftest import call as call_service
-from ...fixtures.hue import HueBridge, add_hue_entity, add_hue_group, hue_entry, light_action
+from ...fixtures.hue import HueBridge, add_hue_entity, add_hue_group, fake_request, hue_entry, light_action
 
 
 @pytest.fixture
@@ -18,6 +19,13 @@ def clock(hass) -> Clock:
     clock = Clock()
     transition_cache(hass).clock = clock
     return clock
+
+
+@pytest.fixture(autouse=True)
+def bridge_requests(monkeypatch) -> None:
+    """Every aiohue bridge a Hue test loads answers through its HueBridge, set on the class, where the call
+    transcripts wrap it."""
+    monkeypatch.setattr(HueBridgeV2, "request", fake_request)
 
 
 @pytest.fixture

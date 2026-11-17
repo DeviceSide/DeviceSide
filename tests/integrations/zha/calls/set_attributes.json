@@ -1,0 +1,1894 @@
+[
+ {
+  "action": "set_attributes",
+  "integration": "zha",
+  "request": {
+   "dropped": [
+    "hs_color"
+   ],
+   "own": null,
+   "request": {
+    "brightness": 40.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": "fields_dropped",
+    "entity_id": "light.bulb",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 8,
+      "cluster_type": "in",
+      "command": 0,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "level": 102,
+       "options_mask": 1,
+       "options_override": 1,
+       "transition_time": 4
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "service",
+     "homeassistant.update_entity",
+     {
+      "entity_id": "light.bulb"
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": 40.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": 2700,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 8,
+      "cluster_type": "in",
+      "command": 0,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "level": 102,
+       "options_mask": 1,
+       "options_override": 1,
+       "transition_time": 4
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 768,
+      "cluster_type": "in",
+      "command": 10,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "color_temp_mireds": 370,
+       "options_mask": 1,
+       "options_override": 1,
+       "transition_time": 4
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "service",
+     "homeassistant.update_entity",
+     {
+      "entity_id": "light.bulb"
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": 40.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": 2700,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "error",
+    "entity_id": "light.bulb",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 8,
+      "cluster_type": "in",
+      "command": 0,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "level": 102,
+       "options_mask": 1,
+       "options_override": 1,
+       "transition_time": 4
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 768,
+      "cluster_type": "in",
+      "command": 10,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "color_temp_mireds": 370,
+       "options_mask": 1,
+       "options_override": 1,
+       "transition_time": 4
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    {
+     "raises": "ValueError"
+    }
+   ],
+   [
+    [
+     "service",
+     "homeassistant.update_entity",
+     {
+      "entity_id": "light.bulb"
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": 40.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.a",
+     "light.a",
+     false
+    ],
+    [
+     "light.b",
+     "light.b",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.a",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "sent"
+   },
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.b",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 8,
+      "cluster_type": "in",
+      "command": 0,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:00:00:00:00:00:00:0a",
+      "params": {
+       "level": 102,
+       "options_mask": 1,
+       "options_override": 1,
+       "transition_time": 4
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 8,
+      "cluster_type": "in",
+      "command": 0,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:00:00:00:00:00:00:0b",
+      "params": {
+       "level": 102,
+       "options_mask": 1,
+       "options_override": 1,
+       "transition_time": 4
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "service",
+     "homeassistant.update_entity",
+     {
+      "entity_id": "light.a"
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "service",
+     "homeassistant.update_entity",
+     {
+      "entity_id": "light.b"
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": 40.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ],
+    [
+     "light.gone",
+     "light.gone",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "sent"
+   },
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "error",
+    "entity_id": "light.gone",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 8,
+      "cluster_type": "in",
+      "command": 0,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "level": 102,
+       "options_mask": 1,
+       "options_override": 1,
+       "transition_time": 4
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 8,
+      "cluster_type": "in",
+      "command": 0,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:00:00:00:00:00:00:01",
+      "params": {
+       "level": 102,
+       "options_mask": 1,
+       "options_override": 1,
+       "transition_time": 4
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    {
+     "raises": "ValueError"
+    }
+   ],
+   [
+    [
+     "service",
+     "homeassistant.update_entity",
+     {
+      "entity_id": "light.bulb"
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": 40.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 8,
+      "cluster_type": "in",
+      "command": 0,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "level": 102,
+       "options_mask": 1,
+       "options_override": 1,
+       "transition_time": 4
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "service",
+     "homeassistant.update_entity",
+     {
+      "entity_id": "light.bulb"
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": 40.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 8,
+      "cluster_type": "in",
+      "command": 0,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "level": 102,
+       "options_mask": 1,
+       "options_override": 1,
+       "transition_time": 4
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "service",
+     "homeassistant.update_entity",
+     {
+      "entity_id": "light.bulb"
+     },
+     {
+      "blocking": true
+     }
+    ],
+    {
+     "raises": "CancelledError"
+    }
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": 40.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 8,
+      "cluster_type": "in",
+      "command": 0,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "level": 102,
+       "options_mask": 1,
+       "options_override": 1,
+       "transition_time": 4
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "service",
+     "homeassistant.update_entity",
+     {
+      "entity_id": "light.bulb"
+     },
+     {
+      "blocking": true
+     }
+    ],
+    {
+     "raises": "ValueError"
+    }
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": 40.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "admin_required",
+    "entity_id": "light.bulb",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 8,
+      "cluster_type": "in",
+      "command": 0,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "level": 102,
+       "options_mask": 1,
+       "options_override": 1,
+       "transition_time": 4
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    {
+     "raises": "Unauthorized"
+    }
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": 40.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.l0",
+     "light.l0",
+     false
+    ],
+    [
+     "light.l1",
+     "light.l1",
+     false
+    ],
+    [
+     "light.l2",
+     "light.l2",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.l0",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "sent"
+   },
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.l1",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "sent"
+   },
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.l2",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 8,
+      "cluster_type": "in",
+      "command": 0,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:00:00:00:00:00:00:00",
+      "params": {
+       "level": 102,
+       "options_mask": 1,
+       "options_override": 1,
+       "transition_time": 4
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 8,
+      "cluster_type": "in",
+      "command": 0,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:00:00:00:00:00:00:01",
+      "params": {
+       "level": 102,
+       "options_mask": 1,
+       "options_override": 1,
+       "transition_time": 4
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 8,
+      "cluster_type": "in",
+      "command": 0,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:00:00:00:00:00:00:02",
+      "params": {
+       "level": 102,
+       "options_mask": 1,
+       "options_override": 1,
+       "transition_time": 4
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "service",
+     "homeassistant.update_entity",
+     {
+      "entity_id": "light.l0"
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "service",
+     "homeassistant.update_entity",
+     {
+      "entity_id": "light.l1"
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "service",
+     "homeassistant.update_entity",
+     {
+      "entity_id": "light.l2"
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": 2700,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 768,
+      "cluster_type": "in",
+      "command": 10,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "color_temp_mireds": 370,
+       "options_mask": 1,
+       "options_override": 1,
+       "transition_time": 4
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "service",
+     "homeassistant.update_entity",
+     {
+      "entity_id": "light.bulb"
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "service",
+     "homeassistant.update_entity",
+     {
+      "entity_id": "light.bulb"
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": 2700,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 768,
+      "cluster_type": "in",
+      "command": 10,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "color_temp_mireds": 370,
+       "options_mask": 1,
+       "options_override": 1,
+       "transition_time": 4
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "service",
+     "homeassistant.update_entity",
+     {
+      "entity_id": "light.bulb"
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": [
+      0.369,
+      0.445
+     ]
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 768,
+      "cluster_type": "in",
+      "command": 6,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "hue": 50,
+       "options_mask": 1,
+       "options_override": 1,
+       "saturation": 103,
+       "transition_time": 4
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "service",
+     "homeassistant.update_entity",
+     {
+      "entity_id": "light.bulb"
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": [
+      0.369,
+      0.445
+     ]
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 768,
+      "cluster_type": "in",
+      "command": 7,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "color_x": 24182,
+       "color_y": 29163,
+       "options_mask": 1,
+       "options_override": 1,
+       "transition_time": 4
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "service",
+     "homeassistant.update_entity",
+     {
+      "entity_id": "light.bulb"
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": 30.0,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
+      [
+       0
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": 127
+     },
+     {}
+    ]
+   ],
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 8,
+      "cluster_type": "in",
+      "command": 0,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "level": 76,
+       "options_mask": 1,
+       "options_override": 1,
+       "transition_time": 4
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "service",
+     "homeassistant.update_entity",
+     {
+      "entity_id": "light.bulb"
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": 40.0,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.a",
+     "light.a",
+     false
+    ],
+    [
+     "light.b",
+     "light.b",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.a",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "sent"
+   },
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.b",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0a"
+      },
+      [
+       0
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": 127
+     },
+     {}
+    ]
+   ],
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 8,
+      "cluster_type": "in",
+      "command": 0,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:00:00:00:00:00:00:0a",
+      "params": {
+       "level": 102,
+       "options_mask": 1,
+       "options_override": 1,
+       "transition_time": 4
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0b"
+      },
+      [
+       0
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": 127
+     },
+     {}
+    ]
+   ],
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 8,
+      "cluster_type": "in",
+      "command": 0,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:00:00:00:00:00:00:0b",
+      "params": {
+       "level": 102,
+       "options_mask": 1,
+       "options_override": 1,
+       "transition_time": 4
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "service",
+     "homeassistant.update_entity",
+     {
+      "entity_id": "light.a"
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "service",
+     "homeassistant.update_entity",
+     {
+      "entity_id": "light.b"
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": 80.0,
+    "min_brightness": 20.0
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": "within_limits",
+    "entity_id": "light.bulb",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "unchanged"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
+      [
+       0
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": 127
+     },
+     {}
+    ]
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": 60.0
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
+      [
+       0
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": 127
+     },
+     {}
+    ]
+   ],
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 8,
+      "cluster_type": "in",
+      "command": 0,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "level": 152,
+       "options_mask": 1,
+       "options_override": 1,
+       "transition_time": 4
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "service",
+     "homeassistant.update_entity",
+     {
+      "entity_id": "light.bulb"
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": 60.0
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "error",
+    "entity_id": "light.bulb",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 8,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
+      [
+       0
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {},
+     {
+      "0": 134
+     }
+    ]
+   ]
+  ]
+ }
+]

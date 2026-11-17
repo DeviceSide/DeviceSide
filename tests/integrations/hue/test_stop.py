@@ -3,6 +3,7 @@
 import asyncio
 
 import pytest
+from aiohue.v2 import HueBridgeV2
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util.color import color_hs_to_xy, color_xy_to_hs
 
@@ -221,7 +222,7 @@ async def test_a_room_stop_where_every_light_fails_is_rejected(hass, bridge, clo
         await call(hass, "stop", {"entity_id": entity_id})
 
 
-async def test_a_stop_cancelled_mid_write_leaves_the_predictions_it_found(hass, bridge, clock):
+async def test_a_stop_cancelled_mid_write_leaves_the_predictions_it_found(hass, bridge, clock, monkeypatch):
     entity_id = await color_lamp(hass, bridge, (200.0, 90.0), brightness_pct=20.0)
     await call(hass, "raise_brightness", {"entity_id": entity_id, "sweep_time": 10})
     await call(hass, "lower_saturation", {"entity_id": entity_id, "sweep_time": 10, "limit": 0})
@@ -231,11 +232,11 @@ async def test_a_stop_cancelled_mid_write_leaves_the_predictions_it_found(hass, 
     clock.now += 2
     sent = asyncio.Event()
 
-    async def hang(*args, **kwargs):
+    async def hang(api, *args, **kwargs):
         sent.set()
         await asyncio.Event().wait()
 
-    bridge.api.request = hang
+    monkeypatch.setattr(HueBridgeV2, "request", hang)
     task = asyncio.create_task(call(hass, "stop", {"entity_id": entity_id}))
     await sent.wait()
     task.cancel()

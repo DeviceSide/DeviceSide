@@ -1,0 +1,579 @@
+[
+ {
+  "action": "turn_off_for",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 30.0
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "RGBCCT",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBCCT.Set",
+      {
+       "id": 0,
+       "on": false,
+       "toggle_after": 30.0
+      }
+     ],
+     {}
+    ],
+    {
+     "was_on": true
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBCCT.GetStatus",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "brightness": 40,
+     "ct": 4000,
+     "id": 0,
+     "mode": "cct",
+     "output": false,
+     "rgb": [
+      255,
+      0,
+      0
+     ],
+     "timer_duration": 30.0,
+     "timer_started_at": 1793102400.0
+    }
+   ]
+  ]
+ },
+ {
+  "action": "turn_off_for",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0
+   },
+   "targets": [
+    [
+     "switch.porch",
+     "switch.porch",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "Switch",
+    "data": null,
+    "detail": null,
+    "entity_id": "switch.porch",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "Switch.Set",
+      {
+       "id": 1,
+       "on": false,
+       "toggle_after": 5.0
+      }
+     ],
+     {}
+    ],
+    {
+     "was_on": true
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "Switch.GetStatus",
+      {
+       "id": 1
+      }
+     ],
+     {}
+    ],
+    {
+     "id": 1,
+     "output": false,
+     "timer_duration": 5.0,
+     "timer_started_at": 1793102400.0
+    }
+   ]
+  ]
+ },
+ {
+  "action": "turn_off_for",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 90.0
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ],
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ],
+    [
+     "switch.heater",
+     "switch.heater",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "RGBCCT",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "confirmed"
+   },
+   {
+    "clamped_to": null,
+    "classes": "Switch",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "confirmed"
+   },
+   {
+    "clamped_to": null,
+    "classes": "Switch",
+    "data": null,
+    "detail": null,
+    "entity_id": "switch.heater",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBCCT.Set",
+      {
+       "id": 2,
+       "on": false,
+       "toggle_after": 90.0
+      }
+     ],
+     {}
+    ],
+    {
+     "was_on": true
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBCCT.GetStatus",
+      {
+       "id": 2
+      }
+     ],
+     {}
+    ],
+    {
+     "id": 2,
+     "output": false,
+     "timer_duration": 90.0,
+     "timer_started_at": 1793102400.0
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "Switch.Set",
+      {
+       "id": 1,
+       "on": false,
+       "toggle_after": 90.0
+      }
+     ],
+     {}
+    ],
+    {
+     "was_on": true
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "Switch.GetStatus",
+      {
+       "id": 1
+      }
+     ],
+     {}
+    ],
+    {
+     "id": 1,
+     "output": false,
+     "timer_duration": 90.0,
+     "timer_started_at": 1793102400.0
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "Switch.Set",
+      {
+       "id": 0,
+       "on": false,
+       "toggle_after": 90.0
+      }
+     ],
+     {}
+    ],
+    {
+     "was_on": true
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "Switch.GetStatus",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "id": 0,
+     "output": false,
+     "timer_duration": 90.0,
+     "timer_started_at": 1793102400.0
+    }
+   ]
+  ]
+ },
+ {
+  "action": "turn_off_for",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 90.0
+   },
+   "targets": [
+    [
+     "light.strip",
+     "light.strip",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "CCT",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.strip",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "CCT.Set",
+      {
+       "id": 0,
+       "on": false,
+       "toggle_after": 90.0
+      }
+     ],
+     {}
+    ],
+    {
+     "was_on": true
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "CCT.GetStatus",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "id": 0,
+     "output": false,
+     "timer_duration": 90.0,
+     "timer_started_at": 1793102400.0
+    }
+   ]
+  ]
+ },
+ {
+  "action": "turn_off_for",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 90.0
+   },
+   "targets": [
+    [
+     "light.strip",
+     "light.strip",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "Light",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.strip",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "Light.Set",
+      {
+       "id": 0,
+       "on": false,
+       "toggle_after": 90.0
+      }
+     ],
+     {}
+    ],
+    {
+     "was_on": true
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "Light.GetStatus",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "id": 0,
+     "output": false,
+     "timer_duration": 90.0,
+     "timer_started_at": 1793102400.0
+    }
+   ]
+  ]
+ },
+ {
+  "action": "turn_off_for",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 90.0
+   },
+   "targets": [
+    [
+     "light.strip",
+     "light.strip",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "RGB",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.strip",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGB.Set",
+      {
+       "id": 0,
+       "on": false,
+       "toggle_after": 90.0
+      }
+     ],
+     {}
+    ],
+    {
+     "was_on": true
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGB.GetStatus",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "id": 0,
+     "output": false,
+     "timer_duration": 90.0,
+     "timer_started_at": 1793102400.0
+    }
+   ]
+  ]
+ },
+ {
+  "action": "turn_off_for",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 90.0
+   },
+   "targets": [
+    [
+     "light.strip",
+     "light.strip",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "RGBW",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.strip",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBW.Set",
+      {
+       "id": 0,
+       "on": false,
+       "toggle_after": 90.0
+      }
+     ],
+     {}
+    ],
+    {
+     "was_on": true
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBW.GetStatus",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "id": 0,
+     "output": false,
+     "timer_duration": 90.0,
+     "timer_started_at": 1793102400.0
+    }
+   ]
+  ]
+ }
+]

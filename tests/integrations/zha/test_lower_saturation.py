@@ -20,8 +20,8 @@ async def test_sends_the_end_saturation(hass, commands):
     assert sent(commands) == [(0x0300, 0x03, {"saturation": 51, "transition_time": 40})]
 
 
-async def test_a_light_without_hue_and_saturation_gets_the_end_point_at_its_hue(hass, commands):
-    zcl.color_capabilities.return_value = XY_ONLY
+async def test_a_light_without_hue_and_saturation_gets_the_end_point_at_its_hue(hass, commands, bulbs):
+    bulbs.answers[zcl.COLOR_CLUSTER][zcl.COLOR_CAPABILITIES] = XY_ONLY
     bulb(hass)
 
     await call(hass, "lower_saturation", {"entity_id": "light.bulb", "limit": 20, "sweep_time": 10})

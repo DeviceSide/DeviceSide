@@ -1,5 +1,7 @@
 """Matter turn_on_for: OnWithTimedOff on the OnOff cluster, with OnTime read-back."""
 
+from dataclasses import asdict
+
 import pytest
 from homeassistant.exceptions import HomeAssistantError
 
@@ -42,7 +44,12 @@ async def test_sends_on_with_timed_off_and_confirms(hass, entity_id):
     call_kwargs = send_cmd.call_args.kwargs
     assert (call_kwargs["node_id"], call_kwargs["endpoint_id"]) == (NODE_ID, EP)
     # 5 s in tenths, and a 0.1 s off wait (turn_on_for._OFF_WAIT_TENTHS)
-    assert vars(call_kwargs["command"]) == {"onOffControl": 0, "onTime": 50, "offWaitTime": 1}
+    assert asdict(call_kwargs["command"]) == {
+        "onOffControl": 0,
+        "onTime": 50,
+        "offWaitTime": 1,
+        "command": "OnOff.OnWithTimedOff",
+    }
     assert [args.kwargs["attribute_path"] for args in read_attr.await_args_list] == [f"{EP}/6/16385", f"{EP}/6/0"]
 
 

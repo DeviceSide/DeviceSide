@@ -22,7 +22,10 @@ invite them to Triage, as for an integration's maintainers.
 
 - **Ruleset on `main` and `release/*`:** changes go through a pull request, with no required approvals. The required
   checks (`lint`, `secrets-history`, `pytest`, `pytest-without-family-tests`, `validate-hacs`, `validate`) must pass,
-  and the branch must be up to date. Force pushes are blocked. There are no bypass actors.
+  with no up-to-date rule and no merge queue, so a branch behind `main` merges without an update. The accepted risk:
+  two green pull requests can clash on `main`, and the push run on `main` shows it. To add a queue later, revert #501
+  (restoring the `merge_group` triggers and the queue wording), then add the merge queue rule. Force pushes are blocked.
+  There are no bypass actors.
   `pytest-without-family-tests` (`tests.yml`) runs the tests with every family's and the catalog's left out, so a
   family maintainer's test code can't silence the integration's on a `/merge`.
 - **Ruleset on tags:** only a deploy key can create, move or delete a tag. The cut workflows'
@@ -34,17 +37,20 @@ invite them to Triage, as for an integration's maintainers.
 - **`pull_request_target` allowed explicitly (Actions event policy):** "Protected files" and "Owner notice" run on
   it, to check and comment on fork PRs. GitHub is changing its default to block it on public repos (a brownout on
   2026-11-16 failed both with `startup_failure` and no jobs), so the policy must allow it, or both stop running.
+- **Allow auto-merge (repo, General):** `/merge` turns on auto-merge, and Renovate's digest and patch updates use
+  it, to merge once their checks pass.
 
 ## `/merge`
 
 `.github/workflows/maintainer-merge.yml` merges as a GitHub App; its header says why.
 
 - **The App:** owned by the org and installed on this repo only. Repository permissions: Contents read and write, Pull
-  requests read. Webhook off.
+  requests read and write (turning on auto-merge). Webhook off.
 - **The `maintainer-merge` environment:** holds the variable `MAINTAINER_MERGE_APP_ID` and the secret
   `MAINTAINER_MERGE_APP_KEY` (the App's private key). Keep its deployment branches limited to `main`.
   `issue_comment` runs on `main`, so the merge job still gets the key, but a workflow pushed on any other branch can't
-  read it.
+  read it. The `guard` job (`pull_request_target` on a PR into `main`, so it runs on `main`) reads the key too, to
+  turn off the App's auto-merge when a push follows `/merge`: GitHub does that itself only for a fork's push.
 - **Switching it off:** disable the "Maintainer merge" workflow in the Actions tab, and cancel any run already in
   progress. No new `/merge` runs, and repo maintainers merge everything until it's re-enabled.
 - **If the key leaks:** generate a new key on the App's page, replace the secret, then delete the old key.

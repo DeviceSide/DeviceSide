@@ -4,14 +4,15 @@ the adapters' scopes, docs/models.yaml and each integration's bundle, docs/integ
 the cards show (levels, caveats) are in docs/evidence.md.
 
 **Evidence** for an action is its passing test records (`<action>.json`, `<action>-<option>.json`, read by check_release
-against docs/test-records.schema.json) and the `_manual.json` rows whose `passed` names it. A format 2 record gives each
-passing test's devices, each a model with its firmware and the class it reached (and its manufacturer, which the cards
-don't show yet); a native group's or a scene's test (`group`, its devices the members) shows as "group", never as its
-members' models. Where the integration names classes, a device with a null class credits nothing, flagged or not, and a
-group with one none either: it is on no card and no row. A format 1 record (converted from markdown) gives the run's
-devices, not which test reached which, and its tests the classes they reached, if it recorded them. A manual row's
-devices are model ids, each with its class; with `group`, a native group's members, which show as "group, by hand".
-A level comes from the scope alone (verify, then trust): a record never ages.
+against docs/test-records.schema.json) and the `_manual.json` rows naming it (`check_release.row_actions`: a format 3
+row's `calls`, a format 2 row's `passed`). A format 2 or 3 record gives each passing test's devices, each a model with
+its firmware and the class it reached (and its manufacturer, which the cards don't show yet); a native group's or a
+scene's test (`group`, its devices the members) shows as "group", never as its members' models. Where the integration
+names classes, a device with a null class credits nothing, flagged or not, and a group with one none either: it is on no
+card and no row. A format 1 record (converted from markdown) gives the run's devices, not which test reached which, and
+its tests the classes they reached, if it recorded them. A manual row's devices are model ids, each with its class; with
+`group`, a native group's members, which show as "group, by hand". A level comes from the scope alone (verify, then
+trust): a record never ages.
 
 **Cards.** One collapsed section between the README's devices markers: the legend, of the marks the cards use, then a
 card per integration, then a link to the integrations page. A card has its name, linked to its page (the bundle's

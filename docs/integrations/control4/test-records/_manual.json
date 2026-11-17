@@ -1,15 +1,37 @@
 {
-  "format": 2,
+  "format": 3,
   "integration": "control4",
   "signoffs": [
     {
       "date": "2026-11-16",
       "commit": "f68bb8f120e72bc2c55a8228024e7f2cb986fdc1",
       "tester": "skialpine",
+      "group": true,
       "devices": [
-        {"model": "LTD010", "manufacturer": "Signify Netherlands B.V.", "class": null}
+        {"model": "LTD010", "manufacturer": "Finite Labs", "class": "other"}
       ],
-      "passed": ["get_attributes", "lower_brightness", "raise_brightness", "set_attributes", "stop"]
+      "calls": {
+        "get_attributes": "dafd96613fb5ca0a0131709407a8daa5173025a0",
+        "lower_brightness": "9ee1e0505e4934fda6a2017e478dd50a8048ccbd",
+        "raise_brightness": "288a173b6ed4b8485c3dc7ca9379b410a481bf0f",
+        "set_attributes": "f399ca1a020d871a4949c887c39141b707418586",
+        "stop": "c20575dbc522d1806f92df9ef300469f6970283b"
+      }
+    },
+    {
+      "date": "2026-11-16",
+      "commit": "f68bb8f120e72bc2c55a8228024e7f2cb986fdc1",
+      "tester": "skialpine",
+      "devices": [
+        {"model": "LTD010", "manufacturer": "Finite Labs", "class": "other"}
+      ],
+      "calls": {
+        "get_attributes": "dafd96613fb5ca0a0131709407a8daa5173025a0",
+        "lower_brightness": "9ee1e0505e4934fda6a2017e478dd50a8048ccbd",
+        "raise_brightness": "288a173b6ed4b8485c3dc7ca9379b410a481bf0f",
+        "set_attributes": "f399ca1a020d871a4949c887c39141b707418586",
+        "stop": "c20575dbc522d1806f92df9ef300469f6970283b"
+      }
     }
   ]
 }

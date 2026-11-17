@@ -1,27 +1,20 @@
 """Matter get_attributes: a live OnTime and OnOff read per target, shaped as the shared timer row."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from unittest.mock import AsyncMock
 from unittest.mock import call as mock_call
 
 import pytest
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.util import dt as dt_util
 
 from ...conftest import call, refusal
-from ...fixtures.matter import NODE_ID, add_matter_entity, matter_device, on_off_or, on_time_reads
+from ...fixtures.matter import NODE_ID, NOW, add_matter_entity, matter_device, on_off_or, on_time_reads
 
 WIZ = "wiz_plug"  # the fixture's node: the lab's WiZ Smart Plug
 
 pytestmark = pytest.mark.usefixtures("setup_production")
 
-NOW = datetime(2026, 10, 28, 12, 0, tzinfo=UTC)
 EP = 1
-
-
-@pytest.fixture(autouse=True)
-def frozen_now(monkeypatch):
-    monkeypatch.setattr(dt_util, "utcnow", lambda: NOW)
 
 
 def timer(remaining_s: float) -> dict:

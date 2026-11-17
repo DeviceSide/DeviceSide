@@ -17,7 +17,7 @@
 
 ## Testing evidence
 
-<!-- For each device: model, firmware, HA version, library version, the commit you tested, the date, and what you saw; for a call you didn't probe, where it was seen working. A maintainer's manual sign-off also adds a row to the bundle's `test-records/_manual.json` ([format](https://github.com/DeviceSide/DeviceSide/blob/main/docs/evidence.md#sign-off-format)). -->
+<!-- For each device: model, firmware, HA version, library version, the commit you tested, the date, and what you saw; for a call you didn't probe, where it was seen working. A maintainer's manual sign-off also adds a row to the bundle's `test-records/_manual.json`, printed by `scripts/signoff.py` ([format](https://github.com/DeviceSide/DeviceSide/blob/main/docs/evidence.md#sign-off-format)). -->
 
 ## Checks
 

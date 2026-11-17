@@ -1,0 +1,1044 @@
+[
+ {
+  "action": "raise_hue",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "hue",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 0.5,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": 1.0,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "zigbee2mqtt",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_subscribe",
+     [
+      "zigbee2mqtt/bridge/devices"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe.callback",
+     [
+      {
+       "payload": "[{\"ieee_address\": \"0x00124b0012345678\", \"definition\": {\"exposes\": [{\"type\": \"light\", \"features\": [{\"name\": \"state\"}, {\"name\": \"brightness\"}, {\"name\": \"color_hs\"}]}]}, \"manufacturer\": \"Philips\", \"model_id\": \"bulb\", \"interview_completed\": true}]",
+       "retain": true,
+       "topic": "zigbee2mqtt/bridge/devices"
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/0x00124b0012345678/set",
+      "{\"hue_move\": 254}"
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "raise_hue",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "hue",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 1.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "zigbee2mqtt",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_subscribe",
+     [
+      "zigbee2mqtt/bridge/devices"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe.callback",
+     [
+      {
+       "payload": "[{\"ieee_address\": \"0x00124b0012345678\", \"definition\": {\"exposes\": [{\"type\": \"light\", \"features\": [{\"name\": \"state\"}, {\"name\": \"brightness\"}, {\"name\": \"color_hs\"}]}]}, \"manufacturer\": \"Philips\", \"model_id\": \"bulb\", \"interview_completed\": true}]",
+       "retain": true,
+       "topic": "zigbee2mqtt/bridge/devices"
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/0x00124b0012345678/set",
+      "{\"hue_move\": 254}"
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "raise_hue",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "hue",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 10.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "zigbee2mqtt",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_subscribe",
+     [
+      "zigbee2mqtt/bridge/devices"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe.callback",
+     [
+      {
+       "payload": "[{\"ieee_address\": \"0x00124b0012345678\", \"definition\": {\"exposes\": [{\"type\": \"light\", \"features\": [{\"name\": \"state\"}, {\"name\": \"brightness\"}, {\"name\": \"color_hs\"}]}]}, \"manufacturer\": \"Philips\", \"model_id\": \"bulb\", \"interview_completed\": true}]",
+       "retain": true,
+       "topic": "zigbee2mqtt/bridge/devices"
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/0x00124b0012345678/set",
+      "{\"hue_move\": 25}"
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "raise_hue",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "hue",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 10.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.one",
+     "light.one",
+     false
+    ],
+    [
+     "light.two",
+     "light.two",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.one",
+    "integration": "zigbee2mqtt",
+    "member_classes": null,
+    "status": "sent"
+   },
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.two",
+    "integration": "zigbee2mqtt",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_subscribe",
+     [
+      "zigbee2mqtt/bridge/devices"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe",
+     [
+      "zigbee2mqtt/bridge/devices"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe.callback",
+     [
+      {
+       "payload": "[{\"ieee_address\": \"0x01\", \"definition\": {\"exposes\": [{\"type\": \"light\", \"features\": [{\"name\": \"state\"}, {\"name\": \"brightness\"}, {\"name\": \"color_hs\"}]}]}, \"manufacturer\": \"Philips\", \"model_id\": \"bulb\", \"interview_completed\": true}, {\"ieee_address\": \"0x02\", \"definition\": {\"exposes\": [{\"type\": \"light\", \"features\": [{\"name\": \"state\"}, {\"name\": \"brightness\"}, {\"name\": \"color_hs\"}]}]}, \"manufacturer\": \"Philips\", \"model_id\": \"bulb\", \"interview_completed\": true}, {\"ieee_address\": \"0x03\", \"manufacturer\": \"_TZ3000_abcdefgh\", \"model_id\": \"TS011F\", \"interview_completed\": true}]",
+       "retain": true,
+       "topic": "zigbee2mqtt/bridge/devices"
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe.callback",
+     [
+      {
+       "payload": "[{\"ieee_address\": \"0x01\", \"definition\": {\"exposes\": [{\"type\": \"light\", \"features\": [{\"name\": \"state\"}, {\"name\": \"brightness\"}, {\"name\": \"color_hs\"}]}]}, \"manufacturer\": \"Philips\", \"model_id\": \"bulb\", \"interview_completed\": true}, {\"ieee_address\": \"0x02\", \"definition\": {\"exposes\": [{\"type\": \"light\", \"features\": [{\"name\": \"state\"}, {\"name\": \"brightness\"}, {\"name\": \"color_hs\"}]}]}, \"manufacturer\": \"Philips\", \"model_id\": \"bulb\", \"interview_completed\": true}, {\"ieee_address\": \"0x03\", \"manufacturer\": \"_TZ3000_abcdefgh\", \"model_id\": \"TS011F\", \"interview_completed\": true}]",
+       "retain": true,
+       "topic": "zigbee2mqtt/bridge/devices"
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/0x01/set",
+      "{\"hue_move\": 25}"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/0x02/set",
+      "{\"hue_move\": 25}"
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "raise_hue",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "hue",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 254.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "zigbee2mqtt",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_subscribe",
+     [
+      "zigbee2mqtt/bridge/devices"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe.callback",
+     [
+      {
+       "payload": "[{\"ieee_address\": \"0x00124b0012345678\", \"definition\": {\"exposes\": [{\"type\": \"light\", \"features\": [{\"name\": \"state\"}, {\"name\": \"brightness\"}, {\"name\": \"color_hs\"}]}]}, \"manufacturer\": \"Philips\", \"model_id\": \"bulb\", \"interview_completed\": true}]",
+       "retain": true,
+       "topic": "zigbee2mqtt/bridge/devices"
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/0x00124b0012345678/set",
+      "{\"hue_move\": 1}"
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "raise_hue",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "hue",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 300.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": 254,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "zigbee2mqtt",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_subscribe",
+     [
+      "zigbee2mqtt/bridge/devices"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe.callback",
+     [
+      {
+       "payload": "[{\"ieee_address\": \"0x00124b0012345678\", \"definition\": {\"exposes\": [{\"type\": \"light\", \"features\": [{\"name\": \"state\"}, {\"name\": \"brightness\"}, {\"name\": \"color_hs\"}]}]}, \"manufacturer\": \"Philips\", \"model_id\": \"bulb\", \"interview_completed\": true}]",
+       "retain": true,
+       "topic": "zigbee2mqtt/bridge/devices"
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/0x00124b0012345678/set",
+      "{\"hue_move\": 1}"
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "raise_hue",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "hue",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": "fields_dropped",
+    "entity_id": "light.lamp",
+    "integration": "zigbee2mqtt",
+    "member_classes": null,
+    "status": "unchanged"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_subscribe",
+     [
+      "zigbee2mqtt/bridge/devices"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe.callback",
+     [
+      {
+       "payload": "[{\"ieee_address\": \"0x00124b0012345678\", \"definition\": {\"exposes\": [{\"type\": \"light\", \"features\": [{\"name\": \"state\"}, {\"name\": \"brightness\"}]}]}, \"manufacturer\": \"Philips\", \"model_id\": \"bulb\", \"interview_completed\": true}]",
+       "retain": true,
+       "topic": "zigbee2mqtt/bridge/devices"
+      }
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "raise_hue",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "hue",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": "off",
+    "entity_id": "light.lamp",
+    "integration": "zigbee2mqtt",
+    "member_classes": null,
+    "status": "unchanged"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_subscribe",
+     [
+      "zigbee2mqtt/bridge/devices"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe.callback",
+     [
+      {
+       "payload": "[{\"ieee_address\": \"0x00124b0012345678\", \"definition\": {\"exposes\": [{\"type\": \"light\", \"features\": [{\"name\": \"state\"}, {\"name\": \"brightness\"}, {\"name\": \"color_hs\"}]}]}, \"manufacturer\": \"Philips\", \"model_id\": \"bulb\", \"interview_completed\": true}]",
+       "retain": true,
+       "topic": "zigbee2mqtt/bridge/devices"
+      }
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "raise_hue",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "hue",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "zigbee2mqtt",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_subscribe",
+     [
+      "zigbee2mqtt/bridge/devices"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe.callback",
+     [
+      {
+       "payload": "[{\"ieee_address\": \"0x00124b0012345678\", \"definition\": {\"exposes\": [{\"type\": \"light\", \"features\": [{\"name\": \"state\"}, {\"name\": \"brightness\"}, {\"name\": \"color_hs\"}]}]}, \"manufacturer\": \"Philips\", \"model_id\": \"bulb\", \"interview_completed\": true}]",
+       "retain": true,
+       "topic": "zigbee2mqtt/bridge/devices"
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/0x00124b0012345678/set",
+      "{\"hue_move\": 51}"
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "raise_hue",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "hue",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "zigbee2mqtt",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_subscribe",
+     [
+      "zigbee2mqtt/bridge/devices"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe.callback",
+     [
+      {
+       "payload": "[{\"ieee_address\": \"0x00124b0012345678\", \"definition\": {\"exposes\": [{\"type\": \"light\", \"features\": [{\"name\": \"state\"}, {\"name\": \"brightness\"}, {\"name\": \"color_hs\"}]}]}, \"manufacturer\": \"Philips\", \"model_id\": \"bulb\", \"interview_completed\": true}]",
+       "retain": true,
+       "topic": "zigbee2mqtt/bridge/devices"
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe",
+     [
+      "zigbee2mqtt/lamp"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/0x00124b0012345678/set",
+      "{\"hue_move\": 51}"
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "raise_hue",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "hue",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.room",
+     "light.room",
+     true
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": [
+     "hue"
+    ],
+    "data": null,
+    "detail": "fields_dropped",
+    "entity_id": "light.room",
+    "integration": "zigbee2mqtt",
+    "member_classes": {
+     "light.one": "hue",
+     "light.two": "hue"
+    },
+    "status": "unchanged"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_subscribe",
+     [
+      "zigbee2mqtt/bridge/groups"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe.callback",
+     [
+      {
+       "payload": "[{\"id\": 7, \"members\": [{\"ieee_address\": \"0x01\"}, {\"ieee_address\": \"0x02\"}]}]",
+       "retain": true,
+       "topic": "zigbee2mqtt/bridge/groups"
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe",
+     [
+      "zigbee2mqtt/bridge/devices"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe.callback",
+     [
+      {
+       "payload": "[{\"ieee_address\": \"0x01\", \"definition\": {\"exposes\": [{\"type\": \"light\", \"features\": [{\"name\": \"state\"}, {\"name\": \"brightness\"}, {\"name\": \"color_hs\"}]}]}, \"manufacturer\": \"Philips\", \"model_id\": \"bulb\", \"interview_completed\": true}, {\"ieee_address\": \"0x02\", \"definition\": {\"exposes\": [{\"type\": \"light\", \"features\": [{\"name\": \"state\"}, {\"name\": \"brightness\"}]}]}, \"manufacturer\": \"Philips\", \"model_id\": \"bulb\", \"interview_completed\": true}]",
+       "retain": true,
+       "topic": "zigbee2mqtt/bridge/devices"
+      }
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "raise_hue",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "hue",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.room",
+     "light.room",
+     true
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": [
+     "hue"
+    ],
+    "data": null,
+    "detail": null,
+    "entity_id": "light.room",
+    "integration": "zigbee2mqtt",
+    "member_classes": {
+     "light.one": "hue",
+     "light.two": "hue"
+    },
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_subscribe",
+     [
+      "zigbee2mqtt/bridge/groups"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe.callback",
+     [
+      {
+       "payload": "[{\"id\": 7, \"members\": [{\"ieee_address\": \"0x01\"}, {\"ieee_address\": \"0x02\"}]}]",
+       "retain": true,
+       "topic": "zigbee2mqtt/bridge/groups"
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe",
+     [
+      "zigbee2mqtt/bridge/devices"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe.callback",
+     [
+      {
+       "payload": "[{\"ieee_address\": \"0x01\", \"definition\": {\"exposes\": [{\"type\": \"light\", \"features\": [{\"name\": \"state\"}, {\"name\": \"brightness\"}, {\"name\": \"color_hs\"}]}]}, \"manufacturer\": \"Philips\", \"model_id\": \"bulb\", \"interview_completed\": true}, {\"ieee_address\": \"0x02\", \"definition\": {\"exposes\": [{\"type\": \"light\", \"features\": [{\"name\": \"state\"}, {\"name\": \"brightness\"}, {\"name\": \"color_hs\"}]}]}, \"manufacturer\": \"Philips\", \"model_id\": \"bulb\", \"interview_completed\": true}]",
+       "retain": true,
+       "topic": "zigbee2mqtt/bridge/devices"
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/7/set",
+      "{\"hue_move\": 51}"
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ },
+ {
+  "action": "raise_hue",
+  "integration": "zigbee2mqtt",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "hue",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.room",
+     "light.room",
+     true
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "busy",
+    "entity_id": "light.room",
+    "integration": "zigbee2mqtt",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "mqtt.async_subscribe",
+     [
+      "zigbee2mqtt/bridge/groups"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe.callback",
+     [
+      {
+       "payload": "[{\"id\": 7, \"members\": [{\"ieee_address\": \"0x01\"}, {\"ieee_address\": \"0x02\"}]}]",
+       "retain": true,
+       "topic": "zigbee2mqtt/bridge/groups"
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe",
+     [
+      "zigbee2mqtt/bridge/devices"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe.callback",
+     [
+      {
+       "payload": "[{\"ieee_address\": \"0x01\", \"definition\": {\"exposes\": [{\"type\": \"light\", \"features\": [{\"name\": \"state\"}, {\"name\": \"brightness\"}, {\"name\": \"color_hs\"}]}]}, \"manufacturer\": \"Philips\", \"model_id\": \"bulb\", \"interview_completed\": true}, {\"ieee_address\": \"0x02\", \"definition\": {\"exposes\": [{\"type\": \"light\", \"features\": [{\"name\": \"state\"}, {\"name\": \"brightness\"}, {\"name\": \"color_hs\"}]}]}, \"manufacturer\": \"Philips\", \"model_id\": \"bulb\", \"interview_completed\": true}]",
+       "retain": true,
+       "topic": "zigbee2mqtt/bridge/devices"
+      }
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_subscribe",
+     [
+      "zigbee2mqtt/room"
+     ],
+     {}
+    ],
+    null
+   ],
+   [
+    [
+     "mqtt.async_publish",
+     [
+      "zigbee2mqtt/7/set",
+      "{\"hue_move\": 51}"
+     ],
+     {}
+    ],
+    null
+   ]
+  ]
+ }
+]

@@ -1,15 +1,15 @@
 # The device's persistent auto-off: after every turn-on, from any source, it turns itself off after the delay. A
 # relay sends the same Switch.SetConfig whatever HA shows it as, so switch_plug covers the Switch component's roles;
-# the bulb's RGBCCT is Documented, not run. Each write reloads the device's Shelly entry about 60 s later: the engine
+# light_color covers the bulb's RGBCCT, whose SetConfig names its own component. Each write reloads the device's Shelly entry about 60 s later: the engine
 # waits that out before the next call or set on the light, and before the case ends. Its restore clears the setting
 # again.
 action: set_auto_off
-rig_seconds: 600
+rig_seconds: 750
 tests:
   # The one regression case: the write, the repeat that sends nothing, the stored delay read back, and the delay
   # firing on a plain turn-on.
   - name: applies_to_any_turn_on
-    roles: [switch_plug]
+    roles: [switch_plug, light_color]
     only: [shelly]
     steps:
       - set: {state: off}

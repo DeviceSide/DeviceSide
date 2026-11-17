@@ -25,6 +25,7 @@ from scripts import gen_compat as gc
 from scripts import gen_features as gf
 
 from .record_files import (
+    bound,
     device,
     manual,
     old_device,
@@ -363,10 +364,7 @@ def test_an_adapter_flagged_whole_has_one_experimental_row(root):
     ]
 
 
-MANUAL = (
-    signoff(tester="jasonmx", devices=(("P1", None), ("LTA009", None)), passed=("stop", "turn_on_for")),
-    signoff(tester="jasonmx", passed=None),
-)
+MANUAL = (signoff(tester="jasonmx", devices=(("P1", None), ("LTA009", None)), calls=bound("stop", "turn_on_for")),)
 
 
 def manual_file(root, integration="zha", rows=MANUAL):
@@ -384,8 +382,18 @@ def test_a_manual_row_is_evidence_for_the_actions_it_passed(root):
     assert cr.manual_rows("hue", "stop") == []
 
 
+def test_a_format_2_row_credits_the_actions_it_passed(root):
+    """A row from before transcripts names its actions in `passed`: it signs off nothing, but credits as it did."""
+    manual_file(root, rows=[signoff(tester="jasonmx", devices=(("P1", None),), passed=("stop",))])
+    flagged = adapter("zha", "stop", AdapterScope(domains=experimental("light")))
+    assert evidence_rows(flagged) == [
+        "| `stop` | Experimental | light entities | `P1`, by hand"
+        " | [by hand](integrations/zha/test-records/_manual.json) |"
+    ]
+
+
 def test_a_manual_group_row_is_one_group_by_hand_never_its_members_models(root):
-    row = signoff(tester="jasonmx", devices=(("P1", None), ("LTA009", None)), passed=("stop",), group=True)
+    row = signoff(tester="jasonmx", devices=(("P1", None), ("LTA009", None)), calls=bound("stop"), group=True)
     manual_file(root, rows=[row])
     flagged = adapter("zha", "stop", AdapterScope(domains=experimental("light")))
     assert evidence_rows(flagged) == [
@@ -394,15 +402,15 @@ def test_a_manual_group_row_is_one_group_by_hand_never_its_members_models(root):
     ]
     # A hand-tested group is no rig-tested one: it reaches Works without a check mark.
     assert zha_card(adapter("zha", "stop")).tested == [f"[native groups]({URL}#native-groups)"]
-    manual_file(root, rows=[signoff(devices=(("NEW", None),), passed=("stop",), group=True)])
+    manual_file(root, rows=[signoff(devices=(("NEW", None),), calls=bound("stop"), group=True)])
     with pytest.raises(SystemExit, match="model 'NEW' is in neither docs/models.yaml"):
         gc.check_models(FakeRegistry(), data())
 
 
 def test_a_manual_group_with_a_null_class_member_credits_nothing_in_a_classed_integration(root):
     rows = [
-        signoff(devices=(("P1", "Switch"), ("LTA009", None)), passed=("stop",), group=True),
-        signoff(devices=(("P1", "Switch"), ("LTA009", "Light")), passed=("turn_on_for",), group=True),
+        signoff(devices=(("P1", "Switch"), ("LTA009", None)), calls=bound("stop"), group=True),
+        signoff(devices=(("P1", "Switch"), ("LTA009", "Light")), calls=bound("turn_on_for"), group=True),
     ]
     manual_file(root, rows=rows)
     scope = AdapterScope(capabilities=verified("Switch", "Light"))
@@ -413,7 +421,7 @@ def test_a_manual_group_with_a_null_class_member_credits_nothing_in_a_classed_in
 
 
 def test_a_manual_row_names_models_in_models_yaml(root):
-    manual_file(root, rows=[signoff(devices=(("NEW", None),), passed=("stop",))])
+    manual_file(root, rows=[signoff(devices=(("NEW", None),), calls=bound("stop"))])
     with pytest.raises(SystemExit, match="model 'NEW' is in neither docs/models.yaml"):
         gc.check_models(FakeRegistry(), data())
 
@@ -1018,7 +1026,7 @@ def test_a_class_held_on_some_domains_alone_credits_works_only_from_a_test_in_on
     assert evidence_rows(tested)[0].split(" | ")[2] == "light, switch entities; Light on light, Switch classes"
     # A manual row names no domain, so it counts where its class is unflagged in some domain, as the coverage check
     # lets it cover any (#440's review, L1).
-    manual_file(root, rows=[signoff(tester="jasonmx", devices=(("P1", "Light"),), passed=("turn_on_for",))])
+    manual_file(root, rows=[signoff(tester="jasonmx", devices=(("P1", "Light"),), calls=bound("turn_on_for"))])
     assert classed_card(tested).tested == [f"[Hue lamp]({URL}#hue-lamp) ✔", f"[Plug]({URL}#plug)"]
 
 
@@ -1032,7 +1040,7 @@ def test_a_null_class_device_never_reaches_works_where_the_integration_names_cla
         ran("light", device("LTA009", "1", "Light"), device("P1", "1", None), group=True, role="group"),
         ran("light", device("LTA009", "2", "Light")),
     )
-    manual_file(root, rows=[signoff(tester="jasonmx", devices=(("P1", None),), passed=("turn_on_for",))])
+    manual_file(root, rows=[signoff(tester="jasonmx", devices=(("P1", None),), calls=bound("turn_on_for"))])
     unflagged = AdapterScope(domains=verified("light", "switch"), capabilities=verified("Switch", "Light"))
     assert classed_card(adapter("zha", "turn_on_for", unflagged)).tested == [f"[Hue lamp]({URL}#hue-lamp) ✔"]
     flagged_domain = AdapterScope(
@@ -1078,8 +1086,8 @@ def test_a_group_test_counts_toward_works_only_when_every_members_class_is_unfla
 
 def test_a_manual_device_counts_for_a_class_flagged_adapter_only_with_an_unflagged_class(root):
     rows = [
-        signoff(tester="jasonmx", devices=(("P1", "Switch"), ("LTA009", "Light")), passed=("stop",)),
-        signoff(tester="jasonmx", devices=(("LTA009", None),), passed=("stop",)),  # no class: none
+        signoff(tester="jasonmx", devices=(("P1", "Switch"), ("LTA009", "Light")), calls=bound("stop")),
+        signoff(tester="jasonmx", devices=(("LTA009", None),), calls=bound("stop")),  # no class: none
     ]
     manual_file(root, rows=rows)
     scope = AdapterScope(capabilities=verified("Switch") | experimental("Light"))

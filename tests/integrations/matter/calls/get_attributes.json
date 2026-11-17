@@ -1,0 +1,848 @@
+[
+ {
+  "action": "get_attributes",
+  "integration": "matter",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "other",
+    "data": {
+     "timer": {
+      "ends_at": "2026-10-28T12:00:00.100000+00:00",
+      "remaining_s": 0.1,
+      "turns": "off"
+     }
+    },
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "matter",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/16385",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/16385": 1
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": true
+    }
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "matter",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "wiz_plug",
+    "data": {
+     "timer": {
+      "ends_at": "2026-10-28T12:00:00.100000+00:00",
+      "remaining_s": 0.1,
+      "turns": "off"
+     }
+    },
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "matter",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/16385",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/16385": 1
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": true
+    }
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "matter",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "wiz_plug",
+    "data": {
+     "timer": {
+      "ends_at": "2026-10-28T12:00:12.500000+00:00",
+      "remaining_s": 12.5,
+      "turns": "off"
+     }
+    },
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "matter",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/16385",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/16385": 125
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": true
+    }
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "matter",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "wiz_plug",
+    "data": {},
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "matter",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/16385",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/16385": 0
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": true
+    }
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "matter",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "wiz_plug",
+    "data": {},
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "matter",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/16385",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/16385": 125
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": false
+    }
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "matter",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "wiz_plug",
+    "data": {},
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "matter",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/16385",
+      "node_id": 2
+     }
+    ],
+    {}
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {}
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "matter",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "switch.idle",
+     "switch.idle",
+     false
+    ],
+    [
+     "switch.timed",
+     "switch.timed",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "wiz_plug",
+    "data": {},
+    "detail": null,
+    "entity_id": "switch.idle",
+    "integration": "matter",
+    "member_classes": null,
+    "status": "confirmed"
+   },
+   {
+    "clamped_to": null,
+    "classes": "wiz_plug",
+    "data": {
+     "timer": {
+      "ends_at": "2026-10-28T12:00:05+00:00",
+      "remaining_s": 5.0,
+      "turns": "off"
+     }
+    },
+    "detail": null,
+    "entity_id": "switch.timed",
+    "integration": "matter",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "2/6/16385",
+      "node_id": 2
+     }
+    ],
+    {
+     "2/6/16385": 0
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "2/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "2/6/0": true
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/16385",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/16385": 50
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": true
+    }
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "matter",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "switch.plug",
+     "switch.plug",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "other",
+    "data": {
+     "timer": {
+      "ends_at": "2026-10-28T12:00:00.100000+00:00",
+      "remaining_s": 0.1,
+      "turns": "off"
+     }
+    },
+    "detail": null,
+    "entity_id": "switch.plug",
+    "integration": "matter",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/16385",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/16385": 1
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": true
+    }
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "matter",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "switch.plug",
+     "switch.plug",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "wiz_plug",
+    "data": {
+     "timer": {
+      "ends_at": "2026-10-28T12:00:00.100000+00:00",
+      "remaining_s": 0.1,
+      "turns": "off"
+     }
+    },
+    "detail": null,
+    "entity_id": "switch.plug",
+    "integration": "matter",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/16385",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/16385": 1
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": true
+    }
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "matter",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "switch.plug",
+     "switch.plug",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "wiz_plug",
+    "data": {
+     "timer": {
+      "ends_at": "2026-10-28T12:00:12.500000+00:00",
+      "remaining_s": 12.5,
+      "turns": "off"
+     }
+    },
+    "detail": null,
+    "entity_id": "switch.plug",
+    "integration": "matter",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/16385",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/16385": 125
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": true
+    }
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "matter",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "switch.plug",
+     "switch.plug",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "wiz_plug",
+    "data": {},
+    "detail": null,
+    "entity_id": "switch.plug",
+    "integration": "matter",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/16385",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/16385": 0
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": true
+    }
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "matter",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "switch.plug",
+     "switch.plug",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "wiz_plug",
+    "data": {},
+    "detail": null,
+    "entity_id": "switch.plug",
+    "integration": "matter",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/16385",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/16385": 125
+    }
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {
+     "1/6/0": false
+    }
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "matter",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "switch.plug",
+     "switch.plug",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "wiz_plug",
+    "data": {},
+    "detail": null,
+    "entity_id": "switch.plug",
+    "integration": "matter",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/16385",
+      "node_id": 2
+     }
+    ],
+    {}
+   ],
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/0",
+      "node_id": 2
+     }
+    ],
+    {}
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "matter",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "switch.plug",
+     "switch.plug",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "error",
+    "entity_id": "switch.plug",
+    "integration": "matter",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "matter.MatterClient.read_attribute",
+     [],
+     {
+      "attribute_path": "1/6/16385",
+      "node_id": 2
+     }
+    ],
+    {
+     "raises": "ConnectionError"
+    }
+   ]
+  ]
+ }
+]

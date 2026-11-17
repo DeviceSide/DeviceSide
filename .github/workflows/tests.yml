@@ -84,7 +84,7 @@ jobs:
       - name: Run tests
         env:
           DEVICESIDE_HA_DEPRECATIONS: ${{ runner.temp }}/ha-deprecations.json
-        run: .venv/bin/pytest -n auto tests/ --cov=custom_components/deviceside --cov-report=json
+        run: .venv/bin/pytest -n auto tests/ --transcripts=check --cov=custom_components/deviceside --cov-report=json
 
       # HA's deprecation reports on DeviceSide's code (tests/ha_deprecations.py), for the ha-deprecations job. They
       # fail nothing: HA names the version that breaks the call, often a year out.

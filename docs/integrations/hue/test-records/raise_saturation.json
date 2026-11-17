@@ -1,5 +1,5 @@
 {
-  "format": 2,
+  "format": 3,
   "integration": "hue",
   "action": "raise_saturation",
   "result": "pass",
@@ -8,7 +8,7 @@
     "kind": "rig",
     "commit": "823065ec"
   },
-  "package": "b9fd2fd0c842",
+  "calls": "6be4aca46676ebe940be0e1040404ab72305fec2",
   "home_assistant": "2026.10.4",
   "tests": [
     {

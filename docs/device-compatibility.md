@@ -195,10 +195,10 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 
 | Action | Level | Items | Tested models | Records |
 |---|---|---|---|---|
-| `clear_auto_off` | Verified | light, switch entities; Switch classes | `S3SW-001X8EU` (`Switch`), firmware `20261109-150253/2.2.0-g7968dca` | [record](integrations/shelly/test-records/clear_auto_off.json) |
-| `clear_auto_off` | Documented | Light, CCT, RGB, RGBW, RGBCCT classes | | |
-| `clear_auto_on` | Verified | light, switch entities; Switch classes | `S3SW-001X8EU` (`Switch`), firmware `20261109-150253/2.2.0-g7968dca` | [record](integrations/shelly/test-records/clear_auto_on.json) |
-| `clear_auto_on` | Documented | Light, CCT, RGB, RGBW, RGBCCT classes | | |
+| `clear_auto_off` | Verified | light, switch entities; Switch, RGBCCT classes | `S3SW-001X8EU` (`Switch`), firmware `20261109-150253/2.2.0-g7968dca`<br>`S3BL-C010007AEU` (`RGBCCT`), firmware `20261113-111623/2.2.1-gffa2ea1` | [record](integrations/shelly/test-records/clear_auto_off.json) |
+| `clear_auto_off` | Documented | Light, CCT, RGB, RGBW classes | | |
+| `clear_auto_on` | Verified | light, switch entities; Switch, RGBCCT classes | `S3SW-001X8EU` (`Switch`), firmware `20261109-150253/2.2.0-g7968dca`<br>`S3BL-C010007AEU` (`RGBCCT`), firmware `20261113-111623/2.2.1-gffa2ea1` | [record](integrations/shelly/test-records/clear_auto_on.json) |
+| `clear_auto_on` | Documented | Light, CCT, RGB, RGBW classes | | |
 | `get_attributes` | Verified | light, switch entities; Switch, RGBCCT classes | `S3BL-C010007AEU` (`RGBCCT`), firmware `20261026-122229/2.0.3-g4601943`<br>`S3SW-001X8EU` (`Switch`), firmware `20261109-150253/2.2.0-g7968dca` | [record](integrations/shelly/test-records/get_attributes.json) |
 | `get_attributes` | Documented | Light, CCT, RGB, RGBW classes | | |
 | `lower_brightness` | Verified | light entities; RGBCCT classes; brightness fields | `S3BL-C010007AEU` (`RGBCCT`), firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/lower_brightness.json) |
@@ -207,10 +207,10 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 | `raise_brightness` | Experimental | Light, CCT, RGB, RGBW classes | | |
 | `set_attributes` | Verified | light entities; RGBCCT classes; brightness, color_temp_kelvin, hs_color, rgb_color, xy_color, min_brightness, max_brightness fields | `S3BL-C010007AEU` (`RGBCCT`), firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/set_attributes.json) |
 | `set_attributes` | Documented | Light, CCT, RGB, RGBW classes | | |
-| `set_auto_off` | Verified | light, switch entities; Switch classes | `S3SW-001X8EU` (`Switch`), firmware `20261109-150253/2.2.0-g7968dca` | [record](integrations/shelly/test-records/set_auto_off.json) |
-| `set_auto_off` | Documented | Light, CCT, RGB, RGBW, RGBCCT classes | | |
-| `set_auto_on` | Verified | light, switch entities; Switch classes | `S3SW-001X8EU` (`Switch`), firmware `20261109-150253/2.2.0-g7968dca` | [record](integrations/shelly/test-records/set_auto_on.json) |
-| `set_auto_on` | Documented | Light, CCT, RGB, RGBW, RGBCCT classes | | |
+| `set_auto_off` | Verified | light, switch entities; Switch, RGBCCT classes | `S3SW-001X8EU` (`Switch`), firmware `20261109-150253/2.2.0-g7968dca`<br>`S3BL-C010007AEU` (`RGBCCT`), firmware `20261113-111623/2.2.1-gffa2ea1` | [record](integrations/shelly/test-records/set_auto_off.json) |
+| `set_auto_off` | Documented | Light, CCT, RGB, RGBW classes | | |
+| `set_auto_on` | Verified | light, switch entities; Switch, RGBCCT classes | `S3SW-001X8EU` (`Switch`), firmware `20261109-150253/2.2.0-g7968dca`<br>`S3BL-C010007AEU` (`RGBCCT`), firmware `20261113-111623/2.2.1-gffa2ea1` | [record](integrations/shelly/test-records/set_auto_on.json) |
+| `set_auto_on` | Documented | Light, CCT, RGB, RGBW classes | | |
 | `stop` | Verified | light entities; RGBCCT classes | `S3BL-C010007AEU` (`RGBCCT`), firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/stop.json) |
 | `stop` | Experimental | Light, CCT, RGB, RGBW classes | | |
 | `turn_off_for` | Verified | light, switch entities; Switch, RGBCCT classes | `S3SW-001X8EU` (`Switch`), firmware `20261109-150253/2.2.0-g7968dca`<br>`S3BL-C010007AEU` (`RGBCCT`), firmware `20261026-122229/2.0.3-g4601943` | [record](integrations/shelly/test-records/turn_off_for.json) |
@@ -255,10 +255,15 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 
 | Action | Level | Items | Tested models | Records |
 |---|---|---|---|---|
-| `get_attributes` | Experimental | light entities | `LTD010`, by hand | [by hand](integrations/control4/test-records/_manual.json) |
-| `lower_brightness` | Experimental | light entities; brightness fields | `LTD010`, by hand | [by hand](integrations/control4/test-records/_manual.json) |
-| `raise_brightness` | Experimental | light entities; brightness fields | `LTD010`, by hand | [by hand](integrations/control4/test-records/_manual.json) |
-| `set_attributes` | Experimental | light entities; color_temp_kelvin fields | `LTD010`, by hand | [by hand](integrations/control4/test-records/_manual.json) |
-| `stop` | Experimental | light entities | `LTD010`, by hand | [by hand](integrations/control4/test-records/_manual.json) |
+| `get_attributes` | Experimental | light entities; no_stop, other classes | `LTD010` (`other`), by hand<br>group, by hand | [by hand](integrations/control4/test-records/_manual.json) |
+| `lower_brightness` | Experimental | light entities; other classes; brightness fields | `LTD010` (`other`), by hand<br>group, by hand | [by hand](integrations/control4/test-records/_manual.json) |
+| `raise_brightness` | Experimental | light entities; other classes; brightness fields | `LTD010` (`other`), by hand<br>group, by hand | [by hand](integrations/control4/test-records/_manual.json) |
+| `set_attributes` | Experimental | light entities; no_stop, other classes; color_temp_kelvin fields | `LTD010` (`other`), by hand<br>group, by hand | [by hand](integrations/control4/test-records/_manual.json) |
+| `stop` | Experimental | light entities; other classes | `LTD010` (`other`), by hand<br>group, by hand | [by hand](integrations/control4/test-records/_manual.json) |
+
+| No known method | Why | Source |
+|---|---|---|
+| lights whose driver can't stop a ramp (`lower_brightness`, `raise_brightness`) | The light's driver says it can't stop a ramp, so a raise or lower couldn't be halted | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/control4/index.md#lights-whose-driver-cant-stop-a-ramp) |
+| lights whose driver can't stop a ramp (`stop`) | The light's driver says it can't stop a ramp, and it ignores the stop | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/control4/index.md#lights-whose-driver-cant-stop-a-ramp) |
 
 <!-- evidence:end -->

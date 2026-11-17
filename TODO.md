@@ -8,7 +8,7 @@ as issues.
 
 `v0.0.1` is out, and HACS accepted the submission ([hacs/default#12611](https://github.com/hacs/default/pull/12611))
 on 4 Nov 2026. v0.1.0 is next: everything lands on `main`, and release candidates are cut from it. It ships under the
-[evidence rules](docs/evidence.md): one sign-off per integration changed since v0.0.1. The
+[evidence rules](docs/evidence.md): a sign-off of every action, as v0.0.1 has no call transcripts. The
 [evidence-rules plan](docs/plans/2026-11-12-evidence-rules.md) lifted the freeze at `075895f`; with its step 5
 landed, the old gates are gone and RCs can be cut again. The items below run in this order.
 
@@ -111,8 +111,9 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   repo-maintainer file. Add `IntegrationInfo` setup and teardown hooks. Before the runs.
 - [x] **Pre-run audit**: `/rc-audit` over `b025363..HEAD`, its record replacing `docs/audits/v0.1.0rc1.md`, and its
   fixes landed, so no run repeats for a fix the audit would have found. The RC's second pass covers what lands after.
-- [ ] **Sign-offs** for v0.1.0, one per integration changed since v0.0.1 (`check_release.py --signoffs`), each a rig run
-  from ha-rig `main` (its records are format 2; format 1 records, converted from markdown, count for none). The runs for
+- [ ] **Sign-offs** for v0.1.0, one per action (`check_release.py --signoffs`), each a rig run from ha-rig `main`. Only
+  format 3 records, bound to the call transcripts, sign off: the format 2 runs below are rebound where their calls are
+  shown unchanged since, else rerun (#486). The runs for
   the formerly release-flagged adapters need these `--profile lab` cases, run watched, the A60 visiting each network:
   Hue `saturation_down_stop`, `halts_brightness_and_saturation` and `sets_color_while_off`; ZHA `hue_cycle_stop`,
   `saturation_down_stop` and `sets_color_while_off`; Z2M `halts_a_lower_to_off`, `hue_cycle_stop`,
@@ -131,13 +132,17 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   - [x] Zigbee2MQTT, run B: `turn_on_for` and `get_attributes` (the bulb, and part 3's plugs, one per maker string),
     and `config_entry`, which any package change reopens. No Zigbee2MQTT change between runs A and B. Landed with
     #465; `config_entry` has no Zigbee2MQTT case (`only: [hue]`), so it writes no record there.
-- [x] **Partial reruns** (`docs/evidence.md`, tenet 9): `check_release.py --signoffs` judges each record by its own
-  package tree, which stands while only other adapters' modules changed since; a `no_call_changed` row may name the
-  `actions` whose records it carries across its commit's change; `--reruns` lists the suites to rerun. Open, in
-  ha-rig: its run selection reads `--json`, the integrations; reading `--reruns` instead lets it rerun only the
-  reopened suites.
+- [x] **Partial reruns** (`docs/evidence.md`, tenet 9): `check_release.py --signoffs` judges each action's evidence
+  by its call transcript, which stands while every segment it was tested on is unchanged (#486); `--reruns` lists the
+  suites to rerun. Open, in ha-rig: writing format 3 records, and its run selection reads `--json`, the
+  integrations; reading `--reruns` instead lets it rerun only the reopened suites.
 - [ ] **Release notes**: hand-written v0.1.0 notes in `notes/`, signed off by the repo maintainers, after the RC
   installs cleanly and before `cut-release`, so they describe what the RC ships.
+- [ ] **v0.0.1 migration Fix, live** (#498): just before `cut-release`, as only unit tests cover the one repair that
+  deletes files. On the household HA, install v0.0.1 by hand and add it, then add DeviceSide and run the
+  `legacy_device_side` Fix: the `device_side` entry, folder and actions are gone with no restart,
+  `legacy_device_side_calls` lists an automation still calling `device_side.`, and neither repair returns after a
+  restart once the call is renamed.
 - [ ] **v0.1.0**: the `/rc-audit` second pass over what landed after the pre-run audit, the RC and its HACS install,
   then `cut-release` with every integration signed off (`check_release.py --signoffs`). The release steps are in the
   `release` skill; the release body gets the signed-off notes.

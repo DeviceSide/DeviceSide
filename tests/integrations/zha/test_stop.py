@@ -19,15 +19,10 @@ from ...conftest import advance, allow_experimental, result, wall_clock_now
 
 DISPATCHER = "custom_components.deviceside.core.dispatcher"
 
-pytestmark = pytest.mark.usefixtures("setup_production", "clock")
+pytestmark = pytest.mark.usefixtures("setup_production", "clock", "bulbs")
 
 LEVEL_STOP = (0x0008, 0x03, {})
 STOP_MOVE_STEP = (0x0300, 0x47, {"options_mask": 0, "options_override": 0})
-
-
-@pytest.fixture(autouse=True)
-def zcl_reads(bulbs):
-    return bulbs
 
 
 async def test_a_lit_light_gets_level_stop_and_a_refresh_at_once(hass, commands, refreshes):

@@ -1,7 +1,7 @@
 import logging
 import re
+import sys
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
 
 import probatio
 import pytest
@@ -18,7 +18,7 @@ from custom_components.deviceside.integrations.zha.fade import transition_cache
 
 from ...conftest import Clock, leaked, unload_mock_entries
 from ...conftest import call as call_service
-from ...fixtures.zha import HUE, IEEE, add_zha_entity, zha_entry, zha_group, zigpy_devices
+from ...fixtures.zha import HUE, IEEE, ZIGPY_TYPES, Gateway, add_zha_entity, gateway_of, zha_entry, zha_group
 
 SENT = {"status": "sent", "integration": "zha"}
 # Another brand's bulb, which no rule places: the default class.
@@ -46,25 +46,20 @@ def no_ieee_logged(caplog):
 
 
 @pytest.fixture(autouse=True)
-def zigpy_device(hass, monkeypatch):
-    """zcl.zigpy_device, answering from the zigpy devices add_zha_entity fabricates."""
-    monkeypatch.setattr(zcl, "zigpy_device", lambda hass, ieee: zigpy_devices(hass).get(ieee))
-
-
-@pytest.fixture(autouse=True)
-def hue_turn_on(monkeypatch) -> AsyncMock:
-    """zcl.hue_turn_on on lights without Hue's cluster, as the fixtures' lights are unless a test says otherwise."""
-    fake = AsyncMock(return_value=False)
-    monkeypatch.setattr(zcl, "hue_turn_on", fake)
-    return fake
+def zha_gateway(hass, monkeypatch) -> Gateway:
+    """zha's gateway in hass.data, as zha sets it up, holding the zigpy devices add_zha_entity fabricates, and the
+    zigpy.types zcl imports: zcl's helpers run for real against them (tests/fixtures/zha.py). The fixtures' lights
+    have no Hue cluster unless a test adds one."""
+    gateway = gateway_of(hass)
+    monkeypatch.setitem(hass.data, "zha", SimpleNamespace(gateway_proxy=SimpleNamespace(gateway=gateway)))
+    monkeypatch.setitem(sys.modules, "zigpy.types", ZIGPY_TYPES)
+    return gateway
 
 
 @pytest.fixture
-def zha_groups(monkeypatch) -> dict:
+def zha_groups(zha_gateway) -> dict:
     """The fake zha gateway's groups by ID; the gateway answers get_group from it."""
-    groups: dict = {}
-    monkeypatch.setattr(zcl, "gateway", lambda hass: SimpleNamespace(get_group=groups.get))
-    return groups
+    return zha_gateway.groups
 
 
 @pytest.fixture
@@ -174,23 +169,6 @@ def two_light_group(hass, zha_groups):
     return entry
 
 
-class Bulbs:
-    """zcl.read_attributes for raise, lower and stop: OnOff reads off (a soft off has run), and CurrentLevel answers
-    only where a test sets `levels`, so a fade's ramp is fitted to a read only then."""
-
-    def __init__(self) -> None:
-        self.on = False
-        self.levels: dict[str, int] = {}
-        self.read = AsyncMock(side_effect=self._read)
-
-    async def _read(self, hass, addr, cluster_id, attributes, optional=()):
-        if cluster_id == zcl.ON_OFF_CLUSTER:
-            return {zcl.ON_OFF: self.on}
-        if addr.ieee not in self.levels:
-            raise LookupError("no answer")
-        return {zcl.CURRENT_LEVEL: self.levels[addr.ieee]}
-
-
 # The A60's ColorCapabilities: hue and saturation, enhanced hue, color loop, xy and color temperature (probe 13a).
 A60_CAPABILITIES = 0x1F
 # A color light with xy and color temperature only.
@@ -198,16 +176,17 @@ XY_ONLY = 0x18
 
 
 @pytest.fixture
-def bulbs(monkeypatch) -> Bulbs:
-    fake = Bulbs()
-    monkeypatch.setattr(zcl, "read_attributes", fake.read)
-    monkeypatch.setattr(zcl, "color_capabilities", AsyncMock(return_value=A60_CAPABILITIES))
-    return fake
+def bulbs(zha_gateway) -> Gateway:
+    """Every light, for raise, lower and stop: OnOff reads off (a soft off has run), ColorCapabilities reads the A60's,
+    and CurrentLevel answers only where a test sets a light's own, so a fade's ramp is fitted to a read only then."""
+    zha_gateway.answers[zcl.ON_OFF_CLUSTER] = {zcl.ON_OFF: False}
+    zha_gateway.answers[zcl.COLOR_CLUSTER] = {zcl.COLOR_CAPABILITIES: A60_CAPABILITIES}
+    return zha_gateway
 
 
-def on_off_reads(read) -> list:
+def on_off_reads(gateway: Gateway) -> list:
     """The OnOff reads among the reads, leaving out the Level reads each brightness fade fits its ramp to."""
-    return [call for call in read.await_args_list if call.args[2] == zcl.ON_OFF_CLUSTER]
+    return [read for read in gateway.reads if read[1] == zcl.ON_OFF_CLUSTER]
 
 
 def xy(hue: float, saturation: float) -> dict:

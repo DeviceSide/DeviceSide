@@ -1,5 +1,5 @@
 {
-  "format": 2,
+  "format": 3,
   "integration": "matter",
   "action": "turn_on_for",
   "result": "pass",
@@ -8,7 +8,7 @@
     "kind": "rig",
     "commit": "323e24d5"
   },
-  "package": "bb3d33515fc7",
+  "calls": "755253c6516394df30a12adee962cb64435e358e",
   "home_assistant": "2026.10.4",
   "tests": [
     {

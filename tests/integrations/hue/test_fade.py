@@ -2,6 +2,7 @@
 or a report from elsewhere does to the next move."""
 
 import pytest
+from aiohue.v2 import HueBridgeV2
 from aiohue.v2.controllers.events import EventType
 from homeassistant.exceptions import HomeAssistantError
 from pytest_homeassistant_custom_component.common import async_mock_service
@@ -174,16 +175,16 @@ async def test_a_write_mid_move_starts_the_next_move_from_the_report(hass, bridg
     assert bridge.puts[-1] == ("light/light-1", {"on": {"on": False}, "dynamics": {"duration": 8000}})
 
 
-async def test_the_fade_is_timed_from_when_the_write_was_sent(hass, bridge, clock):
+async def test_the_fade_is_timed_from_when_the_write_was_sent(hass, bridge, clock, monkeypatch):
     # The bridge starts the fade once it has the write; its reply comes back later.
     entity_id = await lamp(hass, bridge, brightness_pct=20.0)
     request = bridge.api.request
 
-    async def slow(*args, **kwargs):
+    async def slow(api, *args, **kwargs):
         clock.now += 0.5
         return await request(*args, **kwargs)
 
-    bridge.api.request = slow
+    monkeypatch.setattr(HueBridgeV2, "request", slow)
     await call(hass, "raise_brightness", {"entity_id": entity_id, "sweep_time": 10})
 
     assert transition_cache(hass).value("light-1", "brightness", 0.0) == pytest.approx(25.0)

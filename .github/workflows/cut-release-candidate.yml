@@ -4,7 +4,8 @@ name: Cut release candidate
 # soaking RC or a release needs a fix without what main has gained since (cut that branch from its tag). Requires a
 # version above the latest release, manifest.json at X.Y.Z, green CI on the head, and docs/audits/<rc>.md covering
 # every commit since the previous RC. An RC needs no sign-off (docs/evidence.md, Release gate): its notes ask for testers
-# of each integration changed since the last release without one, and of each Untested fix (check_release --notes).
+# of each integration with an action changed since the last release without one, and of each Untested fix
+# (check_release --notes).
 # Tags pushed with GITHUB_TOKEN start no other workflow, so anything an RC needs runs here.
 #
 # Two jobs, so the code `uv sync` installs never shares a runner with write access: `check` runs the gates with a
