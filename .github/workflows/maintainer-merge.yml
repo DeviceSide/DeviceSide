@@ -186,12 +186,12 @@ jobs:
 
   # A push after `/merge` must not merge the new head unreviewed. Event values reach the shell only through env.
   guard:
-    if: github.event_name == 'pull_request_target'
+    # `/merge` serves only `main`, and the environment's key is limited to it.
+    if: github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     environment: maintainer-merge
-    permissions:
-      pull-requests: write
+    permissions: {} # every call uses the App token
     # Its own group per PR: never the `/merge` runs', which it must not cancel or wait behind.
     concurrency:
       group: maintainer-merge-guard-${{ github.event.pull_request.number }}
