@@ -67,10 +67,9 @@ integrations, `type`, optional `section`; a model only one integration names is 
 `no_known_method` and `not_built` entries that name their `integrations` (`what`, `reason`, `source`, optional
 `section`), a `not_built` one for a device today's call harms on an integration that doesn't class it yet, as an
 unharmed one needs no entry. Each bundle's devices.yaml holds its integration's: `models` (as above), `column` and
-`column_order` (the README feature table's, read by gen_features, and the Requirements line's), `card_name`
-(optional: the card's and that line's name for the integration, its title by default), `requires` (shown after
-the card's name),
-`capabilities` (a `phrase` and `section` per class a card line names, or domain where the integration names no
+`column_order` (the README feature table's, read by gen_features, and the Requirements line's), `requirements_name`
+(optional: the Requirements line's name for the integration, its title by default), `requires` (shown after the card's
+name), `capabilities` (a `phrase` and `section` per class a card line names, or domain where the integration names no
 classes, and per class a scope lists as not built yet; `domains`, a phrase per entity domain, for a class the card
 splits), `sections` (optional: a `phrase`, and `domains`, per page section, for a line holding all its classes, or
 with `variants`, what to check to tell its classes apart) and
@@ -165,7 +164,7 @@ INTEGRATIONS_URL = "https://github.com/DeviceSide/DeviceSide/blob/main/docs/inte
 # The keys each devices.yaml entry may hold, so a typo fails instead of being ignored.
 SHARED_KEYS = {"models", "no_known_method", "not_built"}  # each a list
 BUNDLE_KEYS = {
-    "card_name",
+    "requirements_name",
     "column",
     "column_order",
     "requires",
@@ -209,7 +208,7 @@ class Data:
     section_phrases: dict[str, dict[str, dict]] = field(default_factory=dict)
     # models.yaml's devices not built yet that today's call harms, on integrations whose code doesn't class them yet.
     not_built: list[dict] = field(default_factory=list)
-    # Each integration's card name (devices.yaml `card_name`, else its title) and its `column_order`.
+    # Each integration's Requirements name (devices.yaml `requirements_name`, else its title) and its `column_order`.
     names: dict[str, str] = field(default_factory=dict)
     order: dict[str, int] = field(default_factory=dict)
     # Every heading an entry links to, with the integration whose card links it (None: any card, as for a model).
@@ -264,10 +263,10 @@ def load(registry: AdapterRegistry, models: Path = MODELS) -> Data:
 
 
 def read_names(raw: dict, key: str, data: dict, where: str) -> None:
-    """A bundle's `card_name` and `column_order`, which the card and the Requirements line use."""
-    if "card_name" in data:
-        need(data, where, ("card_name",))
-        raw["names"][key] = data["card_name"]
+    """A bundle's `requirements_name` (the Requirements line's) and `column_order`."""
+    if "requirements_name" in data:
+        need(data, where, ("requirements_name",))
+        raw["names"][key] = data["requirements_name"]
     if isinstance(data.get("column_order"), int):
         raw["order"][key] = data["column_order"]
 
@@ -1150,7 +1149,7 @@ def mark_entries(integration_adapters: list) -> list[str]:
 def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: Data) -> Card:
     info = registry.integrations[key]
     result = Card(
-        title=data.names.get(key, info.title),
+        title=info.title,
         requires=data.requires.get(key),
         url=f"{BLOB_URL}{page(key)}" if key in data.pages else None,
         maintainers=info.maintainers,
@@ -1226,7 +1225,7 @@ def cards(registry: AdapterRegistry, data: Data) -> str:
 
 
 def requirements(registry: AdapterRegistry, data: Data) -> str:
-    """The README's Requirements line: each integration's card name, in `column_order`, with no "or"."""
+    """The README's Requirements line: each integration's `requirements_name` or title, in `column_order`, no "or"."""
     names = [
         data.names.get(key, info.title)
         for key, info in sorted(registry.integrations.items(), key=lambda item: data.order.get(item[0], 0))

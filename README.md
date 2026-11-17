@@ -55,7 +55,7 @@ The compatibility section below shows which devices are known or likely to work.
 
 🟢 works · ✔ verified on automated rig · 🟡 should work: same call pattern as a tested device · 🌱 experimental: may not work; turn on in DeviceSide's Configure > Settings and [report whether it does](https://github.com/DeviceSide/DeviceSide/issues/new?template=device_report.yml) · 🔴 no known method: no known command works on it
 
-**[Zigbee2MQTT via MQTT](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md)**
+**[Zigbee2MQTT](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md)**
 
 - [native groups](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#native-groups) ✔: 🟢 turn on with timer, smooth dimming, smooth saturation, smooth hue, set without turning on, get attributes
 - [Gledopto lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md#gledopto): 🌱 turn on with timer, smooth dimming, smooth saturation, smooth hue, set without turning on, get attributes

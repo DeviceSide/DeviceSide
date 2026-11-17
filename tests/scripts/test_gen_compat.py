@@ -651,9 +651,9 @@ def test_check_fails_on_a_stale_readme_or_page_until_they_are_regenerated(root, 
     assert "9.9.9" in (root / "page.md").read_text()
 
 
-def test_requirements_list_each_card_name_in_column_order_with_no_or(root, monkeypatch):
+def test_requirements_list_each_requirements_name_in_column_order_with_no_or(root, monkeypatch):
     registry = FakeRegistry(adapter("zha", "stop"))
-    bundles = {**BUNDLE, "hue": {"card_name": "Hue via Bridge", "column": "Hue", "column_order": 0}}
+    bundles = {**BUNDLE, "hue": {"requirements_name": "Hue via Bridge", "column": "Hue", "column_order": 0}}
     write_files(root, registry, monkeypatch)
     write_bundles(root, monkeypatch, bundles)
     gc.main([], registry, root / "page.md", root / "README.md", root / "models.yaml")
