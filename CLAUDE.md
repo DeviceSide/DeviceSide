@@ -93,7 +93,8 @@ Integration and family maintainers hold Triage (`docs/repo-maintainers.md`), so 
 CONTRIBUTING's Fast track.
 
 **Changing someone else's code:** before you change a package or family whose maintainers don't include you, its
-maintainers hear of it first; never wait on their approval (⚠️ Unmaintained covers one who's gone).
+maintainers hear of it first; a merge needs their approval only when a repo maintainer chooses to wait for it
+(⚠️ Unmaintained covers one who's gone).
 `owner-notice.yml` mentions them on any PR that changes their code, standing in for the review request Triage doesn't
 get. After any audit report (`audit-code`, also inside `rc-audit`), run the `owner-findings` skill before acting on a
 finding: it marks the findings in someone else's code and routes them to its maintainers. `scripts/owners.py` says who
