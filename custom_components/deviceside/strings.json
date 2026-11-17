@@ -113,7 +113,7 @@
     },
     "legacy_device_side_calls": {
       "title": "Automations and scripts still call Device Side v0.0.1",
-      "description": "Device Side v0.0.1 is removed, but these automations and scripts still call its actions:\n\n{items}\n\nIn each, change `device_side.turn_on_for` to `deviceside.turn_on_for`, and `device_side.turn_off_for` to `deviceside.turn_off_for`. Their fields are the same. This repair clears once none are left. It can't see calls from blueprints, dashboards, or tools outside Home Assistant's automations and scripts, such as Node-RED or AppDaemon."
+      "description": "Device Side v0.0.1's config entry is removed, but these automations and scripts still call its actions:\n\n{items}\n\nIn each, change `device_side.turn_on_for` to `deviceside.turn_on_for`, and `device_side.turn_off_for` to `deviceside.turn_off_for`. Their fields are the same. This repair clears once none are left. It can't see calls from blueprints, dashboards, or tools outside Home Assistant's automations and scripts, such as Node-RED or AppDaemon."
     },
     "migrate_hue_dimmer": {
       "title": "Hue Smooth Dimming can be replaced by DeviceSide",
