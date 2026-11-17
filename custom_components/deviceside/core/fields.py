@@ -21,8 +21,8 @@ if TYPE_CHECKING:  # models.py imports this module (LIGHT_FIELDS)
 
 # Each action's fields by the light capability they need. Core converts between color forms before it filters, so a
 # color is lacked only without any color mode, and a color temperature only without that or a color mode.
-# Brightness keeps its literal names: DeviceSide's brightness is a percent, and HA's ATTR_BRIGHTNESS is 0-255, so HA's
-# constant would mislead. Same for the limits. The other fields are HA's own names.
+# Brightness and its limits are DeviceSide's names, not HA's ATTR_BRIGHTNESS: DeviceSide's brightness is a percent, HA's
+# is 0-255. The other fields are HA's own names.
 BRIGHTNESS_FIELD = "brightness"
 BRIGHTNESS = frozenset({BRIGHTNESS_FIELD, "min_brightness", "max_brightness"})
 COLORS = frozenset({ATTR_HS_COLOR, ATTR_RGB_COLOR, ATTR_XY_COLOR})
