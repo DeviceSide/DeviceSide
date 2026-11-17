@@ -22,11 +22,10 @@ invite them to Triage, as for an integration's maintainers.
 
 - **Ruleset on `main` and `release/*`:** changes go through a pull request, with no required approvals. The required
   checks (`lint`, `secrets-history`, `pytest`, `pytest-without-family-tests`, `validate-hacs`, `validate`) must pass,
-  with no up-to-date rule: a merge queue (squash, all-green grouping, up to 5 built and merged at once, no minimum
-  wait, a 60-minute check timeout) runs them again on the pull request merged onto current `main`, so `main` stays
-  green and no one updates a branch by hand. The four workflows behind those checks run on `merge_group`. Force
-  pushes are blocked. There are no bypass actors. To roll the queue back, remove the merge queue rule and turn the
-  up-to-date rule back on: `/merge` then queues nothing, so a repo maintainer merges until it's restored.
+  with no up-to-date rule and no merge queue, so a branch behind `main` merges without an update. The accepted risk:
+  two green pull requests can clash on `main`, and the push run on `main` shows it. To add a queue later, revert #501
+  (restoring the `merge_group` triggers and the queue wording), then add the merge queue rule. Force pushes are blocked.
+  There are no bypass actors.
   `pytest-without-family-tests` (`tests.yml`) runs the tests with every family's and the catalog's left out, so a
   family maintainer's test code can't silence the integration's on a `/merge`.
 - **Ruleset on tags:** only a deploy key can create, move or delete a tag. The cut workflows'
@@ -39,7 +38,7 @@ invite them to Triage, as for an integration's maintainers.
   it, to check and comment on fork PRs. GitHub is changing its default to block it on public repos (a brownout on
   2026-11-16 failed both with `startup_failure` and no jobs), so the policy must allow it, or both stop running.
 - **Allow auto-merge (repo, General):** `/merge` turns on auto-merge, and Renovate's digest and patch updates use
-  it, to join the merge queue once their checks pass.
+  it, to merge once their checks pass.
 
 ## `/merge`
 

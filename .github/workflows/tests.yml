@@ -2,8 +2,6 @@ name: Tests
 
 on:
   pull_request:
-  # The merge queue's test of the pull request on top of main: the ruleset's required checks.
-  merge_group:
   push:
     branches:
       - main
@@ -12,17 +10,17 @@ on:
 permissions:
   contents: read
 
-# A new push to a pull request cancels its older run. Push, merge-queue, schedule and dispatch runs each get their own
-# group: release gates read push runs, the merge queue its own, and a shared group would cancel a queued one.
+# A new push to a pull request cancels its older run. Push, schedule and dispatch runs each get their own group:
+# release gates read push runs, and a shared group would cancel a queued one.
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # A pull request touching only *.md files and docs/ (other than what the generators read) skips pytest. A push or a
-  # merge-queue run never does: release gates read a push's runs, the queue's run is what lands on main, and a skipped
-  # job concludes success. The skip happens in the job, not the trigger: the ruleset requires the "pytest" check, which
-  # a skipped job satisfies and a workflow that never ran leaves pending.
+  # A pull request touching only *.md files and docs/ (other than what the generators read) skips pytest. A push never
+  # does: release gates read a push's runs, and a skipped job concludes success. The skip happens in the job, not the
+  # trigger: the ruleset requires the "pytest" check, which a skipped job satisfies and a workflow that never ran
+  # leaves pending.
   changes:
     runs-on: ubuntu-latest
     outputs:

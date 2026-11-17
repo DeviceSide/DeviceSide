@@ -3,8 +3,8 @@ name: Maintainer merge
 # An integration or family maintainer's `/merge <sha>` comment merges a pull request whose every file they own
 # (scripts/check_maintainer_merge.py says who owns what, and what it refuses). The SHA is the head they reviewed: the
 # merge turns on auto-merge pinned to it, so a push after the comment cancels it. The merge goes through the ruleset like
-# any other: once the required checks pass, the ruleset's merge queue tests the pull request on top of current main and
-# squash-merges it, so a branch behind main needs no update. It merges as the maintainer-merge GitHub App, not
+# any other: GitHub squash-merges once the required checks pass (at once if they already have), and the ruleset has no
+# up-to-date rule, so a branch behind main needs no update. It merges as the maintainer-merge GitHub App, not
 # GITHUB_TOKEN: a push from GITHUB_TOKEN starts no workflows, and tests.yml and lint.yml run on push to main.
 # issue_comment runs the default branch's workflow and script, so a PR can't edit its own check. No step runs the
 # PR's code: its head is fetched and read with `git show`, as data. The App's key is in the maintainer-merge
@@ -93,13 +93,12 @@ jobs:
         with:
           app-id: ${{ vars.MAINTAINER_MERGE_APP_ID }}
           private-key: ${{ secrets.MAINTAINER_MERGE_APP_KEY }}
-          # Turning on auto-merge needs pull requests write; the merge queue's squash needs contents write.
+          # Turning on auto-merge needs pull requests write; the squash merge itself needs contents write.
           permission-contents: write
           permission-pull-requests: write
 
-      # Auto-merge, not a merge: it waits for the required checks, then the merge queue tests the pull request on top
-      # of main and squash-merges it (the queue's method; the one passed here is ignored on a queue branch).
-      # expectedHeadOid pins it to the reviewed head.
+      # `gh pr merge --auto` merges at once when the pull request is already mergeable, and otherwise turns on
+      # auto-merge, which squash-merges when the required checks pass. --match-head-commit pins it to the reviewed head.
       - name: Turn on auto-merge
         id: merge
         env:
@@ -108,28 +107,39 @@ jobs:
           NUMBER: ${{ github.event.issue.number }}
           HEAD_SHA: ${{ needs.check.outputs.head }}
         run: |
-          # shellcheck disable=SC2016 # $pr and $head are GraphQL variables, not shell ones
-          query='mutation($pr: ID!, $head: GitObjectID!) {
-            enablePullRequestAutoMerge(input: {pullRequestId: $pr, expectedHeadOid: $head, mergeMethod: SQUASH}) {
-              clientMutationId
-            }
-          }'
-          id=$(gh pr view "$NUMBER" --json id --jq .id)
-          if ! out=$(gh api graphql -f query="$query" -f pr="$id" -f head="$HEAD_SHA" 2>&1); then
+          if ! out=$(gh pr merge "$NUMBER" --auto --squash --match-head-commit "$HEAD_SHA" 2>&1); then
             echo "$out"
             delim=$(openssl rand -hex 16)
             printf 'error<<%s\n%s\n%s\n' "$delim" "$out" "$delim" >> "$GITHUB_OUTPUT"
             exit 1
           fi
 
-      - name: Say it's queued
+      # One comment, true in each case: merged now, armed with checks pending, or armed with a required check failed.
+      # Read with the App's token, which can see checks; github.token here has pull requests write only.
+      - name: Say what happens
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ steps.app.outputs.token }}
           GH_REPO: ${{ github.repository }}
           NUMBER: ${{ github.event.issue.number }}
         run: |
-          gh pr comment "$NUMBER" --body "✅ \`/merge\`: queued. Once its required checks pass, the merge queue tests it on \
-          top of main and squash-merges it. A push to the branch cancels this; if the queue drops it, the timeline says why."
+          # The base's required checks, read from its rules: an optional check failing is no reason to warn. A rules
+          # read that fails leaves failed at 0, and the neutral text.
+          failed=0
+          if required=$(gh api "repos/$GH_REPO/rules/branches/main" --jq \
+            '[.[] | select(.type == "required_status_checks") | .parameters.required_status_checks[].context]'); then
+            failed=$(gh pr view "$NUMBER" --json statusCheckRollup | jq --argjson req "$required" \
+              '[.statusCheckRollup[]? | select((.name // .context) as $n | $req | index($n))
+                | select((.conclusion // .state) | IN("FAILURE", "ERROR", "TIMED_OUT", "STARTUP_FAILURE"))] | length') || failed=0
+          fi
+          state=$(gh pr view "$NUMBER" --json state --jq .state)
+          if [ "$state" = MERGED ]; then
+            msg="✅ \`/merge\`: merged."
+          elif [ "$failed" -gt 0 ]; then
+            msg="⚠️ \`/merge\`: auto-merge is on, but a required check failed; it merges once the author pushes a fix and the checks pass. Comment \`/merge <sha>\` again with the new head if the push cancels it."
+          else
+            msg="✅ \`/merge\`: squash-merges once its required checks pass. A push to the branch cancels this."
+          fi
+          gh pr comment "$NUMBER" --body "$msg"
 
       # The likely causes first, each with what to do; never "update the branch", which a Triage maintainer can't.
       - name: Say why not
@@ -149,6 +159,6 @@ jobs:
           elif [ "$head" != "$HEAD_SHA" ]; then
             why="the head moved to ${head:0:7} after your comment. Review it and comment \`/merge ${head:0:7}\`."
           else
-            why="GitHub refused to queue it${ERROR:+: $ERROR}. Details: $RUN"
+            why="GitHub refused to merge it${ERROR:+: $ERROR}. Details: $RUN"
           fi
           gh pr comment "$NUMBER" --body "❌ \`/merge\`: $why"
