@@ -203,6 +203,9 @@ jobs:
         with:
           app-id: ${{ vars.MAINTAINER_MERGE_APP_ID }}
           private-key: ${{ secrets.MAINTAINER_MERGE_APP_KEY }}
+          # Turning auto-merge off needs contents write as well: with pull requests write alone, GitHub refuses
+          # `disablePullRequestAutoMerge` ("Resource not accessible by integration").
+          permission-contents: write
           permission-pull-requests: write
 
       # gh reads the enabler as `app/<slug>` or `<slug>`, with `[bot]` on some paths: compare the bare slug.
