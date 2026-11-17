@@ -25,14 +25,14 @@ Code and docs use these terms. Each one's rules live where its link points.
 - **Catalog**: the Zigbee strings and sourced firmware facts that two integrations' families of one key both read
   (`custom_components/deviceside/zigbee/<family>.py`): patterns and facts only, no levels and no calls.
 - **Placed**: a device whose class rests on everything the integration will report about it; until then its class is
-  `Unplaced` (`core/scope.py`). Rules: [evidence.md](evidence.md#no-known-method-not-built-yet-untested); when a
+  `Unplaced` (`core/scope.py`). Rules: [evidence.md](evidence.md#no-known-method-not-built-yet-on-trial); when a
   device counts as placed: each integration's page, as [Zigbee2MQTT's](integrations/zigbee2mqtt/index.md#device-classes).
 - **Not supported**: DeviceSide can't do this action for the target (`target_not_supported`,
   `integration_not_supported`); for a class, either no known method or not built yet.
 - **No known method**: a class no known call works on for an action, a device limit as far as anyone knows. Rules:
-  [evidence.md](evidence.md#no-known-method-not-built-yet-untested).
+  [evidence.md](evidence.md#no-known-method-not-built-yet-on-trial).
 - **Not built yet**: a class a known or plausible call would serve for an action, and nobody has built it. Rules:
-  [evidence.md](evidence.md#no-known-method-not-built-yet-untested).
+  [evidence.md](evidence.md#no-known-method-not-built-yet-on-trial).
 - **Field**: an action parameter, e.g. `brightness`.
 - **Entity domain**: light, switch. "Domain" alone is fine where unambiguous.
 - **Scope**: the entity domains, classes and fields an adapter is built for, each at its level; outside it, a call is
@@ -176,7 +176,7 @@ adapter has an `AdapterScope`. What each can declare (`core/scope.py` holds each
 | `AdapterScope.domains`, `fields` | The entity domains and fields the adapter is built for, each at its level; outside them a call is refused (`domain_not_tested`, `fields_not_tested`). Flagging every domain flags the whole adapter. | [evidence.md](evidence.md#levels); `Adapter.supports` in `core/adapter.py` |
 | `AdapterScope.drops`, `unlisted` | Fields the integration can never send, dropped as a lacked field is; fields its devices take though the light's state says they can't. | [action-behavior.md](action-behavior.md#when-to-stop-an-automation): Lacks a field, Unlisted fields depart from core |
 | `AdapterScope.capabilities` | A level per class, and per domain where its entry names some (`OnDomains`). | [evidence.md](evidence.md#device-classes) |
-| `AdapterScope.no_known_method`, `not_built` | A class refused with a reason and a source (`NoKnownMethod`, `NotBuilt`). A class the integration names that the scope leaves out of `capabilities`, `no_known_method` and `not_built` is not built yet and refused; `not_built` holds only a class today's call would harm, on an action whose failure harms (`Action.failure_harms`, which the registry checks). A class is in at most one of the three. | [evidence.md](evidence.md#no-known-method-not-built-yet-untested); `AdapterScope.refusal` and `harms` in `core/scope.py` |
+| `AdapterScope.no_known_method`, `not_built` | A class refused with a reason and a source (`NoKnownMethod`, `NotBuilt`). A class the integration names that the scope leaves out of `capabilities`, `no_known_method` and `not_built` is not built yet and refused; `not_built` holds only a class today's call would harm, on an action whose failure harms (`Action.failure_harms`, which the registry checks). A class is in at most one of the three. | [evidence.md](evidence.md#no-known-method-not-built-yet-on-trial); `AdapterScope.refusal` and `harms` in `core/scope.py` |
 | `AdapterScope.own_calls` | A class's own call (`OwnCall`), which the dispatcher hands the adapter in place of `execute`, optionally with its own duration limits (else the scope's `duration`). Each class in it must be in `capabilities`. | [evidence.md](evidence.md#the-split-rule); `OwnCall` in `core/scope.py` |
 | `AdapterScope.duration` | The durations the call can carry (`DurationLimits`): a request outside them is clamped, and the result says so. | [action-behavior.md](action-behavior.md#when-to-stop-an-automation): A value the device can't reach; `core/duration.py` |
 | `AdapterScope.confirmable`, `options`, `notes` | Declarations core doesn't act on, read by the rig: `confirmable`, that a run expects status `confirmed`, not `sent`; `options`, the DeviceSide options that change what it does (`predicted_state`), whose rig records are `<action>-<option>.json`; `notes`, free text. | `AdapterScope` in `core/scope.py`; [evidence.md](evidence.md#sign-off-format) |

@@ -96,9 +96,12 @@ A sign-off covers only what was exercised; it never signs off untested code.
 
 **Contrary evidence.** A report changes a level only through a maintainer (tenet 7):
 
+- **A failed report on a class on trial** is the class's result: the maintainer triaging it takes on the fix or
+  makes the class not built, with no root cause needed ([on trial](#no-known-method-not-built-yet-on-trial)). The
+  rest of this list is for a class with a pass.
 - **A credible report of a harmful failure on DeviceSide's own call** lets an integration maintainer refuse the
   identity it names on that action, on the report alone, citing it. It's not built yet if a known or plausible call
-  would serve that identity, otherwise no known method ([below](#no-known-method-not-built-yet-untested)).
+  would serve that identity, otherwise no known method ([below](#no-known-method-not-built-yet-on-trial)).
 - **The identity is the narrowest one a class rule can key on:** model ID with manufacturer string, plus firmware
   where that decides. A vendor is not normally refused whole on a single report; split off the exception. A rule
   keyed on a vendor needs research.
@@ -129,8 +132,10 @@ Zigbee2MQTT countdown plug's maker string with a record of its own is a class of
 - **Unknown is flagged, never Verified.** A device no rule matches gets the default class
   (`IntegrationInfo.default_class`), which the registry refuses at Verified in any scope, so placing a device there
   can only make DeviceSide more cautious. Its one exception: where a call is known to harm, a class DeviceSide can't
-  name yet is refused ([below](#no-known-method-not-built-yet-untested)). The default class may be Documented for an
-  action where the [Documented](#levels) test holds (no known class departs), and is otherwise `experimental(...)`.
+  name yet is refused ([below](#no-known-method-not-built-yet-on-trial)). The default class may be Documented for an
+  action where the [Documented](#levels) test holds (no known class departs), is otherwise `experimental(...)` where
+  research predicts most of it accepts the call, and is otherwise not built yet
+  ([below](#no-known-method-not-built-yet-on-trial)).
   Nothing lifts it: a record on a device outside the named classes adds a new class named for its maker
   (Zigbee2MQTT: `ikea` for an IKEA bulb), as the default class holds every device no rule matches, and one maker's
   record proves nothing about the rest.
@@ -161,11 +166,11 @@ Zigbee2MQTT countdown plug's maker string with a record of its own is a class of
   it gets no entry of its own, its members answer for it, each judged on its own, and it is refused only when none of
   them ran. One whose members the integration can't list can't fall back: it counts as Experimental, and is refused
   whole while Experimental features is off, and with it on where a call is known to harm
-  ([below](#no-known-method-not-built-yet-untested)). The rules: `core/dispatcher.py`'s module docstring, Native groups.
+  ([below](#no-known-method-not-built-yet-on-trial)). The rules: `core/dispatcher.py`'s module docstring, Native groups.
 
-### No known method, not built yet, untested
+### No known method, not built yet, on trial
 
-Three ways a class can't take an action, each handled differently. The first two are the kinds of not
+Three ways a class has no proven call for an action, each handled differently. The first two are the kinds of not
 supported, where DeviceSide can't do the action for the class, each named for why:
 
 - **No known method:** no known call works on the class: a device limit as far as anyone knows, which the label
@@ -173,10 +178,17 @@ supported, where DeviceSide can't do the action for the class, each named for wh
   a class whose only known call is unsafe has none; the entry's reason says which. The adapter's scope lists it in
   `no_known_method`, with what, why and a source; the dispatcher refuses it (`no_known_method`), and the card marks
   it 🔴. It is per adapter, as one class can fail one action's call and answer another's.
-- **Not built yet:** a call that would work on the class is known or plausible, and nobody has built it. The
-  integration names it, and the adapter's scope holds it in neither `capabilities` nor `no_known_method`. It is
-  refused (`not_built`), and the card leaves it out, as no one can list every feature that could be built.
-- **Untested:** the default call may work. The class is in scope as `experimental(...)` and runs behind the flag.
+- **Not built yet:** a call that would work on the class is known or plausible, and nobody has built it. That
+  includes a class not admitted on trial (below), whose default call is expected to fail while another is known or
+  plausible. The integration names it, and the adapter's scope holds it in neither `capabilities` nor
+  `no_known_method`. It is refused (`not_built`), and the card leaves it out, as no one can list every feature that
+  could be built.
+- **On trial (Experimental):** a class with no pass yet, admitted on a reason to expect the call works: a pass on the
+  class, or research predicting most of the class accepts it. Research predicting most fail, or none at all, leaves
+  it not built. On a failed report, the maintainer triaging it takes on the fix, keeping the trial, or makes the
+  class not built, as their time allows; one they stop fixing becomes not built. A not built class returns with a
+  contributor's PR and a passing run on their own device. The class is in scope as `experimental(...)` and runs
+  behind the flag.
 
 Harm is a separate safety axis, which the action decides (below). On an action whose failure harms, a class not
 built yet that today's call would harm gets an entry of its own in the scope's `not_built` (`NotBuilt`, with why and a
@@ -185,7 +197,9 @@ leaving it out refuses it, and the registry refuses a `not_built` entry on an ac
 
 - **Split off the exception, not the class.** When devices are known to depart from a class's call, a rule moves them
   into a class of their own, at the level their own evidence supports. The rest of the class keeps its level. The
-  whole class drops a level only when no rule can tell the departing devices apart.
+  whole class drops a level only when no rule can tell the departing devices apart. Split off the exception only once
+  a pass shows the rest of the class works; a failure in a class with no pass is the class's result, not an
+  exception.
 - **Key a class on what decides the outcome:** the integration's routing where it picks the call, otherwise the
   device's identity.
 - **When today's call harms a class.** A failure harms when it is deferred and unattended: the device ends in an
@@ -263,7 +277,8 @@ option. The dispatcher is the only gate: adapters never read the option, and tur
 other item behaves.
 
 Every new feature (action, integration, domain, capability or field) starts flagged, and soaks behind the flag with
-users who opt in. A passing rig record or `_manual.json` sign-off on a flagged item is evidence a maintainer can use to
+users who opt in. A class is admitted behind the flag only on a reason to expect the call works, and a failed report
+on it is handled by its triaging maintainer ([on trial](#no-known-method-not-built-yet-on-trial)). A passing rig record or `_manual.json` sign-off on a flagged item is evidence a maintainer can use to
 lift its flag for the next release, skipping that soak; it is not a requirement to lift it. Whether to lift is the
 maintainer's judgment, by how complex the feature is and how complete its tests are: a developer may run the first
 few rig cases before the full suite exists, so a flagged item may have passing runs and stay flagged. Lifting makes

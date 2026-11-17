@@ -49,7 +49,8 @@ every integration shares is in `docs/integrations.md`: add your value there, don
 
 ## Evidence
 
-1. User experience is the north star: actions make devices do what users expect, quickly.
+1. User experience is the north star: actions make devices do what users expect, predictably and with low latency,
+   and we offer only what's likely to meet that bar.
 2. Probe before you build: when unsure how a device responds, run a cheap probe and record what it shows.
 3. Verify, then trust: a verified fact stands across firmware, HA and code changes until evidence contradicts it.
 4. Surprises reopen facts: root-cause a bug, record the finding, and log so the first report holds the diagnosis.
