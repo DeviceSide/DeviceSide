@@ -20,6 +20,7 @@ from custom_components.deviceside.migrations import async_check_migrations
 from .conftest import unload_mock_entries
 
 LEGACY = "legacy_device_side"
+CALLS = "legacy_device_side_calls"
 HUE_DIMMER = "migrate_hue_dimmer"
 
 unload_hue_dimmer = unload_mock_entries("hue_dimmer")
@@ -188,3 +189,82 @@ async def test_setup_runs_the_checks(hass: HomeAssistant, fake_registry):
     await hass.async_block_till_done()
 
     assert issue(hass, LEGACY) is not None
+
+
+async def test_fix_removes_the_legacy_actions(hass: HomeAssistant, setup_integration):
+    legacy_entry(hass)
+    legacy_folder(hass)
+    for service in ("turn_on_for", "turn_off_for"):
+        hass.services.async_register("device_side", service, lambda call: None)
+    await async_check_migrations(hass)
+
+    await fix(hass)
+
+    assert not hass.services.has_service("device_side", "turn_on_for")
+    assert not hass.services.has_service("device_side", "turn_off_for")
+
+
+def automations(action: str) -> dict:
+    return {
+        "automation": [
+            {
+                "id": "hall_1",
+                "alias": "Hall [night]",
+                "triggers": [{"trigger": "event", "event_type": "test"}],
+                "actions": [{"choose": [{"conditions": [], "sequence": [{"action": action}]}]}],
+            },
+            {
+                "alias": "Porch",
+                "triggers": [{"trigger": "event", "event_type": "test"}],
+                "actions": [{"service": action}],
+            },
+        ]
+    }
+
+
+def scripts(action: str) -> dict:
+    return {"script": {"stairs": {"alias": "Stairs", "sequence": [{"action": action, "data": {"seconds": 5}}]}}}
+
+
+async def calls_setup(hass: HomeAssistant) -> None:
+    assert await async_setup_component(hass, "automation", automations("device_side.turn_on_for"))
+    assert await async_setup_component(hass, "script", scripts("device_side.turn_off_for"))
+    await hass.async_block_till_done()
+
+
+async def reload(hass: HomeAssistant, domain: str, config: dict) -> None:
+    with patch("homeassistant.config.load_yaml_config_file", autospec=True, return_value=config):
+        await hass.services.async_call(domain, "reload", blocking=True)
+    await hass.async_block_till_done()
+
+
+async def test_legacy_calls_listed_until_renamed(hass: HomeAssistant, setup_integration):
+    await calls_setup(hass)
+
+    found = issue(hass, CALLS)
+    assert found is not None
+    assert not found.is_fixable
+    assert found.severity is ir.IssueSeverity.WARNING
+    assert found.translation_placeholders == {
+        "items": "- [Hall \\[night\\]](/config/automation/edit/hall_1)\n- Porch\n- [Stairs](/config/script/edit/stairs)"
+    }
+
+    await reload(hass, "automation", automations("deviceside.turn_on_for"))
+    assert issue(hass, CALLS).translation_placeholders == {"items": "- [Stairs](/config/script/edit/stairs)"}
+
+    await reload(hass, "script", scripts("deviceside.turn_off_for"))
+    assert issue(hass, CALLS) is None
+
+
+async def test_no_calls_issue_while_the_legacy_entry_is_there(hass: HomeAssistant, setup_integration):
+    entry = legacy_entry(hass)
+    legacy_folder(hass)
+    await calls_setup(hass)
+    assert issue(hass, CALLS) is None
+
+    # The Fix removes the entry, so the calls it leaves are listed at once.
+    await async_check_migrations(hass)
+    await fix(hass)
+
+    assert hass.config_entries.async_get_entry(entry.entry_id) is None
+    assert issue(hass, CALLS) is not None

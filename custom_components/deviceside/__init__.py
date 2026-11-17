@@ -22,7 +22,7 @@ from .core.errors import describe, traceback_is_safe
 from .core.registry import AdapterRegistry
 from .core.runtime import DATA, DeviceSideData, get_runtime
 from .core.scope import CaveatKind, IntegrationInfo
-from .migrations import async_check_migrations
+from .migrations import async_check_migrations, async_watch_legacy_calls
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 _LOGGER = logging.getLogger(__name__)
@@ -81,6 +81,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType):
     # Services are registered once per HA run, not per entry; handlers refuse calls until the entry loads.
     async_setup_services(hass)
     await async_check_migrations(hass)
+    async_watch_legacy_calls(hass)
     return True
 
 
