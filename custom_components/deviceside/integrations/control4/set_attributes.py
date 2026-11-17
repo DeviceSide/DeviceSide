@@ -10,6 +10,7 @@ from homeassistant.components.light import ATTR_COLOR_TEMP_KELVIN
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
+from .classes import LEVELS
 from .director import (
     CAPABILITIES,
     COLOR_MODE,
@@ -60,7 +61,9 @@ class Control4SetAttributes(Adapter[SetAttributesRequest]):
         domains=experimental(Platform.LIGHT),
         fields=experimental(ATTR_COLOR_TEMP_KELVIN),
         unlisted=frozenset({ATTR_COLOR_TEMP_KELVIN}),
+        capabilities=LEVELS,
         confirmable=True,
+        native_groups=True,
     )
 
     def supports(self, hass: HomeAssistant, request: SetAttributesRequest, target: Target) -> str | None:
