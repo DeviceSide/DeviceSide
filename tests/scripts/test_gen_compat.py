@@ -628,7 +628,8 @@ def write_files(root, registry, monkeypatch):
     page, readme = root / "page.md", root / "README.md"
     models = write_bundles(root, monkeypatch)
     page.write_text(PROSE + "## Evidence\n\n<!-- evidence:start -->\n<!-- evidence:end -->\n")
-    readme.write_text("# R\n\n<!-- devices:start -->\n<!-- devices:end -->\n\nAfter.\n")
+    blocks = "<!-- requirements:start -->\n<!-- requirements:end -->\n\n<!-- devices:start -->\n<!-- devices:end -->"
+    readme.write_text(f"# R\n\n{blocks}\n\nAfter.\n")
     return lambda argv: gc.main(argv, registry, page, readme, models)
 
 
@@ -647,6 +648,18 @@ def test_check_fails_on_a_stale_readme_or_page_until_they_are_regenerated(root, 
     assert "page.md out of date" in capsys.readouterr().err
     assert run([]) == 0
     assert "9.9.9" in (root / "page.md").read_text()
+
+
+def test_requirements_list_each_card_name_in_column_order_with_no_or(root, monkeypatch):
+    registry = FakeRegistry(adapter("zha", "stop"))
+    bundles = {**BUNDLE, "hue": {"card_name": "Hue via Bridge", "column": "Hue", "column_order": 0}}
+    write_files(root, registry, monkeypatch)
+    write_bundles(root, monkeypatch, bundles)
+    gc.main([], registry, root / "page.md", root / "README.md", root / "models.yaml")
+    text = (root / "README.md").read_text()
+    block = text[text.index("<!-- requirements:start -->") : text.index("<!-- requirements:end -->")]
+    assert "* One of these integrations installed: Hue via Bridge, ZHA.\n" in block
+    assert " or " not in block
 
 
 def test_a_card_linking_to_a_missing_heading_fails(root, monkeypatch):

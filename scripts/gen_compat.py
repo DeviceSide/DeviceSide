@@ -67,7 +67,9 @@ integrations, `type`, optional `section`; a model only one integration names is 
 `no_known_method` and `not_built` entries that name their `integrations` (`what`, `reason`, `source`, optional
 `section`), a `not_built` one for a device today's call harms on an integration that doesn't class it yet, as an
 unharmed one needs no entry. Each bundle's devices.yaml holds its integration's: `models` (as above), `column` and
-`column_order` (the README feature table's, read by gen_features), `requires` (shown after the card's name),
+`column_order` (the README feature table's, read by gen_features, and the Requirements line's), `card_name`
+(optional: the card's and that line's name for the integration, its title by default), `requires` (shown after
+the card's name),
 `capabilities` (a `phrase` and `section` per class a card line names, or domain where the integration names no
 classes, and per class a scope lists as not built yet; `domains`, a phrase per entity domain, for a class the card
 splits), `sections` (optional: a `phrase`, and `domains`, per page section, for a line holding all its classes, or
@@ -125,6 +127,7 @@ BLOB_URL = "https://github.com/DeviceSide/DeviceSide/blob/main/"
 PAGE_URL = f"{BLOB_URL}docs/device-compatibility.md"
 CARDS = ("<!-- devices:start -->", "<!-- devices:end -->")
 CARDS_TITLE = "Device compatibility by integration"
+REQUIREMENTS = ("<!-- requirements:start -->", "<!-- requirements:end -->")
 EVIDENCE = ("<!-- evidence:start -->", "<!-- evidence:end -->")
 
 REPORT_URL = "https://github.com/DeviceSide/DeviceSide/issues/new?template=device_report.yml"
@@ -161,7 +164,16 @@ GITHUB = "https://github.com/"
 INTEGRATIONS_URL = "https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations.md"
 # The keys each devices.yaml entry may hold, so a typo fails instead of being ignored.
 SHARED_KEYS = {"models", "no_known_method", "not_built"}  # each a list
-BUNDLE_KEYS = {"column", "column_order", "requires", "capabilities", "sections", "models", "no_known_method"}
+BUNDLE_KEYS = {
+    "card_name",
+    "column",
+    "column_order",
+    "requires",
+    "capabilities",
+    "sections",
+    "models",
+    "no_known_method",
+}
 MODEL_KEYS = {"name", "ids", "type", "section"}
 CLASS_KEYS = {"phrase", "section", "domains"}  # `domains`: a phrase per entity domain, for a class the card splits
 # A section's phrase, for a line that holds all its classes; with `variants`, what to check to tell its classes apart,
@@ -197,6 +209,9 @@ class Data:
     section_phrases: dict[str, dict[str, dict]] = field(default_factory=dict)
     # models.yaml's devices not built yet that today's call harms, on integrations whose code doesn't class them yet.
     not_built: list[dict] = field(default_factory=list)
+    # Each integration's card name (devices.yaml `card_name`, else its title) and its `column_order`.
+    names: dict[str, str] = field(default_factory=dict)
+    order: dict[str, int] = field(default_factory=dict)
     # Every heading an entry links to, with the integration whose card links it (None: any card, as for a model).
     sections: set[tuple[str | None, str]] = field(default_factory=set)
     # The heading anchors of each integration's page; a section on none of them is on PAGE.
@@ -248,11 +263,27 @@ def load(registry: AdapterRegistry, models: Path = MODELS) -> Data:
     return data
 
 
+def read_names(raw: dict, key: str, data: dict, where: str) -> None:
+    """A bundle's `card_name` and `column_order`, which the card and the Requirements line use."""
+    if "card_name" in data:
+        need(data, where, ("card_name",))
+        raw["names"][key] = data["card_name"]
+    if isinstance(data.get("column_order"), int):
+        raw["order"][key] = data["column_order"]
+
+
 def merge(shared: dict, bundles: dict[str, dict]) -> dict:
     """The shared file and the bundles as one mapping, each bundle's entries named for its integration: a bundle's
     `no_known_method` entries are its own, so they take no `integrations` key."""
     need(shared, "docs/models.yaml", lists=tuple(sorted(SHARED_KEYS & set(shared))), keys=SHARED_KEYS)
-    raw: dict = {"requires": {}, "capabilities": {}, "models": list(shared.get("models") or []), "bundle_models": {}}
+    raw: dict = {
+        "requires": {},
+        "names": {},
+        "order": {},
+        "capabilities": {},
+        "models": list(shared.get("models") or []),
+        "bundle_models": {},
+    }
     raw["no_known_method"] = list(shared.get("no_known_method") or [])
     raw["not_built"] = list(shared.get("not_built") or [])
     for key, data in bundles.items():
@@ -262,6 +293,7 @@ def merge(shared: dict, bundles: dict[str, dict]) -> dict:
         if "requires" in data:
             need(data, where, ("requires",))
             raw["requires"][key] = data["requires"]
+        read_names(raw, key, data, where)
         if data.get("capabilities"):
             raw["capabilities"][key] = data["capabilities"]
         if data.get("sections"):
@@ -297,7 +329,7 @@ def need(
 def load_raw(raw: dict, registry: AdapterRegistry) -> Data:
     """The merged mapping (`merge`), its entries validated and their defaults filled in."""
     raw = copy.deepcopy(raw)  # defaults are filled in place
-    data = Data(raw["requires"], {}, raw["capabilities"], [])
+    data = Data(raw["requires"], {}, raw["capabilities"], [], names=raw.get("names", {}), order=raw.get("order", {}))
     for model in raw["models"]:
         load_model(model, data, None)
     for key, models in raw.get("bundle_models", {}).items():
@@ -1118,7 +1150,7 @@ def mark_entries(integration_adapters: list) -> list[str]:
 def card(key: str, registry: AdapterRegistry, integration_adapters: list, data: Data) -> Card:
     info = registry.integrations[key]
     result = Card(
-        title=info.title,
+        title=data.names.get(key, info.title),
         requires=data.requires.get(key),
         url=f"{BLOB_URL}{page(key)}" if key in data.pages else None,
         maintainers=info.maintainers,
@@ -1193,6 +1225,23 @@ def cards(registry: AdapterRegistry, data: Data) -> str:
     return "\n".join(parts)
 
 
+def requirements(registry: AdapterRegistry, data: Data) -> str:
+    """The README's Requirements line: each integration's card name, in `column_order`, with no "or"."""
+    names = [
+        data.names.get(key, info.title)
+        for key, info in sorted(registry.integrations.items(), key=lambda item: data.order.get(item[0], 0))
+        if key in data.order
+    ]
+    return "\n".join(
+        [
+            REQUIREMENTS[0],
+            "<!-- Generated by scripts/gen_compat.py. Do not edit; run the script. -->",
+            f"* One of these integrations installed: {', '.join(names)}.",
+            REQUIREMENTS[1],
+        ]
+    )
+
+
 # Writing.
 
 
@@ -1236,9 +1285,13 @@ def main(
     check_models(registry, data)
     # Both are computed before either is written, so a failure leaves neither half-updated.
     updates = {}
-    for path, markers, block in ((page, EVIDENCE, evidence(registry, data)), (readme, CARDS, cards(registry, data))):
-        text = path.read_text()
-        updates[path] = (text, splice(text, markers, block, path.name))
+    for path, markers, block in (
+        (page, EVIDENCE, evidence(registry, data)),
+        (readme, CARDS, cards(registry, data)),
+        (readme, REQUIREMENTS, requirements(registry, data)),
+    ):
+        text = updates[path][1] if path in updates else path.read_text()
+        updates[path] = (updates[path][0] if path in updates else text, splice(text, markers, block, path.name))
     check_sections(updates[page][1], data)
     # The coverage check warns here, on every PR, and fails only at cut-release (check_release.py --signoffs).
     for gap in coverage_gaps(registry):
