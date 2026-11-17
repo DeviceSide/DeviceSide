@@ -122,11 +122,19 @@ jobs:
           GH_REPO: ${{ github.repository }}
           NUMBER: ${{ github.event.issue.number }}
         run: |
-          read -r state failed < <(gh pr view "$NUMBER" --json state,statusCheckRollup --jq \
-            '"\(.state) \([.statusCheckRollup[]? | select((.conclusion // .state) | IN("FAILURE", "ERROR", "TIMED_OUT", "CANCELLED", "STARTUP_FAILURE"))] | length)"')
+          # The base's required checks, read from its rules: an optional check failing is no reason to warn. A rules
+          # read that fails leaves failed at 0, and the neutral text.
+          failed=0
+          if required=$(gh api "repos/$GH_REPO/rules/branches/main" --jq \
+            '[.[] | select(.type == "required_status_checks") | .parameters.required_status_checks[].context]'); then
+            failed=$(gh pr view "$NUMBER" --json statusCheckRollup | jq --argjson req "$required" \
+              '[.statusCheckRollup[]? | select((.name // .context) as $n | $req | index($n))
+                | select((.conclusion // .state) | IN("FAILURE", "ERROR", "TIMED_OUT", "STARTUP_FAILURE"))] | length') || failed=0
+          fi
+          state=$(gh pr view "$NUMBER" --json state --jq .state)
           if [ "$state" = MERGED ]; then
             msg="✅ \`/merge\`: merged."
-          elif [ "${failed:-0}" -gt 0 ]; then
+          elif [ "$failed" -gt 0 ]; then
             msg="⚠️ \`/merge\`: auto-merge is on, but a required check failed; it merges once the author pushes a fix and the checks pass. Comment \`/merge <sha>\` again with the new head if the push cancels it."
           else
             msg="✅ \`/merge\`: squash-merges once its required checks pass. A push to the branch cancels this."
