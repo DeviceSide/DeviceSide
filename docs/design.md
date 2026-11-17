@@ -28,19 +28,19 @@ Code and docs use these terms. Each one's rules live where its link points.
   `Unplaced` (`core/scope.py`). Rules: [evidence.md](evidence.md#no-known-method-not-built-yet-untested); when a
   device counts as placed: each integration's page, as [Zigbee2MQTT's](integrations/zigbee2mqtt/index.md#device-classes).
 - **Not supported**: DeviceSide can't do this action for the target (`target_not_supported`,
-  `integration_not_supported`); for a class, either no known method or not built yet, and either may carry `harms`.
+  `integration_not_supported`); for a class, either no known method or not built yet.
 - **No known method**: a class no known call works on for an action, a device limit as far as anyone knows. Rules:
   [evidence.md](evidence.md#no-known-method-not-built-yet-untested).
 - **Not built yet**: a class a known or plausible call would serve for an action, and nobody has built it. Rules:
   [evidence.md](evidence.md#no-known-method-not-built-yet-untested).
 - **Field**: an action parameter, e.g. `brightness`.
 - **Entity domain**: light, switch. "Domain" alone is fine where unambiguous.
-- **Scope**: the entity domains, classes and fields an adapter is built for, each at its level and flagged or not;
-  outside it, a call is refused. Its `AdapterScope` fields: [Writing an integration](#core-contract).
-- **Level**: how a scope item is proven, Verified or Documented. Rules: [evidence.md](evidence.md#levels). User
-  wording: [device-compatibility.md](device-compatibility.md#levels-of-proof).
-- **Experimental**: the flag on a scope item (`experimental(...)`) or a whole adapter (`experimental=True`) not yet
-  judged ready for everyone; not a level. Rules: [evidence.md](evidence.md#the-experimental-flag).
+- **Scope**: the entity domains, classes and fields an adapter is built for, each at its level; outside it, a call is
+  refused. Its `AdapterScope` fields: [Writing an integration](#core-contract).
+- **Level**: how a scope item is proven: Verified, Documented or Experimental. Rules: [evidence.md](evidence.md#levels).
+  User wording: [device-compatibility.md](device-compatibility.md#levels-of-proof).
+- **Experimental**: the lowest level, and the flag on a scope item (`experimental(...)`) not yet judged ready for
+  everyone. Rules: [evidence.md](evidence.md#the-experimental-flag).
 - **Experimental features**: the option (`experimental_features`, off by default) that lets calls touching a flagged
   item through. Only the dispatcher reads it.
 - **Maintainer**: a GitHub handle in an integration's `IntegrationInfo.maintainers`, or a family's in its `Family`'s
@@ -149,6 +149,7 @@ ha_watch.py      drops predictions a light or scene call from HA leaves stale
 ha_entity.py     guarded access to HA's live entity objects
 transition.py    a move's predicted value, per integration
 level_fade.py    LevelFade: raise and lower from the level the device reports, in one timed set
+zcl.py           ZCL facts the ZHA, Zigbee2MQTT and Matter packages share
 zcl_*.py         what the Zigbee integrations share: fade planning, a get_attributes row, set_attributes commands
 color.py         colors read and written alike across integrations
 timer.py         a get_attributes row's on/off timer entry
@@ -172,13 +173,12 @@ adapter has an `AdapterScope`. What each can declare (`core/scope.py` holds each
 | `IntegrationInfo.zigbee_manufacturer` | The device's own Zigbee manufacturer string for the device report form, where HA's registry holds another. | `IntegrationInfo` in `core/scope.py` |
 | `IntegrationInfo.call_resolver` | Drops what a light or scene call from HA leaves stale. | `core/ha_watch.py` |
 | `IntegrationInfo.max_concurrency`, `AdapterScope.max_concurrency` | How many sends run at once. | [Concurrency](#concurrency) |
-| `AdapterScope.domains`, `fields` | The entity domains and fields the adapter is built for, each at its level; outside them a call is refused (`domain_not_tested`, `fields_not_tested`). | [evidence.md](evidence.md#levels); `Adapter.supports` in `core/adapter.py` |
+| `AdapterScope.domains`, `fields` | The entity domains and fields the adapter is built for, each at its level; outside them a call is refused (`domain_not_tested`, `fields_not_tested`). Flagging every domain flags the whole adapter. | [evidence.md](evidence.md#levels); `Adapter.supports` in `core/adapter.py` |
 | `AdapterScope.drops`, `unlisted` | Fields the integration can never send, dropped as a lacked field is; fields its devices take though the light's state says they can't. | [action-behavior.md](action-behavior.md#when-to-stop-an-automation): Lacks a field, Unlisted fields depart from core |
 | `AdapterScope.capabilities` | A level per class, and per domain where its entry names some (`OnDomains`). | [evidence.md](evidence.md#device-classes) |
-| `AdapterScope.no_known_method`, `not_built` | A class refused with a reason and a source (`NoKnownMethod`, `NotBuilt`), each stating `harms`. A class the integration names that the scope leaves out of `capabilities`, `no_known_method` and `not_built` is not built yet and refused; `not_built` holds only a class today's call would harm. A class is in at most one of the three. | [evidence.md](evidence.md#no-known-method-not-built-yet-untested); `AdapterScope.refusal` in `core/scope.py` |
+| `AdapterScope.no_known_method`, `not_built` | A class refused with a reason and a source (`NoKnownMethod`, `NotBuilt`). A class the integration names that the scope leaves out of `capabilities`, `no_known_method` and `not_built` is not built yet and refused; `not_built` holds only a class today's call would harm, on an action whose failure harms (`Action.failure_harms`, which the registry checks). A class is in at most one of the three. | [evidence.md](evidence.md#no-known-method-not-built-yet-untested); `AdapterScope.refusal` and `harms` in `core/scope.py` |
 | `AdapterScope.own_calls` | A class's own call (`OwnCall`), which the dispatcher hands the adapter in place of `execute`, optionally with its own duration limits (else the scope's `duration`). Each class in it must be in `capabilities`. | [evidence.md](evidence.md#the-split-rule); `OwnCall` in `core/scope.py` |
 | `AdapterScope.duration` | The durations the call can carry (`DurationLimits`): a request outside them is clamped, and the result says so. | [action-behavior.md](action-behavior.md#when-to-stop-an-automation): A value the device can't reach; `core/duration.py` |
-| `AdapterScope.experimental` | Flags the whole adapter, as `experimental(...)` flags one item. | [evidence.md](evidence.md#the-experimental-flag); `core/dispatcher.py`'s module docstring, Experimental gating |
 | `AdapterScope.confirmable`, `options`, `notes` | Declarations core doesn't act on, read by the rig: `confirmable`, that a run expects status `confirmed`, not `sent`; `options`, the DeviceSide options that change what it does (`predicted_state`), whose rig records are `<action>-<option>.json`; `notes`, free text. | `AdapterScope` in `core/scope.py`; [evidence.md](evidence.md#sign-off-format) |
 | `AdapterScope.caveat` | A risk mark, set by a repo maintainer; changes no call. | [evidence.md](evidence.md#caveats) |
 
