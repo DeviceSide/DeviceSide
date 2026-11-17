@@ -614,7 +614,6 @@ def rows(adapter) -> list[str]:
         if item.cls in entries:
             # A format 2 test's domain decides a class held on some domains alone; one that names no domain, its level.
             held.append(scope.class_level(item.cls, item.domain) if item.domain else entries[item.cls][0])
-        held = [Level.EXPERIMENTAL if scope.all_experimental else level for level in held]
         # A class flagged in this domain alone may have no row of its level: the scope's weakest row takes it.
         row = models[index.get(min(held), len(levels) - 1)] if held else models[0]
         if (text := described(item)) not in row:
