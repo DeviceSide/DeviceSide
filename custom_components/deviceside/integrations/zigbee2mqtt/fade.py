@@ -27,13 +27,13 @@ from .set_check import checked
 from ...actions.ramp import RampRequest
 from ...core import transition
 from ...core.errors import Reason, describe
+from ...core.fields import BRIGHTNESS_FIELD
 from ...core.ha_watch import ALL, Call, Entries
 from ...core.models import EntityResult, Status, Target
 from ...core.resolver import resolve
 from ...core.runtime import Job, get_runtime
 from ...core.scope import AdapterScope, verified
 from ...core.transition import (
-    BRIGHTNESS,
     SATURATION,
     Transition,
     TransitionCache,
@@ -203,7 +203,7 @@ type HueMove = tuple[int, float | None]  # hue_move's signed rate, and the sweep
 
 def plan(cache: TransitionCache, request: RampRequest, target: Target, lights: list[Target]) -> Fade | HueMove | str:
     """The attribute's fade or hue move, or why it has none to make."""
-    if request.attribute == BRIGHTNESS:
+    if request.attribute == BRIGHTNESS_FIELD:
         return brightness_fade(cache, request, target, lights)
     if request.attribute == SATURATION:
         return saturation_fade(cache, request, target, lights)
@@ -291,7 +291,7 @@ async def _publish_fade(
 
 async def lacks_color(hass: HomeAssistant, request: RampRequest, lights: list[Target]) -> bool:
     """Whether a hue or saturation move meets a light whose Z2M definition lacks color_hs."""
-    if request.attribute == BRIGHTNESS:
+    if request.attribute == BRIGHTNESS_FIELD:
         return False
     return not await has_feature(hass, [z2m_address(light.device) for light in lights], COLOR_HS)
 
@@ -310,7 +310,9 @@ def brightness_fade(cache: TransitionCache, request: RampRequest, target: Target
     off = [light for light in lights if light not in lit_lights] if up else []
     # One publish to the group when it is all off, so its members light together; else each off member's own.
     before = tuple((light, AT_THE_BOTTOM) for light in ([target] if off == lights else off))
-    return Fade(BRIGHTNESS, payload, leg.starts, dict.fromkeys(leg.starts, limit), leg.duration, before, leg.clamped_to)
+    return Fade(
+        BRIGHTNESS_FIELD, payload, leg.starts, dict.fromkeys(leg.starts, limit), leg.duration, before, leg.clamped_to
+    )
 
 
 def saturation_fade(cache: TransitionCache, request: RampRequest, target: Target, lights: list[Target]) -> Fade | str:

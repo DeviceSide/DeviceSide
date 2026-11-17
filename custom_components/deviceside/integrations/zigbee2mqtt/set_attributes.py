@@ -23,7 +23,7 @@ from .classes import class_scope
 from .members import member_lights, unaddressable
 from .read import Reader, reader
 from .set_check import checked
-from ...actions.set_attributes import SetAttributesRequest
+from ...actions.set_attributes import LIMITS, SetAttributesRequest
 from ...core.errors import NOT_STORED, Reason
 from ...core.fields import BRIGHTNESS_FIELD
 from ...core.models import EntityResult, Status, Target
@@ -154,8 +154,7 @@ class Z2MSetAttributes(Z2MAdapter[SetAttributesRequest]):
             ATTR_HS_COLOR,
             ATTR_RGB_COLOR,
             ATTR_XY_COLOR,
-            "min_brightness",
-            "max_brightness",
+            *LIMITS,
         ),
         confirmable=True,
         native_groups=True,  # read back through its members, which only Z2M's bridge/groups knows

@@ -6,7 +6,8 @@ from types import SimpleNamespace
 import pytest
 
 from custom_components.deviceside.actions.ramp import RampRequest
-from custom_components.deviceside.core.transition import BRIGHTNESS, SATURATION, TransitionCache
+from custom_components.deviceside.core.fields import BRIGHTNESS_FIELD
+from custom_components.deviceside.core.transition import SATURATION, TransitionCache
 from custom_components.deviceside.core.zcl_fade import (
     MAX_TRANSITION_S,
     brightness_leg,
@@ -33,20 +34,20 @@ def cache():
 
 
 def test_lowering_with_nothing_lit_is_off(cache):
-    assert brightness_leg(cache, ramp(BRIGHTNESS, False), [light("a", on=False)]) == "off"
+    assert brightness_leg(cache, ramp(BRIGHTNESS_FIELD, False), [light("a", on=False)]) == "off"
 
 
 @pytest.mark.parametrize(("up", "brightness"), [(True, 255), (False, 0)])
 def test_a_light_at_the_limit_has_nothing_to_make(cache, up, brightness):
     lights = [light("a", brightness=brightness or None, on=bool(brightness))]
     expected = "at_limit" if brightness else "off"
-    assert brightness_leg(cache, ramp(BRIGHTNESS, up), lights) == expected
+    assert brightness_leg(cache, ramp(BRIGHTNESS_FIELD, up), lights) == expected
 
 
 def test_raising_moves_every_light_from_the_mean_of_the_lit_ones(cache):
     lit_a, lit_b, dark = light("a", brightness=51), light("b", brightness=153), light("c", on=False)
 
-    leg = brightness_leg(cache, ramp(BRIGHTNESS, True), [lit_a, lit_b, dark])
+    leg = brightness_leg(cache, ramp(BRIGHTNESS_FIELD, True), [lit_a, lit_b, dark])
 
     assert leg.movers == [lit_a, lit_b, dark]
     assert leg.lit == [lit_a, lit_b]
@@ -58,7 +59,7 @@ def test_raising_moves_every_light_from_the_mean_of_the_lit_ones(cache):
 def test_lowering_moves_the_lit_lights_and_passes_the_off_ones_by(cache):
     lit_a, dark = light("a", brightness=255), light("b", on=False)
 
-    leg = brightness_leg(cache, ramp(BRIGHTNESS, False, limit=20.0), [lit_a, dark])
+    leg = brightness_leg(cache, ramp(BRIGHTNESS_FIELD, False, limit=20.0), [lit_a, dark])
 
     assert leg.movers == [lit_a]
     assert list(leg.starts) == ["light.a"]
@@ -68,36 +69,36 @@ def test_lowering_moves_the_lit_lights_and_passes_the_off_ones_by(cache):
 def test_raising_all_off_lights_averages_every_start(cache):
     lights = [light("a", on=False), light("b", on=False)]
 
-    leg = brightness_leg(cache, ramp(BRIGHTNESS, True), lights)
+    leg = brightness_leg(cache, ramp(BRIGHTNESS_FIELD, True), lights)
 
     assert leg.lit == []
     assert leg.duration == pytest.approx(10.0)
 
 
 def test_a_prediction_replaces_the_reported_start(cache):
-    cache.moving("light.a", BRIGHTNESS, 0.0, 50.0, 10.0, started_at=0.0)
+    cache.moving("light.a", BRIGHTNESS_FIELD, 0.0, 50.0, 10.0, started_at=0.0)
 
-    leg = brightness_leg(cache, ramp(BRIGHTNESS, True), [light("a", brightness=255)])
+    leg = brightness_leg(cache, ramp(BRIGHTNESS_FIELD, True), [light("a", brightness=255)])
 
     assert leg.starts == {"light.a": 0.0}
 
 
 def test_a_fade_is_capped_at_the_longest_zcl_transition(cache):
-    leg = brightness_leg(cache, ramp(BRIGHTNESS, True, sweep_time=100_000.0), [light("a", on=False)])
+    leg = brightness_leg(cache, ramp(BRIGHTNESS_FIELD, True, sweep_time=100_000.0), [light("a", on=False)])
 
     assert leg.duration == MAX_TRANSITION_S == 6553.4
     assert leg.clamped_to == 6553.4  # a full-range fade: the sweep_time that fits is the cap itself
 
 
 def test_a_partial_fade_reports_the_sweep_time_that_fits_the_cap(cache):
-    leg = brightness_leg(cache, ramp(BRIGHTNESS, True, sweep_time=20_000.0, limit=50.0), [light("a", on=False)])
+    leg = brightness_leg(cache, ramp(BRIGHTNESS_FIELD, True, sweep_time=20_000.0, limit=50.0), [light("a", on=False)])
 
     assert leg.duration == MAX_TRANSITION_S
     assert leg.clamped_to == 13106.8  # 50 % of that is the longest transition
 
 
 def test_a_fade_within_the_cap_reports_no_clamped_to(cache):
-    assert brightness_leg(cache, ramp(BRIGHTNESS, True), [light("a", on=False)]).clamped_to is None
+    assert brightness_leg(cache, ramp(BRIGHTNESS_FIELD, True), [light("a", on=False)]).clamped_to is None
 
 
 def test_fade_seconds_is_the_distance_at_the_sweep_speed_until_the_cap():

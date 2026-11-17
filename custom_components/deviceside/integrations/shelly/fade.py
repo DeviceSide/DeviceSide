@@ -8,10 +8,10 @@ from homeassistant.core import HomeAssistant
 
 from .addressing import DIMMING_CAPABILITIES, unsupported_reason
 from .rpc import TRANSITION_LIMITS, get_status, set_fade
+from ...core.fields import BRIGHTNESS_FIELD
 from ...core.level_fade import LevelFade, Reading
 from ...core.models import Target
 from ...core.scope import AdapterScope, verified
-from ...core.transition import BRIGHTNESS
 
 # The device keeps brightness in whole percent.
 MIN_STEP = 1.0
@@ -22,7 +22,7 @@ _DURATION_DIGITS = 2
 def fade_scope() -> AdapterScope:
     return AdapterScope(
         domains=verified(Platform.LIGHT),
-        fields=verified(BRIGHTNESS),
+        fields=verified(BRIGHTNESS_FIELD),
         capabilities=DIMMING_CAPABILITIES,
     )
 

@@ -10,10 +10,10 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
+from ...core.fields import BRIGHTNESS_FIELD
 from ...core.models import Target
 from ...core.resolver import resolve_members
 from ...core.runtime import get_runtime
-from ...core.transition import BRIGHTNESS
 
 if TYPE_CHECKING:
     from aiohue.v2 import HueBridgeV2
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 # The delta object whose stop halts each attribute's fade.
-DELTAS = {BRIGHTNESS: "dimming_delta"}
+DELTAS = {BRIGHTNESS_FIELD: "dimming_delta"}
 
 
 def bridge_api(target: Target) -> HueBridgeV2:

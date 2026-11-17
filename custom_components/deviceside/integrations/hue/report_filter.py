@@ -34,10 +34,11 @@ from homeassistant.helpers import entity_registry as er
 from .attributes import ATTRIBUTES, event_fields, reported_values, strip
 from .bridge import bridge_api, entity_name
 from .transition_cache import MIN_BRIGHTNESS_STEP, transition_cache
+from ...core.fields import BRIGHTNESS_FIELD
 from ...core.ha_watch import ALL, Call, Entries
 from ...core.models import Target
 from ...core.runtime import get_runtime
-from ...core.transition import BRIGHTNESS, TransitionCache
+from ...core.transition import TransitionCache
 
 if TYPE_CHECKING:
     from aiohue.v2 import HueBridgeV2
@@ -99,7 +100,11 @@ def _real_keys(cache: TransitionCache, event: dict, values: dict, keys: frozense
         return set()
     real = values.keys() - keys
     # Our soft off reports off; off while the light heads somewhere lit, or holds a halt, is a switch elsewhere.
-    if values.get("on") is False and (transition := cache.live(event["id"], BRIGHTNESS)) and transition.target > 0:
+    if (
+        values.get("on") is False
+        and (transition := cache.live(event["id"], BRIGHTNESS_FIELD))
+        and transition.target > 0
+    ):
         real.add("on")
     return real
 
@@ -155,9 +160,11 @@ class ReportFilter:
                 self.show(attribute, {light_id: target})
 
             get_runtime(self.hass).schedule(self.hass, _end_key(light_id, attribute), [(duration, show_end)])
-        if attribute == BRIGHTNESS:
+        if attribute == BRIGHTNESS_FIELD:
             lights = [self.api.lights.get(light_id) for light_id, target in ends.items() if target > 0]
-            self.show(BRIGHTNESS, {light.id: MIN_BRIGHTNESS_STEP for light in lights if light and not light.on.on})
+            self.show(
+                BRIGHTNESS_FIELD, {light.id: MIN_BRIGHTNESS_STEP for light in lights if light and not light.on.on}
+            )
         self._show_rooms_soon(self._rooms(ends))
 
     def halted(self, attribute: str, halts: dict[str, float]) -> None:

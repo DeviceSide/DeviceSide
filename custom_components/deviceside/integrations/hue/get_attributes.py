@@ -20,7 +20,6 @@ from ...core.errors import Reason
 from ...core.fields import BRIGHTNESS_FIELD
 from ...core.models import EntityResult, Request, Status, Target
 from ...core.scope import AdapterScope
-from ...core.transition import BRIGHTNESS
 
 if TYPE_CHECKING:
     from aiohue.v2 import HueBridgeV2
@@ -32,7 +31,7 @@ def light_row(hass: HomeAssistant, api: HueBridgeV2, cache: HueTransitionCache, 
     value)."""
     row = attributes(hass, api, cache, [light])
     if light.dimming:
-        row[BRIGHTNESS_FIELD] = round(cache.value(light.id, BRIGHTNESS, light.dimming.brightness), 1)
+        row[BRIGHTNESS_FIELD] = round(cache.value(light.id, BRIGHTNESS_FIELD, light.dimming.brightness), 1)
     return row
 
 
@@ -115,11 +114,11 @@ class HueGetAttributes(Adapter[Request]):
             on = [light for light in lights if light.on.on]
             row = attributes(hass, api, cache, on or lights)
             dimmable = [light for light in lights if light.dimming]
-            if any(cache.tracks(light.id, BRIGHTNESS) for light in dimmable):
+            if any(cache.tracks(light.id, BRIGHTNESS_FIELD) for light in dimmable):
                 # Mid-move the bridge reports end values; average the lit lights' predictions instead. A light
                 # still moving counts as lit: a room moved up from all off is on before aiohue hears so.
                 lights_lit = lit(cache, dimmable) or dimmable
-                predicted = [cache.value(light.id, BRIGHTNESS, light.dimming.brightness) for light in lights_lit]
+                predicted = [cache.value(light.id, BRIGHTNESS_FIELD, light.dimming.brightness) for light in lights_lit]
                 row[BRIGHTNESS_FIELD] = round(mean(predicted), 1)
             elif on and (group := grouped.get(resource_id(target))) is not None and group.dimming is not None:
                 row[BRIGHTNESS_FIELD] = round(group.dimming.brightness, 1)

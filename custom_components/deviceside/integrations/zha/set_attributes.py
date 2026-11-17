@@ -20,7 +20,7 @@ from homeassistant.helpers import entity_registry as er
 
 from . import classes, zcl
 from .addressing import address, unsupported_reason
-from ...actions.set_attributes import SetAttributesRequest
+from ...actions.set_attributes import LIMITS, SetAttributesRequest
 from ...core.adapter import Adapter
 from ...core.errors import describe
 from ...core.fields import BRIGHTNESS_FIELD
@@ -165,8 +165,7 @@ class ZHASetAttributes(Adapter[SetAttributesRequest]):
             ATTR_HS_COLOR,
             ATTR_RGB_COLOR,
             ATTR_XY_COLOR,
-            "min_brightness",
-            "max_brightness",
+            *LIMITS,
         ),
         **classes.class_scope(action),
         max_concurrency=2,

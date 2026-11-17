@@ -14,9 +14,10 @@ from .report_filter import report_filter
 from .transition_cache import XY, transition_cache
 from ...core.adapter import Adapter
 from ...core.errors import describe
+from ...core.fields import BRIGHTNESS_FIELD
 from ...core.models import EntityResult, Request, Status, Target
 from ...core.scope import AdapterScope
-from ...core.transition import BRIGHTNESS, SATURATION, TransitionCache, reported_brightness
+from ...core.transition import SATURATION, TransitionCache, reported_brightness
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -69,7 +70,7 @@ class HueStop(Adapter[Request]):
                 brightness = {light.id: predicted_brightness(cache, light) for light in lights}
             else:
                 lights = lit(cache, [resource])
-                brightness = {rid: cache.value(rid, BRIGHTNESS, reported_brightness(target))} if lights else {}
+                brightness = {rid: cache.value(rid, BRIGHTNESS_FIELD, reported_brightness(target))} if lights else {}
             if not brightness:
                 return self.result(target, Status.UNCHANGED, detail="off")
             # A finished saturation fade is held at its end by the bridge already.
@@ -89,7 +90,7 @@ class HueStop(Adapter[Request]):
                 if failure is None
                 for light_id in light_ids
             ]
-            reports.halted(BRIGHTNESS, {light_id: brightness[light_id] for light_id in halted})
+            reports.halted(BRIGHTNESS_FIELD, {light_id: brightness[light_id] for light_id in halted})
             reports.halted(
                 SATURATION, {light_id: value for light_id, value in saturation.items() if light_id in halted}
             )
@@ -123,12 +124,12 @@ async def halt(
 ) -> Exception | None:
     """Record where these lights halt and write it. A refusal puts back only these lights' predictions, and is
     returned, as another light's halt still stands. A cancel puts them back too and propagates."""
-    keys = [(light_id, BRIGHTNESS) for light_id in light_ids]
+    keys = [(light_id, BRIGHTNESS_FIELD) for light_id in light_ids]
     keys += [(light_id, SATURATION) for light_id in light_ids if light_id in xys]
     try:
         async with cache.recording(keys):
             for light_id in light_ids:
-                cache.stopped(light_id, BRIGHTNESS, brightness[light_id])
+                cache.stopped(light_id, BRIGHTNESS_FIELD, brightness[light_id])
                 if light_id in saturation:
                     path = cache.stopped(light_id, SATURATION, saturation[light_id])
                     cache.path(light_id, path, xys[light_id], xys[light_id])
@@ -154,10 +155,10 @@ def stop_writes(
     logged as entity_id, the caller's target."""
     fading_off = {light_id for light_id in brightness if in_soft_off(cache, light_id)}
     if not fading_off and not xys:
-        return [(list(brightness), lambda: put(hass, api, writer, rid, stops([BRIGHTNESS]), entity_id))]
+        return [(list(brightness), lambda: put(hass, api, writer, rid, stops([BRIGHTNESS_FIELD]), entity_id))]
 
     def body(light_id: str) -> dict:
-        halt = cut(brightness[light_id]) if light_id in fading_off else stops([BRIGHTNESS])
+        halt = cut(brightness[light_id]) if light_id in fading_off else stops([BRIGHTNESS_FIELD])
         return halt | (xy_halt(xys[light_id]) if light_id in xys else {})
 
     return [

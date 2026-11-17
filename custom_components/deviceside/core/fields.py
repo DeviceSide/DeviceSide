@@ -24,7 +24,9 @@ if TYPE_CHECKING:  # models.py imports this module (LIGHT_FIELDS)
 # Brightness and its limits are DeviceSide's names, not HA's ATTR_BRIGHTNESS: DeviceSide's brightness is a percent, HA's
 # is 0-255. The other fields are HA's own names.
 BRIGHTNESS_FIELD = "brightness"
-BRIGHTNESS = frozenset({BRIGHTNESS_FIELD, "min_brightness", "max_brightness"})
+MIN_BRIGHTNESS_FIELD = "min_brightness"
+MAX_BRIGHTNESS_FIELD = "max_brightness"
+BRIGHTNESS = frozenset({BRIGHTNESS_FIELD, MIN_BRIGHTNESS_FIELD, MAX_BRIGHTNESS_FIELD})
 COLORS = frozenset({ATTR_HS_COLOR, ATTR_RGB_COLOR, ATTR_XY_COLOR})
 COLOR_TEMP = frozenset({ATTR_COLOR_TEMP_KELVIN})
 COLOR = COLORS | {"hue", "saturation"}  # hue and saturation are DeviceSide's

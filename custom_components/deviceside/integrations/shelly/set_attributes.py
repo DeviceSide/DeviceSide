@@ -10,7 +10,7 @@ from homeassistant.core import HomeAssistant
 
 from .addressing import address, unsupported_reason
 from .rpc import get_status, light_params, set_and_read_back, whole_percent
-from ...actions.set_attributes import SetAttributesRequest
+from ...actions.set_attributes import LIMITS, SetAttributesRequest
 from ...core.adapter import Adapter
 from ...core.errors import NOT_STORED
 from ...core.fields import BRIGHTNESS_FIELD
@@ -65,8 +65,7 @@ class ShellySetAttributes(Adapter[SetAttributesRequest]):
             ATTR_HS_COLOR,
             ATTR_RGB_COLOR,
             ATTR_XY_COLOR,
-            "min_brightness",
-            "max_brightness",
+            *LIMITS,
         ),
         capabilities=SET_CAPABILITIES,
         confirmable=True,

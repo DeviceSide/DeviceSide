@@ -10,7 +10,7 @@ from . import colors
 from .bridge import bridge_api, resource_id, write_light
 from .classes import LEVELS
 from .report_filter import write_forgetting
-from ...actions.set_attributes import SetAttributesRequest
+from ...actions.set_attributes import LIMITS, SetAttributesRequest
 from ...core.adapter import Adapter
 from ...core.color import color_xy
 from ...core.fields import BRIGHTNESS_FIELD
@@ -94,8 +94,7 @@ class HueSetAttributes(Adapter[SetAttributesRequest]):
             ATTR_HS_COLOR,
             ATTR_RGB_COLOR,
             ATTR_XY_COLOR,
-            "min_brightness",
-            "max_brightness",
+            *LIMITS,
         ),
     )
 

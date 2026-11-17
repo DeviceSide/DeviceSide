@@ -9,13 +9,13 @@ from homeassistant.exceptions import ServiceValidationError
 
 from ..const import DOMAIN
 from ..core.action import Action
-from ..core.fields import BRIGHTNESS_FIELD, COLOR_TEMP, COLORS
+from ..core.fields import BRIGHTNESS_FIELD, COLOR_TEMP, COLORS, MAX_BRIGHTNESS_FIELD, MIN_BRIGHTNESS_FIELD
 from ..core.models import LIGHT_FIELD_SCHEMA, PERCENT, ActionKind, LightFields, Request
 
 # PERCENT, as on Hue and hue_dimmer, whose calls these must accept unchanged. A brightness of 0 goes to the bridge,
 # which sets the light's lowest level, as hue_dimmer's calls did; the UI selector starts at 0.4.
 _COLORS = COLOR_TEMP | COLORS
-LIMITS = ("min_brightness", "max_brightness")
+LIMITS = (MIN_BRIGHTNESS_FIELD, MAX_BRIGHTNESS_FIELD)
 # 0 leaves these unset, as on hue_dimmer, so a template can pass 0 for "no limit".
 _UNSET_AT_ZERO = (*LIMITS, ATTR_COLOR_TEMP_KELVIN)
 

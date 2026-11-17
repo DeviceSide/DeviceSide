@@ -26,7 +26,6 @@ from .runtime import get_runtime
 # What the recording() block running in this task has recorded so far, by (resource_id, attribute).
 _RECORDED: ContextVar[dict[tuple[str, str], Transition] | None] = ContextVar("transition_recorded", default=None)
 
-BRIGHTNESS = BRIGHTNESS_FIELD  # in percent
 SATURATION = "saturation"  # in percent
 
 
@@ -172,7 +171,7 @@ def reported_brightness(light: Target) -> float:
 
 
 def light_brightness(cache: TransitionCache, light: Target) -> float:
-    return cache.value(light.entity_id, BRIGHTNESS, reported_brightness(light))
+    return cache.value(light.entity_id, BRIGHTNESS_FIELD, reported_brightness(light))
 
 
 def lit_where[L](
@@ -180,7 +179,7 @@ def lit_where[L](
 ) -> list[L]:
     """The lights that are on, or predicted above 0 %: a soft off may report off before its fade has run. key names
     the light's cache entry; an integration's own light type passes how it reads those."""
-    return [light for light in lights if is_on(light) or cache.value(key(light), BRIGHTNESS, 0.0) > 0]
+    return [light for light in lights if is_on(light) or cache.value(key(light), BRIGHTNESS_FIELD, 0.0) > 0]
 
 
 def lit(cache: TransitionCache, lights: list[Target]) -> list[Target]:

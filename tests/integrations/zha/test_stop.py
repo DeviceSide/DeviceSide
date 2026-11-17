@@ -8,8 +8,9 @@ import pytest
 from homeassistant.core import ServiceCall
 from homeassistant.exceptions import HomeAssistantError
 
+from custom_components.deviceside.core.fields import BRIGHTNESS_FIELD
 from custom_components.deviceside.core.runtime import get_runtime
-from custom_components.deviceside.core.transition import BRIGHTNESS, SATURATION
+from custom_components.deviceside.core.transition import SATURATION
 from custom_components.deviceside.integrations.zha import INTEGRATION as ZHA_INTEGRATION
 from custom_components.deviceside.integrations.zha.fade import hue_moves, transition_cache
 
@@ -46,8 +47,8 @@ async def test_a_brightness_move_halts_where_it_is_predicted(hass, commands, clo
 
     assert sent(commands)[1:] == [LEVEL_STOP]
     cache = transition_cache(hass)
-    assert cache.halted("light.bulb", BRIGHTNESS)
-    assert cache.value("light.bulb", BRIGHTNESS, 0) == pytest.approx(80)
+    assert cache.halted("light.bulb", BRIGHTNESS_FIELD)
+    assert cache.value("light.bulb", BRIGHTNESS_FIELD, 0) == pytest.approx(80)
 
 
 async def test_a_saturation_move_also_gets_stop_move_step(hass, commands, clock):
@@ -92,7 +93,7 @@ async def test_a_halted_soft_off_keeps_the_light_on(hass, commands, clock):
     await advance(hass, start, 10)
 
     assert sent(commands)[1:] == [LEVEL_STOP]
-    assert transition_cache(hass).value("light.bulb", BRIGHTNESS, 0) == pytest.approx(40)
+    assert transition_cache(hass).value("light.bulb", BRIGHTNESS_FIELD, 0) == pytest.approx(40)
 
 
 async def test_cancels_each_attributes_end_refresh(hass, commands, refreshes):
@@ -177,7 +178,7 @@ async def test_a_failed_stop_rejects_and_keeps_the_move(hass, commands, clock):
         await call(hass, "stop", {"entity_id": "light.bulb"})
 
     assert raised.value.translation_placeholders["summary"] == "light.bulb: error"
-    assert transition_cache(hass).running("light.bulb", BRIGHTNESS) is not None
+    assert transition_cache(hass).running("light.bulb", BRIGHTNESS_FIELD) is not None
 
 
 async def test_a_slow_groupcast_times_out_its_members_and_keeps_the_others(hass, two_light_group, commands):
@@ -216,9 +217,9 @@ async def test_one_light_of_three_failing_rejects_only_it(hass, commands, clock)
 
     assert raised.value.translation_placeholders["summary"] == "light.b: error"
     cache = transition_cache(hass)
-    assert cache.halted("light.a", BRIGHTNESS)
-    assert cache.halted("light.c", BRIGHTNESS)
-    assert cache.running("light.b", BRIGHTNESS) is not None  # still the move it was
+    assert cache.halted("light.a", BRIGHTNESS_FIELD)
+    assert cache.halted("light.c", BRIGHTNESS_FIELD)
+    assert cache.running("light.b", BRIGHTNESS_FIELD) is not None  # still the move it was
     assert hue_moves(hass) == {"light.b"}
 
 
@@ -261,4 +262,4 @@ async def test_a_stop_queued_behind_a_raise_from_off_halts_it(hass, commands, cl
 
     assert await stopped == {"light.bulb": SENT}
     assert sent(commands)[-1] == LEVEL_STOP
-    assert cache.halted("light.bulb", BRIGHTNESS)
+    assert cache.halted("light.bulb", BRIGHTNESS_FIELD)

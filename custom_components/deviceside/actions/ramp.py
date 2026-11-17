@@ -9,11 +9,12 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
 
 from ..core.action import Action
+from ..core.fields import BRIGHTNESS_FIELD
 from ..core.models import ActionKind, Request
-from ..core.transition import BRIGHTNESS, SATURATION
+from ..core.transition import SATURATION
 
 HUE = "hue"
-__all__ = ["BRIGHTNESS", "HUE", "SATURATION", "Ramp", "RampRequest", "limit_field"]
+__all__ = ["BRIGHTNESS_FIELD", "HUE", "SATURATION", "Ramp", "RampRequest", "limit_field"]
 
 DEFAULT_SWEEP_TIME = 5.0
 
