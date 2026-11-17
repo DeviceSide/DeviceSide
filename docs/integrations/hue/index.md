@@ -23,7 +23,7 @@ survive it going offline, which is the point of auto-off.
 
 The bridge sends each light its own commands, and lights of other brands can answer them differently, so a test on a
 Hue light proves nothing about another brand's. DeviceSide tells them apart by the manufacturer the bridge reports for
-each light. Every feature says how well it is proven for each
+each light. Every feature says how well it is proven for each light
 ([levels of proof](../../device-compatibility.md#levels-of-proof)).
 
 - **Hue lights** (manufacturer `Signify Netherlands B.V.`) are tested: every feature on this page has passed on them.
