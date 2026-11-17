@@ -3,27 +3,17 @@
 from homeassistant.const import Platform
 
 from .....core.rules import Rule
-from .....core.scope import Family, FamilyScope, experimental
+from .....core.scope import Family
 
 SENGLED = "sengled"
 
 RULES = (Rule(SENGLED, {"manufacturer": "Sengled"}),)
 
-_UNTESTED = FamilyScope(capabilities=experimental(SENGLED))
 FAMILY = Family(
     key="sengled",
     maintainers=(),
     classes={SENGLED: frozenset({Platform.LIGHT})},
-    # No turn_on_for: the Sengled needs a host-side off, which nobody has built, so it is not built yet.
-    scopes={
-        "raise_brightness": _UNTESTED,
-        "lower_brightness": _UNTESTED,
-        "raise_hue": _UNTESTED,
-        "lower_hue": _UNTESTED,
-        "raise_saturation": _UNTESTED,
-        "lower_saturation": _UNTESTED,
-        "stop": _UNTESTED,
-        "get_attributes": _UNTESTED,
-        "set_attributes": _UNTESTED,
-    },
+    # In no scope: not built on every action. ZHA's probe of its E11-G13 found it departs (it drops a level while off,
+    # refuses the timer), and no pass or research predicts it takes the rest (docs/evidence.md, On trial). On
+    # turn_on_for it needs a host-side off, which nobody has built.
 )

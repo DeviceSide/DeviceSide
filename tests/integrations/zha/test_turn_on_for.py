@@ -420,7 +420,8 @@ async def test_a_device_whose_strings_werent_read_is_refused_with_experimental_o
     assert not commands
 
 
-async def test_another_brand_runs_only_with_experimental_on(hass, setup_production, commands):
+async def test_an_ikea_light_runs_only_with_experimental_on(hass, setup_production, commands):
+    """On trial: research names IKEA's lights as running the timer (refusals.py, families/ikea)."""
     add_zha_entity(hass, zha_entry(hass), "light.ikea", strings=("IKEA of Sweden", "TRADFRI bulb E27 WS opal 980lm"))
     data = {"entity_id": "light.ikea", "duration": 5}
 
@@ -430,6 +431,24 @@ async def test_another_brand_runs_only_with_experimental_on(hass, setup_producti
     allow_experimental(hass)
     assert await call(hass, "turn_on_for", data) == {"light.ikea": CONFIRMED}
     assert commands[0].data["params"] == {"on_off_control": 0, "on_time": 50, "off_wait_time": 0}
+
+
+async def test_the_ikea_bulbs_reported_to_stay_on_are_not_built(hass, setup_production, commands):
+    """Reported turned on by a unicast timer and never off (Zigbee2MQTT #29158): refused with why."""
+    add_zha_entity(hass, zha_entry(hass), "light.gu10", strings=("IKEA of Sweden", "TRADFRI bulb GU10 WS 345lm"))
+    allow_experimental(hass)
+
+    assert await refusal(hass, "turn_on_for", {"entity_id": "light.gu10", "duration": 5}) == "not_built"
+    assert not commands
+
+
+async def test_another_brand_is_not_built_even_with_experimental_on(hass, setup_production, commands):
+    """`other` has no pass, and research names only some makers' lights as running the timer (refusals.py)."""
+    add_zha_entity(hass, zha_entry(hass), "light.innr", strings=("innr", "RB 285 C"))
+    allow_experimental(hass)
+
+    assert await refusal(hass, "turn_on_for", {"entity_id": "light.innr", "duration": 5}) == "not_built"
+    assert not commands
 
 
 async def test_a_group_with_a_harmed_member_runs_its_others_one_by_one(

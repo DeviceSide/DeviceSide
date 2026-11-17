@@ -18,7 +18,7 @@ from homeassistant.const import Platform
 
 from .countdown import COUNTDOWN
 from .....core.rules import Rule
-from .....core.scope import Family, FamilyScope, experimental, verified
+from .....core.scope import Family, FamilyScope, verified
 from .....zigbee.tuya import (
     COUNTDOWN_HARMED_MANUFACTURER,
     COUNTDOWN_HARMED_MODEL,
@@ -53,7 +53,8 @@ def string_class(string: str) -> str:
 
 
 VERIFIED_COUNTDOWNS = tuple(string_class(string) for string in VERIFIED_STRINGS)
-# Every class on Tuya's countdown that turn_on_for serves, each sent that call.
+# Every class on Tuya's countdown, converter A's: the Verified maker strings, which turn_on_for sends that call, and the
+# rest, which it refuses.
 COUNTDOWNS = (TUYA_COUNTDOWN, *VERIFIED_COUNTDOWNS)
 # Tuya's TS011F plugs, on its countdown or not.
 _TS011F = (TUYA_TS011F, *COUNTDOWNS, TUYA_COUNTDOWN_HARMED)
@@ -112,39 +113,16 @@ REGISTRY_RULES = (
     Rule(TUYA_ZCL, {"model_id": "TS.*"}),
 )
 
-# The levels (index.md, Device classes): untested on every action but turn_on_for. The actions for lights alone hold
-# only the classes that can be lights, as the registry checks (core/registry.py, check_classes).
-_UNTESTED = FamilyScope(capabilities=experimental(*_LIGHTS))
-# Raw ZCL reads, of what another action serves (core/registry.py, check_queries; docs/evidence.md, "A read serves
-# only"): `tuya_zcl` as a light. No action serves a Tuya ZCL switch or a TS011F off the countdown, so none is read; the
-# countdown plugs' read is refused (refusals.py), and a datapoint device can't take one, so `tuya_mcu` is left out.
-_READ = FamilyScope(capabilities=experimental(TUYA_ZCL, domains=(Platform.LIGHT,), only=True))
-# Raw ZCL writes, on lights alone, so only `tuya_zcl`, as `tuya_mcu` can't take one.
-_WRITE = FamilyScope(capabilities=experimental(TUYA_ZCL))
-
-# turn_on_for. Tuya's countdown plugs get that call: each maker string with a record of its own Verified, on switches
-# alone, as Z2M shows a plug, and the rest untested (plan Decision 35). Each takes the countdown, which a Z2M group's
-# call isn't, so a group with one falls back to its members. The classes off the countdown are left out: the
-# integration refuses them there, as today's call would harm them (refusals.py).
+# turn_on_for, the one action that serves a Tuya class (index.md, Device classes): each countdown maker string with a
+# record of its own, Verified, on switches alone, as Z2M shows a plug, sent Tuya's countdown, which a Z2M group's call
+# isn't, so a group with one falls back to its members. The rest of the countdown plugs (`tuya_countdown`) and the
+# classes off the countdown are left out: no pass names them (docs/evidence.md, On trial), and the integration refuses
+# them there, as today's call would harm them (refusals.py). Every other action leaves every Tuya class out: no pass or
+# research admits Tuya's firmware there, and get_attributes reads only what another action serves
+# (core/registry.py, check_queries; a countdown plug's read is refused, refusals.py).
 _TURN_ON_FOR = FamilyScope(
-    capabilities=verified(*VERIFIED_COUNTDOWNS, domains=(Platform.SWITCH,)) | experimental(TUYA_COUNTDOWN),
-    own_calls=dict.fromkeys(COUNTDOWNS, COUNTDOWN),
+    capabilities=verified(*VERIFIED_COUNTDOWNS, domains=(Platform.SWITCH,)),
+    own_calls=dict.fromkeys(VERIFIED_COUNTDOWNS, COUNTDOWN),
 )
 
-FAMILY = Family(
-    key="tuya",
-    maintainers=(),
-    classes=CLASSES,
-    scopes={
-        "raise_brightness": _UNTESTED,
-        "lower_brightness": _UNTESTED,
-        "raise_hue": _UNTESTED,
-        "lower_hue": _UNTESTED,
-        "raise_saturation": _UNTESTED,
-        "lower_saturation": _UNTESTED,
-        "stop": _UNTESTED,
-        "get_attributes": _READ,
-        "set_attributes": _WRITE,
-        "turn_on_for": _TURN_ON_FOR,
-    },
-)
+FAMILY = Family(key="tuya", maintainers=(), classes=CLASSES, scopes={"turn_on_for": _TURN_ON_FOR})

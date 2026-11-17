@@ -32,6 +32,9 @@ def test_turn_on_for_alone_refuses_classes_not_built_and_harms_there_alone():
         "tuya_zcl",
         "tuya_mcu",
         "tuya_countdown_harmed",
+        "tuya_countdown",
+        "ikea",
+        "ikea_timer_harmed",
     }
     assert all(isinstance(entry, NotBuilt) for entry in REFUSALS["turn_on_for"].values())
     assert [adapter.action for adapter in ADAPTERS if adapter.scope.harms(FAILURE_HARMS[adapter.action])] == [
@@ -71,9 +74,13 @@ async def test_turn_on_for_refuses_a_ts011f_as_not_built_with_experimental_on(ha
     assert commands(broker) == []
 
 
-@pytest.mark.parametrize("manufacturer", ["Philips", "Innr"], ids=["hue", "other"])
+@pytest.mark.parametrize(
+    ("manufacturer", "why"),
+    [("Philips", "plugs and switches ignore the timer"), ("Innr", "most plugs turn on and never off")],
+    ids=["hue", "other"],
+)
 async def test_turn_on_for_refuses_a_plug_with_no_switch_pass_as_not_built_with_experimental_on(
-    hass, setup_production, broker, manufacturer
+    hass, setup_production, broker, manufacturer, why
 ):
     """Research predicts most plugs and switches fail OnWithTimedOff (research/2026-11-14-timed-on-call-patterns.md),
     and no Hue or other brand's plug has a pass (docs/evidence.md, On trial): refused, so Experimental features can't
@@ -86,7 +93,22 @@ async def test_turn_on_for_refuses_a_plug_with_no_switch_pass_as_not_built_with_
         await call_service(hass, "turn_on_for", {"entity_id": "switch.plug", "duration": 5})
 
     assert raised.value.reason == "not_built"
-    assert "plugs and switches ignore the timer" in raised.value.translation_placeholders["why"]
+    assert why in raised.value.translation_placeholders["why"]
+    assert commands(broker) == []
+
+
+async def test_turn_on_for_refuses_another_brand_s_light_as_not_built_with_experimental_on(
+    hass, setup_production, broker
+):
+    """No pass, and research names only some makers' lights as running the timer (docs/evidence.md, On trial)."""
+    allow_experimental(hass)
+    entity_id = light(hass, broker, manufacturer="Innr", model_id="RB 285 C")
+
+    with pytest.raises(TargetNotSupported) as raised:
+        await call_service(hass, "turn_on_for", {"entity_id": entity_id, "duration": 5})
+
+    assert raised.value.reason == "not_built"
+    assert raised.value.translation_placeholders["why"] == REFUSALS["turn_on_for"]["other"].reason
     assert commands(broker) == []
 
 
