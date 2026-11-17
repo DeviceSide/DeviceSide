@@ -13,7 +13,9 @@ cites the git blob id of the transcript it was tested against and is read back w
 branch still resolves after a squash merge that landed the transcript unchanged; a blob git doesn't have stands for
 nothing. Evidence stands while every segment of its transcript occurs, unchanged, in HEAD's (`segments_hold`): a test
 added, or a new call path, reopens nothing; a segment changed or removed reopens it, whatever code changed it (an
-integration's package or `core/`). An action is changed when HEAD's transcript of it doesn't hold every segment of the
+integration's package or `core/`). A changed action's evidence must also hold every segment HEAD's transcript gained
+since the tag's (`Calls.gained`), so a run that never sent the changed call can't sign off its change; with no tag's
+transcript, standing is enough. An action is changed when HEAD's transcript of it doesn't hold every segment of the
 last release tag's (the latest `vX.Y.Z` that is an ancestor of HEAD), or the tag has none, or there is no tag; its last
 change is the latest commit touching its transcript. Each changed action needs a sign-off of its own: its rig records
 (`<action>.json`, and each `<action>-<option>.json` there is) all format 3, passing and standing, or a format 3
@@ -380,23 +382,36 @@ def segments_hold(old: Sequence[Mapping], new: Sequence[Mapping]) -> bool:
     return {_segment(segment) for segment in old} <= {_segment(segment) for segment in new}
 
 
-def reopened(blob: str, head: Sequence[Mapping] | None) -> str | None:
-    """Why evidence bound to the transcript blob doesn't stand at HEAD's transcript (`head`; None: HEAD has none), or
-    None when it does."""
+@dataclass(frozen=True)
+class Calls:
+    """A changed action's calls: HEAD's transcript (None: HEAD has none), and the segments of it the base's lacks
+    (`_segment` keys; none when the base has no transcript), added or changed since the base, which its evidence must
+    hold (docs/evidence.md, Release gate)."""
+
+    head: list[dict] | None
+    gained: frozenset[str] = frozenset()
+    base: str | None = None
+
+
+def reopened(blob: str, calls: Calls) -> str | None:
+    """Why evidence bound to the transcript blob doesn't sign off the changed action's calls, or None when it does: it
+    must stand at HEAD's transcript and hold every segment HEAD's gained since the base."""
     if (old := transcript(blob)) is None:
         return f"calls {blob[:12]}, which git doesn't have as a transcript"
-    if head is None:
+    if calls.head is None:
         return "HEAD has no transcript to hold its calls"
-    if not segments_hold(old, head):
-        kept = {_segment(segment) for segment in head}
+    if not segments_hold(old, calls.head):
+        kept = {_segment(segment) for segment in calls.head}
         gone = sum(_segment(segment) not in kept for segment in old)
         return f"reopened: {gone} of its {len(old)} call segments changed or gone since"
+    if missed := len(calls.gained - {_segment(segment) for segment in old}):
+        return f"{missed} of HEAD's call segments added or changed since {calls.base} aren't in its calls"
     return None
 
 
-def changed_actions(integration: str, actions: Iterable[str], base: str | None) -> dict[str, list[dict] | None]:
-    """The integration's actions whose calls changed since the base, each with HEAD's transcript (None: HEAD has
-    none): HEAD's doesn't hold every segment of the base's, or the base has none, or there is no base."""
+def changed_actions(integration: str, actions: Iterable[str], base: str | None) -> dict[str, Calls]:
+    """The integration's actions whose calls changed since the base, each with its `Calls`: HEAD's transcript doesn't
+    hold every segment of the base's, or the base has none, or there is no base."""
     found = {}
     for action in actions:
         head_blob = blob_at("HEAD", integration, action)
@@ -405,9 +420,13 @@ def changed_actions(integration: str, actions: Iterable[str], base: str | None) 
             continue
         head = transcript(head_blob) if head_blob else None
         old = transcript(base_blob) if base_blob else None
-        if old is not None and head is not None and segments_hold(old, head):
-            continue
-        found[action] = head
+        if old is not None and head is not None:
+            if segments_hold(old, head):
+                continue
+            had = {_segment(segment) for segment in old}
+            found[action] = Calls(head, frozenset(_segment(segment) for segment in head) - had, base)
+        else:
+            found[action] = Calls(head)
     return found
 
 
@@ -417,11 +436,9 @@ def last_change(integration: str, action: str, base: str | None) -> str | None:
     return git("log", "-1", "--format=%H", span, "--", transcript_path(integration, action)) or None
 
 
-def record_signoff(
-    integration: str, action: str, head: Sequence[Mapping] | None
-) -> tuple[SignOff | None, list[str], list[str]]:
+def record_signoff(integration: str, action: str, calls: Calls) -> tuple[SignOff | None, list[str], list[str]]:
     """The action's rig records as its sign-off, when there is a plain one (`<action>.json`) and every one (each
-    option's too) is format 3, passes and stands at HEAD's transcript (`head`); else None, why not, and the suites to
+    option's too) is format 3, passes and signs off its calls (`reopened`); else None, why not, and the suites to
     rerun."""
     found = suites(integration, action)
     why, reruns = [], []
@@ -433,7 +450,7 @@ def record_signoff(
         elif record["result"] != "pass":
             problem = "fails"
         else:
-            problem = reopened(record["calls"], head)
+            problem = reopened(record["calls"], calls)
         if problem:
             why.append(f"{path.name}: {problem}")
             reruns.append(path.stem)
@@ -448,18 +465,16 @@ def record_signoff(
     return SignOff("record", where(path), record["source"]["commit"]), [], []
 
 
-def manual_signoff(
-    rows: Sequence[Row], action: str, head: Sequence[Mapping] | None
-) -> tuple[SignOff | None, list[str]]:
-    """The first manual row naming the action whose transcript blob stands at HEAD's (`head`), as its sign-off, and
-    why each one before it was rejected: a format 2 row binds no calls, and one whose calls changed is reopened."""
+def manual_signoff(rows: Sequence[Row], action: str, calls: Calls) -> tuple[SignOff | None, list[str]]:
+    """The first manual row naming the action whose transcript blob signs off its calls (`reopened`), as its sign-off,
+    and why each one before it was rejected: a format 2 row binds no calls, and one whose calls changed is reopened."""
     rejected = []
     for row in rows:
         if action not in row.actions:
             continue
         if row.calls is None:
             rejected.append(f"{row.at}: format 2, which names the actions it passed but not their calls")
-        elif why := reopened(row.calls[action], head):
+        elif why := reopened(row.calls[action], calls):
             rejected.append(f"{row.at}: {why}")
         else:
             return SignOff("manual", row.at, row.commit, row.tester), rejected
@@ -527,12 +542,12 @@ def gates(registry) -> tuple[str | None, list[Gate], list[str]]:
         if key not in names:
             errors += record_class_errors(key)
         own = {adapter.action: adapter for _, adapter in adapters(registry) if adapter.integration == key}
-        for action, head in changed_actions(key, sorted(own), base).items():
-            signoff, rejected, reruns = record_signoff(key, action, head)
-            if head is None:
+        for action, calls in changed_actions(key, sorted(own), base).items():
+            signoff, rejected, reruns = record_signoff(key, action, calls)
+            if calls.head is None:
                 rejected.insert(0, f"{transcript_path(key, action)}: none at HEAD, so no unit test pins its calls")
             if signoff is None:
-                signoff, refused = manual_signoff(rows, action, head)
+                signoff, refused = manual_signoff(rows, action, calls)
                 rejected += refused
             caveat = own[action].scope.caveat
             untested = caveat is not None and caveat.kind is CaveatKind.UNTESTED_FIX

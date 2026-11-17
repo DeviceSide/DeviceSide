@@ -497,10 +497,46 @@ def test_a_core_change_that_changes_a_segment_reopens_the_evidence(released, gat
     assert gate()[0] == 0
 
 
-def test_an_added_test_keeps_the_evidence(released, gate):
+def test_an_added_test_keeps_the_evidence_when_the_release_had_its_segment(released, gate):
+    pin(released, "stop", "a", "c")
+    released.git("tag", "v0.2.0")
     pin(released, "stop", "b")
     write_record(released, "stop.json")
     pin(released, "stop", "b", "c")
+    assert gate()[0] == 0
+
+
+def test_a_segment_added_since_the_release_needs_evidence_that_ran_it(released, gate):
+    """Decision 14: a changed action's evidence must hold every segment HEAD gained since the tag, added or changed."""
+    pin(released, "stop", "b")
+    write_record(released, "stop.json")
+    pin(released, "stop", "b", "c")
+    code, lines, _ = gate()
+    assert code == 1
+    assert "(stop.json: 1 of HEAD's call segments added or changed since v0.1.0 aren't in its calls)" in lines[1]
+    assert gate("--reruns")[1] == {"fake": ["stop"]}
+    write_record(released, "stop.json")
+    assert gate()[0] == 0
+
+
+@pytest.mark.parametrize("kind", ["record", "manual"])
+def test_a_run_from_before_a_released_segment_changed_does_not_sign_off_its_change(released, gate, kind):
+    """The audit's case: a run bound to {a}, a test adding s, a release shipping {a, s}, then a fix s -> t. The run
+    stands at HEAD ({a, t} holds {a}) but never sent t."""
+    tested = blob(released, "stop")
+    pin(released, "stop", "a", "s")
+    released.git("tag", "v0.2.0")
+    pin(released, "stop", "a", "t")
+    if kind == "record":
+        write_record(released, "stop.json", calls=tested)
+        source = "stop.json"
+    else:
+        released.commit(MANUAL, manual_file(signoff(calls=bound("stop", blob=tested))))
+        source = f"{MANUAL} row 1"
+    code, lines, _ = gate()
+    assert code == 1
+    assert f"({source}: 1 of HEAD's call segments added or changed since v0.2.0 aren't in its calls)" in lines[1]
+    write_record(released, "stop.json")  # a run of {a, t}
     assert gate()[0] == 0
 
 
@@ -569,6 +605,16 @@ def test_a_failing_record_is_no_signoff_and_a_rerun_completes_it(released, gate)
     assert "(stop.json: fails)" in gate()[1][1]
     write_record(released, "stop.json")
     assert gate()[0] == 0
+
+
+def test_a_failing_option_record_blocks_the_action(released, gate):
+    """Decision 11: a failing option run isn't outvoted by a passing plain one."""
+    pin(released, "stop", "b")
+    write_record(released, "stop.json")
+    write_record(released, "stop-fast.json", result="fail")
+    code, lines, _ = gate()
+    assert code == 1 and "(stop-fast.json: fails)" in lines[1]
+    assert gate("--reruns")[1] == {"fake": ["stop-fast"]}
 
 
 def test_an_option_record_alone_is_no_record_of_the_plain_call(released, gate):
@@ -719,6 +765,22 @@ def test_no_other_caveat_nor_the_flag_stands_in(released, gate, scope):
 def test_a_caveat_on_an_unchanged_adapter_does_not(released, gate):
     pin(released, "stop", "b")
     assert gate(on=registry(turn_on_for=CAVEAT))[0] == 1
+
+
+def test_with_no_release_or_no_released_transcript_standing_is_enough(fake_repo, gate):
+    """With no tag's transcript to diff against, evidence that stands at HEAD signs off, an added segment and all."""
+    pin(fake_repo, "stop", "a")
+    write_record(fake_repo, "stop.json")
+    pin(fake_repo, "stop", "a", "b")
+    on = FakeRegistry({("stop", "fake"): AdapterScope()})
+    assert gate(on=on)[0] == 0
+    fake_repo.git("tag", "v0.1.0")
+    pin(fake_repo, "raise_brightness", "a")
+    write_record(fake_repo, "raise_brightness.json")
+    pin(fake_repo, "raise_brightness", "a", "b")
+    on = FakeRegistry({("stop", "fake"): AdapterScope(), ("raise_brightness", "fake"): AdapterScope()})
+    code, lines, _ = gate(on=on)
+    assert code == 0 and "fake / raise_brightness: calls changed" in lines[1] and "signed off by record" in lines[1]
 
 
 def test_with_no_release_every_action_is_changed(fake_repo, gate):
