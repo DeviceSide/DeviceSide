@@ -173,7 +173,8 @@ Color bulbs of other brands have no equivalent of Hue native control, so one giv
 last color for a moment. With native control on, a Hue bulb may report its old color for the first seconds of a
 timer.
 
-**Cancelling.** `turn_off` cancels the timer.
+**Cancelling.** `turn_off` cancels the timer. A new timer replaces the old one, longer or shorter, as on ZHA: Zigbee2MQTT
+sends the same `OnWithTimedOff` (untested on Zigbee2MQTT).
 
 ## Smooth color changes
 

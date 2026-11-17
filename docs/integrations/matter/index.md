@@ -12,8 +12,9 @@ refused on a Matter light.
 ## Turn on with timer
 
 The timer is read back from the device, so the result is `confirmed` only when it reports both a running timer
-(`OnTime`) and that it is on, otherwise `sent`. `turn_off` cancels the timer; a plain `turn_on` doesn't. By the spec,
-a second timer while one runs keeps the longer of the two, and a device turned off mid-timer ignores a new timer for
+(`OnTime`) and that it is on, otherwise `sent`. `turn_off` cancels the timer; a plain `turn_on` doesn't. A second timer
+while one runs keeps the longer of the two, so a shorter one is `sent`, not `confirmed`
+([tested](internals.md#tested-behavior)). By the spec, a device turned off mid-timer ignores a new timer for
 the next 0.1 s and stays off (`sent`). If the device restarts while a timer runs, after a power cut say, it can come
 back on with no timer ([internals](internals.md#what-decides-the-call)).
 

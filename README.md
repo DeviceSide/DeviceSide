@@ -196,9 +196,9 @@ The following actions cancel a `turn_on_for` timer:
 
 * Turn off
 
-* Start a new timer (replaces the old timer)
+* Start a new timer: it replaces the old one, longer or shorter, unless the [integration's page](docs/integrations.md) says otherwise
 
-* Turn on (i.e. leave on), on some integrations: each [integration's page](docs/integrations.md) says what cancels its timer
+* Turn on (i.e. leave on), on some integrations: each integration's page says
 
 ### Turn off with timer
 
