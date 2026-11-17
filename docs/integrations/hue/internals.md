@@ -177,4 +177,4 @@ Not worth filing:
   would be fair to ask aiohue for, but few others need one.
 
 <!-- Verification 2 of #501: throwaway. -->
-<!-- second push -->
+<!-- Re-check of Verification 3 after #506: throwaway, conflicts with main. -->
