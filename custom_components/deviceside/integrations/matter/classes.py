@@ -4,7 +4,8 @@ Nobody routes the call: DeviceSide sends OnWithTimedOff to the endpoint as it is
 outcome (internals.md, What decides the call): the device's firmware, named by its VendorID and ProductID, or on a
 bridge the bridge's software. The rules, first match winning:
 
-1. `uncertified`: a test VendorID (0xFFF1 to 0xFFF4), which no certified product carries, or none reported yet.
+1. `uncertified`: a test VendorID (0xFFF1 to 0xFFF4), which no certified product carries. A node reporting no
+   VendorID yet has no class (below).
 2. `bridged`: any sign of a bridge (an Aggregator or Bridged Node endpoint, Bridged Device Basic Information, or a
    DeviceTypeList this can't read), as the bridge's software answers the call. Failing closed: a bridge read as
    native would run at `other`'s level; a hub's own native light gets the bridge's, the cautious side.
@@ -17,10 +18,10 @@ bridge the bridge's software. The rules, first match winning:
    by default.
 
 The rules read the node's attribute cache, as addressing.lt_feature does: sync, no I/O. A node holds every attribute
-from its interview on, so one with no VendorID isn't fully reported: it is `uncertified`, Unplaced, the cautious class
-until it reports. No Matter scope holds a refusal entry, so an Unplaced node is refused only as the class it names:
-`uncertified`, not built. A target with no node is None (addressing.unsupported_reason refuses it first, as
-not_addressable).
+from its interview on, so one with no VendorID isn't fully reported, and no class can be named for it, not even
+`uncertified` (that is a vendor ID with no certification): its class is None, which the dispatcher refuses as
+class_unknown where the call harms a class, as it does Unplaced, and weighs as Experimental elsewhere. A target with no
+node is None too (addressing.unsupported_reason refuses it first, as not_addressable).
 """
 
 from collections.abc import Mapping
@@ -29,8 +30,9 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from .addressing import node_for
+from ...const import DOCS_URL
 from ...core.models import Target
-from ...core.scope import OTHER, Unplaced, documented, experimental, verified
+from ...core.scope import OTHER, NotBuilt, documented, experimental, verified
 
 UNCERTIFIED = "uncertified"
 BRIDGED = "bridged"
@@ -65,6 +67,27 @@ _PRODUCTS = {(4107, 8979): WIZ_PLUG}
 TURN_ON_FOR = verified(WIZ_PLUG) | experimental(OTHER)
 GET_ATTRIBUTES = verified(WIZ_PLUG) | documented(OTHER)
 
+# turn_on_for's failure harms (docs/evidence.md, When today's call harms a class), so these three, which its scope
+# doesn't serve, carry entries: they make core refuse a node that reports no VendorID yet (no class, so it could be
+# one of them) as class_unknown, even with Experimental features on.
+_INTERNALS = DOCS_URL + "docs/integrations/matter/internals.md#what-decides-the-call"
+TURN_ON_FOR_NOT_BUILT = {
+    UNCERTIFIED: NotBuilt(
+        reason="Nothing has tested its timer, so it could stay on, and DeviceSide's own off isn't built",
+        source=_INTERNALS,
+    ),
+    BRIDGED: NotBuilt(
+        reason="A bridge's software answers the timer for its devices, which nothing found says it runs, so it could "
+        "stay on, and DeviceSide's own off isn't built",
+        source=_INTERNALS,
+    ),
+    MULTI_ENDPOINT: NotBuilt(
+        reason="Certification tests the timer on one endpoint, and nothing found says it tests the others, so one "
+        "could stay on, and DeviceSide's own off isn't built",
+        source=_INTERNALS,
+    ),
+}
+
 
 def _bridge_type(item: object) -> bool:
     """Whether a DeviceTypeList entry names a bridge type; True for one this can't read, failing closed."""
@@ -83,10 +106,12 @@ def _is_bridge(attributes: Mapping[str, object]) -> bool:
     return False
 
 
-def node_class(attributes: Mapping[str, object]) -> str:
-    """The class of a node from its attribute cache, by the rules above."""
+def node_class(attributes: Mapping[str, object]) -> str | None:
+    """The class of a node from its attribute cache, by the rules above; None while it reports no VendorID."""
     vendor = attributes.get(_VENDOR_ID)
-    if not isinstance(vendor, int) or vendor in _TEST_VENDOR_IDS:
+    if not isinstance(vendor, int):
+        return None
+    if vendor in _TEST_VENDOR_IDS:
         return UNCERTIFIED
     if _is_bridge(attributes):
         return BRIDGED
@@ -101,10 +126,8 @@ def _on_off_endpoints(attributes: Mapping[str, object]) -> int:
 
 
 def capability(hass: HomeAssistant, target: Target) -> str | None:
-    """Matter's IntegrationInfo.capability: the class of the target's node, Unplaced (as `uncertified`) while it
-    reports no VendorID; None for a target with no node."""
+    """Matter's IntegrationInfo.capability: the class of the target's node; None for a target with no node, or a node
+    that reports no VendorID yet."""
     if (node := node_for(hass, target)) is None:
         return None
-    attributes = node.node_data.attributes
-    found = node_class(attributes)
-    return found if isinstance(attributes.get(_VENDOR_ID), int) else Unplaced(found)
+    return node_class(node.node_data.attributes)

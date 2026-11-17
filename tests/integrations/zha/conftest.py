@@ -21,9 +21,6 @@ from ...conftest import call as call_service
 from ...fixtures.zha import HUE, IEEE, add_zha_entity, zha_entry, zha_group, zigpy_devices
 
 SENT = {"status": "sent", "integration": "zha"}
-# The Sengled E11-G13's model, which drops a level while off (zcl.DROPS_WHILE_OFF, keyed on the model alone), under a
-# maker string no rule places, so the default class: the Sengled class is not built on the fades.
-E11_G13_OTHER = ("Another maker", "E11-G13")
 # Another brand's bulb, which no rule places: the default class.
 INNR = ("innr", "RB 285 C")
 A, B = "00:00:00:00:00:00:00:0a", "00:00:00:00:00:00:00:0b"

@@ -1,13 +1,11 @@
 import logging
-from dataclasses import replace
 
 import pytest
 from homeassistant.util.color import color_hs_to_xy
 
 from custom_components.deviceside.core.resolver import resolve
 from custom_components.deviceside.core.runtime import get_runtime
-from custom_components.deviceside.core.scope import OTHER, Level
-from custom_components.deviceside.integrations.hue import ADAPTERS, INTEGRATION
+from custom_components.deviceside.integrations.hue import INTEGRATION
 from custom_components.deviceside.integrations.hue.transition_cache import transition_cache
 
 from ...conftest import Clock, leaked, unload_mock_entries
@@ -28,18 +26,6 @@ def bridge() -> HueBridge:
 
 
 unload_mock_hue_entries = unload_mock_entries("hue")
-
-
-@pytest.fixture
-def other_on_trial(monkeypatch):
-    """Every Hue adapter with `other` on trial, as if research admitted it: for a test of what core or an adapter does
-    with another maker's light once it is served (a room's member map, a read's color mode), which `other`, not built
-    on every action (classes.py), can't reach today."""
-    for adapter in ADAPTERS:
-        scope = adapter.scope
-        monkeypatch.setattr(
-            adapter, "scope", replace(scope, capabilities={**scope.capabilities, OTHER: Level.EXPERIMENTAL})
-        )
 
 
 @pytest.fixture(autouse=True)

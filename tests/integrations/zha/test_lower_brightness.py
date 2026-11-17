@@ -9,7 +9,7 @@ from pytest_homeassistant_custom_component.common import async_mock_service
 from custom_components.deviceside.integrations.zha import zcl
 from custom_components.deviceside.integrations.zha.fade import soft_off_restores
 
-from .conftest import E11_G13_OTHER, IEEE, INNR, RESTORE_60, SENT, A, B, bulb, call, on_off_reads, sent, to
+from .conftest import IEEE, INNR, RESTORE_60, SENT, A, B, bulb, call, on_off_reads, sent, to
 from ...conftest import advance, allow_experimental, result, wall_clock_now
 
 pytestmark = pytest.mark.usefixtures("setup_production", "clock", "bulbs")
@@ -128,18 +128,6 @@ async def test_a_failed_soft_off_leaves_no_restore(hass, on_off_read):
         await call(hass, "lower_brightness", {"entity_id": "light.bulb"})
 
     assert not soft_off_restores(hass)
-
-
-async def test_no_restore_on_a_model_that_drops_levels_while_off(hass, commands, on_off_read):
-    allow_experimental(hass)
-    bulb(hass, strings=E11_G13_OTHER)
-    start = wall_clock_now()
-
-    await call(hass, "lower_brightness", {"entity_id": "light.bulb"})
-    await advance(hass, start, 4.5)
-
-    assert len(commands) == 1
-    assert not on_off_reads(on_off_read)
 
 
 async def test_a_raise_cancels_the_restore(hass, commands, on_off_read, clock):

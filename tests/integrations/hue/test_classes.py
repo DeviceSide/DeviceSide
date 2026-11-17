@@ -120,11 +120,12 @@ async def test_another_makers_light_is_not_built_even_with_experimental_features
     assert bridge.puts == []
 
 
-async def mixed_room(hass, bridge, *, entity_for_two: bool = True) -> str:
-    """light.room over a Hue light (one) and an IKEA light (two), both on at 60 %; `entity_for_two` False leaves the
-    IKEA light without a light entity in HA, as the bridge still lists it."""
+async def mixed_room(hass, bridge, *, entity_for_two: bool = True, two: str | None = IKEA) -> str:
+    """light.room over a Hue light (one) and a second light (two, an IKEA one unless `two` names another maker), both
+    on at 60 %; `entity_for_two` False leaves the second light without a light entity in HA, as the bridge still
+    lists it."""
     bridge.light("one", on=True)
-    bridge.light("two", on=True, manufacturer=IKEA)
+    bridge.light("two", on=True, **({"manufacturer": two} if two else {}))
     bridge.room("grouped-1", ["one", "two"], brightness=60.0)
     entry = await hue_entry(hass, bridge)
     members = [add_hue_entity(hass, entry, "light.one", "one", state="on")]
@@ -144,35 +145,28 @@ async def test_a_room_with_another_makers_light_falls_back_to_its_members(hass, 
     assert bridge.puts == [("light/one", STOP)]
 
 
-@pytest.mark.usefixtures("other_on_trial")
-async def test_a_room_runs_whole_with_experimental_features(hass, bridge):
-    await mixed_room(hass, bridge)
-    allow_experimental(hass)
+async def test_a_room_runs_whole_and_names_each_member_class(hass, bridge):
+    await mixed_room(hass, bridge, two=None)
 
     response = await call_service(hass, "stop", {"entity_id": "light.room"})
 
     assert response == {
         "light.room": result(
-            "hue",
-            "sent",
-            capabilities=["hue", "other"],
-            member_capabilities={"light.one": "hue", "light.two": "other"},
+            "hue", "sent", capabilities=["hue"], member_capabilities={"light.one": "hue", "light.two": "hue"}
         )
     }
     assert bridge.puts == [("grouped_light/grouped-1", STOP)]
 
 
-@pytest.mark.usefixtures("other_on_trial")
 async def test_a_room_light_with_no_entity_is_left_out_of_the_member_map(hass, bridge):
     # Its class counts in the room's capabilities, as the room's write reaches it, but it has no entity of its own to
     # show the call reached it, so member_capabilities names only the light that has one (docs/action-behavior.md).
-    await mixed_room(hass, bridge, entity_for_two=False)
-    allow_experimental(hass)
+    await mixed_room(hass, bridge, entity_for_two=False, two=None)
 
     response = await call_service(hass, "stop", {"entity_id": "light.room"})
 
     assert response == {
-        "light.room": result("hue", "sent", capabilities=["hue", "other"], member_capabilities={"light.one": "hue"})
+        "light.room": result("hue", "sent", capabilities=["hue"], member_capabilities={"light.one": "hue"})
     }
     assert bridge.puts == [("grouped_light/grouped-1", STOP)]
 

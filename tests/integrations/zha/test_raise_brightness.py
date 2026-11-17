@@ -7,7 +7,7 @@ from custom_components.deviceside.core.fields import BRIGHTNESS_FIELD
 from custom_components.deviceside.integrations.zha.addressing import Address
 from custom_components.deviceside.integrations.zha.fade import transition_cache
 
-from .conftest import BOTTOM, E11_G13_OTHER, INNR, SENT, A, B, bulb, call, sent, to
+from .conftest import BOTTOM, INNR, SENT, A, B, bulb, call, sent, to
 from ...conftest import allow_experimental, refusal
 from ...fixtures.zha import IEEE
 
@@ -57,16 +57,6 @@ async def test_a_lit_hue_bulb_gets_no_bottom(hass, commands, hue_turn_on):
     await call(hass, "raise_brightness", {"entity_id": "light.bulb"})
 
     hue_turn_on.assert_not_awaited()
-
-
-async def test_from_off_on_a_model_that_drops_levels_while_off_skips_the_bottom(hass, commands):
-    """The E11-G13 jumps to full on a MoveToLevel while off, so it starts at its stored level instead."""
-    allow_experimental(hass)
-    bulb(hass, state="off", strings=E11_G13_OTHER)
-
-    await call(hass, "raise_brightness", {"entity_id": "light.bulb"})
-
-    assert sent(commands) == [(0x0008, 0x04, {"level": 254, "transition_time": 50})]
 
 
 async def test_a_transition_longer_than_zcl_holds_runs_at_the_most(hass, commands):

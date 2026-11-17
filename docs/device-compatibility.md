@@ -245,6 +245,12 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 | `turn_on_for` | Documented | light entities | | |
 | `turn_on_for` | Experimental | other classes | | |
 
+| Not built yet, harmed by today's call | Why | Source |
+|---|---|---|
+| uncertified Matter devices (`turn_on_for`) | Nothing has tested its timer, so it could stay on, and DeviceSide's own off isn't built | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/matter/internals.md#what-decides-the-call) |
+| devices behind a Matter bridge (`turn_on_for`) | A bridge's software answers the timer for its devices, which nothing found says it runs, so it could stay on, and DeviceSide's own off isn't built | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/matter/internals.md#what-decides-the-call) |
+| multi-outlet Matter devices (`turn_on_for`) | Certification tests the timer on one endpoint, and nothing found says it tests the others, so one could stay on, and DeviceSide's own off isn't built | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/matter/internals.md#what-decides-the-call) |
+
 ### Control4
 
 | Action | Level | Items | Tested models | Records |

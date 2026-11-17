@@ -5,7 +5,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
 from custom_components.deviceside.core.models import Target
-from custom_components.deviceside.core.scope import Level, Unplaced
+from custom_components.deviceside.core.scope import Level
 from custom_components.deviceside.integrations.matter import INTEGRATION
 from custom_components.deviceside.integrations.matter.classes import (
     BRIDGED,
@@ -51,8 +51,8 @@ AGGREGATOR = {"1/29/0": [{"0": 14, "1": 1}], "2/29/0": [{"0": 19, "1": 1}, {"0":
         ({"0/40/2": 4874, "1/6/65532": 1, "2/6/65532": 1}, MULTI_ENDPOINT),
         (WIZ | {"1/6/65532": 1, "2/6/65532": 1}, WIZ_PLUG),  # a measured product's own record covers it
         ({"0/40/2": 4757, "1/6/65532": 1, "2/6/65532": 1} | AGGREGATOR, BRIDGED),
-        ({}, UNCERTIFIED),  # no VendorID yet: the cautious class
-        ({"0/40/2": "4874"}, UNCERTIFIED),
+        ({}, None),  # no VendorID yet: no class to name
+        ({"0/40/2": "4874"}, None),
     ],
 )
 def test_node_class(attributes, expected):
@@ -60,26 +60,25 @@ def test_node_class(attributes, expected):
 
 
 @pytest.mark.usefixtures("setup_production")
-async def test_capability_is_unplaced_without_a_vendor_id(hass):
-    """A node that hasn't reported its VendorID can't yet be told from an uncertified one: Unplaced."""
+async def test_capability_is_none_without_a_vendor_id(hass):
+    """A node that hasn't reported its VendorID has no class to name, not even `uncertified`, which needs one."""
     entry, _, _ = matter_device(hass, vendor_id=None, product_id=None)
     add_matter_entity(hass, entry, "switch.plug")
     target = _target(hass, "switch.plug")
 
     found = capability(hass, target)
 
-    assert isinstance(found, Unplaced) and found == UNCERTIFIED
+    assert found is None
 
 
 @pytest.mark.usefixtures("mock_chip", "setup_production")
-async def test_an_unplaced_node_is_not_built_until_it_reports(hass):
-    """Unplaced as `uncertified`, which is not built (docs/evidence.md, On trial): refused even with Experimental
-    features on, until it reports a VendorID."""
+async def test_a_node_with_no_vendor_id_is_class_unknown_until_it_reports(hass):
+    """No class to name: refused as class_unknown even with Experimental features on, until it reports a VendorID."""
     entry, send_cmd, _ = matter_device(hass, vendor_id=None, product_id=None)
     add_matter_entity(hass, entry, "switch.plug")
     allow_experimental(hass)
 
-    assert await refusal(hass, "turn_on_for", {"entity_id": "switch.plug", "duration": 5}) == "not_built"
+    assert await refusal(hass, "turn_on_for", {"entity_id": "switch.plug", "duration": 5}) == "class_unknown"
     send_cmd.assert_not_awaited()
 
 
@@ -109,7 +108,10 @@ def test_levels():
         assert held.keys() == {WIZ_PLUG, OTHER}
         assert INTEGRATION.classes.keys() - held.keys() == {BRIDGED, UNCERTIFIED, MULTI_ENDPOINT}
         assert not adapter.scope.no_known_method
-        assert not adapter.scope.not_built
+    # turn_on_for's failure harms, so its three unserved classes carry entries, which make core refuse a node with no
+    # class yet; get_attributes never harms, so needs none.
+    assert MatterTurnOnFor.scope.not_built.keys() == {BRIDGED, UNCERTIFIED, MULTI_ENDPOINT}
+    assert not MatterGetAttributes.scope.not_built
     assert MatterTurnOnFor.scope.capabilities[WIZ_PLUG] is Level.VERIFIED
     assert MatterTurnOnFor.scope.capabilities[OTHER] is Level.EXPERIMENTAL
     assert MatterTurnOnFor.scope.level("switch", [WIZ_PLUG]) is Level.VERIFIED

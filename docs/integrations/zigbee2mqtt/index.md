@@ -113,6 +113,9 @@ with Experimental features on. IKEA's outlets get no turn on with timer, as no p
 ([Zigbee plugs and switches](../../device-compatibility.md#zigbee-plugs-and-switches)). Smooth dimming and stop are on
 trial, as for other brands (below); the other features aren't built yet.
 
+On IKEA lights, lower brightness to off may stop at the lowest level instead of turning the light off
+([evidence](../hue/internals.md#device-classes)).
+
 ### Other brands
 
 Lights of every other brand, such as Innr or Ledvance, and their plugs and switches. A Zigbee 3.0 certified dimmable
