@@ -56,7 +56,7 @@ The compatibility list shows which devices are known or likely to work. If you o
 🟢 works · ✔ verified on automated rig<br>
 🟡 should work: same call pattern as a tested device<br>
 🌱 experimental: may not work; turn on in DeviceSide's Configure > Settings and [report whether it does](https://github.com/DeviceSide/DeviceSide/issues/new?template=device_report.yml)<br>
-🔴 no known method: no known command works on it
+🔴 no known command works on it
 
 **[Zigbee2MQTT](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/zigbee2mqtt/index.md)**
 
