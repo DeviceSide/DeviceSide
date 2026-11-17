@@ -157,13 +157,12 @@ Zigbee2MQTT countdown plug's maker string with a record of its own is a class of
 - **One fact, one home, in code.** Classes, levels, and no known method (`no_known_method`) and not built yet
   (`not_built`) entries live in the integration's package, and the cards are generated from them; where each
   piece goes is CLAUDE.md's [Where facts go](../CLAUDE.md#where-facts-go).
-- **Groups.** A native group takes the weakest level among its members' classes. One with a member that has no known
-  method or is not built yet, a member whose class takes a call of its own (a branch in the adapter, below, which the
-  group's call isn't), or a member whose class is Experimental while Experimental features is off (its domain and
-  fields not flagged), falls back to its members, each judged on its own, when the integration can list
-  them, including, where a call is known to harm, a group with a member not yet placed; one it can't list counts as
-  Experimental: refused while Experimental features is off, and with them on where a call is known to harm, as its
-  class rests on a membership DeviceSide doesn't have yet ([below](#no-known-method-not-built-yet-untested)).
+- **Groups.** A native group takes the weakest level among its members' classes. When a member's class is refused,
+  takes a call of its own, or is Experimental while Experimental features is off, the group falls back to its members:
+  it gets no entry of its own, its members answer for it, each judged on its own, and it is refused only when none of
+  them ran. One whose members the integration can't list can't fall back: it counts as Experimental, and is refused
+  whole while Experimental features is off, and with it on where a call is known to harm
+  ([below](#no-known-method-not-built-yet-untested)). The rules: `core/dispatcher.py`'s module docstring, Native groups.
 
 ### No known method, not built yet, untested
 
@@ -205,10 +204,10 @@ leaving it out refuses it, and the registry refuses a `not_built` entry on an ac
   its members, so only that member is refused. A device no rule matches gets the default class, and one placed there
   from full information isn't refused but runs at its class's level, as does every target of an action no class is
   harmed by (one it can't class, as Experimental; Unknown is flagged, never Verified, above). The refusal is
-  `class_unknown`; for a target not yet placed it clears once the integration has reported what it lacked. How core applies it: [design.md](design.md#core-contract), Classes; when a
-  device counts as placed: each integration's page, as
-  [Zigbee2MQTT's](integrations/zigbee2mqtt/index.md#device-classes). ZHA, Hue and Matter mark their entries in steps
-  7 to 9 of the [device classes plan](plans/2026-11-14-device-classes.md).
+  `class_unknown`; for a target not yet placed it clears once the integration has reported what it lacked. How core
+  applies it: `core/dispatcher.py`'s module docstring, Planning, and `AdapterScope.refusal`; when a device counts as
+  placed: each integration's page, as [Zigbee2MQTT's](integrations/zigbee2mqtt/index.md#device-classes). ZHA, Hue
+  and Matter mark their entries in steps 7 to 9 of the [device classes plan](plans/2026-11-14-device-classes.md).
 
 A refused target raises when named and is skipped when it came indirectly, as `supports()` refusals do
 ([action-behavior.md](action-behavior.md)).
