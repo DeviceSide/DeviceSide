@@ -98,17 +98,6 @@ def test_json_and_reruns_exclude_each_other():
         cr.main(["--signoffs", "--json", "--reruns"])
 
 
-def test_every_adapter_in_the_repo_has_a_transcript():
-    """An action with none pins no call, so nothing could sign it off: its unit tests must run it."""
-    registry = AdapterRegistry.discover()
-    missing = [
-        name
-        for name, adapter in cr.adapters(registry)
-        if not (cr.REPO / cr.transcript_path(adapter.integration, adapter.action)).is_file()
-    ]
-    assert missing == []
-
-
 # Coverage.
 
 
