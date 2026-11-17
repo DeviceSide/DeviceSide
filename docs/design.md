@@ -42,10 +42,10 @@ Code and docs use these terms.
 - **No known method**: a class no known call works on for an action, a device limit as far as anyone knows. A method
   is a call that does what was asked and fails without harm, so a class whose only known call is unsafe has none; the
   entry's reason says which. Listed in the adapter's `AdapterScope.no_known_method` with a reason and source, refused
-  (`no_known_method`) and named on the card.
+  (`no_known_method`) and marked 🔴 on the card.
 - **Not built yet**: a class a known or plausible call would serve for an action, and nobody has built it. The
   integration names it, the adapter's scope holds it in neither `capabilities` nor `no_known_method`, and it is
-  refused (`not_built`) and named on the card. It may sit in `AdapterScope.not_built`, with a reason, a source and
+  refused (`not_built`) and left off the card. It may sit in `AdapterScope.not_built`, with a reason, a source and
   `harms`, and does exactly when today's call would harm it.
 - **Field**: an action parameter, e.g. `brightness`.
 - **Entity domain**: light, switch. "Domain" alone is fine where unambiguous.
@@ -66,7 +66,7 @@ Code and docs use these terms.
 - **Repo maintainer**: a handle in `REPO_MAINTAINERS` (`scripts/gen_codeowners.py`), with admin on the repo. Repo
   maintainers own shared code, merge any PR and set caveats. Distinct from an
   integration's Maintainer.
-- **Caveat**: a risk mark on an adapter (`AdapterScope.caveat`, an issue URL), ⚠️ Untested fix or ⚠️ Unmaintained,
+- **Caveat**: a risk mark on an adapter (`AdapterScope.caveat`, an issue URL), 🔧 Untested fix or ⚠️ Unmaintained,
   set by a repo maintainer. It ships live; setup warns, its card shows the mark and the release notes say why. Rules:
   [evidence.md](evidence.md#caveats).
 - **Sign-off**: an integration's rig records, every one passing and standing through the changes since its run, or a
@@ -299,7 +299,7 @@ The rules are in [evidence.md](evidence.md#release-gate); each gate's mechanics 
 workflow named.
 
 - **Coverage:** `scripts/check_release.py --coverage`, in CI.
-- **Sign-offs:** `check_release.py --signoffs`, in `cut-release`: a sign-off, or ⚠️ Untested fix on every changed
+- **Sign-offs:** `check_release.py --signoffs`, in `cut-release`: a sign-off, or 🔧 Untested fix on every changed
   adapter, for each integration whose package differs from the last release tag. `--notes` lists the unsigned
   integrations and Untested fix caveats in both cut workflows.
 - **Tags:** `scripts/check_tag.py`, in `.github/workflows/cut-release-candidate.yml` and `cut-release.yml`, the only

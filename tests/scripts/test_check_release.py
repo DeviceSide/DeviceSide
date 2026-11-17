@@ -803,7 +803,7 @@ def test_notes_call_for_testers_of_unsigned_integrations_and_untested_fixes(rele
     assert "\n- Other\n" in text
     assert "- Fake\n" not in text
     assert text.endswith(
-        "## ⚠️ Untested fix\n\nThese ship a fix nobody could test before the release. If you use one,"
+        "## 🔧 Untested fix\n\nThese ship a fix nobody could test before the release. If you use one,"
         f" please [report whether it works]({cr.DEVICE_REPORT}).\n\n- fake / turn_on_for\n"
     )
 

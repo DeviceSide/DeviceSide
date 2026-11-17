@@ -26,3 +26,8 @@ capabilities:
     phrase: other brands
     section: Other brands
     domains: {light: other brands' lights, switch: other brands' plugs and switches}
+# A phrase for a page section, which a card line holding every class the section shows in its domains uses instead.
+sections:
+  Tuya:
+    phrase: Tuya devices
+    domains: {light: Tuya lights, switch: Tuya plugs and switches}

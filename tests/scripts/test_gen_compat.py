@@ -451,8 +451,8 @@ def test_a_card_puts_flagged_adapters_under_experimental_features_and_leaves_out
     assert card.tested == []
     # An adapter flagged whole is Experimental on every domain, evidence or not; stop rides the smooth move.
     assert card.lines[:2] == [
-        f"[lights]({URL}#lights): 🟢 turn on with timer · 🧪 smooth hue",
-        f"[plugs]({URL}#zigbee-plugs): 🧪 stop",
+        f"[lights]({URL}#lights): 🟢 turn on with timer · 🌱 smooth hue",
+        f"[plugs]({URL}#zigbee-plugs): 🌱 stop",
     ]
 
 
@@ -503,8 +503,8 @@ def test_documented_and_flagged_classes_share_an_entry_per_feature_set_and_name_
     assert card.lines == [
         f"[relays as lights]({URL}#relays): 🟢 turn on with timer, smooth dimming",
         f"[relays]({URL}#relays): 🟡 turn on with timer",
-        f"[dimmers]({URL}#dimmers): 🟡 turn on with timer · 🧪 smooth dimming",
-        f"[CCT controllers]({URL}#dimmers): 🧪 smooth dimming",
+        f"[dimmers]({URL}#dimmers): 🟡 turn on with timer · 🌱 smooth dimming",
+        f"[CCT controllers]({URL}#dimmers): 🌱 smooth dimming",
         f"[Old plug]({URL}#old-plug): 🔴",  # devices.yaml's entry names no class or feature
     ]
     assert card.render().splitlines()[2:] == [f"- {line}" for line in card.lines]
@@ -520,7 +520,7 @@ def test_a_class_line_runs_at_the_weaker_of_its_domain_and_class(root):
     card = classed_card(adapter("zha", "turn_on_for", timer))
     assert card.lines[:2] == [
         f"[relays as lights]({URL}#relays), [dimmers]({URL}#dimmers): 🟢 turn on with timer",
-        f"[relays]({URL}#relays): 🧪 turn on with timer",
+        f"[relays]({URL}#relays): 🌱 turn on with timer",
     ]
 
 
@@ -541,12 +541,12 @@ def test_a_class_whose_domains_show_different_features_splits_per_domain_on_the_
     )
     assert card.lines[:3] == [
         f"[multicolor bulbs]({URL}#bulbs): 🟢 turn on with timer, smooth dimming",
-        f"[relays as lights]({URL}#relays), [dimmers]({URL}#dimmers): 🧪 turn on with timer, smooth dimming",
-        f"[relays]({URL}#relays): 🧪 turn on with timer",
+        f"[relays as lights]({URL}#relays), [dimmers]({URL}#dimmers): 🌱 turn on with timer, smooth dimming",
+        f"[relays]({URL}#relays): 🌱 turn on with timer",
     ]
     # Where both domains show the same features, the class keeps one line, by its phrase.
     both = zha_card(adapter("zha", "turn_on_for", timer), capabilities=capabilities)
-    assert both.lines[1] == f"[relays]({URL}#relays), [dimmers]({URL}#dimmers): 🧪 turn on with timer"
+    assert both.lines[1] == f"[relays]({URL}#relays), [dimmers]({URL}#dimmers): 🌱 turn on with timer"
     # A class that splits needs a phrase for each domain it shows.
     del capabilities["zha"]["Switch"]["domains"]
     with pytest.raises(SystemExit, match="zha Switch shows other features on each of its domains"):
@@ -785,9 +785,9 @@ def test_the_legend_leads_the_cards_and_lists_only_the_marks_they_use(root):
     # The fixture's Old plug has no known method; nothing is tested, Documented, Experimental or caveated.
     assert "🟢 works · 🔴 no known method: no known command works on it\n\n**ZHA**" in text
     assert text.index("Details per integration are in [docs/integrations.md](") < text.index("</details>")
-    assert gc.legend("🟢 ✔ 🟡 🧪 🔴 🔧 ⚠️") == (
+    assert gc.legend("🟢 ✔ 🟡 🌱 🔴 🔧 ⚠️") == (
         "🟢 works · ✔ verified on automated rig · 🟡 should work: same call pattern as a tested device · "
-        "🧪 experimental: enable in DeviceSide's Configure > Settings; please"
+        "🌱 experimental: enable in DeviceSide's Configure > Settings; please"
         f" [report how it goes]({gc.REPORT_URL}) · "
         "🔴 no known method: no known command works on it · "
         f"🔧 untested fix: please try it and [report whether it works]({gc.REPORT_URL}) · "
@@ -1143,7 +1143,7 @@ def test_a_tested_model_follows_the_line_of_the_class_and_domain_a_test_reached_
     # Lines go by their strongest status, then as the scopes first name their classes; native groups follow the
     # lines that work.
     assert card.lines == [
-        f"[relays as lights]({URL}#relays): 🟢 turn on with timer · 🧪 smooth dimming",
+        f"[relays as lights]({URL}#relays): 🟢 turn on with timer · 🌱 smooth dimming",
         f"[relays]({URL}#relays) ([Plug]({URL}#plug) ✔): 🟢 turn on with timer",
         f"[dimmers]({URL}#dimmers) ([Hue lamp]({URL}#hue-lamp) ✔): 🟢 turn on with timer, smooth dimming",
         f"[native groups]({URL}#native-groups) ✔: 🟢 turn on with timer",
@@ -1155,3 +1155,57 @@ def test_a_tested_model_follows_the_line_of_the_class_and_domain_a_test_reached_
     relays = AdapterScope(domains=verified("light", "switch"), capabilities=verified("Switch") | experimental("Light"))
     card = classed_card(adapter("zha", "turn_on_for", relays), capabilities=capabilities)
     assert card.lines[0] == f"[Plug]({URL}#plug) ✔: 🟢 turn on with timer"
+
+
+def test_a_feature_whose_actions_differ_in_status_names_its_parts():
+    """Decision 12: never one feature under two statuses."""
+    dimming = {"should": {"lower_brightness", "stop"}, "experimental": {"raise_brightness", "turn_on_for"}}
+    assert gc.shape(dimming) == (
+        ("should", ("smooth dimming down",)),
+        ("experimental", ("turn on with timer", "smooth dimming up")),
+    )
+    auto = {"works": {"set_auto_off", "clear_auto_off"}, "should": {"set_auto_on"}}
+    assert gc.shape(auto) == (("works", ("auto-off",)), ("should", ("auto-on",)))
+    assert gc.shape({"works": {"raise_brightness", "lower_brightness"}}) == (("works", ("smooth dimming",)),)
+
+
+def test_no_card_line_names_a_feature_twice():
+    block = gc.README.read_text().split(gc.CARDS[0])[1].split(gc.CARDS[1])[0]
+    lines = [line for line in block.splitlines() if line.startswith("- ")]
+    assert lines
+    for line in lines:
+        statuses = line.rsplit(": ", 1)[1].split(" · ")  # after the names, each "<icon> <features>"
+        labels = [label for status in statuses for label in status.split(" ", 1)[-1].split(", ")]
+        assert len(labels) == len(set(labels)), line
+
+
+def test_a_line_holding_every_class_of_its_section_names_the_section(root):
+    """Decision 13: by its devices.yaml `sections` phrase, per domain where it gives one."""
+    timer = AdapterScope(capabilities=verified("Light", "CCT"))
+    sections = {"zha": {"Dimmers": {"phrase": "dimmable lights", "domains": {"switch": "dimmer switches"}}}}
+    card = classed_card(adapter("zha", "turn_on_for", timer), sections=sections)
+    assert card.lines[0] == f"[dimmable lights]({URL}#dimmers): 🟢 turn on with timer"
+    # A class of the section on another line keeps each class named; so does a section with no phrase.
+    split = AdapterScope(capabilities=verified("Light") | experimental("CCT"))
+    card = classed_card(adapter("zha", "turn_on_for", split), sections=sections)
+    assert card.lines[:2] == [
+        f"[dimmers]({URL}#dimmers): 🟢 turn on with timer",
+        f"[CCT controllers]({URL}#dimmers): 🌱 turn on with timer",
+    ]
+    assert classed_card(adapter("zha", "turn_on_for", timer)).lines[0] == (
+        f"[dimmers, CCT controllers]({URL}#dimmers): 🟢 turn on with timer"
+    )
+    with pytest.raises(SystemExit, match="sections zha Nowhere: no class in capabilities has that section"):
+        data(sections={"zha": {"Nowhere": {"phrase": "x"}}})
+
+
+def test_a_class_refused_on_every_action_has_no_line(root):
+    """Decision 14: a class whose only entries are not built yet stays off the card."""
+    unbuilt = {"CCT": NotBuilt("No timer yet", "https://x.y/z", harms=True)}
+    adapters = (
+        adapter("zha", "turn_on_for", AdapterScope(capabilities=verified("Light"), not_built=unbuilt)),
+        adapter("zha", "raise_brightness", AdapterScope(capabilities=verified("Light"))),
+    )
+    registry = classed_registry(*adapters)
+    card = gc.card("zha", registry, list(adapters), data(registry, no_known_method=[]))
+    assert card.lines == [f"[dimmers]({URL}#dimmers): 🟢 turn on with timer, smooth dimming"]

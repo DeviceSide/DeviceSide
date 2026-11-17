@@ -156,7 +156,7 @@ Zigbee2MQTT countdown plug's maker string with a record of its own is a class of
   lights alone refuses a plug as not built yet, and its card leaves the plug off (the registry checks). An action
   that serves one of them admits the class in every domain it serves, at the class's level there: one serving
   switches takes a TS011F that Home Assistant shows as a light. A class whose domains show different features gets a
-  card entry per domain ("other brands' lights", "other brands' plugs and switches").
+  card line per domain ("other brands' lights", "other brands' plugs and switches").
 - **One axis per integration.** An integration that names classes holds them in every adapter's scope, and only the
   classes it declares; one that names none holds them in none (the registry checks). A new integration names its
   classes, or its PR argues that it has one: that no known device behind it answers the same call differently.
@@ -295,7 +295,7 @@ lets a Shelly maintainer lift the flag, once they judge the tests complete: thei
 are about evidence, caveats about risk and people. Each gives one setup warning, one card mark and one release-notes
 line:
 
-- **⚠️ Untested fix:** changed, and nobody could test it before the release. It ships live, with a call for testers
+- **🔧 Untested fix:** changed, and nobody could test it before the release. It ships live, with a call for testers
   in the release notes. A sign-off clears it, including a maintainer's `_manual.json` row citing a user's working
   report.
 - **⚠️ Unmaintained:** nobody is fixing it. It ships live. Cleared when someone fixes the adapter or adopts the
@@ -304,7 +304,7 @@ line:
 A deprecation gets a hand-written note in that release's notes, not a caveat.
 
 *Example:* a low-risk fix to a broken adapter whose devices no maintainer has lands before the cut. It ships with
-⚠️ Untested fix and the issue URL; a user's working report, cited in a maintainer's `_manual.json` row, clears it.
+🔧 Untested fix and the issue URL; a user's working report, cited in a maintainer's `_manual.json` row, clears it.
 
 ## Release gate
 
@@ -350,8 +350,8 @@ none.
   Untested fix; no other caveat, nor the `experimental` flag alone, stands in. A change to a package module that is no
   adapter's (a shared helper) changes every adapter of the package. A repo maintainer picks whichever is most likely
   to work for users (tenet 1): hold the fix back (revert it, or leave it out of the release branch) when the current
-  code mostly works; ship it marked ⚠️ Untested fix when the current code is broken and the fix is low-risk; or, when
-  it is risky, put it behind `experimental` and mark it ⚠️ Untested fix.
+  code mostly works; ship it marked 🔧 Untested fix when the current code is broken and the fix is low-risk; or, when
+  it is risky, put it behind `experimental` and mark it 🔧 Untested fix.
 - **Coverage:** every module under `core/` and `integrations/`, bar `__init__.py`, needs at least 95% line coverage;
   CI checks it.
 

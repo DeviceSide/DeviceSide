@@ -2,7 +2,7 @@
 # with each integration's docs/integrations/<integration>/devices.yaml; its docstring gives both formats. A model a
 # record or report names must be here, or in its integration's devices.yaml when no other integration names it.
 #
-# A model's `type` orders a card's Works line: bulb, relay, plug, dimmer or LED controller. Its `section` (default:
+# A model's `type` orders a card line's tested models: bulb, relay, plug, dimmer or LED controller. Its `section` (default:
 # its `name`) is the heading a card links to; gen_compat's docstring says where it may be.
 
 # One entry per physical model, with its ids: a record names a Zigbee device by its Zigbee model ID on every

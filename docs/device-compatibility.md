@@ -21,7 +21,7 @@ reports help ship them to everyone. How we decide: [evidence rules](evidence.md)
 
 ## Maintainers
 
-DeviceSide is run by volunteers. Each integration's maintainers, named on its card, look after it: they review changes
+DeviceSide is run by volunteers. Each integration's maintainers look after it: they review changes
 to it and fix bugs in it as they can. Please
 [report a bug](https://github.com/DeviceSide/DeviceSide/issues/new?template=device_report.yml); the report goes to the
 maintainers of the integration you choose. A report that a feature doesn't work is still useful: it is how features

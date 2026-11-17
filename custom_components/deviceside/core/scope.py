@@ -100,7 +100,7 @@ class NoKnownMethod:
     """A class with no known method, a device limit as far as anyone knows (docs/evidence.md, No known method): no
     known call works on it, or the only one known is unsafe, and the reason says which. What the card names, why, and
     the source, an https URL (scripts/gen_compat.py checks it). The dispatcher refuses it as `no_known_method`,
-    raising with the reason; the card lists it under No known method.
+    raising with the reason; the card marks it 🔴.
 
     `harms`, which every entry states: whether the call's failure on the class is deferred and unattended, leaving it
     on or off unasked after the user stopped watching (a plug turned on that stays on), by docs/evidence.md's test,
@@ -120,7 +120,7 @@ class NotBuilt:
     """A class not built yet (docs/evidence.md, Not built yet), declared because the adapter's call would harm it: a
     call that would work is known or plausible, and nobody has built it. Why the user can't have it yet, and the
     source, an https URL (scripts/gen_compat.py checks it); the dispatcher refuses it as `not_built` with the reason,
-    and the card lists it as not built yet, as it does a class a scope leaves out.
+    and the card leaves it out, as it does a class a scope leaves out.
 
     `harms`, required as NoKnownMethod's is: the adapter's call harms the class (When today's call harms a class), so
     AdapterScope.refusal refuses a target that could still be in it as class_unknown, exactly as for a NoKnownMethod

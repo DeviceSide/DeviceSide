@@ -38,7 +38,7 @@ else's code"). This skill reads the report and amends it; it never edits code.
    finding; never pick one yourself:
    - **the owner fixes it:** that choice is the runner's word to file its issue (step 4); the status stays `open`,
      and the RC waits;
-   - **the runner fixes it:** no issue for it; the fix PR names the owner; the runner decides on ⚠️ Untested fix
+   - **the runner fixes it:** no issue for it; the fix PR names the owner; the runner decides on 🔧 Untested fix
      (`docs/evidence.md`) when nobody can test the device before the release;
    - **waived:** `status: waived` with the runner's reason, in their words.
 

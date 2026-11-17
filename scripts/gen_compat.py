@@ -17,15 +17,18 @@ A level comes from the scope alone (verify, then trust): a record never ages.
 card per integration, then a link to the integrations page. A card has its name, linked to its page (the bundle's
 index.md), with "⚠️ Unmaintained" when every adapter is; the features of the adapters with each `caveat` (🔧 Untested
 fix, then ⚠️ Unmaintained, linking its reason); then a line per feature set, naming each class on one line, with its
-features by status: "Tuya TS011F countdown plugs of tested makers (Tuya TS011F ✔): 🟢 turn on with timer · 🧪 get
+features by status: "Tuya TS011F countdown plugs of tested makers (Tuya TS011F ✔): 🟢 turn on with timer · 🌱 get
 attributes". Lines that work come first, then those that should, then the rest.
 - Statuses: a class counts on each entity domain it can be (`IntegrationInfo.classes`) that the adapter serves, at the
-  level a call there runs at (AdapterScope.level): 🟢 Verified, 🟡 Documented, 🧪 Experimental, as is every feature
+  level a call there runs at (AdapterScope.level): 🟢 Verified, 🟡 Documented, 🌱 Experimental, as is every feature
   of an adapter flagged whole; 🔴 for a scope's `no_known_method` entry, which names a class devices.yaml gives no
-  phrase by its `what`. A feature not built yet on a class (in no scope, or a `not_built` entry) is left out, and a
-  class with nothing left has no line. Where the integration names no classes, its domains stand in for them.
+  phrase by its `what`. A feature whose actions differ in status names its parts ("🟡 smooth dimming down · 🌱
+  smooth dimming up"), so none shows twice. A feature not built yet on a class (in no scope, or a `not_built` entry)
+  is left out, and a class with nothing left has no line. Where the integration names no classes, its domains stand
+  in for them.
 - Names: the class's devices.yaml phrase; one whose domains show different features is named per domain, by its
-  `domains` phrases, so a plug never lists dimming. Classes of one page section share a link.
+  `domains` phrases, so a plug never lists dimming. Classes of one page section share a link, and a line holding
+  every class its section shows in its domains names the section instead, by its devices.yaml `sections` phrase.
 - Tested models follow the line of the class and domain a test reached them on (else of their class; else, from a
   format 1 record or a manual row naming none, a line of their own with the features tested), and native groups get
   a line, with the features a test reached them on; rig-tested ones end ✔. A pass on a flagged item never credits a
@@ -61,10 +64,11 @@ unharmed one needs no entry. Each bundle's devices.yaml holds its integration's:
 `column_order` (the README feature table's, read by gen_features), `requires` (shown after the card's name),
 `capabilities` (a `phrase` and `section` per class a card line names, or domain where the integration names no
 classes, and per class a scope lists as not built yet; `domains`, a phrase per entity domain, for a class the card
-splits) and `no_known_method` (`what`, `reason`, `source`, optional `section`: devices that fail the call DeviceSide
-sends, not what isn't built). A scope's
-`no_known_method` (core/scope.py, NoKnownMethod) and `not_built` (NotBuilt) are the code's home for these, and join
-them here; the devices.yaml and models.yaml entries move to them, class by class. Every integration needs a bundle.
+splits), `sections` (optional: a `phrase`, and `domains`, per page section, for a line holding all its classes) and
+`no_known_method` (`what`, `reason`, `source`, optional `section`: devices that fail the call DeviceSide sends, not
+what isn't built). A scope's `no_known_method` (core/scope.py, NoKnownMethod) and `not_built` (NotBuilt) are the
+code's home for these, and join them here; the devices.yaml and models.yaml entries move to them, class by class.
+Every integration needs a bundle.
 
 **Links.** A card links each model, class or blocker to the heading its `section` names (default: the model's
 `name`, the blocker's `what`): on the card's integration page when that has the heading; a model's or native groups'
@@ -126,7 +130,7 @@ OUTCOMES = (
     ("should", "🟡", "should work: same call pattern as a tested device"),
     (
         "experimental",
-        "🧪",
+        "🌱",
         f"experimental: enable in DeviceSide's Configure > Settings; please [report how it goes]({REPORT_URL})",
     ),
     ("no_known_method", "🔴", "no known method: no known command works on it"),
@@ -149,9 +153,10 @@ GITHUB = "https://github.com/"
 INTEGRATIONS_URL = "https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations.md"
 # The keys each devices.yaml entry may hold, so a typo fails instead of being ignored.
 SHARED_KEYS = {"models", "no_known_method", "not_built"}  # each a list
-BUNDLE_KEYS = {"column", "column_order", "requires", "capabilities", "models", "no_known_method"}
+BUNDLE_KEYS = {"column", "column_order", "requires", "capabilities", "sections", "models", "no_known_method"}
 MODEL_KEYS = {"name", "ids", "type", "section"}
 CLASS_KEYS = {"phrase", "section", "domains"}  # `domains`: a phrase per entity domain, for a class the card splits
+SECTION_KEYS = {"phrase", "domains"}  # a section's phrase, for a line that holds all its classes
 BROKEN_KEYS = {"what", "integrations", "reason", "source", "section"}
 GROUPS_ENTRY = ("native groups", "Native groups")  # (phrase, section) for the groups a record tested
 
@@ -177,6 +182,8 @@ class Data:
     models: dict[str, dict]  # by each of its ids
     capabilities: dict[str, dict[str, dict]]
     no_known_method: list[dict]
+    # Each integration's devices.yaml `sections`: a phrase (and per domain) for each page section that has one.
+    section_phrases: dict[str, dict[str, dict]] = field(default_factory=dict)
     # models.yaml's devices not built yet that today's call harms, on integrations whose code doesn't class them yet.
     not_built: list[dict] = field(default_factory=list)
     # Every heading an entry links to, with the integration whose card links it (None: any card, as for a model).
@@ -246,6 +253,8 @@ def merge(shared: dict, bundles: dict[str, dict]) -> dict:
             raw["requires"][key] = data["requires"]
         if data.get("capabilities"):
             raw["capabilities"][key] = data["capabilities"]
+        if data.get("sections"):
+            raw.setdefault("sections", {})[key] = data["sections"]
         if not isinstance(models := data.get("models") or [], list):
             fail(f"{where}: models must be a list")
         raw["bundle_models"][key] = models
@@ -291,6 +300,7 @@ def load_raw(raw: dict, registry: AdapterRegistry) -> Data:
             if "domains" in entry:
                 need(entry["domains"], f"capabilities {key} {item} domains", tuple(entry["domains"]))
             data.sections.add((key, entry["section"]))
+    load_sections(raw.get("sections") or {}, data)
     for entry in raw["no_known_method"]:
         load_broken(entry, set(registry.integrations), data)
     for entry, actions in code_broken(registry):
@@ -298,6 +308,19 @@ def load_raw(raw: dict, registry: AdapterRegistry) -> Data:
     for entry in raw.get("not_built") or []:
         load_broken(entry, set(registry.integrations), data, kind="not_built")
     return data
+
+
+def load_sections(by_key: dict[str, dict], data: Data) -> None:
+    """The bundles' `sections`, validated: each a section some class of its `capabilities` names."""
+    for key, items in by_key.items():
+        need(items, f"sections {key}")
+        for section, entry in items.items():
+            need(entry, f"sections {key} {section}", ("phrase",), keys=SECTION_KEYS)
+            if "domains" in entry:
+                need(entry["domains"], f"sections {key} {section} domains", tuple(entry["domains"]))
+            if section not in {item["section"] for item in data.capabilities.get(key, {}).values()}:
+                fail(f"sections {key} {section}: no class in capabilities has that section")
+        data.section_phrases[key] = items
 
 
 def code_broken(registry: AdapterRegistry) -> list[tuple[dict, set[str]]]:
@@ -499,12 +522,12 @@ def check_models(registry: AdapterRegistry, data: Data) -> None:
 
 
 def card_evidence(adapter) -> Evidence:
-    """The evidence a card's Works counts. Fail-safe: none for an adapter flagged whole or on a field. For one flagged
-    on a domain or class, the record tests (`tested`) that target unflagged domains and, when a class is flagged
-    anywhere (an entry held on some domains alone is flagged on the rest), reach only classes unflagged in the test's
-    domain; and, unless a domain is flagged (a manual row names none), the manual devices whose class is unflagged in
-    some domain the adapter serves, as the coverage check lets a manual row cover any. Flagged or not, a null-class
-    device of an integration that names classes counts for nothing (`Evidence.of`)."""
+    """The evidence a card credits tested models from. Fail-safe: none for an adapter flagged whole or on a field.
+    For one flagged on a domain or class, the record tests (`tested`) that target unflagged domains and, when a class
+    is flagged anywhere (an entry held on some domains alone is flagged on the rest), reach only classes unflagged in
+    the test's domain; and, unless a domain is flagged (a manual row names none), the manual devices whose class is
+    unflagged in some domain the adapter serves, as the coverage check lets a manual row cover any. Flagged or not, a
+    null-class device of an integration that names classes counts for nothing (`Evidence.of`)."""
     scope = adapter.scope
     flagged = {noun for level, _, noun, domains in items(scope) if level is Level.EXPERIMENTAL or domains is not None}
     if scope.experimental or "fields" in flagged:
@@ -557,7 +580,7 @@ def caveat_reason(scope, kind: CaveatKind) -> str | None:
 
 
 def marked(label: str, reason: str) -> str:
-    """A mark (⚠️ Unmaintained, ⚠️ Untested fix), linking its reason when that is a URL, else giving it in brackets."""
+    """A mark (⚠️ Unmaintained, 🔧 Untested fix), linking its reason when that is a URL, else giving it in brackets."""
     return f"[{label}]({reason})" if reason.startswith("https://") else f"{label} ({reason})"
 
 
@@ -710,11 +733,34 @@ type Item = tuple[str, str | None]
 type Shape = tuple[tuple[str, tuple[str, ...]], ...]
 
 
+def part(action: str) -> str:
+    """The part of its feature an action is, for a feature whose actions a line shows at different statuses: "smooth
+    dimming up" (raise_brightness), "auto-off" (set_auto_off)."""
+    for prefix, end in (("raise_", " up"), ("lower_", " down")):
+        if action.startswith(prefix):
+            return FEATURES[action] + end
+    if action.endswith(("_auto_off", "_auto_on")):
+        return "auto-" + action.rsplit("_", 1)[1]
+    return action.replace("_", " ")
+
+
 def shape(by_status: dict[str, set[str]]) -> Shape:
-    """The actions by status as a line names them. `stop` rides the smooth moves, so it is named only on a line that
-    names nothing else."""
+    """The actions by status as a line names them, each feature under one status: one whose actions differ names its
+    parts instead ("🟡 smooth dimming down · 🌱 smooth dimming up"). `stop` rides the smooth moves, so it is named
+    only on a line that names nothing else."""
     labels = {status: features(actions, fold_stop=False) for status, actions in by_status.items()}
-    if {label for found in labels.values() for label in found} - {"stop"}:
+    every = [label for found in labels.values() for label in found]
+    split = {label for label in every if every.count(label) > 1}
+    for status, found in labels.items():
+        parts = [
+            part(action) if label in split else label
+            for label in found
+            for action in (
+                [a for a in FEATURES if a in by_status[status] and FEATURES[a] == label] if label in split else [None]
+            )
+        ]
+        labels[status] = tuple(dict.fromkeys(parts))
+    if set(every) - {"stop"}:
         labels = {status: tuple(label for label in found if label != "stop") for status, found in labels.items()}
     return tuple((key, labels[key]) for key, *_ in OUTCOMES if labels.get(key))
 
@@ -812,30 +858,52 @@ def class_lines(
         if found_shape := shape(by_status):
             by_item.setdefault(item, {})[domain] = found_shape
     lines: dict[Shape, Line] = {}
+    sections: dict[Item, str] = {}  # each item's page section
     for item, by_domain in by_item.items():
         entry = data.capabilities.get(key, {}).get(item) or broken.get(item)
         if entry is None:
             fail(f"capabilities: no entry for {key} {item}, which the card lists")
-        domains = [domain for domain in served if domain in class_domains.get(item, ())]
-        if None in by_domain or (set(by_domain) == set(domains) and len(set(by_domain.values())) == 1):
-            named = [(entry["phrase"], next(iter(by_domain.values())), list(by_domain))]
-        else:
-            for domain in by_domain:
-                if domain not in entry.get("domains", {}):
-                    fail(
-                        f"capabilities: {key} {item} shows other features on each of its domains, so its card line"
-                        f" splits: give it a phrase for {domain} (`domains`)"
-                    )
-            named = [(entry["domains"][domain], found_shape, [domain]) for domain, found_shape in by_domain.items()]
-        for phrase, found_shape, domains in named:
+        can_be = [domain for domain in served if domain in class_domains.get(item, ())]
+        for phrase, found_shape, domains in naming(key, item, entry, by_domain, can_be):
             line = lines.setdefault(found_shape, Line(found_shape))
             phrases = line.sections.setdefault(entry["section"], [])
             # Classes that share a phrase (Zigbee2MQTT's countdown plugs, a class per maker string) are said once.
             if phrase not in phrases:
                 phrases.append(phrase)
             line.items += [(item, domain) for domain in domains]
+            sections |= {(item, domain): entry["section"] for domain in domains}
+    for line in lines.values():
+        section_phrases(line, sections, data.section_phrases.get(key, {}))
     order = [key for key, *_ in OUTCOMES]
     return sorted(lines.values(), key=lambda line: order.index(line.shape[0][0]))
+
+
+def naming(
+    key: str, item: str, entry: dict, by_domain: dict[str | None, Shape], domains: list[str]
+) -> list[tuple[str, Shape, list[str | None]]]:
+    """The item as its lines name it, (phrase, features, domains): once, by its phrase, when it shows the same features
+    on every domain it can be, else once per domain it shows on, by its `domains` phrase."""
+    if None in by_domain or (set(by_domain) == set(domains) and len(set(by_domain.values())) == 1):
+        return [(entry["phrase"], next(iter(by_domain.values())), list(by_domain))]
+    for domain in by_domain:
+        if domain not in entry.get("domains", {}):
+            fail(
+                f"capabilities: {key} {item} shows other features on each of its domains, so its card line"
+                f" splits: give it a phrase for {domain} (`domains`)"
+            )
+    return [(entry["domains"][domain], found_shape, [domain]) for domain, found_shape in by_domain.items()]
+
+
+def section_phrases(line: Line, sections: dict[Item, str], phrases: dict[str, dict]) -> None:
+    """A line that holds every class a section shows on the card in its domains names the section, by its devices.yaml
+    `sections` phrase (its domain's, where it gives one), instead of each class."""
+    for section, names in line.sections.items():
+        mine = {item for item in line.items if sections.get(item) == section}
+        domains = {domain for _, domain in mine}
+        every = {item for item, at in sections.items() if at == section and item[1] in domains}
+        if len(names) > 1 and mine == every and (entry := phrases.get(section)):
+            (only,) = domains if len(domains) == 1 else (None,)
+            names[:] = [entry.get("domains", {}).get(only, entry["phrase"])]
 
 
 @dataclass
