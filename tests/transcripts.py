@@ -1,18 +1,22 @@
 """Call transcripts: what each action sent on the wire in the unit tests, and what it made of the replies.
 
-Off unless pytest runs with `--transcripts=write|check` (a plain or `-k` run never touches them). Each
-`Dispatcher._run_adapter` run opens a segment, `{integration, action, request, wire, result}`, held in a ContextVar,
-so the tasks and timers the run starts (a fade's ticks) land in it too. `wire` holds each call made inside the segment
-at a wire boundary, as `[call, reply]`: any non-DeviceSide service through `ServiceRegistry.async_call`, as
-`["service", "<domain>.<service>", data]`, and each boundary an integration declares in its
-`tests/integrations/<x>/wire.py`, `BOUNDARIES = [(module, attribute, leading args to drop), ...]`, as
-`["<module's last name>.<attribute>", args, kwargs]`. A boundary is wrapped again at each segment's open, around
-whatever a test installed there, so name it where callers look it up. `result` is the run's reconciled
-per-target results. A segment is serialized when its test ends, and carries no test id.
+Off unless pytest runs with `--transcripts=write|check`, and refused on a run narrower than the whole suite (`-k`,
+`-m`, `--lf`, `--sw`, `--deselect`, `--ignore`, paths other than the testpaths, or any deselection), which would drop
+or miss every action it didn't reach. Each `Dispatcher._run_adapter` run opens a segment, `{integration, action,
+request, wire, result}`, held in a ContextVar, so the tasks and timers the run starts (a fade's ticks) land in it too.
+`wire` holds each call made inside the segment at a wire boundary, as `[call, reply]`: any non-DeviceSide service
+through `ServiceRegistry.async_call`, as `["service", "<domain>.<service>", data]` (and `{"target": ...}` when one is
+passed), and each boundary an integration declares in its `tests/integrations/<x>/wire.py`,
+`BOUNDARIES = [(module, attribute, leading args to drop), ...]`, as `["<module's last name>.<attribute>", args,
+kwargs]`. A boundary is wrapped at each segment's open, around whatever a test installed there (so name it where
+callers look it up), and unwrapped when the test ends; a call it makes to itself, as a test's mock calling through
+to the real one, records once. `result` is the run's reconciled per-target results. A segment is serialized when
+its test ends, and carries no test id; a run its test didn't see finish is left out.
 
 Normalization: HomeAssistant and Context values are dropped (omitted from mappings and dataclasses, None in a
 sequence), as they hold per-run ids; dataclasses become dicts of their fields; enums their values; sets sorted lists;
-bytes hex; a raised exception `{"raises": <class name>}`; any other object `"<TypeName>"`.
+bytes hex; a raised exception `{"raises": <class name>}`; any other object `"<TypeName>"`, which fails the run when
+it's in a segment's wire or result: an integration's library types get a rule here.
 
 `write`, after a run with no failures, writes `tests/integrations/<x>/calls/<action>.json`, the sorted unique segments
 of each action, for each integration with a `tests/integrations/<x>/` directory, and removes the `calls/` files of
@@ -22,15 +26,15 @@ segments to the controller, which writes or checks.
 
 import dataclasses
 import enum
-import functools
 import importlib
 import importlib.util
 import inspect
 import json
+import re
 from collections.abc import Callable
 from contextvars import ContextVar
 from pathlib import Path
-from types import SimpleNamespace
+from types import MethodType, SimpleNamespace
 from typing import Any
 
 import pytest
@@ -40,18 +44,28 @@ from custom_components.deviceside.const import DOMAIN
 from custom_components.deviceside.core.dispatcher import Dispatcher
 
 _SEGMENT: ContextVar[dict | None] = ContextVar("transcript_segment", default=None)
-_WRAPPED = "__transcript_boundary__"
+# The boundaries recording in this context, so one a test's mock calls through to records once.
+_ACTIVE: ContextVar[frozenset[str]] = ContextVar("transcript_active_boundaries", default=frozenset())
 _WORKER_KEY = "transcripts"
+_DESELECTED_KEY = "transcripts_deselected"
+_DESELECTED = "--transcripts={mode} needs the whole suite: this run deselects tests"
 _DROPPED = (HomeAssistant, Context)
 
 _DONE = {"write": "written", "check": "checked"}
+_PLACEHOLDER = re.compile(r"<\w+>")
+# Options that run part of the suite, as (flag, dest).
+_NARROWING = (
+    ("-k", "keyword"),
+    ("-m", "markexpr"),
+    ("--lf", "lf"),
+    ("--sw", "stepwise"),
+    ("--sw-skip", "stepwise_skip"),
+    ("--deselect", "deselect"),
+    ("--ignore", "ignore"),
+    ("--ignore-glob", "ignore_glob"),
+)
 
 type Boundary = tuple[str, str, int]
-
-
-def _wrapped(fn: Any) -> bool:
-    # `is True`, as a test's MagicMock answers any attribute with a (truthy) mock.
-    return getattr(fn, _WRAPPED, False) is True
 
 
 def norm(value: Any) -> Any:  # noqa: C901
@@ -91,56 +105,60 @@ def _record(call: list, reply: Any) -> None:
         segment["wire"].append([norm(call), norm(reply)])
 
 
-def boundary(name: str, fn: Callable, skip: int = 0) -> Callable:
-    """`fn`, recording each call inside a segment as `[name, args (the first `skip` dropped), kwargs]` and its reply."""
-    if _wrapped(fn):
-        return fn
+class Wire:
+    """A boundary's wrapper, recording each call inside a segment as `[name, args (the first `skip` dropped), kwargs]`
+    and its reply. Attribute reads and writes go to the wrapped callable, so a test that sets `.return_value` on its
+    mock after a call still configures the mock. A call made while the same boundary is already recording in this
+    context (a test's mock calling through to the real one) isn't recorded again."""
 
-    if inspect.iscoroutinefunction(fn):
+    def __init__(self, name: str, fn: Callable, skip: int) -> None:
+        object.__setattr__(self, "__wrapped__", fn)
+        object.__setattr__(self, "_wire_name", name)
+        object.__setattr__(self, "_wire_skip", skip)
 
-        @functools.wraps(fn)
-        async def wrapper(*args, **kwargs):
-            if _SEGMENT.get() is None:
-                return await fn(*args, **kwargs)
-            call = [name, list(args[skip:]), kwargs]
-            try:
-                reply = await fn(*args, **kwargs)
-            except BaseException as err:
-                _record(call, err)
-                raise
-            _record(call, reply)
-            return reply
+    def __getattr__(self, attr: str) -> Any:
+        return getattr(self.__wrapped__, attr)
 
-    else:
+    def __setattr__(self, attr: str, value: Any) -> None:
+        setattr(self.__wrapped__, attr, value)
 
-        @functools.wraps(fn)
-        def wrapper(*args, **kwargs):
-            if _SEGMENT.get() is None:
-                return fn(*args, **kwargs)
-            call = [name, list(args[skip:]), kwargs]
-            try:
-                reply = fn(*args, **kwargs)
-            except BaseException as err:
-                _record(call, err)
-                raise
-            if inspect.isawaitable(reply):
-                return _awaited(call, reply)
-            _record(call, reply)
-            return reply
+    def __delattr__(self, attr: str) -> None:
+        delattr(self.__wrapped__, attr)
 
-    setattr(wrapper, _WRAPPED, True)
-    return wrapper
+    def __get__(self, instance: Any, owner: type | None = None) -> Any:
+        # A method binds as the function it wraps would; a mock on a class doesn't bind, so neither does its wrapper.
+        if instance is None or not hasattr(type(self.__wrapped__), "__get__"):
+            return self
+        return MethodType(self, instance)
 
+    def __call__(self, *args, **kwargs) -> Any:
+        if _SEGMENT.get() is None or self._wire_name in _ACTIVE.get():
+            return self.__wrapped__(*args, **kwargs)
+        call = [self._wire_name, list(args[self._wire_skip :]), kwargs]
+        token = _ACTIVE.set(_ACTIVE.get() | {self._wire_name})
+        try:
+            reply = self.__wrapped__(*args, **kwargs)
+        except BaseException as err:
+            _record(call, err)
+            raise
+        finally:
+            _ACTIVE.reset(token)
+        if inspect.isawaitable(reply):
+            return self._awaited(call, reply)
+        _record(call, reply)
+        return reply
 
-async def _awaited(call: list, awaitable) -> Any:
-    """The reply of a plain function that hands back an awaitable (a test's lambda or mock), recorded once awaited."""
-    try:
-        reply = await awaitable
-    except BaseException as err:
-        _record(call, err)
-        raise
-    _record(call, reply)
-    return reply
+    async def _awaited(self, call: list, awaitable) -> Any:
+        token = _ACTIVE.set(_ACTIVE.get() | {self._wire_name})
+        try:
+            reply = await awaitable
+        except BaseException as err:
+            _record(call, err)
+            raise
+        finally:
+            _ACTIVE.reset(token)
+        _record(call, reply)
+        return reply
 
 
 def load_boundaries(integrations: Path) -> list[Boundary]:
@@ -175,20 +193,6 @@ def _boundary_name(module: str, attribute: str) -> str:
     return f"{module.rpartition(".")[2]}.{attribute}"
 
 
-def _wrap(boundaries: list[Boundary]) -> None:
-    """Each boundary wrapped around whatever stands there now."""
-    for module, attribute, skip in boundaries:
-        owner, name = _owner(module, attribute)
-        setattr(owner, name, boundary(_boundary_name(module, attribute), getattr(owner, name), skip))
-
-
-def _unwrap(boundaries: list[Boundary]) -> None:
-    for module, attribute, _ in boundaries:
-        owner, name = _owner(module, attribute)
-        if _wrapped(current := getattr(owner, name)):
-            setattr(owner, name, current.__wrapped__)
-
-
 class Recorder:
     """The `--transcripts` run: records segments per test, then writes or checks the golden files."""
 
@@ -197,7 +201,9 @@ class Recorder:
         self.integrations = integrations
         self.boundaries = load_boundaries(integrations)
         self.collected: list[dict] = []  # the running test's segments
+        self.installed: list[tuple[Any, str, bool, Wire]] = []  # the running test's wrappers: owner, name, own attr
         self.segments: dict[tuple[str, str], set[str]] = {}  # (integration, action): each segment as JSON
+        self.deselected = False
         self.problems: list[str] = []  # what the session's end reports
 
     # --- recording
@@ -205,10 +211,11 @@ class Recorder:
     def install(self) -> None:
         self._run_adapter = run_adapter = Dispatcher._run_adapter
         self._async_call = async_call = ServiceRegistry.async_call
+        signature = inspect.signature(async_call)
         recorder = self
 
         async def recorded_run(self, adapter, request, targets, dropped, reached, own):
-            _wrap(recorder.boundaries)
+            recorder.wrap()
             segment = {
                 "integration": adapter.integration,
                 "action": adapter.action,
@@ -229,12 +236,15 @@ class Recorder:
             segment["result"] = norm(results)
             return results
 
-        async def recorded_call(self, domain, service, service_data=None, *args, **kwargs):
+        async def recorded_call(self, domain, service, *args, **kwargs):
             if domain == DOMAIN or _SEGMENT.get() is None:
-                return await async_call(self, domain, service, service_data, *args, **kwargs)
-            call = ["service", f"{domain}.{service}", service_data]
+                return await async_call(self, domain, service, *args, **kwargs)
+            given = signature.bind(self, domain, service, *args, **kwargs).arguments
+            call = ["service", f"{domain}.{service}", given.get("service_data")]
+            if given.get("target") is not None:
+                call.append({"target": given["target"]})
             try:
-                reply = await async_call(self, domain, service, service_data, *args, **kwargs)
+                reply = await async_call(self, domain, service, *args, **kwargs)
             except BaseException as err:
                 _record(call, err)
                 raise
@@ -247,7 +257,26 @@ class Recorder:
     def uninstall(self) -> None:
         Dispatcher._run_adapter = self._run_adapter
         ServiceRegistry.async_call = self._async_call
-        _unwrap(self.boundaries)
+        self.unwrap()
+
+    def wrap(self) -> None:
+        """Each boundary wrapped around whatever stands there now (a test's mock, or the real one)."""
+        for module, attribute, skip in self.boundaries:
+            owner, name = _owner(module, attribute)
+            if not isinstance(current := inspect.getattr_static(owner, name), Wire):
+                wire = Wire(_boundary_name(module, attribute), current, skip)
+                self.installed.append((owner, name, name in vars(owner), wire))
+                setattr(owner, name, wire)
+
+    def unwrap(self) -> None:
+        """Each wrapper this test installed taken back off, where it still stands."""
+        while self.installed:
+            owner, name, own, wire = self.installed.pop()
+            if inspect.getattr_static(owner, name, None) is wire:
+                if own:
+                    setattr(owner, name, wire.__wrapped__)
+                else:
+                    delattr(owner, name)
 
     @pytest.hookimpl(wrapper=True)
     def pytest_runtest_protocol(self, item, nextitem):
@@ -255,17 +284,34 @@ class Recorder:
         try:
             return (yield)
         finally:
+            self.unwrap()
             # A run still going when its test ended (no result) depends on timing, so it's left out.
             for segment in self.collected:
                 if "result" in segment:
                     self.segments.setdefault((segment["integration"], segment["action"]), set()).add(_key(segment))
             self.collected.clear()
 
+    # --- a narrowed run would drop every action it didn't reach
+
+    def pytest_deselected(self, items) -> None:
+        self.deselected = True
+
+    def pytest_collection_finish(self, session) -> None:
+        if not self.deselected:
+            return
+        if hasattr(session.config, "workeroutput"):
+            # A worker's UsageError would crash it; the controller refuses at the session's end instead.
+            session.config.workeroutput[_DESELECTED_KEY] = True
+            return
+        raise pytest.UsageError(_DESELECTED.format(mode=self.mode))
+
     # --- xdist: each worker hands its segments to the controller
 
     @pytest.hookimpl(optionalhook=True)
     def pytest_testnodedown(self, node, error) -> None:
-        for key, segments in getattr(node, "workeroutput", {}).get(_WORKER_KEY, {}).items():
+        output = getattr(node, "workeroutput", {})
+        self.deselected |= output.get(_DESELECTED_KEY, False)
+        for key, segments in output.get(_WORKER_KEY, {}).items():
             self.segments.setdefault(tuple(key.split("|")), set()).update(segments)
 
     # --- the session's end
@@ -274,8 +320,19 @@ class Recorder:
         if hasattr(session.config, "workeroutput"):
             session.config.workeroutput[_WORKER_KEY] = {"|".join(k): sorted(v) for k, v in self.segments.items()}
             return
+        if self.deselected:
+            self.problems.append(_DESELECTED.format(mode=self.mode))
+            session.exitstatus = pytest.ExitCode.USAGE_ERROR
+            return
         if exitstatus != pytest.ExitCode.OK:
             self.problems.append(f"transcripts not {_DONE[self.mode]}: the run failed")
+            return
+        if unnormalized := self._unnormalized():
+            self.problems += [
+                f"transcripts not {_DONE[self.mode]}: values with no normalization (tests/transcripts.py, norm):",
+                *unnormalized,
+            ]
+            session.exitstatus = pytest.ExitCode.TESTS_FAILED
             return
         wanted, stale = self._files()
         if self.mode == "write":
@@ -286,6 +343,17 @@ class Recorder:
                 *problems,
             ]
             session.exitstatus = pytest.ExitCode.TESTS_FAILED
+
+    def _unnormalized(self) -> list[str]:
+        """Each placeholder norm left in a segment's wire or result, as `<integration> <action> <TypeName>`. The
+        request's `own` may hold one (its `send` function)."""
+        found = set()
+        for (integration, action), segments in self.segments.items():
+            for text in segments:
+                segment = json.loads(text)
+                for value in (segment["wire"], segment["result"]):
+                    found.update((integration, action, p) for p in _placeholders(value))
+        return [" ".join(entry) for entry in sorted(found)]
 
     def _check(self, wanted: dict[Path, str], stale: list[Path]) -> list[str]:
         """Each golden file missing, differing or extra."""
@@ -316,6 +384,19 @@ class Recorder:
 
     def _name(self, path: Path) -> str:
         return str(path.relative_to(self.integrations.parent.parent))
+
+
+def _placeholders(value: Any):
+    """Each `"<TypeName>"` norm made inside `value`."""
+    if isinstance(value, str):
+        if _PLACEHOLDER.fullmatch(value):
+            yield value
+    elif isinstance(value, dict):
+        for v in value.values():
+            yield from _placeholders(v)
+    elif isinstance(value, list):
+        for v in value:
+            yield from _placeholders(v)
 
 
 def _write(wanted: dict[Path, str], stale: list[Path]) -> None:
@@ -354,8 +435,25 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     )
 
 
+def _narrowed(config: pytest.Config) -> str | None:
+    """Why this run covers less than the whole suite, or None. A narrowed write would drop every action it didn't
+    reach, and a narrowed check would report them missing. Deselection by any other means is caught at collection."""
+    option = config.option
+    for flag, dest in _NARROWING:
+        if getattr(option, dest, None):
+            return f"it runs with {flag}"
+    if config.args_source == pytest.Config.ArgsSource.ARGS:
+        given = {(config.invocation_params.dir / arg).resolve() for arg in config.args}
+        default = {(config.rootpath / path).resolve() for path in config.getini("testpaths")}
+        if given != (default or {config.invocation_params.dir.resolve()}):
+            return f"it runs {' '.join(config.args)}, not the testpaths"
+    return None
+
+
 def pytest_configure(config: pytest.Config) -> None:
     if mode := config.getoption("--transcripts"):
+        if reason := _narrowed(config):
+            raise pytest.UsageError(f"--transcripts={mode} needs the whole suite: {reason}")
         recorder = Recorder(mode, config.rootpath / "tests" / "integrations")
         recorder.install()
         config.pluginmanager.register(recorder, "transcripts-recorder")
