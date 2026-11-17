@@ -77,7 +77,7 @@ jobs:
         run: uv sync --locked
 
       # The call for testers rides to `tag` as an output, as that job's runner has none of this one's files.
-      - name: Refuse a changed integration with neither a sign-off nor Untested fix
+      - name: Refuse a changed action with neither a sign-off nor Untested fix
         id: gates
         run: |
           .venv/bin/python scripts/check_release.py --signoffs --notes "$RUNNER_TEMP/notes.md"

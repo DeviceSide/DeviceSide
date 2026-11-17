@@ -563,8 +563,8 @@ def unsigned(found: Sequence[Gate]) -> dict[str, list[str]]:
 
 
 def release_notes(registry, found: list[Gate]) -> str:
-    """The release notes' call for testers: the changed integrations without a sign-off, and every adapter with an
-    Untested fix caveat."""
+    """The release notes' call for testers: the integrations with a changed action that has no sign-off, and every
+    adapter with an Untested fix caveat."""
     titles = [registry.integrations[integration].title for integration in unsigned(found)]
     untested = [
         name
@@ -574,9 +574,9 @@ def release_notes(registry, found: list[Gate]) -> str:
     parts = []
     if titles:
         parts.append(
-            "## Help us test\n\nThese integrations changed since the last release, and no maintainer has tested the"
-            f" change on a device yet. If you use one, please [report whether it works]({DEVICE_REPORT}).\n\n"
-            + "".join(f"- {title}\n" for title in titles)
+            "## Help us test\n\nThese integrations have an action whose calls changed since the last release, and no"
+            " maintainer has tested the change on a device yet. If you use one, please"
+            f" [report whether it works]({DEVICE_REPORT}).\n\n" + "".join(f"- {title}\n" for title in titles)
         )
     if untested:
         parts.append(

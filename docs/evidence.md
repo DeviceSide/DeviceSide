@@ -315,7 +315,9 @@ flag lifted or a class added changes no call; the [coverage check](#the-coverage
 - **Evidence binds to a transcript** by the git blob id of the one it was tested against (`calls`), and **stands**
   while HEAD's transcript of the action holds every segment of it. A blob is its content's hash, so a run on a PR
   branch still resolves once the PR squash-merges with that transcript unchanged, and its records or row can land in
-  the same PR. A blob git doesn't have stands for nothing.
+  the same PR. Any later edit to the transcript on the branch, even an added segment, leaves the run's blob on the
+  branch alone, gone after the squash: retest and reprint the row with `scripts/signoff.py`, or rerun the suite, at
+  the transcript that merges. A blob git doesn't have stands for nothing.
 - **A sign-off** of an action is either of:
   - **its rig records:** the plain `<action>.json` and every `<action>-<option>.json`, each format 3, passing and
     standing. A record with an option set ran only that option, so the plain call needs its own, and a failing
@@ -337,7 +339,7 @@ flag lifted or a class added changes no call; the [coverage check](#the-coverage
   action that has no sign-off, with a link to the device report form, so an RC can carry an unsigned fix for others
   to test. But `cut-release` checks the latest RC's commit, so land the sign-offs or Untested fix caveats before the
   last RC.
-- **No sign-off at the cut:** `cut-release` fails unless each changed action without one carries ⚠️ Untested fix on
+- **No sign-off at the cut:** `cut-release` fails unless each changed action without one carries 🔧 Untested fix on
   its adapter; no other caveat, nor the `experimental` flag alone, stands in. A repo maintainer picks whichever is most
   likely to work for users (tenet 1): hold the fix back (revert it, or leave it out of the release branch) when the
   current code mostly works; ship it marked 🔧 Untested fix when the current code is broken and the fix is low-risk;
