@@ -10,7 +10,7 @@ from . import classes, zcl
 from .addressing import address, unsupported_reason
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Request, Status, Target
-from ...core.scope import AdapterScope, experimental, verified
+from ...core.scope import AdapterScope, verified
 from ...core.zcl_row import zcl_row
 
 _COLOR_MODES = frozenset({ColorMode.COLOR_TEMP, ColorMode.HS, ColorMode.XY})
@@ -60,8 +60,9 @@ class ZHAGetAttributes(Adapter[Request]):
     action: ClassVar[str] = "get_attributes"
     integration: ClassVar[str] = "zha"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        # Zigbee plugs rarely honor OnTime (see turn_on_for), so a switch's timer may never show: Experimental.
-        domains=verified(Platform.LIGHT) | experimental(Platform.SWITCH),
+        # Lights alone: a read serves only what another action serves (docs/evidence.md, "A read serves only"), and
+        # no ZHA action serves a switch (turn_on_for refuses every class there).
+        domains=verified(Platform.LIGHT),
         **classes.class_scope(action),
         max_concurrency=2,
         confirmable=True,

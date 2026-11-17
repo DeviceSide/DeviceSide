@@ -39,32 +39,33 @@ from .refusals import REFUSALS
 from ...core import scope
 from ...core.models import Target
 from ...core.rules import match
-from ...core.scope import OTHER, ClassDomains, ClassLevel, documented, experimental
+from ...core.scope import OTHER, ClassDomains, ClassLevel, experimental
 
 # Every class with its domains (IntegrationInfo.classes): `other`, any brand's light, plug or switch, and the families'.
 CLASSES: ClassDomains = {OTHER: frozenset({Platform.LIGHT, Platform.SWITCH})} | {
     name: domains for family in FAMILIES for name, domains in family.classes.items()
 }
 
-# `other`'s level in each adapter's scope (index.md, Device classes): Documented where it gets the Verified call and no
-# known class departs, else untested.
+# `other`'s level in each adapter's scope (index.md, Device classes; docs/evidence.md, On trial): on trial only where
+# research predicts most of it accepts the call, and not built elsewhere (an empty mapping). It spans vendors, so a
+# Hue bulb's pass makes it neither Documented nor on trial.
+_NOT_BUILT: Mapping[str, ClassLevel] = {}
 OTHER_LEVELS: Mapping[str, Mapping[str, ClassLevel]] = {
-    # lower_brightness and stop: the Level and Color commands a Hue bulb gets, sent alike to every light (fade.py), and
-    # no class known to depart (the Sengled, which drops a level while off, is its own).
-    "lower_brightness": documented(OTHER),
-    "stop": documented(OTHER),
-    # raise_brightness from off turns a Hue bulb on by Signify's own multiColor, and any other light by MoveToLevel
-    # with ExecuteIfOff, a call no record has run; the color fades rest on how each firmware renders its moves.
+    # Brightness fades and stop: Level Control's Move, MoveToLevel and Stop, which a Zigbee 3.0 dimmable light must
+    # take (docs/internals.md, Shared). raise_brightness from off sends MoveToLevel with ExecuteIfOff (fade.py).
+    "lower_brightness": experimental(OTHER),
     "raise_brightness": experimental(OTHER),
-    "lower_hue": experimental(OTHER),
-    "lower_saturation": experimental(OTHER),
-    "raise_hue": experimental(OTHER),
-    "raise_saturation": experimental(OTHER),
-    # Reads and writes: other brands depart (a bulb without OnTime, one that comes on at full when written while off).
-    "get_attributes": experimental(OTHER),
-    "set_attributes": experimental(OTHER),
-    # turn_on_for: the spec's call, untested on all but Hue.
-    "turn_on_for": experimental(OTHER),
+    "stop": experimental(OTHER),
+    # Hue and saturation moves, reads and writes: no research predicts how other firmware takes them, and other
+    # brands depart on reads and writes (a bulb without OnTime, one that comes on at full when written while off).
+    "lower_hue": _NOT_BUILT,
+    "lower_saturation": _NOT_BUILT,
+    "raise_hue": _NOT_BUILT,
+    "raise_saturation": _NOT_BUILT,
+    "get_attributes": _NOT_BUILT,
+    "set_attributes": _NOT_BUILT,
+    # turn_on_for: its call harms some lights and most plugs, so the integration refuses `other` there (refusals.py).
+    "turn_on_for": _NOT_BUILT,
 }
 
 

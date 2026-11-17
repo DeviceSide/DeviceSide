@@ -8,22 +8,22 @@ from homeassistant.components.light import ATTR_COLOR_TEMP_KELVIN, ATTR_HS_COLOR
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
-from .addressing import address, unsupported_reason
+from .addressing import COMPONENT_FIELDS, address, unsupported_reason
 from .rpc import get_status, light_params, set_and_read_back, whole_percent
 from ...actions.set_attributes import LIMITS, SetAttributesRequest
 from ...core.adapter import Adapter
 from ...core.errors import NOT_STORED
 from ...core.fields import BRIGHTNESS_FIELD
 from ...core.models import EntityResult, Status, Target
-from ...core.scope import AdapterScope, experimental, verified
+from ...core.scope import AdapterScope, documented, verified
 
 # The components set_attributes addresses. RGBCCT's Set without `on` keeping the output as it is, and storing the
-# values, is the rig's finding (probe of 8 Nov). Light, CCT, RGB and RGBW take the same <Component>.Set
-# (shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Light, /CCT, /RGB, /RGBW), but whether their docs say alike
-# that a Set without `on` leaves the output as it is wasn't checked (the docs host was out of reach), so they stay
-# flagged rather than Documented; their color and ct are also not ported (addressing.COMPONENT_FIELDS)
-# (docs/evidence.md, Levels).
-SET_CAPABILITIES = verified("RGBCCT") | experimental("Light", "CCT", "RGB", "RGBW")
+# values, is the rig's finding (probe of 8 Nov). Shelly documents the brightness Set of Light, CCT, RGB and RGBW
+# identically to RGBCCT's, differing only in addressing, so they are Documented; no page, RGBCCT's included, says what
+# a Set without `on` does, so they inherit RGBCCT's Verified behavior as the same call
+# (docs/integrations/shelly/research/2026-11-17-set-on-sibling-components.md; docs/evidence.md, Levels). Their color
+# and ct are not ported, so they are dropped (addressing.COMPONENT_FIELDS).
+SET_CAPABILITIES = verified("RGBCCT") | documented("Light", "CCT", "RGB", "RGBW")
 
 
 def _clamped(current: float, request: SetAttributesRequest) -> int | None:
@@ -44,7 +44,7 @@ def _expected(params: dict[str, Any]) -> dict[str, Any]:
 
 
 class ShellySetAttributes(Adapter[SetAttributesRequest]):
-    """One <Component>.Set with brightness, ct or rgb and no `on`, then a GetStatus (RGBCCT Verified, the rest flagged).
+    """One <Component>.Set with brightness, ct or rgb and no `on`, then a GetStatus (RGBCCT Verified).
 
     On a Multicolor Bulb Gen3 a Set without `on` leaves the bulb as it is, on or off, and stores the values: the next
     plain on comes up with them (probe of 8 Nov). The device answers a Set with null, so only the read-back says it
@@ -82,16 +82,18 @@ class ShellySetAttributes(Adapter[SetAttributesRequest]):
             brightness = request.brightness
             if brightness is None and (request.min_brightness is not None or request.max_brightness is not None):
                 brightness = _clamped((await get_status(target))["brightness"], request)
-            light = replace(request.light, brightness=brightness)
+            # The dispatcher drops the fields HA's state says the light lacks; the component is the device's word.
+            dropped = request.light.present() - COMPONENT_FIELDS[rpc.component]
+            light = replace(request.light.without(dropped), brightness=brightness)
             params = light_params(light, rpc.component, target.state)
             if not params:
-                return self.result(target, Status.UNCHANGED, detail="within_limits")
+                return self.result(target, Status.UNCHANGED, detail="fields_dropped" if dropped else "within_limits")
             expected = _expected(params)
 
             def judge(status: dict[str, Any]) -> EntityResult:
                 if any(status.get(name) != value for name, value in expected.items()):
                     return self.result(target, Status.REJECTED, detail=NOT_STORED)
-                return self.result(target, Status.CONFIRMED)
+                return self.result(target, Status.CONFIRMED, detail="fields_dropped" if dropped else None)
 
             return await set_and_read_back(hass, self, target, params, judge)
 

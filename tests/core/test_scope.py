@@ -221,6 +221,59 @@ def test_a_not_built_entry_stays_out_of_the_other_two():
             AdapterScope(**{"capabilities": {}, **other}, not_built={"tuya_zcl": NOT_BUILT})
 
 
+ON_SWITCHES = NotBuilt("It ignores the timer", "https://example.com/source", domains=frozenset({"switch"}))
+
+
+def test_a_not_built_entry_on_some_domains_refuses_the_class_there_alone():
+    """A class's bulbs keep their trial while its plugs are not built (docs/evidence.md, On trial): the entry sits
+    beside the class's capability entry, which serves the rest."""
+    scope = AdapterScope(
+        domains=verified("light") | experimental("switch"),
+        capabilities=experimental("other") | verified("hue"),
+        not_built={"other": ON_SWITCHES},
+    )
+
+    assert scope.refusal(("other",), domain="switch", failure_harms=True) == (Reason.NOT_BUILT, "It ignores the timer")
+    assert scope.refusal(("other",), domain="light", failure_harms=True) is None
+    # An unknown domain could be one of its domains.
+    assert scope.refusal(("other",), failure_harms=True) == (Reason.NOT_BUILT, "It ignores the timer")
+    assert scope.refusal(("hue",), domain="switch", failure_harms=True) is None
+    assert not scope.admits("other", "switch")
+    assert scope.admits("other", "light")
+    assert scope.admits("other")
+    assert scope.class_entries() == [("other", Level.EXPERIMENTAL, frozenset({"light"})), ("hue", Level.VERIFIED, None)]
+
+
+def test_a_not_built_entry_on_some_domains_narrows_an_on_domains_level():
+    scope = AdapterScope(
+        domains=verified("light", "switch", "cover"),
+        capabilities=verified("hue", domains=("light", "switch")),
+        not_built={"hue": ON_SWITCHES},
+    )
+
+    assert scope.class_entries() == [("hue", Level.VERIFIED, frozenset({"light"}))]
+
+
+@pytest.mark.parametrize("domains", [frozenset(), frozenset({"cover"})])
+def test_a_not_built_entry_names_domains_the_scope_serves(domains):
+    with pytest.raises(ValueError, match="names no domain, or one the scope doesn't serve"):
+        AdapterScope(
+            domains=verified("light", "switch"),
+            capabilities=experimental("other"),
+            not_built={"other": NotBuilt("It would stay on", "https://example.com/source", domains=domains)},
+        )
+
+
+def test_a_not_built_entry_on_some_domains_still_stays_out_of_no_known_method():
+    with pytest.raises(ValueError, match="not_built names classes"):
+        AdapterScope(
+            domains=verified("light", "switch"),
+            capabilities={},
+            no_known_method={"other": NO_METHOD},
+            not_built={"other": ON_SWITCHES},
+        )
+
+
 def test_elsewhere_an_unplaced_class_is_the_class_it_names():
     scope = AdapterScope(capabilities=verified("hue"), no_known_method={"tuya_zcl": NO_METHOD})
 

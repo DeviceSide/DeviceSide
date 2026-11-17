@@ -512,14 +512,11 @@ async def test_device_without_a_name_is_not_addressable(hass, broker):
     assert await refusal(hass, "get_attributes", {"entity_id": "light.lamp"}) == "not_addressable"
 
 
-async def test_switch_is_experimental_and_reads_only_on_off(hass, broker):
+@pytest.mark.parametrize("experimental", [False, True])
+async def test_a_switch_is_not_read(hass, broker, experimental):
+    """No action serves a Hue plug or an `other` switch, so get_attributes reads lights alone."""
     bulb(hass, broker, "switch.plug", modes=[], genOnOff={"onTime": 50})
+    allow_experimental(hass, experimental)
 
-    assert await refusal(hass, "get_attributes", {"entity_id": "switch.plug"}) == "experimental_off"
+    assert await refusal(hass, "get_attributes", {"entity_id": "switch.plug"}) == "not_built"
     assert not broker.reads()
-
-    allow_experimental(hass)
-    assert await call(hass, "get_attributes", {"entity_id": "switch.plug"}) == {"switch.plug": {"timer": timer(5.0)}}
-    assert broker.reads() == [
-        (SET, {"cluster": "genOnOff", "attributes": ["onOff", "onTime"], "state_property": KEY}),
-    ]

@@ -3,7 +3,7 @@
 from homeassistant.const import Platform
 
 from .....core.rules import Rule
-from .....core.scope import Family, FamilyScope, experimental
+from .....core.scope import Family
 
 SENGLED = "sengled"
 
@@ -12,22 +12,11 @@ RULES = (
     Rule(SENGLED, {"manufacturer": "(?i:sengled)"}),
 )
 
-# Untested on every action but turn_on_for, whose call harms it: the integration refuses it there (refusals.py).
-_UNTESTED = FamilyScope(capabilities=experimental(SENGLED))
-
 FAMILY = Family(
     key="sengled",
     maintainers=(),
     classes={SENGLED: frozenset({Platform.LIGHT})},
-    scopes={
-        "get_attributes": _UNTESTED,
-        "lower_brightness": _UNTESTED,
-        "lower_hue": _UNTESTED,
-        "lower_saturation": _UNTESTED,
-        "raise_brightness": _UNTESTED,
-        "raise_hue": _UNTESTED,
-        "raise_saturation": _UNTESTED,
-        "set_attributes": _UNTESTED,
-        "stop": _UNTESTED,
-    },
+    # In no scope: not built on every action. Its probe found it departs (it drops a level while off, refuses the
+    # timer), and no pass or research predicts it takes the rest (docs/evidence.md, On trial); turn_on_for's call harms
+    # it, so the integration refuses it there with a reason (refusals.py).
 )

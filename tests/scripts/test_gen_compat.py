@@ -141,6 +141,11 @@ def adapter(integration, action, scope=None):
     return SimpleNamespace(integration=integration, action=action, scope=scope or AdapterScope())
 
 
+def evidence_rows(adapter):
+    """The adapter's evidence rows, with its integration's classes declared as FakeRegistry declares them."""
+    return gc.rows(adapter, FakeRegistry(adapter).integrations[adapter.integration])
+
+
 def data(registry=None, **changes):
     return gc.load_raw({**DATA, **changes}, registry or FakeRegistry())
 
@@ -266,16 +271,31 @@ def test_an_adapters_rows_hold_each_level_its_scope_holds_strongest_first_with_i
     record(root, "zha", "stop-other", result="fail", devices=[old_device("P1", "1")])
     scope = AdapterScope(
         domains=verified("light") | experimental("switch"),
-        capabilities=verified("Light") | documented("CCT") | experimental("RGB"),
+        capabilities=verified("Light") | documented("CCT") | experimental("RGB", "Switch"),
         fields=verified("brightness") | experimental("transition"),
     )
-    assert gc.rows(adapter("zha", "stop", scope)) == [
+    assert evidence_rows(adapter("zha", "stop", scope)) == [
         "| `stop` | Verified | light entities; Light classes; brightness fields"
         " | `LTA009`, firmware `1.2.3`<br>group"
         " | [predicted state](integrations/zha/test-records/stop-predicted_state.json),"
         " [record](integrations/zha/test-records/stop.json) |",
         "| `stop` | Documented | CCT classes | | |",
-        "| `stop` | Experimental | switch entities; RGB classes; transition fields | | |",
+        "| `stop` | Experimental | switch entities; RGB, Switch classes; transition fields | | |",
+    ]
+
+
+def test_a_domain_the_adapter_serves_no_class_on_is_no_item():
+    """ZHA's turn_on_for: switch stays in the scope so a plug is refused with its reason, but no class is served
+    there, so the row doesn't list switch entities (core/registry.py, served_domains)."""
+    on_switches = NotBuilt("It ignores the timer", "https://example.com/source", domains=frozenset({"switch"}))
+    scope = AdapterScope(
+        domains=verified("light") | experimental("switch"),
+        capabilities=verified("Light") | experimental("Switch"),
+        not_built={"Switch": on_switches},
+    )
+    assert [row.split(" | ")[1:3] for row in evidence_rows(adapter("zha", "turn_on_for", scope))] == [
+        ["Verified", "light entities; Light classes"],
+        ["Experimental", "Switch on light classes"],
     ]
 
 
@@ -290,7 +310,7 @@ def test_each_class_lists_only_the_models_that_reached_it_on_its_levels_row(root
         ran("light", device("LWA012", "2", None)),  # a null class credits nothing: on no row
     )
     scope = AdapterScope(domains=verified("light", "switch"), capabilities=verified("Switch") | experimental("Light"))
-    assert gc.rows(adapter("zha", "turn_on_for", scope)) == [
+    assert evidence_rows(adapter("zha", "turn_on_for", scope)) == [
         "| `turn_on_for` | Verified | light, switch entities; Switch classes"
         " | `P1` (`Switch`), firmware `1`"
         " | [record](integrations/zha/test-records/turn_on_for.json) |",
@@ -309,14 +329,14 @@ def test_a_tested_model_sits_on_the_row_of_the_weakest_level_its_class_and_domai
         ran("switch", device("P1", "1"), group=True, role="group"),
     )
     scope = AdapterScope(domains=verified("light") | experimental("switch"))
-    assert gc.rows(adapter("hue", "stop", scope)) == [
+    assert evidence_rows(adapter("hue", "stop", scope)) == [
         "| `stop` | Verified | light entities | `LTA009`, firmware `2`"
         " | [record](integrations/hue/test-records/stop.json) |",
         "| `stop` | Experimental | switch entities | `P1`, firmware `1`<br>group | |",
     ]
     record2(root, "zha", "stop", ran("switch", device("P1", "1", "Switch"), role="switch_plug"))
     classed = AdapterScope(domains=verified("light") | experimental("switch"), capabilities=verified("Switch"))
-    assert gc.rows(adapter("zha", "stop", classed)) == [
+    assert evidence_rows(adapter("zha", "stop", classed)) == [
         "| `stop` | Verified | light entities; Switch classes | none"
         " | [record](integrations/zha/test-records/stop.json) |",
         "| `stop` | Experimental | switch entities | `P1` (`Switch`), firmware `1` | |",
@@ -325,7 +345,7 @@ def test_a_tested_model_sits_on_the_row_of_the_weakest_level_its_class_and_domai
 
 def test_a_level_comes_from_the_scope_not_from_the_records(root):
     # No record and Verified: the scope decides (verify, then trust).
-    assert gc.rows(adapter("hue", "stop")) == ["| `stop` | Verified | light entities | none | |"]
+    assert evidence_rows(adapter("hue", "stop")) == ["| `stop` | Verified | light entities | none | |"]
 
 
 def test_records_are_the_action_and_its_options(root):
@@ -339,7 +359,7 @@ def test_an_adapter_flagged_whole_has_one_experimental_row(root):
     # Every domain Experimental flags every call, so its Verified field shows Experimental too.
     scope = AdapterScope(domains=experimental("light", "switch"), fields=verified("brightness"))
     assert {level for level, *_ in gc.items(scope)} == {Level.EXPERIMENTAL}
-    assert gc.rows(adapter("zha", "stop", scope)) == [
+    assert evidence_rows(adapter("zha", "stop", scope)) == [
         "| `stop` | Experimental | light, switch entities; brightness fields | none | |"
     ]
 
@@ -354,7 +374,7 @@ def manual_file(root, integration="zha", rows=MANUAL):
 def test_a_manual_row_is_evidence_for_the_actions_it_passed(root):
     manual_file(root)
     flagged = adapter("zha", "stop", AdapterScope(domains=experimental("light")))
-    assert gc.rows(flagged) == [
+    assert evidence_rows(flagged) == [
         "| `stop` | Experimental | light entities | `P1`, by hand<br>`LTA009`, by hand"
         " | [by hand](integrations/zha/test-records/_manual.json) |"
     ]
@@ -366,7 +386,7 @@ def test_a_format_2_row_credits_the_actions_it_passed(root):
     """A row from before transcripts names its actions in `passed`: it signs off nothing, but credits as it did."""
     manual_file(root, rows=[signoff(tester="jasonmx", devices=(("P1", None),), passed=("stop",))])
     flagged = adapter("zha", "stop", AdapterScope(domains=experimental("light")))
-    assert gc.rows(flagged) == [
+    assert evidence_rows(flagged) == [
         "| `stop` | Experimental | light entities | `P1`, by hand"
         " | [by hand](integrations/zha/test-records/_manual.json) |"
     ]
@@ -376,7 +396,7 @@ def test_a_manual_group_row_is_one_group_by_hand_never_its_members_models(root):
     row = signoff(tester="jasonmx", devices=(("P1", None), ("LTA009", None)), calls=bound("stop"), group=True)
     manual_file(root, rows=[row])
     flagged = adapter("zha", "stop", AdapterScope(domains=experimental("light")))
-    assert gc.rows(flagged) == [
+    assert evidence_rows(flagged) == [
         "| `stop` | Experimental | light entities | group, by hand"
         " | [by hand](integrations/zha/test-records/_manual.json) |"
     ]
@@ -463,8 +483,8 @@ def test_a_card_puts_flagged_adapters_under_experimental_features_and_leaves_out
     assert card.tested == []
     # An adapter flagged whole is Experimental on every domain, evidence or not; stop rides the smooth move.
     assert card.lines[:2] == [
-        f"[lights]({URL}#lights): 🟢 turn on with timer · 🌱 smooth hue",
-        f"[plugs]({URL}#zigbee-plugs): 🌱 stop",
+        f"[lights]({URL}#lights): 🟢 turn on with timer · 🔍 smooth hue",
+        f"[plugs]({URL}#zigbee-plugs): 🔍 stop",
     ]
 
 
@@ -514,8 +534,8 @@ def test_documented_and_flagged_classes_share_an_entry_per_feature_set_and_name_
     # scope, isn't built yet there: the card leaves the feature out. Lines sort alphabetically, devices.yaml's entry
     # last, as it names no class or feature.
     assert card.lines == [
-        f"[CCT controllers]({URL}#dimmers): 🌱 smooth dimming",
-        f"[dimmers]({URL}#dimmers): 🟡 turn on with timer · 🌱 smooth dimming",
+        f"[CCT controllers]({URL}#dimmers): 🔍 smooth dimming",
+        f"[dimmers]({URL}#dimmers): 🟡 turn on with timer · 🔍 smooth dimming",
         f"[relays]({URL}#relays): 🟡 turn on with timer",
         f"[relays as lights]({URL}#relays): 🟢 turn on with timer, smooth dimming",
         f"[Old plug]({URL}#old-plug): 🔴",
@@ -533,7 +553,7 @@ def test_a_class_line_runs_at_the_weaker_of_its_domain_and_class(root):
     card = classed_card(adapter("zha", "turn_on_for", timer))
     assert card.lines[:2] == [
         f"[dimmers]({URL}#dimmers), [relays as lights]({URL}#relays): 🟢 turn on with timer",
-        f"[relays]({URL}#relays): 🌱 turn on with timer",
+        f"[relays]({URL}#relays): 🔍 turn on with timer",
     ]
 
 
@@ -553,13 +573,13 @@ def test_a_class_whose_domains_show_different_features_splits_per_domain_on_the_
         capabilities=capabilities,
     )
     assert card.lines[:3] == [
-        f"[dimmers]({URL}#dimmers), [relays as lights]({URL}#relays): 🌱 turn on with timer, smooth dimming",
+        f"[dimmers]({URL}#dimmers), [relays as lights]({URL}#relays): 🔍 turn on with timer, smooth dimming",
         f"[multicolor bulbs]({URL}#bulbs): 🟢 turn on with timer, smooth dimming",
-        f"[relays]({URL}#relays): 🌱 turn on with timer",
+        f"[relays]({URL}#relays): 🔍 turn on with timer",
     ]
     # Where both domains show the same features, the class keeps one line, by its phrase.
     both = zha_card(adapter("zha", "turn_on_for", timer), capabilities=capabilities)
-    assert both.lines[0] == f"[dimmers]({URL}#dimmers), [relays]({URL}#relays): 🌱 turn on with timer"
+    assert both.lines[0] == f"[dimmers]({URL}#dimmers), [relays]({URL}#relays): 🔍 turn on with timer"
     # A class that splits needs a phrase for each domain it shows.
     del capabilities["zha"]["Switch"]["domains"]
     with pytest.raises(SystemExit, match="zha Switch shows other features on each of its domains"):
@@ -836,11 +856,12 @@ def test_the_legend_leads_the_cards_and_lists_only_the_marks_they_use(root):
     # The fixture's Old plug has no known method; nothing is tested, Documented, Experimental or caveated.
     assert "🟢 works<br>\n🔴 no known command works on it\n\n**ZHA**" in text
     assert text.index("Details per integration are in [docs/integrations.md](") < text.index("</details>")
-    assert gc.legend("🟢 ✔ 🟡 🌱 🔴 🔧 ⚠️") == (
+    assert gc.legend("🟢 ✔ 🟡 🔍 🔴 🔧 ⚠️") == (
         "🟢 works · ✔ verified on automated rig<br>\n"
         "🟡 should work: same call pattern as a tested device<br>\n"
-        "🌱 new or untested: enable Configure > Settings to try it out and"
-        f" [report whether it works]({gc.REPORT_URL})<br>\n"
+        "🔍 Experimental, on trial: enable Configure > Settings to try it and"
+        f" [report whether it works]({gc.REPORT_URL})."
+        " A feature that fails on a device may be withdrawn until someone builds it better<br>\n"
         "🔴 no known command works on it<br>\n"
         f"🔧 untested fix: please try it and [report whether it works]({gc.REPORT_URL})<br>\n"
         "⚠️ unmaintained: use at your own risk"
@@ -909,12 +930,12 @@ def test_a_card_whose_adapters_are_all_unmaintained_says_so_in_its_heading(root)
 
 def test_every_evidence_row_of_an_adapter_with_a_caveat_is_marked(root):
     scope = AdapterScope(domains=verified("light") | experimental("switch"), caveat=unmaintained("a | b"))
-    assert [row.split(" | ")[:2] for row in gc.rows(adapter("zha", "stop", scope))] == [
+    assert [row.split(" | ")[:2] for row in evidence_rows(adapter("zha", "stop", scope))] == [
         ["| `stop` ⚠️ Unmaintained (a \\| b)", "Verified"],
         ["| `stop` ⚠️ Unmaintained (a \\| b)", "Experimental"],
     ]
     linked = adapter("zha", "stop", AdapterScope(caveat=untested_fix(ISSUE_REASON)))
-    assert gc.rows(linked)[0].startswith(f"| `stop` [🔧 Untested fix]({ISSUE_REASON}) | Verified |")
+    assert evidence_rows(linked)[0].startswith(f"| `stop` [🔧 Untested fix]({ISSUE_REASON}) | Verified |")
 
 
 def test_a_card_marks_unmaintained_ones_after_untested_fixes(root):
@@ -1002,7 +1023,7 @@ def test_a_class_held_on_some_domains_alone_credits_works_only_from_a_test_in_on
     )
     tested = adapter("zha", "turn_on_for", scope)
     assert classed_card(tested).tested == [f"[Hue lamp]({URL}#hue-lamp) ✔"]
-    assert gc.rows(tested)[0].split(" | ")[2] == "light, switch entities; Light on light, Switch classes"
+    assert evidence_rows(tested)[0].split(" | ")[2] == "light, switch entities; Light on light, Switch classes"
     # A manual row names no domain, so it counts where its class is unflagged in some domain, as the coverage check
     # lets it cover any (#440's review, L1).
     manual_file(root, rows=[signoff(tester="jasonmx", devices=(("P1", "Light"),), calls=bound("turn_on_for"))])
@@ -1038,7 +1059,7 @@ def test_a_scenes_test_credits_native_groups_never_its_members(root):
     scope = AdapterScope(domains=verified("scene"))
     card = gc.card("hue", FakeRegistry(), [adapter("hue", "set_scene", scope)], data())
     assert card.tested == [f"[native groups]({URL}#native-groups) ✔"]
-    assert gc.rows(adapter("hue", "set_scene", scope)) == [
+    assert evidence_rows(adapter("hue", "set_scene", scope)) == [
         "| `set_scene` | Verified | scene entities | group | [record](integrations/hue/test-records/set_scene.json) |"
     ]
 
@@ -1197,7 +1218,7 @@ def test_a_tested_model_follows_the_line_of_the_class_and_domain_a_test_reached_
         f"[native groups]({URL}#native-groups) ✔: 🟢 turn on with timer",
         f"[dimmers]({URL}#dimmers) ([Hue lamp]({URL}#hue-lamp) ✔): 🟢 turn on with timer, smooth dimming",
         f"[relays]({URL}#relays) ([Plug]({URL}#plug) ✔): 🟢 turn on with timer",
-        f"[relays as lights]({URL}#relays): 🟢 turn on with timer · 🌱 smooth dimming",
+        f"[relays as lights]({URL}#relays): 🟢 turn on with timer · 🔍 smooth dimming",
         f"[Old plug]({URL}#old-plug): 🔴",
     ]
     # A class named as its one model gives it once.
@@ -1240,7 +1261,7 @@ def test_a_line_holding_every_class_of_its_section_names_the_section(root):
     split = AdapterScope(capabilities=verified("Light") | experimental("CCT"))
     card = classed_card(adapter("zha", "turn_on_for", split), sections=sections)
     assert card.lines[:2] == [
-        f"[CCT controllers]({URL}#dimmers): 🌱 turn on with timer",
+        f"[CCT controllers]({URL}#dimmers): 🔍 turn on with timer",
         f"[dimmers]({URL}#dimmers): 🟢 turn on with timer",
     ]
     assert classed_card(adapter("zha", "turn_on_for", timer)).lines[0] == (
@@ -1299,10 +1320,10 @@ def test_lines_sort_by_brand_then_tested_then_other_last(root):
     assert card.lines == [
         f"[native groups]({URL}#native-groups) ✔: 🟢 turn on with timer",  # native groups first
         f"[relays]({URL}#relays) ([Plug]({URL}#plug) ✔): 🟢 turn on with timer",  # acme's tested line first
-        f"[RGB controllers]({URL}#dimmers): 🌱 turn on with timer",
-        f"[other Acme lights]({URL}#dimmers): 🌱 turn on with timer, smooth dimming",
-        f"[dimmers]({URL}#dimmers): 🟢 turn on with timer · 🌱 smooth dimming",  # Beta
-        f"[other brands]({URL}#lights): 🟡 turn on with timer · 🌱 smooth dimming",
+        f"[RGB controllers]({URL}#dimmers): 🔍 turn on with timer",
+        f"[other Acme lights]({URL}#dimmers): 🔍 turn on with timer, smooth dimming",
+        f"[dimmers]({URL}#dimmers): 🟢 turn on with timer · 🔍 smooth dimming",  # Beta
+        f"[other brands]({URL}#lights): 🟡 turn on with timer · 🔍 smooth dimming",
         f"[Old plug]({URL}#old-plug): 🔴",
     ]
 
@@ -1326,13 +1347,13 @@ def test_a_models_variants_are_children_of_one_parent_line(root):
     assert card.lines[:2] == [
         f"[Plugs]({URL}#plug): check Manufacturer on its page\n"
         f"  - [maker A]({URL}#plug) ✔: 🟢 turn on with timer\n"
-        f"  - [maker B, or no setting]({URL}#plug): 🌱 turn on with timer",
-        f"[dimmers]({URL}#dimmers): 🌱 turn on with timer",  # same features, another section: its own line
+        f"  - [maker B, or no setting]({URL}#plug): 🔍 turn on with timer",
+        f"[dimmers]({URL}#dimmers): 🔍 turn on with timer",  # same features, another section: its own line
     ]
     assert card.render().splitlines()[2:5] == [
         f"- [Plugs]({URL}#plug): check Manufacturer on its page",
         f"  - [maker A]({URL}#plug) ✔: 🟢 turn on with timer",
-        f"  - [maker B, or no setting]({URL}#plug): 🌱 turn on with timer",
+        f"  - [maker B, or no setting]({URL}#plug): 🔍 turn on with timer",
     ]
 
 

@@ -3,7 +3,6 @@
 import pytest
 
 from custom_components.deviceside.core.rules import match
-from custom_components.deviceside.core.scope import Level
 from custom_components.deviceside.integrations.zha import rules
 from custom_components.deviceside.integrations.zha.families import sengled
 
@@ -22,9 +21,7 @@ def test_sengled_rules(manufacturer, model, expected):
     assert match(sengled.RULES, rules.read(manufacturer, model, "zigpy.zcl")) == expected
 
 
-def test_sengled_is_untested_on_every_action_it_is_served_on():
-    """turn_on_for, which the integration refuses it on (test_refusals.py), is left out."""
-    assert "turn_on_for" not in sengled.FAMILY.scopes
-    assert {level for scope in sengled.FAMILY.scopes.values() for level in scope.capabilities.values()} == {
-        Level.EXPERIMENTAL
-    }
+def test_sengled_is_in_no_scope():
+    """Not built on every action (docs/evidence.md, On trial): its probe found it departs, and turn_on_for's call harms
+    it, which the integration refuses there with a reason (test_refusals.py)."""
+    assert sengled.FAMILY.scopes == {}

@@ -12,8 +12,9 @@ refused on a Matter light.
 ## Turn on with timer
 
 The timer is read back from the device, so the result is `confirmed` only when it reports both a running timer
-(`OnTime`) and that it is on, otherwise `sent`. `turn_off` cancels the timer; a plain `turn_on` doesn't. By the spec,
-a second timer while one runs keeps the longer of the two, and a device turned off mid-timer ignores a new timer for
+(`OnTime`) and that it is on, otherwise `sent`. `turn_off` cancels the timer; a plain `turn_on` doesn't. A second timer
+while one runs keeps the longer of the two, so a shorter one is `sent`, not `confirmed`
+([tested](internals.md#tested-behavior)). By the spec, a device turned off mid-timer ignores a new timer for
 the next 0.1 s and stays off (`sent`). If the device restarts while a timer runs, after a power cut say, it can come
 back on with no timer ([internals](internals.md#what-decides-the-call)).
 
@@ -37,7 +38,7 @@ so DeviceSide reads it back ([turn on with timer](#turn-on-with-timer)).
 
 A device certified by the Connectivity Standards Alliance, with one on/off part, has passed a test of the timer reads
 that get attributes makes, so get attributes runs on it with Experimental features off. The certification test sends the timer command
-with other settings than DeviceSide's, so turn on with timer is untested and runs only with Experimental features on.
+with other settings than DeviceSide's, so turn on with timer is on trial: it runs with Experimental features on.
 DeviceSide counts a device as certified by its vendor ID, which an uncertified product from a registered vendor also
 carries: that is the case this can't catch. Like every Matter device here, it needs the On/Off cluster's Lighting
 feature.
@@ -45,20 +46,22 @@ feature.
 ### Multi-outlet devices
 
 A certified device with more than one on/off part, such as a power strip or a two-gang switch. Certification tests
-one of its parts, and DeviceSide can't tell which, so both features run only with Experimental features on.
+one of its parts, and DeviceSide can't tell which, so neither feature is built for them yet, even with Experimental
+features on.
 
 ### Matter bridges
 
 Devices a bridge exposes on Matter, such as Zigbee lights behind a hub. The bridge answers the timer, either by
-running it itself or by passing it on to the device, so how it behaves depends on the bridge. Untested: both
-features run only with Experimental features on. A bridge's own light or plug counts here too.
+running it itself or by passing it on to the device, so how it behaves depends on the bridge. Neither feature is
+built for them yet, even with Experimental features on. A bridge's own light or plug counts here too.
 
 ### Uncertified devices
 
-A device that reports a test vendor ID, or none yet: development kits, apps that share other devices on Matter
-(Matterbridge-style apps, bridge or not), and the odd uncertified product. Nothing has tested its timer, so both
-features run only with Experimental features on. An app built on matter.js forgets a running timer when it restarts,
-and the device stays on ([internals](internals.md#upstream-defects)).
+A device that reports a test vendor ID: development kits, apps that share other devices on Matter (Matterbridge-style
+apps, bridge or not), and the odd uncertified product. Nothing has tested its timer, so neither feature is built for
+them yet, even with Experimental features on. A device that hasn't reported its vendor ID yet is refused turn on
+with timer, as unknown, until it does. An app built on matter.js forgets a running timer when it restarts, and the device stays on
+([internals](internals.md#upstream-defects)).
 
 ## Should work
 

@@ -1583,89 +1583,6 @@
   "result": [
    {
     "clamped_to": null,
-    "classes": "sengled",
-    "data": null,
-    "detail": null,
-    "entity_id": "light.bulb",
-    "integration": "zha",
-    "member_classes": null,
-    "status": "sent"
-   }
-  ],
-  "wire": [
-   [
-    [
-     "service",
-     "zha.issue_zigbee_cluster_command",
-     {
-      "cluster_id": 8,
-      "cluster_type": "in",
-      "command": 4,
-      "command_type": "server",
-      "endpoint_id": 11,
-      "ieee": "00:17:88:01:02:03:04:05",
-      "params": {
-       "level": 254,
-       "transition_time": 50
-      }
-     },
-     {
-      "blocking": true
-     }
-    ],
-    null
-   ],
-   [
-    [
-     "zha.Cluster.read_attributes",
-     [
-      {
-       "cluster_id": 8,
-       "endpoint_id": 11,
-       "ieee": "00:17:88:01:02:03:04:05"
-      },
-      [
-       0
-      ]
-     ],
-     {
-      "allow_cache": false,
-      "only_cache": false
-     }
-    ],
-    [
-     {},
-     {
-      "0": 134
-     }
-    ]
-   ]
-  ]
- },
- {
-  "action": "raise_brightness",
-  "integration": "zha",
-  "request": {
-   "dropped": [],
-   "own": null,
-   "request": {
-    "attribute": "brightness",
-    "dropped": false,
-    "limit": null,
-    "sweep_time": 5.0,
-    "up": true
-   },
-   "targets": [
-    [
-     "light.bulb",
-     "light.bulb",
-     false
-    ]
-   ]
-  },
-  "result": [
-   {
-    "clamped_to": null,
     "classes": null,
     "data": null,
     "detail": "admin_required",
@@ -1777,8 +1694,8 @@
    },
    "targets": [
     [
-     "light.ikea",
-     "light.ikea",
+     "light.innr",
+     "light.innr",
      false
     ]
    ]
@@ -1789,7 +1706,7 @@
     "classes": "other",
     "data": null,
     "detail": null,
-    "entity_id": "light.ikea",
+    "entity_id": "light.innr",
     "integration": "zha",
     "member_classes": null,
     "status": "sent"
