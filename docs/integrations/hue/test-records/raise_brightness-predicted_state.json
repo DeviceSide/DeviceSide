@@ -1,5 +1,5 @@
 {
-  "format": 2,
+  "format": 3,
   "integration": "hue",
   "action": "raise_brightness",
   "options": [
@@ -11,7 +11,7 @@
     "kind": "rig",
     "commit": "823065ec"
   },
-  "package": "b9fd2fd0c842",
+  "calls": "e9035961f90d698af3b36396d547c2b44ed8b981",
   "home_assistant": "2026.10.4",
   "tests": [
     {

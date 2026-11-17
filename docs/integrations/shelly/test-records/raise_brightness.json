@@ -1,5 +1,5 @@
 {
-  "format": 2,
+  "format": 3,
   "integration": "shelly",
   "action": "raise_brightness",
   "result": "pass",
@@ -8,7 +8,7 @@
     "kind": "rig",
     "commit": "323e24d5"
   },
-  "package": "bcc6453c1abf",
+  "calls": "d56654286602529520b485b951dcc4a6d7627955",
   "home_assistant": "2026.10.4",
   "tests": [
     {

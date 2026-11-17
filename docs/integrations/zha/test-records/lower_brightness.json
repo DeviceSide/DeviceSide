@@ -1,5 +1,5 @@
 {
-  "format": 2,
+  "format": 3,
   "integration": "zha",
   "action": "lower_brightness",
   "result": "pass",
@@ -8,7 +8,7 @@
     "kind": "rig",
     "commit": "687d369d"
   },
-  "package": "58496e69e867",
+  "calls": "a15a6cb4edb1fd7eca679eb9d199c7b3a5d09e54",
   "home_assistant": "2026.10.4",
   "tests": [
     {

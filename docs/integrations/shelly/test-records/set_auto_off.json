@@ -1,5 +1,5 @@
 {
-  "format": 2,
+  "format": 3,
   "integration": "shelly",
   "action": "set_auto_off",
   "result": "pass",
@@ -8,7 +8,7 @@
     "kind": "rig",
     "commit": "323e24d5"
   },
-  "package": "bcc6453c1abf",
+  "calls": "931487ef90768d6cec958f39a62fdc668c222fa6",
   "home_assistant": "2026.10.4",
   "tests": [
     {
