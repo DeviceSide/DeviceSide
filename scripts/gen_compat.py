@@ -30,8 +30,10 @@ alphabetically, and a line's names sort the same way (`ordered`), a variant's pl
   is left out, and a class with nothing left has no line. Where the integration names no classes, its domains stand
   in for them.
 - Names: the class's devices.yaml phrase; one whose domains show different features is named per domain, by its
-  `domains` phrases, so a plug never lists dimming. Classes of one page section share a link, and a line holding
-  every class its section shows in its domains names the section instead, by its devices.yaml `sections` phrase.
+  `domains` phrases, so a plug never lists dimming. A scene domain is never one of them: a scene is classed by its
+  lights, so its features join the class's light line ("set scene"); a class of scenes alone keeps its own.
+  Classes of one page section share a link, and a line holding every class its section shows in its domains names
+  the section instead, by its devices.yaml `sections` phrase.
 - Variants: a section with `variants` (a model whose classes its page tells apart) is a parent line, "Tuya TS011F
   plugs: check Manufacturer …", with a child line per feature set of its classes, named by their phrases ("a, b, or
   c") and ending ✔ for a rig-tested model, which the parent names. Children never merge with another section's classes.
@@ -96,6 +98,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import yaml
+from homeassistant.const import Platform
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
@@ -932,10 +935,7 @@ def class_lines(
     once per domain it shows on, by its `domains` phrase, so a plug never reads as dimmable. A class with no entry
     that a scope's no_known_method names is named by its `what` (`broken`). A section with `variants` gets a parent
     line, its classes child lines of their own, which never merge with another section's. Unsorted (`ordered`)."""
-    by_item: dict[str, dict[str | None, Shape]] = {}
-    for (item, domain), by_status in found.items():
-        if found_shape := shape(by_status):
-            by_item.setdefault(item, {})[domain] = found_shape
+    by_item, members = by_home(found, class_domains)
     lines: dict[tuple[tuple, Shape], Line] = {}
     sections: dict[Item, str] = {}  # each item's page section
     found_phrases = data.section_phrases.get(key, {})
@@ -944,8 +944,13 @@ def class_lines(
         entry = data.capabilities.get(key, {}).get(item) or broken.get(item)
         if entry is None:
             fail(f"capabilities: no entry for {key} {item}, which the card lists")
-        can_be = [domain for domain in served if domain in class_domains.get(item, ())]
-        for phrase, found_shape, domains in naming(key, item, entry, by_domain, can_be):
+        can_be = list(
+            dict.fromkeys(
+                domain_home(class_domains[item], domain) for domain in served if domain in class_domains.get(item, ())
+            )
+        )
+        for phrase, found_shape, homes in naming(key, item, entry, by_domain, can_be):
+            domains = [domain for home in homes for domain in members[item][home]]
             if "variants" in (parent_entry := found_phrases.get(entry["section"], {})):
                 parent = Line((), {entry["section"]: [parent_entry["phrase"]]}, note=parent_entry["variants"])
                 children = parents.setdefault(entry["section"], (parent, {}))[1]
@@ -966,6 +971,32 @@ def class_lines(
         parent.items = [item for child in parent.children for item in child.items]
         parent.at = {item: at for child in parent.children for item, at in child.at.items()}
     return [*lines.values(), *(parent for parent, _ in parents.values())]
+
+
+def domain_home(domains: frozenset, domain: str | None) -> str | None:
+    """The domain a class's card line names `domain` by: a scene's is light, where the class can be a light."""
+    return Platform.LIGHT if domain == Platform.SCENE and Platform.LIGHT in domains else domain
+
+
+def by_home(
+    found: dict[Item, dict[str, set[str]]], class_domains: ClassDomains
+) -> tuple[dict[str, dict[str | None, Shape]], dict[str, dict[str | None, list[str | None]]]]:
+    """Each item's features per domain a line names it by (`domain_home`, a scene folded into light), and the domains
+    each of those holds."""
+    merged_found: dict[str, dict[str | None, dict[str, set[str]]]] = {}
+    members: dict[str, dict[str | None, list[str | None]]] = {}
+    for (item, domain), by_status in found.items():
+        home = domain_home(class_domains.get(item, frozenset()), domain)
+        members.setdefault(item, {}).setdefault(home, []).append(domain)
+        into = merged_found.setdefault(item, {}).setdefault(home, {})
+        for status, actions in by_status.items():
+            into.setdefault(status, set()).update(actions)
+    by_item: dict[str, dict[str | None, Shape]] = {}
+    for item, homes in merged_found.items():
+        for home, by_status in homes.items():
+            if found_shape := shape(by_status):
+                by_item.setdefault(item, {})[home] = found_shape
+    return by_item, members
 
 
 def naming(

@@ -88,12 +88,10 @@ The compatibility section below shows which devices are known or likely to work.
 
 **[Hue](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/hue/index.md)** (Bridge v2/Pro)
 
-- [native groups](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#native-groups) ✔: 🟢 smooth dimming, smooth saturation, set without turning on, scenes, get attributes
-- [Hue lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/hue/index.md#device-classes) ([White Ambiance E27 1100lm](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#hue-white-ambiance-e27-1100lm) ✔, [Essential White and Color Ambiance A60](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#hue-essential-white-and-color-ambiance-a60) ✔): 🟢 smooth dimming, smooth saturation, set without turning on, get attributes
-- [scenes of Hue lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/hue/index.md#device-classes): 🟢 scenes
-- [smart scenes](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/hue/index.md#hue-smart-scenes): 🔴 scenes
-- [scenes with other brands' lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/hue/index.md#other-brands): 🌱 scenes
-- [other brands' lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/hue/index.md#other-brands): 🌱 smooth dimming, smooth saturation, set without turning on, get attributes
+- [native groups](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#native-groups) ✔: 🟢 smooth dimming, smooth saturation, set without turning on, set scene, get attributes
+- [Hue lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/hue/index.md#device-classes) ([White Ambiance E27 1100lm](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#hue-white-ambiance-e27-1100lm) ✔, [Essential White and Color Ambiance A60](https://github.com/DeviceSide/DeviceSide/blob/main/docs/device-compatibility.md#hue-essential-white-and-color-ambiance-a60) ✔): 🟢 smooth dimming, smooth saturation, set without turning on, set scene, get attributes
+- [smart scenes](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/hue/index.md#hue-smart-scenes): 🔴 set scene
+- [other brands' lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/hue/index.md#other-brands): 🌱 smooth dimming, smooth saturation, set without turning on, set scene, get attributes
 
 **[Matter](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/matter/index.md)**
 

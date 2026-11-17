@@ -157,7 +157,7 @@ Zigbee2MQTT countdown plug's maker string with a record of its own is a class of
   that serves one of them admits the class in every domain it serves, at the class's level there: one serving
   switches takes a TS011F that Home Assistant shows as a light. An entry held on some domains with `only=True` admits
   the class there alone and refuses it elsewhere as not built yet. A class whose domains show different features gets
-  a card line per domain ("other brands' lights", "other brands' plugs and switches").
+  a card line per domain ("other brands' lights", "other brands' plugs and switches"), except scenes, which join the class's light line as "set scene".
 - **A read serves only what another action does.** Get attributes reads state back around DeviceSide's other
   actions, so it admits only the classes, on the domains, that another of the integration's actions admits (the
   registry checks): no other action serves a Tuya ZCL switch yet, so it reads a Tuya ZCL device as a light alone. A

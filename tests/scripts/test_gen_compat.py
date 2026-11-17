@@ -557,6 +557,31 @@ def test_a_class_whose_domains_show_different_features_splits_per_domain_on_the_
         )
 
 
+def test_a_classs_scene_domain_joins_its_light_line(root):
+    """Decision 29: a scene is classed by its lights, so a class that is a light and a scene shows one line, named by
+    its phrase, with set scene among its features; a class that is only scenes keeps its own line."""
+    phrase = {"phrase": "lights", "section": "Lights"}
+    data = gc.Data(
+        requires={},
+        models={},
+        capabilities={"x": {"hue": phrase, "other": {"phrase": "others", "section": "Lights"}}},
+        no_known_method=[],
+    )
+    scenes = {"smart": {"phrase": "smart scenes", "section": "Scenes"}}
+    data.capabilities["x"] |= scenes
+    found = {
+        ("hue", "light"): {"works": {"raise_brightness"}},
+        ("hue", "scene"): {"works": {"set_scene"}},
+        ("smart", "scene"): {"works": {"set_scene"}},
+    }
+    domains = {"hue": frozenset({Platform.LIGHT, Platform.SCENE}), "smart": frozenset({Platform.SCENE})}
+    lines = gc.class_lines("x", found, data, domains, ["light", "scene"], {})
+    assert [(line.sections, line.shape, line.items) for line in lines] == [
+        ({"Lights": ["lights"]}, ((("works", ("smooth dimming", "set scene"))),), [("hue", "light"), ("hue", "scene")]),
+        ({"Scenes": ["smart scenes"]}, ((("works", ("set scene",))),), [("smart", "scene")]),
+    ]
+
+
 def test_classes_of_one_section_say_their_shared_ending_once():
     led = f"{URL}#led"
     assert gc.merged(["CCT LED controllers", "RGB LED controllers"], led) == f"[LED controllers (CCT, RGB)]({led})"
@@ -845,7 +870,7 @@ def test_a_card_marks_unmaintained_adapters_by_reason_flagged_ones_included(root
     )
     # A warning names every feature, stop beside the others.
     assert card.render().splitlines()[2:4] == [
-        f"- [⚠️ Unmaintained]({ISSUE_REASON}): turn on with timer, turn off with timer, scenes, stop",
+        f"- [⚠️ Unmaintained]({ISSUE_REASON}): turn on with timer, turn off with timer, set scene, stop",
         "- ⚠️ Unmaintained (the maintainer left): get attributes",
     ]
 
@@ -889,7 +914,7 @@ def test_a_card_marks_unmaintained_ones_after_untested_fixes(root):
     lines = card.render().splitlines()
     marks = [line for line in lines if line.startswith(("- ⚠️", "- [⚠️", "- [🔧"))]
     assert marks == [
-        f"- [🔧 Untested fix]({ISSUE_REASON}): turn on with timer, scenes",
+        f"- [🔧 Untested fix]({ISSUE_REASON}): turn on with timer, set scene",
         "- ⚠️ Unmaintained (gone): turn off with timer",
     ]
     # An untested fix is not unmaintained: the heading still names the maintainers.

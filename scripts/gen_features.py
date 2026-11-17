@@ -90,7 +90,7 @@ FEATURES = (
         "set without turning on",
         ("set_attributes",),
     ),
-    ("Set scene without turning on", "set-scene-without-turning-on", "Flash-free turn-on", "scenes", ("set_scene",)),
+    ("Set scene without turning on", "set-scene-without-turning-on", "Flash-free turn-on", "set scene", ("set_scene",)),
     ("Get attributes", "get-attributes", "Get attributes", "get attributes", ("get_attributes",)),
 )
 # (icon, alt text, label, file, anchor): the legend, in order. Each icon links to the heading that explains it; a
