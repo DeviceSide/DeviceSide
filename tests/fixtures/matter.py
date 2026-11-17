@@ -9,12 +9,14 @@ follows what the adapter reads at runtime:
             .get_node(node_id) -> mock_node
                 .node_data.attributes: the endpoint's OnOff FeatureMap ("{endpoint_id}/6/65532") and Basic
                     Information's VendorID and ProductID ("0/40/2", "0/40/4"), a WiZ Smart Plug's unless given
-            .send_device_command(node_id, endpoint_id, command) -> None  (AsyncMock)
-            .read_attribute(node_id, attribute_path) -> {attribute_path: value}  (AsyncMock; OnOff on, OnTime the
+            .send_device_command(node_id, endpoint_id, command) -> None  (a MatterClient method awaiting an AsyncMock)
+            .read_attribute(node_id, attribute_path) -> {attribute_path: value}  (likewise; OnOff on, OnTime the
                 last command's onTime, else 1)
 """
 
 import sys
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
@@ -32,6 +34,27 @@ NODE_HEX = "0000000000000002"
 NODE_ID = int(NODE_HEX, 16)
 # The lab's WiZ Smart Plug (zigbee2mqtt/research/2026-11-14-lab-probe.md): the `wiz_plug` class.
 WIZ_VENDOR_ID, WIZ_PRODUCT_ID = 4107, 8979
+# The clock every Matter test runs at (tests/integrations/matter/conftest.py): get_attributes puts `ends_at` from it in
+# its rows, so the transcripts are the same on every run.
+NOW = datetime(2026, 10, 28, 12, 0, tzinfo=UTC)
+
+
+class MatterClient:
+    """Stands in for python-matter-server's MatterClient, which stays out of the test environment: `send_device_command`
+    and `read_attribute` are class methods (the wire boundaries tests/integrations/matter/wire.py wraps) that await
+    the test's mocks, so a test sets `side_effect` and reads the calls there. `get_node` is the cache read, a plain
+    mock."""
+
+    def __init__(self, send_device_command: AsyncMock, read_attribute: AsyncMock, node: MagicMock) -> None:
+        self.send_mock = send_device_command
+        self.read_mock = read_attribute
+        self.get_node = MagicMock(return_value=node)
+
+    async def send_device_command(self, node_id: int, endpoint_id: int, command: object) -> object:
+        return await self.send_mock(node_id=node_id, endpoint_id=endpoint_id, command=command)
+
+    async def read_attribute(self, node_id: int, attribute_path: str) -> dict:
+        return await self.read_mock(node_id=node_id, attribute_path=attribute_path)
 
 
 def make_node_mock(
@@ -72,7 +95,8 @@ def matter_device(
     feature_map: int = 0x0001,
     **node: object,
 ) -> tuple[MockConfigEntry, AsyncMock, AsyncMock]:
-    """A loaded Matter config entry whose matter_client is fully mocked; `node` goes to make_node_mock.
+    """A loaded Matter config entry whose matter_client is a MatterClient sending through the returned mocks; `node`
+    goes to make_node_mock.
 
     Returns (entry, send_device_command mock, read_attribute mock).
     """
@@ -87,12 +111,7 @@ def matter_device(
 
     node_mock = make_node_mock(endpoint_id, feature_map, **node)
 
-    client = MagicMock()
-    client.get_node.return_value = node_mock
-    client.send_device_command = send_cmd
-    client.read_attribute = read_attr
-
-    adapter = SimpleNamespace(matter_client=client)
+    adapter = SimpleNamespace(matter_client=MatterClient(send_cmd, read_attr, node_mock))
     entry_data = SimpleNamespace(adapter=adapter)
 
     entry = MockConfigEntry(domain=_MATTER_DOMAIN, unique_id="mock-matter")
@@ -136,6 +155,17 @@ def add_matter_entity(
     return entity_id
 
 
+@dataclass
+class OnWithTimedOff:
+    """chip's OnOff.Commands.OnWithTimedOff: the command's name, which chip's class carries as its type, and its
+    fields, so a transcript shows which command went to the node."""
+
+    onOffControl: int = 0
+    onTime: int = 0
+    offWaitTime: int = 0
+    command: str = "OnOff.OnWithTimedOff"
+
+
 @pytest.fixture
 def mock_chip(monkeypatch):
     """Inject a minimal mock for chip.clusters into sys.modules.
@@ -145,10 +175,7 @@ def mock_chip(monkeypatch):
     the exact onOffControl/onTime/offWaitTime values that the adapter passed.
     """
 
-    def _OnWithTimedOff(onOffControl=0, onTime=0, offWaitTime=0):
-        return SimpleNamespace(onOffControl=onOffControl, onTime=onTime, offWaitTime=offWaitTime)
-
-    mock_objects = SimpleNamespace(OnOff=SimpleNamespace(Commands=SimpleNamespace(OnWithTimedOff=_OnWithTimedOff)))
+    mock_objects = SimpleNamespace(OnOff=SimpleNamespace(Commands=SimpleNamespace(OnWithTimedOff=OnWithTimedOff)))
     mock_chip_clusters = SimpleNamespace(Objects=mock_objects)
     mock_chip_pkg = SimpleNamespace(clusters=mock_chip_clusters)
 
