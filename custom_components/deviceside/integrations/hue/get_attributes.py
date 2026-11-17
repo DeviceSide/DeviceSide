@@ -4,7 +4,7 @@ from collections.abc import Iterable
 from statistics import mean
 from typing import TYPE_CHECKING, ClassVar
 
-from homeassistant.components.light import ATTR_COLOR_MODE, ColorMode
+from homeassistant.components.light import ATTR_COLOR_MODE, ATTR_COLOR_TEMP_KELVIN, ColorMode
 from homeassistant.const import STATE_ON, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
@@ -17,6 +17,7 @@ from .transition_cache import HueTransitionCache, transition_cache
 from ...core.adapter import Adapter
 from ...core.color import xy_row
 from ...core.errors import Reason
+from ...core.fields import BRIGHTNESS_FIELD
 from ...core.models import EntityResult, Request, Status, Target
 from ...core.scope import AdapterScope
 from ...core.transition import BRIGHTNESS
@@ -31,7 +32,7 @@ def light_row(hass: HomeAssistant, api: HueBridgeV2, cache: HueTransitionCache, 
     value)."""
     row = attributes(hass, api, cache, [light])
     if light.dimming:
-        row["brightness"] = round(cache.value(light.id, BRIGHTNESS, light.dimming.brightness), 1)
+        row[BRIGHTNESS_FIELD] = round(cache.value(light.id, BRIGHTNESS, light.dimming.brightness), 1)
     return row
 
 
@@ -63,14 +64,14 @@ def attributes(hass: HomeAssistant, api: HueBridgeV2, cache: HueTransitionCache,
     lights = list(lights)
     row: dict = {}
     if levels := [light.dimming.brightness for light in lights if light.dimming]:
-        row["brightness"] = round(mean(levels), 1)
+        row[BRIGHTNESS_FIELD] = round(mean(levels), 1)
     kelvins = [
         color_temperature_mired_to_kelvin(light.color_temperature.mirek)
         for light in lights
         if in_color_temp_mode(hass, api, light)
     ]
     if kelvins:
-        row["color_temp_kelvin"] = round(mean(kelvins))
+        row[ATTR_COLOR_TEMP_KELVIN] = round(mean(kelvins))
     if xys := [light_xy(cache, light) for light in lights if light.color]:
         row.update(xy_row(round(mean(x for x, _ in xys), 4), round(mean(y for _, y in xys), 4)))
     return row
@@ -119,8 +120,8 @@ class HueGetAttributes(Adapter[Request]):
                 # still moving counts as lit: a room moved up from all off is on before aiohue hears so.
                 lights_lit = lit(cache, dimmable) or dimmable
                 predicted = [cache.value(light.id, BRIGHTNESS, light.dimming.brightness) for light in lights_lit]
-                row["brightness"] = round(mean(predicted), 1)
+                row[BRIGHTNESS_FIELD] = round(mean(predicted), 1)
             elif on and (group := grouped.get(resource_id(target))) is not None and group.dimming is not None:
-                row["brightness"] = round(group.dimming.brightness, 1)
+                row[BRIGHTNESS_FIELD] = round(group.dimming.brightness, 1)
             results.append(self.result(target, Status.CONFIRMED, data=row))
         return results

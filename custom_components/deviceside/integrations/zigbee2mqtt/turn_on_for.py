@@ -5,6 +5,13 @@ import asyncio
 import logging
 from typing import ClassVar
 
+from homeassistant.components.light import (
+    ATTR_COLOR_TEMP_KELVIN,
+    ATTR_HS_COLOR,
+    ATTR_RGB_COLOR,
+    ATTR_TRANSITION,
+    ATTR_XY_COLOR,
+)
 from homeassistant.const import ATTR_ENTITY_ID, SERVICE_TURN_ON, Platform
 from homeassistant.core import HomeAssistant
 
@@ -17,6 +24,7 @@ from .native_control import COLOR_FIELDS, native_control, settled
 from .set_check import checked, note
 from ...actions.turn_on_for import TurnOnForRequest
 from ...core.errors import describe
+from ...core.fields import BRIGHTNESS_FIELD
 from ...core.models import EntityResult, Status, Target
 from ...core.runtime import get_runtime
 from ...core.scope import AdapterScope, DurationLimits, verified
@@ -66,7 +74,9 @@ class Z2MTurnOnFor(Z2MAdapter[TurnOnForRequest]):
         # on (classes.py). The families' own calls (Tuya's countdown) run through execute_own (adapter.py).
         **class_scope("turn_on_for"),
         duration=_TIMER_LIMITS,
-        fields=verified("brightness", "color_temp_kelvin", "hs_color", "rgb_color", "xy_color", "transition"),
+        fields=verified(
+            BRIGHTNESS_FIELD, ATTR_COLOR_TEMP_KELVIN, ATTR_HS_COLOR, ATTR_RGB_COLOR, ATTR_XY_COLOR, ATTR_TRANSITION
+        ),
         confirmable=False,
         native_groups=True,  # Z2M group entities receive commands on <base>/<group ID>/set.
     )

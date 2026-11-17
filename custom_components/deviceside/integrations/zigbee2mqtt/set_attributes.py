@@ -5,7 +5,14 @@ values into Z2M's state, and so HA's."""
 import asyncio
 from typing import ClassVar
 
-from homeassistant.components.light import ATTR_SUPPORTED_COLOR_MODES, ColorMode
+from homeassistant.components.light import (
+    ATTR_COLOR_TEMP_KELVIN,
+    ATTR_HS_COLOR,
+    ATTR_RGB_COLOR,
+    ATTR_SUPPORTED_COLOR_MODES,
+    ATTR_XY_COLOR,
+    ColorMode,
+)
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
@@ -18,6 +25,7 @@ from .read import Reader, reader
 from .set_check import checked
 from ...actions.set_attributes import SetAttributesRequest
 from ...core.errors import NOT_STORED, Reason
+from ...core.fields import BRIGHTNESS_FIELD
 from ...core.models import EntityResult, Status, Target
 from ...core.scope import AdapterScope, verified
 from ...core.zcl import WRITE_FADE_TENTHS, WRITE_FADE_WAIT_S
@@ -141,7 +149,13 @@ class Z2MSetAttributes(Z2MAdapter[SetAttributesRequest]):
         domains=verified(Platform.LIGHT),
         **class_scope("set_attributes"),
         fields=verified(
-            "brightness", "color_temp_kelvin", "hs_color", "rgb_color", "xy_color", "min_brightness", "max_brightness"
+            BRIGHTNESS_FIELD,
+            ATTR_COLOR_TEMP_KELVIN,
+            ATTR_HS_COLOR,
+            ATTR_RGB_COLOR,
+            ATTR_XY_COLOR,
+            "min_brightness",
+            "max_brightness",
         ),
         confirmable=True,
         native_groups=True,  # read back through its members, which only Z2M's bridge/groups knows

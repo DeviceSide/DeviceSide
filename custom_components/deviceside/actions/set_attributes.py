@@ -9,7 +9,7 @@ from homeassistant.exceptions import ServiceValidationError
 
 from ..const import DOMAIN
 from ..core.action import Action
-from ..core.fields import COLOR_TEMP, COLORS
+from ..core.fields import BRIGHTNESS_FIELD, COLOR_TEMP, COLORS
 from ..core.models import LIGHT_FIELD_SCHEMA, PERCENT, ActionKind, LightFields, Request
 
 # PERCENT, as on Hue and hue_dimmer, whose calls these must accept unchanged. A brightness of 0 goes to the bridge,
@@ -28,11 +28,11 @@ class SetAttributesRequest(Request):
     max_brightness: float | None = None
 
     def fields_present(self) -> frozenset[str]:
-        own = {name for name in ("brightness", *LIMITS) if getattr(self, name) is not None}
+        own = {name for name in (BRIGHTNESS_FIELD, *LIMITS) if getattr(self, name) is not None}
         return self.light.present() | own
 
     def without(self, names: frozenset[str]) -> Self:
-        own = {name: None for name in ("brightness", *LIMITS) if name in names}
+        own = {name: None for name in (BRIGHTNESS_FIELD, *LIMITS) if name in names}
         return replace(self, light=self.light.without(names), **own)
 
     def nothing_to_do(self) -> bool:
@@ -49,7 +49,7 @@ class SetAttributes(Action[SetAttributesRequest]):
     kind: ClassVar[ActionKind] = ActionKind.COMMAND
     domains: ClassVar[frozenset[str]] = frozenset({Platform.LIGHT})
     fields: ClassVar[dict] = {
-        **{probatio.Optional(name): PERCENT for name in ("brightness", *LIMITS)},
+        **{probatio.Optional(name): PERCENT for name in (BRIGHTNESS_FIELD, *LIMITS)},
         # light.turn_on's validators without its one-color rule: given several colors, rgb_color wins, then
         # hs_color, then xy_color, as on hue_dimmer.
         **{
@@ -64,7 +64,7 @@ class SetAttributes(Action[SetAttributesRequest]):
         data = {name: value for name, value in call.data.items() if not (name in _UNSET_AT_ZERO and value == 0)}
         request = SetAttributesRequest(
             light=LightFields.from_data({name: value for name, value in data.items() if name in _COLORS}),
-            **{name: data.get(name) for name in ("brightness", *LIMITS)},
+            **{name: data.get(name) for name in (BRIGHTNESS_FIELD, *LIMITS)},
         )
         if not request.fields_present():
             raise ServiceValidationError(translation_domain=DOMAIN, translation_key="nothing_to_set")

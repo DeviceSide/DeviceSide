@@ -6,7 +6,13 @@ import logging
 from typing import Any, ClassVar
 
 from homeassistant.components.homeassistant import SERVICE_UPDATE_ENTITY
-from homeassistant.components.light import ATTR_SUPPORTED_COLOR_MODES
+from homeassistant.components.light import (
+    ATTR_COLOR_TEMP_KELVIN,
+    ATTR_HS_COLOR,
+    ATTR_RGB_COLOR,
+    ATTR_SUPPORTED_COLOR_MODES,
+    ATTR_XY_COLOR,
+)
 from homeassistant.const import ATTR_ENTITY_ID, Platform
 from homeassistant.core import DOMAIN as HOMEASSISTANT_DOMAIN
 from homeassistant.core import HomeAssistant
@@ -17,6 +23,7 @@ from .addressing import address, unsupported_reason
 from ...actions.set_attributes import SetAttributesRequest
 from ...core.adapter import Adapter
 from ...core.errors import describe
+from ...core.fields import BRIGHTNESS_FIELD
 from ...core.ha_entity import ha_entity, replace_if_set
 from ...core.models import EntityResult, Status, Target
 from ...core.runtime import get_runtime
@@ -153,7 +160,13 @@ class ZHASetAttributes(Adapter[SetAttributesRequest]):
     scope: ClassVar[AdapterScope] = AdapterScope(
         domains=verified(Platform.LIGHT),
         fields=verified(
-            "brightness", "color_temp_kelvin", "hs_color", "rgb_color", "xy_color", "min_brightness", "max_brightness"
+            BRIGHTNESS_FIELD,
+            ATTR_COLOR_TEMP_KELVIN,
+            ATTR_HS_COLOR,
+            ATTR_RGB_COLOR,
+            ATTR_XY_COLOR,
+            "min_brightness",
+            "max_brightness",
         ),
         **classes.class_scope(action),
         max_concurrency=2,

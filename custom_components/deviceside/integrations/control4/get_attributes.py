@@ -2,6 +2,7 @@
 
 from typing import Any, ClassVar
 
+from homeassistant.components.light import ATTR_COLOR_TEMP_KELVIN
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
@@ -17,6 +18,7 @@ from .director import (
     unsupported_reason,
 )
 from ...core.adapter import Adapter
+from ...core.fields import BRIGHTNESS_FIELD
 from ...core.models import EntityResult, Request, Status, Target
 from ...core.scope import AdapterScope, experimental
 
@@ -34,9 +36,9 @@ def attributes_row(held: dict[str, Any]) -> dict:
     if BRIGHTNESS_PERCENT in held or LIGHT_LEVEL in held or LIGHT_STATE not in held:
         level = parse_level(held)
         if level.on:
-            row["brightness"] = level.brightness
+            row[BRIGHTNESS_FIELD] = level.brightness
     if (kelvin := color_temperature(held)) is not None:
-        row["color_temp_kelvin"] = kelvin
+        row[ATTR_COLOR_TEMP_KELVIN] = kelvin
     return row
 
 

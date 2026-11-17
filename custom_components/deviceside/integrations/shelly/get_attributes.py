@@ -6,6 +6,7 @@ import logging
 from datetime import datetime
 from typing import ClassVar
 
+from homeassistant.components.light import ATTR_COLOR_TEMP_KELVIN
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
@@ -16,6 +17,7 @@ from .rpc import get_config, get_status
 from ...core.adapter import Adapter
 from ...core.color import rgb_row
 from ...core.errors import describe
+from ...core.fields import BRIGHTNESS_FIELD
 from ...core.models import EntityResult, Request, Status, Target
 from ...core.scope import AdapterScope, verified
 from ...core.timer import timer_row
@@ -38,7 +40,7 @@ def status_row(component: str, status: dict, now: datetime) -> dict:
     row: dict = {}
     # Brightness is the device's percent, as Hue's row is. A field the status lacks leaves its row out.
     if component in _DIMMABLE and "brightness" in status:
-        row["brightness"] = status["brightness"]
+        row[BRIGHTNESS_FIELD] = status["brightness"]
     row.update(color_row(component, status))
     if "timer_started_at" in status and "timer_duration" in status:
         duration = status["timer_duration"]
@@ -55,7 +57,7 @@ def color_row(component: str, status: dict) -> dict:
     mode = status.get("mode") if component == "RGBCCT" else None
     # The bulb's status carries ct and rgb in either mode; only the active one is reported, as core does.
     if (component == "CCT" or mode == "cct") and "ct" in status:
-        return {"color_temp_kelvin": status["ct"]}
+        return {ATTR_COLOR_TEMP_KELVIN: status["ct"]}
     if (component == "RGB" or mode == "rgb") and "rgb" in status:
         return rgb_row(*status["rgb"])
     if component == "RGBW" and "rgb" in status and "white" in status:

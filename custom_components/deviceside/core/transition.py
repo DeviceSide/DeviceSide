@@ -19,13 +19,14 @@ from homeassistant.components.light import ATTR_BRIGHTNESS, ATTR_COLOR_MODE, ATT
 from homeassistant.const import STATE_ON
 from homeassistant.core import HomeAssistant
 
+from .fields import BRIGHTNESS_FIELD
 from .models import Target
 from .runtime import get_runtime
 
 # What the recording() block running in this task has recorded so far, by (resource_id, attribute).
 _RECORDED: ContextVar[dict[tuple[str, str], Transition] | None] = ContextVar("transition_recorded", default=None)
 
-BRIGHTNESS = "brightness"  # in percent
+BRIGHTNESS = BRIGHTNESS_FIELD  # in percent
 SATURATION = "saturation"  # in percent
 
 

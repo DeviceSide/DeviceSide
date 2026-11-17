@@ -7,9 +7,11 @@ attribute ID and maps them to these names first.
 from datetime import datetime
 from statistics import mean
 
+from homeassistant.components.light import ATTR_COLOR_TEMP_KELVIN, ATTR_XY_COLOR
 from homeassistant.util.color import color_temperature_mired_to_kelvin
 
 from .color import hs_row, xy_row
+from .fields import BRIGHTNESS_FIELD
 from .timer import timer_row
 
 # ColorMode (0x0008) and EnhancedColorMode (0x4001): the attributes that set the light's color. Only the enhanced one
@@ -32,7 +34,7 @@ def zcl_row(attributes: dict, now: datetime | None = None, *, xy_first: bool = F
     """
     row: dict = {}
     if (level := attributes.get("currentLevel")) is not None:
-        row["brightness"] = round(level * 100 / _MAX_LEVEL, 1)
+        row[BRIGHTNESS_FIELD] = round(level * 100 / _MAX_LEVEL, 1)
     row |= _color(attributes, xy_first)
     if attributes.get("onOff") and attributes.get("onTime"):
         row["timer"] = timer_row("off", attributes["onTime"] / 10, now)
@@ -46,7 +48,7 @@ def _color(attributes: dict, xy_first: bool) -> dict:
         mode = None  # not a ColorMode value
     if mode == _COLOR_TEMP:
         mireds = attributes.get("colorTemperature")
-        return {"color_temp_kelvin": color_temperature_mired_to_kelvin(mireds)} if mireds else {}
+        return {ATTR_COLOR_TEMP_KELVIN: color_temperature_mired_to_kelvin(mireds)} if mireds else {}
     hs = _hs(attributes, mode)
     # A light in a hue mode keeps its xy current too, so one whose read left out hue and saturation reports that.
     xy = None
@@ -76,11 +78,11 @@ def average(rows: list[dict]) -> dict:
     from it. A timer is reported only when every row has one, and then it is the longest.
     """
     row: dict = {}
-    if levels := [r["brightness"] for r in rows if "brightness" in r]:
-        row["brightness"] = round(mean(levels), 1)
-    if kelvins := [r["color_temp_kelvin"] for r in rows if "color_temp_kelvin" in r]:
-        row["color_temp_kelvin"] = round(mean(kelvins))
-    if xys := [r["xy_color"] for r in rows if "xy_color" in r]:
+    if levels := [r[BRIGHTNESS_FIELD] for r in rows if BRIGHTNESS_FIELD in r]:
+        row[BRIGHTNESS_FIELD] = round(mean(levels), 1)
+    if kelvins := [r[ATTR_COLOR_TEMP_KELVIN] for r in rows if ATTR_COLOR_TEMP_KELVIN in r]:
+        row[ATTR_COLOR_TEMP_KELVIN] = round(mean(kelvins))
+    if xys := [r[ATTR_XY_COLOR] for r in rows if ATTR_XY_COLOR in r]:
         row |= xy_row(round(mean(x for x, _ in xys), 4), round(mean(y for _, y in xys), 4))
     if rows and all("timer" in r for r in rows):
         row["timer"] = max((r["timer"] for r in rows), key=lambda timer: timer["remaining_s"])

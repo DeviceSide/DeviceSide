@@ -6,6 +6,7 @@ import asyncio
 import logging
 from typing import ClassVar
 
+from homeassistant.components.light import ATTR_COLOR_TEMP_KELVIN
 from homeassistant.const import ATTR_ENTITY_ID, SERVICE_TURN_ON, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import Unauthorized
@@ -16,6 +17,7 @@ from .groups import covers
 from ...actions.turn_on_for import TurnOnForRequest
 from ...core.adapter import Adapter, DeadlinePassed
 from ...core.errors import describe
+from ...core.fields import BRIGHTNESS_FIELD
 from ...core.models import EntityResult, Status, Target
 from ...core.scope import AdapterScope, DurationLimits, experimental, verified
 from ...core.zcl import MAX_TENTHS_S, READBACK_SLACK_TENTHS
@@ -68,7 +70,7 @@ class ZHATurnOnFor(Adapter[TurnOnForRequest]):
         # are refused (refusals.py).
         **classes.class_scope(action),
         duration=_TIMER_LIMITS,
-        fields=verified("brightness", "color_temp_kelvin"),
+        fields=verified(BRIGHTNESS_FIELD, ATTR_COLOR_TEMP_KELVIN),
         max_concurrency=2,
         confirmable=True,
     )

@@ -4,6 +4,7 @@ then a GetStatus that confirms what the device kept."""
 from dataclasses import replace
 from typing import Any, ClassVar
 
+from homeassistant.components.light import ATTR_COLOR_TEMP_KELVIN, ATTR_HS_COLOR, ATTR_RGB_COLOR, ATTR_XY_COLOR
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
@@ -12,6 +13,7 @@ from .rpc import get_status, light_params, set_and_read_back, whole_percent
 from ...actions.set_attributes import SetAttributesRequest
 from ...core.adapter import Adapter
 from ...core.errors import NOT_STORED
+from ...core.fields import BRIGHTNESS_FIELD
 from ...core.models import EntityResult, Status, Target
 from ...core.scope import AdapterScope, experimental, verified
 
@@ -58,7 +60,13 @@ class ShellySetAttributes(Adapter[SetAttributesRequest]):
     scope: ClassVar[AdapterScope] = AdapterScope(
         domains=verified(Platform.LIGHT),
         fields=verified(
-            "brightness", "color_temp_kelvin", "hs_color", "rgb_color", "xy_color", "min_brightness", "max_brightness"
+            BRIGHTNESS_FIELD,
+            ATTR_COLOR_TEMP_KELVIN,
+            ATTR_HS_COLOR,
+            ATTR_RGB_COLOR,
+            ATTR_XY_COLOR,
+            "min_brightness",
+            "max_brightness",
         ),
         capabilities=SET_CAPABILITIES,
         confirmable=True,
