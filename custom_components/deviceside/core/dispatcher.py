@@ -17,9 +17,10 @@ is skipped silently, named or not, as core skips an empty group; so is one an ad
   Experimental (its domain and fields not flagged), the group falls back to its members: each available one not
   already a target is planned on its own, indirect, so the good ones run and a refused or flagged one is skipped and
   logged; a member also named raises, as its own target. A classifier that raised (logged) leaves the group's class
-  unknown, so where a call harms, or while Experimental features is off, it falls back too, and each member is classed
-  again. With Experimental features on, a group whose weakest member is Experimental, or whose class is unknown where no
-  call harms, runs whole, as one command; a member named beside it then gets its own command as well as the group's.
+  unknown, so where a call harms, or while Experimental features is off and its domain and fields aren't flagged, it
+  falls back too, and each member is classed again. With Experimental features on, a group whose weakest member is
+  Experimental, or whose class is unknown where no call harms, runs whole, as one command; a member named beside it
+  then gets its own command as well as the group's.
 - Stand-ins and members it can't address. A member expand_group lists for its class that the integration can't address
   on its own (Target.addressable false: a Z2M device with several lights) is skipped with its class's refusal if it has
   one, else not_addressable, named by its device, and answers for nothing. So is a stand-in (Target.stand_in: a member
