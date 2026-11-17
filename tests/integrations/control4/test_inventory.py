@@ -4,13 +4,14 @@ driver names its class (classes.py)."""
 import json
 from unittest.mock import call as director_call
 
+import pytest
 from homeassistant.config_entries import ConfigEntryState
 
 from custom_components.deviceside.core.resolver import resolve
 from custom_components.deviceside.core.runtime import get_runtime
 from custom_components.deviceside.integrations.control4 import INTEGRATION, inventory
 
-from .conftest import CONFIRMED
+from .conftest import CONFIRMED, SENT
 from ...conftest import call, refusal
 from ...fixtures.control4 import FakeDirector, add_control4_light, control4_entry, failing
 
@@ -96,13 +97,41 @@ async def test_a_group_expands_to_its_lights_with_entities(hass):
     assert director.send_get_request.await_args_list == [PROPERTIES, CAPABILITIES]
 
 
-async def test_a_group_gets_one_command(hass):
+MEMBERS = {"capabilities": ["other"], "member_capabilities": {"light.left": "other", "light.right": "other"}}
+
+
+@pytest.mark.parametrize(
+    ("action", "data", "row", "commands"),
+    [
+        ("get_attributes", {}, {"brightness": 40.0, "color_temp_kelvin": 3200}, []),
+        ("raise_brightness", {}, SENT, ["RAMP_TO_LEVEL"]),
+        ("lower_brightness", {}, SENT, ["RAMP_TO_LEVEL"]),
+        ("set_attributes", {"color_temp_kelvin": 2700}, CONFIRMED, ["SET_COLOR_TARGET"]),
+        ("stop", {}, CONFIRMED, ["SET_BRIGHTNESS_STOP"]),
+    ],
+)
+async def test_a_group_gets_one_command(hass, action, data, row, commands):
     director = group_director()
     await office(hass, director)
+    director.log.clear()
 
-    members = {"capabilities": ["other"], "member_capabilities": {"light.left": "other", "light.right": "other"}}
-    assert await call(hass, "stop", {"entity_id": "light.office"}) == {"light.office": {**CONFIRMED, **members}}
-    assert [command for command in director.log if command[0] != "get"] == [("SET_BRIGHTNESS_STOP", GROUP)]
+    assert await call(hass, action, {"entity_id": "light.office", **data}) == {"light.office": {**row, **MEMBERS}}
+    assert {item for _, item in director.log} == {GROUP}
+    assert [command for command, _ in director.log if command != "get"] == commands
+
+
+@pytest.mark.parametrize(
+    ("action", "row", "command"),
+    [("raise_brightness", SENT, "RAMP_TO_LEVEL"), ("stop", CONFIRMED, "SET_BRIGHTNESS_STOP")],
+)
+async def test_a_group_with_a_light_that_can_t_stop_moves_its_other_lights_alone(hass, action, row, command):
+    director = group_director(no_stop=(101,))
+    await office(hass, director)
+    director.log.clear()
+
+    assert await call(hass, action, {"entity_id": "light.office"}) == {"light.right": {**row, "capability": "other"}}
+    assert {item for _, item in director.log} == {102}
+    assert [name for name, _ in director.log if name != "get"] == [command]
 
 
 async def test_a_group_whose_members_cant_be_read_is_a_plain_light(hass, caplog):
