@@ -32,7 +32,7 @@ of the adapters with each `caveat` (⚠️ Unmaintained, then ⚠️ Untested fi
   neither its `capabilities` nor its `no_known_method`, and so refuses; only those devices.yaml gives a phrase. Then
   docs/models.yaml's `not_built` entries, by their `what`.
 - No known method: the scopes' `no_known_method`, with the features whose adapters list them, then devices.yaml's.
-  A scope's `not_built` entry (core/scope.py, NotBuilt, one today's call harms) is listed as not built yet, as
+  A scope's `not_built` entry (core/scope.py, NotBuilt, on a harmful action only) is listed as not built yet, as
   above; the evidence block adds a table of them and of models.yaml's, with why and the source.
 Classes with the same features share an entry, and those of one page section a link. A model or blocker drops the
 integration's name where it leads, as the card's name already gives it. Cards show features, not fields: a flagged or
@@ -53,7 +53,7 @@ the cut.
 **Data.** docs/models.yaml holds what integrations share: `models`, one entry per physical model (`name`, `ids` across
 integrations, `type`, optional `section`; a model only one integration names is in its bundle's devices.yaml), and
 `no_known_method` and `not_built` entries that name their `integrations` (`what`, `reason`, `source`, optional
-`section`), a `not_built` one for a device today's call harms on an integration that doesn't class it yet, as an
+`section`), a `not_built` one for a device a harmful action reaches on an integration that doesn't class it yet, as an
 unharmed one needs no entry. Each bundle's devices.yaml holds its integration's: `models` (as above), `column` and
 `column_order` (the README feature table's, read by gen_features), `requires` (shown after the card's name),
 `capabilities` (a `phrase` and `section` per domain or class the scopes hold below Verified, and per class to name as
@@ -176,7 +176,7 @@ class Data:
     models: dict[str, dict]  # by each of its ids
     capabilities: dict[str, dict[str, dict]]
     no_known_method: list[dict]
-    # models.yaml's devices not built yet that today's call harms, on integrations whose code doesn't class them yet.
+    # models.yaml's devices not built yet on a harmful action, on integrations whose code doesn't class them yet.
     not_built: list[dict] = field(default_factory=list)
     # Every heading an entry links to, with the integration whose card links it (None: any card, as for a model).
     sections: set[tuple[str | None, str]] = field(default_factory=set)
@@ -310,7 +310,7 @@ def code_broken(registry: AdapterRegistry) -> list[tuple[dict, set[str]]]:
 
 
 def code_unbuilt(key: str, integration_adapters: list, data: Data) -> list[dict]:
-    """The scopes' not_built entries (core/scope.py, NotBuilt, each one today's call harms), each named by
+    """The scopes' not_built entries (core/scope.py, NotBuilt, on a harmful action only), each named by
     its class's devices.yaml phrase, with the actions whose adapters list it, for the evidence block: the card lists
     the class as not built yet, as it does any other, and this keeps the harm's source. One per class, reason and
     source."""

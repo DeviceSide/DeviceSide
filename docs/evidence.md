@@ -179,10 +179,10 @@ supported, where DeviceSide can't do the action for the class, each named for wh
   refused (`not_built`) and listed as not built yet.
 - **Untested:** the default call may work. The class is in scope as `experimental(...)` and runs behind the flag.
 
-Either kind may carry `harms`, the separate safety axis, when today's call would harm the class (below): a no known
-method entry states it (`NoKnownMethod.harms`), and a class not built yet that today's call would harm gets an entry
-of its own in the scope's `not_built` (`NotBuilt`, with why, a source and `harms`), which the card lists as not built
-yet, as it does any other. A class not built yet that today's call leaves unharmed needs no entry.
+Harm is a separate safety axis, which the action decides (below). On an action whose failure harms, a class not
+built yet gets an entry of its own in the scope's `not_built` (`NotBuilt`, with why and a source), which the card
+lists as not built yet, as it does any other. On any other action it needs no entry, as leaving it out refuses it, and
+the registry refuses a `not_built` entry there.
 
 - **Split off the exception, not the class.** When devices are known to depart from a class's call, a rule moves them
   into a class of their own, at the level their own evidence supports. The rest of the class keeps its level. The
@@ -194,12 +194,12 @@ yet, as it does any other. A class not built yet that today's call leaves unharm
   scheduled on/off actions harm when they fail (`turn_on_for`, `turn_off_for`, `set_auto_off`, `set_auto_on`,
   `clear_auto_off`, `clear_auto_on`); dimming and color (`raise_brightness`, `lower_brightness`, `raise_hue`,
   `lower_hue`, `raise_saturation`, `lower_saturation`), `stop`, `set_attributes` and `set_scene` don't, as a wrong
-  result shows at once and one tap fixes it; and `get_attributes` only reads, so it never harms. Each `no_known_method`
-  and `not_built` entry answers it (`harms`, which has no default).
-- **Where a call is known to harm, a class not yet known is refused.** An adapter whose scope holds an entry with
-  `harms`, no known method or not built yet alike, refuses a target whose class rests on information DeviceSide
-  doesn't have yet, even with Experimental features on: a group whose membership isn't listed, or a device not yet
-  placed (its identifying strings haven't been received, so they could still move it into a harmed class). A
+  result shows at once and one tap fixes it; and `get_attributes` only reads, so it never harms. The action states it
+  (`Action.failure_harms`), for every adapter of that action.
+- **Where a call is known to harm, a class not yet known is refused.** An adapter whose action's failure harms and
+  whose scope holds a `no_known_method` or `not_built` entry refuses a target whose class rests on information
+  DeviceSide doesn't have yet, even with Experimental features on: a group whose membership isn't listed, or a device
+  not yet placed (its identifying strings haven't been received, so they could still move it into a harmed class). A
   target DeviceSide can't class at all is refused the same way. A group with a member not yet placed falls back to
   its members, so only that member is refused. A device no rule matches gets the default class, and one placed there
   from full information isn't refused but runs at its class's level, as does every target of an action no class is
