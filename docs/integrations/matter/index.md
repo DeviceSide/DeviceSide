@@ -56,10 +56,10 @@ built for them yet, even with Experimental features on. A bridge's own light or 
 
 ### Uncertified devices
 
-A device that reports a test vendor ID: development kits, apps that share other devices on Matter
-(Matterbridge-style apps, bridge or not), and the odd uncertified product. Nothing has tested its timer, so neither
-feature is built for them yet, even with Experimental features on. A device that hasn't reported its vendor ID yet
-is refused as unknown until it does. An app built on matter.js forgets a running timer when it restarts, and the device stays on
+A device that reports a test vendor ID: development kits, apps that share other devices on Matter (Matterbridge-style
+apps, bridge or not), and the odd uncertified product. Nothing has tested its timer, so neither feature is built for
+them yet, even with Experimental features on. A device that hasn't reported its vendor ID yet is refused as unknown
+until it does. An app built on matter.js forgets a running timer when it restarts, and the device stays on
 ([internals](internals.md#upstream-defects)).
 
 ## Should work
