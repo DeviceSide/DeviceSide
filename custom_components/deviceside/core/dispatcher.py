@@ -4,7 +4,7 @@
 Planning. Targets are bucketed by adapter (none: no_adapter). For each, the fields it lacks (fields.lacking: a light's,
 minus AdapterScope.unlisted) and the scope's `drops` are dropped, then supports() checks what is left: domain and
 fields in scope, then the adapter's own reasons. Then the class, a call left nothing to send first: unchanged with
-fields_dropped, never refused. Then AdapterScope.refusal, in order: where a no_known_method or not_built entry `harms`,
+fields_dropped, never refused. Then AdapterScope.refusal, in order: where the call harms a class (AdapterScope.harms),
 an Unplaced or None class as class_unknown; a class in no_known_method as no_known_method, with its reason; one in
 not_built, or in neither it nor capabilities, as not_built, with NotBuilt.reason where it has an entry. Then the
 Experimental gate (below).
