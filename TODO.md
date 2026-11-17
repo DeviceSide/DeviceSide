@@ -138,6 +138,11 @@ landed, the old gates are gone and RCs can be cut again. The items below run in 
   reopened suites.
 - [ ] **Release notes**: hand-written v0.1.0 notes in `notes/`, signed off by the repo maintainers, after the RC
   installs cleanly and before `cut-release`, so they describe what the RC ships.
+- [ ] **v0.0.1 migration Fix, live** (#498): just before `cut-release`, as only unit tests cover the one repair that
+  deletes files. On the household HA, install v0.0.1 by hand and add it, then add DeviceSide and run the
+  `legacy_device_side` Fix: the `device_side` entry, folder and actions are gone with no restart,
+  `legacy_device_side_calls` lists an automation still calling `device_side.`, and neither repair returns after a
+  restart once the call is renamed.
 - [ ] **v0.1.0**: the `/rc-audit` second pass over what landed after the pre-run audit, the RC and its HACS install,
   then `cut-release` with every integration signed off (`check_release.py --signoffs`). The release steps are in the
   `release` skill; the release body gets the signed-off notes.
