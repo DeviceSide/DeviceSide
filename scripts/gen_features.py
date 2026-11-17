@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Generate the README feature table: per feature and integration, an icon for each kind of target that is built
-(light, switch, native group, native scene), and a lone prohibited sign for a feature that appears impossible on the
+(light, switch, native group, native scene), and a lone prohibited sign for a feature that is not possible on the
 whole integration.
 
 Each icon links to the docs: a cell's to its integration's page, `docs/integrations/<integration>/index.md` (the
@@ -101,7 +101,7 @@ LEGEND = (
     ("group", "native group", "groups", "docs/device-compatibility.md", "native-groups"),
     ("scene", "native scene", "scene", "README.md", "set-scene-without-turning-on"),
     ("devices-grey", "Experimental", "experimental", "docs/device-compatibility.md", "levels-of-proof"),
-    ("no", "not possible", "appears impossible", INTEGRATIONS, IMPOSSIBLE),
+    ("no", "not possible", "not possible", INTEGRATIONS, IMPOSSIBLE),
 )
 # (feature label, integration) cells where the feature is impossible on the integration for every device we know of,
 # and we've found no device where it's possible: so never "not built yet", and never beside a built icon (generate

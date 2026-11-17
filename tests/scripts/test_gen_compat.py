@@ -365,7 +365,7 @@ def test_a_card_lists_tested_models_once_each_by_their_name_then_native_groups(r
         f"[native groups]({URL}#native-groups) ✔",
     ]
     assert card.render().splitlines()[:3] == [
-        "**ZHA** (Zigbee 3.0) · maintained by [@jasonmx](https://github.com/jasonmx)",
+        "**ZHA** (Zigbee 3.0)",
         "",
         f"- 🟢 {' · '.join(card.lines['works'])}",
     ]
@@ -738,8 +738,8 @@ def test_the_legend_leads_the_cards(root):
         f" [report how it goes]({gc.REPORT_URL}) · "
         "🚧 not built yet: needs a command DeviceSide doesn't have yet · "
         "🔴 no known method: no known command works on it · "
-        f"⚠️ untested fix: changed, not yet tested; please [report whether it works]({gc.REPORT_URL}) · "
-        "⚠️ unmaintained: no one is fixing it; use at your own risk"
+        f"⚠️ untested fix: please [report whether it works]({gc.REPORT_URL}) · "
+        "⚠️ unmaintained: use at your own risk"
     )
     assert text.index("Details per integration are in [docs/integrations.md](") < text.index("</details>")
 
@@ -768,14 +768,6 @@ def untested_fix(reason: str) -> Caveat:
     return Caveat(CaveatKind.UNTESTED_FIX, reason)
 
 
-def test_a_card_names_every_maintainer_with_a_profile_link(root):
-    registry = FakeRegistry(adapter("hue", "stop"))
-    card = gc.card("hue", registry, [adapter("hue", "stop")], data(registry))
-    assert card.render().splitlines()[0] == (
-        "**Hue** · maintained by [@jasonmx](https://github.com/jasonmx), [@other](https://github.com/other)"
-    )
-
-
 def test_a_card_marks_unmaintained_adapters_by_reason_flagged_ones_included(root):
     card = zha_card(
         adapter("zha", "turn_on_for", AdapterScope(caveat=unmaintained(ISSUE_REASON))),
@@ -796,21 +788,20 @@ def heading(card):
     return card.render().splitlines()[0]
 
 
-def test_a_card_whose_adapters_are_all_unmaintained_says_formerly_maintained(root):
+def test_a_card_whose_adapters_are_all_unmaintained_says_so_in_its_heading(root):
     card = zha_card(
         adapter("zha", "turn_on_for", AdapterScope(caveat=unmaintained(ISSUE_REASON))),
         adapter("zha", "stop", AdapterScope(experimental=True, caveat=unmaintained("gone"))),
     )
-    assert " · ⚠️ Unmaintained · formerly maintained by [@" in heading(card)
-    assert " · maintained by " not in heading(card)
-    # One maintained adapter, flagged or not, keeps "maintained by".
+    assert heading(card).endswith(" · ⚠️ Unmaintained")
+    # One maintained adapter, flagged or not, carries no mark.
     for scope in (AdapterScope(), AdapterScope(experimental=True)):
         card = zha_card(
             adapter("zha", "turn_on_for", AdapterScope(caveat=unmaintained(ISSUE_REASON))),
             adapter("zha", "stop", scope),
         )
-        assert " · maintained by [@" in heading(card)
-    assert " · maintained by [@" in heading(zha_card())
+        assert "Unmaintained" not in heading(card)
+    assert "Unmaintained" not in heading(zha_card())
 
 
 def test_every_evidence_row_of_an_adapter_with_a_caveat_is_marked(root):

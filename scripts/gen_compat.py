@@ -14,8 +14,8 @@ devices are model ids, each with its class. A level comes from the scope alone (
 ages.
 
 **Cards.** One collapsed section between the README's devices markers, the legend first and a link to the integrations
-page last, with a card per integration: its name, linked to its page (the bundle's index.md), and maintainers
-(`IntegrationInfo.maintainers`; "⚠️ Unmaintained · formerly maintained by" when every adapter is), then the features
+page last, with a card per integration: its name, linked to its page (the bundle's index.md), and a
+"⚠️ Unmaintained" mark when every adapter is, then the features
 of the adapters with each `caveat` (⚠️ Untested fix, then ⚠️ Unmaintained, linking its reason), then a bullet per tier:
 - Works: the models the evidence tested (rig-tested ones end ✔), and native groups. A pass on a flagged item never
   puts a model here: an adapter flagged whole, or on any field, adds no models. One flagged on a domain or class adds,
@@ -141,8 +141,8 @@ CARDS_LEGEND = " · ".join(
         f"{OUTCOMES[0][1]} {OUTCOMES[0][2]}",
         f"{VERIFIED} verified on automated rig",
         *(f"{icon} {legend}" for _, icon, legend in OUTCOMES[1:]),
-        f"⚠️ untested fix: changed, not yet tested; please [report whether it works]({REPORT_URL})",
-        "⚠️ unmaintained: no one is fixing it; use at your own risk",
+        f"⚠️ untested fix: please [report whether it works]({REPORT_URL})",
+        "⚠️ unmaintained: use at your own risk",
     ]
 )
 GITHUB = "https://github.com/"
@@ -712,14 +712,9 @@ class Card:
 
     def render(self) -> str:
         requires = f" ({self.requires})" if self.requires else ""
-        maintainers = ", ".join(f"[@{handle}]({GITHUB}{handle})" for handle in self.maintainers)
         title = f"[{self.title}]({self.url})" if self.url else self.title
-        status = (
-            f"⚠️ Unmaintained · formerly maintained by {maintainers}"
-            if self.all_unmaintained
-            else f"maintained by {maintainers}"
-        )
-        lines = [f"**{title}**{requires} · {status}", ""]
+        status = " · ⚠️ Unmaintained" if self.all_unmaintained else ""
+        lines = [f"**{title}**{requires}{status}", ""]
         lines += [f"- {entry}" for entry in self.marks]
         for key, icon, _ in OUTCOMES:
             if key in ("should", "experimental", "not_built"):
