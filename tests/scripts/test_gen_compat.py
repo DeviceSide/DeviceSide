@@ -316,6 +316,36 @@ def test_a_manual_row_is_evidence_for_the_actions_it_passed(root):
     assert cr.manual_rows("hue", "stop") == []
 
 
+def test_a_manual_group_row_is_one_group_by_hand_never_its_members_models(root):
+    row = signoff(tester="jasonmx", devices=(("P1", None), ("LTA009", None)), passed=("stop",), group=True)
+    manual_file(root, rows=[row])
+    flagged = adapter("zha", "stop", AdapterScope(experimental=True))
+    assert gc.rows(flagged) == [
+        "| `stop` | Experimental | light entities | group, by hand"
+        " | [by hand](integrations/zha/test-records/_manual.json) |"
+    ]
+    # A hand-tested group is no rig-tested one: it reaches Works without a check mark.
+    assert zha_card(adapter("zha", "stop")).lines["works"] == [f"[native groups]({URL}#native-groups)"]
+    manual_file(root, rows=[signoff(devices=(("NEW", None),), passed=("stop",), group=True)])
+    with pytest.raises(SystemExit, match="model 'NEW' is in neither docs/models.yaml"):
+        gc.check_models(FakeRegistry(), data())
+
+
+def test_a_manual_group_with_a_null_class_member_credits_nothing_in_a_classed_integration(root):
+    rows = [
+        signoff(devices=(("P1", "Switch"), ("LTA009", None)), passed=("stop",), group=True),
+        signoff(devices=(("P1", "Switch"), ("LTA009", "Light")), passed=("turn_on_for",), group=True),
+    ]
+    manual_file(root, rows=rows)
+    scope = AdapterScope(capabilities=verified("Switch", "Light"))
+    assert classed_card(adapter("zha", "stop", scope)).lines["works"] == []
+    assert classed_card(adapter("zha", "turn_on_for", scope)).lines["works"] == [
+        f"[native groups]({URL}#native-groups)"
+    ]
+    flagged = AdapterScope(capabilities=verified("Switch") | experimental("Light"))
+    assert classed_card(adapter("zha", "turn_on_for", flagged)).lines["works"] == []
+
+
 def test_a_manual_row_names_models_in_models_yaml(root):
     manual_file(root, rows=[signoff(devices=(("NEW", None),), passed=("stop",))])
     with pytest.raises(SystemExit, match="model 'NEW' is in neither docs/models.yaml"):
