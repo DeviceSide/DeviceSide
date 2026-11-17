@@ -9,6 +9,7 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
+from homeassistant.const import Platform
 
 from custom_components.deviceside.core.adapter import Adapter
 from custom_components.deviceside.core.errors import Reason
@@ -30,6 +31,10 @@ from custom_components.deviceside.core.scope import (
     family_scope,
     verified,
 )
+
+ANYWHERE = frozenset(
+    {Platform.LIGHT, Platform.SWITCH, Platform.SCENE}
+)  # a test class's domains: every one a test scope serves
 
 PACKAGE = Path(__file__).resolve().parents[2] / "custom_components" / "deviceside"
 # What reads the Experimental features option: only the option's definition, the entry setup and the dispatcher may.
@@ -146,7 +151,7 @@ def test_every_refusal_states_whether_the_action_s_failure_harms():
     with pytest.raises(TypeError):
         scope.refusal((None,))  # type: ignore[call-arg]
     with pytest.raises(TypeError):
-        scope.refusal((None,), False, True)  # type: ignore[misc]
+        scope.refusal((None,), False, None, True)  # type: ignore[misc]
 
 
 @pytest.mark.parametrize(
@@ -247,15 +252,38 @@ def test_a_class_held_on_some_domains_alone_is_experimental_on_the_rest():
         capabilities=verified("hue", domains=("light",)) | documented("other"),
     )
 
-    assert scope.capabilities["hue"] == OnDomains(Level.VERIFIED, frozenset({"light"}))
+    assert scope.capabilities["hue"] == OnDomains(Level.VERIFIED, frozenset({Platform.LIGHT}))
     assert scope.level("light", ["hue"]) is Level.VERIFIED
     assert scope.level("switch", ["hue"]) is Level.EXPERIMENTAL
     assert scope.level("switch", ["other"]) is Level.DOCUMENTED  # an entry on every domain, as before
     assert scope.class_entries() == [
-        ("hue", Level.VERIFIED, frozenset({"light"})),
+        ("hue", Level.VERIFIED, frozenset({Platform.LIGHT})),
         ("other", Level.DOCUMENTED, None),
     ]
     assert scope.refusal(["hue"], failure_harms=False) is None  # served, so not refused: gated by its level
+
+
+def test_a_class_served_on_some_domains_alone_is_refused_on_the_rest():
+    """`only`: a Tuya ZCL device read as a light, which other actions serve, but not as a switch
+    (docs/evidence.md, "A read serves only")."""
+    scope = AdapterScope(
+        domains=verified("light", "switch"), capabilities=experimental("tuya", domains=("light",), only=True)
+    )
+
+    assert scope.capabilities["tuya"] == OnDomains(Level.EXPERIMENTAL, frozenset({Platform.LIGHT}), only=True)
+    assert scope.admits("tuya", "light")
+    assert not scope.admits("tuya", "switch")
+    assert scope.admits("tuya")  # served somewhere
+    assert scope.refusal(["tuya"], domain="light", failure_harms=False) is None
+    assert scope.refusal(["tuya"], domain="switch", failure_harms=False) == (Reason.NOT_BUILT, None)
+    # Without `only`, a domain off the entry's is flagged, not refused.
+    flagged = AdapterScope(domains=verified("light", "switch"), capabilities=verified("hue", domains=("light",)))
+    assert flagged.refusal(["hue"], domain="switch", failure_harms=False) is None
+
+
+def test_only_takes_domains():
+    with pytest.raises(ValueError, match="only takes domains"):
+        experimental("tuya", only=True)
 
 
 @pytest.mark.parametrize(
@@ -318,7 +346,7 @@ def test_an_own_call_is_compared_by_identity():
 FAMILIES = (
     Family(
         key="first",
-        classes=frozenset({"A", "B", "D"}),
+        classes=dict.fromkeys({"A", "B", "D"}, ANYWHERE),
         scopes={
             "turn_on_for": FamilyScope(capabilities=verified("A") | experimental("B"), own_calls={"B": TIMED}),
             "stop": FamilyScope(capabilities=documented("A")),
@@ -327,7 +355,7 @@ FAMILIES = (
     Family(
         key="second",
         maintainers=("a-b",),
-        classes=frozenset("CE"),
+        classes=dict.fromkeys("CE", ANYWHERE),
         scopes={"turn_on_for": FamilyScope(capabilities=documented("C"))},
     ),
 )

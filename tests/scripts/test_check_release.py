@@ -9,6 +9,7 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
+from homeassistant.const import Platform
 
 from custom_components.deviceside.actions import discover
 from custom_components.deviceside.core.registry import AdapterRegistry
@@ -33,6 +34,10 @@ from .record_files import (
     skipped,
     text,
 )
+
+ANYWHERE = frozenset(
+    {Platform.LIGHT, Platform.SWITCH, Platform.SCENE}
+)  # a test class's domains: every one a test scope serves
 
 ISSUE = "https://github.com/DeviceSide/DeviceSide/issues/9"
 
@@ -801,7 +806,7 @@ def test_notes_call_for_testers_of_unsigned_integrations_and_untested_fixes(rele
     assert "\n- Other\n" in text
     assert "- Fake\n" not in text
     assert text.endswith(
-        "## ⚠️ Untested fix\n\nThese ship a fix nobody could test before the release. If you use one,"
+        "## 🔧 Untested fix\n\nThese ship a fix nobody could test before the release. If you use one,"
         f" please [report whether it works]({cr.DEVICE_REPORT}).\n\n- fake / turn_on_for\n"
     )
 
@@ -819,7 +824,9 @@ def classed(repo, monkeypatch, **scopes: AdapterScope) -> FakeRegistry:
     """fake naming classes hue, ikea and other, with the scopes given by action."""
     found = FakeRegistry(repo.path, monkeypatch, {(action, "fake"): scope for action, scope in scopes.items()})
     found.integrations["fake"] = replace(
-        found.integrations["fake"], capability=lambda hass, target: "hue", classes=frozenset({"hue", "ikea", "other"})
+        found.integrations["fake"],
+        capability=lambda hass, target: "hue",
+        classes=dict.fromkeys({"hue", "ikea", "other"}, ANYWHERE),
     )
     return found
 

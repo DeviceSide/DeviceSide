@@ -19,7 +19,7 @@ does any change for a suite that is no action's (`config_entry.json`), or a tree
 row carries a record across the change its commit made when it names the record's action (`actions`; with none, every
 action): the record must stand up to that commit's parent, and from the commit on. Every action whose adapter changed
 since the last release needs a record. A reopened, format 1 (converted from markdown) or failing record, or a changed
-action with none, is no sign-off until its suite is run. Without one, a ⚠️ Untested fix caveat stands in when every
+action with none, is no sign-off until its suite is run. Without one, a 🔧 Untested fix caveat stands in when every
 changed adapter carries it: each adapter whose module changed, or all of the package's when a module that is no
 adapter's changed (a shared helper). Prints a line per changed integration naming its sign-off (kind, commit, tester) or
 the caveats standing in, and fails on each with neither, saying why its records and each manual row were rejected. With
@@ -618,7 +618,7 @@ def release_notes(registry, found: list[Gate]) -> str:
         )
     if untested:
         parts.append(
-            "## ⚠️ Untested fix\n\nThese ship a fix nobody could test before the release. If you use one, please"
+            "## 🔧 Untested fix\n\nThese ship a fix nobody could test before the release. If you use one, please"
             f" [report whether it works]({DEVICE_REPORT}).\n\n" + "".join(f"- {name}\n" for name in untested)
         )
     return "\n".join(parts)

@@ -27,7 +27,7 @@ If you can build a change and test it on your own devices, open a pull request d
    - `custom_components/deviceside/services.yaml`: the integration's HA domain in each action's target filter
    - `.github/ISSUE_TEMPLATE/device_report.yml`: its title in the Integration dropdown
    - `docs/integrations.md`: a link to its page
-   - `scripts/gen_features.py`: a `NO_PATH` row for each feature the devices can't support, with the reason, and its explanation in `docs/integrations.md`'s "What can't be done, and why"
+   - `scripts/gen_features.py`: a `NO_PATH` entry for each feature impossible on every device of the integration, with the reason, and its explanation in `docs/integrations.md`'s "What can't be done, and why"
    - `pyproject.toml`: any library its tests need, in the `dev` group
    - `custom_components/deviceside/__init__.py`, `const.py`, `strings.json` and `translations/en.json`: only if it adds a user option
 
@@ -48,7 +48,7 @@ A new integration's pull request names you in its `IntegrationInfo.maintainers`,
 
 ## Maintaining an integration
 
-Each integration in DeviceSide has one or more maintainers, named in its `IntegrationInfo.maintainers` and on its card in the [README](README.md#will-it-work-with-my-device). Whoever builds a new integration usually becomes its first maintainer; to join or take over an existing one, open an issue saying which.
+Each integration in DeviceSide has one or more maintainers, named in its `IntegrationInfo.maintainers`. Whoever builds a new integration usually becomes its first maintainer; to join or take over an existing one, open an issue saying which.
 
 - **What you look after:** the integration's package (`custom_components/deviceside/integrations/<x>/`, `tests/integrations/<x>/`, its test fixture and its docs bundle, `docs/integrations/<x>/`). Bug reports for it are labeled `integration:<x>` and assigned to you.
 - **What you merge:** a pull request whose every file is in a package you maintain is yours to merge, your own included: once its checks are green and it's up to date with `main`, comment `/merge <sha>`, with the head commit you reviewed (its first 7 characters are enough), and the workflow merges it. That holds when it also regenerates shared generated files (the README's cards and feature table, `docs/device-compatibility.md`, `.github/CODEOWNERS`): CI checks they match their inputs, so only the inputs need review. The workflow refuses, and says why, a pull request that changes anything else, changes a `maintainers` tuple, or sets or clears a caveat; a repo maintainer merges those. Nothing reaches users before a release candidate, whose audit reviews every change since the last release.

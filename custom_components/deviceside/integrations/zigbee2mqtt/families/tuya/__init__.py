@@ -55,13 +55,20 @@ def string_class(string: str) -> str:
 VERIFIED_COUNTDOWNS = tuple(string_class(string) for string in VERIFIED_STRINGS)
 # Every class on Tuya's countdown that turn_on_for serves, each sent that call.
 COUNTDOWNS = (TUYA_COUNTDOWN, *VERIFIED_COUNTDOWNS)
-# Every plug on converter A's countdown, served or not: its OnTime is the countdown last set, not the time left.
-COUNTDOWN_PLUGS = frozenset({*COUNTDOWNS, TUYA_COUNTDOWN_HARMED})
-# Tuya's TS011F plugs, on its countdown or not, take the rest of the actions' calls as any Tuya ZCL device does.
+# Tuya's TS011F plugs, on its countdown or not.
 _TS011F = (TUYA_TS011F, *COUNTDOWNS, TUYA_COUNTDOWN_HARMED)
 # Every Tuya class, in the order the cards list them (scripts/gen_compat.py reads a scope's classes in its order).
 _ALL = (TUYA_ZCL, *_TS011F, TUYA_MCU)
-CLASSES = frozenset(_ALL)
+# The classes that can be lights: Tuya's ZCL and datapoint devices include bulbs, dimmers and LED controllers
+# (TS0501B, TS110E, TS0601 dimmers), as well as plugs and switches.
+_LIGHTS = (TUYA_ZCL, TUYA_MCU)
+# Each class's domains (IntegrationInfo.classes): a TS011F is a plug, so a switch, which no action for lights alone
+# reaches. Zigbee2MQTT can be set to show one as a light, on/off alone; it stays a switch here (docs/evidence.md, "A
+# class names its domains"), as none of those actions has anything to do on it but stop.
+CLASSES = {
+    name: frozenset({Platform.LIGHT, Platform.SWITCH}) if name in _LIGHTS else frozenset({Platform.SWITCH})
+    for name in _ALL
+}
 
 # The catalog's literal models, as the patterns the rules below test.
 _TS011F_MODEL = re.escape(TS011F_MODEL)
@@ -105,10 +112,15 @@ REGISTRY_RULES = (
     Rule(TUYA_ZCL, {"model_id": "TS.*"}),
 )
 
-# The levels (index.md, Device classes): untested on every action but the two below.
-_UNTESTED = FamilyScope(capabilities=experimental(*_ALL))
-# Raw ZCL reads and writes, which a datapoint device can't take, so `tuya_mcu` is left out.
-_RAW_ZCL = FamilyScope(capabilities=experimental(TUYA_ZCL, *_TS011F))
+# The levels (index.md, Device classes): untested on every action but turn_on_for. The actions for lights alone hold
+# only the classes that can be lights, as the registry checks (core/registry.py, check_classes).
+_UNTESTED = FamilyScope(capabilities=experimental(*_LIGHTS))
+# Raw ZCL reads, of what another action serves (core/registry.py, check_queries; docs/evidence.md, "A read serves
+# only"): `tuya_zcl` as a light. No action serves a Tuya ZCL switch or a TS011F off the countdown, so none is read; the
+# countdown plugs' read is refused (refusals.py), and a datapoint device can't take one, so `tuya_mcu` is left out.
+_READ = FamilyScope(capabilities=experimental(TUYA_ZCL, domains=(Platform.LIGHT,), only=True))
+# Raw ZCL writes, on lights alone, so only `tuya_zcl`, as `tuya_mcu` can't take one.
+_WRITE = FamilyScope(capabilities=experimental(TUYA_ZCL))
 
 # turn_on_for. Tuya's countdown plugs get that call: each maker string with a record of its own Verified, on switches
 # alone, as Z2M shows a plug, and the rest untested (plan Decision 35). Each takes the countdown, which a Z2M group's
@@ -131,8 +143,8 @@ FAMILY = Family(
         "raise_saturation": _UNTESTED,
         "lower_saturation": _UNTESTED,
         "stop": _UNTESTED,
-        "get_attributes": _RAW_ZCL,
-        "set_attributes": _RAW_ZCL,
+        "get_attributes": _READ,
+        "set_attributes": _WRITE,
         "turn_on_for": _TURN_ON_FOR,
     },
 )

@@ -44,7 +44,8 @@ _VERIFIED = FamilyScope(capabilities=verified(HUE))
 FAMILY = Family(
     key="hue",
     maintainers=(),
-    classes=frozenset({HUE}),
+    # Hue bulbs, and Hue's smart plug, which Zigbee2MQTT shows as a switch.
+    classes={HUE: frozenset({Platform.LIGHT, Platform.SWITCH})},
     scopes={
         "raise_brightness": _VERIFIED,
         "lower_brightness": _VERIFIED,

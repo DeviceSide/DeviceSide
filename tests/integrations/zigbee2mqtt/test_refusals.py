@@ -1,13 +1,15 @@
 """Zigbee2MQTT's refusal entries (refusals.py): the classes turn_on_for refuses because today's call would harm them,
-and what the user reads. The integration's, as the entries are: a family's own tests cover its levels and calls."""
+the countdown plugs get_attributes can't read a timer of, and what the user reads. The integration's, as the entries
+are: a family's own tests cover its levels and calls."""
 
 import pytest
 from homeassistant.exceptions import HomeAssistantError
 
 from custom_components.deviceside import actions
 from custom_components.deviceside.core.errors import TargetNotSupported
-from custom_components.deviceside.core.scope import NotBuilt
+from custom_components.deviceside.core.scope import NoKnownMethod, NotBuilt
 from custom_components.deviceside.integrations.zigbee2mqtt import ADAPTERS
+from custom_components.deviceside.integrations.zigbee2mqtt.families import tuya
 from custom_components.deviceside.integrations.zigbee2mqtt.refusals import REFUSALS
 
 from .conftest import DEVICES, PLUG, TUYA, commands, interviewed, light
@@ -19,10 +21,10 @@ COUNTDOWN = {"type": "numeric", "name": "countdown", "property": "countdown"}
 FAILURE_HARMS = {action.key: action.failure_harms for action in actions.discover()}
 
 
-def test_turn_on_for_alone_refuses_classes_and_harms_there_alone():
-    """No Z2M class has no known method: each refused one has a call that would work, not built yet. turn_on_for's
-    failure harms, so the dispatcher refuses a device it can't place too; no other Z2M adapter does."""
-    assert REFUSALS.keys() == {"turn_on_for"}
+def test_turn_on_for_alone_refuses_classes_not_built_and_harms_there_alone():
+    """Each class turn_on_for refuses has a call that would work, not built yet. turn_on_for's failure harms, so the
+    dispatcher refuses a device it can't place too; no other Z2M adapter does."""
+    assert REFUSALS.keys() == {"turn_on_for", "get_attributes"}
     assert set(REFUSALS["turn_on_for"]) == {"tuya_ts011f", "tuya_zcl", "tuya_mcu", "tuya_countdown_harmed"}
     assert all(isinstance(entry, NotBuilt) for entry in REFUSALS["turn_on_for"].values())
     assert [adapter.action for adapter in ADAPTERS if adapter.scope.harms(FAILURE_HARMS[adapter.action])] == [
@@ -30,11 +32,25 @@ def test_turn_on_for_alone_refuses_classes_and_harms_there_alone():
     ]
 
 
+def test_get_attributes_has_no_known_method_on_every_countdown_plug():
+    """The time left can't be read (internals.md, Tuya's countdown, P6), on the Verified strings and the rest alike
+    (docs/evidence.md, "A read serves only"). A read leaves nothing on or off, so get_attributes' failure doesn't
+    harm."""
+    assert set(REFUSALS["get_attributes"]) == set(tuya.COUNTDOWNS)
+    for entry in REFUSALS["get_attributes"].values():
+        assert isinstance(entry, NoKnownMethod)
+        assert entry.source.endswith("research/2026-11-15-tuya-countdown-probe.md")
+
+
 def test_each_entry_is_in_its_adapter_s_scope():
     scopes = {adapter.action: adapter.scope for adapter in ADAPTERS}
 
-    assert {action: dict(scope.not_built) for action, scope in scopes.items() if scope.not_built} == REFUSALS
-    assert not any(scope.no_known_method for scope in scopes.values())
+    assert {action: dict(scope.not_built) for action, scope in scopes.items() if scope.not_built} == {
+        "turn_on_for": REFUSALS["turn_on_for"]
+    }
+    assert {action: dict(scope.no_known_method) for action, scope in scopes.items() if scope.no_known_method} == {
+        "get_attributes": REFUSALS["get_attributes"]
+    }
 
 
 async def test_turn_on_for_refuses_a_ts011f_as_not_built_with_experimental_on(hass, setup_production, broker):

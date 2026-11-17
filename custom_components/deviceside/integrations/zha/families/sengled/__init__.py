@@ -1,5 +1,7 @@
 """Sengled bulbs on ZHA: their class (internals.md, Tested behavior)."""
 
+from homeassistant.const import Platform
+
 from .....core.rules import Rule
 from .....core.scope import Family, FamilyScope, experimental
 
@@ -16,7 +18,7 @@ _UNTESTED = FamilyScope(capabilities=experimental(SENGLED))
 FAMILY = Family(
     key="sengled",
     maintainers=(),
-    classes=frozenset({SENGLED}),
+    classes={SENGLED: frozenset({Platform.LIGHT})},
     scopes={
         "get_attributes": _UNTESTED,
         "lower_brightness": _UNTESTED,

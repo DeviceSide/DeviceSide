@@ -163,22 +163,31 @@ async def test_switch_is_experimental_and_reads_only_on_off(hass, bulb, requests
 
 
 @pytest.mark.parametrize(
-    ("strings", "left"),
+    "strings",
     [
-        (("_TZ3000_typdpbpg", "TS011F"), 10.0),
-        # The reported plug runs the same seconds firmware (Z2M #30493).
-        (("_TZ3000_gjnozsaz", "TS011F"), 10.0),
-        # Any other class reads the spec's tenths.
-        (("IKEA of Sweden", "TRADFRI control outlet"), 1.0),
+        ("_TZ3000_typdpbpg", "TS011F"),  # a countdown model
+        ("_TZ3000_gjnozsaz", "TS011F"),  # the reported plug
+        ("_TZ3000_abcdefgh", "TS0101"),  # another Tuya ZCL device, as a switch
     ],
 )
-async def test_a_tuya_countdown_timer_is_read_in_seconds(hass, bulb, strings, left):
-    """Tuya's countdown counts whole seconds, so OnTime 10 is 10 s left, not 1 s."""
+async def test_a_tuya_plug_or_switch_is_not_read(hass, bulb, requests, strings):
+    """No other action serves a Tuya plug or switch yet, so get_attributes doesn't either
+    (docs/evidence.md, "A read serves only")."""
     add_zha_entity(hass, zha_entry(hass), "switch.plug", state="on", strings=strings)
+    allow_experimental(hass)
+
+    assert await refusal(hass, "get_attributes", {"entity_id": "switch.plug"}) == "not_built"
+    assert not requests
+
+
+async def test_another_brand_s_plug_reads_the_spec_s_tenths(hass, bulb):
+    add_zha_entity(
+        hass, zha_entry(hass), "switch.plug", state="on", strings=("IKEA of Sweden", "TRADFRI control outlet")
+    )
     bulb[zcl.ON_OFF_CLUSTER] = {zcl.ON_OFF: 1, zcl.ON_TIME: 10}
     allow_experimental(hass)
 
-    assert await call(hass, "get_attributes", {"entity_id": "switch.plug"}) == {"switch.plug": {"timer": timer(left)}}
+    assert await call(hass, "get_attributes", {"entity_id": "switch.plug"}) == {"switch.plug": {"timer": timer(1.0)}}
 
 
 async def test_light_without_an_address_is_refused(hass, bulb, requests):

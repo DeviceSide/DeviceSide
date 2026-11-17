@@ -4,9 +4,12 @@ import re
 from collections.abc import Collection, Iterable, Iterator
 from types import ModuleType
 
+from homeassistant.const import Platform
+
 from .action import Action
 from .adapter import Adapter
 from .ha_watch import CallResolver
+from .models import ActionKind
 from .scope import Family, IntegrationInfo, Level
 from .. import actions as actions_pkg
 from .. import integrations as integrations_pkg
@@ -35,9 +38,9 @@ def _check_handles(owner: str, maintainers: tuple[str, ...]) -> None:
 def check_families(info: IntegrationInfo) -> None:
     """An integration's families split its classes between them: each key once and shaped like a package name, each
     maintainer a GitHub handle (none is fine: the integration's own them too), and every class the integration
-    declares in exactly one family, but the default class, which stays the integration's. A family's scopes name only
-    its own classes, so no family sets another's level or own call. No family holds a refusal entry: those are the
-    integration's, in its `refusals.py` (core/scope.py, FamilyScope)."""
+    declares in exactly one family, with the domains the family gives it, but the default class, which stays the
+    integration's. A family's scopes name only its own classes, so no family sets another's level or own call. No
+    family holds a refusal entry: those are the integration's, in its `refusals.py` (core/scope.py, FamilyScope)."""
     owners: dict[str, str] = {}
     for family in info.families:
         name = f"{info.key}: family {family.key!r}"
@@ -48,17 +51,24 @@ def check_families(info: IntegrationInfo) -> None:
         if not isinstance(family.maintainers, tuple):
             raise ValueError(f"{name}: maintainers must be a tuple of GitHub handles")
         _check_handles(name, family.maintainers)
-        if both := sorted(family.classes & owners.keys()):
+        if both := sorted(family.classes.keys() & owners.keys()):
             raise ValueError(f"{name} holds classes family {owners[both[0]]!r} holds: {both}")
         owners |= dict.fromkeys(family.classes, family.key)
-        if unknown := sorted(family.classes - info.classes):
-            raise ValueError(f"{name} holds classes {info.key} doesn't declare (IntegrationInfo.classes): {unknown}")
+        _check_declared(info, family, name)
         if info.default_class in family.classes:
             raise ValueError(f"{name} holds the default class {info.default_class!r}, which is the integration's")
-        if foreign := sorted(_scoped(family) - family.classes):
+        if foreign := sorted(_scoped(family) - family.classes.keys()):
             raise ValueError(f"{name}: its scopes name classes that aren't its own: {foreign}")
-    if unowned := sorted(info.classes - owners.keys() - {info.default_class}):
+    if unowned := sorted(info.classes.keys() - owners.keys() - {info.default_class}):
         raise ValueError(f"{info.key}: classes {unowned} are in no family")
+
+
+def _check_declared(info: IntegrationInfo, family: Family, name: str) -> None:
+    """The integration declares each of the family's classes, with the family's domains."""
+    if unknown := sorted(family.classes.keys() - info.classes.keys()):
+        raise ValueError(f"{name} holds classes {info.key} doesn't declare (IntegrationInfo.classes): {unknown}")
+    if moved := sorted(cls for cls, domains in family.classes.items() if info.classes[cls] != domains):
+        raise ValueError(f"{name}: IntegrationInfo.classes gives {moved} other domains than the family's")
 
 
 def _scoped(family: Family) -> set[str]:
@@ -89,6 +99,12 @@ def check_integration(info: IntegrationInfo) -> None:
         raise ValueError(f"{info.key}: IntegrationInfo.capability and classes come together")
     if info.default_class is not None and info.default_class not in info.classes:
         raise ValueError(f"{info.key}: default_class {info.default_class!r} is none of its classes")
+    if bare := sorted(
+        name
+        for name, domains in info.classes.items()
+        if not isinstance(domains, frozenset) or not domains or not all(isinstance(d, Platform) for d in domains)
+    ):
+        raise ValueError(f"{info.key}: classes {bare} name no entity domains (a non-empty frozenset of them)")
     if info.families:
         check_families(info)
 
@@ -97,7 +113,11 @@ def check_classes(cls: type[Adapter], info: IntegrationInfo) -> None:
     """One class axis per integration (docs/evidence.md, Device classes): an integration that names classes holds
     them in every adapter's scope, and one that names none in none. Otherwise an adapter that skipped the axis would
     let every class through at its domain's level, and one an integration can't name would refuse every call as
-    Experimental. Each class a scope holds is one the integration declares, so a typo fails here. The default class,
+    Experimental. Each class a scope holds is one the integration declares, so a typo fails here, and on an action
+    one of its domains reaches: an action for lights alone never holds a plug, so dispatch refuses it as not built yet
+    and the card leaves it off. Per action, not per domain: on an action serving several domains, a plain entry holds
+    the class on each, at its level (only the card reads its domains there); a level held on some domains alone
+    (OnDomains) names only domains the class can be. The default class,
     which holds every device not yet placed, is never Verified: one maker's record proves nothing about the rest."""
     held = cls.scope.capabilities
     if info.capability is None:
@@ -106,12 +126,52 @@ def check_classes(cls: type[Adapter], info: IntegrationInfo) -> None:
         return
     if held is None:
         raise ValueError(f"{cls.__name__}: {info.key} names classes, but its scope holds none (capabilities)")
-    if unknown := sorted((held.keys() | cls.scope.no_known_method.keys() | cls.scope.not_built.keys()) - info.classes):
+    named = held.keys() | cls.scope.no_known_method.keys() | cls.scope.not_built.keys()
+    if unknown := sorted(named - info.classes.keys()):
         raise ValueError(
             f"{cls.__name__} holds classes {info.key} doesn't declare (IntegrationInfo.classes): {unknown}"
         )
+    # A class held, or refused with a reason, on an action none of its domains reaches: the card would list a plug's
+    # dimming. Leave it out of the scope instead (docs/evidence.md, Device classes).
+    if unreached := sorted(name for name in named if not info.classes[name] & cls.scope.domains.keys()):
+        raise ValueError(
+            f"{cls.__name__} holds classes on none of the domains they can be (IntegrationInfo.classes): {unreached}"
+        )
+    if beyond := sorted(
+        name for name, _, domains in cls.scope.class_entries() if domains is not None and domains - info.classes[name]
+    ):
+        raise ValueError(f"{cls.__name__} holds classes on domains they can't be (IntegrationInfo.classes): {beyond}")
     if any(name == info.default_class and level is Level.VERIFIED for name, level, _ in cls.scope.class_entries()):
         raise ValueError(f"{cls.__name__} holds {info.key}'s default class {info.default_class!r} as Verified")
+
+
+def served(cls: type[Adapter], info: IntegrationInfo) -> set[tuple[str | None, str]]:
+    """What an adapter serves, as (class, domain): each class its scope serves (AdapterScope.admits) on each of its
+    domains the class can be (IntegrationInfo.classes); (None, domain) for each domain where the integration names no
+    classes."""
+    scope = cls.scope
+    if scope.capabilities is None:
+        return {(None, domain) for domain in scope.domains}
+    return {
+        (name, domain)
+        for name in scope.capabilities
+        for domain in scope.domains
+        if domain in info.classes[name] and scope.admits(name, domain)
+    }
+
+
+def check_queries(adapters: Iterable[tuple[type[Adapter], Action]], info: IntegrationInfo) -> None:
+    """A query (get_attributes) reads state back around DeviceSide's other actions, so it serves only what another of
+    the integration's actions serves, class and domain both (docs/evidence.md, "A read serves only"). A class only a
+    read would reach (a Tuya plug no other action serves yet) is left out of its scope, or, on some domains, held on the
+    rest alone (OnDomains `only`), so it isn't offered and the card doesn't list it. A refusal entry (no_known_method)
+    stays: it says why a read that would serve another action can't."""
+    adapters = list(adapters)
+    others = {item for cls, action in adapters if action.kind is not ActionKind.QUERY for item in served(cls, info)}
+    for cls, action in adapters:
+        if action.kind is ActionKind.QUERY and (alone := served(cls, info) - others):
+            shown = sorted(f"{name or 'any class'} on {domain}" for name, domain in alone)
+            raise ValueError(f"{cls.__name__} serves what no other {info.key} action does: {', '.join(shown)}")
 
 
 class AdapterRegistry:
@@ -178,6 +238,7 @@ class AdapterRegistry:
             adapter.kind = action.kind
             adapter.failure_harms = action.failure_harms
             self._adapters[(cls.action, info.key)] = adapter
+        check_queries(((cls, self.actions[cls.action]) for cls in module.ADAPTERS), info)
         for refused in getattr(module, "UNSUPPORTED", ()):
             self._add_unsupported(refused, info)
 

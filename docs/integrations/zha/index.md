@@ -51,7 +51,8 @@ features on.
 #### Other Tuya devices
 
 Tuya's other devices on the standard Zigbee commands: bulbs (such as `TS0505B`), dimmers and other white labels.
-Turn on with timer isn't built yet, as above.
+Turn on with timer isn't built yet, as above; the light features and get attributes run on the lights, with
+Experimental features on.
 
 #### Tuya datapoint devices
 
@@ -75,7 +76,8 @@ only with Experimental features on.
 
 Sonoff's SWV water valve reads the Zigbee timer in seconds rather than tenths, so it would stay open about ten times
 longer than asked ([research](../zigbee2mqtt/research/2026-11-14-timed-on-call-patterns.md)). Turn on with timer isn't
-built for it yet, and DeviceSide refuses it, even with Experimental features on. Its other features are untested.
+built for it yet, and DeviceSide refuses it, even with Experimental features on. The light features
+don't apply to a valve.
 
 ### Other brands
 
@@ -83,9 +85,9 @@ Lights, plugs and switches of every other brand, such as IKEA, Innr, Ledvance or
 brightness) and stop send them exactly the standard Zigbee commands a Hue bulb gets, which no known brand handles
 differently, so they should work. Their other features are untested, so they run only with Experimental features on
 ([try it](../../device-compatibility.md#try-it-experimental-features)); raising brightness from off turns a Hue bulb
-on by Hue's own command, which other brands don't get. So the card lists smooth dimming for other brands twice:
-lowering should work, and raising runs only with Experimental features on. Brands differ most on turn on with timer: some turn on and
-never off, or ignore the timer. If you try one, please report it whether it works or not: Integrations >
+on by Hue's own command, which other brands don't get. So the card splits smooth dimming for other brands: smooth
+dimming down should work, and smooth dimming up runs only with Experimental features on. Brands differ most on turn on
+with timer: some turn on and never off, or ignore the timer. If you try one, please report it whether it works or not: Integrations >
 [DeviceSide](https://my.home-assistant.io/redirect/integration/?domain=deviceside) > Configure > Report a device test
 result or bug. A brand with a passing report gets its own entry here.
 
@@ -123,4 +125,5 @@ comes back at its lowest level.
 ## Get attributes
 
 `get_attributes` reads each light live, not from ZHA's cache, which goes stale after a remote or a command Home
-Assistant didn't send. A ZHA group returns one entry per light.
+Assistant didn't send. A ZHA group returns one entry per light. It reads only devices another DeviceSide feature runs
+on, so not Tuya's plugs and switches or the Sonoff SWV yet.

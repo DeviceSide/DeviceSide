@@ -1,5 +1,7 @@
 """Hue bulbs on ZHA: the one class every record ran on."""
 
+from homeassistant.const import Platform
+
 from .....core.rules import Rule
 from .....core.scope import Family, FamilyScope, verified
 
@@ -17,7 +19,8 @@ _VERIFIED = FamilyScope(capabilities=verified(HUE))
 FAMILY = Family(
     key="hue",
     maintainers=(),
-    classes=frozenset({HUE}),
+    # Hue bulbs, and Hue's smart plug, which ZHA may show as a switch.
+    classes={HUE: frozenset({Platform.LIGHT, Platform.SWITCH})},
     scopes={
         "get_attributes": _VERIFIED,
         "lower_brightness": _VERIFIED,

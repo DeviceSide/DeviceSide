@@ -1,6 +1,6 @@
 """Shelly Gen2+ over the core shelly integration's RPC connection. Gen1 (CoIoT) devices are unsupported."""
 
-from .addressing import COMPONENTS, capability
+from .addressing import CLASSES, capability
 from .clear_auto_off import ShellyClearAutoOff
 from .clear_auto_on import ShellyClearAutoOn
 from .get_attributes import ShellyGetAttributes
@@ -20,7 +20,7 @@ INTEGRATION = IntegrationInfo(
     ha_domain="shelly",
     maintainers=("jasonmx",),
     capability=capability,
-    classes=frozenset(COMPONENTS.values()),
+    classes=CLASSES,
     max_concurrency=4,
 )
 

@@ -103,7 +103,7 @@ get. After any audit report (`audit-code`, also inside `rc-audit`), run the `own
 finding: it marks the findings in someone else's code and routes them to its maintainers. `scripts/owners.py` says who
 maintains a path.
 
-**Caveats** (⚠️ Untested fix, ⚠️ Unmaintained) are set and cleared by a repo maintainer: `docs/evidence.md`.
+**Caveats** (🔧 Untested fix, ⚠️ Unmaintained) are set and cleared by a repo maintainer: `docs/evidence.md`.
 
 ## Releasing
 

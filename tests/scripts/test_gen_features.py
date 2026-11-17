@@ -4,20 +4,25 @@ stale check."""
 from types import SimpleNamespace
 
 import pytest
+from homeassistant.const import Platform
 
 from custom_components.deviceside.core.scope import AdapterScope, documented, experimental, verified
 from scripts import gen_features as gf
 
 LIGHT = '<img src="https://raw.githubusercontent.com/DeviceSide/DeviceSide/main/docs/icons/light.svg"'
 SWITCH = "/switch.svg"
-KEYS = ("zha", "zigbee2mqtt", "shelly", "hue", "matter")  # the real bundles, in column order
+KEYS = ("zigbee2mqtt", "zha", "shelly", "hue", "matter")  # the real bundles, in column order
 GROUP = "/group.svg"
 
 
 class FakeRegistry:
-    def __init__(self, *adapters, expand=()):
+    def __init__(self, *adapters, expand=(), classes=None):
+        classes = classes or {}
         self._adapters = adapters
-        self.integrations = {key: SimpleNamespace(expand_group=(len if key in expand else None)) for key in KEYS}
+        self.integrations = {
+            key: SimpleNamespace(expand_group=(len if key in expand else None), classes=classes.get(key, {}))
+            for key in KEYS
+        }
 
     def matrix(self):
         yield "stop", "hue", None
@@ -37,7 +42,7 @@ def every_row(integration="shelly", **scope):
 
 @pytest.fixture
 def no_blockers(monkeypatch):
-    monkeypatch.setattr(gf, "NO_PATH", {})
+    monkeypatch.setattr(gf, "NO_PATH", set())
 
 
 def headings():
@@ -63,6 +68,27 @@ def test_domains_show_at_any_level_and_group_follows_native_groups_or_expand_gro
     assert gf.keys(z2m, registry) == {"light", "group"}
     assert gf.keys(matter, registry) == {"light", "switch"}
     assert gf.keys(documented_light, registry) == {"light"}
+
+
+def test_a_domain_is_live_only_where_a_non_experimental_class_can_be_on_it(no_blockers):
+    """Matter's Turn on with timer: the switch-only WiZ plug is Verified, and every class that can be a light is
+    Experimental, so the light icon stays grey."""
+    registry = FakeRegistry(
+        classes={
+            "matter": {
+                "wiz_plug": frozenset({Platform.SWITCH}),
+                "other": frozenset({Platform.LIGHT, Platform.SWITCH}),
+            }
+        }
+    )
+    scope = {
+        "domains": verified("switch") | documented("light"),
+        "capabilities": verified("wiz_plug") | experimental("other"),
+    }
+    assert gf.keys(adapter("matter", "turn_on_for", **scope), registry) == {"switch"}
+    assert gf.keys(adapter("matter", "turn_on_for", **scope), registry, experimental=True) == {"light", "switch"}
+    on_light = {**scope, "capabilities": verified("wiz_plug") | verified("other", domains={"light"})}
+    assert gf.keys(adapter("matter", "turn_on_for", **on_light), registry) == {"switch", "light"}
 
 
 def test_a_flagged_adapter_shows_no_icon_until_the_option_is_on(no_blockers):
@@ -119,34 +145,27 @@ def test_icons_keep_a_fixed_order_with_alt_and_title(no_blockers):
 
 
 def test_no_path_renders_one_prohibited_sign(monkeypatch):
-    monkeypatch.setattr(gf, "NO_PATH", {("Turn off with timer", "hue"): ("light", "group")})
+    monkeypatch.setattr(gf, "NO_PATH", {("Turn off with timer", "hue")})
     cell = cells(gf.generate(FakeRegistry(*every_row())), "Turn off with timer")[3]
     assert cell.count("<img") == 1 and "/no.svg" in cell
-    assert 'alt="light, native group: not possible"' in cell
+    assert 'alt="not possible"' in cell
 
 
-def test_a_partly_blocked_cell_puts_the_prohibited_sign_after_built_icons(monkeypatch):
-    monkeypatch.setattr(gf, "NO_PATH", {("Smooth dimming", "shelly"): ("switch",)})
-    cell = cells(gf.generate(FakeRegistry(*every_row(domains=verified("light")))), "Smooth dimming")[2]
-    assert cell.index(LIGHT) < cell.index("/no.svg")
-    assert 'alt="switch: not possible"' in cell
+def test_a_blocked_cell_with_anything_built_fails(monkeypatch):
+    monkeypatch.setattr(gf, "NO_PATH", {("Turn off with timer", "shelly")})
+    with pytest.raises(SystemExit, match="Turn off with timer on Shelly: light, switch is built, so not impossible"):
+        gf.generate(FakeRegistry(*every_row(domains=verified("light", "switch"))))
 
 
-def test_a_blocked_key_that_is_built_fails(monkeypatch):
-    monkeypatch.setattr(gf, "NO_PATH", {("Turn off with timer", "shelly"): ("light",)})
-    with pytest.raises(SystemExit, match="Turn off with timer on Shelly: light is built"):
-        gf.generate(FakeRegistry(*every_row()))
+def test_a_blocked_cell_with_one_key_built_fails(monkeypatch):
+    monkeypatch.setattr(gf, "NO_PATH", {("Get attributes", "shelly")})
+    with pytest.raises(SystemExit, match="switch is built, so not impossible"):
+        gf.generate(FakeRegistry(*every_row(domains=experimental("switch"))))
 
 
 def test_a_no_path_entry_naming_no_row_fails(monkeypatch):
-    monkeypatch.setattr(gf, "NO_PATH", {("Teleport", "hue"): ("light",)})
+    monkeypatch.setattr(gf, "NO_PATH", {("Teleport", "hue")})
     with pytest.raises(SystemExit, match="names no README row or column"):
-        gf.generate(FakeRegistry(*every_row()))
-
-
-def test_a_no_path_key_with_no_icon_fails(monkeypatch):
-    monkeypatch.setattr(gf, "NO_PATH", {("Turn off with timer", "hue"): ("lights",)})
-    with pytest.raises(SystemExit, match="no icon lights"):
         gf.generate(FakeRegistry(*every_row()))
 
 
@@ -225,12 +244,6 @@ def test_all_experimental_capabilities_show_grey(no_blockers):
     assert "/light-grey.svg" in cell and LIGHT not in cell
 
 
-def test_a_blocked_key_that_is_built_only_with_experimental_on_fails(monkeypatch):
-    monkeypatch.setattr(gf, "NO_PATH", {("Get attributes", "shelly"): ("switch",)})
-    with pytest.raises(SystemExit, match="is built, so not blocked"):
-        gf.generate(FakeRegistry(*every_row(domains=verified("light") | experimental("switch"))))
-
-
 DOCS = "https://github.com/DeviceSide/DeviceSide/blob/main/docs/"
 
 
@@ -240,7 +253,7 @@ def test_repeated_headings_get_githubs_numbered_anchors():
 
 
 def test_a_cells_icons_link_to_the_features_section_of_the_integrations_page_or_else_the_page(monkeypatch):
-    monkeypatch.setattr(gf, "NO_PATH", {("Turn off with timer", "zha"): ("light",)})
+    monkeypatch.setattr(gf, "NO_PATH", {("Turn off with timer", "zigbee2mqtt")})
     text = gf.generate(
         FakeRegistry(*every_row(domains=verified("light")), *every_row("matter", domains=verified("light")))
     )
@@ -255,15 +268,11 @@ def test_a_cells_icons_link_to_the_features_section_of_the_integrations_page_or_
     assert "/no.svg" in blocked
 
 
-def test_a_prohibited_sign_links_to_why_while_the_cells_other_icons_link_to_the_feature(monkeypatch):
-    monkeypatch.setattr(gf, "NO_PATH", {("Smooth dimming", "shelly"): ("switch",)})
-    cell = cells(gf.generate(FakeRegistry(*every_row(domains=verified("light")))), "Smooth dimming")[2]
-    feature, why = (
-        f'href="{DOCS}integrations/shelly/index.md#smooth-dimming"',
-        f'href="{DOCS}integrations.md#what-cant-be-done-and-why"',
-    )
-    assert cell.index(feature) < cell.index("/light.svg") < cell.index(why) < cell.index("/no.svg")
-    assert cell.count(why) == 1
+def test_a_prohibited_sign_links_to_why(monkeypatch):
+    monkeypatch.setattr(gf, "NO_PATH", {("Smooth dimming", "hue")})
+    cell = cells(gf.generate(FakeRegistry(*every_row())), "Smooth dimming")[3]
+    assert cell.startswith(f'<a href="{DOCS}integrations.md#what-cant-be-done-and-why"><img ')
+    assert cell.count("<img") == 1
 
 
 def test_a_missing_why_section_fails(monkeypatch, no_blockers):
@@ -278,7 +287,9 @@ def test_an_integration_without_a_user_page_fails(tmp_path, monkeypatch, no_bloc
         (tmp_path / key).mkdir()
         (tmp_path / key / "devices.yaml").write_text(f"column: {key}\ncolumn_order: {order}\n")
     monkeypatch.setattr(gf, "page", lambda key: f"docs/integrations/{key}/missing.md")
-    with pytest.raises(SystemExit, match="no docs/integrations/zha/missing.md; add the zha bundle's user page"):
+    with pytest.raises(
+        SystemExit, match="no docs/integrations/zigbee2mqtt/missing.md; add the zigbee2mqtt bundle's user page"
+    ):
         gf.generate(FakeRegistry(*every_row()))
 
 
@@ -295,3 +306,12 @@ def test_a_legend_link_to_no_heading_fails(tmp_path, monkeypatch, no_blockers):
     readme.write_text(f"# x\n\n{gf.START}\n{gf.END}\n{headings()}")
     with pytest.raises(SystemExit, match="docs/design.md has no heading for #nowhere"):
         gf.main(["--check"], FakeRegistry(*every_row()), readme)
+
+
+def test_the_real_zha_and_z2m_turn_off_with_timer_cells_are_blank_and_matter_and_hue_are_marked():
+    """Tuya may support it on Zigbee (docs/integrations.md), so only whole-integration impossibilities get the sign."""
+    text = gf.generate(gf.AdapterRegistry.discover())
+    z2m, zha, shelly, hue, matter = cells(text, "Turn off with timer")[:5]
+    assert zha.strip() == "" and z2m.strip() == ""
+    assert "/no.svg" in hue and "/no.svg" in matter and "/no.svg" not in shelly
+    assert ("Turn off with timer", "zha") not in gf.NO_PATH and ("Turn off with timer", "zigbee2mqtt") not in gf.NO_PATH

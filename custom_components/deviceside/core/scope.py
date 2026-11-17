@@ -49,34 +49,42 @@ class Level(IntEnum):
 class OnDomains:
     """A class's level on some of the adapter's domains alone (docs/evidence.md, Device classes): on any other its
     class has no entry, so counts as Experimental, as a class outside the scope does. A record on the class in one
-    domain proves nothing about it in another: a Hue bulb's `turn_on_for` isn't a Hue plug's."""
+    domain proves nothing about it in another: a Hue bulb's `turn_on_for` isn't a Hue plug's.
+
+    `only`: the adapter serves the class on those domains alone, and refuses it as not built yet on the rest, as it
+    does a class outside the scope (AdapterScope.admits): get_attributes reads a Tuya ZCL light, which other actions
+    serve, but not a Tuya ZCL switch, which none does (core/registry.py, check_queries)."""
 
     level: Level
     domains: frozenset[str]
+    only: bool = False
 
 
 type ClassLevel = Level | OnDomains
 
 
-def _levels(items: tuple[str, ...], level: Level, domains: Collection[str] | None) -> dict[str, ClassLevel]:
+def _levels(items: tuple[str, ...], level: Level, domains: Collection[str] | None, only: bool) -> dict[str, ClassLevel]:
     # Typed for a class's levels, which domains and fields share as plain Levels: their scope refuses OnDomains.
-    entry = level if domains is None else OnDomains(level, frozenset(domains))
+    if only and domains is None:
+        raise ValueError("only takes domains: the class is served on them alone")
+    entry = level if domains is None else OnDomains(level, frozenset(domains), only)
     return dict.fromkeys(items, entry)
 
 
-def verified(*items: str, domains: Collection[str] | None = None) -> dict[str, ClassLevel]:
-    """Each item Verified; a class's on `domains` alone when given (OnDomains)."""
-    return _levels(items, Level.VERIFIED, domains)
+def verified(*items: str, domains: Collection[str] | None = None, only: bool = False) -> dict[str, ClassLevel]:
+    """Each item Verified; a class's on `domains` alone when given (OnDomains), and served nowhere else if `only`."""
+    return _levels(items, Level.VERIFIED, domains, only)
 
 
-def documented(*items: str, domains: Collection[str] | None = None) -> dict[str, ClassLevel]:
-    """Each item Documented; a class's on `domains` alone when given (OnDomains)."""
-    return _levels(items, Level.DOCUMENTED, domains)
+def documented(*items: str, domains: Collection[str] | None = None, only: bool = False) -> dict[str, ClassLevel]:
+    """Each item Documented; a class's on `domains` alone when given (OnDomains), and served nowhere else if `only`."""
+    return _levels(items, Level.DOCUMENTED, domains, only)
 
 
-def experimental(*items: str, domains: Collection[str] | None = None) -> dict[str, ClassLevel]:
-    """Each item Experimental; a class's on `domains` alone when given (OnDomains)."""
-    return _levels(items, Level.EXPERIMENTAL, domains)
+def experimental(*items: str, domains: Collection[str] | None = None, only: bool = False) -> dict[str, ClassLevel]:
+    """Each item Experimental; a class's on `domains` alone when given (OnDomains), and served nowhere else if
+    `only`."""
+    return _levels(items, Level.EXPERIMENTAL, domains, only)
 
 
 class CaveatKind(Enum):
@@ -101,7 +109,7 @@ class NoKnownMethod:
     """A class with no known method, a device limit as far as anyone knows (docs/evidence.md, No known method): no
     known call works on it, or the only one known is unsafe, and the reason says which. What the card names, why, and
     the source, an https URL (scripts/gen_compat.py checks it). The dispatcher refuses it as `no_known_method`,
-    raising with the reason; the card lists it under No known method.
+    raising with the reason; the card marks it 🔴.
 
     Whether the call harms the class is the action's (Action.failure_harms), not the entry's: on an action whose
     failure harms, the entry also makes the scope refuse a target that could still be in it (AdapterScope.harms).
@@ -117,7 +125,7 @@ class NotBuilt:
     """A class not built yet (docs/evidence.md, Not built yet), declared because the adapter's call would harm it: a
     call that would work is known or plausible, and nobody has built it. Why the user can't have it yet, and the
     source, an https URL (scripts/gen_compat.py checks it); the dispatcher refuses it as `not_built` with the reason,
-    and the card lists it as not built yet, as it does a class a scope leaves out.
+    and the card leaves it out, as it does a class a scope leaves out.
 
     Only on an action whose failure harms (Action.failure_harms), which the registry checks: there the entry also
     makes the scope refuse a target that could still be in it, as a NoKnownMethod entry does (AdapterScope.harms).
@@ -192,7 +200,8 @@ class AdapterScope:
     # None for an integration that names none (the registry refuses a mismatch either way). Proof follows the call and
     # the class, so each stands on its own evidence: a sibling's untested one is Experimental unless it is Documented.
     # A class the integration names in neither this nor no_known_method is not built yet, and refused. A class's
-    # level holds on every domain unless its entry names some (OnDomains): elsewhere it counts as Experimental.
+    # level holds on every domain unless its entry names some (OnDomains): elsewhere it counts as Experimental, or,
+    # with `only`, is refused as not built yet (admits).
     capabilities: Mapping[str, ClassLevel] | None = None
     # Classes with no known method, refused with why; never in capabilities. Per adapter, as one class can fail one
     # action's call and answer another's.
@@ -251,6 +260,14 @@ class AdapterScope:
             return entry.level if domain in entry.domains else Level.EXPERIMENTAL
         return Level.EXPERIMENTAL if entry is None else entry
 
+    def admits(self, name: str, domain: str | None = None) -> bool:
+        """Whether the scope serves the class, on `domain` when given: an `only` entry (OnDomains) on its domains
+        alone."""
+        entry = (self.capabilities or {}).get(name)
+        if isinstance(entry, OnDomains) and entry.only and domain is not None:
+            return domain in entry.domains
+        return entry is not None
+
     def class_entries(self) -> list[tuple[str, Level, frozenset[str] | None]]:
         """Each class the scope serves, with its level and the domains it holds it on, None for every domain."""
         return [
@@ -265,17 +282,18 @@ class AdapterScope:
         return failure_harms and bool(self.no_known_method or self.not_built)
 
     def refusal(
-        self, classes: Collection[str | None], group: bool = False, *, failure_harms: bool
+        self, classes: Collection[str | None], group: bool = False, domain: str | None = None, *, failure_harms: bool
     ) -> tuple[str, str | None] | None:
-        """Why the scope refuses a target of these classes (a native group's: its members'), with the reason the user
-        reads, or None. `failure_harms` is the adapter's action's (Adapter.failure_harms), required so no caller
-        leaves it out. Where the call harms a class (`harms`), first `class_unknown` when one is Unplaced, or None
-        (the integration couldn't name it, or a group's membership is unknown), as it could be the harmed class, with
-        Experimental features on or off. Then `no_known_method` and its NoKnownMethod.reason when one is listed as
-        having none, else `not_built` when one is named but not served, with its NotBuilt.reason when it has an entry.
-        Elsewhere None is no refusal: the gate weighs it as Experimental, and an Unplaced class as the class it
-        names. Last, for a native group whose members are listed (`group`), `own_call` when a member's class takes a
-        call of its own (own_calls), so the group falls back to its members."""
+        """Why the scope refuses a target of these classes (a native group's: its members'), in `domain` when given,
+        with the reason the user reads, or None. `failure_harms` is the adapter's action's (Adapter.failure_harms),
+        required so no caller leaves it out. Where the call harms a class (`harms`), first `class_unknown` when one is
+        Unplaced, or None (the integration couldn't name it, or a group's membership is unknown), as it could be the
+        harmed class, with Experimental features on or off. Then `no_known_method` and its NoKnownMethod.reason when
+        one is listed as having none, else `not_built` when one is named but not served (in `domain`: admits), with
+        its NotBuilt.reason when it has an entry. Elsewhere None is no refusal: the gate weighs it as Experimental, and
+        an Unplaced class as the class it names. Last, for a native group whose members are listed (`group`),
+        `own_call` when a member's class takes a call of its own (own_calls), so the group falls back to its
+        members."""
         if self.capabilities is None:
             return None
         if self.harms(failure_harms) and any(name is None or isinstance(name, Unplaced) for name in classes):
@@ -284,7 +302,7 @@ class AdapterScope:
             return Reason.NO_KNOWN_METHOD, entry.reason
         if entry := next((self.not_built[name] for name in classes if name in self.not_built), None):
             return Reason.NOT_BUILT, entry.reason
-        if any(name is not None and name not in self.capabilities for name in classes):
+        if any(name is not None and not self.admits(name, domain) for name in classes):
             return Reason.NOT_BUILT, None
         if group and self.own_call(classes) is not None:
             return Reason.OWN_CALL, None
@@ -332,18 +350,23 @@ class FamilyScope:
     own_calls: Mapping[str, OwnCall] = field(default_factory=dict)
 
 
+# Classes by name, each with the entity domains a device in it can be (IntegrationInfo.classes).
+type ClassDomains = Mapping[str, frozenset[Platform]]
+
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Family:
-    """A vendor's firmware family inside one integration (docs/design.md, Family): the classes it owns
-    and, per action key, the levels and own calls each adapter's scope holds for them (`scopes`; an action with none
-    leaves its classes out of that adapter's scope). Where an action refuses one of its classes with a reason is the
-    integration's to say (FamilyScope). It exists so a vendor is one path with its own maintainers: GitHub handles,
-    which may be empty, as the integration's maintainers own every family of it too. The registry checks it
-    (core/registry.py, check_families)."""
+    """A vendor's firmware family inside one integration (docs/design.md, Family): the classes it owns, each with the
+    entity domains it can be (as IntegrationInfo.classes holds them, which takes them from here), and, per action key,
+    the levels and own calls each adapter's scope holds for them (`scopes`; an action with none leaves its classes out
+    of that adapter's scope, and one whose domains a class can't be must). Where an action refuses one of its classes
+    with a reason is the integration's to say (FamilyScope). It exists so a vendor is one path with its own
+    maintainers: GitHub handles, which may be empty, as the integration's maintainers own every family of it too. The
+    registry checks it (core/registry.py, check_families)."""
 
     key: str
     maintainers: tuple[str, ...] = ()
-    classes: frozenset[str]
+    classes: ClassDomains
     scopes: Mapping[str, FamilyScope] = field(default_factory=dict)
 
 
@@ -411,8 +434,13 @@ class IntegrationInfo:
     # for an integration with one class, whose scopes then hold no capabilities.
     capability: Callable[[HomeAssistant, Target], str | None] | None = None
     # Every class capability() can name, so a scope's typo fails at registration and the cards name the classes an
-    # adapter serves in neither its capabilities nor its no_known_method as not built yet.
-    classes: frozenset[str] = frozenset()
+    # adapter serves in neither its capabilities nor its no_known_method as not built yet. Each with the entity
+    # domains whose features its devices have (a TS011F plug: a switch, even where Zigbee2MQTT shows it as a light), so
+    # no adapter's scope holds it on an action that serves none of them (core/registry.py, check_classes): an action
+    # for lights alone refuses a plug, and its card leaves the plug off (docs/evidence.md, Device classes). Per action,
+    # not per domain: an action serving one of them admits the class in each domain it serves, at its level there. An
+    # integration with families takes each family's from its Family; the default class's are its own.
+    classes: ClassDomains = field(default_factory=dict)
     # The class capability() gives a device no rule matches, one of `classes`; the registry refuses any scope holding it
     # as Verified (docs/evidence.md, Device classes). None for an integration whose classes name every target (Shelly).
     default_class: str | None = None

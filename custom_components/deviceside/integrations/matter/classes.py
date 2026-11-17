@@ -24,6 +24,7 @@ no node is None (addressing.unsupported_reason refuses it first, as not_addressa
 
 from collections.abc import Mapping
 
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from .addressing import node_for
@@ -34,7 +35,11 @@ UNCERTIFIED = "uncertified"
 BRIDGED = "bridged"
 WIZ_PLUG = "wiz_plug"
 MULTI_ENDPOINT = "multi_endpoint"
-CLASSES = frozenset({UNCERTIFIED, BRIDGED, WIZ_PLUG, MULTI_ENDPOINT, OTHER})
+# Each class's domains (IntegrationInfo.classes): the WiZ Smart Plug is a switch; any other may be a light or a plug.
+CLASSES = {
+    name: frozenset({Platform.SWITCH}) if name == WIZ_PLUG else frozenset({Platform.LIGHT, Platform.SWITCH})
+    for name in (UNCERTIFIED, BRIDGED, WIZ_PLUG, MULTI_ENDPOINT, OTHER)
+}
 
 # Basic Information (cluster 0x0028) on the root endpoint, and the Descriptor's DeviceTypeList (0x001D/0x0000).
 _VENDOR_ID = "0/40/2"
@@ -52,9 +57,9 @@ _PRODUCTS = {(4107, 8979): WIZ_PLUG}
 
 # The levels each adapter's scope holds (index.md, Device classes; plan Decisions 46 to 48 and 75): get_attributes's
 # reads Documented on `other` by certification (docs/evidence.md, Levels), Verified on the WiZ plug by its record; the
-# timer call untested on every class, as certification sends another OffWaitTime and the WiZ plug's record ran 0, until
-# the plug's rerun on the call makes it Verified there.
-TURN_ON_FOR = experimental(WIZ_PLUG, OTHER, MULTI_ENDPOINT, BRIDGED, UNCERTIFIED)
+# timer call Verified on the WiZ plug alone, by its 2026-11-16 record on OffWaitTime 1 (internals.md), and untested on
+# every other class, as certification sends another OffWaitTime.
+TURN_ON_FOR = verified(WIZ_PLUG) | experimental(OTHER, MULTI_ENDPOINT, BRIDGED, UNCERTIFIED)
 GET_ATTRIBUTES = verified(WIZ_PLUG) | documented(OTHER) | experimental(MULTI_ENDPOINT, BRIDGED, UNCERTIFIED)
 
 

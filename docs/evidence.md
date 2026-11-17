@@ -83,45 +83,32 @@ domains ([the experimental flag](#the-experimental-flag)).
 
 - **Verified:** a maintainer has verified the call on a real device, by rig record or by manual test. How it was
   tested is the maintainer's choice; the rig is a tool, not a requirement.
-- **Documented:** a call to another class that differs from a Verified class's call only in addressing, where no
-  known class of devices departs. Unit tests pin the payload. A field is never Documented, because it changes the
-  call. The PR that claims Documented argues the sibling case, and review checks it. A bug on the Verified sibling
-  reopens its Documented siblings in the same fix.
-  A read is also Documented on a class when a certification tests that read on every certified device DeviceSide
-  sends it to, the class's rule keys on a marker every such device carries and the known uncertified sources don't,
-  and no known member departs: a read carries no field values, so the read certification sends is the one DeviceSide
-  sends. A write or command isn't covered this way, as the test's field values are its own: Matter's TC-OO-2.3 sends
-  the timer command with OffWaitTime 300, DeviceSide with 1, so the timer call stays untested on certified devices
-  (plan Decision 75). Where the test runs on one part of a device (Matter: one configured endpoint), the class holds
-  only devices with that one part. The PR names the marker and what slips past it (Matter: certified devices with
-  one On/Off endpoint and the Lighting feature, which `no_lt_feature` checks, by a non-test VendorID; TC-OO-2.3 reads
-  OnTime and OnOff, [internals](integrations/matter/internals.md#what-decides-the-call)).
+- **Documented:** no known class departs, and the class takes either
+  - **a sibling's call:** it differs from a Verified class's call only in addressing. The PR argues the sibling
+    case, and a bug on the sibling reopens its Documented siblings in the same fix. A field is never Documented, as
+    it changes the call.
+  - **a certified read:** certification sends the same read to every device the class holds, as the class keys on
+    a marker certified devices carry and known uncertified ones don't, and on the one part the test runs on. A write
+    never qualifies, as the test's field values are its own. The PR names the marker and what slips past it
+    ([Matter](integrations/matter/internals.md#what-decides-the-call)).
 
-Nothing ships unflagged unless it is Verified or Documented. Built and unit-tested code that the maintainer can't
-exercise, and that isn't Documented, ships behind `experimental` as untested. A sign-off
-covers only what was exercised; it never signs off untested code.
+A sign-off covers only what was exercised; it never signs off untested code.
 
-**Contrary evidence:** a credible report of a [harmful](#no-known-method-not-built-yet-untested) failure, upstream
-or a DeviceSide issue, on the call DeviceSide sends, lets an integration maintainer land a no known method or
-not built yet entry on that action, by the definitions [below](#no-known-method-not-built-yet-untested), moving only
-the identity the report names, on the report alone, cited as its source; credibility is theirs to judge (tenet 7).
-Which kind depends on whether a known call would serve the identity. ZHA's `_TZ3000_typdpbpg` reads the spec's
-tenths as seconds, and Tuya's recipe would serve it, so it is not built yet: the fix is the call,
-and the entry lifts when the call changes. `_TZ3000_gjnozsaz` fails the very call that serves its siblings,
-but Tuya's inching call would plausibly serve it, so it too is not built yet; an identity no known
-call serves has no known method. As proof follows the call (tenet 5), the entry may cover every action that
-sends that call to that identity, such as `turn_on_for`, `set_auto_off` and `turn_off_for` where they send the same
-frame. The identity is the most specific one the report names that a class rule can key on: the model ID with the
-manufacturer string, and the firmware where that is what decides. On a report alone, a vendor name never moves: Hue's
-or IKEA's manufacturer string, or HA's registry manufacturer "Tuya", is never banned whole on one (Split off the
-exception, not the class, [below](#no-known-method-not-built-yet-untested)); a class rule keyed on a vendor rests on
-research, as Zigbee2MQTT's registry "Tuya" rule does (plan Decision 20). A credible harmful report naming only a
-vendor is "any other report" below: the maintainer root-causes it. A failure reported on a different call, an external
-converter's or another frame, is evidence about that call, not the device: Z2M #25434's `_TZ3000_dg7fdg92` failed
-under an external converter that sent a plain `onOff()`, so it stays Experimental, not banned (plan Decision 35). A
-report that contradicts the identity's own passing record or manual row doesn't ban it by itself: the maintainer
-retests, or weighs the two. Any other report changes no level until a maintainer confirms it: they root-cause it, and
-the fix, the updated fact or a demotion lands with the finding ([plan Decision 68](plans/2026-11-14-device-classes.md)).
+**Contrary evidence.** A report changes a level only through a maintainer (tenet 7):
+
+- **A credible report of a harmful failure on DeviceSide's own call** lets an integration maintainer refuse the
+  identity it names on that action, on the report alone, citing it. It's not built yet if a known or plausible call
+  would serve that identity, otherwise no known method ([below](#no-known-method-not-built-yet-untested)).
+- **The identity is the narrowest one a class rule can key on:** model ID with manufacturer string, plus firmware
+  where that decides. A vendor is not normally refused whole on a single report; split off the exception. A rule
+  keyed on a vendor needs research.
+- **Not evidence against the device:** a failure on a different call (an external converter's), or a report that
+  contradicts the identity's own passing record. The maintainer retests, or weighs the two.
+- **Anything else** changes no level until a maintainer root-causes it. The fix, or the demotion, lands with the
+  finding.
+
+*Examples:* ZHA's `_TZ3000_typdpbpg` reads tenths as seconds, and Tuya's call would serve it: not built yet. Z2M
+#25434's `_TZ3000_dg7fdg92` failed under a converter's plain `onOff()`, so it stays Experimental.
 
 *Example:* Shelly's `turn_on_for` and `turn_off_for` calls are Verified on the `Switch` and `RGBCCT` components and
 Documented on `Light`, `CCT`, `RGB` and `RGBW`: the same call, addressed to another component, which Shelly's API
@@ -151,6 +138,18 @@ Zigbee2MQTT countdown plug's maker string with a record of its own is a class of
   some (`verified(..., domains=...)`, core's `OnDomains`): on the rest its class has no entry, so it counts as
   Experimental. A record on a class in one domain proves nothing about it in another: Zigbee2MQTT's `hue` is Verified
   on lights, as every record ran on a bulb, so a Hue plug, a switch, stays flagged.
+- **A class names its domains.** Each class declares the entity domains whose features its devices have (a TS011F
+  plug: switch, even where Zigbee2MQTT shows it as a light; Gledopto: light; other brands: light and switch). The
+  guarantee is per action: a scope never holds a class on an action that serves none of its domains, so an action for
+  lights alone refuses a plug as not built yet, and its card leaves the plug off (the registry checks). An action
+  that serves one of them admits the class in every domain it serves, at the class's level there: one serving
+  switches takes a TS011F that Home Assistant shows as a light. An entry held on some domains with `only=True` admits
+  the class there alone and refuses it elsewhere as not built yet. A class whose domains show different features gets
+  a card line per domain ("other brands' lights", "other brands' plugs and switches"), except scenes, which join the class's light line as "set scene".
+- **A read serves only what another action does.** Get attributes reads state back around DeviceSide's other
+  actions, so it admits only the classes, on the domains, that another of the integration's actions admits (the
+  registry checks): no other action serves a Tuya ZCL switch yet, so it reads a Tuya ZCL device as a light alone. A
+  class it would read with nothing to return is a `no_known_method` entry instead (a Tuya countdown plug's time left).
 - **One axis per integration.** An integration that names classes holds them in every adapter's scope, and only the
   classes it declares; one that names none holds them in none (the registry checks). A new integration names its
   classes, or its PR argues that it has one: that no known device behind it answers the same call differently.
@@ -166,22 +165,22 @@ Zigbee2MQTT countdown plug's maker string with a record of its own is a class of
 
 ### No known method, not built yet, untested
 
-Three ways a class can't take an action, each shown differently on the cards. The first two are the kinds of not
+Three ways a class can't take an action, each handled differently. The first two are the kinds of not
 supported, where DeviceSide can't do the action for the class, each named for why:
 
 - **No known method:** no known call works on the class: a device limit as far as anyone knows, which the label
   tells users not to ask DeviceSide to build. A method is a call that does what was asked and fails without harm, so
   a class whose only known call is unsafe has none; the entry's reason says which. The adapter's scope lists it in
-  `no_known_method`, with what, why and a source; the dispatcher refuses it (`no_known_method`), and the card lists
-  it under No known method. It is per adapter, as one class can fail one action's call and answer another's.
+  `no_known_method`, with what, why and a source; the dispatcher refuses it (`no_known_method`), and the card marks
+  it 🔴. It is per adapter, as one class can fail one action's call and answer another's.
 - **Not built yet:** a call that would work on the class is known or plausible, and nobody has built it. The
   integration names it, and the adapter's scope holds it in neither `capabilities` nor `no_known_method`. It is
-  refused (`not_built`) and listed as not built yet.
+  refused (`not_built`), and the card leaves it out, as no one can list every feature that could be built.
 - **Untested:** the default call may work. The class is in scope as `experimental(...)` and runs behind the flag.
 
 Harm is a separate safety axis, which the action decides (below). On an action whose failure harms, a class not
 built yet that today's call would harm gets an entry of its own in the scope's `not_built` (`NotBuilt`, with why and a
-source), which the card lists as not built yet, as it does any other. Any other class not built yet needs no entry, as
+source), which the card leaves out, as it does any other. Any other class not built yet needs no entry, as
 leaving it out refuses it, and the registry refuses a `not_built` entry on an action whose failure doesn't harm.
 
 - **Split off the exception, not the class.** When devices are known to depart from a class's call, a rule moves them
@@ -278,10 +277,10 @@ For an item no maintainer can test, users' working reports can verify it through
 sign-off, whose PR body cites them ([CLAUDE.md](../CLAUDE.md#where-facts-go): rule evidence goes in the PR body). The
 maintainer judges how many are enough (tenet 7); nothing counts them in code.
 
-The cards never put a model under Works from a pass on a flagged item while its flag stands (`scripts/gen_compat.py`).
+The cards never credit a tested model from a pass on a flagged item while its flag stands (`scripts/gen_compat.py`).
 
 *Example:* Shelly dimming on `Light` is `experimental("Light")`: a user's report of a Gen3 Dimmer jumping on
-`DimStop` keeps it from Documented. A passing `raise_brightness` run on a Gen3 Dimmer puts no model under Works and
+`DimStop` keeps it from Documented. A passing `raise_brightness` run on a Gen3 Dimmer credits no model on the card and
 lets a Shelly maintainer lift the flag, once they judge the tests complete: their PR makes it `verified("Light")`.
 
 ## Caveats
@@ -290,7 +289,7 @@ lets a Shelly maintainer lift the flag, once they judge the tests complete: thei
 are about evidence, caveats about risk and people. Each gives one setup warning, one card mark and one release-notes
 line:
 
-- **⚠️ Untested fix:** changed, and nobody could test it before the release. It ships live, with a call for testers
+- **🔧 Untested fix:** changed, and nobody could test it before the release. It ships live, with a call for testers
   in the release notes. A sign-off clears it, including a maintainer's `_manual.json` row citing a user's working
   report.
 - **⚠️ Unmaintained:** nobody is fixing it. It ships live. Cleared when someone fixes the adapter or adopts the
@@ -299,7 +298,7 @@ line:
 A deprecation gets a hand-written note in that release's notes, not a caveat.
 
 *Example:* a low-risk fix to a broken adapter whose devices no maintainer has lands before the cut. It ships with
-⚠️ Untested fix and the issue URL; a user's working report, cited in a maintainer's `_manual.json` row, clears it.
+🔧 Untested fix and the issue URL; a user's working report, cited in a maintainer's `_manual.json` row, clears it.
 
 ## Release gate
 
@@ -345,8 +344,8 @@ none.
   Untested fix; no other caveat, nor the `experimental` flag alone, stands in. A change to a package module that is no
   adapter's (a shared helper) changes every adapter of the package. A repo maintainer picks whichever is most likely
   to work for users (tenet 1): hold the fix back (revert it, or leave it out of the release branch) when the current
-  code mostly works; ship it marked ⚠️ Untested fix when the current code is broken and the fix is low-risk; or, when
-  it is risky, put it behind `experimental` and mark it ⚠️ Untested fix.
+  code mostly works; ship it marked 🔧 Untested fix when the current code is broken and the fix is low-risk; or, when
+  it is risky, put it behind `experimental` and mark it 🔧 Untested fix.
 - **Coverage:** every module under `core/` and `integrations/`, bar `__init__.py`, needs at least 95% line coverage;
   CI checks it.
 
