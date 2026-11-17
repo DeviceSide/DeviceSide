@@ -175,3 +175,6 @@ Not worth filing:
   is refused during a soft off, and timers survive on and off. Signify firmware and API, not HA or aiohue.
 - **The `predicted_state` report filter** edits aiohue's event dicts before its controllers run. A supported hook
   would be fair to ask aiohue for, but few others need one.
+
+<!-- Verification 2 of #501: throwaway. -->
+<!-- second push -->
