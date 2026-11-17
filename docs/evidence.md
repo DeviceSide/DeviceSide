@@ -100,27 +100,21 @@ Nothing ships unflagged unless it is Verified or Documented. Built and unit-test
 exercise, and that isn't Documented, ships behind `experimental` as untested. A sign-off
 covers only what was exercised; it never signs off untested code.
 
-**Contrary evidence:** a credible report of a [harmful](#no-known-method-not-built-yet-untested) failure, upstream
-or a DeviceSide issue, on the call DeviceSide sends, lets an integration maintainer land a no known method or
-not built yet entry with `harms`, by the definitions [below](#no-known-method-not-built-yet-untested), moving only
-the identity the report names, on the report alone, cited as its source; credibility is theirs to judge (tenet 7).
-Which kind depends on whether a known call would serve the identity. ZHA's `_TZ3000_typdpbpg` reads the spec's
-tenths as seconds, and Tuya's recipe would serve it, so it is not built yet, with `harms`: the fix is the call,
-and the entry lifts when the call changes. `_TZ3000_gjnozsaz` fails the very call that serves its siblings,
-but Tuya's inching call would plausibly serve it, so it too is not built yet, with `harms`; an identity no known
-call serves has no known method. As proof follows the call (tenet 5), the entry may cover every action that
-sends that call to that identity, such as `turn_on_for`, `set_auto_off` and `turn_off_for` where they send the same
-frame. The identity is the most specific one the report names that a class rule can key on: the model ID with the
-manufacturer string, and the firmware where that is what decides. On a report alone, a vendor name never moves: Hue's
-or IKEA's manufacturer string, or HA's registry manufacturer "Tuya", is never banned whole on one (Split off the
-exception, not the class, [below](#no-known-method-not-built-yet-untested)); a class rule keyed on a vendor rests on
-research, as Zigbee2MQTT's registry "Tuya" rule does (plan Decision 20). A credible harmful report naming only a
-vendor is "any other report" below: the maintainer root-causes it. A failure reported on a different call, an external
-converter's or another frame, is evidence about that call, not the device: Z2M #25434's `_TZ3000_dg7fdg92` failed
-under an external converter that sent a plain `onOff()`, so it stays Experimental, not banned (plan Decision 35). A
-report that contradicts the identity's own passing record or manual row doesn't ban it by itself: the maintainer
-retests, or weighs the two. Any other report changes no level until a maintainer confirms it: they root-cause it, and
-the fix, the updated fact or a demotion lands with the finding ([plan Decision 68](plans/2026-11-14-device-classes.md)).
+**Contrary evidence.** A report changes a level only through a maintainer (tenet 7):
+
+- **A credible report of a harmful failure on DeviceSide's own call** lets an integration maintainer refuse the
+  identity it names, on the report alone, citing it, with `harms`. It's not built yet if a known or plausible call
+  would serve that identity, otherwise no known method ([below](#no-known-method-not-built-yet-untested)).
+- **The identity is the narrowest one a class rule can key on:** model ID with manufacturer string, plus firmware
+  where that decides. A vendor is not normally refused whole on a single report; split off the exception. A rule
+  keyed on a vendor needs research.
+- **Not evidence against the device:** a failure on a different call (an external converter's), or a report that
+  contradicts the identity's own passing record. The maintainer retests, or weighs the two.
+- **Anything else** changes no level until a maintainer root-causes it. The fix, or the demotion, lands with the
+  finding.
+
+*Examples:* ZHA's `_TZ3000_typdpbpg` reads tenths as seconds, and Tuya's call would serve it: not built yet, with
+`harms`. Z2M #25434's `_TZ3000_dg7fdg92` failed under a converter's plain `onOff()`, so it stays Experimental.
 
 *Example:* Shelly's `turn_on_for` and `turn_off_for` calls are Verified on the `Switch` and `RGBCCT` components and
 Documented on `Light`, `CCT`, `RGB` and `RGBW`: the same call, addressed to another component, which Shelly's API
