@@ -57,10 +57,10 @@ async def test_duration_converted_to_tenths(hass):
     assert cmd.onTime == 15  # 1.5 s * 10 = 15 tenths
 
 
-def test_both_domains_are_documented_until_the_plug_is_rerun():
-    """The plug's record ran OffWaitTime 0; the call now sends 1 (test_classes pins the class levels)."""
+def test_the_switch_domain_is_verified_by_the_plugs_record_and_the_light_domain_documented():
+    """The plug's 2026-11-16 record ran OffWaitTime 1, as the call sends (test_classes pins the class levels)."""
     assert MatterTurnOnFor.scope.level("light") is Level.DOCUMENTED
-    assert MatterTurnOnFor.scope.level("switch") is Level.DOCUMENTED
+    assert MatterTurnOnFor.scope.level("switch") is Level.VERIFIED
 
 
 @pytest.mark.parametrize(

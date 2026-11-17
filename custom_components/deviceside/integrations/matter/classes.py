@@ -60,7 +60,7 @@ _PRODUCTS = {(4107, 8979): WIZ_PLUG}
 # reads Documented on `other` by certification (docs/evidence.md, Levels), Verified on the WiZ plug by its record; the
 # timer call untested on every class, as certification sends another OffWaitTime and the WiZ plug's record ran 0, until
 # the plug's rerun on the call makes it Verified there.
-TURN_ON_FOR = experimental(WIZ_PLUG, OTHER, MULTI_ENDPOINT, BRIDGED, UNCERTIFIED)
+TURN_ON_FOR = verified(WIZ_PLUG) | experimental(OTHER, MULTI_ENDPOINT, BRIDGED, UNCERTIFIED)
 GET_ATTRIBUTES = verified(WIZ_PLUG) | documented(OTHER) | experimental(MULTI_ENDPOINT, BRIDGED, UNCERTIFIED)
 
 

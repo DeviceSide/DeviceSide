@@ -36,9 +36,8 @@ class MatterTurnOnFor(Adapter[TurnOnForRequest]):
     action: ClassVar[str] = "turn_on_for"
     integration: ClassVar[str] = "matter"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        # Documented on both until the plug's rerun on OffWaitTime 1 (its record ran 0); lights take the same call as
-        # plugs, behind the same LT check.
-        domains=documented("switch", "light"),
+        # Lights take the same call as plugs, behind the same LT check: Documented.
+        domains=verified("switch") | documented("light"),
         duration=_TIMER_LIMITS,
         fields=verified(),
         capabilities=TURN_ON_FOR,

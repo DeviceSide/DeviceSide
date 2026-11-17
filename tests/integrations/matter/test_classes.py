@@ -105,15 +105,16 @@ async def test_capability_is_none_when_the_node_lookup_raises(hass):
 
 
 def test_levels():
-    """get_attributes: the WiZ plug Verified by its record, `other` Documented by certification of the reads. The timer
-    call untested on every class until the plug's rerun on it (plan Decision 75). Bridges and uncertified nodes
-    untested on both."""
+    """Both actions: the WiZ plug Verified by its records, `other` Documented by certification of the reads and, for the
+    timer call, untested (plan Decision 75). Bridges and uncertified nodes untested on both."""
     for adapter in (MatterTurnOnFor, MatterGetAttributes):
         held = adapter.scope.capabilities
         assert held.keys() == INTEGRATION.classes.keys()
         assert held[BRIDGED] is held[UNCERTIFIED] is held[MULTI_ENDPOINT] is Level.EXPERIMENTAL
         assert not adapter.scope.no_known_method
-    assert set(MatterTurnOnFor.scope.capabilities.values()) == {Level.EXPERIMENTAL}
+    assert MatterTurnOnFor.scope.capabilities[WIZ_PLUG] is Level.VERIFIED
+    assert MatterTurnOnFor.scope.capabilities[OTHER] is Level.EXPERIMENTAL
+    assert MatterTurnOnFor.scope.level("switch", [WIZ_PLUG]) is Level.VERIFIED
     assert MatterGetAttributes.scope.capabilities[WIZ_PLUG] is Level.VERIFIED
     assert MatterGetAttributes.scope.capabilities[OTHER] is Level.DOCUMENTED
     assert MatterGetAttributes.scope.level("switch", [WIZ_PLUG]) is Level.VERIFIED
@@ -150,13 +151,12 @@ BRIDGE_NODE = {"vendor_id": 4757, "attributes": AGGREGATOR}
         (BRIDGE_NODE, BRIDGED, "get_attributes"),
         # A second On/Off endpoint beside the fixture's endpoint 1.
         ({"vendor_id": 4874, "product_id": 80, "attributes": {"2/6/65532": 1}}, MULTI_ENDPOINT, "get_attributes"),
-        # The timer call is untested on every class until the WiZ plug's rerun (plan Decision 75).
+        # The timer call is untested on every class but the WiZ plug (plan Decision 75).
         (UNCERTIFIED_NODE, UNCERTIFIED, "turn_on_for"),
         (BRIDGE_NODE, BRIDGED, "turn_on_for"),
-        ({}, WIZ_PLUG, "turn_on_for"),
         ({"vendor_id": 4874, "product_id": 80}, OTHER, "turn_on_for"),
     ],
-    ids=["uncertified-read", "bridged-read", "multi_endpoint-read", "uncertified", "bridged", "wiz_plug", "other"],
+    ids=["uncertified-read", "bridged-read", "multi_endpoint-read", "uncertified", "bridged", "other"],
 )
 async def test_untested_classes_wait_for_experimental(hass, node, expected, action):
     """No Matter class is harmed by a call, so an untested one runs once Experimental features is on."""
