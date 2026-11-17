@@ -22,7 +22,11 @@ invite them to Triage, as for an integration's maintainers.
 
 - **Ruleset on `main` and `release/*`:** changes go through a pull request, with no required approvals. The required
   checks (`lint`, `secrets-history`, `pytest`, `pytest-without-family-tests`, `validate-hacs`, `validate`) must pass,
-  and the branch must be up to date. Force pushes are blocked. There are no bypass actors.
+  with no up-to-date rule: a merge queue (squash, all-green grouping, up to 5 built and merged at once, no minimum
+  wait, a 60-minute check timeout) runs them again on the pull request merged onto current `main`, so `main` stays
+  green and no one updates a branch by hand. The four workflows behind those checks run on `merge_group`. Force
+  pushes are blocked. There are no bypass actors. To roll the queue back, remove the merge queue rule and turn the
+  up-to-date rule back on: `/merge` then queues nothing, so a repo maintainer merges until it's restored.
   `pytest-without-family-tests` (`tests.yml`) runs the tests with every family's and the catalog's left out, so a
   family maintainer's test code can't silence the integration's on a `/merge`.
 - **Ruleset on tags:** only a deploy key can create, move or delete a tag. The cut workflows'
@@ -34,13 +38,15 @@ invite them to Triage, as for an integration's maintainers.
 - **`pull_request_target` allowed explicitly (Actions event policy):** "Protected files" and "Owner notice" run on
   it, to check and comment on fork PRs. GitHub is changing its default to block it on public repos (a brownout on
   2026-11-16 failed both with `startup_failure` and no jobs), so the policy must allow it, or both stop running.
+- **Allow auto-merge (repo, General):** `/merge` turns on auto-merge, and Renovate's digest and patch updates use
+  it, to join the merge queue once their checks pass.
 
 ## `/merge`
 
 `.github/workflows/maintainer-merge.yml` merges as a GitHub App; its header says why.
 
 - **The App:** owned by the org and installed on this repo only. Repository permissions: Contents read and write, Pull
-  requests read. Webhook off.
+  requests read and write (turning on auto-merge). Webhook off.
 - **The `maintainer-merge` environment:** holds the variable `MAINTAINER_MERGE_APP_ID` and the secret
   `MAINTAINER_MERGE_APP_KEY` (the App's private key). Keep its deployment branches limited to `main`.
   `issue_comment` runs on `main`, so the merge job still gets the key, but a workflow pushed on any other branch can't
