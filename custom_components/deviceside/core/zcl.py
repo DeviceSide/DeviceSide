@@ -1,7 +1,7 @@
-"""ZCL encoding facts shared by the ZHA, Zigbee2MQTT and Matter packages (Matter's OnOff cluster is ZCL's)."""
+"""ZCL facts shared by the ZHA, Zigbee2MQTT and Matter packages (Matter's OnOff cluster is ZCL's)."""
 
-# A ZCL/Matter OnTime or TransitionTime is a uint16 in tenths of a second, 0xFFFF reserved. It is specific to that
-# encoding: a device counting in seconds keeps its own limit.
+# A ZCL/Matter OnTime or TransitionTime is a uint16 in tenths of a second; 0xFFFF is reserved (OnTime) or the device's
+# default (TransitionTime). It is specific to that encoding: a device counting in seconds keeps its own limit.
 MAX_TENTHS_S = 0xFFFE / 10
 
 ON_OFF_CLUSTER = 0x0006

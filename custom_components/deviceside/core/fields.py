@@ -16,7 +16,7 @@ from homeassistant.components.light import (
 )
 from homeassistant.const import ATTR_SUPPORTED_FEATURES, Platform
 
-if TYPE_CHECKING:  # const.py imports this module, and models.py imports const.py
+if TYPE_CHECKING:  # models.py imports this module (LIGHT_FIELDS)
     from .models import Request, Target
 
 # Each action's fields by the light capability they need. Core converts between color forms before it filters, so a

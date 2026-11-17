@@ -305,7 +305,9 @@ class AdapterScope:
                 raise ValueError(f"{axis} take no domains: only a class's level is held on some domains")
         for name, entry in (self.capabilities or {}).items():
             if isinstance(entry, OnDomains) and not entry.domains <= self.domains.keys():
-                raise ValueError(f"class {name!r} is held on domains the scope doesn't serve: {sorted(entry.domains)}")
+                raise ValueError(
+                    f"class {name!r} is held on domains the scope doesn't serve: {sorted(map(str, entry.domains))}"
+                )
 
     def _check_unlisted(self) -> None:
         if unknown := self.unlisted - LACKABLE:
