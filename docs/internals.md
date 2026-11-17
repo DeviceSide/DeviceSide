@@ -37,10 +37,8 @@ repeated here; result and detail codes are in the code.
   https://mcuxpresso.nxp.com/mcuxsdk/25.09.00-pvw1/html/middleware/wireless/zigbee/Docs/JNUG3131/topics/lighting_and_occupancy_device_types.html);
   and Zigbee 3.0 certification tests a device's ZCL compliance
   (https://docs.silabs.com/zigbee/9.0.2/certifying-zigbee-3-devices/). So a certified dimmable light takes a fade and
-  its stop. It doesn't cover the ExecuteIfOff override set_attributes sends: Level Control's Options attribute is
-  optional (same document, §3.10.2.2, Options: O), one reason `other` is not built on set_attributes. (The table and
-  the attribute were checked in the PDF on 2026-11-17; csa-iot.org serves it to a browser, not to a script.) The
-  prediction covers certified lights; `other` also holds uncertified ones, which DeviceSide can't tell
+  its stop (checked in the PDF: [research](research/2026-11-17-zcl-rev8-level-and-onoff.md)). The prediction covers
+  certified lights; `other` also holds uncertified ones, which DeviceSide can't tell
   apart, and a failure there shows at once, so it is triaged as the trial's result.
 
 ## Tested behavior
