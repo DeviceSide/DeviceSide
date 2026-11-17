@@ -1,7 +1,9 @@
 """Fabricate a Hue bridge and its HA entities the way the core hue integration registers them.
 
 The bridge is a real aiohue HueBridgeV2 loaded from CLIP v2 resource dicts, so adapters read real aiohue models;
-its request() is replaced, so writes are recorded as the PUTs that would go to the bridge.
+HueBridgeV2.request is replaced on the class (`fake_request`, which the hue tests install), so writes are recorded as
+the PUTs that would go to the bridge, and the call transcripts wrap the class's method (tests/integrations/hue/wire.py).
+A test that needs its own request replaces it on the class too, never on an instance, which would shadow the wrapper.
 """
 
 from types import SimpleNamespace
@@ -129,7 +131,7 @@ class HueBridge:
 
     async def load(self) -> HueBridgeV2:
         api = HueBridgeV2("bridge.invalid", "app-key")
-        api.request = self._request
+        api.fake = self
         for controller in (api.devices, api.lights, api.groups, api.scenes, api.config):
             await controller.initialize([*self.resources, *BRIDGE_RESOURCES])
         self.api = api
@@ -141,6 +143,11 @@ class HueBridge:
             if path.rpartition("/")[2] in self.failing:
                 raise RuntimeError("bridge refused the write")
         return []
+
+
+async def fake_request(api: HueBridgeV2, method: str, path: str, json: dict | None = None, **kwargs) -> list[dict]:
+    """HueBridgeV2.request, as the bridge the api was loaded from answers it."""
+    return await api.fake._request(method, path, json, **kwargs)
 
 
 def light_action(rid: str, rtype: str = "light", **action) -> dict:

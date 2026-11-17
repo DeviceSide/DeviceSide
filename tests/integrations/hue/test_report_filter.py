@@ -4,6 +4,7 @@ import logging
 from types import SimpleNamespace
 
 import pytest
+from aiohue.v2 import HueBridgeV2
 from aiohue.v2.controllers.events import EventType
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import area_registry as ar
@@ -103,17 +104,17 @@ async def test_classify_a_light_mid_saturation_fade(hass, bridge, cache, clock, 
     assert classify(cache, bridge.api, event) is report
 
 
-async def test_the_move_is_recorded_before_its_write(hass, bridge, cache):
+async def test_the_move_is_recorded_before_its_write(hass, bridge, cache, monkeypatch):
     # The bridge may report before the write returns.
     await setup_room(hass, bridge)
     request = bridge.api.request
     followed = []
 
-    async def recording(*args, **kwargs):
+    async def recording(api, *args, **kwargs):
         followed.append(cache.follows("one"))
         return await request(*args, **kwargs)
 
-    bridge.api.request = recording
+    monkeypatch.setattr(HueBridgeV2, "request", recording)
     await call(hass, "raise_brightness", {"entity_id": "light.one"})
 
     assert followed == [True]

@@ -1,0 +1,2084 @@
+[
+ {
+  "action": "set_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": 0.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/light-1"
+     ],
+     {
+      "json": {
+       "dimming": {
+        "brightness": 0.0
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": 100.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/light-1"
+     ],
+     {
+      "json": {
+       "dimming": {
+        "brightness": 100.0
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": 20.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": 4000,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/light-1"
+     ],
+     {
+      "json": {
+       "color_temperature": {
+        "mirek": 250
+       },
+       "dimming": {
+        "brightness": 20.0
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": 20.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": 50.0
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/light-1"
+     ],
+     {
+      "json": {
+       "dimming": {
+        "brightness": 20.0
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": 40.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": 3000,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": "fields_dropped",
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/light-1"
+     ],
+     {
+      "json": {
+       "dimming": {
+        "brightness": 40.0
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": 40.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": [
+      0.3,
+      0.3
+     ]
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": "fields_dropped",
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/light-1"
+     ],
+     {
+      "json": {
+       "dimming": {
+        "brightness": 40.0
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": 40.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.gone",
+     "light.gone",
+     false
+    ],
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "not_on_bridge",
+    "entity_id": "light.gone",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "rejected"
+   },
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/light-1"
+     ],
+     {
+      "json": {
+       "dimming": {
+        "brightness": 40.0
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": 40.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": "fields_dropped",
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "unchanged"
+   }
+  ],
+  "wire": []
+ },
+ {
+  "action": "set_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": 40.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/light-1"
+     ],
+     {
+      "json": {
+       "dimming": {
+        "brightness": 40.0
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": 40.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.one",
+     "light.one",
+     false
+    ],
+    [
+     "light.two",
+     "light.two",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.one",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "sent"
+   },
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.two",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/light-1"
+     ],
+     {
+      "json": {
+       "dimming": {
+        "brightness": 40.0
+       }
+      }
+     }
+    ],
+    []
+   ],
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/light-2"
+     ],
+     {
+      "json": {
+       "dimming": {
+        "brightness": 40.0
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": 40.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.one",
+     "light.one",
+     false
+    ],
+    [
+     "light.two",
+     "light.two",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "error",
+    "entity_id": "light.one",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "rejected"
+   },
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.two",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/light-1"
+     ],
+     {
+      "json": {
+       "dimming": {
+        "brightness": 40.0
+       }
+      }
+     }
+    ],
+    {
+     "raises": "RuntimeError"
+    }
+   ],
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/light-2"
+     ],
+     {
+      "json": {
+       "dimming": {
+        "brightness": 40.0
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": 40.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.one",
+     "light.one",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.one",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/one"
+     ],
+     {
+      "json": {
+       "dimming": {
+        "brightness": 40.0
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": 40.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.one",
+     "light.one",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "error",
+    "entity_id": "light.one",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/one"
+     ],
+     {
+      "json": {
+       "dimming": {
+        "brightness": 40.0
+       }
+      }
+     }
+    ],
+    {
+     "raises": "RuntimeError"
+    }
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": 80.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/light-1"
+     ],
+     {
+      "json": {
+       "dimming": {
+        "brightness": 80.0
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": 1000,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/light-1"
+     ],
+     {
+      "json": {
+       "color_temperature": {
+        "mirek": 454
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": 3000,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": "fields_dropped",
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "unchanged"
+   }
+  ],
+  "wire": []
+ },
+ {
+  "action": "set_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": 3000,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/light-1"
+     ],
+     {
+      "json": {
+       "color_temperature": {
+        "mirek": 333
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": 9000,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/light-1"
+     ],
+     {
+      "json": {
+       "color_temperature": {
+        "mirek": 153
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": [
+      120.0,
+      100.0
+     ],
+     "rgb_color": [
+      255,
+      0,
+      0
+     ],
+     "transition": null,
+     "xy_color": [
+      0.2,
+      0.2
+     ]
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/light-1"
+     ],
+     {
+      "json": {
+       "color": {
+        "xy": {
+         "x": 0.701,
+         "y": 0.299
+        }
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": [
+      120.0,
+      100.0
+     ],
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": [
+      0.2,
+      0.2
+     ]
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/light-1"
+     ],
+     {
+      "json": {
+       "color": {
+        "xy": {
+         "x": 0.172,
+         "y": 0.747
+        }
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": [
+      30.0,
+      80.0
+     ],
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/light-1"
+     ],
+     {
+      "json": {
+       "color": {
+        "xy": {
+         "x": 0.565,
+         "y": 0.391
+        }
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": [
+      255,
+      128,
+      0
+     ],
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/light-1"
+     ],
+     {
+      "json": {
+       "color": {
+        "xy": {
+         "x": 0.611,
+         "y": 0.375
+        }
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": [
+      0.1,
+      0.9
+     ]
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/light-1"
+     ],
+     {
+      "json": {
+       "color": {
+        "xy": {
+         "x": 0.1,
+         "y": 0.9
+        }
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": [
+      0.1,
+      0.9
+     ]
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/light-1"
+     ],
+     {
+      "json": {
+       "color": {
+        "xy": {
+         "x": 0.17,
+         "y": 0.7
+        }
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": [
+      0.3,
+      0.3
+     ]
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": "fields_dropped",
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "unchanged"
+   }
+  ],
+  "wire": []
+ },
+ {
+  "action": "set_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": [
+      0.369,
+      0.445
+     ]
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/light-1"
+     ],
+     {
+      "json": {
+       "color": {
+        "xy": {
+         "x": 0.369,
+         "y": 0.445
+        }
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": [
+      0.369,
+      0.445
+     ]
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.one",
+     "light.one",
+     false
+    ],
+    [
+     "light.two",
+     "light.two",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.one",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "sent"
+   },
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.two",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/light-1"
+     ],
+     {
+      "json": {
+       "color": {
+        "xy": {
+         "x": 0.369,
+         "y": 0.445
+        }
+       }
+      }
+     }
+    ],
+    []
+   ],
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/light-2"
+     ],
+     {
+      "json": {
+       "color": {
+        "xy": {
+         "x": 0.369,
+         "y": 0.445
+        }
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": [
+      0.4,
+      0.4
+     ]
+    },
+    "max_brightness": null,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/light-1"
+     ],
+     {
+      "json": {
+       "color": {
+        "xy": {
+         "x": 0.4,
+         "y": 0.4
+        }
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": 30.0,
+    "min_brightness": 10.0
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/light-1"
+     ],
+     {
+      "json": {
+       "dimming": {
+        "brightness": 30.0
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": 30.0,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/light-1"
+     ],
+     {
+      "json": {
+       "dimming": {
+        "brightness": 30.0
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": 50.0,
+    "min_brightness": null
+   },
+   "targets": [
+    [
+     "light.one",
+     "light.one",
+     false
+    ],
+    [
+     "light.two",
+     "light.two",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": "within_limits",
+    "entity_id": "light.one",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "unchanged"
+   },
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.two",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/light-2"
+     ],
+     {
+      "json": {
+       "dimming": {
+        "brightness": 50.0
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ },
+ {
+  "action": "set_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": 50.0
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": "within_limits",
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "unchanged"
+   }
+  ],
+  "wire": []
+ },
+ {
+  "action": "set_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "brightness": null,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    },
+    "max_brightness": null,
+    "min_brightness": 50.0
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/light-1"
+     ],
+     {
+      "json": {
+       "dimming": {
+        "brightness": 50.0
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ }
+]

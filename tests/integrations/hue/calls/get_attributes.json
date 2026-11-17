@@ -1,0 +1,1185 @@
+[
+ {
+  "action": "get_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.gone",
+     "light.gone",
+     false
+    ],
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "not_on_bridge",
+    "entity_id": "light.gone",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "rejected"
+   },
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": {
+     "brightness": 50.0,
+     "color_temp_kelvin": 2702
+    },
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": []
+ },
+ {
+  "action": "get_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.gone",
+     "light.gone",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "not_on_bridge",
+    "entity_id": "light.gone",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": []
+ },
+ {
+  "action": "get_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ],
+    [
+     "light.plug",
+     "light.plug",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": {
+     "brightness": 50.0
+    },
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "confirmed"
+   },
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": {},
+    "detail": null,
+    "entity_id": "light.plug",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": []
+ },
+ {
+  "action": "get_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": {
+     "brightness": 40.0,
+     "color_temp_kelvin": 2702,
+     "hs_color": [
+      46.154,
+      35.686
+     ],
+     "rgb_color": [
+      255,
+      234,
+      164
+     ],
+     "xy_color": [
+      0.4,
+      0.4
+     ]
+    },
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": []
+ },
+ {
+  "action": "get_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": {
+     "brightness": 50.0,
+     "color_temp_kelvin": 2702,
+     "hs_color": [
+      200.177,
+      88.627
+     ],
+     "rgb_color": [
+      29,
+      179,
+      255
+     ],
+     "xy_color": [
+      0.148,
+      0.217
+     ]
+    },
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": []
+ },
+ {
+  "action": "get_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": {
+     "brightness": 50.0,
+     "color_temp_kelvin": 2702
+    },
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": []
+ },
+ {
+  "action": "get_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": {
+     "brightness": 50.0
+    },
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": []
+ },
+ {
+  "action": "get_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": {
+     "brightness": 60.0,
+     "color_temp_kelvin": 2702,
+     "hs_color": [
+      209.362,
+      36.863
+     ],
+     "rgb_color": [
+      161,
+      209,
+      255
+     ],
+     "xy_color": [
+      0.2355,
+      0.273
+     ]
+    },
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": []
+ },
+ {
+  "action": "get_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": {
+     "brightness": 70.0,
+     "color_temp_kelvin": 2702
+    },
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": []
+ },
+ {
+  "action": "get_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "other",
+    "data": {
+     "brightness": 50.0,
+     "color_temp_kelvin": 2702
+    },
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": []
+ },
+ {
+  "action": "get_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "other",
+    "data": {
+     "brightness": 50.0
+    },
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": []
+ },
+ {
+  "action": "get_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.one",
+     "light.one",
+     false
+    ],
+    [
+     "light.room",
+     "light.room",
+     true
+    ],
+    [
+     "light.two",
+     "light.two",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": {
+     "brightness": 60.0,
+     "color_temp_kelvin": 2702
+    },
+    "detail": null,
+    "entity_id": "light.one",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "confirmed"
+   },
+   {
+    "clamped_to": null,
+    "classes": [
+     "hue"
+    ],
+    "data": {
+     "brightness": 70.0,
+     "color_temp_kelvin": 2702
+    },
+    "detail": null,
+    "entity_id": "light.room",
+    "integration": "hue",
+    "member_classes": {
+     "light.one": "hue",
+     "light.two": "hue"
+    },
+    "status": "confirmed"
+   },
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": {
+     "brightness": 80.0,
+     "color_temp_kelvin": 2702
+    },
+    "detail": null,
+    "entity_id": "light.two",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": []
+ },
+ {
+  "action": "get_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.one",
+     "light.one",
+     false
+    ],
+    [
+     "light.room",
+     "light.room",
+     true
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": {
+     "brightness": 100.0,
+     "color_temp_kelvin": 3355,
+     "hs_color": [
+      40.606,
+      38.824
+     ],
+     "rgb_color": [
+      255,
+      223,
+      156
+     ],
+     "xy_color": [
+      0.4141,
+      0.3958
+     ]
+    },
+    "detail": null,
+    "entity_id": "light.one",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "confirmed"
+   },
+   {
+    "clamped_to": null,
+    "classes": [
+     "hue"
+    ],
+    "data": {
+     "brightness": 100.0,
+     "color_temp_kelvin": 3028,
+     "hs_color": [
+      40.606,
+      38.824
+     ],
+     "rgb_color": [
+      255,
+      223,
+      156
+     ],
+     "xy_color": [
+      0.4141,
+      0.3958
+     ]
+    },
+    "detail": null,
+    "entity_id": "light.room",
+    "integration": "hue",
+    "member_classes": {
+     "light.one": "hue",
+     "light.two": "hue"
+    },
+    "status": "confirmed"
+   }
+  ],
+  "wire": []
+ },
+ {
+  "action": "get_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.one",
+     "light.one",
+     false
+    ],
+    [
+     "light.room",
+     "light.room",
+     true
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": {
+     "brightness": 30.0,
+     "color_temp_kelvin": 2702
+    },
+    "detail": null,
+    "entity_id": "light.one",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "confirmed"
+   },
+   {
+    "clamped_to": null,
+    "classes": [
+     "hue"
+    ],
+    "data": {
+     "brightness": 30.0,
+     "color_temp_kelvin": 2702
+    },
+    "detail": null,
+    "entity_id": "light.room",
+    "integration": "hue",
+    "member_classes": {
+     "light.one": "hue",
+     "light.two": "hue"
+    },
+    "status": "confirmed"
+   }
+  ],
+  "wire": []
+ },
+ {
+  "action": "get_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.one",
+     "light.one",
+     false
+    ],
+    [
+     "light.room",
+     "light.room",
+     true
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": {
+     "brightness": 50.0,
+     "color_temp_kelvin": 2702
+    },
+    "detail": null,
+    "entity_id": "light.one",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "confirmed"
+   },
+   {
+    "clamped_to": null,
+    "classes": [
+     "hue"
+    ],
+    "data": {
+     "brightness": 50.0,
+     "color_temp_kelvin": 2702
+    },
+    "detail": null,
+    "entity_id": "light.room",
+    "integration": "hue",
+    "member_classes": {
+     "light.one": "hue",
+     "light.two": "hue"
+    },
+    "status": "confirmed"
+   }
+  ],
+  "wire": []
+ },
+ {
+  "action": "get_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.one",
+     "light.one",
+     false
+    ],
+    [
+     "light.two",
+     "light.two",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": {
+     "brightness": 60.0,
+     "color_temp_kelvin": 2702
+    },
+    "detail": null,
+    "entity_id": "light.one",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "confirmed"
+   },
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": {
+     "brightness": 60.0,
+     "color_temp_kelvin": 2702
+    },
+    "detail": null,
+    "entity_id": "light.two",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": []
+ },
+ {
+  "action": "get_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.one",
+     "light.one",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": {
+     "brightness": 50.0,
+     "color_temp_kelvin": 2702
+    },
+    "detail": null,
+    "entity_id": "light.one",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": []
+ },
+ {
+  "action": "get_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.one",
+     "light.one",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": {
+     "brightness": 60.0,
+     "color_temp_kelvin": 2702,
+     "hs_color": [
+      209.362,
+      36.863
+     ],
+     "rgb_color": [
+      161,
+      209,
+      255
+     ],
+     "xy_color": [
+      0.2355,
+      0.273
+     ]
+    },
+    "detail": null,
+    "entity_id": "light.one",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": []
+ },
+ {
+  "action": "get_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.room",
+     "light.room",
+     true
+    ],
+    [
+     "light.two",
+     "light.two",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": [
+     "hue"
+    ],
+    "data": {
+     "brightness": 50.0,
+     "color_temp_kelvin": 2702
+    },
+    "detail": null,
+    "entity_id": "light.room",
+    "integration": "hue",
+    "member_classes": {
+     "light.one": "hue",
+     "light.two": "hue"
+    },
+    "status": "confirmed"
+   },
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": {
+     "brightness": 40.0,
+     "color_temp_kelvin": 2702
+    },
+    "detail": null,
+    "entity_id": "light.two",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": []
+ },
+ {
+  "action": "get_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.room",
+     "light.room",
+     true
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": [
+     "hue"
+    ],
+    "data": {
+     "brightness": 20.0,
+     "color_temp_kelvin": 4000
+    },
+    "detail": null,
+    "entity_id": "light.room",
+    "integration": "hue",
+    "member_classes": {
+     "light.one": "hue",
+     "light.two": "hue"
+    },
+    "status": "confirmed"
+   }
+  ],
+  "wire": []
+ },
+ {
+  "action": "get_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.room",
+     "light.room",
+     true
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": [
+     "hue"
+    ],
+    "data": {
+     "brightness": 40.0,
+     "color_temp_kelvin": 2702
+    },
+    "detail": null,
+    "entity_id": "light.room",
+    "integration": "hue",
+    "member_classes": {
+     "light.one": "hue",
+     "light.two": "hue"
+    },
+    "status": "confirmed"
+   }
+  ],
+  "wire": []
+ },
+ {
+  "action": "get_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.room",
+     "light.room",
+     true
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": [
+     "hue"
+    ],
+    "data": {
+     "brightness": 40.0,
+     "color_temp_kelvin": 3000
+    },
+    "detail": null,
+    "entity_id": "light.room",
+    "integration": "hue",
+    "member_classes": {
+     "light.one": "hue",
+     "light.two": "hue"
+    },
+    "status": "confirmed"
+   }
+  ],
+  "wire": []
+ },
+ {
+  "action": "get_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.room",
+     "light.room",
+     true
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": [
+     "hue"
+    ],
+    "data": {
+     "brightness": 50.0,
+     "color_temp_kelvin": 2702
+    },
+    "detail": null,
+    "entity_id": "light.room",
+    "integration": "hue",
+    "member_classes": {
+     "light.one": "hue",
+     "light.two": "hue"
+    },
+    "status": "confirmed"
+   }
+  ],
+  "wire": []
+ },
+ {
+  "action": "get_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.room",
+     "light.room",
+     true
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": [
+     "hue"
+    ],
+    "data": {
+     "brightness": 50.0,
+     "color_temp_kelvin": 4000,
+     "hs_color": [
+      349.2,
+      39.216
+     ],
+     "rgb_color": [
+      255,
+      155,
+      173
+     ],
+     "xy_color": [
+      0.45,
+      0.3
+     ]
+    },
+    "detail": null,
+    "entity_id": "light.room",
+    "integration": "hue",
+    "member_classes": {
+     "light.red": "hue",
+     "light.white": "hue"
+    },
+    "status": "confirmed"
+   }
+  ],
+  "wire": []
+ },
+ {
+  "action": "get_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.room",
+     "light.room",
+     true
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": [
+     "hue"
+    ],
+    "data": {
+     "brightness": 55.0,
+     "color_temp_kelvin": 2702
+    },
+    "detail": null,
+    "entity_id": "light.room",
+    "integration": "hue",
+    "member_classes": {
+     "light.one": "hue",
+     "light.two": "hue"
+    },
+    "status": "confirmed"
+   }
+  ],
+  "wire": []
+ },
+ {
+  "action": "get_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.room",
+     "light.room",
+     true
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": [
+     "hue"
+    ],
+    "data": {
+     "brightness": 60.0,
+     "color_temp_kelvin": 2702,
+     "hs_color": [
+      209.362,
+      36.863
+     ],
+     "rgb_color": [
+      161,
+      209,
+      255
+     ],
+     "xy_color": [
+      0.2355,
+      0.273
+     ]
+    },
+    "detail": null,
+    "entity_id": "light.room",
+    "integration": "hue",
+    "member_classes": {
+     "light.one": "hue",
+     "light.two": "hue"
+    },
+    "status": "confirmed"
+   }
+  ],
+  "wire": []
+ },
+ {
+  "action": "get_attributes",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.room",
+     "light.room",
+     true
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": [
+     "hue"
+    ],
+    "data": {
+     "brightness": 60.0,
+     "color_temp_kelvin": 3000
+    },
+    "detail": null,
+    "entity_id": "light.room",
+    "integration": "hue",
+    "member_classes": {
+     "light.one": "hue",
+     "light.two": "hue"
+    },
+    "status": "confirmed"
+   }
+  ],
+  "wire": []
+ }
+]

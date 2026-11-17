@@ -1,0 +1,614 @@
+[
+ {
+  "action": "raise_saturation",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "saturation",
+    "dropped": false,
+    "limit": 60.0,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/light-1"
+     ],
+     {
+      "json": {
+       "color": {
+        "xy": {
+         "x": 0.498,
+         "y": 0.394
+        }
+       },
+       "dynamics": {
+        "duration": 1980
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ },
+ {
+  "action": "raise_saturation",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "saturation",
+    "dropped": false,
+    "limit": 80.0,
+    "sweep_time": 10.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/light-1"
+     ],
+     {
+      "json": {
+       "color": {
+        "xy": {
+         "x": 0.156,
+         "y": 0.23
+        }
+       },
+       "dynamics": {
+        "duration": 3098
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ },
+ {
+  "action": "raise_saturation",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "saturation",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 10.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "error",
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/light-1"
+     ],
+     {
+      "json": {
+       "color": {
+        "xy": {
+         "x": 0.141,
+         "y": 0.141
+        }
+       },
+       "dynamics": {
+        "duration": 5569
+       }
+      }
+     }
+    ],
+    {
+     "raises": "RuntimeError"
+    }
+   ]
+  ]
+ },
+ {
+  "action": "raise_saturation",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "saturation",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 10.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.room",
+     "light.room",
+     true
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": [
+     "hue"
+    ],
+    "data": null,
+    "detail": null,
+    "entity_id": "light.room",
+    "integration": "hue",
+    "member_classes": {
+     "light.one": "hue",
+     "light.two": "hue",
+     "light.white": "hue"
+    },
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/grouped_light/grouped-1"
+     ],
+     {
+      "json": {
+       "color": {
+        "xy": {
+         "x": 0.141,
+         "y": 0.138
+        }
+       },
+       "dynamics": {
+        "duration": 3118
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ },
+ {
+  "action": "raise_saturation",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "saturation",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 10.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.room",
+     "light.room",
+     true
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": [
+     "hue"
+    ],
+    "data": null,
+    "detail": null,
+    "entity_id": "light.room",
+    "integration": "hue",
+    "member_classes": {
+     "light.one": "hue",
+     "light.two": "hue",
+     "light.white": "hue"
+    },
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/grouped_light/grouped-1"
+     ],
+     {
+      "json": {
+       "color": {
+        "xy": {
+         "x": 0.143,
+         "y": 0.186
+        }
+       },
+       "dynamics": {
+        "duration": 7059
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ },
+ {
+  "action": "raise_saturation",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "saturation",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 2.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/light-1"
+     ],
+     {
+      "json": {
+       "color": {
+        "xy": {
+         "x": 0.144,
+         "y": 0.198
+        }
+       },
+       "dynamics": {
+        "duration": 1020
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ },
+ {
+  "action": "raise_saturation",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "saturation",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": "at_limit",
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "unchanged"
+   }
+  ],
+  "wire": []
+ },
+ {
+  "action": "raise_saturation",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "saturation",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": "fields_dropped",
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "unchanged"
+   }
+  ],
+  "wire": []
+ },
+ {
+  "action": "raise_saturation",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "saturation",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": "off",
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "unchanged"
+   }
+  ],
+  "wire": []
+ },
+ {
+  "action": "raise_saturation",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "saturation",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "hue",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "v2.HueBridgeV2.request",
+     [
+      "put",
+      "clip/v2/resource/light/light-1"
+     ],
+     {
+      "json": {
+       "color": {
+        "xy": {
+         "x": 0.25,
+         "y": 0.2
+        }
+       },
+       "dynamics": {
+        "duration": 2549
+       }
+      }
+     }
+    ],
+    []
+   ]
+  ]
+ },
+ {
+  "action": "raise_saturation",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "saturation",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.room",
+     "light.room",
+     true
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": [
+     "hue"
+    ],
+    "data": null,
+    "detail": "fields_dropped",
+    "entity_id": "light.room",
+    "integration": "hue",
+    "member_classes": {
+     "light.one": "hue",
+     "light.two": "hue"
+    },
+    "status": "unchanged"
+   }
+  ],
+  "wire": []
+ },
+ {
+  "action": "raise_saturation",
+  "integration": "hue",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "saturation",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.room",
+     "light.room",
+     true
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": [
+     "hue"
+    ],
+    "data": null,
+    "detail": "off",
+    "entity_id": "light.room",
+    "integration": "hue",
+    "member_classes": {
+     "light.one": "hue",
+     "light.two": "hue"
+    },
+    "status": "unchanged"
+   }
+  ],
+  "wire": []
+ }
+]

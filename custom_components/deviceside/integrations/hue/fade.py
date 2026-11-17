@@ -32,8 +32,12 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def room_lights(api: HueBridgeV2, target: Target) -> list[Light]:
-    """The room's lights that dim, hidden ones included: the bridge fades them all."""
-    return [light for light in api.groups.grouped_light.get_lights(resource_id(target)) if light.dimming]
+    """The room's lights that dim, hidden ones included: the bridge fades them all. Sorted by id, as aiohue's order is a
+    set's and so differs run to run, which would send a room's per-light writes in a different order each time."""
+    return sorted(
+        (light for light in api.groups.grouped_light.get_lights(resource_id(target)) if light.dimming),
+        key=lambda light: light.id,
+    )
 
 
 def predicted_brightness(cache: TransitionCache, light: Light) -> float:
@@ -209,7 +213,9 @@ def saturation_fade(
 ) -> Fade | str:
     """The saturation fade toward the limit at the current hue, as an xy fade; fields_dropped with no color light, off
     with none lit, at_limit when there is none left to make."""
-    lights = api.groups.grouped_light.get_lights(resource_id(target)) if target.is_group else [resource]
+    lights = [resource]
+    if target.is_group:
+        lights = sorted(api.groups.grouped_light.get_lights(resource_id(target)), key=lambda light: light.id)
     if not (color := [light for light in lights if light.color is not None]):
         return "fields_dropped"
     if not (movers := lit(cache, color)):
