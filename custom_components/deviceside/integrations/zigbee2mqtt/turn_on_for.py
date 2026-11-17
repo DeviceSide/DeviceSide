@@ -19,12 +19,13 @@ from ...core.errors import describe
 from ...core.models import EntityResult, Status, Target
 from ...core.runtime import get_runtime
 from ...core.scope import AdapterScope, DurationLimits, verified
+from ...core.zcl import MAX_TENTHS_S
 
 _LOGGER = logging.getLogger(__name__)
 
 # Zigbee OnWithTimedOff: on_time in tenths of a second (uint16), range 1-65534 tenths.
 # 65534 tenths = 6553.4 s. The 50 ms floor from core/duration.py handles the effective minimum.
-_TIMER_LIMITS = DurationLimits(min_s=0, max_s=6553.4)
+_TIMER_LIMITS = DurationLimits(min_s=0, max_s=MAX_TENTHS_S)
 
 # Read-back delays in seconds. The second end read allows for a bulb clock that runs slow on a long timer.
 _ON_READ_S = 1.0

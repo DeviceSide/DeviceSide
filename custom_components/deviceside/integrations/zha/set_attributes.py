@@ -17,6 +17,7 @@ from ...core.ha_entity import ha_entity, replace_if_set
 from ...core.models import EntityResult, Status, Target
 from ...core.runtime import get_runtime
 from ...core.scope import AdapterScope, verified
+from ...core.zcl import WRITE_FADE_TENTHS, WRITE_FADE_WAIT_S
 from ...core.zcl_write import (
     Command,
     MoveToColor,
@@ -28,16 +29,16 @@ from ...core.zcl_write import (
 )
 
 # 0.4 s, the Hue bridge's default write fade, so a call looks alike on both; a light that is off doesn't fade.
-_EXECUTE_IF_OFF = zcl.execute_if_off(4)
+_EXECUTE_IF_OFF = zcl.execute_if_off(WRITE_FADE_TENTHS)
 
 Wire = tuple[int, int, dict[str, Any]]
 
 # zha skips update_entity while a light's transition flag is up: for an HA turn_off, its fade plus 0.5 s (1.5 s for a
 # plain off). The refresh waits it out this long, polling, then goes ahead and refreshes again once it clears.
+FADE_WAIT_S = WRITE_FADE_WAIT_S
 TRANSITION_WAIT_S = 3.0
 TRANSITION_POLL_S = 0.1
 LATE_REFRESH_POLL_S = 0.5
-FADE_WAIT_S = 0.6  # the commands' 0.4 s fade plus margin: a read sooner sees a mid-fade color temperature
 SETTLE_REFRESH_S = 1.0  # a second read after the first, for a fade that ran slow
 # The refreshes' share of the adapter's time: they run past the concurrency slots, so nothing else bounds them.
 REFRESH_BUDGET_S = 4.0

@@ -18,6 +18,7 @@ from ...actions.set_attributes import SetAttributesRequest
 from ...core.errors import Reason
 from ...core.models import EntityResult, Status, Target
 from ...core.scope import AdapterScope, verified
+from ...core.zcl import WRITE_FADE_TENTHS, WRITE_FADE_WAIT_S
 from ...core.zcl_write import (
     Command,
     MoveToColor,
@@ -31,11 +32,11 @@ from ...core.zcl_write import (
 
 # 0.4 s, the Hue bridge's default write fade, as on ZHA; a light that is off doesn't fade. The override sets
 # ExecuteIfOff for this command only, so the light takes it while off; Options stays untouched.
-_EXECUTE_IF_OFF = {"transtime": 4, "optionsMask": 1, "optionsOverride": 1}
+_EXECUTE_IF_OFF = {"transtime": WRITE_FADE_TENTHS, "optionsMask": 1, "optionsOverride": 1}
 
 # The fade is 0.4 s from when the bulb gets the command; a read inside it answers a level between the old and the
 # target. Wait it out, with a margin for the command's trip, before reading.
-_FADE_WAIT_S = 0.6
+_FADE_WAIT_S = WRITE_FADE_WAIT_S
 
 # A bulb's color temperature fade can outlast that wait, so a read that doesn't match is repeated before the write
 # counts as ignored: a fade converges, an ignored override doesn't.

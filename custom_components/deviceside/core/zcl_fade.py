@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from .models import Target
 from .transition import SATURATION, TransitionCache, hs_color, light_brightness, lit
+from .zcl import MAX_TENTHS_S
 
 if TYPE_CHECKING:  # core doesn't import actions at run time
     from ..actions.ramp import RampRequest
@@ -14,7 +15,7 @@ if TYPE_CHECKING:  # core doesn't import actions at run time
 # The smallest brightness or saturation step a bulb makes (1/254), in percent.
 MIN_STEP = 100 / 254
 # A ZCL transition is a uint16 in tenths of a second; 0xFFFF means the bulb's default.
-MAX_TRANSITION_S = 0xFFFE / 10
+MAX_TRANSITION_S = MAX_TENTHS_S
 # A hue cycle takes at least this long.
 MIN_CYCLE_S = 1.0
 
