@@ -17,15 +17,15 @@ A level comes from the scope alone (verify, then trust): a record never ages.
 card per integration, then a link to the integrations page. A card has its name, linked to its page (the bundle's
 index.md), with "⚠️ Unmaintained" when every adapter is; the features of the adapters with each `caveat` (🔧 Untested
 fix, then ⚠️ Unmaintained, linking its reason); then a line per feature set, naming each class on one line, with its
-features by status: "Hue lights (Hue White A60 B22 ✔): 🟢 turn on with timer · 🌱 get attributes". Only classes of
+features by status: "Hue lights (Hue White A60 B22 ✔): 🟢 turn on with timer · 🔍 get attributes". Only classes of
 one brand share a line (`brand`): the class's family, else other brands; an integration with no families is one brand,
 its "Other brands" section the other brands. Native groups sort first, then lines by brand, alphabetically, then
 other brands, then models no class line takes; within a brand, tested lines first, "other …" lines last, the rest
 alphabetically, and a line's names sort the same way (`ordered`), a variant's plain words before its maker strings.
 - Statuses: a class counts on each entity domain it can be (`IntegrationInfo.classes`) that the adapter serves, at the
-  level a call there runs at (AdapterScope.level): 🟢 Verified, 🟡 Documented, 🌱 Experimental; 🔴 for a scope's
+  level a call there runs at (AdapterScope.level): 🟢 Verified, 🟡 Documented, 🔍 Experimental; 🔴 for a scope's
   `no_known_method` entry, which names a class devices.yaml gives no phrase by its `what`. A feature whose actions
-  differ in status names its parts ("🟡 smooth dimming down · 🌱 smooth dimming up"), so none shows twice. A feature not
+  differ in status names its parts ("🟡 smooth dimming down · 🔍 smooth dimming up"), so none shows twice. A feature not
   built yet on a class (in no scope, or a `not_built` entry) is left out, and a class with nothing left has no line.
   Where the integration names no classes, its domains stand in for them.
 - Names: the class's devices.yaml phrase; one whose domains show different features is named per domain, by its
@@ -141,8 +141,10 @@ OUTCOMES = (
     ("should", "🟡", "should work: same call pattern as a tested device"),
     (
         "experimental",
-        "🌱",
-        f"new or untested: enable Configure > Settings to try it out and [report whether it works]({REPORT_URL})",
+        "🔍",
+        "Experimental, on trial: enable Configure > Settings to try it and"
+        f" [report whether it works]({REPORT_URL}). A feature that fails on a device may be withdrawn until someone"
+        " builds it better",
     ),
     ("no_known_method", "🔴", "no known command works on it"),
 )
@@ -794,7 +796,7 @@ def part(action: str) -> str:
 
 def shape(by_status: dict[str, set[str]]) -> Shape:
     """The actions by status as a line names them, each feature under one status: one whose actions differ names its
-    parts instead ("🟡 smooth dimming down · 🌱 smooth dimming up"). `stop` rides the smooth moves, so it is named
+    parts instead ("🟡 smooth dimming down · 🔍 smooth dimming up"). `stop` rides the smooth moves, so it is named
     only on a line that names nothing else."""
     labels = {status: features(actions, fold_stop=False) for status, actions in by_status.items()}
     every = [label for found in labels.values() for label in found]

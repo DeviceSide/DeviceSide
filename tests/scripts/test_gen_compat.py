@@ -455,8 +455,8 @@ def test_a_card_puts_flagged_adapters_under_experimental_features_and_leaves_out
     assert card.tested == []
     # An adapter flagged whole is Experimental on every domain, evidence or not; stop rides the smooth move.
     assert card.lines[:2] == [
-        f"[lights]({URL}#lights): 🟢 turn on with timer · 🌱 smooth hue",
-        f"[plugs]({URL}#zigbee-plugs): 🌱 stop",
+        f"[lights]({URL}#lights): 🟢 turn on with timer · 🔍 smooth hue",
+        f"[plugs]({URL}#zigbee-plugs): 🔍 stop",
     ]
 
 
@@ -506,8 +506,8 @@ def test_documented_and_flagged_classes_share_an_entry_per_feature_set_and_name_
     # scope, isn't built yet there: the card leaves the feature out. Lines sort alphabetically, devices.yaml's entry
     # last, as it names no class or feature.
     assert card.lines == [
-        f"[CCT controllers]({URL}#dimmers): 🌱 smooth dimming",
-        f"[dimmers]({URL}#dimmers): 🟡 turn on with timer · 🌱 smooth dimming",
+        f"[CCT controllers]({URL}#dimmers): 🔍 smooth dimming",
+        f"[dimmers]({URL}#dimmers): 🟡 turn on with timer · 🔍 smooth dimming",
         f"[relays]({URL}#relays): 🟡 turn on with timer",
         f"[relays as lights]({URL}#relays): 🟢 turn on with timer, smooth dimming",
         f"[Old plug]({URL}#old-plug): 🔴",
@@ -525,7 +525,7 @@ def test_a_class_line_runs_at_the_weaker_of_its_domain_and_class(root):
     card = classed_card(adapter("zha", "turn_on_for", timer))
     assert card.lines[:2] == [
         f"[dimmers]({URL}#dimmers), [relays as lights]({URL}#relays): 🟢 turn on with timer",
-        f"[relays]({URL}#relays): 🌱 turn on with timer",
+        f"[relays]({URL}#relays): 🔍 turn on with timer",
     ]
 
 
@@ -545,13 +545,13 @@ def test_a_class_whose_domains_show_different_features_splits_per_domain_on_the_
         capabilities=capabilities,
     )
     assert card.lines[:3] == [
-        f"[dimmers]({URL}#dimmers), [relays as lights]({URL}#relays): 🌱 turn on with timer, smooth dimming",
+        f"[dimmers]({URL}#dimmers), [relays as lights]({URL}#relays): 🔍 turn on with timer, smooth dimming",
         f"[multicolor bulbs]({URL}#bulbs): 🟢 turn on with timer, smooth dimming",
-        f"[relays]({URL}#relays): 🌱 turn on with timer",
+        f"[relays]({URL}#relays): 🔍 turn on with timer",
     ]
     # Where both domains show the same features, the class keeps one line, by its phrase.
     both = zha_card(adapter("zha", "turn_on_for", timer), capabilities=capabilities)
-    assert both.lines[0] == f"[dimmers]({URL}#dimmers), [relays]({URL}#relays): 🌱 turn on with timer"
+    assert both.lines[0] == f"[dimmers]({URL}#dimmers), [relays]({URL}#relays): 🔍 turn on with timer"
     # A class that splits needs a phrase for each domain it shows.
     del capabilities["zha"]["Switch"]["domains"]
     with pytest.raises(SystemExit, match="zha Switch shows other features on each of its domains"):
@@ -828,11 +828,12 @@ def test_the_legend_leads_the_cards_and_lists_only_the_marks_they_use(root):
     # The fixture's Old plug has no known method; nothing is tested, Documented, Experimental or caveated.
     assert "🟢 works<br>\n🔴 no known command works on it\n\n**ZHA**" in text
     assert text.index("Details per integration are in [docs/integrations.md](") < text.index("</details>")
-    assert gc.legend("🟢 ✔ 🟡 🌱 🔴 🔧 ⚠️") == (
+    assert gc.legend("🟢 ✔ 🟡 🔍 🔴 🔧 ⚠️") == (
         "🟢 works · ✔ verified on automated rig<br>\n"
         "🟡 should work: same call pattern as a tested device<br>\n"
-        "🌱 new or untested: enable Configure > Settings to try it out and"
-        f" [report whether it works]({gc.REPORT_URL})<br>\n"
+        "🔍 Experimental, on trial: enable Configure > Settings to try it and"
+        f" [report whether it works]({gc.REPORT_URL})."
+        " A feature that fails on a device may be withdrawn until someone builds it better<br>\n"
         "🔴 no known command works on it<br>\n"
         f"🔧 untested fix: please try it and [report whether it works]({gc.REPORT_URL})<br>\n"
         "⚠️ unmaintained: use at your own risk"
@@ -1189,7 +1190,7 @@ def test_a_tested_model_follows_the_line_of_the_class_and_domain_a_test_reached_
         f"[native groups]({URL}#native-groups) ✔: 🟢 turn on with timer",
         f"[dimmers]({URL}#dimmers) ([Hue lamp]({URL}#hue-lamp) ✔): 🟢 turn on with timer, smooth dimming",
         f"[relays]({URL}#relays) ([Plug]({URL}#plug) ✔): 🟢 turn on with timer",
-        f"[relays as lights]({URL}#relays): 🟢 turn on with timer · 🌱 smooth dimming",
+        f"[relays as lights]({URL}#relays): 🟢 turn on with timer · 🔍 smooth dimming",
         f"[Old plug]({URL}#old-plug): 🔴",
     ]
     # A class named as its one model gives it once.
@@ -1232,7 +1233,7 @@ def test_a_line_holding_every_class_of_its_section_names_the_section(root):
     split = AdapterScope(capabilities=verified("Light") | experimental("CCT"))
     card = classed_card(adapter("zha", "turn_on_for", split), sections=sections)
     assert card.lines[:2] == [
-        f"[CCT controllers]({URL}#dimmers): 🌱 turn on with timer",
+        f"[CCT controllers]({URL}#dimmers): 🔍 turn on with timer",
         f"[dimmers]({URL}#dimmers): 🟢 turn on with timer",
     ]
     assert classed_card(adapter("zha", "turn_on_for", timer)).lines[0] == (
@@ -1291,10 +1292,10 @@ def test_lines_sort_by_brand_then_tested_then_other_last(root):
     assert card.lines == [
         f"[native groups]({URL}#native-groups) ✔: 🟢 turn on with timer",  # native groups first
         f"[relays]({URL}#relays) ([Plug]({URL}#plug) ✔): 🟢 turn on with timer",  # acme's tested line first
-        f"[RGB controllers]({URL}#dimmers): 🌱 turn on with timer",
-        f"[other Acme lights]({URL}#dimmers): 🌱 turn on with timer, smooth dimming",
-        f"[dimmers]({URL}#dimmers): 🟢 turn on with timer · 🌱 smooth dimming",  # Beta
-        f"[other brands]({URL}#lights): 🟡 turn on with timer · 🌱 smooth dimming",
+        f"[RGB controllers]({URL}#dimmers): 🔍 turn on with timer",
+        f"[other Acme lights]({URL}#dimmers): 🔍 turn on with timer, smooth dimming",
+        f"[dimmers]({URL}#dimmers): 🟢 turn on with timer · 🔍 smooth dimming",  # Beta
+        f"[other brands]({URL}#lights): 🟡 turn on with timer · 🔍 smooth dimming",
         f"[Old plug]({URL}#old-plug): 🔴",
     ]
 
@@ -1318,13 +1319,13 @@ def test_a_models_variants_are_children_of_one_parent_line(root):
     assert card.lines[:2] == [
         f"[Plugs]({URL}#plug): check Manufacturer on its page\n"
         f"  - [maker A]({URL}#plug) ✔: 🟢 turn on with timer\n"
-        f"  - [maker B, or no setting]({URL}#plug): 🌱 turn on with timer",
-        f"[dimmers]({URL}#dimmers): 🌱 turn on with timer",  # same features, another section: its own line
+        f"  - [maker B, or no setting]({URL}#plug): 🔍 turn on with timer",
+        f"[dimmers]({URL}#dimmers): 🔍 turn on with timer",  # same features, another section: its own line
     ]
     assert card.render().splitlines()[2:5] == [
         f"- [Plugs]({URL}#plug): check Manufacturer on its page",
         f"  - [maker A]({URL}#plug) ✔: 🟢 turn on with timer",
-        f"  - [maker B, or no setting]({URL}#plug): 🌱 turn on with timer",
+        f"  - [maker B, or no setting]({URL}#plug): 🔍 turn on with timer",
     ]
 
 

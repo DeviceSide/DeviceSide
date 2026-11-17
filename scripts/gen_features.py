@@ -104,7 +104,7 @@ LEGEND = (
     (
         ("light-grey", "switch-grey"),
         "Experimental",
-        "new or untested",
+        "on trial",
         "docs/device-compatibility.md",
         "levels-of-proof",
     ),

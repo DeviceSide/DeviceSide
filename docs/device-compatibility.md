@@ -14,10 +14,12 @@ same command differently. Each claim is at one of two levels of proof:
 - **Documented:** no device of the class has been tested, but DeviceSide sends it the same call as a Verified device,
   differing only in addressing, and no known class of devices handles it differently.
 
-New features ship as **Experimental** until a maintainer judges them ready for everyone: they stay off until you
-turn on **Experimental features** in **Configure > Settings**, and so, for most features, does a device DeviceSide
-can't place in a known class. Whether they work or not, please tell us with **Report a device test result or bug** in the same menu: your
-reports help ship them to everyone. How we decide: [evidence rules](evidence.md).
+**Experimental** is a trial, not a promise. A class earns it with a pass or with research predicting most of the class
+accepts the call, and may lose it: when a failure's fix isn't taken on, the class is withdrawn until someone builds it
+better. Experimental features stay off until you turn on **Experimental features** in **Configure > Settings**, and so,
+for most features, does a device DeviceSide can't place in a known class. Whether they work or not, please tell us
+with **Report a device test result or bug** in the same menu: your reports help ship them to everyone. How we decide:
+[evidence rules](evidence.md#no-known-method-not-built-yet-on-trial).
 
 ## Maintainers
 
@@ -25,8 +27,8 @@ DeviceSide is run by volunteers. Each integration's maintainers look after it: t
 to it and fix bugs in it as they can. Please
 [report a bug](https://github.com/DeviceSide/DeviceSide/issues/new?template=device_report.yml); the report goes to the
 maintainers of the integration you choose. A report that a feature doesn't work is still useful: it goes to the
-integration's maintainers, who decide whether to fix it, find it a maintainer, or turn it off; a fix may need someone
-with the device.
+integration's maintainers, who decide whether to take on the fix or withdraw the feature until it's built better; a fix
+may need someone with the device.
 
 **⚠️ Unmaintained** marks a feature no one is fixing. It still works as it did, but a bug in it stays unfixed until
 someone fixes it or takes over the integration, so use it at your own risk. **🔧 Untested fix** marks a feature
@@ -38,7 +40,7 @@ On the cards, ✔ marks what the automated rig verified; a model without it was 
 
 A model works on the integrations and features its records and maintainers' hand tests (`_manual.json`) cover; the
 [evidence](#evidence) lists them per action, with the firmware tested. Other models may work too, but makers implement
-these features inconsistently: if yours isn't here, please try it and [report the
+these features inconsistently: if yours isn't here and its class is Experimental, please try it and [report the
 result](https://github.com/DeviceSide/DeviceSide/issues/new?template=device_report.yml), whether it works or not.
 
 ### Hue White Ambiance E27 1100lm
@@ -81,10 +83,11 @@ Documented ([levels of proof](#levels-of-proof)).
 
 ## Try it: Experimental features
 
-These are built and unit-tested, but not yet ready for everyone ([levels of proof](#levels-of-proof)); some may
-have passed a maintainer's first tests. Turn on Experimental features to try them, then report the result, whether
-they work or not: a working report helps ship them to everyone, and a "doesn't work" one goes to the integration's
-maintainers, who decide whether to fix it, find it a maintainer, or turn it off.
+These classes are on trial ([levels of proof](#levels-of-proof)): built and unit-tested, each admitted on a pass or on
+research predicting most of the class accepts the call, and some may have passed a maintainer's first tests. Turn on
+Experimental features to try them, then report the result, whether they work or not: a working report helps ship them
+to everyone, and a "doesn't work" one goes to the integration's maintainers, who decide whether to take on the fix or
+withdraw the class until it's built better ([on trial](evidence.md#no-known-method-not-built-yet-on-trial)).
 
 ### Zigbee plugs and switches
 
@@ -101,8 +104,8 @@ rest, and the Sonoff SWV on ZHA, are not. ZHA and Zigbee2MQTT each need their ow
 ## Not built yet
 
 A class of device that needs a command DeviceSide hasn't built yet. DeviceSide refuses it, rather than send a command
-that would leave it doing something you didn't ask for. If you'd like one built,
-[propose it](../CONTRIBUTING.md#how-to-help).
+that would leave it doing something you didn't ask for. A class returns when a contributor's pull request builds it
+with a passing run on their own device ([how to help](../CONTRIBUTING.md#how-to-help)).
 
 ### Tuya TS011F
 
