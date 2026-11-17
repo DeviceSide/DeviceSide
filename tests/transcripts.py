@@ -32,8 +32,9 @@ rule here.
 
 `write`, after a run with no failures, writes `tests/integrations/<x>/calls/<action>.json`, the sorted unique segments
 of each action, for each integration with a `tests/integrations/<x>/` directory, and removes the `calls/` files of
-actions the run didn't see. `check` fails the run when those files would differ. Under xdist each worker hands its
-segments to the controller, which writes or checks.
+actions the run didn't see. `check` fails the run when those files would differ. Either fails an action whose adapter
+has `native_groups` and no segment run on a group (`_NO_GROUP_TEST_YET` lists the ones that shipped without). Under
+xdist each worker hands its segments to the controller, which writes or checks.
 """
 
 import dataclasses
@@ -61,6 +62,17 @@ _SEGMENT: ContextVar[dict | None] = ContextVar("transcript_segment", default=Non
 _ACTIVE: ContextVar[frozenset[str]] = ContextVar("transcript_active_boundaries", default=frozenset())
 _WORKER_KEY = "transcripts"
 _DESELECTED_KEY = "transcripts_deselected"
+_NATIVE_KEY = "transcripts_native_groups"
+# Native-groups actions that shipped with no group segment, each removed by the pull request that tests it; one that
+# gains a group segment while listed fails the run, so the list only shrinks.
+_NO_GROUP_TEST_YET = frozenset(
+    {
+        ("control4", "get_attributes"),
+        ("control4", "lower_brightness"),
+        ("control4", "raise_brightness"),
+        ("control4", "set_attributes"),
+    }
+)
 _DESELECTED = "--transcripts={mode} needs the whole suite: this run deselects tests"
 _DROPPED = (HomeAssistant, Context)
 # `ServiceRegistry.async_call`'s arguments, past its service data, that change what the call does or returns.
@@ -290,6 +302,7 @@ class Recorder:
         self.collected: list[dict] = []  # the running test's segments
         self.installed: list[tuple[Any, str, bool, Wire]] = []  # the running test's wrappers: owner, name, own attr
         self.segments: dict[tuple[str, str], set[str]] = {}  # (integration, action): each segment as JSON
+        self.native: set[tuple[str, str]] = set()  # (integration, action) of each run whose adapter has native_groups
         self.deselected = False
         self.ran = False  # whether any test ran, here or (under xdist) on a worker
         self.problems: list[str] = []  # what the session's end reports
@@ -318,6 +331,8 @@ class Recorder:
                 "wire": [],
             }
             recorder.collected.append(segment)
+            if adapter.scope.native_groups:
+                recorder.native.add((adapter.integration, adapter.action))
             token = _SEGMENT.set(segment)
             try:
                 results = await run_adapter(self, adapter, request, targets, dropped, reached, own)
@@ -409,6 +424,7 @@ class Recorder:
     def pytest_testnodedown(self, node, error) -> None:
         output = getattr(node, "workeroutput", {})
         self.deselected |= output.get(_DESELECTED_KEY, False)
+        self.native.update(tuple(key.split("|")) for key in output.get(_NATIVE_KEY, []))
         for key, segments in output.get(_WORKER_KEY, {}).items():
             self.segments.setdefault(tuple(key.split("|")), set()).update(segments)
 
@@ -417,6 +433,7 @@ class Recorder:
     def pytest_sessionfinish(self, session, exitstatus) -> None:
         if hasattr(session.config, "workeroutput"):
             session.config.workeroutput[_WORKER_KEY] = {"|".join(k): sorted(v) for k, v in self.segments.items()}
+            session.config.workeroutput[_NATIVE_KEY] = sorted("|".join(k) for k in self.native)
             return
         if self.deselected:
             self.problems.append(_DESELECTED.format(mode=self.mode))
@@ -446,6 +463,32 @@ class Recorder:
                 *problems,
             ]
             session.exitstatus = pytest.ExitCode.TESTS_FAILED
+        if problems := self._groupless():
+            self.problems += problems
+            session.exitstatus = pytest.ExitCode.TESTS_FAILED
+
+    def _groupless(self) -> list[str]:
+        """A native-groups action needs a segment whose target is a group: a group's sign-off binds to it, and without
+        it a change to what the action does on a group reopens no evidence (docs/evidence.md, Release gate)."""
+        owned = {path.name for path in self.integrations.glob("*/") if path.is_dir()}
+        grouped = {
+            key for key, segments in self.segments.items() if any(_has_group(json.loads(text)) for text in segments)
+        }
+        native = {key for key in self.native if key[0] in owned}
+        missing = sorted(native - grouped - _NO_GROUP_TEST_YET)
+        tested = sorted(_NO_GROUP_TEST_YET & grouped)
+        problems = []
+        if missing:
+            problems += [
+                "native-groups actions with no group segment: test each on one of its integration's groups",
+                *(f"  {integration} / {action}" for integration, action in missing),
+            ]
+        if tested:
+            problems += [
+                "now tested on a group: remove from _NO_GROUP_TEST_YET (tests/transcripts.py)",
+                *(f"  {integration} / {action}" for integration, action in tested),
+            ]
+        return problems
 
     def _unnormalized(self) -> list[str]:
         """Each placeholder norm left in a segment's wire or result, as `<integration> <action> <TypeName>`. The
@@ -487,6 +530,10 @@ class Recorder:
 
     def _name(self, path: Path) -> str:
         return str(path.relative_to(self.integrations.parent.parent))
+
+
+def _has_group(segment: dict) -> bool:
+    return any(is_group for _, _, is_group in segment["request"]["targets"])
 
 
 def _placeholders(value: Any):

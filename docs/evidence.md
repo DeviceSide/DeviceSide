@@ -310,7 +310,9 @@ records them and gives the normalization rules; CI fails a PR whose transcripts 
 changed when HEAD's transcript no longer holds every segment of the tag's, or the tag has none: a segment changed or
 removed counts, wherever the code that changed it lives (an integration's package, `core/`, `actions/`); a segment
 added (a new test, a new class's own call) doesn't, nor does a source change that leaves every segment as it was. A
-flag lifted or a class added changes no call; the [coverage check](#the-coverage-check) holds those.
+flag lifted or a class added changes no call; the [coverage check](#the-coverage-check) holds those. An action whose
+adapter has `native_groups` needs a segment run on a group, which `--transcripts` enforces: without one, a change to
+what it does on a group reopens no evidence.
 
 - **Evidence binds to a transcript** by the git blob id of the one it was tested against (`calls`), and **stands**
   while HEAD's transcript of the action holds every segment of it. A blob is its content's hash, so a run on a PR
