@@ -103,17 +103,17 @@
         "step": {
           "confirm": {
             "title": "Remove Device Side v0.0.1",
-            "description": "DeviceSide replaces Device Side v0.0.1, but its config entry or its folder, `{folder}`, is still here, so Home Assistant keeps loading the old version.\n\nSubmit removes the old config entry, its two actions and the old folder, if it holds Device Side. No restart is needed. A second repair then lists the automations and scripts that still call `device_side.`.\n\nIn your automations and scripts, change `device_side.turn_on_for` to `deviceside.turn_on_for`, and `device_side.turn_off_for` to `deviceside.turn_off_for`. Their fields are the same."
+            "description": "DeviceSide replaces Device Side v0.0.1, but the old integration is still installed, so Home Assistant keeps loading it.\n\nSubmit removes the Device Side v0.0.1 integration, including its folder, `{folder}`, if it holds Device Side. No restart is needed. A second repair then lists the automations and scripts that still call `device_side.`.\n\nIn your automations and scripts, change `device_side.turn_on_for` to `deviceside.turn_on_for`, and `device_side.turn_off_for` to `deviceside.turn_off_for`. Their fields are the same."
           }
         },
         "abort": {
-          "folder_left": "Device Side's config entry, if there was one, is removed, but the folder `{folder}` is still there: it doesn't look like Device Side v0.0.1's, or it couldn't be deleted. If it is the old version, delete it yourself, then restart Home Assistant."
+          "folder_left": "The Device Side v0.0.1 integration is removed, but its folder, `{folder}`, is still there: it doesn't look like Device Side v0.0.1's, or it couldn't be deleted. If it is the old version, delete it yourself, then restart Home Assistant."
         }
       }
     },
     "legacy_device_side_calls": {
       "title": "Automations and scripts still call Device Side v0.0.1",
-      "description": "Device Side v0.0.1's config entry is removed, but these automations and scripts still call its actions:\n\n{items}\n\nIn each, change `device_side.turn_on_for` to `deviceside.turn_on_for`, and `device_side.turn_off_for` to `deviceside.turn_off_for`. Their fields are the same. This repair clears once none are left. It can't see calls from blueprints, dashboards, or tools outside Home Assistant's automations and scripts, such as Node-RED or AppDaemon."
+      "description": "The Device Side v0.0.1 integration is removed, but these automations and scripts still call its actions:\n\n{items}\n\nIn each, change `device_side.turn_on_for` to `deviceside.turn_on_for`, and `device_side.turn_off_for` to `deviceside.turn_off_for`. Their fields are the same. This repair clears once none are left. It can't see calls from blueprints, dashboards, or tools outside Home Assistant's automations and scripts, such as Node-RED or AppDaemon."
     },
     "migrate_hue_dimmer": {
       "title": "Hue Smooth Dimming can be replaced by DeviceSide",
