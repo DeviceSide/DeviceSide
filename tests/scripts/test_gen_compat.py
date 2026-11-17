@@ -959,7 +959,7 @@ def test_a_manual_device_counts_for_a_class_flagged_adapter_only_with_an_unflagg
 
 
 def test_a_class_an_adapter_serves_in_neither_axis_is_not_built_yet(root):
-    broken = {"RGB": NoKnownMethod("Old plug", "No timer", "https://x.y/z", harms=False)}
+    broken = {"RGB": NoKnownMethod("Old plug", "No timer", "https://x.y/z")}
     card = classed_card(
         adapter("zha", "turn_on_for", AdapterScope(capabilities=verified("Switch", "Light", "CCT", "RGB"))),
         adapter("zha", "set_attributes", AdapterScope(capabilities=verified("Switch"))),
@@ -977,7 +977,7 @@ def test_a_class_an_adapter_serves_in_neither_axis_is_not_built_yet(root):
 
 
 def test_a_scopes_no_known_method_reaches_the_card_and_the_evidence_with_its_actions(root):
-    broken = {"RGB": NoKnownMethod("Old plug", "No timer", "https://x.y/z", harms=False)}
+    broken = {"RGB": NoKnownMethod("Old plug", "No timer", "https://x.y/z")}
     scope = AdapterScope(capabilities=verified("Switch"), no_known_method=broken)
     adapters = (adapter("zha", "turn_on_for", scope), adapter("zha", "turn_off_for", scope))
     registry = classed_registry(*adapters)
@@ -993,7 +993,7 @@ def test_a_scopes_no_known_method_reaches_the_card_and_the_evidence_with_its_act
 
 def test_a_harmful_not_built_entry_is_not_built_yet_on_the_card_and_sourced_in_the_evidence(root):
     """Plan Decision 70: the card lists it as any not built yet class; the evidence block keeps why and where."""
-    unbuilt = {"CCT": NotBuilt("No timer yet", "https://x.y/z", harms=True)}
+    unbuilt = {"CCT": NotBuilt("No timer yet", "https://x.y/z")}
     scope = AdapterScope(capabilities=verified("Switch"), not_built=unbuilt)
     adapters = (adapter("zha", "turn_on_for", scope), adapter("zha", "turn_off_for", scope))
     registry = classed_registry(*adapters)
@@ -1011,11 +1011,11 @@ def test_a_harmful_not_built_entry_is_not_built_yet_on_the_card_and_sourced_in_t
     [
         (
             "CCT",
-            NotBuilt("No timer yet", "http://x.y/z", harms=True),
+            NotBuilt("No timer yet", "http://x.y/z"),
             "not_built zha CCT: source must be an https",
         ),
-        ("CCT", NotBuilt("", "https://x.y/z", harms=True), "not_built zha CCT needs a reason"),
-        ("Switch", NotBuilt("No timer yet", "https://x.y/z", harms=True), "no entry for zha Switch, which a scope"),
+        ("CCT", NotBuilt("", "https://x.y/z"), "not_built zha CCT needs a reason"),
+        ("Switch", NotBuilt("No timer yet", "https://x.y/z"), "no entry for zha Switch, which a scope"),
     ],
     ids=["non_https_source", "empty_reason", "no_phrase"],
 )

@@ -16,7 +16,7 @@ another vendor's definition shows neither: Lidl's `HG06337` lands in `other`, an
 puts it in a class no Zigbee-string rule can override (families.REGISTRY_PLACED: `hue`). So a registry Tuya class
 waits too (refused either way), a rule added before the Zigbee-string rules can't become final by accident, and a
 class a later call serves (part 3's countdown) still waits for the full strings. An Unplaced class is that class to
-every adapter but one whose call harms a class (refusals.py: the Tuya entries' NotBuilt.harms, turn_on_for's), where
+every adapter but one whose call harms a class (turn_on_for's, with refusals.py's Tuya entries), where
 the dispatcher refuses it as class_unknown (plan Decisions 23 and 26; docs/evidence.md, where a call is known to harm, a
 class not yet known is refused). A group is no device of its own: the dispatcher classes its members
 (members.expand_group), and falls back to them when one isn't placed. A device whose interview never completes stays

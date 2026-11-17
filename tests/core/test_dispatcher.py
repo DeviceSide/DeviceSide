@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+from contextlib import ExitStack, contextmanager
 from dataclasses import replace
 from unittest.mock import patch
 
@@ -163,9 +164,27 @@ CLASSED = AdapterScope(
     domains=verified("light", "switch"),
     duration=LIMITS,
     capabilities=verified("A") | experimental("B"),
-    no_known_method={"D": NoKnownMethod("Plug D", "It never switches on", "https://example.com/d", harms=False)},
+    no_known_method={"D": NoKnownMethod("Plug D", "It never switches on", "https://example.com/d")},
     native_groups=True,
 )
+
+
+@contextmanager
+def harmless_failure(hass):
+    """The fake's timed adapters run as if their action's failure didn't harm (Action.failure_harms), as Hue's
+    set_scene: CLASSED's no_known_method entry then refuses its class alone, and a target not yet placed is weighed as
+    its class, or None as Experimental."""
+    registry = get_runtime(hass).registry
+    with ExitStack() as stack:
+        for action in ("turn_on_for", "turn_off_for"):
+            stack.enter_context(patch.object(registry.adapter(action, "fake"), "failure_harms", False))
+        yield
+
+
+@pytest.fixture
+def harmless(hass, setup_integration):
+    with harmless_failure(hass):
+        yield
 
 
 @pytest.mark.usefixtures("classed")
@@ -185,7 +204,7 @@ async def test_an_experimental_class_is_gated_by_the_one_the_integration_names(h
         }
 
 
-@pytest.mark.usefixtures("classed")
+@pytest.mark.usefixtures("classed", "harmless")
 async def test_a_class_with_no_known_method_or_not_served_is_refused_and_none_is_gated(
     hass, fake, reset_script, caplog
 ):
@@ -209,13 +228,11 @@ async def test_a_class_with_no_known_method_or_not_served_is_refused_and_none_is
 
 
 # Where a call is known to harm, a class not yet known is refused (docs/evidence.md, Device classes): on an adapter
-# whose scope holds a harm-based no_known_method or not_built entry, a target not yet placed is refused as
-# class_unknown.
-HARMED = replace(
-    CLASSED, no_known_method={"D": NoKnownMethod("Plug D", "It stays on", "https://example.com/d", harms=True)}
-)
+# whose action's failure harms (the fake's turn_off_for) and whose scope holds a no_known_method or not_built entry, a
+# target not yet placed is refused as class_unknown.
+HARMED = replace(CLASSED, no_known_method={"D": NoKnownMethod("Plug D", "It stays on", "https://example.com/d")})
 # The same rule from a class not built yet that today's call would harm (plan Decision 70).
-HARMED_NOT_BUILT = replace(CLASSED, not_built={"C": NotBuilt("It would stay on", "https://example.com/c", harms=True)})
+HARMED_NOT_BUILT = replace(CLASSED, not_built={"C": NotBuilt("It would stay on", "https://example.com/c")})
 
 
 @pytest.mark.usefixtures("classed")
@@ -240,9 +257,9 @@ async def test_where_the_call_harms_a_class_one_not_yet_placed_is_refused(
     assert reset_script.calls == []
 
 
-@pytest.mark.usefixtures("classed")
+@pytest.mark.usefixtures("classed", "harmless")
 async def test_elsewhere_a_class_not_yet_placed_is_the_class_it_names(hass, fake, reset_script):
-    """No harm-based entry, so the call is planned on the class, as Verified A; the response leaves the class out,
+    """No harm (`harmless`), so the call is planned on the class, as Verified A; the response leaves the class out,
     as it could still move (plan Decision 29)."""
     add_fake_entity(hass, fake, "switch.pending_a")
     allow_experimental(hass, False)
@@ -253,7 +270,7 @@ async def test_elsewhere_a_class_not_yet_placed_is_the_class_it_names(hass, fake
     assert response == {"switch.pending_a": {"status": "sent", "integration": "fake"}}
 
 
-@pytest.mark.usefixtures("classed")
+@pytest.mark.usefixtures("classed", "harmless")
 async def test_a_group_with_a_member_not_yet_placed_reports_no_capabilities(hass, fake, reset_script):
     """Run whole where no call harms a class, the group's list leaves out the provisional class with the rest, as it
     does a member the integration couldn't name: a list stands only for every member's known class. Each member's
@@ -273,7 +290,7 @@ async def test_a_group_with_a_member_not_yet_placed_reports_no_capabilities(hass
     assert [ids for *_, ids in reset_script.calls] == [["switch.fake_group"]]
 
 
-@pytest.mark.usefixtures("classed")
+@pytest.mark.usefixtures("classed", "harmless")
 async def test_a_group_with_a_member_the_integration_cant_name_reports_the_rest(hass, fake, reset_script):
     """Run whole with Experimental features on, the unnamed member voids the group's list and only its own entry."""
     members = ["switch.a", "switch.unknown", "light.e"]
@@ -345,7 +362,7 @@ async def test_a_group_leaves_a_member_it_cant_address_alone_out_of_its_member_m
     }
 
 
-@pytest.mark.usefixtures("classed")
+@pytest.mark.usefixtures("classed", "harmless")
 async def test_a_group_whose_classifier_raised_reports_no_member_classes(hass, fake, reset_script):
     add_fake_entity(hass, fake, "switch.a")
     add_fake_native_group(hass, fake, "switch.fake_group", ["switch.a"])
@@ -506,7 +523,7 @@ async def test_a_group_of_unknown_class_is_refused_where_the_call_harms_a_class(
     with patch.object(FakeTurnOffFor, "scope", HARMED):
         assert await refusal(hass, "turn_off_for", data) == "class_unknown"
         assert reset_script.calls == []
-    with patch.object(FakeTurnOffFor, "scope", CLASSED):
+    with patch.object(FakeTurnOffFor, "scope", CLASSED), harmless_failure(hass):
         assert list(await call(hass, "turn_off_for", data)) == ["switch.fake_group"]
 
 
@@ -596,7 +613,7 @@ async def test_a_native_group_left_nothing_to_do_names_its_members_classes(hass,
     }
 
 
-@pytest.mark.usefixtures("classed")
+@pytest.mark.usefixtures("classed", "harmless")
 @pytest.mark.parametrize("flagged", ["switch.b", "switch.unknown"])  # an Experimental class, and none
 async def test_a_native_group_with_a_flagged_member_falls_back_while_experimental_is_off(
     hass, fake, reset_script, caplog, flagged
@@ -676,7 +693,7 @@ async def test_a_group_whose_member_is_already_a_target_is_answered_by_it(hass, 
     assert "skipped targets" not in caplog.text
 
 
-@pytest.mark.usefixtures("classed")
+@pytest.mark.usefixtures("classed", "harmless")
 @pytest.mark.parametrize(
     ("members", "reason"),
     [
@@ -849,7 +866,7 @@ async def test_an_empty_native_group_is_skipped_silently(hass, fake, reset_scrip
     assert "skipped targets" not in caplog.text
 
 
-@pytest.mark.usefixtures("classed")
+@pytest.mark.usefixtures("classed", "harmless")
 @pytest.mark.parametrize("broken", ["capability", "expand_group"])
 async def test_a_classifier_that_raises_is_logged_and_counts_as_unknown(hass, fake, reset_script, caplog, broken):
     add_fake_entity(hass, fake, "switch.a")
@@ -879,7 +896,7 @@ async def test_a_classifier_that_raises_is_logged_and_counts_as_unknown(hass, fa
         ]
 
 
-@pytest.mark.usefixtures("classed")
+@pytest.mark.usefixtures("classed", "harmless")
 async def test_an_expand_group_answering_none_gates_a_classed_group(hass, fake, reset_script):
     add_fake_entity(hass, fake, "switch.a")
     add_fake_native_group(hass, fake, "switch.fake_group", ["switch.a"])
@@ -985,7 +1002,7 @@ async def test_a_group_with_refused_and_experimental_members_falls_back_with_exp
     assert sorted(response) == ["switch.a", "switch.b"]
 
 
-@pytest.mark.usefixtures("classed")
+@pytest.mark.usefixtures("classed", "harmless")
 async def test_a_native_group_whose_members_cant_be_listed_is_gated_and_names_no_class(hass, fake, reset_script):
     add_fake_native_group(hass, fake, "switch.fake_group", [])
     registry = get_runtime(hass).registry

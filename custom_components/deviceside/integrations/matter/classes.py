@@ -18,7 +18,7 @@ bridge the bridge's software. The rules, first match winning:
 
 The rules read the node's attribute cache, as addressing.lt_feature does: sync, no I/O. A node holds every attribute
 from its interview on, so one with no VendorID isn't fully reported: it is `uncertified`, Unplaced, the cautious class
-until it reports. No Matter scope holds a `harms` entry, so Unplaced refuses nothing today. A target with
+until it reports. No Matter scope holds a refusal entry, so Unplaced refuses nothing today. A target with
 no node is None (addressing.unsupported_reason refuses it first, as not_addressable).
 """
 

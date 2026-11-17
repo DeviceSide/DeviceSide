@@ -32,7 +32,7 @@ of the adapters with each `caveat` (⚠️ Unmaintained, then ⚠️ Untested fi
   neither its `capabilities` nor its `no_known_method`, and so refuses; only those devices.yaml gives a phrase. Then
   docs/models.yaml's `not_built` entries, by their `what`.
 - No known method: the scopes' `no_known_method`, with the features whose adapters list them, then devices.yaml's.
-  A scope's `not_built` entry (core/scope.py, NotBuilt, one today's call harms) is listed as not built yet, as
+  A scope's `not_built` entry (core/scope.py, NotBuilt, on a harmful action only) is listed as not built yet, as
   above; the evidence block adds a table of them and of models.yaml's, with why and the source.
 Classes with the same features share an entry, and those of one page section a link. A model or blocker drops the
 integration's name where it leads, as the card's name already gives it. Cards show features, not fields: a flagged or
@@ -310,7 +310,7 @@ def code_broken(registry: AdapterRegistry) -> list[tuple[dict, set[str]]]:
 
 
 def code_unbuilt(key: str, integration_adapters: list, data: Data) -> list[dict]:
-    """The scopes' not_built entries (core/scope.py, NotBuilt, each one today's call harms), each named by
+    """The scopes' not_built entries (core/scope.py, NotBuilt, on a harmful action only), each named by
     its class's devices.yaml phrase, with the actions whose adapters list it, for the evidence block: the card lists
     the class as not built yet, as it does any other, and this keeps the harm's source. One per class, reason and
     source."""

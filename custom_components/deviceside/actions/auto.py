@@ -17,6 +17,7 @@ class SetAuto(Action[TimedRequest]):
     """Store a delay the device applies after every turn-on (auto-off) or turn-off (auto-on)."""
 
     kind: ClassVar[ActionKind] = ActionKind.SETTING
+    failure_harms: ClassVar[bool] = True
     domains: ClassVar[frozenset[str]] = frozenset({Platform.LIGHT, Platform.SWITCH})
     fields: ClassVar[dict] = {probatio.Required("duration"): cv.positive_time_period}
 
@@ -29,6 +30,7 @@ class ClearAuto(Action[Request]):
     """Remove the stored setting, as core's clear_ services do (sonos.clear_sleep_timer); never a zero duration."""
 
     kind: ClassVar[ActionKind] = ActionKind.SETTING
+    failure_harms: ClassVar[bool] = True
     domains: ClassVar[frozenset[str]] = frozenset({Platform.LIGHT, Platform.SWITCH})
 
     @classmethod

@@ -23,7 +23,7 @@ from custom_components.deviceside.core.scope import (
 )
 
 from ..conftest import FAKE_INTEGRATIONS
-from ..fakes.fake_integration import ADAPTERS, INTEGRATION, FakeTurnOffFor, FakeTurnOnFor
+from ..fakes.fake_integration import ADAPTERS, INTEGRATION, FakeSetAttributes, FakeTurnOffFor, FakeTurnOnFor
 
 
 def _registry(adapters=ADAPTERS, info=INTEGRATION) -> AdapterRegistry:
@@ -83,8 +83,8 @@ def test_adapter_for_unknown_action_is_refused():
 
 
 CLASSED = replace(INTEGRATION, capability=lambda hass, target: "hue", classes=frozenset({"hue", "tuya", "other"}))
-NO_METHOD = NoKnownMethod("Tuya plug", "It never switches on", "https://example.com/source", harms=False)
-NOT_BUILT = NotBuilt("It would stay on", "https://example.com/source", harms=True)
+NO_METHOD = NoKnownMethod("Tuya plug", "It never switches on", "https://example.com/source")
+NOT_BUILT = NotBuilt("It would stay on", "https://example.com/source")
 
 
 class Classed(FakeTurnOnFor):
@@ -399,3 +399,46 @@ def test_production_declares_the_hue_v1_bridge_unsupported():
 
     assert list(registry.unsupported) == ["hue_v1"]
     assert registry.unsupported["hue_v1"].ha_domain == registry.integrations["hue"].ha_domain
+
+
+def test_failure_harms_on_the_timed_and_auto_on_off_actions_alone():
+    """docs/evidence.md, When today's call harms a class: the registry hands each adapter its action's."""
+    assert {action.key for action in actions.discover() if action.failure_harms} == {
+        "turn_on_for",
+        "turn_off_for",
+        "set_auto_off",
+        "set_auto_on",
+        "clear_auto_off",
+        "clear_auto_on",
+    }
+    registry = AdapterRegistry(actions.discover(), FAKE_INTEGRATIONS)
+    assert registry.adapter("turn_on_for", "fake").failure_harms
+    assert not registry.adapter("set_attributes", "fake").failure_harms
+
+
+@pytest.mark.parametrize(
+    ("action", "integration", "harms"),
+    [
+        ("turn_on_for", "zha", True),  # its Tuya, Sengled and Sonoff not_built entries
+        ("set_scene", "hue", False),  # a smart scene has no known method, but set_scene's failure doesn't harm
+        ("turn_on_for", "shelly", False),  # no refusal entry, so no refused class an unplaced device could be in
+    ],
+)
+def test_harms_is_derived_from_the_action_and_the_scope_s_entries(action, integration, harms):
+    adapter = AdapterRegistry.discover().adapter(action, integration)
+
+    assert adapter.scope.harms(adapter.failure_harms) is harms
+
+
+def test_a_not_built_entry_only_on_an_action_whose_failure_harms():
+    """A class not built yet that the call leaves unharmed needs no entry: leaving it out refuses it the same way."""
+
+    class Unharmed(FakeSetAttributes):
+        scope = replace(FakeSetAttributes.scope, capabilities=verified("hue"), not_built={"tuya": NOT_BUILT})
+
+    class Harmed(FakeTurnOnFor):
+        scope = replace(Classed.scope, not_built={"tuya": NOT_BUILT})
+
+    with pytest.raises(ValueError, match=r"not_built entries \['tuya'\], but set_attributes's failure doesn't harm"):
+        _registry([Unharmed, Classed], CLASSED)
+    _registry([Harmed], CLASSED)
