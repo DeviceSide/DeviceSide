@@ -263,10 +263,15 @@ action's caveat. A group is a native group of the integration (a Hue zone, a ZHA
 
 | Action | Level | Items | Tested models | Records |
 |---|---|---|---|---|
-| `get_attributes` | Experimental | light entities | `LTD010`, by hand | [by hand](integrations/control4/test-records/_manual.json) |
-| `lower_brightness` | Experimental | light entities; brightness fields | `LTD010`, by hand | [by hand](integrations/control4/test-records/_manual.json) |
-| `raise_brightness` | Experimental | light entities; brightness fields | `LTD010`, by hand | [by hand](integrations/control4/test-records/_manual.json) |
-| `set_attributes` | Experimental | light entities; color_temp_kelvin fields | `LTD010`, by hand | [by hand](integrations/control4/test-records/_manual.json) |
-| `stop` | Experimental | light entities | `LTD010`, by hand | [by hand](integrations/control4/test-records/_manual.json) |
+| `get_attributes` | Experimental | light entities; no_stop, other classes | none | |
+| `lower_brightness` | Experimental | light entities; other classes; brightness fields | none | |
+| `raise_brightness` | Experimental | light entities; other classes; brightness fields | none | |
+| `set_attributes` | Experimental | light entities; no_stop, other classes; color_temp_kelvin fields | none | |
+| `stop` | Experimental | light entities; other classes | none | |
+
+| No known method | Why | Source |
+|---|---|---|
+| lights whose driver can't stop a ramp (`lower_brightness`, `raise_brightness`) | The light's driver says it can't stop a ramp, so a raise or lower couldn't be halted | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/control4/index.md#lights-whose-driver-cant-stop-a-ramp) |
+| lights whose driver can't stop a ramp (`stop`) | The light's driver says it can't stop a ramp, and it ignores the stop | [source](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/control4/index.md#lights-whose-driver-cant-stop-a-ramp) |
 
 <!-- evidence:end -->

@@ -32,25 +32,31 @@ One section per adapter module, named after it.
 ### `inventory`
 
 Read as each Control4 entry loads (DeviceSide's setup, then each state change to loaded) and held, since
-`expand_group` and `supports()` have no I/O. Changes made in Composer show after the Control4 entry reloads.
+`expand_group` and `capability` have no I/O. Changes made in Composer show after the Control4 entry reloads.
 
 - **Groups.** A light group made with the open-source
   [Light Group driver](https://github.com/skialpine/control4-group-lighting) (`light_group.c4z`) is a native group:
   the light item whose parent is the driver's item, in core's item list (`runtime_data.director_all_items`). Its
   members are the light item ids in the driver's `Lights` property (`GET /api/v1/items/<driver>/properties`). A member
   is the HA light entity with that unique ID; one with none is left out. A group whose read fails runs as a plain
-  light, logged. Control4 names no classes, so members matter only for the fallback with Experimental features off.
-  Control4's own Hue driver can also stand for a Hue bridge group, but its members are on the bridge, not the
-  Director, so it is a plain light.
-- **Stop.** Every item's `Navigator Dynamic Capabilities` in one request
-  (`GET /api/v1/items/variables?varnames=…`). A light whose `supports_brightness_stop` is false is refused `stop`
-  (`stop_not_supported`): its Director shows a ramp's end at once and the stop changes nothing (Tested behavior), so a
-  read-back would confirm a halt that never happened. A light that reports no capabilities can stop, as before. A
-  failed read leaves every light able to stop, logged.
-- **Ramp.** A light whose parent item is on a driver in `NO_RAMP_DRIVERS` (Chowmain's "Link Client - Light",
-  `chowmain_link_light.c4z`) is refused `raise_brightness` and `lower_brightness` (`ramp_not_supported`): it jumps to
-  `RAMP_TO_LEVEL`'s level, ignoring its time (Tested behavior). Its capabilities claim brightness rates, so only the
-  driver tells it apart.
+  light, logged. Control4's own Hue driver can also stand for a Hue bridge group, but its members are on the bridge,
+  not the Director, so it is a plain light.
+- **No stop.** Every item's `Navigator Dynamic Capabilities` in one request
+  (`GET /api/v1/items/variables?varnames=…`): the items whose `supports_brightness_stop` is false. A failed read
+  leaves them in the default class, logged.
+
+### `classes`
+
+The class keys on what the light's driver says it can do (`classes.py`):
+
+- `no_stop`: capabilities say `supports_brightness_stop: false`. No known method for `stop`, `raise_brightness` or
+  `lower_brightness`: the driver ignores `SET_BRIGHTNESS_STOP` and its Director shows a ramp's end at once (Tested
+  behavior), so a stop can't be sent or confirmed, and a move couldn't be halted (every move needs a stop at least as
+  strong). Chowmain's Link Client also jumps to `RAMP_TO_LEVEL`'s level, ignoring its time.
+- `other`, the default: every other light, the "Zigbee 3 Light" bulb and Light Group driver included.
+
+A light group is classed by its members, so one with a `no_stop` member falls back to its members on a move or a
+stop: the rest run, and that one is refused. Before its entry's inventory has loaded, a light is `other`, Unplaced.
 
 ### `fade`
 
@@ -89,7 +95,7 @@ sized from the stop timings below); the waits hold no concurrency slot. `confirm
 equal, `sent` (`still_fading`) when they still differ (Control4 hadn't shown the halt yet, the driver ignored the
 stop, or a new move began meanwhile), `sent` (`halt_not_reported`) on
 a driver with no target, `unchanged` (`off`) at rest at 0. An on/off light is refused (`not_dimmable`) with nothing
-sent, as is one that can't stop (`stop_not_supported`, `inventory`).
+sent, as is one whose driver can't stop (`no_known_method`, `classes`).
 
 ### `get_attributes`
 

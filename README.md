@@ -105,6 +105,7 @@ The compatibility list shows which devices are known or likely to work. If you o
 **[Control4](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/control4/index.md)**
 
 - [lights](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/control4/index.md#control4-lights): 🌱 smooth dimming, set without turning on, get attributes
+- [lights whose driver can't stop a ramp](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations/control4/index.md#lights-whose-driver-cant-stop-a-ramp): 🌱 set without turning on, get attributes · 🔴 smooth dimming
 
 Details per integration are in [docs/integrations.md](https://github.com/DeviceSide/DeviceSide/blob/main/docs/integrations.md).
 

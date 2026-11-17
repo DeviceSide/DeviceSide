@@ -8,6 +8,7 @@ from typing import ClassVar
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
+from .classes import MOVE_LEVELS, MOVE_NO_KNOWN_METHOD
 from .director import (
     RAMP_LIMITS,
     LightLevel,
@@ -20,8 +21,6 @@ from .director import (
     unsupported_reason,
     whole_percent,
 )
-from .inventory import can_ramp
-from ...actions.ramp import RampRequest
 from ...core.fields import BRIGHTNESS_FIELD
 from ...core.level_fade import LevelFade, Reading
 from ...core.models import Target
@@ -31,7 +30,13 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def fade_scope() -> AdapterScope:
-    return AdapterScope(domains=experimental(Platform.LIGHT), fields=experimental(BRIGHTNESS_FIELD), native_groups=True)
+    return AdapterScope(
+        domains=experimental(Platform.LIGHT),
+        fields=experimental(BRIGHTNESS_FIELD),
+        capabilities=MOVE_LEVELS,
+        no_known_method=MOVE_NO_KNOWN_METHOD,
+        native_groups=True,
+    )
 
 
 class Control4Fade(LevelFade):
@@ -43,11 +48,6 @@ class Control4Fade(LevelFade):
 
     def unaddressable(self, target: Target) -> str | None:
         return unsupported_reason(target)
-
-    def supports(self, hass: HomeAssistant, request: RampRequest, target: Target) -> str | None:
-        if (reason := super().supports(hass, request, target)) is not None or request.nothing_to_do():
-            return reason
-        return None if can_ramp(hass, target) else "ramp_not_supported"
 
     def guard(self, hass: HomeAssistant, target: Target) -> asyncio.Lock:
         return item_lock(hass, target)

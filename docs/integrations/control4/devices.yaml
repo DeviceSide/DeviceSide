@@ -4,4 +4,10 @@
 column: Control4
 column_order: 6
 capabilities:
-  light: {phrase: lights, section: Control4 lights}
+  # The classes integrations/control4/classes.py names.
+  other:
+    phrase: lights
+    section: Control4 lights
+  no_stop:
+    phrase: lights whose driver can't stop a ramp
+    section: Lights whose driver can't stop a ramp

@@ -1,5 +1,5 @@
-"""Control4's inventory, read as the Control4 entry loads: Light Group driver groups are native, and a light whose
-capabilities say it can't stop is refused stop."""
+"""Control4's inventory, read as the Control4 entry loads: Light Group driver groups are native, and each light's
+driver names its class (classes.py)."""
 
 import json
 from unittest.mock import call as director_call
@@ -20,8 +20,6 @@ ITEMS = [
     {"id": GROUP, "parentId": DRIVER_ITEM},
     {"id": 90, "parentId": 14, "filename": "zigbee_light.c4z"},
     {"id": 101, "parentId": 90},
-    {"id": 80, "parentId": 14, "filename": "chowmain_link_light.c4z"},
-    {"id": 110, "parentId": 80},
 ]
 PROPERTIES = director_call(f"/api/v1/items/{DRIVER_ITEM}/properties")
 CAPABILITIES = director_call("/api/v1/items/variables?varnames=Navigator%20Dynamic%20Capabilities")
@@ -58,7 +56,6 @@ async def office(hass, director: FakeDirector):
     add_control4_light(hass, entry, "light.office", unique_id=str(GROUP))
     add_control4_light(hass, entry, "light.left", unique_id="101")
     add_control4_light(hass, entry, "light.right", unique_id="102")
-    add_control4_light(hass, entry, "light.dimmer", unique_id="110")
     await inventory.load(hass, entry)
     return entry
 
@@ -103,7 +100,8 @@ async def test_a_group_gets_one_command(hass):
     director = group_director()
     await office(hass, director)
 
-    assert await call(hass, "stop", {"entity_id": "light.office"}) == {"light.office": CONFIRMED}
+    members = {"capabilities": ["other"], "member_capabilities": {"light.left": "other", "light.right": "other"}}
+    assert await call(hass, "stop", {"entity_id": "light.office"}) == {"light.office": {**CONFIRMED, **members}}
     assert [command for command in director.log if command[0] != "get"] == [("SET_BRIGHTNESS_STOP", GROUP)]
 
 
@@ -114,9 +112,9 @@ async def test_a_group_whose_members_cant_be_read_is_a_plain_light(hass, caplog)
 
     assert not target(hass, "light.office").is_group
     assert "it runs as a plain light" in caplog.text
-    assert "stop is sent to every light" in caplog.text
+    assert "every light is taken to stop" in caplog.text
     assert str(DRIVER_ITEM) not in caplog.text
-    assert inventory.can_stop(hass, target(hass, "light.left"))
+    assert INTEGRATION.capability(hass, target(hass, "light.left")) == "other"
 
 
 async def test_setup_loads_a_loaded_entry_and_again_when_it_loads(hass, setup_production):
@@ -134,23 +132,15 @@ async def test_setup_loads_a_loaded_entry_and_again_when_it_loads(hass, setup_pr
     assert director.send_get_request.await_args_list == [PROPERTIES, CAPABILITIES]
 
 
-async def test_a_light_that_can_t_stop_is_refused_stop_with_nothing_sent(hass):
+async def test_a_light_whose_driver_can_t_stop_is_refused_every_move_with_nothing_sent(hass):
+    """Its driver ignores a stop (Tested behavior), so a raise or lower couldn't be halted."""
     director = group_director(no_stop=(101,))
     await office(hass, director)
     director.log.clear()
 
-    assert await refusal(hass, "stop", {"entity_id": "light.left"}) == "stop_not_supported"
+    for action in ("raise_brightness", "lower_brightness", "stop"):
+        assert await refusal(hass, action, {"entity_id": "light.left"}) == "no_known_method"
     assert director.log == []
-    assert await call(hass, "stop", {"entity_id": "light.right"}) == {"light.right": CONFIRMED}
-
-
-async def test_a_light_on_a_driver_that_ignores_a_ramp_s_time_is_refused_raise_and_lower(hass):
-    """Chowmain's Link Client jumps to the level (Tested behavior), so a raise or lower would jump."""
-    director = group_director()
-    await office(hass, director)
-    director.log.clear()
-
-    for action in ("raise_brightness", "lower_brightness"):
-        assert await refusal(hass, action, {"entity_id": "light.dimmer"}) == "ramp_not_supported"
-    assert director.log == []
-    assert inventory.can_ramp(hass, target(hass, "light.left"))
+    assert await call(hass, "stop", {"entity_id": "light.right"}) == {
+        "light.right": {**CONFIRMED, "capability": "other"}
+    }

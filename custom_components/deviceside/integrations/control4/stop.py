@@ -6,6 +6,7 @@ from typing import ClassVar
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
+from .classes import MOVE_LEVELS, STOP_NO_KNOWN_METHOD
 from .director import (
     LightLevel,
     dimmable,
@@ -15,7 +16,6 @@ from .director import (
     stop_brightness,
     unsupported_reason,
 )
-from .inventory import can_stop
 from ...core.adapter import Adapter
 from ...core.models import EntityResult, Request, Status, Target
 from ...core.readback import read_back
@@ -36,21 +36,23 @@ class Control4Stop(Adapter[Request]):
     still shows a ramp is repeated briefly. A light still heading for a target after that is only sent, so a driver
     that ignored the command never reads as confirmed; so is one on a driver that reports no target, which can't
     show a halt, and one whose read-back failed. A light at rest at 0 is unchanged with off. A light with no
-    brightness is refused, as is one whose capabilities say it can't halt a ramp (inventory).
+    brightness is refused; so is a light whose driver can't stop a ramp, as no known method (classes.py).
     """
 
     action: ClassVar[str] = "stop"
     integration: ClassVar[str] = "control4"
     scope: ClassVar[AdapterScope] = AdapterScope(
-        domains=experimental(Platform.LIGHT), confirmable=True, native_groups=True
+        domains=experimental(Platform.LIGHT),
+        capabilities=MOVE_LEVELS,
+        no_known_method=STOP_NO_KNOWN_METHOD,
+        confirmable=True,
+        native_groups=True,
     )
 
     def supports(self, hass: HomeAssistant, request: Request, target: Target) -> str | None:
         # Ahead of the scope check: an on/off light can never take a stop, whatever is tested.
         if target.domain == Platform.LIGHT and not dimmable(target):
             return "not_dimmable"
-        if not can_stop(hass, target):
-            return "stop_not_supported"
         return super().supports(hass, request, target) or unsupported_reason(target)
 
     async def execute(self, hass: HomeAssistant, request: Request, targets: list[Target]) -> list[EntityResult]:
