@@ -78,8 +78,8 @@ proves the call on the `hue` class, not on every Zigbee light.
 ## Levels
 
 A scope item (an entity domain, class or field of an adapter) is Verified, Documented or Experimental; an
-Experimental item is refused unless Experimental features is on. To flag a whole adapter, flag its domains. An
-untested item ships Experimental ([the experimental flag](#the-experimental-flag)).
+Experimental item is refused unless Experimental features is on. To flag a whole adapter, flag its
+domains ([the experimental flag](#the-experimental-flag)).
 
 - **Verified:** a maintainer has verified the call on a real device, by rig record or by manual test. How it was
   tested is the maintainer's choice; the rig is a tool, not a requirement.
