@@ -50,6 +50,29 @@ def envelope(integration: str, action: str, result: str, commit: str, options=()
     }
 
 
+BLOB = "ab" * 20  # a transcript's blob id, for a file no gate reads
+
+
+def bound(*actions: str, blob: str = BLOB) -> dict[str, str]:
+    """A manual row's `calls`: each action bound to the blob."""
+    return dict.fromkeys(actions, blob)
+
+
+def record_v3(
+    integration: str,
+    action: str,
+    tests: list[dict],
+    *,
+    result: str = "pass",
+    commit: str = "1a2b3c4",
+    calls: str = BLOB,
+    options=(),
+) -> dict:
+    """A record as the rig writes it: bound to the call transcript it tested."""
+    found = {"format": 3, **envelope(integration, action, result, commit, options)}
+    return found | {"calls": calls, "home_assistant": "2026.10.4", "tests": tests}
+
+
 def record_v2(
     integration: str,
     action: str,
@@ -60,6 +83,7 @@ def record_v2(
     package=None,
     options=(),
 ) -> dict:
+    """A record bound to its package tree, from before transcripts: it credits, and signs off nothing."""
     found = {"format": 2, **envelope(integration, action, result, commit, options)}
     return found | {"package": package or "0123456789ab", "home_assistant": "2026.10.4", "tests": tests}
 
@@ -82,27 +106,23 @@ def signoff(
     commit: str = "1a2b3c4",
     tester: str = "a",
     devices=(("LCA001", None),),
-    passed=("turn_on_for",),
-    actions=None,
+    calls=None,
     group: bool = False,
+    passed=None,
 ) -> dict:
-    """A `_manual.json` row; `passed` None for a no-call-changed row, which `actions` narrows to
-    those actions; `group` for a native group's members."""
-    row = {"date": "2026-11-12", "commit": commit[:7], "tester": tester}
-    if passed is None:
-        return row | {"no_call_changed": True} | ({"actions": list(actions)} if actions else {})
-    return (
-        row
-        | ({"group": True} if group else {})
-        | {
-            "devices": [{"model": m, "manufacturer": None, "class": c} for m, c in devices],
-            "passed": list(passed),
-        }
-    )
+    """A `_manual.json` row: format 3, `calls` each action's transcript blob (default: turn_on_for's, `BLOB`); or, with
+    `passed`, format 2's, naming the actions alone. `group` for a native group's members."""
+    row = {"date": "2026-11-12", "commit": commit[:7], "tester": tester} | ({"group": True} if group else {})
+    row["devices"] = [{"model": m, "manufacturer": None, "class": c} for m, c in devices]
+    if passed is not None:
+        return row | {"passed": list(passed)}
+    return row | {"calls": dict(calls) if calls is not None else {"turn_on_for": BLOB}}
 
 
 def manual(integration: str, *rows: dict) -> dict:
-    return {"format": 2, "integration": integration, "signoffs": list(rows)}
+    """A `_manual.json`, in format 2 when its rows are (`passed`), else 3."""
+    format_ = 2 if rows and all("passed" in row for row in rows) else 3
+    return {"format": format_, "integration": integration, "signoffs": list(rows)}
 
 
 def text(data: dict) -> str:

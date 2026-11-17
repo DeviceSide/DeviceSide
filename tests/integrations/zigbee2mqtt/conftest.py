@@ -1,4 +1,5 @@
 import asyncio
+import itertools
 import json
 import logging
 import re
@@ -6,7 +7,8 @@ from dataclasses import replace
 from types import SimpleNamespace
 
 import pytest
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.core import ServiceCall
+from homeassistant.exceptions import HomeAssistantError, ServiceNotFound
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
@@ -74,15 +76,28 @@ def harmless(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def publish_via_service(monkeypatch):
-    """Route mqtt.async_publish to an mqtt.publish service, which the tests register as the broker (or a failure).
+    """Route mqtt.async_publish to the handler a test registered as the mqtt.publish service (the broker, or a failure).
 
-    The real mqtt integration isn't set up in unit tests, so its async_publish would refuse every publish.
+    The real mqtt integration isn't set up in unit tests, so its async_publish would refuse every publish. The handler
+    is run directly, not through `hass.services.async_call`, so the publish is no service call in a transcript.
     """
 
     async def async_publish(hass, topic: str, payload: str, *args, **kwargs) -> None:
-        await hass.services.async_call("mqtt", "publish", {"topic": topic, "payload": payload}, blocking=True)
+        if (service := hass.services.async_services_internal().get("mqtt", {}).get("publish")) is None:
+            raise ServiceNotFound("mqtt", "publish")
+        call = ServiceCall(hass, "mqtt", "publish", {"topic": topic, "payload": payload})
+        if (running := hass.async_run_hass_job(service.job, call)) is not None:
+            await running
 
     monkeypatch.setattr(bridge.mqtt, "async_publish", async_publish)
+
+
+@pytest.fixture(autouse=True)
+def numbered_transactions(monkeypatch):
+    """bridge.py's options-request transactions, numbered per test (`000...01`) instead of random, so a request's
+    bytes are the same on every run."""
+    numbers = itertools.count(1)
+    monkeypatch.setattr(bridge, "uuid4", lambda: SimpleNamespace(hex=f"{next(numbers):032x}"))
 
 
 @pytest.fixture

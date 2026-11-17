@@ -1,5 +1,5 @@
 {
-  "format": 2,
+  "format": 3,
   "integration": "zigbee2mqtt",
   "action": "raise_hue",
   "result": "pass",
@@ -8,7 +8,7 @@
     "kind": "rig",
     "commit": "a27779ef"
   },
-  "package": "c29127046ee7",
+  "calls": "033c8d89936f585410eda9b8892c1d3b83c40b6f",
   "home_assistant": "2026.10.4",
   "tests": [
     {

@@ -85,6 +85,18 @@ def failing(call_rpc: AsyncMock, verb: str, after: int = 0) -> None:
     call_rpc.side_effect = side_effect
 
 
+class RpcDevice:
+    """Stands in for aioshelly's RpcDevice, which stays out of the test environment: `call_rpc` is the one method
+    DeviceSide calls, a method on the class (the wire boundary tests/integrations/shelly/wire.py wraps) that awaits the
+    test's mock, so a test sets `side_effect` and reads the calls there."""
+
+    def __init__(self, call_rpc: AsyncMock) -> None:
+        self.mock = call_rpc
+
+    async def call_rpc(self, method: str, params: dict) -> dict | None:
+        return await self.mock(method, params)
+
+
 def shelly_device(
     hass: HomeAssistant,
     gen1: bool = False,
@@ -93,13 +105,13 @@ def shelly_device(
     config: dict | None = None,
     halt: dict | None = None,
 ) -> tuple[MockConfigEntry, AsyncMock]:
-    """A loaded Shelly entry whose runtime_data.rpc.device.call_rpc is the returned mock; status, config and halt as
-    timer_running's."""
+    """A loaded Shelly entry whose runtime_data.rpc.device (an RpcDevice) sends through the returned call_rpc mock;
+    status, config and halt as timer_running's."""
     call_rpc = AsyncMock(side_effect=timer_running(status, config, halt))
     entry = MockConfigEntry(domain="shelly", unique_id=mac)
     entry.add_to_hass(hass)
     entry.mock_state(hass, ConfigEntryState.LOADED)
-    rpc = None if gen1 else SimpleNamespace(device=SimpleNamespace(call_rpc=call_rpc))
+    rpc = None if gen1 else SimpleNamespace(device=RpcDevice(call_rpc))
     entry.runtime_data = SimpleNamespace(rpc=rpc, block=SimpleNamespace() if gen1 else None)
     return entry, call_rpc
 

@@ -5,6 +5,7 @@ import logging
 from contextvars import Context
 
 import pytest
+from aiohue.v2 import HueBridgeV2
 from aiohue.v2.controllers.events import EventType
 from pytest_homeassistant_custom_component.common import async_mock_service
 
@@ -375,12 +376,12 @@ async def test_the_first_move_hides_the_end_the_bridge_reports_during_the_write(
     await setup_room(hass, bridge)  # no filter yet: the first move attaches it
     put = bridge.api.request
 
-    async def report_during_put(method, path, json=None, **kwargs):
+    async def report_during_put(api, method, path, json=None, **kwargs):
         if method == "put":
             report(bridge, light_event("one", brightness=100.0))  # the bridge's end value, before the write returns
         return await put(method, path, json=json, **kwargs)
 
-    monkeypatch.setattr(bridge.api, "request", report_during_put)
+    monkeypatch.setattr(HueBridgeV2, "request", report_during_put)
 
     await raise_one(hass)
     await settle(hass)
@@ -402,17 +403,17 @@ async def test_detaching_drops_the_bridges_filter_but_not_a_newer_one(hass, brid
     assert filters[entry_id] is newer
 
 
-async def test_a_stop_landing_during_the_fades_write_leaves_no_end_job(hass, bridge, clock):
+async def test_a_stop_landing_during_the_fades_write_leaves_no_end_job(hass, bridge, clock, monkeypatch):
     await setup_room(hass, bridge)
     cache = transition_cache(hass)
     request = bridge.api.request
 
-    async def stop_lands(*args, **kwargs):
+    async def stop_lands(api, *args, **kwargs):
         # A stop is its own call, so it records outside the fade's recording block.
         Context().run(cache.stopped, "one", "brightness", 50.0)
         return await request(*args, **kwargs)
 
-    bridge.api.request = stop_lands
+    monkeypatch.setattr(HueBridgeV2, "request", stop_lands)
     await raise_one(hass)
 
     assert not [key for key in get_runtime(hass).pending if key.startswith(_END_PREFIX)]

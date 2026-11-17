@@ -1,0 +1,1232 @@
+[
+ {
+  "action": "raise_brightness",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "brightness",
+    "dropped": false,
+    "limit": 70.0,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "RGBCCT",
+    "data": null,
+    "detail": "at_limit",
+    "entity_id": "light.bulb",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "unchanged"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBCCT.GetStatus",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "brightness": 70,
+     "ct": 2700,
+     "id": 0,
+     "mode": "cct",
+     "output": true
+    }
+   ]
+  ]
+ },
+ {
+  "action": "raise_brightness",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "brightness",
+    "dropped": false,
+    "limit": 70.0,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "RGBCCT",
+    "data": null,
+    "detail": "at_limit",
+    "entity_id": "light.bulb",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "unchanged"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBCCT.GetStatus",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "brightness": 80,
+     "ct": 2700,
+     "id": 0,
+     "mode": "cct",
+     "output": true
+    }
+   ]
+  ]
+ },
+ {
+  "action": "raise_brightness",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "brightness",
+    "dropped": false,
+    "limit": 70.0,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "RGBCCT",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBCCT.GetStatus",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "brightness": 40,
+     "ct": 2700,
+     "id": 0,
+     "mode": "cct",
+     "output": true
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBCCT.Set",
+      {
+       "brightness": 70,
+       "id": 0,
+       "on": true,
+       "transition_duration": 1.5
+      }
+     ],
+     {}
+    ],
+    {
+     "was_on": false
+    }
+   ]
+  ]
+ },
+ {
+  "action": "raise_brightness",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "brightness",
+    "dropped": false,
+    "limit": 70.33,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "RGBCCT",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBCCT.GetStatus",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "brightness": 40,
+     "ct": 2700,
+     "id": 0,
+     "mode": "cct",
+     "output": true
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBCCT.Set",
+      {
+       "brightness": 70,
+       "id": 0,
+       "on": true,
+       "transition_duration": 1.52
+      }
+     ],
+     {}
+    ],
+    {
+     "was_on": false
+    }
+   ]
+  ]
+ },
+ {
+  "action": "raise_brightness",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "brightness",
+    "dropped": false,
+    "limit": 70.4,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "RGBCCT",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBCCT.GetStatus",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "brightness": 40,
+     "ct": 2700,
+     "id": 0,
+     "mode": "cct",
+     "output": true
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBCCT.Set",
+      {
+       "brightness": 70,
+       "id": 0,
+       "on": true,
+       "transition_duration": 1.52
+      }
+     ],
+     {}
+    ],
+    {
+     "was_on": false
+    }
+   ]
+  ]
+ },
+ {
+  "action": "raise_brightness",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "brightness",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 0.2,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": 0.5,
+    "classes": "RGBCCT",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBCCT.GetStatus",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "brightness": 0,
+     "ct": 2700,
+     "id": 0,
+     "mode": "cct",
+     "output": false
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBCCT.Set",
+      {
+       "brightness": 100,
+       "id": 0,
+       "on": true,
+       "transition_duration": 0.5
+      }
+     ],
+     {}
+    ],
+    {
+     "was_on": false
+    }
+   ]
+  ]
+ },
+ {
+  "action": "raise_brightness",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "brightness",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 10.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "RGBCCT",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBCCT.GetStatus",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "brightness": 40,
+     "ct": 2700,
+     "id": 0,
+     "mode": "cct",
+     "output": true
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBCCT.Set",
+      {
+       "brightness": 100,
+       "id": 0,
+       "on": true,
+       "transition_duration": 6.0
+      }
+     ],
+     {}
+    ],
+    {
+     "was_on": false
+    }
+   ]
+  ]
+ },
+ {
+  "action": "raise_brightness",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "brightness",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "RGBCCT",
+    "data": null,
+    "detail": "at_limit",
+    "entity_id": "light.bulb",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "unchanged"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBCCT.GetStatus",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "brightness": 100,
+     "ct": 2700,
+     "id": 0,
+     "mode": "cct",
+     "output": true
+    }
+   ]
+  ]
+ },
+ {
+  "action": "raise_brightness",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "brightness",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "RGBCCT",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBCCT.GetStatus",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "brightness": 40,
+     "ct": 2700,
+     "id": 0,
+     "mode": "cct",
+     "output": true
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBCCT.Set",
+      {
+       "brightness": 100,
+       "id": 0,
+       "on": true,
+       "transition_duration": 3.0
+      }
+     ],
+     {}
+    ],
+    {
+     "was_on": false
+    }
+   ]
+  ]
+ },
+ {
+  "action": "raise_brightness",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "brightness",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "RGBCCT",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBCCT.GetStatus",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "brightness": 55,
+     "ct": 2700,
+     "id": 0,
+     "mode": "cct",
+     "output": true
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBCCT.Set",
+      {
+       "brightness": 100,
+       "id": 0,
+       "on": true,
+       "transition_duration": 2.25
+      }
+     ],
+     {}
+    ],
+    {
+     "was_on": false
+    }
+   ]
+  ]
+ },
+ {
+  "action": "raise_brightness",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "brightness",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "RGBCCT",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBCCT.GetStatus",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "brightness": 60,
+     "ct": 2700,
+     "id": 0,
+     "mode": "cct",
+     "output": false
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBCCT.Set",
+      {
+       "brightness": 100,
+       "id": 0,
+       "on": true,
+       "transition_duration": 5.0
+      }
+     ],
+     {}
+    ],
+    {
+     "was_on": false
+    }
+   ]
+  ]
+ },
+ {
+  "action": "raise_brightness",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "brightness",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "RGBCCT",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBCCT.GetStatus",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "brightness": 95,
+     "ct": 2700,
+     "id": 0,
+     "mode": "cct",
+     "output": true
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBCCT.Set",
+      {
+       "brightness": 100,
+       "id": 0,
+       "on": true,
+       "transition_duration": 0.5
+      }
+     ],
+     {}
+    ],
+    {
+     "was_on": false
+    }
+   ]
+  ]
+ },
+ {
+  "action": "raise_brightness",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "brightness",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "error",
+    "entity_id": "light.bulb",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBCCT.GetStatus",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "brightness": 40,
+     "ct": 2700,
+     "id": 0,
+     "mode": "cct",
+     "output": true
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBCCT.Set",
+      {
+       "brightness": 100,
+       "id": 0,
+       "on": true,
+       "transition_duration": 3.0
+      }
+     ],
+     {}
+    ],
+    {
+     "raises": "ConnectionError"
+    }
+   ]
+  ]
+ },
+ {
+  "action": "raise_brightness",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "brightness",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "error",
+    "entity_id": "light.bulb",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBCCT.GetStatus",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "raises": "ConnectionError"
+    }
+   ]
+  ]
+ },
+ {
+  "action": "raise_brightness",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "brightness",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "CCT",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "CCT.GetStatus",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "brightness": 40,
+     "id": 0,
+     "output": true
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "CCT.Set",
+      {
+       "brightness": 100,
+       "id": 0,
+       "on": true,
+       "transition_duration": 3.0
+      }
+     ],
+     {}
+    ],
+    {
+     "was_on": false
+    }
+   ]
+  ]
+ },
+ {
+  "action": "raise_brightness",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "brightness",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "Light",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "Light.GetStatus",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "brightness": 40,
+     "id": 0,
+     "output": true
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "Light.Set",
+      {
+       "brightness": 100,
+       "id": 0,
+       "on": true,
+       "transition_duration": 3.0
+      }
+     ],
+     {}
+    ],
+    {
+     "was_on": false
+    }
+   ]
+  ]
+ },
+ {
+  "action": "raise_brightness",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "brightness",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "RGB",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGB.GetStatus",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "brightness": 40,
+     "id": 0,
+     "output": true
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGB.Set",
+      {
+       "brightness": 100,
+       "id": 0,
+       "on": true,
+       "transition_duration": 3.0
+      }
+     ],
+     {}
+    ],
+    {
+     "was_on": false
+    }
+   ]
+  ]
+ },
+ {
+  "action": "raise_brightness",
+  "integration": "shelly",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "attribute": "brightness",
+    "dropped": false,
+    "limit": null,
+    "sweep_time": 5.0,
+    "up": true
+   },
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "RGBW",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "shelly",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBW.GetStatus",
+      {
+       "id": 0
+      }
+     ],
+     {}
+    ],
+    {
+     "brightness": 40,
+     "id": 0,
+     "output": true
+    }
+   ],
+   [
+    [
+     "shelly.RpcDevice.call_rpc",
+     [
+      "RGBW.Set",
+      {
+       "brightness": 100,
+       "id": 0,
+       "on": true,
+       "transition_duration": 3.0
+      }
+     ],
+     {}
+    ],
+    {
+     "was_on": false
+    }
+   ]
+  ]
+ }
+]

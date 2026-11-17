@@ -1,0 +1,3357 @@
+[
+ {
+  "action": "turn_on_for",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0,
+    "light": {
+     "brightness": 47.0,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    }
+   },
+   "targets": [
+    [
+     "light.a",
+     "light.a",
+     false
+    ],
+    [
+     "light.b",
+     "light.b",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.a",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "confirmed"
+   },
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.b",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "light.turn_on",
+     {
+      "brightness": 120,
+      "entity_id": "light.zha_group"
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "service",
+     "zha.issue_zigbee_group_command",
+     {
+      "args": [
+       0,
+       50,
+       0
+      ],
+      "cluster_id": 6,
+      "command": 66,
+      "group": 2
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0a"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0b"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
+   ]
+  ]
+ },
+ {
+  "action": "turn_on_for",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0,
+    "light": {
+     "brightness": 50.0,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    }
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "light.turn_on",
+     {
+      "brightness": 128,
+      "entity_id": "light.bulb"
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 6,
+      "cluster_type": "in",
+      "command": 66,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "off_wait_time": 0,
+       "on_off_control": 0,
+       "on_time": 50
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
+   ]
+  ]
+ },
+ {
+  "action": "turn_on_for",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    }
+   },
+   "targets": [
+    [
+     "light.a",
+     "light.a",
+     false
+    ],
+    [
+     "light.b",
+     "light.b",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.a",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "confirmed"
+   },
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": "not_on",
+    "entity_id": "light.b",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_group_command",
+     {
+      "args": [
+       0,
+       50,
+       0
+      ],
+      "cluster_id": 6,
+      "command": 66,
+      "group": 2
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0a"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0b"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": false
+     },
+     {
+      "16385": 134
+     }
+    ]
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0b"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": false
+     },
+     {
+      "16385": 134
+     }
+    ]
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0b"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": false
+     },
+     {
+      "16385": 134
+     }
+    ]
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0b"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": false
+     },
+     {
+      "16385": 134
+     }
+    ]
+   ]
+  ]
+ },
+ {
+  "action": "turn_on_for",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    }
+   },
+   "targets": [
+    [
+     "light.a",
+     "light.a",
+     false
+    ],
+    [
+     "light.b",
+     "light.b",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.a",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "confirmed"
+   },
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": "readback_failed",
+    "entity_id": "light.b",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_group_command",
+     {
+      "args": [
+       0,
+       50,
+       0
+      ],
+      "cluster_id": 6,
+      "command": 66,
+      "group": 2
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0a"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0b"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {},
+     {
+      "0": 134,
+      "16385": 134
+     }
+    ]
+   ]
+  ]
+ },
+ {
+  "action": "turn_on_for",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    }
+   },
+   "targets": [
+    [
+     "light.a",
+     "light.a",
+     false
+    ],
+    [
+     "light.b",
+     "light.b",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.a",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "confirmed"
+   },
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": "timer_not_reported",
+    "entity_id": "light.b",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_group_command",
+     {
+      "args": [
+       0,
+       50,
+       0
+      ],
+      "cluster_id": 6,
+      "command": 66,
+      "group": 2
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0a"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0b"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": true
+     },
+     {
+      "16385": 134
+     }
+    ]
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0b"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": true
+     },
+     {
+      "16385": 134
+     }
+    ]
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0b"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": true
+     },
+     {
+      "16385": 134
+     }
+    ]
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0b"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": true
+     },
+     {
+      "16385": 134
+     }
+    ]
+   ]
+  ]
+ },
+ {
+  "action": "turn_on_for",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    }
+   },
+   "targets": [
+    [
+     "light.a",
+     "light.a",
+     false
+    ],
+    [
+     "light.b",
+     "light.b",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.a",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "confirmed"
+   },
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.b",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 6,
+      "cluster_type": "in",
+      "command": 66,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:00:00:00:00:00:00:0a",
+      "params": {
+       "off_wait_time": 0,
+       "on_off_control": 0,
+       "on_time": 50
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0a"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
+   ],
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 6,
+      "cluster_type": "in",
+      "command": 66,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:00:00:00:00:00:00:0b",
+      "params": {
+       "off_wait_time": 0,
+       "on_off_control": 0,
+       "on_time": 50
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0b"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
+   ]
+  ]
+ },
+ {
+  "action": "turn_on_for",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    }
+   },
+   "targets": [
+    [
+     "light.a",
+     "light.a",
+     false
+    ],
+    [
+     "light.b",
+     "light.b",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.a",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "confirmed"
+   },
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.b",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_group_command",
+     {
+      "args": [
+       0,
+       50,
+       0
+      ],
+      "cluster_id": 6,
+      "command": 66,
+      "group": 2
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0a"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0b"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": false,
+      "16385": 0
+     },
+     {}
+    ]
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0b"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": true,
+      "16385": 48
+     },
+     {}
+    ]
+   ]
+  ]
+ },
+ {
+  "action": "turn_on_for",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    }
+   },
+   "targets": [
+    [
+     "light.a",
+     "light.a",
+     false
+    ],
+    [
+     "light.b",
+     "light.b",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.a",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "confirmed"
+   },
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.b",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_group_command",
+     {
+      "args": [
+       0,
+       50,
+       0
+      ],
+      "cluster_id": 6,
+      "command": 66,
+      "group": 2
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0a"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0b"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": true,
+      "16385": 0
+     },
+     {}
+    ]
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0b"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": true,
+      "16385": 48
+     },
+     {}
+    ]
+   ]
+  ]
+ },
+ {
+  "action": "turn_on_for",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    }
+   },
+   "targets": [
+    [
+     "light.a",
+     "light.a",
+     false
+    ],
+    [
+     "light.b",
+     "light.b",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.a",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "confirmed"
+   },
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.b",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_group_command",
+     {
+      "args": [
+       0,
+       50,
+       0
+      ],
+      "cluster_id": 6,
+      "command": 66,
+      "group": 2
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0a"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0b"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
+   ]
+  ]
+ },
+ {
+  "action": "turn_on_for",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    }
+   },
+   "targets": [
+    [
+     "light.a",
+     "light.a",
+     false
+    ],
+    [
+     "light.b",
+     "light.b",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "admin_required",
+    "entity_id": "light.a",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "rejected"
+   },
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "admin_required",
+    "entity_id": "light.b",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_group_command",
+     {
+      "args": [
+       0,
+       50,
+       0
+      ],
+      "cluster_id": 6,
+      "command": 66,
+      "group": 2
+     },
+     {
+      "blocking": true
+     }
+    ],
+    {
+     "raises": "Unauthorized"
+    }
+   ]
+  ]
+ },
+ {
+  "action": "turn_on_for",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    }
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ],
+    [
+     "light.a",
+     "light.a",
+     false
+    ],
+    [
+     "light.b",
+     "light.b",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "confirmed"
+   },
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.a",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "confirmed"
+   },
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.b",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_group_command",
+     {
+      "args": [
+       0,
+       50,
+       0
+      ],
+      "cluster_id": 6,
+      "command": 66,
+      "group": 2
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 6,
+      "cluster_type": "in",
+      "command": 66,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "off_wait_time": 0,
+       "on_off_control": 0,
+       "on_time": 50
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0a"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:00:00:00:00:00:00:0b"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
+   ]
+  ]
+ },
+ {
+  "action": "turn_on_for",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    }
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ],
+    [
+     "light.a",
+     "light.a",
+     false
+    ],
+    [
+     "light.b",
+     "light.b",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "confirmed"
+   },
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "error",
+    "entity_id": "light.a",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "rejected"
+   },
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "error",
+    "entity_id": "light.b",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_group_command",
+     {
+      "args": [
+       0,
+       50,
+       0
+      ],
+      "cluster_id": 6,
+      "command": 66,
+      "group": 2
+     },
+     {
+      "blocking": true
+     }
+    ],
+    {
+     "raises": "ValueError"
+    }
+   ],
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 6,
+      "cluster_type": "in",
+      "command": 66,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "off_wait_time": 0,
+       "on_off_control": 0,
+       "on_time": 50
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
+   ]
+  ]
+ },
+ {
+  "action": "turn_on_for",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    }
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ],
+    [
+     "light.gone",
+     "light.gone",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "confirmed"
+   },
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "error",
+    "entity_id": "light.gone",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 6,
+      "cluster_type": "in",
+      "command": 66,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "off_wait_time": 0,
+       "on_off_control": 0,
+       "on_time": 50
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
+   ],
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 6,
+      "cluster_type": "in",
+      "command": 66,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:00:00:00:00:00:00:01",
+      "params": {
+       "off_wait_time": 0,
+       "on_off_control": 0,
+       "on_time": 50
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    {
+     "raises": "ValueError"
+    }
+   ]
+  ]
+ },
+ {
+  "action": "turn_on_for",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    }
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": "not_on",
+    "entity_id": "light.bulb",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 6,
+      "cluster_type": "in",
+      "command": 66,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "off_wait_time": 0,
+       "on_off_control": 0,
+       "on_time": 50
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": false,
+      "16385": 50
+     },
+     {}
+    ]
+   ]
+  ]
+ },
+ {
+  "action": "turn_on_for",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    }
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": "readback_failed",
+    "entity_id": "light.bulb",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 6,
+      "cluster_type": "in",
+      "command": 66,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "off_wait_time": 0,
+       "on_off_control": 0,
+       "on_time": 50
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": null,
+      "16385": 50
+     },
+     {}
+    ]
+   ]
+  ]
+ },
+ {
+  "action": "turn_on_for",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    }
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": "readback_failed",
+    "entity_id": "light.bulb",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 6,
+      "cluster_type": "in",
+      "command": 66,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "off_wait_time": 0,
+       "on_off_control": 0,
+       "on_time": 50
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": true,
+      "16385": null
+     },
+     {}
+    ]
+   ]
+  ]
+ },
+ {
+  "action": "turn_on_for",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    }
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": "readback_failed",
+    "entity_id": "light.bulb",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 6,
+      "cluster_type": "in",
+      "command": 66,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "off_wait_time": 0,
+       "on_off_control": 0,
+       "on_time": 50
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {},
+     {
+      "0": 134,
+      "16385": 134
+     }
+    ]
+   ]
+  ]
+ },
+ {
+  "action": "turn_on_for",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    }
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": "readback_failed",
+    "entity_id": "light.bulb",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 6,
+      "cluster_type": "in",
+      "command": 66,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "off_wait_time": 0,
+       "on_off_control": 0,
+       "on_time": 50
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    {
+     "raises": "TimeoutError"
+    }
+   ]
+  ]
+ },
+ {
+  "action": "turn_on_for",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    }
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": "timer_not_reported",
+    "entity_id": "light.bulb",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 6,
+      "cluster_type": "in",
+      "command": 66,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "off_wait_time": 0,
+       "on_off_control": 0,
+       "on_time": 50
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": 1
+     },
+     {
+      "16385": 134
+     }
+    ]
+   ]
+  ]
+ },
+ {
+  "action": "turn_on_for",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    }
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": "timer_not_reported",
+    "entity_id": "light.bulb",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 6,
+      "cluster_type": "in",
+      "command": 66,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "off_wait_time": 0,
+       "on_off_control": 0,
+       "on_time": 50
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": true,
+      "16385": 0
+     },
+     {}
+    ]
+   ]
+  ]
+ },
+ {
+  "action": "turn_on_for",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    }
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": "timer_not_reported",
+    "entity_id": "light.bulb",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 6,
+      "cluster_type": "in",
+      "command": 66,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "off_wait_time": 0,
+       "on_off_control": 0,
+       "on_time": 50
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": true,
+      "16385": 19
+     },
+     {}
+    ]
+   ]
+  ]
+ },
+ {
+  "action": "turn_on_for",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    }
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": "timer_not_reported",
+    "entity_id": "light.bulb",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 6,
+      "cluster_type": "in",
+      "command": 66,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "off_wait_time": 0,
+       "on_off_control": 0,
+       "on_time": 50
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": true,
+      "16385": 51
+     },
+     {}
+    ]
+   ]
+  ]
+ },
+ {
+  "action": "turn_on_for",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    }
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 6,
+      "cluster_type": "in",
+      "command": 66,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "off_wait_time": 0,
+       "on_off_control": 0,
+       "on_time": 50
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": true,
+      "16385": 20
+     },
+     {}
+    ]
+   ]
+  ]
+ },
+ {
+  "action": "turn_on_for",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    }
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 6,
+      "cluster_type": "in",
+      "command": 66,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "off_wait_time": 0,
+       "on_off_control": 0,
+       "on_time": 50
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
+   ]
+  ]
+ },
+ {
+  "action": "turn_on_for",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    }
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "admin_required",
+    "entity_id": "light.bulb",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 6,
+      "cluster_type": "in",
+      "command": 66,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "off_wait_time": 0,
+       "on_off_control": 0,
+       "on_time": 50
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    {
+     "raises": "Unauthorized"
+    }
+   ]
+  ]
+ },
+ {
+  "action": "turn_on_for",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    }
+   },
+   "targets": [
+    [
+     "light.ikea",
+     "light.ikea",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "other",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.ikea",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 6,
+      "cluster_type": "in",
+      "command": 66,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "off_wait_time": 0,
+       "on_off_control": 0,
+       "on_time": 50
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
+   ]
+  ]
+ },
+ {
+  "action": "turn_on_for",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    }
+   },
+   "targets": [
+    [
+     "switch.plug",
+     "switch.plug",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": "not_on",
+    "entity_id": "switch.plug",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "sent"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 6,
+      "cluster_type": "in",
+      "command": 66,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "off_wait_time": 0,
+       "on_off_control": 0,
+       "on_time": 50
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": false,
+      "16385": 50
+     },
+     {}
+    ]
+   ]
+  ]
+ },
+ {
+  "action": "turn_on_for",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 5.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    }
+   },
+   "targets": [
+    [
+     "switch.plug",
+     "switch.plug",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "switch.plug",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 6,
+      "cluster_type": "in",
+      "command": 66,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "off_wait_time": 0,
+       "on_off_control": 0,
+       "on_time": 50
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": true,
+      "16385": 50
+     },
+     {}
+    ]
+   ]
+  ]
+ },
+ {
+  "action": "turn_on_for",
+  "integration": "zha",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {
+    "duration_s": 7200.0,
+    "light": {
+     "brightness": null,
+     "color_temp_kelvin": null,
+     "hs_color": null,
+     "rgb_color": null,
+     "transition": null,
+     "xy_color": null
+    }
+   },
+   "targets": [
+    [
+     "light.bulb",
+     "light.bulb",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": 6553.4,
+    "classes": "hue",
+    "data": null,
+    "detail": null,
+    "entity_id": "light.bulb",
+    "integration": "zha",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "service",
+     "zha.issue_zigbee_cluster_command",
+     {
+      "cluster_id": 6,
+      "cluster_type": "in",
+      "command": 66,
+      "command_type": "server",
+      "endpoint_id": 11,
+      "ieee": "00:17:88:01:02:03:04:05",
+      "params": {
+       "off_wait_time": 0,
+       "on_off_control": 0,
+       "on_time": 65534
+      }
+     },
+     {
+      "blocking": true
+     }
+    ],
+    null
+   ],
+   [
+    [
+     "zha.Cluster.read_attributes",
+     [
+      {
+       "cluster_id": 6,
+       "endpoint_id": 11,
+       "ieee": "00:17:88:01:02:03:04:05"
+      },
+      [
+       0,
+       16385
+      ]
+     ],
+     {
+      "allow_cache": false,
+      "only_cache": false
+     }
+    ],
+    [
+     {
+      "0": true,
+      "16385": 65534
+     },
+     {}
+    ]
+   ]
+  ]
+ }
+]

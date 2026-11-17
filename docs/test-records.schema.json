@@ -16,17 +16,18 @@
     "action": {"description": "An action's key.", "type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
     "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
     "commit": {"description": "A commit, abbreviated or full.", "type": "string", "pattern": "^[0-9a-f]{7,40}$"},
+    "calls": {"description": "The git blob id of the action's call transcript, tests/integrations/<integration>/calls/<action>.json, as tested (git rev-parse <commit>:<path>): evidence stands while every segment of it occurs, unchanged, in HEAD's transcript (scripts/check_release.py).", "type": "string", "pattern": "^[0-9a-f]{40}$"},
     "model": {"description": "The model ID: a Zigbee device's Basic-cluster model (e.g. LWA012) on every integration, else the integration's model ID; docs/models.yaml or its bundle's devices.yaml must list it.", "type": "string", "minLength": 1},
     "firmware": {"description": "As the integration reports it; null when it reports none.", "type": ["string", "null"], "minLength": 1},
     "manufacturer": {"description": "The Zigbee manufacturer string as the integration reports it (Z2M bridge/devices `manufacturer`, ZHA's device manufacturer, the Hue bridge's `product_data.manufacturer_name`), else HA's registry manufacturer; null where none was reported or recorded. Never a device name.", "type": ["string", "null"], "minLength": 1},
     "class": {"description": "The class the call reached (IntegrationInfo.capability, as the action's result reports it); null where the integration named none, or names no classes, or, for a device not yet placed, the response leaves it out.", "type": ["string", "null"], "minLength": 1},
 
     "record": {
-      "description": "A rig run of one suite. Format 2 is what the rig writes: the devices each test reached. Format 1 is a markdown record converted once (device-classes plan, step 5b), with the run's devices on the record, not per test; it credits as the markdown did and is no sign-off.",
+      "description": "A rig run of one suite. Format 3 is what the rig writes: the devices each test reached, and the call transcript it tested (`calls`). Format 2 is the same, bound to the package tree instead (`package`); it credits classes and cards but is no sign-off. Format 1 is a markdown record converted once (device-classes plan, step 5b), with the run's devices on the record, not per test; it credits as the markdown did and is no sign-off.",
       "type": "object",
       "required": ["format", "integration", "action", "result", "date", "source", "home_assistant", "tests"],
       "properties": {
-        "format": {"enum": [1, 2]},
+        "format": {"enum": [1, 2, 3]},
         "integration": {"$ref": "#/$defs/integration"},
         "action": {"description": "The action the suite tests: its step file's `action`.", "$ref": "#/$defs/action"},
         "options": {"description": "The step file's `options`, sorted; absent when it has none.", "type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}},
@@ -38,10 +39,11 @@
           "additionalProperties": false,
           "properties": {
             "kind": {"description": "Who ran it: the rig (scripts/rig.py).", "const": "rig"},
-            "commit": {"description": "The deviceside commit the run tested.", "$ref": "#/$defs/commit"}
+            "commit": {"description": "The deviceside commit the run tested: provenance, which nothing checks.", "$ref": "#/$defs/commit"}
           }
         },
-        "package": {"description": "The git tree of integrations/<integration>/ at the run's commit, which check_release compares with the release's.", "type": "string", "pattern": "^[0-9a-f]{12,40}$"},
+        "package": {"description": "Format 2 only: the git tree of integrations/<integration>/ at the run's commit.", "type": "string", "pattern": "^[0-9a-f]{12,40}$"},
+        "calls": {"description": "Format 3 only.", "$ref": "#/$defs/calls"},
         "home_assistant": {"description": "Home Assistant's version.", "type": "string", "minLength": 1},
         "devices": {"description": "Format 1 only: the run's devices, in the order the record listed them.", "type": "array", "items": {"$ref": "#/$defs/record_device"}},
         "tests": {"type": "array", "minItems": 1, "items": true}
@@ -66,9 +68,11 @@
         "properties": {"tests": {"items": {"$ref": "#/$defs/test_v1"}}}
       },
       "else": {
-        "required": ["package"],
         "not": {"required": ["devices"]},
-        "properties": {"tests": {"items": {"$ref": "#/$defs/test_v2"}}}
+        "properties": {"tests": {"items": {"$ref": "#/$defs/test_v2"}}},
+        "if": {"properties": {"format": {"const": 2}}},
+        "then": {"required": ["package"], "not": {"required": ["calls"]}},
+        "else": {"required": ["calls"], "not": {"required": ["package"]}}
       }
     },
 
@@ -121,7 +125,7 @@
     },
 
     "test_v2": {
-      "description": "Format 2: a test with the devices it reached. A test that ran lists them, and its domain; a skipped one lists none and says why, unless it is a fact case.",
+      "description": "Formats 2 and 3: a test with the devices it reached. A test that ran lists them, and its domain; a skipped one lists none and says why, unless it is a fact case.",
       "$ref": "#/$defs/test_common",
       "unevaluatedProperties": false,
       "properties": {
@@ -136,7 +140,7 @@
       "else": {"required": ["domain", "devices"]},
       "allOf": [
         {
-          "description": "A group role's test that ran is a group's, as a scene's is: without `group`, its devices, the members, would each be credited as tested on its own. Format 1 names no device per test, so the rule is format 2's.",
+          "description": "A group role's test that ran is a group's, as a scene's is: without `group`, its devices, the members, would each be credited as tested on its own. Format 1 names no device per test, so the rule is formats 2 and 3's.",
           "if": {"properties": {"role": {"enum": ["group", "group_color"]}, "result": {"not": {"const": "skipped"}}}, "required": ["role", "result"]},
           "then": {"required": ["group"]}
         }
@@ -156,35 +160,34 @@
     },
 
     "manual": {
-      "description": "_manual.json: a maintainer's hand tests, a row each, added in a PR. A row is a sign-off by its commit (docs/evidence.md, Release gate).",
+      "description": "_manual.json: a maintainer's hand tests, a row each, added in a PR. A format 3 row is a sign-off of each action in its `calls` while that transcript stands (docs/evidence.md, Release gate); a format 2 row (`passed`) credits classes and cards but signs off nothing.",
       "type": "object",
       "required": ["format", "integration", "signoffs"],
       "additionalProperties": false,
       "properties": {
-        "format": {"const": 2},
+        "format": {"enum": [2, 3]},
         "integration": {"$ref": "#/$defs/integration"},
         "signoffs": {"type": "array", "items": {"$ref": "#/$defs/manual_row"}}
-      }
+      },
+      "if": {"properties": {"format": {"const": 2}}},
+      "then": {"properties": {"signoffs": {"items": {"required": ["passed"], "not": {"required": ["calls"]}}}}},
+      "else": {"properties": {"signoffs": {"items": {"required": ["calls"], "not": {"required": ["passed"]}}}}}
     },
 
     "manual_row": {
-      "description": "Either the devices tested, each with the class it reached, and the actions that passed on all of them (a row credits each class to each action, so split a row whose actions reached different classes), or a change that alters neither a call nor the handling of a device's reply: no_call_changed, for every action or for those `actions` names.",
+      "description": "The devices tested, each with the class it reached, and the actions that passed on all of them (a row credits each class to each action, so split a row whose actions reached different classes): format 3 names each action with the blob of its call transcript as tested (`calls`, which scripts/signoff.py fills from HEAD), format 2 the actions alone (`passed`).",
       "type": "object",
-      "required": ["date", "commit", "tester"],
+      "required": ["date", "commit", "tester", "devices"],
       "additionalProperties": false,
       "properties": {
         "date": {"$ref": "#/$defs/date"},
-        "commit": {"description": "The commit tested: on main or a release/ branch, holding the package as the release does.", "$ref": "#/$defs/commit"},
+        "commit": {"description": "The commit tested: provenance, which nothing checks.", "$ref": "#/$defs/commit"},
         "tester": {"description": "A GitHub handle, without the @: one of the integration's maintainers or a repo maintainer.", "type": "string", "pattern": "^[A-Za-z0-9-]+$"},
         "devices": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/manual_device"}},
         "group": {"description": "The actions targeted a native group, or a scene: devices are its members, each with its manufacturer and class.", "const": true},
-        "passed": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/action"}},
-        "no_call_changed": {"const": true},
-        "actions": {"description": "With no_call_changed: the actions whose records the row carries across the change its commit made, to their own or a shared module (docs/evidence.md, Release gate). Without it the row covers every action, and is a sign-off alone only when the package before its commit is the last release's.", "type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/action"}}
-      },
-      "if": {"required": ["no_call_changed"]},
-      "then": {"not": {"anyOf": [{"required": ["devices"]}, {"required": ["group"]}, {"required": ["passed"]}]}},
-      "else": {"required": ["devices", "passed"], "not": {"required": ["actions"]}}
+        "calls": {"description": "Format 3: each action that passed, with its transcript's blob.", "type": "object", "minProperties": 1, "propertyNames": {"$ref": "#/$defs/action"}, "additionalProperties": {"$ref": "#/$defs/calls"}},
+        "passed": {"description": "Format 2: the actions that passed.", "type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/action"}}
+      }
     },
 
     "manual_device": {

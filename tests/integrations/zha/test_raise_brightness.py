@@ -4,12 +4,12 @@ Hue's own command)."""
 import pytest
 
 from custom_components.deviceside.core.fields import BRIGHTNESS_FIELD
-from custom_components.deviceside.integrations.zha.addressing import Address
+from custom_components.deviceside.integrations.zha import zcl
 from custom_components.deviceside.integrations.zha.fade import transition_cache
 
 from .conftest import BOTTOM, E11_G13, IKEA, SENT, A, B, bulb, call, sent, to
 from ...conftest import allow_experimental, refusal
-from ...fixtures.zha import IEEE
+from ...fixtures.zha import IEEE, add_cluster
 
 pytestmark = pytest.mark.usefixtures("setup_production", "clock", "bulbs")
 
@@ -39,24 +39,26 @@ async def test_from_off_starts_at_the_bottom(hass, commands):
     assert sent(commands) == [BOTTOM, (0x0008, 0x04, {"level": 254, "transition_time": 50})]
 
 
-async def test_from_off_a_hue_bulb_is_turned_on_at_the_bottom_by_hues_command(hass, commands, hue_turn_on):
-    """A Hue bulb ignores the ExecuteIfOff level and fades from its stored one (13f lab run), so it gets multiColor."""
-    hue_turn_on.return_value = True
+async def test_from_off_a_hue_bulb_is_turned_on_at_the_bottom_by_hues_command(hass, commands, zha_gateway):
+    """A Hue bulb ignores the ExecuteIfOff level and fades from its stored one (13f lab run), so it gets multiColor:
+    on, at level 1, with no fade."""
     bulb(hass, state="off")
+    add_cluster(hass, zcl.HUE_CLUSTER)
 
     await call(hass, "raise_brightness", {"entity_id": "light.bulb"})
 
-    assert hue_turn_on.await_args.args[1:3] == (Address(IEEE, 11), 1)
+    multi_color = (False, zcl.HUE_MULTI_COLOR, (bytes.fromhex("1300 01 01 0000"),), zcl.SIGNIFY)
+    assert zha_gateway.requests == [(IEEE, zcl.HUE_CLUSTER, *multi_color)]
     assert sent(commands) == [(0x0008, 0x04, {"level": 254, "transition_time": 50})]
 
 
-async def test_a_lit_hue_bulb_gets_no_bottom(hass, commands, hue_turn_on):
-    hue_turn_on.return_value = True
+async def test_a_lit_hue_bulb_gets_no_bottom(hass, commands, zha_gateway):
     bulb(hass)
+    add_cluster(hass, zcl.HUE_CLUSTER)
 
     await call(hass, "raise_brightness", {"entity_id": "light.bulb"})
 
-    hue_turn_on.assert_not_awaited()
+    assert not zha_gateway.requests
 
 
 async def test_from_off_on_a_model_that_drops_levels_while_off_skips_the_bottom(hass, commands):

@@ -18,9 +18,6 @@ from ...conftest import sent
 from ...fixtures.zha import IEEE
 
 ADDR = Address(IEEE, 11)
-# The real one: conftest fakes zcl.hue_turn_on for every test.
-HUE_TURN_ON = zcl.hue_turn_on
-ZIGPY_DEVICE = zcl.zigpy_device
 
 
 @pytest.fixture
@@ -170,7 +167,7 @@ async def test_hue_turn_on_sends_multicolor_on_at_the_level_with_no_fade(hass, g
     """Flags 0x0013 (on, brightness, fade time), then on, the level and a fade of 0, as Z2M's hue_native_control."""
     cluster.request = AsyncMock(return_value=SimpleNamespace(status=0))
 
-    assert await HUE_TURN_ON(hass, ADDR, 1, Context(), entity_id="light.lamp") is True
+    assert await zcl.hue_turn_on(hass, ADDR, 1, Context(), entity_id="light.lamp") is True
 
     gateway.get_device.return_value.async_get_cluster.assert_called_once_with(11, 0xFC03, cluster_type="in")
     general, command_id, _schema, payload = cluster.request.await_args.args
@@ -182,7 +179,7 @@ async def test_hue_turn_on_without_hues_cluster_sends_nothing(hass, gateway, clu
     gateway.get_device.return_value.async_get_cluster.side_effect = KeyError(0xFC03)
     cluster.request = AsyncMock()
 
-    assert await HUE_TURN_ON(hass, ADDR, 1, Context(), entity_id="light.lamp") is False
+    assert await zcl.hue_turn_on(hass, ADDR, 1, Context(), entity_id="light.lamp") is False
     cluster.request.assert_not_awaited()
 
 
@@ -190,7 +187,7 @@ async def test_hue_turn_on_failed_status_raises(hass, gateway, cluster):
     cluster.request = AsyncMock(return_value=SimpleNamespace(status=0x81))
 
     with pytest.raises(HomeAssistantError, match="answered 129"):
-        await HUE_TURN_ON(hass, ADDR, 1, Context(), entity_id="light.lamp")
+        await zcl.hue_turn_on(hass, ADDR, 1, Context(), entity_id="light.lamp")
 
 
 async def test_hue_turn_on_refuses_a_non_admin_as_zha_does(hass, gateway, cluster, hass_read_only_user):
@@ -198,7 +195,7 @@ async def test_hue_turn_on_refuses_a_non_admin_as_zha_does(hass, gateway, cluste
     cluster.request = AsyncMock()
 
     with pytest.raises(Unauthorized):
-        await HUE_TURN_ON(hass, ADDR, 1, Context(user_id=hass_read_only_user.id), entity_id="light.lamp")
+        await zcl.hue_turn_on(hass, ADDR, 1, Context(user_id=hass_read_only_user.id), entity_id="light.lamp")
     cluster.request.assert_not_awaited()
 
 
@@ -206,7 +203,7 @@ async def test_hue_turn_on_refuses_an_unknown_user(hass, gateway, cluster):
     cluster.request = AsyncMock()
 
     with pytest.raises(UnknownUser):
-        await HUE_TURN_ON(hass, ADDR, 1, Context(user_id="no-such-user"), entity_id="light.lamp")
+        await zcl.hue_turn_on(hass, ADDR, 1, Context(user_id="no-such-user"), entity_id="light.lamp")
     cluster.request.assert_not_awaited()
 
 
@@ -214,13 +211,13 @@ async def test_hue_turn_on_without_the_device_raises(hass, gateway):
     gateway.get_device.return_value = None
 
     with pytest.raises(LookupError, match="not found"):
-        await HUE_TURN_ON(hass, ADDR, 1, None, entity_id="light.lamp")
+        await zcl.hue_turn_on(hass, ADDR, 1, None, entity_id="light.lamp")
 
 
 async def test_hue_turn_on_lets_an_admin_through(hass, gateway, cluster, hass_admin_user):
     cluster.request = AsyncMock(return_value=SimpleNamespace(status=0))
 
-    assert await HUE_TURN_ON(hass, ADDR, 1, Context(user_id=hass_admin_user.id), entity_id="light.lamp") is True
+    assert await zcl.hue_turn_on(hass, ADDR, 1, Context(user_id=hass_admin_user.id), entity_id="light.lamp") is True
 
 
 async def test_command_is_logged_by_entity_without_the_address(hass, wire):
@@ -244,27 +241,27 @@ async def test_group_command_is_logged_on_the_groups_light(hass, wire):
 async def test_hue_turn_on_is_logged_with_its_payload(hass, gateway, cluster, wire):
     cluster.request = AsyncMock(return_value=SimpleNamespace(status=0))
 
-    await HUE_TURN_ON(hass, ADDR, 1, None, entity_id="light.lamp")
+    await zcl.hue_turn_on(hass, ADDR, 1, None, entity_id="light.lamp")
 
     assert sent(wire) == ["light.lamp: sending zcl 0xfc03/0x00 130001010000"]
 
 
 async def test_zigpy_device_is_the_zha_devices_own(hass, gateway):
     """The zigpy device behind zha's, whose raw strings and quirk clusters the classifier reads."""
-    assert ZIGPY_DEVICE(hass, IEEE) is gateway.get_device.return_value.device
+    assert zcl.zigpy_device(hass, IEEE) is gateway.get_device.return_value.device
     gateway.get_device.assert_called_once_with(IEEE)
 
 
 async def test_zigpy_device_of_a_device_the_gateway_doesnt_hold_is_none(hass, gateway):
     gateway.get_device.return_value = None
 
-    assert ZIGPY_DEVICE(hass, IEEE) is None
+    assert zcl.zigpy_device(hass, IEEE) is None
 
 
 async def test_zigpy_device_without_a_gateway_is_none(hass, monkeypatch):
-    monkeypatch.setitem(sys.modules, "zigpy.types", SimpleNamespace(EUI64=SimpleNamespace(convert=lambda ieee: ieee)))
+    monkeypatch.delitem(hass.data, "zha")
 
-    assert ZIGPY_DEVICE(hass, IEEE) is None
+    assert zcl.zigpy_device(hass, IEEE) is None
 
 
 async def test_zigpy_device_of_an_ieee_of_the_wrong_length_is_none(hass, gateway, monkeypatch):
@@ -275,4 +272,4 @@ async def test_zigpy_device_of_an_ieee_of_the_wrong_length_is_none(hass, gateway
 
     monkeypatch.setitem(sys.modules, "zigpy.types", SimpleNamespace(EUI64=SimpleNamespace(convert=convert)))
 
-    assert ZIGPY_DEVICE(hass, "00:01") is None
+    assert zcl.zigpy_device(hass, "00:01") is None

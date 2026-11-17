@@ -16,7 +16,7 @@ from custom_components.deviceside.core.runtime import get_runtime
 
 from .fakes.scripted import SCRIPT
 
-pytest_plugins = ["tests.ha_deprecations"]
+pytest_plugins = ["pytester", "tests.ha_deprecations", "tests.transcripts"]
 
 FAKE_INTEGRATIONS = ["tests.fakes.broken_integration", "tests.fakes.fake_integration", "tests.fakes.fake_special"]
 

@@ -1,0 +1,470 @@
+[
+ {
+  "action": "get_attributes",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "error",
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,LIGHT_STATE,Current%20CCT,Current%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[]"
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "error",
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,LIGHT_STATE,Current%20CCT,Current%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"varName\": \"LIGHT_LEVEL\", \"value\": 40}, {\"varName\": \"LIGHT_STATE\", \"value\": 1}]"
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": null,
+    "detail": "error",
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "rejected"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,LIGHT_STATE,Current%20CCT,Current%20Color%20Mode"
+     ],
+     {}
+    ],
+    {
+     "raises": "ConnectionError"
+    }
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": {
+     "brightness": 40.0,
+     "color_temp_kelvin": 3200
+    },
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,LIGHT_STATE,Current%20CCT,Current%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"LIGHT_STATE\", \"value\": 1}, {\"id\": 100, \"varName\": \"Current CCT\", \"value\": 3200}, {\"id\": 100, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": {
+     "brightness": 40.0,
+     "color_temp_kelvin": 3200
+    },
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,LIGHT_STATE,Current%20CCT,Current%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": \"40.0\"}, {\"id\": 100, \"varName\": \"LIGHT_STATE\", \"value\": \"1\"}, {\"id\": 100, \"varName\": \"Current CCT\", \"value\": \"3200\"}, {\"id\": 100, \"varName\": \"Current Color Mode\", \"value\": \"1\"}]"
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": {
+     "brightness": 40.0
+    },
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,LIGHT_STATE,Current%20CCT,Current%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"LIGHT_STATE\", \"value\": 1}, {\"id\": 100, \"varName\": \"Current CCT\", \"value\": 3200}, {\"id\": 100, \"varName\": \"Current Color Mode\", \"value\": 0}]"
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": {
+     "brightness": 40.0
+    },
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,LIGHT_STATE,Current%20CCT,Current%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 40.0}, {\"id\": 100, \"varName\": \"LIGHT_STATE\", \"value\": 1}]"
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": {
+     "brightness": 77.44,
+     "color_temp_kelvin": 3200
+    },
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,LIGHT_STATE,Current%20CCT,Current%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 77.44}, {\"id\": 100, \"varName\": \"LIGHT_STATE\", \"value\": 1}, {\"id\": 100, \"varName\": \"Current CCT\", \"value\": 3200}, {\"id\": 100, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": {
+     "color_temp_kelvin": 3200
+    },
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,LIGHT_STATE,Current%20CCT,Current%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 0.0}, {\"id\": 100, \"varName\": \"LIGHT_STATE\", \"value\": 0}, {\"id\": 100, \"varName\": \"Current CCT\", \"value\": 3200}, {\"id\": 100, \"varName\": \"Current Color Mode\", \"value\": 1}]"
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": {},
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,LIGHT_STATE,Current%20CCT,Current%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"Brightness Percent\", \"value\": 0.0}, {\"id\": 100, \"varName\": \"LIGHT_STATE\", \"value\": 0}]"
+   ]
+  ]
+ },
+ {
+  "action": "get_attributes",
+  "integration": "control4",
+  "request": {
+   "dropped": [],
+   "own": null,
+   "request": {},
+   "targets": [
+    [
+     "light.lamp",
+     "light.lamp",
+     false
+    ]
+   ]
+  },
+  "result": [
+   {
+    "clamped_to": null,
+    "classes": null,
+    "data": {},
+    "detail": null,
+    "entity_id": "light.lamp",
+    "integration": "control4",
+    "member_classes": null,
+    "status": "confirmed"
+   }
+  ],
+  "wire": [
+   [
+    [
+     "director._call",
+     [
+      "send_get_request",
+      "/api/v1/items/100/variables?varnames=Brightness%20Percent,LIGHT_LEVEL,LIGHT_STATE,Current%20CCT,Current%20Color%20Mode"
+     ],
+     {}
+    ],
+    "[{\"id\": 100, \"varName\": \"LIGHT_STATE\", \"value\": 1}]"
+   ]
+  ]
+ }
+]

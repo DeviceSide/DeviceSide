@@ -11,13 +11,9 @@ from custom_components.deviceside.integrations.zha.fade import soft_off_restores
 
 from .conftest import E11_G13, IEEE, IKEA, RESTORE_60, SENT, A, B, bulb, call, on_off_reads, sent, to
 from ...conftest import advance, allow_experimental, result, wall_clock_now
+from ...fixtures.zha import cluster
 
 pytestmark = pytest.mark.usefixtures("setup_production", "clock", "bulbs")
-
-
-@pytest.fixture(autouse=True)
-def on_off_read(bulbs):
-    return bulbs.read
 
 
 @pytest.mark.parametrize(
@@ -44,7 +40,7 @@ async def test_continues_from_the_predicted_value(hass, commands, clock):
     assert sent(commands)[-1] == (0x0008, 0x00, {"level": 51, "transition_time": 30})
 
 
-async def test_soft_off_restores_the_start_level_once_the_light_reads_off(hass, commands, refreshes, on_off_read):
+async def test_soft_off_restores_the_start_level_once_the_light_reads_off(hass, commands, refreshes, bulbs):
     bulb(hass)
     start = wall_clock_now()
 
@@ -54,13 +50,11 @@ async def test_soft_off_restores_the_start_level_once_the_light_reads_off(hass, 
     await advance(hass, start, 4.5)
 
     assert sent(commands)[1:] == [RESTORE_60]
-    assert on_off_read.await_args.args[2:] == (zcl.ON_OFF_CLUSTER, (zcl.ON_OFF,))
+    assert bulbs.reads[-1] == (IEEE, zcl.ON_OFF_CLUSTER, [zcl.ON_OFF])
     assert [refresh.data for refresh in refreshes] == [{"entity_id": "light.bulb"}]
 
 
-async def test_an_options_save_mid_soft_off_still_restores_the_start_level(
-    hass, setup_production, commands, refreshes, on_off_read
-):
+async def test_an_options_save_mid_soft_off_still_restores_the_start_level(hass, setup_production, commands, refreshes):
     """A reload cancels the other pending jobs; the restore puts the bulb back, so it runs at its time."""
     bulb(hass)
     start = wall_clock_now()
@@ -74,7 +68,7 @@ async def test_an_options_save_mid_soft_off_still_restores_the_start_level(
 
 
 async def test_no_restore_when_the_light_still_reads_on(hass, commands, refreshes, bulbs):
-    bulbs.on = True
+    bulbs.answers[zcl.ON_OFF_CLUSTER][zcl.ON_OFF] = True
     bulb(hass)
     start = wall_clock_now()
 
@@ -85,9 +79,9 @@ async def test_no_restore_when_the_light_still_reads_on(hass, commands, refreshe
     assert len(refreshes) == 1
 
 
-async def test_a_failed_restore_still_refreshes(hass, commands, refreshes, on_off_read):
-    on_off_read.side_effect = LookupError("no answer")
+async def test_a_failed_restore_still_refreshes(hass, commands, refreshes):
     bulb(hass)
+    cluster(hass, zcl.ON_OFF_CLUSTER).error = TimeoutError()  # no answer
     start = wall_clock_now()
 
     await call(hass, "lower_brightness", {"entity_id": "light.bulb"})
@@ -97,7 +91,7 @@ async def test_a_failed_restore_still_refreshes(hass, commands, refreshes, on_of
     assert len(refreshes) == 1
 
 
-async def test_a_failed_lower_keeps_the_earlier_soft_offs_restore(hass, commands, on_off_read, clock):
+async def test_a_failed_lower_keeps_the_earlier_soft_offs_restore(hass, commands, clock):
     """The failed lower schedules no end job, so the soft off's own still has to find its mark."""
     bulb(hass)
     start = wall_clock_now()
@@ -117,7 +111,7 @@ async def test_a_failed_lower_keeps_the_earlier_soft_offs_restore(hass, commands
     assert sent(after) == [RESTORE_60]
 
 
-async def test_a_failed_soft_off_leaves_no_restore(hass, on_off_read):
+async def test_a_failed_soft_off_leaves_no_restore(hass):
     async def fail(call: ServiceCall) -> None:
         raise HomeAssistantError("no route")
 
@@ -130,7 +124,7 @@ async def test_a_failed_soft_off_leaves_no_restore(hass, on_off_read):
     assert not soft_off_restores(hass)
 
 
-async def test_no_restore_on_a_model_that_drops_levels_while_off(hass, commands, on_off_read):
+async def test_no_restore_on_a_model_that_drops_levels_while_off(hass, commands, bulbs):
     allow_experimental(hass)
     bulb(hass, strings=E11_G13)
     start = wall_clock_now()
@@ -139,10 +133,10 @@ async def test_no_restore_on_a_model_that_drops_levels_while_off(hass, commands,
     await advance(hass, start, 4.5)
 
     assert len(commands) == 1
-    assert not on_off_reads(on_off_read)
+    assert not on_off_reads(bulbs)
 
 
-async def test_a_raise_cancels_the_restore(hass, commands, on_off_read, clock):
+async def test_a_raise_cancels_the_restore(hass, commands, bulbs, clock):
     bulb(hass)
     start = wall_clock_now()
     await call(hass, "lower_brightness", {"entity_id": "light.bulb"})
@@ -152,7 +146,7 @@ async def test_a_raise_cancels_the_restore(hass, commands, on_off_read, clock):
     await advance(hass, start, 10)
 
     assert [command[:2] for command in sent(commands)] == [(0x0008, 0x04), (0x0008, 0x04)]
-    assert not on_off_reads(on_off_read)
+    assert not on_off_reads(bulbs)
 
 
 async def test_a_lower_that_passes_an_off_member_by_goes_to_each_lit_one(

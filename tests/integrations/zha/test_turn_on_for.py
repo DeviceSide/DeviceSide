@@ -2,7 +2,6 @@
 issue_zigbee_group_command for a ZHA group's members), then an OnOff and OnTime read-back."""
 
 import logging
-from unittest.mock import AsyncMock
 
 import pytest
 from homeassistant.core import ServiceCall
@@ -14,22 +13,31 @@ from custom_components.deviceside.integrations.zha.addressing import address
 
 from .conftest import call, call_as
 from ...conftest import allow_experimental, refusal, sent
-from ...fixtures.zha import IEEE, StandardOnOff, add_zha_entity, quirk_on_off, zha_entry, zha_group
+from ...fixtures.zha import IEEE, StandardOnOff, add_zha_entity, cluster, quirk_on_off, zha_entry, zha_group
 
 CONFIRMED = {"status": "confirmed", "integration": "zha"}
 
 
 def reads(remaining, on=True) -> dict:
-    """What zcl.read_attributes returns: OnOff, and OnTime in tenths."""
+    """What a light's OnOff cluster answers: OnOff, and OnTime in tenths."""
     return {zcl.ON_OFF: on, zcl.ON_TIME: remaining}
 
 
 @pytest.fixture(autouse=True)
-def readback(monkeypatch):
-    """zcl.read_attributes, reading back on with the 5 s every test requests unless it sets its own."""
-    read = AsyncMock(return_value=reads(50))
-    monkeypatch.setattr(zcl, "read_attributes", read)
-    return read
+def readback(zha_gateway):
+    """The fake gateway, every light's OnOff cluster reading back on with the 5 s every test requests unless it sets
+    its own."""
+    zha_gateway.answers[zcl.ON_OFF_CLUSTER] = reads(50)
+    return zha_gateway
+
+
+def answer(readback, values: dict) -> None:
+    """What every light's OnOff cluster answers."""
+    readback.answers[zcl.ON_OFF_CLUSTER] = values
+
+
+def read_ieees(readback) -> list[str]:
+    return [ieee for ieee, _cluster, _attributes in readback.reads]
 
 
 @pytest.fixture(autouse=True)
@@ -81,7 +89,7 @@ async def test_untested_field_is_refused(hass, setup_production, commands, turn_
 
 async def test_duration_in_tenths_and_clamped(hass, setup_production, commands, turn_ons, readback):
     add_zha_entity(hass, zha_entry(hass), "light.bulb")
-    readback.return_value = reads(65534)
+    answer(readback, reads(65534))
 
     response = await call(hass, "turn_on_for", {"entity_id": "light.bulb", "duration": {"hours": 2}})
 
@@ -92,18 +100,18 @@ async def test_duration_in_tenths_and_clamped(hass, setup_production, commands, 
 @pytest.mark.parametrize("remaining", [50, 20])
 async def test_on_time_within_slack_confirms(hass, setup_production, commands, readback, remaining):
     add_zha_entity(hass, zha_entry(hass), "light.bulb")
-    readback.return_value = reads(remaining)
+    answer(readback, reads(remaining))
 
     response = await call(hass, "turn_on_for", {"entity_id": "light.bulb", "duration": 5})
 
     assert response == {"light.bulb": CONFIRMED}
-    readback.assert_awaited_once_with(hass, (IEEE, 11), 0x0006, (0x0000,), optional=(0x4001,))
+    assert readback.reads == [(IEEE, 0x0006, [0x0000, 0x4001])]
 
 
 @pytest.mark.parametrize("remaining", [0, 51, 19])
 async def test_on_time_outside_slack_is_sent(hass, setup_production, commands, readback, remaining):
     add_zha_entity(hass, zha_entry(hass), "light.bulb")
-    readback.return_value = reads(remaining)
+    answer(readback, reads(remaining))
 
     response = await call(hass, "turn_on_for", {"entity_id": "light.bulb", "duration": 5})
 
@@ -112,7 +120,7 @@ async def test_on_time_outside_slack_is_sent(hass, setup_production, commands, r
 
 async def test_a_running_timer_on_a_device_that_stayed_off_is_sent(hass, setup_production, commands, readback):
     add_zha_entity(hass, zha_entry(hass), "light.bulb")
-    readback.return_value = reads(50, on=False)
+    answer(readback, reads(50, on=False))
 
     response = await call(hass, "turn_on_for", {"entity_id": "light.bulb", "duration": 5})
 
@@ -120,18 +128,18 @@ async def test_a_running_timer_on_a_device_that_stayed_off_is_sent(hass, setup_p
 
 
 @pytest.mark.parametrize(
-    "read",
+    ("values", "error"),
     [
-        {"side_effect": ImportError("No module named 'zha'")},
-        {"side_effect": LookupError("ZHA device not found")},
-        {"return_value": reads(None)},  # an uncomparable OnTime
-        {"return_value": reads(50, on=None)},  # an OnOff that is neither on nor off
-        {"return_value": {}},  # a value missing
+        (reads(50), TimeoutError()),  # no answer
+        (reads(None), None),  # an uncomparable OnTime
+        (reads(50, on=None), None),  # an OnOff that is neither on nor off
+        ({}, None),  # OnOff unsupported
     ],
 )
-async def test_failed_read_is_sent(hass, setup_production, commands, readback, read):
+async def test_failed_read_is_sent(hass, setup_production, commands, readback, values, error):
     add_zha_entity(hass, zha_entry(hass), "light.bulb")
-    readback.configure_mock(**read)
+    on_off = cluster(hass, zcl.ON_OFF_CLUSTER)
+    on_off.values, on_off.error = values, error
 
     response = await call(hass, "turn_on_for", {"entity_id": "light.bulb", "duration": 5})
 
@@ -148,7 +156,7 @@ async def test_failed_read_is_sent(hass, setup_production, commands, readback, r
 )
 async def test_switch_is_experimental(hass, setup_production, commands, turn_ons, readback, on, expected):
     add_zha_entity(hass, zha_entry(hass), "switch.plug")
-    readback.return_value = reads(50, on=on)
+    answer(readback, reads(50, on=on))
     data = {"entity_id": "switch.plug", "duration": 5}
 
     assert await refusal(hass, "turn_on_for", data) == "experimental_off"
@@ -207,7 +215,7 @@ async def test_non_admin_caller_is_refused_by_zha(hass, setup_production, admin_
 
     assert raised.value.translation_placeholders["summary"] == "light.bulb: admin_required"
     assert not admin_command
-    readback.assert_not_awaited()
+    assert not readback.reads
 
 
 @pytest.mark.parametrize(
@@ -253,7 +261,7 @@ async def test_group_members_get_one_groupcast_and_a_read_back_each(
     ]
     assert not commands
     assert not turn_ons
-    assert sorted(read.args[1].ieee for read in readback.await_args_list) == [A, B]
+    assert sorted(read_ieees(readback)) == [A, B]
 
 
 async def test_group_fields_turn_on_the_group_entity_once(
@@ -270,12 +278,12 @@ async def test_a_member_without_on_time_reports_no_timer(
     hass, setup_production, two_light_group, group_commands, readback, on, detail
 ):
     """A member that can't run the timer drops the groupcast silently; its read-back says so."""
-    readback.side_effect = lambda hass, addr, *args, **kwargs: {zcl.ON_OFF: on} if addr.ieee == B else reads(50)
+    cluster(hass, zcl.ON_OFF_CLUSTER, B).values = {zcl.ON_OFF: on}
 
     response = await call(hass, "turn_on_for", {"entity_id": "light.zha_group", "duration": 5})
 
     assert response == {"light.a": CONFIRMED, "light.b": {"status": "sent", "integration": "zha", "detail": detail}}
-    assert [read.args[1].ieee for read in readback.await_args_list].count(B) == 1 + turn_on_for._REREADS
+    assert read_ieees(readback).count(B) == 1 + turn_on_for._REREADS
 
 
 @pytest.mark.parametrize("first", [reads(0, on=False), reads(0)])
@@ -284,7 +292,11 @@ async def test_a_member_read_before_the_groupcast_lands_is_read_again(
 ):
     """A unicast read can overtake the groupcast: no timer at first, then the timer is running."""
     late = iter([first, reads(48)])
-    readback.side_effect = lambda hass, addr, *args, **kwargs: next(late) if addr.ieee == B else reads(50)
+
+    def next_answer(on_off) -> None:
+        on_off.values = next(late)
+
+    cluster(hass, zcl.ON_OFF_CLUSTER, B).before = next_answer
 
     response = await call(hass, "turn_on_for", {"entity_id": "light.zha_group", "duration": 5})
 
@@ -294,23 +306,23 @@ async def test_a_member_read_before_the_groupcast_lands_is_read_again(
 async def test_a_member_whose_read_fails_is_not_read_again(
     hass, setup_production, two_light_group, group_commands, readback
 ):
-    readback.side_effect = lambda hass, addr, *args, **kwargs: {} if addr.ieee == B else reads(50)
+    cluster(hass, zcl.ON_OFF_CLUSTER, B).values = {}
 
     response = await call(hass, "turn_on_for", {"entity_id": "light.zha_group", "duration": 5})
 
     assert response["light.b"]["detail"] == "readback_failed"
-    assert [read.args[1].ieee for read in readback.await_args_list].count(B) == 1
+    assert read_ieees(readback).count(B) == 1
 
 
 async def test_a_unicast_is_read_back_once(hass, setup_production, commands, readback):
     """A unicast returns once the light has taken it, so there is nothing to wait for."""
     add_zha_entity(hass, zha_entry(hass), "light.bulb")
-    readback.return_value = reads(0)
+    answer(readback, reads(0))
 
     response = await call(hass, "turn_on_for", {"entity_id": "light.bulb", "duration": 5})
 
     assert response["light.bulb"]["detail"] == "timer_not_reported"
-    assert readback.await_count == 1
+    assert len(readback.reads) == 1
 
 
 async def test_a_group_zha_no_longer_knows_is_skipped_as_empty(hass, setup_production, zha_groups, group_commands):
@@ -344,7 +356,7 @@ async def test_non_admin_caller_is_refused_for_every_member(
     assert raised.value.translation_placeholders["summary"] == "light.a: admin_required, light.b: admin_required"
     assert not admin_command
     assert not commands
-    readback.assert_not_awaited()
+    assert not readback.reads
 
 
 async def test_a_failed_groupcast_rejects_only_that_groups_members(
@@ -527,7 +539,7 @@ async def test_a_group_member_that_cant_be_classed_is_skipped_and_the_rest_get_t
 async def test_the_debug_log_holds_the_read_back_values(hass, setup_production, commands, readback, caplog):
     """A seconds device departs in these values (tenet 4); the log names the entity, never the address."""
     add_zha_entity(hass, zha_entry(hass), "light.bulb")
-    readback.return_value = reads(50, on=False)
+    answer(readback, reads(50, on=False))
 
     with caplog.at_level(logging.DEBUG, logger=turn_on_for.__name__):
         await call(hass, "turn_on_for", {"entity_id": "light.bulb", "duration": 5})
@@ -538,7 +550,7 @@ async def test_the_debug_log_holds_the_read_back_values(hass, setup_production, 
 
 async def test_a_light_without_on_time_logs_it_absent(hass, setup_production, commands, readback, caplog):
     add_zha_entity(hass, zha_entry(hass), "light.bulb")
-    readback.return_value = {zcl.ON_OFF: 1}
+    answer(readback, {zcl.ON_OFF: 1})
 
     with caplog.at_level(logging.DEBUG, logger=turn_on_for.__name__):
         await call(hass, "turn_on_for", {"entity_id": "light.bulb", "duration": 5})
@@ -548,7 +560,7 @@ async def test_a_light_without_on_time_logs_it_absent(hass, setup_production, co
 
 async def test_an_on_time_that_cannot_be_compared_is_still_logged(hass, setup_production, commands, readback, caplog):
     add_zha_entity(hass, zha_entry(hass), "light.bulb")
-    readback.return_value = reads(None)
+    answer(readback, reads(None))
 
     with caplog.at_level(logging.DEBUG, logger=turn_on_for.__name__):
         await call(hass, "turn_on_for", {"entity_id": "light.bulb", "duration": 5})

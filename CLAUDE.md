@@ -62,8 +62,8 @@ every integration shares is in `docs/integrations.md`: add your value there, don
    surprise, a release), run at the last point that can take it: the release's run for a device the rig or a
    maintainer reaches, so no merge waits on a run; the contributor's PR for their own devices. No plan gates a step
    on a run without naming the decision.
-9. Retest what the change exercises: only the rig cases whose call or reply handling changed. The gate reopens a
-   record when its own adapter's module or a shared one changed; a `no_call_changed` row at that change keeps it.
+9. Retest what the change exercises: only the rig cases whose call or reply handling changed. Evidence binds to the
+   action's call transcript, and a change reopens it only when a segment it was tested on changes or goes.
 
 The levels (Verified, Documented, Experimental), device classes, caveats, the release gate and the sign-off
 format:
@@ -113,7 +113,8 @@ Cutting, tagging and fixing RCs and releases: the `release` skill (`.claude/skil
 
 - Base: `main`, or a `release/vX.Y.Z` fix branch when one exists for the change.
 - Setup: `uv sync`. Test dependencies live in the `dev` group of `pyproject.toml`; never `uv pip install` into `.venv`, as the next sync removes it.
-- Before each push: `.venv/bin/pytest` and `pre-commit run --all-files` (ruff and the household check).
+- Before each push: `.venv/bin/pytest -n auto --transcripts=check` and `pre-commit run --all-files` (ruff and the
+  household check). A call or reply handling changed on purpose: `docs/evidence.md`, Release gate.
 - Audits: as the global `## Code audits` rule says, then `owner-findings` (Maintainers, Changing someone else's
   code). The binding-rule surface that puts an Opus auditor on the PR
   audit is `docs/evidence.md`, the `experimental` flag and `AdapterScope`, `Level.DOCUMENTED`,
