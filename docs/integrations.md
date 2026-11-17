@@ -52,7 +52,5 @@ some devices can't do is not marked there.
 ([device compatibility](device-compatibility.md#zigbee-plugs-and-switches)). Few honor the Zigbee timer command:
 IKEA's are moving to Thread, and Sonoff and Tuya run their own countdowns (the Tuya TS011F's runs only Tuya's way:
 DeviceSide sends it Tuya's countdown on Zigbee2MQTT, and [doesn't support](device-compatibility.md#tuya-ts011f) its
-timer on ZHA yet).
-If you try one, please report it whether it works or not: Integrations >
-[DeviceSide](https://my.home-assistant.io/redirect/integration/?domain=deviceside) > Configure > Report a device test
-result or bug, which prefills the device's details.
+timer on ZHA yet). A contributor with a plug that passes can add it
+([device compatibility](device-compatibility.md#zigbee-plugs-and-switches)).

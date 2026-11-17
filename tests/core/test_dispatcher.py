@@ -1887,6 +1887,39 @@ async def test_a_fallen_group_skips_a_stand_in_member(hass, fake, reset_script, 
     assert [ids for *_, ids in reset_script.calls] == [["light.a"]]
 
 
+# Class A not built on switches alone: its plug ignores the timer its bulb runs (docs/evidence.md, On trial).
+A_PLUG_NOT_BUILT = replace(
+    CLASSED, not_built={"A": NotBuilt("Its plug stays on", "https://example.com/a", frozenset({"switch"}))}
+)
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_stand_in_plug_in_a_light_group_is_refused_on_its_own_domain(hass, fake, reset_script, caplog):
+    """A plug in a light group, listed by a stand-in with the group's domain, is judged as off that domain, so a
+    switch-only entry refuses it (#496's audit): the group falls back, its bulb runs, the plug is skipped."""
+    add_fake_entity(hass, fake, "light.a")
+    add_group_with_stand_ins(hass, fake, ["light.a"], ["switch.a"])
+
+    with patch.object(FakeTurnOnFor, "scope", A_PLUG_NOT_BUILT):
+        response = await call(hass, "turn_on_for", {"entity_id": "light.fake_group", "duration": 5})
+
+    assert response == {"light.a": {"status": "sent", "integration": "fake", "capability": "A"}}
+    assert "a member device of light.fake_group (not_addressable)" in caplog.text
+    assert [ids for *_, ids in reset_script.calls] == [["light.a"]]
+
+
+@pytest.mark.usefixtures("classed")
+async def test_a_light_group_of_a_class_not_built_on_switches_runs_whole(hass, fake, reset_script):
+    """The same entry leaves a group of the class's lights one call."""
+    add_fake_entity(hass, fake, "light.a")
+    add_group_with_stand_ins(hass, fake, ["light.a"], [])
+
+    with patch.object(FakeTurnOnFor, "scope", A_PLUG_NOT_BUILT):
+        await call(hass, "turn_on_for", {"entity_id": "light.fake_group", "duration": 5})
+
+    assert [ids for *_, ids in reset_script.calls] == [["light.fake_group"]]
+
+
 @pytest.mark.usefixtures("classed")
 async def test_an_own_call_group_whose_only_runnable_members_are_stand_ins_raises_their_reason(
     hass, fake, reset_script

@@ -302,7 +302,13 @@ class AdapterScope:
         return failure_harms and bool(self.no_known_method or self.not_built)
 
     def refusal(
-        self, classes: Collection[str | None], group: bool = False, domain: str | None = None, *, failure_harms: bool
+        self,
+        classes: Collection[str | None],
+        group: bool = False,
+        domain: str | None = None,
+        *,
+        failure_harms: bool,
+        elsewhere: Collection[str | None] = (),
     ) -> tuple[str, str | None] | None:
         """Why the scope refuses a target of these classes (a native group's: its members'), in `domain` when given,
         with the reason the user reads, or None. `failure_harms` is the adapter's action's (Adapter.failure_harms),
@@ -313,23 +319,25 @@ class AdapterScope:
         its NotBuilt.reason when it has an entry. Elsewhere None is no refusal: the gate weighs it as Experimental, and
         an Unplaced class as the class it names. Last, for a native group whose members are listed (`group`),
         `own_call` when a member's class takes a call of its own (own_calls), so the group falls back to its
-        members."""
+        members. `elsewhere` holds the classes of a group's members outside `domain` (a stand-in: HA has no entity
+        for it there), judged as in an unknown domain, so an entry on some domains refuses them."""
         if self.capabilities is None:
             return None
         if self.harms(failure_harms) and any(name is None or isinstance(name, Unplaced) for name in classes):
             return Reason.CLASS_UNKNOWN, None
         if entry := next((self.no_known_method[name] for name in classes if name in self.no_known_method), None):
             return Reason.NO_KNOWN_METHOD, entry.reason
+        judged = [(name, domain) for name in classes] + [(name, None) for name in elsewhere]
         if entry := next(
             (
                 self.not_built[name]
-                for name in classes
-                if name in self.not_built and self.not_built[name].refuses(domain)
+                for name, where in judged
+                if name in self.not_built and self.not_built[name].refuses(where)
             ),
             None,
         ):
             return Reason.NOT_BUILT, entry.reason
-        if any(name is not None and not self.admits(name, domain) for name in classes):
+        if any(name is not None and not self.admits(name, where) for name, where in judged):
             return Reason.NOT_BUILT, None
         if group and self.own_call(classes) is not None:
             return Reason.OWN_CALL, None
