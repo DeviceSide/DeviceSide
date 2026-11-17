@@ -116,7 +116,7 @@ async def test_refused_while_the_experimental_option_is_off(hass):
 
 def test_scope():
     scope = Control4GetAttributes.scope
-    assert scope.experimental
+    assert scope.all_experimental
     assert scope.confirmable
     assert scope.domains == {"light": Level.EXPERIMENTAL}
 

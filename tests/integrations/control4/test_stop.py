@@ -176,6 +176,6 @@ async def test_the_command_is_logged_without_the_item_id(hass, wire):
 
 def test_scope():
     scope = Control4Stop.scope
-    assert scope.experimental
+    assert scope.all_experimental
     assert scope.confirmable
     assert scope.domains == {"light": Level.EXPERIMENTAL}
